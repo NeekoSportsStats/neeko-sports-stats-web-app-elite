@@ -10,12 +10,14 @@ import {
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { identifyUser, resetUser } from "@/lib/analytics";
+import { isBot } from "@/lib/botDetection";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   isPremium: boolean;
   isAdmin: boolean;
+  isBot: boolean;
   refreshPremiumStatus: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -25,6 +27,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   isPremium: false,
   isAdmin: false,
+  isBot: false,
   refreshPremiumStatus: async () => {},
   signOut: async () => {},
 });
@@ -32,6 +35,8 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const isBotRequest = isBot();
+
   if (!supabase) {
     return (
       <AuthContext.Provider
@@ -40,6 +45,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           loading: false,
           isPremium: false,
           isAdmin: false,
+          isBot: isBotRequest,
           refreshPremiumStatus: async () => {},
           signOut: async () => {}
         }}
@@ -64,6 +70,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setPremiumLoading(false);
       return;
     }
+
+    // Bots are ALWAYS treated as free users (no premium access)
+    if (isBotRequest) {
+      setIsPremium(false);
+      setIsAdmin(false);
+      setPremiumLoading(false);
+      return;
+    }
+
     setPremiumLoading(true);
     try {
       const { data, error } = await supabase.rpc("get_access_state");
@@ -85,7 +100,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
       setPremiumLoading(false);
     }
-  }, []);
+  }, [isBotRequest]);
 
   const refreshPremiumStatus = useCallback(async () => {
     if (!user?.id) return;
@@ -232,7 +247,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading: loading || premiumLoading, isPremium, isAdmin, refreshPremiumStatus, signOut }}
+      value={{
+        user,
+        loading: loading || premiumLoading,
+        isPremium: isBotRequest ? false : isPremium,
+        isAdmin: isBotRequest ? false : isAdmin,
+        isBot: isBotRequest,
+        refreshPremiumStatus,
+        signOut
+      }}
     >
       {children}
     </AuthContext.Provider>

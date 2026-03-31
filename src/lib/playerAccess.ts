@@ -3,9 +3,13 @@
  *
  * Prevents freemium bypasses via team pages, similar players, navigation
  * All access checks MUST go through these functions
+ *
+ * CRITICAL: Bots (search engines) are ALWAYS treated as free users
+ * This prevents premium data leakage in search results while maintaining SEO
  */
 
 import { supabase } from './supabaseClient';
+import { isBot } from './botDetection';
 
 let cachedFreePlayerIds: number[] | null = null;
 let cacheTimestamp: number | null = null;
@@ -40,6 +44,7 @@ export async function getFreePlayerIds(): Promise<number[]> {
 
 /**
  * Check if a player is accessible to the current user
+ * Bots: ALWAYS treated as free users (only top 8)
  * Premium users: all players accessible
  * Free users: only top 8 by neeko_rating
  */
@@ -47,6 +52,12 @@ export async function isPlayerAccessible(
   playerId: number,
   isPremium: boolean
 ): Promise<boolean> {
+  // Bots are ALWAYS free users - no premium access
+  if (isBot()) {
+    const freeIds = await getFreePlayerIds();
+    return freeIds.includes(playerId);
+  }
+
   if (isPremium) {
     return true;
   }
@@ -58,15 +69,20 @@ export async function isPlayerAccessible(
 /**
  * Filter player list to only show accessible players' full data
  * Non-accessible players get locked status
+ * Bots: ALWAYS treated as free users
  */
 export function markLockedPlayers<T extends { player_id?: number | null }>(
   players: T[],
   isPremium: boolean,
   freePlayerIds: number[]
 ): (T & { is_locked?: boolean })[] {
+  // Bots are ALWAYS free users
+  const isBotRequest = isBot();
+  const effectiveIsPremium = isBotRequest ? false : isPremium;
+
   return players.map(player => {
     const playerId = player.player_id;
-    const isAccessible = isPremium || (playerId !== null && playerId !== undefined && freePlayerIds.includes(playerId));
+    const isAccessible = effectiveIsPremium || (playerId !== null && playerId !== undefined && freePlayerIds.includes(playerId));
 
     return {
       ...player,
@@ -78,6 +94,7 @@ export function markLockedPlayers<T extends { player_id?: number | null }>(
 /**
  * Strip advanced stats from locked players
  * Used for team pages, similar players, etc.
+ * Bots: ALWAYS treated as free users (premium stats stripped)
  */
 export function sanitizeLockedPlayerData<T extends {
   player_id?: number | null;
@@ -93,8 +110,12 @@ export function sanitizeLockedPlayerData<T extends {
   isPremium: boolean,
   freePlayerIds: number[]
 ): T & { is_locked: boolean } {
+  // Bots are ALWAYS free users
+  const isBotRequest = isBot();
+  const effectiveIsPremium = isBotRequest ? false : isPremium;
+
   const playerId = player.player_id;
-  const isAccessible = isPremium || (playerId !== null && playerId !== undefined && freePlayerIds.includes(playerId));
+  const isAccessible = effectiveIsPremium || (playerId !== null && playerId !== undefined && freePlayerIds.includes(playerId));
 
   if (isAccessible) {
     return {
@@ -103,7 +124,7 @@ export function sanitizeLockedPlayerData<T extends {
     };
   }
 
-  // Strip advanced stats for locked players
+  // Strip advanced stats for locked players (includes bot requests)
   return {
     ...player,
     summary_short: null,
