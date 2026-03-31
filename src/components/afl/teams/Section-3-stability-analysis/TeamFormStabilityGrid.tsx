@@ -109,7 +109,7 @@ const TeamFormStabilityGrid: React.FC<{ statConfig: StatConfig }> = ({ statConfi
           {/* COOLING */}
           <FormCard
             title="Cooling Teams"
-            color="from-blue-500/20 to-blue-700/20 border-blue-500/40"
+            color="from-white/[0.05] to-white/[0.02] border-white/10"
             icon={<Snowflake className="h-4 w-4 text-blue-300" />}
             data={MOCK_COOLING}
           />

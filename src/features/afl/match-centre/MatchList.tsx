@@ -178,7 +178,7 @@ export default function MatchList({ groups, onSelectMatch, quarterScoresMap }: P
                           <div className={`text-sm ${isFinished ? "text-slate-600" : "text-slate-400"}`}>{venue}</div>
                         )}
                         {isFinished && (
-                          <div className="px-2.5 py-1.5 md:px-2 md:py-1 rounded-md border border-slate-700/30 bg-slate-900/50 text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                          <div className="px-2.5 py-1.5 md:px-2 md:py-1 rounded-md border border-white/10 bg-white/[0.02] text-xs uppercase tracking-wider text-white/40 font-semibold">
                             FT
                           </div>
                         )}

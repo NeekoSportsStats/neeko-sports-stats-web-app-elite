@@ -196,11 +196,11 @@ export default function AFLMatchCentrePage() {
                   value={season}
                   onChange={(e) => isPremium && setSeason(Number(e.target.value))}
                   disabled={!isPremium || is2026}
-                  className="w-full md:w-auto px-4 py-3 md:py-2.5 rounded-lg border border-slate-700/40 bg-slate-950/60 text-white text-base md:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#F5C84C]/50 focus:border-[#F5C84C]/50 hover:border-slate-600/50 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation min-h-[48px] md:min-h-0 shadow-inner"
+                  className="w-full md:w-auto px-4 py-3 md:py-2.5 rounded-lg border border-white/10 bg-black/40 text-white text-base md:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#F5C84C]/50 focus:border-[#F5C84C]/50 hover:border-white/15 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed touch-manipulation min-h-[48px] md:min-h-0 shadow-inner"
                   title={!isPremium ? "Season selection requires Neeko+" : "Select season to view match data"}
                 >
-                  <option value={2025} className="bg-slate-950 text-white">2025 Season</option>
-                  <option value={2026} disabled className="bg-slate-950 text-white/40 cursor-not-allowed">
+                  <option value={2025} className="bg-black text-white">2025 Season</option>
+                  <option value={2026} disabled className="bg-black text-white/40 cursor-not-allowed">
                     2026 (Coming Soon)
                   </option>
                 </select>
@@ -222,7 +222,7 @@ export default function AFLMatchCentrePage() {
                   value={round}
                   onChange={(e) => handleRoundChange(Number(e.target.value))}
                   disabled={is2026}
-                  className="w-full md:w-auto px-4 py-3 md:py-2.5 rounded-lg border border-slate-700/40 bg-slate-950/60 text-white text-base md:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#F5C84C]/50 focus:border-[#F5C84C]/50 hover:border-slate-600/50 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-slate-700/40 touch-manipulation min-h-[48px] md:min-h-0 shadow-inner"
+                  className="w-full md:w-auto px-4 py-3 md:py-2.5 rounded-lg border border-white/10 bg-black/40 text-white text-base md:text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#F5C84C]/50 focus:border-[#F5C84C]/50 hover:border-white/15 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-white/10 touch-manipulation min-h-[48px] md:min-h-0 shadow-inner"
                   title={is2026 ? "Round selection unavailable for 2026" : "Select round to view matches"}
                 >
                   {roundOptions.map((r) => {
@@ -232,7 +232,7 @@ export default function AFLMatchCentrePage() {
                         key={r.value}
                         value={r.value}
                         disabled={isLocked}
-                        className={`bg-slate-950 ${isLocked ? "text-white/30" : "text-white"}`}
+                        className={`bg-black ${isLocked ? "text-white/30" : "text-white"}`}
                       >
                         {r.label}{isLocked ? " 🔒" : ""}
                       </option>
@@ -324,7 +324,7 @@ function LockedRoundView({ freeMinRound, maxAvailableRound }: { freeMinRound: nu
   return (
     <div className="rounded-2xl border border-slate-700/30 bg-gradient-to-br from-slate-900/40 via-black/40 to-slate-900/30 backdrop-blur-xl p-12 md:p-16 text-center">
       <div className="max-w-lg mx-auto space-y-6">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800/60 border border-slate-700/40 mb-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/[0.03] border border-white/10 mb-4">
           <Lock className="w-8 h-8 text-slate-400" />
         </div>
         <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">Round Locked</h2>

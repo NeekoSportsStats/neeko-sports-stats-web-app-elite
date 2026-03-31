@@ -410,7 +410,7 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
           </div>
           <button
             onClick={onClose}
-            className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-xl border border-slate-700/40 bg-slate-900/50 hover:bg-slate-800/60 active:bg-slate-700/70 flex items-center justify-center transition-colors touch-manipulation"
+            className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] active:bg-white/[0.06] flex items-center justify-center transition-colors touch-manipulation"
           >
             <X className="h-5 w-5 text-slate-300" />
           </button>
@@ -522,7 +522,7 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
                 </div>
               )}
               {isFinished && (
-                <div className="px-2 py-1 rounded-md border border-slate-700/30 bg-slate-900/50 text-[10px] md:text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                <div className="px-2 py-1 rounded-md border border-white/10 bg-white/[0.02] text-[10px] md:text-xs uppercase tracking-wider text-white/40 font-semibold">
                   FT
                 </div>
               )}

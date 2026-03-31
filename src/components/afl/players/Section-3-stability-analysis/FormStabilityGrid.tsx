@@ -29,7 +29,7 @@ function getStabilityBandColor(stabilityBand: string): string {
     return "bg-red-500/25 text-red-300 border-red-500/35";
   }
 
-  return "bg-zinc-500/25 text-zinc-300 border-zinc-500/35";
+  return "bg-white/[0.08] text-white/70 border-white/10";
 }
 
 function getConfidenceBadgeColor(confidenceLabel: string): string {
@@ -51,7 +51,7 @@ function getConfidenceBadgeColor(confidenceLabel: string): string {
     return "bg-red-500/25 text-red-200 border-red-500/35";
   }
 
-  return "bg-zinc-500/25 text-zinc-300 border-zinc-500/35";
+  return "bg-white/[0.08] text-white/70 border-white/10";
 }
 
 function formatTrendDiff(diff: number, statType: string): string {
@@ -69,7 +69,7 @@ function getTrendDiffColor(diff: number): string {
   if (diff > 0) return "bg-green-500/25 text-green-200 border-green-500/40";
   if (diff < -5) return "bg-red-500/25 text-red-200 border-red-500/40";
   if (diff < 0) return "bg-orange-500/25 text-orange-200 border-orange-500/40";
-  return "bg-zinc-500/25 text-zinc-300 border-zinc-500/35";
+  return "bg-white/[0.08] text-white/70 border-white/10";
 }
 
 function PlayerCard({
