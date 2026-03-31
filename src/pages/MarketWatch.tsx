@@ -13,7 +13,7 @@ interface Player {
   ai_recommendation: string;
   recommendation_color: string;
   recommendation_why: string | null;
-  is_locked: boolean;
+  is_available: boolean;
 }
 
 const MarketWatch = () => {
@@ -34,7 +34,7 @@ const MarketWatch = () => {
           ai_recommendation,
           recommendation_color,
           recommendation_why,
-          is_locked
+          is_available
         `)
         .order('value_score', { ascending: false })
         .limit(8); // FIX: Correct LIMIT of 8 for free tier
@@ -138,7 +138,7 @@ const MarketWatch = () => {
                       {player.player_name || 'Unknown Player'}
                     </h3>
 
-                    {player.is_locked && (
+                    {!player.is_available && (
                       <Lock className="w-4 h-4 text-amber-500" />
                     )}
                   </div>
@@ -181,7 +181,7 @@ const MarketWatch = () => {
                   </div>
 
                   {/* PART 3: FIX WHY TEXT CUT OFF - Proper text wrapping */}
-                  {player.recommendation_why && !player.is_locked && (
+                  {player.recommendation_why && player.is_available && (
                     <div className={`mt-4 p-3 rounded-lg border ${getRecommendationStyle(player.recommendation_color)}`}>
                       {/* No overflow hidden - text wraps correctly */}
                       <p className="text-sm whitespace-pre-wrap break-words">
@@ -190,7 +190,7 @@ const MarketWatch = () => {
                     </div>
                   )}
 
-                  {player.is_locked && (
+                  {!player.is_available && (
                     <div className="mt-4 p-3 rounded-lg bg-slate-100 border border-slate-200">
                       <p className="text-sm text-slate-600 flex items-center gap-2">
                         <Lock className="w-4 h-4" />
