@@ -289,6 +289,62 @@ Deno.serve(async (req: Request) => {
       await supabase.rpc("refresh_materialized_view", { view_name: "mv_edge_board" });
       return ok({ message: "Refreshed all materialized views" });
 
+    } else if (command === "enqueue_reco_jobs") {
+      const { data, error } = await supabase.rpc("fn_enqueue_ranking_reco_jobs");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "generate_all_ai") {
+      const { data, error } = await supabase.rpc("fn_fire_ai_worker_wave_range", {
+        p_batch_size: 999,
+        p_start_id: null,
+        p_end_id: null,
+      });
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "generate_market_watch_ai") {
+      const { data, error } = await supabase.rpc("fn_generate_market_watch_summary");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "generate_player_ai") {
+      const { data, error } = await supabase.rpc("fn_fire_ai_worker_wave_range", {
+        p_batch_size: 50,
+        p_start_id: null,
+        p_end_id: null,
+      });
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "generate_ranking_ai") {
+      const { data, error } = await supabase.rpc("fn_enqueue_ranking_reco_jobs");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "ingest_player_stats") {
+      const { data, error } = await supabase.rpc("fn_ingest_player_stats");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "ingest_team_stats") {
+      const { data, error } = await supabase.rpc("fn_ingest_team_stats");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "rebuild_start_sit") {
+      const { error: deleteError } = await supabase
+        .from("start_sit_cache")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      if (deleteError) throw deleteError;
+      return ok({ message: "Start/Sit cache cleared and ready for rebuild" });
+
+    } else if (command === "run_ingest") {
+      const { data, error } = await supabase.rpc("run_afl_worker_ingestion");
+      if (error) throw error;
+      return ok(data);
+
     } else {
       return err(`Unknown command: ${command}`);
     }
