@@ -11,6 +11,27 @@ import { MarketWatchSkeleton } from "./MarketWatchSkeleton";
 import { classifyPlayers, buildBestTrades } from "./engine";
 import { PremiumGate } from "@/components/PremiumGate";
 
+// Derive Market Watch category from Rankings data (single source of truth)
+function deriveCategory(r: any): MWPlayerRow['category'] {
+  if (r.market_watch_category) return r.market_watch_category;
+  const rec = r.ai_recommendation;
+  const value = r.value_score ?? 0;
+  const price = r.price ?? 0;
+  const consistency = r.consistency ?? 50;
+
+  if (rec === 'BUY') {
+    if (value > 6) return 'upgrade_target';
+    if (value >= 3) return 'buy_before_rise';
+    if (price < 400000) return 'cash_cow';
+    return 'buy_before_rise';
+  }
+  if (rec === 'SELL') {
+    if (consistency < 40) return 'fade_trap';
+    return 'sell_before_drop';
+  }
+  return 'monitor';
+}
+
 export default function MarketWatchPage() {
   const { isPremium, loading: authLoading } = useAuth();
   const [players, setPlayers] = useState<MWPlayerRow[]>([]);
@@ -20,25 +41,71 @@ export default function MarketWatchPage() {
     setLoading(true);
     try {
       const limit = premium ? 200 : 100;
-      const { data, error } = await supabase
-        .from("v_mw_premium")
-        .select("*")
-        .limit(limit);
+      const viewName = premium ? "v_rankings_master" : "v_rankings_free";
+      const { data, error } = await supabase.from(viewName).select("*").limit(limit);
 
       if (error) throw error;
 
-      const cleaned = (data ?? []).filter((p: MWPlayerRow) => {
-        return p.category !== null && p.category !== undefined;
-      });
+      const mapped: MWPlayerRow[] = (data ?? []).map((r: any) => ({
+        snapshot_id: 'rankings-cache',
+        player_id: r.player_id,
+        player_name: r.player_name,
+        team: r.team,
+        position: r.position,
+        price: r.price ?? 0,
+        breakeven: r.projection_final ?? r.projection ?? 0,
+        projection: r.projection ?? 0,
+        ceiling: r.ceiling ?? 0,
+        floor_val: r.floor ?? 0,
+        risk_pct: (100 - (r.consistency ?? 0)),
+        price_edge_pts: (r.projection ?? 0) - (r.projection_final ?? 0),
+        expected_price_change: (r.price_change ?? 0) * 3,
+        projected_price: (r.price ?? 0) + (r.price_change ?? 0),
+        projected_price_r1: (r.price ?? 0) + (r.price_change ?? 0),
+        projected_price_r2: (r.price ?? 0) + ((r.price_change ?? 0) * 2),
+        projected_price_r3: (r.price ?? 0) + ((r.price_change ?? 0) * 3),
+        breakout_score: null,
+        breakout_flag: null,
+        volatility_score: r.consistency ?? 0,
+        volatility_level: null,
+        category: deriveCategory(r),
+        action: r.ai_recommendation === 'BUY' ? 'BUY' : r.ai_recommendation === 'SELL' ? 'SELL' : 'HOLD',
+        trade_score: r.best_value_score ?? r.value_score ?? 0,
+        reasons: {},
+        category_reason: r.recommendation_short ?? r.recommendation_why ?? null,
+        last3_avg: r.form_score ?? null,
+        estimated_price: r.price ?? null,
+        value_score: r.value_score ?? null,
+        price_range_top: null,
+        price_range_bottom: null,
+        value_momentum: null,
+        momentum_label: null,
+        peak_price: null,
+        peak_round: null,
+        peak_status: null,
+        season: 2026,
+        round_number: 1,
+        snapshot_updated_at: r.cached_at ?? r.ai_updated_at ?? new Date().toISOString(),
+        neeko_rating: r.neeko_rating ?? null,
+        consistency_score: r.consistency ?? null,
+        projection_confidence: r.projection_confidence ?? null,
+        avg_season: r.form_score ?? null,
+        ai_recommendation: r.summary_short ?? r.ai_summary ?? null,
+        recommendation_short: r.recommendation_short ?? null,
+        matchup_label: r.matchup_label ?? null,
+      }));
 
+      const cleaned = mapped.filter(p => p.category !== null && p.category !== undefined);
       const categoryCounts = cleaned.reduce((acc, p) => {
         const cat = p.category || 'none';
         acc[cat] = (acc[cat] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
-      console.log("[MW DEBUG]", {
+      console.log("[MW DEBUG - UNIFIED SOURCE]", {
+        source: viewName,
         total: data?.length ?? 0,
+        afterMapping: mapped.length,
         afterFilter: cleaned.length,
         categories: categoryCounts,
       });
