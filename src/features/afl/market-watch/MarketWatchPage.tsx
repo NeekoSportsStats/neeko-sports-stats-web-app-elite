@@ -32,9 +32,25 @@ export default function MarketWatchPage() {
           supabase.from("v_mw_summary").select("*").maybeSingle(),
           supabase.from("v_mw_status").select("*").maybeSingle(),
         ]);
-        setPlayers((playersRes.data ?? []) as MWPlayerRow[]);
-        if (summaryRes.data) setSummary(summaryRes.data as MWSummary);
-        if (statusRes.data) setStatus(statusRes.data as MWStatus);
+
+        if (playersRes.error) {
+          console.error("Market Watch data error:", playersRes.error);
+          setPlayers([]);
+        } else {
+          setPlayers((playersRes.data ?? []) as MWPlayerRow[]);
+        }
+
+        if (summaryRes.error) {
+          console.error("Market Watch summary error:", summaryRes.error);
+        } else if (summaryRes.data) {
+          setSummary(summaryRes.data as MWSummary);
+        }
+
+        if (statusRes.error) {
+          console.error("Market Watch status error:", statusRes.error);
+        } else if (statusRes.data) {
+          setStatus(statusRes.data as MWStatus);
+        }
       } else {
         const FREE_CAT_LIMIT = 20;
         const categories: Array<{ cat: string; order: string; asc: boolean }> = [
@@ -58,11 +74,31 @@ export default function MarketWatchPage() {
           supabase.from("v_mw_summary").select("*").maybeSingle(),
           supabase.from("v_mw_status").select("*").maybeSingle(),
         ]);
-        const combined = catResults.flatMap(r => (r.data ?? []) as MWPlayerRow[]);
+
+        const combined = catResults.flatMap(r => {
+          if (r.error) {
+            console.error("Market Watch category error:", r.error);
+            return [];
+          }
+          return (r.data ?? []) as MWPlayerRow[];
+        });
         setPlayers(combined);
-        if (summaryRes.data) setSummary(summaryRes.data as MWSummary);
-        if (statusRes.data) setStatus(statusRes.data as MWStatus);
+
+        if (summaryRes.error) {
+          console.error("Market Watch summary error:", summaryRes.error);
+        } else if (summaryRes.data) {
+          setSummary(summaryRes.data as MWSummary);
+        }
+
+        if (statusRes.error) {
+          console.error("Market Watch status error:", statusRes.error);
+        } else if (statusRes.data) {
+          setStatus(statusRes.data as MWStatus);
+        }
       }
+    } catch (error) {
+      console.error("Market Watch fetch error:", error);
+      setPlayers([]);
     } finally {
       setDataLoading(false);
     }
@@ -82,15 +118,57 @@ export default function MarketWatchPage() {
   }, [authLoading, isPremium, fetchData]);
 
   const classified = classifyPlayers(players);
-  const allTrades = buildBestTrades(classified.sells, classified.upgrades);
+  console.log("Market Watch - Players count:", players.length);
+  console.log("Market Watch - Classified:", {
+    sells: classified.sells.length,
+    upgrades: classified.upgrades.length,
+    cashCows: classified.cashCows.length,
+    buyBeforeRise: classified.buyBeforeRise.length,
+    traps: classified.traps.length,
+  });
+
+  const allTrades = buildBestTrades(
+    classified.sells,
+    classified.upgrades,
+    classified.cashCows,
+    classified.buyBeforeRise
+  );
+  console.log("Market Watch - Best trades count:", allTrades.length);
+
   const heroTrade = allTrades[0] ?? null;
+  if (heroTrade) {
+    console.log("Market Watch - Hero trade:", heroTrade.out.player_name, "→", heroTrade.in.player_name);
+  }
 
   if (dataLoading && players.length === 0) {
     return <MarketWatchSkeleton />;
   }
 
+  const hasData = players.length > 0;
   const updatedAt = status?.last_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
+
+  if (!hasData && !dataLoading) {
+    return (
+      <div className="min-h-screen bg-[#0A0F1A] text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+            <div className="text-6xl">📊</div>
+            <h2 className="text-2xl font-bold text-white">No Market Data Available</h2>
+            <p className="text-white/60 text-center max-w-md">
+              Market Watch data is currently unavailable. Please check back later or contact support if this persists.
+            </p>
+            <button
+              onClick={handleRefresh}
+              className="mt-4 px-6 py-3 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-colors"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0A0F1A] text-white">

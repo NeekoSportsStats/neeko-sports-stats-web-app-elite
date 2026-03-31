@@ -54,13 +54,23 @@ function dedupeByPlayerId(players: DerivedPlayer[]): DerivedPlayer[] {
   return Array.from(map.values());
 }
 
-export function classifyPlayers(raw: MWPlayerRow[]): {
+export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   buyBeforeRise: DerivedPlayer[];
   cashCows: DerivedPlayer[];
   upgrades: DerivedPlayer[];
   sells: DerivedPlayer[];
   traps: DerivedPlayer[];
 } {
+  if (!raw || !Array.isArray(raw)) {
+    return {
+      buyBeforeRise: [],
+      cashCows: [],
+      upgrades: [],
+      sells: [],
+      traps: [],
+    };
+  }
+
   // Deduplicate raw input first — SQL should already be clean but safeguard here
   const seen = new Set<number>();
   const uniqueRaw = raw.filter(r => {
@@ -203,15 +213,17 @@ function tradeType(
 }
 
 export function buildBestTrades(
-  sells: DerivedPlayer[],
-  upgrades: DerivedPlayer[],
-  cashCows: DerivedPlayer[],
-  buyBeforeRise?: DerivedPlayer[],
+  sells: DerivedPlayer[] | undefined | null,
+  upgrades: DerivedPlayer[] | undefined | null,
+  cashCows?: DerivedPlayer[] | undefined | null,
+  buyBeforeRise?: DerivedPlayer[] | undefined | null,
 ): BestTrade[] {
-  if (sells.length === 0) return [];
+  if (!sells || !Array.isArray(sells) || sells.length === 0) return [];
+  if (!upgrades || !Array.isArray(upgrades)) return [];
 
   const allPairs: BestTrade[] = [];
-  const buys = buyBeforeRise ?? [];
+  const buys = (buyBeforeRise && Array.isArray(buyBeforeRise)) ? buyBeforeRise : [];
+  const cows = (cashCows && Array.isArray(cashCows)) ? cashCows : [];
 
   for (const out of sells.slice(0, 15)) {
     for (const inn of upgrades.slice(0, 15)) {
@@ -260,7 +272,7 @@ export function buildBestTrades(
       });
     }
 
-    for (const inn of cashCows.slice(0, 10)) {
+    for (const inn of cows.slice(0, 10)) {
       if (inn.player_id === out.player_id) continue;
       const cashGenerated = price(out) - price(inn);
       if (cashGenerated < 50000) continue;

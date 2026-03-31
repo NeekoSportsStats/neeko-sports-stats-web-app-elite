@@ -85,7 +85,7 @@ function CategorySection({
     orange: "border-orange-400/20",
   }[accentColor];
 
-  if (players.length === 0) {
+  if (!players || players.length === 0) {
     return null;
   }
 
@@ -102,7 +102,7 @@ function CategorySection({
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {players.slice(0, 12).map((player, i) => (
+        {(players ?? []).slice(0, 12).map((player, i) => (
           <PlayerCard key={i} player={player} rank={i + 1} borderColor={borderColor} />
         ))}
       </div>

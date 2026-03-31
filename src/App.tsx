@@ -82,7 +82,7 @@ function App() {
   useEffect(() => {
     if (supabase) {
       supabase
-        .from('afl_players')
+        .from('market_watch_snapshot')
         .select('*')
         .limit(1)
         .then(res => {

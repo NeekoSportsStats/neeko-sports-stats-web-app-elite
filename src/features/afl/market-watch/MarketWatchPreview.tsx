@@ -9,9 +9,9 @@ interface MarketWatchPreviewProps {
 }
 
 export function MarketWatchPreview({ sells, buys, value }: MarketWatchPreviewProps) {
-  const topSells = sells.slice(0, 2);
-  const topBuys = buys.slice(0, 2);
-  const topValue = value.slice(0, 2);
+  const topSells = (sells ?? []).slice(0, 2);
+  const topBuys = (buys ?? []).slice(0, 2);
+  const topValue = (value ?? []).slice(0, 2);
 
   return (
     <div className="grid md:grid-cols-3 gap-6">
@@ -67,10 +67,10 @@ function PreviewSection({ title, icon, players, accentColor }: PreviewSectionPro
       </div>
 
       <div className="space-y-3">
-        {players.length === 0 && (
+        {(!players || players.length === 0) && (
           <div className="text-sm text-white/40 italic">No signals this week</div>
         )}
-        {players.map((player, i) => (
+        {players && players.map((player, i) => (
           <PreviewCard key={i} player={player} rank={i + 1} />
         ))}
       </div>
