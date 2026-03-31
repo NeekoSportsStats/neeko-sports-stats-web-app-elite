@@ -89,6 +89,39 @@ html {
   h1, h2, h3, h4, h5, h6 {
     @apply font-bold tracking-tight;
   }
+
+  /* GLOBAL FOCUS OVERRIDE - NO BLUE ALLOWED */
+  *:focus {
+    outline: none !important;
+  }
+
+  *:focus-visible {
+    outline: 2px solid rgba(245, 200, 76, 0.4) !important;
+    outline-offset: 2px !important;
+  }
+
+  /* Button focus override */
+  button:focus-visible {
+    outline: 2px solid rgba(245, 200, 76, 0.4) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 3px rgba(245, 200, 76, 0.15) !important;
+  }
+
+  /* Input focus override */
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid rgba(245, 200, 76, 0.4) !important;
+    outline-offset: 0px !important;
+    border-color: rgba(245, 200, 76, 0.5) !important;
+    box-shadow: 0 0 0 3px rgba(245, 200, 76, 0.1) !important;
+  }
+
+  /* Link focus override */
+  a:focus-visible {
+    outline: 2px solid rgba(245, 200, 76, 0.4) !important;
+    outline-offset: 2px !important;
+  }
 }
 
 /* -------------------------------------------------------------------------- */

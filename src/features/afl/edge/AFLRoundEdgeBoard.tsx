@@ -152,7 +152,7 @@ function truncateWords(text: string, maxWords: number): string {
 function getPositionBadgeStyle(pos: string | null): string {
   if (!pos) return "bg-white/10 text-white/40";
   const p = pos.toUpperCase();
-  if (p === "MID") return "bg-blue-500/20 text-blue-300";
+  if (p === "MID") return "bg-purple-500/20 text-purple-300";
   if (p === "FWD") return "bg-red-500/20 text-red-300";
   if (p === "DEF") return "bg-emerald-500/20 text-emerald-300";
   if (p === "RUC") return "bg-amber-500/20 text-amber-300";
@@ -700,7 +700,7 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
             </button>
             <button
               onClick={handleTwitter}
-              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-white/10 bg-white/[0.03] text-[12px] font-semibold text-white/40 hover:text-blue-400 hover:border-blue-500/30 hover:bg-blue-500/[0.05] transition-all"
+              className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-white/10 bg-white/[0.03] text-[12px] font-semibold text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/[0.05] transition-all"
               title="Share on X"
             >
               <span className="text-[11px]">X</span>
@@ -995,7 +995,7 @@ function RoundSummaryShare({ captain, value, trap }: { captain: RankingRow | nul
         </button>
         <button
           onClick={handleTwitter}
-          className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-white/10 bg-white/[0.03] text-xs font-semibold text-white/40 hover:text-blue-400 hover:border-blue-500/30 hover:bg-blue-500/[0.05] transition-all"
+          className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl border border-white/10 bg-white/[0.03] text-xs font-semibold text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/[0.05] transition-all"
         >
           X
         </button>

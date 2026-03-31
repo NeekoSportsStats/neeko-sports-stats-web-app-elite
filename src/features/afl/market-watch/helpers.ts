@@ -41,7 +41,7 @@ export function riskColor(v: number | null): string {
 
 export function positionBadge(pos: string | null): string {
   const p = pos?.toUpperCase() ?? "";
-  if (p === "DEF") return "bg-blue-400/15 text-blue-300 border-blue-400/20";
+  if (p === "DEF") return "bg-white/[0.08] text-white/70 border-white/10";
   if (p === "MID") return "bg-[#F5C84C]/15 text-[#F5C84C] border-[#F5C84C]/20";
   if (p === "FWD") return "bg-orange-400/15 text-orange-300 border-orange-400/20";
   if (p === "RUC") return "bg-teal-400/15 text-teal-300 border-teal-400/20";

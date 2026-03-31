@@ -241,7 +241,7 @@ export function getCaptainStyle(rating: string | null) {
   if (!rating) return { text: "text-white/30", bg: "bg-white/5", border: "border-white/10", icon: "" };
   if (rating === "Elite Captain") return { text: "text-yellow-200", bg: "bg-yellow-400/10", border: "border-yellow-400/40", icon: "👑" };
   if (rating === "Strong Captain") return { text: "text-emerald-300", bg: "bg-emerald-400/10", border: "border-emerald-400/30", icon: "⭐" };
-  if (rating === "Captain Option") return { text: "text-blue-300", bg: "bg-blue-400/10", border: "border-blue-400/30", icon: "✔" };
+  if (rating === "Captain Option") return { text: "text-white/70", bg: "bg-white/5", border: "border-white/10", icon: "✔" };
   return { text: "text-orange-300", bg: "bg-orange-400/10", border: "border-orange-400/30", icon: "⚠" };
 }
 
@@ -261,7 +261,7 @@ export function getNeekoRatingBadge(rating: number | null) {
   if (rating == null) return { label: "—", text: "text-white/30", bg: "bg-transparent", border: "border-transparent", glow: "" };
   if (rating >= 90) return { label: "ELITE",  text: "text-yellow-400", bg: "bg-yellow-400/15", border: "border-yellow-400/40", glow: "drop-shadow(0 0 6px rgba(250,204,21,0.55))" };
   if (rating >= 75) return { label: "STRONG", text: "text-green-400",  bg: "bg-green-500/10",  border: "border-green-500/30",  glow: "drop-shadow(0 0 5px rgba(74,222,128,0.45))" };
-  if (rating >= 60) return { label: "SOLID",  text: "text-blue-400",   bg: "bg-blue-500/10",   border: "border-blue-500/30",   glow: "" };
+  if (rating >= 60) return { label: "SOLID",  text: "text-white/70",   bg: "bg-white/5",   border: "border-white/10",   glow: "" };
   if (rating >= 45) return { label: "WATCH",  text: "text-gray-300",   bg: "bg-white/5",       border: "border-white/15",      glow: "" };
   return                   { label: "RISK",   text: "text-red-400",    bg: "bg-red-500/10",    border: "border-red-500/30",    glow: "" };
 }

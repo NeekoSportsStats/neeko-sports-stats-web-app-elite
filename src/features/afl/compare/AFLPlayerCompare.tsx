@@ -115,7 +115,7 @@ function getRiskColor(v: number | null): string {
 function getPositionBadge(pos: string | null): string {
   if (!pos) return "bg-white/10 text-white/40";
   const p = pos.toUpperCase();
-  if (p === "MID") return "bg-blue-500/20 text-blue-300";
+  if (p === "MID") return "bg-purple-500/20 text-purple-300";
   if (p === "FWD") return "bg-red-500/20 text-red-300";
   if (p === "DEF") return "bg-emerald-500/20 text-emerald-300";
   if (p === "RUC") return "bg-amber-500/20 text-amber-300";
@@ -303,9 +303,9 @@ function PlayerSearch({ label, allPlayers, selected, exclude, onSelect, onClear 
 // ─── Player Header Card ────────────────────────────────────────────────────────
 
 function PlayerHeaderCard({ player, side }: { player: RankingRow; side: "a" | "b" }) {
-  const accent = side === "a" ? "border-blue-500/20 bg-blue-500/[0.04]" : "border-orange-500/20 bg-orange-500/[0.04]";
+  const accent = side === "a" ? "border-purple-500/20 bg-purple-500/[0.04]" : "border-orange-500/20 bg-orange-500/[0.04]";
   const label = side === "a" ? "Player A" : "Player B";
-  const labelColor = side === "a" ? "text-blue-400" : "text-orange-400";
+  const labelColor = side === "a" ? "text-purple-400" : "text-orange-400";
 
   return (
     <div className={`rounded-xl border ${accent} px-4 py-4`}>
@@ -441,14 +441,14 @@ function VerdictBlock({
 
   const accentBorder =
     verdict.winner === "a"
-      ? "border-blue-500/30"
+      ? "border-purple-500/30"
       : verdict.winner === "b"
       ? "border-orange-500/30"
       : "border-white/10";
 
   const accentBg =
     verdict.winner === "a"
-      ? "bg-blue-500/[0.05]"
+      ? "bg-purple-500/[0.05]"
       : verdict.winner === "b"
       ? "bg-orange-500/[0.05]"
       : "bg-white/[0.02]";
@@ -528,7 +528,7 @@ function ScoreBar({ playerA, playerB }: { playerA: RankingRow; playerB: RankingR
     <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-4 mb-6">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <p className="text-xs font-bold text-blue-300">{playerA.player_name.split(" ").pop()}</p>
+          <p className="text-xs font-bold text-purple-300">{playerA.player_name.split(" ").pop()}</p>
           <p className="text-lg font-bold text-white">{scoreA}</p>
         </div>
         <p className="text-[10px] text-white/25 uppercase tracking-wider">Edge Score</p>
@@ -539,7 +539,7 @@ function ScoreBar({ playerA, playerB }: { playerA: RankingRow; playerB: RankingR
       </div>
       <div className="h-2 rounded-full bg-white/5 overflow-hidden flex">
         <div
-          className="h-full bg-blue-500/60 rounded-l-full transition-all duration-500"
+          className="h-full bg-purple-500/60 rounded-l-full transition-all duration-500"
           style={{ width: `${pctA}%` }}
         />
         <div
@@ -656,7 +656,7 @@ export default function AFLPlayerCompare() {
             {/* Stats comparison */}
             <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2 mb-4">
               <div className="grid grid-cols-[1fr_auto_1fr] gap-3 py-2 mb-1">
-                <span className="text-[10px] text-blue-400/70 font-semibold uppercase tracking-wider">{playerA!.player_name.split(" ").pop()}</span>
+                <span className="text-[10px] text-purple-400/70 font-semibold uppercase tracking-wider">{playerA!.player_name.split(" ").pop()}</span>
                 <span className="text-[10px] text-white/20 uppercase tracking-wider text-center">Metric</span>
                 <span className="text-[10px] text-orange-400/70 font-semibold uppercase tracking-wider text-right">{playerB!.player_name.split(" ").pop()}</span>
               </div>
