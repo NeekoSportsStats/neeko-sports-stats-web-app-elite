@@ -78,7 +78,7 @@ export function MarketWatchBanner({ summary, activeSection }: Props) {
   if (items.length === 0) return null;
 
   return (
-    <div className="sticky top-0 z-30 bg-[#0a0a0a]/95 backdrop-blur-md border-b border-white/[0.05]">
+    <div className="sticky top-0 z-30 bg-[#0D0D0D]/95 backdrop-blur-md border-b border-white/[0.05]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div
           ref={scrollRef}

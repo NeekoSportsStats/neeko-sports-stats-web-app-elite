@@ -19,7 +19,7 @@ export function MarketWatchHeroTrade({ trade }: MarketWatchHeroTradeProps) {
   return (
     <div className="relative">
       <div className="absolute -inset-[1px] bg-gradient-to-br from-[#F5C84C]/20 via-sky-400/10 to-green-400/10 rounded-xl blur-sm"></div>
-      <div className="relative bg-[#0A0F1A] border border-white/10 rounded-xl p-8 md:p-12">
+      <div className="relative bg-[#0D0D0D] border border-white/10 rounded-xl p-8 md:p-12">
         <div className="flex items-center gap-3 mb-6">
           <div className="w-2 h-2 rounded-full bg-[#F5C84C] animate-pulse"></div>
           <h2 className="text-sm font-medium text-white/50 uppercase tracking-wider">

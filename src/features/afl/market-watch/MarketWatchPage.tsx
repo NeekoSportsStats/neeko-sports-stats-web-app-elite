@@ -148,7 +148,7 @@ export default function MarketWatchPage() {
 
   if (!hasData && !dataLoading) {
     return (
-      <div className="min-h-screen bg-[#0A0F1A] text-white">
+      <div className="min-h-screen bg-[#0D0D0D] text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
             <div className="text-6xl">📊</div>
@@ -169,7 +169,7 @@ export default function MarketWatchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A0F1A] text-white">
+    <div className="min-h-screen bg-[#0D0D0D] text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
 
         <div className="flex items-center justify-between border-b border-white/5 pb-8">
