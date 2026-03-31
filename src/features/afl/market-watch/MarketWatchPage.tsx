@@ -4,11 +4,12 @@ import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
 import { MWPlayerRow } from "./types";
-import { MarketWatchPreview } from "./MarketWatchPreview";
+import { MarketWatchHero } from "./MarketWatchHero";
+import { MarketWatchSignalStrip } from "./MarketWatchSignalStrip";
+import { MarketWatchPremiumCard } from "./MarketWatchPremiumCard";
 import { MarketWatchPaywall } from "./MarketWatchPaywall";
-import { MarketWatchPremium } from "./MarketWatchPremium";
 import { MarketWatchSkeleton } from "./MarketWatchSkeleton";
-import { classifyPlayers, buildBestTrades } from "./engine";
+import { classifyPlayers } from "./engine";
 import { PremiumGate } from "@/components/PremiumGate";
 
 // Derive Market Watch category from Rankings data (single source of truth)
@@ -153,19 +154,17 @@ export default function MarketWatchPage() {
   }
 
   const classified = classifyPlayers(players);
-  const allTrades = buildBestTrades(
-    classified.sells,
-    classified.upgrades,
-    classified.cashCows,
-    classified.buyBeforeRise
-  );
 
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
 
+  const topSell = classified.sells[0] || null;
+  const topBuy = classified.buyBeforeRise[0] || null;
+  const topValue = classified.upgrades[0] || null;
+
   return (
     <div className="min-h-screen bg-[#0D0D0D] text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
 
         <div className="flex items-center justify-between border-b border-white/10 pb-6">
           <div>
@@ -195,23 +194,51 @@ export default function MarketWatchPage() {
           </div>
         </div>
 
-        <MarketWatchPreview
-          sells={classified.sells}
-          buys={classified.buyBeforeRise}
-          value={classified.upgrades}
-        />
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <MarketWatchHero topSell={topSell} topBuy={topBuy} topValue={topValue} />
+        </div>
+
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
+          <MarketWatchSignalStrip
+            sellCount={classified.sells.length}
+            buyCount={classified.buyBeforeRise.length}
+            valueCount={classified.upgrades.length}
+            upgradeCount={classified.upgrades.length}
+          />
+        </div>
 
         {!isPremium && <MarketWatchPaywall />}
 
         <PremiumGate>
-          <MarketWatchPremium
-            sells={classified.sells}
-            buys={classified.buyBeforeRise}
-            upgrades={classified.upgrades}
-            cashCows={classified.cashCows}
-            traps={classified.traps}
-            allTrades={allTrades}
-          />
+          <div className="space-y-12 animate-in fade-in duration-500">
+            <CategorySection
+              title="🔴 Sell Risks"
+              subtitle="Players at risk of price drops"
+              players={classified.sells.slice(0, 12)}
+              type="sell"
+            />
+
+            <CategorySection
+              title="🟢 Buy Opportunities"
+              subtitle="Strong upside potential"
+              players={classified.buyBeforeRise.slice(0, 12)}
+              type="buy"
+            />
+
+            <CategorySection
+              title="🟡 Best Value"
+              subtitle="Elite value at current prices"
+              players={classified.upgrades.slice(0, 12)}
+              type="value"
+            />
+
+            <CategorySection
+              title="⚡ Premium Upgrades"
+              subtitle="Highest projection gains"
+              players={classified.upgrades.slice(0, 12)}
+              type="upgrade"
+            />
+          </div>
         </PremiumGate>
       </div>
     </div>
@@ -228,4 +255,37 @@ function formatRelativeTime(ts: string): string {
   } catch {
     return "";
   }
+}
+
+interface CategorySectionProps {
+  title: string;
+  subtitle: string;
+  players: any[];
+  type: "sell" | "buy" | "value" | "upgrade";
+}
+
+function CategorySection({ title, subtitle, players, type }: CategorySectionProps) {
+  if (players.length === 0) return null;
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-2xl md:text-3xl font-bold text-white mb-1">
+          {title}
+        </h2>
+        <p className="text-white/50">{subtitle}</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {players.map((player, i) => (
+          <MarketWatchPremiumCard
+            key={player.player_id}
+            player={player}
+            rank={i + 1}
+            type={type}
+          />
+        ))}
+      </div>
+    </div>
+  );
 }

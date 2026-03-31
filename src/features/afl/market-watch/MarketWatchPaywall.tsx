@@ -24,11 +24,16 @@ export function MarketWatchPaywall() {
           </div>
 
           <div className="text-center mb-8">
+            <div className="inline-block mb-4">
+              <span className="px-4 py-1.5 bg-[#F5C84C]/10 border border-[#F5C84C]/30 rounded-full text-[#F5C84C] text-sm font-bold">
+                You're seeing 3 of 40 signals
+              </span>
+            </div>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-              Unlock Your Full Trade Plan
+              Unlock Full Trade Engine
             </h2>
             <p className="text-lg text-white/60 max-w-2xl mx-auto">
-              Get the complete weekly strategy with AI-powered signals for every position
+              AI-powered trade signals updated weekly before lockout
             </p>
           </div>
 
@@ -71,8 +76,8 @@ export function MarketWatchPaywall() {
           </div>
 
           <div className="mt-8 pt-6 border-t border-white/10 text-center">
-            <p className="text-sm text-white/40">
-              Join 1,000+ coaches using Neeko+ to dominate their leagues
+            <p className="text-xs text-[#F5C84C]/60 font-medium">
+              Updated weekly before lockout
             </p>
           </div>
         </div>
