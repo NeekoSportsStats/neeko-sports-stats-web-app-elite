@@ -1,0 +1,61 @@
+project_id = "ghrbxldpuctygxaiqwdv"
+
+[functions.sync-googlesheet]
+verify_jwt = true
+
+[functions.compute-team-stats]
+verify_jwt = true
+
+[functions.generate-sport-ai-analysis]
+verify_jwt = true
+
+[functions.master-sync]
+verify_jwt = true
+
+[functions.generate-ai-insights]
+verify_jwt = true
+
+[functions.refresh-ai-analysis]
+verify_jwt = true
+
+[functions.test-stripe-integration]
+verify_jwt = true
+
+[functions.fetch-afl-stats]
+verify_jwt = true
+
+[functions.afl-ai-analysis]
+verify_jwt = true
+
+[functions.generate-afl-insights]
+verify_jwt = true
+
+[functions.manage-subscription]
+verify_jwt = true
+
+[functions.update-all-ai-analysis]
+verify_jwt = true
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.create-checkout-session]
+verify_jwt = false
+
+[functions.create-portal-session]
+verify_jwt = true
+
+[functions.verify-checkout-session]
+verify_jwt = false
+
+[functions.set-user-password]
+verify_jwt = true
+
+[functions.send-contact-email]
+verify_jwt = false
+
+[functions.process-ai-queue]
+verify_jwt = false
+
+[functions.process-ai-queue-v2]
+verify_jwt = false

@@ -1,0 +1,1 @@
+const e={monthly:{price:9.99,label:"Neeko+ Monthly",billingNote:"Billed monthly. Cancel anytime."},yearly:{price:89,cents:8900,label:"Neeko+ Yearly",billingNote:"Billed once per year.",monthlyEquivalent:7.42},savingsPercent:26};export{e as N};

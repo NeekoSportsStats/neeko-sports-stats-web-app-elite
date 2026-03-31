@@ -1,0 +1,171 @@
+{
+  "audit_date": "2026-03-25",
+  "auditor": "Post-Fix Verification Pass",
+  "summary": {
+    "total_checks": 32,
+    "passed": 28,
+    "failed": 1,
+    "warnings": 3
+  },
+  "verified_fixes": [
+    {
+      "id": "C-001",
+      "status": "VERIFIED",
+      "location": "supabase/functions/generate-content-pack/index.ts",
+      "detail": "Service-role auth check present and correct — blocks all non-service-role callers with 401. Residual error leakage in catch block (detail field) found during audit and fixed: catch block now logs to console.error only, response returns { error: 'Internal server error' } with no detail field. Deployed."
+    },
+    {
+      "id": "C-002",
+      "status": "VERIFIED",
+      "location": "internal.cron_secrets / internal.cron_config",
+      "detail": "Both tables have RLS enabled. Policy 'Service role only' (FOR ALL TO service_role USING(true) WITH CHECK(true)) is present on both. No anon or authenticated access exists. Pipeline cron reads succeed via service_role."
+    },
+    {
+      "id": "C-003",
+      "status": "VERIFIED",
+      "location": "admin.pipeline_logs",
+      "detail": "Old open policy 'authenticated can read pipeline logs' is gone. New policy 'Admins can read pipeline logs' (SELECT TO authenticated WHERE is_admin=true) is the only policy. Pipeline write functions (fn_run_post_pipeline_stabilisation, fn_pipeline_healthcheck) are SECURITY DEFINER owned by postgres — bypass RLS entirely. No write regression confirmed."
+    },
+    {
+      "id": "H-001",
+      "status": "VERIFIED",
+      "location": "admin.snapshots",
+      "detail": "Old open policy dropped. Two correct policies live: 'Service role full access on snapshots' (ALL TO service_role) and 'Admins can read snapshots' (SELECT TO authenticated WHERE is_admin=true). Snapshot-writing functions are SECURITY DEFINER / postgres — bypass RLS safely. No regression."
+    },
+    {
+      "id": "H-002",
+      "status": "VERIFIED",
+      "location": "public.start_sit_decisions",
+      "detail": "Policy 'Anyone can insert start_sit decisions' is gone. Anon INSERT confirmed removed. Remaining: service_role ALL, authenticated INSERT, anon+authenticated SELECT, authenticated SELECT (duplicate — see regressions)."
+    },
+    {
+      "id": "H-003",
+      "status": "VERIFIED",
+      "location": "public.system_state",
+      "detail": "Duplicate 'Service role can manage system state' dropped. Remaining: 'Service role full access to system_state' (ALL) and 'Admins can read system state' (SELECT WHERE is_admin=true). Clean."
+    },
+    {
+      "id": "H-004",
+      "status": "VERIFIED",
+      "location": "afl.player_prices",
+      "detail": "Duplicate 'Service role full player_prices' dropped. Remaining: 'Service role full access player_prices' (ALL) and 'Public read player_prices' (SELECT TO anon,authenticated — intentional for frontend price display)."
+    },
+    {
+      "id": "H-005",
+      "status": "VERIFIED",
+      "location": "public.start_sit_decisions",
+      "detail": "Duplicate 'Service role manages start sit decisions' dropped. Single service_role ALL policy 'Service role full access to start_sit_decisions' remains."
+    },
+    {
+      "id": "H-006",
+      "status": "VERIFIED",
+      "location": "afl.player_signals / afl.player_signal_summary",
+      "detail": "Both tables now have 'Service role full access' (ALL TO service_role) policies. Existing authenticated SELECT policies retained. Signal pipeline functions (fn_generate_player_signals, fn_build_player_signal_summary) are SECURITY DEFINER / postgres — defense-in-depth confirmed."
+    },
+    {
+      "id": "H-007",
+      "status": "VERIFIED",
+      "location": "public.weekly_plans_cache",
+      "detail": "Old SELECT-only service_role policy dropped. New 'Service role full access weekly plans cache' (ALL TO service_role) live. Admin authenticated INSERT/SELECT/UPDATE policies retained. No write regression."
+    },
+    {
+      "id": "H-008",
+      "status": "VERIFIED",
+      "location": "public.ai_rankings_player_recos",
+      "detail": "Old misnamed authenticated policy dropped. 'Service role full access' (ALL TO service_role) is the only policy. Rankings RPCs (get_rankings_free, get_rankings_premium, get_captain_recommendations_free) are SECURITY DEFINER / postgres — read from this table safely via RLS bypass. No frontend regression."
+    },
+    {
+      "id": "M-001",
+      "status": "VERIFIED",
+      "location": "supabase/functions/admin-command/index.ts",
+      "detail": "No error.message in any response. Both commit_price_ingest error path and outer catch return generic 'Request failed'."
+    },
+    {
+      "id": "M-002",
+      "status": "VERIFIED",
+      "location": "supabase/functions/admin-health/index.ts",
+      "detail": "Catch block logs to console.error and returns generic 'Request failed'. No raw message in response."
+    },
+    {
+      "id": "M-003",
+      "status": "VERIFIED",
+      "location": "supabase/functions/generate-content-post/index.ts",
+      "detail": "Both catch paths return generic 'Request failed'. Raw errMsg no longer surfaced in responses."
+    },
+    {
+      "id": "M-004",
+      "status": "VERIFIED",
+      "location": "supabase/functions/portal/index.ts",
+      "detail": "Catch block returns generic 'Request failed'. Return URL validated against ALLOWED_RETURN_ORIGINS allowlist — open redirect closed."
+    },
+    {
+      "id": "M-005",
+      "status": "VERIFIED",
+      "location": "supabase/functions/stripe-webhook/index.ts",
+      "detail": "Catch block returns generic 'Request failed'. No raw error message surfaced."
+    },
+    {
+      "id": "M-006",
+      "status": "VERIFIED",
+      "location": "analytics.events",
+      "detail": "Anon INSERT policy dropped. 'Authenticated users can insert analytics events' (INSERT TO authenticated) is live. Service role full access retained. Note: unauthenticated visitor analytics to Supabase now silently fail — PostHog is unaffected. See product note in regressions."
+    },
+    {
+      "id": "M-009",
+      "status": "FAILED",
+      "location": "net schema (pg_net)",
+      "detail": "CONFIRMED PLATFORM LIMITATION. Both schema-level REVOKE and function-level REVOKE were attempted. proacl on net.http_get and net.http_post shows '=X/supabase_admin' — PUBLIC EXECUTE is granted by supabase_admin, which is the platform owner. This grant is re-applied automatically and cannot be overridden by postgres-role migrations. anon and authenticated retain EXECUTE on net functions. This is a Supabase-managed infrastructure privilege — not fixable via SQL migrations."
+    }
+  ],
+  "regressions": [
+    {
+      "severity": "LOW",
+      "location": "public.start_sit_decisions",
+      "issue": "Two duplicate SELECT policies for authenticated role remain: 'Anyone can read start sit decisions' (anon+authenticated USING(true)) and 'Authenticated users can read start_sit decisions' (authenticated USING(true)). Redundant, not a security risk.",
+      "risk": "None. Both allow identical access. Minor policy hygiene.",
+      "fix": "DROP POLICY \"Authenticated users can read start_sit decisions\" ON public.start_sit_decisions;"
+    },
+    {
+      "severity": "LOW",
+      "location": "analytics.events + src/lib/analytics.ts",
+      "issue": "logEvent() uses the anon Supabase client. Now that INSERT requires authenticated role, unauthenticated page views silently fail to log to analytics.events. The code handles this gracefully. PostHog tracking is unaffected.",
+      "risk": "Loss of anonymous visitor DB analytics. No security risk — this is an intentional product behavior change from the hardening fix.",
+      "fix": "Accept as intentional if authenticated-only analytics is desired. Or add a constrained anon INSERT policy. Or route through an edge function."
+    }
+  ],
+  "platform_limitations": [
+    {
+      "id": "M-009",
+      "location": "net schema (pg_net)",
+      "finding": "net.http_get and net.http_post have PUBLIC EXECUTE (=X) granted by supabase_admin. This is a Supabase platform-managed privilege. Both REVOKE ALL ON SCHEMA and REVOKE EXECUTE ON FUNCTION were attempted — neither persists. The platform re-applies this grant automatically. This cannot be fixed via SQL migrations in a hosted Supabase project.",
+      "risk": "Authenticated and anon roles can call net.http_get/http_post from SQL context. In practice, anon users cannot execute arbitrary SQL, and authenticated users would need a SECURITY INVOKER function or direct psql access. RLS on all tables already blocks data exfiltration via SQL. The risk is theoretical in normal app usage.",
+      "recommendation": "Document as accepted platform limitation. If pg_net must be restricted, contact Supabase support or use a dedicated Supabase project with custom network policies."
+    }
+  ],
+  "final_state": {
+    "open_endpoints_remaining": 0,
+    "admin_data_leaks_remaining": 0,
+    "duplicate_policies_remaining": 1,
+    "service_role_write_gaps_remaining": 0,
+    "error_leakage_remaining": 0,
+    "net_schema_function_execute_for_anon_authenticated": "PLATFORM LIMITATION — cannot be revoked via migration"
+  },
+  "recommendations": [
+    {
+      "priority": "LOW",
+      "action": "Drop duplicate SELECT policy 'Authenticated users can read start_sit decisions' on public.start_sit_decisions — cosmetic hygiene only."
+    },
+    {
+      "priority": "LOW",
+      "action": "Decide on anonymous analytics: accept loss of unauthenticated visitor DB events (PostHog still captures them), or add a constrained anon INSERT policy."
+    },
+    {
+      "priority": "INFO",
+      "action": "net.http_get / net.http_post PUBLIC EXECUTE cannot be revoked — Supabase platform limitation. Document as accepted risk. No practical exploit path exists for normal app users."
+    },
+    {
+      "priority": "INFO",
+      "action": "admin.command_logs has RLS enabled with zero service_role policies. Current writer (admin.get_system_health) is SECURITY DEFINER / postgres so writes bypass RLS. Monitor for future direct service_role writes — they will be blocked."
+    }
+  ]
+}

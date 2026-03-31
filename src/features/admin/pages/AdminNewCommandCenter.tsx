@@ -1,0 +1,539 @@
+import { useState, useCallback, useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { runCommand } from "@/hooks/useAdminCommand";
+import { useAdminUIState } from "@/features/admin/state/AdminUIStateContext";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import {
+  RefreshCw, Activity, Database, Bot, TrendingUp, Zap, TriangleAlert as AlertTriangle,
+  CircleCheck as CheckCircle, Circle as XCircle, DollarSign, Target, Trash2, RotateCcw,
+  Play, ChevronDown, ChevronUp,
+} from "lucide-react";
+import { AdminSectionIntro, AdminActionExplain } from "../shared/AdminExplain";
+import type { CommandCenterStatus } from "../shared/types";
+
+type Tab = "pipeline" | "ai" | "data" | "danger";
+
+function fmtTs(ts: string | null | undefined) {
+  if (!ts) return "—";
+  return new Date(ts).toLocaleString("en-AU", { dateStyle: "short", timeStyle: "short" });
+}
+
+function StatusDot({ ok }: { ok: boolean | null }) {
+  if (ok === null) return <span className="w-2 h-2 rounded-full bg-muted-foreground animate-pulse inline-block" />;
+  return <span className={`w-2 h-2 rounded-full inline-block ${ok ? "bg-emerald-500" : "bg-red-500 animate-pulse"}`} />;
+}
+
+interface ActionButtonProps {
+  label: string;
+  command: string;
+  icon: React.ElementType;
+  variant?: "default" | "outline" | "destructive";
+  disabled?: boolean;
+  onComplete?: () => void;
+}
+
+function ActionButton({ label, command, icon: Icon, variant = "outline", disabled, onComplete }: ActionButtonProps) {
+  const { toast } = useToast();
+  const { dispatch } = useAdminUIState();
+  const [running, setRunning] = useState(false);
+  const [lastStatus, setLastStatus] = useState<"idle" | "ok" | "err">("idle");
+
+  async function handle() {
+    setRunning(true);
+    setLastStatus("idle");
+    dispatch({ type: "START_JOB", payload: { jobType: command, label: `${label}…`, pct: 10 } });
+    try {
+      const res = await runCommand(command);
+      if (res.success) {
+        setLastStatus("ok");
+        dispatch({ type: "UPDATE_JOB", payload: { pct: 100 } });
+        setTimeout(() => dispatch({ type: "END_JOB" }), 1500);
+        toast({ title: `${label} complete`, description: res.duration_ms ? `${(res.duration_ms / 1000).toFixed(1)}s` : "Done" });
+        onComplete?.();
+      } else {
+        setLastStatus("err");
+        dispatch({ type: "END_JOB" });
+        toast({ title: `${label} failed`, description: res.error ?? "Unknown error", variant: "destructive" });
+      }
+    } catch (err) {
+      setLastStatus("err");
+      dispatch({ type: "END_JOB" });
+      toast({ title: `${label} failed`, description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setRunning(false);
+      setTimeout(() => setLastStatus("idle"), 5000);
+    }
+  }
+
+  const statusIcon = lastStatus === "ok" ? <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
+    : lastStatus === "err" ? <XCircle className="h-3.5 w-3.5 text-red-400" />
+    : null;
+
+  return (
+    <Button
+      variant={variant}
+      size="sm"
+      className={`w-full justify-start gap-2 text-xs h-9 ${variant === "destructive" ? "border-red-500/30 hover:bg-red-950/20 text-red-400 hover:text-red-300" : ""}`}
+      onClick={handle}
+      disabled={running || !!disabled}
+    >
+      {running ? <RefreshCw className="h-3.5 w-3.5 animate-spin shrink-0" /> : <Icon className="h-3.5 w-3.5 shrink-0" />}
+      <span className="flex-1 text-left">{running ? `${label}…` : label}</span>
+      {statusIcon}
+    </Button>
+  );
+}
+
+interface ActionGroupProps {
+  title: string;
+  children: React.ReactNode;
+}
+
+function ActionGroup({ title, children }: ActionGroupProps) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{title}</p>
+      <div className="space-y-1.5">{children}</div>
+    </div>
+  );
+}
+
+function ConfirmDangerButton({ label, command, description, icon: Icon }: {
+  label: string; command: string; description: string; icon: React.ElementType;
+}) {
+  const { toast } = useToast();
+  const { dispatch } = useAdminUIState();
+  const [confirm, setConfirm] = useState(false);
+  const [running, setRunning] = useState(false);
+
+  async function handle() {
+    setRunning(true);
+    dispatch({ type: "START_JOB", payload: { jobType: command, label: `${label}…`, pct: 10 } });
+    try {
+      const res = await runCommand(command);
+      if (res.success) {
+        dispatch({ type: "UPDATE_JOB", payload: { pct: 100 } });
+        setTimeout(() => dispatch({ type: "END_JOB" }), 1500);
+        toast({ title: `${label} complete` });
+      } else {
+        dispatch({ type: "END_JOB" });
+        toast({ title: `${label} failed`, description: res.error ?? "Unknown error", variant: "destructive" });
+      }
+    } catch (err) {
+      dispatch({ type: "END_JOB" });
+      toast({ title: `${label} failed`, description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setRunning(false);
+      setConfirm(false);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border border-red-900/30 bg-red-950/10 p-3">
+      <div className="flex items-center gap-2 mb-1">
+        <Icon className="h-3.5 w-3.5 text-red-400 shrink-0" />
+        <span className="text-xs font-semibold text-red-400">{label}</span>
+      </div>
+      <p className="text-[11px] text-muted-foreground mb-2">{description}</p>
+      {!confirm ? (
+        <Button size="sm" variant="outline" className="text-xs border-red-500/30 text-red-400 hover:bg-red-950/30 h-7" onClick={() => setConfirm(true)}>
+          Run action
+        </Button>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="destructive" className="text-xs h-7" onClick={handle} disabled={running}>
+            {running ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : null}
+            Confirm
+          </Button>
+          <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setConfirm(false)}>Cancel</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function AdminNewCommandCenter() {
+  const [tab, setTab] = useState<Tab>("pipeline");
+  const [status, setStatus] = useState<CommandCenterStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchStatus = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await supabase.from("v_command_center_status").select("*").maybeSingle();
+      if (data) setStatus(data as CommandCenterStatus);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStatus();
+  }, [fetchStatus]);
+
+  const tabs: { id: Tab; label: string }[] = [
+    { id: "pipeline", label: "Pipeline" },
+    { id: "ai", label: "AI" },
+    { id: "data", label: "Data" },
+    { id: "danger", label: "Danger Zone" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <AdminSectionIntro
+        title="Command Center"
+        description="All system actions in one place. Every button is explained — expand 'What does this do?' before running anything."
+        detail="Actions call the admin-command edge function, which proxies to Supabase RPCs. Commands run asynchronously — the page bar shows progress. Always check Health first to understand current system state before taking action."
+      />
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {status && !loading && (
+            <>
+              <StatusDot ok={status.pipeline_health === "ok"} />
+              <span className="text-xs text-muted-foreground">{status.rankings_cache_rows.toLocaleString()} players cached</span>
+              <span className="text-muted-foreground/30">·</span>
+              <StatusDot ok={status.ai_health === "ok"} />
+              <span className="text-xs text-muted-foreground">{status.ai_analysis_rows.toLocaleString()} AI analyses</span>
+              <span className="text-muted-foreground/30">·</span>
+              <span className={`text-xs font-medium ${status.queue_failed > 0 ? "text-red-400" : "text-emerald-400"}`}>{status.queue_failed} failed jobs</span>
+            </>
+          )}
+        </div>
+        <Button variant="outline" size="sm" onClick={fetchStatus} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </Button>
+      </div>
+
+      <div className="border-b border-border">
+        <div className="flex items-center gap-0">
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                t.id === "danger"
+                  ? tab === t.id ? "border-red-500 text-red-400" : "border-transparent text-red-400/60 hover:text-red-400"
+                  : tab === t.id ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {tab === "pipeline" && (
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                AFL Pipeline
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-[11px] text-muted-foreground">Master pipeline: ingest raw stats, transform, build projections, populate rankings cache, refresh market watch. Takes ~3–8 minutes.</p>
+              <ActionGroup title="Run">
+                <ActionButton label="Run Full AFL Pipeline" command="run_full_pipeline" icon={Play} onComplete={fetchStatus} />
+                <AdminActionExplain
+                  what="Runs the complete AFL data pipeline end-to-end: raw stat ingestion, transformation, projection engine, rankings cache, market watch snapshot."
+                  which="fn_run_afl_pipeline, player_projections, player_rankings_cache, market_watch_snapshots"
+                  duration="3–8 minutes"
+                  risk="medium"
+                  when="Every Monday after weekend games, or whenever rankings data feels stale."
+                />
+                <ActionButton label="Run Processing Pipeline Only" command="run_afl_processing" icon={Activity} onComplete={fetchStatus} />
+                <AdminActionExplain
+                  what="Runs the data processing steps only — transformation, projections, cache. Skips raw ingestion. Use when data is already ingested."
+                  which="fn_transform_raw_stats, player_projections, player_rankings_cache"
+                  duration="1–3 minutes"
+                  risk="low"
+                  when="When you need to rebuild projections/cache without re-ingesting raw stats."
+                />
+              </ActionGroup>
+
+              <ActionGroup title="Rankings">
+                <ActionButton label="Refresh Rankings Cache" command="refresh_rankings" icon={Database} onComplete={fetchStatus} />
+                <AdminActionExplain
+                  what="Rebuilds the player_rankings_cache table from the projection engine (mv_player_projection) and AI analysis tables."
+                  which="player_rankings_cache, mv_player_projection, ai_rankings_player_recos"
+                  duration="15–45s"
+                  risk="low"
+                  when="After AI generation completes, or if rankings look stale on the front end."
+                />
+              </ActionGroup>
+
+              <div className="pt-2 border-t border-border/40">
+                <div className="text-[11px] text-muted-foreground space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>Last pipeline run</span>
+                    <span className="font-medium">{fmtTs(status?.pipeline_last_run)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Rankings cache</span>
+                    <span className="font-medium">{status?.rankings_cache_rows?.toLocaleString() ?? "—"} players</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                Market Watch
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-[11px] text-muted-foreground">Price signals, trade recommendations, buy/sell/fade categories. Rebuilds from projection and price data.</p>
+              <ActionGroup title="Refresh">
+                <ActionButton label="Refresh Market Watch" command="refresh_market_watch" icon={TrendingUp} onComplete={fetchStatus} />
+                <AdminActionExplain
+                  what="Runs the market watch snapshot function to rebuild price signals, trade recommendations, and category assignments for all players."
+                  which="market_watch_snapshots, fn_build_market_watch_snapshot, v_mw_premium"
+                  duration="10–30s"
+                  risk="low"
+                  when="After price ingest, or if Market Watch page shows stale data."
+                />
+                <ActionButton label="Refresh Edge Board" command="refresh_edge_board" icon={Zap} onComplete={fetchStatus} />
+                <AdminActionExplain
+                  what="Refreshes the edge board materialized view (mv_edge_board) — the 'Breakouts' and 'Traps' shown on the Edge Board page."
+                  which="mv_edge_board, fn_refresh_mv_edge_board"
+                  duration="5–15s"
+                  risk="low"
+                  when="After rankings cache is refreshed, or if edge board cards look wrong."
+                />
+              </ActionGroup>
+
+              <div className="pt-2 border-t border-border/40">
+                <div className="text-[11px] text-muted-foreground space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>Last refresh</span>
+                    <span className="font-medium">{fmtTs(status?.market_watch_last_refresh)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Edge board</span>
+                    <span className="font-medium">{status?.edge_board_rows?.toLocaleString() ?? "—"} rows</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {tab === "ai" && (
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <Bot className="h-4 w-4 text-muted-foreground" />
+                AI Generation
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-[11px] text-muted-foreground">Run AI generation pipelines to produce player analyses, recommendations, and summaries via OpenAI.</p>
+              <ActionGroup title="Generate">
+                <ActionButton label="Run AI Worker (1 batch)" command="run_ai_worker" icon={Bot} onComplete={fetchStatus} />
+                <AdminActionExplain
+                  what="Processes one batch of queued AI jobs — calls OpenAI for pending player analysis entries in the ai_generation_queue table."
+                  which="ai_generation_queue, ai_rankings_player_recos, generate-ai-worker edge function"
+                  duration="30–90s"
+                  risk="low"
+                  when="When the queue has pending jobs and you want to manually trigger a batch."
+                />
+                <ActionButton label="Enqueue All Players for AI" command="enqueue_all_ai" icon={Play} onComplete={fetchStatus} />
+                <AdminActionExplain
+                  what="Enqueues all players who are missing or have stale AI analysis into the generation queue. Does not call OpenAI yet — just fills the queue."
+                  which="ai_generation_queue, fn_enqueue_ranking_reco_jobs"
+                  duration="5–15s"
+                  risk="low"
+                  when="After a full pipeline run, or when AI coverage is low."
+                />
+              </ActionGroup>
+
+              <ActionGroup title="AI Rankings">
+                <ActionButton label="Run Full AI Neeko Pipeline" command="run_neeko_ai_pipeline" icon={Zap} onComplete={fetchStatus} />
+                <AdminActionExplain
+                  what="Runs the full Neeko AI pipeline: enqueues players, drains the AI generation queue, refreshes rankings cache and market watch."
+                  which="fn_run_neeko_ai_pipeline, ai_generation_queue, player_rankings_cache"
+                  duration="5–20 minutes"
+                  risk="medium"
+                  when="After a full pipeline run when you want to regenerate all AI content end-to-end."
+                />
+              </ActionGroup>
+
+              <div className="pt-2 border-t border-border/40">
+                <div className="text-[11px] text-muted-foreground space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>AI analyses</span>
+                    <span className="font-medium">{status?.ai_analysis_rows?.toLocaleString() ?? "—"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Missing players</span>
+                    <span className={`font-medium ${(status?.ai_missing_players ?? 0) > 50 ? "text-red-400" : "text-emerald-400"}`}>{status?.ai_missing_players?.toLocaleString() ?? "—"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Queue pending</span>
+                    <span className="font-medium">{status?.queue_pending?.toLocaleString() ?? "—"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Queue failed</span>
+                    <span className={`font-medium ${(status?.queue_failed ?? 0) > 0 ? "text-red-400" : "text-emerald-400"}`}>{status?.queue_failed?.toLocaleString() ?? "—"}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <Target className="h-4 w-4 text-muted-foreground" />
+                Projections &amp; Accuracy
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-[11px] text-muted-foreground">Projection engine and accuracy model refresh actions.</p>
+              <ActionGroup title="Projections">
+                <ActionButton label="Rebuild Projection Engine" command="refresh_projections" icon={Target} onComplete={fetchStatus} />
+                <AdminActionExplain
+                  what="Rebuilds the player projection engine: refreshes features, recalculates projections, applies calibration. Does not touch AI."
+                  which="fn_refresh_projection_engine, player_projections, mv_player_projection"
+                  duration="30–90s"
+                  risk="medium"
+                  when="When projection scores look wrong, or after a new round of data is ingested."
+                />
+                <ActionButton label="Refresh Projection Accuracy" command="refresh_accuracy" icon={Database} onComplete={fetchStatus} />
+                <AdminActionExplain
+                  what="Recalculates projection accuracy metrics by comparing projected vs actual scores for completed rounds."
+                  which="fn_refresh_projection_accuracy, v_projection_accuracy_round, v_projection_accuracy_homepage"
+                  duration="15–30s"
+                  risk="low"
+                  when="After actual game results are in, to update accuracy stats on the homepage."
+                />
+              </ActionGroup>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {tab === "data" && (
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                Fantasy Prices
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-[11px] text-muted-foreground">Manage AFL Fantasy price data. Prices are imported via the Player Lab price ingest tool, then applied via these actions.</p>
+              <ActionGroup title="Apply">
+                <ActionButton label="Apply Fantasy Prices" command="apply_fantasy_prices" icon={DollarSign} onComplete={fetchStatus} />
+                <AdminActionExplain
+                  what="Runs the apply_fantasy_prices pipeline: validates price data, checks match rate (≥85% required), applies prices, refreshes rankings and market watch."
+                  which="fn_apply_fantasy_prices, afl_fantasy_player_prices, player_rankings_cache"
+                  duration="30–90s"
+                  risk="medium"
+                  when="After uploading new price data via the Fantasy Prices tab in Player Lab."
+                />
+              </ActionGroup>
+
+              <div className="pt-2 border-t border-border/40">
+                <div className="text-[11px] text-muted-foreground space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>Last updated</span>
+                    <span className="font-medium">{fmtTs(status?.fantasy_price_last_updated)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Matched players</span>
+                    <span className="font-medium">{status?.fantasy_matched_count?.toLocaleString() ?? "—"}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Unmatched</span>
+                    <span className={`font-medium ${(status?.fantasy_unmatched_count ?? 0) > 0 ? "text-amber-400" : "text-emerald-400"}`}>{status?.fantasy_unmatched_count?.toLocaleString() ?? "—"}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+                <Database className="h-4 w-4 text-muted-foreground" />
+                Data Ingestion
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-[11px] text-muted-foreground">Raw data ingestion from the AFL API. Use sparingly — the pipeline handles this automatically.</p>
+              <ActionGroup title="Ingest">
+                <ActionButton label="Run Ingestion Pipeline" command="run_ingestion" icon={Activity} onComplete={fetchStatus} />
+                <AdminActionExplain
+                  what="Fetches latest AFL game and player stat data from the API and inserts into raw_2026_games and raw_2026_player_stats tables."
+                  which="fn_run_ingestion_pipeline, raw_2026_games, raw_2026_player_stats"
+                  duration="1–3 minutes"
+                  risk="low"
+                  when="On Monday after round completion, or when new game data is missing."
+                />
+                <ActionButton label="Backfill Fantasy Points" command="backfill_fantasy_points" icon={Zap} onComplete={fetchStatus} />
+                <AdminActionExplain
+                  what="Recalculates fantasy points for all raw player stats rows that have null fantasy_points. Uses the scoring formula (kicks, marks, handballs, etc.)."
+                  which="raw_2026_player_stats, fn_backfill_raw_fantasy_points"
+                  duration="10–30s"
+                  risk="low"
+                  when="After schema changes to the fantasy scoring formula, or if you see null fantasy_points in raw data."
+                />
+              </ActionGroup>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {tab === "danger" && (
+        <div className="space-y-5">
+          <div className="rounded-lg border border-red-900/40 bg-red-950/10 px-4 py-3 flex items-start gap-3">
+            <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-red-400">Danger Zone</p>
+              <p className="text-xs text-muted-foreground mt-0.5">These actions modify or clear production data. Each action requires a confirmation click. Review what each action does before proceeding.</p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ConfirmDangerButton
+              label="Clear Failed AI Queue Jobs"
+              command="clear_failed_ai_jobs"
+              description="Removes all failed entries from ai_generation_queue. Players will be re-queued on the next pipeline run. Safe to run when queue is stuck."
+              icon={Trash2}
+            />
+            <ConfirmDangerButton
+              label="Reset Stale AI Analyses"
+              command="reset_stale_ai"
+              description="Marks stale AI analyses as needing regeneration. Does not delete data — sets a flag so they are re-queued. Use when AI content feels outdated."
+              icon={RotateCcw}
+            />
+            <ConfirmDangerButton
+              label="Clear Start/Sit Cache"
+              command="clear_start_sit_cache"
+              description="Truncates the start_sit_cache table. The cache rebuilds automatically on next user request. Use if cached decisions look wrong."
+              icon={Trash2}
+            />
+            <ConfirmDangerButton
+              label="Force Refresh All Views"
+              command="refresh_all_views"
+              description="Calls REFRESH MATERIALIZED VIEW on all materialized views (mv_player_projection, mv_edge_board). May cause brief read delays during refresh."
+              icon={RefreshCw}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

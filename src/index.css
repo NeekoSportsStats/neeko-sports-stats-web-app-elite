@@ -1,0 +1,207 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes eliteGlow {
+  0%   { box-shadow: 0 0 10px rgba(245, 200, 76, 0.4); }
+  50%  { box-shadow: 0 0 18px rgba(245, 200, 76, 0.8); }
+  100% { box-shadow: 0 0 10px rgba(245, 200, 76, 0.4); }
+}
+
+.elite-captain-badge {
+  animation: eliteGlow 2.5s ease-in-out infinite;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  DESIGN TOKENS                                                             */
+/* -------------------------------------------------------------------------- */
+
+@layer base {
+  :root {
+    --background: 0 0% 7.5%;
+    --foreground: 0 0% 98%;
+
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 45 98% 54%;
+    --primary-foreground: 0 0% 7.5%;
+
+    --secondary: 0 0% 15%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 65%;
+
+    --accent: 45 98% 54%;
+    --accent-foreground: 0 0% 7.5%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 45 98% 54%;
+
+    --radius: 0.75rem;
+
+    --chart-1: 45 98% 54%;
+    --chart-2: 45 90% 45%;
+    --chart-3: 45 80% 35%;
+    --chart-4: 45 70% 25%;
+    --chart-5: 0 0% 50%;
+
+    --gradient-gold: linear-gradient(135deg, hsl(45 98% 54%) 0%, hsl(35 95% 50%) 100%);
+    --glow-gold: 0 0 40px hsl(45 98% 54% / 0.3);
+    
+    --sidebar-background: 0 0% 7.5%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 45 98% 54%;
+    --sidebar-primary-foreground: 0 0% 7.5%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 45 98% 54%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  COMPONENT CLASSES                                                         */
+/* -------------------------------------------------------------------------- */
+
+@layer components {
+  .stat-card {
+    @apply bg-card border border-border rounded-lg p-6 hover:border-primary/50 transition-all duration-300;
+  }
+
+  .stat-value {
+    @apply text-4xl font-bold text-primary;
+  }
+
+  .stat-label {
+    @apply text-sm text-muted-foreground uppercase tracking-wide;
+  }
+
+  .premium-badge {
+    @apply inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold bg-primary/10 text-primary border border-primary/20;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary to-amber-400 bg-clip-text text-transparent;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  PREMIUM ANIMATION PACK (SAFE + BEAUTIFUL + DOES NOT HIDE CONTENT)        */
+/* -------------------------------------------------------------------------- */
+
+@layer utilities {
+
+  /* ✨ GOLD-LINE SLIDE + FADE (premium section reveal) */
+  @keyframes premiumSection {
+    0% {
+      opacity: 0;
+      transform: translateY(14px);
+      filter: blur(6px);
+    }
+    50% {
+      opacity: 0.85;
+      transform: translateY(4px);
+      filter: blur(1px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+      filter: blur(0);
+    }
+  }
+
+  .animate-premium-section {
+    animation: premiumSection 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  }
+
+  /* ✨ GOLD GLIDE (lighter version for smaller blocks) */
+  @keyframes goldGlide {
+    0% {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-gold-glide {
+    animation: goldGlide 0.45s ease-out forwards;
+  }
+
+  /* ✨ DELAY UTILITIES FOR STAGGERED ANIMATION */
+  .delay-1 { animation-delay: 0.05s; }
+  .delay-2 { animation-delay: 0.10s; }
+  .delay-3 { animation-delay: 0.15s; }
+  .delay-4 { animation-delay: 0.20s; }
+  .delay-5 { animation-delay: 0.30s; }
+
+  /* ✨ SAFETY FALLBACK — ensures no element remains invisible */
+  .animate-premium-section,
+  .animate-gold-glide {
+    opacity: 1 !important;
+  }
+
+  /* ✨ SPARKLINE DRAW ANIMATION */
+  @keyframes sparkline-draw {
+    from {
+      stroke-dashoffset: 300;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* ✨ BREATHING GLOW (subtle CTA emphasis) */
+  @keyframes breathing {
+    0%, 100% {
+      box-shadow: 0 0 16px rgba(251, 191, 36, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 28px rgba(251, 191, 36, 0.65);
+    }
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  MOBILE LEDGER FIX - SAFETY NET                                           */
+/* -------------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+  .ledger-summary-column {
+    display: none !important;
+  }
+}

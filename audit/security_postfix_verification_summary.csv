@@ -1,0 +1,21 @@
+status,severity,location,issue,recommended_fix
+VERIFIED,CRITICAL,internal.cron_secrets + internal.cron_config,Service role only policies confirmed live. No anon/authenticated access.,No action required.
+VERIFIED,CRITICAL,admin.pipeline_logs,Open authenticated policy replaced with admin-only. Pipeline writers are SECURITY DEFINER / postgres — bypass RLS safely. No write regression.,No action required.
+VERIFIED,CRITICAL,admin.snapshots,Open policy dropped. Service_role ALL + admin-only SELECT confirmed. Snapshot functions bypass RLS via SECURITY DEFINER. No regression.,No action required.
+VERIFIED,CRITICAL,supabase/functions/generate-content-pack/index.ts,Auth check live and correct. Residual error leakage in catch block found during audit and fixed — detail field removed from 500 response. Deployed.,No action required.
+VERIFIED,HIGH,public.start_sit_decisions,Anon INSERT policy dropped. Duplicate service_role policy dropped. Authenticated INSERT and service_role ALL remain.,No action required.
+VERIFIED,HIGH,public.system_state,Duplicate service_role policy dropped. Service_role ALL + admin SELECT remain.,No action required.
+VERIFIED,HIGH,afl.player_prices,Duplicate service_role policy dropped. Service_role ALL + public read (intentional) remain.,No action required.
+VERIFIED,HIGH,afl.player_signals + afl.player_signal_summary,Service_role ALL policies added. Authenticated SELECT retained. Signal pipeline unblocked.,No action required.
+VERIFIED,HIGH,public.weekly_plans_cache,SELECT-only service_role policy upgraded to ALL. Admin authenticated policies retained. No write regression.,No action required.
+VERIFIED,HIGH,public.ai_rankings_player_recos,Misnamed authenticated policy dropped. Service_role ALL confirmed. Rankings RPCs are SECURITY DEFINER — no read regression.,No action required.
+VERIFIED,MEDIUM,supabase/functions/admin-command/index.ts,No error.message in any response. Generic Request failed returned from all error paths.,No action required.
+VERIFIED,MEDIUM,supabase/functions/admin-health/index.ts,No error.message in response. Generic Request failed returned.,No action required.
+VERIFIED,MEDIUM,supabase/functions/generate-content-post/index.ts,Both catch paths return generic Request failed. No raw error surfaced.,No action required.
+VERIFIED,MEDIUM,supabase/functions/portal/index.ts,No error.message in response. Return URL validated against allowlist. Open redirect fixed.,No action required.
+VERIFIED,MEDIUM,supabase/functions/stripe-webhook/index.ts,No error.message in response. Generic Request failed returned.,No action required.
+VERIFIED,MEDIUM,analytics.events,Anon INSERT dropped. Authenticated-only INSERT live. Service role full access retained.,Decision required — see anonymous analytics note below.
+PLATFORM_LIMITATION,MEDIUM,net schema (pg_net),REVOKE ALL ON SCHEMA and REVOKE EXECUTE ON FUNCTION both attempted and confirmed non-persistent. supabase_admin re-grants PUBLIC EXECUTE on net.http_get and net.http_post automatically. Cannot be fixed via SQL migrations in hosted Supabase.,Contact Supabase support for pg_net restriction. Accept as platform limitation in the interim.
+REGRESSION,LOW,public.start_sit_decisions,Two duplicate SELECT policies for authenticated role remain — redundant but not a security risk.,DROP POLICY "Authenticated users can read start_sit decisions" ON public.start_sit_decisions;
+REGRESSION,LOW,analytics.events + src/lib/analytics.ts,logEvent() uses anon client — unauthenticated visitor events now silently fail to insert to Supabase. PostHog tracking unaffected.,Accept as intentional OR restore constrained anon INSERT policy OR route analytics through edge function.
+INFO,LOW,admin.command_logs,RLS enabled with zero service_role policies. Only writer is SECURITY DEFINER / postgres (safe). Future direct service_role writes would be blocked.,Monitor for new direct service_role writes to this table.

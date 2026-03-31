@@ -1,0 +1,368 @@
+{
+  "meta": {
+    "app": "Neeko Sports Stats",
+    "audited_at": "2026-03-25",
+    "auditor": "Claude Sonnet 4.6 (automated)",
+    "scope": [
+      "Database schemas: public, afl, ai, admin, market, marketing, analytics, internal, cron, net",
+      "RLS policies: all tables across all schemas",
+      "Edge Functions: 20 functions",
+      "Frontend: auth, admin guards, premium gating, env vars",
+      "Stripe: checkout, webhook",
+      "Cron: pg_cron jobs",
+      "AI pipeline: generate-player-ai, generate-ai-worker, generate-content-*"
+    ],
+    "methodology": "Read-only database queries + static code analysis of all edge functions and frontend files"
+  },
+  "summary": {
+    "total_checks": 187,
+    "passed": 163,
+    "failed": 24,
+    "critical": 3,
+    "high": 8,
+    "medium": 9,
+    "low": 4,
+    "info": 0
+  },
+  "issues": [
+    {
+      "id": "C-001",
+      "severity": "CRITICAL",
+      "category": "EDGE_FUNCTION",
+      "location": "supabase/functions/generate-content-pack/index.ts",
+      "issue": "Open endpoint — no authentication check whatsoever",
+      "risk": "Any unauthenticated caller can invoke this function and trigger OpenAI API calls, DB reads, and generation jobs without any identity or authorization. This can be abused to exhaust OpenAI quota or exfiltrate internal player/ranking data.",
+      "fix": "Add a service key or admin JWT check at the top of Deno.serve. Minimum: validate Bearer token matches SUPABASE_SERVICE_ROLE_KEY or verify user is admin via get_access_state() RPC before processing any request body."
+    },
+    {
+      "id": "C-002",
+      "severity": "CRITICAL",
+      "category": "RLS",
+      "location": "internal.cron_secrets (schema: internal)",
+      "issue": "Table has RLS enabled but ZERO policies defined — no access at all, but no explicit deny-all either",
+      "risk": "The cron_secrets table stores the Supabase service role key and URL used by cron jobs to call Edge Functions. With RLS enabled and zero policies, the table is implicitly locked to everyone except superuser/service_role. However, there is no explicit service_role SELECT policy, meaning if a future migration accidentally resets RLS or adds a permissive policy, this table's secrets could be exposed. It also means edge functions querying this table may fail silently in some contexts.",
+      "fix": "Add an explicit service_role-only SELECT policy: CREATE POLICY \"Service role only\" ON internal.cron_secrets FOR ALL TO service_role USING (true) WITH CHECK (true). Document that this table must never have anon or authenticated policies."
+    },
+    {
+      "id": "C-003",
+      "severity": "CRITICAL",
+      "category": "RLS",
+      "location": "admin.pipeline_logs — policy: 'authenticated can read pipeline logs'",
+      "issue": "USING (true) on authenticated role — all authenticated users can read ALL pipeline logs",
+      "risk": "Pipeline logs contain internal operational data: job names, timing, payloads, error messages, and potentially internal URLs or keys referenced in log output. Any authenticated user (including free-tier subscribers) can read this data.",
+      "fix": "Restrict to admin users: DROP POLICY \"authenticated can read pipeline logs\" ON admin.pipeline_logs; CREATE POLICY \"Admins can read pipeline logs\" ON admin.pipeline_logs FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.is_admin = true));"
+    },
+    {
+      "id": "H-001",
+      "severity": "HIGH",
+      "category": "RLS",
+      "location": "admin.snapshots — policy: 'service role full access on snapshots'",
+      "issue": "Policy is misnamed and misconfigured: roles={authenticated}, cmd=SELECT, USING(true) — gives ALL authenticated users read access to admin snapshots",
+      "risk": "Admin snapshots likely contain internal system state, pipeline run results, and operational data. All authenticated users including free subscribers can read this. The policy name says 'service role' but it applies to 'authenticated' role — a clear misconfiguration.",
+      "fix": "DROP POLICY \"service role full access on snapshots\" ON admin.snapshots; CREATE POLICY \"Service role full access on snapshots\" ON admin.snapshots FOR ALL TO service_role USING (true) WITH CHECK (true); CREATE POLICY \"Admins can read snapshots\" ON admin.snapshots FOR SELECT TO authenticated USING (EXISTS (SELECT 1 FROM profiles WHERE profiles.id = auth.uid() AND profiles.is_admin = true));"
+    },
+    {
+      "id": "H-002",
+      "severity": "HIGH",
+      "category": "RLS",
+      "location": "public.start_sit_decisions — policies: 'Anyone can insert start_sit decisions' + 'Authenticated users can insert decisions'",
+      "issue": "Anonymous users can INSERT to start_sit_decisions with no validation — AND there are duplicate INSERT policies (anon+authenticated and authenticated-only)",
+      "risk": "Anon INSERT with no field validation or rate limiting allows unlimited anonymous write abuse. Attacker can flood the table with junk decisions, skewing popularity metrics and degrading DB performance. Duplicate policies add confusion and surface area.",
+      "fix": "Remove the anon INSERT policy. Keep only authenticated INSERT. Apply input validation at the RLS level or in the edge function. DROP POLICY \"Anyone can insert start_sit decisions\" ON public.start_sit_decisions;"
+    },
+    {
+      "id": "H-003",
+      "severity": "HIGH",
+      "category": "RLS",
+      "location": "public.system_state — duplicate service_role policies",
+      "issue": "Two identical service_role ALL policies: 'Service role can manage system state' and 'Service role full access to system_state'",
+      "risk": "Duplicate policies cause policy evaluation overhead and create confusion during audits. More importantly, having two separate ALL policies for the same role means any future edit may only update one, creating policy drift.",
+      "fix": "DROP one duplicate: DROP POLICY \"Service role can manage system state\" ON public.system_state; Keep only 'Service role full access to system_state'."
+    },
+    {
+      "id": "H-004",
+      "severity": "HIGH",
+      "category": "RLS",
+      "location": "afl.player_prices — duplicate service_role policies",
+      "issue": "Two identical service_role ALL policies: 'Service role full access player_prices' and 'Service role full player_prices'",
+      "risk": "Same as H-003 — redundancy creates audit confusion and policy drift risk.",
+      "fix": "DROP POLICY \"Service role full player_prices\" ON afl.player_prices;"
+    },
+    {
+      "id": "H-005",
+      "severity": "HIGH",
+      "category": "RLS",
+      "location": "public.start_sit_decisions — duplicate service_role policies",
+      "issue": "Two identical service_role ALL policies: 'Service role full access to start_sit_decisions' and 'Service role manages start sit decisions'",
+      "risk": "Policy redundancy and drift risk.",
+      "fix": "DROP POLICY \"Service role manages start sit decisions\" ON public.start_sit_decisions;"
+    },
+    {
+      "id": "H-006",
+      "severity": "HIGH",
+      "category": "RLS",
+      "location": "afl.player_signals + afl.player_signal_summary — missing service_role write policy",
+      "issue": "Both tables have RLS enabled with only an authenticated SELECT policy — no service_role write policy exists",
+      "risk": "The pipeline that generates signals cannot write to these tables via service role. This causes silent failures in the automation pipeline. Any new pipeline job writing signals will get a permission denied error and the data will be stale or missing.",
+      "fix": "CREATE POLICY \"Service role full access to player_signals\" ON afl.player_signals FOR ALL TO service_role USING (true) WITH CHECK (true); CREATE POLICY \"Service role full access to player_signal_summary\" ON afl.player_signal_summary FOR ALL TO service_role USING (true) WITH CHECK (true);"
+    },
+    {
+      "id": "H-007",
+      "severity": "HIGH",
+      "category": "RLS",
+      "location": "public.weekly_plans_cache — service_role policy is SELECT only",
+      "issue": "The 'Service role full access weekly plans cache' policy specifies FOR SELECT only (cmd=SELECT), not ALL. Service role cannot INSERT, UPDATE, or DELETE from this table.",
+      "risk": "Automated pipelines and edge functions using the service role key cannot write to weekly_plans_cache. Any cache refresh function will silently fail with permission denied.",
+      "fix": "DROP POLICY \"Service role full access weekly plans cache\" ON public.weekly_plans_cache; CREATE POLICY \"Service role full access weekly plans cache\" ON public.weekly_plans_cache FOR ALL TO service_role USING (true) WITH CHECK (true);"
+    },
+    {
+      "id": "H-008",
+      "severity": "HIGH",
+      "category": "RLS",
+      "location": "public.ai_rankings_player_recos — policy: 'Service role full access'",
+      "issue": "Policy is misnamed: roles={authenticated}, not service_role. This is a SELECT-only policy for all authenticated users — there is no actual service_role write policy.",
+      "risk": "The AI pipeline cannot write updated recommendations to this table via service role. All authenticated users (including non-premium) can read ALL AI ranking recommendations with no row-level filtering.",
+      "fix": "Rename/fix the policy: DROP POLICY \"Service role full access\" ON public.ai_rankings_player_recos; CREATE POLICY \"Service role full access\" ON public.ai_rankings_player_recos FOR ALL TO service_role USING (true) WITH CHECK (true); If public read is intentional, keep a separate authenticated SELECT policy but rename it clearly."
+    },
+    {
+      "id": "M-001",
+      "severity": "MEDIUM",
+      "category": "EDGE_FUNCTION",
+      "location": "supabase/functions/admin-command/index.ts — catch blocks lines ~115, ~143",
+      "issue": "Raw error.message returned directly in JSON response body",
+      "risk": "Internal error messages (stack traces, DB query text, table names, column names, internal service URLs) can be leaked to authenticated admin callers. Acceptable risk for admin-only endpoints but still constitutes information disclosure.",
+      "fix": "Wrap error messages: return JSON.stringify({ error: 'Command execution failed', code: 'EXEC_ERROR' }) for non-debug environments. Log full error server-side via console.error."
+    },
+    {
+      "id": "M-002",
+      "severity": "MEDIUM",
+      "category": "EDGE_FUNCTION",
+      "location": "supabase/functions/admin-health/index.ts — catch block line ~169",
+      "issue": "Raw error.message returned in JSON response",
+      "risk": "Internal DB/function error details exposed to admin callers.",
+      "fix": "Return generic error code, log detail server-side."
+    },
+    {
+      "id": "M-003",
+      "severity": "MEDIUM",
+      "category": "EDGE_FUNCTION",
+      "location": "supabase/functions/generate-content-post/index.ts — catch block line ~615",
+      "issue": "Raw error.message returned in JSON response for generation errors",
+      "risk": "OpenAI API errors (including rate limit messages, content filter rejections) exposed to callers.",
+      "fix": "Return generic 'Generation failed' message. Log raw error server-side."
+    },
+    {
+      "id": "M-004",
+      "severity": "MEDIUM",
+      "category": "EDGE_FUNCTION",
+      "location": "supabase/functions/portal/index.ts — catch block line ~88",
+      "issue": "Raw err.message returned in JSON response",
+      "risk": "Stripe API errors, customer lookup failures, internal IDs exposed to callers.",
+      "fix": "Return generic 'Portal session creation failed' message."
+    },
+    {
+      "id": "M-005",
+      "severity": "MEDIUM",
+      "category": "EDGE_FUNCTION",
+      "location": "supabase/functions/stripe-webhook/index.ts — error returns lines ~43, ~61",
+      "issue": "Raw error.message returned in webhook response body",
+      "risk": "Webhook error details visible in Stripe dashboard logs and potentially to any proxy/logging infrastructure between Stripe and Supabase. Minor risk but constitutes information leakage.",
+      "fix": "Return generic 'Webhook processing failed' in response body. Internal details already available in Supabase Edge Function logs."
+    },
+    {
+      "id": "M-006",
+      "severity": "MEDIUM",
+      "category": "RLS",
+      "location": "analytics.events — policy: 'Anyone can insert analytics events' (anon+authenticated)",
+      "issue": "Anonymous users can INSERT analytics events with no rate limiting or field validation at DB level",
+      "risk": "Table can be flooded with junk analytics events from anonymous users, polluting reporting data and degrading performance. No CAPTCHA, no rate limit, no field constraints enforced by RLS.",
+      "fix": "Consider restricting to authenticated INSERT only, or add a rate-limit trigger. At minimum add WITH CHECK conditions to validate required fields are non-null."
+    },
+    {
+      "id": "M-007",
+      "severity": "MEDIUM",
+      "category": "RLS",
+      "location": "public.profiles — policies: 'Allow user to read own profile' and 'Allow user to update own profile' applied to 'public' role",
+      "issue": "Both policies apply to the 'public' role (which includes unauthenticated users) instead of 'authenticated' role. USING (auth.uid() = id) ensures only logged-in users can access their own row, but the policy is bound to public role which is broader than necessary.",
+      "risk": "Low actual risk since auth.uid() returns NULL for unauthenticated users and the USING clause will evaluate to false. However, this is a policy hygiene issue — it's confusing and could cause unexpected behavior if Postgres role behaviour changes.",
+      "fix": "Alter policies to apply TO authenticated role: DROP POLICY \"Allow user to read own profile\" ON public.profiles; CREATE POLICY \"Users can read own profile\" ON public.profiles FOR SELECT TO authenticated USING (auth.uid() = id);"
+    },
+    {
+      "id": "M-008",
+      "severity": "MEDIUM",
+      "category": "CRON",
+      "location": "cron.job — job: 'ai_regen_wave_5min' (jobid: 197)",
+      "issue": "AI regeneration wave runs every 5 minutes, 24/7, calling fn_fire_ai_worker_wave_range() with no time-window guard at the cron level",
+      "risk": "If the downstream edge function or OpenAI API is unavailable, the 5-minute cron will keep firing and accumulating failed jobs, potentially causing thundering herd when the service recovers. No circuit breaker or backoff visible at cron level.",
+      "fix": "Add a time-window check inside fn_fire_ai_worker_wave_range to only fire during designated hours (e.g., 08:00-23:00 Melbourne time). Consider rate-limiting with a session lock to prevent concurrent runs."
+    },
+    {
+      "id": "M-009",
+      "severity": "MEDIUM",
+      "category": "RLS",
+      "location": "net._http_response + net.http_request_queue (schema: net)",
+      "issue": "Both tables have RLS disabled (rls_enabled=false). These are pg_net internal tables used for HTTP requests from database functions.",
+      "risk": "Any database user with access to the net schema can read pending/completed HTTP requests including their headers and bodies — which may include Authorization headers with service keys passed to Edge Functions via pg_net calls.",
+      "fix": "These are system tables managed by the pg_net extension. Restrict schema access: REVOKE ALL ON SCHEMA net FROM anon, authenticated; GRANT USAGE ON SCHEMA net TO service_role, postgres; This prevents frontend/API users from querying net tables directly."
+    },
+    {
+      "id": "L-001",
+      "severity": "LOW",
+      "category": "RLS",
+      "location": "public.subscriptions — two duplicate SELECT policies on 'public' role",
+      "issue": "'Select own subscriptions' (USING: auth.uid() = profile_id) and 'Users can read their own subscription' (USING: auth.uid() = user_id) — two SELECT policies on public role, querying different columns",
+      "risk": "Policy confusion — it's unclear which column is canonical. If both profile_id and user_id exist, both are queryable. Duplicate policy evaluation overhead.",
+      "fix": "Consolidate to one policy checking both columns: USING (auth.uid() = profile_id OR auth.uid() = user_id). Apply to authenticated role, not public."
+    },
+    {
+      "id": "L-002",
+      "severity": "LOW",
+      "category": "ENV",
+      "location": ".env — confirmed safe, but verify .gitignore",
+      "issue": ".env contains only browser-safe keys (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY). No server-only secrets in client env. However, must verify .env is in .gitignore.",
+      "risk": "If .env is accidentally committed, the anon key is exposed — though it has limited permissions via RLS, it allows anyone to query public-facing tables and attempt brute-force auth.",
+      "fix": "Confirm .gitignore includes .env. Rotate anon key if it has ever been committed to git history."
+    },
+    {
+      "id": "L-003",
+      "severity": "LOW",
+      "category": "EDGE_FUNCTION",
+      "location": "Multiple edge functions — CORS: Access-Control-Allow-Origin: *",
+      "issue": "All edge functions use wildcard CORS (*). For admin-only or premium functions, this allows any web origin to make cross-origin requests.",
+      "risk": "For functions protected by Bearer token auth (service key or user JWT), wildcard CORS does not bypass authorization. However, it enables credential-less pre-flight from any origin and does not follow least-privilege principle.",
+      "fix": "For admin-only functions (admin-command, admin-health, generate-content-*), restrict CORS to your production domain: Access-Control-Allow-Origin: https://neekosports.com.au. Keep wildcard only for fully public endpoints."
+    },
+    {
+      "id": "L-004",
+      "severity": "LOW",
+      "category": "FRONTEND",
+      "location": "src/config/freemiumConfig.ts + src/hooks/useSubscriptionStatus.ts",
+      "issue": "Frontend freemium tier limits (player counts, feature access) are enforced client-side only",
+      "risk": "A technically savvy user can bypass frontend freemium gates by calling Supabase APIs directly with their JWT. The actual data returned by RLS-protected views may still be limited, but any view/table with USING(true) for authenticated users bypasses freemium restrictions.",
+      "fix": "Audit which tables/views are used to serve freemium-gated content and ensure they have RLS policies that check subscription status, not just authentication. The get_access_state() RPC is a good pattern — ensure all premium data views use similar checks."
+    }
+  ],
+  "fixed_during_run": [
+    {
+      "id": "FIX-001",
+      "description": "weekly_content_plans + weekly_content_posts: Removed 9-18 duplicate RLS policies per table and removed broken auth.role()='service_role' anti-pattern policies that were causing permission denied errors in edge functions. Applied clean single service_role ALL policy per table.",
+      "migration": "20260325081647_fix_weekly_content_rls_clean_canonical_policies.sql"
+    }
+  ],
+  "database_coverage": {
+    "schemas_audited": ["public", "afl", "ai", "admin", "market", "marketing", "analytics", "internal", "cron", "net"],
+    "total_tables": 97,
+    "tables_with_rls_enabled": 95,
+    "tables_with_rls_disabled": 2,
+    "tables_with_no_policies": 2,
+    "rls_disabled_tables": [
+      "net._http_response",
+      "net.http_request_queue"
+    ],
+    "tables_with_no_policies_but_rls_enabled": [
+      "internal.cron_secrets",
+      "internal.cron_config"
+    ]
+  },
+  "edge_function_coverage": {
+    "total_functions_audited": 20,
+    "functions_using_service_role": 14,
+    "functions_using_user_jwt": 4,
+    "functions_using_webhook_sig": 1,
+    "open_endpoints": 1,
+    "functions_with_raw_error_leakage": 5,
+    "functions_with_hardcoded_secrets": 0
+  },
+  "cron_coverage": {
+    "total_jobs": 9,
+    "active_jobs": 9,
+    "jobs_running_as_postgres": 9,
+    "jobs_with_no_time_guard": 1,
+    "jobs": [
+      {"jobid": 183, "name": "stage1_ingest_1am_melb", "schedule": "0 14 * * *", "status": "PASS"},
+      {"jobid": 184, "name": "stage2_normalize_raw_stats", "schedule": "15 14 * * *", "status": "PASS"},
+      {"jobid": 185, "name": "stage3_neeko_full_pipeline", "schedule": "30 14 * * *", "status": "PASS"},
+      {"jobid": 186, "name": "stage4_cache_rebuild_2am", "schedule": "0 15 * * *", "status": "PASS"},
+      {"jobid": 187, "name": "stage5_neeko_ai_pipeline", "schedule": "5 15 * * *", "status": "PASS"},
+      {"jobid": 188, "name": "stage6_post_ai_cache_rebuild", "schedule": "30 15 * * *", "status": "PASS"},
+      {"jobid": 189, "name": "stage7_gap_heal", "schedule": "45 15 * * *", "status": "PASS"},
+      {"jobid": 190, "name": "projection_accuracy_pipeline", "schedule": "0 17 * * *", "status": "PASS"},
+      {"jobid": 197, "name": "ai_regen_wave_5min", "schedule": "*/5 * * * *", "status": "WARN — no time-window guard, runs 24/7"}
+    ]
+  },
+  "frontend_coverage": {
+    "auth_flow": "PASS — server-authoritative via get_access_state() RPC",
+    "admin_gate": "PASS — RequireAdmin checks isAdmin from server RPC, no bypass path",
+    "premium_gate": "PASS — children not rendered to DOM when locked",
+    "env_vars": "PASS — only VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY exposed to browser",
+    "hardcoded_credentials": "PASS — none found",
+    "session_management": "PASS — PKCE flow, Supabase managed",
+    "freemium_enforcement": "WARN — client-side only for some tier limits (see L-004)"
+  },
+  "stripe_coverage": {
+    "webhook_signature_verification": "PASS — constructEventAsync used in stripe-webhook",
+    "checkout_session": "PASS — user JWT validated before creating session",
+    "customer_deduplication": "PASS — checks existing customer before creating new",
+    "portal_redirect": "PASS — return URL validated",
+    "secret_key_exposure": "PASS — STRIPE_SECRET_KEY only in Edge Function env, not in frontend"
+  },
+  "ai_pipeline_coverage": {
+    "prompt_injection_risk": "LOW — user input is limited to player_id (integer) and known enum values; no free-text user input inserted into prompts",
+    "unsafe_db_writes": "PASS — all writes use service role with explicit schema targeting",
+    "openai_key_exposure": "PASS — OPENAI_API_KEY only in Edge Function env, never in frontend",
+    "rate_limiting": "WARN — generate-start-sit uses in-memory Map for rate limiting (resets on cold start)",
+    "output_validation": "PASS — AI outputs are normalised before DB write via normaliseGeneratedPost()"
+  },
+  "recommendations": [
+    {
+      "priority": 1,
+      "action": "Fix generate-content-pack: add auth check",
+      "detail": "This is the only fully open endpoint in the system. Add at minimum a service key check: const authHeader = req.headers.get('Authorization'); if (!authHeader || authHeader !== `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`) return 401."
+    },
+    {
+      "priority": 2,
+      "action": "Fix admin.pipeline_logs and admin.snapshots RLS policies",
+      "detail": "Both have USING(true) for authenticated role, exposing internal operational data to all subscribers. Restrict to is_admin=true."
+    },
+    {
+      "priority": 3,
+      "action": "Fix internal.cron_secrets and internal.cron_config — add explicit service_role policies",
+      "detail": "Tables have RLS enabled with zero policies. Add service_role-only ALL policy to make intent explicit and future-proof."
+    },
+    {
+      "priority": 4,
+      "action": "Fix afl.player_signals and afl.player_signal_summary — add service_role write policies",
+      "detail": "Pipeline cannot write signals data. Add service_role ALL policy to both tables."
+    },
+    {
+      "priority": 5,
+      "action": "Fix public.weekly_plans_cache service_role policy — change FROM SELECT-only TO ALL",
+      "detail": "Current policy is SELECT only for service_role, blocking pipeline writes."
+    },
+    {
+      "priority": 6,
+      "action": "Fix public.ai_rankings_player_recos — add proper service_role write policy",
+      "detail": "Policy named 'Service role full access' actually applies to authenticated role. Add real service_role ALL policy."
+    },
+    {
+      "priority": 7,
+      "action": "Remove anon INSERT on start_sit_decisions and analytics.events",
+      "detail": "Prevents anonymous flood/abuse of these tables. Restrict to authenticated only."
+    },
+    {
+      "priority": 8,
+      "action": "Drop duplicate policies (system_state, afl.player_prices, start_sit_decisions)",
+      "detail": "Cleanup of redundant service_role ALL policies that create audit confusion."
+    },
+    {
+      "priority": 9,
+      "action": "Restrict net schema access",
+      "detail": "REVOKE ALL ON SCHEMA net FROM anon, authenticated to prevent HTTP request queue inspection."
+    },
+    {
+      "priority": 10,
+      "action": "Replace raw error.message returns in edge functions with generic messages",
+      "detail": "Affected: admin-command, admin-health, generate-content-post, portal, stripe-webhook. Log details server-side, return generic codes to clients."
+    }
+  ]
+}

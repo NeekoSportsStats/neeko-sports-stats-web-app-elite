@@ -1,0 +1,184 @@
+src
+├── App.css
+├── App.tsx
+├── assets
+│   ├── hero-stadium.svg
+│   └── neeko-sports-logo.svg
+├── components
+│   ├── AppSidebar.tsx
+│   ├── Layout.tsx
+│   ├── MinimalLayout.tsx
+│   ├── NavLink.tsx
+│   ├── NeekoPlus
+│   │   └── ProtectedRoute.tsx
+│   ├── PremiumGate.tsx
+│   ├── RedirectLoader.tsx
+│   ├── RequireAuth.tsx
+│   ├── afl
+│   │   └── players
+│   │       ├── FilterBarPro.tsx
+│   │       ├── FormArrowBadge.tsx
+│   │       ├── HotColdSixGrid.tsx
+│   │       ├── MasterPlayerTable.tsx
+│   │       ├── MasterTableProShell.tsx
+│   │       ├── MiniTrendChips.tsx
+│   │       ├── MoversDualColumn.tsx
+│   │       ├── PageHeaderHero.tsx
+│   │       ├── PlayerGridCard.tsx
+│   │       ├── PlayerNewsTicker.tsx
+│   │       ├── PlayerStatLensHeader.tsx
+│   │       ├── StabilityMeterGrid.tsx
+│   │       ├── TrendSparklineMini.tsx
+│   │       └── useAFLMockData.ts
+│   ├── ai
+│   │   ├── AIAnalysisBlock.tsx
+│   │   ├── PlayerAnalysisCard.tsx
+│   │   └── SparklineChart.tsx
+│   ├── dashboard
+│   │   ├── AIInsights.tsx
+│   │   ├── PerformanceChart.tsx
+│   │   ├── PlayerExpandedRow.tsx
+│   │   ├── PlayerHighlightCards.tsx
+│   │   ├── PlayerSparkline.tsx
+│   │   ├── PlayerTable.tsx
+│   │   ├── Sparkline.tsx
+│   │   ├── StatsOverview.tsx
+│   │   ├── TeamComparison.tsx
+│   │   ├── TeamTable.tsx
+│   │   ├── TeamTiles.tsx
+│   │   ├── TopInsights.tsx
+│   │   ├── TopStatsOverview.tsx
+│   │   ├── TopTeamRankings.tsx
+│   │   └── TrendExplorer.tsx
+│   ├── match-center
+│   │   ├── FixtureCard.tsx
+│   │   ├── FixtureDetailModal.tsx
+│   │   └── FixturesList.tsx
+│   └── ui
+│       ├── SectionDividerGlow.tsx
+│       ├── accordion.tsx
+│       ├── alert-dialog.tsx
+│       ├── alert.tsx
+│       ├── aspect-ratio.tsx
+│       ├── avatar.tsx
+│       ├── badge.tsx
+│       ├── breadcrumb.tsx
+│       ├── button.tsx
+│       ├── calendar.tsx
+│       ├── card.tsx
+│       ├── carousel.tsx
+│       ├── chart.tsx
+│       ├── checkbox.tsx
+│       ├── collapsible.tsx
+│       ├── command.tsx
+│       ├── context-menu.tsx
+│       ├── dialog.tsx
+│       ├── drawer.tsx
+│       ├── dropdown-menu.tsx
+│       ├── form.tsx
+│       ├── hover-card.tsx
+│       ├── input-otp.tsx
+│       ├── input.tsx
+│       ├── label.tsx
+│       ├── menubar.tsx
+│       ├── navigation-menu.tsx
+│       ├── pagination.tsx
+│       ├── popover.tsx
+│       ├── progress.tsx
+│       ├── radio-group.tsx
+│       ├── resizable.tsx
+│       ├── scroll-area.tsx
+│       ├── select.tsx
+│       ├── separator.tsx
+│       ├── sheet.tsx
+│       ├── sidebar.tsx
+│       ├── skeleton.tsx
+│       ├── slider.tsx
+│       ├── sonner.tsx
+│       ├── switch.tsx
+│       ├── table.tsx
+│       ├── tabs.tsx
+│       ├── textarea.tsx
+│       ├── toast.tsx
+│       ├── toaster.tsx
+│       ├── toggle-group.tsx
+│       ├── toggle.tsx
+│       ├── tooltip.tsx
+│       └── use-toast.ts
+├── data
+│   └── afl
+│       └── teamColors.ts
+├── hooks
+│   ├── use-mobile.tsx
+│   ├── use-toast.ts
+│   ├── usePlayerSparkline.ts
+│   └── useSubscriptionStatus.ts
+├── index.css
+├── integrations
+│   └── supabase
+│       ├── client.ts
+│       └── types.ts
+├── lib
+│   ├── auth.tsx
+│   ├── supabaseClient.ts
+│   └── utils.ts
+├── main.tsx
+├── pages
+│   ├── About.tsx
+│   ├── Account.tsx
+│   ├── Admin.tsx
+│   ├── AdminQueue.tsx
+│   ├── Auth.tsx
+│   ├── Billing.tsx
+│   ├── Cancel.tsx
+│   ├── ComingSoon.tsx
+│   ├── Contact.tsx
+│   ├── CreatePassword.tsx
+│   ├── Dashboard.tsx
+│   ├── FAQ.tsx
+│   ├── ForgotPassword.tsx
+│   ├── Index.tsx
+│   ├── NeekoPlusPurchase.tsx
+│   ├── NotFound.tsx
+│   ├── ResetPassword.tsx
+│   ├── Socials.tsx
+│   ├── StartCheckout.jsx
+│   ├── StartCheckout.tsx
+│   ├── StripeTest.tsx
+│   ├── Success.tsx
+│   ├── policies
+│   │   ├── Policies.tsx
+│   │   ├── PrivacyPolicy.tsx
+│   │   ├── RefundPolicy.tsx
+│   │   ├── SecurityPolicy.tsx
+│   │   ├── TermsConditions.tsx
+│   │   └── UserConductPolicy.tsx
+│   └── sports
+│       ├── AFLCompleteAIAnalysis.tsx
+│       ├── AFLHub.tsx
+│       ├── AFLMatchCentre.tsx
+│       ├── AFLPlayers_OLD_C5B.tsx.tsx
+│       ├── AFLTeams.tsx
+│       ├── AIAnalysis.tsx
+│       ├── EPLAIAnalysis.tsx
+│       ├── EPLCompleteAIAnalysis.tsx
+│       ├── EPLHub.tsx
+│       ├── EPLMatchCentre.tsx
+│       ├── EPLPlayers.tsx
+│       ├── EPLTeams.tsx
+│       ├── NBAAIAnalysis.tsx
+│       ├── NBACompleteAIAnalysis.tsx
+│       ├── NBAHub.tsx
+│       ├── NBAMatchCentre.tsx
+│       ├── NBAPlayers.tsx
+│       ├── NBATeams.tsx
+│       ├── afl
+│       │   └── AFLPlayers.tsx
+│       └── ai
+│           ├── MatchupAnalysis.tsx
+│           ├── PlayerAnalysis.tsx
+│           ├── PredictiveAnalysis.tsx
+│           └── TeamAnalysis.tsx
+└── vite-env.d.ts
+
+21 directories, 161 files

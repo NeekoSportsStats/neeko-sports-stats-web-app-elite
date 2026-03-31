@@ -1,0 +1,2314 @@
+=== schema=afl | view=v_active_players ===
+ SELECT player_id,
+    player_name,
+    position_group,
+    active,
+    is_active
+   FROM afl.players
+  WHERE (is_active = true);
+
+=== schema=afl | view=v_ai_player_analysis_input ===
+ SELECT v.player_id,
+    v.player_name,
+    v.team,
+    v.projection_final,
+    v.ceiling AS ceiling_estimate,
+    v.floor AS floor_estimate,
+    v.consistency_score,
+    v.form_rating AS trend_3_vs_10,
+    0 AS matchup_delta,
+    COALESCE(v.price, rc.price) AS price,
+    COALESCE(v.value_score, (rc.value_score)::numeric) AS value_score,
+    COALESCE(rc.value_tag, NULL::text) AS value_tag,
+    md5((((((v.player_id)::text || COALESCE((v.projection_final)::text, ''::text)) || COALESCE((v.form_rating)::text, ''::text)) || COALESCE((v.consistency_score)::text, ''::text)) || COALESCE((COALESCE(v.price, rc.price))::text, ''::text))) AS input_hash
+   FROM (afl.v_ai_player_openai_inputs_v2 v
+     LEFT JOIN afl.player_rankings_cache rc ON ((rc.player_id = v.player_id)));
+
+=== schema=afl | view=v_ai_player_metrics ===
+ SELECT player_id,
+    player_name,
+    team_name,
+    position_group,
+    projection,
+    base_projection,
+    matchup_multiplier,
+    venue_multiplier,
+    pace_multiplier,
+    projection_tier,
+    matchup_rating,
+    venue_rating,
+    pace_environment,
+    round(((((projection * 0.55) + ((matchup_multiplier * (100)::numeric) * 0.20)) + ((venue_multiplier * (100)::numeric) * 0.15)) + ((pace_multiplier * (100)::numeric) * 0.10)), 2) AS captain_score,
+    round((((projection * 0.60) + ((matchup_multiplier * (100)::numeric) * 0.25)) + ((pace_multiplier * (100)::numeric) * 0.15)), 2) AS start_confidence,
+    round(((((matchup_multiplier * (100)::numeric) * 0.40) + ((venue_multiplier * (100)::numeric) * 0.30)) + ((pace_multiplier * (100)::numeric) * 0.30)), 2) AS breakout_probability,
+    round((((((100)::numeric - (matchup_multiplier * (100)::numeric)) * 0.50) + (((100)::numeric - (venue_multiplier * (100)::numeric)) * 0.25)) + (((100)::numeric - (pace_multiplier * (100)::numeric)) * 0.25)), 2) AS bust_risk,
+    round((((projection + (matchup_multiplier * (10)::numeric)) + (venue_multiplier * (8)::numeric)) + (pace_multiplier * (6)::numeric)), 2) AS leverage_score
+   FROM afl.v_ai_player_signals s;
+
+=== schema=afl | view=v_ai_player_openai_inputs_v2 ===
+ SELECT player_id,
+    player_name,
+    team_name AS team,
+    position_group AS "position",
+    projection AS projection_final,
+    round((projection * 0.55)) AS floor,
+    (round((projection * 1.25)))::integer AS ceiling,
+    projection AS form_rating,
+    round((((matchup_multiplier + venue_multiplier) + pace_multiplier) * (33)::numeric), 2) AS consistency_score,
+    round((((projection * 0.7) + (matchup_multiplier * (20)::numeric)) + (venue_multiplier * (15)::numeric)), 2) AS neeko_rating,
+    NULL::numeric AS value_score,
+    NULL::integer AS price,
+    matchup_multiplier,
+    venue_multiplier,
+    pace_multiplier,
+        CASE
+            WHEN (matchup_multiplier > 1.05) THEN 'FAVOURABLE'::text
+            WHEN (matchup_multiplier < 0.95) THEN 'DIFFICULT'::text
+            ELSE 'NEUTRAL'::text
+        END AS matchup_rating,
+        CASE
+            WHEN (venue_multiplier > 1.05) THEN 'STRONG VENUE BOOST'::text
+            WHEN (venue_multiplier > 1.02) THEN 'VENUE BOOST'::text
+            ELSE 'NEUTRAL VENUE'::text
+        END AS venue_rating,
+        CASE
+            WHEN (pace_multiplier > 1.03) THEN 'HIGH POSSESSION'::text
+            WHEN (pace_multiplier < 0.97) THEN 'SLOW GAME'::text
+            ELSE 'NORMAL PACE'::text
+        END AS pace_environment,
+        CASE
+            WHEN (projection >= (110)::numeric) THEN 'ELITE'::text
+            WHEN (projection >= (95)::numeric) THEN 'PREMIUM'::text
+            WHEN (projection >= (80)::numeric) THEN 'STRONG'::text
+            ELSE 'LOW'::text
+        END AS projection_tier
+   FROM afl.v_projection_final p;
+
+=== schema=afl | view=v_ai_player_signals ===
+ SELECT player_id,
+    player_name,
+    team_name,
+    position_group,
+    projection,
+    base_projection,
+    matchup_multiplier,
+    venue_multiplier,
+    pace_multiplier,
+        CASE
+            WHEN (projection >= (105)::numeric) THEN 'ELITE'::text
+            WHEN (projection >= (95)::numeric) THEN 'PREMIUM'::text
+            WHEN (projection >= (85)::numeric) THEN 'STRONG'::text
+            WHEN (projection >= (75)::numeric) THEN 'SOLID'::text
+            ELSE 'LOW'::text
+        END AS projection_tier,
+        CASE
+            WHEN (matchup_multiplier >= 1.08) THEN 'ELITE MATCHUP'::text
+            WHEN (matchup_multiplier >= 1.04) THEN 'FAVOURABLE'::text
+            WHEN (matchup_multiplier >= 0.97) THEN 'NEUTRAL'::text
+            WHEN (matchup_multiplier >= 0.92) THEN 'DIFFICULT'::text
+            ELSE 'BRUTAL'::text
+        END AS matchup_rating,
+        CASE
+            WHEN (venue_multiplier >= 1.05) THEN 'STRONG VENUE BOOST'::text
+            WHEN (venue_multiplier >= 1.02) THEN 'VENUE BOOST'::text
+            WHEN (venue_multiplier <= 0.95) THEN 'VENUE NEGATIVE'::text
+            ELSE 'NEUTRAL VENUE'::text
+        END AS venue_rating,
+        CASE
+            WHEN (pace_multiplier >= 1.06) THEN 'FAST GAME'::text
+            WHEN (pace_multiplier >= 1.02) THEN 'HIGH POSSESSION'::text
+            WHEN (pace_multiplier <= 0.95) THEN 'SLOW GAME'::text
+            ELSE 'NORMAL PACE'::text
+        END AS pace_environment
+   FROM afl.v_projection_final p;
+
+=== schema=afl | view=v_captain_scores ===
+ SELECT player_id,
+    player_name,
+    position_group,
+    team_name,
+    projection,
+    ceiling,
+    consistency,
+    volatility,
+    round((((projection * 0.45) + ((ceiling)::numeric * 0.35)) + (consistency * 0.20)), 2) AS captain_score
+   FROM afl.v_projection_engine p;
+
+=== schema=afl | view=v_current_player_team ===
+ WITH ranked AS (
+         SELECT pr.player_id,
+            pr.player_name,
+            pr.team_id,
+            pr.season,
+            row_number() OVER (PARTITION BY pr.player_id ORDER BY pr.season DESC) AS rn
+           FROM afl.players_raw pr
+        )
+ SELECT r.player_id,
+    r.player_name,
+    r.team_id,
+    t.team_name,
+    r.season AS latest_season
+   FROM (ranked r
+     LEFT JOIN afl.teams t ON ((r.team_id = t.team_id)))
+  WHERE (r.rn = 1);
+
+=== schema=afl | view=v_home_ground_advantage ===
+ SELECT pg.team_id,
+    pg.team_name,
+    avg(
+        CASE
+            WHEN (pg.team_id = g.home_team_id) THEN pg.fantasy_score
+            ELSE NULL::integer
+        END) AS home_avg,
+    avg(
+        CASE
+            WHEN (pg.team_id = g.away_team_id) THEN pg.fantasy_score
+            ELSE NULL::integer
+        END) AS away_avg,
+    (avg(
+        CASE
+            WHEN (pg.team_id = g.home_team_id) THEN pg.fantasy_score
+            ELSE NULL::integer
+        END) - avg(
+        CASE
+            WHEN (pg.team_id = g.away_team_id) THEN pg.fantasy_score
+            ELSE NULL::integer
+        END)) AS home_advantage
+   FROM (afl.player_games pg
+     JOIN afl.games g ON ((pg.game_id = g.game_id)))
+  GROUP BY pg.team_id, pg.team_name;
+
+=== schema=afl | view=v_league_position_scoring ===
+ SELECT p.position_group,
+    avg(pg.fantasy_score) AS league_avg
+   FROM (afl.player_games pg
+     JOIN afl.players p ON ((p.player_id = pg.player_id)))
+  WHERE (pg.fantasy_score IS NOT NULL)
+  GROUP BY p.position_group;
+
+=== schema=afl | view=v_match_pace ===
+ SELECT ng.team_id,
+        CASE
+            WHEN (ng.team_id = ng.home_team_id) THEN ng.away_team_id
+            ELSE ng.home_team_id
+        END AS opponent_team_id,
+    ((t1.pace_multiplier + t2.pace_multiplier) / (2)::numeric) AS pace_multiplier
+   FROM ((afl.v_next_games ng
+     LEFT JOIN afl.v_team_fantasy_environment t1 ON ((t1.team_id = ng.team_id)))
+     LEFT JOIN afl.v_team_fantasy_environment t2 ON ((t2.team_id =
+        CASE
+            WHEN (ng.team_id = ng.home_team_id) THEN ng.away_team_id
+            ELSE ng.home_team_id
+        END)));
+
+=== schema=afl | view=v_matchup_multiplier ===
+ WITH league_avg AS (
+         SELECT v_team_defence_vs_position.position_group,
+            (avg(v_team_defence_vs_position.avg_points_allowed))::numeric(10,2) AS league_avg
+           FROM afl.v_team_defence_vs_position
+          GROUP BY v_team_defence_vs_position.position_group
+        )
+ SELECT dvp.defence_team_id,
+    dvp.defence_team,
+    dvp.position_group,
+    dvp.avg_points_allowed,
+    la.league_avg,
+    (dvp.avg_points_allowed / la.league_avg) AS matchup_multiplier
+   FROM (afl.v_team_defence_vs_position dvp
+     JOIN league_avg la ON ((dvp.position_group = la.position_group)));
+
+=== schema=afl | view=v_matchup_multiplier_advanced ===
+ SELECT s.defence_team_id,
+    s.defence_team,
+    s.position_group,
+    s.avg_points_allowed AS season_allowed,
+    r.avg_points_allowed_last5 AS recent_allowed,
+    l.league_avg,
+    ((s.avg_points_allowed * 0.85) + (COALESCE(r.avg_points_allowed_last5, s.avg_points_allowed) * 0.15)) AS blended_allowed,
+    round((((s.avg_points_allowed * 0.85) + (COALESCE(r.avg_points_allowed_last5, s.avg_points_allowed) * 0.15)) / l.league_avg), 3) AS matchup_multiplier
+   FROM ((afl.v_team_defence_vs_position s
+     LEFT JOIN afl.v_team_defence_vs_position_last5 r ON (((s.defence_team_id = r.defence_team_id) AND (s.position_group = r.position_group))))
+     JOIN afl.v_position_league_average l ON ((s.position_group = l.position_group)));
+
+=== schema=afl | view=v_neeko_rating ===
+ SELECT player_id,
+    player_name,
+    team_id,
+    team_name,
+    position_group,
+    game_id,
+    game_date,
+    venue,
+    opponent_team_id,
+    is_home,
+    games_played,
+    season_avg,
+    last3_avg,
+    last5_avg,
+    last10_avg,
+    ceiling,
+    floor,
+    volatility,
+    consistency,
+    form_score,
+    rest_days,
+    projection,
+    price,
+    value_score,
+        CASE
+            WHEN (position_group = 'MID'::text) THEN 115
+            WHEN (position_group = 'DEF'::text) THEN 105
+            WHEN (position_group = 'FWD'::text) THEN 95
+            WHEN (position_group = 'RUC'::text) THEN 110
+            ELSE 105
+        END AS elite_projection,
+    LEAST(((projection / (NULLIF(
+        CASE
+            WHEN (position_group = 'MID'::text) THEN 115
+            WHEN (position_group = 'DEF'::text) THEN 105
+            WHEN (position_group = 'FWD'::text) THEN 95
+            WHEN (position_group = 'RUC'::text) THEN 110
+            ELSE 105
+        END, 0))::numeric) * (65)::numeric), (65)::numeric) AS projection_component,
+    LEAST(((form_score / NULLIF(projection, (0)::numeric)) * (15)::numeric), (15)::numeric) AS form_component,
+    ((consistency / (100)::numeric) * (10)::numeric) AS consistency_component,
+    LEAST(((((ceiling)::numeric - projection) / (45)::numeric) * (10)::numeric), (10)::numeric) AS upside_component,
+    round((((LEAST(((projection / (NULLIF(
+        CASE
+            WHEN (position_group = 'MID'::text) THEN 115
+            WHEN (position_group = 'DEF'::text) THEN 105
+            WHEN (position_group = 'FWD'::text) THEN 95
+            WHEN (position_group = 'RUC'::text) THEN 110
+            ELSE 105
+        END, 0))::numeric) * (65)::numeric), (65)::numeric) + LEAST(((form_score / NULLIF(projection, (0)::numeric)) * (15)::numeric), (15)::numeric)) + ((consistency / (100)::numeric) * (10)::numeric)) + LEAST(((((ceiling)::numeric - projection) / (45)::numeric) * (10)::numeric), (10)::numeric)), 2) AS neeko_rating
+   FROM afl.v_player_value_engine pve;
+
+=== schema=afl | view=v_next_games ===
+ SELECT DISTINCT ON (team_id) team_id,
+    game_id,
+    game_date,
+    venue,
+    home_team_id,
+    away_team_id
+   FROM ( SELECT g.game_id,
+            g.game_date,
+            g.venue,
+            g.home_team_id,
+            g.away_team_id,
+            g.home_team_id AS team_id
+           FROM afl.games g
+          WHERE (g.game_date >= now())
+        UNION ALL
+         SELECT g.game_id,
+            g.game_date,
+            g.venue,
+            g.home_team_id,
+            g.away_team_id,
+            g.away_team_id AS team_id
+           FROM afl.games g
+          WHERE (g.game_date >= now())) x
+  ORDER BY team_id, game_date;
+
+=== schema=afl | view=v_player_form_normalised ===
+ SELECT player_id,
+    player_name,
+    avg(normalised_score) FILTER (WHERE (rn <= 3)) AS last3_norm,
+    avg(normalised_score) FILTER (WHERE (rn <= 5)) AS last5_norm,
+    avg(normalised_score) FILTER (WHERE (rn <= 10)) AS last10_norm,
+    avg(normalised_score) AS season_norm
+   FROM ( SELECT v_player_scores_normalised.player_id,
+            v_player_scores_normalised.player_name,
+            v_player_scores_normalised.normalised_score,
+            row_number() OVER (PARTITION BY v_player_scores_normalised.player_id ORDER BY v_player_scores_normalised.game_date DESC) AS rn
+           FROM afl.v_player_scores_normalised) x
+  GROUP BY player_id, player_name;
+
+=== schema=afl | view=v_player_games_2025 ===
+ SELECT game_id,
+    player_id,
+    player_name,
+    team_id,
+    team_name,
+    season,
+    week,
+    round,
+    player_number,
+    disposals,
+    kicks,
+    handballs,
+    marks,
+    tackles,
+    hitouts,
+    clearances,
+    goals,
+    goal_assists,
+    behinds,
+    free_kicks_for,
+    free_kicks_against,
+    fantasy_score
+   FROM afl.player_games
+  WHERE (season = 2025);
+
+=== schema=afl | view=v_player_games_2026 ===
+ SELECT game_id,
+    player_id,
+    player_name,
+    team_id,
+    team_name,
+    season,
+    week,
+    round,
+    player_number,
+    disposals,
+    kicks,
+    handballs,
+    marks,
+    tackles,
+    hitouts,
+    clearances,
+    goals,
+    goal_assists,
+    behinds,
+    free_kicks_for,
+    free_kicks_against,
+    fantasy_score
+   FROM afl.player_games
+  WHERE (season = 2026);
+
+=== schema=afl | view=v_player_rankings ===
+ SELECT player_id,
+    player_name,
+    team_id,
+    team_name,
+    position_group,
+    game_id,
+    game_date,
+    venue,
+    opponent_team_id,
+    is_home,
+    games_played,
+    season_avg,
+    last3_avg,
+    last5_avg,
+    last10_avg,
+    ceiling,
+    floor,
+    volatility,
+    consistency,
+    form_score,
+    rest_days,
+    projection,
+    price,
+    value_score,
+    row_number() OVER (ORDER BY projection DESC) AS overall_rank,
+    row_number() OVER (PARTITION BY position_group ORDER BY projection DESC) AS position_rank,
+    count(*) OVER (PARTITION BY position_group) AS position_player_count
+   FROM afl.v_player_value_engine pve;
+
+=== schema=afl | view=v_player_rankings_full ===
+ SELECT nr.player_id,
+    nr.player_name,
+    nr.team_name AS team,
+    nr.position_group AS "position",
+    nr.projection AS projection_final,
+    nr.ceiling,
+    nr.floor,
+    nr.consistency AS consistency_score,
+    nr.form_score AS form_rating,
+    nr.neeko_rating,
+    nr.price,
+    nr.value_score,
+    ai.analysis AS ai_summary,
+    ai.captain_recommendation,
+    COALESCE(ai.generated_at, reco.updated_at) AS ai_updated_at,
+    nr.team_name,
+    nr.position_group,
+    round(LEAST((100)::numeric, GREATEST((0)::numeric, COALESCE(met.start_confidence, (0)::numeric))), 1) AS projection_confidence,
+    round(LEAST((100)::numeric, (GREATEST((0)::numeric, COALESCE(met.bust_risk, (0)::numeric)) * (100)::numeric)), 1) AS risk_rating,
+    COALESCE(met.matchup_rating, 'Neutral'::text) AS matchup_rating,
+    round(LEAST((100)::numeric, (GREATEST((0)::numeric, COALESCE(met.breakout_probability, (0)::numeric)) * (100)::numeric)), 1) AS upside_rating,
+    round(LEAST((100)::numeric, GREATEST((0)::numeric, COALESCE(met.captain_score, (0)::numeric))), 1) AS captain_score,
+        CASE
+            WHEN (COALESCE(met.captain_score, (0)::numeric) >= (70)::numeric) THEN 'Elite'::text
+            WHEN (COALESCE(met.captain_score, (0)::numeric) >= (50)::numeric) THEN 'Strong'::text
+            WHEN (COALESCE(met.captain_score, (0)::numeric) >= (30)::numeric) THEN 'Viable'::text
+            ELSE 'Avoid'::text
+        END AS captain_rating,
+    reco.recommendation_label AS ai_recommendation,
+    reco.recommendation_long AS recommendation_why,
+    reco.recommendation_color,
+    vtag.value_tag,
+        CASE
+            WHEN ((nr.price IS NULL) OR (nr.price = 0)) THEN NULL::text
+            WHEN (((nr.projection / ((nr.price)::numeric / 100000.0)) * 10.0) >= (110)::numeric) THEN 'ELITE VALUE'::text
+            WHEN (((nr.projection / ((nr.price)::numeric / 100000.0)) * 10.0) >= (100)::numeric) THEN 'STRONG VALUE'::text
+            WHEN (((nr.projection / ((nr.price)::numeric / 100000.0)) * 10.0) >= (95)::numeric) THEN 'FAIR VALUE'::text
+            ELSE 'OVERPRICED'::text
+        END AS value_tier,
+        CASE
+            WHEN (nr.consistency >= (75)::numeric) THEN 'Elite'::text
+            WHEN (nr.consistency >= (60)::numeric) THEN 'Consistent'::text
+            WHEN (nr.consistency >= (40)::numeric) THEN 'Volatile'::text
+            ELSE 'Boom-Bust'::text
+        END AS consistency_tier,
+    count(*) OVER () AS total_count
+   FROM ((((afl.v_neeko_rating nr
+     LEFT JOIN afl.v_ai_player_metrics met ON ((nr.player_id = met.player_id)))
+     LEFT JOIN ai_rankings_player_recos reco ON ((nr.player_id = (reco.player_id)::integer)))
+     LEFT JOIN ai_player_analysis ai ON ((nr.player_id = (ai.player_id)::integer)))
+     LEFT JOIN afl.v_ai_player_analysis_input vtag ON ((nr.player_id = vtag.player_id)));
+
+=== schema=afl | view=v_player_scores_normalised ===
+ SELECT pg.player_id,
+    pg.player_name,
+    pg.team_id,
+    pg.team_name,
+    g.game_id,
+    g.game_date,
+    p.position_group,
+        CASE
+            WHEN (pg.team_id = g.home_team_id) THEN g.away_team_id
+            ELSE g.home_team_id
+        END AS opponent_team_id,
+    pg.fantasy_score,
+    dvp.avg_points_allowed AS opponent_avg_allowed,
+        CASE
+            WHEN (dvp.avg_points_allowed IS NULL) THEN (pg.fantasy_score)::numeric
+            ELSE ((pg.fantasy_score)::numeric * (( SELECT l.league_avg
+               FROM afl.v_position_league_average l
+              WHERE (l.position_group = p.position_group)) / dvp.avg_points_allowed))
+        END AS normalised_score
+   FROM (((afl.player_games pg
+     JOIN afl.games g ON ((pg.game_id = g.game_id)))
+     JOIN afl.players p ON ((pg.player_id = p.player_id)))
+     LEFT JOIN afl.v_team_defence_vs_position dvp ON (((dvp.defence_team_id =
+        CASE
+            WHEN (pg.team_id = g.home_team_id) THEN g.away_team_id
+            ELSE g.home_team_id
+        END) AND (dvp.position_group = p.position_group))))
+  WHERE (pg.fantasy_score > 0);
+
+=== schema=afl | view=v_player_value_engine ===
+ SELECT pe.player_id,
+    pe.player_name,
+    pe.team_id,
+    pe.team_name,
+    pe.position_group,
+    pe.game_id,
+    pe.game_date,
+    pe.venue,
+    pe.opponent_team_id,
+    pe.is_home,
+    pe.games_played,
+    pe.season_avg,
+    pe.last3_avg,
+    pe.last5_avg,
+    pe.last10_avg,
+    pe.ceiling,
+    pe.floor,
+    pe.volatility,
+    pe.consistency,
+    pe.form_score,
+    pe.rest_days,
+    pe.projection,
+    pr.price,
+        CASE
+            WHEN (pr.price IS NULL) THEN NULL::numeric
+            WHEN (pe.games_played <= 2) THEN NULL::numeric
+            ELSE ((pe.projection / (pr.price)::numeric) * (100000)::numeric)
+        END AS value_score
+   FROM (afl.v_projection_engine pe
+     LEFT JOIN afl.player_prices pr ON ((pe.player_id = pr.player_id)));
+
+=== schema=afl | view=v_position_league_average ===
+ SELECT p.position_group,
+    count(*) AS samples,
+    (avg(pg.fantasy_score))::numeric(10,2) AS league_avg,
+    percentile_cont((0.5)::double precision) WITHIN GROUP (ORDER BY ((pg.fantasy_score)::double precision)) AS league_median
+   FROM (afl.player_games pg
+     JOIN afl.players p ON ((pg.player_id = p.player_id)))
+  WHERE ((pg.fantasy_score > 0) AND (p.position_group IS NOT NULL))
+  GROUP BY p.position_group;
+
+=== schema=afl | view=v_projection_accuracy_homepage ===
+ SELECT (count(DISTINCT player_id))::integer AS players_analysed,
+    round(avg(abs_error), 1) AS avg_error,
+    round((percentile_cont((0.5)::double precision) WITHIN GROUP (ORDER BY ((abs_error)::double precision)))::numeric, 1) AS median_error,
+    round(((100.0 * (count(
+        CASE
+            WHEN (abs_error <= (10)::numeric) THEN 1
+            ELSE NULL::integer
+        END))::numeric) / (NULLIF(count(*), 0))::numeric), 1) AS within_10,
+    round(((100.0 * (count(
+        CASE
+            WHEN (abs_error <= (15)::numeric) THEN 1
+            ELSE NULL::integer
+        END))::numeric) / (NULLIF(count(*), 0))::numeric), 1) AS within_15,
+    round(((100.0 * (count(
+        CASE
+            WHEN (abs_error <= (20)::numeric) THEN 1
+            ELSE NULL::integer
+        END))::numeric) / (NULLIF(count(*), 0))::numeric), 1) AS within_20,
+    max(round_number) AS latest_round,
+    'neeko_projection_engine_v3'::text AS source
+   FROM projection_accuracy
+  WHERE ((season = ( SELECT max(projection_accuracy_1.season) AS max
+           FROM projection_accuracy projection_accuracy_1)) AND (actual_score IS NOT NULL) AND ((injury_excluded IS NULL) OR (injury_excluded = false)));
+
+=== schema=afl | view=v_projection_engine ===
+ WITH player_consistency AS (
+         SELECT p_1.player_id,
+            count(pg.fantasy_score) FILTER (WHERE (pg.fantasy_score > 0)) AS game_count,
+            avg((pg.fantasy_score)::numeric) FILTER (WHERE (pg.fantasy_score > 0)) AS avg_score,
+            stddev((pg.fantasy_score)::numeric) FILTER (WHERE (pg.fantasy_score > 0)) AS stddev_score
+           FROM (afl.players p_1
+             LEFT JOIN afl.player_games pg ON ((pg.player_id = p_1.player_id)))
+          GROUP BY p_1.player_id
+        ), consistency_scored AS (
+         SELECT player_consistency.player_id,
+            player_consistency.game_count,
+                CASE
+                    WHEN ((player_consistency.game_count < 3) OR (player_consistency.avg_score IS NULL) OR (player_consistency.avg_score = (0)::numeric)) THEN 50.0
+                    ELSE LEAST(100.0, GREATEST(0.0, round((100.0 - ((player_consistency.stddev_score / NULLIF(player_consistency.avg_score, (0)::numeric)) * 100.0)), 1)))
+                END AS consistency_cov
+           FROM player_consistency
+        ), projection_raw AS (
+         SELECT p_1.player_id,
+            COALESCE(f.games_played, (0)::bigint) AS games_played,
+            p_1.position_group,
+            COALESCE(f.team_id, cpt.team_id) AS team_id,
+            COALESCE(f.team_name, cpt.team_name) AS team_name,
+            pla.league_avg,
+                CASE
+                    WHEN (COALESCE(f.games_played, (0)::bigint) <= 2) THEN (
+                    CASE p_1.position_group
+                        WHEN 'MID'::text THEN 45
+                        WHEN 'DEF'::text THEN 35
+                        WHEN 'FWD'::text THEN 40
+                        WHEN 'RUC'::text THEN 50
+                        ELSE 40
+                    END)::numeric
+                    ELSE GREATEST(((((COALESCE(NULLIF(fn.last3_norm, (0)::numeric), NULLIF(f.last3_avg, (0)::numeric), pla.league_avg) * 0.30) + (COALESCE(NULLIF(fn.last5_norm, (0)::numeric), NULLIF(f.last5_avg, (0)::numeric), pla.league_avg) * 0.25)) + (COALESCE(NULLIF(fn.last10_norm, (0)::numeric), NULLIF(f.last10_avg, (0)::numeric), pla.league_avg) * 0.20)) + (COALESCE(NULLIF(fn.season_norm, (0)::numeric), NULLIF(f.season_avg, (0)::numeric), pla.league_avg) * 0.25)), (pla.league_avg * 0.25))
+                END AS projection_calc,
+            COALESCE((NULLIF(f.ceiling, 0))::numeric, round((pla.league_avg * 1.35))) AS raw_ceiling,
+            COALESCE((NULLIF(f.floor, 0))::numeric, (pla.league_avg * 0.45)) AS raw_floor,
+            f.volatility,
+            fn.last3_norm,
+            fn.last5_norm,
+            fn.last10_norm,
+            fn.season_norm,
+            f.season_avg,
+            f.last3_avg,
+            f.last5_avg,
+            f.last10_avg
+           FROM ((((afl.players p_1
+             LEFT JOIN afl.player_features f ON ((p_1.player_id = f.player_id)))
+             LEFT JOIN afl.v_current_player_team cpt ON ((p_1.player_id = cpt.player_id)))
+             LEFT JOIN afl.v_player_form_normalised fn ON ((p_1.player_id = fn.player_id)))
+             LEFT JOIN afl.v_position_league_average pla ON ((p_1.position_group = pla.position_group)))
+          WHERE (COALESCE(f.team_id, cpt.team_id) IS NOT NULL)
+        )
+ SELECT DISTINCT ON (p.player_id) p.player_id,
+    p.player_name,
+    pr.team_id,
+    pr.team_name,
+    p.position_group,
+    ng.game_id,
+    ng.game_date,
+    ng.venue,
+        CASE
+            WHEN (ng.home_team_id = pr.team_id) THEN ng.away_team_id
+            ELSE ng.home_team_id
+        END AS opponent_team_id,
+        CASE
+            WHEN (ng.home_team_id = pr.team_id) THEN 1
+            ELSE 0
+        END AS is_home,
+    pr.games_played,
+    COALESCE(NULLIF(pr.season_avg, (0)::numeric), pr.league_avg) AS season_avg,
+    NULLIF(pr.last3_avg, (0)::numeric) AS last3_avg,
+    NULLIF(pr.last5_avg, (0)::numeric) AS last5_avg,
+    NULLIF(pr.last10_avg, (0)::numeric) AS last10_avg,
+    (GREATEST(ceil(pr.projection_calc), ceil(pr.raw_ceiling)))::integer AS ceiling,
+    GREATEST(0.0, LEAST(pr.projection_calc, pr.raw_floor)) AS floor,
+    COALESCE(NULLIF(pr.volatility, (0)::numeric), (28)::numeric) AS volatility,
+    cs.consistency_cov AS consistency,
+    COALESCE(((((COALESCE(NULLIF(pr.last3_norm, (0)::numeric), NULLIF(pr.last3_avg, (0)::numeric), pr.league_avg) * 0.35) + (COALESCE(NULLIF(pr.last5_norm, (0)::numeric), NULLIF(pr.last5_avg, (0)::numeric), pr.league_avg) * 0.25)) + (COALESCE(NULLIF(pr.last10_norm, (0)::numeric), NULLIF(pr.last10_avg, (0)::numeric), pr.league_avg) * 0.25)) + (COALESCE(NULLIF(pr.season_norm, (0)::numeric), NULLIF(pr.season_avg, (0)::numeric), pr.league_avg) * 0.15)), pr.league_avg) AS form_score,
+    tr.rest_days,
+    pr.projection_calc AS projection
+   FROM ((((afl.players p
+     JOIN projection_raw pr ON ((pr.player_id = p.player_id)))
+     LEFT JOIN consistency_scored cs ON ((cs.player_id = p.player_id)))
+     JOIN afl.v_next_games ng ON ((ng.team_id = pr.team_id)))
+     LEFT JOIN afl.v_team_rest_days tr ON (((tr.team_id = pr.team_id) AND (tr.game_date = ng.game_date))))
+  ORDER BY p.player_id, ng.game_date;
+
+=== schema=afl | view=v_projection_error_distribution ===
+ WITH base AS (
+         SELECT projection_accuracy.abs_error
+           FROM projection_accuracy
+          WHERE ((projection_accuracy.season = ( SELECT max(projection_accuracy_1.season) AS max
+                   FROM projection_accuracy projection_accuracy_1)) AND ((projection_accuracy.injury_excluded IS NULL) OR (projection_accuracy.injury_excluded = false)))
+        ), total AS (
+         SELECT count(*) AS n
+           FROM base
+        )
+ SELECT '0–10 pts'::text AS band,
+    1 AS sort_order,
+        CASE
+            WHEN (t.n > 0) THEN round(((100.0 * (count(
+            CASE
+                WHEN (b.abs_error <= (10)::numeric) THEN 1
+                ELSE NULL::integer
+            END))::numeric) / (t.n)::numeric), 1)
+            ELSE (0)::numeric
+        END AS pct
+   FROM base b,
+    total t
+  GROUP BY t.n
+UNION ALL
+ SELECT '10–15 pts'::text AS band,
+    2 AS sort_order,
+        CASE
+            WHEN (t.n > 0) THEN round(((100.0 * (count(
+            CASE
+                WHEN ((b.abs_error > (10)::numeric) AND (b.abs_error <= (15)::numeric)) THEN 1
+                ELSE NULL::integer
+            END))::numeric) / (t.n)::numeric), 1)
+            ELSE (0)::numeric
+        END AS pct
+   FROM base b,
+    total t
+  GROUP BY t.n
+UNION ALL
+ SELECT '15–20 pts'::text AS band,
+    3 AS sort_order,
+        CASE
+            WHEN (t.n > 0) THEN round(((100.0 * (count(
+            CASE
+                WHEN ((b.abs_error > (15)::numeric) AND (b.abs_error <= (20)::numeric)) THEN 1
+                ELSE NULL::integer
+            END))::numeric) / (t.n)::numeric), 1)
+            ELSE (0)::numeric
+        END AS pct
+   FROM base b,
+    total t
+  GROUP BY t.n
+UNION ALL
+ SELECT '20+ pts'::text AS band,
+    4 AS sort_order,
+        CASE
+            WHEN (t.n > 0) THEN round(((100.0 * (count(
+            CASE
+                WHEN (b.abs_error > (20)::numeric) THEN 1
+                ELSE NULL::integer
+            END))::numeric) / (t.n)::numeric), 1)
+            ELSE (0)::numeric
+        END AS pct
+   FROM base b,
+    total t
+  GROUP BY t.n
+  ORDER BY 2;
+
+=== schema=afl | view=v_projection_final ===
+ SELECT pv.player_id,
+    pv.player_name,
+    pv.team_id,
+    pv.team_name,
+    pv.position_group,
+    pv.opponent_team_id,
+    pv.base_projection,
+    pv.matchup_multiplier,
+    pv.venue_multiplier,
+    COALESCE(mp.pace_multiplier, (1)::numeric) AS pace_multiplier,
+    round(LEAST((((pv.base_projection * pv.matchup_multiplier) * pv.venue_multiplier) * COALESCE(mp.pace_multiplier, (1)::numeric)), (pv.base_projection * 1.22)), 1) AS projection
+   FROM (afl.v_projection_venue pv
+     LEFT JOIN afl.v_match_pace mp ON ((mp.team_id = pv.team_id)));
+
+=== schema=afl | view=v_projection_venue ===
+ SELECT pe.player_id,
+    pe.player_name,
+    pe.team_id,
+    pe.team_name,
+    pe.position_group,
+    pe.opponent_team_id,
+    pe.venue,
+    pe.projection AS base_projection,
+    COALESCE(mm.matchup_multiplier, (1)::numeric) AS matchup_multiplier,
+    COALESCE(vm.venue_multiplier, (1)::numeric) AS venue_multiplier,
+    round(((pe.projection * COALESCE(mm.matchup_multiplier, (1)::numeric)) * COALESCE(vm.venue_multiplier, (1)::numeric)), 2) AS projection
+   FROM ((afl.v_projection_engine pe
+     LEFT JOIN afl.v_matchup_multiplier mm ON (((mm.defence_team_id = pe.opponent_team_id) AND (mm.position_group = pe.position_group))))
+     LEFT JOIN afl.v_venue_multiplier vm ON (((vm.venue = pe.venue) AND (vm.position_group = pe.position_group))));
+
+=== schema=afl | view=v_rankings_ai_content ===
+ SELECT c.player_id,
+    c.player_name,
+    c.team,
+    c."position",
+    c.ai_recommendation AS ai_recommendation_label,
+    c.recommendation_color,
+    c.recommendation_short AS ai_recommendation_short,
+    c.recommendation_why AS ai_recommendation_why,
+    c.ai_summary AS ai_analysis_long,
+    apa.captain_recommendation AS captain_verdict,
+    c.ai_updated_at AS ai_generated_at,
+        CASE
+            WHEN ((c.recommendation_short IS NOT NULL) AND (c.ai_summary IS NOT NULL) AND (apa.captain_recommendation IS NOT NULL)) THEN 'full'::text
+            WHEN ((c.recommendation_short IS NOT NULL) AND (c.ai_summary IS NOT NULL)) THEN 'partial'::text
+            WHEN (c.recommendation_short IS NOT NULL) THEN 'fallback_only'::text
+            ELSE 'missing'::text
+        END AS content_status
+   FROM (afl.player_rankings_cache c
+     LEFT JOIN ai_player_analysis apa ON ((apa.player_id = (c.player_id)::bigint)));
+
+=== schema=afl | view=v_rankings_final ===
+ SELECT r.player_id,
+    r.player_name,
+    r.team_name AS team,
+    r.position_group AS "position",
+    r.projection AS projection_final,
+    r.ceiling,
+    r.floor,
+    r.consistency AS consistency_score,
+    r.form_score,
+    r.neeko_rating,
+    r.price,
+    r.value_score,
+    ai.recommendation AS ai_recommendation,
+    ai.why AS recommendation_short,
+    ai.summary AS ai_summary,
+    ai.generated_at AS ai_updated_at
+   FROM (afl.v_neeko_rating r
+     LEFT JOIN ai_player_content ai ON ((ai.player_id = r.player_id)));
+
+=== schema=afl | view=v_score_probabilities ===
+ SELECT player_id,
+    player_name,
+    position_group,
+    team_name,
+    projection,
+    volatility,
+    round(((100)::numeric / ((1)::numeric + exp((((80)::numeric - projection) / ((10)::numeric + volatility))))), 1) AS prob_80_plus,
+    round(((100)::numeric / ((1)::numeric + exp((((100)::numeric - projection) / ((10)::numeric + volatility))))), 1) AS prob_100_plus,
+    round(((100)::numeric / ((1)::numeric + exp((((120)::numeric - projection) / ((10)::numeric + volatility))))), 1) AS prob_120_plus
+   FROM afl.v_projection_engine p;
+
+=== schema=afl | view=v_team_defence_vs_position ===
+ SELECT opponent.team_id AS defence_team_id,
+    opponent.team_name AS defence_team,
+    p.position_group,
+    count(*) AS samples,
+    (avg(pg.fantasy_score))::numeric(10,2) AS avg_points_allowed,
+    percentile_cont((0.5)::double precision) WITHIN GROUP (ORDER BY ((pg.fantasy_score)::double precision)) AS median_points_allowed,
+    max(pg.fantasy_score) AS worst_game_allowed
+   FROM (((afl.player_games pg
+     JOIN afl.players p ON ((pg.player_id = p.player_id)))
+     JOIN afl.games g ON ((pg.game_id = g.game_id)))
+     JOIN LATERAL ( SELECT
+                CASE
+                    WHEN (pg.team_id = g.home_team_id) THEN g.away_team_id
+                    ELSE g.home_team_id
+                END AS team_id,
+                CASE
+                    WHEN (pg.team_id = g.home_team_id) THEN g.away_team_name
+                    ELSE g.home_team_name
+                END AS team_name) opponent ON (true))
+  WHERE ((pg.fantasy_score > 0) AND (p.position_group IS NOT NULL))
+  GROUP BY opponent.team_id, opponent.team_name, p.position_group;
+
+=== schema=afl | view=v_team_defence_vs_position_last5 ===
+ WITH recent_games AS (
+         SELECT pg.game_id,
+            pg.player_id,
+            pg.player_name,
+            pg.team_id,
+            pg.team_name,
+            pg.season,
+            pg.week,
+            pg.round,
+            pg.player_number,
+            pg.disposals,
+            pg.kicks,
+            pg.handballs,
+            pg.marks,
+            pg.tackles,
+            pg.hitouts,
+            pg.clearances,
+            pg.goals,
+            pg.goal_assists,
+            pg.behinds,
+            pg.free_kicks_for,
+            pg.free_kicks_against,
+            pg.fantasy_score,
+            g_1.game_date,
+            row_number() OVER (PARTITION BY pg.team_id ORDER BY g_1.game_date DESC) AS game_rank
+           FROM (afl.player_games pg
+             JOIN afl.games g_1 ON ((pg.game_id = g_1.game_id)))
+        )
+ SELECT opponent.team_id AS defence_team_id,
+    opponent.team_name AS defence_team,
+    p.position_group,
+    count(*) AS samples,
+    (percentile_cont((0.5)::double precision) WITHIN GROUP (ORDER BY ((rg.fantasy_score)::double precision)))::numeric(10,2) AS avg_points_allowed_last5
+   FROM (((recent_games rg
+     JOIN afl.players p ON ((rg.player_id = p.player_id)))
+     JOIN afl.games g ON ((rg.game_id = g.game_id)))
+     JOIN LATERAL ( SELECT
+                CASE
+                    WHEN (rg.team_id = g.home_team_id) THEN g.away_team_id
+                    ELSE g.home_team_id
+                END AS team_id,
+                CASE
+                    WHEN (rg.team_id = g.home_team_id) THEN g.away_team_name
+                    ELSE g.home_team_name
+                END AS team_name) opponent ON (true))
+  WHERE ((rg.game_rank <= 5) AND (rg.fantasy_score > 0) AND (p.position_group IS NOT NULL))
+  GROUP BY opponent.team_id, opponent.team_name, p.position_group;
+
+=== schema=afl | view=v_team_fantasy_environment ===
+ SELECT team_id,
+    avg(fantasy_score) AS avg_fantasy_points,
+    (avg(fantasy_score) / avg(avg(fantasy_score)) OVER ()) AS pace_multiplier
+   FROM afl.player_games
+  GROUP BY team_id;
+
+=== schema=afl | view=v_team_rest_days ===
+ WITH team_games AS (
+         SELECT games.home_team_id AS team_id,
+            games.game_date
+           FROM afl.games
+        UNION ALL
+         SELECT games.away_team_id AS team_id,
+            games.game_date
+           FROM afl.games
+        ), rest_calc AS (
+         SELECT team_games.team_id,
+            team_games.game_date,
+            lag(team_games.game_date) OVER (PARTITION BY team_games.team_id ORDER BY team_games.game_date) AS previous_game
+           FROM team_games
+        )
+ SELECT team_id,
+    game_date,
+    LEAST(GREATEST(EXTRACT(day FROM (game_date - previous_game)), (5)::numeric), (9)::numeric) AS rest_days
+   FROM rest_calc
+  WHERE (previous_game IS NOT NULL);
+
+=== schema=afl | view=v_venue_multiplier ===
+ SELECT v.venue,
+    v.position_group,
+    v.samples,
+    v.avg_points,
+    l.league_avg,
+    GREATEST(LEAST((v.avg_points / l.league_avg), 1.08), 0.92) AS venue_multiplier
+   FROM (afl.v_venue_position_scoring v
+     JOIN afl.v_league_position_scoring l ON ((l.position_group = v.position_group)))
+  WHERE (v.samples >= 30);
+
+=== schema=afl | view=v_venue_position_scoring ===
+ SELECT g.venue,
+    p.position_group,
+    count(*) AS samples,
+    avg(pg.fantasy_score) AS avg_points,
+    percentile_cont((0.5)::double precision) WITHIN GROUP (ORDER BY ((pg.fantasy_score)::double precision)) AS median_points,
+    max(pg.fantasy_score) AS max_points
+   FROM ((afl.player_games pg
+     JOIN afl.games g ON ((g.game_id = pg.game_id)))
+     JOIN afl.players p ON ((p.player_id = pg.player_id)))
+  WHERE (pg.fantasy_score IS NOT NULL)
+  GROUP BY g.venue, p.position_group;
+
+=== schema=afl | view=v_venue_scoring_bias ===
+ SELECT g.venue,
+    (avg(pg.fantasy_score))::numeric(10,2) AS venue_avg,
+    (avg(pg.fantasy_score) / ( SELECT avg(player_games.fantasy_score) AS avg
+           FROM afl.player_games)) AS venue_multiplier
+   FROM (afl.player_games pg
+     JOIN afl.games g ON ((pg.game_id = g.game_id)))
+  GROUP BY g.venue;
+
+=== schema=market | view=v_mw_best_trades ===
+ SELECT player_id,
+    player_name,
+    team_name,
+    position_group,
+    projection,
+    price,
+    value_score
+   FROM afl.v_player_rankings
+  WHERE (value_score > (110)::numeric)
+  ORDER BY value_score DESC
+ LIMIT 50;
+
+=== schema=market | view=v_mw_snapshot_players ===
+ SELECT player_id,
+    player_name,
+    team_name,
+    position_group,
+    projection,
+    price,
+    value_score,
+    overall_rank,
+    position_rank
+   FROM afl.v_player_rankings
+  WHERE (projection IS NOT NULL);
+
+=== schema=market | view=v_mw_snapshot_summary ===
+ SELECT gen_random_uuid() AS snapshot_id,
+    max(season) AS season,
+    max(round) AS round_number,
+    now() AS created_at,
+    now() AS updated_at,
+    true AS is_active
+   FROM afl.player_games;
+
+=== schema=public | view=v_admin_ai_usage ===
+ SELECT count(*) FILTER (WHERE (event_name = 'start_sit_generate'::text)) AS start_sit_runs,
+    count(*) FILTER (WHERE (event_name = 'ai_player_summary_generated'::text)) AS player_ai_runs,
+    count(*) FILTER (WHERE (event_name = 'ai_team_summary_generated'::text)) AS team_ai_runs
+   FROM analytics_events
+  WHERE (created_at > (now() - '24:00:00'::interval));
+
+=== schema=public | view=v_admin_analytics_7d ===
+ SELECT count(*) AS total_events_7d,
+    count(*) FILTER (WHERE (event_name = 'page_view'::text)) AS page_views_7d,
+    count(*) FILTER (WHERE (event_name = 'rankings_view'::text)) AS rankings_views,
+    count(*) FILTER (WHERE (event_name = 'start_sit_generate'::text)) AS start_sit_runs,
+    count(*) FILTER (WHERE (event_name = 'edge_board_view'::text)) AS edge_views,
+    count(*) FILTER (WHERE (event_name = 'market_watch_view'::text)) AS market_watch_views,
+    count(*) FILTER (WHERE (event_name = 'upgrade_click'::text)) AS upgrade_clicks,
+    count(*) FILTER (WHERE (event_name = 'subscription_started'::text)) AS subscriptions,
+    count(DISTINCT user_id) FILTER (WHERE (user_id IS NOT NULL)) AS unique_users_7d
+   FROM analytics_events
+  WHERE (created_at > (now() - '7 days'::interval));
+
+=== schema=public | view=v_admin_analytics_daily ===
+ SELECT (date_trunc('day'::text, created_at))::date AS day,
+    count(*) AS total_events,
+    count(*) FILTER (WHERE (event_name = 'page_view'::text)) AS page_views,
+    count(*) FILTER (WHERE (event_name = 'rankings_view'::text)) AS rankings_views,
+    count(*) FILTER (WHERE (event_name = 'start_sit_generate'::text)) AS start_sit_runs,
+    count(*) FILTER (WHERE (event_name = 'edge_board_view'::text)) AS edge_views,
+    count(*) FILTER (WHERE (event_name = 'market_watch_view'::text)) AS market_watch_views,
+    count(*) FILTER (WHERE (event_name = 'subscription_started'::text)) AS subscriptions
+   FROM analytics_events
+  WHERE (created_at > (now() - '30 days'::interval))
+  GROUP BY ((date_trunc('day'::text, created_at))::date)
+  ORDER BY ((date_trunc('day'::text, created_at))::date) DESC;
+
+=== schema=public | view=v_admin_analytics_summary ===
+ SELECT count(*) AS total_events_24h,
+    count(*) FILTER (WHERE (event_name = 'page_view'::text)) AS page_views_24h,
+    count(*) FILTER (WHERE (event_name = 'rankings_view'::text)) AS rankings_views,
+    count(*) FILTER (WHERE (event_name = 'start_sit_view'::text)) AS start_sit_views,
+    count(*) FILTER (WHERE (event_name = 'start_sit_generate'::text)) AS start_sit_runs,
+    count(*) FILTER (WHERE (event_name = 'edge_board_view'::text)) AS edge_views,
+    count(*) FILTER (WHERE (event_name = 'market_watch_view'::text)) AS market_watch_views,
+    count(*) FILTER (WHERE (event_name = 'upgrade_click'::text)) AS upgrade_clicks,
+    count(*) FILTER (WHERE (event_name = 'subscription_started'::text)) AS subscriptions,
+    count(DISTINCT user_id) FILTER (WHERE (user_id IS NOT NULL)) AS unique_users_24h
+   FROM analytics_events
+  WHERE (created_at > (now() - '24:00:00'::interval));
+
+=== schema=public | view=v_admin_conversion_funnel ===
+ SELECT count(*) FILTER (WHERE (event_name = 'rankings_view'::text)) AS rankings_views,
+    count(*) FILTER (WHERE (event_name = 'start_sit_view'::text)) AS start_sit_views,
+    count(*) FILTER (WHERE (event_name = 'upgrade_click'::text)) AS upgrade_clicks,
+    count(*) FILTER (WHERE (event_name = 'subscription_started'::text)) AS subscriptions
+   FROM analytics_events
+  WHERE (created_at > (now() - '7 days'::interval));
+
+=== schema=public | view=v_admin_cron_status ===
+ WITH last_runs AS (
+         SELECT job_run_details.jobid,
+            max(
+                CASE
+                    WHEN (job_run_details.status = 'succeeded'::text) THEN job_run_details.end_time
+                    ELSE NULL::timestamp with time zone
+                END) AS last_success,
+            max(
+                CASE
+                    WHEN (job_run_details.status = 'failed'::text) THEN job_run_details.end_time
+                    ELSE NULL::timestamp with time zone
+                END) AS last_failure,
+            max(job_run_details.end_time) AS last_run,
+            (array_agg(job_run_details.status ORDER BY job_run_details.end_time DESC))[1] AS latest_status,
+            (array_agg(job_run_details.return_message ORDER BY job_run_details.end_time DESC))[1] AS last_message
+           FROM cron.job_run_details
+          GROUP BY job_run_details.jobid
+        )
+ SELECT j.jobid,
+    j.jobname AS job_name,
+    j.schedule,
+    j.active,
+    lr.last_success,
+    lr.last_failure,
+    lr.last_run,
+    COALESCE(lr.latest_status, 'never_run'::text) AS latest_status,
+        CASE
+            WHEN (lr.latest_status = 'succeeded'::text) THEN 'ok'::text
+            WHEN (lr.latest_status = 'failed'::text) THEN 'error'::text
+            WHEN (lr.last_success IS NULL) THEN 'warn'::text
+            WHEN (lr.last_success < (now() - '2 days'::interval)) THEN 'warn'::text
+            ELSE 'ok'::text
+        END AS health,
+    "left"(lr.last_message, 400) AS last_error_message
+   FROM (cron.job j
+     LEFT JOIN last_runs lr ON ((lr.jobid = j.jobid)))
+  ORDER BY j.jobname;
+
+=== schema=public | view=v_admin_daily_usage ===
+ SELECT date(created_at) AS day,
+    count(*) FILTER (WHERE (event_name = 'page_view'::text)) AS page_views,
+    count(*) FILTER (WHERE (event_name = 'start_sit_generate'::text)) AS start_sit_runs,
+    count(*) FILTER (WHERE (event_name = 'subscription_started'::text)) AS subscriptions,
+    count(*) FILTER (WHERE (event_name = 'upgrade_click'::text)) AS upgrade_clicks,
+    count(DISTINCT user_id) AS unique_users
+   FROM analytics_events
+  GROUP BY (date(created_at))
+  ORDER BY (date(created_at)) DESC;
+
+=== schema=public | view=v_admin_data_integrity ===
+ SELECT (( SELECT count(*) AS count
+           FROM afl.players))::integer AS total_players,
+    (( SELECT count(*) AS count
+           FROM afl.player_rankings_cache))::integer AS cached_players,
+    (( SELECT count(*) AS count
+           FROM afl.players p
+          WHERE (NOT (EXISTS ( SELECT 1
+                   FROM afl.player_rankings_cache rc
+                  WHERE (rc.player_id = p.player_id))))))::integer AS players_missing_from_cache,
+    (( SELECT count(*) AS count
+           FROM ai_player_content))::integer AS players_with_ai_content,
+    (( SELECT count(*) AS count
+           FROM ai_rankings_player_recos))::integer AS players_with_recos,
+    (( SELECT count(*) AS count
+           FROM afl.players p
+          WHERE (NOT (EXISTS ( SELECT 1
+                   FROM ai_player_content aic
+                  WHERE (aic.player_id = p.player_id))))))::integer AS players_missing_ai,
+    (( SELECT count(*) AS count
+           FROM afl.player_rankings_cache
+          WHERE ((player_rankings_cache.projection_final IS NULL) OR (player_rankings_cache.projection_final = (0)::double precision))))::integer AS players_missing_projection,
+    (( SELECT count(*) AS count
+           FROM afl.player_rankings_cache
+          WHERE ((player_rankings_cache.neeko_rating IS NULL) OR (player_rankings_cache.neeko_rating = (0)::double precision))))::integer AS players_missing_rating,
+    (( SELECT count(*) AS count
+           FROM afl.player_rankings_cache
+          WHERE ((player_rankings_cache.price IS NULL) OR (player_rankings_cache.price = 0))))::integer AS players_missing_price,
+    (( SELECT count(DISTINCT games_raw.game_id) AS count
+           FROM afl.games_raw
+          WHERE ((games_raw.season = 2026) AND (games_raw.status_short = 'FT'::text))))::integer AS completed_games_2026,
+    (( SELECT count(DISTINCT player_games.game_id) AS count
+           FROM afl.player_games
+          WHERE (player_games.season = 2026)))::integer AS games_with_player_stats,
+    ( SELECT max(raw_player_stats.week) AS max
+           FROM afl.raw_player_stats
+          WHERE (raw_player_stats.season = 2026)) AS latest_round_ingested,
+    ( SELECT max(player_rankings_cache.cached_at) AS max
+           FROM afl.player_rankings_cache) AS cache_last_refreshed,
+    ( SELECT max(ai_player_content.generated_at) AS max
+           FROM ai_player_content) AS ai_last_generated;
+
+=== schema=public | view=v_admin_dau ===
+ SELECT count(DISTINCT user_id) AS daily_active_users
+   FROM analytics_events
+  WHERE (created_at > (now() - '24:00:00'::interval));
+
+=== schema=public | view=v_admin_feature_usage ===
+ SELECT event_name,
+    count(*) AS usage_count
+   FROM analytics_events
+  WHERE (created_at > (now() - '7 days'::interval))
+  GROUP BY event_name
+  ORDER BY (count(*)) DESC;
+
+=== schema=public | view=v_admin_realtime_users ===
+ SELECT count(DISTINCT user_id) AS active_users_last_5_minutes
+   FROM analytics_events
+  WHERE (created_at > (now() - '00:05:00'::interval));
+
+=== schema=public | view=v_admin_start_sit_power_users ===
+ SELECT user_id,
+    count(*) AS start_sit_runs
+   FROM analytics_events
+  WHERE ((event_name = 'start_sit_generate'::text) AND (created_at > (now() - '7 days'::interval)) AND (user_id IS NOT NULL))
+  GROUP BY user_id
+ HAVING (count(*) >= 3)
+  ORDER BY (count(*)) DESC;
+
+=== schema=public | view=v_admin_subscription_metrics ===
+ SELECT count(*) FILTER (WHERE (subscription_status = 'active'::text)) AS active_subscriptions,
+    count(*) FILTER (WHERE (subscription_status = 'trialing'::text)) AS trial_subscriptions,
+    count(*) FILTER (WHERE (subscription_status = 'canceled'::text)) AS canceled_subscriptions,
+    count(*) FILTER (WHERE (is_active = true)) AS is_active_count,
+    count(*) AS total_profiles
+   FROM profiles;
+
+=== schema=public | view=v_admin_system_health_summary ===
+ SELECT ( SELECT max(pipeline_runs.started_at) AS max
+           FROM pipeline_runs) AS last_pipeline_run,
+    ( SELECT pipeline_runs.status
+           FROM pipeline_runs
+          ORDER BY pipeline_runs.started_at DESC
+         LIMIT 1) AS pipeline_status,
+    (( SELECT count(*) AS count
+           FROM afl.player_rankings_cache))::integer AS rankings_cache_rows,
+    ( SELECT max(player_rankings_cache.cached_at) AS max
+           FROM afl.player_rankings_cache) AS rankings_cache_refreshed_at,
+    (( SELECT count(*) AS count
+           FROM ai_player_analysis))::integer AS ai_analysis_rows,
+    (( SELECT count(*) AS count
+           FROM ai_rankings_player_recos
+          WHERE ((ai_rankings_player_recos.recommendation_long IS NOT NULL) AND (ai_rankings_player_recos.recommendation_long <> 'Model analysis is currently generating.'::text))))::integer AS reco_rows,
+    (( SELECT count(*) AS count
+           FROM ai_generation_queue
+          WHERE (ai_generation_queue.status = 'pending'::text)))::integer AS queue_pending,
+    (( SELECT count(*) AS count
+           FROM ai_generation_queue
+          WHERE (ai_generation_queue.status = 'complete'::text)))::integer AS queue_complete,
+    (( SELECT count(*) AS count
+           FROM ai_generation_queue
+          WHERE (ai_generation_queue.status = 'failed'::text)))::integer AS queue_failed,
+    (( SELECT count(*) AS count
+           FROM ai_generation_queue
+          WHERE ((ai_generation_queue.status = 'pending'::text) AND (ai_generation_queue.job_type = 'ranking_recommendation'::text))))::integer AS reco_queue_pending,
+    (( SELECT count(*) AS count
+           FROM ai_generation_queue
+          WHERE ((ai_generation_queue.status = 'pending'::text) AND (ai_generation_queue.job_type = 'player_analysis'::text))))::integer AS analysis_queue_pending,
+    (( SELECT count(*) AS count
+           FROM mv_edge_board))::integer AS edge_board_rows,
+    (( SELECT count(*) FILTER (WHERE (mv_edge_board.section = 'captain'::text)) AS count
+           FROM mv_edge_board))::integer AS edge_board_captains,
+    (( SELECT count(*) FILTER (WHERE (mv_edge_board.section = 'breakout'::text)) AS count
+           FROM mv_edge_board))::integer AS edge_board_breakouts,
+    (( SELECT count(*) FILTER (WHERE (mv_edge_board.section = 'trap'::text)) AS count
+           FROM mv_edge_board))::integer AS edge_board_traps,
+    ( SELECT max(mv_edge_board.refreshed_at) AS max
+           FROM mv_edge_board) AS edge_board_refreshed_at,
+    (( SELECT count(DISTINCT projection_accuracy.player_id) AS count
+           FROM projection_accuracy))::integer AS accuracy_players,
+    ( SELECT round(avg(abs((projection_accuracy.projected_score - projection_accuracy.actual_score))), 1) AS round
+           FROM projection_accuracy
+          WHERE ((projection_accuracy.actual_score IS NOT NULL) AND (projection_accuracy.season = 2026))) AS accuracy_avg_error,
+    ( SELECT max(projection_accuracy.round_number) AS max
+           FROM projection_accuracy
+          WHERE (projection_accuracy.season = 2026)) AS accuracy_latest_round,
+    ( SELECT job.active
+           FROM cron.job
+          WHERE (job.jobname = 'afl_processing_pipeline'::text)
+         LIMIT 1) AS controller_cron_active,
+    ( SELECT job.active
+           FROM cron.job
+          WHERE (job.jobname = 'refresh-projection-accuracy'::text)
+         LIMIT 1) AS accuracy_cron_active,
+    ( SELECT job.active
+           FROM cron.job
+          WHERE (job.jobname = 'rankings_cache_refresh'::text)
+         LIMIT 1) AS rankings_cron_active,
+    ( SELECT job.active
+           FROM cron.job
+          WHERE (job.jobname = 'neeko_ai_pipeline_daily'::text)
+         LIMIT 1) AS ai_cron_active,
+    (( SELECT count(*) AS count
+           FROM afl.players p
+          WHERE (NOT (EXISTS ( SELECT 1
+                   FROM ai_player_content aic
+                  WHERE (aic.player_id = p.player_id))))))::integer AS missing_ai_players,
+    ( SELECT max(market_watch_snapshot.created_at) AS max
+           FROM market.market_watch_snapshot) AS market_watch_last_refresh,
+    (( SELECT count(*) AS count
+           FROM system_logs
+          WHERE ((system_logs.log_level = ANY (ARRAY['error'::text, 'warn'::text])) AND (system_logs.created_at > (now() - '24:00:00'::interval)))))::integer AS recent_error_count,
+    ( SELECT max(system_logs.created_at) AS max
+           FROM system_logs) AS system_logs_last_event_at,
+    ( SELECT max(ai_generation_queue.updated_at) AS max
+           FROM ai_generation_queue
+          WHERE (ai_generation_queue.status = 'complete'::text)) AS ai_worker_last_run,
+    (( SELECT count(*) AS count
+           FROM afl.players p
+          WHERE (NOT (EXISTS ( SELECT 1
+                   FROM afl.player_rankings_cache rc
+                  WHERE (rc.player_id = p.player_id))))))::integer AS players_missing_from_cache;
+
+=== schema=public | view=v_admin_system_logs_recent ===
+ SELECT id,
+    log_level,
+    source,
+    event_type,
+    "left"(message, 300) AS message,
+    metadata,
+    created_at
+   FROM system_logs
+  ORDER BY created_at DESC
+ LIMIT 100;
+
+=== schema=public | view=v_admin_wau ===
+ SELECT count(DISTINCT user_id) AS weekly_active_users
+   FROM analytics_events
+  WHERE (created_at > (now() - '7 days'::interval));
+
+=== schema=public | view=v_ai_active_prompt_v2 ===
+ SELECT prompt_key,
+    system_prompt,
+    version,
+    updated_at
+   FROM ai_prompts_v2
+  WHERE ((prompt_key = 'player_ai_v2'::text) AND (is_active = true))
+  ORDER BY version DESC
+ LIMIT 1;
+
+=== schema=public | view=v_ai_player_analysis_input ===
+ SELECT player_id,
+    player_name,
+    team,
+    projection_final,
+    ceiling_estimate,
+    floor_estimate,
+    consistency_score,
+    trend_3_vs_10,
+    matchup_delta,
+    price,
+    value_score,
+    value_tag,
+    input_hash
+   FROM ai_player_analysis_input_cache;
+
+=== schema=public | view=v_ai_player_generation_input_v2 ===
+ WITH active_prompt AS (
+         SELECT v_ai_active_prompt_v2.version
+           FROM v_ai_active_prompt_v2
+        )
+ SELECT (v.player_id)::bigint AS player_id,
+    v.player_name,
+    v.team,
+    v.projection_final,
+    v.ceiling_estimate,
+    v.floor_estimate,
+    v.consistency_score,
+    v.trend_3_vs_10,
+    v.matchup_delta,
+    v.price,
+    v.value_score,
+    v.value_tag,
+    ap.version AS prompt_version,
+    md5(concat_ws('|'::text, COALESCE(v.input_hash, ''::text), COALESCE((ap.version)::text, ''::text))) AS input_hash
+   FROM (v_ai_player_analysis_input v
+     CROSS JOIN active_prompt ap);
+
+=== schema=public | view=v_ai_queue_health ===
+ SELECT count(*) FILTER (WHERE (status = 'pending'::text)) AS pending_jobs,
+    count(*) FILTER (WHERE (status = 'processing'::text)) AS processing_jobs,
+    count(*) FILTER (WHERE (status = 'failed'::text)) AS failed_jobs,
+    count(*) FILTER (WHERE (status = 'complete'::text)) AS completed_jobs,
+    count(*) AS total_jobs,
+    max(created_at) FILTER (WHERE (status = 'pending'::text)) AS newest_pending_job,
+    min(created_at) FILTER (WHERE (status = 'pending'::text)) AS oldest_pending_job,
+    count(*) FILTER (WHERE ((status = 'pending'::text) AND (created_at < (now() - '00:30:00'::interval)))) AS stale_pending_jobs,
+    count(*) FILTER (WHERE ((status = 'processing'::text) AND ((updated_at < (now() - '00:10:00'::interval)) OR (updated_at IS NULL)))) AS stuck_processing_jobs
+   FROM ai_generation_queue;
+
+=== schema=public | view=v_ai_rankings_generation_queue ===
+ SELECT c.player_id,
+    c.player_name,
+    c.team,
+    c."position",
+    c.neeko_rating,
+    c.projection_final,
+    c.ceiling AS ceiling_estimate,
+    c.floor AS floor_estimate,
+    c.consistency AS consistency_score,
+    c.form_score AS form_rating,
+    c.captain_score,
+    c.risk_rating,
+    c.projection_confidence,
+    c.value_score,
+    c.price,
+    c.captain_rating,
+    c.recommendation_color,
+    c.value_tag,
+    c.value_tier,
+    c.ai_recommendation,
+    md5((((((COALESCE((c.player_id)::text, ''::text) || COALESCE((c.projection_final)::text, ''::text)) || COALESCE((c.neeko_rating)::text, ''::text)) || COALESCE((c.value_score)::text, ''::text)) || COALESCE((c.price)::text, ''::text)) || COALESCE(c.ai_recommendation, ''::text))) AS current_input_hash,
+    r.input_hash AS stored_input_hash,
+    jsonb_build_object('player_id', c.player_id, 'player_name', c.player_name, 'team', c.team, 'position', c."position", 'projection_final', c.projection_final, 'ceiling_estimate', c.ceiling, 'floor_estimate', c.floor, 'consistency_score', c.consistency, 'form_rating', c.form_score, 'captain_score', c.captain_score, 'risk_rating', c.risk_rating, 'confidence', c.projection_confidence, 'value_score', c.value_score, 'price', c.price, 'ai_recommendation', COALESCE(c.ai_recommendation, 'HOLD'::text), 'recommendation_label', COALESCE(c.ai_recommendation, 'HOLD'::text), 'value_tag', c.value_tag, 'neeko_rating', c.neeko_rating) AS openai_input_json
+   FROM (afl.player_rankings_cache c
+     LEFT JOIN ai_rankings_player_recos r ON (((r.player_id = c.player_id) AND (r.season = 2026))));
+
+=== schema=public | view=v_ai_system_health ===
+ SELECT ( SELECT count(*) AS count
+           FROM ai_player_analysis) AS analysis_rows,
+    ( SELECT count(*) AS count
+           FROM ai_rankings_player_recos) AS reco_rows,
+    ( SELECT count(*) AS count
+           FROM ai_generation_queue
+          WHERE (ai_generation_queue.status = 'pending'::text)) AS queue_pending,
+    ( SELECT count(*) AS count
+           FROM ai_generation_queue
+          WHERE (ai_generation_queue.status = 'processing'::text)) AS queue_processing,
+    ( SELECT count(*) AS count
+           FROM ai_generation_queue
+          WHERE (ai_generation_queue.status = 'failed'::text)) AS queue_failed,
+    ( SELECT count(*) AS count
+           FROM ai_generation_queue
+          WHERE (ai_generation_queue.status = 'complete'::text)) AS queue_complete,
+    ( SELECT max(ai_player_analysis.generated_at) AS max
+           FROM ai_player_analysis) AS latest_analysis,
+    ( SELECT max(ai_rankings_player_recos.generated_at) AS max
+           FROM ai_rankings_player_recos) AS latest_recommendation,
+    ( SELECT count(*) AS count
+           FROM (afl.players p
+             LEFT JOIN ai_rankings_player_recos r ON ((p.player_id = r.player_id)))
+          WHERE (r.player_id IS NULL)) AS players_missing_recommendations,
+    ( SELECT count(*) AS count
+           FROM ai_generation_queue
+          WHERE ((ai_generation_queue.status = 'pending'::text) AND (ai_generation_queue.created_at < (now() - '00:30:00'::interval)))) AS stale_pending_jobs,
+    ( SELECT count(*) AS count
+           FROM ai_generation_queue
+          WHERE ((ai_generation_queue.status = 'processing'::text) AND ((ai_generation_queue.updated_at < (now() - '00:10:00'::interval)) OR (ai_generation_queue.updated_at IS NULL)))) AS stuck_processing_jobs;
+
+=== schema=public | view=v_ai_worker_health ===
+ SELECT ( SELECT max(ai_generation_queue.updated_at) AS max
+           FROM ai_generation_queue
+          WHERE (ai_generation_queue.status = 'complete'::text)) AS last_worker_run,
+    (( SELECT count(*) AS count
+           FROM ai_generation_queue
+          WHERE ((ai_generation_queue.status = 'complete'::text) AND (ai_generation_queue.updated_at > (now() - '00:10:00'::interval)))))::integer AS jobs_last_10m,
+    (( SELECT count(*) AS count
+           FROM system_logs
+          WHERE ((system_logs.log_level = 'error'::text) AND (system_logs.source ~~* '%ai%'::text) AND (system_logs.created_at > (now() - '01:00:00'::interval)))))::integer AS errors_last_hour;
+
+=== schema=public | view=v_canonical_health ===
+ SELECT (count(DISTINCT player_id))::integer AS unique_players,
+    (count(player_id))::integer AS total_player_round_rows,
+    (( SELECT max(s.round) AS max
+           FROM afl.raw_player_stats s
+          WHERE (s.season = (EXTRACT(year FROM now()))::integer)))::integer AS latest_round_loaded,
+    max(cached_at) AS latest_cache_refresh
+   FROM afl.player_rankings_cache rc;
+
+=== schema=public | view=v_command_center_status ===
+ WITH cache_stats AS (
+         SELECT (count(*))::integer AS rankings_cache_rows,
+            max(player_rankings_cache.cached_at) AS rankings_cache_refreshed_at,
+            (count(*) FILTER (WHERE (player_rankings_cache.ai_summary IS NOT NULL)))::integer AS ai_with_summary,
+            (count(*) FILTER (WHERE (player_rankings_cache.ai_summary IS NULL)))::integer AS ai_missing_players,
+            max(player_rankings_cache.ai_updated_at) AS ai_last_updated,
+            (count(*) FILTER (WHERE (player_rankings_cache.ai_recommendation IS NOT NULL)))::integer AS reco_rows
+           FROM afl.player_rankings_cache
+        ), reco_stats AS (
+         SELECT max(ai_rankings_player_recos.updated_at) AS reco_last_updated
+           FROM ai_rankings_player_recos
+          WHERE (ai_rankings_player_recos.recommendation_label IS NOT NULL)
+        ), queue_stats AS (
+         SELECT (count(*) FILTER (WHERE (ai_generation_queue.status = 'pending'::text)))::integer AS queue_pending,
+            (count(*) FILTER (WHERE (ai_generation_queue.status = 'processing'::text)))::integer AS queue_processing,
+            (count(*) FILTER (WHERE (ai_generation_queue.status = 'complete'::text)))::integer AS queue_complete,
+            (count(*) FILTER (WHERE (ai_generation_queue.status = 'failed'::text)))::integer AS queue_failed
+           FROM ai_generation_queue
+        ), pipeline_stats AS (
+         SELECT pipeline_runs.status AS pipeline_status,
+            pipeline_runs.started_at AS pipeline_last_run,
+            pipeline_runs.finished_at AS pipeline_finished_at
+           FROM pipeline_runs
+          ORDER BY pipeline_runs.started_at DESC
+         LIMIT 1
+        ), mw_stats AS (
+         SELECT v_mw_status.latest_snapshot AS market_watch_last_refresh,
+            v_mw_status.data_quality_level AS market_watch_quality
+           FROM v_mw_status
+          WHERE (v_mw_status.is_active = true)
+         LIMIT 1
+        ), log_stats AS (
+         SELECT (count(*) FILTER (WHERE ((system_logs.log_level = 'error'::text) AND (system_logs.created_at > (now() - '24:00:00'::interval)))))::integer AS recent_error_count,
+            max(system_logs.created_at) AS system_logs_last_event_at
+           FROM system_logs
+        ), cron_stats AS (
+         SELECT (count(*) FILTER (WHERE (v_admin_cron_status.active = true)))::integer AS cron_active_count,
+            (count(*) FILTER (WHERE (v_admin_cron_status.active = false)))::integer AS cron_inactive_count,
+            (count(*) FILTER (WHERE ((v_admin_cron_status.health = 'error'::text) AND (v_admin_cron_status.active = true))))::integer AS cron_failed_count
+           FROM v_admin_cron_status
+        )
+ SELECT c.rankings_cache_rows,
+    c.rankings_cache_refreshed_at,
+        CASE
+            WHEN (c.rankings_cache_rows = 0) THEN 'error'::text
+            WHEN (c.rankings_cache_refreshed_at < (now() - '25:00:00'::interval)) THEN 'warn'::text
+            ELSE 'ok'::text
+        END AS rankings_cache_status,
+    p.pipeline_status,
+    p.pipeline_last_run,
+    p.pipeline_finished_at,
+        CASE
+            WHEN (p.pipeline_status IS NULL) THEN 'warn'::text
+            WHEN (p.pipeline_status = ANY (ARRAY['complete'::text, 'completed'::text])) THEN 'ok'::text
+            WHEN (p.pipeline_status = 'running'::text) THEN 'ok'::text
+            WHEN (p.pipeline_status = 'failed'::text) THEN 'error'::text
+            ELSE 'warn'::text
+        END AS pipeline_health,
+    c.ai_with_summary AS ai_analysis_rows,
+    c.ai_missing_players,
+    c.ai_last_updated,
+    c.reco_rows,
+    r.reco_last_updated,
+        CASE
+            WHEN (c.ai_missing_players > 50) THEN 'error'::text
+            WHEN (c.ai_missing_players > 10) THEN 'warn'::text
+            ELSE 'ok'::text
+        END AS ai_health,
+    q.queue_pending,
+    q.queue_processing,
+    q.queue_complete,
+    q.queue_failed,
+        CASE
+            WHEN (q.queue_failed > 10) THEN 'error'::text
+            WHEN ((q.queue_pending > 0) OR (q.queue_processing > 0)) THEN 'warn'::text
+            ELSE 'ok'::text
+        END AS queue_health,
+    mw.market_watch_last_refresh,
+    mw.market_watch_quality,
+        CASE
+            WHEN (mw.market_watch_last_refresh IS NULL) THEN 'warn'::text
+            WHEN (mw.market_watch_last_refresh < (now() - '49:00:00'::interval)) THEN 'warn'::text
+            ELSE 'ok'::text
+        END AS market_watch_health,
+    cr.cron_active_count,
+    cr.cron_inactive_count,
+    cr.cron_failed_count,
+        CASE
+            WHEN (cr.cron_failed_count > 0) THEN 'error'::text
+            WHEN (cr.cron_inactive_count > 2) THEN 'warn'::text
+            ELSE 'ok'::text
+        END AS cron_health,
+    l.recent_error_count,
+    l.system_logs_last_event_at,
+        CASE
+            WHEN (l.recent_error_count > 5) THEN 'error'::text
+            WHEN (l.recent_error_count > 0) THEN 'warn'::text
+            ELSE 'ok'::text
+        END AS logs_health
+   FROM ((((((cache_stats c
+     CROSS JOIN reco_stats r)
+     CROSS JOIN queue_stats q)
+     LEFT JOIN pipeline_stats p ON (true))
+     LEFT JOIN mw_stats mw ON (true))
+     CROSS JOIN log_stats l)
+     CROSS JOIN cron_stats cr);
+
+=== schema=public | view=v_data_integrity_checks ===
+ SELECT (count(*) FILTER (WHERE ((projection_final IS NULL) OR (projection_final = (0)::double precision))))::integer AS players_missing_projection,
+    (count(*) FILTER (WHERE ((neeko_rating IS NULL) OR (neeko_rating = (0)::double precision))))::integer AS players_missing_neeko_rating,
+    ( SELECT max(ai_player_analysis.generated_at) AS max
+           FROM ai_player_analysis) AS last_volatility_refresh
+   FROM afl.player_rankings_cache rc;
+
+=== schema=public | view=v_model_performance ===
+ SELECT round(avg(pa.abs_error), 2) AS projection_mae,
+    round(avg((pa.within_10)::integer), 4) AS projection_within_10,
+    count(pa.player_id) AS total_projections,
+    round(avg((sr.correct_prediction)::integer), 4) AS start_sit_accuracy,
+    count(sr.id) AS total_start_sit_predictions
+   FROM (projection_accuracy pa
+     FULL JOIN start_sit_results sr ON (true))
+  WHERE ((pa.player_id IS NOT NULL) OR (sr.id IS NOT NULL));
+
+=== schema=public | view=v_mw_best_trades ===
+ WITH buy_players AS (
+         SELECT v_mw_premium.player_id,
+            v_mw_premium.player_name,
+            v_mw_premium.team,
+            v_mw_premium."position",
+            v_mw_premium.price,
+            v_mw_premium.projection,
+            v_mw_premium.expected_price_change,
+            v_mw_premium.trade_score,
+            v_mw_premium.risk_pct,
+            v_mw_premium.snapshot_updated_at,
+            v_mw_premium.season,
+            v_mw_premium.round_number
+           FROM v_mw_premium
+          WHERE (v_mw_premium.category = ANY (ARRAY['buy'::text, 'cash_cow'::text]))
+          ORDER BY v_mw_premium.trade_score DESC
+         LIMIT 40
+        ), sell_players AS (
+         SELECT v_mw_premium.player_id,
+            v_mw_premium.player_name,
+            v_mw_premium.team,
+            v_mw_premium."position",
+            v_mw_premium.price,
+            v_mw_premium.projection,
+            v_mw_premium.expected_price_change,
+            v_mw_premium.trade_score,
+            v_mw_premium.risk_pct,
+            v_mw_premium.snapshot_updated_at,
+            v_mw_premium.season,
+            v_mw_premium.round_number
+           FROM v_mw_premium
+          WHERE (v_mw_premium.category = ANY (ARRAY['sell'::text, 'trap'::text]))
+          ORDER BY v_mw_premium.trade_score
+         LIMIT 40
+        ), pairs AS (
+         SELECT s.player_id AS out_player_id,
+            b.player_id AS in_player_id,
+            s.player_name AS out_player_name,
+            b.player_name AS in_player_name,
+            s.team AS out_team,
+            b.team AS in_team,
+            s."position" AS out_position,
+            b."position" AS in_position,
+            s.price AS out_price,
+            b.price AS in_price,
+            s.projection AS out_projection,
+            b.projection AS in_projection,
+            s.expected_price_change AS out_expected_change,
+            b.expected_price_change AS in_expected_change,
+            round((b.projection - s.projection), 1) AS projected_points_gain,
+            round((b.expected_price_change - s.expected_price_change), 0) AS expected_price_gain,
+            round((b.risk_pct - s.risk_pct), 1) AS risk_change,
+            round(((b.trade_score + (100.0 - s.trade_score)) / 2.0), 1) AS confidence,
+            row_number() OVER (PARTITION BY b.player_id ORDER BY (b.trade_score - s.trade_score) DESC) AS in_rank,
+            b.season,
+            b.round_number,
+            b.snapshot_updated_at
+           FROM (sell_players s
+             CROSS JOIN buy_players b)
+          WHERE ((((abs((b.price - s.price)))::numeric / GREATEST((s.price)::numeric, 1.0)) <= 0.30) AND (b.projection > (s.projection + (3)::numeric)) AND (s.player_id <> b.player_id))
+        ), ranked AS (
+         SELECT (((pairs.out_player_id)::text || '_'::text) || (pairs.in_player_id)::text) AS trade_id,
+            'latest'::text AS snapshot_id,
+            pairs.out_player_id,
+            pairs.in_player_id,
+            pairs.out_player_name,
+            pairs.in_player_name,
+            pairs.out_team,
+            pairs.in_team,
+            pairs.out_position,
+            pairs.in_position,
+            pairs.out_price,
+            pairs.in_price,
+            pairs.out_projection,
+            pairs.in_projection,
+            pairs.out_expected_change,
+            pairs.in_expected_change,
+            pairs.projected_points_gain,
+            pairs.expected_price_gain,
+            pairs.risk_change,
+            pairs.confidence,
+            (((((pairs.out_player_name || ' → '::text) || pairs.in_player_name) || ': +'::text) || (pairs.projected_points_gain)::text) || ' pts'::text) AS rationale,
+            pairs.season,
+            pairs.round_number,
+            pairs.snapshot_updated_at,
+            row_number() OVER (ORDER BY (pairs.projected_points_gain + (pairs.expected_price_gain / 10000.0)) DESC) AS overall_rank
+           FROM pairs
+          WHERE (pairs.in_rank <= 3)
+        )
+ SELECT trade_id,
+    snapshot_id,
+    out_player_id,
+    in_player_id,
+    out_player_name,
+    in_player_name,
+    out_team,
+    in_team,
+    out_position,
+    in_position,
+    out_price,
+    in_price,
+    out_projection,
+    in_projection,
+    out_expected_change,
+    in_expected_change,
+    projected_points_gain,
+    expected_price_gain,
+    risk_change,
+    confidence,
+    rationale,
+    season,
+    round_number,
+    snapshot_updated_at
+   FROM ranked
+  WHERE (overall_rank <= 20)
+  ORDER BY overall_rank;
+
+=== schema=public | view=v_mw_category_counts ===
+ SELECT count(*) FILTER (WHERE (category = 'buy'::text)) AS buy_targets,
+    count(*) FILTER (WHERE (category = 'sell'::text)) AS sell_now,
+    count(*) FILTER (WHERE (category = 'cash_cow'::text)) AS cash_cows,
+    count(*) FILTER (WHERE (category = 'trap'::text)) AS traps,
+    (0)::bigint AS sell_consider,
+    (0)::bigint AS fades,
+    (0)::bigint AS monitors,
+    (0)::bigint AS breakouts,
+    count(*) AS total
+   FROM v_mw_premium;
+
+=== schema=public | view=v_mw_premium ===
+ WITH round_ctx AS (
+         SELECT COALESCE(max(games_raw.week), 0) AS round_number
+           FROM afl.games_raw
+          WHERE ((games_raw.season = (EXTRACT(year FROM now()))::integer) AND (games_raw.status_short = 'FT'::text))
+        ), prices AS (
+         SELECT DISTINCT ON ((lower(afl_player_prices.player_name))) afl_player_prices.player_name,
+            afl_player_prices.player_id,
+            afl_player_prices.priced_at,
+            afl_player_prices.season
+           FROM afl_player_prices
+          WHERE (afl_player_prices.season = 2026)
+          ORDER BY (lower(afl_player_prices.player_name)), afl_player_prices.created_at DESC NULLS LAST
+        ), base AS (
+         SELECT rc.player_id,
+            rc.player_name,
+            rc.team,
+            rc."position",
+            rc.price,
+            GREATEST((rc.projection_final)::numeric, (0)::numeric) AS projection,
+            GREATEST((rc.ceiling)::numeric, (0)::numeric) AS ceiling,
+            GREATEST((rc.floor)::numeric, (0)::numeric) AS floor_val,
+            (rc.risk_rating)::numeric AS risk_pct,
+            (rc.projection_confidence)::numeric AS projection_confidence,
+            (rc.neeko_rating)::numeric AS neeko_rating,
+            (rc.consistency)::numeric AS consistency_score,
+            (rc.form_score)::numeric AS form_score,
+            (rc.value_score)::numeric AS value_score,
+            rc.value_tier,
+            rc.recommendation_why,
+            rc.recommendation_short,
+            rc.cached_at AS snapshot_updated_at,
+            COALESCE(pp.priced_at, round(((rc.price)::numeric / 10490.0), 1)) AS breakeven,
+            round((GREATEST((rc.projection_final)::numeric, (0)::numeric) - COALESCE(pp.priced_at, round(((rc.price)::numeric / 10490.0), 1))), 1) AS price_edge_pts,
+            round(LEAST(GREATEST(((GREATEST((rc.projection_final)::numeric, (0)::numeric) - COALESCE(pp.priced_at, round(((rc.price)::numeric / 10490.0), 1))) * 10490.0), (- ((rc.price)::numeric * 0.35))), ((rc.price)::numeric * 0.35)), 0) AS expected_price_change
+           FROM (afl.player_rankings_cache rc
+             LEFT JOIN prices pp ON ((lower(pp.player_name) = lower(rc.player_name))))
+          WHERE ((rc.price IS NOT NULL) AND (rc.price > 0) AND (rc.projection_final IS NOT NULL) AND (rc.projection_final > (0)::double precision))
+        ), scored AS (
+         SELECT b.player_id,
+            b.player_name,
+            b.team,
+            b."position",
+            b.price,
+            b.projection,
+            b.ceiling,
+            b.floor_val,
+            b.risk_pct,
+            b.projection_confidence,
+            b.neeko_rating,
+            b.consistency_score,
+            b.form_score,
+            b.value_score,
+            b.value_tier,
+            b.recommendation_why,
+            b.recommendation_short,
+            b.snapshot_updated_at,
+            b.breakeven,
+            b.price_edge_pts,
+            b.expected_price_change,
+            ((b.projection > (b.form_score * 1.05)) AND (b.price < 500000)) AS breakout_flag,
+                CASE
+                    WHEN (b.risk_pct < (30)::numeric) THEN 'LOW'::text
+                    WHEN (b.risk_pct < (60)::numeric) THEN 'MEDIUM'::text
+                    ELSE 'HIGH'::text
+                END AS volatility_level,
+            round(((((b.projection / GREATEST(((b.price)::numeric / 1000.0), 1.0)) * (b.projection_confidence / 100.0)) * (100.0 / GREATEST((b.risk_pct + 1.0), 1.0))) * 100.0), 2) AS raw_trade_score
+           FROM base b
+        ), pct AS (
+         SELECT s.player_id,
+            s.player_name,
+            s.team,
+            s."position",
+            s.price,
+            s.projection,
+            s.ceiling,
+            s.floor_val,
+            s.risk_pct,
+            s.projection_confidence,
+            s.neeko_rating,
+            s.consistency_score,
+            s.form_score,
+            s.value_score,
+            s.value_tier,
+            s.recommendation_why,
+            s.recommendation_short,
+            s.snapshot_updated_at,
+            s.breakeven,
+            s.price_edge_pts,
+            s.expected_price_change,
+            s.breakout_flag,
+            s.volatility_level,
+            s.raw_trade_score,
+            round((((percent_rank() OVER (ORDER BY s.raw_trade_score) * (99.0)::double precision) + (1.0)::double precision))::numeric, 1) AS trade_score
+           FROM scored s
+        ), categorised AS (
+         SELECT p.player_id,
+            p.player_name,
+            p.team,
+            p."position",
+            p.price,
+            p.projection,
+            p.ceiling,
+            p.floor_val,
+            p.risk_pct,
+            p.projection_confidence,
+            p.neeko_rating,
+            p.consistency_score,
+            p.form_score,
+            p.value_score,
+            p.value_tier,
+            p.recommendation_why,
+            p.recommendation_short,
+            p.snapshot_updated_at,
+            p.breakeven,
+            p.price_edge_pts,
+            p.expected_price_change,
+            p.breakout_flag,
+            p.volatility_level,
+            p.raw_trade_score,
+            p.trade_score,
+            2026 AS season,
+            ( SELECT round_ctx.round_number
+                   FROM round_ctx) AS round_number,
+                CASE
+                    WHEN ((p.price > 700000) AND ((p.value_score < 7.0) OR (p.value_tier = 'OVERPRICED'::text)) AND (p.price_edge_pts < (5)::numeric)) THEN 'trap'::text
+                    WHEN ((p.price <= 350000) AND (p.projection >= (50)::numeric)) THEN 'cash_cow'::text
+                    WHEN ((p.price <= 400000) AND (p.projection >= (60)::numeric)) THEN 'cash_cow'::text
+                    WHEN ((p.price <= 500000) AND (p.projection >= (70)::numeric) AND (p.value_score >= (15)::numeric)) THEN 'cash_cow'::text
+                    WHEN ((p.price > 450000) AND (p.value_tier = 'OVERPRICED'::text) AND (p.price_edge_pts < (10)::numeric)) THEN 'sell'::text
+                    WHEN ((p.price_edge_pts >= (15)::numeric) AND (p.value_tier = ANY (ARRAY['STRONG VALUE'::text, 'GOOD VALUE'::text, 'FAIR VALUE'::text, 'UNDERPRICED'::text])) AND (p.projection_confidence >= (60)::numeric)) THEN 'buy'::text
+                    WHEN ((p.value_score >= 9.5) AND (p.projection_confidence >= (70)::numeric) AND (p.price <= 900000)) THEN 'buy'::text
+                    WHEN ((p.price > 350000) AND (p.price_edge_pts < ('-5'::integer)::numeric) AND (p.risk_pct > (50)::numeric)) THEN 'sell'::text
+                    WHEN ((p.price > 900000) AND (p.price_edge_pts < (0)::numeric)) THEN 'trap'::text
+                    WHEN (p.price_edge_pts > (5)::numeric) THEN 'buy'::text
+                    ELSE 'sell'::text
+                END AS category,
+                CASE
+                    WHEN ((p.price > 700000) AND ((p.value_score < 7.0) OR (p.value_tier = 'OVERPRICED'::text)) AND (p.price_edge_pts < (5)::numeric)) THEN 'Overpriced vs projection — downside risk'::text
+                    WHEN ((p.price <= 350000) AND (p.projection >= (50)::numeric)) THEN 'Budget player projecting well — generating cash'::text
+                    WHEN ((p.price <= 400000) AND (p.projection >= (60)::numeric)) THEN 'Budget player scoring above expectations'::text
+                    WHEN ((p.price <= 500000) AND (p.projection >= (70)::numeric) AND (p.value_score >= (15)::numeric)) THEN 'Rising rookie with strong projection'::text
+                    WHEN ((p.price > 450000) AND (p.value_tier = 'OVERPRICED'::text) AND (p.price_edge_pts < (10)::numeric)) THEN 'Projection doesn''t justify price tier'::text
+                    WHEN ((p.price_edge_pts >= (15)::numeric) AND (p.value_tier = ANY (ARRAY['STRONG VALUE'::text, 'GOOD VALUE'::text, 'FAIR VALUE'::text, 'UNDERPRICED'::text]))) THEN 'Projects well above cost — strong value signal'::text
+                    WHEN (p.value_score >= 9.5) THEN 'High value score relative to market price'::text
+                    WHEN ((p.price_edge_pts < ('-5'::integer)::numeric) AND (p.risk_pct > (50)::numeric)) THEN 'High risk and projecting below breakeven'::text
+                    WHEN ((p.price > 900000) AND (p.price_edge_pts < (0)::numeric)) THEN 'Premium price but projection disappoints'::text
+                    WHEN (p.price_edge_pts > (5)::numeric) THEN 'Projecting above breakeven'::text
+                    ELSE 'Projecting below breakeven — potential sell'::text
+                END AS category_reason,
+            GREATEST(round(((p.price)::numeric + p.expected_price_change), 0), (0)::numeric) AS projected_price_r1,
+            GREATEST(round(((p.price)::numeric + (p.expected_price_change * 1.8)), 0), (0)::numeric) AS projected_price_r2,
+            GREATEST(round(((p.price)::numeric + (p.expected_price_change * 2.4)), 0), (0)::numeric) AS projected_price_r3,
+                CASE
+                    WHEN (p.price_edge_pts >= (5)::numeric) THEN 'BUY'::text
+                    WHEN (p.price_edge_pts < ('-5'::integer)::numeric) THEN 'SELL'::text
+                    ELSE 'HOLD'::text
+                END AS action,
+            round(p.form_score, 1) AS last3_avg
+           FROM pct p
+        )
+ SELECT gen_random_uuid() AS snapshot_id,
+    player_id,
+    player_name,
+    team,
+    "position",
+    price,
+    breakeven,
+    projection,
+    ceiling,
+    floor_val,
+    risk_pct,
+    price_edge_pts,
+    expected_price_change,
+    category,
+    action,
+    trade_score,
+    array_remove(ARRAY[recommendation_short, recommendation_why,
+        CASE
+            WHEN (price_edge_pts > (15)::numeric) THEN (('Projecting '::text || (round(price_edge_pts, 0))::text) || ' pts above breakeven'::text)
+            ELSE NULL::text
+        END,
+        CASE
+            WHEN (risk_pct > (70)::numeric) THEN (('High volatility — '::text || (round(risk_pct, 0))::text) || '% risk'::text)
+            ELSE NULL::text
+        END,
+        CASE
+            WHEN (value_tier IS NOT NULL) THEN ('Value tier: '::text || value_tier)
+            ELSE NULL::text
+        END], NULL::text) AS reasons,
+    (price)::numeric AS projected_price,
+    projected_price_r1,
+    projected_price_r2,
+    projected_price_r3,
+    (0)::numeric AS breakout_score,
+    breakout_flag,
+    risk_pct AS volatility_score,
+    volatility_level,
+    last3_avg,
+    (price)::numeric AS estimated_price,
+    value_score,
+    (price)::numeric AS price_range_top,
+    (price)::numeric AS price_range_bottom,
+    (0)::numeric AS value_momentum,
+    NULL::text AS momentum_label,
+    (price)::numeric AS peak_price,
+    NULL::text AS peak_round,
+    NULL::text AS peak_status,
+    season,
+    round_number,
+    snapshot_updated_at,
+    neeko_rating,
+    consistency_score,
+    projection_confidence,
+    NULL::numeric AS avg_season,
+    category_reason
+   FROM categorised;
+
+=== schema=public | view=v_mw_status ===
+ SELECT ((count(*) > 100) OR (max(snapshot_updated_at) > (now() - '24:00:00'::interval))) AS is_active,
+    max(snapshot_updated_at) AS latest_snapshot,
+        CASE
+            WHEN (count(*) > 200) THEN 'full'::text
+            WHEN (count(*) > 50) THEN 'partial'::text
+            ELSE 'minimal'::text
+        END AS data_quality_level
+   FROM v_mw_premium;
+
+=== schema=public | view=v_mw_summary ===
+ SELECT count(*) FILTER (WHERE (category = 'buy'::text)) AS buy_count,
+    count(*) FILTER (WHERE (category = 'sell'::text)) AS sell_count,
+    count(*) FILTER (WHERE (category = 'cash_cow'::text)) AS cash_cow_count,
+    count(*) FILTER (WHERE (category = 'trap'::text)) AS trap_count,
+    max(snapshot_updated_at) AS latest_update,
+    max(snapshot_updated_at) AS latest_snapshot_timestamp
+   FROM v_mw_premium;
+
+=== schema=public | view=v_mw_summary_cards ===
+ WITH best_trade AS (
+         SELECT 'best_trade'::text AS card_type,
+            v_mw_best_trades.out_player_name AS label_a,
+            v_mw_best_trades.in_player_name AS label_b,
+            v_mw_best_trades.projected_points_gain AS metric_a,
+            v_mw_best_trades.expected_price_gain AS metric_b,
+            v_mw_best_trades.confidence AS metric_c,
+            v_mw_best_trades.rationale AS description,
+            v_mw_best_trades.out_player_id AS player_id_a,
+            v_mw_best_trades.in_player_id AS player_id_b,
+            v_mw_best_trades.out_price,
+            v_mw_best_trades.in_price,
+            v_mw_best_trades.season,
+            v_mw_best_trades.round_number,
+            v_mw_best_trades.snapshot_updated_at
+           FROM v_mw_best_trades
+          ORDER BY v_mw_best_trades.projected_points_gain DESC
+         LIMIT 1
+        ), best_cow AS (
+         SELECT 'best_cow'::text AS card_type,
+            v_mw_premium.player_name AS label_a,
+            v_mw_premium.team AS label_b,
+            v_mw_premium.expected_price_change AS metric_a,
+            v_mw_premium.projection AS metric_b,
+            v_mw_premium.trade_score AS metric_c,
+            v_mw_premium.category_reason AS description,
+            v_mw_premium.player_id AS player_id_a,
+            NULL::integer AS player_id_b,
+            v_mw_premium.price AS out_price,
+            NULL::integer AS in_price,
+            v_mw_premium.season,
+            v_mw_premium.round_number,
+            v_mw_premium.snapshot_updated_at
+           FROM v_mw_premium
+          WHERE (v_mw_premium.category = 'cash_cow'::text)
+          ORDER BY v_mw_premium.trade_score DESC
+         LIMIT 1
+        ), biggest_trap AS (
+         SELECT 'biggest_trap'::text AS card_type,
+            v_mw_premium.player_name AS label_a,
+            v_mw_premium.team AS label_b,
+            v_mw_premium.expected_price_change AS metric_a,
+            v_mw_premium.risk_pct AS metric_b,
+            v_mw_premium.trade_score AS metric_c,
+            v_mw_premium.category_reason AS description,
+            v_mw_premium.player_id AS player_id_a,
+            NULL::integer AS player_id_b,
+            v_mw_premium.price AS out_price,
+            NULL::integer AS in_price,
+            v_mw_premium.season,
+            v_mw_premium.round_number,
+            v_mw_premium.snapshot_updated_at
+           FROM v_mw_premium
+          WHERE (v_mw_premium.category = 'trap'::text)
+          ORDER BY v_mw_premium.trade_score
+         LIMIT 1
+        )
+ SELECT best_trade.card_type,
+    best_trade.label_a,
+    best_trade.label_b,
+    best_trade.metric_a,
+    best_trade.metric_b,
+    best_trade.metric_c,
+    best_trade.description,
+    best_trade.player_id_a,
+    best_trade.player_id_b,
+    best_trade.out_price,
+    best_trade.in_price,
+    best_trade.season,
+    best_trade.round_number,
+    best_trade.snapshot_updated_at
+   FROM best_trade
+UNION ALL
+ SELECT best_cow.card_type,
+    best_cow.label_a,
+    best_cow.label_b,
+    best_cow.metric_a,
+    best_cow.metric_b,
+    best_cow.metric_c,
+    best_cow.description,
+    best_cow.player_id_a,
+    best_cow.player_id_b,
+    best_cow.out_price,
+    best_cow.in_price,
+    best_cow.season,
+    best_cow.round_number,
+    best_cow.snapshot_updated_at
+   FROM best_cow
+UNION ALL
+ SELECT biggest_trap.card_type,
+    biggest_trap.label_a,
+    biggest_trap.label_b,
+    biggest_trap.metric_a,
+    biggest_trap.metric_b,
+    biggest_trap.metric_c,
+    biggest_trap.description,
+    biggest_trap.player_id_a,
+    biggest_trap.player_id_b,
+    biggest_trap.out_price,
+    biggest_trap.in_price,
+    biggest_trap.season,
+    biggest_trap.round_number,
+    biggest_trap.snapshot_updated_at
+   FROM biggest_trap;
+
+=== schema=public | view=v_neeko_intel_features_source_2026 ===
+ SELECT p.player_id,
+    pe.projection AS projection_final,
+    pe.ceiling AS ceiling_estimate,
+    pe.floor AS floor_estimate,
+    pe.consistency AS consistency_score,
+    pe.form_score AS form_rating,
+    50 AS matchup_rating,
+    50 AS upside_rating,
+    pe.volatility AS risk_rating,
+    70 AS projection_confidence
+   FROM (afl.v_projection_engine pe
+     JOIN afl.players p ON ((p.player_id = pe.player_id)));
+
+=== schema=public | view=v_pipeline_health ===
+ SELECT ( SELECT max(pipeline_runs.started_at) AS max
+           FROM pipeline_runs) AS last_pipeline_run,
+    ( SELECT pipeline_runs.status
+           FROM pipeline_runs
+          ORDER BY pipeline_runs.started_at DESC
+         LIMIT 1) AS latest_status,
+    (( SELECT (EXTRACT(epoch FROM (COALESCE(pipeline_runs.finished_at, now()) - pipeline_runs.started_at)) * (1000)::numeric)
+           FROM pipeline_runs
+          ORDER BY pipeline_runs.started_at DESC
+         LIMIT 1))::bigint AS avg_duration_ms,
+    NULL::text AS last_error;
+
+=== schema=public | view=v_pipeline_job_history ===
+ SELECT id,
+    job_name,
+    run_status,
+    attempt,
+    started_at,
+    completed_at,
+    (EXTRACT(epoch FROM (completed_at - started_at)))::integer AS duration_seconds,
+    error_message
+   FROM pipeline_job_runs
+  ORDER BY started_at DESC
+ LIMIT 50;
+
+=== schema=public | view=v_pipeline_progress ===
+ SELECT id,
+    pipeline_key,
+    label,
+    total_tasks,
+    completed_tasks,
+    round((((completed_tasks)::numeric / (NULLIF(total_tasks, 0))::numeric) * (100)::numeric), 1) AS percent_complete,
+    (total_tasks - completed_tasks) AS remaining_tasks,
+    current_step_label,
+    status,
+    started_at,
+    finished_at
+   FROM pipeline_runs
+  ORDER BY started_at DESC
+ LIMIT 5;
+
+=== schema=public | view=v_pipeline_run_detail ===
+ SELECT r.id,
+    r.pipeline_key,
+    r.label,
+    r.total_tasks,
+    r.completed_tasks,
+    round((((r.completed_tasks)::numeric / (NULLIF(r.total_tasks, 0))::numeric) * (100)::numeric), 1) AS percent_complete,
+    r.current_step_label,
+    r.status,
+    r.started_at,
+    r.finished_at,
+    (EXTRACT(epoch FROM (COALESCE(r.finished_at, now()) - r.started_at)))::integer AS duration_seconds,
+    count(s.id) AS total_steps,
+    count(s.id) FILTER (WHERE (s.status = 'completed'::text)) AS steps_completed,
+    count(s.id) FILTER (WHERE (s.status = 'failed'::text)) AS steps_failed,
+    count(s.id) FILTER (WHERE (s.status = 'skipped'::text)) AS steps_skipped,
+    string_agg(
+        CASE
+            WHEN (s.status = 'failed'::text) THEN ((s.step_label || ': '::text) || COALESCE(s.error, 'unknown error'::text))
+            ELSE NULL::text
+        END, ' | '::text ORDER BY s.started_at) AS error_summary
+   FROM (pipeline_runs r
+     LEFT JOIN pipeline_steps s ON ((s.run_id = r.id)))
+  GROUP BY r.id
+  ORDER BY r.started_at DESC;
+
+=== schema=public | view=v_pipeline_status ===
+ WITH raw_stats AS (
+         SELECT max(raw_player_stats.updated_at) AS last_raw_ingest,
+            count(*) AS raw_player_rows,
+            max(raw_player_stats.week) AS latest_round
+           FROM afl.raw_player_stats
+          WHERE (raw_player_stats.season = 2026)
+        ), cache_stats AS (
+         SELECT count(*) AS projection_rows
+           FROM afl.player_rankings_cache
+        ), ranking_ai AS (
+         SELECT max(ai_rankings_player_recos.updated_at) AS last_ranking_ai,
+            count(*) AS ranking_ai_rows
+           FROM ai_rankings_player_recos
+          WHERE (ai_rankings_player_recos.season = 2026)
+        ), pipeline AS (
+         SELECT pipeline_runs.started_at AS last_pipeline_run,
+            pipeline_runs.status AS last_pipeline_status,
+            pipeline_runs.finished_at AS last_pipeline_finished
+           FROM pipeline_runs
+          ORDER BY pipeline_runs.started_at DESC
+         LIMIT 1
+        ), ai_analysis AS (
+         SELECT count(*) AS ai_analysis_rows,
+            max(ai_player_content.generated_at) AS last_ai_analysis_gen
+           FROM ai_player_content
+        )
+ SELECT r.last_raw_ingest,
+    (r.raw_player_rows)::integer AS raw_player_rows,
+    r.latest_round,
+    (c.projection_rows)::integer AS projection_rows,
+    ra.last_ranking_ai,
+    (ra.ranking_ai_rows)::integer AS ranking_ai_rows,
+    pl.last_pipeline_run,
+    pl.last_pipeline_status,
+    pl.last_pipeline_finished,
+    (ai.ai_analysis_rows)::integer AS ai_analysis_rows,
+    ai.last_ai_analysis_gen
+   FROM ((((raw_stats r
+     CROSS JOIN cache_stats c)
+     CROSS JOIN ranking_ai ra)
+     LEFT JOIN pipeline pl ON (true))
+     CROSS JOIN ai_analysis ai);
+
+=== schema=public | view=v_player_rankings_full ===
+ SELECT player_id,
+    player_name,
+    team,
+    "position",
+    team_name,
+    position_group,
+    (projection_final)::numeric AS projection_final,
+    ((ceiling)::numeric)::integer AS ceiling,
+    (floor)::numeric AS floor,
+    (consistency)::numeric AS consistency_score,
+    (form_score)::numeric AS form_rating,
+    (neeko_rating)::numeric AS neeko_rating,
+    price,
+    (value_score)::numeric AS value_score,
+    ai_summary,
+    ai_recommendation AS recommendation,
+    recommendation_short,
+    ai_updated_at,
+    (projection_confidence)::numeric AS projection_confidence,
+    (risk_rating)::numeric AS risk_rating,
+    matchup_rating,
+    (upside_rating)::numeric AS upside_rating,
+    (captain_score)::numeric AS captain_score,
+    captain_rating,
+    value_tag,
+    value_tier,
+    consistency_tier,
+    (total_count)::bigint AS total_count
+   FROM afl.player_rankings_cache;
+
+=== schema=public | view=v_premium_users ===
+ SELECT id,
+    email,
+    is_active,
+    plan,
+    stripe_customer_id,
+    stripe_subscription_id,
+    subscription_status,
+    current_period_end
+   FROM profiles p
+  WHERE (is_active = true);
+
+=== schema=public | view=v_rankings_canonical ===
+ SELECT (player_id)::text AS player_id,
+    player_name,
+    team,
+    "position",
+    team_name,
+    position_group,
+    neeko_rating,
+    projection_final,
+    projection,
+    ceiling AS ceiling_estimate,
+    floor AS floor_estimate,
+    ceiling,
+    floor,
+    consistency AS consistency_score,
+    consistency,
+    form_score,
+    price,
+    value_score,
+    value_tag,
+    value_tier,
+    upside_rating,
+    projection_confidence,
+    risk_rating,
+    matchup_rating,
+    captain_score,
+    captain_rating,
+    ai_recommendation,
+    recommendation_why,
+    recommendation_short,
+    recommendation_color,
+    ai_summary,
+    ai_updated_at,
+    consistency_tier,
+    total_count,
+    cached_at AS refreshed_at
+   FROM afl.player_rankings_cache c;
+
+=== schema=public | view=v_rankings_final ===
+ SELECT player_id,
+    player_name,
+    team,
+    "position",
+    team_name,
+    position_group,
+    (projection_final)::numeric AS projection_final,
+    ((ceiling)::numeric)::integer AS ceiling,
+    (floor)::numeric AS floor,
+    ((ceiling)::numeric)::integer AS ceiling_estimate,
+    (floor)::numeric AS floor_estimate,
+    (consistency)::numeric AS consistency_score,
+    (form_score)::numeric AS form_rating,
+    (neeko_rating)::numeric AS neeko_rating,
+    price,
+    (value_score)::numeric AS value_score,
+    value_tag,
+    value_tier,
+    ai_recommendation,
+    recommendation_short,
+    recommendation_why,
+    recommendation_color,
+    ai_summary,
+    ai_updated_at,
+    (projection_confidence)::numeric AS projection_confidence,
+    (risk_rating)::numeric AS risk_rating,
+    matchup_rating,
+    (upside_rating)::numeric AS upside_rating,
+    (captain_score)::numeric AS captain_score,
+    captain_rating,
+    consistency_tier,
+    (total_count)::bigint AS total_count,
+    cached_at
+   FROM afl.player_rankings_cache;
+
+=== schema=public | view=v_rankings_free ===
+ SELECT player_id,
+    player_name,
+    team,
+    "position",
+    team_name,
+    position_group,
+    projection_final,
+    ceiling,
+    floor,
+    ceiling_estimate,
+    floor_estimate,
+    consistency_score,
+    form_rating,
+    neeko_rating,
+    price,
+    value_score,
+    value_tag,
+    value_tier,
+    ai_recommendation,
+    recommendation_short,
+    recommendation_why,
+    recommendation_color,
+    ai_summary,
+    ai_updated_at,
+    projection_confidence,
+    risk_rating,
+    matchup_rating,
+    upside_rating,
+    captain_score,
+    captain_rating,
+    consistency_tier,
+    total_count,
+    cached_at
+   FROM v_rankings_final
+  ORDER BY neeko_rating DESC
+ LIMIT 25;
+
+=== schema=public | view=v_rankings_master ===
+ SELECT (c.player_id)::integer AS player_id,
+    c.player_name,
+    c.team,
+    c."position",
+    c.neeko_rating,
+    c.projection_final,
+    c.ceiling_estimate,
+    c.floor_estimate,
+    c.projection_confidence,
+    c.risk_rating,
+    c.captain_score,
+    c.captain_rating,
+    c.price,
+    c.value_score,
+    c.value_tag,
+    c.value_tier,
+    c.upside_rating,
+    c.consistency_score,
+    ai.recommendation,
+    ai.why AS recommendation_short,
+    ai.summary AS ai_summary,
+    ai.generated_at,
+    c.refreshed_at
+   FROM (v_rankings_canonical c
+     LEFT JOIN ai_player_content ai ON ((ai.player_id = (c.player_id)::bigint)))
+  WHERE (c.player_id IS NOT NULL);
+
+=== schema=public | view=v_start_sit_cache_health ===
+ SELECT count(*) AS cache_rows,
+    max(updated_at) AS last_cache_update,
+    min(updated_at) AS oldest_cache_entry,
+    count(*) FILTER (WHERE (updated_at < (now() - '24:00:00'::interval))) AS stale_rows,
+    count(DISTINCT season) AS seasons_cached,
+    count(DISTINCT round_number) AS rounds_cached
+   FROM start_sit_cache;
+
+=== schema=public | view=v_start_sit_calibration ===
+ SELECT confidence_bucket,
+    predictions,
+    correct,
+    accuracy,
+    updated_at
+   FROM start_sit_calibration
+  ORDER BY confidence_bucket;
+

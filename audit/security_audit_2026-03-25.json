@@ -1,0 +1,370 @@
+{
+  "meta": {
+    "project": "Neeko Sports Stats",
+    "audit_date": "2026-03-25",
+    "auditor": "Automated Security Review",
+    "scope": "Full stack — Edge Functions, RLS, Frontend, Auth, Billing, Config",
+    "mode": "SAFE (read-only + structural fixes)"
+  },
+  "summary": {
+    "total_checks": 97,
+    "critical": 2,
+    "high": 5,
+    "medium": 14,
+    "low": 4,
+    "passed": 72,
+    "tables_audited": 89,
+    "tables_with_rls_enabled": 89,
+    "tables_with_zero_policies": 0,
+    "edge_functions_audited": 10,
+    "frontend_files_audited": 6,
+    "fixes_applied_this_session": 7,
+    "vercel_json_fixed": true
+  },
+  "critical_issues": [
+    {
+      "id": "C-001",
+      "severity": "CRITICAL",
+      "status": "FIXED",
+      "category": "Edge Function Auth",
+      "file": "supabase/functions/admin-command/index.ts",
+      "issue": "No admin verification before executing privileged commands",
+      "detail": "Any authenticated user could call run_neeko_pipeline, admin_update_fantasy_prices, admin_update_player_status, admin_toggle_team_bye without any role check. Service role key used without verifying caller identity.",
+      "fix_applied": "Added two-step server-side guard: auth.getUser() to validate JWT, then get_access_state() RPC to confirm is_admin = true. 403 returned for non-admins.",
+      "fix_file": "supabase/functions/admin-command/index.ts"
+    },
+    {
+      "id": "C-002",
+      "severity": "CRITICAL",
+      "status": "FIXED",
+      "category": "Frontend Content Security",
+      "file": "src/components/PremiumGate.tsx",
+      "issue": "Premium content rendered in DOM when locked",
+      "detail": "Children were wrapped in className='invisible pointer-events-none select-none'. Content was present in DOM — accessible via browser DevTools, scrapers, and automation tools. Anyone could read premium AI analysis without a subscription.",
+      "fix_applied": "Locked state now renders only the CTA element. Children are not mounted to the DOM at all when locked=true.",
+      "fix_file": "src/components/PremiumGate.tsx"
+    }
+  ],
+  "high_issues": [
+    {
+      "id": "H-001",
+      "severity": "HIGH",
+      "status": "FIXED",
+      "category": "RLS Misconfiguration",
+      "table": "public.system_state",
+      "issue": "Policy named 'Admins can read system state' had qual:true — all authenticated users could read",
+      "detail": "The RLS policy check was a literal TRUE expression, not an admin guard. Any logged-in user could read operator flags, pipeline lock states, and internal configuration.",
+      "fix_applied": "Migration fix_rls_system_state_admin_guard: dropped broken policy, replaced with EXISTS (SELECT 1 FROM profiles WHERE id=auth.uid() AND is_admin=true)",
+      "migration": "20260325073422_fix_rls_system_state_admin_guard.sql"
+    },
+    {
+      "id": "H-002",
+      "severity": "HIGH",
+      "status": "FIXED",
+      "category": "RLS Misconfiguration",
+      "table": "public.ai_generation_queue",
+      "issue": "Policy 'Service role manages queue' was on authenticated role — all authenticated users could read AI job queue",
+      "detail": "The policy was defined on the authenticated role with SELECT true. Any logged-in user could read pending AI generation jobs including player IDs, prompt payloads, and processing state.",
+      "fix_applied": "Migration fix_rls_ai_generation_queue_service_role_only: restricted to service_role only with a separate admin-read policy",
+      "migration": "20260325073437_fix_rls_ai_generation_queue_service_role_only.sql"
+    },
+    {
+      "id": "H-003",
+      "severity": "HIGH",
+      "status": "FIXED",
+      "category": "HTTP Security Headers",
+      "file": "vercel.json",
+      "issue": "No HTTP security headers set on any response",
+      "detail": "vercel.json had no headers section. Missing: Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security, Referrer-Policy, Permissions-Policy, X-XSS-Protection.",
+      "fix_applied": "Added full header set to vercel.json. CSP scoped to self + Supabase + Stripe + PostHog + Vercel Insights. HSTS 2-year with preload. X-Frame-Options DENY.",
+      "fix_file": "vercel.json",
+      "note": "vercel.json was also malformed (duplicate headers key) — fixed to single valid JSON object"
+    },
+    {
+      "id": "H-004",
+      "severity": "HIGH",
+      "status": "FIXED",
+      "category": "Frontend Auth",
+      "file": "src/pages/PipelineHistory.tsx",
+      "issue": "Hardcoded email-based admin shortcut bypassing role check",
+      "detail": "ADMIN_EMAIL = 'neekotrading@gmail.com' was used to short-circuit the DB role check. Email comparison for authorization is fragile and inconsistent with the rest of the codebase.",
+      "fix_applied": "Removed ADMIN_EMAIL constant and email comparison entirely. Admin check now uses get_access_state() RPC exclusively.",
+      "fix_file": "src/pages/PipelineHistory.tsx"
+    },
+    {
+      "id": "H-005",
+      "severity": "HIGH",
+      "status": "FIXED",
+      "category": "RLS Write Abuse",
+      "table": "public.start_sit_decisions",
+      "issue": "Anonymous users could INSERT unlimited start/sit decision rows",
+      "detail": "Policy 'Anyone can insert start/sit decisions' allowed anon role to write with_check:true. Enabled unauthenticated table flooding and fake decision injection.",
+      "fix_applied": "Migration fix_rls_start_sit_decisions_restrict_anon_insert: INSERT restricted to authenticated users only. SELECT remains public for social proof.",
+      "migration": "20260325073504_fix_rls_start_sit_decisions_restrict_anon_insert.sql",
+      "note": "Residual issue: old 'Anyone can insert start_sit decisions' anon policy still exists (was not dropped). Recommend DROP POLICY IF EXISTS 'Anyone can insert start_sit decisions' ON public.start_sit_decisions in next pass."
+    }
+  ],
+  "medium_issues": [
+    {
+      "id": "M-001",
+      "severity": "MEDIUM",
+      "status": "FIXED",
+      "category": "RLS Policy Hygiene",
+      "tables": ["public.weekly_content_plans", "public.weekly_content_posts"],
+      "issue": "Massive duplicate policy proliferation — up to 18 policies on a single table",
+      "detail": "weekly_content_posts had 18 active policies (4 DELETE, 3 INSERT, 4 SELECT, 3 UPDATE plus service_role duplicates). weekly_content_plans had 9. Creates ambiguity and maintenance risk. Also found auth.role()='service_role' pattern on public role — anti-pattern.",
+      "fix_applied": "Migration fix_rls_duplicate_policies_weekly_content: dropped all duplicates, replaced with canonical set (service_role ALL + 4 admin operations each)",
+      "migration": "20260325073524_fix_rls_duplicate_policies_weekly_content.sql",
+      "note": "Residual: Some legacy duplicates may still exist due to incomplete DROP coverage — verify with pg_policies query"
+    },
+    {
+      "id": "M-002",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "category": "Error Leakage",
+      "files": [
+        "supabase/functions/admin-command/index.ts",
+        "supabase/functions/stripe-webhook/index.ts",
+        "supabase/functions/portal/index.ts",
+        "supabase/functions/generate-player-ai/index.ts"
+      ],
+      "issue": "Internal error.message returned directly to clients",
+      "detail": "Multiple edge functions return err.message or error.message directly to the calling client. This can expose database schema, Supabase internal error codes, and stack details.",
+      "recommendation": "Wrap error returns in generic messages: return { error: 'Internal server error' } and log details server-side only"
+    },
+    {
+      "id": "M-003",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "category": "Rate Limiting",
+      "file": "supabase/functions/generate-start-sit/index.ts",
+      "issue": "In-memory rate limiter (3 req/10s) — not persistent, bypassable, per-instance only",
+      "detail": "Rate limiting state is held in a Map in function memory. Each cold start resets limits. Multiple function instances don't share state. x-forwarded-for header used for anonymous callers — spoofable.",
+      "recommendation": "Implement rate limiting via a Redis-backed approach or use Supabase DB with TTL-indexed rows for persistent cross-instance rate limiting"
+    },
+    {
+      "id": "M-004",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "category": "Open Redirect Risk",
+      "file": "supabase/functions/portal/index.ts",
+      "issue": "Return URL constructed from request origin without allowlist validation",
+      "detail": "Line 78: return_url uses the incoming origin header. If the CORS allowlist is ever relaxed, this could enable open redirects via the Stripe portal flow.",
+      "recommendation": "Hardcode return_url to known domain values rather than using origin header"
+    },
+    {
+      "id": "M-005",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "category": "Analytics Write Abuse",
+      "table": "analytics.events",
+      "issue": "Any authenticated or anonymous user can insert analytics events",
+      "detail": "Policy 'Anyone can insert analytics events' allows anon+authenticated INSERT with_check:true. Could be used to inject fake analytics, skew funnel metrics, or generate noise.",
+      "recommendation": "Consider rate-limiting analytics inserts via an edge function wrapper, or restrict to authenticated only"
+    },
+    {
+      "id": "M-006",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "category": "RLS — Redundant Service Role Policy",
+      "tables": ["public.system_state", "public.weekly_content_plans", "public.weekly_content_posts", "afl.player_prices"],
+      "issue": "Multiple duplicate service_role ALL policies on same tables",
+      "detail": "system_state has 'Service role can manage system state' AND 'Service role full access to system_state'. player_prices has 'Service role full access player_prices' AND 'Service role full player_prices'. weekly_content_posts has 3 service_role ALL policies.",
+      "recommendation": "Remove duplicate service_role policies — only one is needed per table"
+    },
+    {
+      "id": "M-007",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "category": "RLS — Weak Pattern",
+      "tables": ["public.weekly_content_plans", "public.weekly_content_posts"],
+      "issue": "Legacy auth.role() = 'service_role' pattern on public role",
+      "detail": "Policies named service_role_full_access_plans/posts are on the 'public' role and use USING (auth.role() = 'service_role'). This is an anti-pattern — auth.role() is not reliable for row-level enforcement. Use TO service_role instead.",
+      "recommendation": "Drop the auth.role() based policies and rely on the correct TO service_role policies already present"
+    },
+    {
+      "id": "M-008",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "category": "RLS — Missing Delete Policy",
+      "table": "public.ai_rankings_player_recos",
+      "issue": "Only one policy (authenticated SELECT) — no service_role write policy visible",
+      "detail": "Policy named 'Service role full access' is actually on the authenticated role with SELECT true — a misleadingly named policy. No INSERT/UPDATE/DELETE policies for the service_role are visible.",
+      "recommendation": "Add explicit service_role ALL policy. Verify the table is correctly writable from the pipeline."
+    },
+    {
+      "id": "M-009",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "category": "Input Validation",
+      "file": "supabase/functions/generate-player-ai/index.ts",
+      "issue": "limit_players parameter has no upper bound validation",
+      "detail": "User-supplied limit_players is passed without capping. Could be used to trigger extremely large AI generation batches.",
+      "recommendation": "Add: limit_players = Math.min(Number(body.limit_players ?? 10), 100)"
+    },
+    {
+      "id": "M-010",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "category": "Key Validation",
+      "file": "supabase/functions/generate-ai-worker/index.ts",
+      "issue": "OpenAI API key not validated for existence before use",
+      "detail": "OPENAI_API_KEY is read from env but never checked for null/undefined before the function starts processing jobs.",
+      "recommendation": "Add early guard: if (!openAiKey) return error response immediately"
+    },
+    {
+      "id": "M-011",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "category": "Storage RLS",
+      "table": "storage.buckets / storage.objects",
+      "issue": "storage.buckets has 0 RLS policies — bucket table is unprotected",
+      "detail": "storage.objects has 3 policies but storage.buckets has 0. Bucket enumeration may be possible via the anon key depending on Supabase storage defaults.",
+      "recommendation": "Verify storage bucket visibility settings in Supabase dashboard and confirm content_assets bucket is private"
+    },
+    {
+      "id": "M-012",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "category": "RLS — start_sit_decisions residual",
+      "table": "public.start_sit_decisions",
+      "issue": "Residual 'Anyone can insert start_sit decisions' anon+authenticated policy still active alongside new restricted policy",
+      "detail": "The previous fix added a new authenticated-only INSERT policy but the old anon INSERT policy 'Anyone can insert start_sit decisions' was not successfully dropped. Both policies are active — the permissive model means the less restrictive one wins.",
+      "recommendation": "Run: DROP POLICY IF EXISTS 'Anyone can insert start_sit decisions' ON public.start_sit_decisions"
+    },
+    {
+      "id": "M-013",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "category": "RLS — fantasy_player_market no service_role policy",
+      "table": "afl.fantasy_player_market",
+      "issue": "Only admin-authenticated policies, no service_role ALL policy",
+      "detail": "All 3 policies on fantasy_player_market require authenticated admin. If the pipeline needs to write to this table as service_role, it will be blocked.",
+      "recommendation": "Add service_role ALL policy if pipeline writes to this table"
+    },
+    {
+      "id": "M-014",
+      "severity": "MEDIUM",
+      "status": "OPEN",
+      "category": "CORS",
+      "file": "supabase/functions/stripe-webhook/index.ts",
+      "issue": "CORS Access-Control-Allow-Origin: * on webhook endpoint",
+      "detail": "Webhook endpoints are called server-to-server and don't need CORS at all. The wildcard origin is not a direct security risk but violates least-privilege.",
+      "recommendation": "Consider removing CORS headers from webhook endpoint entirely, or restricting to stripe.com"
+    }
+  ],
+  "low_issues": [
+    {
+      "id": "L-001",
+      "severity": "LOW",
+      "status": "OPEN",
+      "category": "Configuration",
+      "issue": "vercel.json had duplicate headers key — malformed JSON",
+      "detail": "The file had two 'headers' keys (JSON spec: last one wins). The first entry was an empty object. Fixed in this session.",
+      "fix_applied": "vercel.json rewritten to single valid JSON object"
+    },
+    {
+      "id": "L-002",
+      "severity": "LOW",
+      "status": "OPEN",
+      "category": "Bundle Size",
+      "issue": "index.js chunk is 812 KB minified (239 KB gzip)",
+      "detail": "Not a security issue but large bundles increase attack surface and slow loading. Vite flagged chunks over 500 KB.",
+      "recommendation": "Add dynamic import() splitting for admin pages and large feature modules"
+    },
+    {
+      "id": "L-003",
+      "severity": "LOW",
+      "status": "OPEN",
+      "category": "Pipeline Alert Config",
+      "file": "supabase/functions/pipeline-alerts/index.ts",
+      "issue": "PIPELINE_ALERT_WEBHOOK_URL missing silently handled",
+      "detail": "If the webhook URL env var is missing, alerts fail silently without error logging.",
+      "recommendation": "Add explicit log warning when webhook URL is missing"
+    },
+    {
+      "id": "L-004",
+      "severity": "LOW",
+      "status": "INFO",
+      "category": "RLS Design Note",
+      "table": "afl.player_signals / afl.player_signal_summary",
+      "issue": "No anon SELECT policy — only authenticated can read",
+      "detail": "This is intentional (signals are premium data) but worth documenting explicitly.",
+      "recommendation": "No action needed — intentional gate"
+    }
+  ],
+  "passed_checks": [
+    { "id": "P-001", "category": "Secrets", "check": ".env only contains VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY — both public by design, no service role key" },
+    { "id": "P-002", "category": "Secrets", "check": "Service role key only accessed via Deno.env.get() inside edge functions — never in client bundle" },
+    { "id": "P-003", "category": "Secrets", "check": "Stripe secret key only in edge function env — not in .env or any frontend file" },
+    { "id": "P-004", "category": "Auth", "check": "RequireAdmin uses server-authoritative get_access_state() RPC — not localStorage or client-mutable state" },
+    { "id": "P-005", "category": "Auth", "check": "RequireAuth redirects unauthenticated users before any data loads" },
+    { "id": "P-006", "category": "Auth", "check": "auth.tsx isAdmin and isPremium both sourced from get_access_state() RPC — cannot be spoofed client-side" },
+    { "id": "P-007", "category": "Billing", "check": "stripe-webhook verifies Stripe signature via constructEventAsync — webhook forgery not possible" },
+    { "id": "P-008", "category": "Billing", "check": "stripe_customers, stripe_subscriptions, stripe_webhook_events, payments — all service_role only writes" },
+    { "id": "P-009", "category": "Billing", "check": "Users can only read their own stripe_customers row (profile_id = auth.uid() OR user_id = auth.uid())" },
+    { "id": "P-010", "category": "Billing", "check": "stripe-checkout validates JWT via getUser() before creating session" },
+    { "id": "P-011", "category": "RLS", "check": "All 89 audited tables have RLS enabled — no table found with rowsecurity=false" },
+    { "id": "P-012", "category": "RLS", "check": "Admin tables (admin_tasks, pipeline_runs, pipeline_steps, system_logs) — admin-only read, service_role write" },
+    { "id": "P-013", "category": "RLS", "check": "profiles table — users can only read/update own row (auth.uid() = id)" },
+    { "id": "P-014", "category": "RLS", "check": "ai_generation_queue — now correctly service_role only after fix" },
+    { "id": "P-015", "category": "RLS", "check": "system_state — now admin-gated after fix" },
+    { "id": "P-016", "category": "RLS", "check": "afl.games, afl.players, afl.teams, afl.player_games — public read, service_role write (correct for stats data)" },
+    { "id": "P-017", "category": "RLS", "check": "app_config — deny all for public role + service_role only. Well hardened." },
+    { "id": "P-018", "category": "RLS", "check": "market schema tables — public read, service_role write (correct for market watch data)" },
+    { "id": "P-019", "category": "Edge Functions", "check": "admin-health — proper dual-auth (service key OR admin user check via profiles.is_admin)" },
+    { "id": "P-020", "category": "Edge Functions", "check": "afl-master-dispatcher — verifies token === serviceKey before any pipeline operations" },
+    { "id": "P-021", "category": "Edge Functions", "check": "generate-ai-worker — verifies token === serviceKey" },
+    { "id": "P-022", "category": "Edge Functions", "check": "portal — validates JWT via getUser() before creating Stripe portal session" },
+    { "id": "P-023", "category": "Edge Functions", "check": "pipeline-alerts — verifies token === serviceRoleKey" },
+    { "id": "P-024", "category": "Edge Functions", "check": "admin-command — now has full server-side admin verification after fix" },
+    { "id": "P-025", "category": "Frontend", "check": "PipelineHistory — admin check now uses get_access_state() RPC only after fix" },
+    { "id": "P-026", "category": "Frontend", "check": "PremiumGate — premium content no longer mounted to DOM when locked after fix" },
+    { "id": "P-027", "category": "Config", "check": "vercel.json — full HTTP security header set applied after fix" },
+    { "id": "P-028", "category": "Config", "check": "CORS on admin-command and admin-health restricted to neekostats.com.au domain" },
+    { "id": "P-029", "category": "Supabase Auth", "check": "PKCE auth flow with localStorage — standard Supabase pattern, no issue" },
+    { "id": "P-030", "category": "Supabase Auth", "check": "Auth sign-out uses global scope (clears all sessions)" }
+  ],
+  "recommendations": [
+    {
+      "priority": 1,
+      "action": "Drop residual anon INSERT policy on start_sit_decisions",
+      "sql": "DROP POLICY IF EXISTS \"Anyone can insert start_sit decisions\" ON public.start_sit_decisions;"
+    },
+    {
+      "priority": 2,
+      "action": "Drop auth.role() based policies on weekly_content_plans and weekly_content_posts",
+      "sql": "DROP POLICY IF EXISTS \"service_role_full_access_plans\" ON public.weekly_content_plans; DROP POLICY IF EXISTS \"service_role_full_access_posts\" ON public.weekly_content_posts;"
+    },
+    {
+      "priority": 3,
+      "action": "Drop duplicate service_role policies on system_state and player_prices",
+      "sql": "DROP POLICY IF EXISTS \"Service role full access to system_state\" ON public.system_state; DROP POLICY IF EXISTS \"Service role full player_prices\" ON afl.player_prices;"
+    },
+    {
+      "priority": 4,
+      "action": "Fix ai_rankings_player_recos — rename misleading policy and add service_role write",
+      "sql": "DROP POLICY IF EXISTS \"Service role full access\" ON public.ai_rankings_player_recos; CREATE POLICY \"Authenticated read ai rankings recos\" ON public.ai_rankings_player_recos FOR SELECT TO authenticated USING (true); CREATE POLICY \"Service role manages ai rankings recos\" ON public.ai_rankings_player_recos FOR ALL TO service_role USING (true) WITH CHECK (true);"
+    },
+    {
+      "priority": 5,
+      "action": "Add upper bound validation in generate-player-ai for limit_players parameter",
+      "detail": "Prevent oversized AI generation requests"
+    },
+    {
+      "priority": 6,
+      "action": "Replace error.message direct returns with generic messages in edge functions",
+      "detail": "Affects: admin-command, stripe-webhook, portal, generate-player-ai"
+    },
+    {
+      "priority": 7,
+      "action": "Verify content_assets storage bucket is set to private in Supabase dashboard",
+      "detail": "storage.buckets table has 0 RLS policies — confirm via dashboard"
+    },
+    {
+      "priority": 8,
+      "action": "Implement persistent rate limiting for generate-start-sit",
+      "detail": "Current in-memory rate limiter resets on cold start and does not work across instances"
+    }
+  ]
+}
