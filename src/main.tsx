@@ -21,17 +21,24 @@ const rootEl = document.getElementById("root");
 console.log("Root element:", rootEl);
 
 console.log("About to call createRoot");
-const root = createRoot(rootEl!);
-console.log("createRoot successful");
+console.log("Root element null check:", rootEl === null);
+console.log("Root element tagName:", rootEl?.tagName);
 
-console.log("About to render");
-root.render(
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </AuthProvider>
-  </QueryClientProvider>
-);
-console.log("Render called");
+if (!rootEl) {
+  console.error("CRITICAL: Root element not found!");
+  document.body.innerHTML = '<div style="color: white; padding: 20px;">ERROR: Root element not found</div>';
+} else {
+  const root = createRoot(rootEl);
+  console.log("createRoot successful");
+
+  console.log("About to render - testing force render first");
+
+  // FORCE RENDER TEST - bypass all providers
+  root.render(
+    <div style={{color: "white", padding: "20px", fontSize: "24px"}}>
+      FORCE RENDER - React is mounting
+    </div>
+  );
+
+  console.log("Force render called");
+}
