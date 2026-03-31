@@ -202,10 +202,6 @@ export default function MarketWatchPage() {
           </div>
         </div>
 
-        {heroTrade && (
-          <MarketWatchHeroTrade trade={heroTrade} />
-        )}
-
         <div>
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-white mb-2">
@@ -225,29 +221,14 @@ export default function MarketWatchPage() {
         {!isPremium && <MarketWatchPaywall />}
 
         <PremiumGate>
-          <div className="space-y-12">
-            <div>
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-white mb-2">
-                  Full Trade Plan
-                </h2>
-                <p className="text-white/50">
-                  Complete signals for every position
-                </p>
-              </div>
-              <MarketWatchPremium
-                sells={classified.sells}
-                buys={classified.buyBeforeRise}
-                upgrades={classified.upgrades}
-                cashCows={classified.cashCows}
-                traps={classified.traps}
-              />
-            </div>
-
-            <div className="pt-8 border-t border-white/10">
-              <ProjectedMoversSection />
-            </div>
-          </div>
+          <MarketWatchPremium
+            sells={classified.sells}
+            buys={classified.buyBeforeRise}
+            upgrades={classified.upgrades}
+            cashCows={classified.cashCows}
+            traps={classified.traps}
+            allTrades={allTrades}
+          />
         </PremiumGate>
 
         <div className="pt-8 border-t border-white/10">
