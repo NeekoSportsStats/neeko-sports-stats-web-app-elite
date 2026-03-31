@@ -1,14 +1,20 @@
 import { MWCategory } from "./types";
 
 export function fmtPrice(v: number | null | undefined): string {
-  if (v == null) return "—";
+  if (v == null || v === 0) return "—";
   const n = Number(v);
   if (isNaN(n)) return "—";
+
   const abs = Math.abs(n);
   const sign = n < 0 ? "-" : "";
-  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(3).replace(/\.?0+$/, "")}M`;
-  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
-  return `${sign}$${abs}`;
+
+  if (abs >= 1_000_000) {
+    // >= 1M → 1.126M (3 decimal places, no trailing zeros)
+    return `${sign}$${(abs / 1_000_000).toFixed(3)}M`;
+  }
+
+  // < 1M → 853K (no decimals)
+  return `${sign}$${Math.floor(abs / 1000)}K`;
 }
 
 export function fmtNum(v: number | null | undefined, decimals = 0): string {
@@ -49,18 +55,19 @@ export function positionBadge(pos: string | null): string {
 }
 
 export function fmtPriceChange(v: number | null | undefined): string {
-  if (v == null) return "—";
+  if (v == null || v === 0) return "—";
   const n = Number(v);
   if (isNaN(n)) return "—";
+
   const abs = Math.abs(n);
   let formatted: string;
+
   if (abs >= 1_000_000) {
-    formatted = `$${(abs / 1_000_000).toFixed(3).replace(/\.?0+$/, "")}M`;
-  } else if (abs >= 1_000) {
-    formatted = `$${(abs / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
+    formatted = `$${(abs / 1_000_000).toFixed(3)}M`;
   } else {
-    formatted = `$${abs.toFixed(0)}`;
+    formatted = `$${Math.floor(abs / 1000)}K`;
   }
+
   return n >= 0 ? `+${formatted}` : `-${formatted}`;
 }
 

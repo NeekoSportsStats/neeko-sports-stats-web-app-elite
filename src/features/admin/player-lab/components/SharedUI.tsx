@@ -11,9 +11,12 @@ export function fmtPrice(n: number | null | undefined) {
   if (n == null) return "—";
   const abs = Math.abs(n);
   const sign = n < 0 ? "-" : "";
-  if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(3).replace(/\.?0+$/, "")}M`;
-  if (abs >= 1_000) return `${sign}$${(abs / 1_000).toFixed(1).replace(/\.0$/, "")}K`;
-  return `${sign}$${abs}`;
+  if (abs >= 1_000_000) {
+    // >= 1M → 1.126M (3 decimal places)
+    return `${sign}$${(abs / 1_000_000).toFixed(3)}M`;
+  }
+  // < 1M → 853K (no decimals)
+  return `${sign}$${Math.floor(abs / 1000)}K`;
 }
 
 export function pct(n: number | null | undefined) {

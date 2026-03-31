@@ -37,7 +37,14 @@ function fmtPrice(v: number | null | undefined): string {
   if (v == null) return "—";
   const n = Number(v);
   if (isNaN(n)) return "—";
-  return `$${(n / 1_000_000).toFixed(2)}m`;
+
+  if (n >= 1_000_000) {
+    // >= 1M → 1.126M (3 decimal places)
+    return `$${(n / 1_000_000).toFixed(3)}M`;
+  }
+
+  // < 1M → 853K (no decimals)
+  return `$${Math.floor(n / 1000)}K`;
 }
 
 function fmtVal(v: number | null | undefined): string {

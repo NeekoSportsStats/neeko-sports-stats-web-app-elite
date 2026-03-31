@@ -92,19 +92,34 @@ export function fmtInt(v: number | null | undefined): string {
 }
 
 export function fmtPrice(v: number | null | undefined): string {
-  if (v == null) return "—";
+  if (v == null || v === 0) return "—";
   const n = Number(v);
   if (isNaN(n)) return "—";
-  return `$${(n / 1_000_000).toFixed(2)}m`;
+
+  if (n >= 1_000_000) {
+    // >= 1M → 1.126M (3 decimal places)
+    return `$${(n / 1_000_000).toFixed(3)}M`;
+  }
+
+  // < 1M → 853K (no decimals)
+  return `$${Math.floor(n / 1000)}K`;
 }
 
 export function fmtPriceChange(change: number | null | undefined): string {
-  if (change == null) return "";
+  if (change == null || change === 0) return "";
   const n = Number(change);
-  if (isNaN(n) || n === 0) return "";
+  if (isNaN(n)) return "";
+
   const abs = Math.abs(n);
-  const k = abs >= 1000 ? `${(abs / 1000).toFixed(0)}k` : String(abs);
-  return `${n > 0 ? "+" : "-"}$${k}`;
+  let formatted: string;
+
+  if (abs >= 1_000_000) {
+    formatted = `${(abs / 1_000_000).toFixed(3)}M`;
+  } else {
+    formatted = `${Math.floor(abs / 1000)}K`;
+  }
+
+  return `${n > 0 ? "+" : "-"}$${formatted}`;
 }
 
 export function fmtValueScore(v: number | null | undefined): string {
