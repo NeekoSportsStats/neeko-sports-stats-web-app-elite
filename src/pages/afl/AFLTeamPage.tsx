@@ -8,8 +8,12 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ChevronRight, TrendingUp } from 'lucide-react';
 import { nameToSlug, POSITION_NAMES } from '@/lib/slugs';
+import { getTeamPlayersSafe } from '@/lib/playerAccess';
+import { useAuth } from '@/lib/auth';
+import { LockedPlayerCard } from '@/components/premium/LockedPlayerCard';
 
 interface TeamPlayer {
+  player_id?: number;
   player_name: string;
   position: string;
   neeko_rating: number;
@@ -18,6 +22,7 @@ interface TeamPlayer {
   price: number;
   ai_recommendation: string;
   recommendation_color: string;
+  is_locked?: boolean;
 }
 
 const TEAM_SLUG_TO_NAME: Record<string, string> = {
@@ -44,18 +49,13 @@ const TEAM_SLUG_TO_NAME: Record<string, string> = {
 export default function AFLTeamPage() {
   const { team } = useParams<{ team: string }>();
   const teamName = team ? TEAM_SLUG_TO_NAME[team] : '';
+  const { user, isPremium } = useAuth();
 
   const { data: players, isLoading, error } = useQuery({
-    queryKey: ['team-players', teamName],
+    queryKey: ['team-players-safe', teamName, user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('v_rankings_master')
-        .select('player_name, position, neeko_rating, projection_final, value_score, price, ai_recommendation, recommendation_color')
-        .eq('team', teamName)
-        .order('neeko_rating', { ascending: false });
-
-      if (error) throw error;
-      return (data || []) as TeamPlayer[];
+      const data = await getTeamPlayersSafe(teamName, user?.id ?? null);
+      return data as TeamPlayer[];
     },
     enabled: !!teamName,
   });
@@ -181,35 +181,53 @@ export default function AFLTeamPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {topPlayers.map((player, idx) => (
-                <Link
-                  key={player.player_name}
-                  to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
-                  className="flex items-center justify-between p-4 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="text-2xl font-bold text-slate-300 w-8">
-                      {idx + 1}
+              {topPlayers.map((player, idx) => {
+                if (player.is_locked) {
+                  return (
+                    <div key={player.player_name} className="mb-2">
+                      <LockedPlayerCard
+                        playerName={player.player_name}
+                        team={teamName}
+                        position={POSITION_NAMES[player.position]}
+                        price={player.price}
+                        projection={player.projection_final}
+                        variant="compact"
+                        showCTA={false}
+                      />
                     </div>
-                    <div>
-                      <div className="font-semibold text-slate-900">{player.player_name}</div>
-                      <div className="text-sm text-slate-500">{POSITION_NAMES[player.position]}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="hidden md:block">
-                      {getRecommendationBadge(player.ai_recommendation, player.recommendation_color)}
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm font-bold text-green-600">
-                        {player.neeko_rating.toFixed(1)}
+                  );
+                }
+
+                return (
+                  <Link
+                    key={player.player_name}
+                    to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
+                    className="flex items-center justify-between p-4 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="text-2xl font-bold text-slate-300 w-8">
+                        {idx + 1}
                       </div>
-                      <div className="text-xs text-slate-500">{Math.round(player.projection_final)} pts</div>
+                      <div>
+                        <div className="font-semibold text-slate-900">{player.player_name}</div>
+                        <div className="text-sm text-slate-500">{POSITION_NAMES[player.position]}</div>
+                      </div>
                     </div>
-                    <ChevronRight className="h-4 w-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </Link>
-              ))}
+                    <div className="flex items-center gap-4">
+                      <div className="hidden md:block">
+                        {getRecommendationBadge(player.ai_recommendation, player.recommendation_color)}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-bold text-green-600">
+                          {player.neeko_rating.toFixed(1)}
+                        </div>
+                        <div className="text-xs text-slate-500">{Math.round(player.projection_final)} pts</div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -223,25 +241,42 @@ export default function AFLTeamPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {valueLeaders.map(player => (
-                  <Link
-                    key={player.player_name}
-                    to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
-                    className="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors group"
-                  >
-                    <div>
-                      <div className="font-semibold text-sm text-slate-900">{player.player_name}</div>
-                      <div className="text-xs text-slate-500">{player.position}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right">
-                        <div className="text-sm font-bold text-green-600">{Math.round(player.value_score)}</div>
-                        <div className="text-xs text-slate-500">value</div>
+                {valueLeaders.map(player => {
+                  if (player.is_locked) {
+                    return (
+                      <div key={player.player_name} className="mb-2">
+                        <LockedPlayerCard
+                          playerName={player.player_name}
+                          team={teamName}
+                          position={player.position}
+                          price={player.price}
+                          variant="compact"
+                          showCTA={false}
+                        />
                       </div>
-                      <ChevronRight className="h-3 w-3 text-slate-400 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </Link>
-                ))}
+                    );
+                  }
+
+                  return (
+                    <Link
+                      key={player.player_name}
+                      to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
+                      className="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors group"
+                    >
+                      <div>
+                        <div className="font-semibold text-sm text-slate-900">{player.player_name}</div>
+                        <div className="text-xs text-slate-500">{player.position}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <div className="text-sm font-bold text-green-600">{Math.round(player.value_score)}</div>
+                          <div className="text-xs text-slate-500">value</div>
+                        </div>
+                        <ChevronRight className="h-3 w-3 text-slate-400 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -258,25 +293,42 @@ export default function AFLTeamPage() {
             <CardContent>
               <div className="space-y-2">
                 {captainOptions.length > 0 ? (
-                  captainOptions.map(player => (
-                    <Link
-                      key={player.player_name}
-                      to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
-                      className="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors group"
-                    >
-                      <div>
-                        <div className="font-semibold text-sm text-slate-900">{player.player_name}</div>
-                        <div className="text-xs text-slate-500">{player.position}</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-right">
-                          <div className="text-sm font-bold text-green-600">{Math.round(player.projection_final)}</div>
-                          <div className="text-xs text-slate-500">projected</div>
+                  captainOptions.map(player => {
+                    if (player.is_locked) {
+                      return (
+                        <div key={player.player_name} className="mb-2">
+                          <LockedPlayerCard
+                            playerName={player.player_name}
+                            team={teamName}
+                            position={player.position}
+                            projection={player.projection_final}
+                            variant="compact"
+                            showCTA={false}
+                          />
                         </div>
-                        <ChevronRight className="h-3 w-3 text-slate-400 group-hover:translate-x-1 transition-transform" />
-                      </div>
-                    </Link>
-                  ))
+                      );
+                    }
+
+                    return (
+                      <Link
+                        key={player.player_name}
+                        to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
+                        className="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors group"
+                      >
+                        <div>
+                          <div className="font-semibold text-sm text-slate-900">{player.player_name}</div>
+                          <div className="text-xs text-slate-500">{player.position}</div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <div className="text-sm font-bold text-green-600">{Math.round(player.projection_final)}</div>
+                            <div className="text-xs text-slate-500">projected</div>
+                          </div>
+                          <ChevronRight className="h-3 w-3 text-slate-400 group-hover:translate-x-1 transition-transform" />
+                        </div>
+                      </Link>
+                    );
+                  })
                 ) : (
                   <div className="text-sm text-slate-500 text-center py-4">
                     No premium captain options available

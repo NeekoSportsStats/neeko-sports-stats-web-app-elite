@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { RefreshCw, Clock } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
@@ -35,7 +35,7 @@ export default function MarketWatchPage() {
         team: r.team,
         position: r.position,
         price: r.price ?? 0,
-        breakeven: r.projection_final ?? r.projection ?? 0,
+        breakeven: Math.round(r.projection_final ?? 0),
         projection: r.projection ?? 0,
         ceiling: r.ceiling ?? 0,
         floor_val: r.floor ?? 0,
@@ -55,9 +55,9 @@ export default function MarketWatchPage() {
         trade_score: r.best_value_score ?? r.value_score ?? 0,
         reasons: {},
         category_reason: r.recommendation_short ?? r.recommendation_why ?? null,
-        last3_avg: r.form_score ?? null,
+        last3_avg: r.avg_last_3 ?? null,
         estimated_price: r.price ?? null,
-        value_score: r.value_score ?? null,
+        value_score: r.best_value_score ?? r.value_score ?? 0,
         price_range_top: null,
         price_range_bottom: null,
         value_momentum: null,
@@ -72,6 +72,7 @@ export default function MarketWatchPage() {
         consistency_score: r.consistency ?? null,
         projection_confidence: r.projection_confidence ?? null,
         avg_season: r.form_score ?? null,
+        last5_avg: r.avg_last_5 ?? null,
         ai_recommendation: r.ai_recommendation ?? null,
         recommendation_short: r.recommendation_short ?? null,
         matchup_label: r.matchup_label ?? null,
@@ -131,7 +132,7 @@ export default function MarketWatchPage() {
     );
   }
 
-  const classified = classifyPlayers(players);
+  const classified = useMemo(() => classifyPlayers(players), [players]);
 
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;

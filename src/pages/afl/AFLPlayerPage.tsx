@@ -1,4 +1,4 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +11,8 @@ import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import FantasyVerdictBadge from '@/components/FantasyVerdictBadge';
 import { PremiumGate } from '@/components/PremiumGate';
 import { slugToName, nameToSlug, TEAM_SLUGS, POSITION_SLUGS, POSITION_NAMES } from '@/lib/slugs';
+import { getSimilarPlayersSafe, isPlayerAccessible } from '@/lib/playerAccess';
+import { useAuth } from '@/lib/auth';
 
 interface PlayerData {
   player_id: number;
@@ -40,8 +42,21 @@ interface PlayerData {
 export default function AFLPlayerPage() {
   const { slug } = useParams<{ slug: string }>();
   const { isPremium } = useSubscriptionStatus();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as { from?: string; tab?: string; scrollY?: number; returnPath?: string } | null;
 
   const playerName = slug ? slugToName(slug) : '';
+
+  const handleBack = () => {
+    if (state?.returnPath) {
+      navigate(state.returnPath, { state });
+      setTimeout(() => window.scrollTo(0, state.scrollY ?? 0), 0);
+    } else {
+      navigate('/sports/afl/rankings');
+    }
+  };
 
   const { data: player, isLoading, error } = useQuery({
     queryKey: ['player-profile', playerName],
@@ -60,23 +75,28 @@ export default function AFLPlayerPage() {
     enabled: !!playerName,
   });
 
+  const { data: playerAccessCheck } = useQuery({
+    queryKey: ['player-access', player?.player_id, isPremium],
+    queryFn: async () => {
+      if (!player?.player_id) return true;
+      return await isPlayerAccessible(player.player_id, isPremium);
+    },
+    enabled: !!player,
+  });
+
   const { data: similarPlayers } = useQuery({
-    queryKey: ['similar-players', player?.position, player?.projection_final],
+    queryKey: ['similar-players-safe', player?.player_id, player?.position, player?.projection_final, user?.id],
     queryFn: async () => {
       if (!player) return [];
 
-      const { data, error } = await supabase
-        .from('v_rankings_master')
-        .select('player_name, team, projection_final, neeko_rating, position')
-        .eq('position', player.position)
-        .neq('player_name', player.player_name)
-        .gte('projection_final', (player.projection_final || 0) - 10)
-        .lte('projection_final', (player.projection_final || 0) + 10)
-        .order('neeko_rating', { ascending: false })
-        .limit(5);
-
-      if (error) throw error;
-      return data || [];
+      return await getSimilarPlayersSafe(
+        player.player_id,
+        player.position,
+        (player.projection_final || 0) - 10,
+        (player.projection_final || 0) + 10,
+        user?.id ?? null,
+        5
+      );
     },
     enabled: !!player,
   });
@@ -172,12 +192,10 @@ export default function AFLPlayerPage() {
         </nav>
 
         {/* Back Button */}
-        <Link to="/sports/afl/rankings">
-          <Button variant="ghost" className="mb-6">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Rankings
-          </Button>
-        </Link>
+        <Button onClick={handleBack} variant="ghost" className="mb-6">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to {state?.from === 'market-watch' ? 'Market Watch' : 'Rankings'}
+        </Button>
 
       {/* Player Header */}
       <Card className="mb-6">
