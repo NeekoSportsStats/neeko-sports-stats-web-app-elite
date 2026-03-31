@@ -91,8 +91,22 @@ function App() {
         .then(res => {
           if (res.error) {
             console.error("❌ Supabase query error:", res.error);
+            console.error("Supabase error details:", {
+              message: res.error.message,
+              code: res.error.code,
+              hint: res.error.hint,
+              details: res.error.details
+            });
+
+            if (res.error.code === 'PGRST301' || res.error.message?.includes('row-level security')) {
+              console.error("🔒 RLS BLOCKING ACCESS — create a SELECT policy in Supabase for anon role");
+              console.error("Fix in Supabase Dashboard: SQL Editor → Run:");
+              console.error("ALTER TABLE afl_players ENABLE ROW LEVEL SECURITY;");
+              console.error("CREATE POLICY \"Allow anon read\" ON afl_players FOR SELECT TO anon USING (true);");
+            }
           } else {
             console.log("✅ Supabase test query successful:", res.data);
+            console.log("Connection verified - data returned from afl_players table");
           }
         })
         .catch(err => {
