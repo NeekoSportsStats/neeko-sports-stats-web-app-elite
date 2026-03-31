@@ -9,6 +9,7 @@ import {
   AIInsightsSkeleton,
   GenericPageSkeleton,
 } from "@/components/skeletons/PageSkeletons";
+import { supabase } from "@/lib/supabaseClient";
 
 /* =========================
    Critical / always-needed (keep static)
@@ -77,6 +78,31 @@ const Generic = <GenericPageSkeleton />;
 
 function App() {
   console.log("APP RENDER");
+
+  useEffect(() => {
+    console.log("App mounted - testing Supabase connection");
+
+    if (supabase) {
+      console.log("Supabase client available - running test query");
+      supabase
+        .from('afl_players')
+        .select('*')
+        .limit(1)
+        .then(res => {
+          if (res.error) {
+            console.error("❌ Supabase query error:", res.error);
+          } else {
+            console.log("✅ Supabase test query successful:", res.data);
+          }
+        })
+        .catch(err => {
+          console.error("❌ Supabase query exception:", err);
+        });
+    } else {
+      console.warn("⚠️ Supabase client is null - cannot test connection");
+    }
+  }, []);
+
   return <div style={{ padding: "20px", fontSize: "24px", color: "white" }}>APP WORKING</div>;
 }
 

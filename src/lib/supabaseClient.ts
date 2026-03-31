@@ -49,7 +49,7 @@ try {
         },
       });
 
-      console.log("Supabase client created successfully");
+      console.log("✅ Supabase connected");
     } catch (error) {
       console.error("Supabase client creation failed:", error);
       supabase = null;
