@@ -2,25 +2,23 @@ import React from "react";
 import { Lock, Sparkles, LucideIcon } from "lucide-react";
 
 interface SectionHeaderProps {
-  pillLabel?: string;
   eyebrow?: string;
   title: string;
   subtitle?: string;
-  description?: string;
   badge?: "neeko+" | "free";
   icon?: LucideIcon;
   rightSlot?: React.ReactNode;
 }
 
 export function SectionHeader(props: SectionHeaderProps) {
-  const { pillLabel, eyebrow, title, subtitle, description, badge, icon: Icon = Sparkles, rightSlot } = props;
+  const { eyebrow, title, subtitle, badge, icon: Icon = Sparkles, rightSlot } = props;
 
   return (
     <div className="mb-5 md:mb-7">
-      {(eyebrow || pillLabel) && (
+      {eyebrow && (
         <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/40 bg-black/60 px-3 py-1.5 text-[11px] text-amber-200/90 mb-3">
           <Icon className="h-3.5 w-3.5 text-amber-300" />
-          <span className="uppercase tracking-[0.15em] font-medium">{eyebrow || pillLabel}</span>
+          <span className="uppercase tracking-[0.15em] font-medium">{eyebrow}</span>
         </div>
       )}
 
@@ -40,8 +38,8 @@ export function SectionHeader(props: SectionHeaderProps) {
               </div>
             )}
           </div>
-          {(subtitle || description) && (
-            <p className="mt-2 text-sm text-white/60 max-w-2xl">{subtitle || description}</p>
+          {subtitle && (
+            <p className="mt-2 text-sm text-white/60 max-w-2xl">{subtitle}</p>
           )}
         </div>
 

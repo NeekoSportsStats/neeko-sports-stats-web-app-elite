@@ -42,9 +42,9 @@ export default function TeamInsightsPanel({
   onUpgrade,
 }: Props) {
   const values =
-    stat === "fantasy"
+    stat === "Fantasy"
       ? team.fantasy
-      : stat === "disposals"
+      : stat === "Disposals"
       ? team.disposals
       : team.goals;
 

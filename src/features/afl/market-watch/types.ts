@@ -59,17 +59,6 @@ export interface MWPlayerRow {
   matchup_label: string | null;
   summary_short: string | null;
   summary_long: string | null;
-  is_injured: boolean | null;
-  is_bye: boolean | null;
-  status: string | null;
-  manual_status: string | null;
-  // Additional fields used by MarketPlayerCard
-  price_momentum: number | null;
-  trade_signal: string | null;
-  projection_final: number | null;
-  ceiling_estimate: number | null;
-  risk_rating: number | null;
-  recommendation_why: string | null;
 }
 
 export interface MWSummaryCard {
@@ -123,27 +112,4 @@ export interface MWSummary {
   trap_count: number;
   monitor_count: number;
   latest_update: string | null;
-  // Additional fields used by MarketWatchAISummary
-  generated_at: string;
-  round_number: number;
-  summary: string;
 }
-
-// Legacy type aliases for backwards compatibility
-export interface MWBestTrade {
-  trade_id: string;
-  out_player_name: string;
-  in_player_name: string;
-  out_price: number;
-  in_price: number;
-  out_team: string;
-  in_team: string;
-  out_position: string;
-  in_position: string;
-  projected_points_gain: number | null;
-  expected_price_gain: number | null;
-  risk_change: number | null;
-  confidence: number | null;
-}
-export type MarketRow = MWPlayerRow;
-export type MWAISummary = MWSummary;

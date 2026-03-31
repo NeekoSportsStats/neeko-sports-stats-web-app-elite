@@ -5,10 +5,10 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Loader as Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export default function StripeTest() {
-  const { user } = useAuth();
+  const { user, checkAdminRole } = useAuth();
   const navigate = useNavigate();
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<any>(null);
@@ -21,8 +21,14 @@ export default function StripeTest() {
       return;
     }
 
-    // For now, assume admin check - this page is for testing only
-    setIsAdmin(true);
+    checkAdminRole().then(isAdminUser => {
+      if (!isAdminUser) {
+        toast.error("Admin access required");
+        navigate("/");
+      } else {
+        setIsAdmin(true);
+      }
+    });
   });
 
   const runTests = async () => {

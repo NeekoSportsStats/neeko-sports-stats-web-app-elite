@@ -41,7 +41,7 @@ function formPill(v: "W" | "L", i: number) {
 type Props = {
   match: FixtureMatch;
   onClick: () => void;
-  statConfig?: StatConfig;
+  statConfig: StatConfig;
 };
 
 export default function MatchCard({ match, onClick, statConfig }: Props) {

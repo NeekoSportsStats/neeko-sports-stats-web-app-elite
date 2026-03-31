@@ -125,7 +125,7 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
   }, [onClose]);
 
   useEffect(() => {
-    const matchId = (match?.match_id ?? match?.vendor_game_id) as string;
+    const matchId = match?.match_id ?? match?.vendor_game_id;
     if (!matchId) {
       setQuarters([]);
       return;
@@ -141,7 +141,7 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
         setQuartersLoading(false);
       })
       .catch((err) => {
-        console.debug("[MatchOverlay] Failed to fetch quarters:", String(err));
+        console.debug("[MatchOverlay] Failed to fetch quarters:", err);
         setQuarters([]);
         setQuartersError(err?.message ?? "Failed to load quarters");
         setQuartersLoading(false);

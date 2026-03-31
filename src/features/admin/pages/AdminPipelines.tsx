@@ -212,7 +212,7 @@ function PipelineCard({ icon: Icon, title, status, confidence, confidenceNote, r
 }
 
 export default function AdminPipelines() {
-  const { setActiveJob } = useAdminUIState();
+  const { dispatch } = useAdminUIState();
   const [loading, setLoading] = useState(true);
   const [runs, setRuns] = useState<PipelineRunRow[]>([]);
   const [pipelineHealth, setPipelineHealth] = useState<PipelineHealth | null>(null);
@@ -249,11 +249,11 @@ export default function AdminPipelines() {
 
   async function runAdminCommand(label: string, jobType: string, command: string) {
     setRunning(jobType);
-    setActiveJob(jobType, 10, label);
+    dispatch({ type: "START_JOB", payload: { jobType, label, pct: 10 } });
     try {
       await runCommand(command);
-      setActiveJob(jobType, 100, label);
-      setTimeout(() => setActiveJob(null, 0, null), 1500);
+      dispatch({ type: "UPDATE_JOB", payload: { pct: 100 } });
+      setTimeout(() => dispatch({ type: "END_JOB" }), 1500);
       await fetchAll();
     } finally {
       setRunning(null);

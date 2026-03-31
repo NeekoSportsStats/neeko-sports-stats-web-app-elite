@@ -1126,11 +1126,11 @@ export function CarouselTitleSlide({
   angle: StatAngle; w: number; h: number; options: GraphicOptions; totalPlayers: number;
 }) {
   const teamColour = { primary: "#1e293b", secondary: "#64748b" };
-  const ac = resolveAccentColor(angle, options, teamColour, undefined);
+  const ac = resolveAccentColor(angle, options, teamColour, players[0]?.team);
   const isTall = h > w;
 
   return (
-    <CanvasShell w={w} h={h} angle={angle} options={{ ...options, playerImageUrl: undefined }} teamColour={teamColour} resolvedAccent={ac} firstTeam={""}>
+    <CanvasShell w={w} h={h} angle={angle} options={{ ...options, playerImageUrl: undefined }} teamColour={teamColour} resolvedAccent={ac} firstTeam={players[0]?.team ?? ""}>
       <div style={{ flexShrink: 0, marginBottom: 12 }}>
         <BrandBar accentColor={ac} />
       </div>
@@ -1202,7 +1202,7 @@ export function CarouselPlayerSlide({
   angle: StatAngle; player: ContentPlayer; rank: number; w: number; h: number; options: GraphicOptions;
 }) {
   const teamColour = getTeamColour(player.team);
-  const ac = resolveAccentColor(angle, options, teamColour, player.team);
+  const ac = resolveAccentColor(angle, options, teamColour, players[0]?.team);
   const isTall = h > w;
   const isWide = w > h;
   const nameParts = player.player_name.split(" ");
@@ -1222,7 +1222,7 @@ export function CarouselPlayerSlide({
   ];
 
   return (
-    <CanvasShell w={w} h={h} angle={angle} options={options} teamColour={teamColour} resolvedAccent={ac} firstTeam={player.team ?? ""}>
+    <CanvasShell w={w} h={h} angle={angle} options={options} teamColour={teamColour} resolvedAccent={ac} firstTeam={players[0]?.team ?? ""}>
       <div style={{ flexShrink: 0, marginBottom: isTall ? 12 : 6 }}>
         <BrandBar accentColor={ac} right={
           <div style={{

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { RefreshCw, Clock, CircleAlert as AlertCircle } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { RefreshCw, Clock } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
@@ -17,48 +17,16 @@ export default function MarketWatchPage() {
   const { isPremium, loading: authLoading } = useAuth();
   const [players, setPlayers] = useState<MWPlayerRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<DerivedPlayer | null>(null);
 
   const fetchData = useCallback(async (premium: boolean) => {
     setLoading(true);
-    setError(null);
     try {
-      if (!supabase) {
-        throw new Error("Supabase client not initialized. Check environment variables VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env file");
-      }
-
       const limit = premium ? 200 : 100;
       const viewName = premium ? "v_rankings_master" : "v_rankings_free";
-
-      console.log("[MW] Fetching data from:", viewName, "limit:", limit);
-      console.log("[MW] Supabase client configured:", !!supabase);
-
       const { data, error } = await supabase.from(viewName).select("*").limit(limit);
 
-      console.log("[MW] Response:", {
-        dataLength: data?.length,
-        error: error?.message || error,
-        hasData: !!data
-      });
-
-      if (error) {
-        console.error("[MW] Supabase error details:", {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
-        throw error;
-      }
-
-      if (!data || data.length === 0) {
-        console.warn("[MW] No data returned from view:", viewName);
-        setPlayers([]);
-        setError("No market data available. Data updates after round completion.");
-        setLoading(false);
-        return;
-      }
+      if (error) throw error;
 
       const mapped: MWPlayerRow[] = (data ?? []).map((r: any) => ({
         snapshot_id: 'rankings-cache',
@@ -67,12 +35,12 @@ export default function MarketWatchPage() {
         team: r.team,
         position: r.position,
         price: r.price ?? 0,
-        breakeven: Math.round(r.projection_final ?? 0),
-        projection: r.projection_final ?? 0,
+        breakeven: r.projection_final ?? r.projection ?? 0,
+        projection: r.projection ?? 0,
         ceiling: r.ceiling ?? 0,
         floor_val: r.floor ?? 0,
-        risk_pct: (100 - (r.consistency_score ?? 0)),
-        price_edge_pts: (r.projection_final ?? 0) - (r.breakeven ?? 0),
+        risk_pct: (100 - (r.consistency ?? 0)),
+        price_edge_pts: (r.projection ?? 0) - (r.projection_final ?? 0),
         expected_price_change: (r.price_change ?? 0) * 3,
         projected_price: (r.price ?? 0) + (r.price_change ?? 0),
         projected_price_r1: (r.price ?? 0) + (r.price_change ?? 0),
@@ -80,16 +48,16 @@ export default function MarketWatchPage() {
         projected_price_r3: (r.price ?? 0) + ((r.price_change ?? 0) * 3),
         breakout_score: null,
         breakout_flag: null,
-        volatility_score: r.consistency_score ?? 0,
+        volatility_score: r.consistency ?? 0,
         volatility_level: null,
         category: null,
         action: r.ai_recommendation === 'BUY' ? 'BUY' : r.ai_recommendation === 'SELL' ? 'SELL' : 'HOLD',
         trade_score: r.best_value_score ?? r.value_score ?? 0,
         reasons: {},
-        category_reason: r.recommendation_short ?? r.summary_short ?? null,
-        last3_avg: null,
+        category_reason: r.recommendation_short ?? r.recommendation_why ?? null,
+        last3_avg: r.form_score ?? null,
         estimated_price: r.price ?? null,
-        value_score: r.best_value_score ?? r.value_score ?? 0,
+        value_score: r.value_score ?? null,
         price_range_top: null,
         price_range_bottom: null,
         value_momentum: null,
@@ -101,25 +69,18 @@ export default function MarketWatchPage() {
         round_number: 1,
         snapshot_updated_at: r.cached_at ?? r.ai_updated_at ?? new Date().toISOString(),
         neeko_rating: r.neeko_rating ?? null,
-        consistency_score: r.consistency_score ?? null,
+        consistency_score: r.consistency ?? null,
         projection_confidence: r.projection_confidence ?? null,
-        avg_season: null,
+        avg_season: r.form_score ?? null,
         ai_recommendation: r.ai_recommendation ?? null,
         recommendation_short: r.recommendation_short ?? null,
         matchup_label: r.matchup_label ?? null,
         summary_short: r.summary_short ?? null,
         summary_long: r.summary_long ?? null,
-        is_injured: r.is_injured === true || r.status === 'injured' || r.manual_status === 'injured',
-        is_bye: r.is_bye === true || r.status === 'bye' || r.manual_status === 'bye',
+        is_injured: r.is_injured ?? r.status === 'injured' ?? r.manual_status === 'injured' ?? false,
+        is_bye: r.is_bye ?? r.status === 'bye' ?? r.manual_status === 'bye' ?? false,
         status: r.status ?? r.manual_status ?? null,
         manual_status: r.manual_status ?? null,
-        // Additional fields used by MarketPlayerCard
-        price_momentum: null,
-        trade_signal: null,
-        projection_final: r.projection_final ?? null,
-        ceiling_estimate: r.ceiling ?? null,
-        risk_rating: (100 - (r.consistency_score ?? 0)),
-        recommendation_why: r.summary_short ?? null,
       }));
 
       console.log("[MW DEBUG - FETCH]", {
@@ -129,14 +90,8 @@ export default function MarketWatchPage() {
       });
 
       setPlayers(mapped);
-    } catch (error: any) {
-      console.error("[MW] Critical error:", error);
-      console.error("[MW] Error stack:", error?.stack);
-      console.error("[MW] Error name:", error?.name);
-      console.error("[MW] Error message:", error?.message);
-
-      const errorMessage = error?.message || error?.toString() || "Failed to load market data";
-      setError(errorMessage);
+    } catch (error) {
+      console.error("[Market Watch] Error:", error);
       setPlayers([]);
     } finally {
       setLoading(false);
@@ -161,34 +116,14 @@ export default function MarketWatchPage() {
   if (players.length === 0) {
     return (
       <div className="min-h-screen bg-[#0D0D0D] text-white flex items-center justify-center">
-        <div className="text-center space-y-4 max-w-lg px-4">
-          <div className="text-6xl">{error ? "⚠️" : "📊"}</div>
-          <h2 className="text-2xl font-bold">
-            {error ? "Failed to Load Data" : "No Market Data"}
-          </h2>
-          {error ? (
-            <div className="space-y-3">
-              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-left">
-                    <p className="font-semibold text-red-400 mb-1">Error Details:</p>
-                    <p className="text-sm text-red-300/80 font-mono break-words">{error}</p>
-                  </div>
-                </div>
-              </div>
-              <p className="text-white/60 text-sm">
-                Check the browser console (F12) for detailed error information
-              </p>
-            </div>
-          ) : (
-            <p className="text-white/60">Check back after weekly price changes</p>
-          )}
+        <div className="text-center space-y-4">
+          <div className="text-6xl">📊</div>
+          <h2 className="text-2xl font-bold">No Market Data</h2>
+          <p className="text-white/60">Check back after weekly price changes</p>
           <button
             onClick={handleRefresh}
-            className="mt-4 px-6 py-3 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-colors inline-flex items-center gap-2"
+            className="mt-4 px-6 py-3 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-colors"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
         </div>
@@ -196,7 +131,7 @@ export default function MarketWatchPage() {
     );
   }
 
-  const classified = useMemo(() => classifyPlayers(players), [players]);
+  const classified = classifyPlayers(players);
 
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
@@ -315,14 +250,7 @@ interface CategorySectionProps {
 }
 
 function CategorySection({ title, subtitle, players, type, onPlayerClick }: CategorySectionProps) {
-  if (!players || !Array.isArray(players) || players.length === 0) return null;
-
-  // Deduplicate by player_id to prevent duplicate keys
-  const uniquePlayers = Array.from(
-    new Map(players.map(p => [p?.player_id, p])).values()
-  ).filter(p => p && p.player_id && p.player_name);
-
-  if (uniquePlayers.length === 0) return null;
+  if (players.length === 0) return null;
 
   return (
     <div className="space-y-5">
@@ -334,9 +262,9 @@ function CategorySection({ title, subtitle, players, type, onPlayerClick }: Cate
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {uniquePlayers.map((player, i) => (
+        {players.map((player, i) => (
           <MarketWatchPremiumCard
-            key={`${type}-${player.player_id}-${i}`}
+            key={player.player_id}
             player={player}
             rank={i + 1}
             type={type}

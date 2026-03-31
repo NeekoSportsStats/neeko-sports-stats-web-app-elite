@@ -85,8 +85,8 @@ export function usePlayerExplorer() {
         const bv = signalsMap.get(b.player_id)?.signal_count ?? 0;
         return sortDir === "asc" ? av - bv : bv - av;
       }
-      const av = (a as unknown as Record<string, unknown>)[sortCol] as number ?? 0;
-      const bv = (b as unknown as Record<string, unknown>)[sortCol] as number ?? 0;
+      const av = (a as Record<string, unknown>)[sortCol] as number ?? 0;
+      const bv = (b as Record<string, unknown>)[sortCol] as number ?? 0;
       return sortDir === "asc" ? av - bv : bv - av;
     });
   }, [rows, search, posFilter, teamFilter, recoFilter, quickFilter, activeSignalFilters, sortCol, sortDir, signalsMap, hideOut]);

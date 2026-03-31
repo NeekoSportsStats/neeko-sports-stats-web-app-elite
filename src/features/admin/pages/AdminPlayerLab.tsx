@@ -75,8 +75,8 @@ function PriceFullTable() {
     if (priceFilter === "projection_high") res = res.filter(r => (r.projection_final ?? 0) > 90);
     if (priceFilter === "edited")          res = res.filter(r => editedIds.has(r.player_id));
     return [...res].sort((a, b) => {
-      const av = (a as unknown as Record<string, unknown>)[sortCol] as number ?? 0;
-      const bv = (b as unknown as Record<string, unknown>)[sortCol] as number ?? 0;
+      const av = (a as Record<string, unknown>)[sortCol] as number ?? 0;
+      const bv = (b as Record<string, unknown>)[sortCol] as number ?? 0;
       return sortDir === "asc" ? av - bv : bv - av;
     });
   }, [rows, search, priceFilter, sortCol, sortDir, editedIds]);

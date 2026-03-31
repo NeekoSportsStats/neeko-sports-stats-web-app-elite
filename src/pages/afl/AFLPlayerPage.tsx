@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,39 +7,41 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, TrendingUp, TrendingDown, Minus, Lock, Users, Target, ChevronRight } from 'lucide-react';
+import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import FantasyVerdictBadge from '@/components/FantasyVerdictBadge';
+import { PremiumGate } from '@/components/PremiumGate';
 import { slugToName, nameToSlug, TEAM_SLUGS, POSITION_SLUGS, POSITION_NAMES } from '@/lib/slugs';
-import { getSimilarPlayersSafe } from '@/lib/playerAccess';
-import { useAuth } from '@/lib/auth';
-import { RankingsPlayer } from '@/features/afl/shared/seo/types';
-import {
-  formatPrice,
-  formatNumber,
-  formatPercentage,
-  getRecommendationColor,
-  getRecommendationDisplay,
-  safeStatDisplay,
-  getConfidenceLabel,
-} from '@/features/afl/shared/seo/utils';
+
+interface PlayerData {
+  player_id: number;
+  player_name: string;
+  team: string;
+  position: string;
+  price: number;
+  projection_final: number;
+  ceiling: number;
+  floor: number;
+  value_score: number;
+  neeko_rating: number;
+  ai_recommendation: string;
+  recommendation_color: string;
+  recommendation_short: string;
+  summary_short: string;
+  summary_long: string;
+  games_played: number;
+  avg_last_3: number;
+  avg_last_5: number;
+  projection_confidence: number;
+  upside_pct: number;
+  risk_rating: number;
+}
 
 
 export default function AFLPlayerPage() {
   const { slug } = useParams<{ slug: string }>();
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const state = location.state as { from?: string; tab?: string; scrollY?: number; returnPath?: string } | null;
+  const { isPremium } = useSubscriptionStatus();
 
   const playerName = slug ? slugToName(slug) : '';
-
-  const handleBack = () => {
-    if (state?.returnPath) {
-      navigate(state.returnPath, { state });
-      setTimeout(() => window.scrollTo(0, state.scrollY ?? 0), 0);
-    } else {
-      navigate('/sports/afl/rankings');
-    }
-  };
 
   const { data: player, isLoading, error } = useQuery({
     queryKey: ['player-profile', playerName],
@@ -53,24 +55,28 @@ export default function AFLPlayerPage() {
       if (error) throw error;
       if (!data) throw new Error('Player not found');
 
-      return data as RankingsPlayer;
+      return data as PlayerData;
     },
     enabled: !!playerName,
   });
 
   const { data: similarPlayers } = useQuery({
-    queryKey: ['similar-players-safe', player?.player_id, player?.position, player?.projection_final, user?.id],
+    queryKey: ['similar-players', player?.position, player?.projection_final],
     queryFn: async () => {
       if (!player) return [];
 
-      return await getSimilarPlayersSafe(
-        player.player_id,
-        player.position,
-        (player.projection_final || 0) - 10,
-        (player.projection_final || 0) + 10,
-        user?.id ?? null,
-        5
-      );
+      const { data, error } = await supabase
+        .from('v_rankings_master')
+        .select('player_name, team, projection_final, neeko_rating, position')
+        .eq('position', player.position)
+        .neq('player_name', player.player_name)
+        .gte('projection_final', (player.projection_final || 0) - 10)
+        .lte('projection_final', (player.projection_final || 0) + 10)
+        .order('neeko_rating', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!player,
   });
@@ -106,11 +112,25 @@ export default function AFLPlayerPage() {
     );
   }
 
-  const recDisplay = getRecommendationDisplay(player?.ai_recommendation || 'HOLD');
-  const getRecommendationIcon = (icon: 'up' | 'down' | 'neutral') => {
-    if (icon === 'up') return <TrendingUp className="h-4 w-4" />;
-    if (icon === 'down') return <TrendingDown className="h-4 w-4" />;
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('en-AU', {
+      style: 'currency',
+      currency: 'AUD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price);
+  };
+
+  const getRecommendationIcon = (rec: string) => {
+    if (rec === 'BUY' || rec === 'STRONG_BUY') return <TrendingUp className="h-4 w-4" />;
+    if (rec === 'SELL' || rec === 'AVOID') return <TrendingDown className="h-4 w-4" />;
     return <Minus className="h-4 w-4" />;
+  };
+
+  const getRecommendationColor = (color: string) => {
+    if (color === 'green') return 'bg-green-500/10 text-green-700 border-green-500/20';
+    if (color === 'red') return 'bg-red-500/10 text-red-700 border-red-500/20';
+    return 'bg-slate-500/10 text-slate-700 border-slate-500/20';
   };
 
   const pageTitle = `${player.player_name} AFL Fantasy Stats, Projection & Value 2026 | Neeko`;
@@ -152,10 +172,12 @@ export default function AFLPlayerPage() {
         </nav>
 
         {/* Back Button */}
-        <Button onClick={handleBack} variant="ghost" className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to {state?.from === 'market-watch' ? 'Market Watch' : 'Rankings'}
-        </Button>
+        <Link to="/sports/afl/rankings">
+          <Button variant="ghost" className="mb-6">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Rankings
+          </Button>
+        </Link>
 
       {/* Player Header */}
       <Card className="mb-6">
@@ -180,10 +202,10 @@ export default function AFLPlayerPage() {
               <FantasyVerdictBadge verdict={player.ai_recommendation} />
               <Badge
                 variant="outline"
-                className={`${getRecommendationColor(player.recommendation_color || 'slate')} flex items-center gap-1`}
+                className={`${getRecommendationColor(player.recommendation_color)} flex items-center gap-1`}
               >
-                {getRecommendationIcon(recDisplay.icon)}
-                {player.recommendation_short || recDisplay.text}
+                {getRecommendationIcon(player.ai_recommendation)}
+                {player.recommendation_short || player.ai_recommendation}
               </Badge>
             </div>
           </div>
@@ -193,20 +215,20 @@ export default function AFLPlayerPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <div className="text-sm text-slate-500 mb-1">Projection</div>
-              <div className="text-2xl font-bold">{formatNumber(player.projection_final)}</div>
+              <div className="text-2xl font-bold">{Math.round(player.projection_final)}</div>
             </div>
             <div>
               <div className="text-sm text-slate-500 mb-1">Ceiling</div>
-              <div className="text-2xl font-bold text-green-600">{formatNumber(player.ceiling)}</div>
+              <div className="text-2xl font-bold text-green-600">{Math.round(player.ceiling)}</div>
             </div>
             <div>
               <div className="text-sm text-slate-500 mb-1">Floor</div>
-              <div className="text-2xl font-bold text-orange-600">{formatNumber(player.floor)}</div>
+              <div className="text-2xl font-bold text-orange-600">{Math.round(player.floor || 0)}</div>
             </div>
             <div>
               <div className="text-sm text-slate-500 mb-1">Value Score</div>
               <div className="text-2xl font-bold">
-                {formatNumber(player.value_score)}
+                {Math.round(player.value_score)}
               </div>
             </div>
           </div>
@@ -227,35 +249,47 @@ export default function AFLPlayerPage() {
         </Card>
       )}
 
-      {/* AI Analysis - Extended (Data-Level Gated) */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Detailed Analysis</CardTitle>
-          <CardDescription>AI-powered insights and recommendations</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {player.summary_long ? (
-            <div className="prose prose-slate max-w-none">
-              <p className="text-slate-700 leading-relaxed whitespace-pre-line">
-                {player.summary_long}
-              </p>
-            </div>
-          ) : (
-            <div className="relative min-h-[200px] flex items-center justify-center">
-              <div className="text-center bg-slate-50 rounded-lg p-8 border-2 border-dashed border-slate-200">
-                <Lock className="h-12 w-12 mx-auto mb-4 text-slate-400" />
-                <p className="font-semibold text-lg mb-2 text-slate-900">Premium Analysis Locked</p>
-                <p className="text-sm text-slate-600 mb-6 max-w-sm">
-                  Get detailed AI-powered insights, trade recommendations, and advanced metrics for all 600+ AFL players
+      {/* AI Analysis - Extended (Premium Gated) */}
+      {player.summary_long && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Detailed Analysis</CardTitle>
+            <CardDescription>AI-powered insights and recommendations</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isPremium ? (
+              <div className="prose prose-slate max-w-none">
+                <p className="text-slate-700 leading-relaxed whitespace-pre-line">
+                  {player.summary_long}
                 </p>
-                <Link to="/pricing">
-                  <Button size="lg">Unlock Premium</Button>
-                </Link>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            ) : (
+              <PremiumGate
+                feature="detailed player analysis"
+                previewContent={
+                  <div className="relative">
+                    <p className="text-slate-700 leading-relaxed line-clamp-3 blur-sm select-none">
+                      {player.summary_long}
+                    </p>
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-transparent via-white/50 to-white">
+                      <div className="text-center bg-white rounded-lg p-6 shadow-lg border">
+                        <Lock className="h-8 w-8 mx-auto mb-3 text-slate-400" />
+                        <p className="font-semibold mb-2">Premium Content</p>
+                        <p className="text-sm text-slate-600 mb-4">
+                          Unlock detailed AI analysis for all players
+                        </p>
+                        <Link to="/pricing">
+                          <Button>Upgrade to Premium</Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                }
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Performance Stats */}
       <Card className="mb-6">
@@ -263,40 +297,37 @@ export default function AFLPlayerPage() {
           <CardTitle>Performance Metrics</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
               <div className="text-sm text-slate-500 mb-1">Games Played</div>
-              <div className="text-xl font-bold">{formatNumber(player.games_played)}</div>
+              <div className="text-xl font-bold">{player.games_played}</div>
+            </div>
+            <div>
+              <div className="text-sm text-slate-500 mb-1">Last 3 Avg</div>
+              <div className="text-xl font-bold">
+                {player.avg_last_3 ? Math.round(player.avg_last_3) : '-'}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-slate-500 mb-1">Last 5 Avg</div>
+              <div className="text-xl font-bold">
+                {player.avg_last_5 ? Math.round(player.avg_last_5) : '-'}
+              </div>
             </div>
             <div>
               <div className="text-sm text-slate-500 mb-1">Neeko Rating</div>
-              <div className="text-xl font-bold">{formatNumber(player.neeko_rating)}</div>
+              <div className="text-xl font-bold">{Math.round(player.neeko_rating)}</div>
             </div>
             <div>
               <div className="text-sm text-slate-500 mb-1">Confidence</div>
               <div className="text-xl font-bold">
-                {formatPercentage(player.projection_confidence)}
-              </div>
-              <div className="text-xs text-slate-500 mt-0.5">
-                {getConfidenceLabel(player.projection_confidence || 0)}
+                {Math.round(player.projection_confidence)}%
               </div>
             </div>
             <div>
               <div className="text-sm text-slate-500 mb-1">Upside</div>
               <div className="text-xl font-bold text-green-600">
-                {safeStatDisplay(player.upside_pct, 'percentage')}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm text-slate-500 mb-1">Captain Score</div>
-              <div className="text-xl font-bold">
-                {formatNumber(player.captain_score)}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm text-slate-500 mb-1">Edge Score</div>
-              <div className="text-xl font-bold">
-                {formatNumber(player.edge_score)}
+                {player.upside_pct ? `${Math.round(player.upside_pct)}%` : '-'}
               </div>
             </div>
           </div>
@@ -360,16 +391,12 @@ export default function AFLPlayerPage() {
                     <div className="text-sm text-slate-500">{similar.team}</div>
                   </div>
                   <div className="flex items-center gap-3">
-                    {similar.is_locked ? (
-                      <Lock className="h-4 w-4 text-slate-400" />
-                    ) : (
-                      <div className="text-right">
-                        <div className="text-sm font-semibold text-slate-700">
-                          {formatNumber(similar.projection_final)}
-                        </div>
-                        <div className="text-xs text-slate-500">projected</div>
+                    <div className="text-right">
+                      <div className="text-sm font-semibold text-slate-700">
+                        {Math.round(similar.projection_final)}
                       </div>
-                    )}
+                      <div className="text-xs text-slate-500">projected</div>
+                    </div>
                     <ChevronRight className="h-4 w-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
                   </div>
                 </Link>
@@ -395,7 +422,7 @@ export default function AFLPlayerPage() {
                 {player.ai_recommendation}
               </Badge>
             </div>
-            <Link to="/sports/afl/rankings">
+            <Link to="/afl/rankings">
               <Button>
                 View All Rankings
               </Button>

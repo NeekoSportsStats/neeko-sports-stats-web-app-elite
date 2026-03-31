@@ -190,7 +190,7 @@ function QuickActionButton({ label, icon: Icon, command, jobType, running, onSta
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const { setActiveJob } = useAdminUIState();
+  const { dispatch } = useAdminUIState();
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<CommandCenterStatus | null>(null);
   const [runs, setRuns] = useState<RunRow[]>([]);
@@ -213,11 +213,11 @@ export default function AdminDashboard() {
 
   async function handleQuickAction(jobType: string, label: string, command: string) {
     setRunning(jobType);
-    setActiveJob(jobType, 10, `${label}…`);
+    dispatch({ type: "START_JOB", payload: { jobType, label: `${label}…`, pct: 10 } });
     try {
       await runCommand(command);
-      setActiveJob(jobType, 100, label);
-      setTimeout(() => setActiveJob(null, 0, null), 1500);
+      dispatch({ type: "UPDATE_JOB", payload: { pct: 100 } });
+      setTimeout(() => dispatch({ type: "END_JOB" }), 1500);
       await fetchAll();
     } finally {
       setRunning(null);

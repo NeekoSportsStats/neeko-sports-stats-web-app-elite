@@ -89,11 +89,11 @@ export function MarketWatchPremiumCard({ player, rank, type, onPlayerClick }: Pr
       onClick={() => onPlayerClick?.(player)}
     >
       {isHovered && (
-        <div className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-xl p-4 flex flex-col justify-end z-10 animate-fadeIn overflow-auto">
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-xl p-4 flex flex-col justify-end z-10 animate-fadeIn">
           <p className="text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">
             AI Insight
           </p>
-          <p className="text-sm text-gray-200 leading-relaxed break-words whitespace-normal">
+          <p className="text-sm text-gray-200 leading-snug">
             {getWhy(player)}
           </p>
         </div>

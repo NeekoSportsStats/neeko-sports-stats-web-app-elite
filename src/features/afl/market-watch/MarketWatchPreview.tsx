@@ -80,8 +80,6 @@ interface PreviewCardProps {
 }
 
 function PreviewCard({ player, rank }: PreviewCardProps) {
-  if (!player || !player.player_name) return null;
-
   return (
     <div className="bg-white/[0.02] border border-white/5 rounded-lg p-3 hover:bg-white/[0.03] hover:border-white/10 transition-all">
       <div className="flex items-start justify-between gap-3 mb-2">
@@ -95,7 +93,7 @@ function PreviewCard({ player, rank }: PreviewCardProps) {
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-white/40">
-            <span>{player.position ?? "—"}</span>
+            <span>{player.position}</span>
           </div>
         </div>
       </div>

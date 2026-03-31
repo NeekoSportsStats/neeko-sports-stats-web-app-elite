@@ -2,7 +2,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 
-type ButtonVariant = "default" | "secondary" | "ghost" | "outline" | "destructive" | "link";
+type ButtonVariant = "default" | "secondary" | "ghost" | "outline";
 type ButtonSize = "default" | "sm" | "lg" | "icon";
 
 export interface ButtonProps
@@ -26,10 +26,6 @@ const variants: Record<ButtonVariant, string> = {
     "bg-transparent text-white/85 hover:bg-white/10",
   outline:
     "bg-transparent text-white border border-white/20 hover:bg-white/10",
-  destructive:
-    "bg-red-600/90 text-white hover:bg-red-600 shadow-[0_10px_20px_rgba(0,0,0,0.25)]",
-  link:
-    "bg-transparent text-amber-400 hover:text-amber-300 underline-offset-4 hover:underline",
 };
 
 const sizes: Record<ButtonSize, string> = {
@@ -58,8 +54,4 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
 Button.displayName = "Button";
 
-export { Button, type ButtonVariant };
-export function buttonVariants(opts?: { variant?: ButtonVariant; size?: ButtonSize; className?: string }) {
-  const { variant = "default", size = "default", className } = opts || {};
-  return cn(base, variants[variant], sizes[size], className);
-}
+export { Button };

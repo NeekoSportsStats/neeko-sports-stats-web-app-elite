@@ -35,7 +35,7 @@ export default function PlayerInsightsContent({
     );
   }
 
-  const thresholds = statConfig.playerThresholds?.[selectedStat] || [];
+  const thresholds = statConfig.playerInsightThresholds?.[selectedStat] || [];
   const unit = statConfig.units?.[selectedStat] || "";
   const label = statConfig.labels[selectedStat] || "";
 

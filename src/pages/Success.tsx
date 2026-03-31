@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { CircleCheck as CheckCircle2, Crown, ArrowRight, Loader as Loader2, Hop as Home } from "lucide-react";
+import { CircleCheck as CheckCircle2, Crown, ArrowRight, Loader as Loader2, Chrome as Home } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -61,8 +61,7 @@ export default function Success() {
         pollCountRef.current += 1;
         await refreshPremiumStatus().catch(() => {});
 
-        const result = await supabase.rpc("get_access_state");
-        const { data } = result.error ? { data: null } : result;
+        const { data } = await supabase.rpc("get_access_state").catch(() => ({ data: null }));
         if (data?.is_premium === true) {
           setPolling(false);
           return;

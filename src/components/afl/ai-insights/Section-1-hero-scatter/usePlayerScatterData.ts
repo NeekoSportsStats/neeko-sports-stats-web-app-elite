@@ -5,12 +5,7 @@ export type LensKey = "fantasy" | "disposals" | "goals";
 export type TeamFilter = "both" | "home" | "away";
 export type LabelMode = "smart" | "all" | "none";
 
-export type PlayerTrendPoint = {
-  week: string;
-  value: number;
-  label?: string;
-  kind?: "actual" | "projected";
-};
+export type PlayerTrendPoint = { week: string; value: number };
 
 export type PlayerPoint = {
   id: string;

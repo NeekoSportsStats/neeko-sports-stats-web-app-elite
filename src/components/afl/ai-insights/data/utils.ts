@@ -80,30 +80,3 @@ export function safeDiv(a: number, b: number) {
   if (!b) return 0;
   return a / b;
 }
-
-export function labelConfidence(value: number): string {
-  if (value >= 0.8) return "Elite";
-  if (value >= 0.6) return "High";
-  if (value >= 0.4) return "Medium";
-  return "Low";
-}
-
-export function labelVolatility(value: number): string {
-  if (value >= 0.7) return "Volatile";
-  if (value >= 0.4) return "Moderate";
-  return "Stable";
-}
-
-export function labelConsistency(value: number): string {
-  if (value >= 0.8) return "Very Consistent";
-  if (value >= 0.6) return "Consistent";
-  if (value >= 0.4) return "Variable";
-  return "Inconsistent";
-}
-
-export function labelExplosiveness(value: number): string {
-  if (value >= 0.8) return "Explosive";
-  if (value >= 0.6) return "High";
-  if (value >= 0.4) return "Moderate";
-  return "Low";
-}

@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Video, ArrowLeft, Camera, Globe } from "lucide-react";
+import { Facebook, Instagram, Video, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Socials = () => {
@@ -8,7 +8,7 @@ const Socials = () => {
   const socialLinks = [
     {
       name: "Instagram",
-      icon: Camera,
+      icon: Instagram,
       handle: "@neekosportsstats",
       description: "Visual stats and highlights",
       url: "#",
@@ -22,7 +22,7 @@ const Socials = () => {
     },
     {
       name: "Facebook",
-      icon: Globe,
+      icon: Facebook,
       handle: "Neeko's Sports Stats",
       description: "Community discussions and news",
       url: "#",

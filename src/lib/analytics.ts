@@ -1,7 +1,6 @@
-// Safe PostHog wrapper - gracefully handles missing/broken module
+import posthog from "posthog-js";
+
 const SESSION_KEY = "neeko_session_id";
-let initialized = false;
-let posthog: any = null;
 
 function getSessionId(): string {
   if (typeof window === "undefined") return "";
@@ -16,26 +15,16 @@ function getSessionId(): string {
 /* =============================
    INIT
 ============================= */
-export async function initAnalytics() {
+export function initAnalytics() {
   if (typeof window === "undefined") return;
-  if (initialized) return;
 
   try {
-    // Dynamic import to avoid build-time resolution issues
-    const posthogModule = await import("posthog-js");
-    posthog = posthogModule.default;
-
-    if (!posthog) {
-      console.log("Analytics disabled - PostHog not available");
-      return;
-    }
-
     getSessionId();
 
     const key = import.meta.env.VITE_POSTHOG_KEY as string | undefined;
     const host =
       (import.meta.env.VITE_POSTHOG_HOST as string | undefined) ??
-      "https://eu.posthog.com";
+      "https://eu.posthog.com"; // ✅ FIXED HOST
 
     if (!key) {
       console.log("Analytics disabled - no PostHog key");
@@ -44,12 +33,11 @@ export async function initAnalytics() {
 
     posthog.init(key, {
       api_host: host,
-      capture_pageview: true,
+      capture_pageview: true, // ✅ turn ON
       persistence: "localStorage",
       advanced_disable_feature_flags: true,
     });
 
-    initialized = true;
     console.log("Analytics initialized");
   } catch (err) {
     console.warn("Analytics init failed:", err);
@@ -61,12 +49,11 @@ export async function initAnalytics() {
 ============================= */
 export function track(event: string, properties?: Record<string, unknown>) {
   if (typeof window === "undefined") return;
-  if (!initialized || !posthog) return;
 
   try {
     posthog.capture(event, {
       ...properties,
-      session_id: getSessionId(),
+      session_id: getSessionId(), // helpful for debugging
     });
   } catch (err) {
     console.warn("[analytics] posthog failed:", err);
@@ -78,7 +65,6 @@ export function track(event: string, properties?: Record<string, unknown>) {
 ============================= */
 export function identifyUser(user: { id: string; email?: string }) {
   if (typeof window === "undefined") return;
-  if (!initialized || !posthog) return;
 
   try {
     if (!user?.id) return;
@@ -96,7 +82,6 @@ export function identifyUser(user: { id: string; email?: string }) {
 ============================= */
 export function resetUser() {
   if (typeof window === "undefined") return;
-  if (!initialized || !posthog) return;
 
   try {
     posthog.reset();

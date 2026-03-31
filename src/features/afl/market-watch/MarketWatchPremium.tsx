@@ -21,9 +21,9 @@ export function MarketWatchPremium({
   allTrades,
 }: MarketWatchPremiumProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<DerivedPlayer | null>(null);
-  const topTrade = allTrades?.[0] ?? null;
-  const topValue = cashCows?.[0] ?? null;
-  const topUpgrade = upgrades?.[0] ?? null;
+  const topTrade = allTrades[0];
+  const topValue = cashCows[0];
+  const topUpgrade = upgrades[0];
 
   return (
     <>
@@ -55,11 +55,11 @@ export function MarketWatchPremium({
           )}
         </div>
 
-        <SignalStrip sells={sells?.slice(0, 2) ?? []} buys={buys?.slice(0, 2) ?? []} value={cashCows?.slice(0, 2) ?? []} />
+        <SignalStrip sells={sells.slice(0, 2)} buys={buys.slice(0, 2)} value={cashCows.slice(0, 2)} />
 
-        <Section title="Sell Risks" players={sells?.slice(0, 6) ?? []} type="sell" onPlayerClick={setSelectedPlayer} />
-        <Section title="Buy Opportunities" players={buys?.slice(0, 6) ?? []} type="buy" onPlayerClick={setSelectedPlayer} />
-        <Section title="Premium Upgrades" players={upgrades?.slice(0, 6) ?? []} type="upgrade" onPlayerClick={setSelectedPlayer} />
+        <Section title="Sell Risks" players={sells.slice(0, 6)} type="sell" onPlayerClick={setSelectedPlayer} />
+        <Section title="Buy Opportunities" players={buys.slice(0, 6)} type="buy" onPlayerClick={setSelectedPlayer} />
+        <Section title="Premium Upgrades" players={upgrades.slice(0, 6)} type="upgrade" onPlayerClick={setSelectedPlayer} />
       </div>
 
       <PlayerAIModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
@@ -100,13 +100,10 @@ function SignalBlock({ title, players, icon: Icon, color }: { title: string; pla
         <h3 className="text-lg font-semibold text-white">{title}</h3>
       </div>
       <div className="space-y-2">
-        {(!players || players.length === 0) && (
-          <div className="text-sm text-white/30 italic">No signals</div>
-        )}
-        {players?.map((p) => (
-          <div key={p?.player_id ?? Math.random()} className="flex items-center justify-between text-sm">
-            <span className="text-white/80">{p?.player_name ?? "Unknown"}</span>
-            <span className="text-white/50">{p?.projection?.toFixed(0) ?? "—"}</span>
+        {players.map((p) => (
+          <div key={p.player_id} className="flex items-center justify-between text-sm">
+            <span className="text-white/80">{p.player_name}</span>
+            <span className="text-white/50">{p.projection.toFixed(0)}</span>
           </div>
         ))}
       </div>
@@ -115,21 +112,12 @@ function SignalBlock({ title, players, icon: Icon, color }: { title: string; pla
 }
 
 function Section({ title, players, type, onPlayerClick }: { title: string; players: DerivedPlayer[]; type: string; onPlayerClick: (player: DerivedPlayer) => void }) {
-  if (!players || !Array.isArray(players) || players.length === 0) return null;
-
-  // Deduplicate by player_id
-  const uniquePlayers = Array.from(
-    new Map(players.map(p => [p?.player_id, p])).values()
-  ).filter(p => p && p.player_id && p.player_name);
-
-  if (uniquePlayers.length === 0) return null;
-
   return (
     <div>
       <h2 className="text-2xl font-bold text-white mb-4">{title}</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {uniquePlayers.map((p, i) => (
-          <PlayerCard key={`${type}-${p.player_id}-${i}`} player={p} type={type} onClick={() => onPlayerClick(p)} />
+        {players.map((p) => (
+          <PlayerCard key={p.player_id} player={p} type={type} onClick={() => onPlayerClick(p)} />
         ))}
       </div>
     </div>
@@ -138,9 +126,6 @@ function Section({ title, players, type, onPlayerClick }: { title: string; playe
 
 function PlayerCard({ player, type, onClick }: { player: DerivedPlayer; type: string; onClick: () => void }) {
   const [isHovered, setIsHovered] = useState(false);
-
-  if (!player || !player.player_name) return null;
-
   const changeColor = (player.expected_price_change ?? 0) >= 0 ? "text-emerald-400" : "text-red-400";
 
   const getWhy = (player: DerivedPlayer): string => {
@@ -161,11 +146,11 @@ function PlayerCard({ player, type, onClick }: { player: DerivedPlayer; type: st
       onClick={onClick}
     >
       {isHovered && (
-        <div className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-lg p-4 flex flex-col justify-end z-10 animate-fadeIn overflow-auto">
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-lg p-4 flex flex-col justify-end z-10 animate-fadeIn">
           <p className="text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">
             AI Insight
           </p>
-          <p className="text-sm text-gray-200 leading-relaxed break-words whitespace-normal">
+          <p className="text-sm text-gray-200 leading-snug line-clamp-3">
             {getWhy(player)}
           </p>
         </div>

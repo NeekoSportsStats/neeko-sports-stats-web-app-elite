@@ -12,11 +12,6 @@ declare global {
       type: LibraryItemType;
       player: string | null;
       angle: string | null;
-      reason: string;
-      confidence: "High" | "Medium" | "Low";
-      sampleSize: number;
-      label: string;
-      variant: "safe" | "aggressive" | "experimental";
     };
   }
 }
