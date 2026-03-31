@@ -27,14 +27,23 @@ export default function MarketWatchPage() {
 
       if (error) throw error;
 
-      const cleaned = (data ?? []).filter((p: MWPlayerRow) =>
-        p.price !== null &&
-        p.projection !== null &&
-        p.category !== null
-      );
+      const cleaned = (data ?? []).filter((p: MWPlayerRow) => {
+        return p.category !== null && p.category !== undefined;
+      });
+
+      const categoryCounts = cleaned.reduce((acc, p) => {
+        const cat = p.category || 'none';
+        acc[cat] = (acc[cat] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      console.log("[MW DEBUG]", {
+        total: data?.length ?? 0,
+        afterFilter: cleaned.length,
+        categories: categoryCounts,
+      });
 
       setPlayers(cleaned);
-      console.log("[Market Watch] Loaded:", { players: cleaned.length });
     } catch (error) {
       console.error("[Market Watch] Error:", error);
       setPlayers([]);
