@@ -3,7 +3,9 @@ import { supabase } from "@/lib/supabaseClient";
 
 export interface CommandResponse {
   ok: boolean;
+  success?: boolean;
   result?: unknown;
+  data?: unknown;
   error?: string;
   message?: string;
   duration_ms?: number;
@@ -40,7 +42,7 @@ export async function runCommand(
     return { ok: false, error: message };
   }
 
-  const succeeded = raw.ok === true;
+  const succeeded = raw.ok === true || raw.success === true;
 
   if (succeeded) {
     console.log("[admin-command] ✓", command, `(${raw.duration_ms ?? "?"}ms)`, raw.message ?? "");
@@ -51,7 +53,9 @@ export async function runCommand(
 
   return {
     ok: succeeded,
+    success: succeeded,
     result: raw.result,
+    data: raw.data,
     error: typeof raw.error === "string" ? raw.error : undefined,
     message: typeof raw.message === "string" ? raw.message : undefined,
     duration_ms: typeof raw.duration_ms === "number" ? raw.duration_ms : undefined,

@@ -937,7 +937,7 @@ export default function AFLNeekoIntelPage() {
       console.error("[NeekoIntel] player load error:", error?.message, error?.details);
       setFetchError(true);
     } else {
-      setAllData(data as MasterRow[]);
+      setAllData(data as unknown as MasterRow[]);
     }
     setLoading(false);
   }

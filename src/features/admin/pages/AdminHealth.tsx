@@ -595,7 +595,7 @@ function PlayerIdentityIssuesCard({ issues, loading }: { issues: PlayerIdentityI
 
 export default function AdminHealth() {
   const { data, loading, error, lastRefreshed, refresh } = useSystemHealth();
-  const { dispatch } = useAdminUIState();
+  const { setActiveJob } = useAdminUIState();
 
   const [tab, setTab] = useState<Tab>("pipeline");
   const [running, setRunning] = useState<string | null>(null);
@@ -649,11 +649,11 @@ export default function AdminHealth() {
 
   async function runAdminCommand(label: string, jobType: string, command: string) {
     setRunning(jobType);
-    dispatch({ type: "START_JOB", payload: { jobType, label, pct: 10 } });
+    setActiveJob(jobType, 10, label);
     try {
       await runCommand(command);
-      dispatch({ type: "UPDATE_JOB", payload: { pct: 100 } });
-      setTimeout(() => dispatch({ type: "END_JOB" }), 1500);
+      setActiveJob(jobType, 100, label);
+      setTimeout(() => setActiveJob(null, 0, null), 1500);
       await fetchPipelineData();
     } finally {
       setRunning(null);
@@ -1132,8 +1132,8 @@ export default function AdminHealth() {
               <StatRow label="Players 2026" value={(freshness?.unique_players_2026 ?? 0).toLocaleString()} highlight={(freshness?.unique_players_2026 ?? 0) >= 400 ? "good" : "warn"} />
               <StatRow label="Roster count" value={(freshness?.players_in_roster ?? 0).toLocaleString()} />
               <StatRow label="Missing projections" value={freshness?.players_missing_projection ?? "—"} highlight={(freshness?.players_missing_projection ?? 0) === 0 ? "good" : (freshness?.players_missing_projection ?? 0) < 20 ? "warn" : "bad"} />
-              <StatRow label="Cache age" value={fmtMins(freshness?.rankings_cache_age_mins)} highlight={ageLevel(freshness?.rankings_cache_age_mins, 120, 480)} />
-              <StatRow label="Projection age" value={fmtMins(freshness?.projection_age_mins)} highlight={ageLevel(freshness?.projection_age_mins, 180, 720)} />
+              <StatRow label="Cache age" value={fmtMins(freshness?.rankings_cache_age_mins)} highlight={ageLevel(freshness?.rankings_cache_age_mins, 120, 480) === "error" ? "bad" : ageLevel(freshness?.rankings_cache_age_mins, 120, 480) as "good" | "warn" | "bad"} />
+              <StatRow label="Projection age" value={fmtMins(freshness?.projection_age_mins)} highlight={ageLevel(freshness?.projection_age_mins, 180, 720) === "error" ? "bad" : ageLevel(freshness?.projection_age_mins, 180, 720) as "good" | "warn" | "bad"} />
               <StatRow label="Total stat rows" value={(freshness?.total_stat_rows ?? 0).toLocaleString()} />
             </HealthCard>
 

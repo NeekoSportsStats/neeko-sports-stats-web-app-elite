@@ -264,7 +264,7 @@ export default function MarketingStatsHub() {
       const { data, error } = await query;
       if (error) throw error;
 
-      let rows = (data ?? []) as MarketingPlayer[];
+      let rows = (data ?? []) as unknown as MarketingPlayer[];
       if (angle.filterFn) rows = rows.filter(angle.filterFn);
       rows = rows.slice(0, 10);
 

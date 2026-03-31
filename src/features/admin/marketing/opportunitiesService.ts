@@ -124,7 +124,7 @@ export async function getContentOpportunities(): Promise<ContentOpportunity[]> {
     .limit(500);
 
   if (error) throw error;
-  const rows = (data as Record<string, unknown>[]).filter(availableOnly);
+  const rows = (data as unknown as Record<string, unknown>[]).filter(availableOnly);
 
   const captains = rows
     .filter((r) => r.captain_score != null && Number(r.captain_score) >= 80)

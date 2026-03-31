@@ -6,11 +6,17 @@ export interface MarketingPlayer {
   position: string | null;
   projection_final: number | null;
   ceiling: number | null;
+  ceiling_estimate: number | null;
   floor: number | null;
+  floor_estimate: number | null;
   consistency: number | null;
+  consistency_score: number | null;
   form_score: number | null;
+  form_rating: number | null;
   matchup_rating: number | null;
+  upside_rating: number | null;
   risk_rating: number | null;
+  captain_score: number | null;
   projection_confidence: number | null;
   neeko_rating: number | null;
   neeko_rating_scaled: number | null;

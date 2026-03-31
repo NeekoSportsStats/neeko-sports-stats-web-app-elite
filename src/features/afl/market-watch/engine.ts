@@ -12,6 +12,8 @@ export type DerivedCategory =
 export interface DerivedPlayer extends MWPlayerRow {
   _derived_category: DerivedCategory;
   _delta: number;
+  market_watch_category?: string;
+  value_tag?: string;
 }
 
 export interface BestTrade {

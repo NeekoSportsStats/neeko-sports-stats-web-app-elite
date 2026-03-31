@@ -167,7 +167,7 @@ export default function ImageStudio() {
                     key={p.player_id ?? p.player_name}
                     className="flex items-center gap-2 px-3 py-2 hover:bg-accent cursor-pointer text-sm"
                     onClick={() => {
-                      setSelectedPlayer(p as PlayerRow);
+                      setSelectedPlayer(p as unknown as PlayerRow);
                       setShowDropdown(false);
                       setSearch("");
                       setSubtitleText(p.team ?? "");

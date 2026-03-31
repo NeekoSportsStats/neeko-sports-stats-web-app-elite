@@ -150,7 +150,7 @@ export default function MasterTableDesktop({
     [players]
   );
 
-  const hitThresholds = statConfig.playerTableThresholds?.[selectedStat] || [];
+  const hitThresholds = statConfig.playerThresholds?.[selectedStat] || [];
 
   const nonCompactMinWidth =
     LEFT_COL_W + ROUND_LABELS.length * ROUND_COL_W + RIGHT_COL_W;

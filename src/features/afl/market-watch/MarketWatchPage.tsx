@@ -72,7 +72,6 @@ export default function MarketWatchPage() {
         consistency_score: r.consistency_score ?? null,
         projection_confidence: r.projection_confidence ?? null,
         avg_season: null,
-        last5_avg: null,
         ai_recommendation: r.ai_recommendation ?? null,
         recommendation_short: r.recommendation_short ?? null,
         matchup_label: r.matchup_label ?? null,
@@ -82,6 +81,13 @@ export default function MarketWatchPage() {
         is_bye: r.is_bye === true || r.status === 'bye' || r.manual_status === 'bye',
         status: r.status ?? r.manual_status ?? null,
         manual_status: r.manual_status ?? null,
+        // Additional fields used by MarketPlayerCard
+        price_momentum: null,
+        trade_signal: null,
+        projection_final: r.projection_final ?? null,
+        ceiling_estimate: r.ceiling ?? null,
+        risk_rating: (100 - (r.consistency_score ?? 0)),
+        recommendation_why: r.summary_short ?? null,
       }));
 
       console.log("[MW DEBUG - FETCH]", {

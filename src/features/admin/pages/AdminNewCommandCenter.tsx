@@ -36,30 +36,30 @@ interface ActionButtonProps {
 
 function ActionButton({ label, command, icon: Icon, variant = "outline", disabled, onComplete }: ActionButtonProps) {
   const { toast } = useToast();
-  const { dispatch } = useAdminUIState();
+  const { setActiveJob } = useAdminUIState();
   const [running, setRunning] = useState(false);
   const [lastStatus, setLastStatus] = useState<"idle" | "ok" | "err">("idle");
 
   async function handle() {
     setRunning(true);
     setLastStatus("idle");
-    dispatch({ type: "START_JOB", payload: { jobType: command, label: `${label}…`, pct: 10 } });
+    setActiveJob(command, 10, `${label}…`);
     try {
       const res = await runCommand(command);
       if (res.success) {
         setLastStatus("ok");
-        dispatch({ type: "UPDATE_JOB", payload: { pct: 100 } });
-        setTimeout(() => dispatch({ type: "END_JOB" }), 1500);
+        setActiveJob(command, 100, label);
+        setTimeout(() => setActiveJob(null, 0, null), 1500);
         toast({ title: `${label} complete`, description: res.duration_ms ? `${(res.duration_ms / 1000).toFixed(1)}s` : "Done" });
         onComplete?.();
       } else {
         setLastStatus("err");
-        dispatch({ type: "END_JOB" });
+        setActiveJob(null, 0, null);
         toast({ title: `${label} failed`, description: res.error ?? "Unknown error", variant: "destructive" });
       }
     } catch (err) {
       setLastStatus("err");
-      dispatch({ type: "END_JOB" });
+      setActiveJob(null, 0, null);
       toast({ title: `${label} failed`, description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
     } finally {
       setRunning(false);
@@ -104,25 +104,25 @@ function ConfirmDangerButton({ label, command, description, icon: Icon }: {
   label: string; command: string; description: string; icon: React.ElementType;
 }) {
   const { toast } = useToast();
-  const { dispatch } = useAdminUIState();
+  const { setActiveJob } = useAdminUIState();
   const [confirm, setConfirm] = useState(false);
   const [running, setRunning] = useState(false);
 
   async function handle() {
     setRunning(true);
-    dispatch({ type: "START_JOB", payload: { jobType: command, label: `${label}…`, pct: 10 } });
+    setActiveJob(command, 10, `${label}…`);
     try {
       const res = await runCommand(command);
       if (res.success) {
-        dispatch({ type: "UPDATE_JOB", payload: { pct: 100 } });
-        setTimeout(() => dispatch({ type: "END_JOB" }), 1500);
+        setActiveJob(command, 100, label);
+        setTimeout(() => setActiveJob(null, 0, null), 1500);
         toast({ title: `${label} complete` });
       } else {
-        dispatch({ type: "END_JOB" });
+        setActiveJob(null, 0, null);
         toast({ title: `${label} failed`, description: res.error ?? "Unknown error", variant: "destructive" });
       }
     } catch (err) {
-      dispatch({ type: "END_JOB" });
+      setActiveJob(null, 0, null);
       toast({ title: `${label} failed`, description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
     } finally {
       setRunning(false);

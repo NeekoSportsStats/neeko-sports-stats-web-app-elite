@@ -14,7 +14,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-import { Chrome as Home, Trophy, Crown, Users, Share2, ChevronDown, User, Mail, CircleHelp as HelpCircle, FileText, X, TrendingUp } from "lucide-react";
+import { Home, Trophy, Crown, Users, Share2, ChevronDown, User, Mail, CircleHelp as HelpCircle, FileText, X, TrendingUp } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
