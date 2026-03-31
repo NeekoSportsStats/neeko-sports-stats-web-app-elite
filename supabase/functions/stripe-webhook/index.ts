@@ -75,6 +75,7 @@ Deno.serve(async (req: Request) => {
       else console.log(`stripe-webhook: event logged to DB: ${event.id}`);
     });
 
+    // Process event asynchronously
     EdgeRuntime.waitUntil(handleEvent(event));
 
     return new Response(JSON.stringify({ received: true }), {
@@ -97,9 +98,10 @@ async function handleEvent(event: Stripe.Event) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log(`stripe-webhook: checkout.session.completed — mode=${session.mode}, customer=${session.customer}`);
-        if (session.mode === 'subscription' && session.customer) {
-          await syncCustomerFromStripe(session.customer as string);
+        console.log(`stripe-webhook: checkout.session.completed — mode=${session.mode}, customer=${session.customer}, subscription=${session.subscription}`);
+
+        if (session.mode === 'subscription' && session.customer && session.subscription) {
+          await syncSubscriptionFromStripe(session.subscription as string);
         }
         break;
       }
@@ -107,35 +109,38 @@ async function handleEvent(event: Stripe.Event) {
       case 'customer.subscription.created': {
         const sub = event.data.object as Stripe.Subscription;
         console.log(`stripe-webhook: subscription.created — sub=${sub.id}, customer=${sub.customer}, status=${sub.status}`);
-        if (sub.customer) {
-          await syncCustomerFromStripe(sub.customer as string);
-        }
+        await syncSubscriptionFromStripe(sub.id);
         break;
       }
 
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription;
-        console.log(`stripe-webhook: subscription.updated — sub=${sub.id}, customer=${sub.customer}, status=${sub.status}`);
-        if (sub.customer) {
-          await syncCustomerFromStripe(sub.customer as string);
-        }
-        break;
-      }
-
-      case 'invoice.paid': {
-        const invoice = event.data.object as Stripe.Invoice;
-        console.log(`stripe-webhook: invoice.paid — invoice=${invoice.id}, customer=${invoice.customer}`);
-        if (invoice.customer) {
-          await syncCustomerFromStripe(invoice.customer as string);
-        }
+        console.log(`stripe-webhook: subscription.updated — sub=${sub.id}, customer=${sub.customer}, status=${sub.status}, cancel_at_period_end=${sub.cancel_at_period_end}`);
+        await syncSubscriptionFromStripe(sub.id);
         break;
       }
 
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription;
         console.log(`stripe-webhook: subscription.deleted — sub=${sub.id}, customer=${sub.customer}`);
-        if (sub.customer) {
-          await deactivateCustomer(sub.customer as string);
+        await syncSubscriptionFromStripe(sub.id);
+        break;
+      }
+
+      case 'invoice.paid': {
+        const invoice = event.data.object as Stripe.Invoice;
+        console.log(`stripe-webhook: invoice.paid — invoice=${invoice.id}, customer=${invoice.customer}, subscription=${invoice.subscription}`);
+        if (invoice.subscription) {
+          await syncSubscriptionFromStripe(invoice.subscription as string);
+        }
+        break;
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice;
+        console.log(`stripe-webhook: invoice.payment_failed — invoice=${invoice.id}, subscription=${invoice.subscription}`);
+        if (invoice.subscription) {
+          await syncSubscriptionFromStripe(invoice.subscription as string);
         }
         break;
       }
@@ -199,112 +204,64 @@ async function isManualPremium(userId: string): Promise<boolean> {
   return new Date(data.manual_premium_expires_at) > new Date();
 }
 
-async function syncCustomerFromStripe(customerId: string) {
-  console.log(`stripe-webhook: syncCustomerFromStripe — customer=${customerId}`);
+async function syncSubscriptionFromStripe(subscriptionId: string) {
+  console.log(`stripe-webhook: syncSubscriptionFromStripe — subscription=${subscriptionId}`);
 
-  const subscriptions = await stripe.subscriptions.list({
-    customer: customerId,
-    limit: 1,
-    status: 'all',
-    expand: ['data.default_payment_method'],
-  });
+  try {
+    // Fetch full subscription details from Stripe
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId, {
+      expand: ['customer'],
+    });
 
-  const userId = await resolveUserId(customerId);
+    console.log(`stripe-webhook: retrieved subscription — id=${subscription.id}, status=${subscription.status}, customer=${subscription.customer}, cancel_at_period_end=${subscription.cancel_at_period_end}`);
 
-  if (subscriptions.data.length === 0) {
-    console.log(`stripe-webhook: no subscriptions found for customer ${customerId}`);
-    if (userId) {
-      const manualOverride = await isManualPremium(userId);
-      if (!manualOverride) {
-        await deactivateProfile(userId);
-      } else {
-        console.log(`stripe-webhook: skipping deactivation — user ${userId} has manual premium`);
-      }
+    const customerId = typeof subscription.customer === 'string'
+      ? subscription.customer
+      : subscription.customer?.id;
+
+    if (!customerId) {
+      console.error(`stripe-webhook: no customer found for subscription ${subscriptionId}`);
+      return;
     }
-    return;
-  }
 
-  const subscription = subscriptions.data[0];
-  const isActive = subscription.status === 'active' || subscription.status === 'trialing';
+    const userId = await resolveUserId(customerId);
 
-  console.log(`stripe-webhook: subscription found — id=${subscription.id}, status=${subscription.status}, isActive=${isActive}`);
+    if (!userId) {
+      console.warn(`stripe-webhook: no user found for customer ${customerId} — skipping profile update`);
+      return;
+    }
 
-  const periodStart = subscription.current_period_start
-    ? new Date(subscription.current_period_start * 1000).toISOString()
-    : null;
-  const periodEnd = subscription.current_period_end
-    ? new Date(subscription.current_period_end * 1000).toISOString()
-    : null;
-
-  if (!userId) {
-    console.warn(`stripe-webhook: no user found for customer ${customerId} — profile NOT updated`);
-    return;
-  }
-
-  // Guard: never downgrade a manual premium user via Stripe cancellation
-  const manualOverride = await isManualPremium(userId);
-  if (manualOverride && !isActive) {
-    console.log(`stripe-webhook: skipping profile downgrade — user ${userId} has manual premium`);
-    return;
-  }
-
-  // Profiles is the single source of truth for access decisions
-  const { error: profileError } = await supabase
-    .from('profiles')
-    .upsert(
-      {
-        id: userId,
-        stripe_customer_id: customerId,
-        stripe_subscription_id: subscription.id,
-        subscription_status: subscription.status,
-        billing_period_start: periodStart,
-        billing_period_end: periodEnd,
-        // premium_expires_at always mirrors billing_period_end — access runs until period end
-        // even after cancellation (Condition 3 fallback, aligned with get_access_state logic)
-        premium_expires_at: periodEnd,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'id' }
-    );
-
-  if (profileError) {
-    console.error(`stripe-webhook: profiles upsert error for user ${userId}:`, profileError.message);
-  } else {
-    console.log(`stripe-webhook: profiles updated — user=${userId}, status=${subscription.status}, periodEnd=${periodEnd}`);
-  }
-}
-
-async function deactivateCustomer(customerId: string) {
-  console.log(`stripe-webhook: deactivateCustomer — customer=${customerId}`);
-  const userId = await resolveUserId(customerId);
-  if (userId) {
+    // Guard: never downgrade a manual premium user via Stripe sync
     const manualOverride = await isManualPremium(userId);
-    if (!manualOverride) {
-      await deactivateProfile(userId);
-    } else {
-      console.log(`stripe-webhook: skipping cancellation — user ${userId} has manual premium`);
+    if (manualOverride && subscription.status !== 'active' && subscription.status !== 'trialing') {
+      console.log(`stripe-webhook: skipping profile downgrade — user ${userId} has manual premium`);
+      return;
     }
-  }
-}
 
-async function deactivateProfile(userId: string) {
-  console.log(`stripe-webhook: deactivateProfile — user=${userId}`);
+    const periodStart = subscription.current_period_start
+      ? new Date(subscription.current_period_start * 1000).toISOString()
+      : null;
+    const periodEnd = subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000).toISOString()
+      : null;
 
-  // NOTE: billing_period_end and premium_expires_at are intentionally preserved.
-  // Cancelled users retain access until billing_period_end passes.
-  // get_access_state() and v_user_access both enforce the date check.
-  const { error } = await supabase
-    .from('profiles')
-    .update({
-      subscription_status: 'canceled',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', userId)
-    .eq('is_manual_premium', false);
+    // Use the new sync helper function
+    const { error: syncError } = await supabase.rpc('sync_subscription_to_profile', {
+      p_user_id: userId,
+      p_customer_id: customerId,
+      p_subscription_id: subscription.id,
+      p_status: subscription.status,
+      p_period_start: periodStart,
+      p_period_end: periodEnd,
+      p_cancel_at_period_end: subscription.cancel_at_period_end ?? false,
+    });
 
-  if (error) {
-    console.error(`stripe-webhook: deactivateProfile error for user ${userId}:`, error.message);
-  } else {
-    console.log(`stripe-webhook: profile deactivated — user=${userId}`);
+    if (syncError) {
+      console.error(`stripe-webhook: sync_subscription_to_profile error for user ${userId}:`, syncError.message);
+    } else {
+      console.log(`stripe-webhook: successfully synced subscription — user=${userId}, status=${subscription.status}, period_end=${periodEnd}, cancel_at_period_end=${subscription.cancel_at_period_end}`);
+    }
+  } catch (err: any) {
+    console.error(`stripe-webhook: error syncing subscription ${subscriptionId}:`, err?.message ?? err);
   }
 }
