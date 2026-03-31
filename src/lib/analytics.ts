@@ -1,8 +1,9 @@
 // Safe PostHog wrapper - gracefully handles missing/broken module
-let posthog: any = null;
-let posthogLoaded = false;
+// Import PostHog normally - Vite will bundle it
+import posthog from "posthog-js";
 
 const SESSION_KEY = "neeko_session_id";
+let initialized = false;
 
 function getSessionId(): string {
   if (typeof window === "undefined") return "";
@@ -14,31 +15,15 @@ function getSessionId(): string {
   return sid;
 }
 
-// Lazy load PostHog only when needed
-async function loadPostHog() {
-  if (posthogLoaded) return posthog;
-
-  try {
-    const posthogModule = await import("posthog-js");
-    posthog = posthogModule.default;
-    posthogLoaded = true;
-    return posthog;
-  } catch (e) {
-    console.warn("PostHog module not available");
-    posthogLoaded = true;
-    return null;
-  }
-}
-
 /* =============================
    INIT
 ============================= */
-export async function initAnalytics() {
+export function initAnalytics() {
   if (typeof window === "undefined") return;
+  if (initialized) return;
 
   try {
-    const ph = await loadPostHog();
-    if (!ph) {
+    if (!posthog) {
       console.log("Analytics disabled - PostHog not available");
       return;
     }
@@ -55,13 +40,14 @@ export async function initAnalytics() {
       return;
     }
 
-    ph.init(key, {
+    posthog.init(key, {
       api_host: host,
       capture_pageview: true,
       persistence: "localStorage",
       advanced_disable_feature_flags: true,
     });
 
+    initialized = true;
     console.log("Analytics initialized");
   } catch (err) {
     console.warn("Analytics init failed:", err);
@@ -73,7 +59,7 @@ export async function initAnalytics() {
 ============================= */
 export function track(event: string, properties?: Record<string, unknown>) {
   if (typeof window === "undefined") return;
-  if (!posthog) return;
+  if (!initialized || !posthog) return;
 
   try {
     posthog.capture(event, {
@@ -90,7 +76,7 @@ export function track(event: string, properties?: Record<string, unknown>) {
 ============================= */
 export function identifyUser(user: { id: string; email?: string }) {
   if (typeof window === "undefined") return;
-  if (!posthog) return;
+  if (!initialized || !posthog) return;
 
   try {
     if (!user?.id) return;
@@ -108,7 +94,7 @@ export function identifyUser(user: { id: string; email?: string }) {
 ============================= */
 export function resetUser() {
   if (typeof window === "undefined") return;
-  if (!posthog) return;
+  if (!initialized || !posthog) return;
 
   try {
     posthog.reset();
