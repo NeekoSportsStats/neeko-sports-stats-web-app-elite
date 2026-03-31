@@ -123,10 +123,13 @@ function App() {
         <Route path="/security-policy" element={<S fallback={Generic}><SecurityPolicy /></S>} />
         <Route path="/user-conduct-policy" element={<S fallback={Generic}><UserConductPolicy /></S>} />
 
-        <Route path="/afl/rankings" element={<S fallback={Players}><AFLRankingsPage /></S>} />
-        <Route path="/afl/edge-board" element={<S fallback={AI}><AFLRoundEdgeBoard /></S>} />
-        <Route path="/afl/start-sit" element={<S fallback={AI}><AFLStartSitPage /></S>} />
-        <Route path="/afl/market-watch" element={<S fallback={AI}><AFLMarketWatch /></S>} />
+        <Route path="/neeko-plus" element={<S fallback={Generic}><NeekoPlusPurchase /></S>} />
+
+        <Route path="/sports/afl" element={<Navigate to="/sports/afl/rankings" replace />} />
+        <Route path="/sports/afl/rankings" element={<S fallback={Players}><AFLRankingsPage /></S>} />
+        <Route path="/sports/afl/edge-board" element={<S fallback={AI}><AFLRoundEdgeBoard /></S>} />
+        <Route path="/sports/afl/start-sit" element={<S fallback={AI}><AFLStartSitPage /></S>} />
+        <Route path="/sports/afl/market-watch" element={<S fallback={AI}><AFLMarketWatch /></S>} />
 
         <Route path="/account" element={<RequireAuth><S fallback={Generic}><Account /></S></RequireAuth>} />
         <Route path="/billing" element={<RequireAuth><S fallback={Generic}><Billing /></S></RequireAuth>} />

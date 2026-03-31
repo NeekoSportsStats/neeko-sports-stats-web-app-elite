@@ -604,7 +604,7 @@ function ModelAccuracySection() {
               </p>
             </div>
             <Link
-              to="/afl/rankings"
+              to="/sports/afl/rankings"
               className="shrink-0 inline-flex items-center justify-center gap-2 bg-[#F5C84C] text-black font-bold text-sm px-5 py-2.5 rounded-xl hover:brightness-110 transition-all whitespace-nowrap"
             >
               See the Rankings
