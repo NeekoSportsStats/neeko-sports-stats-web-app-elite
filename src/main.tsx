@@ -31,17 +31,9 @@ if (!rootEl) {
   const root = createRoot(rootEl);
   console.log("createRoot successful");
 
-  console.log("About to render with providers");
+  console.log("About to render - NO PROVIDERS");
 
-  root.render(
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </AuthProvider>
-    </QueryClientProvider>
-  );
+  root.render(<App />);
 
-  console.log("Render called with full app");
+  console.log("Render called - no providers");
 }
