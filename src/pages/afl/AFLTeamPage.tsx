@@ -1,7 +1,6 @@
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
-import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,19 +10,8 @@ import { nameToSlug, POSITION_NAMES } from '@/lib/slugs';
 import { getTeamPlayersSafe } from '@/lib/playerAccess';
 import { useAuth } from '@/lib/auth';
 import { LockedPlayerCard } from '@/components/premium/LockedPlayerCard';
-
-interface TeamPlayer {
-  player_id?: number;
-  player_name: string;
-  position: string;
-  neeko_rating: number;
-  projection_final: number;
-  value_score: number;
-  price: number;
-  ai_recommendation: string;
-  recommendation_color: string;
-  is_locked?: boolean;
-}
+import { TeamPlayer } from '@/features/afl/shared/seo/types';
+import { formatNumber, getRecommendationColor } from '@/features/afl/shared/seo/utils';
 
 const TEAM_SLUG_TO_NAME: Record<string, string> = {
   'adelaide-crows': 'Adelaide Crows',
@@ -49,7 +37,7 @@ const TEAM_SLUG_TO_NAME: Record<string, string> = {
 export default function AFLTeamPage() {
   const { team } = useParams<{ team: string }>();
   const teamName = team ? TEAM_SLUG_TO_NAME[team] : '';
-  const { user, isPremium } = useAuth();
+  const { user } = useAuth();
 
   const { data: players, isLoading, error } = useQuery({
     queryKey: ['team-players-safe', teamName, user?.id],
@@ -93,23 +81,21 @@ export default function AFLTeamPage() {
     : 0;
 
   const valueLeaders = [...players]
-    .filter(p => p.value_score > 0)
+    .filter(p => !p.is_locked && p.value_score > 0)
     .sort((a, b) => (b.value_score || 0) - (a.value_score || 0))
     .slice(0, 5);
 
-  const captainOptions = players.filter(p => p.neeko_rating >= 100).slice(0, 5);
+  const captainOptions = [...players]
+    .filter(p => !p.is_locked && p.neeko_rating >= 100)
+    .slice(0, 5);
 
   const pageTitle = `${teamName} AFL Fantasy Players & Rankings 2026 | Neeko`;
   const pageDescription = `Complete ${teamName} AFL Fantasy roster for 2026. Top players, projections, value picks, and captain options. ${players.length} players ranked with AI-powered recommendations.`;
   const pageUrl = `https://neeko.com.au/sports/afl/teams/${team}`;
 
   const getRecommendationBadge = (rec: string, color: string) => {
-    const colorClass = color === 'green' ? 'bg-green-500/10 text-green-700 border-green-500/20'
-      : color === 'red' ? 'bg-red-500/10 text-red-700 border-red-500/20'
-      : 'bg-slate-500/10 text-slate-700 border-slate-500/20';
-
     return (
-      <Badge variant="outline" className={`${colorClass} text-xs`}>
+      <Badge variant="outline" className={`${getRecommendationColor(color)} text-xs`}>
         {rec}
       </Badge>
     );
@@ -219,9 +205,9 @@ export default function AFLTeamPage() {
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-bold text-green-600">
-                          {player.neeko_rating.toFixed(1)}
+                          {formatNumber(player.neeko_rating)}
                         </div>
-                        <div className="text-xs text-slate-500">{Math.round(player.projection_final)} pts</div>
+                        <div className="text-xs text-slate-500">{formatNumber(player.projection_final)} pts</div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -269,7 +255,7 @@ export default function AFLTeamPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="text-right">
-                          <div className="text-sm font-bold text-green-600">{Math.round(player.value_score)}</div>
+                          <div className="text-sm font-bold text-green-600">{formatNumber(player.value_score)}</div>
                           <div className="text-xs text-slate-500">value</div>
                         </div>
                         <ChevronRight className="h-3 w-3 text-slate-400 group-hover:translate-x-1 transition-transform" />
@@ -321,7 +307,7 @@ export default function AFLTeamPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="text-right">
-                            <div className="text-sm font-bold text-green-600">{Math.round(player.projection_final)}</div>
+                            <div className="text-sm font-bold text-green-600">{formatNumber(player.projection_final)}</div>
                             <div className="text-xs text-slate-500">projected</div>
                           </div>
                           <ChevronRight className="h-3 w-3 text-slate-400 group-hover:translate-x-1 transition-transform" />

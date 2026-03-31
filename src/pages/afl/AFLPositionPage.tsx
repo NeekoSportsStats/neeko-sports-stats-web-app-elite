@@ -11,21 +11,8 @@ import { nameToSlug, POSITION_NAMES } from '@/lib/slugs';
 import { useAuth } from '@/lib/auth';
 import { getFreePlayerIds, markLockedPlayers } from '@/lib/playerAccess';
 import { LockedPlayerCard } from '@/components/premium/LockedPlayerCard';
-
-interface PositionPlayer {
-  player_id?: number;
-  player_name: string;
-  team: string;
-  neeko_rating: number;
-  projection_final: number;
-  projection_confidence: number;
-  value_score: number;
-  price: number;
-  ai_recommendation: string;
-  recommendation_color: string;
-  upside_pct: number;
-  is_locked?: boolean;
-}
+import { RankingsPlayer } from '@/features/afl/shared/seo/types';
+import { formatNumber, formatPercentage, getRecommendationColor } from '@/features/afl/shared/seo/utils';
 
 const POSITION_SLUG_TO_CODE: Record<string, string> = {
   'def': 'DEF',
@@ -53,7 +40,7 @@ export default function AFLPositionPage() {
       if (error) throw error;
 
       const freePlayerIds = await getFreePlayerIds();
-      return markLockedPlayers(data || [], isPremium, freePlayerIds) as PositionPlayer[];
+      return markLockedPlayers(data || [], isPremium, freePlayerIds) as RankingsPlayer[];
     },
     enabled: !!positionCode,
   });
@@ -86,17 +73,17 @@ export default function AFLPositionPage() {
   }
 
   const bestValue = [...players]
-    .filter(p => p.value_score > 0)
+    .filter(p => !p.is_locked && p.value_score > 0)
     .sort((a, b) => (b.value_score || 0) - (a.value_score || 0))
     .slice(0, 10);
 
   const safestPicks = [...players]
-    .filter(p => p.projection_confidence >= 65)
+    .filter(p => !p.is_locked && (p.projection_confidence || 0) >= 65)
     .sort((a, b) => (b.projection_confidence || 0) - (a.projection_confidence || 0))
     .slice(0, 10);
 
   const highRisk = [...players]
-    .filter(p => (p.upside_pct || 0) > 15)
+    .filter(p => !p.is_locked && (p.upside_pct || 0) > 15)
     .sort((a, b) => (b.upside_pct || 0) - (a.upside_pct || 0))
     .slice(0, 10);
 
@@ -105,12 +92,8 @@ export default function AFLPositionPage() {
   const pageUrl = `https://neeko.com.au/sports/afl/positions/${position}`;
 
   const getRecommendationBadge = (rec: string, color: string) => {
-    const colorClass = color === 'green' ? 'bg-green-500/10 text-green-700 border-green-500/20'
-      : color === 'red' ? 'bg-red-500/10 text-red-700 border-red-500/20'
-      : 'bg-slate-500/10 text-slate-700 border-slate-500/20';
-
     return (
-      <Badge variant="outline" className={`${colorClass} text-xs`}>
+      <Badge variant="outline" className={`${getRecommendationColor(color)} text-xs`}>
         {rec}
       </Badge>
     );
@@ -165,7 +148,7 @@ export default function AFLPositionPage() {
               <div>
                 <div className="text-sm text-slate-500 mb-1">Top Projection</div>
                 <div className="text-2xl font-bold text-green-600">
-                  {players.length > 0 ? Math.round(players[0].projection_final) : 0}
+                  {players.length > 0 ? formatNumber(players[0].projection_final) : 0}
                 </div>
               </div>
               <div>
@@ -268,7 +251,7 @@ export default function AFLPositionPage() {
                         </div>
                         <div>
                           <div className="font-semibold text-sm text-slate-900">{player.player_name}</div>
-                          <div className="text-xs text-slate-500">{Math.round(player.projection_confidence)}% conf</div>
+                          <div className="text-xs text-slate-500">{formatPercentage(player.projection_confidence)} conf</div>
                         </div>
                       </div>
                       <ChevronRight className="h-3 w-3 text-slate-400 group-hover:translate-x-1 transition-transform" />
@@ -318,7 +301,7 @@ export default function AFLPositionPage() {
                         </div>
                         <div>
                           <div className="font-semibold text-sm text-slate-900">{player.player_name}</div>
-                          <div className="text-xs text-slate-500">{Math.round(player.upside_pct)}% upside</div>
+                          <div className="text-xs text-slate-500">{formatPercentage(player.upside_pct)} upside</div>
                         </div>
                       </div>
                       <ChevronRight className="h-3 w-3 text-slate-400 group-hover:translate-x-1 transition-transform" />
@@ -376,9 +359,9 @@ export default function AFLPositionPage() {
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-bold text-green-600">
-                          {player.neeko_rating.toFixed(1)}
+                          {formatNumber(player.neeko_rating)}
                         </div>
-                        <div className="text-xs text-slate-500">{Math.round(player.projection_final)} pts</div>
+                        <div className="text-xs text-slate-500">{formatNumber(player.projection_final)} pts</div>
                       </div>
                       <ChevronRight className="h-4 w-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
                     </div>
