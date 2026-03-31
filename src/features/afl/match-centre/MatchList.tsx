@@ -59,7 +59,7 @@ export default function MatchList({ groups, onSelectMatch, quarterScoresMap }: P
 
         return (
           <div key={idx} className="space-y-3 md:space-y-5">
-            <div className="flex items-baseline gap-3 py-1.5 md:py-2 border-b border-gradient-to-r from-[#F5C84C]/15 via-slate-700/20 to-transparent pb-2 md:pb-3">
+            <div className="flex items-baseline gap-3 py-1.5 md:py-2 border-b border-gradient-to-r from-[#F5C84C]/15 via-neutral-700/20 to-transparent pb-2 md:pb-3">
               <span className="text-white font-semibold text-base md:text-lg">{dayLabel}</span>
               <span className="bg-gradient-to-r from-[#F5C84C] to-[#E6B84A] bg-clip-text text-transparent text-xs md:text-sm font-medium">{g.round_label}</span>
             </div>
@@ -88,7 +88,7 @@ export default function MatchList({ groups, onSelectMatch, quarterScoresMap }: P
                   <button
                     key={m.match_id ?? mIdx}
                     onClick={() => onSelectMatch(m)}
-                    className="w-full text-left rounded-2xl border border-slate-700/30 bg-gradient-to-br from-slate-950/40 via-black/30 to-slate-900/40 hover:from-slate-900/50 hover:via-black/40 hover:to-slate-800/50 hover:border-[#F5C84C]/30 md:hover:scale-[1.01] active:bg-black/50 active:scale-[0.99] transition-all duration-200 p-4 md:p-6 group min-h-[64px] touch-manipulation relative overflow-hidden"
+                    className="w-full text-left rounded-2xl border border-neutral-700/30 bg-gradient-to-br from-neutral-950/40 via-black/30 to-neutral-900/40 hover:from-neutral-900/50 hover:via-black/40 hover:to-neutral-800/50 hover:border-[#F5C84C]/30 md:hover:scale-[1.01] active:bg-black/50 active:scale-[0.99] transition-all duration-200 p-4 md:p-6 group min-h-[64px] touch-manipulation relative overflow-hidden"
                     style={{
                       boxShadow: `0 0 0 0 ${teamColors.home.primary}00`,
                     }}
@@ -120,7 +120,7 @@ export default function MatchList({ groups, onSelectMatch, quarterScoresMap }: P
                           </div>
                           <div className="flex items-baseline gap-2">
                             {homeGoalsBehinds && (
-                              <div className="text-xs text-slate-500 font-medium">{homeGoalsBehinds}</div>
+                              <div className="text-xs text-neutral-500 font-medium">{homeGoalsBehinds}</div>
                             )}
                             <div
                               className={`text-3xl md:text-4xl font-bold ${homeWon ? '' : 'text-white/90'}`}
@@ -137,7 +137,7 @@ export default function MatchList({ groups, onSelectMatch, quarterScoresMap }: P
                         </div>
 
                         <div className="flex flex-col items-center justify-center text-center py-1 md:pt-2">
-                          <div className="bg-gradient-to-r from-[#F5C84C]/60 via-slate-400/50 to-[#F5C84C]/60 bg-clip-text text-transparent font-black text-sm md:text-xl">VS</div>
+                          <div className="bg-gradient-to-r from-[#F5C84C]/60 via-neutral-400/50 to-[#F5C84C]/60 bg-clip-text text-transparent font-black text-sm md:text-xl">VS</div>
                           {wonBy && (
                             <div className="mt-1 md:mt-3 text-[10px] md:text-xs text-[#F5C84C]/70 leading-tight font-medium whitespace-nowrap">{wonBy}</div>
                           )}
@@ -167,24 +167,24 @@ export default function MatchList({ groups, onSelectMatch, quarterScoresMap }: P
                               {awayScoreNum ?? "—"}
                             </div>
                             {awayGoalsBehinds && (
-                              <div className="text-xs text-slate-500 font-medium">{awayGoalsBehinds}</div>
+                              <div className="text-xs text-neutral-500 font-medium">{awayGoalsBehinds}</div>
                             )}
                           </div>
                         </div>
                       </div>
 
-                      <div className="mt-5 md:mt-5 pt-4 md:pt-4 border-t border-gradient-to-r from-transparent via-slate-700/20 to-transparent flex flex-wrap items-center gap-3 md:gap-4 text-sm">
+                      <div className="mt-5 md:mt-5 pt-4 md:pt-4 border-t border-gradient-to-r from-transparent via-neutral-700/20 to-transparent flex flex-wrap items-center gap-3 md:gap-4 text-sm">
                         {venue && (
-                          <div className={`text-sm ${isFinished ? "text-slate-600" : "text-slate-400"}`}>{venue}</div>
+                          <div className={`text-sm ${isFinished ? "text-neutral-600" : "text-neutral-400"}`}>{venue}</div>
                         )}
                         {isFinished && (
                           <div className="px-2.5 py-1.5 md:px-2 md:py-1 rounded-md border border-white/10 bg-white/[0.02] text-xs uppercase tracking-wider text-white/40 font-semibold">
                             FT
                           </div>
                         )}
-                        <div className="ml-auto text-slate-400 text-sm flex items-center gap-2 group-hover:text-[#F5C84C] transition-all min-h-[48px] md:min-h-[48px] py-2 -mr-1 touch-manipulation">
+                        <div className="ml-auto text-neutral-400 text-sm flex items-center gap-2 group-hover:text-[#F5C84C] transition-all min-h-[48px] md:min-h-[48px] py-2 -mr-1 touch-manipulation">
                           <span className="font-medium">View Details</span>
-                          <span className="text-lg group-hover:translate-x-1 transition-transform duration-200">›</span>
+                          <span className="text-lg group-hover:tranneutral-x-1 transition-transform duration-200">›</span>
                         </div>
                       </div>
                     </div>

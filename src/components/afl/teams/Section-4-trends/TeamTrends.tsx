@@ -152,7 +152,7 @@ function SparklineLarge({
         h-[44px] sm:h-[54px] 
         w-full rounded-xl overflow-hidden 
         bg-gradient-to-b from-neutral-800/40 via-neutral-900/90 to-black
-        border border-slate-400/20 shadow-[0_6px_14px_rgba(0,0,0,0.55)]
+        border border-neutral-400/20 shadow-[0_6px_14px_rgba(0,0,0,0.55)]
         px-[4px] sm:px-[6px]
       "
     >

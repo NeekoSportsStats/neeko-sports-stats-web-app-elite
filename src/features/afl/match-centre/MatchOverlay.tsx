@@ -399,12 +399,12 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
         if (e.target === overlayRef.current) onClose();
       }}
     >
-      <div className="w-full rounded-xl border border-slate-700/30 bg-gradient-to-b from-slate-950/80 via-black/70 to-slate-950/80 backdrop-blur-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
-        <div className="flex items-center justify-between p-3 md:p-5 border-b border-gradient-to-r from-[#F5C84C]/20 via-slate-700/20 to-transparent">
+      <div className="w-full rounded-xl border border-neutral-700/30 bg-gradient-to-b from-neutral-950/80 via-black/70 to-neutral-950/80 backdrop-blur-xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+        <div className="flex items-center justify-between p-3 md:p-5 border-b border-gradient-to-r from-[#F5C84C]/20 via-neutral-700/20 to-transparent">
           <div>
             <div className="text-xs uppercase tracking-wider bg-gradient-to-r from-[#F5C84C] to-[#E6B84A] bg-clip-text text-transparent font-medium">
               {roundLabel} • {season}
-              {isFinished && <span className="ml-2 text-slate-400">Full Time</span>}
+              {isFinished && <span className="ml-2 text-neutral-400">Full Time</span>}
             </div>
             <div className="text-lg sm:text-xl font-semibold text-white">Match Detail</div>
           </div>
@@ -412,12 +412,12 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
             onClick={onClose}
             className="h-11 w-11 min-h-[44px] min-w-[44px] rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] active:bg-white/[0.06] flex items-center justify-center transition-colors touch-manipulation"
           >
-            <X className="h-5 w-5 text-slate-300" />
+            <X className="h-5 w-5 text-neutral-300" />
           </button>
         </div>
 
         <div className="p-4 md:p-6 space-y-6 sm:space-y-10">
-          <div className="rounded-xl md:rounded-2xl border border-gradient-to-r from-[#F5C84C]/15 via-slate-700/10 to-[#60A5FA]/10 bg-gradient-to-br from-slate-950/60 via-black/50 to-slate-900/60 p-4 md:p-6 shadow-lg shadow-[#F5C84C]/5 relative overflow-hidden">
+          <div className="rounded-xl md:rounded-2xl border border-gradient-to-r from-[#F5C84C]/15 via-neutral-700/10 to-[#60A5FA]/10 bg-gradient-to-br from-neutral-950/60 via-black/50 to-neutral-900/60 p-4 md:p-6 shadow-lg shadow-[#F5C84C]/5 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-[#F5C84C]/[0.03] via-transparent to-[#60A5FA]/[0.03]" />
             <div className="relative">
               <div className="grid grid-cols-3 items-center gap-3 md:gap-4 mb-4 md:mb-4">
@@ -431,7 +431,7 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="bg-gradient-to-r from-[#F5C84C]/60 via-slate-400/50 to-[#60A5FA]/60 bg-clip-text text-transparent text-2xl md:text-3xl font-black">VS</div>
+                  <div className="bg-gradient-to-r from-[#F5C84C]/60 via-neutral-400/50 to-[#60A5FA]/60 bg-clip-text text-transparent text-2xl md:text-3xl font-black">VS</div>
                   {wonByLabel && (
                     <div className="mt-2 md:mt-2 text-xs text-[#F5C84C] leading-relaxed px-1 font-semibold">{wonByLabel}</div>
                   )}
@@ -448,14 +448,14 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
               </div>
 
             {(quarters.length > 0 || (sortedQuarterScores && sortedQuarterScores.length > 0)) && (
-              <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-gradient-to-r from-[#F5C84C]/10 via-slate-700/10 to-[#60A5FA]/10">
+              <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-gradient-to-r from-[#F5C84C]/10 via-neutral-700/10 to-[#60A5FA]/10">
                 <button
                   onClick={() => setShowQuarters(!showQuarters)}
                   className="w-full flex items-center justify-between mb-3 md:mb-4 touch-manipulation min-h-[48px] md:min-h-0 -my-2 md:my-0 py-2 md:py-0 hover:opacity-80 transition-opacity"
                 >
                   <div className="text-xs uppercase tracking-wider font-bold flex items-center gap-2.5">
                     <span className={showQuarters ? 'bg-gradient-to-r from-[#F5C84C] to-[#E6B84A] bg-clip-text text-transparent' : 'text-[#F5C84C]/70'}>Quarter by Quarter</span>
-                    <span className="md:hidden text-slate-500 text-[10px] font-semibold">({showQuarters ? 'Hide' : 'Tap to show'})</span>
+                    <span className="md:hidden text-neutral-500 text-[10px] font-semibold">({showQuarters ? 'Hide' : 'Tap to show'})</span>
                   </div>
                   <span className="md:hidden text-[#F5C84C] text-base font-bold transition-transform duration-300" style={{ transform: showQuarters ? 'rotate(180deg)' : 'rotate(0deg)' }}>
                     ▼
@@ -508,15 +508,15 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
               </div>
             )}
 
-            <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-slate-800/30 flex flex-wrap items-center gap-2.5 md:gap-5 text-sm">
+            <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t border-neutral-800/30 flex flex-wrap items-center gap-2.5 md:gap-5 text-sm">
               {venue && (
-                <div className={`flex items-center gap-1.5 ${isFinished ? "text-slate-600" : "text-slate-400"}`}>
+                <div className={`flex items-center gap-1.5 ${isFinished ? "text-neutral-600" : "text-neutral-400"}`}>
                   <MapPin className="h-3.5 w-3.5 md:h-4 md:w-4" />
                   <span className="text-xs md:text-sm">{venue}</span>
                 </div>
               )}
               {formattedDate && (
-                <div className="flex items-center gap-1.5 text-slate-500">
+                <div className="flex items-center gap-1.5 text-neutral-500">
                   <Clock className="h-3.5 w-3.5 md:h-4 md:w-4" />
                   <span className="text-xs md:text-sm">{formattedDate}</span>
                 </div>
@@ -538,7 +538,7 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
 
           {statsReady ? (
             <>
-              <div className="rounded-xl md:rounded-2xl border border-slate-700/30 bg-gradient-to-br from-slate-950/50 via-black/40 to-slate-900/50 p-4 md:p-6 hover:border-slate-600/40 transition-colors duration-300 relative overflow-hidden">
+              <div className="rounded-xl md:rounded-2xl border border-neutral-700/30 bg-gradient-to-br from-neutral-950/50 via-black/40 to-neutral-900/50 p-4 md:p-6 hover:border-neutral-600/40 transition-colors duration-300 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-[#F5C84C]/[0.02] via-transparent to-[#60A5FA]/[0.02]" />
                 <div className="relative">
                   <div className="flex items-center gap-2 mb-3 md:mb-5">
@@ -546,7 +546,7 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
                     <div className="text-sm md:text-base font-bold text-white">Top Performers</div>
                   </div>
                   {team1Top3.length === 0 && team2Top3.length === 0 ? (
-                    <div className="text-slate-400 text-sm">Player data unavailable for this match</div>
+                    <div className="text-neutral-400 text-sm">Player data unavailable for this match</div>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                       <div>
@@ -555,13 +555,13 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
                           <div className="text-sm font-semibold text-white">{team1Name || match.home_team_vendor}</div>
                         </div>
                         {team1Top3.length === 0 ? (
-                          <div className="text-slate-400 text-sm">No data</div>
+                          <div className="text-neutral-400 text-sm">No data</div>
                         ) : (
                           <div className="space-y-2 md:space-y-3">
                             {team1Top3.map((p, idx) => (
                               <div
                                 key={idx}
-                                className="rounded-lg md:rounded-xl border border-slate-800/40 bg-gradient-to-br from-slate-950/60 via-black/50 to-slate-900/60 px-3 md:px-4 py-2.5 md:py-3 hover:border-[#F5C84C]/30 hover:shadow-[0_0_12px_rgba(245,200,76,0.08)] transition-all duration-200 relative overflow-hidden group"
+                                className="rounded-lg md:rounded-xl border border-neutral-800/40 bg-gradient-to-br from-neutral-950/60 via-black/50 to-neutral-900/60 px-3 md:px-4 py-2.5 md:py-3 hover:border-[#F5C84C]/30 hover:shadow-[0_0_12px_rgba(245,200,76,0.08)] transition-all duration-200 relative overflow-hidden group"
                               >
                                 <div className="absolute inset-0 bg-gradient-to-r from-[#F5C84C]/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                 <div className="relative">
@@ -569,7 +569,7 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
                                     <div className="text-white font-medium text-sm md:text-base">{p.player_name ?? "Unknown"}</div>
                                     <div className="bg-gradient-to-r from-[#F5C84C] to-[#E6B84A] bg-clip-text text-transparent font-bold text-sm md:text-base">{p.fantasy_points ?? 0}</div>
                                   </div>
-                                  <div className="flex items-center gap-3 md:gap-4 text-xs text-slate-500">
+                                  <div className="flex items-center gap-3 md:gap-4 text-xs text-neutral-500">
                                     <span>Disposals: {p.disposals ?? 0}</span>
                                     <span>Goals: {p.goals ?? 0}</span>
                                   </div>
@@ -585,13 +585,13 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
                           <div className="text-sm font-semibold text-white">{team2Name || match.away_team_vendor}</div>
                         </div>
                         {team2Top3.length === 0 ? (
-                          <div className="text-slate-400 text-sm">No data</div>
+                          <div className="text-neutral-400 text-sm">No data</div>
                         ) : (
                           <div className="space-y-2 md:space-y-3">
                             {team2Top3.map((p, idx) => (
                               <div
                                 key={idx}
-                                className="rounded-lg md:rounded-xl border border-slate-800/40 bg-gradient-to-br from-slate-950/60 via-black/50 to-slate-900/60 px-3 md:px-4 py-2.5 md:py-3 hover:border-[#60A5FA]/30 hover:shadow-[0_0_12px_rgba(96,165,250,0.08)] transition-all duration-200 relative overflow-hidden group"
+                                className="rounded-lg md:rounded-xl border border-neutral-800/40 bg-gradient-to-br from-neutral-950/60 via-black/50 to-neutral-900/60 px-3 md:px-4 py-2.5 md:py-3 hover:border-[#60A5FA]/30 hover:shadow-[0_0_12px_rgba(96,165,250,0.08)] transition-all duration-200 relative overflow-hidden group"
                               >
                                 <div className="absolute inset-0 bg-gradient-to-l from-[#60A5FA]/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                 <div className="relative">
@@ -599,7 +599,7 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
                                     <div className="text-white font-medium text-sm md:text-base">{p.player_name ?? "Unknown"}</div>
                                     <div className="bg-gradient-to-r from-[#F5C84C] to-[#E6B84A] bg-clip-text text-transparent font-bold text-sm md:text-base">{p.fantasy_points ?? 0}</div>
                                   </div>
-                                  <div className="flex items-center gap-3 md:gap-4 text-xs text-slate-500">
+                                  <div className="flex items-center gap-3 md:gap-4 text-xs text-neutral-500">
                                     <span>Disposals: {p.disposals ?? 0}</span>
                                     <span>Goals: {p.goals ?? 0}</span>
                                   </div>
@@ -652,7 +652,7 @@ export default function MatchOverlay({ match, timeline, matchPlayerStats, scatte
                         );
                       })
                     ) : (
-                      <p className="text-slate-400 italic">Match insights are currently unavailable for this fixture.</p>
+                      <p className="text-neutral-400 italic">Match insights are currently unavailable for this fixture.</p>
                     )}
                   </div>
                 </div>

@@ -175,7 +175,7 @@ export default function AFLMatchCentrePage() {
           </div>
         </header>
 
-        <div className="mb-6 md:mb-8 rounded-xl border border-slate-700/30 bg-gradient-to-br from-slate-900/40 via-black/40 to-slate-900/30 backdrop-blur-xl p-4 md:p-4 sticky top-0 z-10 shadow-[0_4px_12px_rgba(0,0,0,0.5)] md:shadow-none md:static">
+        <div className="mb-6 md:mb-8 rounded-xl border border-neutral-700/30 bg-gradient-to-br from-neutral-900/40 via-black/40 to-neutral-900/30 backdrop-blur-xl p-4 md:p-4 sticky top-0 z-10 shadow-[0_4px_12px_rgba(0,0,0,0.5)] md:shadow-none md:static">
           <div className="flex flex-col gap-4 md:flex-row md:gap-4 md:items-center md:justify-between">
             <div className="space-y-1 md:space-y-1">
               <div className="text-xs font-bold uppercase tracking-wider bg-gradient-to-r from-[#F5C84C] to-[#E6B84A] bg-clip-text text-transparent">
@@ -188,9 +188,9 @@ export default function AFLMatchCentrePage() {
 
             <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:gap-3">
               <div className="flex flex-col gap-2">
-                <label className="text-xs text-slate-400 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                <label className="text-xs text-neutral-400 uppercase tracking-wider font-semibold flex items-center gap-1.5">
                   Season
-                  {!isPremium && <Lock className="h-3 w-3 text-slate-500" />}
+                  {!isPremium && <Lock className="h-3 w-3 text-neutral-500" />}
                 </label>
                 <select
                   value={season}
@@ -208,9 +208,9 @@ export default function AFLMatchCentrePage() {
 
               <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs text-slate-400 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                  <label className="text-xs text-neutral-400 uppercase tracking-wider font-semibold flex items-center gap-1.5">
                     Round
-                    {!isPremium && <Lock className="h-3 w-3 text-slate-500" />}
+                    {!isPremium && <Lock className="h-3 w-3 text-neutral-500" />}
                   </label>
                   {!isPremium && (
                     <span className="text-[10px] text-[#F5C84C]/70 font-semibold uppercase tracking-wider">
@@ -322,10 +322,10 @@ export default function AFLMatchCentrePage() {
 
 function LockedRoundView({ freeMinRound, maxAvailableRound }: { freeMinRound: number; maxAvailableRound: number }) {
   return (
-    <div className="rounded-2xl border border-slate-700/30 bg-gradient-to-br from-slate-900/40 via-black/40 to-slate-900/30 backdrop-blur-xl p-12 md:p-16 text-center">
+    <div className="rounded-2xl border border-neutral-700/30 bg-gradient-to-br from-neutral-900/40 via-black/40 to-neutral-900/30 backdrop-blur-xl p-12 md:p-16 text-center">
       <div className="max-w-lg mx-auto space-y-6">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/[0.03] border border-white/10 mb-4">
-          <Lock className="w-8 h-8 text-slate-400" />
+          <Lock className="w-8 h-8 text-neutral-400" />
         </div>
         <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">Round Locked</h2>
         <p className="text-base md:text-lg text-white/60 leading-relaxed">
@@ -344,7 +344,7 @@ function LockedRoundView({ freeMinRound, maxAvailableRound }: { freeMinRound: nu
 
 function MatchCentreUpgradeCTA() {
   return (
-    <div className="mt-8 rounded-2xl border border-slate-700/30 bg-gradient-to-br from-slate-900/60 via-black/50 to-slate-900/60 backdrop-blur-xl p-8 md:p-10 relative overflow-hidden">
+    <div className="mt-8 rounded-2xl border border-neutral-700/30 bg-gradient-to-br from-neutral-900/60 via-black/50 to-neutral-900/60 backdrop-blur-xl p-8 md:p-10 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-r from-[#F5C84C]/[0.03] via-transparent to-[#F5C84C]/[0.02]" />
       <div className="relative flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8">
         <div className="flex-shrink-0 flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#F5C84C]/15 to-[#E6B84A]/10 border border-[#F5C84C]/25 shadow-lg shadow-[#F5C84C]/10">
