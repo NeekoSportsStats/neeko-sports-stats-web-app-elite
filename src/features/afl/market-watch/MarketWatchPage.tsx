@@ -9,8 +9,9 @@ import { MarketWatchSignalStrip } from "./MarketWatchSignalStrip";
 import { MarketWatchPremiumCard } from "./MarketWatchPremiumCard";
 import { MarketWatchPaywall } from "./MarketWatchPaywall";
 import { MarketWatchSkeleton } from "./MarketWatchSkeleton";
-import { classifyPlayers } from "./engine";
+import { classifyPlayers, DerivedPlayer } from "./engine";
 import { PremiumGate } from "@/components/PremiumGate";
+import { PlayerAIModal } from "./PlayerAIModal";
 
 // Derive Market Watch category from Rankings data (single source of truth)
 function deriveCategory(r: any): MWPlayerRow['category'] {
@@ -37,6 +38,7 @@ export default function MarketWatchPage() {
   const { isPremium, loading: authLoading } = useAuth();
   const [players, setPlayers] = useState<MWPlayerRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPlayer, setSelectedPlayer] = useState<DerivedPlayer | null>(null);
 
   const fetchData = useCallback(async (premium: boolean) => {
     setLoading(true);
@@ -218,6 +220,7 @@ export default function MarketWatchPage() {
               subtitle="Players at risk of price drops"
               players={classified.sells.slice(0, 12)}
               type="sell"
+              onPlayerClick={setSelectedPlayer}
             />
 
             <CategorySection
@@ -225,6 +228,7 @@ export default function MarketWatchPage() {
               subtitle="Strong upside potential"
               players={classified.buyBeforeRise.slice(0, 12)}
               type="buy"
+              onPlayerClick={setSelectedPlayer}
             />
 
             <CategorySection
@@ -232,6 +236,7 @@ export default function MarketWatchPage() {
               subtitle="Elite value at current prices"
               players={classified.upgrades.slice(0, 12)}
               type="value"
+              onPlayerClick={setSelectedPlayer}
             />
 
             <CategorySection
@@ -239,10 +244,13 @@ export default function MarketWatchPage() {
               subtitle="Highest projection gains"
               players={classified.upgrades.slice(0, 12)}
               type="upgrade"
+              onPlayerClick={setSelectedPlayer}
             />
           </div>
         </PremiumGate>
       </div>
+
+      <PlayerAIModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
     </div>
   );
 }
@@ -264,9 +272,10 @@ interface CategorySectionProps {
   subtitle: string;
   players: any[];
   type: "sell" | "buy" | "value" | "upgrade";
+  onPlayerClick: (player: DerivedPlayer) => void;
 }
 
-function CategorySection({ title, subtitle, players, type }: CategorySectionProps) {
+function CategorySection({ title, subtitle, players, type, onPlayerClick }: CategorySectionProps) {
   if (players.length === 0) return null;
 
   return (
@@ -285,6 +294,7 @@ function CategorySection({ title, subtitle, players, type }: CategorySectionProp
             player={player}
             rank={i + 1}
             type={type}
+            onPlayerClick={onPlayerClick}
           />
         ))}
       </div>

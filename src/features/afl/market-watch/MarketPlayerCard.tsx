@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Lock, Flame } from "lucide-react";
 import { cleanAiText } from "@/utils/cleanAiText";
 import { MarketRow } from "./types";
@@ -10,9 +11,39 @@ interface Props {
   onUnlock?: () => void;
   tab: string;
   rank: number;
+  onPlayerClick?: (player: MarketRow) => void;
 }
 
-export function MarketPlayerCard({ row, locked, onUnlock, tab, rank }: Props) {
+function getWhy(player: any): string {
+  if (player.summary_short && player.summary_short.length > 20) {
+    const text = player.summary_short;
+    const lower = text.toLowerCase();
+    if (lower.includes('buy') || lower.includes('sell') || lower.includes('hold') ||
+        lower.includes('bye round') || lower.includes('player_id') ||
+        lower.includes('value_score')) {
+      // Fall through to fallback
+    } else {
+      return text.trim();
+    }
+  }
+
+  const value = player.value_score ?? 0;
+  const projection = player.projection_final ?? player.projection ?? 0;
+  const priceChange = player.price_momentum ?? 0;
+  const risk = player.risk_rating ?? 50;
+
+  if (value >= 6) return "Strong value based on projection vs price";
+  if (value <= -4) return "Overpriced relative to expected output";
+  if (projection >= 100) return "High ceiling projection this week";
+  if (priceChange > 20) return "Breakout projection spike";
+  if (priceChange < -20) return "Price drop incoming";
+  if (risk > 65) return "High volatility risk detected";
+
+  return "Model-driven signal based on current data";
+}
+
+export function MarketPlayerCard({ row, locked, onUnlock, tab, rank, onPlayerClick }: Props) {
+  const [isHovered, setIsHovered] = useState(false);
   const momentum = Number(row.price_momentum ?? 0);
   const momentumStr = momentum >= 0 ? `+${fmtNum(momentum, 1)}` : fmtNum(momentum, 1);
   const isBreakout = row.breakout_flag === true;
@@ -29,10 +60,23 @@ export function MarketPlayerCard({ row, locked, onUnlock, tab, rank }: Props) {
         locked
           ? "border-white/5 bg-white/[0.02] opacity-60 blur-[2px] pointer-events-none select-none"
           : isBreakout
-            ? "border-orange-400/20 bg-orange-400/[0.02] hover:bg-orange-400/[0.04] hover:border-orange-400/30"
-            : "border-white/8 bg-white/[0.03] hover:bg-white/[0.05] hover:border-white/12"
+            ? "border-orange-400/20 bg-orange-400/[0.02] hover:bg-orange-400/[0.04] hover:border-orange-400/30 cursor-pointer hover:-translate-y-1 hover:shadow-xl"
+            : "border-white/8 bg-white/[0.03] hover:bg-white/[0.05] hover:border-white/12 cursor-pointer hover:-translate-y-1 hover:shadow-xl"
       }`}
+      onMouseEnter={() => !locked && setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={() => !locked && onPlayerClick?.(row)}
     >
+      {isHovered && !locked && (
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-xl p-4 flex flex-col justify-end z-10 animate-fadeIn">
+          <p className="text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">
+            AI Insight
+          </p>
+          <p className="text-sm text-gray-200 leading-snug line-clamp-3">
+            {getWhy(row)}
+          </p>
+        </div>
+      )}
       <div className="p-4">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div className="flex items-center gap-2 min-w-0">

@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { DerivedPlayer, BestTrade } from "./engine";
 import { TrendingUp, TrendingDown, Zap } from "lucide-react";
+import { PlayerAIModal } from "./PlayerAIModal";
 
 interface MarketWatchPremiumProps {
   sells: DerivedPlayer[];
@@ -18,45 +20,50 @@ export function MarketWatchPremium({
   traps,
   allTrades,
 }: MarketWatchPremiumProps) {
+  const [selectedPlayer, setSelectedPlayer] = useState<DerivedPlayer | null>(null);
   const topTrade = allTrades[0];
   const topValue = cashCows[0];
   const topUpgrade = upgrades[0];
 
   return (
-    <div className="space-y-12">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {topTrade && (
-          <HeroCard
-            title="Top Trade"
-            player={topTrade.out}
-            type="sell"
-            subtitle={`Out: ${topTrade.out.player_name}`}
-          />
-        )}
-        {topValue && (
-          <HeroCard
-            title="Best Value"
-            player={topValue}
-            type="value"
-            subtitle={`${topValue.projection.toFixed(0)} avg @ $${(topValue.price / 1000).toFixed(0)}k`}
-          />
-        )}
-        {topUpgrade && (
-          <HeroCard
-            title="Premium Pick"
-            player={topUpgrade}
-            type="buy"
-            subtitle={`${topUpgrade.projection.toFixed(0)} proj`}
-          />
-        )}
+    <>
+      <div className="space-y-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {topTrade && (
+            <HeroCard
+              title="Top Trade"
+              player={topTrade.out}
+              type="sell"
+              subtitle={`Out: ${topTrade.out.player_name}`}
+            />
+          )}
+          {topValue && (
+            <HeroCard
+              title="Best Value"
+              player={topValue}
+              type="value"
+              subtitle={`${topValue.projection.toFixed(0)} avg @ $${(topValue.price / 1000).toFixed(0)}k`}
+            />
+          )}
+          {topUpgrade && (
+            <HeroCard
+              title="Premium Pick"
+              player={topUpgrade}
+              type="buy"
+              subtitle={`${topUpgrade.projection.toFixed(0)} proj`}
+            />
+          )}
+        </div>
+
+        <SignalStrip sells={sells.slice(0, 2)} buys={buys.slice(0, 2)} value={cashCows.slice(0, 2)} />
+
+        <Section title="Sell Risks" players={sells.slice(0, 6)} type="sell" onPlayerClick={setSelectedPlayer} />
+        <Section title="Buy Opportunities" players={buys.slice(0, 6)} type="buy" onPlayerClick={setSelectedPlayer} />
+        <Section title="Premium Upgrades" players={upgrades.slice(0, 6)} type="upgrade" onPlayerClick={setSelectedPlayer} />
       </div>
 
-      <SignalStrip sells={sells.slice(0, 2)} buys={buys.slice(0, 2)} value={cashCows.slice(0, 2)} />
-
-      <Section title="Sell Risks" players={sells.slice(0, 6)} type="sell" />
-      <Section title="Buy Opportunities" players={buys.slice(0, 6)} type="buy" />
-      <Section title="Premium Upgrades" players={upgrades.slice(0, 6)} type="upgrade" />
-    </div>
+      <PlayerAIModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
+    </>
   );
 }
 
@@ -104,24 +111,51 @@ function SignalBlock({ title, players, icon: Icon, color }: { title: string; pla
   );
 }
 
-function Section({ title, players, type }: { title: string; players: DerivedPlayer[]; type: string }) {
+function Section({ title, players, type, onPlayerClick }: { title: string; players: DerivedPlayer[]; type: string; onPlayerClick: (player: DerivedPlayer) => void }) {
   return (
     <div>
       <h2 className="text-2xl font-bold text-white mb-4">{title}</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {players.map((p) => (
-          <PlayerCard key={p.player_id} player={p} type={type} />
+          <PlayerCard key={p.player_id} player={p} type={type} onClick={() => onPlayerClick(p)} />
         ))}
       </div>
     </div>
   );
 }
 
-function PlayerCard({ player, type }: { player: DerivedPlayer; type: string }) {
+function PlayerCard({ player, type, onClick }: { player: DerivedPlayer; type: string; onClick: () => void }) {
+  const [isHovered, setIsHovered] = useState(false);
   const changeColor = (player.expected_price_change ?? 0) >= 0 ? "text-emerald-400" : "text-red-400";
 
+  const getWhy = (player: DerivedPlayer): string => {
+    if (player.summary_short && player.summary_short.length > 20) {
+      return player.summary_short.trim();
+    }
+    const value = player.value_score ?? 0;
+    if (value >= 6) return "Strong value based on projection vs price";
+    if (value <= -4) return "Overpriced relative to expected output";
+    return "Model-driven signal based on current data";
+  };
+
   return (
-    <div className="bg-white/[0.02] border border-white/10 rounded-lg p-4 hover:border-white/20 transition-colors">
+    <div
+      className="relative bg-white/[0.02] border border-white/10 rounded-lg p-4 hover:border-white/20 transition-all duration-200 cursor-pointer hover:-translate-y-1 hover:shadow-xl"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={onClick}
+    >
+      {isHovered && (
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-lg p-4 flex flex-col justify-end z-10 animate-fadeIn">
+          <p className="text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">
+            AI Insight
+          </p>
+          <p className="text-sm text-gray-200 leading-snug line-clamp-3">
+            {getWhy(player)}
+          </p>
+        </div>
+      )}
+
       <div className="text-white font-semibold mb-1">{player.player_name}</div>
       <div className="text-white/50 text-sm mb-3">{player.position} • {player.team}</div>
       <div className="flex items-center justify-between text-sm">

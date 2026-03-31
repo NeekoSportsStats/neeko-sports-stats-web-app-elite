@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { DerivedPlayer } from "./engine";
 import { fmtPrice } from "./helpers";
 
@@ -5,9 +6,39 @@ interface PremiumCardProps {
   player: DerivedPlayer;
   rank: number;
   type: "sell" | "buy" | "value" | "upgrade";
+  onPlayerClick?: (player: DerivedPlayer) => void;
 }
 
-export function MarketWatchPremiumCard({ player, rank, type }: PremiumCardProps) {
+function getWhy(player: any): string {
+  if (player.summary_short && player.summary_short.length > 20) {
+    const text = player.summary_short;
+    const lower = text.toLowerCase();
+    if (lower.includes('buy') || lower.includes('sell') || lower.includes('hold') ||
+        lower.includes('bye round') || lower.includes('player_id') ||
+        lower.includes('value_score')) {
+      // Fall through to fallback
+    } else {
+      return text.trim();
+    }
+  }
+
+  const value = player.value_score ?? 0;
+  const projection = player.projection ?? 0;
+  const priceChange = player.expected_price_change ?? 0;
+  const consistency = player.consistency_score ?? 50;
+
+  if (value >= 6) return "Strong value based on projection vs price";
+  if (value <= -4) return "Overpriced relative to expected output";
+  if (projection >= 100) return "High ceiling projection this week";
+  if (priceChange > 20000) return "Breakout projection spike";
+  if (priceChange < -20000) return "Price drop incoming";
+  if (consistency < 35) return "High volatility risk detected";
+
+  return "Model-driven signal based on current data";
+}
+
+export function MarketWatchPremiumCard({ player, rank, type, onPlayerClick }: PremiumCardProps) {
+  const [isHovered, setIsHovered] = useState(false);
   const priceChange = player.expected_price_change ?? 0;
   const valueScore = player.value_score ?? 0;
 
@@ -49,9 +80,24 @@ export function MarketWatchPremiumCard({ player, rank, type }: PremiumCardProps)
         transition-all duration-300
         hover:translate-y-[-4px]
         hover:bg-white/[0.03]
+        cursor-pointer
         group
+        relative
       `}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={() => onPlayerClick?.(player)}
     >
+      {isHovered && (
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-sm rounded-xl p-4 flex flex-col justify-end z-10 animate-fadeIn">
+          <p className="text-xs font-semibold text-gray-400 mb-1 uppercase tracking-wide">
+            AI Insight
+          </p>
+          <p className="text-sm text-gray-200 leading-snug">
+            {getWhy(player)}
+          </p>
+        </div>
+      )}
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1 min-w-0 pr-3">
           <h3 className="text-lg font-bold text-white mb-1 truncate group-hover:text-white transition-colors">

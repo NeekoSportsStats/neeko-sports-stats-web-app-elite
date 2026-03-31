@@ -14,6 +14,7 @@ interface Props {
   accentClass: string;
   isPremium: boolean;
   onShowUpgrade: () => void;
+  onPlayerClick?: (player: MarketRow) => void;
 }
 
 function SkeletonCard() {
@@ -40,6 +41,7 @@ export function MarketSection({
   accentClass,
   isPremium,
   onShowUpgrade,
+  onPlayerClick,
 }: Props) {
   const railRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -127,7 +129,7 @@ export function MarketSection({
                     {locked ? (
                       <LockedMarketCard rank={rank} onUnlock={onShowUpgrade} />
                     ) : (
-                      <MarketPlayerCard row={row} tab={tab} rank={rank} />
+                      <MarketPlayerCard row={row} tab={tab} rank={rank} onPlayerClick={onPlayerClick} />
                     )}
                   </div>
                 );
