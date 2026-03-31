@@ -18,21 +18,30 @@ function getSessionId(): string {
 export function initAnalytics() {
   if (typeof window === "undefined") return;
 
-  getSessionId();
+  try {
+    getSessionId();
 
-  const key = import.meta.env.VITE_POSTHOG_KEY as string | undefined;
-  const host =
-    (import.meta.env.VITE_POSTHOG_HOST as string | undefined) ??
-    "https://eu.posthog.com"; // ✅ FIXED HOST
+    const key = import.meta.env.VITE_POSTHOG_KEY as string | undefined;
+    const host =
+      (import.meta.env.VITE_POSTHOG_HOST as string | undefined) ??
+      "https://eu.posthog.com"; // ✅ FIXED HOST
 
-  if (!key) return;
+    if (!key) {
+      console.log("Analytics disabled - no PostHog key");
+      return;
+    }
 
-  posthog.init(key, {
-    api_host: host,
-    capture_pageview: true, // ✅ turn ON
-    persistence: "localStorage",
-    advanced_disable_feature_flags: true,
-  });
+    posthog.init(key, {
+      api_host: host,
+      capture_pageview: true, // ✅ turn ON
+      persistence: "localStorage",
+      advanced_disable_feature_flags: true,
+    });
+
+    console.log("Analytics initialized");
+  } catch (err) {
+    console.warn("Analytics init failed:", err);
+  }
 }
 
 /* =============================

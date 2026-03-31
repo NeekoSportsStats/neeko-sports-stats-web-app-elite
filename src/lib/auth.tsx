@@ -32,6 +32,8 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  console.log("AuthProvider initializing...");
+
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [premiumLoading, setPremiumLoading] = useState(true);
@@ -42,11 +44,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const premiumFetchInFlightRef = useRef(false);
   const currentUserIdRef = useRef<string | null>(null);
 
+  // If Supabase is not available, set safe defaults
+  if (!supabase) {
+    console.warn("Supabase client unavailable - AuthProvider running in offline mode");
+    return (
+      <AuthContext.Provider
+        value={{
+          user: null,
+          loading: false,
+          isPremium: false,
+          isAdmin: false,
+          refreshPremiumStatus: async () => {},
+          signOut: async () => {}
+        }}
+      >
+        {children}
+      </AuthContext.Provider>
+    );
+  }
+
   /**
    * Fetch premium status using the server-side get_access_state() RPC.
    * This is authoritative — expiry is evaluated by the database, not the browser clock.
    */
   const fetchPremiumStatus = useCallback(async (_userId: string) => {
+    if (!supabase) {
+      setPremiumLoading(false);
+      return;
+    }
     setPremiumLoading(true);
     try {
       const { data, error } = await supabase.rpc("get_access_state");
@@ -86,10 +111,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsPremium(false);
     setIsAdmin(false);
     setLoading(false);
-    try {
-      await supabase.auth.signOut({ scope: "global" });
-    } catch (err) {
-      console.error("❌ signOut error:", err);
+    if (supabase) {
+      try {
+        await supabase.auth.signOut({ scope: "global" });
+      } catch (err) {
+        console.error("❌ signOut error:", err);
+      }
     }
     window.location.href = "/";
   }, []);
@@ -131,6 +158,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Single source of truth: the auth state change listener.
     // The callback is synchronous — async work runs in a detached IIFE.
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {

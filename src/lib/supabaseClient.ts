@@ -4,10 +4,15 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+console.log("Supabase client initializing...");
+console.log("URL exists:", !!supabaseUrl);
+console.log("Key exists:", !!supabaseAnonKey);
+
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    "Missing Supabase environment variables. Please check VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY."
+  console.error(
+    "Missing Supabase environment variables. App will run in limited mode."
   );
+  // Don't throw - allow app to continue without Supabase
 }
 
 let supabaseInstance: SupabaseClient | null = null;
@@ -23,43 +28,55 @@ function getProjectRef(url: string): string {
   }
 }
 
-function createSupabaseClient(): SupabaseClient {
+function createSupabaseClient(): SupabaseClient | null {
   if (supabaseInstance) return supabaseInstance;
 
-  const projectRef = getProjectRef(supabaseUrl);
-  const storageKey = `sb-${projectRef}-auth-token`;
+  // If env vars are missing, return null instead of crashing
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn("Supabase client not initialized - missing credentials");
+    return null;
+  }
 
-  supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      flowType: "pkce",
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      storageKey,
-      storage: {
-        getItem: (key) => {
-          try {
-            return window.localStorage.getItem(key);
-          } catch {
-            return null;
-          }
+  try {
+    const projectRef = getProjectRef(supabaseUrl);
+    const storageKey = `sb-${projectRef}-auth-token`;
+
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        flowType: "pkce",
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        storageKey,
+        storage: {
+          getItem: (key) => {
+            try {
+              return window.localStorage.getItem(key);
+            } catch {
+              return null;
+            }
+          },
+          setItem: (key, value) => {
+            try {
+              window.localStorage.setItem(key, value);
+            } catch {}
+          },
+          removeItem: (key) => {
+            try {
+              window.localStorage.removeItem(key);
+            } catch {}
+          },
         },
-        setItem: (key, value) => {
-          try {
-            window.localStorage.setItem(key, value);
-          } catch {}
-        },
-        removeItem: (key) => {
-          try {
-            window.localStorage.removeItem(key);
-          } catch {}
-        },
+        debug: false,
       },
-      debug: false,
-    },
-  });
+    });
 
-  return supabaseInstance;
+    console.log("Supabase client created successfully");
+    return supabaseInstance;
+  } catch (error) {
+    console.error("Failed to create Supabase client:", error);
+    return null;
+  }
 }
 
 export const supabase = createSupabaseClient();
