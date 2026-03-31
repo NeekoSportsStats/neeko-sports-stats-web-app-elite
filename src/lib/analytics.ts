@@ -1,9 +1,7 @@
 // Safe PostHog wrapper - gracefully handles missing/broken module
-// Import PostHog normally - Vite will bundle it
-import posthog from "posthog-js";
-
 const SESSION_KEY = "neeko_session_id";
 let initialized = false;
+let posthog: any = null;
 
 function getSessionId(): string {
   if (typeof window === "undefined") return "";
@@ -18,11 +16,15 @@ function getSessionId(): string {
 /* =============================
    INIT
 ============================= */
-export function initAnalytics() {
+export async function initAnalytics() {
   if (typeof window === "undefined") return;
   if (initialized) return;
 
   try {
+    // Dynamic import to avoid build-time resolution issues
+    const posthogModule = await import("posthog-js");
+    posthog = posthogModule.default;
+
     if (!posthog) {
       console.log("Analytics disabled - PostHog not available");
       return;
