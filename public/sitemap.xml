@@ -32,305 +32,1775 @@
     <priority>0.8</priority>
   </url>
 
-  <!-- Top 50 Players -->
+  <!-- Team Pages -->
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/dayne-zorko</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/adelaide-crows</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/harry-sheezel</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/brisbane-lions</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/lachie-whitfield</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/carlton-blues</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/max-gawn</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/collingwood-magpies</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/finn-callaghan</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/essendon-bombers</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/will-ashcroft</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/fremantle-dockers</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/timothy-english</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/geelong-cats</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/marcus-bontempelli</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/gold-coast-suns</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/josh-dunkley</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/gws-giants</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/zak-butters</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/hawthorn-hawks</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/clayton-oliver</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/melbourne-demons</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/sam-walsh</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/north-melbourne-kangaroos</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/brodie-grundy</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/port-adelaide-power</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/tristan-xerri</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/richmond-tigers</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/rowan-marshall</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/st-kilda-saints</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/lachie-neale</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/sydney-swans</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/max-holmes</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/west-coast-eagles</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/christian-salem</loc>
+    <loc>https://neeko.com.au/sports/afl/teams/western-bulldogs</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Position Pages -->
+  <url>
+    <loc>https://neeko.com.au/sports/afl/positions/def</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/darcy-wilmot</loc>
+    <loc>https://neeko.com.au/sports/afl/positions/mid</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/darcy-cameron</loc>
+    <loc>https://neeko.com.au/sports/afl/positions/fwd</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/luke-parker</loc>
+    <loc>https://neeko.com.au/sports/afl/positions/ruck</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
 
+  <!-- Player Pages -->
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/lachlan-ash</loc>
+    <loc>https://neeko.com.au/sports/afl/players/aaron-cadman</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/nick-daicos</loc>
+    <loc>https://neeko.com.au/sports/afl/players/aaron-francis</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/touk-miller</loc>
+    <loc>https://neeko.com.au/sports/afl/players/aaron-naughton</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/christian-petracca</loc>
+    <loc>https://neeko.com.au/sports/afl/players/adam-cerra</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/bailey-smith</loc>
+    <loc>https://neeko.com.au/sports/afl/players/adam-saad</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/caleb-serong</loc>
+    <loc>https://neeko.com.au/sports/afl/players/adam-tomlinson</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/george-hewett</loc>
+    <loc>https://neeko.com.au/sports/afl/players/adam-treloar</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/zach-merrett</loc>
+    <loc>https://neeko.com.au/sports/afl/players/aidan-odriscoll</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/jye-caldwell</loc>
+    <loc>https://neeko.com.au/sports/afl/players/aidyn-johnson</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/josh-worrell</loc>
+    <loc>https://neeko.com.au/sports/afl/players/ajang-kuol</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/noah-anderson</loc>
+    <loc>https://neeko.com.au/sports/afl/players/alex-cincotta</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/jarrod-witts</loc>
+    <loc>https://neeko.com.au/sports/afl/players/alex-davies</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/john-noble</loc>
+    <loc>https://neeko.com.au/sports/afl/players/alex-pearce</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/jack-sinclair</loc>
+    <loc>https://neeko.com.au/sports/afl/players/alex-sexton</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/luke-davies-uniacke</loc>
+    <loc>https://neeko.com.au/sports/afl/players/alex-witherden</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
   <url>
-    <loc>https://neeko.com.au/sports/afl/players/thomas-liberatore</loc>
+    <loc>https://neeko.com.au/sports/afl/players/aliir-aliir</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
-  <url>
-    <loc>https://neeko.com.au/sports/afl/players/jack-graham</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://neeko.com.au/sports/afl/players/callum-mills</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://neeko.com.au/sports/afl/players/kane-farrell</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://neeko.com.au/sports/afl/players/tim-taranto</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://neeko.com.au/sports/afl/players/colby-mckercher</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://neeko.com.au/sports/afl/players/ed-richards</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://neeko.com.au/sports/afl/players/jaspa-fletcher</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://neeko.com.au/sports/afl/players/tom-mccarthy</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://neeko.com.au/sports/afl/players/patrick-cripps</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://neeko.com.au/sports/afl/players/nasiah-wanganeen-milera</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <url>
-    <loc>https://neeko.com.au/sports/afl/players/josh-daicos</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
   <url>
     <loc>https://neeko.com.au/sports/afl/players/andrew-brayshaw</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
   </url>
-
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/andrew-gaff</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/andy-brayshaw</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/angus-brayshaw</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/anthony-scott</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/archie-perkins</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/arie-schoenmaker</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/ash-johnson</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/bailey-banfield</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/bailey-dale</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/bailey-humphrey</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/bailey-scott</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/bailey-smith</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/bailey-williams</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/bayley-fritsch</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/ben-hobbs</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/ben-king</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/ben-long</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/ben-mckay</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/blake-hardwick</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/bobby-hill</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/brad-close</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/bradley-hill</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/braeden-campbell</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/brandon-starcevich</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/brayden-maynard</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/braydon-preuss</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/brody-mihocek</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/brodie-grundy</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/brodie-kemp</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/buddy-franklin</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/cain-fyfe</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/cal-twomey</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/caleb-daniel</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/caleb-graham</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/caleb-poulter</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/caleb-serong</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/callum-coleman-jones</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/callum-mills</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/callum-wilkie</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/cam-mackenzie</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/cam-rayner</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/cameron-zurhaar</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/chad-warner</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/chayce-jones</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/christian-petracca</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/clayton-oliver</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/cody-weightman</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/conor-mckenna</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/conor-nash</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/conor-rozee</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/connor-blakely</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/connor-downie</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/cooper-sharman</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/cooper-stephens</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/cory-durdin</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/curtis-taylor</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/daicos-brothers</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/dan-houston</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/dan-menzel</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/daniel-howe</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/daniel-lloyd</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/daniel-rioli</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/daniel-turner</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/darcy-cameron</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/darcy-fogarty</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/darcy-moore</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/darcy-parish</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/darcy-wilmot</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/darius-boyd</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/dayne-zorko</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/denver-grainger-barras</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/devon-smith</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/dylan-grimes</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/dylan-moore</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/dylan-shiel</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/dylan-stephens</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/dyson-heppell</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/ed-langdon</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/eddie-betts</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/elliot-himmelberg</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/elliot-yeo</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/errol-gulden</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/finn-callaghan</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/george-hewett</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/gryan-miers</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/harry-barnett</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/harry-cunningham</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/harry-edwards</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/harry-himmelberg</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/harry-mckay</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/harry-perryman</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/harry-sheezel</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/hayden-mclean</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/hayden-young</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/hugh-mccluggage</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/isaac-heeney</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jack-billings</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jack-bowes</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jack-carroll</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jack-crisp</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jack-darling</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jack-ginnivan</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jack-higgins</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jack-lukosius</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jack-macrae</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jack-martin</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jack-redden</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jack-sinclair</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jack-steele</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jack-viney</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jack-ziebell</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jacob-hopper</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jacob-koschitzke</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jacob-van-rooyen</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jacob-weitering</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jake-bowey</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jake-lloyd</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jake-stringer</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/james-aish</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/james-blanck</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/james-harmes</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/james-jordon</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/james-peatling</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/james-rowbottom</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/james-sicily</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/james-tunstill</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/james-worpel</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jamie-elliott</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jarman-impey</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jarrod-berry</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jarrod-lienert</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jarrod-witts</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jason-horne-francis</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jai-culley</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
   <url>
     <loc>https://neeko.com.au/sports/afl/players/jai-newcombe</loc>
     <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jed-anderson</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jeremy-cameron</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jeremy-finlayson</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jeremy-howe</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jeremy-sharp</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jesse-hogan</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jett-ridley</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/joel-freijah</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/joel-jeffrey</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/john-noble</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jordan-clark</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jordan-dawson</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jordan-de-goey</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jordan-ridley</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jordan-sweet</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/josh-battle</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/josh-daicos</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/josh-draper</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/josh-dunkley</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/josh-gibcus</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/josh-kelly</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/josh-rachele</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/josh-sinn</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/josh-treacy</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/josh-weddle</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/jy-simpkin</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/justin-mcinerney</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/justin-westhoff</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/kamdyn-mcintosh</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/karl-amon</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/keidean-coleman</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/keidean-colinasmith</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/kysaiah-pickett</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/lachie-ash</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/lachie-jones</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/lachie-neale</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/lachie-schultz</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/lachie-whitfield</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/lachlan-bramble</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/lachlan-keeffe</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/lance-franklin</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/liam-baker</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/liam-henry</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/liam-ryan</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/lloyd-meek</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/logan-mcdonald</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/luke-breust</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/luke-cleary</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/luke-davies-uniacke</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/luke-jackson</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/luke-nankervis</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/luke-parker</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/luke-pedlar</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/luke-ryan</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/luke-teal</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/marc-pittonet</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/marcus-bontempelli</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/marcus-windhager</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/mason-redman</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/mason-wood</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/massimo-dangelo</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/matt-crouch</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/matt-flynn</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/matt-owies</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/matt-roberts</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/matt-rowell</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/matthew-cottrell</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/matthew-parker</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/max-gawn</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/max-heath</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/max-holmes</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/max-king</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/mitch-owens</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/nathan-broad</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/nathan-kreuger</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/nathan-omara</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/ned-moyle</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/ned-reeves</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/nick-blakey</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/nick-coffield</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/nick-daicos</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/nick-holman</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/nick-larkey</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/noah-anderson</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/noah-balta</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/noah-cumberland</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/oscar-mcinerney</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/oscar-ryan</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/paddy-dow</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/patrick-cripps</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/paul-seedsman</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/peter-wright</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/phill-davis</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/reece-conca</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/reuben-ginbey</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/rhyan-mansell</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/riley-bonner</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/riley-collier-dawkins</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/riley-garcia</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/roarke-smith</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/robbie-gray</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/rory-atkins</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/rory-laird</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/rory-lobb</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/rory-sloane</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/ryan-byrnes</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sam-banks</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sam-berry</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sam-darcy</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sam-de-koning</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sam-docherty</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sam-durdin</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sam-flanders</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sam-frost</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sam-menegola</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sam-reid</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sam-taylor</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sam-walsh</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sam-weideman</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sean-darcy</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sean-lemmens</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/sebastian-ross</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/shane-mcadam</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/shai-bolton</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/stephen-coniglio</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/steele-sidebottom</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/stu-fox</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tanner-bruhn</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/taranto</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/taylor-walker</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tim-english</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tim-taranto</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/timothy-english</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/toby-bedford</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/toby-conway</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/toby-greene</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/toby-mclean</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/toby-nankervis</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/todd-goldstein</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tom-barrass</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tom-campbell</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tom-cole</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tom-de-koning</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tom-doedee</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tom-fullarton</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tom-green</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tom-hawkins</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tom-lynch</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tom-mitchell</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tom-papley</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tom-powell</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tom-sparrow</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tom-stewart</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/touk-miller</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/travis-boak</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/travis-colyer</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/trent-bianco</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/trent-dumont</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tristan-xerri</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tyler-brockman</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tyler-brown</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/tyson-stengle</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/will-ashcroft</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/will-brodie</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/will-day</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/will-hayward</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/will-hoskin-elliott</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/will-powell</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/will-setterfield</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/willie-rioli</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/zac-taylor</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/zach-guthrie</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/zach-merrett</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/zach-tuohy</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://neeko.com.au/sports/afl/players/zak-butters</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
   </url>
 
 </urlset>

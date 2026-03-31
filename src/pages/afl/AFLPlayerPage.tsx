@@ -6,10 +6,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, TrendingUp, TrendingDown, Minus, Lock } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Minus, Lock, Users, Target, ChevronRight } from 'lucide-react';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import FantasyVerdictBadge from '@/components/FantasyVerdictBadge';
 import { PremiumGate } from '@/components/PremiumGate';
+import { slugToName, nameToSlug, TEAM_SLUGS, POSITION_SLUGS, POSITION_NAMES } from '@/lib/slugs';
 
 interface PlayerData {
   player_id: number;
@@ -35,16 +36,6 @@ interface PlayerData {
   risk_rating: number;
 }
 
-const slugToName = (slug: string): string => {
-  return slug
-    .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
-
-const nameToSlug = (name: string): string => {
-  return name.toLowerCase().replace(/\s+/g, '-');
-};
 
 export default function AFLPlayerPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -67,6 +58,27 @@ export default function AFLPlayerPage() {
       return data as PlayerData;
     },
     enabled: !!playerName,
+  });
+
+  const { data: similarPlayers } = useQuery({
+    queryKey: ['similar-players', player?.position, player?.projection_final],
+    queryFn: async () => {
+      if (!player) return [];
+
+      const { data, error } = await supabase
+        .from('v_rankings_master')
+        .select('player_name, team, projection_final, neeko_rating, position')
+        .eq('position', player.position)
+        .neq('player_name', player.player_name)
+        .gte('projection_final', (player.projection_final || 0) - 10)
+        .lte('projection_final', (player.projection_final || 0) + 10)
+        .order('neeko_rating', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!player,
   });
 
   if (isLoading) {
@@ -121,34 +133,51 @@ export default function AFLPlayerPage() {
     return 'bg-slate-500/10 text-slate-700 border-slate-500/20';
   };
 
-  const pageTitle = `${player.player_name} AFL Fantasy Projection 2026 | Neeko Sports`;
-  const pageDescription = `AI-powered AFL Fantasy analysis for ${player.player_name} (${player.team}). Projection: ${Math.round(player.projection_final)} pts. Value rating, risk assessment, and trade recommendation updated weekly.`;
+  const pageTitle = `${player.player_name} AFL Fantasy Stats, Projection & Value 2026 | Neeko`;
+  const pageDescription = `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(player.projection_final)} projected points. ${POSITION_NAMES[player.position]} rankings, value score ${Math.round(player.value_score)}, AI-powered ${player.ai_recommendation.toLowerCase()} recommendation. Updated weekly.`;
   const pageUrl = `https://neeko.com.au/sports/afl/players/${slug}`;
+  const keywords = `${player.player_name}, ${player.team}, AFL Fantasy, ${player.position}, fantasy football, player stats, projection, value, ${POSITION_NAMES[player.position]}`;
 
   return (
     <>
       <Helmet>
         <title>{pageTitle}</title>
         <meta name="description" content={pageDescription} />
+        <meta name="keywords" content={keywords} />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDescription} />
         <meta property="og:type" content="article" />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:site_name" content="Neeko Sports" />
-        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
         <link rel="canonical" href={pageUrl} />
+        <meta name="robots" content="index, follow" />
+        <meta name="author" content="Neeko Sports" />
       </Helmet>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
+        {/* Breadcrumbs */}
+        <nav className="mb-4 text-sm text-slate-500">
+          <ol className="flex items-center gap-2">
+            <li><Link to="/" className="hover:text-slate-700">Home</Link></li>
+            <ChevronRight className="h-3 w-3" />
+            <li><Link to="/sports/afl/rankings" className="hover:text-slate-700">AFL</Link></li>
+            <ChevronRight className="h-3 w-3" />
+            <li><Link to={`/sports/afl/positions/${POSITION_SLUGS[player.position]}`} className="hover:text-slate-700">{POSITION_NAMES[player.position]}</Link></li>
+            <ChevronRight className="h-3 w-3" />
+            <li className="text-slate-700 font-medium">{player.player_name}</li>
+          </ol>
+        </nav>
+
         {/* Back Button */}
-        <Link to="/afl/rankings">
-        <Button variant="ghost" className="mb-6">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Rankings
-        </Button>
-      </Link>
+        <Link to="/sports/afl/rankings">
+          <Button variant="ghost" className="mb-6">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Rankings
+          </Button>
+        </Link>
 
       {/* Player Header */}
       <Card className="mb-6">
@@ -304,6 +333,78 @@ export default function AFLPlayerPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Internal Links */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Team Players
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Link to={`/sports/afl/teams/${TEAM_SLUGS[player.team]}`}>
+              <Button variant="outline" className="w-full justify-between group">
+                View all {player.team} players
+                <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Position Rankings
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Link to={`/sports/afl/positions/${POSITION_SLUGS[player.position]}`}>
+              <Button variant="outline" className="w-full justify-between group">
+                View all {POSITION_NAMES[player.position]}
+                <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Similar Players */}
+      {similarPlayers && similarPlayers.length > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Similar Players</CardTitle>
+            <CardDescription>Players with similar projections in {POSITION_NAMES[player.position]}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {similarPlayers.map((similar: any) => (
+                <Link
+                  key={similar.player_name}
+                  to={`/sports/afl/players/${nameToSlug(similar.player_name)}`}
+                  className="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors group"
+                >
+                  <div>
+                    <div className="font-semibold text-slate-900">{similar.player_name}</div>
+                    <div className="text-sm text-slate-500">{similar.team}</div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className="text-sm font-semibold text-slate-700">
+                        {Math.round(similar.projection_final)}
+                      </div>
+                      <div className="text-xs text-slate-500">projected</div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Trade Actions */}
       <Card>
