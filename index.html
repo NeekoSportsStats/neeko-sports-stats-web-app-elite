@@ -65,6 +65,16 @@
 
     <link rel="icon" type="image/png" href="/logo.png" />
 
+    <!-- CRITICAL: Force pure black BEFORE any CSS loads to prevent blue flash -->
+    <style>
+      html,
+      body,
+      #root {
+        background: #000000 !important;
+        background-color: #000000 !important;
+      }
+    </style>
+
   </head>
 
   <body>
