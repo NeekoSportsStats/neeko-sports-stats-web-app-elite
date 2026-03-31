@@ -82,17 +82,14 @@ function App() {
   useEffect(() => {
     if (supabase) {
       supabase
-        .from('market_watch_snapshot')
-        .select('*')
+        .from('v_mw_status')
+        .select('last_updated_at')
         .limit(1)
         .then(res => {
           if (res.error) {
-            console.error("Supabase error:", res.error.message);
-            if (res.error.code === 'PGRST301' || res.error.message?.includes('row-level security')) {
-              console.error("RLS blocking access - policies needed in Supabase");
-            }
+            console.error("Supabase connection error:", res.error.message);
           } else {
-            console.log("Supabase connected and working");
+            console.log("Supabase connected successfully");
           }
         });
     }

@@ -118,27 +118,25 @@ export default function MarketWatchPage() {
   }, [authLoading, isPremium, fetchData]);
 
   const classified = classifyPlayers(players);
-  console.log("Market Watch - Players count:", players.length);
-  console.log("Market Watch - Classified:", {
-    sells: classified.sells.length,
-    upgrades: classified.upgrades.length,
-    cashCows: classified.cashCows.length,
-    buyBeforeRise: classified.buyBeforeRise.length,
-    traps: classified.traps.length,
-  });
-
   const allTrades = buildBestTrades(
     classified.sells,
     classified.upgrades,
     classified.cashCows,
     classified.buyBeforeRise
   );
-  console.log("Market Watch - Best trades count:", allTrades.length);
-
   const heroTrade = allTrades[0] ?? null;
-  if (heroTrade) {
-    console.log("Market Watch - Hero trade:", heroTrade.out.player_name, "→", heroTrade.in.player_name);
-  }
+
+  console.log("[Market Watch] Data loaded:", {
+    source: isPremium ? "v_mw_premium (full)" : "v_mw_premium (categories)",
+    players: players.length,
+    sells: classified.sells.length,
+    buys: classified.buyBeforeRise.length,
+    upgrades: classified.upgrades.length,
+    cashCows: classified.cashCows.length,
+    traps: classified.traps.length,
+    trades: allTrades.length,
+    loading: dataLoading,
+  });
 
   if (dataLoading && players.length === 0) {
     return <MarketWatchSkeleton />;
