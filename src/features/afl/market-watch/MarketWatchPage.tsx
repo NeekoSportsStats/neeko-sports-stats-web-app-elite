@@ -87,28 +87,6 @@ export default function MarketWatchPage() {
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
 
-  if (!hasData) {
-    return (
-      <div className="min-h-screen bg-[#0D0D0D] text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-            <div className="text-6xl">📊</div>
-            <h2 className="text-2xl font-bold text-white">No Market Data Available</h2>
-            <p className="text-white/60 text-center max-w-md">
-              Market Watch data is currently unavailable. Please check back later.
-            </p>
-            <button
-              onClick={handleRefresh}
-              className="mt-4 px-6 py-3 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-colors"
-            >
-              Refresh
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-[#0D0D0D] text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
