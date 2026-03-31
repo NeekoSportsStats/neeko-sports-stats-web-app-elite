@@ -31,9 +31,17 @@ if (!rootEl) {
   const root = createRoot(rootEl);
   console.log("createRoot successful");
 
-  console.log("About to render - NO PROVIDERS");
+  console.log("About to render with FAIL-SAFE providers");
 
-  root.render(<App />);
+  root.render(
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
 
-  console.log("Render called - no providers");
+  console.log("Render called with fail-safe providers");
 }
