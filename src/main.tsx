@@ -31,14 +31,17 @@ if (!rootEl) {
   const root = createRoot(rootEl);
   console.log("createRoot successful");
 
-  console.log("About to render - testing force render first");
+  console.log("About to render with providers");
 
-  // FORCE RENDER TEST - bypass all providers
   root.render(
-    <div style={{color: "white", padding: "20px", fontSize: "24px"}}>
-      FORCE RENDER - React is mounting
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 
-  console.log("Force render called");
+  console.log("Render called with full app");
 }
