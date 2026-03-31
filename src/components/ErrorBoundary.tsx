@@ -31,14 +31,8 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error("[ErrorBoundary] Caught error:", error, errorInfo);
     this.setState({ error, errorInfo });
 
-    // Log to analytics if available
-    if (typeof window !== "undefined" && (window as any).posthog) {
-      (window as any).posthog.capture("error_boundary_triggered", {
-        error: error.message,
-        stack: error.stack,
-        componentStack: errorInfo.componentStack,
-      });
-    }
+    // Analytics will be handled by the analytics module if it's loaded
+    // No need to access window.posthog directly here
   }
 
   handleReset = () => {
