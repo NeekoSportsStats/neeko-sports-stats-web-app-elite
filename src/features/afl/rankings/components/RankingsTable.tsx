@@ -1,4 +1,5 @@
-import { ChevronDown, ChevronUp, Lock } from "lucide-react";
+import { ChevronDown, ChevronUp, Lock, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
 import { RankingRow, SortKey, SortDir, RankingsTab, RowTier } from "./types";
 import {
   fmt, fmtPrice, fmtPriceChange, fmtValueScore,
@@ -134,7 +135,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
       <td className="px-3 py-3 text-sm text-white/30 tabular-nums text-center whitespace-nowrap" style={{ width: 52, minWidth: 52 }}>
         {rank}
       </td>
-      <td className="px-4 py-3 whitespace-nowrap" style={{ width: 240, minWidth: 200 }}>
+      <td className="px-4 py-3 whitespace-nowrap group" style={{ width: 240, minWidth: 200 }}>
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-white">{row.player_name}</span>
@@ -155,8 +156,16 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
               <span className="rounded-sm bg-[#F5C84C]/15 px-1 py-0.5 text-[9px] font-semibold text-[#F5C84C] uppercase tracking-wide">Free</span>
             )}
           </div>
-          <div className="text-[11px] text-white/40 mt-0.5">
-            {row.team}{row.position ? ` · ${row.position}` : ""}
+          <div className="text-[11px] text-white/40 mt-0.5 flex items-center gap-1.5">
+            <span>{row.team}{row.position ? ` · ${row.position}` : ""}</span>
+            <Link
+              to={`/sports/afl/players/${row.player_name.toLowerCase().replace(/\s+/g, '-')}`}
+              className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-0.5 text-[#F5C84C]/60 hover:text-[#F5C84C] text-[10px]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLink className="h-3 w-3" />
+              <span>Profile</span>
+            </Link>
           </div>
         </div>
       </td>
