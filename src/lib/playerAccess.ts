@@ -15,6 +15,46 @@ let cachedFreePlayerIds: number[] | null = null;
 let cacheTimestamp: number | null = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+export interface AccessContext {
+  isPremium: boolean;
+  isBot: boolean;
+  freePlayerIds: number[];
+  userId: string | null;
+}
+
+/**
+ * Get unified access context (single source of truth)
+ * Returns: isPremium, isBot, freePlayerIds
+ * Bot requests ALWAYS get isPremium: false
+ */
+export async function getAccessContext(userId: string | null): Promise<AccessContext> {
+  const isBotRequest = isBot();
+
+  const { data, error } = await supabase
+    .rpc('get_access_context', {
+      p_user_id: userId,
+      p_is_bot: isBotRequest
+    });
+
+  if (error) {
+    console.error('[Access Context] Error fetching access context:', error);
+    // Safe fallback: treat as free user
+    return {
+      isPremium: false,
+      isBot: isBotRequest,
+      freePlayerIds: cachedFreePlayerIds ?? [],
+      userId: null
+    };
+  }
+
+  return {
+    isPremium: data?.is_premium ?? false,
+    isBot: data?.is_bot ?? isBotRequest,
+    freePlayerIds: data?.free_player_ids ?? [],
+    userId: data?.user_id ?? null
+  };
+}
+
 /**
  * Get free player IDs (top 8 by neeko_rating)
  * Cached for 5 minutes to avoid excessive DB calls
@@ -47,23 +87,30 @@ export async function getFreePlayerIds(): Promise<number[]> {
  * Bots: ALWAYS treated as free users (only top 8)
  * Premium users: all players accessible
  * Free users: only top 8 by neeko_rating
+ *
+ * NEW: Now uses database-level access check for data-level protection
  */
 export async function isPlayerAccessible(
   playerId: number,
-  isPremium: boolean
+  userId: string | null = null
 ): Promise<boolean> {
-  // Bots are ALWAYS free users - no premium access
-  if (isBot()) {
+  const isBotRequest = isBot();
+
+  const { data, error } = await supabase
+    .rpc('is_player_accessible', {
+      p_player_id: playerId,
+      p_user_id: userId,
+      p_is_bot: isBotRequest
+    });
+
+  if (error) {
+    console.error('[Player Access] Error checking player accessibility:', error);
+    // Safe fallback: check if in free tier
     const freeIds = await getFreePlayerIds();
     return freeIds.includes(playerId);
   }
 
-  if (isPremium) {
-    return true;
-  }
-
-  const freeIds = await getFreePlayerIds();
-  return freeIds.includes(playerId);
+  return data ?? false;
 }
 
 /**
@@ -141,15 +188,19 @@ export function sanitizeLockedPlayerData<T extends {
 /**
  * Get team players with access control
  * Uses database RPC for server-side filtering
+ * Bot-aware: Bots get free tier access only
  */
 export async function getTeamPlayersSafe(
   team: string,
   userId: string | null
 ) {
+  const isBotRequest = isBot();
+
   const { data, error } = await supabase
     .rpc('get_team_players_safe', {
       p_team: team,
       p_user_id: userId,
+      p_is_bot: isBotRequest
     });
 
   if (error) {
@@ -163,6 +214,7 @@ export async function getTeamPlayersSafe(
 /**
  * Get similar players with access control
  * Uses database RPC for server-side filtering
+ * Bot-aware: Bots get free tier access only
  */
 export async function getSimilarPlayersSafe(
   playerId: number,
@@ -172,6 +224,8 @@ export async function getSimilarPlayersSafe(
   userId: string | null,
   limit: number = 5
 ) {
+  const isBotRequest = isBot();
+
   const { data, error } = await supabase
     .rpc('get_similar_players_safe', {
       p_player_id: playerId,
@@ -180,10 +234,63 @@ export async function getSimilarPlayersSafe(
       p_projection_max: projectionMax,
       p_user_id: userId,
       p_limit: limit,
+      p_is_bot: isBotRequest
     });
 
   if (error) {
     console.error('[Player Access] Error fetching similar players:', error);
+    throw error;
+  }
+
+  return data ?? [];
+}
+
+/**
+ * Get player rankings with access control
+ * Uses database RPC for data-level protection
+ * Bot-aware: Bots get free tier access only
+ */
+export async function getRankingsSafe(
+  userId: string | null,
+  limit: number = 50
+) {
+  const isBotRequest = isBot();
+
+  const { data, error } = await supabase
+    .rpc('get_rankings_safe', {
+      p_user_id: userId,
+      p_is_bot: isBotRequest,
+      p_limit: limit
+    });
+
+  if (error) {
+    console.error('[Player Access] Error fetching rankings:', error);
+    throw error;
+  }
+
+  return data ?? [];
+}
+
+/**
+ * Get market watch data with access control
+ * Uses database RPC for data-level protection
+ * Bot-aware: Bots get free tier access only
+ */
+export async function getMarketWatchSafe(
+  userId: string | null,
+  category: string | null = null
+) {
+  const isBotRequest = isBot();
+
+  const { data, error } = await supabase
+    .rpc('get_market_watch_safe', {
+      p_user_id: userId,
+      p_is_bot: isBotRequest,
+      p_category: category
+    });
+
+  if (error) {
+    console.error('[Player Access] Error fetching market watch:', error);
     throw error;
   }
 
