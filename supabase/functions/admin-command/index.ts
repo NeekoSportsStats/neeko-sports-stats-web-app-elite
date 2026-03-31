@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://www.neekostats.com.au",
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
@@ -193,6 +193,101 @@ Deno.serve(async (req: Request) => {
         .eq("round" as never, round);
       if (error) throw error;
       return ok({ season, round, locked });
+
+    } else if (command === "run_full_pipeline") {
+      const { data, error } = await supabase.rpc("run_neeko_pipeline");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "run_afl_processing") {
+      const { data, error } = await supabase.rpc("run_afl_processing_core");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "refresh_rankings") {
+      const { data, error } = await supabase.rpc("populate_rankings_cache_from_source");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "refresh_market_watch") {
+      const { data, error } = await supabase.rpc("build_market_watch_snapshot");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "refresh_edge_board") {
+      const { data, error } = await supabase.rpc("fn_refresh_edge_board");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "run_ai_worker") {
+      const { data, error } = await supabase.rpc("fn_fire_ai_worker_wave_range", {
+        p_batch_size: 75,
+        p_start_id: null,
+        p_end_id: null,
+      });
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "enqueue_all_ai") {
+      const { data, error } = await supabase.rpc("fn_enqueue_ranking_reco_jobs");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "run_neeko_ai_pipeline") {
+      const { data, error } = await supabase.rpc("fn_run_neeko_ai_pipeline");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "refresh_projections") {
+      const { data, error } = await supabase.rpc("fn_refresh_projection_engine");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "refresh_accuracy") {
+      const { data, error } = await supabase.rpc("fn_refresh_projection_accuracy");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "apply_fantasy_prices") {
+      const { data, error } = await supabase.rpc("fn_apply_fantasy_prices");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "run_ingestion") {
+      const { data, error } = await supabase.rpc("run_afl_worker_ingestion");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "backfill_fantasy_points") {
+      const { data, error } = await supabase.rpc("fn_backfill_raw_fantasy_points");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "clear_failed_ai_jobs") {
+      const { error } = await supabase
+        .from("ai_generation_queue")
+        .delete()
+        .eq("status", "failed");
+      if (error) throw error;
+      return ok({ message: "Cleared failed AI jobs" });
+
+    } else if (command === "reset_stale_ai") {
+      const { data, error } = await supabase.rpc("fn_mark_stale_ai_for_regen");
+      if (error) throw error;
+      return ok(data);
+
+    } else if (command === "clear_start_sit_cache") {
+      const { error } = await supabase
+        .from("start_sit_cache")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      if (error) throw error;
+      return ok({ message: "Cleared start/sit cache" });
+
+    } else if (command === "refresh_all_views") {
+      await supabase.rpc("refresh_materialized_view", { view_name: "mv_player_projection" });
+      await supabase.rpc("refresh_materialized_view", { view_name: "mv_edge_board" });
+      return ok({ message: "Refreshed all materialized views" });
 
     } else {
       return err(`Unknown command: ${command}`);
