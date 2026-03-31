@@ -37,22 +37,13 @@ function price(row: MWPlayerRow): number {
   return Number(row.price ?? 0);
 }
 
-function tag(row: MWPlayerRow): DerivedPlayer {
-  const cat = row.category as DerivedCategory;
-  return { ...row, _derived_category: cat, _delta: delta(row) };
+function tag(row: MWPlayerRow, category: DerivedCategory): DerivedPlayer {
+  return { ...row, _derived_category: category, _delta: delta(row) };
 }
 
-// Deduplicate by player_id — keep highest trade_score entry
-function dedupeByPlayerId(players: DerivedPlayer[]): DerivedPlayer[] {
-  const map = new Map<number, DerivedPlayer>();
-  for (const p of players) {
-    const existing = map.get(p.player_id);
-    if (!existing || (p.trade_score ?? 0) > (existing.trade_score ?? 0)) {
-      map.set(p.player_id, p);
-    }
-  }
-  return Array.from(map.values());
-}
+// ────────────────────────────────────────────────────────────────────────────
+// CORE CLASSIFICATION ENGINE — SINGLE SOURCE OF TRUTH
+// ────────────────────────────────────────────────────────────────────────────
 
 export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   buyBeforeRise: DerivedPlayer[];
@@ -71,111 +62,143 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
     };
   }
 
-  // Deduplicate raw input first — SQL should already be clean but safeguard here
-  const seen = new Set<number>();
-  const uniqueRaw = raw.filter(r => {
-    if (seen.has(r.player_id)) return false;
-    seen.add(r.player_id);
+  // ── STEP 1: GLOBAL FILTER — Apply BEFORE any logic ──────────────────────
+  const filtered = raw.filter(p => {
+    // Exclude injured/bye players globally
+    if (p.is_injured === true) return false;
+    if (p.is_bye === true) return false;
+    if (p.status === 'injured') return false;
+    if (p.status === 'bye') return false;
+    if (p.manual_status === 'injured') return false;
+    if (p.manual_status === 'bye') return false;
+
+    // Must have valid data
+    if (!p.player_id) return false;
+    if (!p.player_name) return false;
+
     return true;
   });
 
-  const tagged = uniqueRaw.map(tag);
+  console.log("[MW ENGINE - FILTER]", {
+    total: raw.length,
+    afterFilter: filtered.length,
+    removed: raw.length - filtered.length,
+  });
 
-  // Each category filters by DB-assigned category only — trust the SQL classification
-  // No extra value_score / EPC filters that could over-restrict results
+  // ── STEP 2: UNIQUE ASSIGNMENT TRACKER ────────────────────────────────────
+  const assigned = new Set<number>();
 
-  const cashCows = dedupeByPlayerId(
-    tagged
-      .filter(r => r.category === "cash_cow")
-      .sort((a, b) => (b.expected_price_change ?? 0) - (a.expected_price_change ?? 0))
-  ).slice(0, 12);
+  function assign(players: MWPlayerRow[], condition: (p: MWPlayerRow) => boolean, category: DerivedCategory): DerivedPlayer[] {
+    const result: DerivedPlayer[] = [];
 
-  const buyBeforeRise = dedupeByPlayerId(
-    tagged
-      .filter(r => r.category === "buy_before_rise")
-      .sort((a, b) => (b.expected_price_change ?? 0) - (a.expected_price_change ?? 0))
-  ).slice(0, 12);
+    for (const p of players) {
+      // Skip if already assigned to another category
+      if (assigned.has(p.player_id)) continue;
 
-  const upgrades = dedupeByPlayerId(
-    tagged
-      .filter(r => r.category === "upgrade_target")
-      .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
-  ).slice(0, 12);
+      // Check condition
+      if (!condition(p)) continue;
 
-  // Sells: trust DB category — no extra value_score filter
-  const sells = dedupeByPlayerId(
-    tagged
-      .filter(r => r.category === "sell_before_drop")
-      .sort((a, b) => (a.expected_price_change ?? 0) - (b.expected_price_change ?? 0))
-  ).slice(0, 12);
+      // Assign to this category
+      assigned.add(p.player_id);
+      result.push(tag(p, category));
+    }
 
-  const traps = dedupeByPlayerId(
-    tagged
-      .filter(r => r.category === "fade_trap")
-      .sort((a, b) => (a.expected_price_change ?? 0) - (b.expected_price_change ?? 0))
-  ).slice(0, 10);
+    return result;
+  }
 
-  // ── Fallback logic — never return empty categories ──────────────────────────
+  // ── STEP 3: CATEGORY ASSIGNMENT (Priority Order) ────────────────────────
 
-  const allTagged = dedupeByPlayerId(tagged);
+  // SELL: Highest priority — remove underperformers first
+  const sells = assign(
+    filtered,
+    p => {
+      const rec = p.ai_recommendation;
+      const value = p.value_score ?? 0;
+      return rec === 'SELL' || value <= -4.5;
+    },
+    'sell_before_drop'
+  );
 
-  const cashCowsFinal = cashCows.length >= 5 ? cashCows : (() => {
-    const fallback = allTagged
-      .filter(r => r.category !== "sell_before_drop")
-      .filter(r => !cashCows.find(c => c.player_id === r.player_id))
-      .sort((a, b) => (a.price ?? 0) - (b.price ?? 0))
-      .slice(0, 12 - cashCows.length);
-    return [...cashCows, ...fallback].slice(0, 12);
-  })();
+  // BUY: Second priority — strong buy signals
+  const buys = assign(
+    filtered,
+    p => {
+      const rec = p.ai_recommendation;
+      return rec === 'BUY';
+    },
+    'buy_before_rise'
+  );
 
-  const buyBeforeRiseFinal = buyBeforeRise.length >= 5 ? buyBeforeRise : (() => {
-    const cowIds = new Set(cashCowsFinal.map(r => r.player_id));
-    const fallback = allTagged
-      .filter(r => r.category === "monitor" && delta(r) > 0)
-      .filter(r => !cowIds.has(r.player_id))
-      .sort((a, b) => delta(b) - delta(a))
-      .slice(0, 12 - buyBeforeRise.length);
-    return [...buyBeforeRise, ...fallback].slice(0, 12);
-  })();
+  // VALUE: Third priority — elite value plays
+  const values = assign(
+    filtered,
+    p => {
+      const value = p.value_score ?? 0;
+      return value >= 5;
+    },
+    'cash_cow'
+  );
 
-  const upgradesFinal = upgrades.length >= 5 ? upgrades : (() => {
-    const existIds = new Set(upgrades.map(r => r.player_id));
-    const fallback = allTagged
-      .filter(r => r.category !== "sell_before_drop" && r.category !== "fade_trap")
-      .filter(r => !existIds.has(r.player_id))
-      .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
-      .slice(0, 12 - upgrades.length);
-    return [...upgrades, ...fallback].slice(0, 12);
-  })();
+  // UPGRADE: Fourth priority — high projection players
+  const upgrades = assign(
+    filtered,
+    p => {
+      const projection = p.projection ?? 0;
+      const value = p.value_score ?? 0;
+      return projection >= 100 && value >= 2;
+    },
+    'upgrade_target'
+  );
 
-  const sellsFinal = sells.length >= 5 ? sells : (() => {
-    const existIds = new Set(sells.map(r => r.player_id));
-    const fallback = allTagged
-      .filter(r => delta(r) < -5)
-      .filter(r => !existIds.has(r.player_id))
-      .sort((a, b) => delta(a) - delta(b))
-      .slice(0, 12 - sells.length);
-    return [...sells, ...fallback].slice(0, 12);
-  })();
+  // TRAPS: Fifth priority — high-priced risks
+  const traps = assign(
+    filtered,
+    p => {
+      const priceVal = p.price ?? 0;
+      const value = p.value_score ?? 0;
+      return priceVal >= 500000 && value < -2;
+    },
+    'fade_trap'
+  );
 
-  const trapsFinal = traps.length >= 4 ? traps : (() => {
-    const existIds = new Set(traps.map(r => r.player_id));
-    const fallback = allTagged
-      .filter(r => (r.price ?? 0) >= 500000 && delta(r) < 0)
-      .filter(r => !existIds.has(r.player_id))
-      .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
-      .slice(0, 10 - traps.length);
-    return [...traps, ...fallback].slice(0, 10);
-  })();
+  // ── STEP 4: SORT EACH CATEGORY ──────────────────────────────────────────
+
+  sells.sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0)); // Worst value first
+  buys.sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)); // Best value first
+  values.sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)); // Best value first
+  upgrades.sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0)); // Highest projection first
+  traps.sort((a, b) => (b.price ?? 0) - (a.price ?? 0)); // Most expensive first
+
+  // ── STEP 5: DEBUG LOGGING ────────────────────────────────────────────────
+
+  console.log("[MW ENGINE - CLASSIFY]", {
+    uniqueAssigned: assigned.size,
+    categories: {
+      sells: sells.length,
+      buys: buys.length,
+      values: values.length,
+      upgrades: upgrades.length,
+      traps: traps.length,
+    },
+    topSell: sells[0]?.player_name,
+    topBuy: buys[0]?.player_name,
+    topValue: values[0]?.player_name,
+  });
+
+  // ── STEP 6: RETURN RESULTS ───────────────────────────────────────────────
 
   return {
-    buyBeforeRise: buyBeforeRiseFinal,
-    cashCows: cashCowsFinal,
-    upgrades: upgradesFinal,
-    sells: sellsFinal,
-    traps: trapsFinal,
+    buyBeforeRise: buys,
+    cashCows: values,
+    upgrades: upgrades,
+    sells: sells,
+    traps: traps,
   };
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// TRADE BUILDING LOGIC
+// ────────────────────────────────────────────────────────────────────────────
 
 function tradeWhy(
   out: DerivedPlayer,
@@ -295,7 +318,7 @@ export function buildBestTrades(
     }
   }
 
-  // Deduplicate: each buy player appears at most once (best trade for that buy target wins)
+  // Deduplicate: each buy player appears at most once
   const seenBuy = new Set<number>();
   const dedupedByBuy = allPairs
     .sort((a, b) => b.score - a.score)
@@ -305,7 +328,7 @@ export function buildBestTrades(
       return true;
     });
 
-  // Each sell player appears at most 3 times to allow variety
+  // Each sell player appears at most 3 times
   const sellCount = new Map<number, number>();
   const result = dedupedByBuy.filter(t => {
     const n = sellCount.get(t.out.player_id) ?? 0;

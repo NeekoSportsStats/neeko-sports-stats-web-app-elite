@@ -13,27 +13,6 @@ import { classifyPlayers, DerivedPlayer } from "./engine";
 import { PremiumGate } from "@/components/PremiumGate";
 import { PlayerAIModal } from "./PlayerAIModal";
 
-// Derive Market Watch category from Rankings data (single source of truth)
-function deriveCategory(r: any): MWPlayerRow['category'] {
-  if (r.market_watch_category) return r.market_watch_category;
-  const rec = r.ai_recommendation;
-  const value = r.value_score ?? 0;
-  const price = r.price ?? 0;
-  const consistency = r.consistency ?? 50;
-
-  if (rec === 'BUY') {
-    if (value > 6) return 'upgrade_target';
-    if (value >= 3) return 'buy_before_rise';
-    if (price < 400000) return 'cash_cow';
-    return 'buy_before_rise';
-  }
-  if (rec === 'SELL') {
-    if (consistency < 40) return 'fade_trap';
-    return 'sell_before_drop';
-  }
-  return 'monitor';
-}
-
 export default function MarketWatchPage() {
   const { isPremium, loading: authLoading } = useAuth();
   const [players, setPlayers] = useState<MWPlayerRow[]>([]);
@@ -71,7 +50,7 @@ export default function MarketWatchPage() {
         breakout_flag: null,
         volatility_score: r.consistency ?? 0,
         volatility_level: null,
-        category: deriveCategory(r),
+        category: null,
         action: r.ai_recommendation === 'BUY' ? 'BUY' : r.ai_recommendation === 'SELL' ? 'SELL' : 'HOLD',
         trade_score: r.best_value_score ?? r.value_score ?? 0,
         reasons: {},
@@ -93,29 +72,24 @@ export default function MarketWatchPage() {
         consistency_score: r.consistency ?? null,
         projection_confidence: r.projection_confidence ?? null,
         avg_season: r.form_score ?? null,
-        ai_recommendation: r.summary_short ?? r.ai_summary ?? null,
+        ai_recommendation: r.ai_recommendation ?? null,
         recommendation_short: r.recommendation_short ?? null,
         matchup_label: r.matchup_label ?? null,
         summary_short: r.summary_short ?? null,
         summary_long: r.summary_long ?? null,
+        is_injured: r.is_injured ?? r.status === 'injured' ?? r.manual_status === 'injured' ?? false,
+        is_bye: r.is_bye ?? r.status === 'bye' ?? r.manual_status === 'bye' ?? false,
+        status: r.status ?? r.manual_status ?? null,
+        manual_status: r.manual_status ?? null,
       }));
 
-      const cleaned = mapped.filter(p => p.category !== null && p.category !== undefined);
-      const categoryCounts = cleaned.reduce((acc, p) => {
-        const cat = p.category || 'none';
-        acc[cat] = (acc[cat] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      console.log("[MW DEBUG - UNIFIED SOURCE]", {
+      console.log("[MW DEBUG - FETCH]", {
         source: viewName,
         total: data?.length ?? 0,
-        afterMapping: mapped.length,
-        afterFilter: cleaned.length,
-        categories: categoryCounts,
+        mapped: mapped.length,
       });
 
-      setPlayers(cleaned);
+      setPlayers(mapped);
     } catch (error) {
       console.error("[Market Watch] Error:", error);
       setPlayers([]);
