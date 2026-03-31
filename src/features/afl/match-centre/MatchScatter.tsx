@@ -165,7 +165,7 @@ export default function MatchScatter({ scatterData, homeTeam, awayTeam, homeColo
                   data={homeData}
                   fill={resolvedHomeColor}
                   opacity={1}
-                  shape={(props: Record<string, unknown>) => {
+                  shape={(props: any) => {
                     const { cx, cy, payload } = props as { cx: number; cy: number; payload: MatchScatterPoint };
                     const fantasyDiff = payload.y_fantasy_vs_avg;
                     const isStandout = fantasyDiff > 20;
@@ -198,7 +198,7 @@ export default function MatchScatter({ scatterData, homeTeam, awayTeam, homeColo
                   data={awayData}
                   fill={resolvedAwayColor}
                   opacity={1}
-                  shape={(props: Record<string, unknown>) => {
+                  shape={(props: any) => {
                     const { cx, cy, payload } = props as { cx: number; cy: number; payload: MatchScatterPoint };
                     const fantasyDiff = payload.y_fantasy_vs_avg;
                     const isStandout = fantasyDiff > 20;
@@ -233,7 +233,7 @@ export default function MatchScatter({ scatterData, homeTeam, awayTeam, homeColo
                 data={data}
                 fill={resolvedHomeColor}
                 opacity={1}
-                shape={(props: Record<string, unknown>) => {
+                shape={(props: any) => {
                   const { cx, cy, payload } = props as { cx: number; cy: number; payload: MatchScatterPoint };
                   const fantasyDiff = payload.y_fantasy_vs_avg;
                   const isStandout = fantasyDiff > 20;

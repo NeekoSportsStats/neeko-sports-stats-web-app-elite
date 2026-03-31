@@ -541,7 +541,7 @@ function ScoreHistoryChart({ playerName, playerId }: { playerName: string; playe
             <Area
               type="monotone"
               dataKey="shade_green_hi"
-              baseLine={chartData.map((d) => d.shade_green_lo ?? undefined)}
+              baseLine={chartData.map((d) => d.shade_green_lo ?? undefined) as any}
               fill="url(#greenShade)"
               stroke="none"
               connectNulls={false}
@@ -558,7 +558,7 @@ function ScoreHistoryChart({ playerName, playerId }: { playerName: string; playe
             <Area
               type="monotone"
               dataKey="shade_red_hi"
-              baseLine={chartData.map((d) => d.shade_red_lo ?? undefined)}
+              baseLine={chartData.map((d) => d.shade_red_lo ?? undefined) as any}
               fill="url(#redShade)"
               stroke="none"
               connectNulls={false}

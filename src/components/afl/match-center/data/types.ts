@@ -2,6 +2,12 @@
 
 export type MatchStatus = "upcoming" | "final";
 
+export type MatchPlayer = {
+  id: string;
+  name: string;
+  position?: string;
+};
+
 export type FixtureQuarter = {
   label: "Q1" | "Q2" | "Q3" | "Q4";
   home: number;

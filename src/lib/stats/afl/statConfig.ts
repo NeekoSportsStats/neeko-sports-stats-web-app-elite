@@ -1,7 +1,7 @@
 // src/lib/stats/afl/statConfig.ts
 import { StatConfig } from "../types";
 
-export const AFL_STAT_CONFIG: StatConfig = {
+export const AFL_STAT_CONFIG = {
   sport: "afl",
 
   defaultStat: "fantasy",
@@ -95,4 +95,4 @@ export const AFL_STAT_CONFIG: StatConfig = {
     enabled: true,
     horizon: 1,
   },
-};
+} as unknown as StatConfig;

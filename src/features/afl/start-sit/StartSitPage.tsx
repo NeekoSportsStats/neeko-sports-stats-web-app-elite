@@ -82,14 +82,17 @@ export default function StartSitPage() {
 
   // Load the current round on mount
   useEffect(() => {
-    supabase
-      .rpc("get_latest_completed_round")
-      .then(({ data }) => {
+    (async () => {
+      try {
+        const { data } = await supabase.rpc("get_latest_completed_round");
         const activeRound = typeof data === "number" && data >= 0 ? data : 0;
         setRound(activeRound);
-      })
-      .catch(() => setRound(0))
-      .finally(() => setRoundLoading(false));
+      } catch {
+        setRound(0);
+      } finally {
+        setRoundLoading(false);
+      }
+    })();
   }, []);
 
   // Pre-fetch top players so social proof quick-fill cards have real IDs
@@ -417,8 +420,8 @@ export default function StartSitPage() {
         {/* Result — wait for auth to resolve before rendering so premium state is certain */}
         {!comparing && result && !authLoading && (
           <StartSitResult
-            playerA={result.playerA}
-            playerB={result.playerB}
+            playerA={result.playerA as any}
+            playerB={result.playerB as any}
             winnerPlayerId={result.winner_player_id}
             confidence={result.confidence}
             aiSummary={result.ai_summary}

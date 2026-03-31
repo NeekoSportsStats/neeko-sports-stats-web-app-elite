@@ -104,12 +104,14 @@ export function StartSitSocialProof({ players, onFillBoth, onScrollToCompare }: 
   const [livePopularity, setLivePopularity] = useState<PopularityRow[] | null>(null);
 
   useEffect(() => {
-    supabase
-      .rpc("get_start_sit_popularity", { days_back: 7, limit_n: 6 })
-      .then(({ data }) => {
+    (async () => {
+      try {
+        const { data } = await supabase.rpc("get_start_sit_popularity", { days_back: 7, limit_n: 6 });
         setLivePopularity(data ? (data as PopularityRow[]) : []);
-      })
-      .catch(() => setLivePopularity([]));
+      } catch {
+        setLivePopularity([]);
+      }
+    })();
   }, []);
 
   const playerMap = useMemo(() => {
@@ -135,8 +137,8 @@ export function StartSitSocialProof({ players, onFillBoth, onScrollToCompare }: 
           splitA: row.win_a_pct != null ? Number(row.win_a_pct) : undefined,
         };
       })
-      .filter((m): m is SocialProofMatchup => m !== null)
-      .slice(0, 4);
+      .filter((m) => m !== null)
+      .slice(0, 4) as SocialProofMatchup[];
   }, [livePopularity, playerMap]);
 
   const closeDecisions = useMemo((): SocialProofMatchup[] => {

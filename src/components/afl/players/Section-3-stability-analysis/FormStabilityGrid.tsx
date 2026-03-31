@@ -6,7 +6,7 @@ import type { StatConfig, StatKey } from "@/lib/stats/types";
 import {
   getFormStabilityGridData,
   type FormStabilityRow,
-} from "@/features/afl/players/data/getFormStabilityGridData";
+} from "@/archive/players/data/getFormStabilityGridData";
 
 type Tone = "hot" | "stable" | "cold";
 

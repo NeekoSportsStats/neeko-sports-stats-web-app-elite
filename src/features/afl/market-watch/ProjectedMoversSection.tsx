@@ -50,7 +50,7 @@ const MOVEMENT_META: Record<MovementLabel, {
   },
 };
 
-const SIGNAL_META: Record<MoverSignal, { label: string; colorCls: string; icon: JSX.Element | null }> = {
+const SIGNAL_META: Record<MoverSignal, { label: string; colorCls: string; icon: React.ReactNode }> = {
   BUY_BEFORE_RISE: {
     label:    "Buy Before Rise",
     colorCls: "text-emerald-300 bg-emerald-400/10 border-emerald-400/25",
