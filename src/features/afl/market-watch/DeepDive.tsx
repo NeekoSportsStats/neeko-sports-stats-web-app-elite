@@ -24,33 +24,33 @@ export function DeepDive({ sells, buys, upgrades, cashCows, traps }: DeepDivePro
   if (totalPlayers === 0) return null;
 
   return (
-    <div className="border border-white/10 rounded-xl overflow-hidden bg-white/[0.01]">
+    <div className="border border-white/5 rounded-xl overflow-hidden bg-white/[0.01]">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full px-6 py-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
       >
         <div className="text-left">
           <div className="font-semibold text-white mb-1">Full Market Analysis</div>
-          <div className="text-sm text-white/50">
+          <div className="text-sm text-white/40">
             View all {totalPlayers} player signals and detailed breakdowns
           </div>
         </div>
         <div className="flex-shrink-0">
           {isExpanded ? (
-            <ChevronUp className="w-5 h-5 text-white/40" />
+            <ChevronUp className="w-5 h-5 text-white/30" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-white/40" />
+            <ChevronDown className="w-5 h-5 text-white/30" />
           )}
         </div>
       </button>
 
       {isExpanded && (
-        <div className="px-6 pb-6 space-y-8 border-t border-white/10">
-          <CategoryTable title="Must Sell" players={sells} category="sell" />
-          <CategoryTable title="Buy Before Rise" players={buys} category="buy" />
-          <CategoryTable title="Upgrade Targets" players={upgrades} category="upgrade" />
-          <CategoryTable title="Cash Cows" players={cashCows} category="cash" />
-          <CategoryTable title="Traps" players={traps} category="trap" />
+        <div className="px-6 pb-6 space-y-10 border-t border-white/5">
+          <CategoryTable title="Must Sell" players={sells} accentColor="text-red-400" />
+          <CategoryTable title="Buy Before Rise" players={buys} accentColor="text-green-400" />
+          <CategoryTable title="Upgrade Targets" players={upgrades} accentColor="text-white/60" />
+          <CategoryTable title="Cash Cows" players={cashCows} accentColor="text-[#F5C84C]" />
+          <CategoryTable title="Traps" players={traps} accentColor="text-orange-400" />
         </div>
       )}
     </div>
@@ -60,45 +60,37 @@ export function DeepDive({ sells, buys, upgrades, cashCows, traps }: DeepDivePro
 interface CategoryTableProps {
   title: string;
   players: DerivedPlayer[];
-  category: "sell" | "buy" | "upgrade" | "cash" | "trap";
+  accentColor: string;
 }
 
-function CategoryTable({ title, players, category }: CategoryTableProps) {
+function CategoryTable({ title, players, accentColor }: CategoryTableProps) {
   if (!players || players.length === 0) return null;
 
-  const accentColor = {
-    sell: "text-red-400",
-    buy: "text-green-400",
-    upgrade: "text-blue-400",
-    cash: "text-[#F5C84C]",
-    trap: "text-orange-400",
-  }[category];
-
   return (
-    <div className="pt-6">
-      <h4 className={`text-lg font-bold mb-4 ${accentColor}`}>{title}</h4>
+    <div className="pt-6 first:pt-6">
+      <h4 className={`text-base font-bold mb-4 ${accentColor}`}>{title}</h4>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto -mx-6 px-6">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/10">
-              <th className="text-left py-3 px-3 text-white/40 font-medium">#</th>
-              <th className="text-left py-3 px-3 text-white/40 font-medium">Player</th>
-              <th className="text-left py-3 px-3 text-white/40 font-medium">Position</th>
-              <th className="text-right py-3 px-3 text-white/40 font-medium">Price</th>
-              <th className="text-right py-3 px-3 text-white/40 font-medium">Projection</th>
-              <th className="text-right py-3 px-3 text-white/40 font-medium">Change</th>
-              <th className="text-left py-3 px-3 text-white/40 font-medium">Confidence</th>
+            <tr className="border-b border-white/5">
+              <th className="text-left py-3 px-3 text-white/30 font-medium text-xs">#</th>
+              <th className="text-left py-3 px-3 text-white/30 font-medium text-xs">Player</th>
+              <th className="text-left py-3 px-3 text-white/30 font-medium text-xs">Position</th>
+              <th className="text-right py-3 px-3 text-white/30 font-medium text-xs">Price</th>
+              <th className="text-right py-3 px-3 text-white/30 font-medium text-xs">Projection</th>
+              <th className="text-right py-3 px-3 text-white/30 font-medium text-xs">Change</th>
+              <th className="text-left py-3 px-3 text-white/30 font-medium text-xs">Confidence</th>
             </tr>
           </thead>
           <tbody>
             {players.map((player, idx) => (
-              <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02]">
-                <td className="py-3 px-3 text-white/30 font-medium">{idx + 1}</td>
+              <tr key={idx} className="border-b border-white/[0.03] hover:bg-white/[0.01] transition-colors">
+                <td className="py-3 px-3 text-white/20 font-medium text-xs">{idx + 1}</td>
                 <td className="py-3 px-3 font-semibold text-white">{player.player_name}</td>
-                <td className="py-3 px-3 text-white/60">{player.position}</td>
+                <td className="py-3 px-3 text-white/50">{player.position}</td>
                 <td className="py-3 px-3 text-right text-white">{fmtPrice(player.price ?? 0)}</td>
-                <td className="py-3 px-3 text-right text-blue-400 font-medium">
+                <td className="py-3 px-3 text-right text-white font-medium">
                   {player.projection?.toFixed(0) ?? "—"}
                 </td>
                 <td className={`py-3 px-3 text-right font-medium ${
@@ -129,7 +121,7 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
     : "text-orange-400 bg-orange-400/10";
 
   return (
-    <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${cls}`}>
+    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${cls}`}>
       {label}
     </span>
   );

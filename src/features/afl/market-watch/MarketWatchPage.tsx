@@ -172,21 +172,21 @@ export default function MarketWatchPage() {
 
   return (
     <div className="min-h-screen bg-[#0A0F1A] text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-white/5 pb-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
               Weekly Trade Engine
             </h1>
-            <p className="text-white/60">
+            <p className="text-white/50">
               AI-powered trade signals updated weekly
             </p>
           </div>
 
           <div className="flex items-center gap-4">
             {relativeTime && (
-              <div className="hidden sm:flex items-center gap-2 text-sm text-white/50">
+              <div className="hidden sm:flex items-center gap-2 text-sm text-white/40">
                 <Clock className="w-4 h-4" />
                 <span>Updated {relativeTime}</span>
               </div>
@@ -194,7 +194,7 @@ export default function MarketWatchPage() {
             <button
               onClick={handleRefresh}
               disabled={dataLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/10 rounded-lg hover:bg-white/[0.05] hover:border-white/20 transition-all disabled:opacity-50"
             >
               <RefreshCw className={`w-4 h-4 ${dataLoading ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">Refresh</span>
@@ -203,11 +203,11 @@ export default function MarketWatchPage() {
         </div>
 
         <div>
-          <div className="mb-6">
+          <div className="mb-8">
             <h2 className="text-2xl font-bold text-white mb-2">
               This Week's Signals
             </h2>
-            <p className="text-white/50">
+            <p className="text-white/40">
               Top opportunities across all categories
             </p>
           </div>
