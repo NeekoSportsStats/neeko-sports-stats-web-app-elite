@@ -1,6 +1,5 @@
 // Vercel Edge Middleware for Prerender.io integration
 // This runs on Vercel's edge network before the request reaches your app
-import { NextResponse } from 'next/server';
 
 // Bot user agents that should receive prerendered content
 const BOT_USER_AGENTS = [
@@ -85,9 +84,11 @@ export default async function middleware(request) {
   if (!isBotRequest || !shouldPrerender(pathname)) {
     // For bot requests outside prerender routes, still mark as bot
     if (isBotRequest) {
-      const response = NextResponse.next();
-      response.headers.set('x-is-bot', 'true');
-      return response;
+      return new Response(null, {
+        headers: {
+          'x-is-bot': 'true',
+        },
+      });
     }
     return;
   }
@@ -138,9 +139,11 @@ export default async function middleware(request) {
 
   // Fall through to serve normal React app if prerendering fails
   // Still mark as bot request
-  const response = NextResponse.next();
-  response.headers.set('x-is-bot', 'true');
-  return response;
+  return new Response(null, {
+    headers: {
+      'x-is-bot': 'true',
+    },
+  });
 }
 
 // Configure which routes this middleware should run on
