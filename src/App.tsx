@@ -77,47 +77,82 @@ const AI      = <AIInsightsSkeleton />;
 const Generic = <GenericPageSkeleton />;
 
 function App() {
-  console.log("APP RENDER");
+  const location = useLocation();
 
   useEffect(() => {
-    console.log("App mounted - testing Supabase connection");
-
     if (supabase) {
-      console.log("Supabase client available - running test query");
       supabase
         .from('afl_players')
         .select('*')
         .limit(1)
         .then(res => {
           if (res.error) {
-            console.error("❌ Supabase query error:", res.error);
-            console.error("Supabase error details:", {
-              message: res.error.message,
-              code: res.error.code,
-              hint: res.error.hint,
-              details: res.error.details
-            });
-
+            console.error("Supabase error:", res.error.message);
             if (res.error.code === 'PGRST301' || res.error.message?.includes('row-level security')) {
-              console.error("🔒 RLS BLOCKING ACCESS — create a SELECT policy in Supabase for anon role");
-              console.error("Fix in Supabase Dashboard: SQL Editor → Run:");
-              console.error("ALTER TABLE afl_players ENABLE ROW LEVEL SECURITY;");
-              console.error("CREATE POLICY \"Allow anon read\" ON afl_players FOR SELECT TO anon USING (true);");
+              console.error("RLS blocking access - policies needed in Supabase");
             }
           } else {
-            console.log("✅ Supabase test query successful:", res.data);
-            console.log("Connection verified - data returned from afl_players table");
+            console.log("Supabase connected and working");
           }
-        })
-        .catch(err => {
-          console.error("❌ Supabase query exception:", err);
         });
-    } else {
-      console.warn("⚠️ Supabase client is null - cannot test connection");
     }
   }, []);
 
-  return <div style={{ padding: "20px", fontSize: "24px", color: "white" }}>APP WORKING</div>;
+  useEffect(() => {
+    track("Page View", { path: location.pathname });
+  }, [location.pathname]);
+
+  return (
+    <Routes>
+      <Route path="/auth" element={<Auth />} />
+      <Route path="/create-password" element={<S fallback={Generic}><CreatePassword /></S>} />
+      <Route path="/forgot-password" element={<S fallback={Generic}><ForgotPassword /></S>} />
+      <Route path="/reset-password" element={<S fallback={Generic}><ResetPassword /></S>} />
+
+      <Route element={<Layout />}>
+        <Route path="/" element={<Index />} />
+        <Route path="/about" element={<S fallback={Generic}><About /></S>} />
+        <Route path="/faq" element={<S fallback={Generic}><FAQ /></S>} />
+        <Route path="/contact" element={<S fallback={Generic}><Contact /></S>} />
+        <Route path="/socials" element={<S fallback={Generic}><Socials /></S>} />
+
+        <Route path="/policies" element={<S fallback={Generic}><Policies /></S>} />
+        <Route path="/privacy-policy" element={<S fallback={Generic}><PrivacyPolicy /></S>} />
+        <Route path="/terms-conditions" element={<S fallback={Generic}><TermsConditions /></S>} />
+        <Route path="/refund-policy" element={<S fallback={Generic}><RefundPolicy /></S>} />
+        <Route path="/security-policy" element={<S fallback={Generic}><SecurityPolicy /></S>} />
+        <Route path="/user-conduct-policy" element={<S fallback={Generic}><UserConductPolicy /></S>} />
+
+        <Route path="/afl/rankings" element={<S fallback={Players}><AFLRankingsPage /></S>} />
+        <Route path="/afl/edge-board" element={<S fallback={AI}><AFLRoundEdgeBoard /></S>} />
+        <Route path="/afl/start-sit" element={<S fallback={AI}><AFLStartSitPage /></S>} />
+        <Route path="/afl/market-watch" element={<S fallback={AI}><AFLMarketWatch /></S>} />
+
+        <Route path="/account" element={<RequireAuth><S fallback={Generic}><Account /></S></RequireAuth>} />
+        <Route path="/billing" element={<RequireAuth><S fallback={Generic}><Billing /></S></RequireAuth>} />
+        <Route path="/neeko-plus-purchase" element={<RequireAuth><S fallback={Generic}><NeekoPlusPurchase /></S></RequireAuth>} />
+
+        <Route path="/checkout" element={<RequireAuth><S fallback={Generic}><StartCheckout /></S></RequireAuth>} />
+        <Route path="/success" element={<RequireAuth><S fallback={Generic}><Success /></S></RequireAuth>} />
+        <Route path="/cancel" element={<RequireAuth><S fallback={Generic}><Cancel /></S></RequireAuth>} />
+
+        <Route path="/admin" element={<RequireAdmin><AdminShell /></RequireAdmin>}>
+          <Route index element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="dashboard" element={<AdminDashboardPage />} />
+          <Route path="health" element={<AdminHealthPage />} />
+          <Route path="users" element={<AdminUserMetricsPage />} />
+          <Route path="command" element={<AdminCommandPage />} />
+          <Route path="player-lab" element={<AdminPlayerLabPage />} />
+          <Route path="marketing" element={<AdminMarketingPage />} />
+          <Route path="admin" element={<AdminAdminPage />} />
+        </Route>
+
+        <Route path="/pipeline-history" element={<RequireAdmin><S fallback={Generic}><PipelineHistory /></S></RequireAdmin>} />
+      </Route>
+
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
 }
 
 export default App;

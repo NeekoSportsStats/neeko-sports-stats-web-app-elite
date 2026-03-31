@@ -4,13 +4,8 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 let supabase: SupabaseClient | null = null;
 
 try {
-  console.log("Supabase client initializing...");
-
   const url = import.meta.env.VITE_SUPABASE_URL;
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-  console.log("URL exists:", !!url);
-  console.log("Key exists:", !!key);
 
   if (url && key) {
     try {
@@ -49,16 +44,16 @@ try {
         },
       });
 
-      console.log("✅ Supabase connected");
+      console.log("Supabase initialized");
     } catch (error) {
-      console.error("Supabase client creation failed:", error);
+      console.error("Supabase client failed:", error);
       supabase = null;
     }
   } else {
-    console.warn("Supabase env vars missing - running in offline mode");
+    console.warn("Supabase env missing");
   }
 } catch (err) {
-  console.error("Supabase init failed:", err);
+  console.error("Supabase init error:", err);
   supabase = null;
 }
 

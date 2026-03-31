@@ -32,10 +32,7 @@ const AuthContext = createContext<AuthContextType>({
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  console.log("AuthProvider initializing...");
-
   if (!supabase) {
-    console.warn("Supabase unavailable - AuthProvider in offline mode");
     return (
       <AuthContext.Provider
         value={{
