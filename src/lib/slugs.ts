@@ -2,6 +2,16 @@ export const nameToSlug = (name: string): string => {
   return name.toLowerCase().replace(/\s+/g, '-');
 };
 
+export const playerToSlug = (name: string, team?: string): string => {
+  const baseSlug = nameToSlug(name);
+  if (!team) return baseSlug;
+
+  const teamSlug = TEAM_SLUGS[team] || nameToSlug(team);
+  const teamSuffix = teamSlug.replace(/^(.*?)-.*/, '$1');
+
+  return `${baseSlug}-${teamSuffix}`;
+};
+
 export const slugToName = (slug: string): string => {
   return slug
     .split('-')
