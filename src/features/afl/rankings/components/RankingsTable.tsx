@@ -84,7 +84,7 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
       </th>
       <SortableTh label="Projection" col="projection_final" width={100} tooltip="Expected fantasy points this round" />
       <SortableTh label="Confidence" col="projection_confidence" width={100} tooltip="Confidence reflects projection stability, role consistency, and risk. Elite Safety = 80%+, Strong = 70–79%, Solid = 60–69%, Moderate Risk = 50–59%, Volatile = below 50%." />
-      <SortableTh label="Form" col="form_score" width={100} tooltip="Weighted recent form — blends last 3, last 5 and season average. 0–100 scale." />
+      <SortableTh label="Breakeven" col="form_score" width={100} tooltip="Score required to maintain current price. Lower is better (green = easy to beat, red = hard to beat)." />
       <Th label="Price" locked={!isPremium} width={110} tooltip="AFL Fantasy salary this round" />
       <SortableTh label="Value" col="value_score" width={120} tooltip="Points per dollar of price — higher means better value for money" />
       <Th label="AI Rec" locked={!isPremium} width={150} />
@@ -205,9 +205,21 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
         })()}
       </td>
       <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 100, minWidth: 90 }}>
-        <span className={`text-sm font-semibold tabular-nums ${getFormScoreColor(row.form_score ?? null)}`}>
-          {row.form_score != null ? Math.round(row.form_score) : "—"}
-        </span>
+        {(() => {
+          const breakeven = (row.projection_final ?? 0) - ((row.price_change ?? 0) * 3);
+          const getBreakevenColor = (be: number) => {
+            if (be <= 60) return "text-emerald-400";
+            if (be <= 80) return "text-green-400";
+            if (be <= 100) return "text-[#F5C84C]";
+            if (be <= 120) return "text-orange-400";
+            return "text-red-400";
+          };
+          return (
+            <span className={`text-sm font-semibold tabular-nums ${getBreakevenColor(breakeven)}`}>
+              {Math.round(breakeven)}
+            </span>
+          );
+        })()}
       </td>
       <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 110, minWidth: 90 }}>
         {locked("price") ? (

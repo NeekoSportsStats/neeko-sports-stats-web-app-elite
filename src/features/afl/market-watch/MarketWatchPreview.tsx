@@ -9,9 +9,11 @@ interface MarketWatchPreviewProps {
 }
 
 export function MarketWatchPreview({ sells, buys, value }: MarketWatchPreviewProps) {
-  const topSells = (sells ?? []).slice(0, 2);
-  const topBuys = (buys ?? []).slice(0, 2);
-  const topValue = (value ?? []).slice(0, 2);
+  // FREE LIMIT: Show top 8 players per category for free users
+  const FREE_LIMIT = 8;
+  const topSells = (sells ?? []).slice(0, FREE_LIMIT);
+  const topBuys = (buys ?? []).slice(0, FREE_LIMIT);
+  const topValue = (value ?? []).slice(0, FREE_LIMIT);
 
   return (
     <div className="grid md:grid-cols-3 gap-6">

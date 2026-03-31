@@ -63,7 +63,7 @@ function TableHeader({ isPremium }: { isPremium: boolean }) {
     { key: "rating",     label: "Neeko",  premium: false, width: COL.rating },
     { key: "projection", label: "Proj",   premium: false, width: COL.projection },
     { key: "confidence", label: "Conf",   premium: false, width: COL.confidence },
-    { key: "form",       label: "Form",   premium: false, width: COL.form },
+    { key: "breakeven",  label: "Break",  premium: false, width: COL.form },
     { key: "price",      label: "Price",  premium: true,  width: COL.price },
     { key: "value",      label: "Value",  premium: true,  width: COL.value },
     { key: "aiRec",      label: "AI Rec", premium: true,  width: COL.aiRec },
@@ -232,9 +232,21 @@ function DataRow({ row, idx, tier, isPremium, activeTab, onTap, onUpgrade }: Dat
           })()}
         </div>
         <div className={`${CELL_BASE} justify-center`} style={{ width: COL.form, minWidth: COL.form }}>
-          <span className={`text-sm font-semibold tabular-nums ${getFormScoreColor(row.form_score ?? null)}`}>
-            {row.form_score != null ? Math.round(row.form_score) : "—"}
-          </span>
+          {(() => {
+            const breakeven = (row.projection_final ?? 0) - ((row.price_change ?? 0) * 3);
+            const getBreakevenColor = (be: number) => {
+              if (be <= 60) return "text-emerald-400";
+              if (be <= 80) return "text-green-400";
+              if (be <= 100) return "text-[#F5C84C]";
+              if (be <= 120) return "text-orange-400";
+              return "text-red-400";
+            };
+            return (
+              <span className={`text-sm font-semibold tabular-nums ${getBreakevenColor(breakeven)}`}>
+                {Math.round(breakeven)}
+              </span>
+            );
+          })()}
         </div>
         <div className={`${CELL_BASE} justify-center`} style={{ width: COL.price, minWidth: COL.price }}>
           {locked("price") ? <LockedPlaceholder onUpgrade={onUpgrade} /> : (

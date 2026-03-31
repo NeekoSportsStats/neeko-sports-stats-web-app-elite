@@ -108,64 +108,64 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
 
   // ── STEP 3: CATEGORY ASSIGNMENT (Priority Order) ────────────────────────
 
-  // SELL: Highest priority — remove underperformers first
-  const sells = assign(
-    filtered,
-    p => {
-      const rec = p.ai_recommendation;
-      const value = p.value_score ?? 0;
-      return rec === 'SELL' || value <= -4.5;
-    },
-    'sell_before_drop'
-  );
-
-  // BUY: Second priority — strong buy signals
+  // PRIORITY 1: BUY — ai_recommendation = 'BUY'
   const buys = assign(
     filtered,
     p => {
       const rec = p.ai_recommendation;
-      return rec === 'BUY';
+      return rec === 'BUY' || rec === 'STRONG_BUY';
     },
     'buy_before_rise'
   );
 
-  // VALUE: Third priority — elite value plays
+  // PRIORITY 2: SELL — ai_recommendation = 'SELL'
+  const sells = assign(
+    filtered,
+    p => {
+      const rec = p.ai_recommendation;
+      return rec === 'SELL' || rec === 'AVOID';
+    },
+    'sell_before_drop'
+  );
+
+  // PRIORITY 3: VALUE — HOLD + value_score >= 5.0
   const values = assign(
     filtered,
     p => {
+      const rec = p.ai_recommendation;
       const value = p.value_score ?? 0;
-      return value >= 5;
+      return rec === 'HOLD' && value >= 5.0;
     },
     'cash_cow'
   );
 
-  // UPGRADE: Fourth priority — high projection players
+  // PRIORITY 4: UPGRADE — high projection + decent value
   const upgrades = assign(
     filtered,
     p => {
       const projection = p.projection ?? 0;
       const value = p.value_score ?? 0;
-      return projection >= 100 && value >= 2;
+      return projection >= 100 && value >= 2.0;
     },
     'upgrade_target'
   );
 
-  // TRAPS: Fifth priority — high-priced risks
+  // PRIORITY 5: TRAPS — expensive + poor value
   const traps = assign(
     filtered,
     p => {
       const priceVal = p.price ?? 0;
       const value = p.value_score ?? 0;
-      return priceVal >= 500000 && value < -2;
+      return priceVal >= 500000 && value < -2.0;
     },
     'fade_trap'
   );
 
-  // ── STEP 4: SORT EACH CATEGORY ──────────────────────────────────────────
+  // ── STEP 4: SORT EACH CATEGORY (Aligned with DB) ──────────────────────────
 
-  sells.sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0)); // Worst value first
   buys.sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)); // Best value first
-  values.sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)); // Best value first
+  sells.sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0)); // Worst value first
+  values.sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)); // Best value first (Zorko > Gawn)
   upgrades.sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0)); // Highest projection first
   traps.sort((a, b) => (b.price ?? 0) - (a.price ?? 0)); // Most expensive first
 
