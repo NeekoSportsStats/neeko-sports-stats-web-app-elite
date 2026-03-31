@@ -1,6 +1,13 @@
 @import "tailwindcss";
 
 @layer base {
+  /* Reset list styles globally */
+  ul, ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
   :root {
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
