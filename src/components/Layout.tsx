@@ -2,15 +2,10 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "@/components/ui/button";
 import { Crown, LogOut } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, Outlet } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { ReactNode } from "react";
 
-interface LayoutProps {
-  children: ReactNode;
-}
-
-export function Layout({ children }: LayoutProps) {
+export function Layout() {
   const { user, isPremium, signOut } = useAuth();
 
   return (
@@ -78,7 +73,9 @@ export function Layout({ children }: LayoutProps) {
           </header>
 
           {/* BODY */}
-          <main className="flex-1 overflow-auto">{children}</main>
+          <main className="flex-1 overflow-auto">
+            <Outlet />
+          </main>
         </div>
       </div>
     </SidebarProvider>
