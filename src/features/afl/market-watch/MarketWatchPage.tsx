@@ -19,86 +19,33 @@ export default function MarketWatchPage() {
 
   const [players, setPlayers] = useState<MWPlayerRow[]>([]);
   const [summary, setSummary] = useState<MWSummary | null>(null);
-  const [status, setStatus] = useState<MWStatus | null>(null);
-  const [dataLoading, setDataLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchData = useCallback(async (premium: boolean) => {
     setDataLoading(true);
     try {
-      if (premium) {
-        const [playersRes, summaryRes, statusRes] = await Promise.all([
-          supabase.from("v_mw_premium").select("*").limit(600),
-          supabase.from("v_mw_summary").select("*").maybeSingle(),
-          supabase.from("v_mw_status").select("*").maybeSingle(),
-        ]);
+      const [playersRes, summaryRes] = await Promise.all([
+        premium
+          ? supabase.from("v_mw_premium").select("*").limit(600)
+          : supabase.from("v_mw_premium").select("*").limit(100),
+        supabase.from("v_mw_summary").select("*").maybeSingle(),
+      ]);
 
-        if (playersRes.error) {
-          console.error("Market Watch data error:", playersRes.error);
-          setPlayers([]);
-        } else {
-          setPlayers((playersRes.data ?? []) as MWPlayerRow[]);
-        }
+      if (playersRes.error) throw playersRes.error;
+      if (summaryRes.error) console.warn("Summary fetch failed:", summaryRes.error);
 
-        if (summaryRes.error) {
-          console.error("Market Watch summary error:", summaryRes.error);
-        } else if (summaryRes.data) {
-          setSummary(summaryRes.data as MWSummary);
-        }
+      setPlayers((playersRes.data ?? []) as MWPlayerRow[]);
+      setSummary(summaryRes.data as MWSummary | null);
 
-        if (statusRes.error) {
-          console.error("Market Watch status error:", statusRes.error);
-        } else if (statusRes.data) {
-          setStatus(statusRes.data as MWStatus);
-        }
-      } else {
-        const FREE_CAT_LIMIT = 20;
-        const categories: Array<{ cat: string; order: string; asc: boolean }> = [
-          { cat: "sell_before_drop", order: "expected_price_change", asc: true },
-          { cat: "buy_before_rise",  order: "expected_price_change", asc: false },
-          { cat: "upgrade_target",   order: "value_score",           asc: false },
-          { cat: "cash_cow",         order: "expected_price_change", asc: false },
-          { cat: "fade_trap",        order: "trade_score",           asc: false },
-        ];
-        const [catResults, summaryRes, statusRes] = await Promise.all([
-          Promise.all(
-            categories.map(({ cat, order, asc }) =>
-              supabase
-                .from("v_mw_premium")
-                .select("*")
-                .eq("category", cat)
-                .order(order, { ascending: asc })
-                .limit(FREE_CAT_LIMIT)
-            )
-          ),
-          supabase.from("v_mw_summary").select("*").maybeSingle(),
-          supabase.from("v_mw_status").select("*").maybeSingle(),
-        ]);
-
-        const combined = catResults.flatMap(r => {
-          if (r.error) {
-            console.error("Market Watch category error:", r.error);
-            return [];
-          }
-          return (r.data ?? []) as MWPlayerRow[];
-        });
-        setPlayers(combined);
-
-        if (summaryRes.error) {
-          console.error("Market Watch summary error:", summaryRes.error);
-        } else if (summaryRes.data) {
-          setSummary(summaryRes.data as MWSummary);
-        }
-
-        if (statusRes.error) {
-          console.error("Market Watch status error:", statusRes.error);
-        } else if (statusRes.data) {
-          setStatus(statusRes.data as MWStatus);
-        }
-      }
+      console.log("[Market Watch] Loaded:", {
+        players: playersRes.data?.length ?? 0,
+        premium,
+      });
     } catch (error) {
-      console.error("Market Watch fetch error:", error);
+      console.error("[Market Watch] Fetch error:", error);
       setPlayers([]);
+      setSummary(null);
     } finally {
       setDataLoading(false);
     }
@@ -117,6 +64,10 @@ export default function MarketWatchPage() {
     fetchData(isPremium);
   }, [authLoading, isPremium, fetchData]);
 
+  if (dataLoading) {
+    return <MarketWatchSkeleton />;
+  }
+
   const classified = classifyPlayers(players);
   const allTrades = buildBestTrades(
     classified.sells,
@@ -125,28 +76,11 @@ export default function MarketWatchPage() {
     classified.buyBeforeRise
   );
   const heroTrade = allTrades[0] ?? null;
-
-  console.log("[Market Watch] Data loaded:", {
-    source: isPremium ? "v_mw_premium (full)" : "v_mw_premium (categories)",
-    players: players.length,
-    sells: classified.sells.length,
-    buys: classified.buyBeforeRise.length,
-    upgrades: classified.upgrades.length,
-    cashCows: classified.cashCows.length,
-    traps: classified.traps.length,
-    trades: allTrades.length,
-    loading: dataLoading,
-  });
-
-  if (dataLoading && players.length === 0) {
-    return <MarketWatchSkeleton />;
-  }
-
   const hasData = players.length > 0;
-  const updatedAt = status?.last_updated_at;
+  const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
 
-  if (!hasData && !dataLoading) {
+  if (!hasData) {
     return (
       <div className="min-h-screen bg-[#0D0D0D] text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -154,13 +88,13 @@ export default function MarketWatchPage() {
             <div className="text-6xl">📊</div>
             <h2 className="text-2xl font-bold text-white">No Market Data Available</h2>
             <p className="text-white/60 text-center max-w-md">
-              Market Watch data is currently unavailable. Please check back later or contact support if this persists.
+              Market Watch data is currently unavailable. Please check back later.
             </p>
             <button
               onClick={handleRefresh}
               className="mt-4 px-6 py-3 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-colors"
             >
-              Try Again
+              Refresh
             </button>
           </div>
         </div>
