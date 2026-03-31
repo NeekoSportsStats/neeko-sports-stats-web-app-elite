@@ -4,6 +4,14 @@
 
 html {
   scroll-behavior: smooth;
+  background: #0F0F0F;
+}
+
+html,
+body,
+#root {
+  background: #0F0F0F;
+  min-height: 100%;
 }
 
 @keyframes fadeIn {
