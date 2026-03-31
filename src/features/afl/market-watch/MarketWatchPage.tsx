@@ -1,71 +1,79 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { RefreshCw, Clock } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
-import { MWPlayerRow, MWSummary, MWStatus } from "./types";
-import { MarketWatchHeroTrade } from "./MarketWatchHeroTrade";
+import { MWPlayerRow } from "./types";
 import { MarketWatchPreview } from "./MarketWatchPreview";
 import { MarketWatchPaywall } from "./MarketWatchPaywall";
 import { MarketWatchPremium } from "./MarketWatchPremium";
-import { ProjectedMoversSection } from "./ProjectedMoversSection";
 import { MarketWatchSkeleton } from "./MarketWatchSkeleton";
 import { classifyPlayers, buildBestTrades } from "./engine";
 import { PremiumGate } from "@/components/PremiumGate";
 
 export default function MarketWatchPage() {
   const { isPremium, loading: authLoading } = useAuth();
-  const isPremiumRef = useRef(isPremium);
-
   const [players, setPlayers] = useState<MWPlayerRow[]>([]);
-  const [summary, setSummary] = useState<MWSummary | null>(null);
-  const [dataLoading, setDataLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async (premium: boolean) => {
-    setDataLoading(true);
+    setLoading(true);
     try {
-      const [playersRes, summaryRes] = await Promise.all([
-        premium
-          ? supabase.from("v_mw_premium").select("*").limit(600)
-          : supabase.from("v_mw_premium").select("*").limit(100),
-        supabase.from("v_mw_summary").select("*").maybeSingle(),
-      ]);
+      const limit = premium ? 200 : 100;
+      const { data, error } = await supabase
+        .from("v_mw_premium")
+        .select("*")
+        .limit(limit);
 
-      if (playersRes.error) throw playersRes.error;
-      if (summaryRes.error) console.warn("Summary fetch failed:", summaryRes.error);
+      if (error) throw error;
 
-      setPlayers((playersRes.data ?? []) as MWPlayerRow[]);
-      setSummary(summaryRes.data as MWSummary | null);
+      const cleaned = (data ?? []).filter((p: MWPlayerRow) =>
+        p.price !== null &&
+        p.projection !== null &&
+        p.category !== null
+      );
 
-      console.log("[Market Watch] Loaded:", {
-        players: playersRes.data?.length ?? 0,
-        premium,
-      });
+      setPlayers(cleaned);
+      console.log("[Market Watch] Loaded:", { players: cleaned.length });
     } catch (error) {
-      console.error("[Market Watch] Fetch error:", error);
+      console.error("[Market Watch] Error:", error);
       setPlayers([]);
-      setSummary(null);
     } finally {
-      setDataLoading(false);
+      setLoading(false);
     }
   }, []);
 
   const handleRefresh = useCallback(() => {
-    track("market_watch_refresh_click");
+    track("market_watch_refresh");
     fetchData(isPremium);
-    setLastUpdated(new Date());
   }, [fetchData, isPremium]);
 
   useEffect(() => { track("market_watch_view"); }, []);
-  useEffect(() => { isPremiumRef.current = isPremium; }, [isPremium]);
   useEffect(() => {
     if (authLoading) return;
     fetchData(isPremium);
   }, [authLoading, isPremium, fetchData]);
 
-  if (dataLoading) {
+  if (loading) {
     return <MarketWatchSkeleton />;
+  }
+
+  if (players.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#0D0D0D] text-white flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="text-6xl">📊</div>
+          <h2 className="text-2xl font-bold">No Market Data</h2>
+          <p className="text-white/60">Check back after weekly price changes</p>
+          <button
+            onClick={handleRefresh}
+            className="mt-4 px-6 py-3 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const classified = classifyPlayers(players);
@@ -75,8 +83,7 @@ export default function MarketWatchPage() {
     classified.cashCows,
     classified.buyBeforeRise
   );
-  const heroTrade = allTrades[0] ?? null;
-  const hasData = players.length > 0;
+
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
 
@@ -104,12 +111,12 @@ export default function MarketWatchPage() {
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-12">
 
-        <div className="flex items-center justify-between border-b border-white/5 pb-8">
+        <div className="flex items-center justify-between border-b border-white/10 pb-6">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
-              Weekly Trade Engine
+              Market Watch
             </h1>
             <p className="text-white/50">
               AI-powered trade signals updated weekly
@@ -120,35 +127,25 @@ export default function MarketWatchPage() {
             {relativeTime && (
               <div className="hidden sm:flex items-center gap-2 text-sm text-white/40">
                 <Clock className="w-4 h-4" />
-                <span>Updated {relativeTime}</span>
+                <span>{relativeTime}</span>
               </div>
             )}
             <button
               onClick={handleRefresh}
-              disabled={dataLoading}
-              className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/10 rounded-lg hover:bg-white/[0.05] hover:border-white/20 transition-all disabled:opacity-50"
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/10 rounded-lg hover:bg-white/[0.05] transition-all"
             >
-              <RefreshCw className={`w-4 h-4 ${dataLoading ? "animate-spin" : ""}`} />
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
         </div>
 
-        <div>
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-white mb-2">
-              This Week's Signals
-            </h2>
-            <p className="text-white/40">
-              Top opportunities across all categories
-            </p>
-          </div>
-          <MarketWatchPreview
-            sells={classified.sells}
-            buys={classified.buyBeforeRise}
-            value={classified.upgrades}
-          />
-        </div>
+        <MarketWatchPreview
+          sells={classified.sells}
+          buys={classified.buyBeforeRise}
+          value={classified.upgrades}
+        />
 
         {!isPremium && <MarketWatchPaywall />}
 
@@ -162,25 +159,6 @@ export default function MarketWatchPage() {
             allTrades={allTrades}
           />
         </PremiumGate>
-
-        <div className="pt-8 border-t border-white/10">
-          <div className="bg-white/[0.02] border border-white/10 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-white mb-3">
-              How It Works
-            </h3>
-            <div className="space-y-2 text-sm text-white/60">
-              <p>
-                Our AI analyzes projection data, price movements, and value metrics to identify the best trades each week.
-              </p>
-              <p>
-                All signals are based on live fantasy prices and updated weekly after price changes.
-              </p>
-              <p className="text-xs text-white/40 mt-4">
-                Last updated: {updatedAt ? new Date(updatedAt).toLocaleString() : "Loading..."}
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

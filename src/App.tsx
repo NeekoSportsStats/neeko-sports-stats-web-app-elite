@@ -80,22 +80,6 @@ function App() {
   const location = useLocation();
 
   useEffect(() => {
-    if (supabase) {
-      supabase
-        .from('v_mw_status')
-        .select('last_updated_at')
-        .limit(1)
-        .then(res => {
-          if (res.error) {
-            console.error("Supabase connection error:", res.error.message);
-          } else {
-            console.log("Supabase connected successfully");
-          }
-        });
-    }
-  }, []);
-
-  useEffect(() => {
     track("Page View", { path: location.pathname });
   }, [location.pathname]);
 
