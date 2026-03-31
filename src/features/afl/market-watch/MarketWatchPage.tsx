@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { RefreshCw, Clock } from "lucide-react";
+import { RefreshCw, Clock, CircleAlert as AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
@@ -17,16 +17,48 @@ export default function MarketWatchPage() {
   const { isPremium, loading: authLoading } = useAuth();
   const [players, setPlayers] = useState<MWPlayerRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<DerivedPlayer | null>(null);
 
   const fetchData = useCallback(async (premium: boolean) => {
     setLoading(true);
+    setError(null);
     try {
+      if (!supabase) {
+        throw new Error("Supabase client not initialized. Check environment variables VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env file");
+      }
+
       const limit = premium ? 200 : 100;
       const viewName = premium ? "v_rankings_master" : "v_rankings_free";
+
+      console.log("[MW] Fetching data from:", viewName, "limit:", limit);
+      console.log("[MW] Supabase client configured:", !!supabase);
+
       const { data, error } = await supabase.from(viewName).select("*").limit(limit);
 
-      if (error) throw error;
+      console.log("[MW] Response:", {
+        dataLength: data?.length,
+        error: error?.message || error,
+        hasData: !!data
+      });
+
+      if (error) {
+        console.error("[MW] Supabase error details:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        console.warn("[MW] No data returned from view:", viewName);
+        setPlayers([]);
+        setError("No market data available. Data updates after round completion.");
+        setLoading(false);
+        return;
+      }
 
       const mapped: MWPlayerRow[] = (data ?? []).map((r: any) => ({
         snapshot_id: 'rankings-cache',
@@ -97,8 +129,14 @@ export default function MarketWatchPage() {
       });
 
       setPlayers(mapped);
-    } catch (error) {
-      console.error("[Market Watch] Error:", error);
+    } catch (error: any) {
+      console.error("[MW] Critical error:", error);
+      console.error("[MW] Error stack:", error?.stack);
+      console.error("[MW] Error name:", error?.name);
+      console.error("[MW] Error message:", error?.message);
+
+      const errorMessage = error?.message || error?.toString() || "Failed to load market data";
+      setError(errorMessage);
       setPlayers([]);
     } finally {
       setLoading(false);
@@ -123,14 +161,34 @@ export default function MarketWatchPage() {
   if (players.length === 0) {
     return (
       <div className="min-h-screen bg-[#0D0D0D] text-white flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="text-6xl">📊</div>
-          <h2 className="text-2xl font-bold">No Market Data</h2>
-          <p className="text-white/60">Check back after weekly price changes</p>
+        <div className="text-center space-y-4 max-w-lg px-4">
+          <div className="text-6xl">{error ? "⚠️" : "📊"}</div>
+          <h2 className="text-2xl font-bold">
+            {error ? "Failed to Load Data" : "No Market Data"}
+          </h2>
+          {error ? (
+            <div className="space-y-3">
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-left">
+                    <p className="font-semibold text-red-400 mb-1">Error Details:</p>
+                    <p className="text-sm text-red-300/80 font-mono break-words">{error}</p>
+                  </div>
+                </div>
+              </div>
+              <p className="text-white/60 text-sm">
+                Check the browser console (F12) for detailed error information
+              </p>
+            </div>
+          ) : (
+            <p className="text-white/60">Check back after weekly price changes</p>
+          )}
           <button
             onClick={handleRefresh}
-            className="mt-4 px-6 py-3 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-colors"
+            className="mt-4 px-6 py-3 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-colors inline-flex items-center gap-2"
           >
+            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </button>
         </div>

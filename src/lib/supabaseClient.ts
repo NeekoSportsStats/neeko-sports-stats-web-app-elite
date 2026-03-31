@@ -7,6 +7,12 @@ try {
   const url = import.meta.env.VITE_SUPABASE_URL;
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+  console.log("[Supabase Client] Initializing...", {
+    hasUrl: !!url,
+    hasKey: !!key,
+    urlPrefix: url ? url.substring(0, 30) + "..." : "undefined"
+  });
+
   if (url && key) {
     try {
       const hostname = new URL(url).hostname;
@@ -44,17 +50,24 @@ try {
         },
       });
 
-      console.log("Supabase initialized");
+      console.log("[Supabase Client] ✓ Initialized successfully");
     } catch (error) {
-      console.error("Supabase client failed:", error);
+      console.error("[Supabase Client] ✗ Failed to create client:", error);
       supabase = null;
     }
   } else {
-    console.warn("Supabase env missing");
+    console.error("[Supabase Client] ✗ Missing environment variables", {
+      VITE_SUPABASE_URL: url ? "present" : "MISSING",
+      VITE_SUPABASE_ANON_KEY: key ? "present" : "MISSING"
+    });
   }
 } catch (err) {
-  console.error("Supabase init error:", err);
+  console.error("[Supabase Client] ✗ Initialization error:", err);
   supabase = null;
+}
+
+if (!supabase) {
+  console.error("[Supabase Client] ✗ Client not initialized - check environment variables in .env file");
 }
 
 export { supabase };
