@@ -6,6 +6,12 @@ import { AuthProvider } from "@/lib/auth";
 import { initAnalytics } from "@/lib/analytics";
 import "./index.css";
 
+// CRITICAL: Force pure black IMMEDIATELY before React renders
+if (typeof document !== 'undefined') {
+  document.documentElement.style.backgroundColor = '#000000';
+  document.body.style.backgroundColor = '#000000';
+}
+
 initAnalytics();
 
 const queryClient = new QueryClient();
