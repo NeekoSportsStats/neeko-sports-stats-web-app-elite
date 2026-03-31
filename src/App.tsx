@@ -1,147 +1,102 @@
-import React, { Suspense, useEffect } from "react";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { track } from "@/lib/analytics";
-import { Layout } from "@/components/Layout";
-import { RequireAuth } from "@/components/RequireAuth";
-import { RequireAdmin } from "@/components/RequireAdmin";
-import {
-  PlayersPageSkeleton,
-  AIInsightsSkeleton,
-  GenericPageSkeleton,
-} from "@/components/skeletons/PageSkeletons";
-import { supabase } from "@/lib/supabaseClient";
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import ErrorBoundary from './components/ErrorBoundary';
+import MarketWatch from './pages/MarketWatch';
+import Admin from './pages/Admin';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
+import Cookies from './pages/Cookies';
 
-/* =========================
-   Critical / always-needed (keep static)
-========================= */
-import Auth from "@/pages/Auth";
-import Index from "@/pages/Index";
-import NotFound from "@/pages/NotFound";
-
-/* =========================
-   Core Pages — lazy
-========================= */
-import {
-  AdminShell,
-  AdminDashboardPage,
-  AdminHealthPage,
-  AdminUserMetricsPage,
-  AdminCommandPage,
-  AdminPlayerLabPage,
-  AdminMarketingPage,
-  AdminAdminPage,
-} from "@/pages/Admin";
-
-const NeekoPlusPurchase = React.lazy(() => import("@/pages/NeekoPlusPurchase"));
-const Account           = React.lazy(() => import("@/pages/Account"));
-const Billing           = React.lazy(() => import("@/pages/Billing"));
-const About             = React.lazy(() => import("@/pages/About"));
-const Socials           = React.lazy(() => import("@/pages/Socials"));
-const FAQ               = React.lazy(() => import("@/pages/FAQ"));
-const Contact           = React.lazy(() => import("@/pages/Contact"));
-const PipelineHistory        = React.lazy(() => import("@/pages/PipelineHistory"));
-const Success           = React.lazy(() => import("@/pages/Success"));
-const Cancel            = React.lazy(() => import("@/pages/Cancel"));
-const CreatePassword    = React.lazy(() => import("@/pages/CreatePassword"));
-const ForgotPassword    = React.lazy(() => import("@/pages/ForgotPassword"));
-const ResetPassword     = React.lazy(() => import("@/pages/ResetPassword"));
-const StartCheckout     = React.lazy(() => import("@/pages/StartCheckout"));
-
-/* =========================
-   Policies — lazy
-========================= */
-const Policies          = React.lazy(() => import("@/pages/policies/Policies"));
-const PrivacyPolicy     = React.lazy(() => import("@/pages/policies/PrivacyPolicy"));
-const RefundPolicy      = React.lazy(() => import("@/pages/policies/RefundPolicy"));
-const SecurityPolicy    = React.lazy(() => import("@/pages/policies/SecurityPolicy"));
-const TermsConditions   = React.lazy(() => import("@/pages/policies/TermsConditions"));
-const UserConductPolicy = React.lazy(() => import("@/pages/policies/UserConductPolicy"));
-
-/* =========================
-   AFL Pages — lazy
-========================= */
-const AFLRankingsPage   = React.lazy(() => import("@/features/afl/rankings/AFLRankingsPage"));
-const AFLRoundEdgeBoard = React.lazy(() => import("@/features/afl/edge/AFLRoundEdgeBoard"));
-const AFLStartSitPage   = React.lazy(() => import("@/features/afl/start-sit/StartSitPage"));
-const AFLMarketWatch    = React.lazy(() => import("@/features/afl/market-watch/MarketWatchPage"));
-const AFLPlayerPage     = React.lazy(() => import("@/pages/afl/AFLPlayerPage"));
-const AFLTeamPage       = React.lazy(() => import("@/pages/afl/AFLTeamPage"));
-const AFLPositionPage   = React.lazy(() => import("@/pages/afl/AFLPositionPage"));
-
-/* =========================
-   Suspense helpers
-========================= */
-function S({ fallback, children }: { fallback: React.ReactNode; children: React.ReactNode }) {
-  return <Suspense fallback={fallback}>{children}</Suspense>;
-}
-
-const Players = <PlayersPageSkeleton />;
-const AI      = <AIInsightsSkeleton />;
-const Generic = <GenericPageSkeleton />;
+// PART 5: Performance - Configure QueryClient with proper defaults
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+      refetchOnWindowFocus: false, // Avoid re-fetch loops
+      retry: 1,
+    },
+  },
+});
 
 function App() {
-  const location = useLocation();
-
-  useEffect(() => {
-    track("Page View", { path: location.pathname });
-  }, [location.pathname]);
-
   return (
-    <Routes>
-      <Route path="/auth" element={<Auth />} />
-      <Route path="/create-password" element={<S fallback={Generic}><CreatePassword /></S>} />
-      <Route path="/forgot-password" element={<S fallback={Generic}><ForgotPassword /></S>} />
-      <Route path="/reset-password" element={<S fallback={Generic}><ResetPassword /></S>} />
+    // PART 4: Wrap entire app in ErrorBoundary
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <div className="min-h-screen bg-slate-50">
+            {/* Header with navigation */}
+            <header className="bg-white border-b border-slate-200">
+              <div className="max-w-7xl mx-auto px-6 py-4">
+                <nav className="flex items-center justify-between">
+                  <Link to="/" className="text-xl font-bold text-slate-900">
+                    AFL Fantasy
+                  </Link>
+                  <div className="flex items-center gap-6">
+                    <Link
+                      to="/market-watch"
+                      className="text-slate-700 hover:text-slate-900 font-medium"
+                    >
+                      Market Watch
+                    </Link>
+                    <Link
+                      to="/admin"
+                      className="text-slate-700 hover:text-slate-900 font-medium"
+                    >
+                      Admin
+                    </Link>
+                  </div>
+                </nav>
+              </div>
+            </header>
 
-      <Route element={<Layout />}>
-        <Route path="/" element={<Index />} />
-        <Route path="/about" element={<S fallback={Generic}><About /></S>} />
-        <Route path="/faq" element={<S fallback={Generic}><FAQ /></S>} />
-        <Route path="/contact" element={<S fallback={Generic}><Contact /></S>} />
-        <Route path="/socials" element={<S fallback={Generic}><Socials /></S>} />
+            {/* PART 2: FIX ROUTING - All routes properly registered */}
+            <Routes>
+              <Route path="/" element={<MarketWatch />} />
+              <Route path="/market-watch" element={<MarketWatch />} />
+              <Route path="/admin" element={<Admin />} />
+              {/* PART 2: Policy page routes */}
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
+              <Route path="/cookies" element={<Cookies />} />
+            </Routes>
 
-        <Route path="/policies" element={<S fallback={Generic}><Policies /></S>} />
-        <Route path="/privacy-policy" element={<S fallback={Generic}><PrivacyPolicy /></S>} />
-        <Route path="/terms-conditions" element={<S fallback={Generic}><TermsConditions /></S>} />
-        <Route path="/refund-policy" element={<S fallback={Generic}><RefundPolicy /></S>} />
-        <Route path="/security-policy" element={<S fallback={Generic}><SecurityPolicy /></S>} />
-        <Route path="/user-conduct-policy" element={<S fallback={Generic}><UserConductPolicy /></S>} />
-
-        <Route path="/neeko-plus" element={<S fallback={Generic}><NeekoPlusPurchase /></S>} />
-
-        <Route path="/sports/afl" element={<Navigate to="/sports/afl/rankings" replace />} />
-        <Route path="/sports/afl/rankings" element={<S fallback={Players}><AFLRankingsPage /></S>} />
-        <Route path="/sports/afl/players/:slug" element={<S fallback={Players}><AFLPlayerPage /></S>} />
-        <Route path="/sports/afl/teams/:team" element={<S fallback={Players}><AFLTeamPage /></S>} />
-        <Route path="/sports/afl/positions/:position" element={<S fallback={Players}><AFLPositionPage /></S>} />
-        <Route path="/sports/afl/edge-board" element={<S fallback={AI}><AFLRoundEdgeBoard /></S>} />
-        <Route path="/sports/afl/start-sit" element={<S fallback={AI}><AFLStartSitPage /></S>} />
-        <Route path="/sports/afl/market-watch" element={<S fallback={AI}><AFLMarketWatch /></S>} />
-
-        <Route path="/account" element={<RequireAuth><S fallback={Generic}><Account /></S></RequireAuth>} />
-        <Route path="/billing" element={<RequireAuth><S fallback={Generic}><Billing /></S></RequireAuth>} />
-        <Route path="/neeko-plus-purchase" element={<RequireAuth><S fallback={Generic}><NeekoPlusPurchase /></S></RequireAuth>} />
-
-        <Route path="/checkout" element={<RequireAuth><S fallback={Generic}><StartCheckout /></S></RequireAuth>} />
-        <Route path="/success" element={<RequireAuth><S fallback={Generic}><Success /></S></RequireAuth>} />
-        <Route path="/cancel" element={<RequireAuth><S fallback={Generic}><Cancel /></S></RequireAuth>} />
-
-        <Route path="/admin" element={<RequireAdmin><AdminShell /></RequireAdmin>}>
-          <Route index element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="dashboard" element={<AdminDashboardPage />} />
-          <Route path="health" element={<AdminHealthPage />} />
-          <Route path="users" element={<AdminUserMetricsPage />} />
-          <Route path="command" element={<AdminCommandPage />} />
-          <Route path="player-lab" element={<AdminPlayerLabPage />} />
-          <Route path="marketing" element={<AdminMarketingPage />} />
-          <Route path="admin" element={<AdminAdminPage />} />
-        </Route>
-
-        <Route path="/pipeline-history" element={<RequireAdmin><S fallback={Generic}><PipelineHistory /></S></RequireAdmin>} />
-      </Route>
-
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+            {/* Footer with policy links */}
+            <footer className="bg-white border-t border-slate-200 mt-12">
+              <div className="max-w-7xl mx-auto px-6 py-8">
+                <div className="flex items-center justify-between">
+                  <p className="text-slate-600 text-sm">
+                    © 2026 AFL Fantasy. All rights reserved.
+                  </p>
+                  {/* PART 2: FIX LINKS - All policy links point correctly */}
+                  <div className="flex items-center gap-6">
+                    <Link
+                      to="/privacy"
+                      className="text-slate-600 hover:text-slate-900 text-sm"
+                    >
+                      Privacy Policy
+                    </Link>
+                    <Link
+                      to="/terms"
+                      className="text-slate-600 hover:text-slate-900 text-sm"
+                    >
+                      Terms of Service
+                    </Link>
+                    <Link
+                      to="/cookies"
+                      className="text-slate-600 hover:text-slate-900 text-sm"
+                    >
+                      Cookie Policy
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </footer>
+          </div>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

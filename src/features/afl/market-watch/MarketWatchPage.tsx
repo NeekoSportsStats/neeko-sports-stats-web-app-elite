@@ -36,11 +36,11 @@ export default function MarketWatchPage() {
         position: r.position,
         price: r.price ?? 0,
         breakeven: Math.round(r.projection_final ?? 0),
-        projection: r.projection ?? 0,
+        projection: r.projection_final ?? 0,
         ceiling: r.ceiling ?? 0,
         floor_val: r.floor ?? 0,
-        risk_pct: (100 - (r.consistency ?? 0)),
-        price_edge_pts: (r.projection ?? 0) - (r.projection_final ?? 0),
+        risk_pct: (100 - (r.consistency_score ?? 0)),
+        price_edge_pts: (r.projection_final ?? 0) - (r.breakeven ?? 0),
         expected_price_change: (r.price_change ?? 0) * 3,
         projected_price: (r.price ?? 0) + (r.price_change ?? 0),
         projected_price_r1: (r.price ?? 0) + (r.price_change ?? 0),
@@ -48,14 +48,14 @@ export default function MarketWatchPage() {
         projected_price_r3: (r.price ?? 0) + ((r.price_change ?? 0) * 3),
         breakout_score: null,
         breakout_flag: null,
-        volatility_score: r.consistency ?? 0,
+        volatility_score: r.consistency_score ?? 0,
         volatility_level: null,
         category: null,
         action: r.ai_recommendation === 'BUY' ? 'BUY' : r.ai_recommendation === 'SELL' ? 'SELL' : 'HOLD',
         trade_score: r.best_value_score ?? r.value_score ?? 0,
         reasons: {},
-        category_reason: r.recommendation_short ?? r.recommendation_why ?? null,
-        last3_avg: r.avg_last_3 ?? null,
+        category_reason: r.recommendation_short ?? r.summary_short ?? null,
+        last3_avg: null,
         estimated_price: r.price ?? null,
         value_score: r.best_value_score ?? r.value_score ?? 0,
         price_range_top: null,
@@ -69,17 +69,17 @@ export default function MarketWatchPage() {
         round_number: 1,
         snapshot_updated_at: r.cached_at ?? r.ai_updated_at ?? new Date().toISOString(),
         neeko_rating: r.neeko_rating ?? null,
-        consistency_score: r.consistency ?? null,
+        consistency_score: r.consistency_score ?? null,
         projection_confidence: r.projection_confidence ?? null,
-        avg_season: r.form_score ?? null,
-        last5_avg: r.avg_last_5 ?? null,
+        avg_season: null,
+        last5_avg: null,
         ai_recommendation: r.ai_recommendation ?? null,
         recommendation_short: r.recommendation_short ?? null,
         matchup_label: r.matchup_label ?? null,
         summary_short: r.summary_short ?? null,
         summary_long: r.summary_long ?? null,
-        is_injured: r.is_injured ?? r.status === 'injured' ?? r.manual_status === 'injured' ?? false,
-        is_bye: r.is_bye ?? r.status === 'bye' ?? r.manual_status === 'bye' ?? false,
+        is_injured: r.is_injured === true || r.status === 'injured' || r.manual_status === 'injured',
+        is_bye: r.is_bye === true || r.status === 'bye' || r.manual_status === 'bye',
         status: r.status ?? r.manual_status ?? null,
         manual_status: r.manual_status ?? null,
       }));
@@ -251,7 +251,14 @@ interface CategorySectionProps {
 }
 
 function CategorySection({ title, subtitle, players, type, onPlayerClick }: CategorySectionProps) {
-  if (players.length === 0) return null;
+  if (!players || !Array.isArray(players) || players.length === 0) return null;
+
+  // Deduplicate by player_id to prevent duplicate keys
+  const uniquePlayers = Array.from(
+    new Map(players.map(p => [p?.player_id, p])).values()
+  ).filter(p => p && p.player_id && p.player_name);
+
+  if (uniquePlayers.length === 0) return null;
 
   return (
     <div className="space-y-5">
@@ -263,9 +270,9 @@ function CategorySection({ title, subtitle, players, type, onPlayerClick }: Cate
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {players.map((player, i) => (
+        {uniquePlayers.map((player, i) => (
           <MarketWatchPremiumCard
-            key={player.player_id}
+            key={`${type}-${player.player_id}-${i}`}
             player={player}
             rank={i + 1}
             type={type}

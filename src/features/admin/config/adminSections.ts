@@ -15,13 +15,13 @@ export interface AdminSection {
 }
 
 export const ADMIN_SECTIONS: AdminSection[] = [
-  { path: "/admin/dashboard",       label: "Dashboard",       icon: LayoutDashboard },
-  { path: "/admin/health",          label: "Health",          icon: HeartPulse },
-  { path: "/admin/user-metrics",    label: "User Metrics",    icon: Users },
-  { path: "/admin/command-center",  label: "Command Center",  icon: Terminal },
-  { path: "/admin/player-lab",      label: "Player Lab",      icon: FlaskConical },
-  { path: "/admin/marketing",       label: "Marketing",       icon: Megaphone },
-  { path: "/admin/admin",           label: "Admin",           icon: ShieldCheck },
+  { path: "/admin/dashboard",   label: "Dashboard",     icon: LayoutDashboard },
+  { path: "/admin/health",      label: "Health",        icon: HeartPulse },
+  { path: "/admin/users",       label: "Users",         icon: Users },
+  { path: "/admin/command",     label: "Command",       icon: Terminal },
+  { path: "/admin/player-lab",  label: "Player Lab",    icon: FlaskConical },
+  { path: "/admin/marketing",   label: "Marketing",     icon: Megaphone },
+  { path: "/admin/admin",       label: "Admin",         icon: ShieldCheck },
 ];
 
 export const ADMIN_DEFAULT_PATH = "/admin/dashboard";
