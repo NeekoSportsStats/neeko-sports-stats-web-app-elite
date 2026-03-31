@@ -8,6 +8,45 @@ interface MarketWatchHeroProps {
   topValue: DerivedPlayer | null;
 }
 
+// Get AI explanation for hero card
+function getWhy(player: any): string {
+  // Use existing AI summary if available and meaningful
+  if (player.summary_short && player.summary_short.length > 20) {
+    const text = player.summary_short;
+    // Validate: no banned words
+    const lower = text.toLowerCase();
+    if (lower.includes('buy') || lower.includes('sell') || lower.includes('hold') ||
+        lower.includes('bye round') || lower.includes('player_id') ||
+        lower.includes('value_score')) {
+      // Fall through to fallback
+    } else {
+      return truncate(text);
+    }
+  }
+
+  // Fallback logic based on model signals
+  const value = player.value_score ?? 0;
+  const projection = player.projection ?? 0;
+  const priceChange = player.expected_price_change ?? 0;
+  const consistency = player.consistency_score ?? 50;
+
+  if (value >= 6) return "Strong value based on projection vs price";
+  if (value <= -4) return "Overpriced relative to expected output";
+  if (projection >= 100) return "High ceiling projection this week";
+  if (priceChange > 20000) return "Breakout projection spike";
+  if (priceChange < -20000) return "Price drop incoming";
+  if (consistency < 35) return "High volatility risk detected";
+
+  return "Model-driven signal based on current data";
+}
+
+// Truncate text to max length
+function truncate(text: string, maxLen: number = 90): string {
+  if (!text) return "";
+  const cleaned = text.trim();
+  return cleaned.length > maxLen ? cleaned.slice(0, maxLen) + "…" : cleaned;
+}
+
 export function MarketWatchHero({ topSell, topBuy, topValue }: MarketWatchHeroProps) {
   return (
     <div className="grid md:grid-cols-3 gap-4 md:gap-6">
@@ -156,6 +195,13 @@ function HeroCard({ player, type, rank, label, icon }: HeroCardProps) {
             </span>
           </div>
         )}
+      </div>
+
+      <div className="mt-3 pt-3 border-t border-white/5">
+        <p className="text-sm text-gray-400 leading-snug line-clamp-2">
+          <span className={`${config.accentColor} font-semibold mr-1.5`}>WHY:</span>
+          {getWhy(player)}
+        </p>
       </div>
     </div>
   );

@@ -94,6 +94,8 @@ export default function MarketWatchPage() {
         ai_recommendation: r.summary_short ?? r.ai_summary ?? null,
         recommendation_short: r.recommendation_short ?? null,
         matchup_label: r.matchup_label ?? null,
+        summary_short: r.summary_short ?? null,
+        summary_long: r.summary_long ?? null,
       }));
 
       const cleaned = mapped.filter(p => p.category !== null && p.category !== undefined);

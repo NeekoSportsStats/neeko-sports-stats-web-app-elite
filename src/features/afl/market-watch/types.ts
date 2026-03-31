@@ -57,6 +57,8 @@ export interface MWPlayerRow {
   ai_recommendation: string | null;
   recommendation_short: string | null;
   matchup_label: string | null;
+  summary_short: string | null;
+  summary_long: string | null;
 }
 
 export interface MWSummaryCard {
