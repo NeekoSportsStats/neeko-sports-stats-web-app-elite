@@ -1,4 +1,4 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,8 +40,20 @@ interface PlayerData {
 export default function AFLPlayerPage() {
   const { slug } = useParams<{ slug: string }>();
   const { isPremium } = useSubscriptionStatus();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const state = location.state as { from?: string; tab?: string; scrollY?: number; returnPath?: string } | null;
 
   const playerName = slug ? slugToName(slug) : '';
+
+  const handleBack = () => {
+    if (state?.returnPath) {
+      navigate(state.returnPath, { state });
+      setTimeout(() => window.scrollTo(0, state.scrollY ?? 0), 0);
+    } else {
+      navigate('/sports/afl/rankings');
+    }
+  };
 
   const { data: player, isLoading, error } = useQuery({
     queryKey: ['player-profile', playerName],
@@ -172,12 +184,10 @@ export default function AFLPlayerPage() {
         </nav>
 
         {/* Back Button */}
-        <Link to="/sports/afl/rankings">
-          <Button variant="ghost" className="mb-6">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Rankings
-          </Button>
-        </Link>
+        <Button onClick={handleBack} variant="ghost" className="mb-6">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to {state?.from === 'market-watch' ? 'Market Watch' : 'Rankings'}
+        </Button>
 
       {/* Player Header */}
       <Card className="mb-6">
