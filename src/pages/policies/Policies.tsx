@@ -6,31 +6,31 @@ const POLICIES = [
     title: "Terms & Conditions",
     description: "Platform usage rules, prohibited activities, and legal agreements",
     icon: FileText,
-    url: "/policies/terms",
+    url: "/terms-conditions",
   },
   {
     title: "Privacy Policy",
     description: "How we collect, store, and protect your personal information",
     icon: Shield,
-    url: "/policies/privacy",
+    url: "/privacy-policy",
   },
   {
     title: "User Conduct Policy",
     description: "Acceptable use, account misuse, and scraping prevention",
     icon: Users,
-    url: "/policies/conduct",
+    url: "/user-conduct-policy",
   },
   {
     title: "Refund Policy",
     description: "Monthly and yearly plan refund windows and billing terms",
     icon: DollarSign,
-    url: "/policies/refund",
+    url: "/refund-policy",
   },
   {
     title: "Data Handling & Security",
     description: "Security measures, data retention, and protection standards",
     icon: Lock,
-    url: "/policies/security",
+    url: "/security-policy",
   },
 ];
 
