@@ -293,13 +293,54 @@ export function getUrgencyMessage(player: any, delta: number): string | null {
 export function generateSmartWhy(player: any): string {
   const delta = Math.round((player.projection || 0) - (player.breakeven || 0));
   const projection = Math.round(player.projection || 0);
-  const breakeven = Math.round(player.breakeven || 0);
-
   const deltaStr = delta > 0 ? `+${delta}` : `${delta}`;
 
-  const roleContext = getRoleContext(delta, projection, breakeven);
+  const insight = getRealInsight(player, delta, projection);
 
-  return `${deltaStr} value gap with ${projection} projection — ${roleContext}`;
+  return `${deltaStr} value gap with ${projection} projection — ${insight}`;
+}
+
+function getRealInsight(player: any, delta: number, projection: number): string {
+  const last3 = player.last3_avg || null;
+  const last5 = player.last5_avg || null;
+  const consistency = player.consistency_score || null;
+  const matchup = player.matchup_label || null;
+
+  if (last3 && projection > 0) {
+    const formDelta = projection - last3;
+    const formTrend = (formDelta / last3) * 100;
+
+    if (formTrend > 10) {
+      return `averaging ${Math.round(last3)} last 3, form trending up`;
+    }
+
+    if (formTrend < -10) {
+      return `averaging ${Math.round(last3)} last 3, scoring declining`;
+    }
+
+    if (consistency && consistency > 75) {
+      return `averaging ${Math.round(last3)} last 3, highly consistent`;
+    }
+
+    if (last3 > projection + 5) {
+      return `averaging ${Math.round(last3)} last 3, recent form strong`;
+    }
+  }
+
+  if (matchup && matchup.toLowerCase().includes("favourable")) {
+    return getRoleContext(delta, projection, player.breakeven || 0) + ", strong matchup";
+  }
+
+  if (consistency !== null) {
+    if (consistency > 75) {
+      return getRoleContext(delta, projection, player.breakeven || 0) + ", stable output";
+    }
+    if (consistency < 40) {
+      return getRoleContext(delta, projection, player.breakeven || 0) + ", volatile scorer";
+    }
+  }
+
+  return getRoleContext(delta, projection, player.breakeven || 0);
 }
 
 function getRoleContext(delta: number, projection: number, breakeven: number): string {
@@ -328,4 +369,53 @@ function getRoleContext(delta: number, projection: number, breakeven: number): s
 
 export function getConfidenceTooltip(): string {
   return "Based on projection stability, role certainty, and matchup";
+}
+
+export function getConfidenceDriver(player: any): string {
+  const consistency = player.consistency_score || 0;
+  const volatility = player.volatility_score || 0;
+  const confidence = player.projection_confidence || 0;
+
+  if (consistency > 75 && confidence > 75) {
+    return "Driven by: Form + Role Stability";
+  }
+
+  if (consistency > 60 && volatility < 30) {
+    return "Driven by: Consistent Output";
+  }
+
+  if (volatility > 60 || consistency < 40) {
+    return "Driven by: Volatility + Role Uncertainty";
+  }
+
+  if (confidence > 60) {
+    return "Driven by: Projection Stability";
+  }
+
+  return "Driven by: Model Confidence";
+}
+
+export function getFormSnapshot(player: any): string | null {
+  const last3 = player.last3_avg;
+  const last5 = player.last5_avg;
+
+  if (!last3) return null;
+
+  return `Form: ${Math.round(last3)} avg (last 3)`;
+}
+
+export function getConsistencySignal(player: any): { label: string; color: string } | null {
+  const consistency = player.consistency_score;
+
+  if (consistency === null || consistency === undefined) return null;
+
+  if (consistency > 75) {
+    return { label: "Consistent", color: "text-green-400" };
+  }
+
+  if (consistency < 40) {
+    return { label: "Boom/Bust", color: "text-orange-400" };
+  }
+
+  return { label: "Volatile", color: "text-yellow-400" };
 }

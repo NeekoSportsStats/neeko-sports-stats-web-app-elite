@@ -8,7 +8,10 @@ import {
   getTrendIndicator,
   getConfidenceTooltip,
   getUrgencyMessage,
-  generateSmartWhy
+  generateSmartWhy,
+  getConfidenceDriver,
+  getFormSnapshot,
+  getConsistencySignal
 } from "./helpers";
 
 interface PlayerDetailPanelProps {
@@ -44,6 +47,9 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
   const { rank, percentile } = calculateValueRank(allPlayers, player);
   const trendIndicator = getTrendIndicator(player);
   const urgencyMsg = getUrgencyMessage(player, delta);
+  const confidenceDriver = getConfidenceDriver(player);
+  const formSnapshot = getFormSnapshot(player);
+  const consistencySignal = getConsistencySignal(player);
 
   const whyText = generateSmartWhy(player);
 
@@ -87,11 +93,16 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
               <span className="text-base">{signalConfig.icon}</span>
               <span>{signalConfig.label}</span>
             </div>
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/10 rounded text-xs text-white/80 cursor-help group relative">
-              <span>{confidence}</span>
-              <Info className="w-3 h-3 text-white/40 group-hover:text-white/60 transition-colors" />
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-black border border-white/20 rounded text-[10px] text-white/80 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none w-56 text-center">
-                {confidenceTooltip}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/10 rounded text-xs text-white/80 cursor-help group relative">
+                <span>{confidence}</span>
+                <Info className="w-3 h-3 text-white/40 group-hover:text-white/60 transition-colors" />
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-black border border-white/20 rounded text-[10px] text-white/80 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none w-56 text-center">
+                  {confidenceTooltip}
+                </div>
+              </div>
+              <div className="text-[10px] text-white/40 px-3">
+                {confidenceDriver}
               </div>
             </div>
             <div className={`flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/10 rounded text-xs ${trendIndicator.color}`}>
@@ -160,6 +171,20 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
                 value={`${delta > 0 ? '+' : ''}${Math.round(delta)}`}
                 color={delta > 5 ? 'text-green-400' : delta < -5 ? 'text-red-400' : 'text-white/60'}
               />
+            </div>
+
+            {/* FORM SNAPSHOT + CONSISTENCY */}
+            <div className="mt-3 flex items-center gap-3 flex-wrap">
+              {formSnapshot && (
+                <div className="text-xs text-white/60 px-3 py-1.5 bg-white/5 border border-white/10 rounded">
+                  {formSnapshot}
+                </div>
+              )}
+              {consistencySignal && (
+                <div className={`text-xs font-medium px-3 py-1.5 bg-white/5 border border-white/10 rounded ${consistencySignal.color}`}>
+                  {consistencySignal.label}
+                </div>
+              )}
             </div>
           </div>
 
