@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ChevronRight, TrendingUp } from 'lucide-react';
-import { nameToSlug, POSITION_NAMES } from '@/lib/slugs';
+import { nameToSlug, POSITION_NAMES, TEAM_SLUG_TO_NAME } from '@/lib/slugs';
 import { getTeamPlayersSafe } from '@/lib/playerAccess';
 import { useAuth } from '@/lib/auth';
 import { LockedPlayerCard } from '@/components/premium/LockedPlayerCard';
@@ -24,27 +24,6 @@ interface TeamPlayer {
   recommendation_color: string;
   is_locked?: boolean;
 }
-
-const TEAM_SLUG_TO_NAME: Record<string, string> = {
-  'adelaide-crows': 'Adelaide Crows',
-  'brisbane-lions': 'Brisbane Lions',
-  'carlton-blues': 'Carlton Blues',
-  'collingwood-magpies': 'Collingwood Magpies',
-  'essendon-bombers': 'Essendon Bombers',
-  'fremantle-dockers': 'Fremantle Dockers',
-  'geelong-cats': 'Geelong Cats',
-  'gold-coast-suns': 'Gold Coast Suns',
-  'gws-giants': 'Greater Western Sydney Giants',
-  'hawthorn-hawks': 'Hawthorn Hawks',
-  'melbourne-demons': 'Melbourne Demons',
-  'north-melbourne-kangaroos': 'North Melbourne Kangaroos',
-  'port-adelaide-power': 'Port Adelaide Power',
-  'richmond-tigers': 'Richmond Tigers',
-  'st-kilda-saints': 'St Kilda Saints',
-  'sydney-swans': 'Sydney Swans',
-  'west-coast-eagles': 'West Coast Eagles',
-  'western-bulldogs': 'Western Bulldogs',
-};
 
 export default function AFLTeamPage() {
   const { team } = useParams<{ team: string }>();

@@ -7,9 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, ChevronRight, TrendingUp, Shield, Zap } from 'lucide-react';
-import { nameToSlug, POSITION_NAMES } from '@/lib/slugs';
+import { nameToSlug, POSITION_NAMES, POSITION_SLUG_TO_CODE } from '@/lib/slugs';
 import { useAuth } from '@/lib/auth';
-import { getFreePlayerIds, markLockedPlayers } from '@/lib/playerAccess';
+import { getPositionPlayersSafe } from '@/lib/playerAccess';
 import { LockedPlayerCard } from '@/components/premium/LockedPlayerCard';
 
 interface PositionPlayer {
@@ -18,21 +18,14 @@ interface PositionPlayer {
   team: string;
   neeko_rating: number;
   projection_final: number;
-  projection_confidence: number;
-  value_score: number;
+  projection_confidence: number | null;
+  value_score: number | null;
   price: number;
-  ai_recommendation: string;
-  recommendation_color: string;
-  upside_pct: number;
+  ai_recommendation: string | null;
+  recommendation_color: string | null;
+  upside_pct: number | null;
   is_locked?: boolean;
 }
-
-const POSITION_SLUG_TO_CODE: Record<string, string> = {
-  'def': 'DEF',
-  'mid': 'MID',
-  'fwd': 'FWD',
-  'ruck': 'RUC',
-};
 
 export default function AFLPositionPage() {
   const { position } = useParams<{ position: string }>();
@@ -41,19 +34,9 @@ export default function AFLPositionPage() {
   const { user, isPremium } = useAuth();
 
   const { data: players, isLoading, error } = useQuery({
-    queryKey: ['position-players', positionCode, isPremium],
+    queryKey: ['position-players-safe', positionCode, user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('v_rankings_master')
-        .select('player_id, player_name, team, neeko_rating, projection_final, projection_confidence, value_score, price, ai_recommendation, recommendation_color, upside_pct')
-        .eq('position', positionCode)
-        .order('neeko_rating', { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      const freePlayerIds = await getFreePlayerIds();
-      return markLockedPlayers(data || [], isPremium, freePlayerIds) as PositionPlayer[];
+      return await getPositionPlayersSafe(positionCode, user?.id ?? null, 50) as PositionPlayer[];
     },
     enabled: !!positionCode,
   });

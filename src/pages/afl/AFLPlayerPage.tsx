@@ -11,7 +11,7 @@ import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import FantasyVerdictBadge from '@/components/FantasyVerdictBadge';
 import { PremiumGate } from '@/components/PremiumGate';
 import { slugToName, nameToSlug, TEAM_SLUGS, POSITION_SLUGS, POSITION_NAMES } from '@/lib/slugs';
-import { getSimilarPlayersSafe, isPlayerAccessible } from '@/lib/playerAccess';
+import { getSimilarPlayersSafe, getPlayerDetailSafe } from '@/lib/playerAccess';
 import { useAuth } from '@/lib/auth';
 
 interface PlayerData {
@@ -59,29 +59,13 @@ export default function AFLPlayerPage() {
   };
 
   const { data: player, isLoading, error } = useQuery({
-    queryKey: ['player-profile', playerName],
+    queryKey: ['player-profile-safe', playerName, user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('v_rankings_master')
-        .select('*')
-        .ilike('player_name', playerName)
-        .maybeSingle();
-
-      if (error) throw error;
+      const data = await getPlayerDetailSafe(playerName, user?.id ?? null);
       if (!data) throw new Error('Player not found');
-
-      return data as PlayerData;
+      return data as PlayerData & { is_locked?: boolean };
     },
     enabled: !!playerName,
-  });
-
-  const { data: playerAccessCheck } = useQuery({
-    queryKey: ['player-access', player?.player_id, isPremium],
-    queryFn: async () => {
-      if (!player?.player_id) return true;
-      return await isPlayerAccessible(player.player_id, isPremium);
-    },
-    enabled: !!player,
   });
 
   const { data: similarPlayers } = useQuery({

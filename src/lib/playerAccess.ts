@@ -170,6 +170,52 @@ export async function getSimilarPlayersSafe(
 }
 
 /**
+ * Get player detail with access control
+ * Uses database RPC for server-side filtering
+ */
+export async function getPlayerDetailSafe(
+  playerName: string,
+  userId: string | null
+) {
+  const { data, error } = await supabase
+    .rpc('get_player_detail_safe', {
+      p_player_name: playerName,
+      p_user_id: userId,
+    });
+
+  if (error) {
+    console.error('[Player Access] Error fetching player detail:', error);
+    throw error;
+  }
+
+  return data && data.length > 0 ? data[0] : null;
+}
+
+/**
+ * Get position players with access control
+ * Uses database RPC for server-side filtering
+ */
+export async function getPositionPlayersSafe(
+  positionCode: string,
+  userId: string | null,
+  limit: number = 50
+) {
+  const { data, error } = await supabase
+    .rpc('get_position_players_safe', {
+      p_position_code: positionCode,
+      p_user_id: userId,
+      p_limit: limit,
+    });
+
+  if (error) {
+    console.error('[Player Access] Error fetching position players:', error);
+    throw error;
+  }
+
+  return data ?? [];
+}
+
+/**
  * Clear the free player IDs cache
  * Call this when rankings update
  */
