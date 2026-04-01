@@ -144,11 +144,12 @@ export default function MarketWatchPageElite() {
 
   // MEMOIZE: All derived players with natural mixed ordering
   const allDerivedPlayers = useMemo(() => {
+    // Filter out invalid entries
     const all = [
       ...(classified?.buys ?? []),
       ...(classified?.holds ?? []),
       ...(classified?.sells ?? []),
-    ];
+    ].filter(p => p && typeof p.trade_score === 'number');
 
     // NATURAL MIX: Sort by trade_score to create realistic mixed ordering
     // This prevents artificial clustering (all TARGET, then WATCH, then AVOID)
@@ -156,15 +157,11 @@ export default function MarketWatchPageElite() {
       const scoreA = a.trade_score ?? 0;
       const scoreB = b.trade_score ?? 0;
 
-      // Add subtle randomization within score bands (±5 points)
-      // This creates natural-looking variation while preserving quality order
-      const randomSeedA = (a.player_id?.charCodeAt(0) ?? 0) % 100 / 100;
-      const randomSeedB = (b.player_id?.charCodeAt(0) ?? 0) % 100 / 100;
+      // Add subtle randomization (±2 points)
+      // Creates natural-looking variation while preserving quality order
+      const noise = (Math.random() - 0.5) * 2;
 
-      const adjustedA = scoreA + (randomSeedA - 0.5) * 5;
-      const adjustedB = scoreB + (randomSeedB - 0.5) * 5;
-
-      return adjustedB - adjustedA; // Descending
+      return (scoreB - scoreA) + noise;
     });
 
     console.log("[MW ORDER] Natural mix created", {
