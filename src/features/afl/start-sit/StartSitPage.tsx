@@ -83,7 +83,7 @@ export default function StartSitPage() {
   // Load the current round on mount
   useEffect(() => {
     supabase
-      .rpc("get_latest_completed_round")
+      .rpc("get_latest_completed_round", { p_season: 2026 })
       .then(({ data }) => {
         const activeRound = typeof data === "number" && data >= 0 ? data : 0;
         setRound(activeRound);
