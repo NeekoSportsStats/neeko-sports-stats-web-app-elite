@@ -79,17 +79,17 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   const sells: DerivedPlayer[] = [];
 
   for (const p of filtered) {
-    const cat = (p.category || '').toLowerCase().trim();
+    const cat = (p.category || '').toUpperCase().trim();
 
-    // BUY category: simplified 'buy' OR detailed categories
-    if (cat === 'buy' || cat === 'buy_before_rise' || cat === 'cash_cow' || cat === 'upgrade_target') {
+    // TARGET category
+    if (cat === 'TARGET') {
       buys.push(tag(p, 'BUY'));
     }
-    // SELL category: simplified 'sell' OR detailed categories
-    else if (cat === 'sell' || cat === 'sell_before_drop' || cat === 'fade_trap') {
+    // AVOID category
+    else if (cat === 'AVOID') {
       sells.push(tag(p, 'SELL'));
     }
-    // HOLD category: simplified 'hold' OR detailed 'monitor' OR anything else
+    // WATCH category (default)
     else {
       holds.push(tag(p, 'HOLD'));
     }

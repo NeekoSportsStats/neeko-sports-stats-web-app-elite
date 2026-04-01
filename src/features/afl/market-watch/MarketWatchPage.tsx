@@ -50,8 +50,8 @@ export default function MarketWatchPage() {
         breakout_flag: r.breakout_flag ?? null,
         volatility_score: r.volatility_score ?? 0,
         volatility_level: r.volatility_level ?? null,
-        category: r.category ?? r.action ?? null,  // Map action to category for engine
-        action: r.action ?? 'HOLD',
+        category: (r.action ?? 'WATCH').toUpperCase(),  // Normalize to uppercase action
+        action: r.action ?? 'WATCH',
         trade_score: r.trade_score ?? 0,
         reasons: r.reasons ?? {},
         category_reason: r.category_reason ?? null,
@@ -89,6 +89,12 @@ export default function MarketWatchPage() {
         source: viewName,
         total: data?.length ?? 0,
         mapped: mapped.length,
+        categories: mapped.map(p => p.category),
+        categoryDistribution: {
+          TARGET: mapped.filter(p => p.category === 'TARGET').length,
+          WATCH: mapped.filter(p => p.category === 'WATCH').length,
+          AVOID: mapped.filter(p => p.category === 'AVOID').length,
+        }
       });
 
       setPlayers(mapped);
