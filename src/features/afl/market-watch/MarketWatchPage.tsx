@@ -110,6 +110,17 @@ export default function MarketWatchPage() {
     fetchData(isPremium);
   }, [authLoading, isPremium, fetchData]);
 
+  // ALL HOOKS MUST RUN BEFORE ANY CONDITIONAL RETURN
+  const classified = useMemo(() => classifyPlayers(players), [players]);
+
+  const updatedAt = players[0]?.snapshot_updated_at;
+  const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
+
+  const topSell = classified?.sells?.[0] || null;
+  const topBuy = classified?.buyBeforeRise?.[0] || null;
+  const topValue = classified?.upgrades?.[0] || null;
+
+  // NOW SAFE TO DO CONDITIONAL RETURNS
   if (loading) {
     return <MarketWatchSkeleton />;
   }
@@ -131,15 +142,6 @@ export default function MarketWatchPage() {
       </div>
     );
   }
-
-  const classified = useMemo(() => classifyPlayers(players), [players]);
-
-  const updatedAt = players[0]?.snapshot_updated_at;
-  const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
-
-  const topSell = classified?.sells?.[0] || null;
-  const topBuy = classified?.buyBeforeRise?.[0] || null;
-  const topValue = classified?.upgrades?.[0] || null;
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] text-white">
