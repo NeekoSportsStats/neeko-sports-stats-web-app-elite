@@ -333,9 +333,9 @@ export default function AFLRankingsPage() {
       }
       setRows(((data as any[]) ?? []).map(normalizeRow));
     } else {
-      const { user } = await supabase.auth.getUser();
+      const { data: authData } = await supabase.auth.getUser();
       const { data, error } = await supabase.rpc("get_rankings_safe", {
-        p_user_id: user?.user?.id ?? null,
+        p_user_id: authData?.user?.id ?? null,
         p_is_bot: false,
         p_limit: 500,
       });
