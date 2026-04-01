@@ -12,6 +12,7 @@ import {
 } from "./helpers";
 import { InfoTooltip, LockedCell } from "./RankingsModals";
 import { Crown } from "lucide-react";
+import { nameToSlug } from "@/lib/slugs";
 
 const TH = "bg-[#0a0a0a] px-4 py-3 text-[11px] font-medium uppercase tracking-wider whitespace-nowrap border-b border-white/10 text-center";
 
@@ -159,7 +160,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           <div className="text-[11px] text-white/40 mt-0.5 flex items-center gap-1.5">
             <span>{row.team}{row.position ? ` · ${row.position}` : ""}</span>
             <Link
-              to={`/sports/afl/players/${row.player_name.toLowerCase().replace(/\s+/g, '-')}`}
+              to={`/sports/afl/players/${nameToSlug(row.player_name)}`}
               className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-0.5 text-[#F5C84C]/60 hover:text-[#F5C84C] text-[10px]"
               onClick={(e) => e.stopPropagation()}
             >

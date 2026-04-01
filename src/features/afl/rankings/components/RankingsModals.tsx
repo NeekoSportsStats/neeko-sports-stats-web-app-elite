@@ -1,6 +1,8 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { X, Crown, Lock, Info } from "lucide-react";
+import { X, Crown, Lock, Info, ExternalLink } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { nameToSlug } from "@/lib/slugs";
 
 function useBodyScrollLock(active: boolean) {
   useEffect(() => {
@@ -737,6 +739,8 @@ export function PlayerDetailModal({
   isFreeTop5?: boolean;
   onClose: () => void;
 }) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const isFreeFullTier = isFreeTop5 || (!isPremium && tier === "full");
   const canSeeAI = isPremium || isFreeFullTier;
   const aiAnalysis = useMemo(() => {
@@ -751,6 +755,17 @@ export function PlayerDetailModal({
   useBodyScrollLock(true);
   void rank;
   const unlocked = isPremium || isUnlocked || isFreeFullTier;
+
+  const handleViewFullProfile = useCallback(() => {
+    const playerSlug = nameToSlug(row.player_name);
+    navigate(`/sports/afl/players/${playerSlug}`, {
+      state: {
+        returnPath: location.pathname,
+        scrollY: window.scrollY,
+        from: 'rankings',
+      },
+    });
+  }, [row.player_name, navigate, location.pathname]);
   const consistencyBadge = getConsistencyBadge(row.consistency_score ?? null);
   const capStyle = getCaptainStyle(row.captain_rating ?? null);
   const recColor = resolveRecommendationColor(row.recommendation_color ?? null, row.ai_recommendation ?? null);
@@ -1053,6 +1068,15 @@ export function PlayerDetailModal({
               <ScoreHistoryChart playerName={row.player_name} playerId={row.player_id} />
             </div>
           )}
+
+          {/* 9. View Full Profile button */}
+          <button
+            onClick={handleViewFullProfile}
+            className="w-full flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/8 text-white/70 hover:text-white transition-all px-4 py-3 font-medium text-sm"
+          >
+            <ExternalLink size={14} />
+            View Full Player Profile
+          </button>
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import React from "react";
 import { Player } from "../data/useAFLMockData";
 import TrendSparklineMini from "../Section-3-stability-analysis/TrendSparklineMini";
 import MiniTrendChips from "../Section-4-trend-insights/MiniTrendChips";
+import { nameToSlug } from "@/lib/slugs";
 
 interface Props {
   player: Player;
@@ -45,7 +46,7 @@ export default function PlayerGridCard({
       <MiniTrendChips avg={avg} vol={vol} consistency={consistency} />
 
       <a
-        href={`/sports/afl/player/${player.id}`}
+        href={`/sports/afl/players/${nameToSlug(player.name)}`}
         className="mt-auto text-[11px] text-yellow-300 underline underline-offset-2"
       >
         View player profile →
