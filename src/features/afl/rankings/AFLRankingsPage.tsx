@@ -169,7 +169,7 @@ function SearchAutocomplete({
 const PREMIUM_COLUMNS =
   "player_id,player_name,team,team_name,position,position_group," +
   "projection_final,ceiling,floor," +
-  "consistency,form_score,neeko_rating,neeko_rating_scaled,price,prev_price,price_change,price_change_pct,value_score,best_value_score,value_tag,value_tier," +
+  "consistency,form_score,neeko_rating,neeko_rating_scaled,price,prev_price,price_change,price_change_pct,breakeven,value_score,best_value_score,value_tag,value_tier," +
   "projection_confidence,risk_rating,matchup_rating,matchup_label,matchup_multiplier," +
   "upside_rating,upside_pct,captain_score,captain_rating,ai_recommendation,recommendation_strength,recommendation_color," +
   "summary_short,summary_long,recommendation_short,recommendation_why,ai_summary,consistency_tier,total_count,cached_at,games_played,ai_updated_at," +
@@ -179,7 +179,7 @@ const PREMIUM_COLUMNS =
 const FREE_COLUMNS =
   "player_id,player_name,team,team_name,position,position_group," +
   "projection_final,ceiling,floor," +
-  "consistency,form_score,neeko_rating,neeko_rating_scaled,price,prev_price,price_change,price_change_pct,value_score,best_value_score,value_tag,value_tier," +
+  "consistency,form_score,neeko_rating,neeko_rating_scaled,price,prev_price,price_change,price_change_pct,breakeven,value_score,best_value_score,value_tag,value_tier," +
   "projection_confidence,risk_rating,matchup_rating,matchup_label,matchup_multiplier," +
   "ai_recommendation,recommendation_strength,recommendation_color,summary_short,summary_long,recommendation_short,recommendation_why,ai_summary," +
   "consistency_tier,access_tier,total_count,cached_at,games_played,row_rank," +
@@ -257,6 +257,7 @@ export default function AFLRankingsPage() {
       prev_price:             r.prev_price != null ? Number(r.prev_price) : null,
       price_change:           r.price_change != null ? Number(r.price_change) : null,
       price_change_pct:       r.price_change_pct != null ? Number(r.price_change_pct) : null,
+      breakeven:              r.breakeven != null ? Number(r.breakeven) : null,
       value_score:            r.value_score != null ? Number(r.value_score) : null,
       best_value_score:       r.best_value_score != null ? Number(r.best_value_score) : null,
       value_tag:              r.value_tag ?? null,
