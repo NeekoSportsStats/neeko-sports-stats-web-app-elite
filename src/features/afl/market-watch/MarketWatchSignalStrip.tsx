@@ -1,17 +1,15 @@
 interface SignalStripProps {
-  sellCount: number;
   buyCount: number;
-  valueCount: number;
-  upgradeCount: number;
+  holdCount: number;
+  sellCount: number;
 }
 
-export function MarketWatchSignalStrip({ sellCount, buyCount, valueCount, upgradeCount }: SignalStripProps) {
+export function MarketWatchSignalStrip({ buyCount, holdCount, sellCount }: SignalStripProps) {
   return (
     <div className="flex items-center justify-center gap-3 flex-wrap">
-      <SignalPill label="Must Sell" count={sellCount} color="red" />
-      <SignalPill label="Buy Now" count={buyCount} color="green" />
-      <SignalPill label="Best Value" count={valueCount} color="gold" />
-      <SignalPill label="Upgrades" count={upgradeCount} color="purple" />
+      <SignalPill label="BUY" count={buyCount} color="green" />
+      <SignalPill label="HOLD" count={holdCount} color="gold" />
+      <SignalPill label="SELL" count={sellCount} color="red" />
     </div>
   );
 }
@@ -19,7 +17,7 @@ export function MarketWatchSignalStrip({ sellCount, buyCount, valueCount, upgrad
 interface SignalPillProps {
   label: string;
   count: number;
-  color: "red" | "green" | "gold" | "purple";
+  color: "red" | "green" | "gold";
 }
 
 function SignalPill({ label, count, color }: SignalPillProps) {
@@ -41,12 +39,6 @@ function SignalPill({ label, count, color }: SignalPillProps) {
       border: "border-[#F5C84C]/30 hover:border-[#F5C84C]/50",
       text: "text-[#F5C84C]",
       glow: "hover:shadow-[0_0_20px_rgba(245,200,76,0.2)]",
-    },
-    purple: {
-      bg: "bg-purple-500/10 hover:bg-purple-500/20",
-      border: "border-purple-500/30 hover:border-purple-500/50",
-      text: "text-purple-400",
-      glow: "hover:shadow-[0_0_20px_rgba(168,85,247,0.2)]",
     },
   }[color];
 

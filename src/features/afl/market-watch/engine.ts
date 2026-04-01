@@ -1,23 +1,20 @@
 import { MWPlayerRow } from "./types";
 
-export type DerivedCategory =
-  | "buy_before_rise"
-  | "cash_cow"
-  | "upgrade_target"
-  | "sell_before_drop"
-  | "fade_trap"
-  | "monitor"
-  | string;
+// ────────────────────────────────────────────────────────────────────────────
+// SIMPLIFIED 3-CATEGORY SYSTEM
+// Single source of truth: ai_recommendation from player_rankings_cache
+// ────────────────────────────────────────────────────────────────────────────
+
+export type SimpleCategory = "BUY" | "HOLD" | "SELL";
 
 export interface DerivedPlayer extends MWPlayerRow {
-  _derived_category: DerivedCategory;
+  _category: SimpleCategory;
   _delta: number;
 }
 
 export interface BestTrade {
   out: DerivedPlayer;
   in: DerivedPlayer;
-  in_type: "upgrade" | "cash_cow" | "buy_before_rise";
   trade_type: "CASH_GENERATION" | "AGGRESSIVE_UPGRADE" | "BALANCED";
   cash_generated: number;
   projection_gain: number;
@@ -37,34 +34,30 @@ function price(row: MWPlayerRow): number {
   return Number(row.price ?? 0);
 }
 
-function tag(row: MWPlayerRow, category: DerivedCategory): DerivedPlayer {
-  return { ...row, _derived_category: category, _delta: delta(row) };
+function tag(row: MWPlayerRow, category: SimpleCategory): DerivedPlayer {
+  return { ...row, _category: category, _delta: delta(row) };
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// CORE CLASSIFICATION ENGINE — SINGLE SOURCE OF TRUTH
+// CORE CLASSIFICATION ENGINE — MAPS AI_RECOMMENDATION TO 3 CATEGORIES
 // ────────────────────────────────────────────────────────────────────────────
 
 export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
-  buyBeforeRise: DerivedPlayer[];
-  cashCows: DerivedPlayer[];
-  upgrades: DerivedPlayer[];
+  buys: DerivedPlayer[];
+  holds: DerivedPlayer[];
   sells: DerivedPlayer[];
-  traps: DerivedPlayer[];
 } {
   if (!raw || !Array.isArray(raw)) {
     return {
-      buyBeforeRise: [],
-      cashCows: [],
-      upgrades: [],
+      buys: [],
+      holds: [],
       sells: [],
-      traps: [],
     };
   }
 
-  // ── STEP 1: GLOBAL FILTER — Apply BEFORE any logic ──────────────────────
+  // ── STEP 1: GLOBAL FILTER ────────────────────────────────────────────────
   const filtered = raw.filter(p => {
-    // Exclude injured/bye players globally
+    // Exclude injured/bye players
     if (p.is_injured === true) return false;
     if (p.is_bye === true) return false;
     if (p.status === 'injured') return false;
@@ -75,198 +68,85 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
     // Must have valid data
     if (!p.player_id) return false;
     if (!p.player_name) return false;
+    if (!p.ai_recommendation) return false;
 
     return true;
   });
 
-  console.log("[MW ENGINE - FILTER]", {
-    total: raw.length,
-    afterFilter: filtered.length,
-    removed: raw.length - filtered.length,
-  });
+  // ── STEP 2: MAP AI_RECOMMENDATION TO 3 CATEGORIES ────────────────────────
+  const buys: DerivedPlayer[] = [];
+  const holds: DerivedPlayer[] = [];
+  const sells: DerivedPlayer[] = [];
 
-  // ── STEP 2: UNIQUE ASSIGNMENT TRACKER ────────────────────────────────────
-  const assigned = new Set<number>();
+  for (const p of filtered) {
+    const rec = p.ai_recommendation;
 
-  function assign(players: MWPlayerRow[], condition: (p: MWPlayerRow) => boolean, category: DerivedCategory): DerivedPlayer[] {
-    const result: DerivedPlayer[] = [];
-
-    for (const p of players) {
-      // Skip if already assigned to another category
-      if (assigned.has(p.player_id)) continue;
-
-      // Check condition
-      if (!condition(p)) continue;
-
-      // Assign to this category
-      assigned.add(p.player_id);
-      result.push(tag(p, category));
+    if (rec === 'BUY' || rec === 'STRONG_BUY') {
+      buys.push(tag(p, 'BUY'));
+    } else if (rec === 'SELL' || rec === 'AVOID') {
+      sells.push(tag(p, 'SELL'));
+    } else {
+      // HOLD or any other recommendation
+      holds.push(tag(p, 'HOLD'));
     }
-
-    return result;
   }
 
-  // ── STEP 3: CATEGORY ASSIGNMENT (Priority Order) ────────────────────────
+  // ── STEP 3: SORT WITHIN EACH CATEGORY ────────────────────────────────────
 
-  // PRIORITY 1: MUST SELL — Strong sell signals
-  const sells = assign(
-    filtered,
-    p => {
-      const rec = p.ai_recommendation;
-      const value = p.value_score ?? 0;
-      const d = delta(p);
+  // BUY: Best value first (highest value_score)
+  buys.sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0));
 
-      // AI says SELL or AVOID
-      if (rec === 'SELL' || rec === 'AVOID') return true;
-
-      // Terrible value score
-      if (value <= -4.5) return true;
-
-      // Massive delta deficit
-      if (d <= -15) return true;
-
-      return false;
-    },
-    'sell_before_drop'
-  );
-
-  // PRIORITY 2: BUY NOW — Strong buy signals
-  const buys = assign(
-    filtered,
-    p => {
-      const rec = p.ai_recommendation;
-      const value = p.value_score ?? 0;
-      const projection = p.projection ?? 0;
-
-      // AI says BUY or STRONG_BUY
-      if (rec === 'BUY' || rec === 'STRONG_BUY') return true;
-
-      // High projection + great value
-      if (projection >= 90 && value >= 5) return true;
-
-      // Elite value score alone
-      if (value >= 7) return true;
-
-      return false;
-    },
-    'buy_before_rise'
-  );
-
-  // PRIORITY 3: BEST VALUE — Positive value, strong projection
-  const values = assign(
-    filtered,
-    p => {
-      const value = p.value_score ?? 0;
-      const projection = p.projection ?? 0;
-
-      // Strong positive value
-      if (value >= 3.5 && projection >= 70) return true;
-
-      return false;
-    },
-    'cash_cow'
-  );
-
-  // PRIORITY 4: UPGRADES — Moderate value, decent projection
-  const upgrades = assign(
-    filtered,
-    p => {
-      const value = p.value_score ?? 0;
-      const projection = p.projection ?? 0;
-
-      // Decent projection with some value
-      if (projection >= 85 && value >= 0) return true;
-
-      // Good projection even with slight negative value
-      if (projection >= 95 && value >= -2) return true;
-
-      return false;
-    },
-    'upgrade_target'
-  );
-
-  // PRIORITY 5: TRAPS — Expensive + poor value (optional category)
-  const traps = assign(
-    filtered,
-    p => {
-      const priceVal = p.price ?? 0;
-      const value = p.value_score ?? 0;
-      const projection = p.projection ?? 0;
-
-      // Premium price but terrible value
-      if (priceVal >= 550000 && value < -3) return true;
-
-      // Expensive but weak projection
-      if (priceVal >= 500000 && projection < 70) return true;
-
-      return false;
-    },
-    'fade_trap'
-  );
-
-  // ── STEP 4: SORT EACH CATEGORY (Aligned with DB) ──────────────────────────
-
-  buys.sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)); // Best value first
-  sells.sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0)); // Worst value first
-  values.sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)); // Best value first (Zorko > Gawn)
-  upgrades.sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0)); // Highest projection first
-  traps.sort((a, b) => (b.price ?? 0) - (a.price ?? 0)); // Most expensive first
-
-  // ── STEP 5: DEBUG LOGGING ────────────────────────────────────────────────
-
-  console.log("[MW ENGINE - CLASSIFY]", {
-    uniqueAssigned: assigned.size,
-    categories: {
-      sells: sells.length,
-      buys: buys.length,
-      values: values.length,
-      upgrades: upgrades.length,
-      traps: traps.length,
-    },
-    topSell: sells[0]?.player_name,
-    topBuy: buys[0]?.player_name,
-    topValue: values[0]?.player_name,
+  // HOLD: Closest to neutral value first (value_score nearest to 0, then by projection)
+  holds.sort((a, b) => {
+    const aAbsValue = Math.abs(a.value_score ?? 0);
+    const bAbsValue = Math.abs(b.value_score ?? 0);
+    if (Math.abs(aAbsValue - bAbsValue) > 0.5) {
+      return aAbsValue - bAbsValue;
+    }
+    return (b.projection ?? 0) - (a.projection ?? 0);
   });
 
-  // ── STEP 6: RETURN RESULTS ───────────────────────────────────────────────
+  // SELL: Worst value first (lowest/most negative value_score)
+  sells.sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0));
 
-  return {
-    buyBeforeRise: buys,
-    cashCows: values,
-    upgrades: upgrades,
-    sells: sells,
-    traps: traps,
-  };
+  // ── STEP 4: DEBUG LOGGING ─────────────────────────────────────────────────
+
+  console.log("[MW ENGINE - 3 CATEGORIES]", {
+    total: raw.length,
+    filtered: filtered.length,
+    categories: {
+      BUY: buys.length,
+      HOLD: holds.length,
+      SELL: sells.length,
+    },
+    topBuy: buys[0]?.player_name,
+    topHold: holds[0]?.player_name,
+    topSell: sells[0]?.player_name,
+  });
+
+  return { buys, holds, sells };
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// TRADE BUILDING LOGIC
+// TRADE BUILDING LOGIC (Simplified for 3-category system)
 // ────────────────────────────────────────────────────────────────────────────
 
 function tradeWhy(
   out: DerivedPlayer,
   inn: DerivedPlayer,
-  inType: "upgrade" | "cash_cow" | "buy_before_rise",
   cashGained: number,
   projGain: number
 ): string {
-  if (inType === "upgrade") {
-    if (projGain > 25)
-      return `Major scoring upgrade +${projGain.toFixed(0)} pts/rd — huge team improvement`;
-    if (projGain > 10)
-      return `Scoring upgrade of +${projGain.toFixed(0)} pts/rd${cashGained > 0 ? ` with $${Math.round(cashGained / 1000)}k cash back` : ""}`;
-    return `Quality upgrade — ${inn.player_name} scores ${proj(inn).toFixed(0)} pts/rd vs ${proj(out).toFixed(0)}`;
+  if (projGain > 25) {
+    return `Major scoring upgrade +${projGain.toFixed(0)} pts/rd — huge team improvement`;
   }
-  if (inType === "buy_before_rise") {
-    if (cashGained > 100000)
-      return `Price rise play — $${Math.round(cashGained / 1000)}k cash back + ${inn.player_name} rising`;
-    return `Buy before rise — ${inn.player_name} beats breakeven by ${(inn._delta ?? 0).toFixed(0)} pts`;
+  if (projGain > 10) {
+    return `Scoring upgrade of +${projGain.toFixed(0)} pts/rd${cashGained > 0 ? ` with $${Math.round(cashGained / 1000)}k cash back` : ""}`;
   }
-  if (cashGained > 200000)
-    return `Generate $${Math.round(cashGained / 1000)}k cash — ${inn.player_name} rising fast`;
-  if (cashGained > 100000)
-    return `Cash generation trade — $${Math.round(cashGained / 1000)}k from downgrade, ${inn.player_name} priced to rise`;
-  return `Tactical downgrade — bank cash while ${inn.player_name} generates price growth`;
+  if (cashGained > 100000) {
+    return `Cash generation trade — $${Math.round(cashGained / 1000)}k from downgrade, ${inn.player_name} rising`;
+  }
+  return `Quality upgrade — ${inn.player_name} scores ${proj(inn).toFixed(0)} pts/rd vs ${proj(out).toFixed(0)}`;
 }
 
 function tradeType(
@@ -280,83 +160,38 @@ function tradeType(
 
 export function buildBestTrades(
   sells: DerivedPlayer[] | undefined | null,
-  upgrades: DerivedPlayer[] | undefined | null,
-  cashCows?: DerivedPlayer[] | undefined | null,
-  buyBeforeRise?: DerivedPlayer[] | undefined | null,
+  buys: DerivedPlayer[] | undefined | null,
 ): BestTrade[] {
   if (!sells || !Array.isArray(sells) || sells.length === 0) return [];
-  if (!upgrades || !Array.isArray(upgrades)) return [];
+  if (!buys || !Array.isArray(buys) || buys.length === 0) return [];
 
   const allPairs: BestTrade[] = [];
-  const buys = (buyBeforeRise && Array.isArray(buyBeforeRise)) ? buyBeforeRise : [];
-  const cows = (cashCows && Array.isArray(cashCows)) ? cashCows : [];
 
+  // Build trades: SELL players OUT, BUY players IN
   for (const out of sells.slice(0, 15)) {
-    for (const inn of upgrades.slice(0, 15)) {
-      if (inn.player_id === out.player_id) continue;
-      const cashGenerated = price(out) - price(inn);
-      if (cashGenerated < -150000) continue;
-      const projGain = proj(inn) - proj(out);
-      if (projGain <= 3) continue;
-      const score =
-        projGain * 4
-        + cashGenerated / 2000
-        + (inn.value_score ?? 0) * 2
-        + (out.value_score ?? 0) * -1;
-      allPairs.push({
-        out,
-        in: inn,
-        in_type: "upgrade",
-        trade_type: tradeType(cashGenerated, projGain),
-        cash_generated: cashGenerated,
-        projection_gain: projGain,
-        score,
-        why: tradeWhy(out, inn, "upgrade", cashGenerated, projGain),
-      });
-    }
-
     for (const inn of buys.slice(0, 15)) {
       if (inn.player_id === out.player_id) continue;
+
       const cashGenerated = price(out) - price(inn);
       if (cashGenerated < -150000) continue;
+
       const projGain = proj(inn) - proj(out);
       if (projGain <= 3) continue;
-      const score =
-        projGain * 4
-        + cashGenerated / 2000
-        + (inn.value_score ?? 0) * 2
-        + (out.value_score ?? 0) * -1;
-      allPairs.push({
-        out,
-        in: inn,
-        in_type: "buy_before_rise",
-        trade_type: tradeType(cashGenerated, projGain),
-        cash_generated: cashGenerated,
-        projection_gain: projGain,
-        score,
-        why: tradeWhy(out, inn, "buy_before_rise", cashGenerated, projGain),
-      });
-    }
 
-    for (const inn of cows.slice(0, 10)) {
-      if (inn.player_id === out.player_id) continue;
-      const cashGenerated = price(out) - price(inn);
-      if (cashGenerated < 50000) continue;
-      const projGain = proj(inn) - proj(out);
       const score =
-        projGain * 4
-        + cashGenerated / 2000
-        + (inn.value_score ?? 0) * 2
-        + (out.value_score ?? 0) * -1;
+        projGain * 4 +
+        cashGenerated / 2000 +
+        (inn.value_score ?? 0) * 2 +
+        (out.value_score ?? 0) * -1;
+
       allPairs.push({
         out,
         in: inn,
-        in_type: "cash_cow",
         trade_type: tradeType(cashGenerated, projGain),
         cash_generated: cashGenerated,
         projection_gain: projGain,
         score,
-        why: tradeWhy(out, inn, "cash_cow", cashGenerated, projGain),
+        why: tradeWhy(out, inn, cashGenerated, projGain),
       });
     }
   }

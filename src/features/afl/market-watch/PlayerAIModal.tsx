@@ -63,25 +63,16 @@ export function PlayerAIModal({ player, onClose }: PlayerAIModalProps) {
     },
   };
 
-  const category = player._derived_category || "cash_cow";
-  const config = categoryConfig[category as keyof typeof categoryConfig] || categoryConfig.cash_cow;
+  const category = player._category || "BUY";
+  const categoryKey = category === "BUY" ? "buy_before_rise" : category === "SELL" ? "sell_before_drop" : "cash_cow";
+  const config = categoryConfig[categoryKey as keyof typeof categoryConfig] || categoryConfig.cash_cow;
   const Icon = config.icon;
 
   const hasInjuryRisk = player.is_injured || player.status === 'injured';
   const hasByeRisk = player.is_bye || player.status === 'bye';
 
-  // ONLY use real AI content - no derived fallbacks
-  const aiSummary = validateAIText(player.summary_long)
-    ? player.summary_long
-    : validateAIText(player.summary_short)
-    ? player.summary_short
-    : null;
-
-  const shortReason = validateAIText(player.recommendation_short)
-    ? player.recommendation_short
-    : validateAIText(player.summary_short)
-    ? player.summary_short
-    : null;
+  // ONLY use summary_long - no fallbacks per spec
+  const aiSummary = validateAIText(player.summary_long) ? player.summary_long : null;
 
   return (
     <div
@@ -204,20 +195,19 @@ export function PlayerAIModal({ player, onClose }: PlayerAIModalProps) {
           </div>
         )}
 
-        {/* AI Signal Explanation */}
+        {/* AI Analysis - summary_long ONLY */}
         <div className="space-y-4">
-          {/* WHY THIS PLAYER */}
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div className={`w-1 h-5 ${config.bg} rounded-full`} />
               <h3 className={`${config.color} text-sm font-bold uppercase tracking-wider`}>
-                Why This Player
+                AI Analysis
               </h3>
             </div>
             <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
-              {shortReason ? (
-                <p className="text-sm text-gray-200 leading-relaxed">
-                  {shortReason}
+              {aiSummary ? (
+                <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">
+                  {aiSummary}
                 </p>
               ) : (
                 <p className="text-sm text-gray-500 italic">
@@ -226,23 +216,6 @@ export function PlayerAIModal({ player, onClose }: PlayerAIModalProps) {
               )}
             </div>
           </div>
-
-          {/* MODEL BREAKDOWN */}
-          {aiSummary && aiSummary !== shortReason && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-1 h-5 bg-[#F5C84C]/30 rounded-full" />
-                <h3 className="text-[#F5C84C] text-sm font-bold uppercase tracking-wider">
-                  Model Breakdown
-                </h3>
-              </div>
-              <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
-                <p className="text-sm text-gray-200 leading-relaxed">
-                  {aiSummary}
-                </p>
-              </div>
-            </div>
-          )}
 
           {/* Recommendation Badge */}
           {player.ai_recommendation && (

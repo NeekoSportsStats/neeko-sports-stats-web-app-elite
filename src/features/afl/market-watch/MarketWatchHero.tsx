@@ -3,9 +3,7 @@ import { DerivedPlayer } from "./engine";
 import { fmtPrice } from "./helpers";
 
 interface MarketWatchHeroProps {
-  topSell: DerivedPlayer | null;
   topBuy: DerivedPlayer | null;
-  topValue: DerivedPlayer | null;
 }
 
 // Get AI explanation for hero card - REAL AI ONLY
@@ -53,43 +51,25 @@ function truncate(text: string, maxLen: number = 90): string {
   return cleaned.length > maxLen ? cleaned.slice(0, maxLen) + "…" : cleaned;
 }
 
-export function MarketWatchHero({ topSell, topBuy, topValue }: MarketWatchHeroProps) {
+export function MarketWatchHero({ topBuy }: MarketWatchHeroProps) {
+  if (!topBuy) return null;
+
   return (
-    <div className="grid md:grid-cols-3 gap-4 md:gap-6">
-      {topSell && (
-        <HeroCard
-          player={topSell}
-          type="sell"
-          rank={1}
-          label="MUST SELL"
-          icon={<TrendingDown className="w-6 h-6" />}
-        />
-      )}
-      {topBuy && (
-        <HeroCard
-          player={topBuy}
-          type="buy"
-          rank={1}
-          label="BUY NOW"
-          icon={<TrendingUp className="w-6 h-6" />}
-        />
-      )}
-      {topValue && (
-        <HeroCard
-          player={topValue}
-          type="value"
-          rank={1}
-          label="BEST VALUE"
-          icon={<Target className="w-6 h-6" />}
-        />
-      )}
+    <div className="max-w-2xl mx-auto">
+      <HeroCard
+        player={topBuy}
+        type="buy"
+        rank={1}
+        label="TOP BUY"
+        icon={<TrendingUp className="w-6 h-6" />}
+      />
     </div>
   );
 }
 
 interface HeroCardProps {
   player: DerivedPlayer;
-  type: "sell" | "buy" | "value";
+  type: "buy";
   rank: number;
   label: string;
   icon: React.ReactNode;
@@ -100,34 +80,14 @@ function HeroCard({ player, type, rank, label, icon }: HeroCardProps) {
   const valueScore = player.value_score ?? 0;
 
   const config = {
-    sell: {
-      bg: "bg-gradient-to-br from-red-500/5 to-red-600/10",
-      border: "border-red-500/20",
-      glow: "shadow-[0_0_30px_rgba(239,68,68,0.15)]",
-      iconColor: "text-red-400",
-      accentColor: "text-red-400",
-      rankBg: "bg-red-500/20",
-      hoverGlow: "hover:shadow-[0_0_40px_rgba(239,68,68,0.25)]",
-    },
-    buy: {
-      bg: "bg-gradient-to-br from-green-500/5 to-green-600/10",
-      border: "border-green-500/20",
-      glow: "shadow-[0_0_30px_rgba(34,197,94,0.15)]",
-      iconColor: "text-green-400",
-      accentColor: "text-green-400",
-      rankBg: "bg-green-500/20",
-      hoverGlow: "hover:shadow-[0_0_40px_rgba(34,197,94,0.25)]",
-    },
-    value: {
-      bg: "bg-gradient-to-br from-[#F5C84C]/5 to-[#F5C84C]/10",
-      border: "border-[#F5C84C]/20",
-      glow: "shadow-[0_0_30px_rgba(245,200,76,0.15)]",
-      iconColor: "text-[#F5C84C]",
-      accentColor: "text-[#F5C84C]",
-      rankBg: "bg-[#F5C84C]/20",
-      hoverGlow: "hover:shadow-[0_0_40px_rgba(245,200,76,0.25)]",
-    },
-  }[type];
+    bg: "bg-gradient-to-br from-green-500/5 to-green-600/10",
+    border: "border-green-500/20",
+    glow: "shadow-[0_0_30px_rgba(34,197,94,0.15)]",
+    iconColor: "text-green-400",
+    accentColor: "text-green-400",
+    rankBg: "bg-green-500/20",
+    hoverGlow: "hover:shadow-[0_0_40px_rgba(34,197,94,0.25)]",
+  };
 
   return (
     <div

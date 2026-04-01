@@ -116,9 +116,7 @@ export default function MarketWatchPage() {
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
 
-  const topSell = classified?.sells?.[0] || null;
-  const topBuy = classified?.buyBeforeRise?.[0] || null;
-  const topValue = classified?.cashCows?.[0] || null;
+  const topBuy = classified?.buys?.[0] || null;
 
   // NOW SAFE TO DO CONDITIONAL RETURNS
   if (loading) {
@@ -176,59 +174,48 @@ export default function MarketWatchPage() {
         </div>
 
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <MarketWatchHero topSell={topSell} topBuy={topBuy} topValue={topValue} />
+          <MarketWatchHero topBuy={topBuy} />
         </div>
 
         <div className="animate-in fade-in-slide-in-from-bottom-4 duration-700 delay-150">
           <MarketWatchSignalStrip
+            buyCount={classified?.buys?.length ?? 0}
+            holdCount={classified?.holds?.length ?? 0}
             sellCount={classified?.sells?.length ?? 0}
-            buyCount={classified?.buyBeforeRise?.length ?? 0}
-            valueCount={classified?.cashCows?.length ?? 0}
-            upgradeCount={classified?.upgrades?.length ?? 0}
           />
         </div>
 
-        {!isPremium && <MarketWatchPaywall />}
+        <div className="space-y-12 animate-in fade-in duration-500">
+          <CategorySection
+            title="🔥 BUY"
+            subtitle="Strong value and upside — recommended purchases"
+            count={classified?.buys?.length ?? 0}
+            players={classified?.buys ?? []}
+            type="buy"
+            onPlayerClick={setSelectedPlayer}
+            isPremium={isPremium}
+          />
 
-        <PremiumGate>
-          <div className="space-y-12 animate-in fade-in duration-500">
-            <CategorySection
-              title="🔴 Must Sell"
-              subtitle="Price drop risk — exit before loss"
-              count={classified?.sells?.length ?? 0}
-              players={(classified?.sells ?? []).slice(0, 12)}
-              type="sell"
-              onPlayerClick={setSelectedPlayer}
-            />
+          <CategorySection
+            title="🟡 HOLD"
+            subtitle="Neutral value — monitor for changes"
+            count={classified?.holds?.length ?? 0}
+            players={classified?.holds ?? []}
+            type="hold"
+            onPlayerClick={setSelectedPlayer}
+            isPremium={isPremium}
+          />
 
-            <CategorySection
-              title="🟢 Buy Now"
-              subtitle="Strong breakout projection — buy before rise"
-              count={classified?.buyBeforeRise?.length ?? 0}
-              players={(classified?.buyBeforeRise ?? []).slice(0, 12)}
-              type="buy"
-              onPlayerClick={setSelectedPlayer}
-            />
-
-            <CategorySection
-              title="🟡 Best Value"
-              subtitle="Elite value at current price — premium picks"
-              count={classified?.cashCows?.length ?? 0}
-              players={(classified?.cashCows ?? []).slice(0, 12)}
-              type="value"
-              onPlayerClick={setSelectedPlayer}
-            />
-
-            <CategorySection
-              title="⚡ Upgrades"
-              subtitle="High scoring potential — team improvement"
-              count={classified?.upgrades?.length ?? 0}
-              players={(classified?.upgrades ?? []).slice(0, 12)}
-              type="upgrade"
-              onPlayerClick={setSelectedPlayer}
-            />
-          </div>
-        </PremiumGate>
+          <CategorySection
+            title="🔴 SELL"
+            subtitle="Poor value or risk — recommended exits"
+            count={classified?.sells?.length ?? 0}
+            players={classified?.sells ?? []}
+            type="sell"
+            onPlayerClick={setSelectedPlayer}
+            isPremium={isPremium}
+          />
+        </div>
       </div>
 
       <PlayerAIModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
@@ -252,20 +239,30 @@ interface CategorySectionProps {
   title: string;
   subtitle: string;
   count: number;
-  players: any[];
-  type: "sell" | "buy" | "value" | "upgrade";
+  players: DerivedPlayer[];
+  type: "buy" | "hold" | "sell";
   onPlayerClick: (player: DerivedPlayer) => void;
+  isPremium: boolean;
 }
 
-function CategorySection({ title, subtitle, count, players, type, onPlayerClick }: CategorySectionProps) {
+function CategorySection({ title, subtitle, count, players, type, onPlayerClick, isPremium }: CategorySectionProps) {
+  const [showAll, setShowAll] = useState(false);
+
   if (players.length === 0) return null;
 
   const colorMap = {
     sell: 'text-red-400 bg-red-500/10 border-red-500/20',
     buy: 'text-green-400 bg-green-500/10 border-green-500/20',
-    value: 'text-[#F5C84C] bg-[#F5C84C]/10 border-[#F5C84C]/20',
-    upgrade: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+    hold: 'text-[#F5C84C] bg-[#F5C84C]/10 border-[#F5C84C]/20',
   };
+
+  const freeLimit = 1;
+  const premiumLimit = 6;
+  const visiblePlayers = isPremium
+    ? (showAll ? players : players.slice(0, premiumLimit))
+    : players.slice(0, freeLimit);
+
+  const hasMore = isPremium ? players.length > premiumLimit : players.length > freeLimit;
 
   return (
     <div className="space-y-5">
@@ -284,7 +281,7 @@ function CategorySection({ title, subtitle, count, players, type, onPlayerClick 
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {players.map((player, i) => (
+        {visiblePlayers.map((player, i) => (
           <MarketWatchPremiumCard
             key={player.player_id}
             player={player}
@@ -294,6 +291,44 @@ function CategorySection({ title, subtitle, count, players, type, onPlayerClick 
           />
         ))}
       </div>
+
+      {!isPremium && hasMore && (
+        <div className="mt-6 p-8 border border-white/10 rounded-lg bg-white/[0.02] text-center">
+          <div className="inline-block px-3 py-1 bg-[#F5C84C]/20 border border-[#F5C84C]/40 rounded-full text-xs font-bold text-[#F5C84C] mb-3">
+            PREMIUM
+          </div>
+          <h3 className="text-xl font-bold text-white mb-2">
+            {count - freeLimit} More {type === 'buy' ? 'Buys' : type === 'sell' ? 'Sells' : 'Holds'} Available
+          </h3>
+          <p className="text-white/60 mb-4">
+            Unlock full Market Watch with Rankings AI access
+          </p>
+          <a
+            href="/neeko-plus"
+            className="inline-block px-6 py-3 bg-[#F5C84C] text-black font-bold rounded-lg hover:bg-[#F5C84C]/90 transition-all"
+          >
+            Upgrade to Premium
+          </a>
+        </div>
+      )}
+
+      {isPremium && hasMore && !showAll && (
+        <button
+          onClick={() => setShowAll(true)}
+          className="w-full mt-4 px-6 py-3 bg-white/[0.03] border border-white/10 rounded-lg hover:bg-white/[0.05] transition-all text-white font-medium"
+        >
+          Show All {count} Players
+        </button>
+      )}
+
+      {isPremium && showAll && (
+        <button
+          onClick={() => setShowAll(false)}
+          className="w-full mt-4 px-6 py-3 bg-white/[0.03] border border-white/10 rounded-lg hover:bg-white/[0.05] transition-all text-white font-medium"
+        >
+          Show Less
+        </button>
+      )}
     </div>
   );
 }

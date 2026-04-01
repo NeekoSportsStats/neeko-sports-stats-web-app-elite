@@ -6,7 +6,7 @@ import { fmtPrice } from "./helpers";
 interface PremiumCardProps {
   player: DerivedPlayer;
   rank: number;
-  type: "sell" | "buy" | "value" | "upgrade";
+  type: "buy" | "hold" | "sell";
   onPlayerClick?: (player: DerivedPlayer) => void;
 }
 
@@ -38,7 +38,7 @@ export function MarketWatchPremiumCard({ player, rank, type, onPlayerClick }: Pr
       iconColor: "text-green-400",
       gradient: "from-green-500/5 via-transparent to-transparent",
     },
-    value: {
+    hold: {
       border: "border-[#F5C84C]/20 hover:border-[#F5C84C]/40",
       glow: "hover:shadow-[0_0_30px_rgba(245,200,76,0.15)]",
       rankBg: "bg-[#F5C84C]/15 text-[#F5C84C] border border-[#F5C84C]/30",
@@ -46,15 +46,6 @@ export function MarketWatchPremiumCard({ player, rank, type, onPlayerClick }: Pr
       icon: DollarSign,
       iconColor: "text-[#F5C84C]",
       gradient: "from-[#F5C84C]/5 via-transparent to-transparent",
-    },
-    upgrade: {
-      border: "border-blue-500/20 hover:border-blue-500/40",
-      glow: "hover:shadow-[0_0_30px_rgba(59,130,246,0.15)]",
-      rankBg: "bg-blue-500/15 text-blue-400 border border-blue-500/30",
-      tagBg: "bg-blue-500/10 text-blue-400",
-      icon: BarChart3,
-      iconColor: "text-blue-400",
-      gradient: "from-blue-500/5 via-transparent to-transparent",
     },
   }[type];
 
