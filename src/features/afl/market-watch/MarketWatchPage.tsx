@@ -137,9 +137,9 @@ export default function MarketWatchPage() {
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
 
-  const topSell = classified.sells[0] || null;
-  const topBuy = classified.buyBeforeRise[0] || null;
-  const topValue = classified.upgrades[0] || null;
+  const topSell = classified?.sells?.[0] || null;
+  const topBuy = classified?.buyBeforeRise?.[0] || null;
+  const topValue = classified?.upgrades?.[0] || null;
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] text-white">
@@ -179,10 +179,10 @@ export default function MarketWatchPage() {
 
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
           <MarketWatchSignalStrip
-            sellCount={classified.sells.length}
-            buyCount={classified.buyBeforeRise.length}
-            valueCount={classified.upgrades.length}
-            upgradeCount={classified.upgrades.length}
+            sellCount={classified?.sells?.length ?? 0}
+            buyCount={classified?.buyBeforeRise?.length ?? 0}
+            valueCount={classified?.upgrades?.length ?? 0}
+            upgradeCount={classified?.upgrades?.length ?? 0}
           />
         </div>
 
@@ -193,7 +193,7 @@ export default function MarketWatchPage() {
             <CategorySection
               title="🔴 Sell Risks"
               subtitle="Players at risk of price drops"
-              players={classified.sells.slice(0, 12)}
+              players={(classified?.sells ?? []).slice(0, 12)}
               type="sell"
               onPlayerClick={setSelectedPlayer}
             />
@@ -201,7 +201,7 @@ export default function MarketWatchPage() {
             <CategorySection
               title="🟢 Buy Opportunities"
               subtitle="Strong upside potential"
-              players={classified.buyBeforeRise.slice(0, 12)}
+              players={(classified?.buyBeforeRise ?? []).slice(0, 12)}
               type="buy"
               onPlayerClick={setSelectedPlayer}
             />
@@ -209,7 +209,7 @@ export default function MarketWatchPage() {
             <CategorySection
               title="🟡 Best Value"
               subtitle="Elite value at current prices"
-              players={classified.upgrades.slice(0, 12)}
+              players={(classified?.upgrades ?? []).slice(0, 12)}
               type="value"
               onPlayerClick={setSelectedPlayer}
             />
@@ -217,7 +217,7 @@ export default function MarketWatchPage() {
             <CategorySection
               title="⚡ Premium Upgrades"
               subtitle="Highest projection gains"
-              players={classified.upgrades.slice(0, 12)}
+              players={(classified?.upgrades ?? []).slice(0, 12)}
               type="upgrade"
               onPlayerClick={setSelectedPlayer}
             />
