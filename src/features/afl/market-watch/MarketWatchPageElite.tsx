@@ -10,6 +10,7 @@ import { MarketMetricsStrip } from "./MarketMetricsStrip";
 import { MarketDataTable } from "./MarketDataTable";
 import { PlayerDetailPanel } from "./PlayerDetailPanel";
 import { MarketControls, MarketFilter } from "./MarketControls";
+import { MarketAdvancedFilters } from "./MarketAdvancedFilters";
 import { MarketDistributionBar } from "./MarketDistributionBar";
 import { MarketWatchSkeleton } from "./MarketWatchSkeleton";
 
@@ -19,6 +20,8 @@ export default function MarketWatchPageElite() {
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<DerivedPlayer | null>(null);
   const [activeFilter, setActiveFilter] = useState<MarketFilter>("ALL");
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
+  const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
 
   const fetchData = useCallback(async (premium: boolean) => {
     setLoading(true);
@@ -128,12 +131,25 @@ export default function MarketWatchPageElite() {
   }, [classified]);
 
   const filteredPlayers = useMemo(() => {
-    if (activeFilter === "ALL") return allDerivedPlayers;
-    if (activeFilter === "TARGET") return classified?.buys ?? [];
-    if (activeFilter === "WATCH") return classified?.holds ?? [];
-    if (activeFilter === "AVOID") return classified?.sells ?? [];
-    return allDerivedPlayers;
-  }, [activeFilter, allDerivedPlayers, classified]);
+    let players = allDerivedPlayers;
+
+    // Apply signal filter (TARGET/WATCH/AVOID)
+    if (activeFilter === "TARGET") players = classified?.buys ?? [];
+    else if (activeFilter === "WATCH") players = classified?.holds ?? [];
+    else if (activeFilter === "AVOID") players = classified?.sells ?? [];
+
+    // Apply team filter (premium only)
+    if (selectedTeam && isPremium) {
+      players = players.filter(p => p.team === selectedTeam);
+    }
+
+    // Apply position filter (premium only)
+    if (selectedPosition && isPremium) {
+      players = players.filter(p => p.position === selectedPosition);
+    }
+
+    return players;
+  }, [activeFilter, allDerivedPlayers, classified, selectedTeam, selectedPosition, isPremium]);
 
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
@@ -220,18 +236,28 @@ export default function MarketWatchPageElite() {
         </div>
 
         {/* Controls */}
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <MarketControls
-            activeFilter={activeFilter}
-            onFilterChange={setActiveFilter}
-            targetCount={classified?.buys?.length ?? 0}
-            watchCount={classified?.holds?.length ?? 0}
-            avoidCount={classified?.sells?.length ?? 0}
-          />
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <MarketControls
+              activeFilter={activeFilter}
+              onFilterChange={setActiveFilter}
+              targetCount={classified?.buys?.length ?? 0}
+              watchCount={classified?.holds?.length ?? 0}
+              avoidCount={classified?.sells?.length ?? 0}
+            />
 
-          <div className="text-xs text-white/40">
-            Showing {filteredPlayers.length} player{filteredPlayers.length !== 1 ? 's' : ''}
+            <div className="text-xs text-white/40">
+              Showing {filteredPlayers.length} player{filteredPlayers.length !== 1 ? 's' : ''}
+            </div>
           </div>
+
+          <MarketAdvancedFilters
+            selectedTeam={selectedTeam}
+            selectedPosition={selectedPosition}
+            onTeamChange={setSelectedTeam}
+            onPositionChange={setSelectedPosition}
+            isPremium={isPremium ?? false}
+          />
         </div>
 
         {/* Data Table */}
