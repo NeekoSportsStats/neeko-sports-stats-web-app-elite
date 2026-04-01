@@ -21,6 +21,7 @@ export interface RankingRow {
   prev_price: number | null;
   price_change: number | null;
   price_change_pct: number | null;
+  breakeven: number | null;
   value_score: number | null;
   best_value_score: number | null;
   value_tag: string | null;
