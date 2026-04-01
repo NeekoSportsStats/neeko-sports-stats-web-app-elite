@@ -68,25 +68,29 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
     // Must have valid data
     if (!p.player_id) return false;
     if (!p.player_name) return false;
-    if (!p.ai_recommendation) return false;
+    if (!p.category) return false;
 
     return true;
   });
 
-  // ── STEP 2: MAP AI_RECOMMENDATION TO 3 CATEGORIES ────────────────────────
+  // ── STEP 2: MAP CATEGORY TO 3 CATEGORIES ────────────────────────────────
   const buys: DerivedPlayer[] = [];
   const holds: DerivedPlayer[] = [];
   const sells: DerivedPlayer[] = [];
 
   for (const p of filtered) {
-    const rec = p.ai_recommendation;
+    const cat = (p.category || '').toLowerCase().trim();
 
-    if (rec === 'BUY' || rec === 'STRONG_BUY') {
+    // BUY category: simplified 'buy' OR detailed categories
+    if (cat === 'buy' || cat === 'buy_before_rise' || cat === 'cash_cow' || cat === 'upgrade_target') {
       buys.push(tag(p, 'BUY'));
-    } else if (rec === 'SELL' || rec === 'AVOID') {
+    }
+    // SELL category: simplified 'sell' OR detailed categories
+    else if (cat === 'sell' || cat === 'sell_before_drop' || cat === 'fade_trap') {
       sells.push(tag(p, 'SELL'));
-    } else {
-      // HOLD or any other recommendation
+    }
+    // HOLD category: simplified 'hold' OR detailed 'monitor' OR anything else
+    else {
       holds.push(tag(p, 'HOLD'));
     }
   }
