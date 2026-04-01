@@ -1,16 +1,12 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
-import { supabase } from '@/integrations/supabase/client';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ChevronRight, TrendingUp, Shield, Zap } from 'lucide-react';
+import { ArrowLeft, ChevronRight, TrendingUp, Shield, Zap, Target } from 'lucide-react';
 import { nameToSlug, POSITION_NAMES, POSITION_SLUG_TO_CODE } from '@/lib/slugs';
 import { useAuth } from '@/lib/auth';
 import { getPositionPlayersSafe } from '@/lib/playerAccess';
-import { LockedPlayerCard } from '@/components/premium/LockedPlayerCard';
 
 interface PositionPlayer {
   player_id?: number;
@@ -31,7 +27,8 @@ export default function AFLPositionPage() {
   const { position } = useParams<{ position: string }>();
   const positionCode = position ? POSITION_SLUG_TO_CODE[position] : '';
   const positionName = positionCode ? POSITION_NAMES[positionCode] : '';
-  const { user, isPremium } = useAuth();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   const { data: players, isLoading, error } = useQuery({
     queryKey: ['position-players-safe', positionCode, user?.id],
@@ -43,60 +40,59 @@ export default function AFLPositionPage() {
 
   if (isLoading) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <Skeleton className="h-8 w-64 mb-6" />
-        <Skeleton className="h-96 w-full" />
+      <div className="min-h-screen bg-[#0e0e0e] flex items-center justify-center">
+        <Skeleton className="h-96 w-full max-w-lg rounded-lg bg-white/5" />
       </div>
     );
   }
 
   if (error || !players || !positionName) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        <Link to="/sports/afl/rankings">
-          <Button variant="ghost" className="mb-6">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Rankings
-          </Button>
-        </Link>
-        <Card>
-          <CardHeader>
-            <CardTitle>Position Not Found</CardTitle>
-          </CardHeader>
-        </Card>
+      <div className="min-h-screen bg-[#0e0e0e] flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <h2 className="text-2xl font-bold text-white mb-2">Position Not Found</h2>
+          <p className="text-white/50 mb-6">Could not find position: {position}</p>
+          <Link to="/sports/afl/rankings">
+            <Button variant="outline" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Rankings
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }
 
   const bestValue = [...players]
-    .filter(p => p.value_score > 0)
+    .filter(p => p.value_score && p.value_score > 0)
     .sort((a, b) => (b.value_score || 0) - (a.value_score || 0))
-    .slice(0, 10);
+    .slice(0, 5);
 
   const safestPicks = [...players]
-    .filter(p => p.projection_confidence >= 65)
+    .filter(p => p.projection_confidence && p.projection_confidence >= 65)
     .sort((a, b) => (b.projection_confidence || 0) - (a.projection_confidence || 0))
-    .slice(0, 10);
+    .slice(0, 5);
 
-  const highRisk = [...players]
+  const highUpside = [...players]
     .filter(p => (p.upside_pct || 0) > 15)
     .sort((a, b) => (b.upside_pct || 0) - (a.upside_pct || 0))
-    .slice(0, 10);
+    .slice(0, 5);
+
+  const topProjection = players.length > 0 ? Math.round(players[0].projection_final) : 0;
+  const premiumCount = players.filter(p => p.neeko_rating >= 100).length;
 
   const pageTitle = `Best AFL Fantasy ${positionName} 2026 Rankings & Projections | Neeko`;
   const pageDescription = `Top ${positionName} for AFL Fantasy 2026. ${players.length} ${positionName.toLowerCase()} ranked with projections, value scores, and AI recommendations. Find the best picks for your team.`;
   const pageUrl = `https://neeko.com.au/sports/afl/positions/${position}`;
 
-  const getRecommendationBadge = (rec: string, color: string) => {
-    const colorClass = color === 'green' ? 'bg-green-500/10 text-green-700 border-green-500/20'
-      : color === 'red' ? 'bg-red-500/10 text-red-700 border-red-500/20'
-      : 'bg-slate-500/10 text-slate-700 border-slate-500/20';
+  const getRecommendationColor = (color: string | null) => {
+    if (color === 'green') return '#22c55e';
+    if (color === 'red') return '#ef4444';
+    return '#94a3b8';
+  };
 
-    return (
-      <Badge variant="outline" className={`${colorClass} text-xs`}>
-        {rec}
-      </Badge>
-    );
+  const formatPrice = (price: number) => {
+    return `$${Math.round(price / 1000)}k`;
   };
 
   return (
@@ -113,264 +109,168 @@ export default function AFLPositionPage() {
         <meta name="robots" content="index, follow" />
       </Helmet>
 
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Breadcrumbs */}
-        <nav className="mb-4 text-sm text-slate-500">
-          <ol className="flex items-center gap-2">
-            <li><Link to="/" className="hover:text-slate-700">Home</Link></li>
-            <ChevronRight className="h-3 w-3" />
-            <li><Link to="/sports/afl/rankings" className="hover:text-slate-700">AFL</Link></li>
-            <ChevronRight className="h-3 w-3" />
-            <li className="text-slate-700 font-medium">{positionName}</li>
-          </ol>
-        </nav>
-
-        {/* Back Button */}
-        <Link to="/sports/afl/rankings">
-          <Button variant="ghost" className="mb-6">
-            <ArrowLeft className="h-4 w-4 mr-2" />
+      <div className="min-h-screen bg-[#0e0e0e]">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          {/* Back Button */}
+          <button
+            onClick={() => navigate('/sports/afl/rankings')}
+            className="mb-4 flex items-center gap-2 text-white/50 hover:text-white/80 transition-colors text-sm"
+          >
+            <ArrowLeft size={16} />
             Back to Rankings
-          </Button>
-        </Link>
+          </button>
 
-        {/* Position Header */}
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="text-3xl">AFL Fantasy {positionName} 2026</CardTitle>
-            <CardDescription>Complete rankings and projections for {positionName.toLowerCase()}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div>
-                <div className="text-sm text-slate-500 mb-1">Total Players</div>
-                <div className="text-2xl font-bold">{players.length}</div>
+          {/* Position Header */}
+          <div className="mb-6 pb-4 border-b border-white/5">
+            <h1 className="text-2xl font-semibold text-white mb-2">AFL Fantasy {positionName} 2026</h1>
+            <p className="text-base text-white/50">Complete rankings for {positionName.toLowerCase()}</p>
+          </div>
+
+          {/* Position Stats */}
+          <div className="grid grid-cols-3 gap-2 mb-6">
+            <div className="rounded-lg bg-white/5 px-3 py-3">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Total Players</p>
+              <p className="text-lg font-bold text-white">{players.length}</p>
+            </div>
+            <div className="rounded-lg bg-white/5 px-3 py-3">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Top Projection</p>
+              <p className="text-lg font-bold text-[#F5C84C]">{topProjection}</p>
+            </div>
+            <div className="rounded-lg bg-white/5 px-3 py-3">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Premium</p>
+              <p className="text-lg font-bold text-emerald-400">{premiumCount}</p>
+            </div>
+          </div>
+
+          {/* Highlight Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+            {/* Best Value */}
+            <div className="rounded-lg bg-white/[0.03] border border-white/5 px-3 py-3">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp size={14} className="text-emerald-400" />
+                <h3 className="text-xs font-semibold text-white/70">Best Value</h3>
               </div>
-              <div>
-                <div className="text-sm text-slate-500 mb-1">Top Projection</div>
-                <div className="text-2xl font-bold text-green-600">
-                  {players.length > 0 ? Math.round(players[0].projection_final) : 0}
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-slate-500 mb-1">Premium Options</div>
-                <div className="text-2xl font-bold">
-                  {players.filter(p => p.neeko_rating >= 100).length}
-                </div>
+              <div className="space-y-1.5">
+                {bestValue.slice(0, 3).map((player) => (
+                  <Link
+                    key={player.player_name}
+                    to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
+                    className="flex items-center justify-between p-2 rounded bg-white/[0.02] hover:bg-white/[0.05] transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-white/80 truncate">{player.player_name}</p>
+                      <p className="text-[10px] text-white/30">{player.team}</p>
+                    </div>
+                    <p className="text-xs font-bold text-emerald-400 ml-2">{Math.round(player.value_score || 0)}</p>
+                  </Link>
+                ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Best Value */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-green-600" />
-                Best Value
-              </CardTitle>
-              <CardDescription>Top value picks</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {bestValue.slice(0, 5).map((player, idx) => {
-                  if (player.is_locked) {
-                    return (
-                      <div key={player.player_name} className="mb-2">
-                        <LockedPlayerCard
-                          playerName={player.player_name}
-                          team={player.team}
-                          position={positionName}
-                          price={player.price}
-                          variant="compact"
-                          showCTA={false}
-                        />
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <Link
-                      key={player.player_name}
-                      to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
-                      className="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors group"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="text-lg font-bold text-slate-300 w-6">
-                          {idx + 1}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-sm text-slate-900">{player.player_name}</div>
-                          <div className="text-xs text-slate-500">{player.team}</div>
-                        </div>
-                      </div>
-                      <ChevronRight className="h-3 w-3 text-slate-400 group-hover:translate-x-1 transition-transform" />
-                    </Link>
-                  );
-                })}
+            {/* Safest Picks */}
+            <div className="rounded-lg bg-white/[0.03] border border-white/5 px-3 py-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Shield size={14} className="text-blue-400" />
+                <h3 className="text-xs font-semibold text-white/70">Safest Picks</h3>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Safest Picks */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Shield className="h-4 w-4 text-blue-600" />
-                Safest Picks
-              </CardTitle>
-              <CardDescription>High confidence</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {safestPicks.slice(0, 5).map((player, idx) => {
-                  if (player.is_locked) {
-                    return (
-                      <div key={player.player_name} className="mb-2">
-                        <LockedPlayerCard
-                          playerName={player.player_name}
-                          team={player.team}
-                          position={positionName}
-                          projection={player.projection_final}
-                          variant="compact"
-                          showCTA={false}
-                        />
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <Link
-                      key={player.player_name}
-                      to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
-                      className="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors group"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="text-lg font-bold text-slate-300 w-6">
-                          {idx + 1}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-sm text-slate-900">{player.player_name}</div>
-                          <div className="text-xs text-slate-500">{Math.round(player.projection_confidence)}% conf</div>
-                        </div>
-                      </div>
-                      <ChevronRight className="h-3 w-3 text-slate-400 group-hover:translate-x-1 transition-transform" />
-                    </Link>
-                  );
-                })}
+              <div className="space-y-1.5">
+                {safestPicks.slice(0, 3).map((player) => (
+                  <Link
+                    key={player.player_name}
+                    to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
+                    className="flex items-center justify-between p-2 rounded bg-white/[0.02] hover:bg-white/[0.05] transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-white/80 truncate">{player.player_name}</p>
+                      <p className="text-[10px] text-white/30">{player.team}</p>
+                    </div>
+                    <p className="text-xs font-bold text-blue-400 ml-2">{Math.round(player.projection_confidence || 0)}%</p>
+                  </Link>
+                ))}
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* High Risk / High Reward */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Zap className="h-4 w-4 text-orange-600" />
-                High Upside
-              </CardTitle>
-              <CardDescription>Risk / reward</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {highRisk.slice(0, 5).map((player, idx) => {
-                  if (player.is_locked) {
-                    return (
-                      <div key={player.player_name} className="mb-2">
-                        <LockedPlayerCard
-                          playerName={player.player_name}
-                          team={player.team}
-                          position={positionName}
-                          price={player.price}
-                          variant="compact"
-                          showCTA={false}
-                        />
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <Link
-                      key={player.player_name}
-                      to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
-                      className="flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors group"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="text-lg font-bold text-slate-300 w-6">
-                          {idx + 1}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-sm text-slate-900">{player.player_name}</div>
-                          <div className="text-xs text-slate-500">{Math.round(player.upside_pct)}% upside</div>
-                        </div>
-                      </div>
-                      <ChevronRight className="h-3 w-3 text-slate-400 group-hover:translate-x-1 transition-transform" />
-                    </Link>
-                  );
-                })}
+            {/* High Upside */}
+            <div className="rounded-lg bg-white/[0.03] border border-white/5 px-3 py-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap size={14} className="text-orange-400" />
+                <h3 className="text-xs font-semibold text-white/70">High Upside</h3>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="space-y-1.5">
+                {highUpside.slice(0, 3).map((player) => (
+                  <Link
+                    key={player.player_name}
+                    to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
+                    className="flex items-center justify-between p-2 rounded bg-white/[0.02] hover:bg-white/[0.05] transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-white/80 truncate">{player.player_name}</p>
+                      <p className="text-[10px] text-white/30">{player.team}</p>
+                    </div>
+                    <p className="text-xs font-bold text-orange-400 ml-2">+{Math.round(player.upside_pct || 0)}%</p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
 
-        {/* Top 50 Rankings */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Top 50 {positionName}</CardTitle>
-            <CardDescription>Complete rankings by Neeko Rating</CardDescription>
-          </CardHeader>
-          <CardContent>
+          {/* Full Rankings List */}
+          <div className="mb-6">
+            <h2 className="text-base font-semibold text-white mb-3">Top 50 {positionName}</h2>
             <div className="space-y-2">
               {players.map((player, idx) => {
-                if (player.is_locked) {
-                  return (
-                    <div key={player.player_name} className="mb-2">
-                      <LockedPlayerCard
-                        playerName={player.player_name}
-                        team={player.team}
-                        position={positionName}
-                        price={player.price}
-                        projection={player.projection_final}
-                        variant="compact"
-                        showCTA={false}
-                      />
-                    </div>
-                  );
-                }
-
+                const recColor = getRecommendationColor(player.recommendation_color);
                 return (
                   <Link
                     key={player.player_name}
                     to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
-                    className="flex items-center justify-between p-4 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors group"
+                    className="flex items-center justify-between rounded-lg bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] hover:border-white/10 transition-all px-3 py-3"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="text-2xl font-bold text-slate-300 w-10">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="text-base font-bold text-white/20 w-6 shrink-0">
                         {idx + 1}
                       </div>
-                      <div>
-                        <div className="font-semibold text-slate-900">{player.player_name}</div>
-                        <div className="text-sm text-slate-500">{player.team}</div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-white truncate">{player.player_name}</p>
+                        <p className="text-xs text-white/40">{player.team}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="hidden md:block">
-                        {getRecommendationBadge(player.ai_recommendation, player.recommendation_color)}
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm font-bold text-green-600">
-                          {player.neeko_rating.toFixed(1)}
+                    <div className="flex items-center gap-3 shrink-0">
+                      {player.ai_recommendation && (
+                        <div
+                          className="hidden sm:flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-semibold"
+                          style={{
+                            background: `${recColor}18`,
+                            color: recColor,
+                            border: `1px solid ${recColor}40`
+                          }}
+                        >
+                          {player.ai_recommendation}
                         </div>
-                        <div className="text-xs text-slate-500">{Math.round(player.projection_final)} pts</div>
+                      )}
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-[#F5C84C]">{Math.round(player.projection_final)}</p>
+                        <p className="text-[10px] text-white/30">{formatPrice(player.price)}</p>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-slate-400 group-hover:translate-x-1 transition-transform" />
+                      <ChevronRight size={16} className="text-white/20" />
                     </div>
                   </Link>
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          {/* Bottom CTA */}
+          <div className="pt-4 mt-2 border-t border-white/5">
+            <Link
+              to="/sports/afl/rankings"
+              className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/8 text-white/70 hover:text-white transition-all px-4 py-3 font-medium text-sm"
+            >
+              <Target size={14} />
+              View All Rankings
+            </Link>
+          </div>
+        </div>
       </div>
     </>
   );
