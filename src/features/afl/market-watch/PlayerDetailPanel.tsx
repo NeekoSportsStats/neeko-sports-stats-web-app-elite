@@ -79,7 +79,16 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
         <div className={`sticky top-0 bg-gradient-to-b from-[#0D0D0D] to-[#0D0D0D]/95 border-b ${signalConfig.border} p-6 backdrop-blur-sm ${signalConfig.glow}`}>
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-white mb-1">{player.player_name}</h2>
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-2xl font-bold text-white">{player.player_name}</h2>
+                {(player.manual_status === "OUT" || (!player.manual_status && player.status === "OUT")) ? (
+                  <span className="rounded-sm bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-red-400 uppercase tracking-wide border border-red-500/20">OUT</span>
+                ) : (player.manual_status === "INJURED" || (!player.manual_status && player.status === "INJURED")) ? (
+                  <span className="rounded-sm bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-orange-400 uppercase tracking-wide border border-orange-500/20">INJ</span>
+                ) : player.is_bye ? (
+                  <span className="rounded-sm bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white/40 uppercase tracking-wide border border-white/15">BYE</span>
+                ) : null}
+              </div>
               <p className="text-sm text-white/60">{player.team} · {player.position}</p>
             </div>
             <button

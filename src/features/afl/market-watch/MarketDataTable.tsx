@@ -273,7 +273,16 @@ function PlayerRow({ player, onClick, isEven, isBlurred = false, allPlayers }: P
     >
       <td className="px-4 py-3">
         <div>
-          <div className="font-bold text-white text-sm mb-0.5">{player.player_name}</div>
+          <div className="flex items-center gap-2 mb-0.5">
+            <div className="font-bold text-white text-sm">{player.player_name}</div>
+            {(player.manual_status === "OUT" || (!player.manual_status && player.status === "OUT")) ? (
+              <span className="rounded-sm bg-red-500/15 px-1 py-0.5 text-[9px] font-semibold text-red-400 uppercase tracking-wide border border-red-500/20">OUT</span>
+            ) : (player.manual_status === "INJURED" || (!player.manual_status && player.status === "INJURED")) ? (
+              <span className="rounded-sm bg-orange-500/15 px-1 py-0.5 text-[9px] font-semibold text-orange-400 uppercase tracking-wide border border-orange-500/20">INJ</span>
+            ) : player.is_bye ? (
+              <span className="rounded-sm bg-white/10 px-1 py-0.5 text-[9px] font-semibold text-white/40 uppercase tracking-wide border border-white/15">BYE</span>
+            ) : null}
+          </div>
           <div className="text-xs text-white/50 leading-tight">
             {formatWhyText(truncatedWhy)}
           </div>
