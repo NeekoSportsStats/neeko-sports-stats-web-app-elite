@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { Filter } from "lucide-react";
 
 export type MarketFilter = "ALL" | "TARGET" | "WATCH" | "AVOID";
@@ -10,19 +11,20 @@ interface MarketControlsProps {
   avoidCount: number;
 }
 
-export function MarketControls({
+export const MarketControls = memo(function MarketControls({
   activeFilter,
   onFilterChange,
   targetCount,
   watchCount,
   avoidCount,
 }: MarketControlsProps) {
-  const filters: { label: string; value: MarketFilter; count: number; color: string }[] = [
-    { label: "All", value: "ALL", count: targetCount + watchCount + avoidCount, color: "text-white/60" },
-    { label: "Target", value: "TARGET", count: targetCount, color: "text-green-400" },
-    { label: "Watch", value: "WATCH", count: watchCount, color: "text-[#F5C84C]" },
-    { label: "Avoid", value: "AVOID", count: avoidCount, color: "text-red-400" },
-  ];
+  // MEMOIZE: Filter config array
+  const filters = useMemo(() => [
+    { label: "All", value: "ALL" as MarketFilter, count: targetCount + watchCount + avoidCount, color: "text-white/60" },
+    { label: "Target", value: "TARGET" as MarketFilter, count: targetCount, color: "text-green-400" },
+    { label: "Watch", value: "WATCH" as MarketFilter, count: watchCount, color: "text-[#F5C84C]" },
+    { label: "Avoid", value: "AVOID" as MarketFilter, count: avoidCount, color: "text-red-400" },
+  ], [targetCount, watchCount, avoidCount]);
 
   return (
     <div className="flex items-center gap-3 flex-wrap">
@@ -51,4 +53,4 @@ export function MarketControls({
       </div>
     </div>
   );
-}
+});

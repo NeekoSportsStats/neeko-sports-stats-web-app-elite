@@ -24,6 +24,7 @@ export default function MarketWatchPageElite() {
   const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
 
   const fetchData = useCallback(async (premium: boolean) => {
+    const fetchStart = performance.now();
     setLoading(true);
     try {
       const limit = premium ? 200 : 100;
@@ -31,6 +32,9 @@ export default function MarketWatchPageElite() {
       const { data, error } = await supabase.from(viewName).select("*").limit(limit);
 
       if (error) throw error;
+
+      const mapStart = performance.now();
+      console.log(`[MW PERF] Fetched ${data?.length ?? 0} rows in ${(mapStart - fetchStart).toFixed(1)}ms`);
 
       const mapped: MWPlayerRow[] = (data ?? []).map((r: any) => ({
         snapshot_id: r.snapshot_id ?? 'market-watch',
@@ -89,6 +93,9 @@ export default function MarketWatchPageElite() {
         manual_status: r.manual_status ?? null,
       }));
 
+      const mapEnd = performance.now();
+      console.log(`[MW PERF] Mapped ${mapped.length} players in ${(mapEnd - mapStart).toFixed(1)}ms`);
+
       console.log("[MW DEBUG - FETCH]", {
         source: viewName,
         total: data?.length ?? 0,
@@ -101,6 +108,7 @@ export default function MarketWatchPageElite() {
       });
 
       setPlayers(mapped);
+      console.log(`[MW PERF] Total fetch + map: ${(performance.now() - fetchStart).toFixed(1)}ms`);
     } catch (error) {
       console.error("[Market Watch] Error:", error);
       setPlayers([]);
@@ -120,8 +128,15 @@ export default function MarketWatchPageElite() {
     fetchData(isPremium);
   }, [authLoading, isPremium, fetchData]);
 
-  const classified = useMemo(() => classifyPlayers(players), [players]);
+  // MEMOIZE: Classification (expensive for 200+ players)
+  const classified = useMemo(() => {
+    const classifyStart = performance.now();
+    const result = classifyPlayers(players);
+    console.log(`[MW PERF] Classified ${players.length} players in ${(performance.now() - classifyStart).toFixed(1)}ms`);
+    return result;
+  }, [players]);
 
+  // MEMOIZE: All derived players
   const allDerivedPlayers = useMemo(() => {
     return [
       ...(classified?.buys ?? []),
@@ -130,25 +145,28 @@ export default function MarketWatchPageElite() {
     ];
   }, [classified]);
 
+  // MEMOIZE: Filtered players (prevents re-filter on every render)
   const filteredPlayers = useMemo(() => {
-    let players = allDerivedPlayers;
+    const filterStart = performance.now();
+    let filtered = allDerivedPlayers;
 
     // Apply signal filter (TARGET/WATCH/AVOID)
-    if (activeFilter === "TARGET") players = classified?.buys ?? [];
-    else if (activeFilter === "WATCH") players = classified?.holds ?? [];
-    else if (activeFilter === "AVOID") players = classified?.sells ?? [];
+    if (activeFilter === "TARGET") filtered = classified?.buys ?? [];
+    else if (activeFilter === "WATCH") filtered = classified?.holds ?? [];
+    else if (activeFilter === "AVOID") filtered = classified?.sells ?? [];
 
     // Apply team filter (premium only)
     if (selectedTeam && isPremium) {
-      players = players.filter(p => p.team === selectedTeam);
+      filtered = filtered.filter(p => p.team === selectedTeam);
     }
 
     // Apply position filter (premium only)
     if (selectedPosition && isPremium) {
-      players = players.filter(p => p.position === selectedPosition);
+      filtered = filtered.filter(p => p.position === selectedPosition);
     }
 
-    return players;
+    console.log(`[MW PERF] Filtered to ${filtered.length} players in ${(performance.now() - filterStart).toFixed(1)}ms`);
+    return filtered;
   }, [activeFilter, allDerivedPlayers, classified, selectedTeam, selectedPosition, isPremium]);
 
   const updatedAt = players[0]?.snapshot_updated_at;

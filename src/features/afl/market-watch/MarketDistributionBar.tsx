@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { DerivedPlayer } from "./engine";
 
 interface MarketDistributionBarProps {
@@ -6,14 +7,17 @@ interface MarketDistributionBarProps {
   avoidCount: number;
 }
 
-export function MarketDistributionBar({ targetCount, watchCount, avoidCount }: MarketDistributionBarProps) {
+export const MarketDistributionBar = memo(function MarketDistributionBar({ targetCount, watchCount, avoidCount }: MarketDistributionBarProps) {
   const total = targetCount + watchCount + avoidCount;
 
   if (total === 0) return null;
 
-  const targetPct = (targetCount / total) * 100;
-  const watchPct = (watchCount / total) * 100;
-  const avoidPct = (avoidCount / total) * 100;
+  // MEMOIZE: Percentage calculations
+  const { targetPct, watchPct, avoidPct } = useMemo(() => ({
+    targetPct: (targetCount / total) * 100,
+    watchPct: (watchCount / total) * 100,
+    avoidPct: (avoidCount / total) * 100,
+  }), [targetCount, watchCount, avoidCount, total]);
 
   return (
     <div className="space-y-3">
@@ -67,4 +71,4 @@ export function MarketDistributionBar({ targetCount, watchCount, avoidCount }: M
       </div>
     </div>
   );
-}
+});

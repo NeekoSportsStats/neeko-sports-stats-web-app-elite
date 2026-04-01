@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, memo } from "react";
 import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
 import { ChevronDown, ChevronUp, Info } from "lucide-react";
@@ -29,46 +29,61 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
     }
   };
 
-  const sortedPlayers = [...players].sort((a, b) => {
-    let aVal: number | string = 0;
-    let bVal: number | string = 0;
+  // MEMOIZE: Sort computation (expensive for 200+ players)
+  const sortedPlayers = useMemo(() => {
+    const start = performance.now();
+    const sorted = [...players].sort((a, b) => {
+      let aVal: number | string = 0;
+      let bVal: number | string = 0;
 
-    switch (sortField) {
-      case "player":
-        aVal = a.player_name;
-        bVal = b.player_name;
-        break;
-      case "projection":
-        aVal = a.projection || 0;
-        bVal = b.projection || 0;
-        break;
-      case "breakeven":
-        aVal = a.breakeven || 0;
-        bVal = b.breakeven || 0;
-        break;
-      case "price":
-        aVal = a.price || 0;
-        bVal = b.price || 0;
-        break;
-      case "value":
-        aVal = a.value_score || 0;
-        bVal = b.value_score || 0;
-        break;
-      case "signal":
-        aVal = a.category || "";
-        bVal = b.category || "";
-        break;
-    }
+      switch (sortField) {
+        case "player":
+          aVal = a.player_name;
+          bVal = b.player_name;
+          break;
+        case "projection":
+          aVal = a.projection || 0;
+          bVal = b.projection || 0;
+          break;
+        case "breakeven":
+          aVal = a.breakeven || 0;
+          bVal = b.breakeven || 0;
+          break;
+        case "price":
+          aVal = a.price || 0;
+          bVal = b.price || 0;
+          break;
+        case "value":
+          aVal = a.value_score || 0;
+          bVal = b.value_score || 0;
+          break;
+        case "signal":
+          aVal = a.category || "";
+          bVal = b.category || "";
+          break;
+      }
 
-    const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-    return sortDirection === "asc" ? comparison : -comparison;
-  });
+      const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+    console.log(`[MW PERF] Sorted ${players.length} players in ${(performance.now() - start).toFixed(1)}ms`);
+    return sorted;
+  }, [players, sortField, sortDirection]);
 
   const freeLimit = 15;
-  const visiblePlayers = isPremium ? sortedPlayers : sortedPlayers.slice(0, freeLimit);
-  const blurredPlayers = !isPremium && sortedPlayers.length > freeLimit
-    ? sortedPlayers.slice(freeLimit, freeLimit + 5)
-    : [];
+
+  // MEMOIZE: Player slicing
+  const visiblePlayers = useMemo(() =>
+    isPremium ? sortedPlayers : sortedPlayers.slice(0, freeLimit),
+    [sortedPlayers, isPremium, freeLimit]
+  );
+
+  const blurredPlayers = useMemo(() =>
+    !isPremium && sortedPlayers.length > freeLimit
+      ? sortedPlayers.slice(freeLimit, freeLimit + 5)
+      : [],
+    [sortedPlayers, isPremium, freeLimit]
+  );
 
   return (
     <div className="space-y-4">
@@ -253,18 +268,30 @@ interface PlayerRowProps {
   allPlayers: DerivedPlayer[];
 }
 
-function PlayerRow({ player, onClick, isEven, isBlurred = false, allPlayers }: PlayerRowProps) {
-  const delta = (player.projection || 0) - (player.breakeven || 0);
+// MEMOIZE: PlayerRow component to prevent unnecessary re-renders
+const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred = false, allPlayers }: PlayerRowProps) {
+  // PRECOMPUTE: Calculate expensive values once
+  const delta = useMemo(() => (player.projection || 0) - (player.breakeven || 0), [player.projection, player.breakeven]);
   const deltaColor = delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-white/60";
 
-  const signalStrength = getSignalStrength(player);
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.category, player.ai_recommendation]);
 
-  const smartWhy = generateSmartWhy(player);
-  const truncatedWhy = truncateWhy(smartWhy, 80);
+  const smartWhy = useMemo(() => generateSmartWhy(player), [
+    player.value_label,
+    player.value_score,
+    player.matchup_label,
+    player.recommendation_short,
+  ]);
+  const truncatedWhy = useMemo(() => truncateWhy(smartWhy, 80), [smartWhy]);
 
-  const { percentile } = calculateValueRank(allPlayers, player);
-  const rankLabel = getValueRankLabel(percentile);
-  const rankColor = getValueRankColor(percentile);
+  const { percentile, rankLabel, rankColor } = useMemo(() => {
+    const { percentile } = calculateValueRank(allPlayers, player);
+    return {
+      percentile,
+      rankLabel: getValueRankLabel(percentile),
+      rankColor: getValueRankColor(percentile),
+    };
+  }, [allPlayers.length, player.value_score]);
 
   return (
     <tr
@@ -321,7 +348,7 @@ function PlayerRow({ player, onClick, isEven, isBlurred = false, allPlayers }: P
       </td>
     </tr>
   );
-}
+});
 
 interface MobilePlayerCardProps {
   player: DerivedPlayer;
@@ -330,14 +357,21 @@ interface MobilePlayerCardProps {
   allPlayers: DerivedPlayer[];
 }
 
-function MobilePlayerCard({ player, onClick, isBlurred = false, allPlayers }: MobilePlayerCardProps) {
-  const delta = (player.projection || 0) - (player.breakeven || 0);
+// MEMOIZE: MobilePlayerCard component
+const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlurred = false, allPlayers }: MobilePlayerCardProps) {
+  // PRECOMPUTE: Calculate expensive values once
+  const delta = useMemo(() => (player.projection || 0) - (player.breakeven || 0), [player.projection, player.breakeven]);
   const deltaColor = delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-white/60";
 
-  const signalStrength = getSignalStrength(player);
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.category, player.ai_recommendation]);
 
-  const smartWhy = generateSmartWhy(player);
-  const truncatedWhy = truncateWhy(smartWhy, 60);
+  const smartWhy = useMemo(() => generateSmartWhy(player), [
+    player.value_label,
+    player.value_score,
+    player.matchup_label,
+    player.recommendation_short,
+  ]);
+  const truncatedWhy = useMemo(() => truncateWhy(smartWhy, 60), [smartWhy]);
 
   return (
     <div
@@ -381,7 +415,7 @@ function MobilePlayerCard({ player, onClick, isBlurred = false, allPlayers }: Mo
       </div>
     </div>
   );
-}
+});
 
 function getSignalStrength(player: DerivedPlayer) {
   const category = player.category?.toUpperCase() || "WATCH";

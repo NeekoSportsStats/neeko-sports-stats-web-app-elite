@@ -1,3 +1,4 @@
+import { memo, useMemo } from "react";
 import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
 import { TrendingUp, Users, DollarSign, Activity } from "lucide-react";
@@ -6,12 +7,16 @@ interface MarketMetricsStripProps {
   players: DerivedPlayer[];
 }
 
-export function MarketMetricsStrip({ players }: MarketMetricsStripProps) {
+export const MarketMetricsStrip = memo(function MarketMetricsStrip({ players }: MarketMetricsStripProps) {
   if (players.length === 0) return null;
 
-  const totalPlayers = players.length;
-  const avgProjection = players.reduce((sum, p) => sum + (p.projection || 0), 0) / totalPlayers;
-  const avgPrice = players.reduce((sum, p) => sum + (p.price || 0), 0) / totalPlayers;
+  // MEMOIZE: Expensive calculations
+  const { totalPlayers, avgProjection, avgPrice } = useMemo(() => {
+    const total = players.length;
+    const avgProj = players.reduce((sum, p) => sum + (p.projection || 0), 0) / total;
+    const avgPr = players.reduce((sum, p) => sum + (p.price || 0), 0) / total;
+    return { totalPlayers: total, avgProjection: avgProj, avgPrice: avgPr };
+  }, [players]);
 
   const firstPrice = players[0]?.price || 0;
   const priceChange = ((avgPrice - firstPrice) / firstPrice) * 100;
@@ -42,7 +47,7 @@ export function MarketMetricsStrip({ players }: MarketMetricsStripProps) {
       />
     </div>
   );
-}
+});
 
 interface MetricItemProps {
   icon: React.ReactNode;

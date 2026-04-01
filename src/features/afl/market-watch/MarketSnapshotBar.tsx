@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
 
@@ -7,7 +8,7 @@ interface MarketSnapshotBarProps {
   topAvoid: DerivedPlayer | null;
 }
 
-export function MarketSnapshotBar({ topTarget, topWatch, topAvoid }: MarketSnapshotBarProps) {
+export const MarketSnapshotBar = memo(function MarketSnapshotBar({ topTarget, topWatch, topAvoid }: MarketSnapshotBarProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
       <SnapshotCard
@@ -33,7 +34,7 @@ export function MarketSnapshotBar({ topTarget, topWatch, topAvoid }: MarketSnaps
       />
     </div>
   );
-}
+});
 
 interface SnapshotCardProps {
   player: DerivedPlayer | null;
