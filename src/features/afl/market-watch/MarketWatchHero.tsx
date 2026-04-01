@@ -8,36 +8,42 @@ interface MarketWatchHeroProps {
   topValue: DerivedPlayer | null;
 }
 
-// Get AI explanation for hero card
+// Get AI explanation for hero card - REAL AI ONLY
 function getWhy(player: any): string {
-  // Use existing AI summary if available and meaningful
-  if (player.summary_short && player.summary_short.length > 20) {
-    const text = player.summary_short;
-    // Validate: no banned words
+  // ONLY use real AI content
+  if (player.recommendation_short && player.recommendation_short.length > 15) {
+    const text = player.recommendation_short.trim();
     const lower = text.toLowerCase();
-    if (lower.includes('buy') || lower.includes('sell') || lower.includes('hold') ||
-        lower.includes('bye round') || lower.includes('player_id') ||
-        lower.includes('value_score')) {
-      // Fall through to fallback
-    } else {
-      return truncate(text);
+
+    // Validate it's real AI (not debug/placeholder)
+    if (!lower.includes('player_id') &&
+        !lower.includes('value_score') &&
+        !lower.includes('undefined') &&
+        !lower.includes('null')) {
+      return truncate(text, 100);
     }
   }
 
-  // Fallback logic based on model signals
-  const value = player.value_score ?? 0;
+  if (player.summary_short && player.summary_short.length > 20) {
+    const text = player.summary_short.trim();
+    const lower = text.toLowerCase();
+
+    // Validate it's real AI
+    if (!lower.includes('player_id') &&
+        !lower.includes('value_score') &&
+        !lower.includes('undefined') &&
+        !lower.includes('null')) {
+      return truncate(text, 100);
+    }
+  }
+
+  // If no real AI, show data-driven summary (NOT fake AI)
   const projection = player.projection ?? 0;
-  const priceChange = player.expected_price_change ?? 0;
-  const consistency = player.consistency_score ?? 50;
+  const breakeven = player.breakeven ?? 0;
+  const delta = projection - breakeven;
+  const value = player.value_score ?? 0;
 
-  if (value >= 6) return "Strong value based on projection vs price";
-  if (value <= -4) return "Overpriced relative to expected output";
-  if (projection >= 100) return "High ceiling projection this week";
-  if (priceChange > 20000) return "Breakout projection spike";
-  if (priceChange < -20000) return "Price drop incoming";
-  if (consistency < 35) return "High volatility risk detected";
-
-  return "Model-driven signal based on current data";
+  return `${projection.toFixed(0)} pts projected | ${delta > 0 ? '+' : ''}${delta.toFixed(0)} vs BE | Value: ${value > 0 ? '+' : ''}${value.toFixed(1)}`;
 }
 
 // Truncate text to max length

@@ -73,6 +73,7 @@ export function MarketWatchPremiumCard({ player, rank, type, onPlayerClick }: Pr
         rounded-xl p-5
         transition-all duration-300
         hover:translate-y-[-6px]
+        hover:scale-[1.02]
         hover:bg-[#0D0D0D]
         ${config.glow}
         cursor-pointer
@@ -130,7 +131,29 @@ export function MarketWatchPremiumCard({ player, rank, type, onPlayerClick }: Pr
         </div>
       )}
 
-      {/* Core Metrics */}
+      {/* Hero Stat: Projection */}
+      <div className="mb-4 bg-white/[0.03] border border-white/10 rounded-lg p-4">
+        <div className="text-xs text-white/40 mb-2 uppercase tracking-wide">Projection</div>
+        <div className="flex items-baseline gap-2">
+          <div className={`text-3xl font-black ${
+            delta > 12 ? 'text-green-400' :
+            delta < -8 ? 'text-red-400' :
+            'text-white'
+          }`}>
+            {projection.toFixed(0)}
+          </div>
+          <div className="text-lg font-bold text-white/50">pts</div>
+        </div>
+        {breakeven > 0 && (
+          <div className="mt-1.5 text-sm font-medium">
+            <span className={delta > 0 ? 'text-green-400' : delta < -5 ? 'text-red-400' : 'text-gray-400'}>
+              {delta > 0 ? '+' : ''}{delta.toFixed(0)} vs BE
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Secondary Metrics */}
       <div className="grid grid-cols-2 gap-3 mb-4">
         <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3">
           <div className="text-xs text-white/40 mb-1 uppercase tracking-wide">Price</div>
@@ -138,39 +161,28 @@ export function MarketWatchPremiumCard({ player, rank, type, onPlayerClick }: Pr
             {fmtPrice(player.price ?? 0)}
           </div>
         </div>
-        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3">
-          <div className="text-xs text-white/40 mb-1 uppercase tracking-wide">Projection</div>
-          <div className="text-base font-bold text-white">
-            {projection.toFixed(0)} pts
+        {valueScore !== 0 && (
+          <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3">
+            <div className="text-xs text-white/40 mb-1 uppercase tracking-wide">Value</div>
+            <div className={`text-base font-bold ${
+              valueScore > 3 ? 'text-green-400' :
+              valueScore < -3 ? 'text-red-400' :
+              'text-white'
+            }`}>
+              {valueScore > 0 ? '+' : ''}{valueScore.toFixed(1)}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Signal Metrics */}
       <div className="pt-4 border-t border-white/10 space-y-2.5">
-        {breakeven > 0 && (
-          <MetricRow
-            label="vs Breakeven"
-            value={delta > 0 ? `+${delta.toFixed(0)}` : delta.toFixed(0)}
-            suffix="pts"
-            color={delta > 0 ? "text-green-400" : delta < -5 ? "text-red-400" : "text-gray-400"}
-          />
-        )}
-
         {priceChange !== 0 && Math.abs(priceChange) >= 5000 && (
           <MetricRow
             label="Est. Change"
             value={priceChange >= 0 ? "+" : ""}
             value2={fmtPrice(Math.round(priceChange))}
             color={priceChange >= 0 ? "text-green-400" : "text-red-400"}
-          />
-        )}
-
-        {valueScore !== 0 && (
-          <MetricRow
-            label="Value Score"
-            value={valueScore > 0 ? `+${valueScore.toFixed(1)}` : valueScore.toFixed(1)}
-            color={valueScore > 3 ? "text-green-400" : valueScore < -3 ? "text-red-400" : "text-gray-400"}
           />
         )}
 
@@ -205,98 +217,46 @@ function MetricRow({ label, value, value2, suffix, color }: MetricRowProps) {
   );
 }
 
-function getIntelligentReason(player: DerivedPlayer, type: string): string {
-  const value = player.value_score ?? 0;
-  const delta = (player.projection ?? 0) - (player.breakeven ?? 0);
-  const priceChange = player.expected_price_change ?? 0;
-
-  // Prioritize AI recommendation short text
+function getIntelligentReason(player: DerivedPlayer, type: string): string | null {
+  // ONLY use real AI content - no fallbacks
   if (player.recommendation_short && player.recommendation_short.length > 10) {
     const text = player.recommendation_short.trim();
-    if (!text.toLowerCase().includes('player_id') && !text.toLowerCase().includes('value_score')) {
+    const lower = text.toLowerCase();
+
+    // Validate it's real AI text (not debug/placeholder)
+    if (!lower.includes('player_id') &&
+        !lower.includes('value_score') &&
+        !lower.includes('undefined') &&
+        !lower.includes('null')) {
       return text.length > 45 ? text.substring(0, 42) + '...' : text;
     }
   }
 
-  if (type === "sell") {
-    if (value < -6) return "Significantly overpriced";
-    if (delta < -12) return `${Math.abs(delta).toFixed(0)} below breakeven`;
-    if (priceChange < -30000) return "Major price drop risk";
-    return "Sell signal detected";
-  }
-
-  if (type === "buy") {
-    if (priceChange > 40000) return "Breakout spike projected";
-    if (value > 7) return "Elite value opportunity";
-    if (delta > 15) return "Huge upside potential";
-    return "Strong buy signal";
-  }
-
-  if (type === "value") {
-    if (value > 8) return "Premium value at price";
-    if (value > 5) return "Strong value pick";
-    return "Value opportunity";
-  }
-
-  if (type === "upgrade") {
-    if (delta > 20) return "Massive upside potential";
-    if (delta > 12) return "Premium upgrade target";
-    return "Quality upgrade option";
-  }
-
-  return "Market signal detected";
+  // If no real AI content, show nothing
+  return null;
 }
 
 function getHoverInsight(player: DerivedPlayer, type: string): string {
-  const value = player.value_score ?? 0;
-  const projection = player.projection ?? 0;
-  const breakeven = player.breakeven ?? 0;
-  const delta = projection - breakeven;
-  const priceChange = player.expected_price_change ?? 0;
-
-  // Prioritize AI summary if meaningful
+  // ONLY use real AI content if available
   if (player.summary_short && player.summary_short.length > 30) {
     const text = player.summary_short.trim();
     const lower = text.toLowerCase();
-    if (!lower.includes('player_id') && !lower.includes('value_score') &&
-        !lower.includes('bye round') && text.length > 30) {
+
+    // Validate it's real AI text
+    if (!lower.includes('player_id') &&
+        !lower.includes('value_score') &&
+        !lower.includes('undefined') &&
+        !lower.includes('null') &&
+        text.length > 30) {
       return text;
     }
   }
 
-  if (type === "sell") {
-    if (value < -5) {
-      return `Model projects ${player.player_name} as overpriced by ${Math.abs(value * 10).toFixed(0)}k+ relative to output. Value score ${value.toFixed(1)} indicates sell opportunity.`;
-    }
-    if (delta < -10) {
-      return `${player.player_name} projects ${Math.abs(delta).toFixed(0)} points below breakeven of ${breakeven.toFixed(0)}. Price drop likely${priceChange < 0 ? ` (est. ${fmtPrice(Math.abs(Math.round(priceChange)))})` : ''}.`;
-    }
-    return `Market analysis suggests ${player.player_name} carries downside risk. Consider selling to preserve team value.`;
-  }
+  // Fallback to data-driven insight (not AI claims)
+  const projection = player.projection ?? 0;
+  const breakeven = player.breakeven ?? 0;
+  const delta = projection - breakeven;
+  const value = player.value_score ?? 0;
 
-  if (type === "buy") {
-    if (priceChange > 30000) {
-      return `${player.player_name} shows breakout projection pattern. Model estimates ${fmtPrice(Math.round(priceChange))} price rise. Strong buy window identified.`;
-    }
-    if (value > 6) {
-      return `Elite value opportunity. ${player.player_name} projects ${projection.toFixed(0)} points with value score +${value.toFixed(1)}, indicating ${(value * 10).toFixed(0)}k+ underpriced.`;
-    }
-    return `${player.player_name} projects ${delta > 0 ? `+${delta.toFixed(0)}` : delta.toFixed(0)} vs breakeven. Strong upside potential at current price.`;
-  }
-
-  if (type === "value") {
-    if (value > 7) {
-      return `Premium value pick. ${player.player_name} delivers ${projection.toFixed(0)} points at ${fmtPrice(player.price ?? 0)} with exceptional value score of +${value.toFixed(1)}.`;
-    }
-    return `${player.player_name} offers strong value at current price point. Projects ${projection.toFixed(0)} points with favorable value metrics.`;
-  }
-
-  if (type === "upgrade") {
-    if (delta > 20) {
-      return `Massive weekly upside. ${player.player_name} projects ${projection.toFixed(0)} points (+${delta.toFixed(0)} vs breakeven). Premium upgrade target.`;
-    }
-    return `Quality upgrade option. ${player.player_name} projects ${projection.toFixed(0)} points with ceiling of ${player.ceiling?.toFixed(0) ?? '—'} points.`;
-  }
-
-  return `${player.player_name} identified as ${type} opportunity based on projection models and value analysis.`;
+  return `Projection: ${projection.toFixed(0)} pts | Breakeven: ${breakeven.toFixed(0)} pts | Delta: ${delta > 0 ? '+' : ''}${delta.toFixed(0)} | Value: ${value > 0 ? '+' : ''}${value.toFixed(1)}`;
 }

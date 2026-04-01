@@ -108,55 +108,98 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
 
   // ── STEP 3: CATEGORY ASSIGNMENT (Priority Order) ────────────────────────
 
-  // PRIORITY 1: BUY — ai_recommendation = 'BUY'
-  const buys = assign(
-    filtered,
-    p => {
-      const rec = p.ai_recommendation;
-      return rec === 'BUY' || rec === 'STRONG_BUY';
-    },
-    'buy_before_rise'
-  );
-
-  // PRIORITY 2: SELL — ai_recommendation = 'SELL'
+  // PRIORITY 1: MUST SELL — Strong sell signals
   const sells = assign(
     filtered,
     p => {
       const rec = p.ai_recommendation;
-      return rec === 'SELL' || rec === 'AVOID';
+      const value = p.value_score ?? 0;
+      const d = delta(p);
+
+      // AI says SELL or AVOID
+      if (rec === 'SELL' || rec === 'AVOID') return true;
+
+      // Terrible value score
+      if (value <= -4.5) return true;
+
+      // Massive delta deficit
+      if (d <= -15) return true;
+
+      return false;
     },
     'sell_before_drop'
   );
 
-  // PRIORITY 3: VALUE — HOLD + value_score >= 5.0
-  const values = assign(
+  // PRIORITY 2: BUY NOW — Strong buy signals
+  const buys = assign(
     filtered,
     p => {
       const rec = p.ai_recommendation;
       const value = p.value_score ?? 0;
-      return rec === 'HOLD' && value >= 5.0;
+      const projection = p.projection ?? 0;
+
+      // AI says BUY or STRONG_BUY
+      if (rec === 'BUY' || rec === 'STRONG_BUY') return true;
+
+      // High projection + great value
+      if (projection >= 90 && value >= 5) return true;
+
+      // Elite value score alone
+      if (value >= 7) return true;
+
+      return false;
+    },
+    'buy_before_rise'
+  );
+
+  // PRIORITY 3: BEST VALUE — Positive value, strong projection
+  const values = assign(
+    filtered,
+    p => {
+      const value = p.value_score ?? 0;
+      const projection = p.projection ?? 0;
+
+      // Strong positive value
+      if (value >= 3.5 && projection >= 70) return true;
+
+      return false;
     },
     'cash_cow'
   );
 
-  // PRIORITY 4: UPGRADE — high projection + decent value
+  // PRIORITY 4: UPGRADES — Moderate value, decent projection
   const upgrades = assign(
     filtered,
     p => {
-      const projection = p.projection ?? 0;
       const value = p.value_score ?? 0;
-      return projection >= 100 && value >= 2.0;
+      const projection = p.projection ?? 0;
+
+      // Decent projection with some value
+      if (projection >= 85 && value >= 0) return true;
+
+      // Good projection even with slight negative value
+      if (projection >= 95 && value >= -2) return true;
+
+      return false;
     },
     'upgrade_target'
   );
 
-  // PRIORITY 5: TRAPS — expensive + poor value
+  // PRIORITY 5: TRAPS — Expensive + poor value (optional category)
   const traps = assign(
     filtered,
     p => {
       const priceVal = p.price ?? 0;
       const value = p.value_score ?? 0;
-      return priceVal >= 500000 && value < -2.0;
+      const projection = p.projection ?? 0;
+
+      // Premium price but terrible value
+      if (priceVal >= 550000 && value < -3) return true;
+
+      // Expensive but weak projection
+      if (priceVal >= 500000 && projection < 70) return true;
+
+      return false;
     },
     'fade_trap'
   );

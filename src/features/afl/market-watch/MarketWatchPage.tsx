@@ -118,7 +118,7 @@ export default function MarketWatchPage() {
 
   const topSell = classified?.sells?.[0] || null;
   const topBuy = classified?.buyBeforeRise?.[0] || null;
-  const topValue = classified?.upgrades?.[0] || null;
+  const topValue = classified?.cashCows?.[0] || null;
 
   // NOW SAFE TO DO CONDITIONAL RETURNS
   if (loading) {
@@ -179,11 +179,11 @@ export default function MarketWatchPage() {
           <MarketWatchHero topSell={topSell} topBuy={topBuy} topValue={topValue} />
         </div>
 
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
+        <div className="animate-in fade-in-slide-in-from-bottom-4 duration-700 delay-150">
           <MarketWatchSignalStrip
             sellCount={classified?.sells?.length ?? 0}
             buyCount={classified?.buyBeforeRise?.length ?? 0}
-            valueCount={classified?.upgrades?.length ?? 0}
+            valueCount={classified?.cashCows?.length ?? 0}
             upgradeCount={classified?.upgrades?.length ?? 0}
           />
         </div>
@@ -193,16 +193,18 @@ export default function MarketWatchPage() {
         <PremiumGate>
           <div className="space-y-12 animate-in fade-in duration-500">
             <CategorySection
-              title="🔴 Sell Risks"
-              subtitle="Players at risk of price drops"
+              title="🔴 Must Sell"
+              subtitle="Price drop risk — exit before loss"
+              count={classified?.sells?.length ?? 0}
               players={(classified?.sells ?? []).slice(0, 12)}
               type="sell"
               onPlayerClick={setSelectedPlayer}
             />
 
             <CategorySection
-              title="🟢 Buy Opportunities"
-              subtitle="Strong upside potential"
+              title="🟢 Buy Now"
+              subtitle="Strong breakout projection — buy before rise"
+              count={classified?.buyBeforeRise?.length ?? 0}
               players={(classified?.buyBeforeRise ?? []).slice(0, 12)}
               type="buy"
               onPlayerClick={setSelectedPlayer}
@@ -210,15 +212,17 @@ export default function MarketWatchPage() {
 
             <CategorySection
               title="🟡 Best Value"
-              subtitle="Elite value at current prices"
-              players={(classified?.upgrades ?? []).slice(0, 12)}
+              subtitle="Elite value at current price — premium picks"
+              count={classified?.cashCows?.length ?? 0}
+              players={(classified?.cashCows ?? []).slice(0, 12)}
               type="value"
               onPlayerClick={setSelectedPlayer}
             />
 
             <CategorySection
-              title="⚡ Premium Upgrades"
-              subtitle="Highest projection gains"
+              title="⚡ Upgrades"
+              subtitle="High scoring potential — team improvement"
+              count={classified?.upgrades?.length ?? 0}
               players={(classified?.upgrades ?? []).slice(0, 12)}
               type="upgrade"
               onPlayerClick={setSelectedPlayer}
@@ -247,21 +251,36 @@ function formatRelativeTime(ts: string): string {
 interface CategorySectionProps {
   title: string;
   subtitle: string;
+  count: number;
   players: any[];
   type: "sell" | "buy" | "value" | "upgrade";
   onPlayerClick: (player: DerivedPlayer) => void;
 }
 
-function CategorySection({ title, subtitle, players, type, onPlayerClick }: CategorySectionProps) {
+function CategorySection({ title, subtitle, count, players, type, onPlayerClick }: CategorySectionProps) {
   if (players.length === 0) return null;
+
+  const colorMap = {
+    sell: 'text-red-400 bg-red-500/10 border-red-500/20',
+    buy: 'text-green-400 bg-green-500/10 border-green-500/20',
+    value: 'text-[#F5C84C] bg-[#F5C84C]/10 border-[#F5C84C]/20',
+    upgrade: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+  };
 
   return (
     <div className="space-y-5">
-      <div>
-        <h2 className="text-2xl md:text-3xl font-bold text-white mb-1">
-          {title}
-        </h2>
-        <p className="text-white/50">{subtitle}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <h2 className="text-2xl md:text-3xl font-bold text-white">
+              {title}
+            </h2>
+            <span className={`px-3 py-1 rounded-full text-sm font-bold border ${colorMap[type]}`}>
+              {count}
+            </span>
+          </div>
+          <p className="text-white/50">{subtitle}</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

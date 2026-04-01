@@ -70,16 +70,18 @@ export function PlayerAIModal({ player, onClose }: PlayerAIModalProps) {
   const hasInjuryRisk = player.is_injured || player.status === 'injured';
   const hasByeRisk = player.is_bye || player.status === 'bye';
 
-  // Derive intelligent summary
-  const aiSummary = player.summary_long && player.summary_long.length > 20
+  // ONLY use real AI content - no derived fallbacks
+  const aiSummary = validateAIText(player.summary_long)
     ? player.summary_long
-    : player.summary_short && player.summary_short.length > 20
+    : validateAIText(player.summary_short)
     ? player.summary_short
-    : deriveIntelligentSummary(player);
+    : null;
 
-  const shortReason = player.recommendation_short ||
-    (player.summary_short && player.summary_short.length > 10 ? player.summary_short : null) ||
-    deriveShortReason(player, category);
+  const shortReason = validateAIText(player.recommendation_short)
+    ? player.recommendation_short
+    : validateAIText(player.summary_short)
+    ? player.summary_short
+    : null;
 
   return (
     <div
@@ -204,26 +206,34 @@ export function PlayerAIModal({ player, onClose }: PlayerAIModalProps) {
 
         {/* AI Signal Explanation */}
         <div className="space-y-4">
+          {/* WHY THIS PLAYER */}
           <div>
             <div className="flex items-center gap-2 mb-3">
               <div className={`w-1 h-5 ${config.bg} rounded-full`} />
               <h3 className={`${config.color} text-sm font-bold uppercase tracking-wider`}>
-                Market Signal
+                Why This Player
               </h3>
             </div>
             <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
-              <p className="text-sm text-gray-200 leading-relaxed">
-                {shortReason}
-              </p>
+              {shortReason ? (
+                <p className="text-sm text-gray-200 leading-relaxed">
+                  {shortReason}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-500 italic">
+                  AI analysis pending - check back after next data refresh
+                </p>
+              )}
             </div>
           </div>
 
-          {aiSummary && aiSummary.length > 20 && aiSummary !== shortReason && (
+          {/* MODEL BREAKDOWN */}
+          {aiSummary && aiSummary !== shortReason && (
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-1 h-5 bg-[#F5C84C]/30 rounded-full" />
                 <h3 className="text-[#F5C84C] text-sm font-bold uppercase tracking-wider">
-                  AI Analysis
+                  Model Breakdown
                 </h3>
               </div>
               <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4">
@@ -311,68 +321,19 @@ function getValueLabel(score: number): string {
   return 'Overpriced';
 }
 
-function deriveIntelligentSummary(player: DerivedPlayer): string {
-  const value = player.value_score ?? 0;
-  const projection = player.projection ?? 0;
-  const breakeven = player.breakeven ?? 0;
-  const priceChange = player.expected_price_change ?? 0;
-  const delta = projection - breakeven;
+// Validation helper - ensures text is real AI content, not placeholder/debug
+function validateAIText(text: string | null | undefined): boolean {
+  if (!text || text.length < 15) return false;
 
-  if (value >= 6) {
-    return `${player.player_name} represents elite value at current pricing. Model projects ${projection.toFixed(0)} points (${delta > 0 ? '+' : ''}${delta.toFixed(0)} vs breakeven) with a value score of +${value.toFixed(1)}, indicating significant upside relative to price.`;
-  }
+  const lower = text.toLowerCase().trim();
 
-  if (value <= -5) {
-    return `${player.player_name} is significantly overpriced according to projection models. Value score of ${value.toFixed(1)} suggests price is ${Math.abs(value * 10).toFixed(0)}k+ above fair value. Consider selling if no strong team fit.`;
-  }
+  // Reject debug/placeholder patterns
+  if (lower.includes('player_id')) return false;
+  if (lower.includes('value_score')) return false;
+  if (lower.includes('undefined')) return false;
+  if (lower.includes('null')) return false;
+  if (lower.includes('{{')) return false;
+  if (lower.includes('bye round') && text.length < 30) return false;
 
-  if (delta >= 15) {
-    return `${player.player_name} projects to beat breakeven by ${delta.toFixed(0)} points, with ceiling projection of ${projection.toFixed(0)} points. Strong weekly upside potential.`;
-  }
-
-  if (delta <= -10) {
-    return `${player.player_name} projects below breakeven by ${Math.abs(delta).toFixed(0)} points. Price drop risk detected${priceChange < 0 ? ` with estimated ${fmtPrice(Math.abs(Math.round(priceChange)))} decline` : ''}.`;
-  }
-
-  if (priceChange > 30000) {
-    return `${player.player_name} shows breakout projection pattern with estimated price rise of ${fmtPrice(Math.round(priceChange))}. Strong buy signal if projection holds.`;
-  }
-
-  return `${player.player_name} projects ${projection.toFixed(0)} points against breakeven of ${breakeven.toFixed(0)}. Value score: ${value > 0 ? '+' : ''}${value.toFixed(1)}.`;
-}
-
-function deriveShortReason(player: DerivedPlayer, category: string): string {
-  const value = player.value_score ?? 0;
-  const delta = (player.projection ?? 0) - (player.breakeven ?? 0);
-  const priceChange = player.expected_price_change ?? 0;
-
-  if (category === 'sell_before_drop') {
-    if (value < -5) return 'Significantly overpriced by model';
-    if (delta < -10) return `Projects ${Math.abs(delta).toFixed(0)} below breakeven`;
-    return 'Price drop risk identified';
-  }
-
-  if (category === 'buy_before_rise') {
-    if (priceChange > 30000) return `Breakout projection spike detected`;
-    if (value > 6) return 'Elite value opportunity';
-    return 'Strong upside potential';
-  }
-
-  if (category === 'cash_cow') {
-    if (value > 8) return 'Premium value at current price';
-    if (value > 5) return 'Strong value pick';
-    return 'Solid value hold';
-  }
-
-  if (category === 'upgrade_target') {
-    if (delta > 20) return 'Huge weekly upside potential';
-    if (delta > 12) return 'Strong upgrade opportunity';
-    return 'Quality scoring upgrade';
-  }
-
-  if (category === 'fade_trap') {
-    return 'Expensive with declining value signal';
-  }
-
-  return 'Market signal detected';
+  return true;
 }
