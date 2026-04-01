@@ -233,7 +233,7 @@ function DataRow({ row, idx, tier, isPremium, activeTab, onTap, onUpgrade }: Dat
         </div>
         <div className={`${CELL_BASE} justify-center`} style={{ width: COL.form, minWidth: COL.form }}>
           {(() => {
-            const breakeven = (row.projection_final ?? 0) - ((row.price_change ?? 0) * 3);
+            const breakeven = row.breakeven ?? 60;
             const getBreakevenColor = (be: number) => {
               if (be <= 60) return "text-emerald-400";
               if (be <= 80) return "text-green-400";

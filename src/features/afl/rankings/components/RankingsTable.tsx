@@ -215,7 +215,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
       </td>
       <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 100, minWidth: 90 }}>
         {(() => {
-          const breakeven = (row.projection_final ?? 0) - ((row.price_change ?? 0) * 3);
+          const breakeven = row.breakeven ?? 60;
           const getBreakevenColor = (be: number) => {
             if (be <= 60) return "text-emerald-400";
             if (be <= 80) return "text-green-400";
