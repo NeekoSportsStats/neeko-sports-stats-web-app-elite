@@ -22,6 +22,7 @@ export default function MarketWatchPageElite() {
   const [activeFilter, setActiveFilter] = useState<MarketFilter>("ALL");
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(100);
 
   const fetchData = useCallback(async (premium: boolean) => {
     const fetchStart = performance.now();
@@ -96,18 +97,23 @@ export default function MarketWatchPageElite() {
       const mapEnd = performance.now();
       console.log(`[MW PERF] Mapped ${mapped.length} players in ${(mapEnd - mapStart).toFixed(1)}ms`);
 
+      // FREE TIER: Filter out injured/bye players for cleaner first impression
+      const finalPlayers = premium ? mapped : mapped.filter(p => !p.is_injured && !p.is_bye);
+
       console.log("[MW DEBUG - FETCH]", {
         source: viewName,
         total: data?.length ?? 0,
         mapped: mapped.length,
+        filtered: finalPlayers.length,
+        freeFilterApplied: !premium,
         categoryDistribution: {
-          TARGET: mapped.filter(p => p.category === 'TARGET').length,
-          WATCH: mapped.filter(p => p.category === 'WATCH').length,
-          AVOID: mapped.filter(p => p.category === 'AVOID').length,
+          TARGET: finalPlayers.filter(p => p.category === 'TARGET').length,
+          WATCH: finalPlayers.filter(p => p.category === 'WATCH').length,
+          AVOID: finalPlayers.filter(p => p.category === 'AVOID').length,
         }
       });
 
-      setPlayers(mapped);
+      setPlayers(finalPlayers);
       console.log(`[MW PERF] Total fetch + map: ${(performance.now() - fetchStart).toFixed(1)}ms`);
     } catch (error) {
       console.error("[Market Watch] Error:", error);
@@ -136,13 +142,42 @@ export default function MarketWatchPageElite() {
     return result;
   }, [players]);
 
-  // MEMOIZE: All derived players
+  // MEMOIZE: All derived players with natural mixed ordering
   const allDerivedPlayers = useMemo(() => {
-    return [
+    const all = [
       ...(classified?.buys ?? []),
       ...(classified?.holds ?? []),
       ...(classified?.sells ?? []),
     ];
+
+    // NATURAL MIX: Sort by trade_score to create realistic mixed ordering
+    // This prevents artificial clustering (all TARGET, then WATCH, then AVOID)
+    all.sort((a, b) => {
+      const scoreA = a.trade_score ?? 0;
+      const scoreB = b.trade_score ?? 0;
+
+      // Add subtle randomization within score bands (±5 points)
+      // This creates natural-looking variation while preserving quality order
+      const randomSeedA = (a.player_id?.charCodeAt(0) ?? 0) % 100 / 100;
+      const randomSeedB = (b.player_id?.charCodeAt(0) ?? 0) % 100 / 100;
+
+      const adjustedA = scoreA + (randomSeedA - 0.5) * 5;
+      const adjustedB = scoreB + (randomSeedB - 0.5) * 5;
+
+      return adjustedB - adjustedA; // Descending
+    });
+
+    console.log("[MW ORDER] Natural mix created", {
+      total: all.length,
+      top10Categories: all.slice(0, 10).map(p => p.category),
+      top20Mix: {
+        TARGET: all.slice(0, 20).filter(p => p.category === 'TARGET').length,
+        WATCH: all.slice(0, 20).filter(p => p.category === 'WATCH').length,
+        AVOID: all.slice(0, 20).filter(p => p.category === 'AVOID').length,
+      }
+    });
+
+    return all;
   }, [classified]);
 
   // MEMOIZE: Filtered players (prevents re-filter on every render)
@@ -178,6 +213,21 @@ export default function MarketWatchPageElite() {
     console.log(`[MW PERF] Filtered to ${filtered.length} players in ${(performance.now() - filterStart).toFixed(1)}ms`);
     return filtered;
   }, [activeFilter, allDerivedPlayers, classified, selectedTeam, selectedPosition, isPremium]);
+
+  // MEMOIZE: Visible players for progressive loading
+  const visiblePlayers = useMemo(() => {
+    return filteredPlayers.slice(0, visibleCount);
+  }, [filteredPlayers, visibleCount]);
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(100);
+  }, [activeFilter, selectedTeam, selectedPosition]);
+
+  const hasMorePlayers = filteredPlayers.length > visibleCount;
+  const handleShowMore = useCallback(() => {
+    setVisibleCount(prev => prev + 50);
+  }, []);
 
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
@@ -275,7 +325,7 @@ export default function MarketWatchPageElite() {
             />
 
             <div className="text-xs text-white/35 font-medium">
-              Showing {filteredPlayers.length} player{filteredPlayers.length !== 1 ? 's' : ''}
+              Showing {visiblePlayers.length} of {filteredPlayers.length} player{filteredPlayers.length !== 1 ? 's' : ''}
             </div>
           </div>
 
@@ -291,11 +341,23 @@ export default function MarketWatchPageElite() {
         {/* Data Table */}
         <div className="animate-in fade-in duration-500 delay-150">
           <MarketDataTable
-            players={filteredPlayers}
+            players={visiblePlayers}
             onPlayerClick={setSelectedPlayer}
             isPremium={isPremium}
           />
         </div>
+
+        {/* Show More Button */}
+        {hasMorePlayers && (
+          <div className="flex justify-center pb-8 animate-in fade-in duration-300">
+            <button
+              onClick={handleShowMore}
+              className="px-8 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg hover:bg-white/[0.06] transition-all text-sm font-medium hover:border-white/20"
+            >
+              Show More ({filteredPlayers.length - visibleCount} remaining)
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Player Detail Panel */}

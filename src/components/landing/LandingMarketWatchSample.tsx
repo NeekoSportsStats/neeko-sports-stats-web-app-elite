@@ -191,12 +191,13 @@ export function LandingMarketWatchSample() {
           }));
         }
 
-        const rows = (data ?? []) as MarketWatchRow[];
+        // Filter out injured/bye players for cleaner sample
+        const availableRows = (data ?? []).filter((r: any) => !r.is_injured && !r.is_bye) as MarketWatchRow[];
 
         // Take 2 from each category for 6 total display
-        const targets = rows.filter(r => (r.category ?? '').toUpperCase() === 'TARGET').slice(0, 2);
-        const watches = rows.filter(r => (r.category ?? '').toUpperCase() === 'WATCH').slice(0, 2);
-        const avoids = rows.filter(r => (r.category ?? '').toUpperCase() === 'AVOID').slice(0, 2);
+        const targets = availableRows.filter(r => (r.category ?? '').toUpperCase() === 'TARGET').slice(0, 2);
+        const watches = availableRows.filter(r => (r.category ?? '').toUpperCase() === 'WATCH').slice(0, 2);
+        const avoids = availableRows.filter(r => (r.category ?? '').toUpperCase() === 'AVOID').slice(0, 2);
 
         const selected = [...targets, ...watches, ...avoids];
 
