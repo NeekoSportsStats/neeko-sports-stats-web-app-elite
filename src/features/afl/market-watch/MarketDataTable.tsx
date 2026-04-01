@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Info } from "lucide-react";
+import { cleanAiText } from "@/utils/cleanAiText";
 
 type SortField = "player" | "projection" | "breakeven" | "price" | "value" | "signal";
 type SortDirection = "asc" | "desc";
@@ -60,7 +61,11 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
     return sortDirection === "asc" ? comparison : -comparison;
   });
 
-  const visiblePlayers = isPremium ? sortedPlayers : sortedPlayers.slice(0, 10);
+  const freeLimit = 15;
+  const visiblePlayers = isPremium ? sortedPlayers : sortedPlayers.slice(0, freeLimit);
+  const blurredPlayers = !isPremium && sortedPlayers.length > freeLimit
+    ? sortedPlayers.slice(freeLimit, freeLimit + 5)
+    : [];
 
   return (
     <div className="space-y-4">
@@ -78,9 +83,6 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
               />
               <th className="px-4 py-3 text-left text-[10px] font-bold text-white/40 uppercase tracking-wider">
                 Pos
-              </th>
-              <th className="px-4 py-3 text-left text-[10px] font-bold text-white/40 uppercase tracking-wider">
-                Team
               </th>
               <SortableHeader
                 label="Projection"
@@ -103,13 +105,17 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 direction={sortDirection}
                 onSort={handleSort}
               />
-              <SortableHeader
-                label="Edge"
-                field="value"
-                currentField={sortField}
-                direction={sortDirection}
-                onSort={handleSort}
-              />
+              <th className="px-4 py-3 text-left text-[10px] font-bold text-white/40 uppercase tracking-wider">
+                <div className="flex items-center gap-1.5 group cursor-help">
+                  <span>Value Gap</span>
+                  <div className="relative">
+                    <Info className="w-3 h-3 text-white/30 group-hover:text-white/50 transition-colors" />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black border border-white/20 rounded text-[10px] text-white/80 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      Projection minus breakeven
+                    </div>
+                  </div>
+                </div>
+              </th>
               <SortableHeader
                 label="Signal"
                 field="signal"
@@ -128,6 +134,17 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 isEven={index % 2 === 0}
               />
             ))}
+
+            {/* Blurred rows for free users */}
+            {blurredPlayers.map((player, index) => (
+              <PlayerRow
+                key={player.player_id}
+                player={player}
+                onClick={() => {}}
+                isEven={(visiblePlayers.length + index) % 2 === 0}
+                isBlurred
+              />
+            ))}
           </tbody>
         </table>
       </div>
@@ -141,26 +158,41 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
             onClick={() => onPlayerClick(player)}
           />
         ))}
+
+        {blurredPlayers.map((player) => (
+          <MobilePlayerCard
+            key={player.player_id}
+            player={player}
+            onClick={() => {}}
+            isBlurred
+          />
+        ))}
       </div>
 
       {/* Premium Gate */}
-      {!isPremium && players.length > 10 && (
-        <div className="mt-6 p-8 border border-white/10 rounded-lg bg-white/[0.02] text-center">
-          <div className="inline-block px-3 py-1 bg-[#F5C84C]/20 border border-[#F5C84C]/40 rounded-full text-xs font-bold text-[#F5C84C] mb-3">
-            PREMIUM
+      {!isPremium && players.length > freeLimit && (
+        <div className="relative mt-6 p-10 border border-white/10 rounded-lg bg-gradient-to-b from-white/[0.02] to-white/[0.06] text-center overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-t from-[#F5C84C]/5 via-transparent to-transparent" />
+          <div className="relative z-10">
+            <div className="inline-block px-3 py-1 bg-[#F5C84C]/20 border border-[#F5C84C]/40 rounded-full text-xs font-bold text-[#F5C84C] mb-4">
+              PREMIUM ONLY
+            </div>
+            <h3 className="text-2xl font-bold text-white mb-2">
+              Unlock Full Market Watch
+            </h3>
+            <p className="text-white/60 mb-1">
+              {players.length - freeLimit} more players with AI insights
+            </p>
+            <p className="text-sm text-white/50 mb-6">
+              Access complete market analysis, rankings AI, and player projections
+            </p>
+            <a
+              href="/neeko-plus"
+              className="inline-block px-8 py-3 bg-[#F5C84C] text-black font-bold rounded-lg hover:bg-[#F5C84C]/90 transition-all shadow-lg shadow-[#F5C84C]/20"
+            >
+              Upgrade to Premium
+            </a>
           </div>
-          <h3 className="text-xl font-bold text-white mb-2">
-            {players.length - 10} More Players Available
-          </h3>
-          <p className="text-white/60 mb-4">
-            Unlock full Market Watch with Rankings AI access
-          </p>
-          <a
-            href="/neeko-plus"
-            className="inline-block px-6 py-3 bg-[#F5C84C] text-black font-bold rounded-lg hover:bg-[#F5C84C]/90 transition-all"
-          >
-            Upgrade to Premium
-          </a>
         </div>
       )}
     </div>
@@ -197,30 +229,43 @@ interface PlayerRowProps {
   player: DerivedPlayer;
   onClick: () => void;
   isEven: boolean;
+  isBlurred?: boolean;
 }
 
-function PlayerRow({ player, onClick, isEven }: PlayerRowProps) {
+function PlayerRow({ player, onClick, isEven, isBlurred = false }: PlayerRowProps) {
   const delta = (player.projection || 0) - (player.breakeven || 0);
   const deltaColor = delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-white/60";
 
-  const signalConfig = {
-    TARGET: { bg: "bg-green-500/10", text: "text-green-400", border: "border-green-500/30", label: "TARGET" },
-    WATCH: { bg: "bg-[#F5C84C]/10", text: "text-[#F5C84C]", border: "border-[#F5C84C]/30", label: "WATCH" },
-    AVOID: { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/30", label: "AVOID" },
-  };
+  const signalStrength = getSignalStrength(player);
 
-  const config = signalConfig[player.category as keyof typeof signalConfig] || signalConfig.WATCH;
+  // Get AI WHY text
+  const whyText = player.recommendation_short
+    ? cleanAiText(player.recommendation_short)
+    : player.summary_short
+    ? cleanAiText(player.summary_short)
+    : null;
+
+  const truncatedWhy = whyText ? truncateWhy(whyText, 80) : null;
 
   return (
     <tr
-      onClick={onClick}
-      className={`cursor-pointer transition-all hover:bg-white/[0.04] ${isEven ? 'bg-white/[0.01]' : ''}`}
+      onClick={isBlurred ? undefined : onClick}
+      className={`${isBlurred ? 'cursor-default' : 'cursor-pointer'} transition-all hover:bg-white/[0.04] ${isEven ? 'bg-white/[0.01]' : ''} ${isBlurred ? 'blur-sm pointer-events-none' : ''}`}
     >
       <td className="px-4 py-3">
-        <div className="font-bold text-white text-sm">{player.player_name}</div>
+        <div>
+          <div className="font-bold text-white text-sm mb-0.5">{player.player_name}</div>
+          {truncatedWhy && (
+            <div className="text-xs text-white/50 leading-tight">
+              {formatWhyText(truncatedWhy)}
+            </div>
+          )}
+        </div>
       </td>
-      <td className="px-4 py-3 text-xs text-white/60">{player.position}</td>
-      <td className="px-4 py-3 text-xs text-white/60">{player.team}</td>
+      <td className="px-4 py-3">
+        <div className="text-xs text-white/60">{player.position}</div>
+        <div className="text-[10px] text-white/40">{player.team}</div>
+      </td>
       <td className="px-4 py-3">
         <span className={`text-lg font-bold ${deltaColor}`}>
           {Math.round(player.projection || 0)}
@@ -233,14 +278,15 @@ function PlayerRow({ player, onClick, isEven }: PlayerRowProps) {
         {formatPrice(player.price || 0)}
       </td>
       <td className="px-4 py-3">
-        <span className={`text-sm font-bold ${delta > 5 ? 'text-green-400' : delta < -5 ? 'text-red-400' : 'text-white/60'}`}>
+        <span className={`text-base font-bold ${delta > 5 ? 'text-green-400' : delta < -5 ? 'text-red-400' : 'text-white/60'}`}>
           {delta > 0 ? '+' : ''}{Math.round(delta)}
         </span>
       </td>
       <td className="px-4 py-3">
-        <span className={`inline-block px-2 py-1 text-[10px] font-bold border rounded ${config.bg} ${config.text} ${config.border}`}>
-          {config.label}
-        </span>
+        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold border rounded ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
+          <span>{signalStrength.icon}</span>
+          <span>{signalStrength.label}</span>
+        </div>
       </td>
     </tr>
   );
@@ -249,34 +295,44 @@ function PlayerRow({ player, onClick, isEven }: PlayerRowProps) {
 interface MobilePlayerCardProps {
   player: DerivedPlayer;
   onClick: () => void;
+  isBlurred?: boolean;
 }
 
-function MobilePlayerCard({ player, onClick }: MobilePlayerCardProps) {
+function MobilePlayerCard({ player, onClick, isBlurred = false }: MobilePlayerCardProps) {
   const delta = (player.projection || 0) - (player.breakeven || 0);
   const deltaColor = delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-white/60";
 
-  const signalConfig = {
-    TARGET: { bg: "bg-green-500/10", text: "text-green-400", border: "border-green-500/30", label: "TARGET" },
-    WATCH: { bg: "bg-[#F5C84C]/10", text: "text-[#F5C84C]", border: "border-[#F5C84C]/30", label: "WATCH" },
-    AVOID: { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/30", label: "AVOID" },
-  };
+  const signalStrength = getSignalStrength(player);
 
-  const config = signalConfig[player.category as keyof typeof signalConfig] || signalConfig.WATCH;
+  const whyText = player.recommendation_short
+    ? cleanAiText(player.recommendation_short)
+    : player.summary_short
+    ? cleanAiText(player.summary_short)
+    : null;
+
+  const truncatedWhy = whyText ? truncateWhy(whyText, 60) : null;
 
   return (
     <div
-      onClick={onClick}
-      className="p-4 bg-white/[0.02] border border-white/10 rounded-lg hover:bg-white/[0.04] transition-all cursor-pointer"
+      onClick={isBlurred ? undefined : onClick}
+      className={`p-4 bg-white/[0.02] border border-white/10 rounded-lg hover:bg-white/[0.04] transition-all ${isBlurred ? 'blur-sm cursor-default pointer-events-none' : 'cursor-pointer'}`}
     >
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <div className="font-bold text-white text-sm">{player.player_name}</div>
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex-1">
+          <div className="font-bold text-white text-sm mb-0.5">{player.player_name}</div>
           <div className="text-xs text-white/50">{player.team} · {player.position}</div>
         </div>
-        <span className={`px-2 py-1 text-[10px] font-bold border rounded ${config.bg} ${config.text} ${config.border}`}>
-          {config.label}
-        </span>
+        <div className={`flex items-center gap-1 px-2 py-1 text-[10px] font-bold border rounded ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
+          <span>{signalStrength.icon}</span>
+          <span className="hidden sm:inline">{signalStrength.label}</span>
+        </div>
       </div>
+
+      {truncatedWhy && (
+        <div className="text-xs text-white/50 leading-tight mb-3">
+          {formatWhyText(truncatedWhy)}
+        </div>
+      )}
 
       <div className="grid grid-cols-4 gap-3 text-xs">
         <div>
@@ -289,10 +345,10 @@ function MobilePlayerCard({ player, onClick }: MobilePlayerCardProps) {
         </div>
         <div>
           <div className="text-white/40 text-[10px] mb-1">Price</div>
-          <div className="font-bold text-white/80">{formatPrice(player.price || 0)}</div>
+          <div className="font-bold text-white/80 text-[11px]">{formatPrice(player.price || 0)}</div>
         </div>
         <div>
-          <div className="text-white/40 text-[10px] mb-1">Edge</div>
+          <div className="text-white/40 text-[10px] mb-1">Gap</div>
           <div className={`font-bold ${delta > 5 ? 'text-green-400' : delta < -5 ? 'text-red-400' : 'text-white/60'}`}>
             {delta > 0 ? '+' : ''}{Math.round(delta)}
           </div>
@@ -300,4 +356,74 @@ function MobilePlayerCard({ player, onClick }: MobilePlayerCardProps) {
       </div>
     </div>
   );
+}
+
+function getSignalStrength(player: DerivedPlayer) {
+  const category = player.category?.toUpperCase() || "WATCH";
+  const aiReco = player.ai_recommendation?.toLowerCase() || "";
+
+  if (category === "TARGET" || category === "BUY") {
+    if (aiReco.includes("strong buy") || aiReco.includes("elite")) {
+      return {
+        icon: "🔥",
+        label: "Strong Target",
+        bg: "bg-green-500/20",
+        text: "text-green-400",
+        border: "border-green-500/40",
+      };
+    }
+    return {
+      icon: "👍",
+      label: "Target",
+      bg: "bg-green-500/10",
+      text: "text-green-400",
+      border: "border-green-500/30",
+    };
+  }
+
+  if (category === "AVOID" || category === "SELL") {
+    if (aiReco.includes("strong sell") || aiReco.includes("high risk")) {
+      return {
+        icon: "❌",
+        label: "Avoid",
+        bg: "bg-red-500/20",
+        text: "text-red-400",
+        border: "border-red-500/40",
+      };
+    }
+    return {
+      icon: "⚠️",
+      label: "Risk",
+      bg: "bg-red-500/10",
+      text: "text-red-400",
+      border: "border-red-500/30",
+    };
+  }
+
+  return {
+    icon: "⚖️",
+    label: "Neutral",
+    bg: "bg-[#F5C84C]/10",
+    text: "text-[#F5C84C]",
+    border: "border-[#F5C84C]/30",
+  };
+}
+
+function truncateWhy(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  const truncated = text.slice(0, maxLength);
+  const lastSpace = truncated.lastIndexOf(' ');
+  return lastSpace > 0 ? truncated.slice(0, lastSpace) + '...' : truncated + '...';
+}
+
+function formatWhyText(text: string): React.ReactNode {
+  const numberRegex = /(\+?\-?\d+)/g;
+  const parts = text.split(numberRegex);
+
+  return parts.map((part, i) => {
+    if (numberRegex.test(part)) {
+      return <strong key={i} className="text-white/80">{part}</strong>;
+    }
+    return part;
+  });
 }

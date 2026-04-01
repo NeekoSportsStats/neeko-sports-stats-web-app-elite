@@ -10,6 +10,7 @@ import { MarketMetricsStrip } from "./MarketMetricsStrip";
 import { MarketDataTable } from "./MarketDataTable";
 import { PlayerDetailPanel } from "./PlayerDetailPanel";
 import { MarketControls, MarketFilter } from "./MarketControls";
+import { MarketDistributionBar } from "./MarketDistributionBar";
 import { MarketWatchSkeleton } from "./MarketWatchSkeleton";
 
 export default function MarketWatchPageElite() {
@@ -207,6 +208,15 @@ export default function MarketWatchPageElite() {
         {/* Market Metrics Strip */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75">
           <MarketMetricsStrip players={allDerivedPlayers} />
+        </div>
+
+        {/* Market Distribution Bar */}
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+          <MarketDistributionBar
+            targetCount={classified?.buys?.length ?? 0}
+            watchCount={classified?.holds?.length ?? 0}
+            avoidCount={classified?.sells?.length ?? 0}
+          />
         </div>
 
         {/* Controls */}

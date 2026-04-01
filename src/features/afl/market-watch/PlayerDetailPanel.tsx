@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, ChevronDown, ChevronUp } from "lucide-react";
 import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
 import { cleanAiText } from "@/utils/cleanAiText";
@@ -10,6 +10,8 @@ interface PlayerDetailPanelProps {
 }
 
 export function PlayerDetailPanel({ player, onClose }: PlayerDetailPanelProps) {
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
   useEffect(() => {
     if (player) {
       document.body.style.overflow = "hidden";
@@ -26,38 +28,38 @@ export function PlayerDetailPanel({ player, onClose }: PlayerDetailPanelProps) {
   const delta = (player.projection || 0) - (player.breakeven || 0);
   const deltaColor = delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-white/60";
 
-  const signalConfig = {
-    TARGET: { bg: "bg-green-500/10", text: "text-green-400", border: "border-green-500/30", glow: "shadow-[0_0_30px_rgba(34,197,94,0.2)]" },
-    WATCH: { bg: "bg-[#F5C84C]/10", text: "text-[#F5C84C]", border: "border-[#F5C84C]/30", glow: "shadow-[0_0_30px_rgba(245,200,76,0.2)]" },
-    AVOID: { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/30", glow: "shadow-[0_0_30px_rgba(239,68,68,0.2)]" },
-  };
+  const signalConfig = getSignalConfig(player);
+  const verdict = getVerdict(player, delta);
+  const confidence = getConfidence(player);
 
-  const config = signalConfig[player.category as keyof typeof signalConfig] || signalConfig.WATCH;
-
-  const shortReason = player.recommendation_short
+  const whyText = player.recommendation_short
     ? cleanAiText(player.recommendation_short)
     : player.summary_short
     ? cleanAiText(player.summary_short)
     : "No AI analysis available";
 
-  const longReason = player.summary_long
+  const extendedText = player.summary_long
     ? cleanAiText(player.summary_long)
     : player.ai_recommendation
     ? cleanAiText(player.ai_recommendation)
     : null;
 
+  const formattedExtended = extendedText ? formatExtendedAnalysis(extendedText) : null;
+
+  const upside = calculateUpside(player);
+  const risk = calculateRisk(player);
+
   return (
     <>
-      {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-in fade-in duration-200"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 animate-in fade-in duration-200"
         onClick={onClose}
       />
 
-      {/* Side Panel */}
-      <div className="fixed top-0 right-0 h-full w-full sm:w-[500px] bg-[#0D0D0D] border-l border-white/10 z-50 overflow-y-auto animate-in slide-in-from-right duration-300">
-        {/* Header */}
-        <div className={`sticky top-0 bg-[#0D0D0D] border-b ${config.border} p-6 ${config.glow}`}>
+      <div className="fixed top-0 right-0 h-full w-full sm:w-[520px] bg-[#0D0D0D] border-l border-white/10 z-50 overflow-y-auto animate-in slide-in-from-right duration-300">
+
+        {/* HEADER - UPGRADED */}
+        <div className={`sticky top-0 bg-gradient-to-b from-[#0D0D0D] to-[#0D0D0D]/95 border-b ${signalConfig.border} p-6 backdrop-blur-sm ${signalConfig.glow}`}>
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-white mb-1">{player.player_name}</h2>
@@ -71,67 +73,155 @@ export function PlayerDetailPanel({ player, onClose }: PlayerDetailPanelProps) {
             </button>
           </div>
 
-          <div className={`inline-block px-3 py-1.5 text-xs font-bold border rounded ${config.bg} ${config.text} ${config.border}`}>
-            {player.category}
+          <div className="flex items-center gap-3 mb-4">
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border rounded ${signalConfig.bg} ${signalConfig.text} ${signalConfig.border}`}>
+              <span className="text-base">{signalConfig.icon}</span>
+              <span>{signalConfig.label}</span>
+            </div>
+            <div className="px-3 py-1 bg-white/5 border border-white/10 rounded text-xs text-white/80">
+              {confidence}
+            </div>
+          </div>
+
+          {/* VALUE GAP - PROMINENT */}
+          <div className="p-4 bg-white/[0.03] border border-white/10 rounded-lg">
+            <div className="text-xs text-white/40 uppercase tracking-wider mb-1">Value Gap</div>
+            <div className={`text-4xl font-bold ${deltaColor}`}>
+              {delta > 0 ? '+' : ''}{Math.round(delta)}
+            </div>
           </div>
         </div>
 
-        {/* Content */}
+        {/* CONTENT */}
         <div className="p-6 space-y-6">
-          {/* Key Stats */}
-          <div className="grid grid-cols-2 gap-4">
-            <StatCard
-              label="Projection"
-              value={Math.round(player.projection || 0).toString()}
-              color={deltaColor}
-            />
-            <StatCard
-              label="Breakeven"
-              value={Math.round(player.breakeven || 0).toString()}
-              color="text-white/80"
-            />
-            <StatCard
-              label="Price"
-              value={formatPrice(player.price || 0)}
-              color="text-white/80"
-            />
-            <StatCard
-              label="Edge"
-              value={`${delta > 0 ? '+' : ''}${Math.round(delta)}`}
-              color={delta > 5 ? 'text-green-400' : delta < -5 ? 'text-red-400' : 'text-white/60'}
-            />
+
+          {/* QUICK DECISION BLOCK - NEW */}
+          <div className={`p-4 border-l-4 ${signalConfig.borderLeft} bg-white/[0.02] rounded-r-lg`}>
+            <div className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2">
+              📊 Verdict
+            </div>
+            <p className="text-sm font-medium text-white leading-relaxed">
+              {verdict}
+            </p>
           </div>
 
-          {/* AI Why (Short) */}
+          {/* KEY STATS - RESTRUCTURED 2x2 */}
           <div>
-            <h3 className="text-sm font-bold text-white/40 uppercase tracking-wider mb-3">AI Analysis</h3>
-            <div className="p-4 bg-white/[0.02] border border-white/10 rounded-lg">
-              <p className="text-sm text-white/90 leading-relaxed">{shortReason}</p>
+            <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-3">Key Stats</h3>
+            <div className="grid grid-cols-2 gap-3">
+              <StatCard
+                label="Projection"
+                value={Math.round(player.projection || 0).toString()}
+                color={deltaColor}
+              />
+              <StatCard
+                label="Breakeven"
+                value={Math.round(player.breakeven || 0).toString()}
+                color="text-white/80"
+              />
+              <StatCard
+                label="Price"
+                value={formatPrice(player.price || 0)}
+                color="text-white/80"
+              />
+              <StatCard
+                label="Value Gap"
+                value={`${delta > 0 ? '+' : ''}${Math.round(delta)}`}
+                color={delta > 5 ? 'text-green-400' : delta < -5 ? 'text-red-400' : 'text-white/60'}
+              />
             </div>
           </div>
 
-          {/* AI Extended (Full) */}
-          {longReason && (
+          {/* WHY THIS PICK - HIGHLIGHTED */}
+          <div>
+            <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-3">
+              Why This Pick
+            </h3>
+            <div className="p-4 bg-gradient-to-br from-white/[0.05] to-white/[0.02] border border-white/10 rounded-lg">
+              <p className="text-sm text-white leading-relaxed">
+                {formatWhyText(whyText)}
+              </p>
+            </div>
+          </div>
+
+          {/* RISK VS REWARD VISUAL - NEW */}
+          <div>
+            <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-3">
+              Risk vs Reward
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs text-white/60">Upside Potential</span>
+                  <span className="text-xs font-bold text-green-400">{upside}%</span>
+                </div>
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-green-500 to-green-400 transition-all duration-500"
+                    style={{ width: `${upside}%` }}
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs text-white/60">Downside Risk</span>
+                  <span className="text-xs font-bold text-red-400">{risk}%</span>
+                </div>
+                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-red-500 to-red-400 transition-all duration-500"
+                    style={{ width: `${risk}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* EXTENDED ANALYSIS - IMPROVED READABILITY */}
+          {formattedExtended && (
             <div>
-              <h3 className="text-sm font-bold text-white/40 uppercase tracking-wider mb-3">Extended Analysis</h3>
-              <div className="p-4 bg-white/[0.02] border border-white/10 rounded-lg">
-                <p className="text-sm text-white/70 leading-relaxed whitespace-pre-line">{longReason}</p>
+              <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-3">
+                Extended Analysis
+              </h3>
+              <div className="p-4 bg-white/[0.02] border border-white/10 rounded-lg space-y-3">
+                {formattedExtended.map((paragraph, i) => (
+                  <p key={i} className="text-sm text-white/70 leading-relaxed">
+                    {paragraph}
+                  </p>
+                ))}
               </div>
             </div>
           )}
 
-          {/* Additional Stats */}
-          {player.value_score && (
+          {/* ADVANCED METRICS - COLLAPSIBLE */}
+          {(player.value_score || player.ceiling || player.risk_pct || player.volatility_level) && (
             <div>
-              <h3 className="text-sm font-bold text-white/40 uppercase tracking-wider mb-3">Advanced Metrics</h3>
-              <div className="space-y-2">
-                <MetricRow label="Value Score" value={Math.round(player.value_score)} />
-                {player.ceiling && <MetricRow label="Ceiling" value={Math.round(player.ceiling)} />}
-                {player.risk_pct && <MetricRow label="Risk %" value={`${Math.round(player.risk_pct)}%`} />}
-                {player.volatility_level && <MetricRow label="Volatility" value={player.volatility_level} />}
-              </div>
+              <button
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center justify-between w-full text-xs font-bold text-white/40 uppercase tracking-wider hover:text-white/60 transition-colors"
+              >
+                <span>Advanced Metrics</span>
+                {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+
+              {showAdvanced && (
+                <div className="mt-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
+                  {player.value_score && <MetricRow label="Value Score" value={Math.round(player.value_score)} />}
+                  {player.ceiling && <MetricRow label="Ceiling" value={Math.round(player.ceiling)} />}
+                  {player.risk_pct && <MetricRow label="Risk %" value={`${Math.round(player.risk_pct)}%`} />}
+                  {player.volatility_level && <MetricRow label="Volatility" value={player.volatility_level} />}
+                </div>
+              )}
             </div>
           )}
+
+          {/* TRUST MICRO COPY */}
+          <div className="pt-4 border-t border-white/10">
+            <p className="text-xs text-white/40 text-center leading-relaxed">
+              Model-driven insight based on projections, pricing and role data
+            </p>
+          </div>
+
         </div>
       </div>
     </>
@@ -147,8 +237,8 @@ interface StatCardProps {
 function StatCard({ label, value, color }: StatCardProps) {
   return (
     <div className="p-4 bg-white/[0.02] border border-white/10 rounded-lg">
-      <div className="text-xs text-white/40 uppercase tracking-wider mb-2">{label}</div>
-      <div className={`text-2xl font-bold ${color}`}>{value}</div>
+      <div className="text-[10px] text-white/40 uppercase tracking-wider mb-2">{label}</div>
+      <div className={`text-3xl font-bold ${color}`}>{value}</div>
     </div>
   );
 }
@@ -165,4 +255,159 @@ function MetricRow({ label, value }: MetricRowProps) {
       <span className="text-sm font-bold text-white">{value}</span>
     </div>
   );
+}
+
+function getSignalConfig(player: DerivedPlayer) {
+  const category = player.category?.toUpperCase() || "WATCH";
+  const aiReco = player.ai_recommendation?.toLowerCase() || "";
+
+  if (category === "TARGET" || category === "BUY") {
+    if (aiReco.includes("strong buy") || aiReco.includes("elite")) {
+      return {
+        icon: "🔥",
+        label: "Strong Target",
+        bg: "bg-green-500/20",
+        text: "text-green-400",
+        border: "border-green-500/40",
+        borderLeft: "border-green-500",
+        glow: "shadow-[0_0_40px_rgba(34,197,94,0.25)]",
+      };
+    }
+    return {
+      icon: "👍",
+      label: "Target",
+      bg: "bg-green-500/10",
+      text: "text-green-400",
+      border: "border-green-500/30",
+      borderLeft: "border-green-500/70",
+      glow: "shadow-[0_0_30px_rgba(34,197,94,0.2)]",
+    };
+  }
+
+  if (category === "AVOID" || category === "SELL") {
+    if (aiReco.includes("strong sell") || aiReco.includes("high risk")) {
+      return {
+        icon: "❌",
+        label: "Avoid",
+        bg: "bg-red-500/20",
+        text: "text-red-400",
+        border: "border-red-500/40",
+        borderLeft: "border-red-500",
+        glow: "shadow-[0_0_40px_rgba(239,68,68,0.25)]",
+      };
+    }
+    return {
+      icon: "⚠️",
+      label: "Risk",
+      bg: "bg-red-500/10",
+      text: "text-red-400",
+      border: "border-red-500/30",
+      borderLeft: "border-red-500/70",
+      glow: "shadow-[0_0_30px_rgba(239,68,68,0.2)]",
+    };
+  }
+
+  return {
+    icon: "⚖️",
+    label: "Neutral",
+    bg: "bg-[#F5C84C]/10",
+    text: "text-[#F5C84C]",
+    border: "border-[#F5C84C]/30",
+    borderLeft: "border-[#F5C84C]/70",
+    glow: "shadow-[0_0_30px_rgba(245,200,76,0.2)]",
+  };
+}
+
+function getVerdict(player: DerivedPlayer, delta: number): string {
+  const category = player.category?.toUpperCase() || "WATCH";
+
+  if (category === "TARGET" || category === "BUY") {
+    if (delta > 15) return "Buy — elite value with significant upside";
+    if (delta > 8) return "Buy — strong value with upside";
+    return "Buy — solid value opportunity";
+  }
+
+  if (category === "AVOID" || category === "SELL") {
+    if (delta < -15) return "Sell — severely overpriced, exit immediately";
+    if (delta < -8) return "Sell — poor value, recommend exit";
+    return "Avoid — limited value, consider alternatives";
+  }
+
+  return "Hold — neutral value, monitor for changes";
+}
+
+function getConfidence(player: DerivedPlayer): string {
+  const consistency = player.consistency_score || 0;
+  const projectionConfidence = player.projection_confidence || 0;
+
+  const avgConfidence = (consistency + projectionConfidence) / 2;
+
+  if (avgConfidence > 75) return "High Confidence";
+  if (avgConfidence > 50) return "Medium Confidence";
+  return "Lower Confidence";
+}
+
+function calculateUpside(player: DerivedPlayer): number {
+  const delta = (player.projection || 0) - (player.breakeven || 0);
+  const ceiling = player.ceiling || player.projection || 0;
+  const projection = player.projection || 0;
+
+  if (projection === 0) return 0;
+
+  const ceilingUpside = ((ceiling - projection) / projection) * 100;
+  const valueUpside = delta > 0 ? (delta / projection) * 100 : 0;
+
+  const totalUpside = Math.min(100, Math.max(0, (ceilingUpside + valueUpside) / 2));
+
+  return Math.round(totalUpside);
+}
+
+function calculateRisk(player: DerivedPlayer): number {
+  const riskPct = player.risk_pct || 0;
+  const volatility = player.volatility_score || 0;
+  const delta = (player.projection || 0) - (player.breakeven || 0);
+
+  let risk = riskPct;
+
+  if (delta < 0) {
+    risk += Math.abs(delta) * 2;
+  }
+
+  if (volatility > 50) {
+    risk += 10;
+  }
+
+  return Math.min(100, Math.max(0, Math.round(risk)));
+}
+
+function formatWhyText(text: string): React.ReactNode {
+  const numberRegex = /(\+?\-?\d+)/g;
+  const parts = text.split(numberRegex);
+
+  return parts.map((part, i) => {
+    if (numberRegex.test(part)) {
+      return <strong key={i} className="font-bold text-white">{part}</strong>;
+    }
+    return part;
+  });
+}
+
+function formatExtendedAnalysis(text: string): string[] {
+  const sentences = text.split(/(?<=[.!?])\s+/);
+
+  const paragraphs: string[] = [];
+  let current = '';
+
+  for (let i = 0; i < sentences.length; i++) {
+    current += sentences[i] + ' ';
+
+    if ((i + 1) % 2 === 0 || i === sentences.length - 1) {
+      if (current.trim()) {
+        paragraphs.push(current.trim());
+      }
+      current = '';
+    }
+  }
+
+  return paragraphs.slice(0, 3);
 }
