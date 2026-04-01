@@ -42,13 +42,15 @@ export function PlayerAIModal({ player, onClose }: PlayerAIModalProps) {
   const valueScore = player.value_score ?? 0;
 
   const categoryConfig = {
-    sell: { icon: TrendingDown, color: "text-red-400", bg: "bg-red-400/10", border: "border-red-400/20" },
-    buy: { icon: TrendingUp, color: "text-green-400", bg: "bg-green-400/10", border: "border-green-400/20" },
-    value: { icon: Target, color: "text-[#F5C84C]", bg: "bg-[#F5C84C]/10", border: "border-[#F5C84C]/20" },
+    sell_before_drop: { icon: TrendingDown, color: "text-red-400", bg: "bg-red-400/10", border: "border-red-400/20" },
+    buy_before_rise: { icon: TrendingUp, color: "text-green-400", bg: "bg-green-400/10", border: "border-green-400/20" },
+    cash_cow: { icon: Target, color: "text-[#F5C84C]", bg: "bg-[#F5C84C]/10", border: "border-[#F5C84C]/20" },
+    upgrade_target: { icon: TrendingUp, color: "text-green-400", bg: "bg-green-400/10", border: "border-green-400/20" },
+    fade_trap: { icon: TrendingDown, color: "text-red-400", bg: "bg-red-400/10", border: "border-red-400/20" },
   };
 
-  const category = player.market_watch_category || "value";
-  const config = categoryConfig[category as keyof typeof categoryConfig] || categoryConfig.value;
+  const category = player._derived_category || "cash_cow";
+  const config = categoryConfig[category as keyof typeof categoryConfig] || categoryConfig.cash_cow;
   const Icon = config.icon;
 
   return (

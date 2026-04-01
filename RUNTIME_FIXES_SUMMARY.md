@@ -26,23 +26,32 @@ SELECT get_latest_completed_round(2026); -- Returns: 0 (correct for opening roun
 
 **Symptom**: React minified error #310 after successful data fetch
 
-**Root Cause**: TypeScript type definition missing fields that were being added during data mapping
+**Root Cause (Two-Part Fix)**:
 
-**Fix**: Added missing fields to `MWPlayerRow` interface
+**Part 1 - Type Mismatch**: TypeScript type definition missing fields that were being added during data mapping
+- Added missing fields to `MWPlayerRow` interface
 - `is_injured: boolean`
 - `is_bye: boolean`
 - `status: string | null`
 - `manual_status: string | null`
 - `last5_avg: number | null`
 
+**Part 2 - Runtime Field Access**: PlayerAIModal accessing non-existent field
+- Modal tried to access `player.market_watch_category` (doesn't exist)
+- Correct field is `player._derived_category` (from DerivedPlayer)
+- Fixed category config to match actual DerivedCategory enum values
+- Fixed fallback value from "value" to "cash_cow" (valid category)
+
 **Files Changed**:
 - `src/features/afl/market-watch/types.ts` (5 fields added)
+- `src/features/afl/market-watch/PlayerAIModal.tsx` (category field + config fixed)
 
 **Why This Fixes It**:
-- Type definition now matches runtime data structure
-- No type/runtime mismatches
-- React receives properly typed data
-- Components can safely access all fields
+- **Part 1**: Type definition now matches runtime data structure (prevents TypeScript mismatches)
+- **Part 2**: Modal now accesses correct field `_derived_category` instead of non-existent `market_watch_category`
+- Category config keys now match actual DerivedCategory enum values
+- React receives properly typed data with valid field references
+- All interactive paths (modal open, card clicks) now work correctly
 
 ## Verification Checklist
 
@@ -81,12 +90,14 @@ No TypeScript errors, no runtime errors.
 
 ### Frontend
 1. `src/features/afl/market-watch/types.ts` (5 fields added to MWPlayerRow)
+2. `src/features/afl/market-watch/PlayerAIModal.tsx` (fixed category field access)
 
 ## Reports Generated
 
 1. `START_SIT_RPC_FIX_REPORT.md` - Detailed RPC fix analysis
-2. `MARKET_WATCH_CRASH_FIX_REPORT.md` - Detailed type fix analysis
-3. `CONTRACT_CHECK_MARKET_WATCH.md` - Complete field validation table
+2. `MARKET_WATCH_CRASH_FIX_REPORT.md` - Initial type fix analysis
+3. `MARKET_WATCH_TRUE_ROOT_CAUSE_REPORT.md` - Complete crash fix (type + modal)
+4. `CONTRACT_CHECK_MARKET_WATCH.md` - Complete field validation table
 
 ## No Regressions
 
