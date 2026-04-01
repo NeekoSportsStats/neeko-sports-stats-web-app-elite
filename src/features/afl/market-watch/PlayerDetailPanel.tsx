@@ -3,6 +3,7 @@ import { X, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
 import { cleanAiText } from "@/utils/cleanAiText";
+import { useAuth } from "@/lib/auth";
 import {
   calculateValueRank,
   getTrendIndicator,
@@ -21,6 +22,7 @@ interface PlayerDetailPanelProps {
 }
 
 export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailPanelProps) {
+  const { isPremium } = useAuth();
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
@@ -277,6 +279,35 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
               Model-driven insight based on projections, pricing and role data
             </p>
           </div>
+
+          {/* CONVERSION CTA - FREE USERS ONLY */}
+          {!isPremium && (
+            <div className="mt-6 p-6 border border-[#F5C84C]/20 rounded-lg bg-gradient-to-b from-[#F5C84C]/5 to-transparent">
+              <h4 className="text-sm font-bold text-white mb-3">
+                Want more players like this?
+              </h4>
+              <ul className="space-y-2 mb-4 text-xs text-white/70">
+                <li className="flex items-start gap-2">
+                  <span className="text-[#F5C84C] mt-0.5">✓</span>
+                  <span>More targets</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[#F5C84C] mt-0.5">✓</span>
+                  <span>Weekly trade insights</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[#F5C84C] mt-0.5">✓</span>
+                  <span>Full rankings access</span>
+                </li>
+              </ul>
+              <a
+                href="/neeko-plus"
+                className="block w-full px-6 py-2.5 bg-[#F5C84C] text-black font-bold rounded-lg hover:bg-[#F5C84C]/90 transition-all text-center text-sm"
+              >
+                Upgrade to Neeko+
+              </a>
+            </div>
+          )}
 
         </div>
       </div>

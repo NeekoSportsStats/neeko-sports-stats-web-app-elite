@@ -176,30 +176,43 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
         ))}
       </div>
 
-      {/* Premium Gate */}
+      {/* Premium Gate - CONVERSION LAYER */}
       {!isPremium && players.length > freeLimit && (
         <div className="relative mt-6 p-10 border border-white/10 rounded-lg bg-gradient-to-b from-white/[0.02] to-white/[0.06] text-center overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-t from-[#F5C84C]/5 via-transparent to-transparent" />
           <div className="relative z-10">
-            <div className="inline-block px-3 py-1 bg-[#F5C84C]/20 border border-[#F5C84C]/40 rounded-full text-xs font-bold text-[#F5C84C] mb-4">
-              PREMIUM ONLY
-            </div>
+            <div className="text-4xl mb-4">🔒</div>
             <h3 className="text-2xl font-bold text-white mb-2">
-              Unlock Full Market Watch
+              You're only seeing the top 3 players
             </h3>
-            <p className="text-white/60 mb-1">
-              {players.length - freeLimit} more players with AI insights
+            <p className="text-white/70 mb-1 text-base">
+              Unlock 600+ players with real value edges before price changes
             </p>
-            <p className="text-sm text-white/50 mb-6">
-              Access complete market analysis, rankings AI, and player projections
+            <p className="text-xs text-white/40 mb-6 mt-2">
+              Updated weekly — edges disappear fast
             </p>
             <a
               href="/neeko-plus"
-              className="inline-block px-8 py-3 bg-[#F5C84C] text-black font-bold rounded-lg hover:bg-[#F5C84C]/90 transition-all shadow-lg shadow-[#F5C84C]/20"
+              className="inline-block px-8 py-3.5 bg-[#F5C84C] text-black font-bold rounded-lg hover:bg-[#F5C84C]/90 transition-all shadow-lg shadow-[#F5C84C]/20 text-base"
             >
-              Upgrade to Premium
+              Unlock Neeko+
             </a>
           </div>
+        </div>
+      )}
+
+      {/* Table Footer CTA - FREE USERS */}
+      {!isPremium && (
+        <div className="mt-6 p-6 border border-white/10 rounded-lg bg-white/[0.02] text-center">
+          <p className="text-sm text-white/60 mb-3">
+            Find every undervalued player — not just the top 3
+          </p>
+          <a
+            href="/neeko-plus"
+            className="inline-block px-6 py-2.5 bg-white/10 border border-white/20 text-white font-medium rounded-lg hover:bg-white/20 transition-all text-sm"
+          >
+            Unlock Full Market
+          </a>
         </div>
       )}
     </div>
