@@ -18,7 +18,8 @@ interface PlayerData {
   player_id: number;
   player_name: string;
   team: string;
-  position: string;
+  player_position: string;  // RPC returns player_position, not position
+  position_group?: string;
   price: number;
   projection_final: number;
   ceiling?: number | null;
@@ -72,7 +73,7 @@ export default function AFLPlayerPage() {
 
       return await getSimilarPlayersSafe(
         player.player_id,
-        player.position,
+        player.player_position,
         (player.projection_final || 0) - 10,
         (player.projection_final || 0) + 10,
         user?.id ?? null,
@@ -134,15 +135,28 @@ export default function AFLPlayerPage() {
     return 'bg-slate-500/10 text-slate-700 border-slate-500/20';
   };
 
+  // Safe position slug lookup with fallback
+  const getPositionSlug = (positionCode: string): string | null => {
+    if (!positionCode || !POSITION_SLUGS[positionCode]) {
+      console.error('Invalid position code:', positionCode, 'player:', player.player_name);
+      return null;
+    }
+    return POSITION_SLUGS[positionCode];
+  };
+
+  const getPositionName = (positionCode: string): string => {
+    return POSITION_NAMES[positionCode] || positionCode || 'Unknown';
+  };
+
   const pageTitle = `${player.player_name} AFL Fantasy Stats, Projection & Value 2026 | Neeko`;
 
   // SEO description - use safe values only (no premium-only fields)
   const pageDescription = player.value_score && player.ai_recommendation
-    ? `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(player.projection_final)} projected points. ${POSITION_NAMES[player.position]} rankings, value score ${Math.round(player.value_score)}, AI-powered ${player.ai_recommendation.toLowerCase()} recommendation. Updated weekly.`
-    : `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(player.projection_final)} projected points, ${Math.round(player.neeko_rating)} Neeko rating. ${POSITION_NAMES[player.position]} rankings and analysis. Updated weekly.`;
+    ? `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(player.projection_final)} projected points. ${getPositionName(player.player_position)} rankings, value score ${Math.round(player.value_score)}, AI-powered ${player.ai_recommendation.toLowerCase()} recommendation. Updated weekly.`
+    : `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(player.projection_final)} projected points, ${Math.round(player.neeko_rating)} Neeko rating. ${getPositionName(player.player_position)} rankings and analysis. Updated weekly.`;
 
   const pageUrl = `https://neeko.com.au/sports/afl/players/${slug}`;
-  const keywords = `${player.player_name}, ${player.team}, AFL Fantasy, ${player.position}, fantasy football, player stats, projection, value, ${POSITION_NAMES[player.position]}`;
+  const keywords = `${player.player_name}, ${player.team}, AFL Fantasy, ${player.player_position}, fantasy football, player stats, projection, value, ${getPositionName(player.player_position)}`;
 
   return (
     <>
@@ -171,7 +185,11 @@ export default function AFLPlayerPage() {
             <ChevronRight className="h-3 w-3" />
             <li><Link to="/sports/afl/rankings" className="hover:text-slate-700">AFL</Link></li>
             <ChevronRight className="h-3 w-3" />
-            <li><Link to={`/sports/afl/positions/${POSITION_SLUGS[player.position]}`} className="hover:text-slate-700">{POSITION_NAMES[player.position]}</Link></li>
+            {getPositionSlug(player.player_position) ? (
+              <li><Link to={`/sports/afl/positions/${getPositionSlug(player.player_position)}`} className="hover:text-slate-700">{getPositionName(player.player_position)}</Link></li>
+            ) : (
+              <li className="text-slate-500">{getPositionName(player.player_position)}</li>
+            )}
             <ChevronRight className="h-3 w-3" />
             <li className="text-slate-700 font-medium">{player.player_name}</li>
           </ol>
@@ -194,7 +212,7 @@ export default function AFLPlayerPage() {
                   {player.team}
                 </Badge>
                 <Badge variant="outline" className="text-base">
-                  {player.position}
+                  {player.player_position}
                 </Badge>
                 <span className="text-xl font-bold text-slate-700">
                   {formatPrice(player.price)}
@@ -363,12 +381,18 @@ export default function AFLPlayerPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Link to={`/sports/afl/positions/${POSITION_SLUGS[player.position]}`}>
-              <Button variant="outline" className="w-full justify-between group">
-                View all {POSITION_NAMES[player.position]}
-                <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            {getPositionSlug(player.player_position) ? (
+              <Link to={`/sports/afl/positions/${getPositionSlug(player.player_position)}`}>
+                <Button variant="outline" className="w-full justify-between group">
+                  View all {getPositionName(player.player_position)}
+                  <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
+            ) : (
+              <Button variant="outline" className="w-full opacity-50 cursor-not-allowed" disabled>
+                Position data unavailable
               </Button>
-            </Link>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -378,7 +402,7 @@ export default function AFLPlayerPage() {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Similar Players</CardTitle>
-            <CardDescription>Players with similar projections in {POSITION_NAMES[player.position]}</CardDescription>
+            <CardDescription>Players with similar projections in {getPositionName(player.player_position)}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">

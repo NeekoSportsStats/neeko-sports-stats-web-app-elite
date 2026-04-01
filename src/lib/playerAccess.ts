@@ -157,13 +157,14 @@ export async function getSimilarPlayersSafe(
       p_position: position,
       p_projection_min: projectionMin,
       p_projection_max: projectionMax,
-      p_user_id: userId,
+      p_user_id: userId ?? null,
       p_limit: limit,
+      p_is_bot: false,
     });
 
   if (error) {
     console.error('[Player Access] Error fetching similar players:', error);
-    throw error;
+    return []; // Safe fallback - don't crash page
   }
 
   return data ?? [];
