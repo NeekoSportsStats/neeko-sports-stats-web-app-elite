@@ -1208,11 +1208,11 @@ function RankingsPreview() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("v_rankings_free")
-        .select("player_name,team,position,projection_final,neeko_rating,neeko_rating_scaled,projection_confidence,risk_rating,value_score,value_tag")
-        .order("neeko_rating_scaled", { ascending: false, nullsFirst: false })
-        .limit(5);
+      const { data } = await supabase.rpc("get_rankings_safe", {
+        p_user_id: null,
+        p_is_bot: false,
+        p_limit: 5,
+      });
       const mapped = (data ?? []).map((r: Record<string, unknown>) => ({
         player_name: r.player_name as string,
         player_team: r.team as string,

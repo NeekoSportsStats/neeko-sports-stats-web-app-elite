@@ -297,14 +297,8 @@ export default function AFLRankingsPage() {
     if (!row.player_id) return {};
     const view = forceView ?? (isPremium ? "master" : "free");
     if (view === "free") {
-      const { data } = await supabase
-        .from("v_rankings_free")
-        .select("player_id,recommendation_short")
-        .eq("player_id", row.player_id)
-        .maybeSingle();
-      if (!data) return {};
       return {
-        why: (data as any).summary_short ?? (data as any).recommendation_short ?? row.why,
+        why: row.why,
       };
     }
     const { data } = await supabase
@@ -339,10 +333,12 @@ export default function AFLRankingsPage() {
       }
       setRows(((data as any[]) ?? []).map(normalizeRow));
     } else {
-      const { data, error } = await supabase
-        .from("v_rankings_free")
-        .select(FREE_COLUMNS)
-        .order("neeko_rating_scaled", { ascending: false, nullsFirst: false });
+      const { user } = await supabase.auth.getUser();
+      const { data, error } = await supabase.rpc("get_rankings_safe", {
+        p_user_id: user?.user?.id ?? null,
+        p_is_bot: false,
+        p_limit: 500,
+      });
 
       if (error) {
         console.error("Rankings fetch error (free):", error);

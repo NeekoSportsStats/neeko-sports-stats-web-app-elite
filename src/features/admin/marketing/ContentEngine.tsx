@@ -220,13 +220,12 @@ export default function ContentEngine() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const { data } = await supabase
-        .from("v_rankings_free")
-        .select(
-          "player_id, player_name, team, position, projection_final, ceiling, floor, form_score, risk_rating, value_score, price, neeko_rating, summary_short, summary_long, ai_recommendation, recommendation_color"
-        )
-        .order("neeko_rating", { ascending: false })
-        .limit(300);
+      const { user } = await supabase.auth.getUser();
+      const { data } = await supabase.rpc("get_rankings_safe", {
+        p_user_id: user?.user?.id ?? null,
+        p_is_bot: false,
+        p_limit: 300,
+      });
       if (data) setPlayers(data as RankingPlayer[]);
       setLoading(false);
     }
