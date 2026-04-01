@@ -7,9 +7,9 @@ interface SignalStripProps {
 export function MarketWatchSignalStrip({ buyCount, holdCount, sellCount }: SignalStripProps) {
   return (
     <div className="flex items-center justify-center gap-3 flex-wrap">
-      <SignalPill label="BUY" count={buyCount} color="green" />
-      <SignalPill label="HOLD" count={holdCount} color="gold" />
-      <SignalPill label="SELL" count={sellCount} color="red" />
+      <SignalPill label="TARGET" count={buyCount} color="green" />
+      <SignalPill label="WATCH" count={holdCount} color="gold" />
+      <SignalPill label="AVOID" count={sellCount} color="red" />
     </div>
   );
 }
