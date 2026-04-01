@@ -167,7 +167,7 @@ export function LandingMarketWatchSample() {
   useEffect(() => {
     (async () => {
       try {
-        // Try v_mw_free first (top 9 mixed players)
+        // Try v_mw_free first (already balanced: 3 TARGET + 3 WATCH + 3 AVOID)
         let { data, error } = await supabase
           .from("v_mw_free")
           .select("player_id, player_name, team, position, projection, breakeven, value_score, category, price, is_injured, is_bye, status, manual_status, value_label, matchup_label, recommendation_short, action");
@@ -177,11 +177,12 @@ export function LandingMarketWatchSample() {
           console.log("[LandingMW] Falling back to v_mw_premium");
           const premiumResult = await supabase
             .from("v_mw_premium")
-            .select("player_id, player_name, team, position, projection, breakeven, value_score, category, price, ai_recommendation, recommendation_short, matchup_label, action")
+            .select("player_id, player_name, team, position, projection, breakeven, value_score, action, price, ai_recommendation, recommendation_short, matchup_label")
             .limit(6);
 
           data = (premiumResult.data ?? []).map(p => ({
             ...p,
+            category: p.action, // Map action to category
             is_injured: false,
             is_bye: false,
             status: null,
@@ -192,23 +193,10 @@ export function LandingMarketWatchSample() {
 
         const rows = (data ?? []) as MarketWatchRow[];
 
-        // Use action field (more reliable than category)
-        const actionField = rows[0]?.action ? 'action' : 'category';
-
-        const targets = rows.filter(r => {
-          const val = actionField === 'action' ? r.action : r.category;
-          return (val ?? '').toUpperCase() === 'TARGET';
-        }).slice(0, 2);
-
-        const watches = rows.filter(r => {
-          const val = actionField === 'action' ? r.action : r.category;
-          return (val ?? '').toUpperCase() === 'WATCH';
-        }).slice(0, 2);
-
-        const avoids = rows.filter(r => {
-          const val = actionField === 'action' ? r.action : r.category;
-          return (val ?? '').toUpperCase() === 'AVOID';
-        }).slice(0, 2);
+        // Take 2 from each category for 6 total display
+        const targets = rows.filter(r => (r.category ?? '').toUpperCase() === 'TARGET').slice(0, 2);
+        const watches = rows.filter(r => (r.category ?? '').toUpperCase() === 'WATCH').slice(0, 2);
+        const avoids = rows.filter(r => (r.category ?? '').toUpperCase() === 'AVOID').slice(0, 2);
 
         const selected = [...targets, ...watches, ...avoids];
 
@@ -236,7 +224,7 @@ export function LandingMarketWatchSample() {
             <div className="w-10 h-0.5 rounded-full bg-[#F5C84C]/30" />
           </div>
           <p className="text-sm text-white/40 max-w-lg mx-auto leading-relaxed">
-            Real Market Watch data showing this week's targets, traps and watchlist picks — updated weekly using live projections.
+            Real Market Watch data showing this week's best trades and traps — updated weekly using live projections.
           </p>
         </div>
 
