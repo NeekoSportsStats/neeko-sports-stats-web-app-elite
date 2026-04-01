@@ -91,7 +91,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
       <div className="hidden lg:block overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-white/10">
+            <tr className="border-b border-white/[0.12] bg-white/[0.01]">
               <SortableHeader
                 label="Player"
                 field="player"
@@ -99,7 +99,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 direction={sortDirection}
                 onSort={handleSort}
               />
-              <th className="px-4 py-3 text-left text-[10px] font-bold text-white/40 uppercase tracking-wider">
+              <th className="px-5 py-2.5 text-left text-[10px] font-bold text-white/35 uppercase tracking-wider">
                 Pos
               </th>
               <SortableHeader
@@ -108,6 +108,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 currentField={sortField}
                 direction={sortDirection}
                 onSort={handleSort}
+                centered
               />
               <SortableHeader
                 label="Breakeven"
@@ -115,6 +116,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 currentField={sortField}
                 direction={sortDirection}
                 onSort={handleSort}
+                centered
               />
               <SortableHeader
                 label="Price"
@@ -123,12 +125,12 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 direction={sortDirection}
                 onSort={handleSort}
               />
-              <th className="px-4 py-3 text-left text-[10px] font-bold text-white/40 uppercase tracking-wider">
+              <th className="px-5 py-2.5 text-left text-[10px] font-bold text-white/35 uppercase tracking-wider">
                 <div className="flex items-center gap-1.5 group cursor-help">
                   <span>Value Gap</span>
                   <div className="relative">
-                    <Info className="w-3 h-3 text-white/30 group-hover:text-white/50 transition-colors" />
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black border border-white/20 rounded text-[10px] text-white/80 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                    <Info className="w-3 h-3 text-white/25 group-hover:text-white/40 transition-colors" />
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-black/90 border border-white/20 rounded text-[10px] text-white/80 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
                       Projection minus breakeven
                     </div>
                   </div>
@@ -240,17 +242,18 @@ interface SortableHeaderProps {
   currentField: SortField;
   direction: SortDirection;
   onSort: (field: SortField) => void;
+  centered?: boolean;
 }
 
-function SortableHeader({ label, field, currentField, direction, onSort }: SortableHeaderProps) {
+function SortableHeader({ label, field, currentField, direction, onSort, centered = false }: SortableHeaderProps) {
   const isActive = currentField === field;
 
   return (
     <th
-      className="px-4 py-3 text-left text-[10px] font-bold text-white/40 uppercase tracking-wider cursor-pointer hover:text-white/60 transition-colors select-none"
+      className={`px-5 py-2.5 ${centered ? 'text-center' : 'text-left'} text-[10px] font-bold text-white/35 uppercase tracking-wider cursor-pointer hover:text-white/50 transition-colors select-none`}
       onClick={() => onSort(field)}
     >
-      <div className="flex items-center gap-1">
+      <div className={`flex items-center gap-1 ${centered ? 'justify-center' : ''}`}>
         <span>{label}</span>
         {isActive && (
           direction === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
@@ -296,52 +299,52 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
   return (
     <tr
       onClick={isBlurred ? undefined : onClick}
-      className={`${isBlurred ? 'cursor-default' : 'cursor-pointer'} transition-all hover:bg-white/[0.04] ${isEven ? 'bg-white/[0.01]' : ''} ${isBlurred ? 'blur-sm pointer-events-none' : ''}`}
+      className={`${isBlurred ? 'cursor-default' : 'cursor-pointer'} transition-all hover:bg-white/[0.04] border-b border-white/[0.03] ${isEven ? 'bg-white/[0.01]' : ''} ${isBlurred ? 'blur-sm pointer-events-none' : ''}`}
     >
-      <td className="px-4 py-3">
+      <td className="px-5 py-2.5">
         <div>
-          <div className="flex items-center gap-2 mb-0.5">
-            <div className="font-bold text-white text-sm">{player.player_name}</div>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <div className="font-bold text-white text-sm leading-tight">{player.player_name}</div>
             {(player.manual_status === "OUT" || (!player.manual_status && player.status === "OUT")) ? (
-              <span className="rounded-sm bg-red-500/15 px-1 py-0.5 text-[9px] font-semibold text-red-400 uppercase tracking-wide border border-red-500/20">OUT</span>
+              <span className="rounded bg-red-500/10 px-1 py-0.5 text-[8px] font-bold text-red-400 uppercase tracking-wide border border-red-500/25">OUT</span>
             ) : (player.manual_status === "INJURED" || (!player.manual_status && player.status === "INJURED")) ? (
-              <span className="rounded-sm bg-orange-500/15 px-1 py-0.5 text-[9px] font-semibold text-orange-400 uppercase tracking-wide border border-orange-500/20">INJ</span>
+              <span className="rounded bg-orange-500/10 px-1 py-0.5 text-[8px] font-bold text-orange-400 uppercase tracking-wide border border-orange-500/25">INJ</span>
             ) : player.is_bye ? (
-              <span className="rounded-sm bg-white/10 px-1 py-0.5 text-[9px] font-semibold text-white/40 uppercase tracking-wide border border-white/15">BYE</span>
+              <span className="rounded bg-white/[0.08] px-1 py-0.5 text-[8px] font-bold text-white/35 uppercase tracking-wide border border-white/10">BYE</span>
             ) : null}
           </div>
-          <div className="text-xs text-white/50 leading-tight">
+          <div className="text-[11px] text-white/40 leading-snug">
             {formatWhyText(truncatedWhy)}
           </div>
         </div>
       </td>
-      <td className="px-4 py-3">
-        <div className="text-xs text-white/60">{player.position}</div>
-        <div className="text-[10px] text-white/40">{player.team}</div>
+      <td className="px-5 py-2.5">
+        <div className="text-xs font-medium text-white/50">{player.position}</div>
+        <div className="text-[10px] text-white/30">{player.team}</div>
       </td>
-      <td className="px-4 py-3">
-        <span className={`text-lg font-bold ${deltaColor}`}>
+      <td className="px-5 py-2.5 text-center">
+        <span className={`text-lg font-bold tabular-nums ${deltaColor}`}>
           {Math.round(player.projection || 0)}
         </span>
       </td>
-      <td className="px-4 py-3 text-sm text-white/80">
+      <td className="px-5 py-2.5 text-center text-sm font-medium text-white/70 tabular-nums">
         {Math.round(player.breakeven || 0)}
       </td>
-      <td className="px-4 py-3 text-sm text-white/80">
+      <td className="px-5 py-2.5 text-sm font-medium text-white/70 tabular-nums">
         {formatPrice(player.price || 0)}
       </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className={`text-base font-bold ${delta > 5 ? 'text-green-400' : delta < -5 ? 'text-red-400' : 'text-white/60'}`}>
+      <td className="px-5 py-2.5">
+        <div className="flex items-center gap-1.5">
+          <span className={`text-base font-bold tabular-nums ${delta > 5 ? 'text-green-400' : delta < -5 ? 'text-red-400' : 'text-white/60'}`}>
             {delta > 0 ? '+' : ''}{Math.round(delta)}
           </span>
-          <span className={`text-[10px] ${rankColor}`}>
+          <span className={`text-[9px] font-medium opacity-60 ${rankColor}`}>
             {rankLabel}
           </span>
         </div>
       </td>
-      <td className="px-4 py-3">
-        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold border rounded ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
+      <td className="px-5 py-2.5">
+        <div className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold border rounded ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
           <span>{signalStrength.icon}</span>
           <span>{signalStrength.label}</span>
         </div>

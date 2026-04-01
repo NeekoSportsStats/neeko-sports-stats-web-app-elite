@@ -62,7 +62,10 @@ export function MarketAdvancedFilters({
       setShowUpgradeModal(true);
       return;
     }
-    onTeamChange(team);
+    // Normalize team name to match database format (lowercase)
+    const normalizedTeam = team ? team.trim().toLowerCase() : null;
+    console.log(`[MW FILTER] Team clicked: "${team}" → normalized: "${normalizedTeam}"`);
+    onTeamChange(normalizedTeam);
   };
 
   const handlePositionClick = (position: string | null) => {
@@ -70,7 +73,10 @@ export function MarketAdvancedFilters({
       setShowUpgradeModal(true);
       return;
     }
-    onPositionChange(position);
+    // Normalize position to uppercase
+    const normalizedPosition = position ? position.trim().toUpperCase() : null;
+    console.log(`[MW FILTER] Position clicked: "${position}" → normalized: "${normalizedPosition}"`);
+    onPositionChange(normalizedPosition);
   };
 
   return (
@@ -83,7 +89,7 @@ export function MarketAdvancedFilters({
               variant="outline"
               className="h-9 px-3 text-xs font-bold bg-white/[0.02] border-white/10 hover:bg-white/[0.05] text-white/60"
             >
-              {selectedTeam || "All Teams"}
+              {selectedTeam ? AFL_TEAMS.find(t => t.toLowerCase() === selectedTeam) || selectedTeam : "All Teams"}
               <ChevronDown className="ml-2 h-3 w-3" />
               {!isPremium && <Lock className="ml-2 h-3 w-3 text-[#F5C84C]" />}
             </Button>
@@ -141,7 +147,7 @@ export function MarketAdvancedFilters({
         {/* Active Filter Badges */}
         {selectedTeam && (
           <div className="flex items-center gap-1.5 px-2 py-1 text-xs bg-white/10 border border-white/20 rounded text-white/80">
-            <span>{selectedTeam}</span>
+            <span>{AFL_TEAMS.find(t => t.toLowerCase() === selectedTeam) || selectedTeam}</span>
             <button
               onClick={() => handleTeamClick(null)}
               className="ml-1 hover:text-white"

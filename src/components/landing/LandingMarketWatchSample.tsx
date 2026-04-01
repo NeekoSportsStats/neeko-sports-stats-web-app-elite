@@ -12,6 +12,7 @@ interface MarketWatchRow {
   breakeven: number | null;
   value_score: number | null;
   category: string | null;
+  action?: string | null;
   price: number | null;
   is_injured: boolean | null;
   is_bye: boolean | null;
@@ -165,20 +166,59 @@ export function LandingMarketWatchSample() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
-        .from("v_mw_free")
-        .select("player_id, player_name, team, position, projection, breakeven, value_score, category, price, is_injured, is_bye, status, manual_status, value_label, matchup_label, recommendation_short");
+      try {
+        // Try v_mw_free first (top 9 mixed players)
+        let { data, error } = await supabase
+          .from("v_mw_free")
+          .select("player_id, player_name, team, position, projection, breakeven, value_score, category, price, is_injured, is_bye, status, manual_status, value_label, matchup_label, recommendation_short, action");
 
-      const rows = (data ?? []) as MarketWatchRow[];
+        // Fallback to v_mw_premium if v_mw_free fails
+        if (error || !data || data.length === 0) {
+          console.log("[LandingMW] Falling back to v_mw_premium");
+          const premiumResult = await supabase
+            .from("v_mw_premium")
+            .select("player_id, player_name, team, position, projection, breakeven, value_score, category, price, ai_recommendation, recommendation_short, matchup_label, action")
+            .limit(6);
 
-      const targets = rows.filter(r => (r.category ?? '').toUpperCase() === 'TARGET').slice(0, 2);
-      const watches = rows.filter(r => (r.category ?? '').toUpperCase() === 'WATCH').slice(0, 2);
-      const avoids = rows.filter(r => (r.category ?? '').toUpperCase() === 'AVOID').slice(0, 2);
+          data = (premiumResult.data ?? []).map(p => ({
+            ...p,
+            is_injured: false,
+            is_bye: false,
+            status: null,
+            manual_status: null,
+            value_label: null,
+          }));
+        }
 
-      const selected = [...targets, ...watches, ...avoids];
+        const rows = (data ?? []) as MarketWatchRow[];
 
-      setPlayers(selected);
-      setLoading(false);
+        // Use action field (more reliable than category)
+        const actionField = rows[0]?.action ? 'action' : 'category';
+
+        const targets = rows.filter(r => {
+          const val = actionField === 'action' ? r.action : r.category;
+          return (val ?? '').toUpperCase() === 'TARGET';
+        }).slice(0, 2);
+
+        const watches = rows.filter(r => {
+          const val = actionField === 'action' ? r.action : r.category;
+          return (val ?? '').toUpperCase() === 'WATCH';
+        }).slice(0, 2);
+
+        const avoids = rows.filter(r => {
+          const val = actionField === 'action' ? r.action : r.category;
+          return (val ?? '').toUpperCase() === 'AVOID';
+        }).slice(0, 2);
+
+        const selected = [...targets, ...watches, ...avoids];
+
+        setPlayers(selected);
+      } catch (err) {
+        console.error("[LandingMW] Error:", err);
+        setPlayers([]);
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 

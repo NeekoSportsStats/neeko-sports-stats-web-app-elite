@@ -156,13 +156,23 @@ export default function MarketWatchPageElite() {
     else if (activeFilter === "AVOID") filtered = classified?.sells ?? [];
 
     // Apply team filter (premium only)
-    if (selectedTeam && isPremium) {
-      filtered = filtered.filter(p => p.team === selectedTeam);
+    if (selectedTeam && selectedTeam !== "all" && isPremium) {
+      const normalizedTeam = selectedTeam.trim().toLowerCase();
+      filtered = filtered.filter(p => {
+        const playerTeam = (p.team ?? '').trim().toLowerCase();
+        return playerTeam === normalizedTeam;
+      });
+      console.log(`[MW FILTER] Team filter "${selectedTeam}" → ${filtered.length} players`);
     }
 
     // Apply position filter (premium only)
-    if (selectedPosition && isPremium) {
-      filtered = filtered.filter(p => p.position === selectedPosition);
+    if (selectedPosition && selectedPosition !== "all" && isPremium) {
+      const normalizedPosition = selectedPosition.trim().toUpperCase();
+      filtered = filtered.filter(p => {
+        const playerPosition = (p.position ?? '').trim().toUpperCase();
+        return playerPosition === normalizedPosition;
+      });
+      console.log(`[MW FILTER] Position filter "${selectedPosition}" → ${filtered.length} players`);
     }
 
     console.log(`[MW PERF] Filtered to ${filtered.length} players in ${(performance.now() - filterStart).toFixed(1)}ms`);
@@ -202,19 +212,19 @@ export default function MarketWatchPageElite() {
     <div className="min-h-screen bg-[#0D0D0D] text-white">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-6">
+        <div className="flex items-center justify-between border-b border-white/[0.08] pb-5">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-1.5">
               Market Watch
             </h1>
-            <p className="text-sm text-white/60">
+            <p className="text-sm text-white/50">
               AI-powered trade signals · Updated weekly
             </p>
           </div>
 
           <div className="flex items-center gap-3">
             {relativeTime && (
-              <div className="hidden sm:flex items-center gap-2 text-xs text-white/40">
+              <div className="hidden sm:flex items-center gap-2 text-xs text-white/35">
                 <Clock className="w-4 h-4" />
                 <span>{relativeTime}</span>
               </div>
@@ -222,10 +232,10 @@ export default function MarketWatchPageElite() {
             <button
               onClick={handleRefresh}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/10 rounded-lg hover:bg-white/[0.05] transition-all"
+              className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-lg hover:bg-white/[0.06] transition-all text-sm font-medium"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline text-sm">Refresh</span>
+              <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
         </div>
@@ -240,12 +250,12 @@ export default function MarketWatchPageElite() {
         </div>
 
         {/* Market Metrics Strip */}
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-50">
           <MarketMetricsStrip players={allDerivedPlayers} />
         </div>
 
         {/* Market Distribution Bar */}
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 delay-75">
           <MarketDistributionBar
             targetCount={classified?.buys?.length ?? 0}
             watchCount={classified?.holds?.length ?? 0}
@@ -254,7 +264,7 @@ export default function MarketWatchPageElite() {
         </div>
 
         {/* Controls */}
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <MarketControls
               activeFilter={activeFilter}
@@ -264,7 +274,7 @@ export default function MarketWatchPageElite() {
               avoidCount={classified?.sells?.length ?? 0}
             />
 
-            <div className="text-xs text-white/40">
+            <div className="text-xs text-white/35 font-medium">
               Showing {filteredPlayers.length} player{filteredPlayers.length !== 1 ? 's' : ''}
             </div>
           </div>
