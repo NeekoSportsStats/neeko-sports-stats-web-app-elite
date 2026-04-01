@@ -1,9 +1,11 @@
-import { Target } from "lucide-react";
+import { Target, Eye, ShieldAlert } from "lucide-react";
 import { DerivedPlayer } from "./engine";
 import { fmtPrice } from "./helpers";
 
 interface MarketWatchHeroProps {
   topBuy: DerivedPlayer | null;
+  topHold: DerivedPlayer | null;
+  topSell: DerivedPlayer | null;
 }
 
 // Get AI explanation for hero card - REAL AI ONLY
@@ -46,104 +48,141 @@ function truncate(text: string, maxLen: number = 120): string {
   return cleaned.length > maxLen ? cleaned.slice(0, maxLen) + "…" : cleaned;
 }
 
-export function MarketWatchHero({ topBuy }: MarketWatchHeroProps) {
-  if (!topBuy) return null;
+export function MarketWatchHero({ topBuy, topHold, topSell }: MarketWatchHeroProps) {
+  // Show at least one hero card
+  if (!topBuy && !topHold && !topSell) return null;
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <HeroCard
-        player={topBuy}
-        type="buy"
-        label="BEST TARGET"
-        icon={<Target className="w-6 h-6" />}
-      />
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
+      {topBuy && (
+        <HeroCard
+          player={topBuy}
+          type="buy"
+          label="TOP TARGET"
+          icon={<Target className="w-5 h-5" />}
+        />
+      )}
+      {topHold && (
+        <HeroCard
+          player={topHold}
+          type="hold"
+          label="TOP VALUE"
+          icon={<Eye className="w-5 h-5" />}
+        />
+      )}
+      {topSell && (
+        <HeroCard
+          player={topSell}
+          type="sell"
+          label="TOP AVOID"
+          icon={<ShieldAlert className="w-5 h-5" />}
+        />
+      )}
     </div>
   );
 }
 
 interface HeroCardProps {
   player: DerivedPlayer;
-  type: "buy";
+  type: "buy" | "hold" | "sell";
   label: string;
   icon: React.ReactNode;
 }
 
-function HeroCard({ player, label, icon }: HeroCardProps) {
+function HeroCard({ player, type, label, icon }: HeroCardProps) {
   const projection = player.projection ?? 0;
   const breakeven = player.breakeven ?? 0;
   const valueLabel = player.value_label || 'Strong Value';
   const whyText = getWhy(player);
 
-  const config = {
+  // Color config based on type
+  const config = type === "buy" ? {
     bg: "bg-gradient-to-br from-green-500/5 to-green-600/10",
     border: "border-green-500/20",
-    glow: "shadow-[0_0_30px_rgba(34,197,94,0.15)]",
+    glow: "shadow-[0_0_20px_rgba(34,197,94,0.1)]",
     iconColor: "text-green-400",
     accentColor: "text-green-400",
     badgeBg: "bg-green-500/15 border-green-500/30",
-    hoverGlow: "hover:shadow-[0_0_40px_rgba(34,197,94,0.25)]",
+    badgeText: "TARGET",
+    hoverGlow: "hover:shadow-[0_0_30px_rgba(34,197,94,0.2)]",
+  } : type === "sell" ? {
+    bg: "bg-gradient-to-br from-red-500/5 to-red-600/10",
+    border: "border-red-500/20",
+    glow: "shadow-[0_0_20px_rgba(239,68,68,0.1)]",
+    iconColor: "text-red-400",
+    accentColor: "text-red-400",
+    badgeBg: "bg-red-500/15 border-red-500/30",
+    badgeText: "AVOID",
+    hoverGlow: "hover:shadow-[0_0_30px_rgba(239,68,68,0.2)]",
+  } : {
+    bg: "bg-gradient-to-br from-blue-500/5 to-blue-600/10",
+    border: "border-blue-500/20",
+    glow: "shadow-[0_0_20px_rgba(59,130,246,0.1)]",
+    iconColor: "text-blue-400",
+    accentColor: "text-blue-400",
+    badgeBg: "bg-blue-500/15 border-blue-500/30",
+    badgeText: "WATCH",
+    hoverGlow: "hover:shadow-[0_0_30px_rgba(59,130,246,0.2)]",
   };
 
   return (
     <div
       className={`
         ${config.bg} ${config.border} ${config.glow} ${config.hoverGlow}
-        border rounded-2xl p-8
+        border rounded-xl p-6
         transition-all duration-300
-        hover:scale-[1.01] hover:border-green-500/30
+        hover:scale-[1.02]
         group relative overflow-hidden
       `}
     >
-      {/* TOP: Label + Badge */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <div className={`${config.iconColor}`}>
-            {icon}
-          </div>
-          <div className="text-sm font-bold text-white/40 uppercase tracking-wider">
-            {label}
-          </div>
+      {/* TOP: Icon + Label */}
+      <div className="flex items-center gap-2 mb-4">
+        <div className={`${config.iconColor}`}>
+          {icon}
         </div>
-        <div className={`px-4 py-1.5 rounded-lg border ${config.badgeBg} ${config.iconColor}`}>
-          <span className="text-xs font-bold uppercase tracking-wide">TARGET</span>
+        <div className="text-xs font-bold text-white/40 uppercase tracking-wider">
+          {label}
+        </div>
+        <div className={`ml-auto px-3 py-1 rounded-md border ${config.badgeBg} ${config.iconColor}`}>
+          <span className="text-xs font-bold uppercase tracking-wide">{config.badgeText}</span>
         </div>
       </div>
 
-      {/* MIDDLE: Player Name */}
-      <div className="mb-6">
-        <h3 className="text-3xl font-bold text-white mb-2">
+      {/* Player Name */}
+      <div className="mb-4">
+        <h3 className="text-xl font-bold text-white mb-1">
           {player.player_name}
         </h3>
-        <div className="flex items-center gap-2 text-base text-white/60">
+        <div className="flex items-center gap-2 text-sm text-white/60">
           <span className="font-semibold">{player.position}</span>
           <span className="text-white/30">•</span>
           <span>{player.team}</span>
         </div>
       </div>
 
-      {/* STATS GRID: Projection, Breakeven, Price, Value */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-4">
-          <div className="text-xs text-white/40 mb-2 uppercase tracking-wide">Projection</div>
-          <div className="text-2xl font-bold text-white">
-            {projection.toFixed(0)} <span className="text-sm font-medium text-white/50">pts</span>
+      {/* STATS GRID */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3">
+          <div className="text-xs text-white/40 mb-1 uppercase tracking-wide">Projection</div>
+          <div className="text-xl font-bold text-white">
+            {projection.toFixed(0)} <span className="text-xs font-medium text-white/50">pts</span>
           </div>
         </div>
-        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-4">
-          <div className="text-xs text-white/40 mb-2 uppercase tracking-wide">Breakeven</div>
-          <div className="text-2xl font-bold text-white">
-            {breakeven.toFixed(0)} <span className="text-sm font-medium text-white/50">pts</span>
+        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3">
+          <div className="text-xs text-white/40 mb-1 uppercase tracking-wide">Breakeven</div>
+          <div className="text-xl font-bold text-white">
+            {breakeven.toFixed(0)} <span className="text-xs font-medium text-white/50">pts</span>
           </div>
         </div>
-        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-4">
-          <div className="text-xs text-white/40 mb-2 uppercase tracking-wide">Price</div>
-          <div className="text-2xl font-bold text-white">
+        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3">
+          <div className="text-xs text-white/40 mb-1 uppercase tracking-wide">Price</div>
+          <div className="text-lg font-bold text-white">
             {fmtPrice(player.price ?? 0)}
           </div>
         </div>
-        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-4">
-          <div className="text-xs text-white/40 mb-2 uppercase tracking-wide">Value</div>
-          <div className={`text-base font-bold ${config.accentColor}`}>
+        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-3">
+          <div className="text-xs text-white/40 mb-1 uppercase tracking-wide">Value</div>
+          <div className={`text-sm font-bold ${config.accentColor}`}>
             {valueLabel}
           </div>
         </div>
@@ -151,10 +190,10 @@ function HeroCard({ player, label, icon }: HeroCardProps) {
 
       {/* WHY SECTION - Only show if AI content available */}
       {whyText && (
-        <div className="pt-5 border-t border-white/10">
+        <div className="pt-4 border-t border-white/10">
           <div className="flex items-start gap-2">
-            <span className={`${config.accentColor} font-bold text-sm uppercase tracking-wide flex-shrink-0`}>WHY:</span>
-            <p className="text-sm text-gray-300 leading-relaxed">
+            <span className={`${config.accentColor} font-bold text-xs uppercase tracking-wide flex-shrink-0`}>WHY:</span>
+            <p className="text-xs text-gray-300 leading-relaxed">
               {whyText}
             </p>
           </div>

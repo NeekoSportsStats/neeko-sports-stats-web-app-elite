@@ -23,7 +23,7 @@ export default function MarketWatchPage() {
     setLoading(true);
     try {
       const limit = premium ? 200 : 100;
-      const viewName = premium ? "v_mw_premium" : "v_mw_summary";
+      const viewName = premium ? "v_mw_premium" : "v_mw_free";
       const { data, error } = await supabase.from(viewName).select("*").limit(limit);
 
       if (error) throw error;
@@ -50,7 +50,7 @@ export default function MarketWatchPage() {
         breakout_flag: r.breakout_flag ?? null,
         volatility_score: r.volatility_score ?? 0,
         volatility_level: r.volatility_level ?? null,
-        category: r.category ?? null,
+        category: r.category ?? r.action ?? null,  // Map action to category for engine
         action: r.action ?? 'HOLD',
         trade_score: r.trade_score ?? 0,
         reasons: r.reasons ?? {},
@@ -118,6 +118,8 @@ export default function MarketWatchPage() {
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
 
   const topBuy = classified?.buys?.[0] || null;
+  const topHold = classified?.holds?.[0] || null;
+  const topSell = classified?.sells?.[0] || null;
 
   // NOW SAFE TO DO CONDITIONAL RETURNS
   if (loading) {
@@ -175,7 +177,7 @@ export default function MarketWatchPage() {
         </div>
 
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <MarketWatchHero topBuy={topBuy} />
+          <MarketWatchHero topBuy={topBuy} topHold={topHold} topSell={topSell} />
         </div>
 
         <div className="animate-in fade-in-slide-in-from-bottom-4 duration-700 delay-150">
