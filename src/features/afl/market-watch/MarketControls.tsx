@@ -25,7 +25,7 @@ export function MarketControls({
   ];
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex items-center gap-3 flex-wrap">
       <div className="flex items-center gap-2 text-white/40">
         <Filter className="w-4 h-4" />
         <span className="text-xs font-bold uppercase tracking-wider">Filter:</span>
@@ -45,6 +45,10 @@ export function MarketControls({
           <span className="ml-1.5 opacity-60">({filter.count})</span>
         </button>
       ))}
+
+      <div className="ml-auto text-[10px] text-white/20 font-medium">
+        Sorted by trade priority
+      </div>
     </div>
   );
 }

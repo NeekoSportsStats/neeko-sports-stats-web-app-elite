@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
 import MobileUpgradeBar from "@/components/mobile/MobileUpgradeBar";
+import { LandingMarketWatchSample } from "@/components/landing/LandingMarketWatchSample";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1492,6 +1493,9 @@ export default function Index() {
 
       {/* ── SECTION 3: EDGE SIGNALS PREVIEW ──────────────────────────────────── */}
       <EdgeBoardPreview />
+
+      {/* ── SECTION 3B: MARKET WATCH SAMPLE ──────────────────────────────────── */}
+      <LandingMarketWatchSample />
 
       {/* ── SECTION 4: FEATURE CARDS / TOOLKIT ───────────────────────────────── */}
       <FeatureCards />
