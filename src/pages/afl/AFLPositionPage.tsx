@@ -127,87 +127,87 @@ export default function AFLPositionPage() {
           </div>
 
           {/* Position Stats */}
-          <div className="grid grid-cols-3 gap-2 mb-6">
-            <div className="rounded-lg bg-white/5 px-3 py-3">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Total Players</p>
-              <p className="text-lg font-bold text-white">{players.length}</p>
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="rounded-2xl bg-[#111] border border-white/10 px-4 py-4 shadow-sm">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">Total Players</p>
+              <p className="text-2xl font-bold text-white">{players.length}</p>
             </div>
-            <div className="rounded-lg bg-white/5 px-3 py-3">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Top Projection</p>
-              <p className="text-lg font-bold text-[#F5C84C]">{topProjection}</p>
+            <div className="rounded-2xl bg-[#111] border border-white/10 px-4 py-4 shadow-sm">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">Top Projection</p>
+              <p className="text-2xl font-bold text-emerald-400">{topProjection}</p>
             </div>
-            <div className="rounded-lg bg-white/5 px-3 py-3">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Premium</p>
-              <p className="text-lg font-bold text-emerald-400">{premiumCount}</p>
+            <div className="rounded-2xl bg-[#111] border border-white/10 px-4 py-4 shadow-sm">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">Premium</p>
+              <p className="text-2xl font-bold text-white/70">{premiumCount}</p>
             </div>
           </div>
 
           {/* Highlight Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
             {/* Best Value */}
-            <div className="rounded-lg bg-white/[0.03] border border-white/5 px-3 py-3">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp size={14} className="text-emerald-400" />
-                <h3 className="text-xs font-semibold text-white/70">Best Value</h3>
+            <div className="rounded-2xl bg-[#111] border border-white/10 px-4 py-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <TrendingUp size={15} className="text-emerald-400" />
+                <h3 className="text-xs font-bold text-white/80 uppercase tracking-wider">Best Value</h3>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {bestValue.slice(0, 3).map((player) => (
                   <Link
                     key={player.player_name}
                     to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
-                    className="flex items-center justify-between p-2 rounded bg-white/[0.02] hover:bg-white/[0.05] transition-colors"
+                    className="flex items-center justify-between p-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] transition-all duration-150 border border-white/5 hover:border-white/10"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-white/80 truncate">{player.player_name}</p>
-                      <p className="text-[10px] text-white/30">{player.team}</p>
+                      <p className="text-xs font-semibold text-white truncate">{player.player_name}</p>
+                      <p className="text-[10px] text-white/40">{player.team}</p>
                     </div>
-                    <p className="text-xs font-bold text-emerald-400 ml-2">{Math.round(player.value_score || 0)}</p>
+                    <p className="text-sm font-bold text-emerald-400 ml-2">{Math.round(player.value_score || 0)}</p>
                   </Link>
                 ))}
               </div>
             </div>
 
             {/* Safest Picks */}
-            <div className="rounded-lg bg-white/[0.03] border border-white/5 px-3 py-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Shield size={14} className="text-blue-400" />
-                <h3 className="text-xs font-semibold text-white/70">Safest Picks</h3>
+            <div className="rounded-2xl bg-[#111] border border-white/10 px-4 py-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Shield size={15} className="text-blue-400" />
+                <h3 className="text-xs font-bold text-white/80 uppercase tracking-wider">Safest Picks</h3>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {safestPicks.slice(0, 3).map((player) => (
                   <Link
                     key={player.player_name}
                     to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
-                    className="flex items-center justify-between p-2 rounded bg-white/[0.02] hover:bg-white/[0.05] transition-colors"
+                    className="flex items-center justify-between p-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] transition-all duration-150 border border-white/5 hover:border-white/10"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-white/80 truncate">{player.player_name}</p>
-                      <p className="text-[10px] text-white/30">{player.team}</p>
+                      <p className="text-xs font-semibold text-white truncate">{player.player_name}</p>
+                      <p className="text-[10px] text-white/40">{player.team}</p>
                     </div>
-                    <p className="text-xs font-bold text-blue-400 ml-2">{Math.round(player.projection_confidence || 0)}%</p>
+                    <p className="text-sm font-bold text-blue-400 ml-2">{Math.round(player.projection_confidence || 0)}%</p>
                   </Link>
                 ))}
               </div>
             </div>
 
             {/* High Upside */}
-            <div className="rounded-lg bg-white/[0.03] border border-white/5 px-3 py-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Zap size={14} className="text-orange-400" />
-                <h3 className="text-xs font-semibold text-white/70">High Upside</h3>
+            <div className="rounded-2xl bg-[#111] border border-white/10 px-4 py-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Zap size={15} className="text-orange-400" />
+                <h3 className="text-xs font-bold text-white/80 uppercase tracking-wider">High Upside</h3>
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {highUpside.slice(0, 3).map((player) => (
                   <Link
                     key={player.player_name}
                     to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
-                    className="flex items-center justify-between p-2 rounded bg-white/[0.02] hover:bg-white/[0.05] transition-colors"
+                    className="flex items-center justify-between p-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] transition-all duration-150 border border-white/5 hover:border-white/10"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-white/80 truncate">{player.player_name}</p>
-                      <p className="text-[10px] text-white/30">{player.team}</p>
+                      <p className="text-xs font-semibold text-white truncate">{player.player_name}</p>
+                      <p className="text-[10px] text-white/40">{player.team}</p>
                     </div>
-                    <p className="text-xs font-bold text-orange-400 ml-2">+{Math.round(player.upside_pct || 0)}%</p>
+                    <p className="text-sm font-bold text-orange-400 ml-2">+{Math.round(player.upside_pct || 0)}%</p>
                   </Link>
                 ))}
               </div>
@@ -216,7 +216,7 @@ export default function AFLPositionPage() {
 
           {/* Full Rankings List */}
           <div className="mb-6">
-            <h2 className="text-base font-semibold text-white mb-3">Top 50 {positionName}</h2>
+            <h2 className="text-base font-semibold text-white mb-4">Top 50 {positionName}</h2>
             <div className="space-y-2">
               {players.map((player, idx) => {
                 const recColor = getRecommendationColor(player.recommendation_color);
@@ -224,21 +224,31 @@ export default function AFLPositionPage() {
                   <Link
                     key={player.player_name}
                     to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
-                    className="flex items-center justify-between rounded-lg bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] hover:border-white/10 transition-all px-3 py-3"
+                    className="flex items-center justify-between rounded-xl bg-[#111] border border-white/10 hover:bg-white/[0.05] hover:border-white/20 transition-all duration-150 px-4 py-5"
                   >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="text-base font-bold text-white/20 w-6 shrink-0">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="text-lg font-bold text-white/25 w-8 shrink-0 text-center">
                         {idx + 1}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">{player.player_name}</p>
+                        <p className="text-sm font-bold text-white truncate mb-0.5">{player.player_name}</p>
                         <p className="text-xs text-white/40">{player.team}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-4 shrink-0">
+                      <div className="text-right">
+                        <p className="text-base font-bold text-emerald-400 mb-0.5">{Math.round(player.projection_final)}</p>
+                        <p className="text-[10px] text-white/40">{formatPrice(player.price)}</p>
+                      </div>
+                      {player.value_score != null && (
+                        <div className="text-right hidden sm:block">
+                          <p className="text-[10px] text-white/40 mb-0.5">Value</p>
+                          <p className="text-sm font-semibold text-emerald-400">{Math.round(player.value_score)}</p>
+                        </div>
+                      )}
                       {player.ai_recommendation && (
                         <div
-                          className="hidden sm:flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-semibold"
+                          className="hidden md:flex items-center justify-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide"
                           style={{
                             background: `${recColor}18`,
                             color: recColor,
@@ -248,11 +258,7 @@ export default function AFLPositionPage() {
                           {player.ai_recommendation}
                         </div>
                       )}
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-[#F5C84C]">{Math.round(player.projection_final)}</p>
-                        <p className="text-[10px] text-white/30">{formatPrice(player.price)}</p>
-                      </div>
-                      <ChevronRight size={16} className="text-white/20" />
+                      <ChevronRight size={18} className="text-white/30" />
                     </div>
                   </Link>
                 );
@@ -261,13 +267,13 @@ export default function AFLPositionPage() {
           </div>
 
           {/* Bottom CTA */}
-          <div className="pt-4 mt-2 border-t border-white/5">
+          <div className="pt-6 mt-4 border-t border-white/10">
             <Link
               to="/sports/afl/rankings"
-              className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/8 text-white/70 hover:text-white transition-all px-4 py-3 font-medium text-sm"
+              className="flex items-center justify-center gap-2 rounded-xl bg-[#F5C84C] hover:bg-[#F5C84C]/90 text-black transition-all duration-150 px-6 py-4 font-bold text-sm w-full shadow-lg shadow-[#F5C84C]/20"
             >
-              <Target size={14} />
-              View All Rankings
+              See full model rankings
+              <ChevronRight size={16} />
             </Link>
           </div>
         </div>

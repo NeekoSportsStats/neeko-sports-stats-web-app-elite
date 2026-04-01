@@ -114,24 +114,24 @@ export default function AFLTeamPage() {
           </div>
 
           {/* Team Stats */}
-          <div className="grid grid-cols-3 gap-2 mb-6">
-            <div className="rounded-lg bg-white/5 px-3 py-3">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Total Players</p>
-              <p className="text-lg font-bold text-white">{players.length}</p>
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="rounded-2xl bg-[#111] border border-white/10 px-4 py-4 shadow-sm">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">Total Players</p>
+              <p className="text-2xl font-bold text-white">{players.length}</p>
             </div>
-            <div className="rounded-lg bg-white/5 px-3 py-3">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Top Projection</p>
-              <p className="text-lg font-bold text-[#F5C84C]">{topProjection}</p>
+            <div className="rounded-2xl bg-[#111] border border-white/10 px-4 py-4 shadow-sm">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">Top Projection</p>
+              <p className="text-2xl font-bold text-emerald-400">{topProjection}</p>
             </div>
-            <div className="rounded-lg bg-white/5 px-3 py-3">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Avg Projection</p>
-              <p className="text-lg font-bold text-emerald-400">{avgProjection}</p>
+            <div className="rounded-2xl bg-[#111] border border-white/10 px-4 py-4 shadow-sm">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">Avg Projection</p>
+              <p className="text-2xl font-bold text-white/70">{avgProjection}</p>
             </div>
           </div>
 
           {/* Top 10 Players */}
           <div className="mb-6">
-            <h2 className="text-base font-semibold text-white mb-3">Top 10 Players</h2>
+            <h2 className="text-base font-semibold text-white mb-4">Top 10 Players</h2>
             <div className="space-y-2">
               {topPlayers.map((player, idx) => {
                 const recColor = getRecommendationColor(player.recommendation_color);
@@ -139,21 +139,31 @@ export default function AFLTeamPage() {
                   <Link
                     key={player.player_name}
                     to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
-                    className="flex items-center justify-between rounded-lg bg-white/[0.03] border border-white/5 hover:bg-white/[0.06] hover:border-white/10 transition-all px-3 py-3"
+                    className="flex items-center justify-between rounded-xl bg-[#111] border border-white/10 hover:bg-white/[0.05] hover:border-white/20 transition-all duration-150 px-4 py-5"
                   >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="text-base font-bold text-white/20 w-6 shrink-0">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className="text-lg font-bold text-white/25 w-8 shrink-0 text-center">
                         {idx + 1}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-white truncate">{player.player_name}</p>
+                        <p className="text-sm font-bold text-white truncate mb-0.5">{player.player_name}</p>
                         <p className="text-xs text-white/40">{POSITION_NAMES[player.position]}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-4 shrink-0">
+                      <div className="text-right">
+                        <p className="text-base font-bold text-emerald-400 mb-0.5">{Math.round(player.projection_final)}</p>
+                        <p className="text-[10px] text-white/40">{formatPrice(player.price)}</p>
+                      </div>
+                      {player.value_score != null && (
+                        <div className="text-right hidden sm:block">
+                          <p className="text-[10px] text-white/40 mb-0.5">Value</p>
+                          <p className="text-sm font-semibold text-emerald-400">{Math.round(player.value_score)}</p>
+                        </div>
+                      )}
                       {player.ai_recommendation && (
                         <div
-                          className="hidden sm:flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-semibold"
+                          className="hidden md:flex items-center justify-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide"
                           style={{
                             background: `${recColor}18`,
                             color: recColor,
@@ -163,11 +173,7 @@ export default function AFLTeamPage() {
                           {player.ai_recommendation}
                         </div>
                       )}
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-[#F5C84C]">{Math.round(player.projection_final)}</p>
-                        <p className="text-[10px] text-white/30">{formatPrice(player.price)}</p>
-                      </div>
-                      <ChevronRight size={16} className="text-white/20" />
+                      <ChevronRight size={18} className="text-white/30" />
                     </div>
                   </Link>
                 );
@@ -176,59 +182,67 @@ export default function AFLTeamPage() {
           </div>
 
           {/* Full Team List */}
-          <div className="mb-6">
-            <h2 className="text-base font-semibold text-white mb-3">Full Roster</h2>
-            <div className="space-y-2">
-              {players.slice(10).map((player, idx) => {
-                const recColor = getRecommendationColor(player.recommendation_color);
-                return (
-                  <Link
-                    key={player.player_name}
-                    to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
-                    className="flex items-center justify-between rounded-lg bg-white/[0.02] border border-white/5 hover:bg-white/[0.05] hover:border-white/10 transition-all px-3 py-2.5"
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className="text-sm font-bold text-white/15 w-6 shrink-0">
-                        {idx + 11}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-white/80 truncate">{player.player_name}</p>
-                        <p className="text-xs text-white/35">{POSITION_NAMES[player.position]}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      {player.ai_recommendation && (
-                        <div
-                          className="hidden sm:flex items-center justify-center px-2 py-0.5 rounded text-[10px] font-semibold"
-                          style={{
-                            background: `${recColor}18`,
-                            color: recColor,
-                            border: `1px solid ${recColor}40`
-                          }}
-                        >
-                          {player.ai_recommendation}
+          {players.length > 10 && (
+            <div className="mb-6">
+              <h2 className="text-base font-semibold text-white mb-4">Full Roster</h2>
+              <div className="space-y-2">
+                {players.slice(10).map((player, idx) => {
+                  const recColor = getRecommendationColor(player.recommendation_color);
+                  return (
+                    <Link
+                      key={player.player_name}
+                      to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
+                      className="flex items-center justify-between rounded-xl bg-[#111] border border-white/10 hover:bg-white/[0.05] hover:border-white/20 transition-all duration-150 px-4 py-4"
+                    >
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <div className="text-base font-bold text-white/20 w-8 shrink-0 text-center">
+                          {idx + 11}
                         </div>
-                      )}
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-white/60">{Math.round(player.projection_final)}</p>
-                        <p className="text-[10px] text-white/25">{formatPrice(player.price)}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-white/90 truncate mb-0.5">{player.player_name}</p>
+                          <p className="text-xs text-white/40">{POSITION_NAMES[player.position]}</p>
+                        </div>
                       </div>
-                      <ChevronRight size={14} className="text-white/15" />
-                    </div>
-                  </Link>
-                );
-              })}
+                      <div className="flex items-center gap-4 shrink-0">
+                        <div className="text-right">
+                          <p className="text-base font-semibold text-white/70 mb-0.5">{Math.round(player.projection_final)}</p>
+                          <p className="text-[10px] text-white/30">{formatPrice(player.price)}</p>
+                        </div>
+                        {player.value_score != null && (
+                          <div className="text-right hidden sm:block">
+                            <p className="text-[10px] text-white/40 mb-0.5">Value</p>
+                            <p className="text-sm font-semibold text-white/60">{Math.round(player.value_score)}</p>
+                          </div>
+                        )}
+                        {player.ai_recommendation && (
+                          <div
+                            className="hidden md:flex items-center justify-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide"
+                            style={{
+                              background: `${recColor}18`,
+                              color: recColor,
+                              border: `1px solid ${recColor}40`
+                            }}
+                          >
+                            {player.ai_recommendation}
+                          </div>
+                        )}
+                        <ChevronRight size={18} className="text-white/25" />
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Bottom CTA */}
-          <div className="pt-4 mt-2 border-t border-white/5">
+          <div className="pt-6 mt-4 border-t border-white/10">
             <Link
               to="/sports/afl/rankings"
-              className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/8 text-white/70 hover:text-white transition-all px-4 py-3 font-medium text-sm"
+              className="flex items-center justify-center gap-2 rounded-xl bg-[#F5C84C] hover:bg-[#F5C84C]/90 text-black transition-all duration-150 px-6 py-4 font-bold text-sm w-full shadow-lg shadow-[#F5C84C]/20"
             >
-              <Users size={14} />
-              View All Rankings
+              See full model rankings
+              <ChevronRight size={16} />
             </Link>
           </div>
         </div>
