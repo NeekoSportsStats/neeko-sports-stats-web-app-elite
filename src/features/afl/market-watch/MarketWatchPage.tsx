@@ -58,6 +58,7 @@ export default function MarketWatchPage() {
         last3_avg: null,
         estimated_price: r.price ?? null,
         value_score: r.value_score ?? 0,
+        value_label: r.value_label ?? null,
         price_range_top: null,
         price_range_bottom: null,
         value_momentum: r.value_momentum ?? null,
@@ -69,9 +70,9 @@ export default function MarketWatchPage() {
         round_number: r.round_number ?? 1,
         snapshot_updated_at: r.snapshot_updated_at ?? new Date().toISOString(),
         neeko_rating: r.neeko_rating ?? null,
-        consistency_score: r.consistency_score ?? null,
+        consistency_score: r.consistency ?? null,
         projection_confidence: r.projection_confidence ?? null,
-        avg_season: r.avg_season ?? null,
+        avg_season: null,
         last5_avg: null,
         ai_recommendation: r.ai_recommendation ?? null,
         recommendation_short: r.recommendation_short ?? null,
@@ -143,14 +144,14 @@ export default function MarketWatchPage() {
 
   return (
     <div className="min-h-screen bg-[#0D0D0D] text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+      <div className="max-w-[1400px] mx-auto px-6 sm:px-8 lg:px-12 py-12 space-y-16">
 
-        <div className="flex items-center justify-between border-b border-white/10 pb-6">
+        <div className="flex items-center justify-between border-b border-white/10 pb-8">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-3">
               Market Watch
             </h1>
-            <p className="text-white/50">
+            <p className="text-lg text-white/60">
               AI-powered trade signals updated weekly
             </p>
           </div>
@@ -165,7 +166,7 @@ export default function MarketWatchPage() {
             <button
               onClick={handleRefresh}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/10 rounded-lg hover:bg-white/[0.05] transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white/[0.03] border border-white/10 rounded-lg hover:bg-white/[0.05] transition-all"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">Refresh</span>
@@ -185,9 +186,9 @@ export default function MarketWatchPage() {
           />
         </div>
 
-        <div className="space-y-12 animate-in fade-in duration-500">
+        <div className="space-y-16 animate-in fade-in duration-500">
           <CategorySection
-            title="🔥 BUY"
+            title="🎯 TARGET"
             subtitle="Strong value and upside — recommended purchases"
             count={classified?.buys?.length ?? 0}
             players={classified?.buys ?? []}
@@ -197,7 +198,7 @@ export default function MarketWatchPage() {
           />
 
           <CategorySection
-            title="🟡 HOLD"
+            title="👁️ WATCH"
             subtitle="Neutral value — monitor for changes"
             count={classified?.holds?.length ?? 0}
             players={classified?.holds ?? []}
@@ -207,7 +208,7 @@ export default function MarketWatchPage() {
           />
 
           <CategorySection
-            title="🔴 SELL"
+            title="⚠️ AVOID"
             subtitle="Poor value or risk — recommended exits"
             count={classified?.sells?.length ?? 0}
             players={classified?.sells ?? []}
@@ -280,7 +281,7 @@ function CategorySection({ title, subtitle, count, players, type, onPlayerClick,
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {visiblePlayers.map((player, i) => (
           <MarketWatchPremiumCard
             key={player.player_id}

@@ -40,6 +40,7 @@ export interface MWPlayerRow {
   last3_avg: number | null;
   estimated_price: number | null;
   value_score: number | null;
+  value_label: string | null;
   price_range_top: number | null;
   price_range_bottom: number | null;
   value_momentum: number | null;

@@ -1,4 +1,4 @@
-import { TrendingDown, TrendingUp, Target } from "lucide-react";
+import { Target } from "lucide-react";
 import { DerivedPlayer } from "./engine";
 import { fmtPrice } from "./helpers";
 
@@ -8,7 +8,20 @@ interface MarketWatchHeroProps {
 
 // Get AI explanation for hero card - REAL AI ONLY
 function getWhy(player: any): string {
-  // ONLY use real AI content
+  // ONLY use real AI summary_short or recommendation_short
+  if (player.summary_short && player.summary_short.length > 20) {
+    const text = player.summary_short.trim();
+    const lower = text.toLowerCase();
+
+    // Validate it's real AI (not debug/placeholder)
+    if (!lower.includes('player_id') &&
+        !lower.includes('value_score') &&
+        !lower.includes('undefined') &&
+        !lower.includes('null')) {
+      return truncate(text, 120);
+    }
+  }
+
   if (player.recommendation_short && player.recommendation_short.length > 15) {
     const text = player.recommendation_short.trim();
     const lower = text.toLowerCase();
@@ -18,34 +31,16 @@ function getWhy(player: any): string {
         !lower.includes('value_score') &&
         !lower.includes('undefined') &&
         !lower.includes('null')) {
-      return truncate(text, 100);
+      return truncate(text, 120);
     }
   }
 
-  if (player.summary_short && player.summary_short.length > 20) {
-    const text = player.summary_short.trim();
-    const lower = text.toLowerCase();
-
-    // Validate it's real AI
-    if (!lower.includes('player_id') &&
-        !lower.includes('value_score') &&
-        !lower.includes('undefined') &&
-        !lower.includes('null')) {
-      return truncate(text, 100);
-    }
-  }
-
-  // If no real AI, show data-driven summary (NOT fake AI)
-  const projection = player.projection ?? 0;
-  const breakeven = player.breakeven ?? 0;
-  const delta = projection - breakeven;
-  const value = player.value_score ?? 0;
-
-  return `${projection.toFixed(0)} pts projected | ${delta > 0 ? '+' : ''}${delta.toFixed(0)} vs BE | Value: ${value > 0 ? '+' : ''}${value.toFixed(1)}`;
+  // If no AI available, return empty string (no fallback text)
+  return '';
 }
 
 // Truncate text to max length
-function truncate(text: string, maxLen: number = 90): string {
+function truncate(text: string, maxLen: number = 120): string {
   if (!text) return "";
   const cleaned = text.trim();
   return cleaned.length > maxLen ? cleaned.slice(0, maxLen) + "…" : cleaned;
@@ -55,13 +50,12 @@ export function MarketWatchHero({ topBuy }: MarketWatchHeroProps) {
   if (!topBuy) return null;
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-3xl mx-auto">
       <HeroCard
         player={topBuy}
         type="buy"
-        rank={1}
-        label="TOP BUY"
-        icon={<TrendingUp className="w-6 h-6" />}
+        label="BEST TARGET"
+        icon={<Target className="w-6 h-6" />}
       />
     </div>
   );
@@ -70,14 +64,15 @@ export function MarketWatchHero({ topBuy }: MarketWatchHeroProps) {
 interface HeroCardProps {
   player: DerivedPlayer;
   type: "buy";
-  rank: number;
   label: string;
   icon: React.ReactNode;
 }
 
-function HeroCard({ player, type, rank, label, icon }: HeroCardProps) {
-  const priceChange = player.expected_price_change ?? 0;
-  const valueScore = player.value_score ?? 0;
+function HeroCard({ player, label, icon }: HeroCardProps) {
+  const projection = player.projection ?? 0;
+  const breakeven = player.breakeven ?? 0;
+  const valueLabel = player.value_label || 'Strong Value';
+  const whyText = getWhy(player);
 
   const config = {
     bg: "bg-gradient-to-br from-green-500/5 to-green-600/10",
@@ -85,7 +80,7 @@ function HeroCard({ player, type, rank, label, icon }: HeroCardProps) {
     glow: "shadow-[0_0_30px_rgba(34,197,94,0.15)]",
     iconColor: "text-green-400",
     accentColor: "text-green-400",
-    rankBg: "bg-green-500/20",
+    badgeBg: "bg-green-500/15 border-green-500/30",
     hoverGlow: "hover:shadow-[0_0_40px_rgba(34,197,94,0.25)]",
   };
 
@@ -93,82 +88,78 @@ function HeroCard({ player, type, rank, label, icon }: HeroCardProps) {
     <div
       className={`
         ${config.bg} ${config.border} ${config.glow} ${config.hoverGlow}
-        border rounded-xl p-6
+        border rounded-2xl p-8
         transition-all duration-300
-        hover:scale-[1.02] hover:border-opacity-40
+        hover:scale-[1.01] hover:border-green-500/30
         group relative overflow-hidden
       `}
     >
-      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-radial from-white/5 to-transparent rounded-full -mr-16 -mt-16 opacity-0 group-hover:opacity-100 transition-opacity" />
-
-      <div className="flex items-start justify-between mb-4">
+      {/* TOP: Label + Badge */}
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <div className={`${config.iconColor}`}>
             {icon}
           </div>
-          <div>
-            <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-0.5">
-              {label}
-            </div>
-            <div className={`text-xs font-semibold ${config.accentColor}`}>
-              #{rank} Signal
-            </div>
+          <div className="text-sm font-bold text-white/40 uppercase tracking-wider">
+            {label}
           </div>
         </div>
-        <div className={`${config.rankBg} px-3 py-1 rounded-full`}>
-          <span className="text-xs font-bold text-white">#{rank}</span>
+        <div className={`px-4 py-1.5 rounded-lg border ${config.badgeBg} ${config.iconColor}`}>
+          <span className="text-xs font-bold uppercase tracking-wide">TARGET</span>
         </div>
       </div>
 
-      <div className="mb-4">
-        <h3 className="text-2xl font-bold text-white mb-1 truncate">
+      {/* MIDDLE: Player Name */}
+      <div className="mb-6">
+        <h3 className="text-3xl font-bold text-white mb-2">
           {player.player_name}
         </h3>
-        <div className="flex items-center gap-2 text-sm text-white/50">
-          <span className="font-medium">{player.position}</span>
+        <div className="flex items-center gap-2 text-base text-white/60">
+          <span className="font-semibold">{player.position}</span>
           <span className="text-white/30">•</span>
           <span>{player.team}</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-4">
-        <div>
-          <div className="text-xs text-white/40 mb-1">Price</div>
-          <div className="text-lg font-bold text-white">
+      {/* STATS GRID: Projection, Breakeven, Price, Value */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-4">
+          <div className="text-xs text-white/40 mb-2 uppercase tracking-wide">Projection</div>
+          <div className="text-2xl font-bold text-white">
+            {projection.toFixed(0)} <span className="text-sm font-medium text-white/50">pts</span>
+          </div>
+        </div>
+        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-4">
+          <div className="text-xs text-white/40 mb-2 uppercase tracking-wide">Breakeven</div>
+          <div className="text-2xl font-bold text-white">
+            {breakeven.toFixed(0)} <span className="text-sm font-medium text-white/50">pts</span>
+          </div>
+        </div>
+        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-4">
+          <div className="text-xs text-white/40 mb-2 uppercase tracking-wide">Price</div>
+          <div className="text-2xl font-bold text-white">
             {fmtPrice(player.price ?? 0)}
           </div>
         </div>
-        <div>
-          <div className="text-xs text-white/40 mb-1">Projection</div>
-          <div className="text-lg font-bold text-white">
-            {player.projection?.toFixed(0) ?? "—"} pts
+        <div className="bg-white/[0.03] border border-white/10 rounded-lg p-4">
+          <div className="text-xs text-white/40 mb-2 uppercase tracking-wide">Value</div>
+          <div className={`text-base font-bold ${config.accentColor}`}>
+            {valueLabel}
           </div>
         </div>
       </div>
 
-      <div className="pt-4 border-t border-white/10 space-y-2">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-white/50">Price Change</span>
-          <span className={priceChange >= 0 ? "text-green-400" : "text-red-400"}>
-            {priceChange >= 0 ? "+" : ""}{fmtPrice(Math.round(priceChange))}
-          </span>
-        </div>
-        {valueScore !== 0 && (
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-white/50">Value Score</span>
-            <span className={valueScore > 0 ? "text-green-400" : "text-red-400"}>
-              {valueScore > 0 ? "+" : ""}{valueScore.toFixed(1)}
-            </span>
+      {/* WHY SECTION - Only show if AI content available */}
+      {whyText && (
+        <div className="pt-5 border-t border-white/10">
+          <div className="flex items-start gap-2">
+            <span className={`${config.accentColor} font-bold text-sm uppercase tracking-wide flex-shrink-0`}>WHY:</span>
+            <p className="text-sm text-gray-300 leading-relaxed">
+              {whyText}
+            </p>
           </div>
-        )}
-      </div>
-
-      <div className="mt-3 pt-3 border-t border-white/5">
-        <p className="text-sm text-gray-400 leading-snug line-clamp-2">
-          <span className={`${config.accentColor} font-semibold mr-1.5`}>WHY:</span>
-          {getWhy(player)}
-        </p>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

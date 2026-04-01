@@ -138,7 +138,7 @@ export function MarketWatchPremiumCard({ player, rank, type, onPlayerClick }: Pr
         {breakeven > 0 && (
           <div className="mt-1.5 text-sm font-medium">
             <span className={delta > 0 ? 'text-green-400' : delta < -5 ? 'text-red-400' : 'text-gray-400'}>
-              {delta > 0 ? '+' : ''}{delta.toFixed(0)} vs BE
+              {delta > 0 ? '+' : ''}{delta.toFixed(0)} vs Breakeven
             </span>
           </div>
         )}
