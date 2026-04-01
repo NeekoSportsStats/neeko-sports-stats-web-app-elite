@@ -414,7 +414,7 @@ export function MobileRankingsTable({
 
             {loading ? (
               <LoadingSkeleton />
-            ) : visibleRows.map((row, idx) => {
+            ) : (visibleRows || []).map((row, idx) => {
               const tier: RowTier = isPremium ? "premium" : (
                 idx < FREE_FULL_ROWS ? "full" : idx < FREE_PARTIAL_ROWS ? "partial" : "locked"
               );

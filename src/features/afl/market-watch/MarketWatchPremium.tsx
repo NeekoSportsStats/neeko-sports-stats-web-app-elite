@@ -100,7 +100,7 @@ function SignalBlock({ title, players, icon: Icon, color }: { title: string; pla
         <h3 className="text-lg font-semibold text-white">{title}</h3>
       </div>
       <div className="space-y-2">
-        {players.map((p) => (
+        {(players || []).map((p) => (
           <div key={p.player_id} className="flex items-center justify-between text-sm">
             <span className="text-white/80">{p.player_name}</span>
             <span className="text-white/50">{p.projection.toFixed(0)}</span>
@@ -112,11 +112,15 @@ function SignalBlock({ title, players, icon: Icon, color }: { title: string; pla
 }
 
 function Section({ title, players, type, onPlayerClick }: { title: string; players: DerivedPlayer[]; type: string; onPlayerClick: (player: DerivedPlayer) => void }) {
+  if (!players || players.length === 0) {
+    return null;
+  }
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-white mb-4">{title}</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {players.map((p) => (
+        {(players || []).map((p) => (
           <PlayerCard key={p.player_id} player={p} type={type} onClick={() => onPlayerClick(p)} />
         ))}
       </div>
