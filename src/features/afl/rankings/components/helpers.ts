@@ -489,8 +489,9 @@ export const TAB_DESCRIPTIONS: Record<RankingsTab, string> = {
 
 // ─── Gating constants ──────────────────────────────────────────────────────────
 
-export const FREE_FULL_ROWS = 8;
-export const FREE_PARTIAL_ROWS = 15;
+// PHASE 3: Increased preview exposure with AI teasers for conversion
+export const FREE_FULL_ROWS = 10;  // Fully accessible players (with full AI)
+export const FREE_PARTIAL_ROWS = 20;  // Locked preview players (with AI teasers)
 
 export function getFreeTier(idx: number): "full" | "partial" | "locked" {
   if (idx < FREE_FULL_ROWS) return "full";
