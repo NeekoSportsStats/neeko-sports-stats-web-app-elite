@@ -633,6 +633,15 @@ export default function AFLPlayerPage() {
     enabled: !!player,
   });
 
+  // ALL HOOKS MUST BE BEFORE EARLY RETURNS
+  const aiAnalysis = useMemo(() => {
+    if (!player || !isPremium && player?.is_locked) return null;
+    const analysis = player.long ?? player.summary_long ?? null;
+    const captain_recommendation = player.captain_rating ?? null;
+    if (!analysis) return null;
+    return { analysis, captain_recommendation };
+  }, [player?.long, player?.summary_long, player?.captain_rating, player?.is_locked, isPremium]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#0e0e0e] flex items-center justify-center">
@@ -673,14 +682,6 @@ export default function AFLPlayerPage() {
 
   const unlocked = isPremium || !player.is_locked;
   const canSeeAI = unlocked;
-
-  const aiAnalysis = useMemo(() => {
-    if (!canSeeAI) return null;
-    const analysis = player.long ?? player.summary_long ?? null;
-    const captain_recommendation = player.captain_rating ?? null;
-    if (!analysis) return null;
-    return { analysis, captain_recommendation };
-  }, [player.long, player.summary_long, player.captain_rating, canSeeAI]);
 
   const consistencyBadge = getConsistencyBadge(player.consistency_score ?? null);
   const capStyle = getCaptainStyle(player.captain_rating ?? null);
