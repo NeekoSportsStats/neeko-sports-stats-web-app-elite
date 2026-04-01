@@ -21,21 +21,18 @@ interface PlayerData {
   position: string;
   price: number;
   projection_final: number;
-  ceiling: number;
-  floor: number;
-  value_score: number;
+  ceiling?: number | null;
+  floor?: number | null;
+  value_score?: number | null;
   neeko_rating: number;
-  ai_recommendation: string;
-  recommendation_color: string;
-  recommendation_short: string;
-  summary_short: string;
-  summary_long: string;
+  ai_recommendation?: string | null;
+  recommendation_color?: string | null;
+  recommendation_short?: string | null;
+  summary_short?: string | null;
+  summary_long?: string | null;
   games_played: number;
-  avg_last_3: number;
-  avg_last_5: number;
-  projection_confidence: number;
-  upside_pct: number;
-  risk_rating: number;
+  projection_confidence?: number | null;
+  upside_pct?: number | null;
 }
 
 
@@ -138,7 +135,12 @@ export default function AFLPlayerPage() {
   };
 
   const pageTitle = `${player.player_name} AFL Fantasy Stats, Projection & Value 2026 | Neeko`;
-  const pageDescription = `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(player.projection_final)} projected points. ${POSITION_NAMES[player.position]} rankings, value score ${Math.round(player.value_score)}, AI-powered ${player.ai_recommendation.toLowerCase()} recommendation. Updated weekly.`;
+
+  // SEO description - use safe values only (no premium-only fields)
+  const pageDescription = player.value_score && player.ai_recommendation
+    ? `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(player.projection_final)} projected points. ${POSITION_NAMES[player.position]} rankings, value score ${Math.round(player.value_score)}, AI-powered ${player.ai_recommendation.toLowerCase()} recommendation. Updated weekly.`
+    : `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(player.projection_final)} projected points, ${Math.round(player.neeko_rating)} Neeko rating. ${POSITION_NAMES[player.position]} rankings and analysis. Updated weekly.`;
+
   const pageUrl = `https://neeko.com.au/sports/afl/players/${slug}`;
   const keywords = `${player.player_name}, ${player.team}, AFL Fantasy, ${player.position}, fantasy football, player stats, projection, value, ${POSITION_NAMES[player.position]}`;
 
@@ -219,20 +221,26 @@ export default function AFLPlayerPage() {
               <div className="text-sm text-slate-500 mb-1">Projection</div>
               <div className="text-2xl font-bold">{Math.round(player.projection_final)}</div>
             </div>
-            <div>
-              <div className="text-sm text-slate-500 mb-1">Ceiling</div>
-              <div className="text-2xl font-bold text-green-600">{Math.round(player.ceiling)}</div>
-            </div>
-            <div>
-              <div className="text-sm text-slate-500 mb-1">Floor</div>
-              <div className="text-2xl font-bold text-orange-600">{Math.round(player.floor || 0)}</div>
-            </div>
-            <div>
-              <div className="text-sm text-slate-500 mb-1">Value Score</div>
-              <div className="text-2xl font-bold">
-                {Math.round(player.value_score)}
+            {player.ceiling !== null && player.ceiling !== undefined && (
+              <div>
+                <div className="text-sm text-slate-500 mb-1">Ceiling</div>
+                <div className="text-2xl font-bold text-green-600">{Math.round(player.ceiling)}</div>
               </div>
-            </div>
+            )}
+            {player.floor !== null && player.floor !== undefined && (
+              <div>
+                <div className="text-sm text-slate-500 mb-1">Floor</div>
+                <div className="text-2xl font-bold text-orange-600">{Math.round(player.floor)}</div>
+              </div>
+            )}
+            {player.value_score !== null && player.value_score !== undefined && (
+              <div>
+                <div className="text-sm text-slate-500 mb-1">Value Score</div>
+                <div className="text-2xl font-bold">
+                  {Math.round(player.value_score)}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -305,33 +313,25 @@ export default function AFLPlayerPage() {
               <div className="text-xl font-bold">{player.games_played}</div>
             </div>
             <div>
-              <div className="text-sm text-slate-500 mb-1">Last 3 Avg</div>
-              <div className="text-xl font-bold">
-                {player.avg_last_3 ? Math.round(player.avg_last_3) : '-'}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm text-slate-500 mb-1">Last 5 Avg</div>
-              <div className="text-xl font-bold">
-                {player.avg_last_5 ? Math.round(player.avg_last_5) : '-'}
-              </div>
-            </div>
-            <div>
               <div className="text-sm text-slate-500 mb-1">Neeko Rating</div>
               <div className="text-xl font-bold">{Math.round(player.neeko_rating)}</div>
             </div>
-            <div>
-              <div className="text-sm text-slate-500 mb-1">Confidence</div>
-              <div className="text-xl font-bold">
-                {Math.round(player.projection_confidence)}%
+            {player.projection_confidence !== null && player.projection_confidence !== undefined && (
+              <div>
+                <div className="text-sm text-slate-500 mb-1">Confidence</div>
+                <div className="text-xl font-bold">
+                  {Math.round(player.projection_confidence)}%
+                </div>
               </div>
-            </div>
-            <div>
-              <div className="text-sm text-slate-500 mb-1">Upside</div>
-              <div className="text-xl font-bold text-green-600">
-                {player.upside_pct ? `${Math.round(player.upside_pct)}%` : '-'}
+            )}
+            {player.upside_pct !== null && player.upside_pct !== undefined && (
+              <div>
+                <div className="text-sm text-slate-500 mb-1">Upside</div>
+                <div className="text-xl font-bold text-green-600">
+                  {Math.round(player.upside_pct)}%
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>
