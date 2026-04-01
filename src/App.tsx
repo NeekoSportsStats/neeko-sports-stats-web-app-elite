@@ -9,13 +9,18 @@ import {
   AIInsightsSkeleton,
   GenericPageSkeleton,
 } from "@/components/skeletons/PageSkeletons";
+import { supabase } from "@/lib/supabaseClient";
 
-/* Critical / always-needed (keep static) */
+/* =========================
+   Critical / always-needed (keep static)
+========================= */
 import Auth from "@/pages/Auth";
 import Index from "@/pages/Index";
 import NotFound from "@/pages/NotFound";
 
-/* Core Pages — lazy */
+/* =========================
+   Core Pages — lazy
+========================= */
 import {
   AdminShell,
   AdminDashboardPage,
@@ -42,7 +47,9 @@ const ForgotPassword    = React.lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword     = React.lazy(() => import("@/pages/ResetPassword"));
 const StartCheckout     = React.lazy(() => import("@/pages/StartCheckout"));
 
-/* Policies — lazy */
+/* =========================
+   Policies — lazy
+========================= */
 const Policies          = React.lazy(() => import("@/pages/policies/Policies"));
 const PrivacyPolicy     = React.lazy(() => import("@/pages/policies/PrivacyPolicy"));
 const RefundPolicy      = React.lazy(() => import("@/pages/policies/RefundPolicy"));
@@ -50,16 +57,20 @@ const SecurityPolicy    = React.lazy(() => import("@/pages/policies/SecurityPoli
 const TermsConditions   = React.lazy(() => import("@/pages/policies/TermsConditions"));
 const UserConductPolicy = React.lazy(() => import("@/pages/policies/UserConductPolicy"));
 
-/* AFL Pages — lazy (Elite versions) */
+/* =========================
+   AFL Pages — lazy
+========================= */
 const AFLRankingsPage   = React.lazy(() => import("@/features/afl/rankings/AFLRankingsPage"));
 const AFLRoundEdgeBoard = React.lazy(() => import("@/features/afl/edge/AFLRoundEdgeBoard"));
 const AFLStartSitPage   = React.lazy(() => import("@/features/afl/start-sit/StartSitPage"));
 const AFLMarketWatch    = React.lazy(() => import("@/features/afl/market-watch/MarketWatchPageElite"));
-const AFLPlayerPage     = React.lazy(() => import("@/pages/afl/AFLPlayerPageElite"));
-const AFLTeamPage       = React.lazy(() => import("@/pages/afl/AFLTeamPageElite"));
-const AFLPositionPage   = React.lazy(() => import("@/pages/afl/AFLPositionPageElite"));
+const AFLPlayerPage     = React.lazy(() => import("@/pages/afl/AFLPlayerPage"));
+const AFLTeamPage       = React.lazy(() => import("@/pages/afl/AFLTeamPage"));
+const AFLPositionPage   = React.lazy(() => import("@/pages/afl/AFLPositionPage"));
 
-/* Suspense helpers */
+/* =========================
+   Suspense helpers
+========================= */
 function S({ fallback, children }: { fallback: React.ReactNode; children: React.ReactNode }) {
   return <Suspense fallback={fallback}>{children}</Suspense>;
 }
