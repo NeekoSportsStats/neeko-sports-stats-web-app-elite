@@ -59,6 +59,11 @@ export interface MWPlayerRow {
   matchup_label: string | null;
   summary_short: string | null;
   summary_long: string | null;
+  is_injured: boolean;
+  is_bye: boolean;
+  status: string | null;
+  manual_status: string | null;
+  last5_avg: number | null;
 }
 
 export interface MWSummaryCard {
