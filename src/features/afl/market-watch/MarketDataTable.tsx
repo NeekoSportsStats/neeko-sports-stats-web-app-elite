@@ -3,6 +3,7 @@ import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
 import { ChevronDown, ChevronUp, Info } from "lucide-react";
 import { cleanAiText } from "@/utils/cleanAiText";
+import { generateSmartWhy, getValueRankLabel, getValueRankColor, calculateValueRank } from "./helpers";
 
 type SortField = "player" | "projection" | "breakeven" | "price" | "value" | "signal";
 type SortDirection = "asc" | "desc";
@@ -16,6 +17,8 @@ interface MarketDataTableProps {
 export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDataTableProps) {
   const [sortField, setSortField] = useState<SortField>("value");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  const allPlayers = players;
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -132,6 +135,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 player={player}
                 onClick={() => onPlayerClick(player)}
                 isEven={index % 2 === 0}
+                allPlayers={allPlayers}
               />
             ))}
 
@@ -143,6 +147,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 onClick={() => {}}
                 isEven={(visiblePlayers.length + index) % 2 === 0}
                 isBlurred
+                allPlayers={allPlayers}
               />
             ))}
           </tbody>
@@ -156,6 +161,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
             key={player.player_id}
             player={player}
             onClick={() => onPlayerClick(player)}
+            allPlayers={allPlayers}
           />
         ))}
 
@@ -165,6 +171,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
             player={player}
             onClick={() => {}}
             isBlurred
+            allPlayers={allPlayers}
           />
         ))}
       </div>
@@ -230,22 +237,21 @@ interface PlayerRowProps {
   onClick: () => void;
   isEven: boolean;
   isBlurred?: boolean;
+  allPlayers: DerivedPlayer[];
 }
 
-function PlayerRow({ player, onClick, isEven, isBlurred = false }: PlayerRowProps) {
+function PlayerRow({ player, onClick, isEven, isBlurred = false, allPlayers }: PlayerRowProps) {
   const delta = (player.projection || 0) - (player.breakeven || 0);
   const deltaColor = delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-white/60";
 
   const signalStrength = getSignalStrength(player);
 
-  // Get AI WHY text
-  const whyText = player.recommendation_short
-    ? cleanAiText(player.recommendation_short)
-    : player.summary_short
-    ? cleanAiText(player.summary_short)
-    : null;
+  const smartWhy = generateSmartWhy(player);
+  const truncatedWhy = truncateWhy(smartWhy, 80);
 
-  const truncatedWhy = whyText ? truncateWhy(whyText, 80) : null;
+  const { percentile } = calculateValueRank(allPlayers, player);
+  const rankLabel = getValueRankLabel(percentile);
+  const rankColor = getValueRankColor(percentile);
 
   return (
     <tr
@@ -255,11 +261,9 @@ function PlayerRow({ player, onClick, isEven, isBlurred = false }: PlayerRowProp
       <td className="px-4 py-3">
         <div>
           <div className="font-bold text-white text-sm mb-0.5">{player.player_name}</div>
-          {truncatedWhy && (
-            <div className="text-xs text-white/50 leading-tight">
-              {formatWhyText(truncatedWhy)}
-            </div>
-          )}
+          <div className="text-xs text-white/50 leading-tight">
+            {formatWhyText(truncatedWhy)}
+          </div>
         </div>
       </td>
       <td className="px-4 py-3">
@@ -278,9 +282,14 @@ function PlayerRow({ player, onClick, isEven, isBlurred = false }: PlayerRowProp
         {formatPrice(player.price || 0)}
       </td>
       <td className="px-4 py-3">
-        <span className={`text-base font-bold ${delta > 5 ? 'text-green-400' : delta < -5 ? 'text-red-400' : 'text-white/60'}`}>
-          {delta > 0 ? '+' : ''}{Math.round(delta)}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`text-base font-bold ${delta > 5 ? 'text-green-400' : delta < -5 ? 'text-red-400' : 'text-white/60'}`}>
+            {delta > 0 ? '+' : ''}{Math.round(delta)}
+          </span>
+          <span className={`text-[10px] ${rankColor}`}>
+            {rankLabel}
+          </span>
+        </div>
       </td>
       <td className="px-4 py-3">
         <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-bold border rounded ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
@@ -296,21 +305,17 @@ interface MobilePlayerCardProps {
   player: DerivedPlayer;
   onClick: () => void;
   isBlurred?: boolean;
+  allPlayers: DerivedPlayer[];
 }
 
-function MobilePlayerCard({ player, onClick, isBlurred = false }: MobilePlayerCardProps) {
+function MobilePlayerCard({ player, onClick, isBlurred = false, allPlayers }: MobilePlayerCardProps) {
   const delta = (player.projection || 0) - (player.breakeven || 0);
   const deltaColor = delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-white/60";
 
   const signalStrength = getSignalStrength(player);
 
-  const whyText = player.recommendation_short
-    ? cleanAiText(player.recommendation_short)
-    : player.summary_short
-    ? cleanAiText(player.summary_short)
-    : null;
-
-  const truncatedWhy = whyText ? truncateWhy(whyText, 60) : null;
+  const smartWhy = generateSmartWhy(player);
+  const truncatedWhy = truncateWhy(smartWhy, 60);
 
   return (
     <div
@@ -328,11 +333,9 @@ function MobilePlayerCard({ player, onClick, isBlurred = false }: MobilePlayerCa
         </div>
       </div>
 
-      {truncatedWhy && (
-        <div className="text-xs text-white/50 leading-tight mb-3">
-          {formatWhyText(truncatedWhy)}
-        </div>
-      )}
+      <div className="text-xs text-white/50 leading-tight mb-3">
+        {formatWhyText(truncatedWhy)}
+      </div>
 
       <div className="grid grid-cols-4 gap-3 text-xs">
         <div>

@@ -1,15 +1,23 @@
 import { useEffect, useState } from "react";
-import { X, ChevronDown, ChevronUp } from "lucide-react";
+import { X, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
 import { cleanAiText } from "@/utils/cleanAiText";
+import {
+  calculateValueRank,
+  getTrendIndicator,
+  getConfidenceTooltip,
+  getUrgencyMessage,
+  generateSmartWhy
+} from "./helpers";
 
 interface PlayerDetailPanelProps {
   player: DerivedPlayer | null;
   onClose: () => void;
+  allPlayers: DerivedPlayer[];
 }
 
-export function PlayerDetailPanel({ player, onClose }: PlayerDetailPanelProps) {
+export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailPanelProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
@@ -31,12 +39,13 @@ export function PlayerDetailPanel({ player, onClose }: PlayerDetailPanelProps) {
   const signalConfig = getSignalConfig(player);
   const verdict = getVerdict(player, delta);
   const confidence = getConfidence(player);
+  const confidenceTooltip = getConfidenceTooltip();
 
-  const whyText = player.recommendation_short
-    ? cleanAiText(player.recommendation_short)
-    : player.summary_short
-    ? cleanAiText(player.summary_short)
-    : "No AI analysis available";
+  const { rank, percentile } = calculateValueRank(allPlayers, player);
+  const trendIndicator = getTrendIndicator(player);
+  const urgencyMsg = getUrgencyMessage(player, delta);
+
+  const whyText = generateSmartWhy(player);
 
   const extendedText = player.summary_long
     ? cleanAiText(player.summary_long)
@@ -73,21 +82,38 @@ export function PlayerDetailPanel({ player, onClose }: PlayerDetailPanelProps) {
             </button>
           </div>
 
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
             <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border rounded ${signalConfig.bg} ${signalConfig.text} ${signalConfig.border}`}>
               <span className="text-base">{signalConfig.icon}</span>
               <span>{signalConfig.label}</span>
             </div>
-            <div className="px-3 py-1 bg-white/5 border border-white/10 rounded text-xs text-white/80">
-              {confidence}
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/10 rounded text-xs text-white/80 cursor-help group relative">
+              <span>{confidence}</span>
+              <Info className="w-3 h-3 text-white/40 group-hover:text-white/60 transition-colors" />
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-black border border-white/20 rounded text-[10px] text-white/80 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none w-56 text-center">
+                {confidenceTooltip}
+              </div>
+            </div>
+            <div className={`flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/10 rounded text-xs ${trendIndicator.color}`}>
+              <span>{trendIndicator.icon}</span>
+              <span>{trendIndicator.label}</span>
             </div>
           </div>
 
-          {/* VALUE GAP - PROMINENT */}
-          <div className="p-4 bg-white/[0.03] border border-white/10 rounded-lg">
-            <div className="text-xs text-white/40 uppercase tracking-wider mb-1">Value Gap</div>
-            <div className={`text-4xl font-bold ${deltaColor}`}>
-              {delta > 0 ? '+' : ''}{Math.round(delta)}
+          {/* VALUE GAP + RANK */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-4 bg-white/[0.03] border border-white/10 rounded-lg">
+              <div className="text-xs text-white/40 uppercase tracking-wider mb-1">Value Gap</div>
+              <div className={`text-4xl font-bold ${deltaColor}`}>
+                {delta > 0 ? '+' : ''}{Math.round(delta)}
+              </div>
+            </div>
+            <div className="p-4 bg-white/[0.03] border border-white/10 rounded-lg">
+              <div className="text-xs text-white/40 uppercase tracking-wider mb-1">Value Rank</div>
+              <div className="text-2xl font-bold text-white">#{rank}</div>
+              <div className={`text-xs mt-1 ${percentile >= 75 ? 'text-green-400' : percentile >= 50 ? 'text-white/60' : 'text-red-400'}`}>
+                Top {Math.round(100 - percentile)}%
+              </div>
             </div>
           </div>
         </div>
@@ -95,14 +121,19 @@ export function PlayerDetailPanel({ player, onClose }: PlayerDetailPanelProps) {
         {/* CONTENT */}
         <div className="p-6 space-y-6">
 
-          {/* QUICK DECISION BLOCK - NEW */}
+          {/* QUICK DECISION BLOCK + URGENCY */}
           <div className={`p-4 border-l-4 ${signalConfig.borderLeft} bg-white/[0.02] rounded-r-lg`}>
             <div className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2">
               📊 Verdict
             </div>
-            <p className="text-sm font-medium text-white leading-relaxed">
+            <p className="text-sm font-medium text-white leading-relaxed mb-2">
               {verdict}
             </p>
+            {urgencyMsg && (
+              <p className="text-xs text-[#F5C84C] font-medium">
+                {urgencyMsg}
+              </p>
+            )}
           </div>
 
           {/* KEY STATS - RESTRUCTURED 2x2 */}

@@ -248,6 +248,7 @@ export default function MarketWatchPageElite() {
       <PlayerDetailPanel
         player={selectedPlayer}
         onClose={() => setSelectedPlayer(null)}
+        allPlayers={filteredPlayers}
       />
     </div>
   );

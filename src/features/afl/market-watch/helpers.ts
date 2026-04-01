@@ -209,3 +209,123 @@ export function tradeVerdict(ptsDelta: number, priceDelta: number, riskDelta: nu
 }
 
 export const FREE_VISIBLE = 3;
+
+export function calculateValueRank(players: any[], currentPlayer: any): { rank: number; percentile: number } {
+  const validPlayers = players
+    .filter(p => p.projection && p.breakeven)
+    .sort((a, b) => {
+      const deltaA = (a.projection || 0) - (a.breakeven || 0);
+      const deltaB = (b.projection || 0) - (b.breakeven || 0);
+      return deltaB - deltaA;
+    });
+
+  const rank = validPlayers.findIndex(p => p.player_id === currentPlayer.player_id) + 1;
+  const percentile = rank > 0 ? Math.round((1 - (rank / validPlayers.length)) * 100) : 0;
+
+  return { rank, percentile };
+}
+
+export function getTrendIndicator(player: any): { label: string; icon: string; color: string } {
+  const last3 = player.last3_avg || 0;
+  const last5 = player.last5_avg || 0;
+  const projection = player.projection || 0;
+
+  if (!last3 || !last5) {
+    return { label: "Stable Form", icon: "➡️", color: "text-white/60" };
+  }
+
+  const delta = projection - last3;
+  const trendStrength = (delta / last3) * 100;
+
+  if (trendStrength > 10) {
+    return { label: "Rising Form", icon: "📈", color: "text-green-400" };
+  }
+
+  if (trendStrength < -10) {
+    return { label: "Dropping Output", icon: "📉", color: "text-red-400" };
+  }
+
+  return { label: "Stable Form", icon: "➡️", color: "text-white/60" };
+}
+
+export function getValueRankLabel(percentile: number): string {
+  if (percentile >= 90) return "Top 10%";
+  if (percentile >= 75) return "Top 25%";
+  if (percentile >= 50) return "Above avg";
+  if (percentile >= 25) return "Below avg";
+  return "Bottom 25%";
+}
+
+export function getValueRankColor(percentile: number): string {
+  if (percentile >= 75) return "text-green-400";
+  if (percentile >= 50) return "text-white/60";
+  return "text-red-400";
+}
+
+export function getUrgencyMessage(player: any, delta: number): string | null {
+  const category = player.category?.toUpperCase() || "WATCH";
+  const projectedPriceChange = player.expected_price_change || 0;
+
+  if (category === "TARGET" || category === "BUY" || category === "BUY_BEFORE_RISE") {
+    if (delta > 15 && projectedPriceChange > 50000) {
+      return "Likely price rise next round";
+    }
+    if (delta > 10) {
+      return "Opportunity window: Short-term";
+    }
+    if (player.breakout_flag) {
+      return "Breakout candidate — act quickly";
+    }
+  }
+
+  if (category === "AVOID" || category === "SELL" || category === "SELL_BEFORE_DROP") {
+    if (projectedPriceChange < -50000) {
+      return "Expected price drop — exit recommended";
+    }
+    if (delta < -10) {
+      return "Value deteriorating — consider exit";
+    }
+  }
+
+  return null;
+}
+
+export function generateSmartWhy(player: any): string {
+  const delta = Math.round((player.projection || 0) - (player.breakeven || 0));
+  const projection = Math.round(player.projection || 0);
+  const breakeven = Math.round(player.breakeven || 0);
+
+  const deltaStr = delta > 0 ? `+${delta}` : `${delta}`;
+
+  const roleContext = getRoleContext(delta, projection, breakeven);
+
+  return `${deltaStr} value gap with ${projection} projection — ${roleContext}`;
+}
+
+function getRoleContext(delta: number, projection: number, breakeven: number): string {
+  if (delta > 15) {
+    return "priced well below role expectation";
+  }
+
+  if (delta > 8) {
+    return "priced below role expectation";
+  }
+
+  if (delta > 0) {
+    return "slight discount to role output";
+  }
+
+  if (delta < -15) {
+    return "significantly overpriced for role";
+  }
+
+  if (delta < -8) {
+    return "priced above role expectation";
+  }
+
+  return "priced at role expectation";
+}
+
+export function getConfidenceTooltip(): string {
+  return "Based on projection stability, role certainty, and matchup";
+}
