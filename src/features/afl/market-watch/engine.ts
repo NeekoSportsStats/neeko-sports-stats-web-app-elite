@@ -78,6 +78,12 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   const holds: DerivedPlayer[] = [];
   const sells: DerivedPlayer[] = [];
 
+  console.log("[MW ENGINE - INPUT]", {
+    total: filtered.length,
+    sample: filtered.slice(0, 5).map(p => ({ name: p.player_name, category: p.category, action: p.action })),
+    categoriesFound: [...new Set(filtered.map(p => p.category))]
+  });
+
   for (const p of filtered) {
     const cat = (p.category || '').toUpperCase().trim();
 
@@ -94,6 +100,13 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
       holds.push(tag(p, 'HOLD'));
     }
   }
+
+  console.log("[MW ENGINE - OUTPUT]", {
+    TARGET: buys.length,
+    WATCH: holds.length,
+    AVOID: sells.length,
+    sampleAvoid: sells.slice(0, 3).map(p => ({ name: p.player_name, category: p.category }))
+  });
 
   // ── STEP 3: SORT WITHIN EACH CATEGORY ────────────────────────────────────
 
