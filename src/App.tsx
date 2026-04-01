@@ -63,7 +63,7 @@ const UserConductPolicy = React.lazy(() => import("@/pages/policies/UserConductP
 const AFLRankingsPage   = React.lazy(() => import("@/features/afl/rankings/AFLRankingsPage"));
 const AFLRoundEdgeBoard = React.lazy(() => import("@/features/afl/edge/AFLRoundEdgeBoard"));
 const AFLStartSitPage   = React.lazy(() => import("@/features/afl/start-sit/StartSitPage"));
-const AFLMarketWatch    = React.lazy(() => import("@/features/afl/market-watch/MarketWatchPage"));
+const AFLMarketWatch    = React.lazy(() => import("@/features/afl/market-watch/MarketWatchPageElite"));
 const AFLPlayerPage     = React.lazy(() => import("@/pages/afl/AFLPlayerPage"));
 const AFLTeamPage       = React.lazy(() => import("@/pages/afl/AFLTeamPage"));
 const AFLPositionPage   = React.lazy(() => import("@/pages/afl/AFLPositionPage"));
