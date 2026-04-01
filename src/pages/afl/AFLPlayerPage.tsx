@@ -680,8 +680,11 @@ export default function AFLPlayerPage() {
     return POSITION_NAMES[positionCode] || positionCode || 'Unknown';
   };
 
+  // Freemium access control - matches Rankings logic
   const unlocked = isPremium || !player.is_locked;
-  const canSeeAI = unlocked;
+  const canSeeFullAI = unlocked;
+  const canSeeAdvancedMetrics = unlocked;
+  const canSeeChart = unlocked;
 
   const consistencyBadge = getConsistencyBadge(player.consistency_score ?? null);
   const capStyle = getCaptainStyle(player.captain_rating ?? null);
@@ -764,8 +767,8 @@ export default function AFLPlayerPage() {
           {/* Modal Content */}
           <div className="space-y-3">
 
-            {/* 1. Captain Rating */}
-            {unlocked && player.captain_rating && (
+            {/* 1. Captain Rating - PREMIUM ONLY */}
+            {canSeeAdvancedMetrics && player.captain_rating && (
               <div className={`rounded-lg border px-4 py-3 ${capStyle.bg} ${capStyle.border}`}>
                 <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Captain Rating</p>
                 <div className="flex items-center justify-between">
@@ -778,8 +781,8 @@ export default function AFLPlayerPage() {
               </div>
             )}
 
-            {/* 2. AI Recommendation card */}
-            {unlocked && player.ai_recommendation && (
+            {/* 2. AI Recommendation card - FREE USERS SEE THIS */}
+            {player.ai_recommendation && (
               <div
                 className="rounded-lg border px-4 py-4"
                 style={{ background: `${recColor}18`, borderColor: `${recColor}40` }}
@@ -906,8 +909,8 @@ export default function AFLPlayerPage() {
               </div>
             </div>
 
-            {/* 7. AI Analysis */}
-            {canSeeAI ? (() => {
+            {/* 7. AI Analysis - ALL USERS SEE TRUNCATED, PREMIUM SEE FULL */}
+            {(() => {
               const aiCtx = { riskRating: player.risk_rating ?? null, confidence: player.projection_confidence ?? null };
               const rawExtended = player.long ?? aiAnalysis?.analysis ?? null;
               const extendedText = sharpenAIText(rawExtended, aiCtx);
@@ -919,7 +922,7 @@ export default function AFLPlayerPage() {
               });
 
               const TRUNCATE_CHARS = 300;
-              const isTruncated = !isPremium && hasText && extendedText!.length > TRUNCATE_CHARS;
+              const isTruncated = !canSeeFullAI && hasText && extendedText!.length > TRUNCATE_CHARS;
               const truncateBase = isTruncated ? extendedText!.slice(0, TRUNCATE_CHARS) : extendedText!;
               const lastSpace = isTruncated ? truncateBase.lastIndexOf(" ") : -1;
               const displayText = isTruncated
@@ -940,7 +943,7 @@ export default function AFLPlayerPage() {
                     ) : (
                       <p className="text-sm text-white/30 italic">Analysis generating — check back soon.</p>
                     )}
-                    {hasText && isStale && isPremium && (
+                    {hasText && isStale && canSeeFullAI && (
                       <p className="mt-3 text-[10px] text-white/25 italic border-t border-white/5 pt-2">
                         Analysis generated prior to latest projection update.
                       </p>
@@ -965,7 +968,7 @@ export default function AFLPlayerPage() {
                     </div>
                   )}
 
-                  {isPremium && aiAnalysis?.captain_recommendation && (
+                  {canSeeFullAI && aiAnalysis?.captain_recommendation && (
                     <div className="rounded-lg border border-white/5 bg-white/[0.03] px-4 py-3">
                       <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Captain Verdict</p>
                       <p className="text-sm text-white/70 leading-relaxed italic">{sharpenAIText(aiAnalysis.captain_recommendation, aiCtx)}</p>
@@ -973,13 +976,32 @@ export default function AFLPlayerPage() {
                   )}
                 </>
               );
-            })() : null}
+            })()}
 
-            {/* 8. Last 10 Games */}
-            {canSeeAI && (
+            {/* 8. Last 10 Games - PREMIUM ONLY */}
+            {canSeeChart ? (
               <div className="rounded-lg bg-white/[0.03] border border-white/5 px-4 py-4">
                 <p className="text-[10px] text-white/40 uppercase tracking-wider mb-3">Last 10 Completed Games</p>
                 <ScoreHistoryChart playerName={player.player_name} playerId={player.player_id} />
+              </div>
+            ) : (
+              <div className="rounded-lg border border-white/8 bg-white/[0.02] px-4 py-4">
+                <div className="flex items-start gap-3">
+                  <Lock size={14} className="text-[#F5C84C]/50 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] text-white/50 font-medium mb-1">Last 10 Games Chart</p>
+                    <p className="text-[10px] text-white/35 leading-snug mb-2">
+                      View detailed scoring history and performance trends
+                    </p>
+                    <a
+                      href="/neeko-plus"
+                      className="inline-flex items-center gap-1.5 bg-[#F5C84C] text-black font-semibold rounded-lg hover:brightness-110 transition-all px-3 py-1.5 text-[11px]"
+                    >
+                      <Crown size={11} />
+                      Unlock Chart
+                    </a>
+                  </div>
+                </div>
               </div>
             )}
 
