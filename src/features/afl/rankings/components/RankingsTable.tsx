@@ -91,11 +91,12 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
       <SortableTh label="Value" col="value_score" width={120} tooltip="Points per dollar of price — higher means better value for money" />
       <Th label="AI Rec" locked={!isPremium} width={150} />
       <Th label="Why" locked={!isPremium} />
+      <th className={`${TH} text-white/0`} style={{ width: 90, minWidth: 90 }}></th>
     </tr>
   );
 }
 
-const TOTAL_COLS = 10;
+const TOTAL_COLS = 11;
 
 interface TableRowProps {
   row: RankingRow;
@@ -132,11 +133,11 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
     : "border-b border-white/[0.04] transition-all duration-150 cursor-pointer hover:bg-white/5";
 
   return (
-    <tr className={rowClass} style={{ touchAction: "manipulation" }} onClick={onRowClick}>
+    <tr className={`${rowClass} group`} style={{ touchAction: "manipulation" }} onClick={onRowClick}>
       <td className="px-3 py-3 text-sm text-white/30 tabular-nums text-center whitespace-nowrap" style={{ width: 52, minWidth: 52 }}>
         {rank}
       </td>
-      <td className="px-4 py-3 whitespace-nowrap group" style={{ width: 240, minWidth: 200 }}>
+      <td className="px-4 py-3 whitespace-nowrap" style={{ width: 240, minWidth: 200 }}>
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-white">{row.player_name}</span>
@@ -157,16 +158,8 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
               <span className="rounded-sm bg-[#F5C84C]/15 px-1 py-0.5 text-[9px] font-semibold text-[#F5C84C] uppercase tracking-wide">Free</span>
             )}
           </div>
-          <div className="text-[11px] text-white/40 mt-0.5 flex items-center gap-1.5">
+          <div className="text-[11px] text-white/40 mt-0.5">
             <span>{row.team}{row.position ? ` · ${row.position}` : ""}</span>
-            <Link
-              to={`/sports/afl/players/${nameToSlug(row.player_name)}`}
-              className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-0.5 text-[#F5C84C]/60 hover:text-[#F5C84C] text-[10px]"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ExternalLink className="h-3 w-3" />
-              <span>Profile</span>
-            </Link>
           </div>
         </div>
       </td>
@@ -292,6 +285,16 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
             ? <span className="text-xs text-white/60 leading-snug block line-clamp-2 max-w-[260px]">{whyText}</span>
             : <span className="text-white/20 text-xs">—</span>;
         })()}
+      </td>
+      <td className="px-4 py-3 text-right whitespace-nowrap" style={{ width: 90, minWidth: 90 }}>
+        <Link
+          to={`/sports/afl/players/${nameToSlug(row.player_name)}`}
+          className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1 text-white/40 hover:text-white/70 text-xs"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span>View page</span>
+          <ExternalLink className="h-3 w-3" />
+        </Link>
       </td>
     </tr>
   );
