@@ -115,6 +115,7 @@ export function AppSidebar() {
 
                       {[
                         { title: "Rankings", url: "/sports/afl/rankings" },
+                        { title: "Current Round", url: "/sports/afl/current-round" },
                       ].map((item) => (
                         <SidebarMenuSubItem key={item.title}>
                           <SidebarMenuSubButton asChild className="py-0.5">
