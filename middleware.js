@@ -41,6 +41,21 @@ const BOT_USER_AGENTS = [
   'xing-contenttabreceiver',
   'chrome-lighthouse',
   'telegrambot',
+  // AI Search Engines & Crawlers (2025-2026)
+  'gptbot',                    // OpenAI ChatGPT
+  'chatgpt-user',              // OpenAI ChatGPT user agent
+  'claudebot',                 // Anthropic Claude
+  'anthropic-ai',              // Anthropic AI
+  'cohere-ai',                 // Cohere AI
+  'perplexitybot',             // Perplexity AI
+  'you-bot',                   // You.com
+  'diffbot',                   // Diffbot AI
+  'ai2bot',                    // AI2 (Allen Institute)
+  'meta-externalagent',        // Meta AI
+  'amazonbot',                 // Amazon Alexa
+  'applebot-extended',         // Apple Intelligence
+  'bytespider',                // ByteDance (TikTok)
+  'petalbot',                  // Huawei Petal Search
 ];
 
 // Routes that should be prerendered for bots

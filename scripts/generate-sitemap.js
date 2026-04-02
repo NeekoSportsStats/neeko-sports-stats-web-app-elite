@@ -97,33 +97,35 @@ async function generateSitemap() {
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
   xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n\n';
 
+  const DOMAIN = 'https://neeko.com.au';
+
   xml += '  <!-- Core Pages -->\n';
   xml += '  <url>\n';
-  xml += '    <loc>https://neekostats.com.au/</loc>\n';
+  xml += `    <loc>${DOMAIN}/</loc>\n`;
   xml += '    <changefreq>daily</changefreq>\n';
   xml += '    <priority>1.0</priority>\n';
   xml += '  </url>\n\n';
 
   xml += '  <url>\n';
-  xml += '    <loc>https://neekostats.com.au/sports/afl/rankings</loc>\n';
+  xml += `    <loc>${DOMAIN}/sports/afl/rankings</loc>\n`;
   xml += '    <changefreq>daily</changefreq>\n';
   xml += '    <priority>0.9</priority>\n';
   xml += '  </url>\n\n';
 
   xml += '  <url>\n';
-  xml += '    <loc>https://neekostats.com.au/sports/afl/market-watch</loc>\n';
+  xml += `    <loc>${DOMAIN}/sports/afl/market-watch</loc>\n`;
   xml += '    <changefreq>weekly</changefreq>\n';
   xml += '    <priority>0.8</priority>\n';
   xml += '  </url>\n\n';
 
   xml += '  <url>\n';
-  xml += '    <loc>https://neekostats.com.au/sports/afl/start-sit</loc>\n';
+  xml += `    <loc>${DOMAIN}/sports/afl/start-sit</loc>\n`;
   xml += '    <changefreq>weekly</changefreq>\n';
   xml += '    <priority>0.8</priority>\n';
   xml += '  </url>\n\n';
 
   xml += '  <url>\n';
-  xml += '    <loc>https://neekostats.com.au/sports/afl/edge-board</loc>\n';
+  xml += `    <loc>${DOMAIN}/sports/afl/edge-board</loc>\n`;
   xml += '    <changefreq>weekly</changefreq>\n';
   xml += '    <priority>0.8</priority>\n';
   xml += '  </url>\n\n';
@@ -131,7 +133,7 @@ async function generateSitemap() {
   xml += '  <!-- Team Pages -->\n';
   Object.values(TEAM_SLUGS).forEach(teamSlug => {
     xml += '  <url>\n';
-    xml += `    <loc>https://neekostats.com.au/sports/afl/teams/${teamSlug}</loc>\n`;
+    xml += `    <loc>${DOMAIN}/sports/afl/teams/${teamSlug}</loc>\n`;
     xml += '    <changefreq>weekly</changefreq>\n';
     xml += '    <priority>0.7</priority>\n';
     xml += '  </url>\n\n';
@@ -140,7 +142,7 @@ async function generateSitemap() {
   xml += '  <!-- Position Pages -->\n';
   Object.values(POSITION_SLUGS).forEach(posSlug => {
     xml += '  <url>\n';
-    xml += `    <loc>https://neekostats.com.au/sports/afl/positions/${posSlug}</loc>\n`;
+    xml += `    <loc>${DOMAIN}/sports/afl/positions/${posSlug}</loc>\n`;
     xml += '    <changefreq>weekly</changefreq>\n';
     xml += '    <priority>0.7</priority>\n';
     xml += '  </url>\n\n';
@@ -149,7 +151,7 @@ async function generateSitemap() {
   xml += '  <!-- Player Pages -->\n';
   playerSlugs.forEach((player, idx) => {
     xml += '  <url>\n';
-    xml += `    <loc>https://neekostats.com.au/sports/afl/players/${player.slug}</loc>\n`;
+    xml += `    <loc>${DOMAIN}/sports/afl/players/${player.slug}</loc>\n`;
     xml += '    <changefreq>weekly</changefreq>\n';
     xml += '    <priority>0.6</priority>\n';
     xml += '  </url>\n';
@@ -170,7 +172,7 @@ async function generateSitemap() {
   console.log(`- Team pages: 18`);
   console.log(`- Position pages: 4`);
   console.log(`- Player pages: ${allSlugs.size} (from ${players.length} database records)`);
-  console.log(`\nDomain: neekostats.com.au`);
+  console.log(`\nDomain: ${DOMAIN}`);
   console.log(`Sitemap saved to: ${sitemapPath}`);
 }
 
