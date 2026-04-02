@@ -133,7 +133,11 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
       <td className="px-4 py-3 whitespace-nowrap" style={{ width: 240, minWidth: 200 }}>
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold text-white">{row.player_name}</span>
+            <a
+              href={`/sports/afl/players/${row.player_name.toLowerCase().replace(/\s+/g, '-')}`}
+              onClick={(e) => { e.preventDefault(); onRowClick(); }}
+              className="text-sm font-semibold text-white hover:text-white/80 transition-colors"
+            >{row.player_name}</a>
             {(row.manual_status === "OUT" || (!row.manual_status && row.status === "OUT")) ? (
               <span className="rounded-sm bg-red-500/15 px-1 py-0.5 text-[9px] font-semibold text-red-400 uppercase tracking-wide border border-red-500/20">OUT</span>
             ) : (row.manual_status === "INJURED" || (!row.manual_status && row.status === "INJURED")) ? (

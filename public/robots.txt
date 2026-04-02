@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://neeko.com.au/sitemap.xml
+Sitemap: https://neekostats.com.au/sitemap.xml

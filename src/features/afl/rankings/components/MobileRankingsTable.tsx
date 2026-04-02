@@ -147,7 +147,11 @@ function DataRow({ row, idx, tier, isPremium, activeTab, onTap, onUpgrade }: Dat
         <div className={`${CELL_BASE} pl-1.5 min-w-0`} style={{ width: COL.player, maxWidth: COL.player }}>
           <div className="min-w-0 w-full">
             <div className="flex items-center gap-1 min-w-0">
-              <span className="text-[11px] font-semibold text-white truncate leading-tight max-w-[100px]">{row.player_name}</span>
+              <a
+                href={`/sports/afl/players/${row.player_name.toLowerCase().replace(/\s+/g, '-')}`}
+                onClick={(e) => { e.preventDefault(); onTap(); }}
+                className="text-[11px] font-semibold text-white truncate leading-tight max-w-[100px]"
+              >{row.player_name}</a>
               {!isPremium && isUnlocked && (
                 <span className="shrink-0 rounded-sm bg-[#F5C84C]/15 px-0.5 py-px text-[7px] font-semibold text-[#F5C84C] uppercase">
                   Free

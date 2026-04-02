@@ -60,6 +60,7 @@ const BOT_USER_AGENTS = [
 
 // Routes that should be prerendered for bots
 const PRERENDER_ROUTES = [
+  '/',
   '/sports/afl/players/',
   '/sports/afl/teams/',
   '/sports/afl/positions/',
@@ -147,6 +148,7 @@ export default async function middleware(request) {
 // Configure which routes this middleware should run on
 export const config = {
   matcher: [
+    '/',
     '/sports/afl/players/:path*',
     '/sports/afl/teams/:path*',
     '/sports/afl/positions/:path*',

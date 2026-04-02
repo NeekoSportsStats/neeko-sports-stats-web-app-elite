@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { Helmet } from "react-helmet-async";
 import { RefreshCw, Clock } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
@@ -151,6 +152,18 @@ export default function MarketWatchPage() {
   }
 
   return (
+    <>
+    <Helmet>
+      <title>AFL Fantasy Trade Targets 2026 | Market Watch | Neeko Sports</title>
+      <meta name="description" content="Find undervalued AFL fantasy players, trade targets and avoid traps using AI-powered projections and value analysis. Updated weekly with the latest prices and market signals." />
+      <link rel="canonical" href="https://neekostats.com.au/sports/afl/market-watch" />
+      <meta name="robots" content="index, follow" />
+      <meta property="og:title" content="AFL Fantasy Trade Targets 2026 | Market Watch | Neeko Sports" />
+      <meta property="og:description" content="Find undervalued AFL fantasy players, trade targets and avoid traps using AI-powered projections and value analysis." />
+      <meta property="og:url" content="https://neekostats.com.au/sports/afl/market-watch" />
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content="Neeko Sports" />
+    </Helmet>
     <div className="min-h-screen bg-[#0D0D0D] text-white">
       <div className="max-w-[1400px] mx-auto px-6 sm:px-8 lg:px-12 py-12 space-y-16">
 
@@ -229,6 +242,7 @@ export default function MarketWatchPage() {
 
       <PlayerAIModal player={selectedPlayer} onClose={() => setSelectedPlayer(null)} />
     </div>
+    </>
   );
 }
 

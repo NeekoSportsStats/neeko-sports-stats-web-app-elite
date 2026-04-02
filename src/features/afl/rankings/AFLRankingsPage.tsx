@@ -511,12 +511,12 @@ export default function AFLRankingsPage() {
         <meta property="og:title" content="AFL Fantasy Rankings 2026 | Neeko" />
         <meta property="og:description" content="Complete AFL Fantasy rankings for 2026. AI-powered projections, value analysis, and recommendations updated weekly." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://neeko.com.au/sports/afl/rankings" />
+        <meta property="og:url" content="https://neekostats.com.au/sports/afl/rankings" />
         <meta property="og:site_name" content="Neeko Sports" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="AFL Fantasy Rankings 2026 | Neeko" />
         <meta name="twitter:description" content="AI-powered AFL Fantasy rankings with projections, value scores, and recommendations." />
-        <link rel="canonical" href="https://neeko.com.au/sports/afl/rankings" />
+        <link rel="canonical" href="https://neekostats.com.au/sports/afl/rankings" />
         <meta name="robots" content="index, follow" />
         <meta name="author" content="Neeko Sports" />
         <meta property="article:modified_time" content={new Date().toISOString()} />

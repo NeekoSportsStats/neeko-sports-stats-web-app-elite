@@ -634,6 +634,44 @@ export default function AFLPlayerPage() {
     enabled: !!player,
   });
 
+  const { data: sameTeamPlayers } = useQuery({
+    queryKey: ['same-team-players', player?.player_id, player?.team],
+    queryFn: async () => {
+      if (!player?.team) return [];
+      const { data, error } = await supabase
+        .from('player_rankings_cache')
+        .select('player_id, player_name, neeko_rating, projection_final')
+        .eq('team', player.team)
+        .neq('player_id', player.player_id)
+        .eq('status', 'active')
+        .not('neeko_rating', 'is', null)
+        .order('neeko_rating', { ascending: false })
+        .limit(5);
+      if (error) return [];
+      return data ?? [];
+    },
+    enabled: !!player?.team,
+  });
+
+  const { data: samePositionPlayers } = useQuery({
+    queryKey: ['same-position-players', player?.player_id, player?.player_position],
+    queryFn: async () => {
+      if (!player?.player_position) return [];
+      const { data, error } = await supabase
+        .from('player_rankings_cache')
+        .select('player_id, player_name, neeko_rating, projection_final')
+        .eq('player_position', player.player_position)
+        .neq('player_id', player.player_id)
+        .eq('status', 'active')
+        .not('neeko_rating', 'is', null)
+        .order('neeko_rating', { ascending: false })
+        .limit(5);
+      if (error) return [];
+      return data ?? [];
+    },
+    enabled: !!player?.player_position,
+  });
+
   // ALL HOOKS MUST BE BEFORE EARLY RETURNS
   const aiAnalysis = useMemo(() => {
     if (!player || !isPremium && player?.is_locked) return null;
@@ -726,7 +764,7 @@ export default function AFLPlayerPage() {
   const pageDescription = player.value_score && player.ai_recommendation
     ? `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points. ${getPositionName(player.player_position)} rankings, value score ${Math.round(player.value_score)}, AI-powered ${player.ai_recommendation.toLowerCase()} recommendation. Updated weekly.`
     : `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points, ${Math.round(player.neeko_rating ?? 0)} Neeko rating. ${getPositionName(player.player_position)} rankings and analysis. Updated weekly.`;
-  const pageUrl = `https://neeko.com.au/sports/afl/players/${slug}`;
+  const pageUrl = `https://neekostats.com.au/sports/afl/players/${slug}`;
   const keywords = `${player.player_name}, ${player.team}, AFL Fantasy, ${player.player_position}, fantasy football, player stats, projection, value, ${getPositionName(player.player_position)}`;
 
   return (
@@ -1067,7 +1105,49 @@ export default function AFLPlayerPage() {
               </div>
             )}
 
-            {/* 10. Bottom Navigation Section */}
+            {/* 10. Same Team Players - SEO Internal Linking */}
+            {sameTeamPlayers && sameTeamPlayers.length > 0 && (
+              <div className="rounded-lg bg-white/[0.02] border border-white/5 px-4 py-4">
+                <h2 className="text-sm font-semibold text-white/80 mb-3">
+                  More {player.team} Players
+                </h2>
+                <div className="grid grid-cols-2 gap-2">
+                  {sameTeamPlayers.map((p: any) => (
+                    <Link
+                      key={p.player_id}
+                      to={`/sports/afl/players/${nameToSlug(p.player_name)}`}
+                      className="text-sm text-white/60 hover:text-white transition-colors flex items-center gap-1"
+                    >
+                      {p.player_name}
+                      <ChevronRight size={14} />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 11. Same Position Players - SEO Internal Linking */}
+            {samePositionPlayers && samePositionPlayers.length > 0 && (
+              <div className="rounded-lg bg-white/[0.02] border border-white/5 px-4 py-4">
+                <h2 className="text-sm font-semibold text-white/80 mb-3">
+                  Top {getPositionName(player.player_position)} Players
+                </h2>
+                <div className="grid grid-cols-2 gap-2">
+                  {samePositionPlayers.map((p: any) => (
+                    <Link
+                      key={p.player_id}
+                      to={`/sports/afl/players/${nameToSlug(p.player_name)}`}
+                      className="text-sm text-white/60 hover:text-white transition-colors flex items-center gap-1"
+                    >
+                      {p.player_name}
+                      <ChevronRight size={14} />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 12. Bottom Navigation Section */}
             <div className="pt-4 mt-2 border-t border-white/5 space-y-2">
               {/* Rankings Link */}
               <Link
