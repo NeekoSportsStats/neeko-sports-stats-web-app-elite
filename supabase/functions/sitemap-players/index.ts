@@ -25,10 +25,13 @@ Deno.serve(async (req: Request) => {
     );
 
     const { data: players, error } = await supabase
+      .schema("afl")
       .from("player_rankings_cache")
       .select("player_name, cached_at")
       .not("player_name", "is", null)
       .order("neeko_rating", { ascending: false });
+
+    console.log("Players fetched:", players?.length);
 
     if (error) throw error;
 
