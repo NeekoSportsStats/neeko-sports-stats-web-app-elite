@@ -89,7 +89,7 @@ export function LockedPlayerCard({
           </div>
 
           <p className="text-sm text-white/60 max-w-xs">
-            Unlock full player insights, AI analysis, and advanced stats
+            Unlock 600+ players with AI analysis and advanced stats
           </p>
 
           {showCTA && (
@@ -97,7 +97,7 @@ export function LockedPlayerCard({
               onClick={() => navigate('/neeko-plus')}
               className="bg-[#F5C84C] hover:bg-[#F5C84C]/90 text-black font-semibold px-6"
             >
-              Unlock with Neeko+
+              Unlock 600+ Players
             </Button>
           )}
         </div>
@@ -157,7 +157,7 @@ export function LockedPlayerOverlay({ playerName, onUpgrade }: LockedPlayerOverl
             {playerName} is Premium Only
           </h3>
           <p className="text-sm text-white/60">
-            Upgrade to Neeko+ to access full stats and AI insights
+            Unlock 600+ players with AI insights and advanced stats
           </p>
         </div>
 
@@ -165,7 +165,7 @@ export function LockedPlayerOverlay({ playerName, onUpgrade }: LockedPlayerOverl
           onClick={onUpgrade}
           className="bg-[#F5C84C] hover:bg-[#F5C84C]/90 text-black font-semibold w-full"
         >
-          Upgrade to Neeko+
+          Unlock 600+ Players
         </Button>
       </div>
     </div>

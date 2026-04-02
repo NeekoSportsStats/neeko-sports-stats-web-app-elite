@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
 
 const POLL_INTERVAL_MS = 2000;
-const POLL_MAX_ATTEMPTS = 10;
+const POLL_MAX_ATTEMPTS = 15; // 30 seconds total polling window
 
 export default function Success() {
   const [params] = useSearchParams();
@@ -129,22 +129,49 @@ export default function Success() {
           </div>
 
           {isPremium ? (
-            <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
+            <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4 space-y-2">
               <p className="text-sm text-green-900 dark:text-green-100 font-medium">
-                Subscription verified successfully
+                ✓ Premium access activated successfully
               </p>
+              {user?.email && (
+                <p className="text-xs text-green-700 dark:text-green-300">
+                  Receipt sent to {user.email}
+                </p>
+              )}
             </div>
           ) : polling ? (
-            <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4 flex items-center gap-3">
-              <Loader2 className="h-4 w-4 animate-spin text-amber-600 dark:text-amber-400 shrink-0" />
-              <p className="text-sm text-amber-900 dark:text-amber-100 font-medium">
-                Payment received — activating your subscription...
+            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 space-y-2">
+              <div className="flex items-center gap-3">
+                <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400 shrink-0" />
+                <p className="text-sm text-blue-900 dark:text-blue-100 font-medium">
+                  Access activating...
+                </p>
+              </div>
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                Your payment is processing. Premium features will unlock shortly.
               </p>
             </div>
-          ) : (
-            <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+          ) : pollCountRef.current >= POLL_MAX_ATTEMPTS ? (
+            <div className="bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-3">
               <p className="text-sm text-amber-900 dark:text-amber-100 font-medium">
-                Payment received! Your subscription will be active within a minute.
+                Payment received — finalizing activation
+              </p>
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                Your payment is processing. Access will unlock shortly. Please refresh this page in 30 seconds to check your premium status.
+              </p>
+              <Button
+                onClick={() => window.location.reload()}
+                variant="outline"
+                size="sm"
+                className="w-full border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-100 hover:bg-amber-100 dark:hover:bg-amber-900"
+              >
+                Refresh Now
+              </Button>
+            </div>
+          ) : (
+            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <p className="text-sm text-blue-900 dark:text-blue-100 font-medium">
+                Payment received — preparing your premium access...
               </p>
             </div>
           )}

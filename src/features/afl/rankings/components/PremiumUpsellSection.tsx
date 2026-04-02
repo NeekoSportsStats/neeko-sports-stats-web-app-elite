@@ -12,11 +12,11 @@ export function PremiumUpsellSection() {
           </div>
 
           <h2 className="text-2xl md:text-3xl font-bold mb-3 text-white">
-            Unlock 600+ players with full insights
+            Unlock 600+ Players
           </h2>
 
           <p className="text-gray-400 mb-6 max-w-xl mx-auto">
-            Full rankings, AI analysis, market watch, and weekly edges — all in one place.
+            Full rankings, AI analysis, advanced stats, market watch, and weekly edges — all in one place.
           </p>
 
           <div className="flex flex-wrap justify-center gap-3 mb-6">

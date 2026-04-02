@@ -12,7 +12,7 @@ const Cancel = () => {
     track("checkout_cancelled");
     const timeout = setTimeout(() => {
       window.location.href = "https://www.neekostats.com.au/neeko-plus";
-    }, 5000);
+    }, 10000); // Increased to 10 seconds
 
     return () => clearTimeout(timeout);
   }, [navigate]);
@@ -34,8 +34,30 @@ const Cancel = () => {
             No charges were made to your account. You can try again anytime.
           </p>
           <p className="text-sm text-muted-foreground">
-            Redirecting you back to the subscription page in 5 seconds...
+            Redirecting to subscription page in 10 seconds...
           </p>
+
+          <div className="pt-4 border-t border-border">
+            <p className="text-sm font-medium text-foreground mb-3">
+              Continue browsing free insights
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button
+                onClick={() => navigate("/sports/afl/rankings")}
+                variant="outline"
+                size="sm"
+              >
+                View Rankings
+              </Button>
+              <Button
+                onClick={() => navigate("/sports/afl/market-watch")}
+                variant="outline"
+                size="sm"
+              >
+                Market Watch
+              </Button>
+            </div>
+          </div>
         </CardContent>
         <CardFooter className="flex gap-4 justify-center">
           <Button onClick={() => { window.location.href = "https://www.neekostats.com.au/neeko-plus"; }} variant="default">
