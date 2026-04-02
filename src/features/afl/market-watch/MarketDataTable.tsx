@@ -201,7 +201,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
           <div className="relative z-10">
             <div className="text-4xl mb-4">🔒</div>
             <h3 className="text-2xl font-bold text-white mb-2">
-              You're only seeing the top 3 players
+              You're seeing a limited preview
             </h3>
             <p className="text-white/70 mb-1 text-base">
               Unlock 600+ players with real value edges before price changes
@@ -223,7 +223,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
       {!isPremium && (
         <div className="mt-6 p-6 border border-white/10 rounded-lg bg-white/[0.02] text-center">
           <p className="text-sm text-white/60 mb-3">
-            Find every undervalued player — not just the top 3
+            Find every undervalued player — see the full market
           </p>
           <a
             href="/neeko-plus"
