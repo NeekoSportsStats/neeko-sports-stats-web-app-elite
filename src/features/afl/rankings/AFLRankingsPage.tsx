@@ -21,7 +21,7 @@ import {
 } from "./components/RankingsTable";
 import { MobileRankingsTable } from "./components/MobileRankingsTable";
 import { RankingsSEOContent } from "./components/RankingsSEOContent";
-import { TopPlayersLinks } from "./components/TopPlayersLinks";
+import { PremiumUpsellSection } from "./components/PremiumUpsellSection";
 
 const POSITIONS: PositionFilter[] = ["ALL", "DEF", "MID", "FWD", "RUC"];
 
@@ -726,7 +726,7 @@ export default function AFLRankingsPage() {
       {!loading && sortedRows.length > 0 && (
         <>
           <RankingsSEOContent />
-          <TopPlayersLinks players={sortedRows} />
+          {!isPremium && <PremiumUpsellSection />}
         </>
       )}
 
