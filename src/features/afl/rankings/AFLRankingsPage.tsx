@@ -19,6 +19,8 @@ import {
   TableHeader, TableRow, ConversionWallRow, LoadingSkeletonRows,
 } from "./components/RankingsTable";
 import { MobileRankingsTable } from "./components/MobileRankingsTable";
+import { RankingsSEOContent } from "./components/RankingsSEOContent";
+import { TopPlayersLinks } from "./components/TopPlayersLinks";
 
 const POSITIONS: PositionFilter[] = ["ALL", "DEF", "MID", "FWD", "RUC"];
 
@@ -504,8 +506,8 @@ export default function AFLRankingsPage() {
       <div className="px-4 pt-10 pb-4 md:px-8">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">Player Rankings</h1>
-            <p className="text-sm text-white/40 mt-1">AFL 2026 — Fantasy projection rankings</p>
+            <h1 className="text-2xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
+            <p className="text-sm text-white/40 mt-1">Fantasy projection rankings powered by AI</p>
           </div>
           <div className="flex items-center gap-3 mt-1 shrink-0">
             {updatedAt && (
@@ -700,6 +702,13 @@ export default function AFLRankingsPage() {
         </div>
 
       </div>
+
+      {!loading && sortedRows.length > 0 && (
+        <>
+          <RankingsSEOContent />
+          <TopPlayersLinks players={sortedRows} />
+        </>
+      )}
 
       {ratingInfoOpen && (
         <NeekoRatingInfoModal onClose={() => setRatingInfoOpen(false)} />
