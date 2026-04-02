@@ -148,36 +148,19 @@ export default function MarketWatchPageElite() {
     return result;
   }, [players]);
 
-  // MEMOIZE: All derived players with natural mixed ordering
+  // MEMOIZE: All derived players sorted by value_score DESC, projection DESC
   const allDerivedPlayers = useMemo(() => {
-    // Filter out invalid entries
     const all = [
       ...(classified?.buys ?? []),
       ...(classified?.holds ?? []),
       ...(classified?.sells ?? []),
-    ].filter(p => p && typeof p.trade_score === 'number');
+    ].filter(p => p && p.player_id);
 
-    // NATURAL MIX: Sort by trade_score to create realistic mixed ordering
-    // This prevents artificial clustering (all TARGET, then WATCH, then AVOID)
     all.sort((a, b) => {
-      const scoreA = a.trade_score ?? 0;
-      const scoreB = b.trade_score ?? 0;
-
-      // Add subtle randomization (±2 points)
-      // Creates natural-looking variation while preserving quality order
-      const noise = (Math.random() - 0.5) * 2;
-
-      return (scoreB - scoreA) + noise;
-    });
-
-    console.log("[MW ORDER] Natural mix created", {
-      total: all.length,
-      top10Actions: all.slice(0, 10).map(p => p.action),
-      top20Mix: {
-        BUY: all.slice(0, 20).filter(p => (p.action ?? '').toUpperCase() === 'BUY').length,
-        HOLD: all.slice(0, 20).filter(p => (p.action ?? '').toUpperCase() === 'HOLD').length,
-        SELL: all.slice(0, 20).filter(p => (p.action ?? '').toUpperCase() === 'SELL').length,
-      }
+      const vsA = a.value_score ?? 0;
+      const vsB = b.value_score ?? 0;
+      if (vsB !== vsA) return vsB - vsA;
+      return (b.projection ?? 0) - (a.projection ?? 0);
     });
 
     return all;

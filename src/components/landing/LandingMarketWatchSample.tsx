@@ -199,24 +199,43 @@ export function LandingMarketWatchSample() {
         }
 
         // Filter out injured/bye players for cleaner sample
-        const availableRows = (data ?? []).filter((r: any) => !r.is_injured && !r.is_bye) as MarketWatchRow[];
+        const availableRows = (data ?? []).filter((r: any) => {
+          const isInjured = r.is_injured === true || r.status === 'injured' || r.manual_status === 'injured';
+          const isBye = r.is_bye === true || r.status === 'bye' || r.manual_status === 'bye';
+          return !isInjured && !isBye;
+        }) as MarketWatchRow[];
 
-        // Take 2 from each category for 6 total display
         // Support both old (TARGET/WATCH/AVOID) and new (BUY/HOLD/SELL) values
         const targets = availableRows.filter(r => {
-          const cat = (r.category ?? '').toUpperCase();
+          const cat = ((r.category ?? r.action) ?? '').toUpperCase();
           return cat === 'TARGET' || cat === 'BUY';
-        }).slice(0, 2);
+        });
         const watches = availableRows.filter(r => {
-          const cat = (r.category ?? '').toUpperCase();
+          const cat = ((r.category ?? r.action) ?? '').toUpperCase();
           return cat === 'WATCH' || cat === 'HOLD';
-        }).slice(0, 2);
+        });
         const avoids = availableRows.filter(r => {
-          const cat = (r.category ?? '').toUpperCase();
+          const cat = ((r.category ?? r.action) ?? '').toUpperCase();
           return cat === 'AVOID' || cat === 'SELL';
-        }).slice(0, 2);
+        });
 
-        const selected = [...targets, ...watches, ...avoids];
+        // Build a balanced 6-player sample — gracefully handle missing categories
+        // If a category is empty, fill slots with the best available from other categories
+        const targetSlice = targets.slice(0, 2);
+        const watchSlice = watches.slice(0, 2);
+        const avoidSlice = avoids.slice(0, 2);
+
+        let selected = [...targetSlice, ...watchSlice, ...avoidSlice];
+
+        // If we have fewer than 4 players, fill with best by value_score
+        if (selected.length < 4) {
+          const usedIds = new Set(selected.map(r => r.player_id));
+          const extras = availableRows
+            .filter(r => !usedIds.has(r.player_id))
+            .sort((a, b) => Math.abs(b.value_score ?? 0) - Math.abs(a.value_score ?? 0))
+            .slice(0, 6 - selected.length);
+          selected = [...selected, ...extras];
+        }
 
         setPlayers(selected);
       } catch (err) {
@@ -273,12 +292,19 @@ export function LandingMarketWatchSample() {
               {players.map((player, idx) => (
                 <PlayerRow key={player.player_id} player={player} index={idx + 1} />
               ))}
-              <LockedRow index={7} />
-              <LockedRow index={8} />
+              <LockedRow index={players.length + 1} />
+              <LockedRow index={players.length + 2} />
             </>
           ) : (
-            <div className="px-4 py-8 text-center text-sm text-white/25 bg-[#0c0c0c]">
-              Market Watch data will be available when round projections are processed.
+            <div className="px-4 py-10 text-center bg-[#0c0c0c]">
+              <p className="text-sm text-white/30 mb-3">Market Watch data is loading...</p>
+              <Link
+                to="/sports/afl/market-watch"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#F5C84C]/70 hover:text-[#F5C84C] transition-colors"
+              >
+                View Market Watch
+                <ArrowRight size={12} />
+              </Link>
             </div>
           )}
         </div>

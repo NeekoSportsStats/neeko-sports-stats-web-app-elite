@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ChevronRight,
   TrendingUp,
@@ -13,6 +13,7 @@ import {
   ChartBar as BarChart2,
   ArrowRight,
   RefreshCw,
+  ArrowLeft,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
@@ -35,9 +36,7 @@ import type { RowTier } from "@/features/afl/rankings/components/types";
 
 // ─── FREE LIMITS PER SECTION ─────────────────────────────────────────────────
 const FREE_TOP_PICKS = 5;
-const FREE_CAPTAIN_PICKS = 3;
-const FREE_VALUE_PLAYS = 4;
-const FREE_TRAP_ALERTS = 4;
+const FREE_VALUE_PLAYS = 3;
 
 const COLUMNS = `
   player_id, player_name, team, position,
@@ -315,6 +314,7 @@ function SectionCTA({ label, to, onClick }: { label: string; to?: string; onClic
 
 export default function AFLCurrentRoundPage() {
   const { isPremium } = useAuth();
+  const navigate = useNavigate();
   const [rows, setRows] = useState<RankingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -380,13 +380,12 @@ export default function AFLCurrentRoundPage() {
       [...rows]
         .filter(
           (r) =>
-            r.captain_rating === "Elite Captain" ||
-            r.captain_rating === "Strong Captain" ||
-            r.captain_rating === "Captain Option"
+            (r.projection_final ?? 0) >= 110 &&
+            (r.projection_confidence ?? 0) >= 70
         )
         .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0))
-        .slice(0, isPremium ? 7 : 6),
-    [rows, isPremium]
+        .slice(0, 8),
+    [rows]
   );
 
   const valuePlays = useMemo(
@@ -394,7 +393,7 @@ export default function AFLCurrentRoundPage() {
       [...rows]
         .filter((r) => r.value_score != null && r.price != null && r.price > 0)
         .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
-        .slice(0, isPremium ? 10 : 8),
+        .slice(0, isPremium ? 10 : FREE_VALUE_PLAYS + 5),
     [rows, isPremium]
   );
 
@@ -403,7 +402,7 @@ export default function AFLCurrentRoundPage() {
       [...rows]
         .filter((r) => r.value_score != null && r.price != null && r.price > 0)
         .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))
-        .slice(0, isPremium ? 10 : 8),
+        .slice(0, isPremium ? 10 : 4),
     [rows, isPremium]
   );
 
@@ -500,6 +499,14 @@ export default function AFLCurrentRoundPage() {
 
           {/* ── HERO ───────────────────────────────────────────────────────── */}
           <div>
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-1.5 text-xs text-white/35 hover:text-white/60 transition-colors mb-5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back
+            </button>
+
             <div className="flex items-center gap-2.5 mb-4">
               <span className="text-[10px] uppercase tracking-widest text-white/30 font-semibold">AFL Fantasy</span>
               <span className="h-px flex-1 bg-white/[0.06]" />
@@ -653,65 +660,58 @@ export default function AFLCurrentRoundPage() {
                   Best captain options by projected ceiling and scoring consistency — sorted by projection
                 </p>
               </div>
-              {!isPremium && (
-                <span className="text-[10px] text-white/30 shrink-0">
-                  Showing {Math.min(FREE_CAPTAIN_PICKS, captainPicks.length)} of {captainPicks.length}
-                </span>
-              )}
             </div>
-
-            <div className="space-y-2">
-              {captainPicks.map((row, idx) => {
-                const isVisible = isPremium || idx < FREE_CAPTAIN_PICKS;
-                const captStyle = getCaptainStyle(row.captain_rating);
-                if (!isVisible) {
-                  return (
-                    <LockedCard
-                      key={row.player_id ?? idx}
-                      row={row}
-                      rank={idx + 1}
-                      onUpgrade={() => setShowUpgradeModal(true)}
-                    />
-                  );
-                }
-                return (
-                  <PlayerCard
-                    key={row.player_id ?? idx}
-                    row={row}
-                    rank={idx + 1}
-                    showCaptainCeiling
-                    isPremiumUser={isPremium}
-                    onClick={() => openRow(row, idx + 1, isVisible)}
-                    badge={
-                      row.captain_rating ? (
-                        <span
-                          className="text-[10px] px-1.5 py-0.5 rounded border shrink-0"
-                          style={{
-                            color: captStyle.color,
-                            borderColor: `${captStyle.color}40`,
-                            backgroundColor: `${captStyle.color}15`,
-                          }}
-                        >
-                          {row.captain_rating}
-                        </span>
-                      ) : undefined
-                    }
-                  />
-                );
-              })}
-            </div>
-
-            {!isPremium && captainPicks.length > FREE_CAPTAIN_PICKS && (
-              <FomoStrip
-                copy={`${captainPicks.length - FREE_CAPTAIN_PICKS} more captain options hidden — unlock full captain picks with Neeko+.`}
-                onUpgrade={() => setShowUpgradeModal(true)}
-              />
-            )}
 
             {!isPremium ? (
-              <SectionCTA label="Unlock full captain picks" onClick={() => setShowUpgradeModal(true)} />
+              <div className="bg-white/[0.02] border border-white/[0.07] rounded-xl px-6 py-8 text-center space-y-4">
+                <Crown className="w-8 h-8 text-yellow-400/40 mx-auto" />
+                <div>
+                  <p className="text-sm font-semibold text-white/70 mb-1">Captain Picks — Premium Only</p>
+                  <p className="text-[12px] text-white/35 max-w-sm mx-auto leading-relaxed">
+                    {captainPicks.length > 0 ? `${captainPicks.length} captain options identified this round` : "Captain options identified this round"} — unlock Neeko+ to see who you should be doubling up on.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#F5C84C] text-black text-sm font-bold rounded-lg hover:bg-[#F5C84C]/90 active:scale-[0.98] transition-all"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  Unlock Captain Picks
+                </button>
+              </div>
             ) : (
-              <SectionCTA label="View full rankings" to="/sports/afl/rankings" />
+              <>
+                <div className="space-y-2">
+                  {captainPicks.map((row, idx) => {
+                    const captStyle = getCaptainStyle(row.captain_rating);
+                    return (
+                      <PlayerCard
+                        key={row.player_id ?? idx}
+                        row={row}
+                        rank={idx + 1}
+                        showCaptainCeiling
+                        isPremiumUser={isPremium}
+                        onClick={() => openRow(row, idx + 1, true)}
+                        badge={
+                          row.captain_rating ? (
+                            <span
+                              className="text-[10px] px-1.5 py-0.5 rounded border shrink-0"
+                              style={{
+                                color: captStyle.color,
+                                borderColor: `${captStyle.color}40`,
+                                backgroundColor: `${captStyle.color}15`,
+                              }}
+                            >
+                              {row.captain_rating}
+                            </span>
+                          ) : undefined
+                        }
+                      />
+                    );
+                  })}
+                </div>
+                <SectionCTA label="View full rankings" to="/sports/afl/rankings" />
+              </>
             )}
           </section>
 
@@ -789,55 +789,46 @@ export default function AFLCurrentRoundPage() {
                   Overpriced or risky players to avoid — negative value score signals a price-to-output mismatch
                 </p>
               </div>
-              {!isPremium && (
-                <span className="text-[10px] text-white/30 shrink-0">
-                  Showing {Math.min(FREE_TRAP_ALERTS, trapAlerts.length)} of {trapAlerts.length}
-                </span>
-              )}
             </div>
 
-            <div className="space-y-2">
-              {trapAlerts.map((row, idx) => {
-                const isVisible = isPremium || idx < FREE_TRAP_ALERTS;
-                if (!isVisible) {
-                  return (
-                    <LockedCard
+            {!isPremium ? (
+              <div className="bg-white/[0.02] border border-white/[0.07] rounded-xl px-6 py-8 text-center space-y-4">
+                <AlertTriangle className="w-8 h-8 text-red-400/40 mx-auto" />
+                <div>
+                  <p className="text-sm font-semibold text-white/70 mb-1">Trap Alerts — Premium Only</p>
+                  <p className="text-[12px] text-white/35 max-w-sm mx-auto leading-relaxed">
+                    {trapAlerts.length > 0 ? `${trapAlerts.length} trap players flagged this round` : "Players flagged as traps this round"} — avoid costly mistakes by knowing who to leave out.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/[0.07] border border-white/[0.12] text-white text-sm font-semibold rounded-lg hover:bg-white/[0.10] active:scale-[0.98] transition-all"
+                >
+                  <Lock className="w-3.5 h-3.5 text-white/50" />
+                  Unlock Trap Alerts
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {trapAlerts.map((row, idx) => (
+                    <PlayerCard
                       key={row.player_id ?? idx}
                       row={row}
                       rank={idx + 1}
-                      onUpgrade={() => setShowUpgradeModal(true)}
+                      showValueScore
+                      isPremiumUser={isPremium}
+                      onClick={() => openRow(row, idx + 1, true)}
+                      badge={
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/25 text-red-400 shrink-0">
+                          {(row.value_score ?? 0) < -6 ? "Avoid" : "Caution"}
+                        </span>
+                      }
                     />
-                  );
-                }
-                return (
-                  <PlayerCard
-                    key={row.player_id ?? idx}
-                    row={row}
-                    rank={idx + 1}
-                    showValueScore
-                    isPremiumUser={isPremium}
-                    onClick={() => openRow(row, idx + 1, isVisible)}
-                    badge={
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/25 text-red-400 shrink-0">
-                        {(row.value_score ?? 0) < -6 ? "Avoid" : "Caution"}
-                      </span>
-                    }
-                  />
-                );
-              })}
-            </div>
-
-            {!isPremium && trapAlerts.length > FREE_TRAP_ALERTS && (
-              <FomoStrip
-                copy="Hidden traps can cost you points — unlock the full list to see every player to avoid."
-                onUpgrade={() => setShowUpgradeModal(true)}
-              />
-            )}
-
-            {!isPremium ? (
-              <SectionCTA label="See full trap analysis" onClick={() => setShowUpgradeModal(true)} />
-            ) : (
-              <SectionCTA label="View Market Watch" to="/sports/afl/market-watch" />
+                  ))}
+                </div>
+                <SectionCTA label="View Market Watch" to="/sports/afl/market-watch" />
+              </>
             )}
           </section>
 
