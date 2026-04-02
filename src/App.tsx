@@ -68,6 +68,7 @@ const AFLMarketWatch    = React.lazy(() => import("@/features/afl/market-watch/M
 const AFLPlayerPage     = React.lazy(() => import("@/pages/afl/AFLPlayerPage"));
 const AFLTeamPage       = React.lazy(() => import("@/pages/afl/AFLTeamPage"));
 const AFLPositionPage   = React.lazy(() => import("@/pages/afl/AFLPositionPage"));
+const AFLRoundPage      = React.lazy(() => import("@/features/afl/round/AFLRoundPage"));
 
 /* =========================
    Suspense helpers
@@ -123,6 +124,7 @@ function App() {
         <Route path="/sports/afl/edge-board" element={<S fallback={AI}><AFLRoundEdgeBoard /></S>} />
         <Route path="/sports/afl/start-sit" element={<S fallback={AI}><AFLStartSitPage /></S>} />
         <Route path="/sports/afl/market-watch" element={<S fallback={AI}><AFLMarketWatch /></S>} />
+        <Route path="/sports/afl/round/:roundNumber" element={<S fallback={Players}><AFLRoundPage /></S>} />
 
         <Route path="/account" element={<RequireAuth><S fallback={Generic}><Account /></S></RequireAuth>} />
         <Route path="/billing" element={<RequireAuth><S fallback={Generic}><Billing /></S></RequireAuth>} />

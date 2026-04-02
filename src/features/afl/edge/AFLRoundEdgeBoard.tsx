@@ -1202,9 +1202,9 @@ export default function AFLRoundEdgeBoard() {
               </div>
             )}
           </div>
-          <h1 className="text-2xl font-extrabold text-white leading-tight">This Week's Picks</h1>
+          <h1 className="text-2xl font-extrabold text-white leading-tight">AFL Fantasy Edge Board — This Week's Picks</h1>
           <p className="text-sm text-white/40 mt-1">
-            Captain lock, best value, and who to fade — decided by the model.
+            Captain lock, best value breakout pick, and who to fade — all decided by Neeko's projection model.
           </p>
 
           {/* Meta row: updated + trust + countdown */}
@@ -1243,6 +1243,30 @@ export default function AFLRoundEdgeBoard() {
             <RoundSummaryShare captain={captainPick} value={valuePick} trap={trapPick} />
           </div>
         )}
+
+        {/* ── SEO Content Block ────────────────────────────────────────────── */}
+        <div className="mb-6 bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 space-y-5">
+          <div>
+            <h2 className="text-base font-semibold text-white mb-3">How to Use the AFL Fantasy Edge Board</h2>
+            <p className="text-sm text-white/55 leading-relaxed">
+              The Edge Board is Neeko's most concentrated AFL Fantasy decision tool. Each week the projection model scans the full player pool and surfaces three high-conviction plays: the captain lock, the best value breakout target, and the player to fade. These aren't suggestions — they're the model's strongest signals for the upcoming round.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white/80 mb-2">What each section means</h3>
+            <ul className="space-y-2 text-sm text-white/50 leading-relaxed">
+              <li><strong className="text-white/70">Captain Lock</strong> — The player with the highest projected ceiling combined with strong confidence and a favourable matchup. Double this player's score.</li>
+              <li><strong className="text-white/70">Breakout Value</strong> — Underpriced relative to their output potential. Strong trade-in candidate and a high-upside start this round.</li>
+              <li><strong className="text-white/70">Fade / Trap</strong> — Overpriced given their projected return. If they're in your squad consider benching or trading out before lockout.</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white/80 mb-2">For this round</h3>
+            <p className="text-sm text-white/50 leading-relaxed">
+              Edge Board picks are refreshed weekly after price changes are applied. Check back after Thursday lockout for the updated round analysis. Use the <a href="/sports/afl/market-watch" className="text-white/70 underline underline-offset-2 hover:text-white transition-colors">Market Watch</a> for a broader view of all trade targets, or the <a href="/sports/afl/rankings" className="text-white/70 underline underline-offset-2 hover:text-white transition-colors">AFL Fantasy Rankings</a> for the full player pool ordered by Neeko Rating.
+            </p>
+          </div>
+        </div>
 
         {/* ── Free paywall ─────────────────────────────────────────────────── */}
         {!isPremium && (

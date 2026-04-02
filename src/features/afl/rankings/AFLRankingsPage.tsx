@@ -518,6 +518,26 @@ export default function AFLRankingsPage() {
         <meta name="robots" content="index, follow" />
         <meta name="author" content="Neeko Sports" />
         <meta property="article:modified_time" content={new Date().toISOString()} />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "name": "AFL Fantasy Rankings 2026",
+          "description": "Complete AFL Fantasy rankings for 2026. AI-powered player projections, value scores, and recommendations. Updated weekly with the latest stats and analysis.",
+          "url": "https://neekostats.com.au/sports/afl/rankings",
+          "publisher": {
+            "@type": "Organization",
+            "name": "Neeko Sports",
+            "url": "https://neekostats.com.au"
+          },
+          "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
+              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy", "item": "https://neekostats.com.au/sports/afl" },
+              { "@type": "ListItem", "position": 3, "name": "Rankings", "item": "https://neekostats.com.au/sports/afl/rankings" }
+            ]
+          }
+        })}</script>
       </Helmet>
 
       <div className="min-h-screen bg-[#070707] text-white">

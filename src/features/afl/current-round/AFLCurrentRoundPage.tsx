@@ -505,6 +505,26 @@ export default function AFLCurrentRoundPage() {
         <meta property="og:url" content="https://neekostats.com.au/sports/afl/current-round" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Neeko Sports" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "name": pageTitle,
+          "description": `Discover the best AFL Fantasy players for ${roundLabel} — captain picks, value plays and trap alerts powered by AI projections.`,
+          "url": "https://neekostats.com.au/sports/afl/current-round",
+          "publisher": {
+            "@type": "Organization",
+            "name": "Neeko Sports",
+            "url": "https://neekostats.com.au"
+          },
+          "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
+              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy", "item": "https://neekostats.com.au/sports/afl" },
+              { "@type": "ListItem", "position": 3, "name": "Current Round", "item": "https://neekostats.com.au/sports/afl/current-round" }
+            ]
+          }
+        })}</script>
       </Helmet>
 
       <div className="min-h-screen bg-[#070707] text-white">
@@ -590,19 +610,39 @@ export default function AFLCurrentRoundPage() {
           </div>
 
           {/* ── SEO CONTENT BLOCK ──────────────────────────────────────────── */}
-          <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 space-y-4">
-            <h2 className="text-base font-semibold text-white">
-              What to Expect {roundNum ? `in Round ${roundNum}` : "This Round"}
-            </h2>
-            <div className="space-y-3 text-sm text-white/55 leading-relaxed">
-              <p>
-                This page highlights the best AFL Fantasy players for the upcoming round, using Neeko's AI-powered projection model. Players are ranked based on projected score, price value, matchup difficulty and role stability — giving you a complete picture before you lock in your team.
+          <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 space-y-5">
+            <div>
+              <h2 className="text-base font-semibold text-white mb-3">
+                AFL Fantasy Tips {roundNum ? `— Round ${roundNum} Analysis` : "— Current Round Analysis"}
+              </h2>
+              <p className="text-sm text-white/55 leading-relaxed">
+                This page surfaces the best AFL Fantasy players for{roundNum ? ` Round ${roundNum}` : " the current round"} using
+                Neeko's AI-powered projection model. Every player is scored on projected output, price value,
+                matchup difficulty, and role stability — giving you a complete picture before you lock in your team.
               </p>
-              <p>
-                The <strong className="text-white/75">Value Score</strong> measures how much a player is under or overpriced relative to their expected output. A positive score means you're getting more points than you're paying for. A negative score signals a player priced beyond their likely return — the classic trap pick.
-              </p>
-              <p>
-                Use <strong className="text-white/75">Top Picks</strong> for must-starts, <strong className="text-white/75">Captain Picks</strong> for your double-scorer, <strong className="text-white/75">Value Plays</strong> for trade targets, and <strong className="text-white/75">Trap Alerts</strong> to identify who to avoid this week.
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-white/80 mb-2">How each section works</h3>
+              <ul className="space-y-2 text-sm text-white/50 leading-relaxed">
+                <li><strong className="text-white/70">Top Picks</strong> — The highest-projected players for the round with strong confidence scores. These are your must-starts.</li>
+                <li><strong className="text-white/70">Captain Picks</strong> — Players with the best ceiling scores for captaining. The model weighs projected score, consistency, and matchup to find your best doubler.</li>
+                <li><strong className="text-white/70">Value Plays</strong> — Underpriced players whose projected output exceeds their current fantasy price. Prime trade-in or trade-across targets.</li>
+                <li><strong className="text-white/70">Trap Alerts</strong> — Overpriced players whose projection falls short of their price tag. Consider trading out or benching before lockout.</li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-white/80 mb-2">Understanding the Value Score</h3>
+              <p className="text-sm text-white/50 leading-relaxed">
+                The <strong className="text-white/70">Value Score</strong> compares each player's projected points
+                against their current AFL Fantasy price. A positive score means you're getting more points per dollar
+                than the market expects — the ideal trade target. A negative score signals a player priced beyond
+                their likely return. For deeper trade analysis, check the{" "}
+                <a href="/sports/afl/market-watch" className="text-white/70 underline underline-offset-2 hover:text-white transition-colors">Market Watch</a>{" "}
+                for price movement trends, the{" "}
+                <a href="/sports/afl/edge-board" className="text-white/70 underline underline-offset-2 hover:text-white transition-colors">Edge Board</a>{" "}
+                for high-conviction picks, or the{" "}
+                <a href="/sports/afl/rankings" className="text-white/70 underline underline-offset-2 hover:text-white transition-colors">AFL Fantasy Rankings</a>{" "}
+                for the full player pool.
               </p>
             </div>
           </div>

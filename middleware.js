@@ -65,6 +65,11 @@ const PRERENDER_ROUTES = [
   '/sports/afl/teams/',
   '/sports/afl/positions/',
   '/sports/afl/rankings',
+  '/sports/afl/market-watch',
+  '/sports/afl/edge-board',
+  '/sports/afl/start-sit',
+  '/sports/afl/current-round',
+  '/sports/afl/round/',
 ];
 
 /**
@@ -153,5 +158,10 @@ export const config = {
     '/sports/afl/teams/:path*',
     '/sports/afl/positions/:path*',
     '/sports/afl/rankings',
+    '/sports/afl/market-watch',
+    '/sports/afl/edge-board',
+    '/sports/afl/start-sit',
+    '/sports/afl/current-round',
+    '/sports/afl/round/:path*',
   ],
 };

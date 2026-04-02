@@ -321,10 +321,43 @@ export default function StartSitPage() {
               AFL Fantasy
             </span>
           </div>
-          <h1 className="text-2xl font-extrabold text-white">Start / Sit</h1>
+          <h1 className="text-2xl font-extrabold text-white">AFL Fantasy Start / Sit Tool</h1>
           <p className="text-sm text-white/40 mt-1">
-            Compare two players and get a verdict on who to start this round.
+            Compare two players and get an AI verdict on who to start this round.
           </p>
+        </div>
+
+        {/* SEO Content Block */}
+        <div className="mb-5 bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 space-y-5">
+          <div>
+            <h2 className="text-base font-semibold text-white mb-3">How to Use the AFL Fantasy Start / Sit Tool</h2>
+            <p className="text-sm text-white/55 leading-relaxed">
+              The Start / Sit tool helps you resolve the hardest AFL Fantasy decision each week — which player
+              to put in your starting lineup. Select any two players from your squad, add optional matchup
+              context, and Neeko's model returns a data-driven verdict with confidence score, projected
+              output, and a plain-English explanation of why one player edges the other.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white/80 mb-2">What the verdict considers</h3>
+            <ul className="space-y-2 text-sm text-white/50 leading-relaxed">
+              <li><strong className="text-white/70">Projected score</strong> — Each player's Neeko projection for the round, adjusted for form, role, and venue.</li>
+              <li><strong className="text-white/70">Matchup difficulty</strong> — How the opposing team concedes to the player's position historically.</li>
+              <li><strong className="text-white/70">Consistency score</strong> — How reliable the player is across recent rounds (ceiling vs floor trade-off).</li>
+              <li><strong className="text-white/70">Price value</strong> — Whether starting them aligns with their current fantasy price and breakeven needs.</li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white/80 mb-2">When to use it</h3>
+            <p className="text-sm text-white/50 leading-relaxed">
+              Best used after you've locked in your trades and need to finalise your lineup. For broader
+              trade decisions check the{" "}
+              <a href="/sports/afl/market-watch" className="text-white/70 underline underline-offset-2 hover:text-white transition-colors">Market Watch</a>{" "}
+              for price movement targets, or the{" "}
+              <a href="/sports/afl/edge-board" className="text-white/70 underline underline-offset-2 hover:text-white transition-colors">Edge Board</a>{" "}
+              for this round's captain lock and trap picks.
+            </p>
+          </div>
         </div>
 
         {/* Player selectors */}
