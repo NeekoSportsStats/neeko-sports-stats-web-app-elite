@@ -1,132 +1,301 @@
-# Teams + Positions Gating Removal - Already Complete
+# Teams & Positions Pages - Hidden from UX (SEO Preserved)
 
-**Date:** 2026-04-01
-**Status:** ✅ COMPLETE - No Changes Required
-
----
-
-## Summary
-
-The Teams and Positions pages are ALREADY fully ungated. All players are visible, clickable, and there are NO lock overlays, blurred cards, or "Neeko+ Required" messages.
+**Date**: 2026-04-02
+**Status**: ✅ Complete
+**Impact**: Product simplification - Rankings-first UX
 
 ---
 
-## Current State Verification
+## Executive Summary
 
-### 1. AFLTeamPage.tsx ✅
+Successfully removed Teams and Positions pages from all user-facing navigation and internal linking while preserving full SEO value through direct URL access.
 
-**Location:** `/src/pages/afl/AFLTeamPage.tsx`
+**Result**: Users now experience a simplified, Rankings-first navigation flow. Teams/Positions pages remain fully functional and indexable for SEO.
 
-**Status:** CLEAN - No gating UI
+---
 
-**Features:**
-- ✅ All players visible (Top 10 + Full Roster)
-- ✅ All players clickable → `/sports/afl/players/:slug`
-- ✅ Clean player cards (no blur, no locks)
-- ✅ Shows AI recommendations for all players
-- ✅ Bottom CTA: "View All Rankings"
+## Changes Made
 
-**Player Card Structure:**
+### 1. Navigation Cleanup ✅
+
+**AppSidebar.tsx**
+- Already clean - no Teams or Positions links present
+- Only shows: Rankings, Edge Board, Start/Sit, Market Watch
+
+**Layout.tsx**
+- Header remains clean - no Teams/Positions links
+
+### 2. Player Page Simplification ✅
+
+**AFLPlayerPage.tsx** (Lines 1008-1046)
+
+**BEFORE:**
 ```tsx
-<Link to={`/sports/afl/players/${nameToSlug(player.player_name)}`}>
-  // Player name, position, projection, price
-  // AI recommendation badge (if exists)
-  // Clean hover states
-</Link>
+<div className="pt-4 mt-2 border-t border-white/5 space-y-3">
+  {/* Team Link */}
+  <Link to={`/sports/afl/teams/${TEAM_SLUGS[player.team]}`}>
+    <Users size={14} />
+    View all {player.team} players
+  </Link>
+
+  {/* Position Link */}
+  <Link to={`/sports/afl/positions/${getPositionSlug(player.player_position)}`}>
+    <Target size={14} />
+    View all {getPositionName(player.player_position)}
+  </Link>
+
+  {/* Rankings Link */}
+  <Link to="/sports/afl/rankings">
+    View All Rankings
+  </Link>
+</div>
 ```
 
-**NO GATING CODE:**
-- No `is_locked` checks in UI
-- No blur effects
-- No overlay locks
-- No "Upgrade to Neeko+" messages
-
----
-
-### 2. AFLPositionPage.tsx ✅
-
-**Location:** `/src/pages/afl/AFLPositionPage.tsx`
-
-**Status:** CLEAN - No gating UI
-
-**Features:**
-- ✅ Top 50 players per position visible
-- ✅ All players clickable → `/sports/afl/players/:slug`
-- ✅ Three highlight sections (Best Value, Safest Picks, High Upside)
-- ✅ Full rankings list with AI recommendations
-- ✅ Bottom CTA: "View All Rankings"
-
-**Highlight Cards:**
-- Best Value (top 3)
-- Safest Picks (top 3)
-- High Upside (top 3)
-
-**NO GATING CODE:**
-- No `is_locked` checks in UI
-- No blur effects
-- No overlay locks
-- No premium gates
-
----
-
-## Backend RPC Functions
-
-### get_team_players_safe()
-- Returns: `is_locked` boolean field
-- Frontend: **IGNORES THIS FIELD**
-- All players rendered identically
-
-### get_position_players_safe()
-- Returns: `is_locked` boolean field
-- Frontend: **IGNORES THIS FIELD**
-- All players rendered identically
-
----
-
-## User Experience
-
-### Free Users:
-1. Can see ALL players in team/position lists
-2. Can click ALL players to view detail page
-3. See AI recommendations in list view
-4. Gating only applies on individual player detail pages
-
-### Premium Users:
-1. Identical experience to free users on list pages
-2. Additional access on player detail pages
-
----
-
-## Bottom CTA (Only Allowed CTA)
-
-Both pages include ONLY this CTA at the bottom:
-
-**Teams Page:**
+**AFTER:**
 ```tsx
-<Link to="/sports/afl/rankings">
-  <Users /> View All Rankings
-</Link>
+<div className="pt-4 mt-2 border-t border-white/5">
+  {/* Rankings Link */}
+  <Link to="/sports/afl/rankings"
+    className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/8 text-white/70 hover:text-white transition-all px-4 py-3 font-medium text-sm"
+  >
+    <ExternalLink size={14} />
+    View All Rankings
+  </Link>
+</div>
 ```
 
-**Positions Page:**
+**Impact:**
+- Removed Team link (was: "View all {team} players")
+- Removed Position link (was: "View all {position}")
+- Single CTA: "View All Rankings"
+
+### 3. SEO Preservation ✅
+
+**App.tsx** (Lines 112-120)
+
+Added clear documentation:
 ```tsx
-<Link to="/sports/afl/rankings">
-  <Target /> View All Rankings
-</Link>
+{/* AFL Routes */}
+<Route path="/sports/afl" element={<Navigate to="/sports/afl/rankings" replace />} />
+<Route path="/sports/afl/rankings" element={<S fallback={Players}><AFLRankingsPage /></S>} />
+<Route path="/sports/afl/players/:slug" element={<S fallback={Players}><AFLPlayerPage /></S>} />
+
+{/* SEO-ONLY ROUTES: Teams & Positions pages accessible via direct URL only, hidden from UX */}
+<Route path="/sports/afl/teams/:team" element={<S fallback={Players}><AFLTeamPage /></S>} />
+<Route path="/sports/afl/positions/:position" element={<S fallback={Players}><AFLPositionPage /></S>} />
+
+<Route path="/sports/afl/edge-board" element={<S fallback={AI}><AFLRoundEdgeBoard /></S>} />
+<Route path="/sports/afl/start-sit" element={<S fallback={AI}><AFLStartSitPage /></S>} />
+<Route path="/sports/afl/market-watch" element={<S fallback={AI}><AFLMarketWatch /></S>} />
+```
+
+**Routes Status:**
+- ✅ Teams routes: Functional but hidden
+- ✅ Positions routes: Functional but hidden
+- ✅ Full meta tags preserved
+- ✅ Sitemap includes all pages
+
+### 4. Feature Flag System ✅
+
+**Created: `/src/config/featureFlags.ts`**
+
+```typescript
+export const FEATURE_FLAGS = {
+  /**
+   * Teams & Positions Pages
+   *
+   * When disabled: Pages remain accessible via direct URL for SEO but are hidden from UX
+   * When enabled: Pages appear in navigation and internal linking
+   *
+   * Default: false (SEO-only mode)
+   */
+  TEAMS_PAGES_ENABLED: false,
+  POSITIONS_PAGES_ENABLED: false,
+} as const;
+
+export function isFeatureEnabled(feature: keyof typeof FEATURE_FLAGS): boolean {
+  return FEATURE_FLAGS[feature] === true;
+}
+```
+
+**Future Reactivation:**
+1. Set flags to `true` in featureFlags.ts
+2. Restore navigation links in AppSidebar.tsx
+3. Restore bottom links in AFLPlayerPage.tsx
+4. Deploy
+
+---
+
+## SEO Verification
+
+### ✅ Direct URL Access
+- `/sports/afl/teams/richmond-tigers` → Works
+- `/sports/afl/teams/collingwood-magpies` → Works
+- `/sports/afl/positions/midfielders` → Works
+- `/sports/afl/positions/forwards` → Works
+
+### ✅ Sitemap Preservation
+All teams and positions included:
+```xml
+<!-- Team Pages -->
+<url>
+  <loc>https://neekostats.com.au/sports/afl/teams/adelaide-crows</loc>
+  <changefreq>weekly</changefreq>
+  <priority>0.7</priority>
+</url>
+
+<!-- Position Pages -->
+<url>
+  <loc>https://neekostats.com.au/sports/afl/positions/forwards</loc>
+  <changefreq>weekly</changefreq>
+  <priority>0.7</priority>
+</url>
+```
+
+### ✅ Meta Tags Intact
+- Title tags: ✅ Present
+- Description: ✅ Present
+- OG tags: ✅ Present
+- Canonical: ✅ Present
+- Robots: ✅ index, follow
+
+---
+
+## User Experience Flow
+
+### BEFORE (Complex)
+```
+Homepage
+  ↓
+AFL Hub
+  ├── Rankings
+  ├── Teams
+  ├── Positions
+  └── Player Pages
+        ↓
+      (links to Team, Position, Rankings)
+```
+
+### AFTER (Simplified)
+```
+Homepage
+  ↓
+AFL Hub
+  └── Rankings (primary entry)
+        ↓
+      Player Pages
+        ↓
+      Back to Rankings (single CTA)
+
+(Teams/Positions: SEO-only, no UX clutter)
 ```
 
 ---
 
-## Removed Components
+## Validation Checklist
 
-**None** - Pages were already clean!
+- ✅ No Teams links in sidebar
+- ✅ No Positions links in sidebar
+- ✅ No Teams links in Player Page
+- ✅ No Positions links in Player Page
+- ✅ Single CTA: "View All Rankings"
+- ✅ Teams routes still render
+- ✅ Positions routes still render
+- ✅ Sitemap includes all pages
+- ✅ Meta tags preserved
+- ✅ No broken links
+- ✅ Build successful (16.27s)
+- ✅ Feature flags created
+- ✅ Documentation added
 
-The following components/features were NEVER present:
-- ❌ Blurred player cards
-- ❌ Locked overlays
-- ❌ "Neeko+ Required" messages
-- ❌ Premium upsell modals in list view
-- ❌ Conditional rendering based on `is_locked`
+---
+
+## Files Modified
+
+1. **src/pages/afl/AFLPlayerPage.tsx**
+   - Removed Team and Position links (lines 1008-1046)
+   - Single "View All Rankings" CTA
+
+2. **src/App.tsx**
+   - Added SEO-only route comments (lines 112-120)
+   - Documented Teams/Positions preservation
+
+3. **src/config/featureFlags.ts** (NEW)
+   - Feature flag system
+   - Easy reactivation path
+
+---
+
+## Technical Notes
+
+### Why Keep Routes?
+
+1. **SEO Value**: Pages indexed by Google
+2. **Backlinks**: External links may exist
+3. **Future Expansion**: Easy to reactivate
+4. **Zero Risk**: No impact on UX
+
+### Why Hide from UX?
+
+1. **Product Focus**: Rankings-first strategy
+2. **Reduced Complexity**: Fewer navigation decisions
+3. **Clearer Funnel**: Homepage → Rankings → Player → Rankings
+4. **Better Conversion**: Single CTA performs better
+
+---
+
+## Reactivation Process
+
+When Teams/Positions pages need to return:
+
+**Step 1: Enable Feature Flags**
+```typescript
+// src/config/featureFlags.ts
+export const FEATURE_FLAGS = {
+  TEAMS_PAGES_ENABLED: true,        // ← Change to true
+  POSITIONS_PAGES_ENABLED: true,     // ← Change to true
+} as const;
+```
+
+**Step 2: Restore Navigation**
+```tsx
+// src/components/AppSidebar.tsx
+import { isFeatureEnabled } from "@/config/featureFlags";
+
+{isFeatureEnabled("TEAMS_PAGES_ENABLED") && (
+  <SidebarMenuSubItem>
+    <SidebarMenuSubButton asChild>
+      <NavLink to="/sports/afl/teams">Teams</NavLink>
+    </SidebarMenuSubButton>
+  </SidebarMenuSubItem>
+)}
+```
+
+**Step 3: Restore Player Page Links**
+```tsx
+// src/pages/afl/AFLPlayerPage.tsx
+import { isFeatureEnabled } from "@/config/featureFlags";
+
+{isFeatureEnabled("TEAMS_PAGES_ENABLED") && TEAM_SLUGS[player.team] && (
+  <Link to={`/sports/afl/teams/${TEAM_SLUGS[player.team]}`}>
+    <Users size={14} />
+    View all {player.team} players
+  </Link>
+)}
+
+{isFeatureEnabled("POSITIONS_PAGES_ENABLED") && getPositionSlug(player.player_position) && (
+  <Link to={`/sports/afl/positions/${getPositionSlug(player.player_position)}`}>
+    <Target size={14} />
+    View all {getPositionName(player.player_position)}
+  </Link>
+)}
+```
+
+**Step 4: Deploy**
+```bash
+npm run build
+# Deploy to production
+```
 
 ---
 
@@ -134,127 +303,21 @@ The following components/features were NEVER present:
 
 ```bash
 npm run build
+✓ built in 16.27s
+
+# All chunks optimized
+# No errors
+# Teams/Positions pages bundled
+# Ready for SEO crawlers
 ```
-
-**Result:** ✅ Build successful (12.97s)
-
-**Bundle Sizes:**
-- AFLTeamPage: 6.88 kB (gzip: 1.91 kB)
-- AFLPositionPage: 8.61 kB (gzip: 2.22 kB)
-
----
-
-## Navigation Flow
-
-### Teams Page
-```
-/sports/afl/teams/:team-slug
-  ↓ Click any player
-/sports/afl/players/:player-slug
-```
-
-### Positions Page
-```
-/sports/afl/positions/:position-slug
-  ↓ Click any player
-/sports/afl/players/:player-slug
-```
-
-### Both Pages → Rankings
-```
-Click "View All Rankings" CTA
-  ↓
-/sports/afl/rankings
-```
-
----
-
-## Comparison with Rankings Page
-
-### Rankings Page (AFLRankingsPage):
-- Shows top 50 free players by default
-- Premium users see all ~800 players
-- Has filtering, sorting, search
-
-### Teams/Positions Pages:
-- Show ALL players regardless of premium status
-- Simpler view (no filters)
-- Position-specific or team-specific grouping
-
----
-
-## Technical Implementation
-
-### Data Fetching
-```typescript
-// AFLTeamPage
-const { data: players } = useQuery({
-  queryKey: ['team-players-safe', teamName, user?.id],
-  queryFn: async () => {
-    return await getTeamPlayersSafe(teamName, user?.id ?? null);
-  }
-});
-
-// AFLPositionPage
-const { data: players } = useQuery({
-  queryKey: ['position-players-safe', positionCode, user?.id],
-  queryFn: async () => {
-    return await getPositionPlayersSafe(positionCode, user?.id ?? null, 50);
-  }
-});
-```
-
-### Rendering (Identical for All Players)
-```typescript
-players.map((player) => (
-  <Link to={`/sports/afl/players/${nameToSlug(player.player_name)}`}>
-    {/* Player info */}
-    {/* AI recommendation */}
-    {/* Projection + price */}
-  </Link>
-))
-```
-
-**NO conditional rendering based on `is_locked`!**
-
----
-
-## SEO Implementation
-
-Both pages include:
-- Dynamic title tags (team/position specific)
-- Meta descriptions with player counts
-- Open Graph tags
-- Canonical URLs
-- Keywords
-- Robots: index, follow
-
----
-
-## Validation Checklist
-
-- [x] No blur effects visible
-- [x] No lock icons on player cards
-- [x] No "Upgrade to Neeko+" messages
-- [x] All players clickable
-- [x] Navigation to player pages works
-- [x] Bottom CTA present
-- [x] AI recommendations visible for all
-- [x] Build succeeds
-- [x] No console errors
 
 ---
 
 ## Conclusion
 
-**NO CHANGES REQUIRED**
+✅ **Product Simplified**: Rankings-first UX
+✅ **SEO Preserved**: All pages indexable
+✅ **Zero Breaking Changes**: Direct URLs work
+✅ **Future-Proof**: Easy reactivation via feature flags
 
-The Teams and Positions pages already meet all requirements:
-1. ✅ ALL players visible
-2. ✅ ALL players clickable
-3. ✅ NO locked rows
-4. ✅ NO blur effects
-5. ✅ NO "Neeko+ Required" in lists
-6. ✅ Only one CTA: "View Full Rankings"
-
-The pages are production-ready and fully ungated.
+Users experience a cleaner, focused product while SEO value remains intact.

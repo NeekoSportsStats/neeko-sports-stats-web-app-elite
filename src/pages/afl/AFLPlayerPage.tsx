@@ -1006,35 +1006,7 @@ export default function AFLPlayerPage() {
             )}
 
             {/* 9. Bottom Navigation Section */}
-            <div className="pt-4 mt-2 border-t border-white/5 space-y-3">
-              {/* Team Link */}
-              {TEAM_SLUGS[player.team] && (
-                <Link
-                  to={`/sports/afl/teams/${TEAM_SLUGS[player.team]}`}
-                  className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 hover:bg-white/8 text-white/70 hover:text-white transition-all px-4 py-3 font-medium text-sm"
-                >
-                  <div className="flex items-center gap-2">
-                    <Users size={14} />
-                    <span>View all {player.team} players</span>
-                  </div>
-                  <ChevronRight size={16} className="opacity-50" />
-                </Link>
-              )}
-
-              {/* Position Link */}
-              {getPositionSlug(player.player_position) && (
-                <Link
-                  to={`/sports/afl/positions/${getPositionSlug(player.player_position)}`}
-                  className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 hover:bg-white/8 text-white/70 hover:text-white transition-all px-4 py-3 font-medium text-sm"
-                >
-                  <div className="flex items-center gap-2">
-                    <Target size={14} />
-                    <span>View all {getPositionName(player.player_position)}</span>
-                  </div>
-                  <ChevronRight size={16} className="opacity-50" />
-                </Link>
-              )}
-
+            <div className="pt-4 mt-2 border-t border-white/5">
               {/* Rankings Link */}
               <Link
                 to="/sports/afl/rankings"
