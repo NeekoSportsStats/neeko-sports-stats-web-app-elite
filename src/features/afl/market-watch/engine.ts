@@ -109,23 +109,9 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
     sampleSell: sells.slice(0, 3).map(p => ({ name: p.player_name, action: p.action }))
   });
 
-  // ── STEP 3: SORT WITHIN EACH CATEGORY ────────────────────────────────────
-
-  // BUY: Best value first (highest value_score)
-  buys.sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0));
-
-  // HOLD: Closest to neutral value first (value_score nearest to 0, then by projection)
-  holds.sort((a, b) => {
-    const aAbsValue = Math.abs(a.value_score ?? 0);
-    const bAbsValue = Math.abs(b.value_score ?? 0);
-    if (Math.abs(aAbsValue - bAbsValue) > 0.5) {
-      return aAbsValue - bAbsValue;
-    }
-    return (b.projection ?? 0) - (a.projection ?? 0);
-  });
-
-  // SELL: Worst value first (lowest/most negative value_score)
-  sells.sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0));
+  // ── STEP 3: PRESERVE BACKEND ORDER ───────────────────────────────────────
+  // Backend returns players sorted by value_score DESC, projection DESC.
+  // Do NOT re-sort within buckets — respect the backend ordering.
 
   // ── STEP 4: DEBUG LOGGING ─────────────────────────────────────────────────
 

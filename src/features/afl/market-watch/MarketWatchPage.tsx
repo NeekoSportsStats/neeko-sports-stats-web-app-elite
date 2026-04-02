@@ -11,7 +11,6 @@ import { MarketWatchPremiumCard } from "./MarketWatchPremiumCard";
 import { MarketWatchPaywall } from "./MarketWatchPaywall";
 import { MarketWatchSkeleton } from "./MarketWatchSkeleton";
 import { classifyPlayers, DerivedPlayer } from "./engine";
-import { PremiumGate } from "@/components/PremiumGate";
 import { PlayerAIModal } from "./PlayerAIModal";
 
 export default function MarketWatchPage() {
@@ -19,11 +18,12 @@ export default function MarketWatchPage() {
   const [players, setPlayers] = useState<MWPlayerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<DerivedPlayer | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   const fetchData = useCallback(async (premium: boolean) => {
     setLoading(true);
     try {
-      const limit = premium ? 200 : 100;
+      const limit = premium ? 300 : 100;
       const viewName = premium ? "v_mw_premium" : "v_mw_free";
       const { data, error } = await supabase.from(viewName).select("*").limit(limit);
 
@@ -51,8 +51,8 @@ export default function MarketWatchPage() {
         breakout_flag: r.breakout_flag ?? null,
         volatility_score: r.volatility_score ?? 0,
         volatility_level: r.volatility_level ?? null,
-        category: (r.action ?? 'WATCH').toUpperCase(),  // Normalize to uppercase action
-        action: r.action ?? 'WATCH',
+        category: (r.action ?? r.category ?? 'HOLD').toUpperCase(),
+        action: r.action ?? r.category ?? 'HOLD',
         trade_score: r.trade_score ?? 0,
         reasons: r.reasons ?? {},
         category_reason: r.category_reason ?? null,
@@ -86,18 +86,6 @@ export default function MarketWatchPage() {
         manual_status: r.manual_status ?? null,
       }));
 
-      console.log("[MW DEBUG - FETCH]", {
-        source: viewName,
-        total: data?.length ?? 0,
-        mapped: mapped.length,
-        categories: mapped.map(p => p.category),
-        categoryDistribution: {
-          TARGET: mapped.filter(p => p.category === 'TARGET').length,
-          WATCH: mapped.filter(p => p.category === 'WATCH').length,
-          AVOID: mapped.filter(p => p.category === 'AVOID').length,
-        }
-      });
-
       setPlayers(mapped);
     } catch (error) {
       console.error("[Market Watch] Error:", error);
@@ -121,6 +109,27 @@ export default function MarketWatchPage() {
   // ALL HOOKS MUST RUN BEFORE ANY CONDITIONAL RETURN
   const classified = useMemo(() => classifyPlayers(players), [players]);
 
+  // Unified list: backend order (value_score DESC, projection DESC)
+  // Merge all categories back into a single sorted array preserving the DB order
+  const unifiedList = useMemo(() => {
+    if (!classified) return [];
+    // Re-merge in original fetch order (backend already sorted by value_score DESC)
+    // We use the players array directly to preserve the DB-returned order
+    const allClassified = new Map<number, DerivedPlayer>();
+    for (const p of [...classified.buys, ...classified.holds, ...classified.sells]) {
+      if (!allClassified.has(p.player_id)) {
+        allClassified.set(p.player_id, p);
+      }
+    }
+    // Sort by value_score DESC, then projection DESC — matches the DB view order
+    return Array.from(allClassified.values())
+      .sort((a, b) => {
+        const vsDiff = (b.value_score ?? 0) - (a.value_score ?? 0);
+        if (Math.abs(vsDiff) > 0.01) return vsDiff;
+        return (b.projection ?? 0) - (a.projection ?? 0);
+      });
+  }, [classified]);
+
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
 
@@ -137,7 +146,6 @@ export default function MarketWatchPage() {
     return (
       <div className="min-h-screen bg-[#0D0D0D] text-white flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="text-6xl">📊</div>
           <h2 className="text-2xl font-bold">No Market Data</h2>
           <p className="text-white/60">Check back after weekly price changes</p>
           <button
@@ -150,6 +158,11 @@ export default function MarketWatchPage() {
       </div>
     );
   }
+
+  const freeLimit = 12;
+  const premiumVisible = showAll ? unifiedList : unifiedList.slice(0, 24);
+  const visiblePlayers = isPremium ? premiumVisible : unifiedList.slice(0, freeLimit);
+  const hasMorePremium = isPremium && unifiedList.length > 24 && !showAll;
 
   return (
     <>
@@ -207,36 +220,81 @@ export default function MarketWatchPage() {
           />
         </div>
 
-        <div className="space-y-16 animate-in fade-in duration-500">
-          <CategorySection
-            title="🎯 TARGET"
-            subtitle="Strong value and upside — recommended purchases"
-            count={classified?.buys?.length ?? 0}
-            players={classified?.buys ?? []}
-            type="buy"
-            onPlayerClick={setSelectedPlayer}
-            isPremium={isPremium}
-          />
+        <div className="space-y-6 animate-in fade-in duration-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-bold text-white mb-1">
+                All Players
+              </h2>
+              <p className="text-white/50">
+                Sorted by value — best opportunities first
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-full text-sm font-bold border text-green-400 bg-green-500/10 border-green-500/20">
+                {classified?.buys?.length ?? 0} Target
+              </span>
+              <span className="px-3 py-1 rounded-full text-sm font-bold border text-[#F5C84C] bg-[#F5C84C]/10 border-[#F5C84C]/20">
+                {classified?.holds?.length ?? 0} Watch
+              </span>
+              <span className="px-3 py-1 rounded-full text-sm font-bold border text-red-400 bg-red-500/10 border-red-500/20">
+                {classified?.sells?.length ?? 0} Avoid
+              </span>
+            </div>
+          </div>
 
-          <CategorySection
-            title="👁️ WATCH"
-            subtitle="Neutral value — monitor for changes"
-            count={classified?.holds?.length ?? 0}
-            players={classified?.holds ?? []}
-            type="hold"
-            onPlayerClick={setSelectedPlayer}
-            isPremium={isPremium}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {visiblePlayers.map((player, i) => {
+              const type = player._category === 'BUY' ? 'buy' : player._category === 'SELL' ? 'sell' : 'hold';
+              return (
+                <MarketWatchPremiumCard
+                  key={player.player_id}
+                  player={player}
+                  rank={i + 1}
+                  type={type}
+                  onPlayerClick={setSelectedPlayer}
+                />
+              );
+            })}
+          </div>
 
-          <CategorySection
-            title="⚠️ AVOID"
-            subtitle="Poor value or risk — recommended exits"
-            count={classified?.sells?.length ?? 0}
-            players={classified?.sells ?? []}
-            type="sell"
-            onPlayerClick={setSelectedPlayer}
-            isPremium={isPremium}
-          />
+          {!isPremium && unifiedList.length > freeLimit && (
+            <div className="mt-6 p-8 border border-white/10 rounded-lg bg-white/[0.02] text-center">
+              <div className="inline-block px-3 py-1 bg-[#F5C84C]/20 border border-[#F5C84C]/40 rounded-full text-xs font-bold text-[#F5C84C] mb-3">
+                PREMIUM
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">
+                {unifiedList.length - freeLimit} More Players Available
+              </h3>
+              <p className="text-white/60 mb-4">
+                Unlock full Market Watch with Rankings AI access
+              </p>
+              <a
+                href="/neeko-plus"
+                className="inline-block px-6 py-3 bg-[#F5C84C] text-black font-bold rounded-lg hover:bg-[#F5C84C]/90 transition-all"
+              >
+                Upgrade to Premium
+              </a>
+            </div>
+          )}
+
+          {hasMorePremium && (
+            <button
+              onClick={() => setShowAll(true)}
+              className="w-full mt-4 px-6 py-3 bg-white/[0.03] border border-white/10 rounded-lg hover:bg-white/[0.05] transition-all text-white font-medium"
+            >
+              Show All {unifiedList.length} Players
+            </button>
+          )}
+
+          {isPremium && showAll && (
+            <button
+              onClick={() => setShowAll(false)}
+              className="w-full mt-4 px-6 py-3 bg-white/[0.03] border border-white/10 rounded-lg hover:bg-white/[0.05] transition-all text-white font-medium"
+            >
+              Show Less
+            </button>
+          )}
         </div>
       </div>
 
@@ -256,102 +314,4 @@ function formatRelativeTime(ts: string): string {
   } catch {
     return "";
   }
-}
-
-interface CategorySectionProps {
-  title: string;
-  subtitle: string;
-  count: number;
-  players: DerivedPlayer[];
-  type: "buy" | "hold" | "sell";
-  onPlayerClick: (player: DerivedPlayer) => void;
-  isPremium: boolean;
-}
-
-function CategorySection({ title, subtitle, count, players, type, onPlayerClick, isPremium }: CategorySectionProps) {
-  const [showAll, setShowAll] = useState(false);
-
-  if (players.length === 0) return null;
-
-  const colorMap = {
-    sell: 'text-red-400 bg-red-500/10 border-red-500/20',
-    buy: 'text-green-400 bg-green-500/10 border-green-500/20',
-    hold: 'text-[#F5C84C] bg-[#F5C84C]/10 border-[#F5C84C]/20',
-  };
-
-  const freeLimit = 1;
-  const premiumLimit = 6;
-  const visiblePlayers = isPremium
-    ? (showAll ? players : players.slice(0, premiumLimit))
-    : players.slice(0, freeLimit);
-
-  const hasMore = isPremium ? players.length > premiumLimit : players.length > freeLimit;
-
-  return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h2 className="text-2xl md:text-3xl font-bold text-white">
-              {title}
-            </h2>
-            <span className={`px-3 py-1 rounded-full text-sm font-bold border ${colorMap[type]}`}>
-              {count}
-            </span>
-          </div>
-          <p className="text-white/50">{subtitle}</p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {visiblePlayers.map((player, i) => (
-          <MarketWatchPremiumCard
-            key={player.player_id}
-            player={player}
-            rank={i + 1}
-            type={type}
-            onPlayerClick={onPlayerClick}
-          />
-        ))}
-      </div>
-
-      {!isPremium && hasMore && (
-        <div className="mt-6 p-8 border border-white/10 rounded-lg bg-white/[0.02] text-center">
-          <div className="inline-block px-3 py-1 bg-[#F5C84C]/20 border border-[#F5C84C]/40 rounded-full text-xs font-bold text-[#F5C84C] mb-3">
-            PREMIUM
-          </div>
-          <h3 className="text-xl font-bold text-white mb-2">
-            {count - freeLimit} More {type === 'buy' ? 'Buys' : type === 'sell' ? 'Sells' : 'Holds'} Available
-          </h3>
-          <p className="text-white/60 mb-4">
-            Unlock full Market Watch with Rankings AI access
-          </p>
-          <a
-            href="/neeko-plus"
-            className="inline-block px-6 py-3 bg-[#F5C84C] text-black font-bold rounded-lg hover:bg-[#F5C84C]/90 transition-all"
-          >
-            Upgrade to Premium
-          </a>
-        </div>
-      )}
-
-      {isPremium && hasMore && !showAll && (
-        <button
-          onClick={() => setShowAll(true)}
-          className="w-full mt-4 px-6 py-3 bg-white/[0.03] border border-white/10 rounded-lg hover:bg-white/[0.05] transition-all text-white font-medium"
-        >
-          Show All {count} Players
-        </button>
-      )}
-
-      {isPremium && showAll && (
-        <button
-          onClick={() => setShowAll(false)}
-          className="w-full mt-4 px-6 py-3 bg-white/[0.03] border border-white/10 rounded-lg hover:bg-white/[0.05] transition-all text-white font-medium"
-        >
-          Show Less
-        </button>
-      )}
-    </div>
-  );
 }
