@@ -44,8 +44,6 @@ async function fetchPlayers(
     neeko_rating: string | number | null;
   }>;
 
-  console.log("[StartSitSelector]", { query: trimmed || "(top players)", rows: rows.length });
-
   return rows
     .map((p) => ({
       player_id: p.player_id,

@@ -83,7 +83,7 @@ export default function AFLPositionPage() {
 
   const pageTitle = `Best AFL Fantasy ${positionName} 2026 Rankings & Projections | Neeko`;
   const pageDescription = `Top ${positionName} for AFL Fantasy 2026. ${players.length} ${positionName.toLowerCase()} ranked with projections, value scores, and AI recommendations. Find the best picks for your team.`;
-  const pageUrl = `https://neeko.com.au/sports/afl/positions/${position}`;
+  const pageUrl = `https://neekostats.com.au/sports/afl/positions/${position}`;
 
   const getRecommendationColor = (color: string | null) => {
     if (color === 'green') return '#22c55e';

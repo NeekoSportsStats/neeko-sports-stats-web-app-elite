@@ -367,6 +367,31 @@ function getRoleContext(delta: number, projection: number, breakeven: number): s
   return "priced at role expectation";
 }
 
+const BUY_NEGATIVE_PHRASES = [
+  'overpriced', 'value deficit', 'downside risk', 'too high compared to his projection',
+  'too high compared to their projection', 'exceeds his projection', 'exceeds their projection',
+  'significant downside', 'price is too high', 'clear value deficit',
+  'signaling a clear value', 'significant value deficit', 'confirming significant',
+];
+
+const SELL_POSITIVE_PHRASES = [
+  'aligns well', 'closely aligns', 'stable scoring profile', 'no strong edge',
+  'defined scoring range', 'aligned with his price', 'aligned with their price',
+  'aligns closely', 'reinforcing a hold', 'scoring profile with a defined',
+];
+
+export function isSummaryAligned(summary: string, category: string): boolean {
+  const lower = summary.toLowerCase();
+  const cat = (category ?? '').toUpperCase();
+  if (cat === 'BUY' || cat === 'TARGET') {
+    return !BUY_NEGATIVE_PHRASES.some(phrase => lower.includes(phrase));
+  }
+  if (cat === 'SELL' || cat === 'AVOID') {
+    return !SELL_POSITIVE_PHRASES.some(phrase => lower.includes(phrase));
+  }
+  return true;
+}
+
 export function getConfidenceTooltip(): string {
   return "Based on projection stability, role certainty, and matchup";
 }

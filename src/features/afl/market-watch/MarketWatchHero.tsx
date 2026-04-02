@@ -1,6 +1,6 @@
 import { Target, Eye, ShieldAlert } from "lucide-react";
 import { DerivedPlayer } from "./engine";
-import { fmtPrice } from "./helpers";
+import { fmtPrice, isSummaryAligned } from "./helpers";
 import { mapMarketLabel } from "@/utils/marketLabels";
 
 interface MarketWatchHeroProps {
@@ -20,7 +20,8 @@ function getWhy(player: any): string {
     if (!lower.includes('player_id') &&
         !lower.includes('value_score') &&
         !lower.includes('undefined') &&
-        !lower.includes('null')) {
+        !lower.includes('null') &&
+        isSummaryAligned(text, player.category ?? player.action ?? '')) {
       return truncate(text, 120);
     }
   }
@@ -29,11 +30,11 @@ function getWhy(player: any): string {
     const text = player.recommendation_short.trim();
     const lower = text.toLowerCase();
 
-    // Validate it's real AI (not debug/placeholder)
     if (!lower.includes('player_id') &&
         !lower.includes('value_score') &&
         !lower.includes('undefined') &&
-        !lower.includes('null')) {
+        !lower.includes('null') &&
+        isSummaryAligned(text, player.category ?? player.action ?? '')) {
       return truncate(text, 120);
     }
   }

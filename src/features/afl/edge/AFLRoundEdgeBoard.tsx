@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Helmet } from "react-helmet-async";
 import { cleanAiText } from "@/utils/cleanAiText";
 import { createPortal } from "react-dom";
 import {
@@ -1117,7 +1118,6 @@ export default function AFLRoundEdgeBoard() {
 
   useEffect(() => {
     function onPricesApplied() {
-      console.log("[EdgeBoard] neeko:prices-applied received — refetching");
       fetchData();
     }
     window.addEventListener("neeko:prices-applied", onPricesApplied);
@@ -1173,6 +1173,20 @@ export default function AFLRoundEdgeBoard() {
   const hasSecondary = captainSecondary.length > 0 || breakoutSecondary.length > 0 || trapSecondary.length > 0;
 
   return (
+    <>
+      <Helmet>
+        <title>AFL Fantasy Edge Board 2026 | Captain Picks &amp; Trade Targets | Neeko</title>
+        <meta name="description" content="Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model." />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://neekostats.com.au/sports/afl/edge-board" />
+        <meta property="og:title" content="AFL Fantasy Edge Board 2026 | Captain Picks &amp; Trade Targets | Neeko" />
+        <meta property="og:description" content="Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://neekostats.com.au/sports/afl/edge-board" />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content="AFL Fantasy Edge Board 2026 | Captain Picks &amp; Trade Targets | Neeko" />
+        <meta name="twitter:description" content="Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model." />
+      </Helmet>
     <div className="min-h-screen bg-[#0a0a0a] px-4 py-8 md:px-8">
       <div className="max-w-4xl mx-auto">
 
@@ -1281,5 +1295,6 @@ export default function AFLRoundEdgeBoard() {
         />
       )}
     </div>
+    </>
   );
 }

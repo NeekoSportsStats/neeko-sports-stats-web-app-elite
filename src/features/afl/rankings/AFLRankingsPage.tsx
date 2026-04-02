@@ -362,7 +362,6 @@ export default function AFLRankingsPage() {
 
   useEffect(() => {
     function onPricesApplied() {
-      console.log("[Rankings] neeko:prices-applied received — refetching");
       fetchRankings();
     }
     window.addEventListener("neeko:prices-applied", onPricesApplied);
@@ -485,8 +484,6 @@ export default function AFLRankingsPage() {
         filtered = [...filtered].sort((a, b) => ((b.projection_final ?? -Infinity) - (a.projection_final ?? -Infinity)));
       }
     }
-
-    console.log({ activeTab: safeActiveTab, firstRow: filtered[0], totalRows: filtered.length });
 
     return filtered;
   }, [rows, debouncedSearch, isPremium, premiumFilter, sortKey, sortDir, safeActiveTab]);

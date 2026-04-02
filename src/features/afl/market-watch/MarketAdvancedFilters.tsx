@@ -64,7 +64,6 @@ export function MarketAdvancedFilters({
     }
     // Normalize team name to match database format (lowercase)
     const normalizedTeam = team ? team.trim().toLowerCase() : null;
-    console.log(`[MW FILTER] Team clicked: "${team}" → normalized: "${normalizedTeam}"`);
     onTeamChange(normalizedTeam);
   };
 
@@ -75,7 +74,6 @@ export function MarketAdvancedFilters({
     }
     // Normalize position to uppercase
     const normalizedPosition = position ? position.trim().toUpperCase() : null;
-    console.log(`[MW FILTER] Position clicked: "${position}" → normalized: "${normalizedPosition}"`);
     onPositionChange(normalizedPosition);
   };
 

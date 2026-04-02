@@ -2,6 +2,7 @@ import { useState } from "react";
 import { DerivedPlayer, BestTrade } from "./engine";
 import { TrendingUp, TrendingDown, Zap } from "lucide-react";
 import { PlayerAIModal } from "./PlayerAIModal";
+import { isSummaryAligned } from "./helpers";
 
 interface MarketWatchPremiumProps {
   sells: DerivedPlayer[];
@@ -134,7 +135,8 @@ function PlayerCard({ player, type, onClick }: { player: DerivedPlayer; type: st
 
   const getWhy = (player: DerivedPlayer): string => {
     if (player.summary_short && player.summary_short.length > 20) {
-      return player.summary_short.trim();
+      const text = player.summary_short.trim();
+      if (isSummaryAligned(text, type)) return text;
     }
     const value = player.value_score ?? 0;
     if (value >= 6) return "Strong value based on projection vs price";

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ArrowRight, RotateCcw, Zap, Share2, Check } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
@@ -93,30 +94,35 @@ export default function StartSitPage() {
   }, []);
 
   // Pre-fetch top players so social proof quick-fill cards have real IDs
+  // Use free-tier view for non-premium users to avoid exposing premium data
   useEffect(() => {
+    if (authLoading) return;
+    const viewName = isPremium ? "v_rankings_master" : "v_rankings_free";
     supabase
-      .from("v_rankings_master")
+      .from(viewName)
       .select("player_id, player_name, team, position, projection_final, ceiling, floor, projection_confidence, risk_rating, neeko_rating")
       .not("player_id", "is", null)
       .order("neeko_rating", { ascending: false })
-      .limit(400)
+      .limit(isPremium ? 400 : 100)
       .then(({ data }) => {
         if (data) setTopPlayers(data as PlayerOption[]);
       });
-  }, []);
+  }, [authLoading, isPremium]);
 
   // Pre-fill from URL params (share link support)
   useEffect(() => {
     const pA = searchParams.get("playerA");
     const pB = searchParams.get("playerB");
     if (!pA && !pB) return;
+    if (authLoading) return;
 
     async function prefillFromUrl() {
       const ids = [pA, pB].filter(Boolean) as string[];
       if (ids.length === 0) return;
 
+      const viewName = isPremium ? "v_rankings_master" : "v_rankings_free";
       const { data } = await supabase
-        .from("v_rankings_master")
+        .from(viewName)
         .select("player_id, player_name, team, position, projection_final, ceiling, floor, projection_confidence, risk_rating, neeko_rating")
         .in("player_name", ids.map((n) => n.replace(/-/g, " ")));
 
@@ -127,7 +133,7 @@ export default function StartSitPage() {
     }
 
     prefillFromUrl();
-  }, [searchParams]);
+  }, [searchParams, authLoading, isPremium]);
 
   const handlePlayerAChange = useCallback((p: PlayerOption | null) => {
     setPlayerA(p);
@@ -290,6 +296,20 @@ export default function StartSitPage() {
   const showSocialProof = !result && !comparing;
 
   return (
+    <>
+      <Helmet>
+        <title>AFL Fantasy Start / Sit Tool 2026 | AI Player Comparison | Neeko</title>
+        <meta name="description" content="Compare two AFL Fantasy players and get an instant AI-powered start or sit verdict with confidence scores, projections, and matchup context." />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://neekostats.com.au/sports/afl/start-sit" />
+        <meta property="og:title" content="AFL Fantasy Start / Sit Tool 2026 | AI Player Comparison | Neeko" />
+        <meta property="og:description" content="Compare two AFL Fantasy players and get an instant AI-powered start or sit verdict with confidence scores, projections, and matchup context." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://neekostats.com.au/sports/afl/start-sit" />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content="AFL Fantasy Start / Sit Tool 2026 | AI Player Comparison | Neeko" />
+        <meta name="twitter:description" content="Compare two AFL Fantasy players and get an instant AI-powered start or sit verdict with confidence scores, projections, and matchup context." />
+      </Helmet>
     <div className="min-h-screen bg-[#070707] text-white">
       <div className="max-w-2xl mx-auto px-4 py-8 pb-28">
 
@@ -456,5 +476,6 @@ export default function StartSitPage() {
         )}
       </div>
     </div>
+    </>
   );
 }

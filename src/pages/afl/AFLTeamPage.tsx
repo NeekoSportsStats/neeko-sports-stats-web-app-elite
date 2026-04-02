@@ -70,7 +70,7 @@ export default function AFLTeamPage() {
 
   const pageTitle = `${teamName} AFL Fantasy Players & Rankings 2026 | Neeko`;
   const pageDescription = `Complete ${teamName} AFL Fantasy roster for 2026. Top players, projections, value picks, and captain options. ${players.length} players ranked with AI-powered recommendations.`;
-  const pageUrl = `https://neeko.com.au/sports/afl/teams/${team}`;
+  const pageUrl = `https://neekostats.com.au/sports/afl/teams/${team}`;
 
   const getRecommendationColor = (color: string) => {
     if (color === 'green') return '#22c55e';

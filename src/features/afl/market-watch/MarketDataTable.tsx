@@ -32,7 +32,6 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
 
   // MEMOIZE: Sort computation (expensive for 200+ players)
   const sortedPlayers = useMemo(() => {
-    const start = performance.now();
     const sorted = [...players].sort((a, b) => {
       let aVal: number | string = 0;
       let bVal: number | string = 0;
@@ -67,7 +66,6 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
       const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
       return sortDirection === "asc" ? comparison : -comparison;
     });
-    console.log(`[MW PERF] Sorted ${players.length} players in ${(performance.now() - start).toFixed(1)}ms`);
     return sorted;
   }, [players, sortField, sortDirection]);
 

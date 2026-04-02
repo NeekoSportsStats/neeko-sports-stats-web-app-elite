@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { TrendingUp, TrendingDown, TriangleAlert as AlertTriangle, DollarSign, ChartBar as BarChart3 } from "lucide-react";
 import { DerivedPlayer } from "./engine";
-import { fmtPrice } from "./helpers";
+import { fmtPrice, isSummaryAligned } from "./helpers";
 
 interface PremiumCardProps {
   player: DerivedPlayer;
@@ -209,36 +209,33 @@ function MetricRow({ label, value, value2, suffix, color }: MetricRowProps) {
 }
 
 function getIntelligentReason(player: DerivedPlayer, type: string): string | null {
-  // ONLY use real AI content - no fallbacks
   if (player.recommendation_short && player.recommendation_short.length > 10) {
     const text = player.recommendation_short.trim();
     const lower = text.toLowerCase();
 
-    // Validate it's real AI text (not debug/placeholder)
-    if (!lower.includes('player_id') &&
-        !lower.includes('value_score') &&
-        !lower.includes('undefined') &&
-        !lower.includes('null')) {
-      return text.length > 45 ? text.substring(0, 42) + '...' : text;
-    }
-  }
-
-  // If no real AI content, show nothing
-  return null;
-}
-
-function getHoverInsight(player: DerivedPlayer, type: string): string {
-  // ONLY use real AI content if available
-  if (player.summary_short && player.summary_short.length > 30) {
-    const text = player.summary_short.trim();
-    const lower = text.toLowerCase();
-
-    // Validate it's real AI text
     if (!lower.includes('player_id') &&
         !lower.includes('value_score') &&
         !lower.includes('undefined') &&
         !lower.includes('null') &&
-        text.length > 30) {
+        isSummaryAligned(text, type)) {
+      return text.length > 45 ? text.substring(0, 42) + '...' : text;
+    }
+  }
+
+  return null;
+}
+
+function getHoverInsight(player: DerivedPlayer, type: string): string {
+  if (player.summary_short && player.summary_short.length > 30) {
+    const text = player.summary_short.trim();
+    const lower = text.toLowerCase();
+
+    if (!lower.includes('player_id') &&
+        !lower.includes('value_score') &&
+        !lower.includes('undefined') &&
+        !lower.includes('null') &&
+        text.length > 30 &&
+        isSummaryAligned(text, type)) {
       return text;
     }
   }

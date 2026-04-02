@@ -2,27 +2,17 @@ import { useState } from "react";
 import { Lock, Flame } from "lucide-react";
 import { cleanAiText } from "@/utils/cleanAiText";
 import { MarketRow } from "./types";
-import { fmtPrice, fmtNum, signalColor, momentumColor, riskColor, positionBadge } from "./helpers";
+import { fmtPrice, fmtNum, signalColor, momentumColor, riskColor, positionBadge, isSummaryAligned } from "./helpers";
 import { track } from "@/lib/analytics";
-
-interface Props {
-  row: MarketRow;
-  locked?: boolean;
-  onUnlock?: () => void;
-  tab: string;
-  rank: number;
-  onPlayerClick?: (player: MarketRow) => void;
-}
 
 function getWhy(player: any): string {
   if (player.summary_short && player.summary_short.length > 20) {
     const text = player.summary_short;
     const lower = text.toLowerCase();
-    if (lower.includes('buy') || lower.includes('sell') || lower.includes('hold') ||
+    const hasJunk = lower.includes('buy') || lower.includes('sell') || lower.includes('hold') ||
         lower.includes('bye round') || lower.includes('player_id') ||
-        lower.includes('value_score')) {
-      // Fall through to fallback
-    } else {
+        lower.includes('value_score');
+    if (!hasJunk && isSummaryAligned(text, player.category ?? player.action ?? '')) {
       return text.trim();
     }
   }
@@ -31,12 +21,24 @@ function getWhy(player: any): string {
   const projection = player.projection_final ?? player.projection ?? 0;
   const priceChange = player.price_momentum ?? 0;
   const risk = player.risk_rating ?? 50;
+  const cat = (player.category ?? player.action ?? '').toUpperCase();
+
+  if (cat === 'BUY' || cat === 'TARGET') {
+    if (value >= 6) return "Underpriced relative to projection — strong value";
+    if (projection >= 100) return "High ceiling projection this week";
+    if (priceChange > 20) return "Breakout projection spike — price rising";
+    return "Value signal — buy window open";
+  }
+  if (cat === 'SELL' || cat === 'AVOID') {
+    if (value <= -4) return "Overpriced relative to expected output";
+    if (priceChange < -20) return "Price drop incoming — sell window open";
+    if (risk > 65) return "High volatility — fade this week";
+    return "Sell signal — value deteriorating";
+  }
 
   if (value >= 6) return "Strong value based on projection vs price";
   if (value <= -4) return "Overpriced relative to expected output";
   if (projection >= 100) return "High ceiling projection this week";
-  if (priceChange > 20) return "Breakout projection spike";
-  if (priceChange < -20) return "Price drop incoming";
   if (risk > 65) return "High volatility risk detected";
 
   return "Model-driven signal based on current data";

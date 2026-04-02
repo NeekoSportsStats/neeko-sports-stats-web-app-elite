@@ -79,12 +79,6 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   const holds: DerivedPlayer[] = [];
   const sells: DerivedPlayer[] = [];
 
-  console.log("[MW ENGINE - INPUT]", {
-    total: filtered.length,
-    sample: filtered.slice(0, 5).map(p => ({ name: p.player_name, category: p.category, action: p.action })),
-    categoriesFound: [...new Set(filtered.map(p => p.category))]
-  });
-
   for (const p of filtered) {
     // Use normalizeAction to handle both old (TARGET/WATCH/AVOID) and new (BUY/HOLD/SELL) values
     const normalizedAction = normalizeAction(p.action || p.category);
@@ -101,32 +95,10 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
     }
   }
 
-  console.log("[MW ENGINE - OUTPUT]", {
-    BUY: buys.length,
-    HOLD: holds.length,
-    SELL: sells.length,
-    sampleBuy: buys.slice(0, 3).map(p => ({ name: p.player_name, action: p.action })),
-    sampleSell: sells.slice(0, 3).map(p => ({ name: p.player_name, action: p.action }))
-  });
-
   // ── STEP 3: PRESERVE BACKEND ORDER ───────────────────────────────────────
   // Backend returns players sorted by value_score DESC, projection DESC.
   // Do NOT re-sort within buckets — respect the backend ordering.
 
-  // ── STEP 4: DEBUG LOGGING ─────────────────────────────────────────────────
-
-  console.log("[MW ENGINE - 3 CATEGORIES]", {
-    total: raw.length,
-    filtered: filtered.length,
-    categories: {
-      BUY: buys.length,
-      HOLD: holds.length,
-      SELL: sells.length,
-    },
-    topBuy: buys[0]?.player_name,
-    topHold: holds[0]?.player_name,
-    topSell: sells[0]?.player_name,
-  });
 
   return { buys, holds, sells };
 }

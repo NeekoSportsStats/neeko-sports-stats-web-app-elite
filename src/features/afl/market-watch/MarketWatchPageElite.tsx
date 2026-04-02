@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { RefreshCw, Clock } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
@@ -26,7 +27,6 @@ export default function MarketWatchPageElite() {
   const [visibleCount, setVisibleCount] = useState(100);
 
   const fetchData = useCallback(async (premium: boolean) => {
-    const fetchStart = performance.now();
     setLoading(true);
     try {
       const limit = premium ? 200 : 100;
@@ -34,9 +34,6 @@ export default function MarketWatchPageElite() {
       const { data, error } = await supabase.from(viewName).select("*").limit(limit);
 
       if (error) throw error;
-
-      const mapStart = performance.now();
-      console.log(`[MW PERF] Fetched ${data?.length ?? 0} rows in ${(mapStart - fetchStart).toFixed(1)}ms`);
 
       const mapped: MWPlayerRow[] = (data ?? []).map((r: any) => ({
         snapshot_id: r.snapshot_id ?? 'market-watch',
@@ -95,32 +92,10 @@ export default function MarketWatchPageElite() {
         manual_status: r.manual_status ?? null,
       }));
 
-      const mapEnd = performance.now();
-      console.log(`[MW PERF] Mapped ${mapped.length} players in ${(mapEnd - mapStart).toFixed(1)}ms`);
-
       // FREE TIER: Filter out injured/bye players for cleaner first impression
       const finalPlayers = premium ? mapped : mapped.filter(p => !p.is_injured && !p.is_bye);
 
-      console.log("[MW DEBUG - FETCH]", {
-        source: viewName,
-        total: data?.length ?? 0,
-        mapped: mapped.length,
-        filtered: finalPlayers.length,
-        freeFilterApplied: !premium,
-        actionDistribution: {
-          BUY: finalPlayers.filter(p => (p.action ?? '').toUpperCase() === 'BUY').length,
-          HOLD: finalPlayers.filter(p => (p.action ?? '').toUpperCase() === 'HOLD').length,
-          SELL: finalPlayers.filter(p => (p.action ?? '').toUpperCase() === 'SELL').length,
-        },
-        categoryDistribution: {
-          TARGET: finalPlayers.filter(p => (p.category ?? '').toUpperCase() === 'TARGET').length,
-          WATCH: finalPlayers.filter(p => (p.category ?? '').toUpperCase() === 'WATCH').length,
-          AVOID: finalPlayers.filter(p => (p.category ?? '').toUpperCase() === 'AVOID').length,
-        }
-      });
-
       setPlayers(finalPlayers);
-      console.log(`[MW PERF] Total fetch + map: ${(performance.now() - fetchStart).toFixed(1)}ms`);
     } catch (error) {
       console.error("[Market Watch] Error:", error);
       setPlayers([]);
@@ -142,10 +117,7 @@ export default function MarketWatchPageElite() {
 
   // MEMOIZE: Classification (expensive for 200+ players)
   const classified = useMemo(() => {
-    const classifyStart = performance.now();
-    const result = classifyPlayers(players);
-    console.log(`[MW PERF] Classified ${players.length} players in ${(performance.now() - classifyStart).toFixed(1)}ms`);
-    return result;
+    return classifyPlayers(players);
   }, [players]);
 
   // MEMOIZE: All derived players sorted by value_score DESC, projection DESC
@@ -168,7 +140,6 @@ export default function MarketWatchPageElite() {
 
   // MEMOIZE: Filtered players (prevents re-filter on every render)
   const filteredPlayers = useMemo(() => {
-    const filterStart = performance.now();
     let filtered = allDerivedPlayers;
 
     // Apply signal filter (TARGET/WATCH/AVOID)
@@ -183,7 +154,6 @@ export default function MarketWatchPageElite() {
         const playerTeam = (p.team ?? '').trim().toLowerCase();
         return playerTeam === normalizedTeam;
       });
-      console.log(`[MW FILTER] Team filter "${selectedTeam}" → ${filtered.length} players`);
     }
 
     // Apply position filter (premium only)
@@ -193,10 +163,8 @@ export default function MarketWatchPageElite() {
         const playerPosition = (p.position ?? '').trim().toUpperCase();
         return playerPosition === normalizedPosition;
       });
-      console.log(`[MW FILTER] Position filter "${selectedPosition}" → ${filtered.length} players`);
     }
 
-    console.log(`[MW PERF] Filtered to ${filtered.length} players in ${(performance.now() - filterStart).toFixed(1)}ms`);
     return filtered;
   }, [activeFilter, allDerivedPlayers, classified, selectedTeam, selectedPosition, isPremium]);
 
@@ -245,6 +213,20 @@ export default function MarketWatchPageElite() {
   }
 
   return (
+    <>
+      <Helmet>
+        <title>AFL Fantasy Trade Targets 2026 | Market Watch | Neeko Sports</title>
+        <meta name="description" content="Track the best AFL Fantasy trade targets, avoids, value plays and market movement for the upcoming round with Neeko Sports Market Watch." />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://neekostats.com.au/sports/afl/market-watch" />
+        <meta property="og:title" content="AFL Fantasy Trade Targets 2026 | Market Watch | Neeko Sports" />
+        <meta property="og:description" content="Track the best AFL Fantasy trade targets, avoids, value plays and market movement for the upcoming round with Neeko Sports Market Watch." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://neekostats.com.au/sports/afl/market-watch" />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content="AFL Fantasy Trade Targets 2026 | Market Watch | Neeko Sports" />
+        <meta name="twitter:description" content="Track the best AFL Fantasy trade targets, avoids, value plays and market movement for the upcoming round with Neeko Sports Market Watch." />
+      </Helmet>
     <div className="min-h-screen bg-[#0D0D0D] text-white">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Header */}
@@ -361,6 +343,7 @@ export default function MarketWatchPageElite() {
         allPlayers={filteredPlayers}
       />
     </div>
+    </>
   );
 }
 
