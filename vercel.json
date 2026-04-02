@@ -21,11 +21,26 @@
       ]
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/functions/v1/:path*",
-      "destination": "https://zbomenuickrogthnsozb.supabase.co/functions/v1/:path*"
+      "src": "^/functions/v1/(.*)",
+      "dest": "https://zbomenuickrogthnsozb.supabase.co/functions/v1/$1"
     },
-    { "source": "/(.*)", "destination": "/" }
+    {
+      "src": "^/sitemap.xml$",
+      "dest": "/sitemap.xml"
+    },
+    {
+      "src": "^/sitemap-static.xml$",
+      "dest": "/sitemap-static.xml"
+    },
+    {
+      "src": "^/robots.txt$",
+      "dest": "/robots.txt"
+    },
+    {
+      "src": "^/(.*)",
+      "dest": "/"
+    }
   ]
 }
