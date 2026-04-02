@@ -66,10 +66,9 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
     if (p.manual_status === 'injured') return false;
     if (p.manual_status === 'bye') return false;
 
-    // Must have valid data
+    // Must have valid identity data
     if (!p.player_id) return false;
     if (!p.player_name) return false;
-    if (!p.category) return false;
 
     return true;
   });
@@ -81,6 +80,7 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
 
   for (const p of filtered) {
     // Use normalizeAction to handle both old (TARGET/WATCH/AVOID) and new (BUY/HOLD/SELL) values
+    // action field takes priority; fall back to category field; fall back to value_score
     const normalizedAction = normalizeAction(p.action || p.category);
 
     if (normalizedAction === 'BUY') {
@@ -89,8 +89,14 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
     else if (normalizedAction === 'SELL') {
       sells.push(tag(p, 'SELL'));
     }
+    else if (normalizedAction === null) {
+      // No recognized action — use value_score as fallback classification
+      const vs = p.value_score ?? 0;
+      if (vs >= 5) buys.push(tag(p, 'BUY'));
+      else if (vs <= -5) sells.push(tag(p, 'SELL'));
+      else holds.push(tag(p, 'HOLD'));
+    }
     else {
-      // Default to HOLD for null or HOLD action
       holds.push(tag(p, 'HOLD'));
     }
   }

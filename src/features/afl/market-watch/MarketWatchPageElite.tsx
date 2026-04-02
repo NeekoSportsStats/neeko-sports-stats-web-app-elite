@@ -123,9 +123,9 @@ export default function MarketWatchPageElite() {
   // MEMOIZE: All derived players sorted by category priority, then value_score DESC, then projection DESC
   const allDerivedPlayers = useMemo(() => {
     const CATEGORY_PRIORITY: Record<string, number> = {
-      BUY: 0, TARGET: 0,
-      HOLD: 1, WATCH: 1,
-      SELL: 2, AVOID: 2,
+      BUY: 0,
+      HOLD: 1,
+      SELL: 2,
     };
 
     const all = [
@@ -135,8 +135,8 @@ export default function MarketWatchPageElite() {
     ].filter(p => p && p.player_id);
 
     all.sort((a, b) => {
-      const pa = CATEGORY_PRIORITY[(a.category ?? a.action ?? '').toUpperCase()] ?? 1;
-      const pb = CATEGORY_PRIORITY[(b.category ?? b.action ?? '').toUpperCase()] ?? 1;
+      const pa = CATEGORY_PRIORITY[a._category] ?? 1;
+      const pb = CATEGORY_PRIORITY[b._category] ?? 1;
       if (pa !== pb) return pa - pb;
       const vsA = a.value_score ?? 0;
       const vsB = b.value_score ?? 0;
@@ -151,22 +151,13 @@ export default function MarketWatchPageElite() {
   const filteredPlayers = useMemo(() => {
     let filtered = allDerivedPlayers;
 
-    // Apply signal filter using allDerivedPlayers (already sorted correctly)
+    // Apply signal filter using _category (canonical BUY/HOLD/SELL from engine)
     if (activeFilter === "TARGET") {
-      filtered = allDerivedPlayers.filter(p => {
-        const cat = (p.category ?? p.action ?? '').toUpperCase();
-        return cat === 'BUY' || cat === 'TARGET';
-      });
+      filtered = allDerivedPlayers.filter(p => p._category === 'BUY');
     } else if (activeFilter === "WATCH") {
-      filtered = allDerivedPlayers.filter(p => {
-        const cat = (p.category ?? p.action ?? '').toUpperCase();
-        return cat === 'HOLD' || cat === 'WATCH';
-      });
+      filtered = allDerivedPlayers.filter(p => p._category === 'HOLD');
     } else if (activeFilter === "AVOID") {
-      filtered = allDerivedPlayers.filter(p => {
-        const cat = (p.category ?? p.action ?? '').toUpperCase();
-        return cat === 'SELL' || cat === 'AVOID';
-      });
+      filtered = allDerivedPlayers.filter(p => p._category === 'SELL');
     }
 
     // Apply team filter (premium only)
@@ -211,10 +202,10 @@ export default function MarketWatchPageElite() {
   const topTarget = classified?.buys?.[0] || null;
   const topWatch = classified?.holds?.[0] || null;
   const topAvoid = classified?.sells?.[0] ||
-    allDerivedPlayers.find(p => {
-      const cat = (p.category ?? p.action ?? '').toUpperCase();
-      return cat === 'SELL' || cat === 'AVOID';
-    }) || null;
+    allDerivedPlayers.find(p => p._category === 'SELL') ||
+    [...allDerivedPlayers]
+      .filter(p => (p.value_score ?? 0) < 0)
+      .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))[0] || null;
 
   if (loading) {
     return <MarketWatchSkeleton />;
