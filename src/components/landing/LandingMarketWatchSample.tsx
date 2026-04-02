@@ -177,7 +177,8 @@ export function LandingMarketWatchSample() {
         // Try v_mw_free first (already balanced: 3 TARGET + 3 WATCH + 3 AVOID)
         let { data, error } = await supabase
           .from("v_mw_free")
-          .select("player_id, player_name, team, position, projection, breakeven, value_score, category, price, is_injured, is_bye, status, manual_status, value_label, matchup_label, recommendation_short, action");
+          .select("player_id, player_name, team, position, projection, breakeven, value_score, category, price, is_injured, is_bye, status, manual_status, value_label, matchup_label, recommendation_short, action")
+          .limit(12);
 
         // Fallback to v_mw_premium if v_mw_free fails
         if (error || !data || data.length === 0) {
@@ -297,7 +298,7 @@ export function LandingMarketWatchSample() {
             </>
           ) : (
             <div className="px-4 py-10 text-center bg-[#0c0c0c]">
-              <p className="text-sm text-white/30 mb-3">Market Watch data is loading...</p>
+              <p className="text-sm text-white/30 mb-3">No market data available yet — check back after weekly price changes.</p>
               <Link
                 to="/sports/afl/market-watch"
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#F5C84C]/70 hover:text-[#F5C84C] transition-colors"

@@ -391,7 +391,12 @@ export default function AFLCurrentRoundPage() {
   const valuePlays = useMemo(
     () =>
       [...rows]
-        .filter((r) => r.value_score != null && r.price != null && r.price > 0)
+        .filter((r) =>
+          r.value_score != null &&
+          r.price != null &&
+          r.price > 0 &&
+          (r.games_played ?? 0) >= 1
+        )
         .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
         .slice(0, isPremium ? 10 : FREE_VALUE_PLAYS + 5),
     [rows, isPremium]
@@ -400,7 +405,13 @@ export default function AFLCurrentRoundPage() {
   const trapAlerts = useMemo(
     () =>
       [...rows]
-        .filter((r) => r.value_score != null && r.price != null && r.price > 0)
+        .filter((r) =>
+          r.value_score != null &&
+          r.price != null &&
+          r.price > 0 &&
+          (r.games_played ?? 0) >= 1 &&
+          (r.value_score ?? 0) < 0
+        )
         .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))
         .slice(0, isPremium ? 10 : 4),
     [rows, isPremium]
@@ -409,7 +420,9 @@ export default function AFLCurrentRoundPage() {
   // ── HERO STATS ────────────────────────────────────────────────────────────
   const topCaptainProj = captainPicks[0]?.projection_final ?? null;
   const bestValueScore = valuePlays[0]?.value_score ?? null;
-  const trapCount = rows.filter((r) => (r.value_score ?? 0) < -6).length;
+  const trapCount = rows.filter(
+    (r) => (r.value_score ?? 0) < -3 && (r.games_played ?? 0) >= 1
+  ).length;
 
   // ── AI SUMMARY ────────────────────────────────────────────────────────────
   const aiSummary = useMemo(() => {
@@ -471,7 +484,7 @@ export default function AFLCurrentRoundPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center">
+      <div className="min-h-screen bg-[#070707] flex items-center justify-center">
         <div className="text-white/30 text-sm animate-pulse">Loading round data...</div>
       </div>
     );
@@ -494,7 +507,7 @@ export default function AFLCurrentRoundPage() {
         <meta property="og:site_name" content="Neeko Sports" />
       </Helmet>
 
-      <div className="min-h-screen bg-[#0a0a0f] text-white">
+      <div className="min-h-screen bg-[#070707] text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-14">
 
           {/* ── HERO ───────────────────────────────────────────────────────── */}
@@ -594,62 +607,6 @@ export default function AFLCurrentRoundPage() {
             </div>
           </div>
 
-          {/* ── TOP PICKS ──────────────────────────────────────────────────── */}
-          <section>
-            <div className="flex items-center gap-3 mb-2 pb-4 border-b border-white/[0.06]">
-              <Star className="w-5 h-5 text-yellow-400 shrink-0" fill="currentColor" />
-              <div className="flex-1">
-                <h2 className="text-xl font-bold text-white">Top Picks This Round</h2>
-                <p className="text-[12px] text-white/40 mt-0.5">
-                  Highest-rated players combining projection, matchup difficulty and AI consistency verdict
-                </p>
-              </div>
-              {!isPremium && (
-                <span className="text-[10px] text-white/30 shrink-0">
-                  Showing {Math.min(FREE_TOP_PICKS, topPicks.length)} of {topPicks.length}
-                </span>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              {topPicks.map((row, idx) => {
-                const isVisible = isPremium || idx < FREE_TOP_PICKS;
-                if (!isVisible) {
-                  return (
-                    <LockedCard
-                      key={row.player_id ?? idx}
-                      row={row}
-                      rank={idx + 1}
-                      onUpgrade={() => setShowUpgradeModal(true)}
-                    />
-                  );
-                }
-                return (
-                  <PlayerCard
-                    key={row.player_id ?? idx}
-                    row={row}
-                    rank={idx + 1}
-                    isPremiumUser={isPremium}
-                    onClick={() => openRow(row, idx + 1, isVisible)}
-                  />
-                );
-              })}
-            </div>
-
-            {!isPremium && topPicks.length > FREE_TOP_PICKS && (
-              <FomoStrip
-                copy="You're only seeing the top picks — the real edge is deeper. Unlock all 10 with Neeko+."
-                onUpgrade={() => setShowUpgradeModal(true)}
-              />
-            )}
-
-            {!isPremium ? (
-              <SectionCTA label="Unlock full rankings — 600+ players" onClick={() => setShowUpgradeModal(true)} />
-            ) : (
-              <SectionCTA label="View full rankings" to="/sports/afl/rankings" />
-            )}
-          </section>
-
           {/* ── CAPTAIN PICKS ──────────────────────────────────────────────── */}
           <section>
             <div className="flex items-center gap-3 mb-2 pb-4 border-b border-white/[0.06]">
@@ -712,6 +669,62 @@ export default function AFLCurrentRoundPage() {
                 </div>
                 <SectionCTA label="View full rankings" to="/sports/afl/rankings" />
               </>
+            )}
+          </section>
+
+          {/* ── TOP PICKS ──────────────────────────────────────────────────── */}
+          <section>
+            <div className="flex items-center gap-3 mb-2 pb-4 border-b border-white/[0.06]">
+              <Star className="w-5 h-5 text-yellow-400 shrink-0" fill="currentColor" />
+              <div className="flex-1">
+                <h2 className="text-xl font-bold text-white">Top Picks This Round</h2>
+                <p className="text-[12px] text-white/40 mt-0.5">
+                  Highest-rated players combining projection, matchup difficulty and AI consistency verdict
+                </p>
+              </div>
+              {!isPremium && (
+                <span className="text-[10px] text-white/30 shrink-0">
+                  Showing {Math.min(FREE_TOP_PICKS, topPicks.length)} of {topPicks.length}
+                </span>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {topPicks.map((row, idx) => {
+                const isVisible = isPremium || idx < FREE_TOP_PICKS;
+                if (!isVisible) {
+                  return (
+                    <LockedCard
+                      key={row.player_id ?? idx}
+                      row={row}
+                      rank={idx + 1}
+                      onUpgrade={() => setShowUpgradeModal(true)}
+                    />
+                  );
+                }
+                return (
+                  <PlayerCard
+                    key={row.player_id ?? idx}
+                    row={row}
+                    rank={idx + 1}
+                    isPremiumUser={isPremium}
+                    onClick={() => openRow(row, idx + 1, isVisible)}
+                  />
+                );
+              })}
+            </div>
+
+            {!isPremium && topPicks.length > FREE_TOP_PICKS && (
+              <FomoStrip
+                copy="You're only seeing the top picks — the real edge is deeper. Unlock all 10 with Neeko+."
+                onUpgrade={() => setShowUpgradeModal(true)}
+              />
+            )}
+
+            {!isPremium ? (
+              <SectionCTA label="Unlock full rankings — 600+ players" onClick={() => setShowUpgradeModal(true)} />
+            ) : (
+              <SectionCTA label="View full rankings" to="/sports/afl/rankings" />
             )}
           </section>
 
