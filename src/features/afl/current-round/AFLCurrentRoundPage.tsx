@@ -1,7 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { ChevronRight, TrendingUp, TriangleAlert as AlertTriangle, Crown, Zap, Lock, Star, Clock, ChartBar as BarChart2, ArrowRight } from "lucide-react";
+import {
+  ChevronRight,
+  TrendingUp,
+  TriangleAlert as AlertTriangle,
+  Crown,
+  Zap,
+  Lock,
+  Star,
+  Clock,
+  ChartBar as BarChart2,
+  ArrowRight,
+  RefreshCw,
+} from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
@@ -21,7 +33,11 @@ import type { RankingRow } from "@/features/afl/rankings/components/types";
 import { PlayerDetailModal, UpgradeModal } from "@/features/afl/rankings/components/RankingsModals";
 import type { RowTier } from "@/features/afl/rankings/components/types";
 
-const FREE_ROWS = 5;
+// ─── FREE LIMITS PER SECTION ─────────────────────────────────────────────────
+const FREE_TOP_PICKS = 5;
+const FREE_CAPTAIN_PICKS = 3;
+const FREE_VALUE_PLAYS = 4;
+const FREE_TRAP_ALERTS = 4;
 
 const COLUMNS = `
   player_id, player_name, team, position,
@@ -95,7 +111,7 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
   };
 }
 
-// ─── PLAYER CARD (UPGRADED) ─────────────────────────────────────────────────
+// ─── PLAYER CARD ─────────────────────────────────────────────────────────────
 
 interface PlayerCardProps {
   row: RankingRow;
@@ -104,11 +120,20 @@ interface PlayerCardProps {
   metricSlot?: React.ReactNode;
   showValueScore?: boolean;
   showCaptainCeiling?: boolean;
-  isFree: boolean;
+  isPremiumUser: boolean;
   onClick: () => void;
 }
 
-function PlayerCard({ row, rank, badge, metricSlot, showValueScore, showCaptainCeiling, isFree, onClick }: PlayerCardProps) {
+function PlayerCard({
+  row,
+  rank,
+  badge,
+  metricSlot,
+  showValueScore,
+  showCaptainCeiling,
+  isPremiumUser,
+  onClick,
+}: PlayerCardProps) {
   const neekoB = getNeekoRatingBadge(row.neeko_rating_scaled ?? row.neeko_rating);
   const recColor = resolveRecommendationColor(row.recommendation_color, row.ai_recommendation);
   const confColor = getConfidenceColor(row.projection_confidence);
@@ -172,7 +197,7 @@ function PlayerCard({ row, rank, badge, metricSlot, showValueScore, showCaptainC
             {neekoB.label}
           </div>
 
-          {row.ai_recommendation && (
+          {isPremiumUser && row.ai_recommendation && (
             <div
               className="text-[10px] px-1.5 py-0.5 rounded border hidden lg:block"
               style={{ color: recColor, borderColor: `${recColor}40`, backgroundColor: `${recColor}15` }}
@@ -185,35 +210,90 @@ function PlayerCard({ row, rank, badge, metricSlot, showValueScore, showCaptainC
         </div>
       </div>
 
-      {row.why && isFree && (
+      {row.why && isPremiumUser && (
         <p className="mt-2.5 text-[11px] text-white/40 leading-relaxed pl-8 line-clamp-2">{row.why}</p>
       )}
     </button>
   );
 }
 
-function LockedPlayerCard({ rank }: { rank: number }) {
+// ─── LOCKED CARD (shows name + team, blurred stats) ───────────────────────────
+
+interface LockedCardProps {
+  row: RankingRow;
+  rank: number;
+  onUpgrade: () => void;
+}
+
+function LockedCard({ row, rank, onUpgrade }: LockedCardProps) {
   return (
-    <div className="w-full bg-white/[0.015] border border-white/[0.04] rounded-xl px-4 py-4 flex items-center gap-3">
-      <span className="text-white/10 text-xs w-5 text-right shrink-0">{rank}</span>
-      <div className="flex-1 flex items-center gap-2">
-        <Lock className="w-3 h-3 text-white/15 shrink-0" />
-        <div className="h-2 w-28 rounded bg-white/[0.05]" />
+    <div className="relative w-full bg-white/[0.015] border border-white/[0.04] rounded-xl px-4 py-4 overflow-hidden">
+      <div className="flex items-center gap-3">
+        <span className="text-white/10 text-xs w-5 text-right shrink-0 font-mono">{rank}</span>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-sm text-white/70">{row.player_name}</span>
+          </div>
+          <div className="flex items-center gap-2 mt-0.5 text-[11px] text-white/25">
+            <span>{normalisePosition(row.position) ?? "—"}</span>
+            <span className="text-white/10">·</span>
+            <span>{row.team}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0">
+          <div className="text-right blur-sm select-none pointer-events-none">
+            <div className="text-sm font-bold text-white">••</div>
+            <div className="text-[10px] text-white/25">proj</div>
+          </div>
+          <div className="text-right blur-sm select-none pointer-events-none hidden sm:block">
+            <div className="text-xs font-mono text-white/40">••%</div>
+            <div className="text-[10px] text-white/25">conf</div>
+          </div>
+          <Lock className="w-3.5 h-3.5 text-white/20 shrink-0" />
+        </div>
       </div>
-      <div className="flex items-center gap-3 shrink-0">
-        <div className="h-2 w-10 rounded bg-white/[0.05]" />
-        <div className="h-2 w-8 rounded bg-white/[0.05]" />
-      </div>
+
+      {/* Upgrade overlay strip */}
+      <button
+        onClick={onUpgrade}
+        className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity bg-black/50 rounded-xl"
+      >
+        <span className="text-[11px] font-semibold text-[#F5C84C] flex items-center gap-1.5">
+          <Lock className="w-3 h-3" />
+          Unlock full insights
+        </span>
+      </button>
     </div>
   );
 }
+
+// ─── FOMO STRIP ───────────────────────────────────────────────────────────────
+
+function FomoStrip({ copy, onUpgrade }: { copy: string; onUpgrade: () => void }) {
+  return (
+    <button
+      onClick={onUpgrade}
+      className="w-full mt-1 flex items-center justify-between gap-3 px-4 py-3 bg-[#F5C84C]/[0.05] border border-[#F5C84C]/20 rounded-xl hover:bg-[#F5C84C]/[0.08] transition-colors group"
+    >
+      <p className="text-[11px] text-white/45 text-left leading-relaxed flex-1">{copy}</p>
+      <span className="text-[11px] font-semibold text-[#F5C84C] whitespace-nowrap flex items-center gap-1 shrink-0">
+        Unlock
+        <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+      </span>
+    </button>
+  );
+}
+
+// ─── SECTION CTA ──────────────────────────────────────────────────────────────
 
 function SectionCTA({ label, to, onClick }: { label: string; to?: string; onClick?: () => void }) {
   if (to) {
     return (
       <Link
         to={to}
-        className="mt-4 flex items-center justify-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors py-2"
+        className="mt-3 flex items-center justify-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors py-2"
       >
         {label}
         <ChevronRight className="w-3.5 h-3.5" />
@@ -223,36 +303,11 @@ function SectionCTA({ label, to, onClick }: { label: string; to?: string; onClic
   return (
     <button
       onClick={onClick}
-      className="mt-4 w-full flex items-center justify-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors py-2"
+      className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs text-[#F5C84C]/60 hover:text-[#F5C84C] transition-colors py-2"
     >
       <Lock className="w-3 h-3" />
       {label}
     </button>
-  );
-}
-
-function SectionHeader({
-  icon,
-  iconClass,
-  title,
-  description,
-  badge,
-}: {
-  icon: React.ReactNode;
-  iconClass?: string;
-  title: string;
-  description: string;
-  badge?: React.ReactNode;
-}) {
-  return (
-    <div className="mb-5">
-      <div className="flex items-center gap-2.5 mb-1.5">
-        <span className={iconClass ?? "text-white/60"}>{icon}</span>
-        <h2 className="text-xl font-bold text-white">{title}</h2>
-        {badge}
-      </div>
-      <p className="text-[12px] text-white/40 leading-relaxed">{description}</p>
-    </div>
   );
 }
 
@@ -262,13 +317,15 @@ export default function AFLCurrentRoundPage() {
   const { isPremium } = useAuth();
   const [rows, setRows] = useState<RankingRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [roundLabel, setRoundLabel] = useState("Current Round");
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [selectedRow, setSelectedRow] = useState<{ row: RankingRow; rank: number; tier: RowTier; isUnlocked: boolean } | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
     try {
       if (isPremium) {
         const { data, error } = await supabase
@@ -300,6 +357,7 @@ export default function AFLCurrentRoundPage() {
       } catch { /* ignore */ }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [isPremium]);
 
@@ -308,7 +366,7 @@ export default function AFLCurrentRoundPage() {
     track("current_round_page_view");
   }, [fetchData]);
 
-  // ── DERIVED LISTS ────────────────────────────────────────────────────────
+  // ── DERIVED LISTS ──────────────────────────────────────────────────────────
   const topPicks = useMemo(
     () =>
       [...rows]
@@ -327,8 +385,8 @@ export default function AFLCurrentRoundPage() {
             r.captain_rating === "Captain Option"
         )
         .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0))
-        .slice(0, 5),
-    [rows]
+        .slice(0, isPremium ? 7 : 6),
+    [rows, isPremium]
   );
 
   const valuePlays = useMemo(
@@ -336,8 +394,8 @@ export default function AFLCurrentRoundPage() {
       [...rows]
         .filter((r) => r.value_score != null && r.price != null && r.price > 0)
         .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
-        .slice(0, 8),
-    [rows]
+        .slice(0, isPremium ? 10 : 8),
+    [rows, isPremium]
   );
 
   const trapAlerts = useMemo(
@@ -345,8 +403,8 @@ export default function AFLCurrentRoundPage() {
       [...rows]
         .filter((r) => r.value_score != null && r.price != null && r.price > 0)
         .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))
-        .slice(0, 8),
-    [rows]
+        .slice(0, isPremium ? 10 : 8),
+    [rows, isPremium]
   );
 
   // ── HERO STATS ────────────────────────────────────────────────────────────
@@ -367,33 +425,48 @@ export default function AFLCurrentRoundPage() {
 
     const lines: { label: string; text: string; color: string }[] = [];
     if (topPickName) {
-      lines.push({ label: "Top Pick", text: `${topPickName} leads this round on Neeko Rating — strong projection, favourable matchup, and AI-backed confidence.`, color: "text-white" });
+      lines.push({
+        label: "Top Pick",
+        text: `${topPickName} leads this round on Neeko Rating — strong projection, favourable matchup, and AI-backed confidence.`,
+        color: "text-white",
+      });
     }
     if (captainName && captainProj != null) {
       const ceilText = captainCeiling != null ? ` with a ceiling of ${fmt(captainCeiling, 0)} pts` : "";
-      lines.push({ label: "Captain Pick", text: `${captainName} is the standout captain option this week — projected ${fmt(captainProj, 0)} pts${ceilText}.`, color: "text-yellow-300" });
+      lines.push({
+        label: "Captain Pick",
+        text: `${captainName} is the standout captain option this week — projected ${fmt(captainProj, 0)} pts${ceilText}.`,
+        color: "text-yellow-300",
+      });
     }
     if (topValueName && topValueScore != null) {
-      lines.push({ label: "Value Play", text: `${topValueName} is the best value this round (score: ${fmtValueScore(topValueScore)}) — priced below expected output.`, color: "text-green-400" });
+      lines.push({
+        label: "Value Play",
+        text: `${topValueName} is the best value this round (score: ${fmtValueScore(topValueScore)}) — priced below expected output.`,
+        color: "text-green-400",
+      });
     }
     if (trapName && trapVS != null) {
-      lines.push({ label: "Trap Alert", text: `Avoid ${trapName} this round — value score ${fmtValueScore(trapVS)} signals the price doesn't match projected output.`, color: "text-red-400" });
+      lines.push({
+        label: "Trap Alert",
+        text: `Avoid ${trapName} this round — value score ${fmtValueScore(trapVS)} signals the price doesn't match projected output.`,
+        color: "text-red-400",
+      });
     }
     return lines;
   }, [topPicks, captainPicks, valuePlays, trapAlerts]);
 
-  // ── SEO TITLE ─────────────────────────────────────────────────────────────
+  // ── SEO ───────────────────────────────────────────────────────────────────
   const pageTitle = `AFL Fantasy ${roundLabel} Tips, Captain Picks & Value Players | Neeko Sports`;
   const roundNum = roundLabel.replace(/[^0-9]/g, "");
 
-  function openRow(row: RankingRow, rank: number, isFreeVisible: boolean) {
-    const tier: RowTier = isPremium ? "premium" : (isFreeVisible ? "full" : "locked");
-    const isUnlocked = isPremium || isFreeVisible;
-    if (!isUnlocked) {
+  function openRow(row: RankingRow, rank: number, isVisible: boolean) {
+    if (!isVisible) {
       setShowUpgradeModal(true);
       return;
     }
-    setSelectedRow({ row, rank, tier, isUnlocked });
+    const tier: RowTier = isPremium ? "premium" : "full";
+    setSelectedRow({ row, rank, tier, isUnlocked: true });
     track("current_round_player_click", { player_name: row.player_name, player_id: row.player_id });
   }
 
@@ -425,15 +498,25 @@ export default function AFLCurrentRoundPage() {
       <div className="min-h-screen bg-[#0a0a0f] text-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-14">
 
-          {/* ── HERO ──────────────────────────────────────────────────────── */}
+          {/* ── HERO ───────────────────────────────────────────────────────── */}
           <div>
             <div className="flex items-center gap-2.5 mb-4">
               <span className="text-[10px] uppercase tracking-widest text-white/30 font-semibold">AFL Fantasy</span>
               <span className="h-px flex-1 bg-white/[0.06]" />
-              <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-[#F5C84C] font-semibold px-2.5 py-1 bg-[#F5C84C]/10 border border-[#F5C84C]/25 rounded-full">
-                <Clock className="w-3 h-3" />
-                Upcoming Round Insights
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-[#F5C84C] font-semibold px-2.5 py-1 bg-[#F5C84C]/10 border border-[#F5C84C]/25 rounded-full">
+                  <Clock className="w-3 h-3" />
+                  Upcoming Round Insights
+                </span>
+                <button
+                  onClick={() => fetchData(true)}
+                  disabled={refreshing}
+                  className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-colors disabled:opacity-40"
+                  title="Refresh data"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 text-white/40 ${refreshing ? "animate-spin" : ""}`} />
+                </button>
+              </div>
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-3 leading-tight">
@@ -453,7 +536,7 @@ export default function AFLCurrentRoundPage() {
 
             {/* Stats strip */}
             <div className="grid grid-cols-3 gap-3 mt-8">
-              <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl p-4 hover:bg-white/[0.04] transition-colors">
+              <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl p-4">
                 <div className="flex items-center gap-1.5 mb-2.5">
                   <Crown className="w-3.5 h-3.5 text-yellow-400" />
                   <span className="text-[10px] uppercase tracking-wider text-white/35 font-medium">Top Captain</span>
@@ -464,7 +547,7 @@ export default function AFLCurrentRoundPage() {
                 <div className="text-[10px] text-white/25 mt-0.5">pts projected</div>
               </div>
 
-              <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl p-4 hover:bg-white/[0.04] transition-colors">
+              <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl p-4">
                 <div className="flex items-center gap-1.5 mb-2.5">
                   <TrendingUp className="w-3.5 h-3.5 text-green-400" />
                   <span className="text-[10px] uppercase tracking-wider text-white/35 font-medium">Best Value</span>
@@ -475,7 +558,7 @@ export default function AFLCurrentRoundPage() {
                 <div className="text-[10px] text-white/25 mt-0.5">value score</div>
               </div>
 
-              <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl p-4 hover:bg-white/[0.04] transition-colors">
+              <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl p-4">
                 <div className="flex items-center gap-1.5 mb-2.5">
                   <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
                   <span className="text-[10px] uppercase tracking-wider text-white/35 font-medium">Traps</span>
@@ -486,50 +569,73 @@ export default function AFLCurrentRoundPage() {
             </div>
           </div>
 
-          {/* ── SEO CONTENT BLOCK ─────────────────────────────────────────── */}
+          {/* ── SEO CONTENT BLOCK ──────────────────────────────────────────── */}
           <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 space-y-4">
             <h2 className="text-base font-semibold text-white">
               What to Expect {roundNum ? `in Round ${roundNum}` : "This Round"}
             </h2>
             <div className="space-y-3 text-sm text-white/55 leading-relaxed">
               <p>
-                This page highlights the best AFL Fantasy players for the upcoming round, using Neeko's AI-powered projection model. Players are ranked based on projected score, price value, matchup difficulty, and role stability — giving you a complete picture before you lock in your team.
+                This page highlights the best AFL Fantasy players for the upcoming round, using Neeko's AI-powered projection model. Players are ranked based on projected score, price value, matchup difficulty and role stability — giving you a complete picture before you lock in your team.
               </p>
               <p>
-                The <strong className="text-white/75">Value Score</strong> measures how much a player is under or overpriced relative to their expected output. A positive value score means you're getting more points than you're paying for. A negative score signals a player priced beyond their likely return — the classic trap pick.
+                The <strong className="text-white/75">Value Score</strong> measures how much a player is under or overpriced relative to their expected output. A positive score means you're getting more points than you're paying for. A negative score signals a player priced beyond their likely return — the classic trap pick.
               </p>
               <p>
-                Use the <strong className="text-white/75">Top Picks</strong> section for your must-starts, <strong className="text-white/75">Captain Picks</strong> for your double-scorer selection, <strong className="text-white/75">Value Plays</strong> for trade targets, and <strong className="text-white/75">Trap Alerts</strong> to identify the players to avoid bringing in this week.
+                Use <strong className="text-white/75">Top Picks</strong> for must-starts, <strong className="text-white/75">Captain Picks</strong> for your double-scorer, <strong className="text-white/75">Value Plays</strong> for trade targets, and <strong className="text-white/75">Trap Alerts</strong> to identify who to avoid this week.
               </p>
             </div>
           </div>
 
-          {/* ── TOP PICKS ─────────────────────────────────────────────────── */}
+          {/* ── TOP PICKS ──────────────────────────────────────────────────── */}
           <section>
             <div className="flex items-center gap-3 mb-2 pb-4 border-b border-white/[0.06]">
               <Star className="w-5 h-5 text-yellow-400 shrink-0" fill="currentColor" />
               <div className="flex-1">
                 <h2 className="text-xl font-bold text-white">Top Picks This Round</h2>
                 <p className="text-[12px] text-white/40 mt-0.5">
-                  Highest-rated players this round combining projection, matchup difficulty and AI consistency verdict
+                  Highest-rated players combining projection, matchup difficulty and AI consistency verdict
                 </p>
               </div>
+              {!isPremium && (
+                <span className="text-[10px] text-white/30 shrink-0">
+                  Showing {Math.min(FREE_TOP_PICKS, topPicks.length)} of {topPicks.length}
+                </span>
+              )}
             </div>
+
             <div className="space-y-2">
               {topPicks.map((row, idx) => {
-                const isFree = isPremium || idx < FREE_ROWS;
-                if (!isFree) return <LockedPlayerCard key={row.player_id ?? idx} rank={idx + 1} />;
+                const isVisible = isPremium || idx < FREE_TOP_PICKS;
+                if (!isVisible) {
+                  return (
+                    <LockedCard
+                      key={row.player_id ?? idx}
+                      row={row}
+                      rank={idx + 1}
+                      onUpgrade={() => setShowUpgradeModal(true)}
+                    />
+                  );
+                }
                 return (
                   <PlayerCard
                     key={row.player_id ?? idx}
                     row={row}
                     rank={idx + 1}
-                    isFree={isFree}
-                    onClick={() => openRow(row, idx + 1, isFree)}
+                    isPremiumUser={isPremium}
+                    onClick={() => openRow(row, idx + 1, isVisible)}
                   />
                 );
               })}
             </div>
+
+            {!isPremium && topPicks.length > FREE_TOP_PICKS && (
+              <FomoStrip
+                copy="You're only seeing the top picks — the real edge is deeper. Unlock all 10 with Neeko+."
+                onUpgrade={() => setShowUpgradeModal(true)}
+              />
+            )}
+
             {!isPremium ? (
               <SectionCTA label="Unlock full rankings — 600+ players" onClick={() => setShowUpgradeModal(true)} />
             ) : (
@@ -537,33 +643,54 @@ export default function AFLCurrentRoundPage() {
             )}
           </section>
 
-          {/* ── CAPTAIN PICKS ─────────────────────────────────────────────── */}
+          {/* ── CAPTAIN PICKS ──────────────────────────────────────────────── */}
           <section>
             <div className="flex items-center gap-3 mb-2 pb-4 border-b border-white/[0.06]">
               <Crown className="w-5 h-5 text-yellow-400 shrink-0" />
               <div className="flex-1">
                 <h2 className="text-xl font-bold text-white">Captain Picks</h2>
                 <p className="text-[12px] text-white/40 mt-0.5">
-                  Best captain options based on highest projected ceiling and scoring consistency — sorted by projection
+                  Best captain options by projected ceiling and scoring consistency — sorted by projection
                 </p>
               </div>
+              {!isPremium && (
+                <span className="text-[10px] text-white/30 shrink-0">
+                  Showing {Math.min(FREE_CAPTAIN_PICKS, captainPicks.length)} of {captainPicks.length}
+                </span>
+              )}
             </div>
+
             <div className="space-y-2">
               {captainPicks.map((row, idx) => {
+                const isVisible = isPremium || idx < FREE_CAPTAIN_PICKS;
                 const captStyle = getCaptainStyle(row.captain_rating);
+                if (!isVisible) {
+                  return (
+                    <LockedCard
+                      key={row.player_id ?? idx}
+                      row={row}
+                      rank={idx + 1}
+                      onUpgrade={() => setShowUpgradeModal(true)}
+                    />
+                  );
+                }
                 return (
                   <PlayerCard
                     key={row.player_id ?? idx}
                     row={row}
                     rank={idx + 1}
                     showCaptainCeiling
-                    isFree={isPremium || idx < FREE_ROWS}
-                    onClick={() => openRow(row, idx + 1, true)}
+                    isPremiumUser={isPremium}
+                    onClick={() => openRow(row, idx + 1, isVisible)}
                     badge={
                       row.captain_rating ? (
                         <span
                           className="text-[10px] px-1.5 py-0.5 rounded border shrink-0"
-                          style={{ color: captStyle.color, borderColor: `${captStyle.color}40`, backgroundColor: `${captStyle.color}15` }}
+                          style={{
+                            color: captStyle.color,
+                            borderColor: `${captStyle.color}40`,
+                            backgroundColor: `${captStyle.color}15`,
+                          }}
                         >
                           {row.captain_rating}
                         </span>
@@ -573,10 +700,22 @@ export default function AFLCurrentRoundPage() {
                 );
               })}
             </div>
-            <SectionCTA label="View full rankings" to="/sports/afl/rankings" />
+
+            {!isPremium && captainPicks.length > FREE_CAPTAIN_PICKS && (
+              <FomoStrip
+                copy={`${captainPicks.length - FREE_CAPTAIN_PICKS} more captain options hidden — unlock full captain picks with Neeko+.`}
+                onUpgrade={() => setShowUpgradeModal(true)}
+              />
+            )}
+
+            {!isPremium ? (
+              <SectionCTA label="Unlock full captain picks" onClick={() => setShowUpgradeModal(true)} />
+            ) : (
+              <SectionCTA label="View full rankings" to="/sports/afl/rankings" />
+            )}
           </section>
 
-          {/* ── VALUE PLAYS ───────────────────────────────────────────────── */}
+          {/* ── VALUE PLAYS ────────────────────────────────────────────────── */}
           <section>
             <div className="flex items-center gap-3 mb-2 pb-4 border-b border-white/[0.06]">
               <TrendingUp className="w-5 h-5 text-green-400 shrink-0" />
@@ -586,19 +725,34 @@ export default function AFLCurrentRoundPage() {
                   Undervalued players expected to outperform their price — best trade targets this round
                 </p>
               </div>
+              {!isPremium && (
+                <span className="text-[10px] text-white/30 shrink-0">
+                  Showing {Math.min(FREE_VALUE_PLAYS, valuePlays.length)} of {valuePlays.length}
+                </span>
+              )}
             </div>
+
             <div className="space-y-2">
               {valuePlays.map((row, idx) => {
-                const isFree = isPremium || idx < FREE_ROWS;
-                if (!isFree) return <LockedPlayerCard key={row.player_id ?? idx} rank={idx + 1} />;
+                const isVisible = isPremium || idx < FREE_VALUE_PLAYS;
+                if (!isVisible) {
+                  return (
+                    <LockedCard
+                      key={row.player_id ?? idx}
+                      row={row}
+                      rank={idx + 1}
+                      onUpgrade={() => setShowUpgradeModal(true)}
+                    />
+                  );
+                }
                 return (
                   <PlayerCard
                     key={row.player_id ?? idx}
                     row={row}
                     rank={idx + 1}
                     showValueScore
-                    isFree={isFree}
-                    onClick={() => openRow(row, idx + 1, isFree)}
+                    isPremiumUser={isPremium}
+                    onClick={() => openRow(row, idx + 1, isVisible)}
                     badge={
                       (row.value_score ?? 0) >= 8 ? (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 border border-green-500/25 text-green-400 shrink-0">
@@ -610,36 +764,59 @@ export default function AFLCurrentRoundPage() {
                 );
               })}
             </div>
+
+            {!isPremium && valuePlays.length > FREE_VALUE_PLAYS && (
+              <FomoStrip
+                copy="More undervalued players available with Neeko+ — these are the ones that move the needle."
+                onUpgrade={() => setShowUpgradeModal(true)}
+              />
+            )}
+
             {!isPremium ? (
-              <SectionCTA label="Unlock full value rankings" onClick={() => setShowUpgradeModal(true)} />
+              <SectionCTA label="Unlock all value plays" onClick={() => setShowUpgradeModal(true)} />
             ) : (
               <SectionCTA label="View Market Watch" to="/sports/afl/market-watch" />
             )}
           </section>
 
-          {/* ── TRAP ALERTS ───────────────────────────────────────────────── */}
+          {/* ── TRAP ALERTS ────────────────────────────────────────────────── */}
           <section>
             <div className="flex items-center gap-3 mb-2 pb-4 border-b border-white/[0.06]">
               <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
               <div className="flex-1">
                 <h2 className="text-xl font-bold text-white">Trap Alerts</h2>
                 <p className="text-[12px] text-white/40 mt-0.5">
-                  Overpriced or risky players to avoid this round — negative value score signals price-to-output mismatch
+                  Overpriced or risky players to avoid — negative value score signals a price-to-output mismatch
                 </p>
               </div>
+              {!isPremium && (
+                <span className="text-[10px] text-white/30 shrink-0">
+                  Showing {Math.min(FREE_TRAP_ALERTS, trapAlerts.length)} of {trapAlerts.length}
+                </span>
+              )}
             </div>
+
             <div className="space-y-2">
               {trapAlerts.map((row, idx) => {
-                const isFree = isPremium || idx < FREE_ROWS;
-                if (!isFree) return <LockedPlayerCard key={row.player_id ?? idx} rank={idx + 1} />;
+                const isVisible = isPremium || idx < FREE_TRAP_ALERTS;
+                if (!isVisible) {
+                  return (
+                    <LockedCard
+                      key={row.player_id ?? idx}
+                      row={row}
+                      rank={idx + 1}
+                      onUpgrade={() => setShowUpgradeModal(true)}
+                    />
+                  );
+                }
                 return (
                   <PlayerCard
                     key={row.player_id ?? idx}
                     row={row}
                     rank={idx + 1}
                     showValueScore
-                    isFree={isFree}
-                    onClick={() => openRow(row, idx + 1, isFree)}
+                    isPremiumUser={isPremium}
+                    onClick={() => openRow(row, idx + 1, isVisible)}
                     badge={
                       <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/25 text-red-400 shrink-0">
                         {(row.value_score ?? 0) < -6 ? "Avoid" : "Caution"}
@@ -649,6 +826,14 @@ export default function AFLCurrentRoundPage() {
                 );
               })}
             </div>
+
+            {!isPremium && trapAlerts.length > FREE_TRAP_ALERTS && (
+              <FomoStrip
+                copy="Hidden traps can cost you points — unlock the full list to see every player to avoid."
+                onUpgrade={() => setShowUpgradeModal(true)}
+              />
+            )}
+
             {!isPremium ? (
               <SectionCTA label="See full trap analysis" onClick={() => setShowUpgradeModal(true)} />
             ) : (
@@ -656,7 +841,7 @@ export default function AFLCurrentRoundPage() {
             )}
           </section>
 
-          {/* ── AI ROUND INSIGHTS ─────────────────────────────────────────── */}
+          {/* ── AI ROUND INSIGHTS ──────────────────────────────────────────── */}
           <section>
             <div className="flex items-center gap-3 mb-2 pb-4 border-b border-white/[0.06]">
               <Zap className="w-5 h-5 text-[#F5C84C] shrink-0" />
@@ -691,16 +876,16 @@ export default function AFLCurrentRoundPage() {
             </div>
 
             {!isPremium && (
-              <div className="mt-4 px-5 py-3 bg-white/[0.015] border border-white/[0.06] rounded-xl flex items-center justify-between">
-                <p className="text-[12px] text-white/40">
-                  Full AI analysis available on individual player pages with premium access
+              <div className="mt-4 px-5 py-3 bg-white/[0.015] border border-white/[0.06] rounded-xl flex items-center justify-between gap-3">
+                <p className="text-[12px] text-white/40 flex-1">
+                  Full AI analysis — detailed reasoning per player — available with premium access
                 </p>
                 <Lock className="w-3.5 h-3.5 text-white/20 shrink-0" />
               </div>
             )}
           </section>
 
-          {/* ── NAVIGATION LINKS ──────────────────────────────────────────── */}
+          {/* ── NAVIGATION LINKS ───────────────────────────────────────────── */}
           <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Link
               to="/sports/afl/rankings"
@@ -730,18 +915,18 @@ export default function AFLCurrentRoundPage() {
             </Link>
           </section>
 
-          {/* ── BOTTOM CTA ────────────────────────────────────────────────── */}
+          {/* ── BOTTOM CTA (free users only) ───────────────────────────────── */}
           {!isPremium && (
             <section className="pb-6">
               <div className="bg-white/[0.025] border border-white/[0.08] rounded-2xl px-6 py-8 text-center space-y-4">
                 <div className="inline-block px-3 py-1 bg-[#F5C84C]/15 border border-[#F5C84C]/30 rounded-full text-[10px] font-bold text-[#F5C84C] uppercase tracking-wider mb-2">
-                  Premium
+                  Neeko+ Premium
                 </div>
                 <h3 className="text-xl sm:text-2xl font-bold text-white">
-                  Get full access to rankings, advanced stats and AI insights
+                  Get full access to 600+ players, AI insights and rankings
                 </h3>
                 <p className="text-sm text-white/50 max-w-md mx-auto">
-                  Unlock 600+ player rankings, AI analysis, Market Watch trade signals, captain recommendations and more.
+                  Unlock every player card, full AI analysis, Market Watch trade signals, captain recommendations and more — for the full season.
                 </p>
                 <a
                   href="/neeko-plus"
