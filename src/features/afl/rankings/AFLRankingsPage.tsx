@@ -4,6 +4,7 @@ import { Search, Clock, X, Lock, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
+import { DataFreshnessIndicator, StaleDataWarning } from "@/components/ui/DataFreshnessIndicator";
 
 import {
   RankingRow, RankingsTab, PositionFilter, PremiumFilter, SortKey, SortDir, RowTier,
@@ -531,12 +532,13 @@ export default function AFLRankingsPage() {
           </div>
           <div className="flex items-center gap-3 mt-1 shrink-0">
             {updatedAt && (
-              <div className="hidden md:flex items-center gap-2 rounded-lg border border-[#F5C84C]/20 bg-[#F5C84C]/[0.05] px-3 py-1.5">
-                <Clock size={11} className="text-[#F5C84C]/60 shrink-0" />
-                <span className="text-[11px] text-white/55 font-medium">Updated {fmtUpdatedAt(updatedAt.ts)}</span>
-                {updatedAt.round && (
-                  <span className="rounded bg-[#F5C84C]/15 px-1.5 py-0.5 text-[10px] font-semibold text-[#F5C84C]/70">{updatedAt.round}</span>
-                )}
+              <div className="hidden md:block">
+                <DataFreshnessIndicator
+                  timestamp={updatedAt.ts}
+                  label="Rankings"
+                  variant="compact"
+                  className="text-[#F5C84C]"
+                />
               </div>
             )}
             <button
@@ -551,14 +553,17 @@ export default function AFLRankingsPage() {
           </div>
         </div>
         {updatedAt && (
-          <div className="md:hidden flex items-center gap-2 mt-2 rounded-lg border border-[#F5C84C]/20 bg-[#F5C84C]/[0.05] px-3 py-1.5 w-fit">
-            <Clock size={11} className="text-[#F5C84C]/60 shrink-0" />
-            <span className="text-[11px] text-white/55 font-medium">Updated {fmtUpdatedAt(updatedAt.ts)}</span>
-            {updatedAt.round && (
-              <span className="rounded bg-[#F5C84C]/15 px-1.5 py-0.5 text-[10px] font-semibold text-[#F5C84C]/70">{updatedAt.round}</span>
-            )}
+          <div className="md:hidden mt-3">
+            <DataFreshnessIndicator
+              timestamp={updatedAt.ts}
+              label="Rankings"
+              variant="compact"
+              className="text-[#F5C84C]"
+            />
           </div>
         )}
+
+        <StaleDataWarning timestamp={updatedAt?.ts} className="mt-3" />
       </div>
 
       <div className="px-4 pb-16 md:px-8">

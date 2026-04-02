@@ -13,6 +13,7 @@ import { MarketControls, MarketFilter } from "./MarketControls";
 import { MarketAdvancedFilters } from "./MarketAdvancedFilters";
 import { MarketDistributionBar } from "./MarketDistributionBar";
 import { MarketWatchSkeleton } from "./MarketWatchSkeleton";
+import { DataFreshnessIndicator, StaleDataWarning } from "@/components/ui/DataFreshnessIndicator";
 
 export default function MarketWatchPageElite() {
   const { isPremium, loading: authLoading } = useAuth();
@@ -275,10 +276,13 @@ export default function MarketWatchPageElite() {
           </div>
 
           <div className="flex items-center gap-3">
-            {relativeTime && (
-              <div className="hidden sm:flex items-center gap-2 text-xs text-white/35">
-                <Clock className="w-4 h-4" />
-                <span>{relativeTime}</span>
+            {players.length > 0 && (
+              <div className="hidden sm:block">
+                <DataFreshnessIndicator
+                  timestamp={players[0]?.snapshot_updated_at}
+                  label="Market Data"
+                  variant="compact"
+                />
               </div>
             )}
             <button
@@ -291,6 +295,11 @@ export default function MarketWatchPageElite() {
             </button>
           </div>
         </div>
+
+        {/* Stale Data Warning */}
+        {players.length > 0 && (
+          <StaleDataWarning timestamp={players[0]?.snapshot_updated_at} />
+        )}
 
         {/* Market Snapshot Bar */}
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">

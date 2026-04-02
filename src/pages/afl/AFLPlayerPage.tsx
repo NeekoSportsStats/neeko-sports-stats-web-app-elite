@@ -10,6 +10,7 @@ import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { slugToName, nameToSlug, TEAM_SLUGS, POSITION_SLUGS, POSITION_NAMES } from '@/lib/slugs';
 import { getSimilarPlayersSafe, getPlayerDetailSafe } from '@/lib/playerAccess';
 import { useAuth } from '@/lib/auth';
+import { DataFreshnessIndicator } from '@/components/ui/DataFreshnessIndicator';
 import { ComposedChart, Line, Area, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Dot } from "recharts";
 import {
   fmt, fmtInt, fmtPrice, fmtValueScore, fmtMatchup,
@@ -964,7 +965,17 @@ export default function AFLPlayerPage() {
               return (
                 <>
                   <div className="rounded-lg border border-white/5 bg-white/[0.03] px-4 py-4">
-                    <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold mb-2">AI Analysis</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">AI Analysis</p>
+                      {aiAnalysis?.generated_at && (
+                        <DataFreshnessIndicator
+                          timestamp={aiAnalysis.generated_at}
+                          variant="badge"
+                          showIcon={false}
+                          className="text-[9px]"
+                        />
+                      )}
+                    </div>
                     {hasText ? (
                       <div className="relative">
                         <p className="text-sm text-white/65 leading-relaxed">{displayText}</p>

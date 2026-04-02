@@ -9,6 +9,7 @@ import { RefreshCw, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, 
 import { formatDate } from "@/features/admin/shared/adminUtils";
 import { AdminSectionIntro } from "@/features/admin/shared/AdminExplain";
 import type { CommandCenterStatus } from "@/features/admin/shared/types";
+import { MultiDataFreshness } from "@/components/ui/DataFreshnessIndicator";
 
 type Level = "ok" | "warn" | "error" | "loading";
 
@@ -356,6 +357,22 @@ export default function AdminDashboard() {
         <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-950/10 px-4 py-3">
           <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
           <span className="text-sm text-emerald-300">All systems operational — no active alerts</span>
+        </div>
+      )}
+
+      {!loading && status && (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Data Freshness</p>
+          <div className="rounded-lg border border-border bg-card px-4 py-3">
+            <MultiDataFreshness
+              data={[
+                { label: "Rankings", timestamp: status.rankings_cache_refreshed_at },
+                { label: "Pipeline", timestamp: status.pipeline_last_run },
+                { label: "AI Analysis", timestamp: status.ai_last_generation },
+                { label: "Market Watch", timestamp: status.market_watch_last_refresh },
+              ]}
+            />
+          </div>
         </div>
       )}
 
