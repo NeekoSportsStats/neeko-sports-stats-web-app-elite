@@ -1183,9 +1183,28 @@ export default function AFLRoundEdgeBoard() {
         <meta property="og:description" content="Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://neekostats.com.au/sports/afl/edge-board" />
-        <meta name="twitter:card" content="summary" />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta property="og:site_name" content="Neeko Sports" />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="AFL Fantasy Edge Board 2026 | Captain Picks &amp; Trade Targets | Neeko" />
         <meta name="twitter:description" content="Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model." />
+        <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "name": "AFL Fantasy Edge Board 2026 | Captain Picks & Trade Targets",
+          "description": "Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model.",
+          "url": "https://neekostats.com.au/sports/afl/edge-board",
+          "publisher": { "@type": "Organization", "name": "Neeko Sports", "url": "https://neekostats.com.au" },
+          "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
+              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy", "item": "https://neekostats.com.au/sports/afl" },
+              { "@type": "ListItem", "position": 3, "name": "Edge Board", "item": "https://neekostats.com.au/sports/afl/edge-board" }
+            ]
+          }
+        })}</script>
       </Helmet>
     <div className="min-h-screen bg-[#0a0a0a] px-4 py-8 md:px-8">
       <div className="max-w-4xl mx-auto">

@@ -778,7 +778,9 @@ export default function AFLPlayerPage() {
         <meta property="og:type" content="article" />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:site_name" content="Neeko Sports" />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
         <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
         <link rel="canonical" href={pageUrl} />

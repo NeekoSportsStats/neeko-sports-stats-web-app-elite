@@ -233,16 +233,19 @@ export default function MarketWatchPageElite() {
     <>
       <Helmet>
         <title>AFL Fantasy Trade Targets 2026 | Market Watch | Neeko Sports</title>
-        <meta name="description" content="Track the best AFL Fantasy trade targets, avoids, value plays and market movement for the upcoming round with Neeko Sports Market Watch." />
+        <meta name="description" content="AFL Fantasy trade advice updated weekly — who to trade in, trade out, and hold based on price movement, value score, and AI projections." />
         <meta name="robots" content="index, follow" />
         <link rel="canonical" href="https://neekostats.com.au/sports/afl/market-watch" />
         <meta property="og:title" content="AFL Fantasy Trade Targets 2026 | Market Watch | Neeko Sports" />
-        <meta property="og:description" content="Track the best AFL Fantasy trade targets, avoids, value plays and market movement for the upcoming round with Neeko Sports Market Watch." />
+        <meta property="og:description" content="AFL Fantasy trade advice updated weekly — who to trade in, trade out, and hold based on price movement, value score, and AI projections." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://neekostats.com.au/sports/afl/market-watch" />
-        <meta name="twitter:card" content="summary" />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta property="og:site_name" content="Neeko Sports" />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="AFL Fantasy Trade Targets 2026 | Market Watch | Neeko Sports" />
-        <meta name="twitter:description" content="Track the best AFL Fantasy trade targets, avoids, value plays and market movement for the upcoming round with Neeko Sports Market Watch." />
+        <meta name="twitter:description" content="AFL Fantasy trade advice updated weekly — who to trade in, trade out, and hold based on price movement, value score, and AI projections." />
+        <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebPage",
@@ -329,9 +332,9 @@ export default function MarketWatchPageElite() {
         {/* SEO Content Block */}
         <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 space-y-5">
           <div>
-            <h2 className="text-base font-semibold text-white mb-3">AFL Fantasy Trade Targets — Market Watch Guide</h2>
+            <h2 className="text-base font-semibold text-white mb-3">Who to Trade in AFL Fantasy — Market Watch Guide</h2>
             <p className="text-sm text-white/55 leading-relaxed">
-              Market Watch tracks weekly AFL Fantasy price movements and surfaces the best trade targets, holds, and fades in the current round. Every player is scored using Neeko's value model, which compares their projected points output against their current fantasy price to identify inefficiencies — players who are underpriced (buy), fairly priced (watch), or overpriced (sell/avoid).
+              Market Watch is your weekly AFL Fantasy trade advice hub — tracking price movements and surfacing the best trade targets, holds, and fades each round. Every player is scored using Neeko's value model, which compares projected points output against current fantasy price to identify inefficiencies: who to trade in before a price rise, who to hold, and who to trade out before a price drop.
             </p>
           </div>
           <div>

@@ -511,6 +511,8 @@ export default function AFLRankingsPage() {
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://neekostats.com.au/sports/afl/rankings" />
         <meta property="og:site_name" content="Neeko Sports" />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="AFL Fantasy Rankings 2026 | Neeko" />
         <meta name="twitter:description" content="AI-powered AFL Fantasy rankings with projections, value scores, and recommendations." />

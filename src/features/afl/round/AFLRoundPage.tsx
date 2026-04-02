@@ -113,11 +113,32 @@ export default function AFLRoundPage() {
         <link rel="canonical" href={`https://neekostats.com.au/sports/afl/round/${roundNum || ""}`} />
         <meta property="og:title" content={title} />
         <meta property="og:description" content={description} />
-        <meta property="og:type" content="website" />
+        <meta property="og:type" content="article" />
         <meta property="og:url" content={`https://neekostats.com.au/sports/afl/round/${roundNum || ""}`} />
-        <meta name="twitter:card" content="summary" />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta property="og:site_name" content="Neeko Sports" />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
+        <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Article",
+          "headline": title,
+          "description": description,
+          "url": `https://neekostats.com.au/sports/afl/round/${roundNum || ""}`,
+          "datePublished": "2026-03-13",
+          "dateModified": new Date().toISOString().slice(0, 10),
+          "publisher": { "@type": "Organization", "name": "Neeko Sports", "url": "https://neekostats.com.au" },
+          "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
+              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy", "item": "https://neekostats.com.au/sports/afl" },
+              { "@type": "ListItem", "position": 3, "name": `Round ${roundNum}`, "item": `https://neekostats.com.au/sports/afl/round/${roundNum}` }
+            ]
+          }
+        })}</script>
       </Helmet>
 
       <div className="min-h-screen bg-[#070707] text-white">

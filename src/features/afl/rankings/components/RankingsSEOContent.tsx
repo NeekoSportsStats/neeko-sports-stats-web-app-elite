@@ -6,16 +6,16 @@ export function RankingsSEOContent() {
           <h2 className="text-xl font-bold text-white mb-4">AFL Fantasy Rankings 2026</h2>
           <div className="text-sm text-white/65 leading-relaxed space-y-3">
             <p>
-              AFL Fantasy Rankings for 2026 are led by elite performers who combine exceptional scoring consistency
-              with strong projected value. Neeko's advanced projection model analyses player form, matchup difficulty,
-              role stability, and historical performance patterns to deliver data-driven rankings that help fantasy
-              coaches make informed decisions each week.
+              The top AFL Fantasy players this week are ranked using Neeko's advanced projection model, which
+              analyses player form, matchup difficulty, role stability, and historical performance patterns. Each
+              round the rankings update to reflect the latest pricing, giving you the most accurate view of
+              who to start, trade in, or avoid in AFL Fantasy.
             </p>
             <p>
-              Each player receives a comprehensive Neeko Rating that weighs multiple factors including ceiling
-              potential, floor consistency, value score relative to price, and upcoming matchup quality. AI-powered
-              analysis identifies breakout candidates, value upgrades, and potential trap picks to give you an edge
-              over your competition. Rankings update weekly throughout the AFL season.
+              Every player receives a Neeko Rating that factors in ceiling potential, floor consistency, breakeven
+              score, and upcoming matchup quality. The value score column highlights underpriced trade targets —
+              players whose projected output significantly exceeds their current price. AI-powered analysis
+              identifies breakout candidates and value picks each week to keep you ahead of the competition.
             </p>
           </div>
         </div>
@@ -25,8 +25,9 @@ export function RankingsSEOContent() {
           <div className="text-sm text-white/55 leading-relaxed space-y-2">
             <p>
               Filter by position (MID, FWD, DEF, RUC) to find the best players at each role. Sort by Projected Score
-              to see this round's top performers, or by Value Score to find the most underpriced trade targets. The
-              breakeven column shows how many points a player needs to maintain their current price.
+              to see this round's top performers, or by Value Score to find the most underpriced AFL Fantasy trade
+              targets. The breakeven column shows how many points a player needs to score to hold their current price
+              — a key metric when deciding who to trade out before price drops lock in.
             </p>
           </div>
         </div>

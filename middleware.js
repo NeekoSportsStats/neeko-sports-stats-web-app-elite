@@ -70,6 +70,8 @@ const PRERENDER_ROUTES = [
   '/sports/afl/start-sit',
   '/sports/afl/current-round',
   '/sports/afl/round/',
+  '/about',
+  '/faq',
 ];
 
 /**
@@ -107,7 +109,7 @@ export default async function middleware(request) {
   const prerenderToken = process.env.PRERENDER_TOKEN;
 
   if (!prerenderToken) {
-    console.warn('PRERENDER_TOKEN not configured, serving normal app to bot');
+    console.error('[SEO CRITICAL] PRERENDER_TOKEN is not set — bots will receive empty client-side HTML. Set PRERENDER_TOKEN in Vercel environment variables.');
     return;
   }
 
@@ -163,5 +165,7 @@ export const config = {
     '/sports/afl/start-sit',
     '/sports/afl/current-round',
     '/sports/afl/round/:path*',
+    '/about',
+    '/faq',
   ],
 };

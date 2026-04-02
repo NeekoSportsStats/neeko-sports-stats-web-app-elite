@@ -505,6 +505,11 @@ export default function AFLCurrentRoundPage() {
         <meta property="og:url" content="https://neekostats.com.au/sports/afl/current-round" />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content="Neeko Sports" />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content="AI-powered AFL Fantasy picks for this round — captain options, value plays, trap alerts and full projections." />
+        <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
         <script type="application/ld+json">{JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebPage",
@@ -613,10 +618,10 @@ export default function AFLCurrentRoundPage() {
           <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 space-y-5">
             <div>
               <h2 className="text-base font-semibold text-white mb-3">
-                AFL Fantasy Tips {roundNum ? `— Round ${roundNum} Analysis` : "— Current Round Analysis"}
+                AFL Fantasy Tips This Week {roundNum ? `— Round ${roundNum} Analysis` : "— Current Round Analysis"}
               </h2>
               <p className="text-sm text-white/55 leading-relaxed">
-                This page surfaces the best AFL Fantasy players for{roundNum ? ` Round ${roundNum}` : " the current round"} using
+                This page surfaces the best AFL Fantasy captain picks this week and top value plays for{roundNum ? ` Round ${roundNum}` : " the current round"} using
                 Neeko's AI-powered projection model. Every player is scored on projected output, price value,
                 matchup difficulty, and role stability — giving you a complete picture before you lock in your team.
               </p>
@@ -645,6 +650,17 @@ export default function AFLCurrentRoundPage() {
                 for the full player pool.
               </p>
             </div>
+            {roundNum && (
+              <div className="pt-2 border-t border-white/[0.05]">
+                <Link
+                  to={`/sports/afl/round/${roundNum}`}
+                  className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white transition-colors underline underline-offset-2"
+                >
+                  View Full Round {roundNum} Breakdown
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* ── CAPTAIN PICKS ──────────────────────────────────────────────── */}

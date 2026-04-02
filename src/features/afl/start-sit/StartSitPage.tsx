@@ -306,9 +306,28 @@ export default function StartSitPage() {
         <meta property="og:description" content="Compare two AFL Fantasy players and get an instant AI-powered start or sit verdict with confidence scores, projections, and matchup context." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://neekostats.com.au/sports/afl/start-sit" />
-        <meta name="twitter:card" content="summary" />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta property="og:site_name" content="Neeko Sports" />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="AFL Fantasy Start / Sit Tool 2026 | AI Player Comparison | Neeko" />
         <meta name="twitter:description" content="Compare two AFL Fantasy players and get an instant AI-powered start or sit verdict with confidence scores, projections, and matchup context." />
+        <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "name": "AFL Fantasy Start / Sit Tool 2026 | AI Player Comparison",
+          "description": "Compare two AFL Fantasy players and get an instant AI-powered start or sit verdict with confidence scores, projections, and matchup context.",
+          "url": "https://neekostats.com.au/sports/afl/start-sit",
+          "publisher": { "@type": "Organization", "name": "Neeko Sports", "url": "https://neekostats.com.au" },
+          "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
+              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy", "item": "https://neekostats.com.au/sports/afl" },
+              { "@type": "ListItem", "position": 3, "name": "Start / Sit", "item": "https://neekostats.com.au/sports/afl/start-sit" }
+            ]
+          }
+        })}</script>
       </Helmet>
     <div className="min-h-screen bg-[#070707] text-white">
       <div className="max-w-2xl mx-auto px-4 py-8 pb-28">
