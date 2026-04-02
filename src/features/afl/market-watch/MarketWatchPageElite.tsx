@@ -106,10 +106,15 @@ export default function MarketWatchPageElite() {
         mapped: mapped.length,
         filtered: finalPlayers.length,
         freeFilterApplied: !premium,
+        actionDistribution: {
+          BUY: finalPlayers.filter(p => (p.action ?? '').toUpperCase() === 'BUY').length,
+          HOLD: finalPlayers.filter(p => (p.action ?? '').toUpperCase() === 'HOLD').length,
+          SELL: finalPlayers.filter(p => (p.action ?? '').toUpperCase() === 'SELL').length,
+        },
         categoryDistribution: {
-          TARGET: finalPlayers.filter(p => p.category === 'TARGET').length,
-          WATCH: finalPlayers.filter(p => p.category === 'WATCH').length,
-          AVOID: finalPlayers.filter(p => p.category === 'AVOID').length,
+          TARGET: finalPlayers.filter(p => (p.category ?? '').toUpperCase() === 'TARGET').length,
+          WATCH: finalPlayers.filter(p => (p.category ?? '').toUpperCase() === 'WATCH').length,
+          AVOID: finalPlayers.filter(p => (p.category ?? '').toUpperCase() === 'AVOID').length,
         }
       });
 
@@ -166,11 +171,11 @@ export default function MarketWatchPageElite() {
 
     console.log("[MW ORDER] Natural mix created", {
       total: all.length,
-      top10Categories: all.slice(0, 10).map(p => p.category),
+      top10Actions: all.slice(0, 10).map(p => p.action),
       top20Mix: {
-        TARGET: all.slice(0, 20).filter(p => p.category === 'TARGET').length,
-        WATCH: all.slice(0, 20).filter(p => p.category === 'WATCH').length,
-        AVOID: all.slice(0, 20).filter(p => p.category === 'AVOID').length,
+        BUY: all.slice(0, 20).filter(p => (p.action ?? '').toUpperCase() === 'BUY').length,
+        HOLD: all.slice(0, 20).filter(p => (p.action ?? '').toUpperCase() === 'HOLD').length,
+        SELL: all.slice(0, 20).filter(p => (p.action ?? '').toUpperCase() === 'SELL').length,
       }
     });
 

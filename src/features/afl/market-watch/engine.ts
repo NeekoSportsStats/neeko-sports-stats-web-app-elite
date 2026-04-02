@@ -1,4 +1,5 @@
 import { MWPlayerRow } from "./types";
+import { normalizeAction } from "@/utils/marketAction";
 
 // ────────────────────────────────────────────────────────────────────────────
 // SIMPLIFIED 3-CATEGORY SYSTEM
@@ -85,27 +86,27 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   });
 
   for (const p of filtered) {
-    const cat = (p.category || '').toUpperCase().trim();
+    // Use normalizeAction to handle both old (TARGET/WATCH/AVOID) and new (BUY/HOLD/SELL) values
+    const normalizedAction = normalizeAction(p.action || p.category);
 
-    // TARGET category
-    if (cat === 'TARGET') {
+    if (normalizedAction === 'BUY') {
       buys.push(tag(p, 'BUY'));
     }
-    // AVOID category
-    else if (cat === 'AVOID') {
+    else if (normalizedAction === 'SELL') {
       sells.push(tag(p, 'SELL'));
     }
-    // WATCH category (default)
     else {
+      // Default to HOLD for null or HOLD action
       holds.push(tag(p, 'HOLD'));
     }
   }
 
   console.log("[MW ENGINE - OUTPUT]", {
-    TARGET: buys.length,
-    WATCH: holds.length,
-    AVOID: sells.length,
-    sampleAvoid: sells.slice(0, 3).map(p => ({ name: p.player_name, category: p.category }))
+    BUY: buys.length,
+    HOLD: holds.length,
+    SELL: sells.length,
+    sampleBuy: buys.slice(0, 3).map(p => ({ name: p.player_name, action: p.action })),
+    sampleSell: sells.slice(0, 3).map(p => ({ name: p.player_name, action: p.action }))
   });
 
   // ── STEP 3: SORT WITHIN EACH CATEGORY ────────────────────────────────────
