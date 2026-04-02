@@ -44,7 +44,6 @@ try {
         },
       });
 
-      console.log("Supabase initialized");
     } catch (error) {
       console.error("Supabase client failed:", error);
       supabase = null;

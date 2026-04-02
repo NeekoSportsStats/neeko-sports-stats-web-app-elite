@@ -98,16 +98,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = useCallback(async () => {
     try {
+      if (supabase) {
+        await supabase.auth.signOut({ scope: "global" });
+      }
+    } catch (err) {
+      console.error("signOut error:", err);
+    } finally {
       setUser(null);
       setIsPremium(false);
       setIsAdmin(false);
       setLoading(false);
-      if (supabase) {
-        await supabase.auth.signOut({ scope: "global" });
-      }
-      window.location.href = "/";
-    } catch (err) {
-      console.error("signOut error:", err);
       window.location.href = "/";
     }
   }, []);
@@ -140,9 +140,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
           (async () => {
             try {
-              await fetchPremiumStatus(currentUser.id);
+              if (isMounted) await fetchPremiumStatus(currentUser.id);
             } catch (err) {
               console.error("fetchPremiumStatus failed:", err);
+              if (isMounted) {
+                setIsPremium(false);
+                setIsAdmin(false);
+              }
             } finally {
               premiumFetchInFlightRef.current = false;
               if (isMounted) setLoading(false);

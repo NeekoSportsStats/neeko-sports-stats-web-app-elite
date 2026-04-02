@@ -19,6 +19,12 @@ const ALLOWED_ORIGINS = new Set([
   'http://localhost:3000',
 ]);
 
+const ALLOWED_REDIRECT_HOSTS = new Set([
+  'www.neekostats.com.au',
+  'neekostats.com.au',
+  'localhost',
+]);
+
 function getCorsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') ?? '';
   const allowedOrigin = ALLOWED_ORIGINS.has(origin) ? origin : 'https://www.neekostats.com.au';
@@ -30,20 +36,13 @@ function getCorsHeaders(req: Request): Record<string, string> {
   };
 }
 
-let corsHeaders: Record<string, string> = getCorsHeaders(new Request('https://placeholder'));
-
-function ok(body: object) {
-  return new Response(JSON.stringify(body), {
-    status: 200,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
-}
-
-function err(message: string, status = 400, extra?: object) {
-  return new Response(JSON.stringify({ error: message, ...extra }), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+function isAllowedRedirectUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ALLOWED_REDIRECT_HOSTS.has(parsed.hostname);
+  } catch {
+    return false;
+  }
 }
 
 async function resolvePriceId(plan: string): Promise<string | null> {
@@ -67,7 +66,7 @@ async function resolvePriceId(plan: string): Promise<string | null> {
     }
 
     if (planRow?.price_id) {
-      console.log(`stripe-checkout: resolved ${plan} price from DB: ${planRow.price_id}`);
+      console.log(`stripe-checkout: resolved ${plan} price from DB`);
       return planRow.price_id;
     }
   }
@@ -76,7 +75,22 @@ async function resolvePriceId(plan: string): Promise<string | null> {
 }
 
 Deno.serve(async (req) => {
-  corsHeaders = getCorsHeaders(req);
+  const corsHeaders = getCorsHeaders(req);
+
+  function ok(body: object) {
+    return new Response(JSON.stringify(body), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
+  function err(message: string, status = 400, extra?: object) {
+    return new Response(JSON.stringify({ error: message, ...extra }), {
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -105,6 +119,15 @@ Deno.serve(async (req) => {
       return err('Missing required parameter: cancel_url');
     }
 
+    if (!isAllowedRedirectUrl(success_url)) {
+      console.error('stripe-checkout: invalid success_url domain');
+      return err('Invalid success_url domain', 400);
+    }
+    if (!isAllowedRedirectUrl(cancel_url)) {
+      console.error('stripe-checkout: invalid cancel_url domain');
+      return err('Invalid cancel_url domain', 400);
+    }
+
     const price_id = await resolvePriceId(plan);
 
     if (!price_id) {
@@ -112,7 +135,7 @@ Deno.serve(async (req) => {
       return err(`No price configured for plan: ${plan}`, 500);
     }
 
-    console.log('stripe-checkout: inputs', { plan, price_id });
+    console.log(`stripe-checkout: processing checkout for plan=${plan}`);
 
     const authHeader = req.headers.get('Authorization') ?? '';
     const token = authHeader.replace('Bearer ', '');
@@ -124,7 +147,7 @@ Deno.serve(async (req) => {
     const { data: { user }, error: getUserError } = await supabase.auth.getUser(token);
 
     if (getUserError || !user) {
-      console.error('stripe-checkout: auth failed', getUserError);
+      console.error('stripe-checkout: auth failed', getUserError?.message);
       return err('Failed to authenticate user', 401);
     }
 
@@ -142,13 +165,12 @@ Deno.serve(async (req) => {
     let customerId: string;
 
     if (!customer?.customer_id) {
-      // Create new Stripe customer
       const newCustomer = await stripe.customers.create({
         email: user.email,
         metadata: { userId: user.id },
       });
 
-      console.log(`stripe-checkout: created Stripe customer ${newCustomer.id} for user ${user.id}`);
+      console.log('stripe-checkout: created new Stripe customer');
 
       const { error: createCustomerError } = await supabase
         .from('stripe_customers')
@@ -167,7 +189,7 @@ Deno.serve(async (req) => {
       customerId = customer.customer_id;
     }
 
-    console.log('stripe-checkout: creating session', { customerId, price_id, plan });
+    console.log(`stripe-checkout: creating session for plan=${plan}`);
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -192,8 +214,6 @@ Deno.serve(async (req) => {
       message: e?.message,
       type: e?.type,
       code: e?.code,
-      param: e?.param,
-      statusCode: e?.statusCode,
     });
 
     return err('Unable to start checkout session', 500);
