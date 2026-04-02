@@ -4,6 +4,7 @@ import { formatPrice } from "@/utils/formatPrice";
 import { ChevronDown, ChevronUp, Info } from "lucide-react";
 import { cleanAiText } from "@/utils/cleanAiText";
 import { generateSmartWhy, getValueRankLabel, getValueRankColor, calculateValueRank } from "./helpers";
+import { mapMarketLabel } from "@/utils/marketLabels";
 
 type SortField = "player" | "projection" | "breakeven" | "price" | "value" | "signal";
 type SortDirection = "asc" | "desc";
@@ -421,24 +422,26 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
 });
 
 function getSignalStrength(player: DerivedPlayer) {
-  const category = player.category?.toUpperCase() || "WATCH";
+  const category = player.category?.toUpperCase() || player.action?.toUpperCase() || "HOLD";
   const aiReco = player.ai_recommendation?.toLowerCase() || "";
+
+  const baseLabel = mapMarketLabel(category);
 
   if (category === "TARGET" || category === "BUY") {
     if (aiReco.includes("strong buy") || aiReco.includes("elite")) {
       return {
         icon: "🔥",
-        label: "Strong Target",
+        label: `Strong ${baseLabel.label}`,
         bg: "bg-green-500/20",
         text: "text-green-400",
         border: "border-green-500/40",
       };
     }
     return {
-      icon: "👍",
-      label: "Target",
-      bg: "bg-green-500/10",
-      text: "text-green-400",
+      icon: baseLabel.icon,
+      label: baseLabel.label,
+      bg: baseLabel.bg,
+      text: baseLabel.color,
       border: "border-green-500/30",
     };
   }
@@ -447,18 +450,28 @@ function getSignalStrength(player: DerivedPlayer) {
     if (aiReco.includes("strong sell") || aiReco.includes("high risk")) {
       return {
         icon: "❌",
-        label: "Avoid",
+        label: `Strong ${baseLabel.label}`,
         bg: "bg-red-500/20",
         text: "text-red-400",
         border: "border-red-500/40",
       };
     }
     return {
-      icon: "⚠️",
-      label: "Risk",
-      bg: "bg-red-500/10",
-      text: "text-red-400",
+      icon: baseLabel.icon,
+      label: baseLabel.label,
+      bg: baseLabel.bg,
+      text: baseLabel.color,
       border: "border-red-500/30",
+    };
+  }
+
+  if (category === "WATCH" || category === "HOLD") {
+    return {
+      icon: baseLabel.icon,
+      label: baseLabel.label,
+      bg: baseLabel.bg,
+      text: baseLabel.color,
+      border: "border-yellow-500/30",
     };
   }
 

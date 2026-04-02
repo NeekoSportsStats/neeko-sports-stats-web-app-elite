@@ -1,6 +1,7 @@
 import { Target, Eye, ShieldAlert } from "lucide-react";
 import { DerivedPlayer } from "./engine";
 import { fmtPrice } from "./helpers";
+import { mapMarketLabel } from "@/utils/marketLabels";
 
 interface MarketWatchHeroProps {
   topBuy: DerivedPlayer | null;
@@ -52,13 +53,17 @@ export function MarketWatchHero({ topBuy, topHold, topSell }: MarketWatchHeroPro
   // Show at least one hero card
   if (!topBuy && !topHold && !topSell) return null;
 
+  const buyLabel = mapMarketLabel("BUY");
+  const holdLabel = mapMarketLabel("HOLD");
+  const sellLabel = mapMarketLabel("SELL");
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
       {topBuy && (
         <HeroCard
           player={topBuy}
           type="buy"
-          label="TOP TARGET"
+          label={`TOP ${buyLabel.label.toUpperCase()}`}
           icon={<Target className="w-5 h-5" />}
         />
       )}
@@ -66,7 +71,7 @@ export function MarketWatchHero({ topBuy, topHold, topSell }: MarketWatchHeroPro
         <HeroCard
           player={topHold}
           type="hold"
-          label="TOP VALUE"
+          label={`TOP ${holdLabel.label.toUpperCase()}`}
           icon={<Eye className="w-5 h-5" />}
         />
       )}
@@ -74,7 +79,7 @@ export function MarketWatchHero({ topBuy, topHold, topSell }: MarketWatchHeroPro
         <HeroCard
           player={topSell}
           type="sell"
-          label="TOP AVOID"
+          label={`TOP ${sellLabel.label.toUpperCase()}`}
           icon={<ShieldAlert className="w-5 h-5" />}
         />
       )}
@@ -95,6 +100,10 @@ function HeroCard({ player, type, label, icon }: HeroCardProps) {
   const valueLabel = player.value_label || 'Strong Value';
   const whyText = getWhy(player);
 
+  // Get user-friendly labels
+  const actionType = type === "buy" ? "BUY" : type === "sell" ? "SELL" : "HOLD";
+  const mapped = mapMarketLabel(actionType);
+
   // Color config based on type
   const config = type === "buy" ? {
     bg: "bg-gradient-to-br from-green-500/5 to-green-600/10",
@@ -103,7 +112,7 @@ function HeroCard({ player, type, label, icon }: HeroCardProps) {
     iconColor: "text-green-400",
     accentColor: "text-green-400",
     badgeBg: "bg-green-500/15 border-green-500/30",
-    badgeText: "TARGET",
+    badgeText: mapped.label.toUpperCase(),
     hoverGlow: "hover:shadow-[0_0_30px_rgba(34,197,94,0.2)]",
   } : type === "sell" ? {
     bg: "bg-gradient-to-br from-red-500/5 to-red-600/10",
@@ -112,7 +121,7 @@ function HeroCard({ player, type, label, icon }: HeroCardProps) {
     iconColor: "text-red-400",
     accentColor: "text-red-400",
     badgeBg: "bg-red-500/15 border-red-500/30",
-    badgeText: "AVOID",
+    badgeText: mapped.label.toUpperCase(),
     hoverGlow: "hover:shadow-[0_0_30px_rgba(239,68,68,0.2)]",
   } : {
     bg: "bg-gradient-to-br from-blue-500/5 to-blue-600/10",
@@ -121,7 +130,7 @@ function HeroCard({ player, type, label, icon }: HeroCardProps) {
     iconColor: "text-blue-400",
     accentColor: "text-blue-400",
     badgeBg: "bg-blue-500/15 border-blue-500/30",
-    badgeText: "WATCH",
+    badgeText: mapped.label.toUpperCase(),
     hoverGlow: "hover:shadow-[0_0_30px_rgba(59,130,246,0.2)]",
   };
 

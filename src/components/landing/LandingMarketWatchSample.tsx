@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown, Minus, Lock, ArrowRight, Crown, CircleAlert as AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { mapMarketLabel } from "@/utils/marketLabels";
 
 interface MarketWatchRow {
   player_id: number;
@@ -46,38 +47,43 @@ function CategoryPill({ category }: { category: string | null }) {
   if (!category) return null;
 
   const cat = category.toUpperCase();
-  const styles: Record<string, { bg: string; text: string; border: string; icon: typeof TrendingUp; label: string }> = {
-    "TARGET": {
+
+  // Map both old (TARGET/WATCH/AVOID) and new (BUY/HOLD/SELL) to friendly labels
+  const normalizedCategory = cat === "TARGET" || cat === "BUY" ? "BUY"
+    : cat === "AVOID" || cat === "SELL" ? "SELL"
+    : "HOLD";
+
+  const mapped = mapMarketLabel(normalizedCategory);
+
+  const styles: Record<string, { bg: string; text: string; border: string; icon: typeof TrendingUp }> = {
+    "BUY": {
       bg: "bg-green-400/10",
       text: "text-green-400",
       border: "border-green-400/30",
       icon: TrendingUp,
-      label: "TARGET",
     },
-    "AVOID": {
+    "SELL": {
       bg: "bg-red-400/10",
       text: "text-red-400",
       border: "border-red-400/30",
       icon: TrendingDown,
-      label: "AVOID",
     },
-    "WATCH": {
+    "HOLD": {
       bg: "bg-[#F5C84C]/10",
       text: "text-[#F5C84C]",
       border: "border-[#F5C84C]/30",
       icon: Minus,
-      label: "WATCH",
     },
   };
 
-  const style = styles[cat] ?? styles["WATCH"];
+  const style = styles[normalizedCategory];
   const Icon = style.icon;
 
   return (
     <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border ${style.bg} ${style.border}`}>
       <Icon size={10} className={style.text} />
       <span className={`text-[10px] font-bold uppercase tracking-wide ${style.text}`}>
-        {style.label}
+        {mapped.label.toUpperCase()}
       </span>
     </div>
   );
@@ -99,13 +105,14 @@ function PlayerRow({ player, index }: { player: MarketWatchRow; index: number })
     const gap = valueGap ?? 0;
     const proj = projection !== "—" ? projection : 0;
 
-    if (cat === 'TARGET' && gap > 0) {
+    // Support both old (TARGET/WATCH/AVOID) and new (BUY/HOLD/SELL) values
+    if ((cat === 'TARGET' || cat === 'BUY') && gap > 0) {
       return `+${gap} value gap with ${proj} projection — underpriced opportunity`;
     }
-    if (cat === 'AVOID' && gap < 0) {
+    if ((cat === 'AVOID' || cat === 'SELL') && gap < 0) {
       return `${gap} value gap — priced above current output`;
     }
-    if (cat === 'WATCH') {
+    if (cat === 'WATCH' || cat === 'HOLD') {
       if (player.recommendation_short) {
         return player.recommendation_short;
       }
@@ -195,9 +202,19 @@ export function LandingMarketWatchSample() {
         const availableRows = (data ?? []).filter((r: any) => !r.is_injured && !r.is_bye) as MarketWatchRow[];
 
         // Take 2 from each category for 6 total display
-        const targets = availableRows.filter(r => (r.category ?? '').toUpperCase() === 'TARGET').slice(0, 2);
-        const watches = availableRows.filter(r => (r.category ?? '').toUpperCase() === 'WATCH').slice(0, 2);
-        const avoids = availableRows.filter(r => (r.category ?? '').toUpperCase() === 'AVOID').slice(0, 2);
+        // Support both old (TARGET/WATCH/AVOID) and new (BUY/HOLD/SELL) values
+        const targets = availableRows.filter(r => {
+          const cat = (r.category ?? '').toUpperCase();
+          return cat === 'TARGET' || cat === 'BUY';
+        }).slice(0, 2);
+        const watches = availableRows.filter(r => {
+          const cat = (r.category ?? '').toUpperCase();
+          return cat === 'WATCH' || cat === 'HOLD';
+        }).slice(0, 2);
+        const avoids = availableRows.filter(r => {
+          const cat = (r.category ?? '').toUpperCase();
+          return cat === 'AVOID' || cat === 'SELL';
+        }).slice(0, 2);
 
         const selected = [...targets, ...watches, ...avoids];
 

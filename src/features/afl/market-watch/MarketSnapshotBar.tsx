@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
+import { mapMarketLabel } from "@/utils/marketLabels";
 
 interface MarketSnapshotBarProps {
   topTarget: DerivedPlayer | null;
@@ -9,26 +10,30 @@ interface MarketSnapshotBarProps {
 }
 
 export const MarketSnapshotBar = memo(function MarketSnapshotBar({ topTarget, topWatch, topAvoid }: MarketSnapshotBarProps) {
+  const targetLabel = mapMarketLabel("BUY");
+  const watchLabel = mapMarketLabel("HOLD");
+  const avoidLabel = mapMarketLabel("SELL");
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
       <SnapshotCard
         player={topTarget}
-        label="TOP TARGET"
-        icon="🔥"
+        label={`TOP ${targetLabel.label.toUpperCase()}`}
+        icon={targetLabel.icon}
         tagText="Strong Value"
         tagColor="green"
       />
       <SnapshotCard
         player={topWatch}
-        label="TOP WATCH"
-        icon="👁"
+        label={`TOP ${watchLabel.label.toUpperCase()}`}
+        icon={watchLabel.icon}
         tagText="Monitor"
         tagColor="yellow"
       />
       <SnapshotCard
         player={topAvoid}
-        label="TOP AVOID"
-        icon="⚠"
+        label={`TOP ${avoidLabel.label.toUpperCase()}`}
+        icon={avoidLabel.icon}
         tagText="Overpriced"
         tagColor="red"
       />
