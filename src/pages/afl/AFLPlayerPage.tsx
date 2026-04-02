@@ -745,6 +745,23 @@ export default function AFLPlayerPage() {
         <link rel="canonical" href={pageUrl} />
         <meta name="robots" content="index, follow" />
         <meta name="author" content="Neeko Sports" />
+        <meta property="article:modified_time" content={new Date().toISOString()} />
+
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Person",
+            "name": player.player_name,
+            "affiliation": {
+              "@type": "SportsTeam",
+              "name": player.team,
+              "sport": "Australian Rules Football"
+            },
+            "jobTitle": getPositionName(player.player_position),
+            "description": pageDescription,
+            "url": pageUrl
+          })}
+        </script>
       </Helmet>
 
       <div className="min-h-screen bg-[#0e0e0e]">
@@ -762,6 +779,21 @@ export default function AFLPlayerPage() {
           <div className="mb-6 pb-4 border-b border-white/5">
             <h1 className="text-2xl font-semibold text-white mb-2">{player.player_name}</h1>
             <p className="text-base text-white/50">{player.team}{player.player_position ? ` · ${player.player_position}` : ""}</p>
+          </div>
+
+          {/* SEO Content Block */}
+          <div className="rounded-lg bg-white/[0.02] border border-white/5 px-4 py-4 mb-6">
+            <h2 className="text-sm font-semibold text-white/80 mb-2">
+              {player.player_name} AFL Fantasy 2026 Analysis
+            </h2>
+            <p className="text-sm text-white/60 leading-relaxed">
+              {player.player_name} is a {getPositionName(player.player_position)} for {player.team} with a projected fantasy average of {Math.round(proj ?? 0)} points for the 2026 AFL season.
+              {player.ai_recommendation && ` Our AI analysis rates ${player.player_name} as a ${player.ai_recommendation.toLowerCase()} option`}
+              {player.price && ` at a price of ${fmtPrice(player.price)}`}.
+              {player.value_score && player.value_score >= 100 && ` With a value score of ${Math.round(player.value_score)}, this represents strong value in fantasy drafts.`}
+              {player.captain_rating && ` Captain rating: ${player.captain_rating}.`}
+              {' '}Track {player.player_name}'s week-to-week performance, injury updates, and matchup analysis for optimal fantasy decision-making. Updated weekly with the latest projections and AI-powered insights.
+            </p>
           </div>
 
           {/* Modal Content */}
@@ -1005,8 +1037,49 @@ export default function AFLPlayerPage() {
               </div>
             )}
 
-            {/* 9. Bottom Navigation Section */}
-            <div className="pt-4 mt-2 border-t border-white/5">
+            {/* 9. Similar Players - SEO Internal Linking */}
+            {similarPlayers && similarPlayers.length > 0 && (
+              <div className="rounded-lg bg-white/[0.02] border border-white/5 px-4 py-4">
+                <h2 className="text-sm font-semibold text-white/80 mb-3">Similar Players</h2>
+                <div className="grid grid-cols-2 gap-2">
+                  {similarPlayers.slice(0, 6).map((p: any) => (
+                    <Link
+                      key={p.player_id}
+                      to={`/sports/afl/players/${nameToSlug(p.player_name)}`}
+                      className="text-sm text-[#F5C84C] hover:text-[#F5C84C]/80 transition-colors flex items-center gap-1"
+                    >
+                      {p.player_name}
+                      <ChevronRight size={14} />
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 10. Bottom Navigation Section */}
+            <div className="pt-4 mt-2 border-t border-white/5 space-y-2">
+              {/* Team Link */}
+              {TEAM_SLUGS[player.team] && (
+                <Link
+                  to={`/sports/afl/teams/${TEAM_SLUGS[player.team]}`}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/8 text-white/70 hover:text-white transition-all px-4 py-3 font-medium text-sm"
+                >
+                  <Users size={14} />
+                  View {player.team} Roster
+                </Link>
+              )}
+
+              {/* Position Link */}
+              {getPositionSlug(player.player_position) && (
+                <Link
+                  to={`/sports/afl/positions/${getPositionSlug(player.player_position)}`}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/8 text-white/70 hover:text-white transition-all px-4 py-3 font-medium text-sm"
+                >
+                  <Target size={14} />
+                  View All {getPositionName(player.player_position)}s
+                </Link>
+              )}
+
               {/* Rankings Link */}
               <Link
                 to="/sports/afl/rankings"

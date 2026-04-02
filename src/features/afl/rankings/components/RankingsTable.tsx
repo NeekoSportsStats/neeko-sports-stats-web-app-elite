@@ -1,5 +1,4 @@
-import { ChevronDown, ChevronUp, Lock, ExternalLink } from "lucide-react";
-import { Link } from "react-router-dom";
+import { ChevronDown, ChevronUp, Lock, Crown } from "lucide-react";
 import { RankingRow, SortKey, SortDir, RankingsTab, RowTier } from "./types";
 import {
   fmt, fmtPrice, fmtPriceChange, fmtValueScore,
@@ -11,8 +10,6 @@ import {
   normaliseConfidence,
 } from "./helpers";
 import { InfoTooltip, LockedCell } from "./RankingsModals";
-import { Crown } from "lucide-react";
-import { nameToSlug } from "@/lib/slugs";
 
 const TH = "bg-[#0a0a0a] px-4 py-3 text-[11px] font-medium uppercase tracking-wider whitespace-nowrap border-b border-white/10 text-center";
 
@@ -91,12 +88,11 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
       <SortableTh label="Value" col="value_score" width={120} tooltip="Points per dollar of price — higher means better value for money" />
       <Th label="AI Rec" locked={!isPremium} width={150} />
       <Th label="Why" locked={!isPremium} />
-      <th className={`${TH} text-white/0`} style={{ width: 90, minWidth: 90 }}></th>
     </tr>
   );
 }
 
-const TOTAL_COLS = 11;
+const TOTAL_COLS = 10;
 
 interface TableRowProps {
   row: RankingRow;
@@ -285,16 +281,6 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
             ? <span className="text-xs text-white/60 leading-snug block line-clamp-2 max-w-[260px]">{whyText}</span>
             : <span className="text-white/20 text-xs">—</span>;
         })()}
-      </td>
-      <td className="px-4 py-3 text-right whitespace-nowrap" style={{ width: 90, minWidth: 90 }}>
-        <Link
-          to={`/sports/afl/players/${nameToSlug(row.player_name)}`}
-          className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1 text-white/40 hover:text-white/70 text-xs"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <span>View page</span>
-          <ExternalLink className="h-3 w-3" />
-        </Link>
       </td>
     </tr>
   );

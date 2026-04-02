@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { Helmet } from "react-helmet-async";
 import { Search, Clock, X, Lock, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
@@ -501,7 +502,26 @@ export default function AFLRankingsPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#070707] text-white">
+    <>
+      <Helmet>
+        <title>AFL Fantasy Rankings 2026 | Top Players, Projections & Value | Neeko</title>
+        <meta name="description" content="Complete AFL Fantasy rankings for 2026. AI-powered player projections, value scores, and recommendations. Updated weekly with the latest stats and analysis." />
+        <meta name="keywords" content="AFL Fantasy rankings, fantasy football, player rankings, projections, value picks, 2026 season, AFL stats, fantasy drafts" />
+        <meta property="og:title" content="AFL Fantasy Rankings 2026 | Neeko" />
+        <meta property="og:description" content="Complete AFL Fantasy rankings for 2026. AI-powered projections, value analysis, and recommendations updated weekly." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://neeko.com.au/sports/afl/rankings" />
+        <meta property="og:site_name" content="Neeko Sports" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="AFL Fantasy Rankings 2026 | Neeko" />
+        <meta name="twitter:description" content="AI-powered AFL Fantasy rankings with projections, value scores, and recommendations." />
+        <link rel="canonical" href="https://neeko.com.au/sports/afl/rankings" />
+        <meta name="robots" content="index, follow" />
+        <meta name="author" content="Neeko Sports" />
+        <meta property="article:modified_time" content={new Date().toISOString()} />
+      </Helmet>
+
+      <div className="min-h-screen bg-[#070707] text-white">
 
       <div className="px-4 pt-10 pb-4 md:px-8">
         <div className="flex items-start justify-between gap-4">
@@ -731,5 +751,6 @@ export default function AFLRankingsPage() {
       )}
 
     </div>
+    </>
   );
 }
