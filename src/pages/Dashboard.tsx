@@ -12,23 +12,13 @@ const Dashboard = () => {
       </div>
 
       {/* Navigation Cards */}
-      <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+      <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
         <Link to="/sports/afl/players">
           <Card className="p-8 text-center hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/10 cursor-pointer group">
             <Users className="h-16 w-16 text-primary mx-auto mb-4 group-hover:scale-110 transition-transform" />
             <h3 className="text-2xl font-bold mb-2">AFL Player Stats</h3>
             <p className="text-muted-foreground">
               Live player metrics, trends & insights
-            </p>
-          </Card>
-        </Link>
-
-        <Link to="/sports/afl/teams">
-          <Card className="p-8 text-center hover:border-primary/50 transition-all hover:shadow-lg hover:shadow-primary/10 cursor-pointer group">
-            <Shield className="h-16 w-16 text-primary mx-auto mb-4 group-hover:scale-110 transition-transform" />
-            <h3 className="text-2xl font-bold mb-2">AFL Team Stats</h3>
-            <p className="text-muted-foreground">
-              Aggregated team performance data
             </p>
           </Card>
         </Link>

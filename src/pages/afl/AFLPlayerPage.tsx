@@ -1058,28 +1058,6 @@ export default function AFLPlayerPage() {
 
             {/* 10. Bottom Navigation Section */}
             <div className="pt-4 mt-2 border-t border-white/5 space-y-2">
-              {/* Team Link */}
-              {TEAM_SLUGS[player.team] && (
-                <Link
-                  to={`/sports/afl/teams/${TEAM_SLUGS[player.team]}`}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/8 text-white/70 hover:text-white transition-all px-4 py-3 font-medium text-sm"
-                >
-                  <Users size={14} />
-                  View {player.team} Roster
-                </Link>
-              )}
-
-              {/* Position Link */}
-              {getPositionSlug(player.player_position) && (
-                <Link
-                  to={`/sports/afl/positions/${getPositionSlug(player.player_position)}`}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/8 text-white/70 hover:text-white transition-all px-4 py-3 font-medium text-sm"
-                >
-                  <Target size={14} />
-                  View All {getPositionName(player.player_position)}s
-                </Link>
-              )}
-
               {/* Rankings Link */}
               <Link
                 to="/sports/afl/rankings"

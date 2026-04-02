@@ -127,8 +127,7 @@ function DataRow({ row, idx, tier, isPremium, activeTab, onTap, onUpgrade }: Dat
   const locked = (col: string) => {
     if (isPremium) return false;
     if (idx < FREE_FULL_ROWS) return false;
-    if (idx < FREE_PARTIAL_ROWS) return isPremiumCol(col);
-    return true;
+    return true;  // All columns locked after row 8
   };
 
   return (
@@ -309,15 +308,15 @@ export function MobileConversionWall({ onUpgrade }: { onUpgrade: () => void }) {
     <div className="px-4 pt-2 pb-4">
       <div className="flex items-center justify-between gap-3 rounded-xl border border-[#F5C84C]/25 bg-gradient-to-r from-[#F5C84C]/[0.07] to-transparent px-4 py-4">
         <div className="min-w-0">
-          <p className="text-sm font-bold text-white leading-tight">You're seeing the top 8 — 50+ more ranked below</p>
-          <p className="text-[11px] text-white/40 mt-0.5">$10/month · Cancel anytime</p>
+          <p className="text-sm font-bold text-white leading-tight">Unlock 600+ players with premium insights</p>
+          <p className="text-[11px] text-white/40 mt-0.5">Full rankings · AI analysis · Market Watch · Edge Board</p>
         </div>
         <button
           onClick={onUpgrade}
           className="shrink-0 flex items-center gap-1.5 bg-[#F5C84C] text-black font-bold text-xs px-4 py-2.5 rounded-xl hover:brightness-110 transition-all min-w-[110px] justify-center"
         >
           <Crown size={11} />
-          Unlock rankings
+          Upgrade
         </button>
       </div>
     </div>
@@ -398,7 +397,7 @@ export function MobileRankingsTable({
 
   const visibleRows = isPremium
     ? rows.slice(0, visibleCount)
-    : rows.slice(0, FREE_PARTIAL_ROWS);
+    : rows.slice(0, FREE_FULL_ROWS);
 
   const hasMore = isPremium && visibleCount < rows.length;
 
@@ -418,7 +417,7 @@ export function MobileRankingsTable({
               <LoadingSkeleton />
             ) : (visibleRows || []).map((row, idx) => {
               const tier: RowTier = isPremium ? "premium" : (
-                idx < FREE_FULL_ROWS ? "full" : idx < FREE_PARTIAL_ROWS ? "partial" : "locked"
+                idx < FREE_FULL_ROWS ? "full" : "locked"
               );
               return (
                 <DataRow

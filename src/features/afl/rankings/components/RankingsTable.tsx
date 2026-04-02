@@ -116,10 +116,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
   const locked = (colKey: string) => {
     if (isPremium) return false;
     if (idx < FREE_FULL_ROWS) return false;
-    if (idx < FREE_PARTIAL_ROWS) {
-      return ["price", "value_score", "value_tag", "ai_recommendation", "why", "long"].includes(colKey);
-    }
-    return true;
+    return true;  // All columns locked after row 8
   };
 
   const rowClass = isHighlighted
@@ -302,13 +299,13 @@ export function ConversionWallRow({ onUpgrade, colSpan = TOTAL_COLS }: { onUpgra
             <Crown size={20} className="text-[#F5C84C]" />
           </div>
           <div>
-            <p className="text-lg font-bold text-white mb-1.5">You're seeing the top 8 players — 50+ more ranked below</p>
-            <p className="text-sm text-white/45 max-w-sm leading-relaxed">
-              Neeko+ unlocks AI captain calls, breakout value plays, matchup traps and the full ranked list.
+            <p className="text-lg font-bold text-white mb-1.5">Unlock 600+ players with premium insights</p>
+            <p className="text-sm text-white/45 max-w-md leading-relaxed">
+              Full rankings access · Advanced AI analysis · Market Watch · Edge Board · Start/Sit tools · Updated automatically
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-2 mb-1">
-            {["AI Recommendations", "Full Value Rankings", "Breakout Alerts", "Matchup Traps"].map((f) => (
+            {["Full Rankings", "AI Analysis", "Market Watch", "Edge Board"].map((f) => (
               <span key={f} className="rounded-full border border-[#F5C84C]/20 bg-[#F5C84C]/[0.06] px-3 py-1 text-[11px] text-[#F5C84C]/70 font-medium">
                 {f}
               </span>

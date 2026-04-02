@@ -438,7 +438,7 @@ export default function AFLRankingsPage() {
     const idx = displayRows.findIndex((r) => r.player_id === row.player_id);
     if (idx >= 0) {
       const tier: RowTier = isPremium ? "premium" : getFreeTier(idx);
-      const isUnlocked = isPremium || tier === "full" || tier === "partial";
+      const isUnlocked = isPremium || tier === "full";
       openRow(row, idx + 1, tier, isUnlocked);
     }
   }
@@ -669,7 +669,7 @@ export default function AFLRankingsPage() {
                   <>
                     {displayRows.map((row, idx) => {
                       const tier: RowTier = isPremium ? "premium" : getFreeTier(idx);
-                      const isUnlocked = isPremium || tier === "full" || tier === "partial";
+                      const isUnlocked = isPremium || tier === "full";
                       const isHighlighted = highlightedPlayerId != null && row.player_id === highlightedPlayerId;
                       return (
                         <TableRow
@@ -708,13 +708,13 @@ export default function AFLRankingsPage() {
 
         <div className="md:hidden">
           <MobileRankingsTable
-            rows={isPremium ? sortedRows : sortedRows.slice(0, FREE_PARTIAL_ROWS)}
+            rows={isPremium ? sortedRows : sortedRows.slice(0, FREE_FULL_ROWS)}
             loading={loading}
             isPremium={isPremium}
             activeTab={activeTab}
             onOpenRow={(row, idx) => {
               const tier: RowTier = isPremium ? "premium" : getFreeTier(idx);
-              const isUnlocked = isPremium || tier === "full" || tier === "partial";
+              const isUnlocked = isPremium || tier === "full";
               openRow(row, idx + 1, tier, isUnlocked);
             }}
             onUpgrade={() => setShowUpgradeModal(true)}
