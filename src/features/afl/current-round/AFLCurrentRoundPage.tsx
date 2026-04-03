@@ -29,6 +29,7 @@ import {
 } from "@/features/afl/rankings/components/helpers";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
 import { PlayerDetailModal, UpgradeModal } from "@/features/afl/rankings/components/RankingsModals";
+import { PlayerStatusPill } from "@/features/afl/rankings/components/PlayerStatusPill";
 import type { RowTier } from "@/features/afl/rankings/components/types";
 
 // ─── LIMITS ──────────────────────────────────────────────────────────────────
@@ -125,8 +126,9 @@ function PlayerRow({ row, rank, metric, isPremiumUser, onClick }: PlayerRowProps
     >
       <span className="text-[11px] text-white/20 w-4 text-right shrink-0 font-mono tabular-nums">{rank}</span>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-sm font-semibold text-white truncate leading-tight">{row.player_name}</span>
+          <PlayerStatusPill row={row} showUpcomingBye />
           {row.ai_recommendation && isPremiumUser && (
             <span
               className="text-[9px] px-1 py-px rounded border shrink-0 font-medium leading-none"
@@ -164,7 +166,10 @@ function BlurredRow({ row, rank, metric }: { row: RankingRow; rank: number; metr
     >
       <span className="text-[11px] text-white/20 w-4 text-right shrink-0 font-mono tabular-nums">{rank}</span>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold text-white truncate leading-tight">{row.player_name}</div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-sm font-semibold text-white truncate leading-tight">{row.player_name}</span>
+          <PlayerStatusPill row={row} showUpcomingBye />
+        </div>
         <div className="text-[10px] text-white/30 mt-px">
           {normalisePosition(row.position) ?? "—"} · {row.team}
           {row.price ? ` · ${fmtPrice(row.price)}` : ""}

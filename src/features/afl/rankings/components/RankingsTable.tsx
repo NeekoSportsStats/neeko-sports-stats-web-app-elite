@@ -8,6 +8,7 @@ import {
 } from "./helpers";
 import { InfoTooltip, LockedCell } from "./RankingsModals";
 import { ExpandedPlayerRow } from "./ExpandedPlayerRow";
+import { PlayerStatusPill } from "./PlayerStatusPill";
 
 // ─── Column layout ─────────────────────────────────────────────────────────────
 // # (44) | Player (240) | PROJ (90) | BE (80) | EDGE (90) | ACTION (100) | WHY (flex)
@@ -278,19 +279,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className={`text-sm font-semibold truncate max-w-[180px] ${isTop3 ? "text-white" : "text-white/90"}`}>{row.player_name}</span>
-              {(row.manual_status === "OUT" || (!row.manual_status && row.status === "OUT")) ? (
-                <span className="rounded-sm bg-red-500/15 px-1 py-0.5 text-[9px] font-semibold text-red-400 uppercase border border-red-500/20">OUT</span>
-              ) : (row.manual_status === "INJURED" || (!row.manual_status && row.status === "INJURED")) ? (
-                <span className="rounded-sm bg-orange-500/15 px-1 py-0.5 text-[9px] font-semibold text-orange-400 uppercase border border-orange-500/20">INJ</span>
-              ) : row.is_bye ? (
-                <span className="rounded-sm bg-white/10 px-1 py-0.5 text-[9px] font-semibold text-white/40 uppercase border border-white/15">BYE</span>
-              ) : null}
-              {!row.manual_status && !row.status && !row.is_bye && row.bye_next_round && (
-                <span className="rounded-sm bg-white/8 px-1 py-0.5 text-[9px] font-semibold text-white/30 uppercase border border-white/10">BYE R{row.bye_round}</span>
-              )}
-              {(row.manual_status === "TEST" || (!row.manual_status && row.status === "TEST")) && (
-                <span className="rounded-sm bg-orange-500/15 px-1 py-0.5 text-[9px] font-semibold text-orange-400 uppercase border border-orange-500/20">TEST</span>
-              )}
+              <PlayerStatusPill row={row} showUpcomingBye />
             </div>
             <div className="text-[11px] text-neutral-500 mt-0.5 leading-tight">
               {row.team}{row.position ? ` · ${row.position}` : ""}
@@ -436,15 +425,6 @@ export function FreeTableRow({ row, idx, onRowClick, onUpgrade }: FreeTableRowPr
       }
     : { touchAction: "manipulation" };
 
-  const statusBadge = (() => {
-    if (row.manual_status === "OUT" || (!row.manual_status && row.status === "OUT"))
-      return <span className="rounded-sm bg-red-500/15 px-1 py-0.5 text-[9px] font-semibold text-red-400 uppercase border border-red-500/20">OUT</span>;
-    if (row.manual_status === "INJURED" || (!row.manual_status && row.status === "INJURED"))
-      return <span className="rounded-sm bg-orange-500/15 px-1 py-0.5 text-[9px] font-semibold text-orange-400 uppercase border border-orange-500/20">INJ</span>;
-    if (row.is_bye)
-      return <span className="rounded-sm bg-white/10 px-1 py-0.5 text-[9px] font-semibold text-white/40 uppercase border border-white/15">BYE</span>;
-    return null;
-  })();
 
   const be = row.breakeven !== null && row.breakeven !== undefined
     ? Math.round(parseFloat(String(row.breakeven)))
@@ -484,7 +464,7 @@ export function FreeTableRow({ row, idx, onRowClick, onUpgrade }: FreeTableRowPr
         <div>
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className={`text-sm font-semibold ${isTop3 ? "text-white" : "text-white/90"}`}>{row.player_name}</span>
-            {statusBadge}
+            <PlayerStatusPill row={row} showUpcomingBye />
           </div>
           <div className="text-[11px] text-white/40 mt-0.5">
             {row.team}{row.position ? ` · ${row.position}` : ""}
