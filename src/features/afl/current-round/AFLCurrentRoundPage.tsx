@@ -573,108 +573,39 @@ export default function AFLCurrentRoundPage() {
     track("current_round_page_view");
   }, [fetchData]);
 
-  // ── DERIVED LISTS — each section uses distinct scoring logic ─────────────────
+  // ── DERIVED LISTS — all from same ranked dataset (canonical) ─────────────────
 
-  const topPicks = useMemo(
-    () => [...rows].sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)).slice(0, 10),
+  const ranked = useMemo(
+    () => [...rows].sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)),
     [rows]
   );
 
+  // 1. Top Picks — top of ranked list
+  const topPicks = useMemo(() => ranked.slice(0, 10), [ranked]);
+
+  // 2. Captain Picks — skip #1 for variation, exclude Top Picks already used
   const captainPicks = useMemo(() => {
-    const topPickIds = new Set(
-      [...rows]
-        .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0))
-        .slice(0, 5)
-        .map((r) => r.player_id)
-    );
+    const usedIds = new Set(topPicks.map((r) => r.player_id));
+    return ranked.filter((r) => !usedIds.has(r.player_id)).slice(0, 8);
+  }, [ranked, topPicks]);
 
-    const captainScore = (r: RankingRow): number => {
-      const proj = r.projection_final ?? 0;
-      const consistency = r.consistency_score != null ? Number(r.consistency_score) / 100 : 0.5;
-      const matchup = r.matchup_rating != null ? Math.min(Number(r.matchup_rating), 1.5) : 1.0;
-      return proj * 0.6 * (1 + consistency * 0.25) * (1 + (matchup - 1) * 0.15);
-    };
-
-    const primary = [...rows]
-      .filter(
-        (r) =>
-          (r.projection_final ?? 0) >= 95 &&
-          (r.consistency_score ?? 0) >= 45 &&
-          !topPickIds.has(r.player_id)
-      )
-      .sort((a, b) => captainScore(b) - captainScore(a))
-      .slice(0, 8);
-
-    if (primary.length >= 2) return primary;
-
-    const primaryIds = new Set(primary.map((r) => r.player_id));
-    const fallback = [...rows]
-      .filter((r) => !topPickIds.has(r.player_id) && !primaryIds.has(r.player_id))
-      .sort((a, b) => captainScore(b) - captainScore(a))
-      .slice(0, 2 - primary.length);
-
-    return [...primary, ...fallback];
-  }, [rows]);
-
+  // 3. Value Plays — ranked by value_score desc, exclude Top Picks + Captain Picks
   const valuePlays = useMemo(() => {
-    const topPickIds = new Set(
-      [...rows]
-        .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0))
-        .slice(0, 5)
-        .map((r) => r.player_id)
-    );
-
-    const sortedByPrice = [...rows]
-      .filter((r) => r.price != null && r.price > 0)
-      .sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
-    const topPriceIds = new Set(sortedByPrice.slice(0, 3).map((r) => r.player_id));
-
-    return [...rows]
-      .filter(
-        (r) =>
-          r.value_score != null &&
-          r.price != null &&
-          r.price > 0 &&
-          (r.games_played ?? 0) >= 1 &&
-          (r.value_score ?? 0) > 0 &&
-          !topPickIds.has(r.player_id) &&
-          !topPriceIds.has(r.player_id)
-      )
+    const usedIds = new Set([...topPicks, ...captainPicks].map((r) => r.player_id));
+    return [...ranked]
       .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
+      .filter((r) => !usedIds.has(r.player_id))
       .slice(0, 10);
-  }, [rows]);
+  }, [ranked, topPicks, captainPicks]);
 
+  // 4. Trap Alerts — ranked by value_score asc (worst value), exclude all above
   const trapAlerts = useMemo(() => {
-    const baseFilter = [...rows].filter(
-      (r) =>
-        r.value_score != null &&
-        r.price != null &&
-        r.price > 0 &&
-        (r.games_played ?? 0) >= 1 &&
-        (r.value_score ?? 0) < -3
-    );
-
-    const sorted = baseFilter
+    const usedIds = new Set([...topPicks, ...captainPicks, ...valuePlays].map((r) => r.player_id));
+    return [...ranked]
       .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))
+      .filter((r) => !usedIds.has(r.player_id))
       .slice(0, 8);
-
-    if (sorted.length >= 2) return sorted;
-
-    const sortedIds = new Set(sorted.map((r) => r.player_id));
-    const fallback = [...rows]
-      .filter(
-        (r) =>
-          r.value_score != null &&
-          r.price != null &&
-          r.price > 0 &&
-          (r.games_played ?? 0) >= 1 &&
-          !sortedIds.has(r.player_id)
-      )
-      .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))
-      .slice(0, 2 - sorted.length);
-
-    return [...sorted, ...fallback];
-  }, [rows]);
+  }, [ranked, topPicks, captainPicks, valuePlays]);
 
   // ── HERO STATS ──────────────────────────────────────────────────────────────
   const topCaptainProj = captainPicks[0]?.projection_final ?? topPicks[0]?.projection_final ?? null;
