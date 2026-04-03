@@ -788,8 +788,8 @@ export default function AFLPlayerPage() {
         <meta name="author" content="Neeko Sports" />
         <meta property="article:modified_time" content={new Date().toISOString()} />
 
-        <script type="application/ld+json">
-          {JSON.stringify({
+        <script type="application/ld+json">{JSON.stringify([
+          {
             "@context": "https://schema.org",
             "@type": "Person",
             "name": player.player_name,
@@ -801,8 +801,17 @@ export default function AFLPlayerPage() {
             "jobTitle": getPositionName(player.player_position),
             "description": pageDescription,
             "url": pageUrl
-          })}
-        </script>
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
+              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy Rankings", "item": "https://neekostats.com.au/sports/afl/rankings" },
+              { "@type": "ListItem", "position": 3, "name": player.player_name, "item": pageUrl }
+            ]
+          }
+        ])}</script>
       </Helmet>
 
       <div className="min-h-screen bg-[#0e0e0e]">

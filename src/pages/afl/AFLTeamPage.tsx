@@ -87,13 +87,36 @@ export default function AFLTeamPage() {
       <Helmet>
         <title>{pageTitle}</title>
         <meta name="description" content={pageDescription} />
-        <meta name="keywords" content={`${teamName}, AFL Fantasy, team players, roster, rankings, 2026 season`} />
+        <meta name="keywords" content={`${teamName}, AFL Fantasy, AFL Fantasy 2026, team players, roster, rankings, projections, captain picks, value plays, ${teamName} fantasy tips`} />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDescription} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={pageUrl} />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta property="og:site_name" content="Neeko Sports" />
         <link rel="canonical" href={pageUrl} />
         <meta name="robots" content="index, follow" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+        <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "CollectionPage",
+          "name": pageTitle,
+          "description": pageDescription,
+          "url": pageUrl,
+          "dateModified": new Date().toISOString().slice(0, 10),
+          "publisher": { "@type": "Organization", "name": "Neeko Sports", "url": "https://neekostats.com.au" },
+          "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
+              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy Rankings", "item": "https://neekostats.com.au/sports/afl/rankings" },
+              { "@type": "ListItem", "position": 3, "name": teamName, "item": pageUrl }
+            ]
+          }
+        })}</script>
       </Helmet>
 
       <div className="min-h-screen bg-[#0e0e0e]">

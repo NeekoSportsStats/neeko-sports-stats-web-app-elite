@@ -12,5 +12,12 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /admin
+Disallow: /account
+Disallow: /billing
+Disallow: /checkout
+Disallow: /success
+Disallow: /cancel
+Disallow: /functions/
 
 Sitemap: https://neekostats.com.au/sitemap.xml
