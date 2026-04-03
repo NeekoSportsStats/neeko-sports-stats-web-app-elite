@@ -7,6 +7,7 @@ import {
   AreaChart,
   Tooltip,
   ReferenceLine,
+  XAxis,
 } from "recharts";
 import { supabase } from "@/lib/supabaseClient";
 import { nameToSlug } from "@/lib/slugs";
@@ -28,8 +29,10 @@ function SparkTooltip({ active, payload }: any) {
 
 // ─── Full-width interactive sparkline ─────────────────────────────────────────
 
+interface SparkPoint { score: number; label: string; }
+
 interface FullSparklineProps {
-  points: number[];
+  points: SparkPoint[];
   color: "green" | "red" | "neutral";
   projection?: number | null;
 }
@@ -41,53 +44,70 @@ function FullSparkline({ points, color, projection }: FullSparklineProps) {
                         "#94a3b8";
 
   const gradientId = `spark-fill-${color}`;
+  const scores = points.map((p) => p.score);
+  const min = Math.min(...scores);
+  const max = Math.max(...scores);
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
 
-  const data = points.map((v, i) => ({ game: i + 1, score: v }));
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
+  const tickIndices: number[] = points.length <= 1 ? [0] : isMobile
+    ? [0, Math.floor((points.length - 1) / 2), points.length - 1]
+    : points.map((_, i) => i);
 
-  const min = Math.min(...points);
-  const max = Math.max(...points);
-  const avg = points.reduce((a, b) => a + b, 0) / points.length;
+  const tickFormatter = (_: string, index: number) =>
+    tickIndices.includes(index) ? points[index]?.label ?? "" : "";
 
   return (
-    <div className="w-full" style={{ height: 80 }}>
-      <ResponsiveContainer width="100%" height={80}>
-        <AreaChart data={data} margin={{ top: 6, right: 4, bottom: 0, left: 4 }}>
-          <defs>
-            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%"   stopColor={stroke} stopOpacity={0.22} />
-              <stop offset="100%" stopColor={stroke} stopOpacity={0} />
-            </linearGradient>
-          </defs>
+    <div className="w-full">
+      <div style={{ borderTop: "1px dashed rgba(255,255,255,0.08)" }}>
+        <ResponsiveContainer width="100%" height={80}>
+          <AreaChart data={points} margin={{ top: 6, right: 4, bottom: 18, left: 4 }}>
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%"   stopColor={stroke} stopOpacity={0.22} />
+                <stop offset="100%" stopColor={stroke} stopOpacity={0} />
+              </linearGradient>
+            </defs>
 
-          <ReferenceLine
-            y={avg}
-            stroke={stroke}
-            strokeOpacity={0.15}
-            strokeDasharray="4 4"
-            strokeWidth={1}
-          />
+            <ReferenceLine
+              y={avg}
+              stroke={stroke}
+              strokeOpacity={0.15}
+              strokeDasharray="4 4"
+              strokeWidth={1}
+            />
 
-          <Area
-            type="monotone"
-            dataKey="score"
-            stroke={stroke}
-            strokeWidth={1.8}
-            dot={false}
-            activeDot={{ r: 4, fill: stroke, strokeWidth: 0 }}
-            fill={`url(#${gradientId})`}
-            isAnimationActive
-            animationDuration={500}
-            animationEasing="ease-out"
-          />
+            <XAxis
+              dataKey="label"
+              tickFormatter={tickFormatter}
+              tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 9 }}
+              axisLine={false}
+              tickLine={false}
+              interval={0}
+              height={16}
+            />
 
-          <Tooltip
-            content={<SparkTooltip />}
-            cursor={{ stroke: stroke, strokeOpacity: 0.25, strokeWidth: 1, strokeDasharray: "3 3" }}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
+            <Area
+              type="monotone"
+              dataKey="score"
+              stroke={stroke}
+              strokeWidth={1.8}
+              dot={false}
+              activeDot={{ r: 4, fill: stroke, strokeWidth: 0 }}
+              fill={`url(#${gradientId})`}
+              isAnimationActive
+              animationDuration={500}
+              animationEasing="ease-out"
+            />
 
-      {/* Min / avg / max labels */}
+            <Tooltip
+              content={<SparkTooltip />}
+              cursor={{ stroke: stroke, strokeOpacity: 0.25, strokeWidth: 1, strokeDasharray: "3 3" }}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+
       <div className="flex justify-between mt-0.5 px-1">
         <span className="text-[9px] text-white/20 tabular-nums">Low {Math.round(min)}</span>
         <span className="text-[9px] text-white/20 tabular-nums">Avg {Math.round(avg)}</span>
@@ -106,9 +126,18 @@ interface ExpandedPlayerRowProps {
   onUpgrade: () => void;
 }
 
+function formatRoundLabel(week: number): string {
+  if (week === 0) return "OR";
+  if (week === 28) return "EF";
+  if (week === 29) return "QF";
+  if (week === 30) return "SF";
+  if (week === 31) return "GF";
+  return `R${week}`;
+}
+
 export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: ExpandedPlayerRowProps) {
   const navigate = useNavigate();
-  const [scoreHistory, setScoreHistory] = useState<number[]>([]);
+  const [scoreHistory, setScoreHistory] = useState<SparkPoint[]>([]);
   const [historyLoading, setHistoryLoading] = useState(true);
 
   useEffect(() => {
@@ -130,10 +159,13 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
         if (error) throw error;
 
         if (!cancelled && data && Array.isArray(data) && data.length > 0) {
-          const pts = (data as any[])
+          const pts: SparkPoint[] = (data as any[])
             .filter((d: any) => d.fantasy_points != null)
-            .map((d: any) => Number(d.fantasy_points));
-          console.log(row.player_name, pts);
+            .map((d: any) => ({
+              score: Number(d.fantasy_points),
+              label: d.round_label ?? formatRoundLabel(Number(d.round_number ?? 0)),
+            }));
+          console.log(row.player_name, pts.map((p) => p.label));
           setScoreHistory(pts);
           return;
         }
@@ -151,10 +183,13 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
           .limit(10);
 
         if (!cancelled && fallback && Array.isArray(fallback)) {
-          const pts = [...fallback]
+          const pts: SparkPoint[] = [...fallback]
             .reverse()
-            .map((d: any) => Number(d.fantasy_score));
-          console.log(row.player_name, "(fallback)", pts);
+            .map((d: any) => ({
+              score: Number(d.fantasy_score),
+              label: formatRoundLabel(Number(d.week ?? 0)),
+            }));
+          console.log(row.player_name, "(fallback)", pts.map((p) => p.label));
           setScoreHistory(pts);
         }
       } catch {
@@ -169,6 +204,7 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
   }, [row.player_id, row.player_name]);
 
   // Derived values
+  const scoreCount = scoreHistory.length;
   const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
   const be   = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
   const rawEdge = proj != null && be != null && !row.is_bye ? proj - be : null;
@@ -249,21 +285,21 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
             )}
 
             {/* 3. Full-width sparkline */}
-            {(historyLoading || scoreHistory.length >= 3) && (
+            {(historyLoading || scoreCount >= 3) && (
             <div className="w-full">
               <p className="text-[9px] text-white/25 uppercase tracking-wider mb-1.5">
-                Last {historyLoading ? "—" : scoreHistory.length} games
+                Last {historyLoading ? "—" : scoreCount} games
               </p>
 
               {historyLoading ? (
-                <div className="w-full rounded bg-white/[0.03] animate-pulse" style={{ height: 80 }} />
-              ) : scoreHistory.length >= 3 ? (
+                <div className="w-full rounded bg-white/[0.03] animate-pulse" style={{ height: 98 }} />
+              ) : scoreCount >= 3 ? (
                 <FullSparkline points={scoreHistory} color={sparkColor} projection={proj} />
               ) : null}
             </div>
             )}
 
-            {!historyLoading && scoreHistory.length < 3 && (
+            {!historyLoading && scoreCount < 3 && (
               <p className="text-[11px] text-white/20 italic">No recent games</p>
             )}
 
