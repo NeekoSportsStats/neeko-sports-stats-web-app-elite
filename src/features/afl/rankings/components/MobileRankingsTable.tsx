@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
-import { Lock, Crown } from "lucide-react";
+import { Lock, Crown, ChevronDown } from "lucide-react";
 import { RankingRow, RankingsTab } from "./types";
 import {
   fmt,
+  fmtPrice,
   getNeekoRatingBadge,
   getDisplayRecommendation,
   resolveRecommendationColor,
   FREE_FULL_ROWS, PREMIUM_INITIAL_ROWS,
 } from "./helpers";
 
-// ─── Edge value ───────────────────────────────────────────────────────────────
+// ─── Edge helpers ─────────────────────────────────────────────────────────────
 
 function computeEdge(row: RankingRow): number | null {
   const proj = row.projection_final ?? null;
@@ -26,6 +27,20 @@ function edgeColor(edge: number): string {
   if (edge >= 10) return "text-green-300";
   if (edge >= -5) return "text-neutral-300";
   return "text-red-400";
+}
+
+function buildShortWhy(row: RankingRow, action: string): string {
+  const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
+  const be = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
+  const diff = proj != null && be != null ? Math.round(proj - be) : null;
+
+  if (diff === null || proj === null) return row.why ?? "";
+
+  const label = action.toUpperCase();
+  if (label === "BUY" || label === "STRONG BUY") return `+${diff} vs BE (${proj})`;
+  if (label === "HOLD") return `Near BE (${proj})`;
+  if (label === "AVOID" || label === "SELL") return `${diff > 0 ? "+" : ""}${diff} vs BE (${proj})`;
+  return `Edge ${diff > 0 ? "+" : ""}${diff} (${proj})`;
 }
 
 // ─── Action badge ─────────────────────────────────────────────────────────────
@@ -95,6 +110,92 @@ function StatusBadges({ row }: { row: RankingRow }) {
   return <>{badges}</>;
 }
 
+// ─── Expanded section ─────────────────────────────────────────────────────────
+
+function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec: string | null }) {
+  const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
+  const be = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
+  const edge = computeEdge(row);
+  const edgeSign = edge != null ? (edge > 0 ? `+${edge}` : String(edge)) : null;
+
+  const edgeLabel = edge != null && edgeSign != null
+    ? `${edgeSign} vs BE — ${edge >= 15 ? "strong underpriced play" : edge >= 5 ? "moderate edge" : edge >= -5 ? "near breakeven" : "price risk"}`
+    : null;
+
+  const longWhy = (row as any).long ?? row.why ?? null;
+
+  const neekoRBadge = getNeekoRatingBadge(row.neeko_rating ?? null);
+  const conf = row.projection_confidence != null ? Math.round(row.projection_confidence) : null;
+  const price = (row as any).price ?? null;
+
+  return (
+    <div className="mt-3 rounded-xl border border-white/[0.08] bg-[#111] p-4 flex flex-col gap-3">
+      {/* Section 1 — edge summary */}
+      {edgeLabel && (
+        <div>
+          <p className="text-[10px] text-white/30 uppercase tracking-wide font-semibold mb-1">Edge Summary</p>
+          <p className="text-[13px] font-semibold text-white/80 leading-snug">{edgeLabel}</p>
+        </div>
+      )}
+
+      {/* Section 2 — full AI WHY */}
+      {longWhy && (
+        <div>
+          <p className="text-[10px] text-white/30 uppercase tracking-wide font-semibold mb-1">AI Analysis</p>
+          <p className="text-[12px] text-white/55 leading-relaxed line-clamp-4">{longWhy}</p>
+        </div>
+      )}
+
+      {/* Section 3 — metrics grid */}
+      <div className="grid grid-cols-3 gap-2 pt-1">
+        {conf != null && (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] text-white/30 font-normal">Confidence</span>
+            <span className="text-[13px] font-bold text-white/70 tabular-nums">{conf}%</span>
+          </div>
+        )}
+        {price != null && (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] text-white/30 font-normal">Price</span>
+            <span className="text-[13px] font-bold text-white/70 tabular-nums">{fmtPrice(price)}</span>
+          </div>
+        )}
+        {row.neeko_rating != null && (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] text-white/30 font-normal">Neeko Rtg</span>
+            <span
+              className={`text-[13px] font-bold tabular-nums ${neekoRBadge.text}`}
+              style={neekoRBadge.glow ? { filter: neekoRBadge.glow } : undefined}
+            >
+              {Number(row.neeko_rating).toFixed(0)}
+            </span>
+          </div>
+        )}
+        {proj != null && (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] text-white/30 font-normal">Projection</span>
+            <span className="text-[13px] font-bold text-[#F5C84C] tabular-nums">{proj}</span>
+          </div>
+        )}
+        {be != null && (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] text-white/30 font-normal">Breakeven</span>
+            <span className="text-[13px] font-bold text-white/60 tabular-nums">{be}</span>
+          </div>
+        )}
+        {edge != null && !row.is_bye && (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] text-white/30 font-normal">Edge</span>
+            <span className={`text-[13px] font-bold tabular-nums ${edgeColor(edge)}`}>
+              {edge > 0 ? `+${edge}` : edge}
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Single player card ────────────────────────────────────────────────────────
 
 interface PlayerCardProps {
@@ -107,8 +208,8 @@ interface PlayerCardProps {
 }
 
 function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: PlayerCardProps) {
+  const [expanded, setExpanded] = useState(false);
   const rank = idx + 1;
-  const neekoRBadge = getNeekoRatingBadge(row.neeko_rating ?? null);
 
   const proj = row.projection_final ?? null;
   const breakeven =
@@ -117,15 +218,24 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
       : null;
   const edge = computeEdge(row);
 
-  const whyText = isPremium ? (row.why ?? null) : null;
+  const displayRec = getDisplayRecommendation(row, activeTab);
+  const shortWhy = isPremium && displayRec ? buildShortWhy(row, displayRec) : null;
+
+  function handleTap() {
+    if (isPremium) {
+      setExpanded((e) => !e);
+    } else {
+      onTap();
+    }
+  }
 
   return (
     <div
       className="rounded-xl border border-white/[0.07] bg-[#0e0e0e] p-4 flex flex-col gap-2.5 active:bg-white/[0.03] transition-colors cursor-pointer"
-      onClick={onTap}
+      onClick={handleTap}
       style={{ touchAction: "manipulation" }}
     >
-      {/* Row 1 — rank + name + ACTION BADGE (decision-first) */}
+      {/* Row 1 — rank + name + ACTION BADGE */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
           <span className="text-xs text-white/25 tabular-nums w-5 shrink-0 text-right">{rank}</span>
@@ -144,9 +254,8 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
         </div>
       </div>
 
-      {/* Row 2 — Proj | BE | Edge | Rating stats */}
+      {/* Row 2 — Proj | BE | Edge inline stats */}
       <div className="flex items-center gap-0 pl-7">
-        {/* Projection */}
         <div className="flex flex-col items-start pr-3">
           <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Proj</span>
           <span className="text-[14px] font-bold text-[#F5C84C] tabular-nums">
@@ -154,7 +263,6 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
           </span>
         </div>
 
-        {/* BE */}
         {breakeven !== null && (
           <>
             <span className="text-white/15 text-sm px-1.5">|</span>
@@ -165,7 +273,6 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
           </>
         )}
 
-        {/* Edge */}
         {edge !== null && !row.is_bye && (
           <>
             <span className="text-white/15 text-sm px-1.5">|</span>
@@ -177,30 +284,27 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
             </div>
           </>
         )}
-
-        {/* Rating */}
-        {row.neeko_rating != null && (
-          <>
-            <span className="text-white/15 text-sm px-1.5">|</span>
-            <div className="flex flex-col items-start px-2">
-              <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Rtg</span>
-              <span
-                className={`text-[14px] font-bold tabular-nums ${neekoRBadge.text}`}
-                style={neekoRBadge.glow ? { filter: neekoRBadge.glow } : undefined}
-              >
-                {Number(row.neeko_rating).toFixed(0)}
-              </span>
-            </div>
-          </>
-        )}
       </div>
 
-      {/* Row 3 — WHY (premium: 2 lines max, free: locked teaser) */}
-      {isPremium && whyText ? (
-        <p className="pl-7 text-[12px] text-white/50 leading-snug line-clamp-2">
-          {whyText}
-        </p>
-      ) : !isPremium ? (
+      {/* Row 3 — Short WHY + tap affordance */}
+      {isPremium ? (
+        <div className="pl-7 flex items-center justify-between gap-2">
+          {shortWhy ? (
+            <span className="text-[12px] text-white/45 leading-none">{shortWhy}</span>
+          ) : (
+            <span className="text-[11px] text-white/20 italic leading-none">—</span>
+          )}
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="text-[10px] text-white/25">
+              {expanded ? "Collapse" : "Tap to expand"}
+            </span>
+            <ChevronDown
+              size={12}
+              className={`text-white/20 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+            />
+          </div>
+        </div>
+      ) : (
         <p className="pl-7 text-[11px] text-white/25 leading-snug">
           AI insight locked —{" "}
           <button
@@ -210,7 +314,12 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
             unlock
           </button>
         </p>
-      ) : null}
+      )}
+
+      {/* Expanded section */}
+      {expanded && isPremium && (
+        <ExpandedCardSection row={row} displayRec={displayRec} />
+      )}
     </div>
   );
 }
@@ -254,7 +363,7 @@ function LoadingSkeletonCards() {
             <div className="h-6 w-16 animate-pulse rounded-md bg-white/8" />
           </div>
           <div className="flex gap-4 pl-7">
-            {[48, 40, 48, 40].map((w, j) => (
+            {[48, 40, 48].map((w, j) => (
               <div key={j} className="flex flex-col gap-1">
                 <div className="h-2 w-8 animate-pulse rounded bg-white/5" />
                 <div className="h-4 animate-pulse rounded bg-white/8" style={{ width: w }} />

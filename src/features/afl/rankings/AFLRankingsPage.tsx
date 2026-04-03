@@ -48,11 +48,11 @@ function KpiTiles({ rows }: { rows: RankingRow[] }) {
   ];
 
   return (
-    <div className="mb-5 grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div className="mb-3 grid grid-cols-2 md:grid-cols-4 gap-2">
       {tiles.map(({ label, value, sub, color }) => (
-        <div key={label} className="rounded-xl border border-white/5 bg-white/[0.03] px-4 py-3">
-          <p className="text-[10px] text-white/35 uppercase tracking-wider mb-1">{label}</p>
-          <p className={`text-xl font-bold tabular-nums ${color}`}>{value}</p>
+        <div key={label} className="rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2">
+          <p className="text-[10px] text-white/35 uppercase tracking-wider mb-0.5">{label}</p>
+          <p className={`text-lg font-bold tabular-nums ${color}`}>{value}</p>
           <p className="text-[10px] text-white/25 mt-0.5">{sub}</p>
         </div>
       ))}
@@ -108,9 +108,9 @@ function FreeValueStrip({ rows }: { rows: RankingRow[] }) {
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-3 mb-6">
+    <div className="grid grid-cols-3 gap-2 mb-4">
       {cards.map(({ icon, label, value, sub, color }) => (
-        <div key={label} className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3.5">
+        <div key={label} className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2.5">
           <div className="flex items-center gap-1.5 mb-2">
             {icon}
             <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium">{label}</p>
@@ -582,7 +582,11 @@ export default function AFLRankingsPage() {
       });
     } else {
       if (safeActiveTab === "best") {
-        filtered = [...filtered].sort((a, b) => (b.neeko_rating_scaled ?? b.neeko_rating ?? 0) - (a.neeko_rating_scaled ?? a.neeko_rating ?? 0));
+        filtered = [...filtered].sort((a, b) => {
+          const edgeA = a.projection_final != null && a.breakeven != null ? a.projection_final - Number(a.breakeven) : -Infinity;
+          const edgeB = b.projection_final != null && b.breakeven != null ? b.projection_final - Number(b.breakeven) : -Infinity;
+          return edgeB - edgeA;
+        });
       } else if (safeActiveTab === "value") {
         filtered = filtered.filter((r) => (r.games_played ?? 0) >= 1 && r.price != null && r.price > 0);
         filtered = [...filtered].sort((a, b) => ((b.best_value_score ?? b.value_score ?? -Infinity) - (a.best_value_score ?? a.value_score ?? -Infinity)));
@@ -833,11 +837,11 @@ export default function AFLRankingsPage() {
 
       <div className="min-h-screen bg-[#070707] text-white">
 
-        <div className="px-4 pt-10 pb-4 md:px-8">
+        <div className="px-4 pt-7 pb-3 md:px-8">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
-              <p className="text-sm text-white/40 mt-1">Fantasy projection rankings powered by AI</p>
+              <p className="text-sm text-white/40 mt-0.5">Edge-ranked by Proj vs Breakeven — updated weekly</p>
             </div>
             <div className="flex items-center gap-3 mt-1 shrink-0">
               {updatedAt && (
@@ -875,7 +879,7 @@ export default function AFLRankingsPage() {
           {updatedAt && <StaleDataWarning timestamp={updatedAt.ts} className="mt-3" />}
         </div>
 
-        <div className="px-4 pb-16 md:px-8">
+        <div className="px-4 pb-10 md:px-8">
 
           <div className="mb-0 flex items-center gap-2 border-b border-white/[0.06]">
             {TABS.map(({ key, label, premiumOnly }) => {
@@ -896,7 +900,7 @@ export default function AFLRankingsPage() {
             })}
           </div>
 
-          <p className="text-xs text-white/30 mt-3 mb-4 leading-relaxed max-w-2xl">
+          <p className="text-xs text-white/30 mt-2 mb-3 leading-relaxed max-w-2xl">
             {TAB_DESCRIPTIONS[safeActiveTab]}
           </p>
 
