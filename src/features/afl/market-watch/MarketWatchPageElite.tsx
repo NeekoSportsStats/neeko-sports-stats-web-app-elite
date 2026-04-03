@@ -27,6 +27,7 @@ export default function MarketWatchPageElite() {
   const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(100);
   const [searchedPlayer, setSearchedPlayer] = useState<DerivedPlayer | null>(null);
+  const [seoOpen, setSeoOpen] = useState(false);
 
   const fetchData = useCallback(async (premium: boolean) => {
     setLoading(true);
@@ -334,30 +335,6 @@ export default function MarketWatchPageElite() {
           />
         </div>
 
-        {/* SEO Content Block */}
-        <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 space-y-5">
-          <div>
-            <h2 className="text-base font-semibold text-white mb-3">Who to Trade in AFL Fantasy — Market Watch Guide</h2>
-            <p className="text-sm text-white/55 leading-relaxed">
-              Market Watch is your weekly AFL Fantasy trade advice hub — tracking price movements and surfacing the best trade targets, holds, and fades each round. Every player is scored using Neeko's value model, which compares projected points output against current fantasy price to identify inefficiencies: who to trade in before a price rise, who to hold, and who to trade out before a price drop.
-            </p>
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-white/80 mb-2">How to read the categories</h3>
-            <ul className="space-y-2 text-sm text-white/50 leading-relaxed">
-              <li><strong className="text-white/70">Target (Buy)</strong> — Underpriced relative to projected output. Strong trade-in candidates who should rise in price over the next 1–3 rounds.</li>
-              <li><strong className="text-white/70">Watch (Hold)</strong> — Fairly valued. Keep in your squad but no urgent action required this week.</li>
-              <li><strong className="text-white/70">Avoid (Sell)</strong> — Overpriced for their current projection. Consider trading out before their price drops.</li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-white/80 mb-2">For this round</h3>
-            <p className="text-sm text-white/50 leading-relaxed">
-              Market Watch updates after weekly AFL Fantasy price changes. The value score and breakeven are recalculated each round based on the latest prices and projection data. For focused round decisions, also check the <a href="/sports/afl/edge-board" className="text-white/70 underline underline-offset-2 hover:text-white transition-colors">Edge Board</a> for top captain and trap picks, or the <a href="/sports/afl/current-round" className="text-white/70 underline underline-offset-2 hover:text-white transition-colors">Current Round tips</a> for this week's full analysis.
-            </p>
-          </div>
-        </div>
-
         {/* Search + Controls */}
         <div className="space-y-3">
           {/* Search row */}
@@ -426,6 +403,55 @@ export default function MarketWatchPageElite() {
             </button>
           </div>
         )}
+
+        {/* SEO Content — always in DOM for indexing, collapsed by default */}
+        <div className="border border-white/[0.08] rounded-xl overflow-hidden">
+          <button
+            onClick={() => setSeoOpen(o => !o)}
+            className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-white/[0.02] transition-colors"
+          >
+            <h2 className="text-sm font-semibold text-white/70">
+              AFL Fantasy Trade Guide (How to Use Market Watch)
+            </h2>
+            <span className="text-xs text-white/40 ml-4 shrink-0">
+              {seoOpen ? "Hide" : "Show"}
+            </span>
+          </button>
+
+          <div
+            className={`transition-all duration-300 ease-in-out ${seoOpen ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"} overflow-hidden`}
+            aria-hidden={!seoOpen}
+          >
+            <div className="px-5 pb-6 space-y-4 border-t border-white/[0.06]">
+              <div className="pt-4">
+                <p className="text-sm text-white/55 leading-relaxed">
+                  Market Watch is your weekly AFL Fantasy trade advice hub — tracking price movements and surfacing the best trade targets, holds, and fades each round. Every player is scored using Neeko's value model, which compares projected points output against current fantasy price to identify inefficiencies: who to trade in before a price rise, who to hold, and who to trade out before a price drop.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-white/70 mb-2">How to read the categories</h3>
+                <ul className="space-y-2 text-sm text-white/50 leading-relaxed">
+                  <li><strong className="text-white/65">Target (Buy)</strong> — Underpriced relative to projected output. Strong trade-in candidates who should rise in price over the next 1–3 rounds.</li>
+                  <li><strong className="text-white/65">Watch (Hold)</strong> — Fairly valued. Keep in your squad but no urgent action required this week.</li>
+                  <li><strong className="text-white/65">Avoid (Sell)</strong> — Overpriced for their current projection. Consider trading out before their price drops.</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-white/70 mb-2">For this round</h3>
+                <p className="text-sm text-white/50 leading-relaxed">
+                  Market Watch updates after weekly AFL Fantasy price changes. The value score and breakeven are recalculated each round based on the latest prices and projection data. For focused round decisions, also check the <a href="/sports/afl/edge-board" className="text-white/65 underline underline-offset-2 hover:text-white transition-colors">Edge Board</a> for top captain and trap picks, or the <a href="/sports/afl/current-round" className="text-white/65 underline underline-offset-2 hover:text-white transition-colors">Current Round tips</a> for this week's full analysis.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {!seoOpen && (
+            <div className="sr-only">
+              <p>Market Watch is your weekly AFL Fantasy trade advice hub — tracking price movements and surfacing the best trade targets, holds, and fades each round.</p>
+              <p>Target (Buy) — Underpriced relative to projected output. Watch (Hold) — Fairly valued. Avoid (Sell) — Overpriced for their current projection.</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Player Detail Panel */}
