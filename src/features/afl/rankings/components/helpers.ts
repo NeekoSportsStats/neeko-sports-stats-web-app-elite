@@ -489,12 +489,12 @@ export const TAB_DESCRIPTIONS: Record<RankingsTab, string> = {
 
 // ─── Gating constants ──────────────────────────────────────────────────────────
 
-// SEO-SAFE FREEMIUM: Top 12 players visible for SEO crawler exposure
-export const FREE_FULL_ROWS = 12;  // Fully accessible players for free users
-export const FREE_PARTIAL_ROWS = 8;  // No longer used - kept for compatibility
+// FREEMIUM GATING: 8 players visible for free users
+export const FREE_FULL_ROWS = 8;   // Fully accessible players for free users
+export const FREE_PARTIAL_ROWS = 4; // Kept for compatibility
 
 export function getFreeTier(idx: number): "full" | "partial" | "locked" {
   if (idx < FREE_FULL_ROWS) return "full";
-  return "locked";  // No more partial rows - clean cut after row 12
+  return "locked";
 }
 

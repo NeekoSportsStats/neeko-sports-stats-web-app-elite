@@ -120,14 +120,10 @@ export default function MarketWatchPageElite() {
     return classifyPlayers(players);
   }, [players]);
 
-  // MEMOIZE: All derived players sorted by category priority, then value_score DESC, then projection DESC
+  // MEMOIZE: All derived players sorted by signal strength (ABS value_score DESC)
+  // This creates a mixed list: strong BUYs, strong SELLs, and strong HOLDs are all
+  // interleaved by conviction — not grouped by category — for a realistic view.
   const allDerivedPlayers = useMemo(() => {
-    const CATEGORY_PRIORITY: Record<string, number> = {
-      BUY: 0,
-      HOLD: 1,
-      SELL: 2,
-    };
-
     const all = [
       ...(classified?.buys ?? []),
       ...(classified?.holds ?? []),
@@ -135,12 +131,11 @@ export default function MarketWatchPageElite() {
     ].filter(p => p && p.player_id);
 
     all.sort((a, b) => {
-      const pa = CATEGORY_PRIORITY[a._category] ?? 1;
-      const pb = CATEGORY_PRIORITY[b._category] ?? 1;
-      if (pa !== pb) return pa - pb;
-      const vsA = a.value_score ?? 0;
-      const vsB = b.value_score ?? 0;
-      if (vsB !== vsA) return vsB - vsA;
+      // Primary: absolute value_score descending (strongest signals first, regardless of direction)
+      const absA = Math.abs(a.value_score ?? 0);
+      const absB = Math.abs(b.value_score ?? 0);
+      if (absB !== absA) return absB - absA;
+      // Secondary: projection descending
       return (b.projection ?? 0) - (a.projection ?? 0);
     });
 
@@ -199,10 +194,14 @@ export default function MarketWatchPageElite() {
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
 
-  const topTarget = classified?.buys?.[0] || null;
-  const topWatch = classified?.holds?.[0] || null;
-  const topAvoid = classified?.sells?.[0] ||
-    allDerivedPlayers.find(p => p._category === 'SELL') ||
+  // Top cards: best conviction player from each category
+  // BUY: highest value_score | HOLD: highest projection (closest to neutral) | SELL: lowest value_score
+  const topTarget = [...(classified?.buys ?? [])]
+    .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))[0] || null;
+  const topWatch = [...(classified?.holds ?? [])]
+    .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))[0] || null;
+  const topAvoid = [...(classified?.sells ?? [])]
+    .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))[0] ||
     [...allDerivedPlayers]
       .filter(p => (p.value_score ?? 0) < 0)
       .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))[0] || null;
