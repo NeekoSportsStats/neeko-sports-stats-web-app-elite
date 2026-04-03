@@ -583,29 +583,34 @@ export default function AFLCurrentRoundPage() {
   // 1. Top Picks — top of ranked list
   const topPicks = useMemo(() => ranked.slice(0, 10), [ranked]);
 
-  // 2. Captain Picks — skip #1 for variation, exclude Top Picks already used
+  // 2. Captain Picks — positions 2-6 of ranked list (skip #1 used in Top Picks hero)
   const captainPicks = useMemo(() => {
-    const usedIds = new Set(topPicks.map((r) => r.player_id));
-    return ranked.filter((r) => !usedIds.has(r.player_id)).slice(0, 8);
-  }, [ranked, topPicks]);
+    const pool = ranked.slice(1, 6);
+    const result = pool.slice(0, 5);
+    console.log("Captain Picks:", result.length);
+    return result;
+  }, [ranked]);
 
   // 3. Value Plays — ranked by value_score desc, exclude Top Picks + Captain Picks
   const valuePlays = useMemo(() => {
     const usedIds = new Set([...topPicks, ...captainPicks].map((r) => r.player_id));
-    return [...ranked]
+    const result = [...ranked]
       .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
       .filter((r) => !usedIds.has(r.player_id))
       .slice(0, 10);
+    return result;
   }, [ranked, topPicks, captainPicks]);
 
-  // 4. Trap Alerts — ranked by value_score asc (worst value), exclude all above
+  // 4. Trap Alerts — worst value_score from full ranked list, exclude Top Picks + Captain Picks
   const trapAlerts = useMemo(() => {
-    const usedIds = new Set([...topPicks, ...captainPicks, ...valuePlays].map((r) => r.player_id));
-    return [...ranked]
+    const usedIds = new Set([...topPicks, ...captainPicks].map((r) => r.player_id));
+    const result = [...ranked]
       .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))
       .filter((r) => !usedIds.has(r.player_id))
       .slice(0, 8);
-  }, [ranked, topPicks, captainPicks, valuePlays]);
+    console.log("Trap Alerts:", result.length);
+    return result;
+  }, [ranked, topPicks, captainPicks]);
 
   // ── HERO STATS ──────────────────────────────────────────────────────────────
   const topCaptainProj = captainPicks[0]?.projection_final ?? topPicks[0]?.projection_final ?? null;
@@ -804,9 +809,8 @@ export default function AFLCurrentRoundPage() {
               onOpenRow={(row, rank) => openRow(row, rank)}
               onUpgrade={() => setShowUpgradeModal(true)}
               hiddenCopy="Who to double this round based on projection + matchup."
-              lockedCta="See captain options →"
-              lockedSubtext="Who to double this round based on projection + matchup."
-              premiumLocked={true}
+              blurCtaLabel="Unlock all captain picks →"
+              blurBadgeText="+3 captain options hidden"
               footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
               renderMetric={(row) =>
                 row.ceiling_estimate != null ? (
@@ -865,9 +869,8 @@ export default function AFLCurrentRoundPage() {
               onOpenRow={(row, rank) => openRow(row, rank)}
               onUpgrade={() => setShowUpgradeModal(true)}
               hiddenCopy="Players flagged as overpriced or high risk this round."
-              lockedCta="See who to avoid →"
-              lockedSubtext="Players flagged as overpriced or high risk this round."
-              premiumLocked={true}
+              blurCtaLabel="Unlock all trap alerts →"
+              blurBadgeText="+6 traps hidden"
               footerLink={{ label: "Market Watch", to: "/sports/afl/market-watch" }}
               renderMetric={(row) =>
                 row.value_score != null ? (

@@ -7,6 +7,7 @@ import {
   FREE_FULL_ROWS,
 } from "./helpers";
 import { InfoTooltip, LockedCell } from "./RankingsModals";
+import { ExpandedPlayerRow } from "./ExpandedPlayerRow";
 
 // ─── Column layout ─────────────────────────────────────────────────────────────
 // # (44) | Player (240) | PROJ (90) | BE (80) | EDGE (90) | ACTION (100) | WHY (flex)
@@ -253,11 +254,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
   const rowClass = `${rowBase} cursor-pointer hover:bg-neutral-900/80 transition-all duration-150 group`;
 
   function handleRowClick() {
-    if (isPremium) {
-      setExpanded((e) => !e);
-    } else {
-      onRowClick();
-    }
+    setExpanded((e) => !e);
   }
 
   return (
@@ -270,12 +267,10 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
             ) : (
               rank
             )}
-            {isPremium && (
-              <ChevronRight
-                size={10}
-                className={`text-white/15 transition-transform duration-150 ${expanded ? "rotate-90 text-[#F5C84C]/50" : ""}`}
-              />
-            )}
+            <ChevronRight
+              size={10}
+              className={`text-white/15 transition-transform duration-150 ${expanded ? "rotate-90 text-[#F5C84C]/50" : ""}`}
+            />
           </span>
         </td>
 
@@ -342,8 +337,8 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
         </td>
       </tr>
 
-      {expanded && isPremium && (
-        <ExpandedPanel row={row} displayRec={displayRec} />
+      {expanded && (
+        <ExpandedPlayerRow row={row} colSpan={TOTAL_COLS} isPremium={isPremium} onUpgrade={onUpgrade} />
       )}
     </>
   );
@@ -424,9 +419,11 @@ interface FreeTableRowProps {
   row: RankingRow;
   idx: number;
   onRowClick: () => void;
+  onUpgrade: () => void;
 }
 
-export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
+export function FreeTableRow({ row, idx, onRowClick, onUpgrade }: FreeTableRowProps) {
+  const [expanded, setExpanded] = useState(false);
   const rank = idx + 1;
   const isTop3 = rank <= 3;
 
@@ -464,17 +461,24 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
     "text-red-400 font-semibold";
 
   return (
+    <>
     <tr
       className={`border-b cursor-pointer hover:bg-neutral-900/80 transition-colors duration-100 group ${isTop3 ? "border-white/[0.06] bg-white/[0.015]" : "border-white/[0.04]"}`}
       style={rowFadeStyle}
-      onClick={onRowClick}
+      onClick={() => setExpanded((e) => !e)}
     >
       <td className="px-3 py-3 text-sm tabular-nums text-center whitespace-nowrap" style={{ width: 44 }}>
-        {isTop3 ? (
-          <span className="text-[#F5C84C]/60 font-bold">{rank}</span>
-        ) : (
-          <span className="text-white/30">{rank}</span>
-        )}
+        <span className="inline-flex items-center gap-0.5">
+          {isTop3 ? (
+            <span className="text-[#F5C84C]/60 font-bold">{rank}</span>
+          ) : (
+            <span className="text-white/30">{rank}</span>
+          )}
+          <ChevronRight
+            size={10}
+            className={`text-white/15 transition-transform duration-150 ${expanded ? "rotate-90 text-[#F5C84C]/50" : ""}`}
+          />
+        </span>
       </td>
       <td className="px-4 py-3 whitespace-nowrap" style={{ minWidth: 160 }}>
         <div>
@@ -507,6 +511,10 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
         )}
       </td>
     </tr>
+    {expanded && (
+      <ExpandedPlayerRow row={row} colSpan={FREE_TOTAL_COLS} isPremium={false} onUpgrade={onUpgrade} />
+    )}
+    </>
   );
 }
 
