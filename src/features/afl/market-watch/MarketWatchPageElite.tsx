@@ -122,9 +122,9 @@ export default function MarketWatchPageElite() {
     return classifyPlayers(players);
   }, [players]);
 
-  // MEMOIZE: All derived players sorted by signal strength (ABS value_score DESC)
-  // This creates a mixed list: strong BUYs, strong SELLs, and strong HOLDs are all
-  // interleaved by conviction — not grouped by category — for a realistic view.
+  // MEMOIZE: All derived players sorted by value_score DESC
+  // BUY signals (positive value_score) appear at top, HOLD in middle, SELL at bottom.
+  // Categories appear mixed naturally — no grouping, ordered by real value.
   const allDerivedPlayers = useMemo(() => {
     const all = [
       ...(classified?.buys ?? []),
@@ -133,11 +133,8 @@ export default function MarketWatchPageElite() {
     ].filter(p => p && p.player_id);
 
     all.sort((a, b) => {
-      // Primary: absolute value_score descending (strongest signals first, regardless of direction)
-      const absA = Math.abs(a.value_score ?? 0);
-      const absB = Math.abs(b.value_score ?? 0);
-      if (absB !== absA) return absB - absA;
-      // Secondary: projection descending
+      const vs = (b.value_score ?? 0) - (a.value_score ?? 0);
+      if (vs !== 0) return vs;
       return (b.projection ?? 0) - (a.projection ?? 0);
     });
 
