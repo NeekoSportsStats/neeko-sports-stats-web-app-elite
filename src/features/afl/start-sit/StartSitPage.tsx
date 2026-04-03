@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ArrowRight, RotateCcw, Zap, Share2, Check } from "lucide-react";
+import { ArrowRight, RotateCcw, Zap, Share2, Check, ChevronDown } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
@@ -56,6 +56,94 @@ interface CompareResult {
   win_probability?: WinProbabilityData | null;
 }
 
+function SEOGuide() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="mt-6 rounded-2xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-5 py-4 text-left group hover:bg-white/[0.02] transition-colors"
+        aria-expanded={open}
+      >
+        <div>
+          <p className="text-sm font-semibold text-white/60 group-hover:text-white/75 transition-colors">
+            AFL Start / Sit Guide
+          </p>
+          <p className="text-[11px] text-white/28 mt-0.5">How the model works and how to use it</p>
+        </div>
+        <ChevronDown
+          size={14}
+          className={`text-white/20 group-hover:text-white/40 transition-all duration-300 shrink-0 ml-3 ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      <div
+        className={`transition-all duration-300 ease-in-out overflow-hidden ${
+          open ? "max-h-[600px] opacity-100" : "max-h-0 opacity-0"
+        }`}
+        aria-hidden={!open}
+      >
+        <div className="px-5 pb-5 space-y-5 border-t border-white/[0.05]">
+          <div className="pt-4">
+            <h2 className="text-base font-semibold text-white mb-3">
+              How to Use the AFL Fantasy Start / Sit Tool
+            </h2>
+            <p className="text-sm text-white/55 leading-relaxed">
+              The Start / Sit tool helps you resolve the hardest AFL Fantasy decision each week — which player
+              to put in your starting lineup. Select any two players from your squad, add optional matchup
+              context, and Neeko's model returns a data-driven verdict with confidence score, projected
+              output, and a plain-English explanation of why one player edges the other.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white/80 mb-2">What the verdict considers</h3>
+            <ul className="space-y-2 text-sm text-white/50 leading-relaxed">
+              <li>
+                <strong className="text-white/70">Projected score</strong> — Each player's Neeko projection
+                for the round, adjusted for form, role, and venue.
+              </li>
+              <li>
+                <strong className="text-white/70">Matchup difficulty</strong> — How the opposing team
+                concedes to the player's position historically.
+              </li>
+              <li>
+                <strong className="text-white/70">Consistency score</strong> — How reliable the player is
+                across recent rounds (ceiling vs floor trade-off).
+              </li>
+              <li>
+                <strong className="text-white/70">Price value</strong> — Whether starting them aligns with
+                their current fantasy price and breakeven needs.
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-white/80 mb-2">When to use it</h3>
+            <p className="text-sm text-white/50 leading-relaxed">
+              Best used after you've locked in your trades and need to finalise your lineup. For broader trade
+              decisions check the{" "}
+              <a
+                href="/sports/afl/market-watch"
+                className="text-white/70 underline underline-offset-2 hover:text-white transition-colors"
+              >
+                Market Watch
+              </a>{" "}
+              for price movement targets, or the{" "}
+              <a
+                href="/sports/afl/edge-board"
+                className="text-white/70 underline underline-offset-2 hover:text-white transition-colors"
+              >
+                Edge Board
+              </a>{" "}
+              for this round's captain lock and trap picks.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function StartSitPage() {
   const { isPremium, loading: authLoading } = useAuth();
   const navigate = useNavigate();
@@ -81,7 +169,6 @@ export default function StartSitPage() {
 
   useEffect(() => { track("start_sit_view"); }, []);
 
-  // Load the current round on mount
   useEffect(() => {
     supabase
       .rpc("get_latest_completed_round", { p_season: 2026 })
@@ -93,8 +180,6 @@ export default function StartSitPage() {
       .finally(() => setRoundLoading(false));
   }, []);
 
-  // Pre-fetch top players so social proof quick-fill cards have real IDs
-  // Use free-tier view for non-premium users to avoid exposing premium data
   useEffect(() => {
     if (authLoading) return;
     const viewName = isPremium ? "v_rankings_master" : "v_rankings_free";
@@ -109,7 +194,6 @@ export default function StartSitPage() {
       });
   }, [authLoading, isPremium]);
 
-  // Pre-fill from URL params (share link support)
   useEffect(() => {
     const pA = searchParams.get("playerA");
     const pB = searchParams.get("playerB");
@@ -160,12 +244,10 @@ export default function StartSitPage() {
     }, 80);
   }, []);
 
-  async function handleCompare() {
-    if (!playerA || !playerB) return;
-
+  async function runCompare(pA: PlayerOption, pB: PlayerOption) {
     track("start_sit_generate", {
-      player_a: playerA.player_name,
-      player_b: playerB.player_name,
+      player_a: pA.player_name,
+      player_b: pB.player_name,
     });
 
     setComparing(true);
@@ -190,8 +272,8 @@ export default function StartSitPage() {
         body: JSON.stringify({
           season: CURRENT_SEASON,
           round_number: round ?? 0,
-          playerAId: playerA.player_id,
-          playerBId: playerB.player_id,
+          playerAId: pA.player_id,
+          playerBId: pB.player_id,
           context: {
             match_state: gameContext.matchState,
             play_style: gameContext.playStyle,
@@ -209,8 +291,8 @@ export default function StartSitPage() {
         return;
       }
 
-      const resultPlayerA: PlayerOption = json.playerA ?? playerA;
-      const resultPlayerB: PlayerOption = json.playerB ?? playerB;
+      const resultPlayerA: PlayerOption = json.playerA ?? pA;
+      const resultPlayerB: PlayerOption = json.playerB ?? pB;
 
       setResult({
         winner_player_id: String(json.winner_player_id),
@@ -232,10 +314,10 @@ export default function StartSitPage() {
       });
 
       supabase.from("start_sit_decisions").insert({
-        player_a_id:      playerA.player_id,
-        player_a_name:    playerA.player_name,
-        player_b_id:      playerB.player_id,
-        player_b_name:    playerB.player_name,
+        player_a_id:      pA.player_id,
+        player_a_name:    pA.player_name,
+        player_b_id:      pB.player_id,
+        player_b_name:    pB.player_name,
         winner_player_id: String(json.winner_player_id),
         session_id:       typeof crypto !== "undefined" ? crypto.randomUUID?.() ?? null : null,
       }).then(() => {});
@@ -245,6 +327,24 @@ export default function StartSitPage() {
       setComparing(false);
     }
   }
+
+  async function handleCompare() {
+    if (!playerA || !playerB) return;
+    await runCompare(playerA, playerB);
+  }
+
+  const handleMatchupSelect = useCallback(async (a: QuickFillPlayer, b: QuickFillPlayer) => {
+    const pA = a as PlayerOption;
+    const pB = b as PlayerOption;
+    setPlayerA(pA);
+    setPlayerB(pB);
+    setResult(null);
+    setError(null);
+    setTimeout(() => {
+      compareButtonRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+    await runCompare(pA, pB);
+  }, [round, gameContext, opponentModel]);
 
   function reset() {
     setPlayerA(null);
@@ -329,205 +429,176 @@ export default function StartSitPage() {
           }
         })}</script>
       </Helmet>
-    <div className="min-h-screen bg-[#070707] text-white">
-      <div className="max-w-2xl mx-auto px-4 py-8 pb-28">
+      <div className="min-h-screen bg-[#070707] text-white">
+        <div className="max-w-2xl mx-auto px-4 py-8 pb-28">
 
-        {/* Header */}
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1">
-            <Zap size={16} className="text-[#F5C84C]" />
-            <span className="text-[11px] font-semibold uppercase tracking-widest text-[#F5C84C]/60">
-              AFL Fantasy
-            </span>
-          </div>
-          <h1 className="text-2xl font-extrabold text-white">AFL Fantasy Start / Sit Tool</h1>
-          <p className="text-sm text-white/40 mt-1">
-            Compare two players and get an AI verdict on who to start this round.
-          </p>
-        </div>
-
-        {/* SEO Content Block */}
-        <div className="mb-5 bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 space-y-5">
-          <div>
-            <h2 className="text-base font-semibold text-white mb-3">How to Use the AFL Fantasy Start / Sit Tool</h2>
-            <p className="text-sm text-white/55 leading-relaxed">
-              The Start / Sit tool helps you resolve the hardest AFL Fantasy decision each week — which player
-              to put in your starting lineup. Select any two players from your squad, add optional matchup
-              context, and Neeko's model returns a data-driven verdict with confidence score, projected
-              output, and a plain-English explanation of why one player edges the other.
-            </p>
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-white/80 mb-2">What the verdict considers</h3>
-            <ul className="space-y-2 text-sm text-white/50 leading-relaxed">
-              <li><strong className="text-white/70">Projected score</strong> — Each player's Neeko projection for the round, adjusted for form, role, and venue.</li>
-              <li><strong className="text-white/70">Matchup difficulty</strong> — How the opposing team concedes to the player's position historically.</li>
-              <li><strong className="text-white/70">Consistency score</strong> — How reliable the player is across recent rounds (ceiling vs floor trade-off).</li>
-              <li><strong className="text-white/70">Price value</strong> — Whether starting them aligns with their current fantasy price and breakeven needs.</li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-white/80 mb-2">When to use it</h3>
-            <p className="text-sm text-white/50 leading-relaxed">
-              Best used after you've locked in your trades and need to finalise your lineup. For broader
-              trade decisions check the{" "}
-              <a href="/sports/afl/market-watch" className="text-white/70 underline underline-offset-2 hover:text-white transition-colors">Market Watch</a>{" "}
-              for price movement targets, or the{" "}
-              <a href="/sports/afl/edge-board" className="text-white/70 underline underline-offset-2 hover:text-white transition-colors">Edge Board</a>{" "}
-              for this round's captain lock and trap picks.
-            </p>
-          </div>
-        </div>
-
-        {/* Player selectors */}
-        <div className="grid gap-3 sm:grid-cols-2 mb-4">
-          <StartSitSelector
-            label="Player A"
-            value={playerA}
-            excludeId={playerB?.player_id}
-            onChange={handlePlayerAChange}
-          />
-          <StartSitSelector
-            label="Player B"
-            value={playerB}
-            excludeId={playerA?.player_id}
-            onChange={handlePlayerBChange}
-          />
-        </div>
-
-        {/* Combined matchup context expander */}
-        <div className="mb-4">
-          <button
-            onClick={() => setShowContext((v) => !v)}
-            className="flex items-center gap-1.5 text-[10px] font-semibold text-white/28 hover:text-white/45 transition-colors group"
-          >
-            <span className={`transition-transform duration-200 text-white/20 ${showContext ? "rotate-90" : ""}`}>▶</span>
-            Add matchup context
-            <span className="text-white/16 font-normal ml-0.5">— optional, personalises advice</span>
-          </button>
-          {showContext && (
-            <div className="mt-3 space-y-3 rounded-xl border border-white/[0.07] bg-white/[0.015] p-4">
-              <GameContextSelector value={gameContext} onChange={setGameContext} />
-              <div className="border-t border-white/[0.05] pt-3">
-                <OpponentInput value={opponentModel} onChange={setOpponentModel} />
-              </div>
+          {/* Header */}
+          <div className="mb-5">
+            <div className="flex items-center gap-2 mb-1">
+              <Zap size={16} className="text-[#F5C84C]" />
+              <span className="text-[11px] font-semibold uppercase tracking-widest text-[#F5C84C]/60">
+                AFL Fantasy
+              </span>
             </div>
-          )}
-        </div>
+            <h1 className="text-2xl font-extrabold text-white">AFL Fantasy Start / Sit Tool</h1>
+            <p className="text-sm text-white/40 mt-1">
+              Compare two players and get an AI verdict on who to start this round.
+            </p>
+          </div>
 
-        {/* Action row */}
-        <div className="flex items-center gap-3">
-          <button
-            ref={compareButtonRef}
-            onClick={handleCompare}
-            disabled={!canCompare}
-            className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3.5 font-bold text-sm transition-all
-              ${canCompare
-                ? "bg-[#F5C84C] text-black hover:brightness-110 active:scale-[0.98]"
-                : "bg-white/[0.06] text-white/25 cursor-not-allowed"
-              }`}
-          >
-            {comparing ? (
-              <>
-                <span className="h-4 w-4 rounded-full border-2 border-black/30 border-t-black animate-spin" />
-                Analysing...
-              </>
-            ) : (
-              <>
-                <ArrowRight size={14} />
-                Compare Players
-              </>
+          {/* Player selectors */}
+          <div className="grid gap-3 sm:grid-cols-2 mb-4">
+            <StartSitSelector
+              label="Player A"
+              value={playerA}
+              excludeId={playerB?.player_id}
+              onChange={handlePlayerAChange}
+            />
+            <StartSitSelector
+              label="Player B"
+              value={playerB}
+              excludeId={playerA?.player_id}
+              onChange={handlePlayerBChange}
+            />
+          </div>
+
+          {/* Combined matchup context expander */}
+          <div className="mb-4">
+            <button
+              onClick={() => setShowContext((v) => !v)}
+              className="flex items-center gap-1.5 text-[10px] font-semibold text-white/28 hover:text-white/45 transition-colors group"
+            >
+              <span className={`transition-transform duration-200 text-white/20 ${showContext ? "rotate-90" : ""}`}>▶</span>
+              Add matchup context
+              <span className="text-white/16 font-normal ml-0.5">— optional, personalises advice</span>
+            </button>
+            {showContext && (
+              <div className="mt-3 space-y-3 rounded-xl border border-white/[0.07] bg-white/[0.015] p-4">
+                <GameContextSelector value={gameContext} onChange={setGameContext} />
+                <div className="border-t border-white/[0.05] pt-3">
+                  <OpponentInput value={opponentModel} onChange={setOpponentModel} />
+                </div>
+              </div>
             )}
-          </button>
+          </div>
 
-          {result && playerA && playerB && (
+          {/* Action row */}
+          <div className="flex items-center gap-3">
             <button
-              onClick={handleShare}
-              className="flex items-center gap-1.5 px-4 py-3.5 rounded-xl border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition-all text-sm"
-              title="Copy share link"
-            >
-              {copied ? <Check size={13} className="text-emerald-400" /> : <Share2 size={13} />}
-              {copied ? "Copied" : "Share"}
-            </button>
-          )}
-
-          {(result || playerA || playerB) && (
-            <button
-              onClick={reset}
-              className="flex items-center gap-1.5 px-4 py-3.5 rounded-xl border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition-all text-sm"
-            >
-              <RotateCcw size={13} />
-              Reset
-            </button>
-          )}
-        </div>
-
-        {/* Error banner */}
-        {error && (
-          <div className="mt-4 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 flex items-start justify-between gap-3">
-            <p className="text-sm text-red-400 leading-snug">{error}</p>
-            <button
+              ref={compareButtonRef}
               onClick={handleCompare}
               disabled={!canCompare}
-              className="shrink-0 text-xs text-red-400/70 hover:text-red-400 underline underline-offset-2 transition-colors disabled:opacity-40"
+              className={`flex-1 flex items-center justify-center gap-2 rounded-xl py-3.5 font-bold text-sm transition-all
+                ${canCompare
+                  ? "bg-[#F5C84C] text-black hover:brightness-110 active:scale-[0.98]"
+                  : "bg-white/[0.06] text-white/25 cursor-not-allowed"
+                }`}
             >
-              Retry
+              {comparing ? (
+                <>
+                  <span className="h-4 w-4 rounded-full border-2 border-black/30 border-t-black animate-spin" />
+                  Analysing...
+                </>
+              ) : (
+                <>
+                  <ArrowRight size={14} />
+                  Compare Players
+                </>
+              )}
             </button>
-          </div>
-        )}
 
-        {/* Loading skeleton while fetching */}
-        {comparing && (
-          <div className="mt-6 space-y-3 animate-pulse">
-            <div className="h-44 rounded-2xl bg-white/[0.04]" />
-            <div className="h-24 rounded-xl bg-white/[0.04]" />
-            <div className="h-32 rounded-xl bg-white/[0.04]" />
-            <div className="h-20 rounded-xl bg-white/[0.04]" />
-          </div>
-        )}
+            {result && playerA && playerB && (
+              <button
+                onClick={handleShare}
+                className="flex items-center gap-1.5 px-4 py-3.5 rounded-xl border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition-all text-sm"
+                title="Copy share link"
+              >
+                {copied ? <Check size={13} className="text-emerald-400" /> : <Share2 size={13} />}
+                {copied ? "Copied" : "Share"}
+              </button>
+            )}
 
-        {/* Result — wait for auth to resolve before rendering so premium state is certain */}
-        {!comparing && result && !authLoading && (
-          <StartSitResult
-            playerA={result.playerA}
-            playerB={result.playerB}
-            winnerPlayerId={result.winner_player_id}
-            confidence={result.confidence}
-            aiSummary={result.ai_summary}
-            modelEdge={result.model_edge}
-            isPremium={isPremium}
-            onUpgrade={isPremium ? () => {} : () => navigate("/neeko-plus")}
-            onReset={reset}
-            shortSummary={result.short_summary}
-            longSummary={result.long_summary}
-            startConditions={result.start_conditions}
-            sitConditions={result.sit_conditions}
-            playStyle={result.play_style}
-            decisionContext={result.decision_context}
-            isCloseCall={result.meta?.is_close_call ?? false}
-            gameContext={gameContext}
-            opponentModel={opponentModel}
-            winProbability={result.win_probability}
-          />
-        )}
-        {!comparing && result && authLoading && (
-          <div className="mt-6 space-y-3 animate-pulse">
-            <div className="h-36 rounded-2xl bg-white/[0.04]" />
-            <div className="h-28 rounded-xl bg-white/[0.04]" />
-            <div className="h-24 rounded-xl bg-white/[0.04]" />
+            {(result || playerA || playerB) && (
+              <button
+                onClick={reset}
+                className="flex items-center gap-1.5 px-4 py-3.5 rounded-xl border border-white/10 text-white/40 hover:text-white/70 hover:border-white/20 transition-all text-sm"
+              >
+                <RotateCcw size={13} />
+                Reset
+              </button>
+            )}
           </div>
-        )}
 
-        {/* Social proof — only shown when no result is displayed */}
-        {showSocialProof && (
-          <StartSitSocialProof
-            players={topPlayers}
-            onFillBoth={handleFillBoth}
-            onScrollToCompare={handleScrollToCompare}
-          />
-        )}
+          {/* Error banner */}
+          {error && (
+            <div className="mt-4 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 flex items-start justify-between gap-3">
+              <p className="text-sm text-red-400 leading-snug">{error}</p>
+              <button
+                onClick={handleCompare}
+                disabled={!canCompare}
+                className="shrink-0 text-xs text-red-400/70 hover:text-red-400 underline underline-offset-2 transition-colors disabled:opacity-40"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
+          {/* Loading skeleton while fetching */}
+          {comparing && (
+            <div className="mt-6 space-y-3 animate-pulse">
+              <div className="h-44 rounded-2xl bg-white/[0.04]" />
+              <div className="h-24 rounded-xl bg-white/[0.04]" />
+              <div className="h-32 rounded-xl bg-white/[0.04]" />
+              <div className="h-20 rounded-xl bg-white/[0.04]" />
+            </div>
+          )}
+
+          {/* Result */}
+          {!comparing && result && !authLoading && (
+            <StartSitResult
+              playerA={result.playerA}
+              playerB={result.playerB}
+              winnerPlayerId={result.winner_player_id}
+              confidence={result.confidence}
+              aiSummary={result.ai_summary}
+              modelEdge={result.model_edge}
+              isPremium={isPremium}
+              onUpgrade={isPremium ? () => {} : () => navigate("/neeko-plus")}
+              onReset={reset}
+              shortSummary={result.short_summary}
+              longSummary={result.long_summary}
+              startConditions={result.start_conditions}
+              sitConditions={result.sit_conditions}
+              playStyle={result.play_style}
+              decisionContext={result.decision_context}
+              isCloseCall={result.meta?.is_close_call ?? false}
+              gameContext={gameContext}
+              opponentModel={opponentModel}
+              winProbability={result.win_probability}
+            />
+          )}
+          {!comparing && result && authLoading && (
+            <div className="mt-6 space-y-3 animate-pulse">
+              <div className="h-36 rounded-2xl bg-white/[0.04]" />
+              <div className="h-28 rounded-xl bg-white/[0.04]" />
+              <div className="h-24 rounded-xl bg-white/[0.04]" />
+            </div>
+          )}
+
+          {/* Social proof — only shown when no result is displayed */}
+          {showSocialProof && (
+            <StartSitSocialProof
+              players={topPlayers}
+              onFillBoth={handleFillBoth}
+              onMatchupSelect={handleMatchupSelect}
+              onScrollToCompare={handleScrollToCompare}
+            />
+          )}
+
+          {/* SEO Guide — collapsible, always in DOM */}
+          <SEOGuide />
+        </div>
       </div>
-    </div>
     </>
   );
 }
