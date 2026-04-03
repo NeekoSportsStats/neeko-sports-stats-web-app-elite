@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
 import { Lock, Crown, ChevronDown } from "lucide-react";
+import {
+  ResponsiveContainer,
+  Area,
+  AreaChart,
+  Tooltip,
+  ReferenceLine,
+} from "recharts";
+import { supabase } from "@/lib/supabaseClient";
 import { RankingRow, RankingsTab } from "./types";
 import {
   fmt,
@@ -9,6 +17,68 @@ import {
   resolveRecommendationColor,
   FREE_FULL_ROWS, PREMIUM_INITIAL_ROWS,
 } from "./helpers";
+
+// ─── Mobile sparkline ─────────────────────────────────────────────────────────
+
+function MobileSparkTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const val = payload[0]?.value;
+  return (
+    <div className="rounded-md border border-white/10 bg-[#181818] px-2 py-1 shadow-lg">
+      <p className="text-[11px] text-white/40 uppercase tracking-wide mb-0.5">Score</p>
+      <p className="text-sm font-bold text-white tabular-nums">{val != null ? Math.round(val) : "—"}</p>
+    </div>
+  );
+}
+
+function MobileSparkline({ points, edge }: { points: number[]; edge: number | null }) {
+  const stroke =
+    edge != null && edge >= 5 ? "#4ade80" :
+    edge != null && edge < -5 ? "#f87171" :
+    "#94a3b8";
+
+  const gradientId = "mobile-spark-fill";
+  const data = points.map((v, i) => ({ game: i + 1, score: v }));
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const avg = points.reduce((a, b) => a + b, 0) / points.length;
+
+  return (
+    <div className="w-full">
+      <div style={{ height: 64 }}>
+        <ResponsiveContainer width="100%" height={64}>
+          <AreaChart data={data} margin={{ top: 4, right: 2, bottom: 0, left: 2 }}>
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={stroke} stopOpacity={0.2} />
+                <stop offset="100%" stopColor={stroke} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <ReferenceLine y={avg} stroke={stroke} strokeOpacity={0.15} strokeDasharray="3 3" strokeWidth={1} />
+            <Area
+              type="monotone"
+              dataKey="score"
+              stroke={stroke}
+              strokeWidth={1.6}
+              dot={false}
+              activeDot={{ r: 3, fill: stroke, strokeWidth: 0 }}
+              fill={`url(#${gradientId})`}
+              isAnimationActive
+              animationDuration={400}
+              animationEasing="ease-out"
+            />
+            <Tooltip content={<MobileSparkTooltip />} cursor={{ stroke: stroke, strokeOpacity: 0.2, strokeWidth: 1, strokeDasharray: "3 3" }} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="flex justify-between mt-0.5 px-0.5">
+        <span className="text-[9px] text-white/20 tabular-nums">Low {Math.round(min)}</span>
+        <span className="text-[9px] text-white/20 tabular-nums">Avg {Math.round(avg)}</span>
+        <span className="text-[9px] text-white/20 tabular-nums">High {Math.round(max)}</span>
+      </div>
+    </div>
+  );
+}
 
 // ─── Edge helpers ─────────────────────────────────────────────────────────────
 
@@ -124,6 +194,35 @@ function StatusBadges({ row }: { row: RankingRow }) {
 // ─── Expanded section ─────────────────────────────────────────────────────────
 
 function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec: string | null }) {
+  const [scoreHistory, setScoreHistory] = useState<number[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setHistoryLoading(true);
+      if (!row.player_id) { setHistoryLoading(false); return; }
+      try {
+        const { data } = await supabase.rpc("get_player_score_history_by_id", {
+          player_id_in: String(row.player_id),
+          n_games: 10,
+        });
+        if (!cancelled && data && Array.isArray(data)) {
+          const pts = (data as any[])
+            .filter((d: any) => d.fantasy_points != null)
+            .map((d: any) => Number(d.fantasy_points));
+          setScoreHistory(pts);
+        }
+      } catch {
+        // non-critical
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [row.player_id]);
+
   const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
   const be = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
   const edge = computeEdge(row);
@@ -155,6 +254,26 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
         <div>
           <p className="text-[10px] text-white/30 uppercase tracking-wide font-semibold mb-1">AI Analysis</p>
           <p className="text-[12px] text-white/55 leading-relaxed line-clamp-4">{longWhy}</p>
+        </div>
+      )}
+
+      {/* Section 2b — score history sparkline */}
+      {(historyLoading || scoreHistory.length >= 2) && (
+        <div className="border-t border-white/[0.05] pt-3">
+          <p className="text-[10px] text-white/25 uppercase tracking-wide font-semibold mb-2">
+            Last {historyLoading ? "—" : scoreHistory.length} games
+          </p>
+          {historyLoading ? (
+            <div className="w-full rounded bg-white/[0.03] animate-pulse" style={{ height: 64 }} />
+          ) : scoreHistory.length >= 2 ? (
+            <MobileSparkline points={scoreHistory} edge={edge} />
+          ) : null}
+        </div>
+      )}
+
+      {!historyLoading && scoreHistory.length < 2 && (
+        <div className="border-t border-white/[0.05] pt-3">
+          <p className="text-[10px] text-white/20 italic">No recent game data available.</p>
         </div>
       )}
 

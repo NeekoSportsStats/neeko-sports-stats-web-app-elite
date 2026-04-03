@@ -239,6 +239,10 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
             </div>
             )}
 
+            {!historyLoading && scoreHistory.length < 2 && (
+              <p className="text-[11px] text-white/20 italic">No recent game data available.</p>
+            )}
+
             {/* 4. Metrics row + CTA */}
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/[0.05] pt-3">
               {confidence != null && (
