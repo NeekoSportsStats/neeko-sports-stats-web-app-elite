@@ -4,11 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  ArrowLeft, Crown, Lock, Info, ExternalLink, ChevronRight,
-  TrendingUp, TrendingDown, Minus, AlertTriangle, Zap, ChevronDown, ChevronUp,
-  BarChart2, Target, Shield, Flame,
-} from 'lucide-react';
+import { ArrowLeft, Crown, Lock, Info, ExternalLink, ChevronRight, TrendingUp, TrendingDown, Minus, TriangleAlert as AlertTriangle, Zap, ChevronDown, ChevronUp, ChartBar as BarChart2, Target, Shield, Flame } from 'lucide-react';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { slugToName, nameToSlug, POSITION_SLUGS, POSITION_NAMES } from '@/lib/slugs';
 import { getSimilarPlayersSafe, getPlayerDetailSafe } from '@/lib/playerAccess';
