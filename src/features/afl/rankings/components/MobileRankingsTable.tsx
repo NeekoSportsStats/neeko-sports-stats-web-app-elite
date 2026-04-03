@@ -168,13 +168,16 @@ function DataRow({ row, idx, tier, isPremium, activeTab, onTap, onUpgrade }: Dat
               {!row.is_bye && row.bye_next_round && (
                 <span className="shrink-0 rounded-sm bg-sky-500/10 px-1 py-px text-[7px] font-semibold text-sky-500/50 uppercase tracking-wide border border-sky-500/15">BYE R{row.bye_round}</span>
               )}
-              {row.status === "OUT" && (
+              {(row.manual_status === "OUT" || (!row.manual_status && row.status === "OUT")) && (
+                <span className="shrink-0 rounded-sm bg-red-500/15 px-1 py-px text-[7px] font-semibold text-red-400 uppercase tracking-wide border border-red-500/20">OUT</span>
+              )}
+              {(row.manual_status === "INJURED" || (!row.manual_status && row.status === "INJURED")) && (
                 <span className="shrink-0 rounded-sm bg-red-500/15 px-1 py-px text-[7px] font-semibold text-red-400 uppercase tracking-wide border border-red-500/20">INJ</span>
               )}
-              {row.status === "TEST" && (
+              {(row.manual_status === "TEST" || (!row.manual_status && row.status === "TEST")) && (
                 <span className="shrink-0 rounded-sm bg-orange-500/15 px-1 py-px text-[7px] font-semibold text-orange-400 uppercase tracking-wide border border-orange-500/20">TEST</span>
               )}
-              {row.status === "OMITTED" && (
+              {(row.manual_status === "OMITTED" || (!row.manual_status && row.status === "OMITTED")) && (
                 <span className="shrink-0 rounded-sm bg-white/10 px-1 py-px text-[7px] font-semibold text-white/40 uppercase tracking-wide border border-white/15">OUT</span>
               )}
             </div>

@@ -335,7 +335,12 @@ export default function AFLRankingsPage() {
         setLoading(false);
         return;
       }
-      setRows(((data as any[]) ?? []).map(normalizeRow));
+      const normalized = ((data as any[]) ?? []).map(normalizeRow);
+      setRows(normalized);
+      const firstCachedAt = (data as any[])?.[0]?.cached_at;
+      if (firstCachedAt) {
+        setUpdatedAt((prev) => prev ?? { ts: firstCachedAt, round: "Current Round" });
+      }
     } else {
       const { data: authData } = await supabase.auth.getUser();
       const { data, error } = await supabase.rpc("get_rankings_safe", {
@@ -350,7 +355,12 @@ export default function AFLRankingsPage() {
         setLoading(false);
         return;
       }
-      setRows(((data as any[]) ?? []).map(normalizeRow));
+      const normalized = ((data as any[]) ?? []).map(normalizeRow);
+      setRows(normalized);
+      const firstCachedAt = (data as any[])?.[0]?.cached_at;
+      if (firstCachedAt) {
+        setUpdatedAt((prev) => prev ?? { ts: firstCachedAt, round: "Current Round" });
+      }
     }
 
     setLoading(false);
@@ -583,7 +593,7 @@ export default function AFLRankingsPage() {
           </div>
         )}
 
-        <StaleDataWarning timestamp={updatedAt?.ts} className="mt-3" />
+        {updatedAt && <StaleDataWarning timestamp={updatedAt.ts} className="mt-3" />}
       </div>
 
       <div className="px-4 pb-16 md:px-8">
