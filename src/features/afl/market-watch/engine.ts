@@ -73,30 +73,53 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
     return true;
   });
 
-  // ── STEP 2: MAP CATEGORY TO 3 CATEGORIES ────────────────────────────────
+  // ── STEP 2: MAP TO 3 CATEGORIES FROM SINGLE SOURCE OF TRUTH ─────────────
+  // action field comes from market_watch_snapshot_players.action which is
+  // now always set to ai_recommendation from afl.player_rankings_cache.
+  // ai_recommendation field is the direct cache value (joined in view).
+  // Priority: ai_recommendation > action > value_score fallback
   const buys: DerivedPlayer[] = [];
   const holds: DerivedPlayer[] = [];
   const sells: DerivedPlayer[] = [];
 
   for (const p of filtered) {
-    // Use normalizeAction to handle both old (TARGET/WATCH/AVOID) and new (BUY/HOLD/SELL) values
-    // action field takes priority; fall back to category field; fall back to value_score
-    const normalizedAction = normalizeAction(p.action || p.category);
+    // ai_recommendation is the canonical source — use it first
+    const canonical = (p.ai_recommendation ?? '').toUpperCase();
+    const normalized = canonical === 'BUY' ? 'BUY'
+      : canonical === 'SELL' ? 'SELL'
+      : canonical === 'HOLD' ? 'HOLD'
+      : null;
 
-    if (normalizedAction === 'BUY') {
+    // Fallback to action field (normalised) if ai_recommendation missing
+    const actionFallback = normalized ?? normalizeAction(p.action || p.category);
+
+    // ── SAFETY GUARD ──────────────────────────────────────────────────────
+    // Log any state that violates the invariant so it's visible in devtools.
+    if (process.env.NODE_ENV !== 'production') {
+      const vs = p.value_score ?? 0;
+      if (actionFallback === 'BUY' && vs < -4.5) {
+        console.error('[MarketWatch] INVALID STATE — negative value_score with BUY', {
+          player: p.player_name, value_score: vs, ai_recommendation: p.ai_recommendation, action: p.action,
+        });
+      }
+      if (actionFallback === 'SELL' && vs > 4.5) {
+        console.error('[MarketWatch] INVALID STATE — positive value_score with SELL', {
+          player: p.player_name, value_score: vs, ai_recommendation: p.ai_recommendation, action: p.action,
+        });
+      }
+    }
+
+    if (actionFallback === 'BUY') {
       buys.push(tag(p, 'BUY'));
-    }
-    else if (normalizedAction === 'SELL') {
+    } else if (actionFallback === 'SELL') {
       sells.push(tag(p, 'SELL'));
-    }
-    else if (normalizedAction === null) {
-      // No recognized action — use value_score as fallback classification
+    } else if (actionFallback === null) {
+      // No recognized action — use value_score as last-resort classification
       const vs = p.value_score ?? 0;
       if (vs >= 5) buys.push(tag(p, 'BUY'));
       else if (vs <= -5) sells.push(tag(p, 'SELL'));
       else holds.push(tag(p, 'HOLD'));
-    }
-    else {
+    } else {
       holds.push(tag(p, 'HOLD'));
     }
   }
