@@ -11,7 +11,7 @@ import {
 } from "./components/types";
 import {
   TAB_SORT_KEY, TAB_DESCRIPTIONS, TAB_DEFAULT_SORT,
-  FREE_FULL_ROWS, FREE_PARTIAL_ROWS,
+  FREE_FULL_ROWS, FREE_PARTIAL_ROWS, PREMIUM_INITIAL_ROWS,
   getFreeTier, normalisePosition, computeKpiTiles, fmtUpdatedAt, fmt, fmtValueScore,
 } from "./components/helpers";
 import {
@@ -294,7 +294,7 @@ export default function AFLRankingsPage() {
   const [activeTab, setActiveTab] = useState<RankingsTab>("best");
   const [rows, setRows] = useState<RankingRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(50);
+  const [visibleCount, setVisibleCount] = useState(PREMIUM_INITIAL_ROWS);
   const [positionFilter, setPositionFilter] = useState<PositionFilter>("ALL");
   const [premiumFilter, setPremiumFilter] = useState<PremiumFilter>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
@@ -745,7 +745,7 @@ export default function AFLRankingsPage() {
             {/* FREE TABLE — mobile */}
             <div className="md:hidden">
               <MobileRankingsTable
-                rows={sortedRows.slice(0, FREE_FULL_ROWS)}
+                rows={sortedRows}
                 loading={loading}
                 isPremium={false}
                 activeTab={activeTab}

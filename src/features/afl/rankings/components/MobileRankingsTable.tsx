@@ -6,7 +6,7 @@ import {
   getNeekoRatingBadge, getConfidenceColor, getConfidenceLabel, getConfidenceLabelColor,
   getDisplayRecommendation,
   resolveRecommendationColor,
-  FREE_FULL_ROWS,
+  FREE_FULL_ROWS, PREMIUM_INITIAL_ROWS,
   normaliseConfidence,
 } from "./helpers";
 
@@ -309,7 +309,7 @@ interface MobileRankingsTableProps {
   onUpgrade: () => void;
 }
 
-const SHOW_MORE_INITIAL = 50;
+const SHOW_MORE_INITIAL = PREMIUM_INITIAL_ROWS;
 const SHOW_MORE_STEP = 50;
 
 export function MobileRankingsTable({
