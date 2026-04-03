@@ -2,9 +2,9 @@ import React from "react";
 import { ChevronDown, ChevronUp, Lock, Crown, TrendingUp } from "lucide-react";
 import { RankingRow, SortKey, SortDir, RankingsTab, RowTier } from "./types";
 import {
-  fmt, fmtPrice, fmtPriceChange, fmtValueScore,
-  getNeekoRatingBadge, getValueTagStyle,
-  getValueScoreColor, getConfidenceColor, getConfidenceLabel, getConfidenceLabelColor,
+  fmt, fmtPrice, fmtPriceChange,
+  getNeekoRatingBadge,
+  getConfidenceColor, getConfidenceLabel, getConfidenceLabelColor,
   getFormScoreColor, getDisplayRecommendation,
   resolveRecommendationColor,
   FREE_PARTIAL_ROWS, FREE_FULL_ROWS,
@@ -84,16 +84,15 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
       </th>
       <SortableTh label="Projection" col="projection_final" width={100} tooltip="Expected fantasy points this round" />
       <SortableTh label="Confidence" col="projection_confidence" width={100} tooltip="Confidence reflects projection stability, role consistency, and risk. Elite Safety = 80%+, Strong = 70–79%, Solid = 60–69%, Moderate Risk = 50–59%, Volatile = below 50%." />
-      <SortableTh label="Breakeven" col="form_score" width={100} tooltip="Score required to maintain current price. Lower is better (green = easy to beat, red = hard to beat)." />
+      <SortableTh label="BE" col="form_score" width={100} tooltip="Breakeven = score needed to maintain price. Gap vs projection shown below — green means projection clears BE easily." />
       <Th label="Price" locked={!isPremium} width={110} tooltip="AFL Fantasy salary this round" />
-      <SortableTh label="Value" col="value_score" width={120} tooltip="Points per dollar of price — higher means better value for money" />
       <Th label="AI Rec" locked={!isPremium} width={150} />
       <Th label="Why" locked={!isPremium} />
     </tr>
   );
 }
 
-const TOTAL_COLS = 10;
+const TOTAL_COLS = 9;
 
 interface TableRowProps {
   row: RankingRow;
@@ -111,7 +110,6 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
   const rowUnlocked = tier === "premium" || tier === "full";
 
   const neekoRBadge = getNeekoRatingBadge(row.neeko_rating ?? null);
-  const vtStyle = getValueTagStyle(row.value_tag);
   const displayRec = getDisplayRecommendation(row, activeTab);
 
   const locked = (colKey: string) => {
@@ -207,20 +205,33 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
       </td>
       <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 100, minWidth: 90 }}>
         {(() => {
-          const breakeven = row.breakeven !== null && row.breakeven !== undefined
+          const be = row.breakeven !== null && row.breakeven !== undefined
             ? Math.round(parseFloat(String(row.breakeven)))
-            : 60;
-          const getBreakevenColor = (be: number) => {
-            if (be <= 60) return "text-emerald-400";
-            if (be <= 80) return "text-green-400";
-            if (be <= 100) return "text-[#F5C84C]";
-            if (be <= 120) return "text-orange-400";
+            : null;
+          const proj = row.projection_final ?? null;
+          const diff = be !== null && proj !== null ? Math.round(proj - be) : null;
+
+          const getDiffColor = (d: number) => {
+            if (d > 15) return "text-emerald-400";
+            if (d > 5) return "text-green-400";
+            if (d >= -5) return "text-white/50";
             return "text-red-400";
           };
+
           return (
-            <span className={`text-sm font-semibold tabular-nums ${getBreakevenColor(breakeven)}`}>
-              {breakeven}
-            </span>
+            <div
+              className="inline-flex flex-col items-center gap-0.5 group/be cursor-default relative"
+              title="Breakeven = score needed to maintain price"
+            >
+              <span className="text-sm font-semibold tabular-nums text-white/70">
+                {be !== null ? be : "—"}
+              </span>
+              {diff !== null && (
+                <span className={`text-[10px] font-semibold tabular-nums leading-none ${getDiffColor(diff)}`}>
+                  {diff > 0 ? `+${diff}` : diff}
+                </span>
+              )}
+            </div>
           );
         })()}
       </td>
@@ -240,22 +251,6 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
                 </span>
               );
             })()}
-          </div>
-        )}
-      </td>
-      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 120, minWidth: 100 }}>
-        {locked("value_score") ? (
-          <LockedCell onClick={onUpgrade} />
-        ) : (
-          <div className="flex flex-col items-center gap-0.5">
-            <span className={`text-sm font-bold tabular-nums ${getValueScoreColor(row.value_score ?? null)}`}>
-              {fmtValueScore(row.value_score)}
-            </span>
-            {row.value_tag && (
-              <span className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold border ${vtStyle.text} ${vtStyle.bg} ${vtStyle.border}`}>
-                {row.value_tag}
-              </span>
-            )}
           </div>
         )}
       </td>

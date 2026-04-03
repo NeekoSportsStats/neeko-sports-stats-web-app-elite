@@ -106,11 +106,13 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
     ? Math.round(parseFloat(String(row.breakeven)))
     : null;
 
-  const getBreakevenColor = (be: number) => {
-    if (be <= 60) return "text-emerald-400";
-    if (be <= 80) return "text-green-400";
-    if (be <= 100) return "text-[#F5C84C]";
-    if (be <= 120) return "text-orange-400";
+  const proj = row.projection_final ?? null;
+  const beDiff = breakeven !== null && proj !== null ? Math.round(proj - breakeven) : null;
+
+  const getDiffColor = (d: number) => {
+    if (d > 15) return "text-emerald-400";
+    if (d > 5) return "text-green-400";
+    if (d >= -5) return "text-white/50";
     return "text-red-400";
   };
 
@@ -177,8 +179,15 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
           <>
             <div className="w-px h-7 bg-white/[0.06]" />
             <div className="flex flex-col">
-              <span className="text-[9px] text-white/30 uppercase tracking-wider">Break</span>
-              <span className={`text-sm font-bold tabular-nums ${getBreakevenColor(breakeven)}`}>{breakeven}</span>
+              <span className="text-[9px] text-white/30 uppercase tracking-wider">BE</span>
+              <div className="flex items-baseline gap-1">
+                <span className="text-sm font-bold tabular-nums text-white/70">{breakeven}</span>
+                {beDiff !== null && (
+                  <span className={`text-[10px] font-semibold tabular-nums leading-none ${getDiffColor(beDiff)}`}>
+                    {beDiff > 0 ? `+${beDiff}` : beDiff}
+                  </span>
+                )}
+              </div>
             </div>
           </>
         )}
