@@ -44,17 +44,14 @@ function edgeColor(edge: number): string {
 }
 
 function buildShortWhy(row: RankingRow, action: string): string {
-  const be = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
   const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
-  const diff = proj != null && be != null ? Math.round(proj - be) : null;
-
-  if (diff === null) return row.why ?? "";
-
   const label = action.toUpperCase();
-  if (label === "BUY" || label === "STRONG BUY") return `+${diff} vs BE`;
-  if (label === "HOLD") return "Near BE";
-  if (label === "AVOID" || label === "SELL") return `${diff >= 0 ? "+" : ""}${diff} vs BE`;
-  return `${diff >= 0 ? "+" : ""}${diff} vs BE`;
+
+  if (label === "BUY" || label === "STRONG BUY") return proj != null ? `Projected ${proj}, well above breakeven` : "Well above breakeven";
+  if (label === "HOLD") return "Projection near breakeven, stable play";
+  if (label === "AVOID" || label === "SELL") return "Below breakeven, limited scoring upside";
+  if (label === "WATCH") return "Slight value edge, monitor closely";
+  return "Slight value edge, monitor closely";
 }
 
 // ─── Action badge ─────────────────────────────────────────────────────────────

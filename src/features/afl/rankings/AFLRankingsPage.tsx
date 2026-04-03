@@ -19,7 +19,7 @@ import {
 } from "./components/RankingsModals";
 import {
   TableHeader, TableRow, ConversionWallRow, LoadingSkeletonRows,
-  FreeTableHeader, FreeTableRow, FreeConversionWallRow, FreeLoadingSkeletonRows,
+  FreeConversionWallRow,
 } from "./components/RankingsTable";
 import { MobileRankingsTable } from "./components/MobileRankingsTable";
 import { CollapsibleSEO } from "./components/CollapsibleSEO";
@@ -582,11 +582,7 @@ export default function AFLRankingsPage() {
       });
     } else {
       if (safeActiveTab === "best") {
-        filtered = [...filtered].sort((a, b) => {
-          const edgeA = a.projection_final != null && a.breakeven != null ? a.projection_final - Number(a.breakeven) : -Infinity;
-          const edgeB = b.projection_final != null && b.breakeven != null ? b.projection_final - Number(b.breakeven) : -Infinity;
-          return edgeB - edgeA;
-        });
+        filtered = [...filtered].sort((a, b) => ((b.projection_final ?? -Infinity) - (a.projection_final ?? -Infinity)));
       } else if (safeActiveTab === "value") {
         filtered = filtered.filter((r) => (r.games_played ?? 0) >= 1 && r.price != null && r.price > 0);
         filtered = [...filtered].sort((a, b) => ((b.best_value_score ?? b.value_score ?? -Infinity) - (a.best_value_score ?? a.value_score ?? -Infinity)));
@@ -711,16 +707,22 @@ export default function AFLRankingsPage() {
                 className="w-full overflow-x-auto rounded-xl border border-white/[0.06]"
                 style={{ WebkitOverflowScrolling: "touch" }}
               >
-                <table className="min-w-[640px] w-full border-collapse">
+                <table className="min-w-[1100px] w-full border-collapse">
                   <thead className="sticky top-0 z-30 bg-[#0a0a0a] border-b border-[#222]">
-                    <FreeTableHeader />
+                    <TableHeader
+                      isPremium={false}
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSortClick={handleSortClick}
+                      onRatingInfoOpen={() => setRatingInfoOpen(true)}
+                    />
                   </thead>
                   <tbody>
                     {loading ? (
-                      <FreeLoadingSkeletonRows />
+                      <LoadingSkeletonRows />
                     ) : displayRows.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-16 text-center">
+                        <td colSpan={7} className="px-6 py-16 text-center">
                           <p className="text-sm text-white/30">No players available.</p>
                         </td>
                       </tr>
@@ -730,11 +732,15 @@ export default function AFLRankingsPage() {
                           const tier: RowTier = getFreeTier(idx);
                           const isUnlocked = tier === "full";
                           return (
-                            <FreeTableRow
+                            <TableRow
                               key={row.player_id ?? idx}
                               row={row}
                               idx={idx}
+                              isPremium={false}
+                              tier={tier}
+                              activeTab={activeTab}
                               onRowClick={() => openRow(row, idx + 1, tier, isUnlocked)}
+                              onUpgrade={() => setShowUpgradeModal(true)}
                             />
                           );
                         })}

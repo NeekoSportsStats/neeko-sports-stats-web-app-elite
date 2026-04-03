@@ -20,16 +20,13 @@ const TH = "bg-[#0a0a0a] px-4 py-3 text-[11px] font-medium uppercase tracking-wi
 
 function buildShortWhy(row: RankingRow, action: string): string {
   const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
-  const be = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
-  const diff = proj != null && be != null ? Math.round(proj - be) : null;
-
   const label = action.toUpperCase();
-  if (diff === null) return row.why ?? "";
 
-  if (label === "BUY" || label === "STRONG BUY") return `+${diff} vs BE`;
-  if (label === "HOLD") return "Near BE";
-  if (label === "AVOID" || label === "SELL") return `${diff >= 0 ? "+" : ""}${diff} vs BE`;
-  return `${diff >= 0 ? "+" : ""}${diff} vs BE`;
+  if (label === "BUY" || label === "STRONG BUY") return proj != null ? `Projected ${proj}, well above breakeven` : "Well above breakeven";
+  if (label === "HOLD") return "Projection near breakeven, stable play";
+  if (label === "AVOID" || label === "SELL") return "Below breakeven, limited scoring upside";
+  if (label === "WATCH") return "Slight value edge, monitor closely";
+  return "Slight value edge, monitor closely";
 }
 
 // ─── Edge cell ─────────────────────────────────────────────────────────────────
@@ -189,9 +186,9 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
       <th className={`${TH} text-left text-white/40`} style={{ minWidth: 200 }}>Player</th>
       <SortableTh label="Proj" col="projection_final" width={90} tooltip="Expected fantasy points this round" />
       <SortableTh label="BE" col="form_score" width={80} tooltip="Breakeven — score needed to maintain price" />
-      <SortableTh label="Edge" col="projection_final" width={80} tooltip="Projection minus Breakeven. Green = clears BE. Red = price risk." />
-      <Th label="Action" locked={!isPremium} width={100} />
-      <th className={`${TH} text-left text-white/35`} style={{ width: 160, minWidth: 140 }}>Why</th>
+      <SortableTh label="Edge" col="projection_final" width={90} tooltip="Projection minus Breakeven. Green = clears BE. Red = price risk." />
+      <Th label="Action" locked={!isPremium} width={110} />
+      <th className={`${TH} text-left text-white/35`} style={{ width: 220, minWidth: 180 }}>Why</th>
     </tr>
   );
 }
@@ -249,10 +246,10 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           </span>
         </td>
 
-        <td className="px-4 py-3 whitespace-nowrap" style={{ minWidth: 200 }}>
+        <td className="px-4 py-3 whitespace-nowrap" style={{ minWidth: 160, maxWidth: 280 }}>
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-sm font-semibold text-white">{row.player_name}</span>
+              <span className="text-sm font-semibold text-white truncate max-w-[200px]">{row.player_name}</span>
               {(row.manual_status === "OUT" || (!row.manual_status && row.status === "OUT")) ? (
                 <span className="rounded-sm bg-red-500/15 px-1 py-0.5 text-[9px] font-semibold text-red-400 uppercase border border-red-500/20">OUT</span>
               ) : (row.manual_status === "INJURED" || (!row.manual_status && row.status === "INJURED")) ? (
@@ -284,11 +281,11 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           <span className="text-sm tabular-nums text-white/60">{be !== null ? be : "—"}</span>
         </td>
 
-        <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 80 }}>
+        <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 90 }}>
           <EdgeCell row={row} />
         </td>
 
-        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 100 }}>
+        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 110 }}>
           {isLocked ? (
             <LockedCell onClick={onUpgrade} />
           ) : displayRec ? (
@@ -304,11 +301,11 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           ) : <span className="text-white/20 text-xs">—</span>}
         </td>
 
-        <td className="px-3 py-3 text-left" style={{ width: 160, maxWidth: 160 }}>
+        <td className="px-3 py-3 text-left" style={{ width: 220, maxWidth: 220 }}>
           {isLocked ? (
             <span className="text-[11px] text-white/20 italic">Unlock to view</span>
           ) : (
-            <span className="block text-[12px] text-white/45 leading-snug truncate max-w-[148px]">
+            <span className="block text-[12px] text-white/45 leading-snug truncate max-w-[208px]">
               {shortWhy}
             </span>
           )}
@@ -491,12 +488,12 @@ export function FreeConversionWallRow({ onUpgrade }: { onUpgrade: () => void }) 
   return (
     <>
       <tr>
-        <td colSpan={FREE_TOTAL_COLS} className="px-4 pt-4 pb-1 text-center">
+        <td colSpan={TOTAL_COLS} className="px-4 pt-4 pb-1 text-center">
           <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest">More high-confidence picks hidden below</p>
         </td>
       </tr>
       <tr>
-        <td colSpan={FREE_TOTAL_COLS} className="px-4 pt-2 pb-6">
+        <td colSpan={TOTAL_COLS} className="px-4 pt-2 pb-6">
           <div
             className="relative flex flex-col items-center gap-3 rounded-2xl border border-[#F5C84C]/25 bg-gradient-to-b from-[#F5C84C]/[0.07] via-[#0d0d0d] to-[#0a0a0a] px-8 py-8 text-center overflow-hidden hover:border-[#F5C84C]/40 transition-all duration-200 cursor-pointer"
             onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
