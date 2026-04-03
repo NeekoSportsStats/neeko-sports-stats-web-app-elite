@@ -333,6 +333,26 @@ export function ConversionWallRow({ onUpgrade, colSpan = TOTAL_COLS }: { onUpgra
 
 const FREE_TOTAL_COLS = 5;
 
+function getFreeValueLabel(score: number | null | undefined): { label: string; cls: string } {
+  if (score == null) return { label: "—", cls: "text-white/30" };
+  if (score >= 15) return { label: "🔥 VALUE", cls: "text-emerald-400" };
+  if (score >= 5)  return { label: "⚖️ NEUTRAL", cls: "text-[#F5C84C]" };
+  return { label: "⚠️ RISK", cls: "text-red-400" };
+}
+
+function getFreeValueBg(score: number | null | undefined): string {
+  if (score == null) return "bg-white/5 border-white/10";
+  if (score >= 15) return "bg-emerald-500/10 border-emerald-500/25";
+  if (score >= 5)  return "bg-[#F5C84C]/10 border-[#F5C84C]/25";
+  return "bg-red-500/10 border-red-500/25";
+}
+
+function shortenWhy(text: string): string {
+  if (!text) return "";
+  const clean = text.replace(/\bis\b|\bhas\b|\bwith\b|\bthat\b|\bthis\b/gi, "").replace(/\s{2,}/g, " ").trim();
+  return clean.length > 90 ? clean.slice(0, 90) + "..." : clean;
+}
+
 export function FreeTableHeader() {
   return (
     <tr className="border-b border-[#222]">
@@ -364,8 +384,14 @@ interface FreeTableRowProps {
 export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
   const rank = idx + 1;
 
-  const vsColor = getValueScoreColor(row.value_score ?? null);
-  const vtStyle = getValueTagStyle(row.value_tag);
+  const { label: valueLabel, cls: valueCls } = getFreeValueLabel(row.value_score ?? null);
+  const valueBg = getFreeValueBg(row.value_score ?? null);
+
+  const valueGap = row.value_score != null ? Number(row.value_score) : null;
+  const valueGapStr = valueGap != null
+    ? (valueGap >= 0 ? `+${valueGap.toFixed(1)}` : valueGap.toFixed(1))
+    : null;
+  const valueGapCls = valueGap == null ? "" : valueGap >= 0 ? "text-emerald-400" : "text-red-400";
 
   const statusBadge = (() => {
     if (row.manual_status === "OUT" || (!row.manual_status && row.status === "OUT"))
@@ -379,7 +405,7 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
 
   return (
     <tr
-      className="border-b border-white/[0.04] transition-all duration-150 cursor-pointer hover:bg-white/[0.05] group"
+      className="border-b border-white/[0.04] transition-colors duration-100 cursor-pointer hover:bg-white/[0.07] group"
       style={{ touchAction: "manipulation" }}
       onClick={onRowClick}
     >
@@ -392,12 +418,19 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
             <a
               href={`/sports/afl/players/${row.player_name.toLowerCase().replace(/\s+/g, '-')}`}
               onClick={(e) => { e.preventDefault(); onRowClick(); }}
-              className="text-sm font-semibold text-white hover:text-white/80 transition-colors"
+              className="text-sm font-semibold text-white group-hover:text-white transition-colors"
             >{row.player_name}</a>
             {statusBadge}
           </div>
-          <div className="text-[11px] text-white/40 mt-0.5">
-            {row.team}{row.position ? ` · ${row.position}` : ""}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-[11px] text-white/40">
+              {row.team}{row.position ? ` · ${row.position}` : ""}
+            </span>
+            {valueGapStr && (
+              <span className={`text-[10px] font-semibold tabular-nums ${valueGapCls}`}>
+                value gap: {valueGapStr}
+              </span>
+            )}
           </div>
         </div>
       </td>
@@ -408,22 +441,16 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
         }
       </td>
       <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 110, minWidth: 90 }}>
-        <div className="flex flex-col items-center gap-0.5">
-          <span className={`text-sm font-bold tabular-nums ${vsColor}`}>
-            {fmtValueScore(row.value_score)}
-          </span>
-          {row.value_tag && (
-            <span className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold border ${vtStyle.text} ${vtStyle.bg} ${vtStyle.border}`}>
-              {row.value_tag}
-            </span>
-          )}
-        </div>
+        <span className={`inline-block rounded-md px-2 py-1 text-[11px] font-bold border ${valueCls} ${valueBg}`}>
+          {valueLabel}
+        </span>
       </td>
-      <td className="px-4 py-3 text-left align-top" style={{ minWidth: 180, maxWidth: 280 }}>
+      <td className="px-4 py-3 text-left align-middle" style={{ minWidth: 180, maxWidth: 280 }}>
         {(() => {
           const whyText = row.why ?? null;
-          return whyText
-            ? <span className="text-xs text-white/55 leading-snug block line-clamp-2 max-w-[260px]">{whyText}</span>
+          const short = whyText ? shortenWhy(whyText) : null;
+          return short
+            ? <span className="text-xs text-white/55 leading-snug block">{short}</span>
             : <span className="text-white/20 text-xs">—</span>;
         })()}
       </td>
@@ -468,6 +495,12 @@ export function FreeConversionWallRow({ onUpgrade }: { onUpgrade: () => void }) 
             </button>
             <span className="text-xs text-white/25">$10/month · Cancel anytime</span>
           </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
+            className="text-xs text-white/35 hover:text-white/60 transition-colors mt-1"
+          >
+            See all 600+ ranked players →
+          </button>
         </div>
       </td>
     </tr>
