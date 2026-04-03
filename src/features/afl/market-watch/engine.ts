@@ -86,11 +86,18 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
     // ai_recommendation is the canonical source — supports 5-tier system:
     // STRONG_BUY / BUY → BUY bucket
     // HOLD → HOLD bucket
-    // SELL / STRONG_SELL → SELL bucket
+    // SELL / STRONG_SELL + negative value → SELL bucket (Avoid)
+    // SELL / STRONG_SELL + non-negative value → HOLD bucket (Watch)
+    //   These are underpriced despite weak edge — market sees value the model
+    //   doesn't fully capture. Surface as Watch, not Avoid.
     const canonical = (p.ai_recommendation ?? '').toUpperCase();
+    const isSellTier = canonical === 'STRONG_SELL' || canonical === 'SELL';
+    const hasPositiveValue = (p.value_score ?? -1) >= 0;
+
     const normalized: SimpleCategory | null =
       canonical === 'STRONG_BUY' || canonical === 'BUY' ? 'BUY'
-      : canonical === 'STRONG_SELL' || canonical === 'SELL' ? 'SELL'
+      : isSellTier && hasPositiveValue ? 'HOLD'
+      : isSellTier ? 'SELL'
       : canonical === 'HOLD' ? 'HOLD'
       : null;
 
