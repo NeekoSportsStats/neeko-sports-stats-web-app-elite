@@ -194,7 +194,7 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
     :                  "text-white/30";
 
   function handleViewPlayer() {
-    navigate(`/afl/player/${nameToSlug(row.player_name)}`);
+    navigate(`/sports/afl/players/${nameToSlug(row.player_name)}`);
   }
 
   const hasMetrics = confidence != null || price != null || rating != null;
