@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Helmet } from "react-helmet-async";
-import { Search, Clock, X, Lock, RefreshCw, TrendingUp, Star, Zap } from "lucide-react";
+import { Search, X, RefreshCw, TrendingUp, Star, Zap, Crown } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
@@ -22,7 +22,7 @@ import {
   FreeTableHeader, FreeTableRow, FreeConversionWallRow, FreeLoadingSkeletonRows,
 } from "./components/RankingsTable";
 import { MobileRankingsTable } from "./components/MobileRankingsTable";
-import { RankingsSEOContent } from "./components/RankingsSEOContent";
+import { CollapsibleSEO } from "./components/CollapsibleSEO";
 
 const POSITIONS: PositionFilter[] = ["ALL", "DEF", "MID", "FWD", "RUC"];
 
@@ -255,6 +255,38 @@ const FREE_COLUMNS =
 
 const AI_COLUMNS =
   "player_id,summary_short,summary_long,recommendation_short,recommendation_why,ai_summary,ai_updated_at";
+
+function StickyUpgradeBar({ onUpgrade }: { onUpgrade: () => void }) {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    function onScroll() {
+      setVisible(window.scrollY > 480);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-4 px-4 py-3 bg-[#0d0d0d]/95 border-t border-white/[0.08] backdrop-blur-sm md:px-8">
+      <p className="text-sm font-medium text-white/70 hidden sm:block">
+        Unlock full rankings + AI insights
+      </p>
+      <p className="text-sm font-medium text-white/70 sm:hidden">
+        More picks hidden
+      </p>
+      <button
+        onClick={onUpgrade}
+        className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5C84C] hover:brightness-110 px-5 py-2 text-sm font-bold text-[#070707] transition-all shadow-lg shrink-0"
+      >
+        <Crown size={13} />
+        Subscribe
+      </button>
+    </div>
+  );
+}
 
 export default function AFLRankingsPage() {
   const { isPremium } = useAuth();
@@ -733,12 +765,11 @@ export default function AFLRankingsPage() {
 
           </div>
 
-          {/* SEO + EXPLORE */}
-          {!loading && sortedRows.length > 0 && (
-            <RankingsSEOContent />
-          )}
+          <CollapsibleSEO />
 
         </div>
+
+        <StickyUpgradeBar onUpgrade={() => setShowUpgradeModal(true)} />
 
         {ratingInfoOpen && <NeekoRatingInfoModal onClose={() => setRatingInfoOpen(false)} />}
         {showUpgradeModal && <UpgradeModal onClose={() => setShowUpgradeModal(false)} />}
@@ -978,9 +1009,7 @@ export default function AFLRankingsPage() {
 
         </div>
 
-        {!loading && sortedRows.length > 0 && (
-          <RankingsSEOContent />
-        )}
+        <CollapsibleSEO />
 
       </div>
 
