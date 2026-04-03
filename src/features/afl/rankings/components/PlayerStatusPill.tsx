@@ -6,7 +6,7 @@ interface PlayerStatusPillProps {
 }
 
 export function PlayerStatusPill({ row, showUpcomingBye = false }: PlayerStatusPillProps) {
-  const effectiveStatus = row.manual_status ?? row.status;
+  const effectiveStatus = (row.manual_status ?? row.status)?.toUpperCase();
 
   if (effectiveStatus === "OUT") {
     return (

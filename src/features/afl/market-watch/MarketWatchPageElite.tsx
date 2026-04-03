@@ -88,8 +88,8 @@ export default function MarketWatchPageElite() {
         matchup_label: r.matchup_label ?? null,
         summary_short: r.summary_short ?? null,
         summary_long: r.summary_long ?? null,
-        is_injured: r.status === 'injured' || r.manual_status === 'injured' || false,
-        is_bye: (r.is_bye ?? false) || r.status === 'bye' || r.manual_status === 'bye',
+        is_injured: ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()) || ['injured', 'out'].includes((r.manual_status ?? '').toLowerCase()),
+        is_bye: r.is_bye === true || (r.status ?? '').toLowerCase() === 'bye' || (r.manual_status ?? '').toLowerCase() === 'bye',
         status: r.status ?? r.manual_status ?? null,
         manual_status: r.manual_status ?? null,
       }));
