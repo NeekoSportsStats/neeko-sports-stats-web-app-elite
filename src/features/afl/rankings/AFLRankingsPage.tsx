@@ -12,7 +12,7 @@ import {
 import {
   TAB_SORT_KEY, TAB_DESCRIPTIONS, TAB_DEFAULT_SORT,
   FREE_FULL_ROWS, FREE_PARTIAL_ROWS, PREMIUM_INITIAL_ROWS,
-  getFreeTier, normalisePosition, computeKpiTiles, fmtUpdatedAt, fmt, fmtValueScore,
+  getFreeTier, normalisePosition, fmtUpdatedAt, fmt, fmtValueScore,
 } from "./components/helpers";
 import {
   NeekoRatingInfoModal, UpgradeModal, PlayerDetailModal,
@@ -37,30 +37,8 @@ const PREMIUM_QUICK_FILTERS: { key: PremiumFilter; label: string }[] = [
   { key: "ELITE", label: "Elite Only" },
 ];
 
-function KpiTiles({ rows }: { rows: RankingRow[] }) {
-  const { captainAvgProj, valueUpgrades, trapAlerts, highConfidence } = computeKpiTiles(rows);
 
-  const tiles = [
-    { label: "Top Captain Avg", value: captainAvgProj != null ? captainAvgProj.toFixed(1) : "—", sub: "Top 5 captain projections", color: "text-[#F5C84C]" },
-    { label: "Value Upgrades", value: valueUpgrades.toString(), sub: "Strong+ value (top 30%)", color: "text-green-400" },
-    { label: "Trap Alerts", value: trapAlerts.toString(), sub: "Overpriced or high risk", color: "text-red-400" },
-    { label: "High Confidence", value: highConfidence.toString(), sub: "Confidence ≥ 65%", color: "text-green-400" },
-  ];
-
-  return (
-    <div className="mb-3 grid grid-cols-2 md:grid-cols-4 gap-2">
-      {tiles.map(({ label, value, sub, color }) => (
-        <div key={label} className="rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2">
-          <p className="text-[10px] text-white/35 uppercase tracking-wider mb-0.5">{label}</p>
-          <p className={`text-lg font-bold tabular-nums ${color}`}>{value}</p>
-          <p className="text-[10px] text-white/25 mt-0.5">{sub}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function FreeValueStrip({ rows }: { rows: RankingRow[] }) {
+function ValueStrip({ rows }: { rows: RankingRow[] }) {
   if (rows.length === 0) return null;
 
   const top8 = rows.slice(0, FREE_FULL_ROWS);
@@ -85,21 +63,21 @@ function FreeValueStrip({ rows }: { rows: RankingRow[] }) {
 
   const cards = [
     {
-      icon: <Star size={14} className="text-[#F5C84C]" />,
+      icon: <Star size={13} className="text-[#F5C84C]" />,
       label: "Highest Projection",
       value: highestProj ? fmt(highestProj.projection_final) : "—",
       sub: highestProj?.player_name ?? "—",
       color: "text-[#F5C84C]",
     },
     {
-      icon: <TrendingUp size={14} className="text-emerald-400" />,
+      icon: <TrendingUp size={13} className="text-emerald-400" />,
       label: "Best Value Pick",
       value: bestValue ? fmtValueScore(bestValue.value_score) : "—",
       sub: bestValue?.player_name ?? "—",
       color: "text-emerald-400",
     },
     {
-      icon: <Zap size={14} className="text-blue-400" />,
+      icon: <Zap size={13} className="text-blue-400" />,
       label: "Avg Projection (Top 8)",
       value: avgProj != null ? avgProj.toFixed(1) : "—",
       sub: "Based on current top 8",
@@ -108,14 +86,14 @@ function FreeValueStrip({ rows }: { rows: RankingRow[] }) {
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-2 mb-4">
+    <div className="grid grid-cols-3 gap-2 mb-3">
       {cards.map(({ icon, label, value, sub, color }) => (
-        <div key={label} className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2.5">
-          <div className="flex items-center gap-1.5 mb-2">
+        <div key={label} className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2">
+          <div className="flex items-center gap-1.5 mb-1.5">
             {icon}
             <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium">{label}</p>
           </div>
-          <p className={`text-lg font-bold tabular-nums ${color}`}>{value}</p>
+          <p className={`text-base font-bold tabular-nums ${color}`}>{value}</p>
           <p className="text-[11px] text-white/35 mt-0.5 truncate">{sub}</p>
         </div>
       ))}
@@ -270,7 +248,7 @@ function StickyUpgradeBar({ onUpgrade }: { onUpgrade: () => void }) {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-4 px-4 py-3 bg-[#0d0d0d]/95 border-t border-white/[0.08] backdrop-blur-sm md:px-8">
+    <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-4 px-4 py-3 bg-[#0d0d0d]/95 border-t border-white/[0.08] backdrop-blur-sm">
       <p className="text-sm font-medium text-white/70 hidden sm:block">
         Unlock full rankings + AI insights
       </p>
@@ -651,7 +629,7 @@ export default function AFLRankingsPage() {
         <div className="min-h-screen bg-[#070707] text-white">
 
           {/* FREE HERO */}
-          <div className="px-4 pt-10 pb-6 md:px-8">
+          <div className="px-4 pt-10 pb-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
@@ -694,17 +672,17 @@ export default function AFLRankingsPage() {
             {updatedAt && <StaleDataWarning timestamp={updatedAt.ts} className="mt-3" />}
           </div>
 
-          <div className="px-4 pb-16 md:px-8">
+          <div className="px-4 pb-16">
 
             {/* QUICK VALUE STRIP */}
             {!loading && displayRows.length > 0 && (
-              <FreeValueStrip rows={displayRows} />
+              <ValueStrip rows={displayRows} />
             )}
 
             {/* FREE TABLE — desktop */}
             <div className="hidden md:block">
               <div
-                className="w-full overflow-x-auto rounded-xl border border-white/[0.06]"
+                className="w-full max-w-[1100px] mx-auto overflow-x-auto rounded-xl border border-white/[0.06]"
                 style={{ WebkitOverflowScrolling: "touch" }}
               >
                 <table className="min-w-[1100px] w-full border-collapse">
@@ -843,7 +821,7 @@ export default function AFLRankingsPage() {
 
       <div className="min-h-screen bg-[#070707] text-white">
 
-        <div className="px-4 pt-7 pb-3 md:px-8">
+        <div className="px-4 pt-7 pb-3">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
@@ -885,7 +863,7 @@ export default function AFLRankingsPage() {
           {updatedAt && <StaleDataWarning timestamp={updatedAt.ts} className="mt-3" />}
         </div>
 
-        <div className="px-4 pb-10 md:px-8">
+        <div className="px-4 pb-10">
 
           <div className="mb-0 flex items-center gap-2 border-b border-white/[0.06]">
             {TABS.map(({ key, label, premiumOnly }) => {
@@ -921,7 +899,7 @@ export default function AFLRankingsPage() {
             />
           </div>
 
-          <div className="sticky top-[72px] z-30 bg-[#070707] pb-2 -mx-4 px-4 md:-mx-8 md:px-8 mb-2 flex flex-wrap gap-1.5">
+          <div className="sticky top-[72px] z-30 bg-[#070707] pb-2 -mx-4 px-4 mb-2 flex flex-wrap gap-1.5">
             {PREMIUM_QUICK_FILTERS.map(({ key, label }) => (
               <button
                 key={key}
@@ -938,12 +916,12 @@ export default function AFLRankingsPage() {
           </div>
 
           {!loading && displayRows.length > 0 && (
-            <KpiTiles rows={displayRows} />
+            <ValueStrip rows={displayRows} />
           )}
 
           <div className="hidden md:block">
             <div
-              className="w-full overflow-x-auto overflow-y-auto max-h-[75vh] rounded-xl border border-white/5"
+              className="w-full max-w-[1100px] mx-auto overflow-x-auto overflow-y-auto max-h-[75vh] rounded-xl border border-white/5"
               style={{ WebkitOverflowScrolling: "touch" }}
             >
               <table className="min-w-[1100px] w-full border-collapse">

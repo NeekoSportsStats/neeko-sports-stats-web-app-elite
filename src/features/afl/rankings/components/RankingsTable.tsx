@@ -10,11 +10,11 @@ import {
 import { InfoTooltip, LockedCell } from "./RankingsModals";
 
 // ─── Column layout ─────────────────────────────────────────────────────────────
-// # (52) | Player (flex) | PROJ (90) | BE (80) | EDGE (80) | ACTION (110) | WHY (220)
+// # (44) | Player (240) | PROJ (90) | BE (80) | EDGE (90) | ACTION (100) | WHY (180)
 const TOTAL_COLS = 7;
 const FREE_TOTAL_COLS = 5;
 
-const TH = "bg-[#0a0a0a] px-4 py-3 text-[11px] font-medium uppercase tracking-wider whitespace-nowrap border-b border-white/10 text-center";
+const TH = "bg-[#0a0a0a] px-3 py-2.5 text-[11px] font-medium uppercase tracking-wider whitespace-nowrap border-b border-white/10 text-center";
 
 // ─── Short WHY generator ──────────────────────────────────────────────────────
 
@@ -22,8 +22,8 @@ function buildShortWhy(row: RankingRow, action: string): string {
   const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
   const label = action.toUpperCase();
 
-  if (label === "BUY" || label === "STRONG BUY") return proj != null ? `Projected ${proj}, well above breakeven` : "Well above breakeven";
-  if (label === "HOLD") return "Projection near breakeven, stable play";
+  if (label === "BUY" || label === "STRONG BUY") return "Projected strong, well above breakeven";
+  if (label === "HOLD") return "Projection near breakeven, stable output";
   if (label === "AVOID" || label === "SELL") return "Below breakeven, limited scoring upside";
   if (label === "WATCH") return "Slight value edge, monitor closely";
   return "Slight value edge, monitor closely";
@@ -51,9 +51,9 @@ function EdgeCell({ row }: { row: RankingRow }) {
   else colorCls = "text-red-400 font-semibold";
 
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className={`text-sm tabular-nums ${colorCls}`}>{edgeDisplay}</span>
-      <span className="text-[9px] text-white/30 leading-none">vs BE</span>
+    <div className="flex flex-col items-center gap-px">
+      <span className={`text-sm font-semibold tabular-nums ${colorCls}`}>{edgeDisplay}</span>
+      <span className="text-[9px] text-white/25 leading-none">vs BE</span>
     </div>
   );
 }
@@ -182,13 +182,13 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
 
   return (
     <tr className="border-b border-[#222]">
-      <th className={`${TH} text-white/40`} style={{ width: 52, minWidth: 52 }}>#</th>
-      <th className={`${TH} text-left text-white/40`} style={{ minWidth: 200 }}>Player</th>
+      <th className={`${TH} text-white/40`} style={{ width: 44, minWidth: 44 }}>#</th>
+      <th className={`${TH} text-left text-white/40`} style={{ width: 240, minWidth: 180 }}>Player</th>
       <SortableTh label="Proj" col="projection_final" width={90} tooltip="Expected fantasy points this round" />
       <SortableTh label="BE" col="form_score" width={80} tooltip="Breakeven — score needed to maintain price" />
       <SortableTh label="Edge" col="projection_final" width={90} tooltip="Projection minus Breakeven. Green = clears BE. Red = price risk." />
-      <Th label="Action" locked={!isPremium} width={110} />
-      <th className={`${TH} text-left text-white/35`} style={{ width: 220, minWidth: 180 }}>Why</th>
+      <Th label="Action" locked={!isPremium} width={100} />
+      <th className={`${TH} text-left text-white/35`} style={{ width: 180, minWidth: 150 }}>Why</th>
     </tr>
   );
 }
@@ -221,7 +221,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
 
   const rowClass = isHighlighted
     ? "border-b border-[#F5C84C]/30 bg-[#F5C84C]/[0.04] cursor-pointer"
-    : "border-b border-white/[0.04] cursor-pointer hover:bg-neutral-900 transition-colors duration-100";
+    : "border-b border-white/[0.04] cursor-pointer hover:bg-neutral-900 transition-all duration-150";
 
   function handleRowClick() {
     if (isPremium) {
@@ -234,8 +234,8 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
   return (
     <>
       <tr className={`${rowClass} group`} onClick={handleRowClick}>
-        <td className="px-3 py-3 text-sm text-white/30 tabular-nums text-center whitespace-nowrap" style={{ width: 52, minWidth: 52 }}>
-          <span className="inline-flex items-center gap-1">
+        <td className="px-3 py-2.5 text-sm text-white/30 tabular-nums text-center whitespace-nowrap" style={{ width: 44, minWidth: 44 }}>
+          <span className="inline-flex items-center gap-0.5">
             {rank}
             {isPremium && (
               <ChevronRight
@@ -246,10 +246,10 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           </span>
         </td>
 
-        <td className="px-4 py-3 whitespace-nowrap" style={{ minWidth: 160, maxWidth: 280 }}>
+        <td className="px-3 py-2.5 whitespace-nowrap" style={{ width: 240, minWidth: 180, maxWidth: 240 }}>
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-sm font-semibold text-white truncate max-w-[200px]">{row.player_name}</span>
+              <span className="text-sm font-semibold text-white truncate max-w-[180px]">{row.player_name}</span>
               {(row.manual_status === "OUT" || (!row.manual_status && row.status === "OUT")) ? (
                 <span className="rounded-sm bg-red-500/15 px-1 py-0.5 text-[9px] font-semibold text-red-400 uppercase border border-red-500/20">OUT</span>
               ) : (row.manual_status === "INJURED" || (!row.manual_status && row.status === "INJURED")) ? (
@@ -264,33 +264,33 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
                 <span className="rounded-sm bg-orange-500/15 px-1 py-0.5 text-[9px] font-semibold text-orange-400 uppercase border border-orange-500/20">TEST</span>
               )}
             </div>
-            <div className="text-[11px] text-white/40 mt-0.5">
+            <div className="text-[11px] text-neutral-500 mt-0.5 leading-tight">
               {row.team}{row.position ? ` · ${row.position}` : ""}
             </div>
           </div>
         </td>
 
-        <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 90 }}>
+        <td className="px-3 py-2.5 text-center whitespace-nowrap" style={{ width: 90 }}>
           {row.is_bye
             ? <span className="text-sm font-semibold text-white/20 tabular-nums">—</span>
             : <span className="text-sm font-semibold text-[#F5C84C]/80 tabular-nums">{fmt(row.projection_final)}</span>
           }
         </td>
 
-        <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 80 }}>
+        <td className="px-3 py-2.5 text-center whitespace-nowrap" style={{ width: 80 }}>
           <span className="text-sm tabular-nums text-white/60">{be !== null ? be : "—"}</span>
         </td>
 
-        <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 90 }}>
+        <td className="px-3 py-2.5 text-center whitespace-nowrap" style={{ width: 90 }}>
           <EdgeCell row={row} />
         </td>
 
-        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 110 }}>
+        <td className="px-3 py-2.5 text-center whitespace-nowrap" style={{ width: 100 }}>
           {isLocked ? (
             <LockedCell onClick={onUpgrade} />
           ) : displayRec ? (
             <span
-              className="inline-block rounded-md border px-2 py-1 text-[11px] font-bold whitespace-nowrap"
+              className="inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap"
               style={(() => {
                 const rc = resolveRecommendationColor(row.recommendation_color, displayRec);
                 return { color: rc, background: `${rc}18`, borderColor: `${rc}40` };
@@ -301,11 +301,11 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           ) : <span className="text-white/20 text-xs">—</span>}
         </td>
 
-        <td className="px-3 py-3 text-left" style={{ width: 220, maxWidth: 220 }}>
+        <td className="px-3 py-2.5 text-left" style={{ width: 180, maxWidth: 180 }}>
           {isLocked ? (
             <span className="text-[11px] text-white/20 italic">Unlock to view</span>
           ) : (
-            <span className="block text-[12px] text-white/45 leading-snug truncate max-w-[208px]">
+            <span className="block text-[12px] text-white/45 leading-snug truncate max-w-[168px]">
               {shortWhy}
             </span>
           )}

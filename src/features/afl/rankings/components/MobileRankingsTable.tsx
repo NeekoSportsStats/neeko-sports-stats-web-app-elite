@@ -47,8 +47,8 @@ function buildShortWhy(row: RankingRow, action: string): string {
   const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
   const label = action.toUpperCase();
 
-  if (label === "BUY" || label === "STRONG BUY") return proj != null ? `Projected ${proj}, well above breakeven` : "Well above breakeven";
-  if (label === "HOLD") return "Projection near breakeven, stable play";
+  if (label === "BUY" || label === "STRONG BUY") return "Projected strong, well above breakeven";
+  if (label === "HOLD") return "Projection near breakeven, stable output";
   if (label === "AVOID" || label === "SELL") return "Below breakeven, limited scoring upside";
   if (label === "WATCH") return "Slight value edge, monitor closely";
   return "Slight value edge, monitor closely";
