@@ -15,80 +15,24 @@ const FREE_TOTAL_COLS = 5;
 
 const TH = "bg-[#0a0a0a] px-3 py-2.5 text-[11px] font-medium uppercase tracking-wider whitespace-nowrap border-b border-white/10 text-center";
 
-// ─── Rich WHY generator ────────────────────────────────────────────────────────
+// ─── WHY text resolver ─────────────────────────────────────────────────────────
 
-function buildRichWhy(row: RankingRow, action: string): string {
+function buildRichWhy(row: RankingRow): string {
+  if (row.why && row.why.trim().length > 0) return row.why.trim();
+
   const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
   const be = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
-  const edge = proj != null && be != null && !row.is_bye ? proj - be : null;
-  const price = row.price != null ? row.price : null;
-  const valueScore = row.value_score != null ? Number(row.value_score) : null;
-  const confidence = row.projection_confidence != null ? Math.round(row.projection_confidence) : null;
-  const form = row.form_rating != null ? Math.round(Number(row.form_rating)) : null;
-  const matchupRaw = row.matchup_rating != null ? Number(row.matchup_rating) : null;
-  const label = action.toUpperCase();
 
-  // Edge-aware insight
-  if (edge != null) {
-    if (edge >= 20) {
-      if (matchupRaw != null && matchupRaw > 1.03) {
-        const pct = Math.round((matchupRaw - 1) * 100);
-        return `+${edge} vs BE — opponent concedes +${pct}% to position`;
-      }
-      if (confidence != null && confidence >= 70) {
-        return `+${edge} vs BE with ${confidence}% model confidence`;
-      }
-      if (valueScore != null && valueScore > 1) {
-        return `+${edge} vs BE — underpriced, value score ${valueScore.toFixed(1)}`;
-      }
-      return `+${edge} vs BE with strong role security`;
-    }
-    if (edge >= 10) {
-      if (form != null && form >= 75) {
-        return `+${edge} vs BE — form trend strong (${form} form rating)`;
-      }
-      return `+${edge} vs BE, moderate projection edge`;
-    }
-    if (edge >= -5) {
-      if (matchupRaw != null && matchupRaw < 0.97) {
-        const pct = Math.round((1 - matchupRaw) * 100);
-        return `Near BE — tough opponent concedes -${pct}% to position`;
-      }
-      return `Near BE — stable output, limited ceiling`;
-    }
-    if (edge < -10) {
-      if (price != null && price > 0) {
-        const pricek = Math.round(price / 1000);
-        return `-${Math.abs(edge)} vs BE — priced at $${pricek}K, risk of price drop`;
-      }
-      return `-${Math.abs(edge)} vs BE, price risk this round`;
-    }
+  if (proj != null && be != null && !row.is_bye) {
+    const edge = proj - be;
+    if (edge > 0) return `Projected ${proj} pts — clears breakeven by ${edge}.`;
+    if (edge === 0) return `Projected ${proj} pts — exactly at breakeven.`;
+    return `Projected ${proj} pts — ${Math.abs(edge)} below breakeven.`;
   }
 
-  // Fallback by action
-  if (label === "BUY" || label === "STRONG BUY") {
-    if (proj != null) return `Projection ${proj} — strong upside at current price`;
-    return "High-ceiling play, projection well above peers";
-  }
-  if (label === "ELITE CAPTAIN" || label === "STRONG CAPTAIN") {
-    if (proj != null && confidence != null) return `Captain ceiling — ${proj} proj, ${confidence}% confidence`;
-    return "Premium captain option, elite scoring floor";
-  }
-  if (label === "HOLD") {
-    if (be != null) return `BE of ${be} — projection covers, stable hold`;
-    return "Projection near breakeven, consistent output";
-  }
-  if (label === "AVOID" || label === "SELL") {
-    if (be != null) return `BE of ${be} — projection falls short, price risk`;
-    return "Below breakeven, limited scoring upside";
-  }
-  if (label === "WATCH") {
-    if (matchupRaw != null && matchupRaw > 1.0) {
-      return "Favourable matchup — monitor for late confirmation";
-    }
-    return "Slight value edge, monitor for role clarity";
-  }
-  return "Slight value edge, monitor closely";
+  if (proj != null) return `Projected ${proj} pts this round.`;
+  if (be != null) return `Breakeven of ${be} — monitor projection closely.`;
+  return "Projection data pending.";
 }
 
 // ─── Edge cell ─────────────────────────────────────────────────────────────────
@@ -289,7 +233,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
   const rank = idx + 1;
 
   const displayRec = getDisplayRecommendation(row, activeTab);
-  const richWhy = displayRec ? buildRichWhy(row, displayRec) : (row.why ?? "");
+  const richWhy = buildRichWhy(row);
   const actionStyle = displayRec ? getActionStyle(displayRec) : undefined;
 
   const isLocked = !isPremium && idx >= FREE_FULL_ROWS;
