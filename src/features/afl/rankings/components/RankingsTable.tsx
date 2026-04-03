@@ -159,7 +159,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           </div>
         </div>
       </td>
-      <td className="px-4 py-4 text-center whitespace-nowrap" style={{ width: 140, minWidth: 120 }}>
+      <td className="px-4 py-2.5 text-center whitespace-nowrap" style={{ width: 140, minWidth: 120 }}>
         <div className="flex flex-col items-center">
           <span className={`text-base font-extrabold tabular-nums ${neekoRBadge.text}`} style={neekoRBadge.glow ? { filter: neekoRBadge.glow } : undefined}>
             {row.neeko_rating != null ? Number(row.neeko_rating).toFixed(1) : "—"}
@@ -173,13 +173,13 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           )}
         </div>
       </td>
-      <td className="px-4 py-4 text-center whitespace-nowrap" style={{ width: 100, minWidth: 90 }}>
+      <td className="px-4 py-2.5 text-center whitespace-nowrap" style={{ width: 100, minWidth: 90 }}>
         {row.is_bye
           ? <span className="text-sm font-semibold text-white/20 tabular-nums">—</span>
           : <span className="text-sm font-semibold text-[#F5C84C]/75 tabular-nums">{fmt(row.projection_final)}</span>
         }
       </td>
-      <td className="px-4 py-4 text-center whitespace-nowrap" style={{ width: 100, minWidth: 90 }}>
+      <td className="px-4 py-2.5 text-center whitespace-nowrap" style={{ width: 100, minWidth: 90 }}>
         {(() => {
           const display = normaliseConfidence(
             row.projection_confidence ?? null,
@@ -269,13 +269,13 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           </span>
         ) : <span className="text-white/20 text-xs">—</span>}
       </td>
-      <td className="px-4 py-3 text-left align-top" style={{ minWidth: 180, maxWidth: 280, width: 280 }}>
+      <td className="px-4 py-2.5 text-left align-middle" style={{ minWidth: 160, maxWidth: 420, width: 420 }}>
         {locked("why") ? (
           <LockedCell onClick={onUpgrade} />
         ) : (() => {
           const whyText = row.why ?? null;
           return whyText
-            ? <span className="text-xs text-white/60 leading-snug block line-clamp-2 max-w-[260px]">{whyText}</span>
+            ? <span className="text-xs text-white/60 leading-snug block overflow-hidden text-ellipsis whitespace-nowrap max-w-[400px]">{whyText}</span>
             : <span className="text-white/20 text-xs">—</span>;
         })()}
       </td>
@@ -519,7 +519,7 @@ export function FreeLoadingSkeletonRows({ rows = 8 }: { rows?: number }) {
       {Array.from({ length: rows }).map((_, i) => (
         <tr key={i} className="border-b border-white/5">
           {Array.from({ length: FREE_TOTAL_COLS }).map((__, j) => (
-            <td key={j} className="px-4 py-4">
+            <td key={j} className="px-4 py-2.5">
               <div className="h-4 animate-pulse rounded bg-white/5" />
             </td>
           ))}
@@ -540,7 +540,7 @@ export function LoadingSkeletonRows({ cols = TOTAL_COLS, rows = 10 }: LoadingSke
       {Array.from({ length: rows }).map((_, i) => (
         <tr key={i} className="border-b border-white/5">
           {Array.from({ length: cols }).map((__, j) => (
-            <td key={j} className="px-4 py-4">
+            <td key={j} className="px-4 py-2.5">
               <div className="h-4 animate-pulse rounded bg-white/5" />
             </td>
           ))}
