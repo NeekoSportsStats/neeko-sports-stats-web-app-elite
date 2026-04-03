@@ -492,34 +492,78 @@ export default function AFLCurrentRoundPage() {
     track("current_round_page_view");
   }, [fetchData]);
 
-  // ── DERIVED LISTS — sorted by projection DESC ───────────────────────────────
+  // ── DERIVED LISTS — each section uses distinct scoring logic ─────────────────
+
   const topPicks = useMemo(
     () => [...rows].sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)).slice(0, 10),
     [rows]
   );
 
-  const captainPicks = useMemo(
-    () =>
+  const captainPicks = useMemo(() => {
+    const topPickIds = new Set(
       [...rows]
-        .filter((r) => (r.projection_final ?? 0) >= 100 && (r.projection_confidence ?? 0) >= 60)
         .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0))
-        .slice(0, 8),
-    [rows]
-  );
+        .slice(0, 5)
+        .map((r) => r.player_id)
+    );
 
-  const valuePlays = useMemo(
-    () =>
+    const captainScore = (r: RankingRow): number => {
+      const proj = r.projection_final ?? 0;
+      const consistency = r.consistency_score != null ? Number(r.consistency_score) / 100 : 0.5;
+      const matchup = r.matchup_rating != null ? Math.min(Number(r.matchup_rating), 1.5) : 1.0;
+      return proj * 0.6 * (1 + consistency * 0.25) * (1 + (matchup - 1) * 0.15);
+    };
+
+    return [...rows]
+      .filter(
+        (r) =>
+          (r.projection_final ?? 0) >= 95 &&
+          (r.consistency_score ?? 0) >= 45 &&
+          !topPickIds.has(r.player_id)
+      )
+      .sort((a, b) => captainScore(b) - captainScore(a))
+      .slice(0, 8);
+  }, [rows]);
+
+  const valuePlays = useMemo(() => {
+    const topPickIds = new Set(
       [...rows]
-        .filter((r) => r.value_score != null && r.price != null && r.price > 0 && (r.games_played ?? 0) >= 1 && (r.value_score ?? 0) > 0)
         .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0))
-        .slice(0, 10),
-    [rows]
-  );
+        .slice(0, 5)
+        .map((r) => r.player_id)
+    );
+
+    const sortedByPrice = [...rows]
+      .filter((r) => r.price != null && r.price > 0)
+      .sort((a, b) => (b.price ?? 0) - (a.price ?? 0));
+    const topPriceIds = new Set(sortedByPrice.slice(0, 3).map((r) => r.player_id));
+
+    return [...rows]
+      .filter(
+        (r) =>
+          r.value_score != null &&
+          r.price != null &&
+          r.price > 0 &&
+          (r.games_played ?? 0) >= 1 &&
+          (r.value_score ?? 0) > 0 &&
+          !topPickIds.has(r.player_id) &&
+          !topPriceIds.has(r.player_id)
+      )
+      .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
+      .slice(0, 10);
+  }, [rows]);
 
   const trapAlerts = useMemo(
     () =>
       [...rows]
-        .filter((r) => r.value_score != null && r.price != null && r.price > 0 && (r.games_played ?? 0) >= 1 && (r.value_score ?? 0) < 0)
+        .filter(
+          (r) =>
+            r.value_score != null &&
+            r.price != null &&
+            r.price > 0 &&
+            (r.games_played ?? 0) >= 1 &&
+            (r.value_score ?? 0) < -3
+        )
         .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))
         .slice(0, 8),
     [rows]
