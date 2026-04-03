@@ -123,15 +123,15 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
 
       try {
         const { data } = await supabase.rpc("get_player_score_history_by_id", {
-          p_player_id: row.player_id,
-          p_limit: 10,
+          player_id_in: String(row.player_id),
+          n_games: 10,
         });
 
         if (!cancelled && data && Array.isArray(data)) {
           const pts = (data as any[])
-            .filter((d: any) => d.fantasy_points != null && !d.is_future)
+            .filter((d: any) => d.fantasy_points != null)
             .map((d: any) => Number(d.fantasy_points));
-          setScoreHistory(pts.slice(-10));
+          setScoreHistory(pts);
         }
       } catch {
         // sparkline is non-critical — fail silently
@@ -225,6 +225,7 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
             )}
 
             {/* 3. Full-width sparkline */}
+            {(historyLoading || scoreHistory.length >= 2) && (
             <div className="w-full">
               <p className="text-[9px] text-white/25 uppercase tracking-wider mb-1.5">
                 Last {historyLoading ? "—" : scoreHistory.length} games
@@ -234,15 +235,9 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
                 <div className="w-full rounded bg-white/[0.03] animate-pulse" style={{ height: 80 }} />
               ) : scoreHistory.length >= 2 ? (
                 <FullSparkline points={scoreHistory} color={sparkColor} projection={proj} />
-              ) : (
-                <div
-                  className="w-full flex items-center justify-center rounded border border-white/[0.05]"
-                  style={{ height: 80 }}
-                >
-                  <span className="text-[11px] text-white/20">No score history available</span>
-                </div>
-              )}
+              ) : null}
             </div>
+            )}
 
             {/* 4. Metrics row + CTA */}
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/[0.05] pt-3">

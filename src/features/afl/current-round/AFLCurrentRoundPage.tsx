@@ -187,7 +187,7 @@ function BlurredRow({ row, rank, metric }: { row: RankingRow; rank: number; metr
   );
 }
 
-// ─── BLUR OVERLAY CTA ─────────────────────────────────────────────────────────
+// ─── INLINE LOCK STRIP CTA ────────────────────────────────────────────────────
 
 function BlurOverlayCTA({
   hiddenCount,
@@ -202,32 +202,46 @@ function BlurOverlayCTA({
   ctaLabel?: string;
   badgeText?: string;
 }) {
+  const [hovered, setHovered] = React.useState(false);
+
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 z-10">
+    <>
       <div
-        className="absolute inset-0 rounded-b-xl"
+        className="absolute inset-0 rounded-b-xl pointer-events-none"
         style={{
-          background: `linear-gradient(to bottom, transparent 0%, #0a0a0a88 30%, #0a0a0aee 100%)`,
+          background: `linear-gradient(to bottom, transparent 0%, #0a0a0acc 55%, #0a0a0af5 100%)`,
         }}
       />
-      <div className="relative flex flex-col items-center gap-2">
-        <div
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
-          style={{ backgroundColor: `${accentColor}18`, border: `1px solid ${accentColor}40`, color: accentColor }}
-        >
-          <Lock className="w-3 h-3" />
-          {badgeText ?? `+${hiddenCount} elite picks hidden`}
-        </div>
+      <div className="absolute bottom-0 left-0 right-0 z-10 px-3 pb-3">
         <button
           onClick={onUpgrade}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-black transition-all hover:brightness-110 active:scale-[0.97]"
-          style={{ backgroundColor: accentColor }}
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all duration-200"
+          style={{
+            background: "rgba(255,255,255,0.025)",
+            border: `1px solid ${hovered ? `${accentColor}30` : "rgba(255,255,255,0.06)"}`,
+            transform: hovered ? "translateY(-1px)" : "translateY(0)",
+            boxShadow: hovered ? `0 4px 16px ${accentColor}10` : "none",
+          }}
         >
-          {ctaLabel ?? "Unlock full list"}
-          <ArrowRight className="w-4 h-4" />
+          <span className="flex items-center gap-1.5 text-[11px] text-white/40">
+            <Lock className="w-3 h-3 shrink-0" style={{ color: `${accentColor}70` }} />
+            {badgeText ?? `+${hiddenCount} picks hidden`}
+          </span>
+          <span
+            className="flex items-center gap-1 text-[12px] font-semibold transition-all duration-200"
+            style={{
+              color: accentColor,
+              transform: hovered ? "translateX(2px)" : "translateX(0)",
+              opacity: hovered ? 0.9 : 0.75,
+            }}
+          >
+            {ctaLabel ?? "Unlock full list →"}
+          </span>
         </button>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -362,7 +376,7 @@ function DecisionCard({
         ))}
 
         {hidden.length > 0 && (
-          <div className="relative">
+          <div className="relative pb-12">
             {hidden.map((row, idx) => (
               <BlurredRow
                 key={row.player_id ?? idx}
@@ -814,7 +828,7 @@ export default function AFLCurrentRoundPage() {
               onOpenRow={(row, rank) => openRow(row, rank)}
               onUpgrade={() => setShowUpgradeModal(true)}
               hiddenCopy="Who to double this round based on projection + matchup."
-              blurCtaLabel="Unlock all captain picks →"
+              blurCtaLabel="Unlock full captain strategy →"
               blurBadgeText="+3 captain options hidden"
               footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
               renderMetric={(row) =>
@@ -838,7 +852,7 @@ export default function AFLCurrentRoundPage() {
               onUpgrade={() => setShowUpgradeModal(true)}
               hiddenCopy="See all top picks for this round with Neeko+."
               blurCtaLabel="Unlock full rankings & AI insights →"
-              blurBadgeText="+8 high-confidence picks hidden"
+              blurBadgeText="+8 picks hidden"
               footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
             />
 
@@ -852,7 +866,7 @@ export default function AFLCurrentRoundPage() {
               onOpenRow={(row, rank) => openRow(row, rank)}
               onUpgrade={() => setShowUpgradeModal(true)}
               hiddenCopy="Underpriced players primed to rise. Unlock with Neeko+."
-              blurCtaLabel="Unlock value picks →"
+              blurCtaLabel="See all value opportunities →"
               footerLink={{ label: "Market Watch", to: "/sports/afl/market-watch" }}
               renderMetric={(row) =>
                 row.value_score != null ? (
@@ -874,7 +888,7 @@ export default function AFLCurrentRoundPage() {
               onOpenRow={(row, rank) => openRow(row, rank)}
               onUpgrade={() => setShowUpgradeModal(true)}
               hiddenCopy="Players flagged as overpriced or high risk this round."
-              blurCtaLabel="Unlock all trap alerts →"
+              blurCtaLabel="Reveal all risk flags →"
               blurBadgeText="+6 traps hidden"
               footerLink={{ label: "Market Watch", to: "/sports/afl/market-watch" }}
               renderMetric={(row) =>
@@ -927,24 +941,29 @@ export default function AFLCurrentRoundPage() {
 
           {/* ── BOTTOM CTA (free only) ─────────────────────────────────────── */}
           {!isPremium && (
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-6 text-center space-y-3">
-              <div className="inline-block px-2.5 py-1 bg-[#F5C84C]/15 border border-[#F5C84C]/30 rounded-full text-[10px] font-bold text-[#F5C84C] uppercase tracking-wider">
-                Neeko+
+            <a
+              href="/neeko-plus"
+              className="group flex items-center justify-between px-4 py-3.5 rounded-xl transition-all duration-200 hover:border-[#F5C84C]/20"
+              style={{
+                background: "rgba(255,255,255,0.02)",
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.035)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.02)"; }}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(245,200,76,0.12)", border: "1px solid rgba(245,200,76,0.2)" }}>
+                  <Crown className="w-3.5 h-3.5 text-[#F5C84C]" />
+                </div>
+                <div>
+                  <span className="text-[12px] font-semibold text-white/70">Win your round with Neeko+</span>
+                  <span className="hidden sm:inline text-[11px] text-white/30 ml-2">— full captain picks, AI insights &amp; trap alerts</span>
+                </div>
               </div>
-              <h3 className="text-lg font-bold text-white">
-                Win your round with Neeko+
-              </h3>
-              <p className="text-sm text-white/40 max-w-sm mx-auto">
-                Unlock captain picks, value edges, trap alerts and full AI analysis for every player — before lockout.
-              </p>
-              <a
-                href="/neeko-plus"
-                className="inline-flex items-center gap-2 mt-1 px-5 py-2.5 bg-[#F5C84C] text-black font-bold rounded-xl hover:brightness-105 active:scale-[0.98] transition-all text-sm"
-              >
-                Upgrade to Neeko+ →
-                <ArrowRight className="w-4 h-4" />
-              </a>
-            </div>
+              <span className="text-[12px] font-semibold text-[#F5C84C]/70 group-hover:text-[#F5C84C] transition-colors flex items-center gap-1 shrink-0">
+                Upgrade →
+              </span>
+            </a>
           )}
 
         </div>
