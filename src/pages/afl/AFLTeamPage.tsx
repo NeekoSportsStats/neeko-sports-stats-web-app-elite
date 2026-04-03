@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, ChevronRight, TrendingUp, TrendingDown, Minus, Lock, Crown, Users, Zap, ChartBar as BarChart2, ChevronDown, ChevronUp, Star, CircleAlert as AlertCircle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, ChevronRight, TrendingUp, TrendingDown, Minus, Lock, Crown, Users, Zap, ChartBar as BarChart2, ChevronDown, ChevronUp, Star, CircleAlert as AlertCircle, ShieldCheck, Flame, Target, TriangleAlert } from 'lucide-react';
 import { nameToSlug, POSITION_NAMES, TEAM_SLUG_TO_NAME } from '@/lib/slugs';
 import { getTeamPlayersSafe } from '@/lib/playerAccess';
 import { useAuth } from '@/lib/auth';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { getTeamAccentColour } from '@/config/aflTeamColours';
+import { PlayerStatusPill } from '@/features/afl/rankings/components/PlayerStatusPill';
 
 interface TeamPlayer {
   player_id?: number;
@@ -17,22 +18,31 @@ interface TeamPlayer {
   neeko_rating: number;
   projection_final: number;
   value_score: number | null;
+  best_value_score?: number | null;
   price: number;
+  breakeven?: number | null;
   ai_recommendation: string | null;
   recommendation_color?: string;
   summary_short: string | null;
   summary_long?: string | null;
   is_locked?: boolean;
+  status?: string | null;
+  manual_status?: string | null;
+  is_bye?: boolean | null;
+  bye_round?: number | null;
+  bye_next_round?: boolean | null;
 }
 
-const FREE_VISIBLE = 8;
+const FREE_FULL = 2;
+const FREE_PARTIAL = 5;
 
 function fmtPrice(p: number) {
   return `$${Math.round(p / 1000)}k`;
 }
 
-function fmtProj(p: number) {
-  return Math.round(p).toString();
+function fmtProj(p: number | null | undefined) {
+  if (p == null) return '—';
+  return Math.round(Number(p)).toString();
 }
 
 function recColorHex(rec: string | null) {
@@ -46,7 +56,7 @@ function RecBadge({ rec }: { rec: string | null }) {
   const color = recColorHex(rec);
   return (
     <span
-      className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide"
+      className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide shrink-0"
       style={{ background: `${color}18`, color, border: `1px solid ${color}40` }}
     >
       {rec}
@@ -55,26 +65,12 @@ function RecBadge({ rec }: { rec: string | null }) {
 }
 
 function RecIcon({ rec }: { rec: string | null }) {
-  if (rec === 'BUY')  return <TrendingUp size={13} className="text-emerald-400" />;
-  if (rec === 'SELL') return <TrendingDown size={13} className="text-red-400" />;
-  return <Minus size={13} className="text-white/30" />;
+  if (rec === 'BUY')  return <TrendingUp size={13} className="text-emerald-400 shrink-0" />;
+  if (rec === 'SELL') return <TrendingDown size={13} className="text-red-400 shrink-0" />;
+  return <Minus size={13} className="text-white/30 shrink-0" />;
 }
 
-function MiniSparkbar({ value, max }: { value: number; max: number }) {
-  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
-  return (
-    <div className="h-1 w-16 rounded-full bg-white/[0.07] overflow-hidden">
-      <div
-        className="h-full rounded-full bg-emerald-400/60 transition-all"
-        style={{ width: `${pct}%` }}
-      />
-    </div>
-  );
-}
-
-function StatPill({
-  label, value, color = 'text-white',
-}: { label: string; value: string | number; color?: string }) {
+function StatPill({ label, value, color = 'text-white' }: { label: string; value: string | number; color?: string }) {
   return (
     <div className="flex flex-col items-center gap-0.5">
       <span className={`text-sm font-bold tabular-nums ${color}`}>{value}</span>
@@ -83,14 +79,21 @@ function StatPill({
   );
 }
 
+function MiniBar({ value, max }: { value: number; max: number }) {
+  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+  return (
+    <div className="h-1 w-16 rounded-full bg-white/[0.07] overflow-hidden">
+      <div className="h-full rounded-full bg-emerald-400/60 transition-all" style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
 function DistributionBar({ players }: { players: TeamPlayer[] }) {
   const unlocked = players.filter(p => !p.is_locked);
   if (unlocked.length === 0) return null;
-
   const buys  = unlocked.filter(p => p.ai_recommendation === 'BUY').length;
   const sells = unlocked.filter(p => p.ai_recommendation === 'SELL').length;
   const holds = unlocked.length - buys - sells;
-
   const pctBuy  = Math.round((buys  / unlocked.length) * 100);
   const pctSell = Math.round((sells / unlocked.length) * 100);
   const pctHold = 100 - pctBuy - pctSell;
@@ -99,9 +102,9 @@ function DistributionBar({ players }: { players: TeamPlayer[] }) {
     <div className="rounded-xl border border-white/[0.07] bg-[#111] p-4">
       <p className="text-[10px] text-white/35 uppercase tracking-wider mb-3">Team Signal Distribution</p>
       <div className="flex rounded-full overflow-hidden h-2 mb-3 gap-px">
-        {pctBuy  > 0 && <div className="bg-emerald-400/70 transition-all" style={{ width: `${pctBuy}%` }} />}
-        {pctHold > 0 && <div className="bg-white/20 transition-all"       style={{ width: `${pctHold}%` }} />}
-        {pctSell > 0 && <div className="bg-red-400/70 transition-all"     style={{ width: `${pctSell}%` }} />}
+        {pctBuy  > 0 && <div className="bg-emerald-400/70" style={{ width: `${pctBuy}%` }} />}
+        {pctHold > 0 && <div className="bg-white/20"       style={{ width: `${pctHold}%` }} />}
+        {pctSell > 0 && <div className="bg-red-400/70"     style={{ width: `${pctSell}%` }} />}
       </div>
       <div className="flex justify-between text-[10px]">
         <span className="text-emerald-400 font-semibold">{pctBuy}% BUY</span>
@@ -112,166 +115,175 @@ function DistributionBar({ players }: { players: TeamPlayer[] }) {
   );
 }
 
-function TeamInsights({ players, teamName }: { players: TeamPlayer[]; teamName: string }) {
-  const unlocked = players.filter(p => !p.is_locked);
-  const buys  = players.filter(p => p.ai_recommendation === 'BUY');
-  const sells = players.filter(p => p.ai_recommendation === 'SELL');
-  const highVal = unlocked.filter(p => p.value_score != null && p.value_score > 8);
-  const avgProj = players.length > 0
-    ? players.reduce((s, p) => s + (parseFloat(String(p.projection_final)) || 0), 0) / players.length
-    : 0;
+function CategoryModule({
+  title, icon, accent, players, isPremium, accentHex,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  accent: string;
+  players: TeamPlayer[];
+  isPremium: boolean;
+  accentHex: string;
+}) {
+  if (players.length === 0) return null;
 
-  const insights: { icon: React.ReactNode; text: string; color: string }[] = [];
-
-  if (buys.length > 0) {
-    insights.push({
-      icon: <TrendingUp size={13} />,
-      text: `${buys.length} BUY candidate${buys.length > 1 ? 's' : ''} identified this round`,
-      color: 'text-emerald-400',
-    });
-  }
-  if (sells.length > 0) {
-    insights.push({
-      icon: <TrendingDown size={13} />,
-      text: `${sells.length} player${sells.length > 1 ? 's' : ''} flagged as trade-out targets`,
-      color: 'text-red-400',
-    });
-  }
-  if (highVal.length > 0) {
-    insights.push({
-      icon: <Zap size={13} />,
-      text: `${highVal.length} underpriced value pick${highVal.length > 1 ? 's' : ''} in this squad`,
-      color: 'text-amber-400',
-    });
-  }
-  if (avgProj > 0) {
-    insights.push({
-      icon: <BarChart2 size={13} />,
-      text: `Team avg projection: ${Math.round(avgProj)} pts — ${avgProj >= 80 ? 'above' : 'below'} league average`,
-      color: avgProj >= 80 ? 'text-emerald-400' : 'text-white/50',
-    });
-  }
-
-  if (insights.length === 0) return null;
+  const visibleFull    = isPremium ? players.slice(0, 5) : players.slice(0, FREE_FULL);
+  const visiblePartial = isPremium ? [] : players.slice(FREE_FULL, FREE_PARTIAL);
+  const hiddenCount    = isPremium ? 0 : Math.max(0, players.length - FREE_PARTIAL);
 
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-[#111] p-4">
-      <p className="text-[10px] text-white/35 uppercase tracking-wider mb-3">Team Intelligence</p>
-      <div className="flex flex-col gap-2.5">
-        {insights.map((ins, i) => (
-          <div key={i} className="flex items-start gap-2.5">
-            <span className={`mt-px shrink-0 ${ins.color}`}>{ins.icon}</span>
-            <p className={`text-[12px] leading-snug ${ins.color}`}>{ins.text}</p>
-          </div>
+    <div className="rounded-xl border border-white/[0.07] bg-[#111] overflow-hidden">
+      <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/[0.05]"
+        style={{ background: `${accentHex}0a` }}>
+        <span style={{ color: accentHex }}>{icon}</span>
+        <h3 className="text-sm font-semibold text-white">{title}</h3>
+        <span className="ml-auto text-[10px] text-white/25">{players.length} players</span>
+      </div>
+
+      <div className="divide-y divide-white/[0.04]">
+        {visibleFull.map((player) => (
+          <CategoryPlayerRow key={player.player_id ?? player.player_name} player={player} locked={false} />
         ))}
+
+        {visiblePartial.map((player) => (
+          <CategoryPlayerRow key={player.player_id ?? player.player_name} player={player} locked={true} partial />
+        ))}
+
+        {hiddenCount > 0 && (
+          <div className="px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Lock size={12} className="text-white/20" />
+              <span className="text-[12px] text-white/30">{hiddenCount} more players — Neeko+ only</span>
+            </div>
+            <Link
+              to="/neeko-plus"
+              className="text-[10px] font-semibold text-amber-400 hover:text-amber-300 transition-colors"
+            >
+              Unlock
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function FeaturedPlayers({
-  players, isPremium,
-}: { players: TeamPlayer[]; isPremium: boolean }) {
-  const unlockedPlayers = players.filter(p => !p.is_locked);
+function CategoryPlayerRow({ player, locked, partial }: { player: TeamPlayer; locked: boolean; partial?: boolean }) {
+  const proj = parseFloat(String(player.projection_final));
 
-  const topBuy  = unlockedPlayers.find(p => p.ai_recommendation === 'BUY');
-  const topSell = unlockedPlayers.find(p => p.ai_recommendation === 'SELL');
-  const topHold = unlockedPlayers.find(
-    p => p.ai_recommendation === 'HOLD' && p !== topBuy && p !== topSell
-  );
+  const content = (
+    <div className={`flex items-center gap-3 px-4 py-3 ${locked ? 'opacity-60' : 'group hover:bg-white/[0.03] transition-colors'}`}>
+      <div className="shrink-0">
+        <RecIcon rec={locked ? null : player.ai_recommendation} />
+      </div>
 
-  const featured = [
-    topBuy  ? { player: topBuy,  label: 'Top BUY',  icon: <TrendingUp size={12} />,  accent: '#4ade80' } : null,
-    topHold ? { player: topHold, label: 'Top HOLD', icon: <ShieldCheck size={12} />, accent: '#94a3b8' } : null,
-    topSell ? { player: topSell, label: 'Top SELL', icon: <TrendingDown size={12} />, accent: '#f87171' } : null,
-  ].filter(Boolean) as { player: TeamPlayer; label: string; icon: React.ReactNode; accent: string }[];
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-sm font-semibold text-white truncate">
+            {locked && partial ? player.player_name : player.player_name}
+          </span>
+          {!locked && (
+            <PlayerStatusPill
+              row={{
+                status: player.status ?? null,
+                manual_status: player.manual_status ?? null,
+                is_bye: player.is_bye ?? null,
+                bye_next_round: player.bye_next_round ?? null,
+                bye_round: player.bye_round ?? null,
+              }}
+              showUpcomingBye
+            />
+          )}
+        </div>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-[10px] text-white/35">
+            {POSITION_NAMES[player.player_position] ?? player.player_position}
+          </span>
+          {player.price > 0 && (
+            <>
+              <span className="text-[10px] text-white/20">·</span>
+              <span className="text-[10px] text-white/35">{fmtPrice(player.price)}</span>
+            </>
+          )}
+          {player.breakeven != null && !locked && (
+            <>
+              <span className="text-[10px] text-white/20">·</span>
+              <span className="text-[10px] text-white/40">BE: {Math.round(player.breakeven)}</span>
+            </>
+          )}
+        </div>
+      </div>
 
-  if (featured.length === 0) return null;
-
-  return (
-    <div>
-      <p className="text-[10px] text-white/35 uppercase tracking-wider mb-3">Key Decisions This Round</p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        {featured.map(({ player, label, icon, accent }) => (
-          <Link
-            key={player.player_name}
-            to={`/sports/afl/players/${nameToSlug(player.player_name)}`}
-            className="group rounded-xl border bg-[#111] p-3.5 flex flex-col gap-2 hover:bg-white/[0.04] transition-all duration-150"
-            style={{ borderColor: `${accent}30` }}
-          >
-            <div className="flex items-center justify-between">
-              <span
-                className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded"
-                style={{ color: accent, background: `${accent}18` }}
-              >
-                {icon}{label}
-              </span>
-              <span className="text-[9px] text-white/25 uppercase">
-                {POSITION_NAMES[player.player_position] ?? player.player_position}
-              </span>
-            </div>
-
-            <div>
-              <p className="text-sm font-bold text-white leading-tight mb-0.5 group-hover:text-white/90 transition-colors">
-                {player.player_name}
-              </p>
-              <p className="text-[11px] text-white/40">{fmtPrice(player.price)}</p>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[9px] text-white/30 uppercase tracking-wide">Projection</p>
-                <p className="text-base font-bold tabular-nums" style={{ color: accent }}>
-                  {fmtProj(parseFloat(String(player.projection_final)))}
+      <div className="flex items-center gap-3 shrink-0">
+        {locked && partial ? (
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-8 rounded bg-white/[0.06]" />
+            <Lock size={11} className="text-white/20" />
+          </div>
+        ) : (
+          <>
+            {player.value_score != null && (
+              <div className="text-right hidden sm:block">
+                <p className="text-[9px] text-white/25 uppercase tracking-wide">Value</p>
+                <p className="text-xs font-semibold text-amber-400 tabular-nums">
+                  {player.value_score > 0 ? '+' : ''}{Number(player.value_score).toFixed(1)}
                 </p>
               </div>
-              {player.value_score != null && (
-                <div className="text-right">
-                  <p className="text-[9px] text-white/30 uppercase tracking-wide">Value</p>
-                  <p className="text-sm font-semibold text-amber-400 tabular-nums">
-                    +{parseFloat(String(player.value_score)).toFixed(1)}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {player.summary_short && (
-              <p className="text-[11px] text-white/40 leading-relaxed line-clamp-2 border-t border-white/[0.05] pt-2">
-                {player.summary_short}
-              </p>
             )}
-          </Link>
-        ))}
+            <div className="text-right min-w-[38px]">
+              <p className="text-sm font-bold text-white/80 tabular-nums">{fmtProj(proj)}</p>
+              <p className="text-[9px] text-white/25 uppercase tracking-wide">proj</p>
+            </div>
+            {!locked && <RecBadge rec={player.ai_recommendation} />}
+            <ChevronRight size={13} className="text-white/20 group-hover:text-white/40 transition-colors" />
+          </>
+        )}
       </div>
-
-      {!isPremium && (
-        <p className="mt-2 text-[10px] text-white/25 text-center">
-          Upgrade to see key decisions for all players
-        </p>
-      )}
     </div>
+  );
+
+  if (locked) return <div>{content}</div>;
+
+  return (
+    <Link to={`/sports/afl/players/${nameToSlug(player.player_name)}`}>
+      {content}
+    </Link>
   );
 }
 
-function PlayerRow({
-  player, rank, maxProj, isPremium,
-}: { player: TeamPlayer; rank: number; maxProj: number; isPremium: boolean }) {
-  const proj = parseFloat(String(player.projection_final));
-  const isLocked = player.is_locked && !isPremium;
+function FullPlayerRow({
+  player, rank, maxProj, isPremium, index,
+}: { player: TeamPlayer; rank: number; maxProj: number; isPremium: boolean; index: number }) {
+  const proj   = parseFloat(String(player.projection_final));
+  const isFull = isPremium || index < FREE_FULL;
+  const isPartial = !isFull && index < FREE_PARTIAL;
+  const isHidden  = !isFull && !isPartial;
 
-  if (isLocked) {
+  if (isHidden) return null;
+
+  if (isPartial) {
     return (
-      <div className="flex items-center justify-between rounded-xl bg-[#0f0f0f] border border-white/[0.05] px-4 py-3.5 opacity-60">
+      <div className="flex items-center justify-between rounded-xl bg-[#0f0f0f] border border-white/[0.05] px-4 py-3.5 opacity-70">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <span className="text-sm font-bold text-white/15 w-6 shrink-0 text-center">{rank}</span>
           <div className="flex-1 min-w-0">
-            <div className="h-3 w-28 rounded bg-white/[0.06] mb-1.5" />
-            <div className="h-2 w-14 rounded bg-white/[0.04]" />
+            <p className="text-sm font-semibold text-white/60 truncate">{player.player_name}</p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="text-[10px] text-white/35">
+                {POSITION_NAMES[player.player_position] ?? player.player_position}
+              </span>
+              {player.price > 0 && (
+                <>
+                  <span className="text-[10px] text-white/20">·</span>
+                  <span className="text-[10px] text-white/35">{fmtPrice(player.price)}</span>
+                </>
+              )}
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <div className="h-3 w-8 rounded bg-white/[0.06]" />
-          <Lock size={12} className="text-white/20" />
+          <div className="h-4 w-8 rounded bg-white/[0.06]" />
+          <Lock size={11} className="text-white/20" />
         </div>
       </div>
     );
@@ -284,26 +296,42 @@ function PlayerRow({
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <span className="text-sm font-bold text-white/20 w-6 shrink-0 text-center">{rank}</span>
-        <div className="flex items-center gap-2 shrink-0">
-          <RecIcon rec={player.ai_recommendation} />
-        </div>
+        <RecIcon rec={player.ai_recommendation} />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white truncate group-hover:text-white/90 transition-colors">
-            {player.player_name}
-          </p>
-          <div className="flex items-center gap-2 mt-0.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="text-sm font-semibold text-white truncate group-hover:text-white/90 transition-colors">
+              {player.player_name}
+            </p>
+            <PlayerStatusPill
+              row={{
+                status: player.status ?? null,
+                manual_status: player.manual_status ?? null,
+                is_bye: player.is_bye ?? null,
+                bye_next_round: player.bye_next_round ?? null,
+                bye_round: player.bye_round ?? null,
+              }}
+              showUpcomingBye
+            />
+          </div>
+          <div className="flex items-center gap-1.5 mt-0.5">
             <span className="text-[10px] text-white/35">
               {POSITION_NAMES[player.player_position] ?? player.player_position}
             </span>
             <span className="text-[10px] text-white/20">·</span>
             <span className="text-[10px] text-white/35">{fmtPrice(player.price)}</span>
+            {player.breakeven != null && (
+              <>
+                <span className="text-[10px] text-white/20">·</span>
+                <span className="text-[10px] text-white/40">BE: {Math.round(player.breakeven)}</span>
+              </>
+            )}
           </div>
         </div>
       </div>
 
       <div className="flex items-center gap-4 shrink-0">
         <div className="hidden sm:flex flex-col items-end gap-1.5">
-          <MiniSparkbar value={proj} max={maxProj} />
+          <MiniBar value={proj} max={maxProj} />
         </div>
         <div className="text-right min-w-[40px]">
           <p className="text-sm font-bold text-white/80 tabular-nums">{fmtProj(proj)}</p>
@@ -319,7 +347,7 @@ function PlayerRow({
 function UpgradeGate({ teamName }: { teamName: string }) {
   return (
     <Link
-      to="/pricing"
+      to="/neeko-plus"
       className="flex items-center justify-between rounded-xl border border-amber-400/20 bg-amber-400/[0.04] px-4 py-4 hover:bg-amber-400/[0.07] transition-all duration-150 group"
     >
       <div className="flex items-center gap-3">
@@ -327,7 +355,7 @@ function UpgradeGate({ teamName }: { teamName: string }) {
         <div>
           <p className="text-sm font-semibold text-white">Unlock full {teamName} analysis</p>
           <p className="text-[11px] text-white/40">
-            See all players, AI signals, and value picks
+            Projections, value scores, AI signals + all {teamName} players
           </p>
         </div>
       </div>
@@ -336,15 +364,93 @@ function UpgradeGate({ teamName }: { teamName: string }) {
   );
 }
 
-function TeamSEOSection({ teamName }: { teamName: string }) {
+function InternalLinks({ teamName, teamSlug }: { teamName: string; teamSlug: string }) {
+  return (
+    <div className="rounded-xl border border-white/[0.07] bg-[#111] p-4">
+      <p className="text-[10px] text-white/35 uppercase tracking-wider mb-3">Explore More</p>
+      <div className="grid grid-cols-2 gap-2">
+        <Link
+          to="/sports/afl/rankings"
+          className="flex items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.03] px-3 py-2.5 text-[12px] text-white/60 hover:text-white/80 hover:bg-white/[0.06] transition-all"
+        >
+          <BarChart2 size={13} className="shrink-0" />
+          All Player Rankings
+        </Link>
+        <Link
+          to="/sports/afl/market-watch"
+          className="flex items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.03] px-3 py-2.5 text-[12px] text-white/60 hover:text-white/80 hover:bg-white/[0.06] transition-all"
+        >
+          <TrendingUp size={13} className="shrink-0" />
+          Market Watch
+        </Link>
+        <Link
+          to="/sports/afl/edge-board"
+          className="flex items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.03] px-3 py-2.5 text-[12px] text-white/60 hover:text-white/80 hover:bg-white/[0.06] transition-all"
+        >
+          <Zap size={13} className="shrink-0" />
+          Edge Board
+        </Link>
+        <Link
+          to="/sports/afl/start-sit"
+          className="flex items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.03] px-3 py-2.5 text-[12px] text-white/60 hover:text-white/80 hover:bg-white/[0.06] transition-all"
+        >
+          <Star size={13} className="shrink-0" />
+          Start / Sit Tool
+        </Link>
+      </div>
+      <div className="mt-3 pt-3 border-t border-white/[0.05]">
+        <p className="text-[10px] text-white/25 mb-2">More AFL Teams</p>
+        <div className="flex flex-wrap gap-1.5">
+          {Object.entries(TEAM_SLUG_TO_NAME)
+            .filter(([slug]) => slug !== teamSlug)
+            .slice(0, 8)
+            .map(([slug, name]) => (
+              <Link
+                key={slug}
+                to={`/sports/afl/teams/${slug}`}
+                className="text-[10px] text-white/30 border border-white/[0.06] rounded px-2 py-0.5 hover:text-white/60 hover:border-white/[0.12] transition-all"
+              >
+                {name.split(' ')[0]}
+              </Link>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeamSEOSection({ teamName, players }: { teamName: string; players: TeamPlayer[] }) {
   const [open, setOpen] = useState(false);
   const shortName = teamName.split(' ')[0];
+  const topPlayer = players[0];
+  const topProj   = topPlayer ? Math.round(Number(topPlayer.projection_final)) : 0;
+  const buys      = players.filter(p => p.ai_recommendation === 'BUY');
+  const topBuy    = buys[0];
 
-  const content = `The ${teamName} are one of the AFL's ${shortName === 'Adelaide' || shortName === 'Hawthorn' || shortName === 'Geelong' || shortName === 'Richmond' ? 'historic' : 'competitive'} clubs, with a roster that presents significant AFL Fantasy opportunities each season. This page provides a complete breakdown of every ${teamName} player's fantasy projection, price, and AI-generated trade recommendation for the 2026 AFL Fantasy season.
+  const isHistoric = ['Adelaide', 'Hawthorn', 'Geelong', 'Richmond', 'Carlton', 'Collingwood'].includes(shortName);
 
-Neeko's projection engine analyses recent form, matchup difficulty, venue factors, and price efficiency to rank each ${teamName} player by expected fantasy output. BUY signals identify underpriced players whose projected scores exceed their breakeven, while SELL signals flag overpriced options where value has peaked.
+  const keyPlayerLines = players
+    .slice(0, 5)
+    .map(p => `${p.player_name} (${p.player_position}, projection: ${Math.round(Number(p.projection_final))})`)
+    .join(', ');
+
+  const content = `The ${teamName} are one of the AFL's ${isHistoric ? 'most historic' : 'competitive'} clubs, with a roster that presents significant AFL Fantasy opportunities each season. This page provides a complete breakdown of every ${teamName} player's fantasy projection, price, and AI-generated trade recommendation for the 2026 AFL Fantasy season.
+
+Key ${teamName} players to target include ${keyPlayerLines}. ${topPlayer ? `${topPlayer.player_name} leads the squad with a ${topProj}-point projection` : 'Multiple high-value options are available'}, making them a strong consideration for AFL Fantasy coaches.
+
+${topBuy ? `${topBuy.player_name} is currently flagged as a BUY signal, meaning our model projects significant upside relative to their current price. ` : ''}Neeko's projection engine analyses recent form, matchup difficulty, venue factors, and price efficiency to rank each ${teamName} player by expected fantasy output. BUY signals identify underpriced players whose projected scores exceed their breakeven, while SELL signals flag overpriced options where value has peaked.
 
 For AFL Fantasy coaches targeting ${teamName} players, key metrics include the Neeko Rating (an overall fantasy value score), projection confidence, and value score — which measures how efficiently a player scores relative to their current price point. Players with high value scores and BUY recommendations represent the strongest trade-in targets from this squad.`;
+
+  const tags = [
+    'AFL Fantasy tips',
+    `${teamName} fantasy`,
+    'fantasy projections 2026',
+    'best buys AFL Fantasy',
+    `${shortName} players ranked`,
+    'AFL Fantasy value picks',
+    `${shortName} AFL Fantasy 2026`,
+  ];
 
   return (
     <div className="border-t border-white/[0.05] pt-6">
@@ -354,7 +460,7 @@ For AFL Fantasy coaches targeting ${teamName} players, key metrics include the N
         aria-expanded={open}
       >
         <h2 className="text-sm font-semibold text-white/50 group-hover:text-white/70 transition-colors">
-          AFL Fantasy {teamName} Team Guide 2026
+          {teamName} AFL Fantasy 2026 Guide — Players, Rankings & Predictions
         </h2>
         {open
           ? <ChevronUp size={15} className="text-white/30 shrink-0" />
@@ -364,10 +470,8 @@ For AFL Fantasy coaches targeting ${teamName} players, key metrics include the N
 
       <div className={open ? 'mt-4' : 'hidden'} aria-hidden={!open}>
         <p className="text-[13px] text-white/40 leading-relaxed whitespace-pre-line">{content}</p>
-
         <div className="mt-4 flex flex-wrap gap-2">
-          {['AFL Fantasy tips', `${teamName} fantasy`, 'fantasy projections 2026',
-            'best buys AFL Fantasy', `${shortName} players ranked`, 'AFL Fantasy value picks'].map(tag => (
+          {tags.map(tag => (
             <span
               key={tag}
               className="text-[10px] text-white/20 border border-white/[0.06] rounded px-2 py-0.5"
@@ -380,7 +484,8 @@ For AFL Fantasy coaches targeting ${teamName} players, key metrics include the N
 
       <p className="sr-only">
         Complete {teamName} AFL Fantasy player rankings, projections, price analysis and AI recommendations for the 2026 AFL season.
-        Includes every {teamName} player with buy/hold/sell signals updated weekly.
+        Includes every {teamName} player with buy/hold/sell signals, breakeven scores, and value picks — updated weekly.
+        Top {teamName} fantasy players: {keyPlayerLines}.
       </p>
     </div>
   );
@@ -407,9 +512,10 @@ export default function AFLTeamPage() {
       <div className="min-h-screen bg-[#0e0e0e]">
         <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
           <div className="h-6 w-32 rounded bg-white/[0.05] animate-pulse" />
-          <div className="h-24 rounded-xl bg-white/[0.04] animate-pulse" />
+          <div className="h-28 rounded-2xl bg-white/[0.04] animate-pulse" />
+          <div className="h-20 rounded-xl bg-white/[0.04] animate-pulse" />
           <div className="grid grid-cols-3 gap-3">
-            {[1,2,3].map(i => <div key={i} className="h-20 rounded-xl bg-white/[0.04] animate-pulse" />)}
+            {[1,2,3].map(i => <div key={i} className="h-40 rounded-xl bg-white/[0.04] animate-pulse" />)}
           </div>
           <div className="space-y-2">
             {[1,2,3,4,5].map(i => <div key={i} className="h-14 rounded-xl bg-white/[0.04] animate-pulse" />)}
@@ -439,19 +545,34 @@ export default function AFLTeamPage() {
   }
 
   const projValues   = players.map(p => parseFloat(String(p.projection_final)) || 0);
-  const maxProj      = Math.max(...projValues);
+  const maxProj      = Math.max(...projValues, 1);
   const topProj      = Math.round(maxProj);
   const avgProj      = players.length > 0 ? Math.round(projValues.reduce((a,b)=>a+b,0) / players.length) : 0;
   const ratingValues = players.map(p => parseFloat(String(p.neeko_rating)) || 0);
   const avgRating    = players.length > 0 ? (ratingValues.reduce((a,b)=>a+b,0) / players.length).toFixed(1) : '—';
   const buyCt        = players.filter(p => p.ai_recommendation === 'BUY').length;
 
-  const visiblePlayers  = isPremium ? players : players.slice(0, FREE_VISIBLE);
-  const hiddenCount     = isPremium ? 0 : Math.max(0, players.length - FREE_VISIBLE);
-  const topPlayer       = players[0];
+  const topPlayer    = players[0];
 
   const accentColor = getTeamAccentColour(teamName.split(' ')[0]) ?? '#4ade80';
   const accentSafe  = accentColor === '#FFD200' ? '#F5C84C' : accentColor;
+
+  const unlocked = players.filter(p => !p.is_locked);
+
+  const valuePicks   = [...unlocked]
+    .filter(p => p.ai_recommendation === 'BUY' && p.value_score != null)
+    .sort((a, b) => (Number(b.value_score) || 0) - (Number(a.value_score) || 0));
+
+  const premiumPicks = [...unlocked]
+    .filter(p => p.neeko_rating > 0)
+    .sort((a, b) => b.neeko_rating - a.neeko_rating)
+    .slice(0, 8);
+
+  const riskPlayers  = [...unlocked]
+    .filter(p => p.ai_recommendation === 'SELL')
+    .sort((a, b) => (Number(a.value_score) || 0) - (Number(b.value_score) || 0));
+
+  const hiddenFull = !isPremium ? Math.max(0, players.length - FREE_PARTIAL) : 0;
 
   const pageTitle       = `${teamName} AFL Fantasy Players & Rankings 2026 | Neeko`;
   const pageDescription = `Complete ${teamName} AFL Fantasy roster for 2026. ${topPlayer?.player_name ?? ''} leads with a ${topProj} projection. ${buyCt} BUY signals identified. AI-powered recommendations for every player.`;
@@ -462,7 +583,7 @@ export default function AFLTeamPage() {
       <Helmet>
         <title>{pageTitle}</title>
         <meta name="description" content={pageDescription} />
-        <meta name="keywords" content={`${teamName}, AFL Fantasy, AFL Fantasy 2026, ${teamName} players, fantasy projections, buy sell hold, captain picks, ${teamName} fantasy tips 2026`} />
+        <meta name="keywords" content={`${teamName}, AFL Fantasy, AFL Fantasy 2026, ${teamName} players, fantasy projections, buy sell hold, captain picks, ${teamName} fantasy tips 2026, ${teamName.split(' ')[0]} AFL Fantasy`} />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDescription} />
         <meta property="og:type" content="website" />
@@ -495,7 +616,6 @@ export default function AFLTeamPage() {
       <div className="min-h-screen bg-[#0e0e0e]">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
-          {/* Back nav */}
           <button
             onClick={() => navigate('/sports/afl/rankings')}
             className="flex items-center gap-2 text-white/40 hover:text-white/70 transition-colors text-[12px]"
@@ -518,7 +638,7 @@ export default function AFLTeamPage() {
                 <div>
                   <p className="text-[10px] uppercase tracking-widest text-white/30 mb-1">AFL Fantasy 2026</p>
                   <h1 className="text-2xl font-bold text-white leading-tight">{teamName}</h1>
-                  <p className="text-[12px] text-white/40 mt-0.5">Team Intelligence Breakdown</p>
+                  <p className="text-[12px] text-white/40 mt-0.5">AI Fantasy Intelligence Breakdown</p>
                 </div>
                 <div
                   className="flex items-center justify-center w-10 h-10 rounded-xl shrink-0"
@@ -528,8 +648,7 @@ export default function AFLTeamPage() {
                 </div>
               </div>
 
-              {/* Top-line metrics */}
-              <div className="flex items-center gap-6 flex-wrap">
+              <div className="flex items-center gap-5 flex-wrap">
                 <StatPill label="Players" value={players.length} />
                 <div className="w-px h-6 bg-white/[0.07]" />
                 <StatPill label="Top Proj" value={topProj} color="text-emerald-400" />
@@ -538,29 +657,49 @@ export default function AFLTeamPage() {
                 <div className="w-px h-6 bg-white/[0.07]" />
                 <StatPill label="Avg Rating" value={avgRating} color="text-white/70" />
                 <div className="w-px h-6 bg-white/[0.07]" />
-                <StatPill
-                  label="BUY Signals"
-                  value={buyCt}
-                  color={buyCt > 0 ? 'text-emerald-400' : 'text-white/40'}
-                />
+                <StatPill label="BUY Signals" value={buyCt} color={buyCt > 0 ? 'text-emerald-400' : 'text-white/40'} />
               </div>
             </div>
           </div>
 
-          {/* ── TEAM INTELLIGENCE INSIGHTS ── */}
-          <TeamInsights players={players} teamName={teamName} />
-
           {/* ── SIGNAL DISTRIBUTION ── */}
           <DistributionBar players={players} />
 
-          {/* ── FEATURED PLAYERS — KEY DECISIONS ── */}
-          <FeaturedPlayers players={players} isPremium={isPremium} />
+          {/* ── CATEGORY MODULES ── */}
+          <div className="space-y-4">
+            <CategoryModule
+              title="Top Value Picks"
+              icon={<Flame size={15} />}
+              accent="text-emerald-400"
+              accentHex="#4ade80"
+              players={valuePicks}
+              isPremium={isPremium}
+            />
 
-          {/* ── PLAYER ROSTER ── */}
+            <CategoryModule
+              title="Premium Picks"
+              icon={<Star size={15} />}
+              accent="text-amber-400"
+              accentHex="#F5C84C"
+              players={premiumPicks}
+              isPremium={isPremium}
+            />
+
+            <CategoryModule
+              title="Risk / Avoid"
+              icon={<TriangleAlert size={15} />}
+              accent="text-red-400"
+              accentHex="#f87171"
+              players={riskPlayers}
+              isPremium={isPremium}
+            />
+          </div>
+
+          {/* ── FULL PLAYER ROSTER ── */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-[13px] font-semibold text-white/80">
-                {isPremium ? 'Full Roster' : `Top ${FREE_VISIBLE} Players`}
+                Full {teamName} Roster
               </h2>
               <div className="flex items-center gap-2">
                 <Star size={11} className="text-white/20" />
@@ -569,72 +708,51 @@ export default function AFLTeamPage() {
             </div>
 
             <div className="space-y-2">
-              {visiblePlayers.map((player, idx) => (
-                <PlayerRow
+              {players.map((player, idx) => (
+                <FullPlayerRow
                   key={player.player_id ?? player.player_name}
                   player={player}
                   rank={idx + 1}
                   maxProj={maxProj}
                   isPremium={isPremium}
+                  index={idx}
                 />
               ))}
-
-              {/* Locked rows hint */}
-              {!isPremium && hiddenCount > 0 && (
-                <>
-                  {[...Array(Math.min(3, hiddenCount))].map((_, i) => (
-                    <div
-                      key={`locked-hint-${i}`}
-                      className="flex items-center justify-between rounded-xl bg-[#0f0f0f] border border-white/[0.04] px-4 py-3.5"
-                      style={{ opacity: 0.5 - i * 0.12 }}
-                    >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <span className="text-sm font-bold text-white/10 w-6 text-center">
-                          {FREE_VISIBLE + i + 1}
-                        </span>
-                        <div className="flex-1 min-w-0 space-y-1.5">
-                          <div className="h-3 w-32 rounded bg-white/[0.05]" />
-                          <div className="h-2 w-16 rounded bg-white/[0.03]" />
-                        </div>
-                      </div>
-                      <Lock size={11} className="text-white/15" />
-                    </div>
-                  ))}
-                </>
-              )}
             </div>
 
-            {/* Upgrade gate */}
-            {!isPremium && hiddenCount > 0 && (
+            {!isPremium && hiddenFull > 0 && (
               <div className="mt-3 space-y-2">
+                {[...Array(Math.min(3, hiddenFull))].map((_, i) => (
+                  <div
+                    key={`hint-${i}`}
+                    className="flex items-center justify-between rounded-xl bg-[#0f0f0f] border border-white/[0.04] px-4 py-3.5"
+                    style={{ opacity: 0.45 - i * 0.1 }}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <span className="text-sm font-bold text-white/10 w-6 text-center">
+                        {FREE_PARTIAL + i + 1}
+                      </span>
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-3 w-32 rounded bg-white/[0.05]" />
+                        <div className="h-2 w-16 rounded bg-white/[0.03]" />
+                      </div>
+                    </div>
+                    <Lock size={11} className="text-white/15" />
+                  </div>
+                ))}
                 <UpgradeGate teamName={teamName} />
                 <p className="text-center text-[10px] text-white/20">
-                  {hiddenCount} more players locked
+                  {hiddenFull} more players — unlock with Neeko+
                 </p>
               </div>
             )}
           </div>
 
-          {/* ── BOTTOM CTA ── */}
-          <div className="grid grid-cols-2 gap-2.5 pt-1">
-            <Link
-              to="/sports/afl/rankings"
-              className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-sm font-semibold text-white/60 hover:text-white/80 hover:bg-white/[0.07] transition-all duration-150"
-            >
-              <BarChart2 size={14} />
-              All Rankings
-            </Link>
-            <Link
-              to="/sports/afl/market-watch"
-              className="flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-sm font-semibold text-white/60 hover:text-white/80 hover:bg-white/[0.07] transition-all duration-150"
-            >
-              <TrendingUp size={14} />
-              Market Watch
-            </Link>
-          </div>
+          {/* ── INTERNAL LINKS ── */}
+          <InternalLinks teamName={teamName} teamSlug={team ?? ''} />
 
           {/* ── SEO SECTION ── */}
-          <TeamSEOSection teamName={teamName} />
+          <TeamSEOSection teamName={teamName} players={players} />
 
         </div>
       </div>
