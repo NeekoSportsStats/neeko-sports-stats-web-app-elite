@@ -1,54 +1,99 @@
 import { useState, useEffect } from "react";
 import { ExternalLink, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import {
+  ResponsiveContainer,
+  Area,
+  AreaChart,
+  Tooltip,
+  ReferenceLine,
+} from "recharts";
 import { supabase } from "@/lib/supabaseClient";
 import { nameToSlug } from "@/lib/slugs";
 import { RankingRow } from "./types";
 import { fmtPrice, getConfidenceColor } from "./helpers";
 
-// ─── Tiny sparkline drawn with SVG ────────────────────────────────────────────
+// ─── Custom tooltip ────────────────────────────────────────────────────────────
 
-function MiniSparkline({
-  points,
-  color,
-}: {
+function SparkTooltip({ active, payload }: any) {
+  if (!active || !payload?.length) return null;
+  const val = payload[0]?.value;
+  return (
+    <div className="rounded-md border border-white/10 bg-[#181818] px-2.5 py-1.5 shadow-lg">
+      <p className="text-[11px] text-white/40 uppercase tracking-wide mb-0.5">Score</p>
+      <p className="text-sm font-bold text-white tabular-nums">{val != null ? Math.round(val) : "—"}</p>
+    </div>
+  );
+}
+
+// ─── Full-width interactive sparkline ─────────────────────────────────────────
+
+interface FullSparklineProps {
   points: number[];
   color: "green" | "red" | "neutral";
-}) {
-  if (points.length < 2) return null;
+  projection?: number | null;
+}
 
-  const W = 160;
-  const H = 56;
-  const PAD = 4;
+function FullSparkline({ points, color, projection }: FullSparklineProps) {
+  const stroke =
+    color === "green" ? "#4ade80" :
+    color === "red"   ? "#f87171" :
+                        "#94a3b8";
+
+  const gradientId = `spark-fill-${color}`;
+
+  const data = points.map((v, i) => ({ game: i + 1, score: v }));
 
   const min = Math.min(...points);
   const max = Math.max(...points);
-  const range = max - min || 1;
-
-  const xs = points.map((_, i) => PAD + (i / (points.length - 1)) * (W - PAD * 2));
-  const ys = points.map((v) => H - PAD - ((v - min) / range) * (H - PAD * 2));
-
-  const pathD = xs.map((x, i) => `${i === 0 ? "M" : "L"}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(" ");
-  const areaD = `${pathD} L${xs[xs.length - 1].toFixed(1)},${H} L${xs[0].toFixed(1)},${H} Z`;
-
-  const stroke = color === "green" ? "#4ade80" : color === "red" ? "#f87171" : "#94a3b8";
-  const fillStart = color === "green" ? "rgba(74,222,128,0.18)" : color === "red" ? "rgba(248,113,113,0.18)" : "rgba(148,163,184,0.12)";
-
-  const lastX = xs[xs.length - 1];
-  const lastY = ys[ys.length - 1];
+  const avg = points.reduce((a, b) => a + b, 0) / points.length;
 
   return (
-    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} fill="none" className="overflow-visible">
-      <defs>
-        <linearGradient id={`sg-${color}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={fillStart} />
-          <stop offset="100%" stopColor="transparent" />
-        </linearGradient>
-      </defs>
-      <path d={areaD} fill={`url(#sg-${color})`} />
-      <path d={pathD} stroke={stroke} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx={lastX} cy={lastY} r="3" fill={stroke} />
-    </svg>
+    <div className="w-full" style={{ height: 80 }}>
+      <ResponsiveContainer width="100%" height={80}>
+        <AreaChart data={data} margin={{ top: 6, right: 4, bottom: 0, left: 4 }}>
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor={stroke} stopOpacity={0.22} />
+              <stop offset="100%" stopColor={stroke} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+
+          <ReferenceLine
+            y={avg}
+            stroke={stroke}
+            strokeOpacity={0.15}
+            strokeDasharray="4 4"
+            strokeWidth={1}
+          />
+
+          <Area
+            type="monotone"
+            dataKey="score"
+            stroke={stroke}
+            strokeWidth={1.8}
+            dot={false}
+            activeDot={{ r: 4, fill: stroke, strokeWidth: 0 }}
+            fill={`url(#${gradientId})`}
+            isAnimationActive
+            animationDuration={500}
+            animationEasing="ease-out"
+          />
+
+          <Tooltip
+            content={<SparkTooltip />}
+            cursor={{ stroke: stroke, strokeOpacity: 0.25, strokeWidth: 1, strokeDasharray: "3 3" }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
+
+      {/* Min / avg / max labels */}
+      <div className="flex justify-between mt-0.5 px-1">
+        <span className="text-[9px] text-white/20 tabular-nums">Low {Math.round(min)}</span>
+        <span className="text-[9px] text-white/20 tabular-nums">Avg {Math.round(avg)}</span>
+        <span className="text-[9px] text-white/20 tabular-nums">High {Math.round(max)}</span>
+      </div>
+    </div>
   );
 }
 
@@ -86,10 +131,10 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
           const pts = (data as any[])
             .filter((d: any) => d.fantasy_points != null && !d.is_future)
             .map((d: any) => Number(d.fantasy_points));
-          setScoreHistory(pts.slice(-8));
+          setScoreHistory(pts.slice(-10));
         }
       } catch {
-        // silently ignore — sparkline is non-critical
+        // sparkline is non-critical — fail silently
       } finally {
         if (!cancelled) setHistoryLoading(false);
       }
@@ -101,51 +146,58 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
 
   // Derived values
   const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
-  const be = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
+  const be   = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
   const rawEdge = proj != null && be != null && !row.is_bye ? proj - be : null;
+
   const edgeSign = rawEdge != null
-    ? (rawEdge > 40 ? "+40+" : rawEdge < -40 ? "-40+" : (rawEdge > 0 ? `+${rawEdge}` : String(rawEdge)))
+    ? (rawEdge > 40 ? "+40+" : rawEdge < -40 ? "-40+" : rawEdge > 0 ? `+${rawEdge}` : String(rawEdge))
     : null;
 
   const edgeLabel = rawEdge != null && edgeSign != null
-    ? `${edgeSign} vs BE — ${rawEdge >= 15 ? "strong underpriced play" : rawEdge >= 5 ? "moderate edge" : rawEdge >= -5 ? "near breakeven" : "price risk"}`
+    ? `${edgeSign} vs BE — ${
+        rawEdge >= 15 ? "strong underpriced play"
+        : rawEdge >= 5 ? "moderate edge"
+        : rawEdge >= -5 ? "near breakeven"
+        : "price risk"
+      }`
     : null;
 
-  const edgeHeadlineColor = rawEdge == null
-    ? "text-white/50"
-    : rawEdge >= 15 ? "text-emerald-400"
-    : rawEdge >= 5 ? "text-green-300"
-    : rawEdge >= -5 ? "text-white/70"
-    : "text-red-400";
+  const edgeHeadlineColor =
+    rawEdge == null         ? "text-white/50"
+    : rawEdge >= 15         ? "text-emerald-400"
+    : rawEdge >= 5          ? "text-green-300"
+    : rawEdge >= -5         ? "text-white/70"
+    :                         "text-red-400";
 
   const sparkColor: "green" | "red" | "neutral" =
-    rawEdge != null && rawEdge >= 5 ? "green"
+    rawEdge != null && rawEdge >= 5  ? "green"
     : rawEdge != null && rawEdge < -5 ? "red"
-    : "neutral";
+    :                                   "neutral";
 
   const aiText = row.long ?? row.why ?? null;
 
   const confidence = row.projection_confidence != null ? Math.round(row.projection_confidence) : null;
-  const price = row.price != null ? fmtPrice(row.price) : null;
-  const rating = row.neeko_rating != null ? Number(row.neeko_rating).toFixed(0) : null;
-  const confColor = getConfidenceColor(confidence);
+  const price      = row.price != null ? fmtPrice(row.price) : null;
+  const rating     = row.neeko_rating != null ? Number(row.neeko_rating).toFixed(0) : null;
+  const confColor  = getConfidenceColor(confidence);
 
-  // Trend icon
-  const TrendIcon = rawEdge == null
-    ? Minus
-    : rawEdge >= 5 ? TrendingUp
-    : rawEdge < -5 ? TrendingDown
-    : Minus;
-  const trendIconColor = rawEdge == null
-    ? "text-white/20"
-    : rawEdge >= 5 ? "text-emerald-400"
-    : rawEdge < -5 ? "text-red-400"
-    : "text-white/30";
+  const TrendIcon =
+    rawEdge == null  ? Minus
+    : rawEdge >= 5   ? TrendingUp
+    : rawEdge < -5   ? TrendingDown
+    :                  Minus;
+
+  const trendIconColor =
+    rawEdge == null  ? "text-white/20"
+    : rawEdge >= 5   ? "text-emerald-400"
+    : rawEdge < -5   ? "text-red-400"
+    :                  "text-white/30";
 
   function handleViewPlayer() {
-    const slug = nameToSlug(row.player_name);
-    navigate(`/afl/player/${slug}`);
+    navigate(`/afl/player/${nameToSlug(row.player_name)}`);
   }
+
+  const hasMetrics = confidence != null || price != null || rating != null;
 
   return (
     <tr className="border-b border-white/[0.04] bg-[#0c0c0c]">
@@ -153,7 +205,7 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
         <div className="ml-10 rounded-xl border border-white/[0.07] bg-[#111] p-4">
           <div className="flex flex-col gap-3">
 
-            {/* Edge headline */}
+            {/* 1. Edge headline */}
             {edgeLabel && (
               <div className="flex items-center gap-2">
                 <TrendIcon size={14} className={trendIconColor} />
@@ -161,84 +213,59 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
               </div>
             )}
 
-            {/* Graph + AI text row */}
-            <div className="flex items-start gap-4">
+            {/* 2. AI summary text */}
+            {aiText ? (
+              <p className="text-[13px] text-white/50 leading-relaxed line-clamp-3">
+                {aiText}
+              </p>
+            ) : (
+              <p className="text-[13px] text-white/25 leading-relaxed italic">
+                AI analysis pending for this player.
+              </p>
+            )}
 
-              {/* Sparkline */}
-              <div className="shrink-0">
-                <p className="text-[9px] text-white/25 uppercase tracking-wider mb-1.5">Last {scoreHistory.length} games</p>
-                {historyLoading ? (
-                  <div className="w-[160px] h-[56px] rounded bg-white/[0.03] animate-pulse" />
-                ) : scoreHistory.length >= 2 ? (
-                  <MiniSparkline points={scoreHistory} color={sparkColor} />
-                ) : (
-                  <div className="w-[160px] h-[56px] flex items-center justify-center">
-                    <span className="text-[11px] text-white/20">No history</span>
-                  </div>
-                )}
-                {!historyLoading && scoreHistory.length >= 2 && (
-                  <div className="flex justify-between mt-1 w-[160px]">
-                    <span className="text-[9px] text-white/20 tabular-nums">
-                      {Math.min(...scoreHistory).toFixed(0)}
-                    </span>
-                    <span className="text-[9px] text-white/20 tabular-nums">
-                      {Math.max(...scoreHistory).toFixed(0)}
-                    </span>
-                  </div>
-                )}
-              </div>
+            {/* 3. Full-width sparkline */}
+            <div className="w-full">
+              <p className="text-[9px] text-white/25 uppercase tracking-wider mb-1.5">
+                Last {historyLoading ? "—" : scoreHistory.length} games
+              </p>
 
-              {/* AI text */}
-              {aiText && (
-                <p className="text-[13px] text-white/50 leading-relaxed line-clamp-3 flex-1">
-                  {aiText}
-                </p>
-              )}
-              {!aiText && (
-                <p className="text-[13px] text-white/25 leading-relaxed flex-1 italic">
-                  AI analysis pending for this player.
-                </p>
+              {historyLoading ? (
+                <div className="w-full rounded bg-white/[0.03] animate-pulse" style={{ height: 80 }} />
+              ) : scoreHistory.length >= 2 ? (
+                <FullSparkline points={scoreHistory} color={sparkColor} projection={proj} />
+              ) : (
+                <div
+                  className="w-full flex items-center justify-center rounded border border-white/[0.05]"
+                  style={{ height: 80 }}
+                >
+                  <span className="text-[11px] text-white/20">No score history available</span>
+                </div>
               )}
             </div>
 
-            {/* Metrics row */}
-            {(confidence != null || price != null || rating != null) && (
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/[0.05] pt-3">
-                {confidence != null && (
-                  <div>
-                    <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Confidence</p>
-                    <p className={`text-sm font-semibold tabular-nums ${confColor}`}>{confidence}%</p>
-                  </div>
-                )}
-                {price != null && (
-                  <div>
-                    <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Price</p>
-                    <p className="text-sm font-semibold text-white/80 tabular-nums">{price}</p>
-                  </div>
-                )}
-                {rating != null && (
-                  <div>
-                    <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Neeko Rating</p>
-                    <p className="text-sm font-semibold text-white/80 tabular-nums">{rating}</p>
-                  </div>
-                )}
-
-                {/* CTA — pushed to the right */}
-                <div className="ml-auto">
-                  <button
-                    onClick={handleViewPlayer}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/55 hover:border-white/20 hover:text-white/80 transition-colors"
-                  >
-                    View full player analysis
-                    <ExternalLink size={11} />
-                  </button>
+            {/* 4. Metrics row + CTA */}
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/[0.05] pt-3">
+              {confidence != null && (
+                <div>
+                  <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Confidence</p>
+                  <p className={`text-sm font-semibold tabular-nums ${confColor}`}>{confidence}%</p>
                 </div>
-              </div>
-            )}
+              )}
+              {price != null && (
+                <div>
+                  <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Price</p>
+                  <p className="text-sm font-semibold text-white/80 tabular-nums">{price}</p>
+                </div>
+              )}
+              {rating != null && (
+                <div>
+                  <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Neeko Rating</p>
+                  <p className="text-sm font-semibold text-white/80 tabular-nums">{rating}</p>
+                </div>
+              )}
 
-            {/* CTA only (no metrics) */}
-            {confidence == null && price == null && rating == null && (
-              <div className="flex justify-end border-t border-white/[0.05] pt-3">
+              <div className={hasMetrics ? "ml-auto" : "w-full flex justify-end"}>
                 <button
                   onClick={handleViewPlayer}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/55 hover:border-white/20 hover:text-white/80 transition-colors"
@@ -247,7 +274,7 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
                   <ExternalLink size={11} />
                 </button>
               </div>
-            )}
+            </div>
 
           </div>
         </div>
