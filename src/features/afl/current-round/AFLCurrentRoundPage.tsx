@@ -47,7 +47,7 @@ const COLUMNS =
   "breakeven,value_score,best_value_score,value_tag,value_tier," +
   "ai_recommendation,recommendation_strength," +
   "recommendation_color,consistency_tier," +
-  "why,long,ai_summary,ai_updated_at," +
+  "why,long,summary_long,recommendation_why,ai_summary,ai_updated_at," +
   "start_sit_decision,edge_score,edge_tier," +
   "market_watch_category,upside_pct," +
   "status,manual_status,is_available," +
@@ -89,8 +89,8 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
     consistency_tier: (raw.consistency_tier as string) ?? null,
     total_count: null,
     games_played: raw.games_played != null ? Number(raw.games_played) : null,
-    why: (raw.why as string) ?? null,
-    long: (raw.long as string) ?? null,
+    why: (raw.why as string) ?? (raw.summary_short as string) ?? (raw.recommendation_short as string) ?? null,
+    long: (raw.long as string) ?? (raw.summary_long as string) ?? (raw.recommendation_why as string) ?? (raw.ai_summary as string) ?? null,
     start_sit_decision: (raw.start_sit_decision as string) ?? null,
     edge_score: raw.edge_score != null ? Number(raw.edge_score) : null,
     edge_tier: (raw.edge_tier as string) ?? null,

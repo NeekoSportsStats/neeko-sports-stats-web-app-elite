@@ -743,14 +743,37 @@ export function PlayerDetailModal({
   const location = useLocation();
   const isFreeFullTier = isFreeTop5 || (!isPremium && tier === "full");
   const canSeeAI = isPremium || isFreeFullTier;
+
+  const [fetchedSummaryLong, setFetchedSummaryLong] = useState<string | null>(null);
+  const [loadingAI, setLoadingAI] = useState(false);
+
+  useEffect(() => {
+    if (!canSeeAI || !row.player_id) return;
+    if (row.long) return;
+    let cancelled = false;
+    setLoadingAI(true);
+    supabase
+      .schema("ai" as never)
+      .from("player_ai_analysis")
+      .select("summary_long")
+      .eq("player_id", row.player_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) {
+          setFetchedSummaryLong((data as any)?.summary_long ?? null);
+          setLoadingAI(false);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [row.player_id, row.long, canSeeAI]);
+
   const aiAnalysis = useMemo(() => {
     if (!canSeeAI) return null;
-    const analysis = row.long ?? null;
+    const analysis = row.long ?? fetchedSummaryLong ?? null;
     const captain_recommendation = row.captain_rating ?? null;
     if (!analysis) return null;
     return { analysis, captain_recommendation };
-  }, [row.long, row.captain_rating, canSeeAI]);
-  const loadingAI = false;
+  }, [row.long, fetchedSummaryLong, row.captain_rating, canSeeAI]);
 
   useBodyScrollLock(true);
   void rank;
@@ -1024,7 +1047,7 @@ export function PlayerDetailModal({
                       )}
                     </div>
                   ) : (
-                    <p className="text-sm text-white/30 italic">Analysis generating — check back soon.</p>
+                    <p className="text-sm text-white/30 italic">Analysis not available yet.</p>
                   )}
                   {hasText && isStale && isPremium && (
                     <p className="mt-3 text-[10px] text-white/25 italic border-t border-white/5 pt-2">

@@ -673,13 +673,31 @@ export default function AFLPlayerPage() {
   });
 
   // ALL HOOKS MUST BE BEFORE EARLY RETURNS
+  const [fetchedSummaryLong, setFetchedSummaryLong] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!player?.player_id) return;
+    if (player.long || player.summary_long) return;
+    let cancelled = false;
+    supabase
+      .schema("ai" as never)
+      .from("player_ai_analysis")
+      .select("summary_long")
+      .eq("player_id", player.player_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setFetchedSummaryLong((data as any)?.summary_long ?? null);
+      });
+    return () => { cancelled = true; };
+  }, [player?.player_id, player?.long, player?.summary_long]);
+
   const aiAnalysis = useMemo(() => {
     if (!player || !isPremium && player?.is_locked) return null;
-    const analysis = player.long ?? player.summary_long ?? null;
+    const analysis = player.long ?? player.summary_long ?? fetchedSummaryLong ?? null;
     const captain_recommendation = player.captain_rating ?? null;
     if (!analysis) return null;
     return { analysis, captain_recommendation };
-  }, [player?.long, player?.summary_long, player?.captain_rating, player?.is_locked, isPremium]);
+  }, [player?.long, player?.summary_long, fetchedSummaryLong, player?.captain_rating, player?.is_locked, isPremium]);
 
   if (isLoading) {
     return (
@@ -1033,7 +1051,7 @@ export default function AFLPlayerPage() {
                         )}
                       </div>
                     ) : (
-                      <p className="text-sm text-white/30 italic">Analysis generating — check back soon.</p>
+                      <p className="text-sm text-white/30 italic">Analysis not available yet.</p>
                     )}
                     {hasText && isStale && canSeeFullAI && (
                       <p className="mt-3 text-[10px] text-white/25 italic border-t border-white/5 pt-2">
