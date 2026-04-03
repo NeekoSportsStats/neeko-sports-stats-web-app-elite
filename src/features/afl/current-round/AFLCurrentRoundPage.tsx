@@ -265,14 +265,35 @@ function DecisionCard({
   renderMetric,
   premiumLocked = false,
 }: DecisionCardProps) {
+  const [hovered, setHovered] = useState(false);
   const visible = isPremiumUser ? players.slice(0, PREMIUM_VISIBLE) : players.slice(0, freeLimit);
   const hidden = isPremiumUser ? [] : players.slice(freeLimit, PREMIUM_VISIBLE);
   const totalHidden = isPremiumUser ? 0 : Math.max(0, players.length - freeLimit);
 
+  const borderColor = hovered
+    ? `${accentColor}60`
+    : `${accentColor}35`;
+  const bgTint = `${accentColor}06`;
+
   if (premiumLocked && !isPremiumUser) {
     return (
-      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden flex flex-col">
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
+      <div
+        className="rounded-2xl overflow-hidden flex flex-col transition-all duration-200"
+        style={{
+          border: `1px solid ${borderColor}`,
+          background: `linear-gradient(135deg, ${bgTint} 0%, transparent 60%)`,
+        }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        <div
+          className="flex items-center gap-2 px-4 py-3"
+          style={{ borderBottom: `1px solid ${accentColor}18` }}
+        >
+          <span
+            className="w-1.5 h-1.5 rounded-full shrink-0"
+            style={{ backgroundColor: accentColor }}
+          />
           <span style={{ color: accentColor }}>{icon}</span>
           <h2 className="text-sm font-bold text-white">{title}</h2>
         </div>
@@ -288,8 +309,8 @@ function DecisionCard({
           </div>
           <button
             onClick={onUpgrade}
-            className="text-[12px] font-bold px-4 py-2 rounded-lg transition-all"
-            style={{ backgroundColor: `${accentColor}20`, color: accentColor, border: `1px solid ${accentColor}40` }}
+            className="text-[12px] font-bold px-4 py-2 rounded-lg transition-all hover:brightness-110 active:scale-[0.97]"
+            style={{ backgroundColor: `${accentColor}22`, color: accentColor, border: `1px solid ${accentColor}50` }}
           >
             {lockedCta ?? "Unlock →"}
           </button>
@@ -299,8 +320,23 @@ function DecisionCard({
   }
 
   return (
-    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden flex flex-col">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
+    <div
+      className="rounded-2xl overflow-hidden flex flex-col transition-all duration-200"
+      style={{
+        border: `1px solid ${borderColor}`,
+        background: `linear-gradient(135deg, ${bgTint} 0%, transparent 60%)`,
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div
+        className="flex items-center gap-2 px-4 py-3"
+        style={{ borderBottom: `1px solid ${accentColor}18` }}
+      >
+        <span
+          className="w-1.5 h-1.5 rounded-full shrink-0"
+          style={{ backgroundColor: accentColor }}
+        />
         <span style={{ color: accentColor }}>{icon}</span>
         <h2 className="text-sm font-bold text-white flex-1">{title}</h2>
         {!isPremiumUser && totalHidden > 0 && (
@@ -342,10 +378,13 @@ function DecisionCard({
       </div>
 
       {footerLink && (
-        <div className="px-4 py-2.5 border-t border-white/[0.05]">
+        <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${accentColor}12` }}>
           <Link
             to={footerLink.to}
-            className="flex items-center gap-1 text-[11px] text-white/30 hover:text-white/60 transition-colors"
+            className="flex items-center gap-1 text-[11px] transition-colors"
+            style={{ color: `${accentColor}60` }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = `${accentColor}99`)}
+            onMouseLeave={(e) => (e.currentTarget.style.color = `${accentColor}60`)}
           >
             {footerLink.label}
             <ChevronRight className="w-3 h-3" />
@@ -851,7 +890,7 @@ export default function AFLCurrentRoundPage() {
             <DecisionCard
               title="Top Picks"
               icon={<Star className="w-4 h-4" fill="currentColor" />}
-              accentColor="#ffffff"
+              accentColor="#3b82f6"
               players={topPicks}
               freeLimit={FREE_VISIBLE}
               isPremiumUser={isPremium}
