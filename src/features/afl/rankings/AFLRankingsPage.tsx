@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Helmet } from "react-helmet-async";
-import { Search, Clock, X, Lock, RefreshCw } from "lucide-react";
+import { Search, Clock, X, Lock, RefreshCw, TrendingUp, Star, Zap } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
@@ -12,17 +12,17 @@ import {
 import {
   TAB_SORT_KEY, TAB_DESCRIPTIONS, TAB_DEFAULT_SORT,
   FREE_FULL_ROWS, FREE_PARTIAL_ROWS,
-  getFreeTier, normalisePosition, computeKpiTiles, fmtUpdatedAt,
+  getFreeTier, normalisePosition, computeKpiTiles, fmtUpdatedAt, fmt, fmtValueScore,
 } from "./components/helpers";
 import {
   NeekoRatingInfoModal, UpgradeModal, PlayerDetailModal,
 } from "./components/RankingsModals";
 import {
   TableHeader, TableRow, ConversionWallRow, LoadingSkeletonRows,
+  FreeTableHeader, FreeTableRow, FreeConversionWallRow, FreeLoadingSkeletonRows,
 } from "./components/RankingsTable";
 import { MobileRankingsTable } from "./components/MobileRankingsTable";
 import { RankingsSEOContent } from "./components/RankingsSEOContent";
-import { PremiumUpsellSection } from "./components/PremiumUpsellSection";
 
 const POSITIONS: PositionFilter[] = ["ALL", "DEF", "MID", "FWD", "RUC"];
 
@@ -54,6 +54,69 @@ function KpiTiles({ rows }: { rows: RankingRow[] }) {
           <p className="text-[10px] text-white/35 uppercase tracking-wider mb-1">{label}</p>
           <p className={`text-xl font-bold tabular-nums ${color}`}>{value}</p>
           <p className="text-[10px] text-white/25 mt-0.5">{sub}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function FreeValueStrip({ rows }: { rows: RankingRow[] }) {
+  if (rows.length === 0) return null;
+
+  const top8 = rows.slice(0, FREE_FULL_ROWS);
+
+  const highestProj = top8.reduce<RankingRow | null>((best, r) => {
+    if (r.projection_final == null) return best;
+    if (!best || r.projection_final > (best.projection_final ?? 0)) return r;
+    return best;
+  }, null);
+
+  const bestValue = top8.reduce<RankingRow | null>((best, r) => {
+    if (r.value_score == null) return best;
+    if (!best || r.value_score > (best.value_score ?? 0)) return r;
+    return best;
+  }, null);
+
+  const avgProj = (() => {
+    const valid = top8.filter((r) => r.projection_final != null && !r.is_bye);
+    if (valid.length === 0) return null;
+    return valid.reduce((sum, r) => sum + (r.projection_final ?? 0), 0) / valid.length;
+  })();
+
+  const cards = [
+    {
+      icon: <Star size={14} className="text-[#F5C84C]" />,
+      label: "Highest Projection",
+      value: highestProj ? fmt(highestProj.projection_final) : "—",
+      sub: highestProj?.player_name ?? "—",
+      color: "text-[#F5C84C]",
+    },
+    {
+      icon: <TrendingUp size={14} className="text-emerald-400" />,
+      label: "Best Value Pick",
+      value: bestValue ? fmtValueScore(bestValue.value_score) : "—",
+      sub: bestValue?.player_name ?? "—",
+      color: "text-emerald-400",
+    },
+    {
+      icon: <Zap size={14} className="text-blue-400" />,
+      label: "Avg Projection (Top 8)",
+      value: avgProj != null ? avgProj.toFixed(1) : "—",
+      sub: "Based on current top 8",
+      color: "text-blue-400",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-3 gap-3 mb-6">
+      {cards.map(({ icon, label, value, sub, color }) => (
+        <div key={label} className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-4 py-3.5">
+          <div className="flex items-center gap-1.5 mb-2">
+            {icon}
+            <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium">{label}</p>
+          </div>
+          <p className={`text-lg font-bold tabular-nums ${color}`}>{value}</p>
+          <p className="text-[11px] text-white/35 mt-0.5 truncate">{sub}</p>
         </div>
       ))}
     </div>
@@ -510,6 +573,191 @@ export default function AFLRankingsPage() {
     { key: "projection", label: "Top Projections", premiumOnly: true },
   ];
 
+  if (!isPremium) {
+    return (
+      <>
+        <Helmet>
+          <title>AFL Fantasy Rankings 2026 | Top Players, Projections & Value | Neeko</title>
+          <meta name="description" content="Complete AFL Fantasy rankings for 2026. AI-powered player projections, value scores, and recommendations. Updated weekly with the latest stats and analysis." />
+          <meta name="keywords" content="AFL Fantasy rankings, fantasy football, player rankings, projections, value picks, 2026 season, AFL stats, fantasy drafts" />
+          <meta property="og:title" content="AFL Fantasy Rankings 2026 | Neeko" />
+          <meta property="og:description" content="Complete AFL Fantasy rankings for 2026. AI-powered projections, value analysis, and recommendations updated weekly." />
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content="https://neekostats.com.au/sports/afl/rankings" />
+          <meta property="og:site_name" content="Neeko Sports" />
+          <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+          <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content="AFL Fantasy Rankings 2026 | Neeko" />
+          <meta name="twitter:description" content="AI-powered AFL Fantasy rankings with projections, value scores, and recommendations." />
+          <link rel="canonical" href="https://neekostats.com.au/sports/afl/rankings" />
+          <meta name="robots" content="index, follow" />
+          <meta name="author" content="Neeko Sports" />
+          <meta property="article:modified_time" content={new Date().toISOString()} />
+          <script type="application/ld+json">{JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": "AFL Fantasy Rankings 2026",
+            "description": "Complete AFL Fantasy rankings for 2026. AI-powered player projections, value scores, and recommendations. Updated weekly with the latest stats and analysis.",
+            "url": "https://neekostats.com.au/sports/afl/rankings",
+            "publisher": {
+              "@type": "Organization",
+              "name": "Neeko Sports",
+              "url": "https://neekostats.com.au"
+            },
+            "breadcrumb": {
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
+                { "@type": "ListItem", "position": 2, "name": "AFL Fantasy", "item": "https://neekostats.com.au/sports/afl" },
+                { "@type": "ListItem", "position": 3, "name": "Rankings", "item": "https://neekostats.com.au/sports/afl/rankings" }
+              ]
+            }
+          })}</script>
+        </Helmet>
+
+        <div className="min-h-screen bg-[#070707] text-white">
+
+          {/* FREE HERO */}
+          <div className="px-4 pt-10 pb-6 md:px-8">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
+                <p className="text-sm text-white/45 mt-1.5 max-w-lg leading-relaxed">
+                  Top 8 players this week — updated using live projections and AI analysis
+                </p>
+              </div>
+              <div className="flex items-center gap-2 mt-1 shrink-0">
+                {updatedAt && (
+                  <div className="hidden md:block">
+                    <DataFreshnessIndicator
+                      timestamp={updatedAt.ts}
+                      label="Rankings"
+                      variant="compact"
+                      className="text-[#F5C84C]"
+                    />
+                  </div>
+                )}
+                <button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  title="Refresh rankings data"
+                  className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/50 hover:border-white/20 hover:text-white/70 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <RefreshCw size={12} className={isRefreshing ? "animate-spin" : ""} />
+                  <span className="hidden sm:inline">{isRefreshing ? "Refreshing..." : "Refresh"}</span>
+                </button>
+              </div>
+            </div>
+            {updatedAt && (
+              <div className="md:hidden mt-2">
+                <DataFreshnessIndicator
+                  timestamp={updatedAt.ts}
+                  label="Rankings"
+                  variant="compact"
+                  className="text-[#F5C84C]"
+                />
+              </div>
+            )}
+            {updatedAt && <StaleDataWarning timestamp={updatedAt.ts} className="mt-3" />}
+          </div>
+
+          <div className="px-4 pb-16 md:px-8">
+
+            {/* QUICK VALUE STRIP */}
+            {!loading && displayRows.length > 0 && (
+              <FreeValueStrip rows={displayRows} />
+            )}
+
+            {/* FREE TABLE — desktop */}
+            <div className="hidden md:block">
+              <div
+                className="w-full overflow-x-auto rounded-xl border border-white/[0.06]"
+                style={{ WebkitOverflowScrolling: "touch" }}
+              >
+                <table className="min-w-[640px] w-full border-collapse">
+                  <thead className="sticky top-0 z-30 bg-[#0a0a0a] border-b border-[#222]">
+                    <FreeTableHeader />
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <FreeLoadingSkeletonRows />
+                    ) : displayRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-16 text-center">
+                          <p className="text-sm text-white/30">No players available.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      <>
+                        {displayRows.map((row, idx) => {
+                          const tier: RowTier = getFreeTier(idx);
+                          const isUnlocked = tier === "full";
+                          return (
+                            <FreeTableRow
+                              key={row.player_id ?? idx}
+                              row={row}
+                              idx={idx}
+                              onRowClick={() => openRow(row, idx + 1, tier, isUnlocked)}
+                            />
+                          );
+                        })}
+                        <FreeConversionWallRow onUpgrade={() => setShowUpgradeModal(true)} />
+                      </>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* FREE TABLE — mobile */}
+            <div className="md:hidden">
+              <MobileRankingsTable
+                rows={sortedRows.slice(0, FREE_FULL_ROWS)}
+                loading={loading}
+                isPremium={false}
+                activeTab={activeTab}
+                onOpenRow={(row, idx) => {
+                  const tier: RowTier = getFreeTier(idx);
+                  const isUnlocked = tier === "full";
+                  openRow(row, idx + 1, tier, isUnlocked);
+                }}
+                onUpgrade={() => setShowUpgradeModal(true)}
+              />
+              {!loading && (
+                <div className="mt-4">
+                  <FreeConversionWallRow onUpgrade={() => setShowUpgradeModal(true)} />
+                </div>
+              )}
+            </div>
+
+          </div>
+
+          {/* SEO + EXPLORE */}
+          {!loading && sortedRows.length > 0 && (
+            <RankingsSEOContent />
+          )}
+
+        </div>
+
+        {ratingInfoOpen && <NeekoRatingInfoModal onClose={() => setRatingInfoOpen(false)} />}
+        {showUpgradeModal && <UpgradeModal onClose={() => setShowUpgradeModal(false)} />}
+        {selected && (
+          <PlayerDetailModal
+            row={selected.row}
+            rank={selected.rank}
+            isPremium={false}
+            isUnlocked={selected.isUnlocked}
+            tier={selected.tier}
+            isFreeTop5={selected.tier === "full"}
+            onClose={() => setSelected(null)}
+          />
+        )}
+      </>
+    );
+  }
+
+  // ── PREMIUM LAYOUT ──────────────────────────────────────────────────────────
   return (
     <>
       <Helmet>
@@ -554,216 +802,187 @@ export default function AFLRankingsPage() {
 
       <div className="min-h-screen bg-[#070707] text-white">
 
-      <div className="px-4 pt-10 pb-4 md:px-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
-            <p className="text-sm text-white/40 mt-1">Fantasy projection rankings powered by AI</p>
-          </div>
-          <div className="flex items-center gap-3 mt-1 shrink-0">
-            {updatedAt && (
-              <div className="hidden md:block">
-                <DataFreshnessIndicator
-                  timestamp={updatedAt.ts}
-                  label="Rankings"
-                  variant="compact"
-                  className="text-[#F5C84C]"
-                />
-              </div>
-            )}
-            <button
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              title="Refresh rankings data"
-              className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/50 hover:border-white/20 hover:text-white/70 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <RefreshCw size={12} className={isRefreshing ? "animate-spin" : ""} />
-              <span className="hidden sm:inline">{isRefreshing ? "Refreshing..." : "Refresh"}</span>
-            </button>
-          </div>
-        </div>
-        {updatedAt && (
-          <div className="md:hidden mt-3">
-            <DataFreshnessIndicator
-              timestamp={updatedAt.ts}
-              label="Rankings"
-              variant="compact"
-              className="text-[#F5C84C]"
-            />
-          </div>
-        )}
-
-        {updatedAt && <StaleDataWarning timestamp={updatedAt.ts} className="mt-3" />}
-      </div>
-
-      <div className="px-4 pb-16 md:px-8">
-
-        <div className="mb-0 flex items-center gap-2 border-b border-white/[0.06]">
-          {TABS.map(({ key, label, premiumOnly }) => {
-            const isLocked = premiumOnly && !isPremium;
-            const isActive = activeTab === key;
-            return (
+        <div className="px-4 pt-10 pb-4 md:px-8">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
+              <p className="text-sm text-white/40 mt-1">Fantasy projection rankings powered by AI</p>
+            </div>
+            <div className="flex items-center gap-3 mt-1 shrink-0">
+              {updatedAt && (
+                <div className="hidden md:block">
+                  <DataFreshnessIndicator
+                    timestamp={updatedAt.ts}
+                    label="Rankings"
+                    variant="compact"
+                    className="text-[#F5C84C]"
+                  />
+                </div>
+              )}
               <button
-                key={key}
-                onClick={() => handleTabChange(key)}
-                title={isLocked ? "Premium feature — upgrade to Neeko+" : undefined}
-                className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                  isActive
-                    ? "border-[#F5C84C] text-[#F5C84C]"
-                    : isLocked
-                    ? "border-transparent text-white/25 hover:text-white/45 opacity-70"
-                    : "border-transparent text-white/40 hover:text-white/70"
-                }`}
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                title="Refresh rankings data"
+                className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/50 hover:border-white/20 hover:text-white/70 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {label}
-                {isLocked && <Lock size={11} className="text-white/30 shrink-0" />}
+                <RefreshCw size={12} className={isRefreshing ? "animate-spin" : ""} />
+                <span className="hidden sm:inline">{isRefreshing ? "Refreshing..." : "Refresh"}</span>
               </button>
-            );
-          })}
+            </div>
+          </div>
+          {updatedAt && (
+            <div className="md:hidden mt-3">
+              <DataFreshnessIndicator
+                timestamp={updatedAt.ts}
+                label="Rankings"
+                variant="compact"
+                className="text-[#F5C84C]"
+              />
+            </div>
+          )}
+
+          {updatedAt && <StaleDataWarning timestamp={updatedAt.ts} className="mt-3" />}
         </div>
 
-        <p className="text-xs text-white/30 mt-3 mb-4 leading-relaxed max-w-2xl">
-          {TAB_DESCRIPTIONS[safeActiveTab]}
-        </p>
+        <div className="px-4 pb-16 md:px-8">
 
-        <div className="mb-3">
-          <SearchAutocomplete
-            rows={rows}
-            value={searchTerm}
-            isPremium={isPremium}
-            onUpgrade={() => setShowUpgradeModal(true)}
-            onChange={setSearchTerm}
-            onSelect={handleSearchSelect}
-          />
-        </div>
-
-        <div className="sticky top-[72px] z-30 bg-[#070707] pb-2 -mx-4 px-4 md:-mx-8 md:px-8 mb-2 flex flex-wrap gap-1.5">
-          {isPremium
-            ? PREMIUM_QUICK_FILTERS.map(({ key, label }) => (
+          <div className="mb-0 flex items-center gap-2 border-b border-white/[0.06]">
+            {TABS.map(({ key, label, premiumOnly }) => {
+              const isActive = activeTab === key;
+              return (
                 <button
                   key={key}
-                  onClick={() => setPremiumFilter(key)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                    premiumFilter === key
-                      ? "bg-[#F5C84C] text-[#070707]"
-                      : "border border-white/10 bg-white/[0.03] text-white/50 hover:border-white/20 hover:text-white/70"
+                  onClick={() => handleTabChange(key)}
+                  className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                    isActive
+                      ? "border-[#F5C84C] text-[#F5C84C]"
+                      : "border-transparent text-white/40 hover:text-white/70"
                   }`}
                 >
                   {label}
                 </button>
-              ))
-            : POSITIONS.map((pos) => (
-                <button
-                  key={pos}
-                  onClick={() => {
-                    if (pos !== "ALL") { setShowUpgradeModal(true); return; }
-                    setPositionFilter(pos);
-                  }}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                    positionFilter === pos && pos === "ALL"
-                      ? "bg-[#F5C84C] text-[#070707]"
-                      : pos !== "ALL"
-                      ? "border border-white/10 bg-white/[0.03] text-white/20 cursor-pointer opacity-50"
-                      : "border border-white/10 bg-white/[0.03] text-white/50 hover:border-white/20 hover:text-white/70"
-                  }`}
-                >
-                  {pos}
-                </button>
-              ))}
-        </div>
-
-        {!loading && displayRows.length > 0 && isPremium && (
-          <KpiTiles rows={displayRows} />
-        )}
-
-        <div className="hidden md:block">
-          <div
-            className="w-full overflow-x-auto overflow-y-auto max-h-[75vh] rounded-xl border border-white/5"
-            style={{ WebkitOverflowScrolling: "touch" }}
-          >
-            <table className="min-w-[1100px] w-full border-collapse">
-              <thead className="sticky top-0 z-30 bg-[#0a0a0a] border-b border-[#222]">
-                <TableHeader
-                  isPremium={isPremium}
-                  sortKey={sortKey}
-                  sortDir={sortDir}
-                  onSortClick={handleSortClick}
-                  onRatingInfoOpen={() => setRatingInfoOpen(true)}
-                />
-              </thead>
-              <tbody>
-                {loading ? (
-                  <LoadingSkeletonRows />
-                ) : displayRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="px-6 py-16 text-center">
-                      <p className="text-sm text-white/30">No players match the current filter.</p>
-                    </td>
-                  </tr>
-                ) : (
-                  <>
-                    {displayRows.map((row, idx) => {
-                      const tier: RowTier = isPremium ? "premium" : getFreeTier(idx);
-                      const isUnlocked = isPremium || tier === "full";
-                      const isHighlighted = highlightedPlayerId != null && row.player_id === highlightedPlayerId;
-                      return (
-                        <TableRow
-                          key={row.player_id ?? idx}
-                          row={row}
-                          idx={idx}
-                          isPremium={isPremium}
-                          tier={tier}
-                          activeTab={activeTab}
-                          isHighlighted={isHighlighted}
-                          onRowClick={() => openRow(row, idx + 1, tier, isUnlocked)}
-                          onUpgrade={() => setShowUpgradeModal(true)}
-                        />
-                      );
-                    })}
-                    {!isPremium && !loading && (
-                      <ConversionWallRow onUpgrade={() => setShowUpgradeModal(true)} />
-                    )}
-                  </>
-                )}
-              </tbody>
-            </table>
+              );
+            })}
           </div>
 
-          {isPremium && !loading && visibleCount < sortedRows.length && (
-            <div className="mt-4 flex flex-col items-center gap-2">
+          <p className="text-xs text-white/30 mt-3 mb-4 leading-relaxed max-w-2xl">
+            {TAB_DESCRIPTIONS[safeActiveTab]}
+          </p>
+
+          <div className="mb-3">
+            <SearchAutocomplete
+              rows={rows}
+              value={searchTerm}
+              isPremium={isPremium}
+              onUpgrade={() => setShowUpgradeModal(true)}
+              onChange={setSearchTerm}
+              onSelect={handleSearchSelect}
+            />
+          </div>
+
+          <div className="sticky top-[72px] z-30 bg-[#070707] pb-2 -mx-4 px-4 md:-mx-8 md:px-8 mb-2 flex flex-wrap gap-1.5">
+            {PREMIUM_QUICK_FILTERS.map(({ key, label }) => (
               <button
-                onClick={() => setVisibleCount((v) => v + 50)}
-                className="rounded-xl border border-white/10 bg-white/[0.03] px-6 py-2.5 text-sm font-medium text-white/60 hover:border-white/20 hover:text-white/80 transition-colors"
+                key={key}
+                onClick={() => setPremiumFilter(key)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  premiumFilter === key
+                    ? "bg-[#F5C84C] text-[#070707]"
+                    : "border border-white/10 bg-white/[0.03] text-white/50 hover:border-white/20 hover:text-white/70"
+                }`}
               >
-                Load More ({displayRows.length} of {sortedRows.length} players)
+                {label}
               </button>
-            </div>
+            ))}
+          </div>
+
+          {!loading && displayRows.length > 0 && (
+            <KpiTiles rows={displayRows} />
           )}
+
+          <div className="hidden md:block">
+            <div
+              className="w-full overflow-x-auto overflow-y-auto max-h-[75vh] rounded-xl border border-white/5"
+              style={{ WebkitOverflowScrolling: "touch" }}
+            >
+              <table className="min-w-[1100px] w-full border-collapse">
+                <thead className="sticky top-0 z-30 bg-[#0a0a0a] border-b border-[#222]">
+                  <TableHeader
+                    isPremium={isPremium}
+                    sortKey={sortKey}
+                    sortDir={sortDir}
+                    onSortClick={handleSortClick}
+                    onRatingInfoOpen={() => setRatingInfoOpen(true)}
+                  />
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <LoadingSkeletonRows />
+                  ) : displayRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={10} className="px-6 py-16 text-center">
+                        <p className="text-sm text-white/30">No players match the current filter.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    <>
+                      {displayRows.map((row, idx) => {
+                        const tier: RowTier = "premium";
+                        const isUnlocked = true;
+                        const isHighlighted = highlightedPlayerId != null && row.player_id === highlightedPlayerId;
+                        return (
+                          <TableRow
+                            key={row.player_id ?? idx}
+                            row={row}
+                            idx={idx}
+                            isPremium={isPremium}
+                            tier={tier}
+                            activeTab={activeTab}
+                            isHighlighted={isHighlighted}
+                            onRowClick={() => openRow(row, idx + 1, tier, isUnlocked)}
+                            onUpgrade={() => setShowUpgradeModal(true)}
+                          />
+                        );
+                      })}
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {!loading && visibleCount < sortedRows.length && (
+              <div className="mt-4 flex flex-col items-center gap-2">
+                <button
+                  onClick={() => setVisibleCount((v) => v + 50)}
+                  className="rounded-xl border border-white/10 bg-white/[0.03] px-6 py-2.5 text-sm font-medium text-white/60 hover:border-white/20 hover:text-white/80 transition-colors"
+                >
+                  Load More ({displayRows.length} of {sortedRows.length} players)
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="md:hidden">
+            <MobileRankingsTable
+              rows={sortedRows}
+              loading={loading}
+              isPremium={isPremium}
+              activeTab={activeTab}
+              onOpenRow={(row, idx) => {
+                const tier: RowTier = "premium";
+                openRow(row, idx + 1, tier, true);
+              }}
+              onUpgrade={() => setShowUpgradeModal(true)}
+            />
+          </div>
+
         </div>
 
-        <div className="md:hidden">
-          <MobileRankingsTable
-            rows={isPremium ? sortedRows : sortedRows.slice(0, FREE_FULL_ROWS)}
-            loading={loading}
-            isPremium={isPremium}
-            activeTab={activeTab}
-            onOpenRow={(row, idx) => {
-              const tier: RowTier = isPremium ? "premium" : getFreeTier(idx);
-              const isUnlocked = isPremium || tier === "full";
-              openRow(row, idx + 1, tier, isUnlocked);
-            }}
-            onUpgrade={() => setShowUpgradeModal(true)}
-          />
-        </div>
+        {!loading && sortedRows.length > 0 && (
+          <RankingsSEOContent />
+        )}
 
       </div>
-
-      {!loading && sortedRows.length > 0 && (
-        <>
-          <RankingsSEOContent />
-          {!isPremium && <PremiumUpsellSection />}
-        </>
-      )}
 
       {ratingInfoOpen && (
         <NeekoRatingInfoModal onClose={() => setRatingInfoOpen(false)} />
@@ -780,12 +999,10 @@ export default function AFLRankingsPage() {
           isPremium={isPremium}
           isUnlocked={selected.isUnlocked}
           tier={selected.tier}
-          isFreeTop5={!isPremium && selected.tier === "full"}
+          isFreeTop5={false}
           onClose={() => setSelected(null)}
         />
       )}
-
-    </div>
     </>
   );
 }

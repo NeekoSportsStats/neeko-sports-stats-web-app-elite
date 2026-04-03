@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Lock, Crown } from "lucide-react";
+import { ChevronDown, ChevronUp, Lock, Crown, TrendingUp } from "lucide-react";
 import { RankingRow, SortKey, SortDir, RankingsTab, RowTier } from "./types";
 import {
   fmt, fmtPrice, fmtPriceChange, fmtValueScore,
@@ -328,6 +328,165 @@ export function ConversionWallRow({ onUpgrade, colSpan = TOTAL_COLS }: { onUpgra
         </div>
       </td>
     </tr>
+  );
+}
+
+const FREE_TOTAL_COLS = 5;
+
+export function FreeTableHeader() {
+  return (
+    <tr className="border-b border-[#222]">
+      <th className={`${TH} text-white/40`} style={{ width: 44, minWidth: 44 }}>#</th>
+      <th className={`${TH} text-left text-white/40`} style={{ width: 220, minWidth: 160 }}>Player</th>
+      <th className={`${TH} text-[#F5C84C]`} style={{ width: 100, minWidth: 90 }}>
+        <span className="inline-flex items-center gap-1 justify-center">
+          Projection
+          <InfoTooltip text="Expected fantasy points this round based on form, matchup and role" />
+        </span>
+      </th>
+      <th className={`${TH} text-white/40`} style={{ width: 110, minWidth: 90 }}>
+        <span className="inline-flex items-center gap-1 justify-center">
+          Value
+          <InfoTooltip text="Points per dollar — higher means better value for money" />
+        </span>
+      </th>
+      <th className={`${TH} text-left text-white/40`} style={{ minWidth: 180 }}>Why</th>
+    </tr>
+  );
+}
+
+interface FreeTableRowProps {
+  row: RankingRow;
+  idx: number;
+  onRowClick: () => void;
+}
+
+export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
+  const rank = idx + 1;
+
+  const vsColor = getValueScoreColor(row.value_score ?? null);
+  const vtStyle = getValueTagStyle(row.value_tag);
+
+  const statusBadge = (() => {
+    if (row.manual_status === "OUT" || (!row.manual_status && row.status === "OUT"))
+      return <span className="rounded-sm bg-red-500/15 px-1 py-0.5 text-[9px] font-semibold text-red-400 uppercase tracking-wide border border-red-500/20">OUT</span>;
+    if (row.manual_status === "INJURED" || (!row.manual_status && row.status === "INJURED"))
+      return <span className="rounded-sm bg-orange-500/15 px-1 py-0.5 text-[9px] font-semibold text-orange-400 uppercase tracking-wide border border-orange-500/20">INJ</span>;
+    if (row.is_bye)
+      return <span className="rounded-sm bg-white/10 px-1 py-0.5 text-[9px] font-semibold text-white/40 uppercase tracking-wide border border-white/15">BYE</span>;
+    return null;
+  })();
+
+  return (
+    <tr
+      className="border-b border-white/[0.04] transition-all duration-150 cursor-pointer hover:bg-white/[0.05] group"
+      style={{ touchAction: "manipulation" }}
+      onClick={onRowClick}
+    >
+      <td className="px-3 py-3 text-sm text-white/30 tabular-nums text-center whitespace-nowrap" style={{ width: 44, minWidth: 44 }}>
+        {rank}
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap" style={{ width: 220, minWidth: 160 }}>
+        <div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <a
+              href={`/sports/afl/players/${row.player_name.toLowerCase().replace(/\s+/g, '-')}`}
+              onClick={(e) => { e.preventDefault(); onRowClick(); }}
+              className="text-sm font-semibold text-white hover:text-white/80 transition-colors"
+            >{row.player_name}</a>
+            {statusBadge}
+          </div>
+          <div className="text-[11px] text-white/40 mt-0.5">
+            {row.team}{row.position ? ` · ${row.position}` : ""}
+          </div>
+        </div>
+      </td>
+      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 100, minWidth: 90 }}>
+        {row.is_bye
+          ? <span className="text-sm font-semibold text-white/20 tabular-nums">—</span>
+          : <span className="text-sm font-bold text-[#F5C84C]/80 tabular-nums">{fmt(row.projection_final)}</span>
+        }
+      </td>
+      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 110, minWidth: 90 }}>
+        <div className="flex flex-col items-center gap-0.5">
+          <span className={`text-sm font-bold tabular-nums ${vsColor}`}>
+            {fmtValueScore(row.value_score)}
+          </span>
+          {row.value_tag && (
+            <span className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold border ${vtStyle.text} ${vtStyle.bg} ${vtStyle.border}`}>
+              {row.value_tag}
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="px-4 py-3 text-left align-top" style={{ minWidth: 180, maxWidth: 280 }}>
+        {(() => {
+          const whyText = row.why ?? null;
+          return whyText
+            ? <span className="text-xs text-white/55 leading-snug block line-clamp-2 max-w-[260px]">{whyText}</span>
+            : <span className="text-white/20 text-xs">—</span>;
+        })()}
+      </td>
+    </tr>
+  );
+}
+
+export function FreeConversionWallRow({ onUpgrade }: { onUpgrade: () => void }) {
+  return (
+    <tr>
+      <td colSpan={FREE_TOTAL_COLS} className="px-4 pt-6 pb-8">
+        <div
+          className="relative flex flex-col items-center gap-4 rounded-2xl border border-[#F5C84C]/25 bg-gradient-to-b from-[#F5C84C]/[0.07] via-[#0d0d0d] to-[#0a0a0a] px-8 py-10 text-center overflow-hidden hover:border-[#F5C84C]/40 transition-all duration-200 cursor-pointer"
+          onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 40px rgba(245,200,76,0.08)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
+        >
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-px bg-gradient-to-r from-transparent via-[#F5C84C]/40 to-transparent" />
+          <div className="flex items-center justify-center w-11 h-11 rounded-full bg-[#F5C84C]/15 border border-[#F5C84C]/30 mb-1">
+            <Crown size={18} className="text-[#F5C84C]" />
+          </div>
+          <div>
+            <p className="text-lg font-bold text-white mb-1.5">Unlock 600+ players with Neeko+</p>
+            <p className="text-sm text-white/40 max-w-sm leading-relaxed">
+              Full rankings · AI analysis · Market Watch · Edge Board · Start/Sit tools
+            </p>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2 mb-1">
+            {["Full Rankings", "AI Analysis", "Price Tracking", "Edge Board"].map((f) => (
+              <span key={f} className="rounded-full border border-[#F5C84C]/20 bg-[#F5C84C]/[0.06] px-3 py-1 text-[11px] text-[#F5C84C]/70 font-medium">
+                {f}
+              </span>
+            ))}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5C84C] hover:brightness-110 px-6 py-2.5 text-sm font-bold text-[#070707] transition-all shadow-lg"
+            >
+              <Crown size={13} />
+              Unlock Full Rankings
+            </button>
+            <span className="text-xs text-white/25">$10/month · Cancel anytime</span>
+          </div>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+export function FreeLoadingSkeletonRows({ rows = 8 }: { rows?: number }) {
+  return (
+    <>
+      {Array.from({ length: rows }).map((_, i) => (
+        <tr key={i} className="border-b border-white/5">
+          {Array.from({ length: FREE_TOTAL_COLS }).map((__, j) => (
+            <td key={j} className="px-4 py-4">
+              <div className="h-4 animate-pulse rounded bg-white/5" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
   );
 }
 
