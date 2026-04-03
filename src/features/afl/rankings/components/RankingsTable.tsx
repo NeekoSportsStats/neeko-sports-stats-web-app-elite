@@ -4,28 +4,90 @@ import { RankingRow, SortKey, SortDir, RankingsTab, RowTier } from "./types";
 import {
   fmt, fmtPrice,
   getDisplayRecommendation,
-  resolveRecommendationColor,
   FREE_FULL_ROWS,
 } from "./helpers";
 import { InfoTooltip, LockedCell } from "./RankingsModals";
 
 // ─── Column layout ─────────────────────────────────────────────────────────────
-// # (44) | Player (240) | PROJ (90) | BE (80) | EDGE (90) | ACTION (100) | WHY (180)
+// # (44) | Player (240) | PROJ (90) | BE (80) | EDGE (90) | ACTION (100) | WHY (flex)
 const TOTAL_COLS = 7;
 const FREE_TOTAL_COLS = 5;
 
 const TH = "bg-[#0a0a0a] px-3 py-2.5 text-[11px] font-medium uppercase tracking-wider whitespace-nowrap border-b border-white/10 text-center";
 
-// ─── Short WHY generator ──────────────────────────────────────────────────────
+// ─── Rich WHY generator ────────────────────────────────────────────────────────
 
-function buildShortWhy(row: RankingRow, action: string): string {
+function buildRichWhy(row: RankingRow, action: string): string {
   const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
+  const be = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
+  const edge = proj != null && be != null && !row.is_bye ? proj - be : null;
+  const price = row.price != null ? row.price : null;
+  const valueScore = row.value_score != null ? Number(row.value_score) : null;
+  const confidence = row.projection_confidence != null ? Math.round(row.projection_confidence) : null;
+  const form = row.form_rating != null ? Math.round(Number(row.form_rating)) : null;
+  const matchupRaw = row.matchup_rating != null ? Number(row.matchup_rating) : null;
   const label = action.toUpperCase();
 
-  if (label === "BUY" || label === "STRONG BUY") return "Projected strong, well above breakeven";
-  if (label === "HOLD") return "Projection near breakeven, stable output";
-  if (label === "AVOID" || label === "SELL") return "Below breakeven, limited scoring upside";
-  if (label === "WATCH") return "Slight value edge, monitor closely";
+  // Edge-aware insight
+  if (edge != null) {
+    if (edge >= 20) {
+      if (matchupRaw != null && matchupRaw > 1.03) {
+        const pct = Math.round((matchupRaw - 1) * 100);
+        return `+${edge} vs BE — opponent concedes +${pct}% to position`;
+      }
+      if (confidence != null && confidence >= 70) {
+        return `+${edge} vs BE with ${confidence}% model confidence`;
+      }
+      if (valueScore != null && valueScore > 1) {
+        return `+${edge} vs BE — underpriced, value score ${valueScore.toFixed(1)}`;
+      }
+      return `+${edge} vs BE with strong role security`;
+    }
+    if (edge >= 10) {
+      if (form != null && form >= 75) {
+        return `+${edge} vs BE — form trend strong (${form} form rating)`;
+      }
+      return `+${edge} vs BE, moderate projection edge`;
+    }
+    if (edge >= -5) {
+      if (matchupRaw != null && matchupRaw < 0.97) {
+        const pct = Math.round((1 - matchupRaw) * 100);
+        return `Near BE — tough opponent concedes -${pct}% to position`;
+      }
+      return `Near BE — stable output, limited ceiling`;
+    }
+    if (edge < -10) {
+      if (price != null && price > 0) {
+        const pricek = Math.round(price / 1000);
+        return `-${Math.abs(edge)} vs BE — priced at $${pricek}K, risk of price drop`;
+      }
+      return `-${Math.abs(edge)} vs BE, price risk this round`;
+    }
+  }
+
+  // Fallback by action
+  if (label === "BUY" || label === "STRONG BUY") {
+    if (proj != null) return `Projection ${proj} — strong upside at current price`;
+    return "High-ceiling play, projection well above peers";
+  }
+  if (label === "ELITE CAPTAIN" || label === "STRONG CAPTAIN") {
+    if (proj != null && confidence != null) return `Captain ceiling — ${proj} proj, ${confidence}% confidence`;
+    return "Premium captain option, elite scoring floor";
+  }
+  if (label === "HOLD") {
+    if (be != null) return `BE of ${be} — projection covers, stable hold`;
+    return "Projection near breakeven, consistent output";
+  }
+  if (label === "AVOID" || label === "SELL") {
+    if (be != null) return `BE of ${be} — projection falls short, price risk`;
+    return "Below breakeven, limited scoring upside";
+  }
+  if (label === "WATCH") {
+    if (matchupRaw != null && matchupRaw > 1.0) {
+      return "Favourable matchup — monitor for late confirmation";
+    }
+    return "Slight value edge, monitor for role clarity";
+  }
   return "Slight value edge, monitor closely";
 }
 
@@ -87,17 +149,14 @@ function ExpandedPanel({ row, displayRec }: ExpandedPanelProps) {
         <div className="ml-[52px] rounded-xl border border-white/[0.08] bg-[#111] p-4">
           <div className="flex flex-col gap-3">
 
-            {/* Quick summary */}
             {edgeLabel && (
               <p className="text-sm font-semibold text-white/80">{edgeLabel}</p>
             )}
 
-            {/* Full AI why */}
             {longWhy && (
               <p className="text-[13px] text-white/55 leading-relaxed line-clamp-4">{longWhy}</p>
             )}
 
-            {/* Metrics grid */}
             {(confidence != null || price != null || rating != null) && (
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/[0.06] pt-3">
                 {confidence != null && (
@@ -188,9 +247,28 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
       <SortableTh label="BE" col="form_score" width={80} tooltip="Breakeven — score needed to maintain price" />
       <SortableTh label="Edge" col="projection_final" width={90} tooltip="Projection minus Breakeven. Green = clears BE. Red = price risk." />
       <Th label="Action" locked={!isPremium} width={100} />
-      <th className={`${TH} text-left text-white/35`} style={{ width: 180, minWidth: 150 }}>Why</th>
+      <th className={`${TH} text-left text-white/35`} style={{ minWidth: 200 }}>Why</th>
     </tr>
   );
+}
+
+// ─── Recommendation color resolver ────────────────────────────────────────────
+
+function getActionStyle(rec: string): React.CSSProperties {
+  const label = rec.toUpperCase();
+  if (label.includes("ELITE CAPTAIN") || label.includes("STRONG CAPTAIN")) {
+    return { color: "#F5C84C", background: "#F5C84C18", borderColor: "#F5C84C50" };
+  }
+  if (label === "BUY" || label === "STRONG BUY" || label === "CAPTAIN OPTION") {
+    return { color: "#4ade80", background: "#4ade8018", borderColor: "#4ade8040" };
+  }
+  if (label === "HOLD" || label === "BENCH WATCH" || label === "WATCH") {
+    return { color: "#94a3b8", background: "#94a3b810", borderColor: "#94a3b830" };
+  }
+  if (label === "SELL" || label === "AVOID" || label === "FADE") {
+    return { color: "#f87171", background: "#f8717118", borderColor: "#f8717140" };
+  }
+  return { color: "#94a3b8", background: "#94a3b810", borderColor: "#94a3b830" };
 }
 
 // ─── Premium table row (with expandable panel) ────────────────────────────────
@@ -211,7 +289,8 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
   const rank = idx + 1;
 
   const displayRec = getDisplayRecommendation(row, activeTab);
-  const shortWhy = displayRec ? buildShortWhy(row, displayRec) : (row.why ?? "");
+  const richWhy = displayRec ? buildRichWhy(row, displayRec) : (row.why ?? "");
+  const actionStyle = displayRec ? getActionStyle(displayRec) : undefined;
 
   const isLocked = !isPremium && idx >= FREE_FULL_ROWS;
 
@@ -219,9 +298,15 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
     ? Math.round(parseFloat(String(row.breakeven)))
     : null;
 
-  const rowClass = isHighlighted
-    ? "border-b border-[#F5C84C]/30 bg-[#F5C84C]/[0.04] cursor-pointer"
-    : "border-b border-white/[0.04] cursor-pointer hover:bg-neutral-900 transition-all duration-150";
+  // Top-3 highlight ring
+  const isTop3 = rank <= 3 && !isHighlighted;
+  const rowBase = isHighlighted
+    ? "border-b border-[#F5C84C]/30 bg-[#F5C84C]/[0.04]"
+    : isTop3
+    ? "border-b border-white/[0.06] bg-white/[0.02]"
+    : "border-b border-white/[0.04]";
+
+  const rowClass = `${rowBase} cursor-pointer hover:bg-neutral-900/80 transition-all duration-150 group`;
 
   function handleRowClick() {
     if (isPremium) {
@@ -233,10 +318,14 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
 
   return (
     <>
-      <tr className={`${rowClass} group`} onClick={handleRowClick}>
-        <td className="px-3 py-2.5 text-sm text-white/30 tabular-nums text-center whitespace-nowrap" style={{ width: 44, minWidth: 44 }}>
+      <tr className={`${rowClass}`} onClick={handleRowClick}>
+        <td className="px-3 py-3 text-sm text-white/30 tabular-nums text-center whitespace-nowrap" style={{ width: 44, minWidth: 44 }}>
           <span className="inline-flex items-center gap-0.5">
-            {rank}
+            {isTop3 && !isHighlighted ? (
+              <span className="text-[#F5C84C]/60 font-bold">{rank}</span>
+            ) : (
+              rank
+            )}
             {isPremium && (
               <ChevronRight
                 size={10}
@@ -246,10 +335,10 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           </span>
         </td>
 
-        <td className="px-3 py-2.5 whitespace-nowrap" style={{ width: 240, minWidth: 180, maxWidth: 240 }}>
+        <td className="px-3 py-3 whitespace-nowrap" style={{ width: 240, minWidth: 180, maxWidth: 240 }}>
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-sm font-semibold text-white truncate max-w-[180px]">{row.player_name}</span>
+              <span className={`text-sm font-semibold truncate max-w-[180px] ${isTop3 ? "text-white" : "text-white/90"}`}>{row.player_name}</span>
               {(row.manual_status === "OUT" || (!row.manual_status && row.status === "OUT")) ? (
                 <span className="rounded-sm bg-red-500/15 px-1 py-0.5 text-[9px] font-semibold text-red-400 uppercase border border-red-500/20">OUT</span>
               ) : (row.manual_status === "INJURED" || (!row.manual_status && row.status === "INJURED")) ? (
@@ -270,43 +359,40 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           </div>
         </td>
 
-        <td className="px-3 py-2.5 text-center whitespace-nowrap" style={{ width: 90 }}>
+        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 90 }}>
           {row.is_bye
             ? <span className="text-sm font-semibold text-white/20 tabular-nums">—</span>
-            : <span className="text-sm font-semibold text-[#F5C84C]/80 tabular-nums">{fmt(row.projection_final)}</span>
+            : <span className={`text-sm font-semibold tabular-nums ${isTop3 ? "text-[#F5C84C]" : "text-[#F5C84C]/80"}`}>{fmt(row.projection_final)}</span>
           }
         </td>
 
-        <td className="px-3 py-2.5 text-center whitespace-nowrap" style={{ width: 80 }}>
+        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 80 }}>
           <span className="text-sm tabular-nums text-white/60">{be !== null ? be : "—"}</span>
         </td>
 
-        <td className="px-3 py-2.5 text-center whitespace-nowrap" style={{ width: 90 }}>
+        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 90 }}>
           <EdgeCell row={row} />
         </td>
 
-        <td className="px-3 py-2.5 text-center whitespace-nowrap" style={{ width: 100 }}>
+        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 100 }}>
           {isLocked ? (
             <LockedCell onClick={onUpgrade} />
           ) : displayRec ? (
             <span
               className="inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap"
-              style={(() => {
-                const rc = resolveRecommendationColor(row.recommendation_color, displayRec);
-                return { color: rc, background: `${rc}18`, borderColor: `${rc}40` };
-              })()}
+              style={actionStyle}
             >
               {displayRec}
             </span>
           ) : <span className="text-white/20 text-xs">—</span>}
         </td>
 
-        <td className="px-3 py-2.5 text-left" style={{ width: 180, maxWidth: 180 }}>
+        <td className="px-3 py-3 text-left" style={{ minWidth: 200 }}>
           {isLocked ? (
             <span className="text-[11px] text-white/20 italic">Unlock to view</span>
           ) : (
-            <span className="block text-[12px] text-white/45 leading-snug truncate max-w-[168px]">
-              {shortWhy}
+            <span className="block text-[12px] text-white/50 leading-[1.55] whitespace-normal">
+              {richWhy}
             </span>
           )}
         </td>
@@ -363,17 +449,6 @@ export function ConversionWallRow({ onUpgrade, colSpan = TOTAL_COLS }: { onUpgra
 
 // ─── Free table ────────────────────────────────────────────────────────────────
 
-type ActionLabel = "BUY" | "HOLD" | "WATCH" | "SELL" | "AVOID";
-
-function resolveAction(row: RankingRow): ActionLabel {
-  const rec = (row.ai_recommendation ?? "").toUpperCase().trim();
-  if (rec === "BUY")   return "BUY";
-  if (rec === "HOLD")  return "HOLD";
-  if (rec === "SELL")  return "SELL";
-  if (rec === "AVOID") return "AVOID";
-  return "WATCH";
-}
-
 export function FreeTableHeader() {
   return (
     <tr className="border-b border-[#222]">
@@ -409,6 +484,7 @@ interface FreeTableRowProps {
 
 export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
   const rank = idx + 1;
+  const isTop3 = rank <= 3;
 
   const isFading = idx >= 5;
   const rowFadeStyle: React.CSSProperties = isFading
@@ -445,15 +521,21 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
 
   return (
     <tr
-      className="border-b border-white/[0.04] cursor-pointer hover:bg-neutral-900 transition-colors duration-100 group"
+      className={`border-b cursor-pointer hover:bg-neutral-900/80 transition-colors duration-100 group ${isTop3 ? "border-white/[0.06] bg-white/[0.015]" : "border-white/[0.04]"}`}
       style={rowFadeStyle}
       onClick={onRowClick}
     >
-      <td className="px-3 py-3 text-sm text-white/30 tabular-nums text-center whitespace-nowrap" style={{ width: 44 }}>{rank}</td>
+      <td className="px-3 py-3 text-sm tabular-nums text-center whitespace-nowrap" style={{ width: 44 }}>
+        {isTop3 ? (
+          <span className="text-[#F5C84C]/60 font-bold">{rank}</span>
+        ) : (
+          <span className="text-white/30">{rank}</span>
+        )}
+      </td>
       <td className="px-4 py-3 whitespace-nowrap" style={{ minWidth: 160 }}>
         <div>
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-sm font-semibold text-white">{row.player_name}</span>
+            <span className={`text-sm font-semibold ${isTop3 ? "text-white" : "text-white/90"}`}>{row.player_name}</span>
             {statusBadge}
           </div>
           <div className="text-[11px] text-white/40 mt-0.5">
@@ -464,7 +546,7 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
       <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 90 }}>
         {row.is_bye
           ? <span className="text-sm font-semibold text-white/20 tabular-nums">—</span>
-          : <span className="text-sm font-bold text-[#F5C84C]/80 tabular-nums">{fmt(row.projection_final)}</span>
+          : <span className={`text-sm font-bold tabular-nums ${isTop3 ? "text-[#F5C84C]" : "text-[#F5C84C]/80"}`}>{fmt(row.projection_final)}</span>
         }
       </td>
       <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 80 }}>
@@ -488,12 +570,12 @@ export function FreeConversionWallRow({ onUpgrade }: { onUpgrade: () => void }) 
   return (
     <>
       <tr>
-        <td colSpan={TOTAL_COLS} className="px-4 pt-4 pb-1 text-center">
+        <td colSpan={FREE_TOTAL_COLS} className="px-4 pt-4 pb-1 text-center">
           <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest">More high-confidence picks hidden below</p>
         </td>
       </tr>
       <tr>
-        <td colSpan={TOTAL_COLS} className="px-4 pt-2 pb-6">
+        <td colSpan={FREE_TOTAL_COLS} className="px-4 pt-2 pb-6">
           <div
             className="relative flex flex-col items-center gap-3 rounded-2xl border border-[#F5C84C]/25 bg-gradient-to-b from-[#F5C84C]/[0.07] via-[#0d0d0d] to-[#0a0a0a] px-8 py-8 text-center overflow-hidden hover:border-[#F5C84C]/40 transition-all duration-200 cursor-pointer"
             onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
@@ -539,7 +621,7 @@ export function FreeLoadingSkeletonRows({ rows = 8 }: { rows?: number }) {
       {Array.from({ length: rows }).map((_, i) => (
         <tr key={i} className="border-b border-white/5">
           {Array.from({ length: FREE_TOTAL_COLS }).map((__, j) => (
-            <td key={j} className="px-4 py-2.5"><div className="h-4 animate-pulse rounded bg-white/5" /></td>
+            <td key={j} className="px-4 py-3"><div className="h-4 animate-pulse rounded bg-white/5" /></td>
           ))}
         </tr>
       ))}
@@ -553,7 +635,7 @@ export function LoadingSkeletonRows({ cols = TOTAL_COLS, rows = 10 }: { cols?: n
       {Array.from({ length: rows }).map((_, i) => (
         <tr key={i} className="border-b border-white/5">
           {Array.from({ length: cols }).map((__, j) => (
-            <td key={j} className="px-4 py-2.5"><div className="h-4 animate-pulse rounded bg-white/5" /></td>
+            <td key={j} className="px-4 py-3"><div className="h-4 animate-pulse rounded bg-white/5" /></td>
           ))}
         </tr>
       ))}

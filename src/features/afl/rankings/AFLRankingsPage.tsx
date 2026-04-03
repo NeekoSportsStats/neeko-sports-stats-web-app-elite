@@ -88,13 +88,13 @@ function ValueStrip({ rows }: { rows: RankingRow[] }) {
   return (
     <div className="grid grid-cols-3 gap-2 mb-3">
       {cards.map(({ icon, label, value, sub, color }) => (
-        <div key={label} className="rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2">
-          <div className="flex items-center gap-1.5 mb-1.5">
+        <div key={label} className="flex flex-col rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-3 h-full">
+          <div className="flex items-center gap-1.5 mb-2">
             {icon}
-            <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium">{label}</p>
+            <p className="text-[10px] text-white/40 uppercase tracking-wider font-medium leading-none">{label}</p>
           </div>
-          <p className={`text-base font-bold tabular-nums ${color}`}>{value}</p>
-          <p className="text-[11px] text-white/35 mt-0.5 truncate">{sub}</p>
+          <p className={`text-xl font-bold tabular-nums leading-none ${color}`}>{value}</p>
+          <p className="text-[11px] text-white/35 mt-1.5 truncate leading-tight">{sub}</p>
         </div>
       ))}
     </div>
