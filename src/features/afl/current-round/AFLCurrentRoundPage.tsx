@@ -188,10 +188,14 @@ function BlurOverlayCTA({
   hiddenCount,
   accentColor,
   onUpgrade,
+  ctaLabel,
+  badgeText,
 }: {
   hiddenCount: number;
   accentColor: string;
   onUpgrade: () => void;
+  ctaLabel?: string;
+  badgeText?: string;
 }) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 z-10">
@@ -207,14 +211,14 @@ function BlurOverlayCTA({
           style={{ backgroundColor: `${accentColor}18`, border: `1px solid ${accentColor}40`, color: accentColor }}
         >
           <Lock className="w-3 h-3" />
-          +{hiddenCount} elite picks hidden
+          {badgeText ?? `+${hiddenCount} elite picks hidden`}
         </div>
         <button
           onClick={onUpgrade}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-black transition-all hover:brightness-110 active:scale-[0.97]"
           style={{ backgroundColor: accentColor }}
         >
-          Unlock full list
+          {ctaLabel ?? "Unlock full list"}
           <ArrowRight className="w-4 h-4" />
         </button>
       </div>
@@ -234,6 +238,10 @@ interface DecisionCardProps {
   onOpenRow: (row: RankingRow, rank: number) => void;
   onUpgrade: () => void;
   hiddenCopy: string;
+  lockedCta?: string;
+  lockedSubtext?: string;
+  blurCtaLabel?: string;
+  blurBadgeText?: string;
   footerLink?: { label: string; to: string };
   renderMetric?: (row: RankingRow) => React.ReactNode;
   premiumLocked?: boolean;
@@ -249,6 +257,10 @@ function DecisionCard({
   onOpenRow,
   onUpgrade,
   hiddenCopy,
+  lockedCta,
+  lockedSubtext,
+  blurCtaLabel,
+  blurBadgeText,
   footerLink,
   renderMetric,
   premiumLocked = false,
@@ -270,14 +282,16 @@ function DecisionCard({
           </div>
           <div>
             <p className="text-sm font-semibold text-white/60 mb-1">{title} — Neeko+ Only</p>
-            <p className="text-[11px] text-white/30 max-w-[180px] leading-relaxed">{hiddenCopy}</p>
+            <p className="text-[11px] text-white/30 max-w-[200px] leading-relaxed">
+              {lockedSubtext ?? hiddenCopy}
+            </p>
           </div>
           <button
             onClick={onUpgrade}
-            className="text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all"
+            className="text-[12px] font-bold px-4 py-2 rounded-lg transition-all"
             style={{ backgroundColor: `${accentColor}20`, color: accentColor, border: `1px solid ${accentColor}40` }}
           >
-            Unlock →
+            {lockedCta ?? "Unlock →"}
           </button>
         </div>
       </div>
@@ -320,6 +334,8 @@ function DecisionCard({
               hiddenCount={totalHidden}
               accentColor={accentColor}
               onUpgrade={onUpgrade}
+              ctaLabel={blurCtaLabel}
+              badgeText={blurBadgeText}
             />
           </div>
         )}
@@ -351,30 +367,56 @@ function CollapsibleSEO({ roundLabel, roundNum }: { roundLabel: string; roundNum
         className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
         aria-expanded={open}
       >
-        <span className="text-[12px] text-white/40 font-medium">What this page shows ↓</span>
+        <span className="text-[12px] text-white/40 font-medium">About these picks — {roundLabel}</span>
         <ChevronDown className={`w-3.5 h-3.5 text-white/25 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
       <div
         className="border-t border-white/[0.05] overflow-hidden transition-all duration-200"
-        style={{ maxHeight: open ? "600px" : "0px", opacity: open ? 1 : 0 }}
+        style={{ maxHeight: open ? "900px" : "0px", opacity: open ? 1 : 0 }}
       >
-        <div className="px-4 pb-4 space-y-4">
+        <div className="px-4 pb-5 space-y-5">
           <p className="text-[12px] text-white/40 leading-relaxed pt-3">
-            This page surfaces the best AFL Fantasy picks for {roundLabel} — captain options, value plays and trap alerts — using Neeko's AI projection model.
-            Every player is scored on projected output, price value, matchup difficulty, and role stability.
+            This page surfaces the best AFL Fantasy picks for {roundLabel} — captain options, value plays, top selections and trap alerts — powered by Neeko's AI projection model. Every player is scored on projected output, price value, matchup difficulty, consistency and role stability.
           </p>
-          <ul className="space-y-2 text-[12px] text-white/35 leading-relaxed">
-            <li><strong className="text-white/55">Captain Picks</strong> — Best ceiling players for doubling up. Scored by projection, consistency and matchup.</li>
-            <li><strong className="text-white/55">Top Picks</strong> — Highest-rated players overall. Your must-starts.</li>
-            <li><strong className="text-white/55">Value Plays</strong> — Underpriced players whose projected output exceeds their price. Prime trade-in targets.</li>
-            <li><strong className="text-white/55">Trap Alerts</strong> — Overpriced players whose projection falls short. Consider trading out before lockout.</li>
-          </ul>
+
+          <div className="space-y-3">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/30">How Each Section Works</h3>
+            <ul className="space-y-3 text-[12px] text-white/35 leading-relaxed">
+              <li>
+                <strong className="text-white/55">Captain Picks</strong> — The best AFL Fantasy captains for {roundLabel}. Ranked by a composite score combining projected points, consistency rating and matchup advantage. The players here are best for doubling up — high ceiling, proven reliability, and favourable opposition.
+              </li>
+              <li>
+                <strong className="text-white/55">Top Picks</strong> — Must-start players ranked by overall projected output. These are the highest-rated players heading into {roundLabel} based on recent form, role security and Neeko's projection model. Your foundation lineup picks.
+              </li>
+              <li>
+                <strong className="text-white/55">Value Plays</strong> — Underpriced AFL Fantasy players whose projected score exceeds what their current price implies. Positive value scores signal players primed for price rises — ideal trade-in targets before lockout.
+              </li>
+              <li>
+                <strong className="text-white/55">Trap Alerts</strong> — Players flagged as overpriced or high-risk this round. Negative value scores indicate their projection falls short of what their price demands. Consider trading these players out before {roundLabel} locks.
+              </li>
+            </ul>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/30">AFL Fantasy Strategy for {roundLabel}</h3>
+            <p className="text-[12px] text-white/35 leading-relaxed">
+              Winning AFL Fantasy rounds comes down to three decisions: picking the right captain, identifying underpriced players before they rise, and avoiding traps. Neeko's AI analyses every player's recent performance, upcoming matchup difficulty, role consistency and price trajectory to surface the highest-conviction plays each round.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/30">About the Projection Model</h3>
+            <p className="text-[12px] text-white/35 leading-relaxed">
+              Projections are calculated using weighted recent-game performance, positional matchup data, venue factors and role stability signals. Value scores are derived by comparing projected output against a player's implied fantasy value at their current price point. All data updates weekly following each round.
+            </p>
+          </div>
+
           {roundNum && (
             <Link
               to={`/sports/afl/round/${roundNum}`}
               className="inline-flex items-center gap-1.5 text-[12px] text-white/40 hover:text-white/70 underline underline-offset-2 transition-colors"
             >
-              View Full Round {roundNum} Breakdown
+              View Full Round {roundNum} Match Breakdown
               <ArrowRight className="w-3 h-3" />
             </Link>
           )}
@@ -514,7 +556,7 @@ export default function AFLCurrentRoundPage() {
       return proj * 0.6 * (1 + consistency * 0.25) * (1 + (matchup - 1) * 0.15);
     };
 
-    return [...rows]
+    const primary = [...rows]
       .filter(
         (r) =>
           (r.projection_final ?? 0) >= 95 &&
@@ -523,6 +565,16 @@ export default function AFLCurrentRoundPage() {
       )
       .sort((a, b) => captainScore(b) - captainScore(a))
       .slice(0, 8);
+
+    if (primary.length >= 2) return primary;
+
+    const primaryIds = new Set(primary.map((r) => r.player_id));
+    const fallback = [...rows]
+      .filter((r) => !topPickIds.has(r.player_id) && !primaryIds.has(r.player_id))
+      .sort((a, b) => captainScore(b) - captainScore(a))
+      .slice(0, 2 - primary.length);
+
+    return [...primary, ...fallback];
   }, [rows]);
 
   const valuePlays = useMemo(() => {
@@ -553,21 +605,37 @@ export default function AFLCurrentRoundPage() {
       .slice(0, 10);
   }, [rows]);
 
-  const trapAlerts = useMemo(
-    () =>
-      [...rows]
-        .filter(
-          (r) =>
-            r.value_score != null &&
-            r.price != null &&
-            r.price > 0 &&
-            (r.games_played ?? 0) >= 1 &&
-            (r.value_score ?? 0) < -3
-        )
-        .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))
-        .slice(0, 8),
-    [rows]
-  );
+  const trapAlerts = useMemo(() => {
+    const baseFilter = [...rows].filter(
+      (r) =>
+        r.value_score != null &&
+        r.price != null &&
+        r.price > 0 &&
+        (r.games_played ?? 0) >= 1 &&
+        (r.value_score ?? 0) < -3
+    );
+
+    const sorted = baseFilter
+      .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))
+      .slice(0, 8);
+
+    if (sorted.length >= 2) return sorted;
+
+    const sortedIds = new Set(sorted.map((r) => r.player_id));
+    const fallback = [...rows]
+      .filter(
+        (r) =>
+          r.value_score != null &&
+          r.price != null &&
+          r.price > 0 &&
+          (r.games_played ?? 0) >= 1 &&
+          !sortedIds.has(r.player_id)
+      )
+      .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))
+      .slice(0, 2 - sorted.length);
+
+    return [...sorted, ...fallback];
+  }, [rows]);
 
   // ── HERO STATS ──────────────────────────────────────────────────────────────
   const topCaptainProj = captainPicks[0]?.projection_final ?? topPicks[0]?.projection_final ?? null;
@@ -575,12 +643,14 @@ export default function AFLCurrentRoundPage() {
   const bestValueScore = valuePlays[0]?.value_score ?? null;
   const trapCount = trapAlerts.length;
 
-  // ── AI SUMMARY LINES ────────────────────────────────────────────────────────
+  // ── AI SUMMARY LINES — unique players across all four categories ────────────
   const aiLines = useMemo((): AiCallLine[] => {
     const lines: AiCallLine[] = [];
+    const usedIds = new Set<string | null>();
 
     const topPick = topPicks[0];
     if (topPick) {
+      usedIds.add(topPick.player_id);
       lines.push({
         label: "Top Pick",
         text: `${topPick.player_name} leads this round — projected ${fmt(topPick.projection_final, 0)} pts with strong matchup and consistency.`,
@@ -589,8 +659,9 @@ export default function AFLCurrentRoundPage() {
       });
     }
 
-    const captain = captainPicks[0];
+    const captain = captainPicks.find((r) => !usedIds.has(r.player_id));
     if (captain) {
+      usedIds.add(captain.player_id);
       const ceilTxt = captain.ceiling_estimate ? ` (ceiling ${fmt(captain.ceiling_estimate, 0)})` : "";
       lines.push({
         label: "Captain",
@@ -600,8 +671,9 @@ export default function AFLCurrentRoundPage() {
       });
     }
 
-    const value = valuePlays[0];
+    const value = valuePlays.find((r) => !usedIds.has(r.player_id));
     if (value) {
+      usedIds.add(value.player_id);
       lines.push({
         label: "Value",
         text: `${value.player_name} is the best value play (score: ${fmtValueScore(value.value_score)}) — projected ${fmt(value.projection_final, 0)} pts, priced below expected output.`,
@@ -610,7 +682,7 @@ export default function AFLCurrentRoundPage() {
       });
     }
 
-    const trap = trapAlerts[0];
+    const trap = trapAlerts.find((r) => !usedIds.has(r.player_id));
     if (trap) {
       lines.push({
         label: "Trap Alert",
@@ -761,7 +833,9 @@ export default function AFLCurrentRoundPage() {
               isPremiumUser={isPremium}
               onOpenRow={(row, rank) => openRow(row, rank)}
               onUpgrade={() => setShowUpgradeModal(true)}
-              hiddenCopy={`${captainPicks.length} captain options identified this round. Unlock to see who to double up on.`}
+              hiddenCopy="Who to double this round based on projection + matchup."
+              lockedCta="See captain options →"
+              lockedSubtext="Who to double this round based on projection + matchup."
               premiumLocked={true}
               footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
               renderMetric={(row) =>
@@ -784,6 +858,8 @@ export default function AFLCurrentRoundPage() {
               onOpenRow={(row, rank) => openRow(row, rank)}
               onUpgrade={() => setShowUpgradeModal(true)}
               hiddenCopy="See all top picks for this round with Neeko+."
+              blurCtaLabel="Unlock full rankings & AI insights →"
+              blurBadgeText="+8 high-confidence picks hidden"
               footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
             />
 
@@ -797,6 +873,7 @@ export default function AFLCurrentRoundPage() {
               onOpenRow={(row, rank) => openRow(row, rank)}
               onUpgrade={() => setShowUpgradeModal(true)}
               hiddenCopy="Underpriced players primed to rise. Unlock with Neeko+."
+              blurCtaLabel="Unlock value picks →"
               footerLink={{ label: "Market Watch", to: "/sports/afl/market-watch" }}
               renderMetric={(row) =>
                 row.value_score != null ? (
@@ -817,7 +894,9 @@ export default function AFLCurrentRoundPage() {
               isPremiumUser={isPremium}
               onOpenRow={(row, rank) => openRow(row, rank)}
               onUpgrade={() => setShowUpgradeModal(true)}
-              hiddenCopy="Know who to avoid before lockout. Neeko+ reveals all trap alerts."
+              hiddenCopy="Players flagged as overpriced or high risk this round."
+              lockedCta="See who to avoid →"
+              lockedSubtext="Players flagged as overpriced or high risk this round."
               premiumLocked={true}
               footerLink={{ label: "Market Watch", to: "/sports/afl/market-watch" }}
               renderMetric={(row) =>
@@ -878,13 +957,13 @@ export default function AFLCurrentRoundPage() {
                 Win your round with Neeko+
               </h3>
               <p className="text-sm text-white/40 max-w-sm mx-auto">
-                Unlock full insights before lockout — captain picks, trap alerts, value plays and AI analysis for every player.
+                Unlock captain picks, value edges, trap alerts and full AI analysis for every player — before lockout.
               </p>
               <a
                 href="/neeko-plus"
                 className="inline-flex items-center gap-2 mt-1 px-5 py-2.5 bg-[#F5C84C] text-black font-bold rounded-xl hover:brightness-105 active:scale-[0.98] transition-all text-sm"
               >
-                Upgrade to Neeko+
+                Upgrade to Neeko+ →
                 <ArrowRight className="w-4 h-4" />
               </a>
             </div>
