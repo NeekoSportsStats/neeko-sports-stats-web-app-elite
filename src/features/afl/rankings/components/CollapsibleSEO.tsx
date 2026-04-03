@@ -5,21 +5,16 @@ export function CollapsibleSEO() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 pb-12 md:px-8">
-      <div className="rounded-2xl border border-white/[0.05] bg-white/[0.015] px-6 py-6">
-
-        <p className="text-sm text-white/45 leading-relaxed mb-5">
-          Neeko's AI rankings combine projection models, pricing inefficiencies, and matchup data to
-          identify BUY, HOLD, and AVOID decisions each round.
-        </p>
+    <div className="w-full max-w-[1200px] mx-auto px-4 pb-12">
+      <div className="rounded-2xl border border-white/[0.05] bg-white/[0.015] px-6 py-5">
 
         <button
           onClick={() => setIsOpen((v) => !v)}
-          className="inline-flex items-center gap-2 text-sm font-medium text-white/50 hover:text-white/80 transition-colors"
+          className="inline-flex items-center gap-2 text-sm font-medium text-white/40 hover:text-white/70 transition-colors"
           aria-expanded={isOpen}
         >
-          {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-          {isOpen ? "Hide explanation" : "Learn how these rankings work"}
+          {isOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          {isOpen ? "Hide explanation" : "How these rankings work"}
         </button>
 
         <div className={isOpen ? "block" : "hidden"}>
