@@ -122,15 +122,39 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
       }
 
       try {
-        const { data } = await supabase.rpc("get_player_score_history_by_id", {
+        const { data, error } = await supabase.rpc("get_player_score_history_by_id", {
           player_id_in: String(row.player_id),
           n_games: 10,
         });
 
-        if (!cancelled && data && Array.isArray(data)) {
+        if (error) throw error;
+
+        if (!cancelled && data && Array.isArray(data) && data.length > 0) {
           const pts = (data as any[])
             .filter((d: any) => d.fantasy_points != null)
             .map((d: any) => Number(d.fantasy_points));
+          console.log(row.player_name, pts);
+          setScoreHistory(pts);
+          return;
+        }
+
+        // Fallback: query afl.player_games directly
+        const { data: fallback } = await supabase
+          .schema("afl" as any)
+          .from("player_games")
+          .select("week, fantasy_score, season")
+          .eq("player_id", Number(row.player_id))
+          .not("fantasy_score", "is", null)
+          .gt("fantasy_score", 0)
+          .order("season", { ascending: false })
+          .order("week", { ascending: false })
+          .limit(10);
+
+        if (!cancelled && fallback && Array.isArray(fallback)) {
+          const pts = [...fallback]
+            .reverse()
+            .map((d: any) => Number(d.fantasy_score));
+          console.log(row.player_name, "(fallback)", pts);
           setScoreHistory(pts);
         }
       } catch {
@@ -142,7 +166,7 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
 
     load();
     return () => { cancelled = true; };
-  }, [row.player_id]);
+  }, [row.player_id, row.player_name]);
 
   // Derived values
   const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
@@ -225,7 +249,7 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
             )}
 
             {/* 3. Full-width sparkline */}
-            {(historyLoading || scoreHistory.length >= 2) && (
+            {(historyLoading || scoreHistory.length >= 3) && (
             <div className="w-full">
               <p className="text-[9px] text-white/25 uppercase tracking-wider mb-1.5">
                 Last {historyLoading ? "—" : scoreHistory.length} games
@@ -233,14 +257,14 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
 
               {historyLoading ? (
                 <div className="w-full rounded bg-white/[0.03] animate-pulse" style={{ height: 80 }} />
-              ) : scoreHistory.length >= 2 ? (
+              ) : scoreHistory.length >= 3 ? (
                 <FullSparkline points={scoreHistory} color={sparkColor} projection={proj} />
               ) : null}
             </div>
             )}
 
-            {!historyLoading && scoreHistory.length < 2 && (
-              <p className="text-[11px] text-white/20 italic">No recent game data available.</p>
+            {!historyLoading && scoreHistory.length < 3 && (
+              <p className="text-[11px] text-white/20 italic">No recent games</p>
             )}
 
             {/* 4. Metrics row + CTA */}
