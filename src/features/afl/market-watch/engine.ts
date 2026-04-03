@@ -113,12 +113,6 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
       buys.push(tag(p, 'BUY'));
     } else if (actionFallback === 'SELL') {
       sells.push(tag(p, 'SELL'));
-    } else if (actionFallback === null) {
-      // No recognized action — use value_score as last-resort classification
-      const vs = p.value_score ?? 0;
-      if (vs >= 5) buys.push(tag(p, 'BUY'));
-      else if (vs <= -5) sells.push(tag(p, 'SELL'));
-      else holds.push(tag(p, 'HOLD'));
     } else {
       holds.push(tag(p, 'HOLD'));
     }
