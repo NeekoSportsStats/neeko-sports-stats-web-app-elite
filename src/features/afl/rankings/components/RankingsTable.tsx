@@ -334,56 +334,50 @@ export function ConversionWallRow({ onUpgrade, colSpan = TOTAL_COLS }: { onUpgra
 
 const FREE_TOTAL_COLS = 6;
 
-function getFreeValueLabel(score: number | null | undefined): { label: string; cls: string } {
-  if (score == null) return { label: "—", cls: "text-white/30" };
-  if (score >= 15) return { label: "VALUE", cls: "text-emerald-400" };
-  if (score >= 5)  return { label: "NEUTRAL", cls: "text-[#F5C84C]" };
-  return { label: "RISK", cls: "text-red-400" };
-}
+type ActionLabel = "BUY" | "HOLD" | "WATCH" | "SELL" | "AVOID";
 
-function getFreeValueBg(score: number | null | undefined): string {
-  if (score == null) return "bg-white/5 border-white/10";
-  if (score >= 15) return "bg-emerald-500/10 border-emerald-500/25";
-  if (score >= 5)  return "bg-[#F5C84C]/10 border-[#F5C84C]/25";
-  return "bg-red-500/10 border-red-500/25";
-}
-
-type ActionLabel = "BUY" | "HOLD" | "WATCH" | "AVOID";
-
-function getActionLabel(row: RankingRow): ActionLabel {
-  const value = row.value_score ?? 0;
-  const projection = row.projection_final ?? 0;
-  const breakeven = row.breakeven ?? 0;
-  const gap = projection - breakeven;
-  if (value >= 15 && gap > 10) return "BUY";
-  if (value >= 8 && gap > 0) return "HOLD";
-  if (value < 5 && gap < 0) return "AVOID";
+function resolveAction(row: RankingRow): ActionLabel {
+  const rec = (row.ai_recommendation ?? "").toUpperCase().trim();
+  if (rec === "BUY")   return "BUY";
+  if (rec === "HOLD")  return "HOLD";
+  if (rec === "SELL")  return "SELL";
+  if (rec === "AVOID") return "AVOID";
   return "WATCH";
+}
+
+function getValueLabelForAction(
+  action: ActionLabel,
+  score: number | null | undefined,
+): { label: string; cls: string; bg: string } {
+  if (score == null) return { label: "—", cls: "text-white/30", bg: "bg-white/5 border-white/10" };
+  if (action === "BUY")
+    return { label: "VALUE",   cls: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/25" };
+  if (action === "SELL" || action === "AVOID")
+    return { label: "RISK",    cls: "text-red-400",     bg: "bg-red-500/10 border-red-500/25" };
+  if (score >= 8)
+    return { label: "VALUE",   cls: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/25" };
+  if (score >= 3)
+    return { label: "NEUTRAL", cls: "text-[#F5C84C]",   bg: "bg-[#F5C84C]/10 border-[#F5C84C]/25" };
+  return   { label: "RISK",    cls: "text-red-400",     bg: "bg-red-500/10 border-red-500/25" };
 }
 
 const ACTION_STYLES: Record<ActionLabel, { text: string; bg: string; border: string }> = {
   BUY:   { text: "text-emerald-300", bg: "bg-emerald-500/15", border: "border-emerald-500/35" },
   HOLD:  { text: "text-sky-300",     bg: "bg-sky-500/15",     border: "border-sky-500/30" },
   WATCH: { text: "text-[#F5C84C]",   bg: "bg-[#F5C84C]/10",  border: "border-[#F5C84C]/30" },
+  SELL:  { text: "text-red-400",     bg: "bg-red-500/12",     border: "border-red-500/30" },
   AVOID: { text: "text-red-400",     bg: "bg-red-500/12",     border: "border-red-500/30" },
 };
 
-const ACTION_WHY_PREFIX: Record<ActionLabel, string> = {
-  BUY:   "BUY: ",
-  HOLD:  "HOLD: ",
-  WATCH: "WATCH: ",
-  AVOID: "AVOID: ",
-};
-
 function shortenWhy(text: string, action: ActionLabel): string {
-  if (!text) return ACTION_WHY_PREFIX[action] + "Insufficient data";
+  const prefix = `${action}: `;
+  if (!text) return prefix + "Insufficient data";
   const stripped = text
-    .replace(/\b[A-Z][a-z]+ [A-Z][a-z]+\b/g, "")
     .replace(/\$[\d,.]+[MKk]?/g, "")
     .replace(/\bis\b|\bhas\b|\bwith\b|\bthat\b|\bthis\b/gi, "")
     .replace(/\s{2,}/g, " ")
     .trim();
-  const prefixed = ACTION_WHY_PREFIX[action] + stripped;
+  const prefixed = prefix + stripped;
   return prefixed.length > 90 ? prefixed.slice(0, 90) + "..." : prefixed;
 }
 
@@ -419,11 +413,9 @@ interface FreeTableRowProps {
 export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
   const rank = idx + 1;
 
-  const { label: valueLabel, cls: valueCls } = getFreeValueLabel(row.value_score ?? null);
-  const valueBg = getFreeValueBg(row.value_score ?? null);
-
-  const action = getActionLabel(row);
+  const action = resolveAction(row);
   const actionStyle = ACTION_STYLES[action];
+  const { label: valueLabel, cls: valueCls, bg: valueBg } = getValueLabelForAction(action, row.value_score ?? null);
 
   const isFading = idx >= 5;
   const rowFadeStyle: React.CSSProperties = isFading
@@ -481,6 +473,7 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
           {valueLabel}
         </span>
       </td>
+
       <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 88, minWidth: 80 }}>
         <span className={`inline-block rounded-md px-2.5 py-1 text-[11px] font-extrabold tracking-wide border ${actionStyle.text} ${actionStyle.bg} ${actionStyle.border}`}>
           {action}
