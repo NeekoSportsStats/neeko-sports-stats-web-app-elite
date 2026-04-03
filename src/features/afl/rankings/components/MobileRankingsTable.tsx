@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { Lock, Crown } from "lucide-react";
 import { RankingRow, RankingsTab } from "./types";
 import {
-  fmt, fmtPrice,
-  getNeekoRatingBadge, getConfidenceColor, getConfidenceLabel, getConfidenceLabelColor,
+  fmt,
+  getNeekoRatingBadge, getConfidenceColor,
   getDisplayRecommendation,
   resolveRecommendationColor,
   FREE_FULL_ROWS, PREMIUM_INITIAL_ROWS,
@@ -91,7 +91,6 @@ interface PlayerCardProps {
 function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: PlayerCardProps) {
   const rank = idx + 1;
   const neekoRBadge = getNeekoRatingBadge(row.neeko_rating ?? null);
-  const displayRec = getDisplayRecommendation(row, activeTab);
 
   const confidenceDisplay = normaliseConfidence(
     row.projection_confidence ?? null,
@@ -99,8 +98,6 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
     row.risk_rating ?? null,
     rank,
   );
-  const confidenceLabel = getConfidenceLabel(confidenceDisplay);
-  const confidenceLabelCls = getConfidenceLabelColor(confidenceDisplay);
 
   const breakeven = row.breakeven !== null && row.breakeven !== undefined
     ? Math.round(parseFloat(String(row.breakeven)))
@@ -120,100 +117,84 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
 
   return (
     <div
-      className="rounded-xl border border-white/[0.06] bg-[#0e0e0e] p-4 flex flex-col gap-2 active:bg-white/[0.03] transition-colors cursor-pointer"
+      className="rounded-xl border border-white/[0.07] bg-[#0e0e0e] p-4 flex flex-col gap-2.5 active:bg-white/[0.03] transition-colors cursor-pointer"
       onClick={onTap}
       style={{ touchAction: "manipulation" }}
     >
-      {/* Row 1 — rank + name + action badge */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2.5 min-w-0 flex-1">
-          <span className="text-xs text-white/30 tabular-nums w-5 shrink-0 pt-0.5">{rank}</span>
+      {/* Row 1 — rank + name + ACTION BADGE (decision-first) */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <span className="text-xs text-white/25 tabular-nums w-5 shrink-0 text-right">{rank}</span>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-sm font-semibold text-white leading-tight">{row.player_name}</span>
+              <span className="text-[14px] font-semibold text-white leading-tight truncate">{row.player_name}</span>
               <StatusBadges row={row} />
-              {!isPremium && rank <= FREE_FULL_ROWS && (
-                <span className="rounded-sm bg-[#F5C84C]/15 px-1 py-0.5 text-[9px] font-semibold text-[#F5C84C] uppercase tracking-wide">Free</span>
-              )}
             </div>
-            <p className="text-[11px] text-white/35 mt-0.5">{row.team}{row.position ? ` · ${row.position}` : ""}</p>
+            <p className="text-[11px] text-white/35 mt-0.5 leading-none">
+              {row.team}{row.position ? ` · ${row.position}` : ""}
+            </p>
           </div>
         </div>
-        <ActionBadge row={row} activeTab={activeTab} isPremium={isPremium} onUpgrade={onUpgrade} />
+        <div className="shrink-0">
+          <ActionBadge row={row} activeTab={activeTab} isPremium={isPremium} onUpgrade={onUpgrade} />
+        </div>
       </div>
 
-      {/* Row 2 — stats strip */}
-      <div className="flex items-center gap-4 pl-7">
-        <div className="flex flex-col">
-          <span className="text-[9px] text-white/30 uppercase tracking-wider">Projection</span>
-          <span className="text-sm font-bold text-[#F5C84C]/90 tabular-nums">
+      {/* Row 2 — Projection | BE inline stats */}
+      <div className="flex items-center gap-0 pl-7">
+        <div className="flex items-baseline gap-1 pr-3">
+          <span className="text-[13px] font-bold text-[#F5C84C] tabular-nums">
             {row.is_bye ? "—" : fmt(row.projection_final, 0)}
-            {!row.is_bye && row.projection_final != null && <span className="text-[10px] text-white/30 font-normal"> pts</span>}
           </span>
-        </div>
-
-        <div className="w-px h-7 bg-white/[0.06]" />
-
-        <div className="flex flex-col">
-          <span className="text-[9px] text-white/30 uppercase tracking-wider">Neeko</span>
-          <span className={`text-sm font-bold tabular-nums ${neekoRBadge.text}`} style={neekoRBadge.glow ? { filter: neekoRBadge.glow } : undefined}>
-            {row.neeko_rating != null ? Number(row.neeko_rating).toFixed(1) : "—"}
-          </span>
-        </div>
-
-        <div className="w-px h-7 bg-white/[0.06]" />
-
-        <div className="flex flex-col">
-          <span className="text-[9px] text-white/30 uppercase tracking-wider">Conf</span>
-          <div className="flex items-center gap-1">
-            <span className={`text-sm font-bold tabular-nums ${getConfidenceColor(confidenceDisplay)}`}>
-              {confidenceDisplay != null ? `${confidenceDisplay}%` : "—"}
-            </span>
-            {confidenceDisplay != null && (
-              <span className={`rounded px-1 py-px text-[7px] font-semibold border ${confidenceLabelCls}`}>{confidenceLabel}</span>
-            )}
-          </div>
+          {!row.is_bye && row.projection_final != null && (
+            <span className="text-[10px] text-white/35 font-normal">pts proj</span>
+          )}
         </div>
 
         {breakeven != null && (
           <>
-            <div className="w-px h-7 bg-white/[0.06]" />
-            <div className="flex flex-col">
-              <span className="text-[9px] text-white/30 uppercase tracking-wider">BE</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-sm font-bold tabular-nums text-white/70">{breakeven}</span>
-                {beDiff !== null && (
-                  <span className={`text-[10px] font-semibold tabular-nums leading-none ${getDiffColor(beDiff)}`}>
-                    {beDiff > 0 ? `+${beDiff}` : beDiff}
-                  </span>
-                )}
-              </div>
+            <span className="text-white/15 text-sm px-1">|</span>
+            <div className="flex items-baseline gap-1 px-2">
+              <span className="text-[10px] text-white/35 font-normal">BE</span>
+              <span className="text-[13px] font-bold text-white/65 tabular-nums">{breakeven}</span>
+              {beDiff !== null && (
+                <span className={`text-[11px] font-semibold tabular-nums ${getDiffColor(beDiff)}`}>
+                  {beDiff > 0 ? `+${beDiff}` : beDiff}
+                </span>
+              )}
             </div>
           </>
         )}
 
-        {isPremium && row.price != null && (
+        <span className="text-white/15 text-sm px-1">|</span>
+        <div className="flex items-baseline gap-1 px-2">
+          <span className="text-[10px] text-white/35 font-normal">Rtg</span>
+          <span className={`text-[13px] font-bold tabular-nums ${neekoRBadge.text}`} style={neekoRBadge.glow ? { filter: neekoRBadge.glow } : undefined}>
+            {row.neeko_rating != null ? Number(row.neeko_rating).toFixed(0) : "—"}
+          </span>
+        </div>
+
+        {confidenceDisplay != null && (
           <>
-            <div className="w-px h-7 bg-white/[0.06]" />
-            <div className="flex flex-col">
-              <span className="text-[9px] text-white/30 uppercase tracking-wider">Price</span>
-              <span className="text-sm font-semibold text-white/60 tabular-nums">{fmtPrice(row.price)}</span>
+            <span className="text-white/15 text-sm px-1">|</span>
+            <div className="flex items-baseline gap-1 px-2">
+              <span className="text-[10px] text-white/35 font-normal">Conf</span>
+              <span className={`text-[13px] font-bold tabular-nums ${getConfidenceColor(confidenceDisplay)}`}>
+                {confidenceDisplay}%
+              </span>
             </div>
           </>
         )}
       </div>
 
-      {/* Row 3 — WHY (premium only, max 2 lines) */}
-      {isPremium && whyText && (
+      {/* Row 3 — WHY (premium: 2 lines max, free: locked teaser) */}
+      {isPremium && whyText ? (
         <p className="pl-7 text-[12px] text-white/50 leading-snug line-clamp-2">
           {whyText}
         </p>
-      )}
-
-      {/* Row 3 fallback — locked teaser for free users */}
-      {!isPremium && (
+      ) : !isPremium ? (
         <p className="pl-7 text-[11px] text-white/25 leading-snug">
-          AI insight &amp; price analysis locked —{" "}
+          AI insight locked —{" "}
           <button
             onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
             className="text-[#F5C84C]/50 hover:text-[#F5C84C]/80 transition-colors underline underline-offset-2"
@@ -221,7 +202,7 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
             unlock
           </button>
         </p>
-      )}
+      ) : null}
     </div>
   );
 }
