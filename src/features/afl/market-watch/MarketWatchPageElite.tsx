@@ -14,6 +14,7 @@ import { MarketControls, MarketFilter } from "./MarketControls";
 import { MarketAdvancedFilters } from "./MarketAdvancedFilters";
 import { MarketDistributionBar } from "./MarketDistributionBar";
 import { MarketWatchSkeleton } from "./MarketWatchSkeleton";
+import { MarketSearchBar } from "./MarketSearchBar";
 import { DataFreshnessIndicator, StaleDataWarning } from "@/components/ui/DataFreshnessIndicator";
 
 export default function MarketWatchPageElite() {
@@ -25,6 +26,7 @@ export default function MarketWatchPageElite() {
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(100);
+  const [searchedPlayer, setSearchedPlayer] = useState<DerivedPlayer | null>(null);
 
   const fetchData = useCallback(async (premium: boolean) => {
     setLoading(true);
@@ -144,15 +146,22 @@ export default function MarketWatchPageElite() {
 
   // MEMOIZE: Filtered players (prevents re-filter on every render)
   const filteredPlayers = useMemo(() => {
+    // Search override: if a player was selected from search, show only that player
+    if (searchedPlayer) {
+      return allDerivedPlayers.filter(p => p.player_id === searchedPlayer.player_id);
+    }
+
     let filtered = allDerivedPlayers;
 
-    // Apply signal filter using _category (canonical BUY/HOLD/SELL from engine)
-    if (activeFilter === "TARGET") {
-      filtered = allDerivedPlayers.filter(p => p._category === 'BUY');
-    } else if (activeFilter === "WATCH") {
-      filtered = allDerivedPlayers.filter(p => p._category === 'HOLD');
-    } else if (activeFilter === "AVOID") {
-      filtered = allDerivedPlayers.filter(p => p._category === 'SELL');
+    // Apply signal filter using _category — premium only for TARGET/WATCH/AVOID
+    if (isPremium) {
+      if (activeFilter === "TARGET") {
+        filtered = allDerivedPlayers.filter(p => p._category === 'BUY');
+      } else if (activeFilter === "WATCH") {
+        filtered = allDerivedPlayers.filter(p => p._category === 'HOLD');
+      } else if (activeFilter === "AVOID") {
+        filtered = allDerivedPlayers.filter(p => p._category === 'SELL');
+      }
     }
 
     // Apply team filter (premium only)
@@ -174,7 +183,7 @@ export default function MarketWatchPageElite() {
     }
 
     return filtered;
-  }, [activeFilter, allDerivedPlayers, classified, selectedTeam, selectedPosition, isPremium]);
+  }, [activeFilter, allDerivedPlayers, searchedPlayer, selectedTeam, selectedPosition, isPremium]);
 
   // MEMOIZE: Visible players for progressive loading
   const visiblePlayers = useMemo(() => {
@@ -184,7 +193,7 @@ export default function MarketWatchPageElite() {
   // Reset visible count when filters change
   useEffect(() => {
     setVisibleCount(100);
-  }, [activeFilter, selectedTeam, selectedPosition]);
+  }, [activeFilter, selectedTeam, selectedPosition, searchedPlayer]);
 
   const hasMorePlayers = filteredPlayers.length > visibleCount;
   const handleShowMore = useCallback(() => {
@@ -352,8 +361,30 @@ export default function MarketWatchPageElite() {
           </div>
         </div>
 
-        {/* Controls */}
-        <div className="space-y-2.5">
+        {/* Search + Controls */}
+        <div className="space-y-3">
+          {/* Search row */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <MarketSearchBar
+              players={allDerivedPlayers}
+              isPremium={isPremium ?? false}
+              onSelect={(p) => {
+                setSearchedPlayer(p);
+                if (p) setSelectedPlayer(p);
+              }}
+              selectedPlayerId={searchedPlayer?.player_id ?? null}
+            />
+            {searchedPlayer && (
+              <button
+                onClick={() => setSearchedPlayer(null)}
+                className="text-xs text-white/40 hover:text-white/70 underline underline-offset-2 transition-colors"
+              >
+                Clear search
+              </button>
+            )}
+          </div>
+
+          {/* Filter pills + count */}
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <MarketControls
               activeFilter={activeFilter}
@@ -361,6 +392,7 @@ export default function MarketWatchPageElite() {
               targetCount={classified?.buys?.length ?? 0}
               watchCount={classified?.holds?.length ?? 0}
               avoidCount={classified?.sells?.length ?? 0}
+              isPremium={isPremium ?? false}
             />
 
             <div className="text-xs text-white/35 font-medium">
