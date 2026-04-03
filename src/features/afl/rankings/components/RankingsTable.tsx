@@ -304,9 +304,9 @@ export function ConversionWallRow({ onUpgrade, colSpan = TOTAL_COLS }: { onUpgra
             <Crown size={20} className="text-[#F5C84C]" />
           </div>
           <div>
-            <p className="text-lg font-bold text-white mb-1.5">Unlock 600+ players with premium insights</p>
-            <p className="text-sm text-white/45 max-w-md leading-relaxed">
-              Full rankings access · Advanced AI analysis · Market Watch · Edge Board · Start/Sit tools · Updated automatically
+            <p className="text-lg font-bold text-white mb-1.5">See every BUY, HOLD &amp; AVOID decision before your league does</p>
+            <p className="text-sm text-white/50 max-w-md leading-relaxed">
+              Full rankings, AI insights, and weekly edge tools
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-2 mb-1">
@@ -316,15 +316,18 @@ export function ConversionWallRow({ onUpgrade, colSpan = TOTAL_COLS }: { onUpgra
               </span>
             ))}
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5C84C] hover:brightness-110 px-7 py-3 text-sm font-bold text-[#070707] transition-all shadow-lg"
-            >
-              <Crown size={14} />
-              Unlock full rankings
-            </button>
-            <span className="text-xs text-white/30">$10/month · Cancel anytime</span>
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5C84C] hover:brightness-110 px-7 py-3 text-sm font-bold text-[#070707] transition-all shadow-lg"
+              >
+                <Crown size={14} />
+                Unlock full rankings
+              </button>
+              <span className="text-xs text-white/30">$10/month · Cancel anytime</span>
+            </div>
+            <span className="text-xs text-white/35 italic">Built to find underpriced players before price rises</span>
           </div>
         </div>
       </td>
@@ -483,9 +486,9 @@ export function FreeConversionWallRow({ onUpgrade }: { onUpgrade: () => void }) 
             <Crown size={18} className="text-[#F5C84C]" />
           </div>
           <div>
-            <p className="text-lg font-bold text-white mb-1.5">Unlock 600+ players with Neeko+</p>
-            <p className="text-sm text-white/40 max-w-sm leading-relaxed">
-              Full rankings · AI analysis · Market Watch · Edge Board · Start/Sit tools
+            <p className="text-lg font-bold text-white mb-1.5">See every BUY, HOLD &amp; AVOID decision before your league does</p>
+            <p className="text-sm text-white/50 max-w-sm leading-relaxed">
+              Full rankings, AI insights, and weekly edge tools
             </p>
           </div>
           <div className="flex flex-wrap justify-center gap-2 mb-1">
@@ -495,22 +498,19 @@ export function FreeConversionWallRow({ onUpgrade }: { onUpgrade: () => void }) 
               </span>
             ))}
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5C84C] hover:brightness-110 px-6 py-2.5 text-sm font-bold text-[#070707] transition-all shadow-lg"
-            >
-              <Crown size={13} />
-              Unlock Full Rankings
-            </button>
-            <span className="text-xs text-white/25">$10/month · Cancel anytime</span>
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5C84C] hover:brightness-110 px-6 py-2.5 text-sm font-bold text-[#070707] transition-all shadow-lg"
+              >
+                <Crown size={13} />
+                Unlock Full Rankings
+              </button>
+              <span className="text-xs text-white/25">$10/month · Cancel anytime</span>
+            </div>
+            <span className="text-xs text-white/35 italic">Built to find underpriced players before price rises</span>
           </div>
-          <button
-            onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
-            className="text-xs text-white/35 hover:text-white/60 transition-colors mt-1"
-          >
-            See all 600+ ranked players →
-          </button>
         </div>
       </td>
     </tr>
