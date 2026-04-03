@@ -153,27 +153,72 @@ function PlayerRow({ row, rank, metric, isPremiumUser, onClick }: PlayerRowProps
   );
 }
 
-// ─── LOCKED ROW ───────────────────────────────────────────────────────────────
+// ─── BLURRED ROW (replaces LockedRow) ─────────────────────────────────────────
 
-function LockedRow({ row, rank, onUpgrade }: { row: RankingRow; rank: number; onUpgrade: () => void }) {
+function BlurredRow({ row, rank, metric }: { row: RankingRow; rank: number; metric?: React.ReactNode }) {
   return (
-    <button
-      onClick={onUpgrade}
-      className="w-full text-left flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-white/[0.03] transition-all group"
+    <div
+      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg select-none pointer-events-none"
+      style={{ filter: "blur(4px)", opacity: 0.45 }}
+      aria-hidden="true"
     >
-      <span className="text-[11px] text-white/10 w-4 text-right shrink-0 font-mono">{rank}</span>
+      <span className="text-[11px] text-white/20 w-4 text-right shrink-0 font-mono tabular-nums">{rank}</span>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-semibold text-white/40 truncate leading-tight">{row.player_name}</div>
-        <div className="text-[10px] text-white/20 mt-px">{normalisePosition(row.position) ?? "—"} · {row.team}</div>
+        <div className="text-sm font-semibold text-white truncate leading-tight">{row.player_name}</div>
+        <div className="text-[10px] text-white/30 mt-px">
+          {normalisePosition(row.position) ?? "—"} · {row.team}
+          {row.price ? ` · ${fmtPrice(row.price)}` : ""}
+        </div>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <div className="text-right blur-[3px] select-none pointer-events-none">
-          <div className="text-sm font-bold text-white">••</div>
+        {metric}
+        <div className="text-right">
+          <div className="text-sm font-bold text-white tabular-nums">{fmt(row.projection_final, 0)}</div>
           <div className="text-[9px] text-white/25">proj</div>
         </div>
-        <Lock className="w-3 h-3 text-white/20 shrink-0" />
+        <ChevronRight className="w-3 h-3 text-white/15" />
       </div>
-    </button>
+    </div>
+  );
+}
+
+// ─── BLUR OVERLAY CTA ─────────────────────────────────────────────────────────
+
+function BlurOverlayCTA({
+  hiddenCount,
+  accentColor,
+  onUpgrade,
+}: {
+  hiddenCount: number;
+  accentColor: string;
+  onUpgrade: () => void;
+}) {
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2.5 z-10">
+      <div
+        className="absolute inset-0 rounded-b-xl"
+        style={{
+          background: `linear-gradient(to bottom, transparent 0%, #0a0a0a88 30%, #0a0a0aee 100%)`,
+        }}
+      />
+      <div className="relative flex flex-col items-center gap-2">
+        <div
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
+          style={{ backgroundColor: `${accentColor}18`, border: `1px solid ${accentColor}40`, color: accentColor }}
+        >
+          <Lock className="w-3 h-3" />
+          +{hiddenCount} elite picks hidden
+        </div>
+        <button
+          onClick={onUpgrade}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold text-black transition-all hover:brightness-110 active:scale-[0.97]"
+          style={{ backgroundColor: accentColor }}
+        >
+          Unlock full list
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -261,28 +306,22 @@ function DecisionCard({
           />
         ))}
 
-        {hidden.map((row, idx) => (
-          <LockedRow
-            key={row.player_id ?? idx}
-            row={row}
-            rank={freeLimit + idx + 1}
-            onUpgrade={onUpgrade}
-          />
-        ))}
-
-        {!isPremiumUser && totalHidden > 0 && (
-          <button
-            onClick={onUpgrade}
-            className="w-full flex items-center justify-between px-3 py-2.5 mt-1 rounded-lg border border-dashed border-white/[0.08] hover:border-white/[0.14] transition-colors group"
-          >
-            <span className="text-[11px] text-white/30 group-hover:text-white/50 transition-colors">
-              +{totalHidden} more elite picks hidden
-            </span>
-            <span className="text-[10px] font-bold flex items-center gap-1" style={{ color: accentColor }}>
-              Unlock full list
-              <ArrowRight className="w-3 h-3" />
-            </span>
-          </button>
+        {hidden.length > 0 && (
+          <div className="relative">
+            {hidden.map((row, idx) => (
+              <BlurredRow
+                key={row.player_id ?? idx}
+                row={row}
+                rank={freeLimit + idx + 1}
+                metric={renderMetric ? renderMetric(row) : undefined}
+              />
+            ))}
+            <BlurOverlayCTA
+              hiddenCount={totalHidden}
+              accentColor={accentColor}
+              onUpgrade={onUpgrade}
+            />
+          </div>
         )}
       </div>
 
@@ -310,12 +349,16 @@ function CollapsibleSEO({ roundLabel, roundNum }: { roundLabel: string; roundNum
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
+        aria-expanded={open}
       >
-        <span className="text-[12px] text-white/40 font-medium">What this page shows</span>
+        <span className="text-[12px] text-white/40 font-medium">What this page shows ↓</span>
         <ChevronDown className={`w-3.5 h-3.5 text-white/25 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
-      {open && (
-        <div className="px-4 pb-4 space-y-4 border-t border-white/[0.05]">
+      <div
+        className="border-t border-white/[0.05] overflow-hidden transition-all duration-200"
+        style={{ maxHeight: open ? "600px" : "0px", opacity: open ? 1 : 0 }}
+      >
+        <div className="px-4 pb-4 space-y-4">
           <p className="text-[12px] text-white/40 leading-relaxed pt-3">
             This page surfaces the best AFL Fantasy picks for {roundLabel} — captain options, value plays and trap alerts — using Neeko's AI projection model.
             Every player is scored on projected output, price value, matchup difficulty, and role stability.
@@ -336,7 +379,7 @@ function CollapsibleSEO({ roundLabel, roundNum }: { roundLabel: string; roundNum
             </Link>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -591,7 +634,7 @@ export default function AFLCurrentRoundPage() {
       </Helmet>
 
       <div className="min-h-screen bg-[#070707] text-white">
-        <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
           {/* ── HERO ──────────────────────────────────────────────────────── */}
           <div>
@@ -663,7 +706,7 @@ export default function AFLCurrentRoundPage() {
           <CollapsibleSEO roundLabel={roundLabel} roundNum={roundNum} />
 
           {/* ── 2×2 DECISION GRID ──────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
             <DecisionCard
               title="Captain Picks"
