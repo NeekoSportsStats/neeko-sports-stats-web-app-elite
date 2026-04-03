@@ -1,14 +1,11 @@
 import React from "react";
-import { ChevronDown, ChevronUp, Lock, Crown, TrendingUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Lock, Crown } from "lucide-react";
 import { RankingRow, SortKey, SortDir, RankingsTab, RowTier } from "./types";
 import {
   fmt, fmtPrice, fmtPriceChange,
-  getNeekoRatingBadge,
-  getConfidenceColor, getConfidenceLabel, getConfidenceLabelColor,
-  getFormScoreColor, getDisplayRecommendation,
+  getDisplayRecommendation,
   resolveRecommendationColor,
-  FREE_PARTIAL_ROWS, FREE_FULL_ROWS,
-  normaliseConfidence,
+  FREE_FULL_ROWS,
 } from "./helpers";
 import { InfoTooltip, LockedCell } from "./RankingsModals";
 
@@ -67,32 +64,15 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
     <tr className="border-b border-[#222]">
       <th className={`${TH} text-white/40`} style={{ width: 52, minWidth: 52 }}>#</th>
       <th className={`${TH} text-left text-white/40`} style={{ width: 240, minWidth: 200 }}>Player</th>
-      <th
-        className={`${TH} text-[#F5C84C] cursor-pointer hover:text-[#F5C84C]/80 transition-colors select-none`}
-        style={{ width: 140, minWidth: 120 }}
-        onClick={() => isPremium ? onSortClick("neeko_rating") : onRatingInfoOpen()}
-      >
-        <span className="inline-flex items-center gap-1.5 justify-center">
-          Neeko Rating
-          <InfoTooltip text="Blends projection, matchup, form, risk and AI context into one decision score. 0–200 scale." />
-          {isPremium ? (
-            <SortIcon col="neeko_rating" sortKey={sortKey} sortDir={sortDir} isPremium={isPremium} />
-          ) : (
-            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-[#F5C84C]/40 bg-[#F5C84C]/10 text-[#F5C84C] text-[9px] font-bold leading-none shrink-0">?</span>
-          )}
-        </span>
-      </th>
-      <SortableTh label="Projection" col="projection_final" width={100} tooltip="Expected fantasy points this round" />
-      <SortableTh label="Confidence" col="projection_confidence" width={100} tooltip="Confidence reflects projection stability, role consistency, and risk. Elite Safety = 80%+, Strong = 70–79%, Solid = 60–69%, Moderate Risk = 50–59%, Volatile = below 50%." />
-      <SortableTh label="BE" col="form_score" width={100} tooltip="Breakeven = score needed to maintain price. Gap vs projection shown below — green means projection clears BE easily." />
-      <Th label="Price" locked={!isPremium} width={110} tooltip="AFL Fantasy salary this round" />
-      <Th label="AI Rec" locked={!isPremium} width={150} />
-      <Th label="Why" locked={!isPremium} />
+      <SortableTh label="Projection" col="projection_final" width={90} tooltip="Expected fantasy points this round" />
+      <SortableTh label="BE" col="form_score" width={80} tooltip="Breakeven — score needed to maintain price" />
+      <SortableTh label="Edge" col="projection_final" width={80} tooltip="Projection minus Breakeven. Green = projection clears BE. Red = at risk of price drop." />
+      <Th label="Action" locked={!isPremium} width={110} />
     </tr>
   );
 }
 
-const TOTAL_COLS = 9;
+const TOTAL_COLS = 6;
 
 interface TableRowProps {
   row: RankingRow;
@@ -105,30 +85,61 @@ interface TableRowProps {
   onUpgrade: () => void;
 }
 
+function EdgeCell({ row }: { row: RankingRow }) {
+  const proj = row.projection_final ?? null;
+  const be = row.breakeven !== null && row.breakeven !== undefined
+    ? Math.round(parseFloat(String(row.breakeven)))
+    : null;
+
+  if (row.is_bye || proj === null || be === null) {
+    return <span className="text-sm text-white/20 tabular-nums">—</span>;
+  }
+
+  const edge = Math.round(proj - be);
+
+  let colorCls: string;
+  if (edge >= 20) colorCls = "text-emerald-400 font-semibold";
+  else if (edge >= 10) colorCls = "text-green-300 font-semibold";
+  else if (edge >= -5) colorCls = "text-neutral-300";
+  else colorCls = "text-red-400 font-semibold";
+
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className={`text-sm tabular-nums ${colorCls}`}>
+        {edge > 0 ? `+${edge}` : edge}
+      </span>
+      <span className="text-[9px] text-white/30 leading-none">vs BE</span>
+    </div>
+  );
+}
+
 export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, onRowClick, onUpgrade }: TableRowProps) {
   const rank = idx + 1;
-  const rowUnlocked = tier === "premium" || tier === "full";
 
-  const neekoRBadge = getNeekoRatingBadge(row.neeko_rating ?? null);
   const displayRec = getDisplayRecommendation(row, activeTab);
 
-  const locked = (colKey: string) => {
+  const locked = () => {
     if (isPremium) return false;
     if (idx < FREE_FULL_ROWS) return false;
-    return true;  // All columns locked after row 8
+    return true;
   };
 
   const rowClass = isHighlighted
     ? "border-b border-[#F5C84C]/30 bg-[#F5C84C]/[0.06] cursor-pointer transition-all duration-150"
     : isPremium
-    ? "border-b border-white/[0.04] cursor-pointer transition-all duration-150 hover:bg-white/[0.06] hover:scale-[1.002]"
-    : "border-b border-white/[0.04] transition-all duration-150 cursor-pointer hover:bg-white/5";
+    ? "border-b border-white/[0.04] cursor-pointer transition-all duration-150 hover:bg-neutral-900"
+    : "border-b border-white/[0.04] transition-all duration-150 cursor-pointer hover:bg-neutral-900";
+
+  const be = row.breakeven !== null && row.breakeven !== undefined
+    ? Math.round(parseFloat(String(row.breakeven)))
+    : null;
 
   return (
     <tr className={`${rowClass} group`} style={{ touchAction: "manipulation" }} onClick={onRowClick}>
       <td className="px-3 py-3 text-sm text-white/30 tabular-nums text-center whitespace-nowrap" style={{ width: 52, minWidth: 52 }}>
         {rank}
       </td>
+
       <td className="px-4 py-3 whitespace-nowrap" style={{ width: 240, minWidth: 200 }}>
         <div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -150,116 +161,36 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
             {(row.manual_status === "TEST" || (!row.manual_status && row.status === "TEST")) && (
               <span className="rounded-sm bg-orange-500/15 px-1 py-0.5 text-[9px] font-semibold text-orange-400 uppercase tracking-wide border border-orange-500/20">TEST</span>
             )}
-            {!isPremium && rowUnlocked && (
-              <span className="rounded-sm bg-[#F5C84C]/15 px-1 py-0.5 text-[9px] font-semibold text-[#F5C84C] uppercase tracking-wide">Free</span>
-            )}
           </div>
           <div className="text-[11px] text-white/40 mt-0.5">
             <span>{row.team}{row.position ? ` · ${row.position}` : ""}</span>
           </div>
         </div>
       </td>
-      <td className="px-4 py-2.5 text-center whitespace-nowrap" style={{ width: 140, minWidth: 120 }}>
-        <div className="flex flex-col items-center">
-          <span className={`text-base font-extrabold tabular-nums ${neekoRBadge.text}`} style={neekoRBadge.glow ? { filter: neekoRBadge.glow } : undefined}>
-            {row.neeko_rating != null ? Number(row.neeko_rating).toFixed(1) : "—"}
-          </span>
-          {neekoRBadge.label !== "—" && (
-            <div className="mt-1.5">
-              <span className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold border ${neekoRBadge.text} ${neekoRBadge.bg} ${neekoRBadge.border}`}>
-                {neekoRBadge.label}
-              </span>
-            </div>
-          )}
-        </div>
-      </td>
-      <td className="px-4 py-2.5 text-center whitespace-nowrap" style={{ width: 100, minWidth: 90 }}>
+
+      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 90, minWidth: 90 }}>
         {row.is_bye
           ? <span className="text-sm font-semibold text-white/20 tabular-nums">—</span>
-          : <span className="text-sm font-semibold text-[#F5C84C]/75 tabular-nums">{fmt(row.projection_final)}</span>
+          : <span className="text-sm font-semibold text-[#F5C84C]/80 tabular-nums">{fmt(row.projection_final)}</span>
         }
       </td>
-      <td className="px-4 py-2.5 text-center whitespace-nowrap" style={{ width: 100, minWidth: 90 }}>
-        {(() => {
-          const display = normaliseConfidence(
-            row.projection_confidence ?? null,
-            (row as any).consistency_score ?? null,
-            row.risk_rating ?? null,
-            rank,
-          );
-          const label = getConfidenceLabel(display);
-          const labelCls = getConfidenceLabelColor(display);
-          return (
-            <div className="flex flex-col items-center gap-1">
-              <span className={`text-sm font-semibold tabular-nums ${getConfidenceColor(display)}`}>
-                {display != null ? `${display}%` : "—"}
-              </span>
-              {display != null && (
-                <span className={`inline-block rounded px-1.5 py-px text-[8px] font-semibold border ${labelCls}`}>
-                  {label}
-                </span>
-              )}
-            </div>
-          );
-        })()}
-      </td>
-      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 100, minWidth: 90 }}>
-        {(() => {
-          const be = row.breakeven !== null && row.breakeven !== undefined
-            ? Math.round(parseFloat(String(row.breakeven)))
-            : null;
-          const proj = row.projection_final ?? null;
-          const diff = be !== null && proj !== null ? Math.round(proj - be) : null;
 
-          const getDiffColor = (d: number) => {
-            if (d > 15) return "text-emerald-400";
-            if (d > 5) return "text-green-400";
-            if (d >= -5) return "text-white/50";
-            return "text-red-400";
-          };
+      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 80, minWidth: 80 }}>
+        <span className="text-sm tabular-nums text-white/60">
+          {be !== null ? be : "—"}
+        </span>
+      </td>
 
-          return (
-            <div
-              className="inline-flex flex-col items-center gap-0.5 group/be cursor-default relative"
-              title="Breakeven = score needed to maintain price"
-            >
-              <span className="text-sm font-semibold tabular-nums text-white/70">
-                {be !== null ? be : "—"}
-              </span>
-              {diff !== null && (
-                <span className={`text-[10px] font-semibold tabular-nums leading-none ${getDiffColor(diff)}`}>
-                  {diff > 0 ? `+${diff}` : diff}
-                </span>
-              )}
-            </div>
-          );
-        })()}
+      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 80, minWidth: 80 }}>
+        <EdgeCell row={row} />
       </td>
-      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 110, minWidth: 90 }}>
-        {locked("price") ? (
-          <LockedCell onClick={onUpgrade} />
-        ) : (
-          <div className="flex flex-col items-center gap-0.5">
-            <span className="text-sm font-semibold text-white/70 tabular-nums">{fmtPrice(row.price)}</span>
-            {(() => {
-              const badge = fmtPriceChange(row.price_change);
-              if (!badge) return null;
-              const isUp = (row.price_change ?? 0) > 0;
-              return (
-                <span className={`text-[9px] font-semibold tabular-nums ${isUp ? "text-emerald-400" : "text-red-400"}`}>
-                  {badge}
-                </span>
-              );
-            })()}
-          </div>
-        )}
-      </td>
-      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 150, minWidth: 130 }}>
-        {locked("ai_recommendation") ? (
+
+      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 110, minWidth: 110 }}>
+        {locked() ? (
           <LockedCell onClick={onUpgrade} />
         ) : displayRec ? (
           <span
-            className="inline-block rounded-md border px-2 py-0.5 text-[10px] font-semibold whitespace-nowrap"
+            className="inline-block rounded-md border px-2.5 py-1 text-[11px] font-bold whitespace-nowrap"
             style={(() => {
               const rc = resolveRecommendationColor(row.recommendation_color, displayRec);
               return { color: rc, background: `${rc}18`, borderColor: `${rc}40` };
@@ -269,16 +200,6 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           </span>
         ) : <span className="text-white/20 text-xs">—</span>}
       </td>
-      <td className="px-4 py-2.5 text-left align-middle" style={{ minWidth: 160, maxWidth: 420, width: 420 }}>
-        {locked("why") ? (
-          <LockedCell onClick={onUpgrade} />
-        ) : (() => {
-          const whyText = row.why ?? null;
-          return whyText
-            ? <span className="text-xs text-white/60 leading-snug block overflow-hidden text-ellipsis whitespace-nowrap max-w-[400px]">{whyText}</span>
-            : <span className="text-white/20 text-xs">—</span>;
-        })()}
-      </td>
     </tr>
   );
 }
@@ -287,42 +208,42 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
 export function ConversionWallRow({ onUpgrade, colSpan = TOTAL_COLS }: { onUpgrade: () => void; colSpan?: number }) {
   return (
     <tr>
-      <td colSpan={colSpan} className="px-4 pt-8 pb-8">
+      <td colSpan={colSpan} className="px-4 pt-6 pb-6">
         <div
-          className="relative flex flex-col items-center gap-4 rounded-2xl border border-[#F5C84C]/25 bg-gradient-to-b from-[#F5C84C]/[0.08] via-[#0d0d0d] to-[#0a0a0a] px-8 py-10 text-center overflow-hidden hover:border-[#F5C84C]/40 transition-all duration-200 cursor-pointer"
+          className="relative flex flex-col items-center gap-3 rounded-2xl border border-[#F5C84C]/25 bg-gradient-to-b from-[#F5C84C]/[0.08] via-[#0d0d0d] to-[#0a0a0a] px-8 py-8 text-center overflow-hidden hover:border-[#F5C84C]/40 transition-all duration-200 cursor-pointer"
           onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
           onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 40px rgba(245,200,76,0.10)"; }}
           onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
         >
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-px bg-gradient-to-r from-transparent via-[#F5C84C]/40 to-transparent" />
-          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#F5C84C]/15 border border-[#F5C84C]/30 mb-1">
-            <Crown size={20} className="text-[#F5C84C]" />
+          <div className="flex items-center justify-center w-11 h-11 rounded-full bg-[#F5C84C]/15 border border-[#F5C84C]/30">
+            <Crown size={18} className="text-[#F5C84C]" />
           </div>
           <div>
-            <p className="text-lg font-bold text-white mb-1.5">See every BUY, HOLD &amp; AVOID decision before your league does</p>
+            <p className="text-lg font-bold text-white mb-1">You're only seeing the obvious picks</p>
             <p className="text-sm text-white/50 max-w-md leading-relaxed">
-              Full rankings, AI insights, and weekly edge tools
+              The real edge is hidden below.
+            </p>
+            <p className="text-sm text-white/35 mt-1">
+              Most coaches won't see these before lockout.
             </p>
           </div>
-          <div className="flex flex-wrap justify-center gap-2 mb-1">
+          <div className="flex flex-wrap justify-center gap-2">
             {["Full Rankings", "AI Analysis", "Market Watch", "Edge Board"].map((f) => (
               <span key={f} className="rounded-full border border-[#F5C84C]/20 bg-[#F5C84C]/[0.06] px-3 py-1 text-[11px] text-[#F5C84C]/70 font-medium">
                 {f}
               </span>
             ))}
           </div>
-          <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5C84C] hover:brightness-110 px-7 py-3 text-sm font-bold text-[#070707] transition-all shadow-lg"
-              >
-                <Crown size={14} />
-                Unlock full rankings
-              </button>
-              <span className="text-xs text-white/30">$10/month · Cancel anytime</span>
-            </div>
-            <span className="text-xs text-white/35 italic">Built to find underpriced players before price rises</span>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5C84C] hover:brightness-110 px-7 py-3 text-sm font-bold text-[#070707] transition-all shadow-lg"
+            >
+              <Crown size={14} />
+              Unlock Winning Picks
+            </button>
+            <span className="text-xs text-white/30">$10/month · Cancel anytime</span>
           </div>
         </div>
       </td>
@@ -343,7 +264,6 @@ function resolveAction(row: RankingRow): ActionLabel {
   return "WATCH";
 }
 
-
 const ACTION_STYLES: Record<ActionLabel, { text: string; bg: string; border: string }> = {
   BUY:   { text: "text-emerald-300", bg: "bg-emerald-500/15", border: "border-emerald-500/35" },
   HOLD:  { text: "text-sky-300",     bg: "bg-sky-500/15",     border: "border-sky-500/30" },
@@ -352,31 +272,29 @@ const ACTION_STYLES: Record<ActionLabel, { text: string; bg: string; border: str
   AVOID: { text: "text-red-400",     bg: "bg-red-500/12",     border: "border-red-500/30" },
 };
 
-function shortenWhy(text: string, action: ActionLabel): string {
-  const prefix = `${action}: `;
-  if (!text) return prefix + "Insufficient data";
-  const stripped = text
-    .replace(/\$[\d,.]+[MKk]?/g, "")
-    .replace(/\bis\b|\bhas\b|\bwith\b|\bthat\b|\bthis\b/gi, "")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-  const prefixed = prefix + stripped;
-  return prefixed.length > 90 ? prefixed.slice(0, 90) + "..." : prefixed;
-}
-
 export function FreeTableHeader() {
   return (
     <tr className="border-b border-[#222]">
       <th className={`${TH} text-white/40`} style={{ width: 44, minWidth: 44 }}>#</th>
       <th className={`${TH} text-left text-white/40`} style={{ width: 220, minWidth: 160 }}>Player</th>
-      <th className={`${TH} text-[#F5C84C]`} style={{ width: 100, minWidth: 90 }}>
+      <th className={`${TH} text-[#F5C84C]`} style={{ width: 90, minWidth: 90 }}>
         <span className="inline-flex items-center gap-1 justify-center">
-          Projection
-          <InfoTooltip text="Expected fantasy points this round based on form, matchup and role" />
+          Proj
+          <InfoTooltip text="Expected fantasy points this round" />
         </span>
       </th>
-      <th className={`${TH} text-white/80 font-semibold`} style={{ width: 100, minWidth: 90 }}>Action</th>
-      <th className={`${TH} text-left text-white/40`} style={{ minWidth: 200 }}>Why</th>
+      <th className={`${TH} text-white/40`} style={{ width: 80, minWidth: 80 }}>
+        <span className="inline-flex items-center gap-1 justify-center">
+          BE
+          <InfoTooltip text="Score needed to maintain price" />
+        </span>
+      </th>
+      <th className={`${TH} text-white/80 font-semibold`} style={{ width: 80, minWidth: 80 }}>
+        <span className="inline-flex items-center gap-1 justify-center">
+          Edge
+          <InfoTooltip text="Projection minus Breakeven. Green = projection clears BE." />
+        </span>
+      </th>
     </tr>
   );
 }
@@ -412,9 +330,21 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
     return null;
   })();
 
+  const be = row.breakeven !== null && row.breakeven !== undefined
+    ? Math.round(parseFloat(String(row.breakeven)))
+    : null;
+  const proj = row.projection_final ?? null;
+  const edge = be !== null && proj !== null && !row.is_bye ? Math.round(proj - be) : null;
+
+  const edgeColor = edge === null ? "text-white/20" :
+    edge >= 20 ? "text-emerald-400 font-semibold" :
+    edge >= 10 ? "text-green-300 font-semibold" :
+    edge >= -5 ? "text-neutral-300" :
+    "text-red-400 font-semibold";
+
   return (
     <tr
-      className="border-b border-white/[0.04] transition-colors duration-100 cursor-pointer hover:bg-white/[0.07] group"
+      className="border-b border-white/[0.04] transition-colors duration-100 cursor-pointer hover:bg-neutral-900 group"
       style={rowFadeStyle}
       onClick={onRowClick}
     >
@@ -438,21 +368,28 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
           </div>
         </div>
       </td>
-      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 100, minWidth: 90 }}>
+      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 90, minWidth: 90 }}>
         {row.is_bye
           ? <span className="text-sm font-semibold text-white/20 tabular-nums">—</span>
           : <span className="text-sm font-bold text-[#F5C84C]/80 tabular-nums">{fmt(row.projection_final)}</span>
         }
       </td>
-      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 100, minWidth: 90 }}>
-        <span className={`inline-block rounded-lg px-3 py-1.5 text-[12px] font-extrabold tracking-wider border ${actionStyle.text} ${actionStyle.bg} ${actionStyle.border}`}>
-          {action}
+      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 80, minWidth: 80 }}>
+        <span className="text-sm tabular-nums text-white/55">
+          {be !== null ? be : "—"}
         </span>
       </td>
-      <td className="px-4 py-3 text-left align-middle" style={{ minWidth: 180, maxWidth: 280 }}>
-        <span className="text-xs text-white/55 leading-snug block">
-          {shortenWhy(row.why ?? "", action)}
-        </span>
+      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 80, minWidth: 80 }}>
+        {edge !== null ? (
+          <div className="flex flex-col items-center gap-0.5">
+            <span className={`text-sm tabular-nums ${edgeColor}`}>
+              {edge > 0 ? `+${edge}` : edge}
+            </span>
+            <span className="text-[9px] text-white/25 leading-none">vs BE</span>
+          </div>
+        ) : (
+          <span className="text-sm text-white/20 tabular-nums">—</span>
+        )}
       </td>
     </tr>
   );
@@ -462,53 +399,49 @@ export function FreeConversionWallRow({ onUpgrade }: { onUpgrade: () => void }) 
   return (
     <>
       <tr>
-        <td colSpan={FREE_TOTAL_COLS} className="px-4 pt-5 pb-2 text-center">
+        <td colSpan={FREE_TOTAL_COLS} className="px-4 pt-4 pb-1 text-center">
           <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest">
             More high-confidence picks hidden below
           </p>
         </td>
       </tr>
       <tr>
-        <td colSpan={FREE_TOTAL_COLS} className="px-4 pt-2 pb-8">
-        <div
-          className="relative flex flex-col items-center gap-4 rounded-2xl border border-[#F5C84C]/25 bg-gradient-to-b from-[#F5C84C]/[0.07] via-[#0d0d0d] to-[#0a0a0a] px-8 py-10 text-center overflow-hidden hover:border-[#F5C84C]/40 transition-all duration-200 cursor-pointer"
-          onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 40px rgba(245,200,76,0.08)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
-        >
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-px bg-gradient-to-r from-transparent via-[#F5C84C]/40 to-transparent" />
-          <div className="flex items-center justify-center w-11 h-11 rounded-full bg-[#F5C84C]/15 border border-[#F5C84C]/30 mb-1">
-            <Crown size={18} className="text-[#F5C84C]" />
-          </div>
-          <div>
-            <p className="text-lg font-bold text-white mb-1.5">See every BUY, HOLD &amp; AVOID decision before your league does</p>
-            <p className="text-sm text-white/50 max-w-sm leading-relaxed">
-              Full rankings, AI insights, and weekly edge tools
-            </p>
-          </div>
-          <div className="flex flex-wrap justify-center gap-2 mb-1">
-            {["Full Rankings", "AI Analysis", "Price Tracking", "Edge Board"].map((f) => (
-              <span key={f} className="rounded-full border border-[#F5C84C]/20 bg-[#F5C84C]/[0.06] px-3 py-1 text-[11px] text-[#F5C84C]/70 font-medium">
-                {f}
-              </span>
-            ))}
-          </div>
-          <div className="flex flex-col items-center gap-2">
+        <td colSpan={FREE_TOTAL_COLS} className="px-4 pt-2 pb-6">
+          <div
+            className="relative flex flex-col items-center gap-3 rounded-2xl border border-[#F5C84C]/25 bg-gradient-to-b from-[#F5C84C]/[0.07] via-[#0d0d0d] to-[#0a0a0a] px-8 py-8 text-center overflow-hidden hover:border-[#F5C84C]/40 transition-all duration-200 cursor-pointer"
+            onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 40px rgba(245,200,76,0.08)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
+          >
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-px bg-gradient-to-r from-transparent via-[#F5C84C]/40 to-transparent" />
+            <div className="flex items-center justify-center w-11 h-11 rounded-full bg-[#F5C84C]/15 border border-[#F5C84C]/30">
+              <Crown size={18} className="text-[#F5C84C]" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-white mb-1">You're only seeing the obvious picks</p>
+              <p className="text-sm text-white/50 max-w-sm leading-relaxed">The real edge is hidden below.</p>
+              <p className="text-sm text-white/35 mt-1">Most coaches won't see these before lockout.</p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2">
+              {["Full Rankings", "AI Analysis", "Price Tracking", "Edge Board"].map((f) => (
+                <span key={f} className="rounded-full border border-[#F5C84C]/20 bg-[#F5C84C]/[0.06] px-3 py-1 text-[11px] text-[#F5C84C]/70 font-medium">
+                  {f}
+                </span>
+              ))}
+            </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5C84C] hover:brightness-110 px-6 py-2.5 text-sm font-bold text-[#070707] transition-all shadow-lg"
               >
                 <Crown size={13} />
-                Unlock Full Rankings
+                Unlock Winning Picks
               </button>
               <span className="text-xs text-white/25">$10/month · Cancel anytime</span>
             </div>
-            <span className="text-xs text-white/35 italic">Built to find underpriced players before price rises</span>
           </div>
-        </div>
-      </td>
-    </tr>
+        </td>
+      </tr>
     </>
   );
 }
@@ -529,12 +462,7 @@ export function FreeLoadingSkeletonRows({ rows = 8 }: { rows?: number }) {
   );
 }
 
-interface LoadingSkeletonProps {
-  cols?: number;
-  rows?: number;
-}
-
-export function LoadingSkeletonRows({ cols = TOTAL_COLS, rows = 10 }: LoadingSkeletonProps) {
+export function LoadingSkeletonRows({ cols = TOTAL_COLS, rows = 10 }: { cols?: number; rows?: number }) {
   return (
     <>
       {Array.from({ length: rows }).map((_, i) => (

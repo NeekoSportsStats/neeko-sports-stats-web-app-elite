@@ -3,12 +3,30 @@ import { Lock, Crown } from "lucide-react";
 import { RankingRow, RankingsTab } from "./types";
 import {
   fmt,
-  getNeekoRatingBadge, getConfidenceColor,
+  getNeekoRatingBadge,
   getDisplayRecommendation,
   resolveRecommendationColor,
   FREE_FULL_ROWS, PREMIUM_INITIAL_ROWS,
-  normaliseConfidence,
 } from "./helpers";
+
+// ─── Edge value ───────────────────────────────────────────────────────────────
+
+function computeEdge(row: RankingRow): number | null {
+  const proj = row.projection_final ?? null;
+  const be =
+    row.breakeven !== null && row.breakeven !== undefined
+      ? Math.round(parseFloat(String(row.breakeven)))
+      : null;
+  if (proj === null || be === null) return null;
+  return Math.round(proj - be);
+}
+
+function edgeColor(edge: number): string {
+  if (edge >= 20) return "text-emerald-400";
+  if (edge >= 10) return "text-green-300";
+  if (edge >= -5) return "text-neutral-300";
+  return "text-red-400";
+}
 
 // ─── Action badge ─────────────────────────────────────────────────────────────
 
@@ -92,26 +110,12 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
   const rank = idx + 1;
   const neekoRBadge = getNeekoRatingBadge(row.neeko_rating ?? null);
 
-  const confidenceDisplay = normaliseConfidence(
-    row.projection_confidence ?? null,
-    (row as any).consistency_score ?? null,
-    row.risk_rating ?? null,
-    rank,
-  );
-
-  const breakeven = row.breakeven !== null && row.breakeven !== undefined
-    ? Math.round(parseFloat(String(row.breakeven)))
-    : null;
-
   const proj = row.projection_final ?? null;
-  const beDiff = breakeven !== null && proj !== null ? Math.round(proj - breakeven) : null;
-
-  const getDiffColor = (d: number) => {
-    if (d > 15) return "text-emerald-400";
-    if (d > 5) return "text-green-400";
-    if (d >= -5) return "text-white/50";
-    return "text-red-400";
-  };
+  const breakeven =
+    row.breakeven !== null && row.breakeven !== undefined
+      ? Math.round(parseFloat(String(row.breakeven)))
+      : null;
+  const edge = computeEdge(row);
 
   const whyText = isPremium ? (row.why ?? null) : null;
 
@@ -140,47 +144,51 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
         </div>
       </div>
 
-      {/* Row 2 — Projection | BE inline stats */}
+      {/* Row 2 — Proj | BE | Edge | Rating stats */}
       <div className="flex items-center gap-0 pl-7">
-        <div className="flex items-baseline gap-1 pr-3">
-          <span className="text-[13px] font-bold text-[#F5C84C] tabular-nums">
-            {row.is_bye ? "—" : fmt(row.projection_final, 0)}
+        {/* Projection */}
+        <div className="flex flex-col items-start pr-3">
+          <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Proj</span>
+          <span className="text-[14px] font-bold text-[#F5C84C] tabular-nums">
+            {row.is_bye ? "—" : fmt(proj, 0)}
           </span>
-          {!row.is_bye && row.projection_final != null && (
-            <span className="text-[10px] text-white/35 font-normal">pts proj</span>
-          )}
         </div>
 
-        {breakeven != null && (
+        {/* BE */}
+        {breakeven !== null && (
           <>
-            <span className="text-white/15 text-sm px-1">|</span>
-            <div className="flex items-baseline gap-1 px-2">
-              <span className="text-[10px] text-white/35 font-normal">BE</span>
-              <span className="text-[13px] font-bold text-white/65 tabular-nums">{breakeven}</span>
-              {beDiff !== null && (
-                <span className={`text-[11px] font-semibold tabular-nums ${getDiffColor(beDiff)}`}>
-                  {beDiff > 0 ? `+${beDiff}` : beDiff}
-                </span>
-              )}
+            <span className="text-white/15 text-sm px-1.5">|</span>
+            <div className="flex flex-col items-start px-2">
+              <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">BE</span>
+              <span className="text-[14px] font-bold text-white/65 tabular-nums">{breakeven}</span>
             </div>
           </>
         )}
 
-        <span className="text-white/15 text-sm px-1">|</span>
-        <div className="flex items-baseline gap-1 px-2">
-          <span className="text-[10px] text-white/35 font-normal">Rtg</span>
-          <span className={`text-[13px] font-bold tabular-nums ${neekoRBadge.text}`} style={neekoRBadge.glow ? { filter: neekoRBadge.glow } : undefined}>
-            {row.neeko_rating != null ? Number(row.neeko_rating).toFixed(0) : "—"}
-          </span>
-        </div>
-
-        {confidenceDisplay != null && (
+        {/* Edge */}
+        {edge !== null && !row.is_bye && (
           <>
-            <span className="text-white/15 text-sm px-1">|</span>
-            <div className="flex items-baseline gap-1 px-2">
-              <span className="text-[10px] text-white/35 font-normal">Conf</span>
-              <span className={`text-[13px] font-bold tabular-nums ${getConfidenceColor(confidenceDisplay)}`}>
-                {confidenceDisplay}%
+            <span className="text-white/15 text-sm px-1.5">|</span>
+            <div className="flex flex-col items-start px-2">
+              <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Edge</span>
+              <span className={`text-[14px] font-bold tabular-nums ${edgeColor(edge)}`}>
+                {edge > 0 ? `+${edge}` : edge}
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* Rating */}
+        {row.neeko_rating != null && (
+          <>
+            <span className="text-white/15 text-sm px-1.5">|</span>
+            <div className="flex flex-col items-start px-2">
+              <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Rtg</span>
+              <span
+                className={`text-[14px] font-bold tabular-nums ${neekoRBadge.text}`}
+                style={neekoRBadge.glow ? { filter: neekoRBadge.glow } : undefined}
+              >
+                {Number(row.neeko_rating).toFixed(0)}
               </span>
             </div>
           </>
@@ -246,10 +254,10 @@ function LoadingSkeletonCards() {
             <div className="h-6 w-16 animate-pulse rounded-md bg-white/8" />
           </div>
           <div className="flex gap-4 pl-7">
-            {[40, 36, 44, 36].map((w, j) => (
+            {[48, 40, 48, 40].map((w, j) => (
               <div key={j} className="flex flex-col gap-1">
-                <div className="h-2 w-10 animate-pulse rounded bg-white/5" />
-                <div className={`h-4 w-${w < 40 ? 8 : 10} animate-pulse rounded bg-white/8`} style={{ width: w }} />
+                <div className="h-2 w-8 animate-pulse rounded bg-white/5" />
+                <div className="h-4 animate-pulse rounded bg-white/8" style={{ width: w }} />
               </div>
             ))}
           </div>
@@ -272,17 +280,18 @@ export function MobileConversionWall({ onUpgrade }: { onUpgrade: () => void }) {
           <Crown size={18} className="text-[#F5C84C]" />
         </div>
         <div>
-          <p className="text-base font-bold text-white leading-snug">See every BUY, HOLD &amp; AVOID decision before your league does</p>
-          <p className="text-sm text-white/45 mt-1.5 leading-relaxed">Full rankings, AI insights, and weekly edge tools</p>
+          <p className="text-base font-bold text-white leading-snug">You're only seeing the obvious picks</p>
+          <p className="text-sm text-white/45 mt-1.5 leading-relaxed">The real edge is hidden below</p>
+          <p className="text-xs text-white/30 mt-1 leading-relaxed">Most coaches won't see these before lockout</p>
         </div>
         <button
           onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
           className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-[#F5C84C] hover:brightness-110 px-6 py-2.5 text-sm font-bold text-[#070707] transition-all"
         >
           <Crown size={13} />
-          Unlock Full Rankings
+          Unlock Winning Picks
         </button>
-        <span className="text-[11px] text-white/30 italic">Built to find underpriced players before price rises</span>
+        <span className="text-[11px] text-white/30 italic">$10/month · Cancel anytime</span>
       </div>
     </div>
   );
