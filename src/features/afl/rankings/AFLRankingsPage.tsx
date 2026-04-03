@@ -633,10 +633,10 @@ export default function AFLRankingsPage() {
         </Helmet>
 
         <div className="min-h-screen bg-[#070707] text-white">
+          <div className="w-full max-w-[1240px] mx-auto px-4 pt-10 pb-10">
 
-          {/* FREE HERO */}
-          <div className="px-4 pt-10 pb-6">
-            <div className="flex items-start justify-between gap-4">
+            {/* FREE HERO */}
+            <div className="flex items-start justify-between gap-4 mb-2">
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
                 <p className="text-sm text-white/45 mt-1.5 max-w-lg leading-relaxed">
@@ -665,8 +665,9 @@ export default function AFLRankingsPage() {
                 </button>
               </div>
             </div>
+
             {updatedAt && (
-              <div className="md:hidden mt-2">
+              <div className="md:hidden mb-2">
                 <DataFreshnessIndicator
                   timestamp={updatedAt.ts}
                   label="Rankings"
@@ -675,21 +676,18 @@ export default function AFLRankingsPage() {
                 />
               </div>
             )}
-            {updatedAt && <StaleDataWarning timestamp={updatedAt.ts} className="mt-3" />}
-          </div>
-
-          <div className="px-4 pb-6">
+            {updatedAt && <StaleDataWarning timestamp={updatedAt.ts} className="mb-4" />}
 
             {/* QUICK VALUE STRIP */}
             {!loading && displayRows.length > 0 && (
-              <div className="w-full max-w-[1200px] mx-auto mb-3">
+              <div className="mb-4">
                 <ValueStrip rows={displayRows} />
               </div>
             )}
 
             {/* FREE TABLE — desktop */}
             <div className="hidden md:block">
-              <div className="w-full max-w-[1200px] mx-auto rounded-xl border border-white/[0.06] overflow-hidden">
+              <div className="rounded-xl border border-white/[0.06] overflow-hidden">
                 <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
                   <table className="w-full min-w-[860px] border-collapse">
                     <thead className="sticky top-0 z-30 bg-[#0a0a0a] border-b border-[#222]">
@@ -758,10 +756,9 @@ export default function AFLRankingsPage() {
               )}
             </div>
 
+            <CollapsibleSEO />
+
           </div>
-
-          <CollapsibleSEO />
-
         </div>
 
         {ratingInfoOpen && <NeekoRatingInfoModal onClose={() => setRatingInfoOpen(false)} />}
@@ -825,9 +822,10 @@ export default function AFLRankingsPage() {
       </Helmet>
 
       <div className="min-h-screen bg-[#070707] text-white">
+        <div className="w-full max-w-[1240px] mx-auto px-4 pt-7 pb-10">
 
-        <div className="px-4 pt-7 pb-3">
-          <div className="flex items-start justify-between gap-4">
+          {/* HEADER */}
+          <div className="flex items-start justify-between gap-4 mb-1">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
               <p className="text-sm text-white/40 mt-0.5">Edge-ranked by Proj vs Breakeven — updated weekly</p>
@@ -854,8 +852,9 @@ export default function AFLRankingsPage() {
               </button>
             </div>
           </div>
+
           {updatedAt && (
-            <div className="md:hidden mt-3">
+            <div className="md:hidden mt-2 mb-1">
               <DataFreshnessIndicator
                 timestamp={updatedAt.ts}
                 label="Rankings"
@@ -864,14 +863,11 @@ export default function AFLRankingsPage() {
               />
             </div>
           )}
+          {updatedAt && <StaleDataWarning timestamp={updatedAt.ts} className="mt-2 mb-3" />}
 
-          {updatedAt && <StaleDataWarning timestamp={updatedAt.ts} className="mt-3" />}
-        </div>
-
-        <div className="px-4 pb-10">
-
-          <div className="mb-0 flex items-center gap-2 border-b border-white/[0.06]">
-            {TABS.map(({ key, label, premiumOnly }) => {
+          {/* TABS */}
+          <div className="flex items-center gap-2 border-b border-white/[0.06] mb-0">
+            {TABS.map(({ key, label }) => {
               const isActive = activeTab === key;
               return (
                 <button
@@ -893,6 +889,7 @@ export default function AFLRankingsPage() {
             {TAB_DESCRIPTIONS[safeActiveTab]}
           </p>
 
+          {/* SEARCH */}
           <div className="mb-3">
             <SearchAutocomplete
               rows={rows}
@@ -904,7 +901,8 @@ export default function AFLRankingsPage() {
             />
           </div>
 
-          <div className="sticky top-[72px] z-30 bg-[#070707] pb-2 -mx-4 px-4 mb-2 flex flex-wrap gap-1.5">
+          {/* QUICK FILTERS */}
+          <div className="sticky top-[72px] z-30 bg-[#070707] pb-2 -mx-4 px-4 mb-3 flex flex-wrap gap-1.5">
             {PREMIUM_QUICK_FILTERS.map(({ key, label }) => (
               <button
                 key={key}
@@ -920,15 +918,17 @@ export default function AFLRankingsPage() {
             ))}
           </div>
 
+          {/* VALUE STRIP */}
           {!loading && displayRows.length > 0 && (
-            <div className="w-full max-w-[1200px] mx-auto mb-3">
+            <div className="mb-3">
               <ValueStrip rows={displayRows} />
             </div>
           )}
 
+          {/* TABLE — desktop */}
           <div className="hidden md:block">
             <div
-              className="w-full max-w-[1200px] mx-auto overflow-x-auto rounded-xl border border-white/5"
+              className="overflow-x-auto rounded-xl border border-white/5"
               style={{ WebkitOverflowScrolling: "touch" }}
             >
               <table className="w-full min-w-[900px] border-collapse">
@@ -988,6 +988,7 @@ export default function AFLRankingsPage() {
             )}
           </div>
 
+          {/* TABLE — mobile */}
           <div className="md:hidden">
             <MobileRankingsTable
               rows={sortedRows}
@@ -1002,10 +1003,9 @@ export default function AFLRankingsPage() {
             />
           </div>
 
+          <CollapsibleSEO />
+
         </div>
-
-        <CollapsibleSEO />
-
       </div>
 
       {ratingInfoOpen && (
