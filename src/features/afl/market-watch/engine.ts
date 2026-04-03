@@ -83,31 +83,19 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   const sells: DerivedPlayer[] = [];
 
   for (const p of filtered) {
-    // ai_recommendation is the canonical source — use it first
+    // ai_recommendation is the canonical source — supports 5-tier system:
+    // STRONG_BUY / BUY → BUY bucket
+    // HOLD → HOLD bucket
+    // SELL / STRONG_SELL → SELL bucket
     const canonical = (p.ai_recommendation ?? '').toUpperCase();
-    const normalized = canonical === 'BUY' ? 'BUY'
-      : canonical === 'SELL' ? 'SELL'
+    const normalized: SimpleCategory | null =
+      canonical === 'STRONG_BUY' || canonical === 'BUY' ? 'BUY'
+      : canonical === 'STRONG_SELL' || canonical === 'SELL' ? 'SELL'
       : canonical === 'HOLD' ? 'HOLD'
       : null;
 
     // Fallback to action field (normalised) if ai_recommendation missing
     const actionFallback = normalized ?? normalizeAction(p.action || p.category);
-
-    // ── SAFETY GUARD ──────────────────────────────────────────────────────
-    // Log any state that violates the invariant so it's visible in devtools.
-    if (process.env.NODE_ENV !== 'production') {
-      const vs = p.value_score ?? 0;
-      if (actionFallback === 'BUY' && vs < -4.5) {
-        console.error('[MarketWatch] INVALID STATE — negative value_score with BUY', {
-          player: p.player_name, value_score: vs, ai_recommendation: p.ai_recommendation, action: p.action,
-        });
-      }
-      if (actionFallback === 'SELL' && vs > 4.5) {
-        console.error('[MarketWatch] INVALID STATE — positive value_score with SELL', {
-          player: p.player_name, value_score: vs, ai_recommendation: p.ai_recommendation, action: p.action,
-        });
-      }
-    }
 
     if (actionFallback === 'BUY') {
       buys.push(tag(p, 'BUY'));

@@ -49,10 +49,28 @@ function fmtPrice(p: number) {
   return `$${Math.round(p / 1000)}k`;
 }
 
+function isBuyRec(rec: string | null): boolean {
+  return rec === 'BUY' || rec === 'STRONG_BUY';
+}
+
+function isSellRec(rec: string | null): boolean {
+  return rec === 'SELL' || rec === 'STRONG_SELL';
+}
+
 function recHex(rec: string | null) {
-  if (rec === 'BUY')  return '#4ade80';
-  if (rec === 'SELL') return '#f87171';
+  if (rec === 'STRONG_BUY') return '#34d399';
+  if (rec === 'BUY')        return '#4ade80';
+  if (rec === 'STRONG_SELL') return '#f43f5e';
+  if (rec === 'SELL')       return '#f87171';
   return '#94a3b8';
+}
+
+function recLabel(rec: string | null): string {
+  if (rec === 'STRONG_BUY')  return 'STRONG BUY';
+  if (rec === 'BUY')         return 'BUY';
+  if (rec === 'STRONG_SELL') return 'STRONG SELL';
+  if (rec === 'SELL')        return 'SELL';
+  return 'HOLD';
 }
 
 function RecBadge({ rec }: { rec: string | null }) {
@@ -63,14 +81,14 @@ function RecBadge({ rec }: { rec: string | null }) {
       className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide shrink-0"
       style={{ background: `${hex}18`, color: hex, border: `1px solid ${hex}40` }}
     >
-      {rec}
+      {recLabel(rec)}
     </span>
   );
 }
 
 function RecIcon({ rec }: { rec: string | null }) {
-  if (rec === 'BUY')  return <TrendingUp size={13} className="text-emerald-400 shrink-0" />;
-  if (rec === 'SELL') return <TrendingDown size={13} className="text-red-400 shrink-0" />;
+  if (isBuyRec(rec))  return <TrendingUp size={13} className="text-emerald-400 shrink-0" />;
+  if (isSellRec(rec)) return <TrendingDown size={13} className="text-red-400 shrink-0" />;
   return <Minus size={13} className="text-white/25 shrink-0" />;
 }
 
@@ -81,8 +99,8 @@ function SignalBreakdown({ players }: { players: TeamPlayer[] }) {
   const all = players;
   if (all.length === 0) return null;
 
-  const buys  = all.filter(p => p.ai_recommendation === 'BUY').length;
-  const sells = all.filter(p => p.ai_recommendation === 'SELL').length;
+  const buys  = all.filter(p => isBuyRec(p.ai_recommendation)).length;
+  const sells = all.filter(p => isSellRec(p.ai_recommendation)).length;
   const holds = all.length - buys - sells;
   const pB = Math.round((buys  / all.length) * 100);
   const pS = Math.round((sells / all.length) * 100);
@@ -219,8 +237,8 @@ function TeamInsights({
   const unlocked = players.filter(p => !p.is_locked);
   if (unlocked.length === 0) return null;
 
-  const buys  = unlocked.filter(p => p.ai_recommendation === 'BUY');
-  const sells = unlocked.filter(p => p.ai_recommendation === 'SELL');
+  const buys  = unlocked.filter(p => isBuyRec(p.ai_recommendation));
+  const sells = unlocked.filter(p => isSellRec(p.ai_recommendation));
 
   const posGroups: Record<string, TeamPlayer[]> = {};
   unlocked.forEach(p => {
@@ -315,8 +333,8 @@ function PositionBreakdown({
       <div className="space-y-2">
         {orderedGroups.map(pos => {
           const ps = groups[pos] ?? [];
-          const buys  = ps.filter(p => p.ai_recommendation === 'BUY').length;
-          const sells = ps.filter(p => p.ai_recommendation === 'SELL').length;
+          const buys  = ps.filter(p => isBuyRec(p.ai_recommendation)).length;
+          const sells = ps.filter(p => isSellRec(p.ai_recommendation)).length;
           const avgProj = ps.length
             ? Math.round(ps.reduce((s, p) => s + (Number(p.projection_final) || 0), 0) / ps.length)
             : 0;
@@ -561,7 +579,7 @@ function TeamSEOSection({ teamName, players }: { teamName: string; players: Team
   const shortName  = teamName.split(' ')[0];
   const topPlayer  = players[0];
   const topProj    = topPlayer ? Math.round(Number(topPlayer.projection_final)) : 0;
-  const buys       = players.filter(p => p.ai_recommendation === 'BUY');
+  const buys       = players.filter(p => isBuyRec(p.ai_recommendation));
   const topBuy     = buys[0];
   const isHistoric = ['Adelaide', 'Hawthorn', 'Geelong', 'Richmond', 'Carlton', 'Collingwood'].includes(shortName);
 
@@ -697,7 +715,7 @@ export default function AFLTeamPage() {
   const avgProj    = players.length > 0
     ? Math.round(projValues.reduce((a, b) => a + b, 0) / players.length)
     : 0;
-  const buyCt      = players.filter(p => p.ai_recommendation === 'BUY').length;
+  const buyCt      = players.filter(p => isBuyRec(p.ai_recommendation)).length;
 
   const accentColor = getTeamAccentColour(teamName.split(' ')[0]) ?? '#4ade80';
   const accentSafe  = accentColor === '#FFD200' ? '#F5C84C' : accentColor;
