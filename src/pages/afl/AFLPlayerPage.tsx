@@ -469,7 +469,7 @@ function ScoreHistoryChart({ playerName, playerId }: { playerName: string; playe
         </ComposedChart>
       </ResponsiveContainer>
 
-      <div className="flex items-center gap-4 mt-1.5 px-1 flex-wrap">
+      <div className="flex items-center gap-3 mt-1 px-1 flex-wrap border-t border-white/5 pt-1">
         {hasActuals && <div className="flex items-center gap-1.5"><div className="h-0.5 w-4 rounded bg-[#F5C84C]" /><span className="text-[10px] text-white/35">Actual</span></div>}
         {hasAnyProj && <div className="flex items-center gap-1.5"><div className="h-0.5 w-4 rounded bg-[#3b82f6]" /><span className="text-[10px] text-white/35">{hasHistoricalProj ? "Projected" : "Next Round"}</span></div>}
         {hasPairedData && (

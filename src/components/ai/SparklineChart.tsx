@@ -14,7 +14,7 @@ export const SparklineChart = ({ data, labels, mini = false, color = "hsl(var(--
 
   if (cleanPairs.length < 2) {
     return (
-      <div className={`flex items-center justify-center ${mini ? "w-[60px] h-[30px]" : "w-full h-[300px]"}`}>
+      <div className={`flex items-center justify-center ${mini ? "w-[60px] h-[30px]" : "w-full h-[185px]"}`}>
         <p className="text-[10px] text-muted-foreground">Insufficient data</p>
       </div>
     );
@@ -39,22 +39,24 @@ export const SparklineChart = ({ data, labels, mini = false, color = "hsl(var(--
     : chartData.map((_, i) => i);
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={chartData}>
+    <ResponsiveContainer width="100%" height={185}>
+      <LineChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
         <XAxis
           dataKey="label"
           tickFormatter={(val: string, idx: number) => tickIndices.includes(idx) ? val : ""}
-          tick={{ fill: "rgba(255,255,255,0.45)", fontSize: 10 }}
+          tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }}
           tickLine={false}
           axisLine={false}
           interval={0}
+          height={16}
         />
         <YAxis
           stroke="hsl(var(--muted-foreground))"
-          fontSize={12}
+          fontSize={10}
           tickLine={false}
           axisLine={false}
           tickFormatter={(value) => `${value}`}
+          width={32}
         />
         <Tooltip
           content={({ active, payload }) => {

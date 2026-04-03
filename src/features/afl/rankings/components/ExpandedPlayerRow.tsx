@@ -60,8 +60,8 @@ function FullSparkline({ points, color, projection }: FullSparklineProps) {
   return (
     <div className="w-full">
       <div style={{ borderTop: "1px dashed rgba(255,255,255,0.08)" }}>
-        <ResponsiveContainer width="100%" height={80}>
-          <AreaChart data={points} margin={{ top: 6, right: 4, bottom: 18, left: 4 }}>
+        <ResponsiveContainer width="100%" height={70}>
+          <AreaChart data={points} margin={{ top: 4, right: 4, bottom: 8, left: 4 }}>
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%"   stopColor={stroke} stopOpacity={0.22} />
@@ -108,7 +108,7 @@ function FullSparkline({ points, color, projection }: FullSparklineProps) {
         </ResponsiveContainer>
       </div>
 
-      <div className="flex justify-between mt-0.5 px-1">
+      <div className="flex justify-between mt-1 px-1 border-t border-white/5 pt-1">
         <span className="text-[9px] text-white/20 tabular-nums">Low {Math.round(min)}</span>
         <span className="text-[9px] text-white/20 tabular-nums">Avg {Math.round(avg)}</span>
         <span className="text-[9px] text-white/20 tabular-nums">High {Math.round(max)}</span>
@@ -262,8 +262,8 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
   return (
     <tr className="border-b border-white/[0.04] bg-[#0c0c0c]">
       <td colSpan={colSpan} className="px-4 pb-4 pt-0">
-        <div className="ml-10 rounded-xl border border-white/[0.07] bg-[#111] p-4">
-          <div className="flex flex-col gap-3">
+        <div className="ml-10 rounded-xl border border-white/[0.07] bg-[#111] p-3">
+          <div className="flex flex-col gap-2">
 
             {/* 1. Edge headline */}
             {edgeLabel && (
@@ -287,12 +287,12 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
             {/* 3. Full-width sparkline */}
             {(historyLoading || scoreCount >= 3) && (
             <div className="w-full">
-              <p className="text-[9px] text-white/25 uppercase tracking-wider mb-1.5">
+              <p className="text-[9px] text-white/25 uppercase tracking-wider mb-1">
                 Last {historyLoading ? "—" : scoreCount} games
               </p>
 
               {historyLoading ? (
-                <div className="w-full rounded bg-white/[0.03] animate-pulse" style={{ height: 98 }} />
+                <div className="w-full rounded bg-white/[0.03] animate-pulse" style={{ height: 78 }} />
               ) : scoreCount >= 3 ? (
                 <FullSparkline points={scoreHistory} color={sparkColor} projection={proj} />
               ) : null}
