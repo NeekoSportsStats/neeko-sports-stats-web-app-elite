@@ -24,12 +24,12 @@ function buildShortWhy(row: RankingRow, action: string): string {
   const diff = proj != null && be != null ? Math.round(proj - be) : null;
 
   const label = action.toUpperCase();
-  if (diff === null || proj === null) return row.why ?? "";
+  if (diff === null) return row.why ?? "";
 
-  if (label === "BUY" || label === "STRONG BUY") return `+${diff} vs BE (${proj})`;
-  if (label === "HOLD") return `Near BE (${proj})`;
-  if (label === "AVOID" || label === "SELL") return `${diff > 0 ? "+" : ""}${diff} vs BE (${proj})`;
-  return `Edge ${diff > 0 ? "+" : ""}${diff} (${proj})`;
+  if (label === "BUY" || label === "STRONG BUY") return `+${diff} vs BE`;
+  if (label === "HOLD") return "Near BE";
+  if (label === "AVOID" || label === "SELL") return `${diff >= 0 ? "+" : ""}${diff} vs BE`;
+  return `${diff >= 0 ? "+" : ""}${diff} vs BE`;
 }
 
 // ─── Edge cell ─────────────────────────────────────────────────────────────────
@@ -44,7 +44,9 @@ function EdgeCell({ row }: { row: RankingRow }) {
     return <span className="text-sm text-white/20 tabular-nums">—</span>;
   }
 
-  const edge = Math.round(proj - be);
+  const rawEdge = Math.round(proj - be);
+  const edge = rawEdge > 40 ? 40 : rawEdge < -40 ? -40 : rawEdge;
+  const edgeDisplay = rawEdge > 40 ? "40+" : rawEdge < -40 ? "-40+" : (edge > 0 ? `+${edge}` : String(edge));
   let colorCls: string;
   if (edge >= 20) colorCls = "text-emerald-400 font-semibold";
   else if (edge >= 10) colorCls = "text-green-300 font-semibold";
@@ -53,9 +55,7 @@ function EdgeCell({ row }: { row: RankingRow }) {
 
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <span className={`text-sm tabular-nums ${colorCls}`}>
-        {edge > 0 ? `+${edge}` : edge}
-      </span>
+      <span className={`text-sm tabular-nums ${colorCls}`}>{edgeDisplay}</span>
       <span className="text-[9px] text-white/30 leading-none">vs BE</span>
     </div>
   );
@@ -71,16 +71,17 @@ interface ExpandedPanelProps {
 function ExpandedPanel({ row, displayRec }: ExpandedPanelProps) {
   const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
   const be = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
-  const edge = proj != null && be != null && !row.is_bye ? Math.round(proj - be) : null;
-  const edgeSign = edge != null ? (edge > 0 ? `+${edge}` : `${edge}`) : null;
+  const rawEdgeExp = proj != null && be != null && !row.is_bye ? Math.round(proj - be) : null;
+  const edge = rawEdgeExp !== null ? (rawEdgeExp > 40 ? 40 : rawEdgeExp < -40 ? -40 : rawEdgeExp) : null;
+  const edgeSign = rawEdgeExp != null ? (rawEdgeExp > 40 ? "40+" : rawEdgeExp < -40 ? "-40+" : (rawEdgeExp > 0 ? `+${rawEdgeExp}` : String(rawEdgeExp))) : null;
 
   const longWhy = row.long ?? row.why ?? null;
   const confidence = row.projection_confidence != null ? Math.round(row.projection_confidence) : null;
   const price = row.price != null ? fmtPrice(row.price) : null;
   const rating = row.neeko_rating != null ? Number(row.neeko_rating).toFixed(1) : null;
 
-  const edgeLabel = edge != null && edgeSign != null
-    ? `${edgeSign} vs BE — ${edge >= 15 ? "strong underpriced play" : edge >= 5 ? "moderate edge" : edge >= -5 ? "near breakeven" : "price risk"}`
+  const edgeLabel = rawEdgeExp != null && edgeSign != null
+    ? `${edgeSign} vs BE — ${rawEdgeExp >= 15 ? "strong underpriced play" : rawEdgeExp >= 5 ? "moderate edge" : rawEdgeExp >= -5 ? "near breakeven" : "price risk"}`
     : null;
 
   return (
@@ -189,8 +190,8 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
       <SortableTh label="Proj" col="projection_final" width={90} tooltip="Expected fantasy points this round" />
       <SortableTh label="BE" col="form_score" width={80} tooltip="Breakeven — score needed to maintain price" />
       <SortableTh label="Edge" col="projection_final" width={80} tooltip="Projection minus Breakeven. Green = clears BE. Red = price risk." />
-      <Th label="Action" locked={!isPremium} width={110} />
-      <th className={`${TH} text-left text-white/35`} style={{ width: 220, minWidth: 180 }}>Why</th>
+      <Th label="Action" locked={!isPremium} width={100} />
+      <th className={`${TH} text-left text-white/35`} style={{ width: 160, minWidth: 140 }}>Why</th>
     </tr>
   );
 }
@@ -287,12 +288,12 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           <EdgeCell row={row} />
         </td>
 
-        <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 110 }}>
+        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 100 }}>
           {isLocked ? (
             <LockedCell onClick={onUpgrade} />
           ) : displayRec ? (
             <span
-              className="inline-block rounded-md border px-2.5 py-1 text-[11px] font-bold whitespace-nowrap"
+              className="inline-block rounded-md border px-2 py-1 text-[11px] font-bold whitespace-nowrap"
               style={(() => {
                 const rc = resolveRecommendationColor(row.recommendation_color, displayRec);
                 return { color: rc, background: `${rc}18`, borderColor: `${rc}40` };
@@ -303,11 +304,11 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           ) : <span className="text-white/20 text-xs">—</span>}
         </td>
 
-        <td className="px-4 py-3 text-left" style={{ width: 220, maxWidth: 220 }}>
+        <td className="px-3 py-3 text-left" style={{ width: 160, maxWidth: 160 }}>
           {isLocked ? (
             <span className="text-[11px] text-white/20 italic">Unlock to view</span>
           ) : (
-            <span className="block text-[12px] text-white/45 leading-snug truncate max-w-[200px]">
+            <span className="block text-[12px] text-white/45 leading-snug truncate max-w-[148px]">
               {shortWhy}
             </span>
           )}
@@ -435,7 +436,9 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
     ? Math.round(parseFloat(String(row.breakeven)))
     : null;
   const proj = row.projection_final ?? null;
-  const edge = be !== null && proj !== null && !row.is_bye ? Math.round(proj - be) : null;
+  const rawEdgeFree = be !== null && proj !== null && !row.is_bye ? Math.round(proj - be) : null;
+  const edge = rawEdgeFree !== null ? (rawEdgeFree > 40 ? 40 : rawEdgeFree < -40 ? -40 : rawEdgeFree) : null;
+  const edgeDisplay = rawEdgeFree === null ? null : rawEdgeFree > 40 ? "40+" : rawEdgeFree < -40 ? "-40+" : (edge! > 0 ? `+${edge}` : String(edge));
 
   const edgeColor = edge === null ? "text-white/20" :
     edge >= 20 ? "text-emerald-400 font-semibold" :
@@ -471,9 +474,9 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
         <span className="text-sm tabular-nums text-white/55">{be !== null ? be : "—"}</span>
       </td>
       <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 80 }}>
-        {edge !== null ? (
+        {edgeDisplay !== null ? (
           <div className="flex flex-col items-center gap-0.5">
-            <span className={`text-sm tabular-nums ${edgeColor}`}>{edge > 0 ? `+${edge}` : edge}</span>
+            <span className={`text-sm tabular-nums ${edgeColor}`}>{edgeDisplay}</span>
             <span className="text-[9px] text-white/25 leading-none">vs BE</span>
           </div>
         ) : (

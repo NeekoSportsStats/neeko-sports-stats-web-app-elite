@@ -19,7 +19,21 @@ function computeEdge(row: RankingRow): number | null {
       ? Math.round(parseFloat(String(row.breakeven)))
       : null;
   if (proj === null || be === null) return null;
-  return Math.round(proj - be);
+  const raw = Math.round(proj - be);
+  return raw > 40 ? 40 : raw < -40 ? -40 : raw;
+}
+
+function computeEdgeDisplay(row: RankingRow): string | null {
+  const proj = row.projection_final ?? null;
+  const be =
+    row.breakeven !== null && row.breakeven !== undefined
+      ? Math.round(parseFloat(String(row.breakeven)))
+      : null;
+  if (proj === null || be === null) return null;
+  const raw = Math.round(proj - be);
+  if (raw > 40) return "40+";
+  if (raw < -40) return "-40+";
+  return raw > 0 ? `+${raw}` : String(raw);
 }
 
 function edgeColor(edge: number): string {
@@ -30,17 +44,17 @@ function edgeColor(edge: number): string {
 }
 
 function buildShortWhy(row: RankingRow, action: string): string {
-  const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
   const be = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
+  const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
   const diff = proj != null && be != null ? Math.round(proj - be) : null;
 
-  if (diff === null || proj === null) return row.why ?? "";
+  if (diff === null) return row.why ?? "";
 
   const label = action.toUpperCase();
-  if (label === "BUY" || label === "STRONG BUY") return `+${diff} vs BE (${proj})`;
-  if (label === "HOLD") return `Near BE (${proj})`;
-  if (label === "AVOID" || label === "SELL") return `${diff > 0 ? "+" : ""}${diff} vs BE (${proj})`;
-  return `Edge ${diff > 0 ? "+" : ""}${diff} (${proj})`;
+  if (label === "BUY" || label === "STRONG BUY") return `+${diff} vs BE`;
+  if (label === "HOLD") return "Near BE";
+  if (label === "AVOID" || label === "SELL") return `${diff >= 0 ? "+" : ""}${diff} vs BE`;
+  return `${diff >= 0 ? "+" : ""}${diff} vs BE`;
 }
 
 // ─── Action badge ─────────────────────────────────────────────────────────────
@@ -116,10 +130,11 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
   const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
   const be = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
   const edge = computeEdge(row);
-  const edgeSign = edge != null ? (edge > 0 ? `+${edge}` : String(edge)) : null;
+  const edgeDisplayStr = computeEdgeDisplay(row);
+  const rawEdgeSec = row.projection_final != null && row.breakeven != null ? Math.round(row.projection_final - parseFloat(String(row.breakeven))) : null;
 
-  const edgeLabel = edge != null && edgeSign != null
-    ? `${edgeSign} vs BE — ${edge >= 15 ? "strong underpriced play" : edge >= 5 ? "moderate edge" : edge >= -5 ? "near breakeven" : "price risk"}`
+  const edgeLabel = edge != null && edgeDisplayStr != null
+    ? `${edgeDisplayStr} vs BE — ${rawEdgeSec != null && rawEdgeSec >= 15 ? "strong underpriced play" : rawEdgeSec != null && rawEdgeSec >= 5 ? "moderate edge" : rawEdgeSec != null && rawEdgeSec >= -5 ? "near breakeven" : "price risk"}`
     : null;
 
   const longWhy = (row as any).long ?? row.why ?? null;
@@ -187,7 +202,7 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
           <div className="flex flex-col gap-0.5">
             <span className="text-[10px] text-white/30 font-normal">Edge</span>
             <span className={`text-[13px] font-bold tabular-nums ${edgeColor(edge)}`}>
-              {edge > 0 ? `+${edge}` : edge}
+              {computeEdgeDisplay(row) ?? edge}
             </span>
           </div>
         )}
@@ -279,7 +294,7 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
             <div className="flex flex-col items-start px-2">
               <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Edge</span>
               <span className={`text-[14px] font-bold tabular-nums ${edgeColor(edge)}`}>
-                {edge > 0 ? `+${edge}` : edge}
+                {computeEdgeDisplay(row) ?? edge}
               </span>
             </div>
           </>
