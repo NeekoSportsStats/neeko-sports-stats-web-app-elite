@@ -1024,13 +1024,7 @@ function CollapsibleSEOGuide() {
   const [open, setOpen] = useState(false);
 
   return (
-    <div
-      className="rounded-xl overflow-hidden transition-all duration-200"
-      style={{
-        background: "rgba(255,255,255,0.02)",
-        border: "1px solid rgba(255,255,255,0.06)",
-      }}
-    >
+    <div className="rounded-2xl overflow-hidden border border-white/[0.06] bg-white/[0.02]">
       {/* Crawler-visible summary (always in DOM, visually hidden) */}
       <div className="sr-only">
         AFL Fantasy Edge Board Guide: Captain Lock — double the player with the highest projected ceiling and favourable matchup. Breakout Value — underpriced players primed to rise. Fade / Trap — overpriced players to bench or trade before lockout. Picks refresh weekly after price changes.
@@ -1042,8 +1036,8 @@ function CollapsibleSEOGuide() {
         aria-expanded={open}
       >
         <div>
-          <span className="text-[12px] font-semibold text-white/50">AFL Fantasy Edge Board Guide</span>
-          <span className="hidden sm:inline text-[11px] text-white/25 ml-2">— how it works, scoring logic &amp; strategy</span>
+          <p className="text-[12px] font-semibold text-white/55">AFL Edge Board Guide</p>
+          <p className="text-[11px] text-white/25 mt-0.5">How the model finds captain locks, value plays and traps</p>
         </div>
         <ChevronDown
           className="w-3.5 h-3.5 text-white/25 shrink-0 transition-transform duration-200"
