@@ -174,49 +174,79 @@ export function LandingMarketWatchSample() {
   useEffect(() => {
     (async () => {
       try {
-        // Try v_mw_free first (already balanced: 3 TARGET + 3 WATCH + 3 AVOID)
-        let { data, error } = await supabase
+        // v_mw_free does not expose status/injury columns — select only what exists
+        const { data: freeData, error: freeError } = await supabase
           .from("v_mw_free")
-          .select("player_id, player_name, team, position, projection, breakeven, value_score, category, price, is_injured, is_bye, status, manual_status, value_label, matchup_label, recommendation_short, action")
-          .limit(12);
+          .select("player_id, player_name, team, position, projection, breakeven, value_score, category, action, price, value_label, matchup_label, recommendation_short")
+          .limit(30);
 
-        // Fallback to v_mw_premium if v_mw_free fails
-        if (error || !data || data.length === 0) {
-          console.log("[LandingMW] Falling back to v_mw_premium");
-          const premiumResult = await supabase
-            .from("v_mw_premium")
-            .select("player_id, player_name, team, position, projection, breakeven, value_score, action, price, ai_recommendation, recommendation_short, matchup_label")
-            .limit(6);
+        type RawRow = {
+          player_id: number;
+          player_name: string;
+          team: string;
+          position: string | null;
+          projection: number | null;
+          breakeven: number | null;
+          value_score: number | null;
+          category: string | null;
+          action: string | null;
+          price: number | null;
+          value_label: string | null;
+          matchup_label: string | null;
+          recommendation_short: string | null;
+        };
 
-          data = (premiumResult.data ?? []).map(p => ({
-            ...p,
-            category: p.action, // Map action to category
-            is_injured: false,
-            is_bye: false,
-            status: null,
-            manual_status: null,
-            value_label: null,
-          }));
+        let rawRows: RawRow[] = [];
+
+        if (!freeError && freeData && freeData.length > 0) {
+          rawRows = freeData as RawRow[];
+        } else {
+          // Fallback: get balanced set from v_mw_premium
+          const [buyRes, holdRes, sellRes] = await Promise.all([
+            supabase
+              .from("v_mw_premium")
+              .select("player_id, player_name, team, position, projection, breakeven, value_score, action, price, value_label, matchup_label, recommendation_short")
+              .eq("action", "BUY")
+              .limit(5),
+            supabase
+              .from("v_mw_premium")
+              .select("player_id, player_name, team, position, projection, breakeven, value_score, action, price, value_label, matchup_label, recommendation_short")
+              .eq("action", "HOLD")
+              .limit(5),
+            supabase
+              .from("v_mw_premium")
+              .select("player_id, player_name, team, position, projection, breakeven, value_score, action, price, value_label, matchup_label, recommendation_short")
+              .eq("action", "SELL")
+              .limit(5),
+          ]);
+          rawRows = [
+            ...(buyRes.data ?? []),
+            ...(holdRes.data ?? []),
+            ...(sellRes.data ?? []),
+          ] as RawRow[];
         }
 
-        // Filter out injured/bye players for cleaner sample
-        const availableRows = (data ?? []).filter((r: any) => {
-          const isInjured = r.is_injured === true || r.status === 'injured' || r.manual_status === 'injured';
-          const isBye = r.is_bye === true || r.status === 'bye' || r.manual_status === 'bye';
-          return !isInjured && !isBye;
-        }) as MarketWatchRow[];
+        // Normalise: use category field, fall back to action field
+        const availableRows: MarketWatchRow[] = rawRows.map(r => ({
+          ...r,
+          category: (r.category ?? r.action ?? null),
+          is_injured: null,
+          is_bye: null,
+          status: null,
+          manual_status: null,
+        }));
 
-        // Support both old (TARGET/WATCH/AVOID) and new (BUY/HOLD/SELL) values
+        // Bucket by normalised category — category is already resolved from action above
         const targets = availableRows.filter(r => {
-          const cat = ((r.category ?? r.action) ?? '').toUpperCase();
+          const cat = (r.category ?? '').toUpperCase();
           return cat === 'TARGET' || cat === 'BUY';
         });
         const watches = availableRows.filter(r => {
-          const cat = ((r.category ?? r.action) ?? '').toUpperCase();
+          const cat = (r.category ?? '').toUpperCase();
           return cat === 'WATCH' || cat === 'HOLD';
         });
         const avoids = availableRows.filter(r => {
-          const cat = ((r.category ?? r.action) ?? '').toUpperCase();
+          const cat = (r.category ?? '').toUpperCase();
           return cat === 'AVOID' || cat === 'SELL';
         });
 
