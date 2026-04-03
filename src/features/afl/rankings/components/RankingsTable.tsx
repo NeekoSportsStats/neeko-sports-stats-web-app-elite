@@ -1,3 +1,4 @@
+import React from "react";
 import { ChevronDown, ChevronUp, Lock, Crown, TrendingUp } from "lucide-react";
 import { RankingRow, SortKey, SortDir, RankingsTab, RowTier } from "./types";
 import {
@@ -331,13 +332,13 @@ export function ConversionWallRow({ onUpgrade, colSpan = TOTAL_COLS }: { onUpgra
   );
 }
 
-const FREE_TOTAL_COLS = 5;
+const FREE_TOTAL_COLS = 6;
 
 function getFreeValueLabel(score: number | null | undefined): { label: string; cls: string } {
   if (score == null) return { label: "—", cls: "text-white/30" };
-  if (score >= 15) return { label: "🔥 VALUE", cls: "text-emerald-400" };
-  if (score >= 5)  return { label: "⚖️ NEUTRAL", cls: "text-[#F5C84C]" };
-  return { label: "⚠️ RISK", cls: "text-red-400" };
+  if (score >= 15) return { label: "VALUE", cls: "text-emerald-400" };
+  if (score >= 5)  return { label: "NEUTRAL", cls: "text-[#F5C84C]" };
+  return { label: "RISK", cls: "text-red-400" };
 }
 
 function getFreeValueBg(score: number | null | undefined): string {
@@ -347,10 +348,43 @@ function getFreeValueBg(score: number | null | undefined): string {
   return "bg-red-500/10 border-red-500/25";
 }
 
-function shortenWhy(text: string): string {
-  if (!text) return "";
-  const clean = text.replace(/\bis\b|\bhas\b|\bwith\b|\bthat\b|\bthis\b/gi, "").replace(/\s{2,}/g, " ").trim();
-  return clean.length > 90 ? clean.slice(0, 90) + "..." : clean;
+type ActionLabel = "BUY" | "HOLD" | "WATCH" | "AVOID";
+
+function getActionLabel(row: RankingRow): ActionLabel {
+  const value = row.value_score ?? 0;
+  const projection = row.projection_final ?? 0;
+  const breakeven = row.breakeven ?? 0;
+  const gap = projection - breakeven;
+  if (value >= 15 && gap > 10) return "BUY";
+  if (value >= 8 && gap > 0) return "HOLD";
+  if (value < 5 && gap < 0) return "AVOID";
+  return "WATCH";
+}
+
+const ACTION_STYLES: Record<ActionLabel, { text: string; bg: string; border: string }> = {
+  BUY:   { text: "text-emerald-300", bg: "bg-emerald-500/15", border: "border-emerald-500/35" },
+  HOLD:  { text: "text-sky-300",     bg: "bg-sky-500/15",     border: "border-sky-500/30" },
+  WATCH: { text: "text-[#F5C84C]",   bg: "bg-[#F5C84C]/10",  border: "border-[#F5C84C]/30" },
+  AVOID: { text: "text-red-400",     bg: "bg-red-500/12",     border: "border-red-500/30" },
+};
+
+const ACTION_WHY_PREFIX: Record<ActionLabel, string> = {
+  BUY:   "BUY: ",
+  HOLD:  "HOLD: ",
+  WATCH: "WATCH: ",
+  AVOID: "AVOID: ",
+};
+
+function shortenWhy(text: string, action: ActionLabel): string {
+  if (!text) return ACTION_WHY_PREFIX[action] + "Insufficient data";
+  const stripped = text
+    .replace(/\b[A-Z][a-z]+ [A-Z][a-z]+\b/g, "")
+    .replace(/\$[\d,.]+[MKk]?/g, "")
+    .replace(/\bis\b|\bhas\b|\bwith\b|\bthat\b|\bthis\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  const prefixed = ACTION_WHY_PREFIX[action] + stripped;
+  return prefixed.length > 90 ? prefixed.slice(0, 90) + "..." : prefixed;
 }
 
 export function FreeTableHeader() {
@@ -370,6 +404,7 @@ export function FreeTableHeader() {
           <InfoTooltip text="Points per dollar — higher means better value for money" />
         </span>
       </th>
+      <th className={`${TH} text-white/70 font-semibold`} style={{ width: 88, minWidth: 80 }}>Action</th>
       <th className={`${TH} text-left text-white/40`} style={{ minWidth: 180 }}>Why</th>
     </tr>
   );
@@ -387,11 +422,17 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
   const { label: valueLabel, cls: valueCls } = getFreeValueLabel(row.value_score ?? null);
   const valueBg = getFreeValueBg(row.value_score ?? null);
 
-  const valueGap = row.value_score != null ? Number(row.value_score) : null;
-  const valueGapStr = valueGap != null
-    ? (valueGap >= 0 ? `+${valueGap.toFixed(1)}` : valueGap.toFixed(1))
-    : null;
-  const valueGapCls = valueGap == null ? "" : valueGap >= 0 ? "text-emerald-400" : "text-red-400";
+  const action = getActionLabel(row);
+  const actionStyle = ACTION_STYLES[action];
+
+  const isFading = idx >= 5;
+  const rowFadeStyle: React.CSSProperties = isFading
+    ? {
+        opacity: Math.max(0.4, 1 - (idx - 4) * 0.2),
+        filter: idx >= 7 ? "blur(1.2px)" : "none",
+        touchAction: "manipulation",
+      }
+    : { touchAction: "manipulation" };
 
   const statusBadge = (() => {
     if (row.manual_status === "OUT" || (!row.manual_status && row.status === "OUT"))
@@ -406,7 +447,7 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
   return (
     <tr
       className="border-b border-white/[0.04] transition-colors duration-100 cursor-pointer hover:bg-white/[0.07] group"
-      style={{ touchAction: "manipulation" }}
+      style={rowFadeStyle}
       onClick={onRowClick}
     >
       <td className="px-3 py-3 text-sm text-white/30 tabular-nums text-center whitespace-nowrap" style={{ width: 44, minWidth: 44 }}>
@@ -426,11 +467,6 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
             <span className="text-[11px] text-white/40">
               {row.team}{row.position ? ` · ${row.position}` : ""}
             </span>
-            {valueGapStr && (
-              <span className={`text-[10px] font-semibold tabular-nums ${valueGapCls}`}>
-                value gap: {valueGapStr}
-              </span>
-            )}
           </div>
         </div>
       </td>
@@ -445,14 +481,15 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
           {valueLabel}
         </span>
       </td>
+      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 88, minWidth: 80 }}>
+        <span className={`inline-block rounded-md px-2.5 py-1 text-[11px] font-extrabold tracking-wide border ${actionStyle.text} ${actionStyle.bg} ${actionStyle.border}`}>
+          {action}
+        </span>
+      </td>
       <td className="px-4 py-3 text-left align-middle" style={{ minWidth: 180, maxWidth: 280 }}>
-        {(() => {
-          const whyText = row.why ?? null;
-          const short = whyText ? shortenWhy(whyText) : null;
-          return short
-            ? <span className="text-xs text-white/55 leading-snug block">{short}</span>
-            : <span className="text-white/20 text-xs">—</span>;
-        })()}
+        <span className="text-xs text-white/55 leading-snug block">
+          {shortenWhy(row.why ?? "", action)}
+        </span>
       </td>
     </tr>
   );
@@ -460,8 +497,16 @@ export function FreeTableRow({ row, idx, onRowClick }: FreeTableRowProps) {
 
 export function FreeConversionWallRow({ onUpgrade }: { onUpgrade: () => void }) {
   return (
-    <tr>
-      <td colSpan={FREE_TOTAL_COLS} className="px-4 pt-6 pb-8">
+    <>
+      <tr>
+        <td colSpan={FREE_TOTAL_COLS} className="px-4 pt-5 pb-2 text-center">
+          <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest">
+            More high-confidence picks hidden below
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td colSpan={FREE_TOTAL_COLS} className="px-4 pt-2 pb-8">
         <div
           className="relative flex flex-col items-center gap-4 rounded-2xl border border-[#F5C84C]/25 bg-gradient-to-b from-[#F5C84C]/[0.07] via-[#0d0d0d] to-[#0a0a0a] px-8 py-10 text-center overflow-hidden hover:border-[#F5C84C]/40 transition-all duration-200 cursor-pointer"
           onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
@@ -504,6 +549,7 @@ export function FreeConversionWallRow({ onUpgrade }: { onUpgrade: () => void }) 
         </div>
       </td>
     </tr>
+    </>
   );
 }
 

@@ -624,7 +624,7 @@ export default function AFLRankingsPage() {
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
                 <p className="text-sm text-white/45 mt-1.5 max-w-lg leading-relaxed">
-                  Top 8 players this week — updated using live projections and AI analysis
+                  AI-ranked BUY, HOLD &amp; AVOID picks for this round
                 </p>
               </div>
               <div className="flex items-center gap-2 mt-1 shrink-0">
