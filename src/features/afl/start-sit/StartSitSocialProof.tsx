@@ -8,11 +8,9 @@ export interface QuickFillPlayer {
   team: string | null;
   position: string | null;
   projection_final: number | null;
-  ceiling: number | null;
-  floor: number | null;
-  projection_confidence: number | null;
-  risk_rating: number | null;
+  edge_score: number | null;
   neeko_rating: number | null;
+  summary_short?: string | null;
 }
 
 interface SocialProofMatchup {

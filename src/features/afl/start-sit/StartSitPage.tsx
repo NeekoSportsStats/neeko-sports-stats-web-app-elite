@@ -24,13 +24,9 @@ interface PlayerOption {
   team: string | null;
   position: string | null;
   projection_final: number | null;
-  ceiling: number | null;
-  floor: number | null;
-  ceiling_estimate?: number | null;
-  floor_estimate?: number | null;
-  projection_confidence: number | null;
-  risk_rating: number | null;
+  edge_score: number | null;
   neeko_rating: number | null;
+  summary_short: string | null;
 }
 
 interface CompareResult {
@@ -182,17 +178,18 @@ export default function StartSitPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    const viewName = isPremium ? "v_rankings_master" : "v_rankings_free";
     supabase
-      .from(viewName)
-      .select("player_id, player_name, team, position, projection_final, ceiling, floor, projection_confidence, risk_rating, neeko_rating")
+      .from("player_rankings_cache")
+      .select("player_id, player_name, team, position, projection_final, edge_score, neeko_rating, summary_short")
       .not("player_id", "is", null)
-      .order("neeko_rating", { ascending: false })
-      .limit(isPremium ? 400 : 100)
+      .gte("games_played", 3)
+      .gt("projection_final", 50)
+      .order("projection_final", { ascending: false })
+      .limit(100)
       .then(({ data }) => {
         if (data) setTopPlayers(data as PlayerOption[]);
       });
-  }, [authLoading, isPremium]);
+  }, [authLoading]);
 
   useEffect(() => {
     const pA = searchParams.get("playerA");
@@ -204,10 +201,9 @@ export default function StartSitPage() {
       const ids = [pA, pB].filter(Boolean) as string[];
       if (ids.length === 0) return;
 
-      const viewName = isPremium ? "v_rankings_master" : "v_rankings_free";
       const { data } = await supabase
-        .from(viewName)
-        .select("player_id, player_name, team, position, projection_final, ceiling, floor, projection_confidence, risk_rating, neeko_rating")
+        .from("player_rankings_cache")
+        .select("player_id, player_name, team, position, projection_final, edge_score, neeko_rating, summary_short")
         .in("player_name", ids.map((n) => n.replace(/-/g, " ")));
 
       if (!data) return;
@@ -217,7 +213,7 @@ export default function StartSitPage() {
     }
 
     prefillFromUrl();
-  }, [searchParams, authLoading, isPremium]);
+  }, [searchParams, authLoading]);
 
   const handlePlayerAChange = useCallback((p: PlayerOption | null) => {
     setPlayerA(p);

@@ -717,7 +717,8 @@ Deno.serve(async (req: Request) => {
     const hiId = playerAId < playerBId ? playerBId : playerAId;
 
     const { data: players, error: playersError } = await serviceClient
-      .from("v_rankings_master")
+      .schema("afl")
+      .from("player_rankings_cache")
       .select(
         `player_id, player_name, team, position,
          projection_final, ceiling, floor,
