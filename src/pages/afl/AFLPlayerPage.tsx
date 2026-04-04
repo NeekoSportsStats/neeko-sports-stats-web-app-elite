@@ -45,7 +45,6 @@ interface PlayerData {
   neeko_rating: number | null;
   neeko_rating_scaled?: number | null;
   signal?: string | null;
-  ai_recommendation?: string | null;
   recommendation_color?: string | null;
   recommendation_short?: string | null;
   summary_short?: string | null;

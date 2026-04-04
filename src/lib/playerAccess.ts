@@ -83,7 +83,6 @@ export function sanitizeLockedPlayerData<T extends {
   player_id?: number | null;
   summary_short?: string | null;
   summary_long?: string | null;
-  ai_recommendation?: string | null;
   value_score?: number | null;
   best_value_score?: number | null;
   avg_last_3?: number | null;
@@ -108,7 +107,6 @@ export function sanitizeLockedPlayerData<T extends {
     ...player,
     summary_short: null,
     summary_long: null,
-    ai_recommendation: null,
     value_score: null,
     best_value_score: null,
     avg_last_3: null,

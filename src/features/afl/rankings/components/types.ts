@@ -26,7 +26,6 @@ export interface RankingRow {
   best_value_score: number | null;
   value_tag: string | null;
   value_tier: string | null;
-  ai_recommendation: string | null;
   recommendation_strength: string | null;
   ai_updated_at: string | null;
   recommendation_color: string | null;
@@ -51,10 +50,6 @@ export interface RankingRow {
   long: string | null;
   /** Single-source decision: START / SIT / CONSIDER */
   start_sit_decision: string | null;
-  /** Legacy computed edge score 0–100 from rankings cache */
-  edge_score: number | null;
-  /** Edge tier label: Elite Edge / Strong Edge / Playable Edge / Monitor */
-  edge_tier: string | null;
   /** Market watch signal: TARGET | WATCH | AVOID */
   market_watch_category: string | null;
   /** 3-level signal tag for backwards compat: TARGET | WATCH | AVOID */
