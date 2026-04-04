@@ -138,16 +138,6 @@ function edgeColor(edge: number): string {
   return "text-red-400";
 }
 
-function buildShortWhy(row: RankingRow, action: string): string {
-  const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
-  const label = action.toUpperCase();
-
-  if (label === "BUY" || label === "STRONG BUY") return "Projected strong, well above breakeven";
-  if (label === "HOLD") return "Projection near breakeven, stable output";
-  if (label === "AVOID" || label === "SELL") return "Below breakeven, limited scoring upside";
-  if (label === "WATCH") return "Slight value edge, monitor closely";
-  return "Slight value edge, monitor closely";
-}
 
 // ─── Action badge ─────────────────────────────────────────────────────────────
 
@@ -400,7 +390,7 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
   const edge = computeEdge(row);
 
   const displayRec = getDisplayRecommendation(row, activeTab);
-  const shortWhy = isPremium && displayRec ? buildShortWhy(row, displayRec) : null;
+  const shortWhy = isPremium ? (row.why ?? null) : null;
 
   function handleTap() {
     if (isPremium) {
@@ -469,9 +459,9 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
 
       {/* Row 3 — Short WHY + tap affordance */}
       {isPremium ? (
-        <div className="pl-7 flex items-center justify-between gap-2">
+        <div className="pl-7 flex items-start justify-between gap-2">
           {shortWhy ? (
-            <span className="text-[12px] text-white/45 leading-none">{shortWhy}</span>
+            <span className="text-[12px] text-white/45 leading-snug line-clamp-2 max-w-[240px]">{shortWhy}</span>
           ) : (
             <span className="text-[11px] text-white/20 italic leading-none">—</span>
           )}
