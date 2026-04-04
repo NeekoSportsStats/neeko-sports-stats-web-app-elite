@@ -330,6 +330,7 @@ export default function AFLRankingsPage() {
       edge_score:           r.edge_score != null ? Number(r.edge_score) : null,
       edge_tier:            r.edge_tier ?? null,
       market_watch_category: r.market_watch_category ?? null,
+      signal_tag:           r.signal_tag ?? null,
       upside_pct:           r.upside_pct != null ? Number(r.upside_pct) : null,
       status:               r.status ?? null,
       manual_status:        r.manual_status ?? null,

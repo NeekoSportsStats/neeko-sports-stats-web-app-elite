@@ -45,6 +45,8 @@ export interface RankingRow {
   edge_tier: string | null;
   /** Market watch signal: BUY TARGET / SELL / TRENDING UP / CASH COW / TRAP */
   market_watch_category: string | null;
+  /** Single source of truth signal: TARGET | WATCH | AVOID */
+  signal_tag: string | null;
   /** Upside percentage from breakout model */
   upside_pct: number | null;
   /** AI summary text */

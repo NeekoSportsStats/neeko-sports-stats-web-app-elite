@@ -30,8 +30,8 @@ function price(row: MWPlayerRow): number {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CORE CLASSIFICATION ENGINE
-// Signal comes from the DB (value_gap threshold logic).
-// Frontend only filters out unavailable players — no re-classification.
+// signal_tag is the single source of truth from DB — no frontend re-classification.
+// TARGET → buys, WATCH → holds, AVOID → sells
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
@@ -59,10 +59,11 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   const sells: DerivedPlayer[] = [];
 
   for (const p of filtered) {
-    const sig = (p.category ?? 'HOLD').toUpperCase() as MWSignal;
-    if (sig === 'BUY')       buys.push(tag(p, 'BUY'));
-    else if (sig === 'SELL') sells.push(tag(p, 'SELL'));
-    else                     holds.push(tag(p, 'HOLD'));
+    // signal_tag is the canonical source — fall back to category only if signal_tag missing
+    const sig = p.signal_tag ?? (p.category ?? 'HOLD').toUpperCase();
+    if (sig === 'TARGET' || sig === 'BUY')      buys.push(tag(p, 'BUY'));
+    else if (sig === 'AVOID' || sig === 'SELL') sells.push(tag(p, 'SELL'));
+    else                                         holds.push(tag(p, 'HOLD'));
   }
 
   return { buys, holds, sells };

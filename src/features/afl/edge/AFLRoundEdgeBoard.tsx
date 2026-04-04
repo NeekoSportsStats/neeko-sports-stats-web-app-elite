@@ -34,6 +34,7 @@ interface RankingRow {
   ai_summary: string | null;
   summary_short: string | null;
   ai_recommendation: string | null;
+  signal_tag: string | null;
   refreshed_at: string | null;
   edge_score: number | null;
 }
@@ -220,7 +221,8 @@ function getPrimaryMetric(row: RankingRow, section: Section): { label: string; v
   }
 }
 
-function mapRecommendationToSignal(rec: string | null): "TARGET" | "WATCH" | "AVOID" | null {
+function mapRecommendationToSignal(signal_tag: string | null, rec: string | null): "TARGET" | "WATCH" | "AVOID" | null {
+  if (signal_tag === "TARGET" || signal_tag === "WATCH" || signal_tag === "AVOID") return signal_tag;
   switch (rec) {
     case "STRONG_BUY":
     case "BUY":
@@ -245,8 +247,8 @@ function mapRecommendationToAction(rec: string | null): string {
   }
 }
 
-function getSignalStyles(rec: string | null): { label: string; color: string; bg: string; border: string } | null {
-  const signal = mapRecommendationToSignal(rec);
+function getSignalStyles(signal_tag: string | null, rec: string | null): { label: string; color: string; bg: string; border: string } | null {
+  const signal = mapRecommendationToSignal(signal_tag, rec);
   if (signal === null) return null;
   const action = mapRecommendationToAction(rec);
   if (signal === "TARGET") return { label: `${signal} — ${action}`, color: "text-green-300", bg: "bg-green-500/10", border: "border-green-500/25" };
@@ -527,8 +529,8 @@ interface PlayerAnalysisModalProps {
 function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: PlayerAnalysisModalProps) {
   const cfg = getSectionLabel(section);
   const metric = getPrimaryMetric(row, section);
-  const signal = mapRecommendationToSignal(row.ai_recommendation);
-  const reco = getSignalStyles(row.ai_recommendation);
+  const signal = mapRecommendationToSignal(row.signal_tag, row.ai_recommendation);
+  const reco = getSignalStyles(row.signal_tag, row.ai_recommendation);
   const conf = row.projection_confidence;
   const reasons = buildConfidenceReasons(row, section);
   const [shared, setShared] = useState(false);
@@ -770,7 +772,7 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
   const conf = row.projection_confidence;
   const oneLiner = row.summary_short ? truncateWords(row.summary_short, 9) : null;
   const isCaptain = section === "captain";
-  const signal = mapRecommendationToSignal(row.ai_recommendation);
+  const signal = mapRecommendationToSignal(row.signal_tag, row.ai_recommendation);
   const action = mapRecommendationToAction(row.ai_recommendation);
 
   return (
@@ -1213,6 +1215,7 @@ export default function AFLRoundEdgeBoard() {
           ai_summary:            r.ai_summary ?? null,
           summary_short:         r.summary_short ?? null,
           ai_recommendation:     r.ai_recommendation ?? null,
+          signal_tag:            r.signal_tag ?? null,
           refreshed_at:          r.refreshed_at ?? null,
           edge_score:            r.edge_score != null ? Number(r.edge_score) : null,
         }));
