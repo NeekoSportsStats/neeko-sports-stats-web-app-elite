@@ -32,6 +32,8 @@ interface RankingRow {
   price_change: number | null;
   value_score: number | null;
   ai_summary: string | null;
+  summary_short: string | null;
+  ai_recommendation: string | null;
   refreshed_at: string | null;
   edge_score: number | null;
 }
@@ -218,25 +220,32 @@ function getPrimaryMetric(row: RankingRow, section: Section): { label: string; v
   }
 }
 
-function getSignal(edge: number | null): "TARGET" | "WATCH" | "AVOID" {
-  const e = edge ?? 0;
-  if (e > 5)  return "TARGET";
-  if (e >= -5) return "WATCH";
-  return "AVOID";
+function mapRecommendationToSignal(rec: string | null): "TARGET" | "WATCH" | "AVOID" {
+  switch (rec) {
+    case "STRONG_BUY":
+    case "BUY":
+      return "TARGET";
+    case "SELL":
+    case "STRONG_SELL":
+      return "AVOID";
+    default:
+      return "WATCH";
+  }
 }
 
-function getAction(edge: number | null): string {
-  const e = edge ?? 0;
-  if (e >= 15) return "STRONG BUY";
-  if (e >= 6)  return "BUY";
-  if (e >= -5) return "HOLD";
-  if (e >= -14) return "SELL";
-  return "STRONG SELL";
+function mapRecommendationToAction(rec: string | null): string {
+  switch (rec) {
+    case "STRONG_BUY": return "STRONG BUY";
+    case "BUY":        return "BUY";
+    case "SELL":       return "SELL";
+    case "STRONG_SELL": return "STRONG SELL";
+    default:           return "HOLD";
+  }
 }
 
-function getSignalStyles(edge: number | null): { label: string; color: string; bg: string; border: string } {
-  const signal = getSignal(edge);
-  const action = getAction(edge);
+function getSignalStyles(rec: string | null): { label: string; color: string; bg: string; border: string } {
+  const signal = mapRecommendationToSignal(rec);
+  const action = mapRecommendationToAction(rec);
   if (signal === "TARGET") return { label: `${signal} — ${action}`, color: "text-green-300", bg: "bg-green-500/10", border: "border-green-500/25" };
   if (signal === "AVOID")  return { label: `${signal} — ${action}`, color: "text-red-300",   bg: "bg-red-500/10",   border: "border-red-500/25" };
   return { label: `${signal} — ${action}`, color: "text-yellow-300", bg: "bg-yellow-400/10", border: "border-yellow-400/25" };
@@ -515,13 +524,9 @@ interface PlayerAnalysisModalProps {
 function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: PlayerAnalysisModalProps) {
   const cfg = getSectionLabel(section);
   const metric = getPrimaryMetric(row, section);
-  const edge = Number(row.edge_score ?? 0);
-  const signal = getSignal(edge);
-  const action = getAction(edge);
-  const reco = getSignalStyles(edge);
+  const signal = mapRecommendationToSignal(row.ai_recommendation);
+  const reco = getSignalStyles(row.ai_recommendation);
   const conf = row.projection_confidence;
-
-  console.log({ player: row.player_name, edge, signal, action });
   const reasons = buildConfidenceReasons(row, section);
   const [shared, setShared] = useState(false);
 
@@ -647,10 +652,10 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
 
           {/* AI Analysis */}
           {isPremium ? (
-            row.ai_summary ? (
+            row.summary_short ? (
               <div>
                 <p className={`text-[9px] font-bold uppercase tracking-widest mb-2 ${cfg.accentText} opacity-70`}>AI Analysis</p>
-                <p className="text-[13px] text-white/75 leading-relaxed">{cleanAiText(row.ai_summary)}</p>
+                <p className="text-[13px] text-white/75 leading-relaxed">{cleanAiText(row.summary_short)}</p>
               </div>
             ) : (
               <p className="text-sm text-white/30 italic">No analysis available yet.</p>
@@ -758,11 +763,10 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
   const cfg = getSectionLabel(section);
   const metric = getPrimaryMetric(row, section);
   const conf = row.projection_confidence;
-  const oneLiner = row.ai_summary ? truncateWords(getOneLiner(row.ai_summary), 9) : null;
+  const oneLiner = row.summary_short ? truncateWords(row.summary_short, 9) : null;
   const isCaptain = section === "captain";
-  const edge = Number(row.edge_score ?? 0);
-  const signal = getSignal(edge);
-  const action = getAction(edge);
+  const signal = mapRecommendationToSignal(row.ai_recommendation);
+  const action = mapRecommendationToAction(row.ai_recommendation);
 
   return (
     <button
@@ -845,11 +849,6 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
                                 "text-yellow-300 bg-yellow-400/10 border-yellow-400/25"
         }`}>{signal}</span>
         <span className="text-[10px] text-white/30 font-semibold">{action}</span>
-        {row.edge_score != null && (
-          <span className={`ml-auto text-[10px] font-bold tabular-nums ${edge > 5 ? "text-green-400" : edge < -5 ? "text-red-400" : "text-yellow-400"}`}>
-            {edge > 0 ? `+${edge.toFixed(1)}` : edge.toFixed(1)}
-          </span>
-        )}
       </div>
 
       {/* View Analysis CTA */}
@@ -1179,42 +1178,35 @@ export default function AFLRoundEdgeBoard() {
         .filter((r: any) =>
           r.player_name &&
           r.team &&
+          r.ai_recommendation != null &&
           Number(r.projection_final ?? 0) > 0 &&
-          Number(r.price ?? 0) > 0 &&
-          Number(r.value_score ?? 0) > 0,
+          Number(r.price ?? 0) > 0,
         )
-        .map((r: any): RankingRow => {
-          const edge_score = r.edge_score != null ? Number(r.edge_score) : null;
-          const row: RankingRow = {
-            player_id:             r.player_id ?? null,
-            player_name:           r.player_name ?? "",
-            team:                  r.team ?? "",
-            position:              r.position ?? null,
-            section:               r.section ?? "",
-            section_rank:          r.section_rank ?? 0,
-            projection_final:      r.projection_final != null ? Number(r.projection_final) : null,
-            ceiling_estimate:      r.ceiling_estimate != null ? Number(r.ceiling_estimate) : null,
-            floor_estimate:        r.floor_estimate != null ? Number(r.floor_estimate) : null,
-            upside_rating:         r.upside_rating != null ? Number(r.upside_rating) : null,
-            risk_rating:           r.risk_rating != null ? Number(r.risk_rating) : null,
-            projection_confidence: r.projection_confidence != null ? Number(r.projection_confidence) : null,
-            captain_score:         r.captain_score != null ? Number(r.captain_score) : null,
-            captain_rating:        r.captain_rating ?? null,
-            neeko_rating:          r.neeko_rating != null ? Number(r.neeko_rating) : null,
-            price:                 r.price != null ? Number(r.price) : null,
-            price_change:          r.price_change != null ? Number(r.price_change) : null,
-            value_score:           r.value_score != null ? Number(r.value_score) : null,
-            ai_summary:            r.ai_summary ?? null,
-            refreshed_at:          r.refreshed_at ?? null,
-            edge_score,
-          };
-          const e = Number(edge_score ?? 0);
-          const computedSignal = e > 5 ? "TARGET" : e >= -5 ? "WATCH" : "AVOID";
-          if (e > 5 && computedSignal !== "TARGET") {
-            console.error("EDGE LOGIC BROKEN", row);
-          }
-          return row;
-        });
+        .map((r: any): RankingRow => ({
+          player_id:             r.player_id ?? null,
+          player_name:           r.player_name ?? "",
+          team:                  r.team ?? "",
+          position:              r.position ?? r.player_position ?? null,
+          section:               r.section ?? "",
+          section_rank:          r.section_rank ?? 0,
+          projection_final:      r.projection_final != null ? Number(r.projection_final) : null,
+          ceiling_estimate:      r.ceiling_estimate != null ? Number(r.ceiling_estimate) : null,
+          floor_estimate:        r.floor_estimate != null ? Number(r.floor_estimate) : null,
+          upside_rating:         r.upside_rating != null ? Number(r.upside_rating) : null,
+          risk_rating:           r.risk_rating != null ? Number(r.risk_rating) : null,
+          projection_confidence: r.projection_confidence != null ? Number(r.projection_confidence) : null,
+          captain_score:         r.captain_score != null ? Number(r.captain_score) : null,
+          captain_rating:        r.captain_rating ?? null,
+          neeko_rating:          r.neeko_rating != null ? Number(r.neeko_rating) : null,
+          price:                 r.price != null ? Number(r.price) : null,
+          price_change:          r.price_change != null ? Number(r.price_change) : null,
+          value_score:           r.value_score != null ? Number(r.value_score) : null,
+          ai_summary:            r.ai_summary ?? null,
+          summary_short:         r.summary_short ?? null,
+          ai_recommendation:     r.ai_recommendation ?? null,
+          refreshed_at:          r.refreshed_at ?? null,
+          edge_score:            r.edge_score != null ? Number(r.edge_score) : null,
+        }));
       setRows(mapped);
       setRefreshedAt(mapped[0]?.refreshed_at ?? null);
 
