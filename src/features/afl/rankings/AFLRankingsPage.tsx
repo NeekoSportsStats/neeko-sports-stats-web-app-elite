@@ -352,7 +352,8 @@ export default function AFLRankingsPage() {
       total_count:            r.total_count != null ? Number(r.total_count) : null,
       games_played:           r.games_played != null ? Number(r.games_played) : null,
       ai_updated_at:          r.ai_updated_at ?? null,
-      why: r.summary_short
+      why: r.why
+        ?? r.summary_short
         ?? r.recommendation_short
         ?? null,
       long: r.long

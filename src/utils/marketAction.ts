@@ -7,14 +7,14 @@ export function normalizeAction(action?: string | null): "BUY" | "HOLD" | "SELL"
 
   const normalized = action.toUpperCase().trim();
 
-  // BUY / TARGET / STRONG_BUY variants
-  if (["BUY", "TARGET", "STRONG_BUY"].includes(normalized)) return "BUY";
+  // BUY / TARGET variants
+  if (["BUY", "TARGET"].includes(normalized)) return "BUY";
 
   // HOLD / WATCH variants
   if (["HOLD", "WATCH"].includes(normalized)) return "HOLD";
 
-  // SELL / AVOID / STRONG_SELL variants
-  if (["SELL", "AVOID", "STRONG_SELL"].includes(normalized)) return "SELL";
+  // SELL / AVOID variants
+  if (["SELL", "AVOID"].includes(normalized)) return "SELL";
 
   return null;
 }

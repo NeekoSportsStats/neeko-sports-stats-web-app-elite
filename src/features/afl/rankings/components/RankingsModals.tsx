@@ -26,7 +26,7 @@ import {
   getValueScoreColor,
   getFormColor, getMatchupColor, getUpsideColor, getRiskColor,
   sharpenAIText, resolveRecommendationColor, isAITextStale,
-  normaliseConfidence, formatActionLabel,
+  normaliseConfidence,
 } from "./helpers";
 
 // ─── InfoTooltip ──────────────────────────────────────────────────────────────
@@ -889,7 +889,7 @@ export function PlayerDetailModal({
             >
               <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">AI Recommendation</p>
               <p className="text-base font-bold mb-2" style={{ color: recColor }}>
-                {formatActionLabel(row.ai_recommendation)}
+                {row.ai_recommendation}
               </p>
               {row.why && (
                 <p className="text-sm text-white/70 leading-relaxed">{row.why}</p>

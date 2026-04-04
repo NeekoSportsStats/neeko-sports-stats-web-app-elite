@@ -4,7 +4,6 @@ import { RankingRow, SortKey, SortDir, RankingsTab, RowTier } from "./types";
 import {
   fmt, fmtPrice,
   getDisplayRecommendation,
-  formatActionLabel,
   FREE_FULL_ROWS,
 } from "./helpers";
 import { InfoTooltip, LockedCell } from "./RankingsModals";
@@ -19,12 +18,23 @@ const FREE_TOTAL_COLS = 5;
 const TH = "bg-[#0a0a0a] px-3 py-2.5 text-[11px] font-medium uppercase tracking-wider whitespace-nowrap border-b border-white/10 text-center";
 
 // ─── WHY text resolver ─────────────────────────────────────────────────────────
-// Only uses summary_short — never constructs strings from numbers.
 
-function getWhyText(row: RankingRow): string {
-  const text = row.why?.trim() ?? "";
-  if (!text) return "—";
-  return text.slice(0, 60);
+function buildRichWhy(row: RankingRow): string {
+  if (row.why && row.why.trim().length > 0) return row.why.trim();
+
+  const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
+  const be = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
+
+  if (proj != null && be != null && !row.is_bye) {
+    const edge = proj - be;
+    if (edge > 0) return `Projected ${proj} pts — clears breakeven by ${edge}.`;
+    if (edge === 0) return `Projected ${proj} pts — exactly at breakeven.`;
+    return `Projected ${proj} pts — ${Math.abs(edge)} below breakeven.`;
+  }
+
+  if (proj != null) return `Projected ${proj} pts this round.`;
+  if (be != null) return `Breakeven of ${be} — monitor projection closely.`;
+  return "Projection data pending.";
 }
 
 // ─── Edge cell ─────────────────────────────────────────────────────────────────
@@ -225,7 +235,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
   const rank = idx + 1;
 
   const displayRec = getDisplayRecommendation(row, activeTab);
-  const whyText = getWhyText(row);
+  const richWhy = buildRichWhy(row);
   const actionStyle = displayRec ? getActionStyle(displayRec) : undefined;
 
   const isLocked = !isPremium && idx >= FREE_FULL_ROWS;
@@ -300,7 +310,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
               className="inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap"
               style={actionStyle}
             >
-              {formatActionLabel(displayRec)}
+              {displayRec}
             </span>
           ) : <span className="text-white/20 text-xs">—</span>}
         </td>
@@ -310,7 +320,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
             <span className="text-[11px] text-white/20 italic">Unlock to view</span>
           ) : (
             <span className="block text-[12px] text-white/50 leading-[1.55] whitespace-normal">
-              {whyText}
+              {richWhy}
             </span>
           )}
         </td>

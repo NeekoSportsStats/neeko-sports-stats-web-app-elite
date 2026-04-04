@@ -1,11 +1,3 @@
-export function formatActionLabel(action: string | null | undefined): string {
-  if (!action) return "—";
-  return action
-    .toLowerCase()
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
 export interface MarketActionLabel {
   label: string;
   icon: string;
