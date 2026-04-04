@@ -19,6 +19,7 @@ import {
   sharpenAIText, resolveRecommendationColor, isAITextStale,
   normaliseConfidence,
 } from "@/features/afl/rankings/components/helpers";
+import { signalFromField } from "@/utils/aflEdgeSignal";
 
 interface PlayerData {
   player_id: number | string;
@@ -43,6 +44,7 @@ interface PlayerData {
   best_value_score?: number | null;
   neeko_rating: number | null;
   neeko_rating_scaled?: number | null;
+  signal?: string | null;
   ai_recommendation?: string | null;
   recommendation_color?: string | null;
   recommendation_short?: string | null;
@@ -109,11 +111,11 @@ function InfoTooltip({ text }: { text: string }) {
 
 // ─── Rec Badge ────────────────────────────────────────────────────────────────
 
-function RecBadge({ rec }: { rec: string | null | undefined }) {
+function RecBadge({ rec, signal }: { rec: string | null | undefined; signal?: string | null }) {
   if (!rec) return null;
-  const r = rec.toUpperCase();
-  const isBuy = r.includes("BUY") || r.includes("CAPTAIN") || r.includes("UPGRADE");
-  const isSell = r.includes("SELL") || r.includes("FADE") || r.includes("AVOID") || r.includes("TRADE");
+  const sig = signalFromField(signal);
+  const isBuy = sig === "BUY" || sig === "STRONG_BUY";
+  const isSell = sig === "SELL" || sig === "STRONG_SELL";
   const cls = isBuy
     ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
     : isSell
@@ -731,14 +733,14 @@ export default function AFLPlayerPage() {
   const confLabelCls   = getConfidenceLabelColor(displayConf);
 
   const proj        = player.projection_final ?? null;
-  const ceilingVal  = player.ceiling_estimate ?? player.ceiling ?? (proj != null ? Math.round(proj * 1.22) : null);
-  const floorVal    = player.floor_estimate ?? player.floor ?? (proj != null ? Math.round(proj * 0.78) : null);
-  const upsideVal   = player.upside_pct ?? player.upside_rating ?? (ceilingVal != null && proj != null ? Math.round(((ceilingVal - proj) / proj) * 100) : null);
+  const ceilingVal  = player.ceiling_estimate ?? player.ceiling ?? null;
+  const floorVal    = player.floor_estimate ?? player.floor ?? null;
+  const upsideVal   = player.upside_pct ?? player.upside_rating ?? null;
 
   const formScore = player.form_score ?? player.form_rating ?? null;
 
   const last3Avg = (ceilingVal != null && floorVal != null && proj != null)
-    ? Math.round((ceilingVal * 0.3 + proj * 0.4 + floorVal * 0.3))
+    ? Math.round(ceilingVal * 0.3 + proj * 0.4 + floorVal * 0.3)
     : null;
 
   const valueLabel = (() => {
@@ -754,12 +756,9 @@ export default function AFLPlayerPage() {
   const matchupLabel    = fmtMatchup(player.matchup_rating);
   const hasMatchup      = matchupLabel != null && matchupLabel !== "—" && matchupLabel.toUpperCase() !== "NEUTRAL";
 
-  const isBuy  = player.ai_recommendation?.toUpperCase().includes("BUY") || player.ai_recommendation?.toUpperCase().includes("CAPTAIN") || player.ai_recommendation?.toUpperCase().includes("UPGRADE");
-  const isSell = player.ai_recommendation?.toUpperCase().includes("SELL") || player.ai_recommendation?.toUpperCase().includes("FADE") || player.ai_recommendation?.toUpperCase().includes("TRADE");
-
-  const statusBadgeColor = isBuy ? "text-emerald-400 bg-emerald-500/15 border-emerald-500/25"
-    : isSell ? "text-red-400 bg-red-500/15 border-red-500/25"
-    : "text-white/60 bg-white/8 border-white/15";
+  const _sig   = signalFromField(player.signal);
+  const isBuy  = _sig === "BUY" || _sig === "STRONG_BUY";
+  const isSell = _sig === "SELL" || _sig === "STRONG_SELL";
 
   const pageTitle = `${player.player_name} AFL Fantasy Stats, Projection & Value 2026 | Neeko`;
   const pageDescription = player.value_score && player.ai_recommendation
@@ -847,10 +846,7 @@ export default function AFLPlayerPage() {
               </div>
               <div className="flex flex-col items-end gap-1.5 shrink-0">
                 {player.ai_recommendation && (
-                  <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeColor}`}>
-                    {isBuy ? <TrendingUp size={11} /> : isSell ? <TrendingDown size={11} /> : <Minus size={11} />}
-                    {player.ai_recommendation}
-                  </span>
+                  <RecBadge rec={player.ai_recommendation} signal={player.signal} />
                 )}
                 {player.manual_status && player.manual_status !== 'active' && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-red-500/25 bg-red-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-red-400">

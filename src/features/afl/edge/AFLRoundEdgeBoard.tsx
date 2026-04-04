@@ -497,7 +497,7 @@ interface PlayerAnalysisModalProps {
 function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: PlayerAnalysisModalProps) {
   const cfg = getSectionLabel(section);
   const metric = getPrimaryMetric(row, section);
-  const sig = signalFromField(row.signal ?? row.ai_recommendation);
+  const sig = signalFromField(row.signal);
   const conf = row.projection_confidence;
   const reasons = buildConfidenceReasons(row, section);
   const [shared, setShared] = useState(false);
@@ -737,7 +737,7 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
   const conf = row.projection_confidence;
   const oneLiner = row.summary_short ? truncateWords(row.summary_short, 9) : null;
   const isCaptain = section === "captain";
-  const sig = signalFromField(row.signal ?? row.ai_recommendation);
+  const sig = signalFromField(row.signal);
 
   return (
     <button
@@ -1148,7 +1148,7 @@ export default function AFLRoundEdgeBoard() {
         .filter((r: any) =>
           r.player_name &&
           r.team &&
-          (r.signal != null || r.ai_recommendation != null) &&
+          r.signal != null &&
           Number(r.projection_final ?? 0) > 0 &&
           Number(r.price ?? 0) > 0,
         )

@@ -1,7 +1,7 @@
 import { RankingRow, RankingsTab, SortKey, PositionFilter } from "./types";
 import { cleanAiText } from "../../../../utils/cleanAiText";
-import { computeEdgeSignal, formatEdgeSignalLabel, getEdgeSignalStyles, getEdgeSignalColor } from "../../../../utils/aflEdgeSignal";
-export { computeEdgeSignal, formatEdgeSignalLabel, getEdgeSignalStyles, getEdgeSignalColor };
+import { signalFromField, formatEdgeSignalLabel, getEdgeSignalStyles, getEdgeSignalColor } from "../../../../utils/aflEdgeSignal";
+export { formatEdgeSignalLabel, getEdgeSignalStyles, getEdgeSignalColor };
 
 // ─── Recommendation label guardrails ─────────────────────────────────────────
 // Captain-tier labels require minimum projection and confidence thresholds.
@@ -15,10 +15,7 @@ export const VALUE_TAB_LABELS: Record<string, string> = {
 };
 
 export function getDisplayRecommendation(row: RankingRow, _tab: RankingsTab): string {
-  const sig = row.signal
-    ? row.signal
-    : computeEdgeSignal(row.projection_final, row.baseline ?? row.breakeven);
-  return formatEdgeSignalLabel(sig);
+  return formatEdgeSignalLabel(signalFromField(row.signal));
 }
 
 // ─── Matchup display helper ───────────────────────────────────────────────────

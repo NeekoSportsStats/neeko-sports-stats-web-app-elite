@@ -107,28 +107,11 @@ function MobileSparkline({ points, edge }: { points: MobileSparkPoint[]; edge: n
 
 // ─── Edge helpers ─────────────────────────────────────────────────────────────
 
-function computeEdge(row: RankingRow): number | null {
-  const proj = row.projection_final ?? null;
-  const be =
-    row.breakeven !== null && row.breakeven !== undefined
-      ? Math.round(parseFloat(String(row.breakeven)))
-      : null;
-  if (proj === null || be === null) return null;
-  const raw = Math.round(proj - be);
-  return raw > 40 ? 40 : raw < -40 ? -40 : raw;
-}
-
-function computeEdgeDisplay(row: RankingRow): string | null {
-  const proj = row.projection_final ?? null;
-  const be =
-    row.breakeven !== null && row.breakeven !== undefined
-      ? Math.round(parseFloat(String(row.breakeven)))
-      : null;
-  if (proj === null || be === null) return null;
-  const raw = Math.round(proj - be);
-  if (raw > 40) return "40+";
-  if (raw < -40) return "-40+";
-  return raw > 0 ? `+${raw}` : String(raw);
+function getEdgeDisplay(edge: number | null): string | null {
+  if (edge === null) return null;
+  if (edge > 40) return "40+";
+  if (edge < -40) return "-40+";
+  return edge > 0 ? `+${edge}` : String(edge);
 }
 
 function edgeColor(edge: number): string {
@@ -264,13 +247,11 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
   }, [row.player_id, row.player_name]);
 
   const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
-  const be = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
-  const edge = computeEdge(row);
-  const edgeDisplayStr = computeEdgeDisplay(row);
-  const rawEdgeSec = row.projection_final != null && row.breakeven != null ? Math.round(row.projection_final - parseFloat(String(row.breakeven))) : null;
+  const edge = !row.is_bye && row.edge != null ? row.edge : null;
+  const edgeDisplayStr = getEdgeDisplay(edge);
 
   const edgeLabel = edge != null && edgeDisplayStr != null
-    ? `${edgeDisplayStr} vs BE — ${rawEdgeSec != null && rawEdgeSec >= 15 ? "strong underpriced play" : rawEdgeSec != null && rawEdgeSec >= 5 ? "moderate edge" : rawEdgeSec != null && rawEdgeSec >= -5 ? "near breakeven" : "price risk"}`
+    ? `${edgeDisplayStr} vs BE — ${edge >= 15 ? "strong underpriced play" : edge >= 5 ? "moderate edge" : edge >= -5 ? "near breakeven" : "price risk"}`
     : null;
 
   const longWhy = (row as any).long ?? row.why ?? null;
@@ -358,7 +339,7 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
           <div className="flex flex-col gap-0.5">
             <span className="text-[10px] text-white/30 font-normal">Edge</span>
             <span className={`text-[13px] font-bold tabular-nums ${edgeColor(edge)}`}>
-              {computeEdgeDisplay(row) ?? edge}
+              {getEdgeDisplay(edge) ?? edge}
             </span>
           </div>
         )}
@@ -387,7 +368,7 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
     row.breakeven !== null && row.breakeven !== undefined
       ? Math.round(parseFloat(String(row.breakeven)))
       : null;
-  const edge = computeEdge(row);
+  const edge = !row.is_bye && row.edge != null ? row.edge : null;
 
   const displayRec = getDisplayRecommendation(row, activeTab);
   const shortWhy = isPremium ? (row.why ?? null) : null;
@@ -450,7 +431,7 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
             <div className="flex flex-col items-start px-2">
               <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Edge</span>
               <span className={`text-[14px] font-bold tabular-nums ${edgeColor(edge)}`}>
-                {computeEdgeDisplay(row) ?? edge}
+                {getEdgeDisplay(edge) ?? edge}
               </span>
             </div>
           </>

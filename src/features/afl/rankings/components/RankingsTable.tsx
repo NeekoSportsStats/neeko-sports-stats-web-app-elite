@@ -22,22 +22,17 @@ const TH = "bg-[#0a0a0a] px-3 py-2.5 text-[11px] font-medium uppercase tracking-
 // ─── Edge cell ─────────────────────────────────────────────────────────────────
 
 function EdgeCell({ row }: { row: RankingRow }) {
-  const proj = row.projection_final ?? null;
-  const be = row.breakeven !== null && row.breakeven !== undefined
-    ? Math.round(parseFloat(String(row.breakeven)))
-    : null;
-
-  if (row.is_bye || proj === null || be === null) {
+  if (row.is_bye || row.edge === null || row.edge === undefined) {
     return <span className="text-sm text-white/20 tabular-nums">—</span>;
   }
 
-  const rawEdge = Math.round(proj - be);
-  const edge = rawEdge > 40 ? 40 : rawEdge < -40 ? -40 : rawEdge;
-  const edgeDisplay = rawEdge > 40 ? "40+" : rawEdge < -40 ? "-40+" : (edge > 0 ? `+${edge}` : String(edge));
+  const rawEdge = row.edge;
+  const clamped = rawEdge > 40 ? 40 : rawEdge < -40 ? -40 : rawEdge;
+  const edgeDisplay = rawEdge > 40 ? "40+" : rawEdge < -40 ? "-40+" : (clamped > 0 ? `+${clamped}` : String(clamped));
   let colorCls: string;
-  if (edge >= 20) colorCls = "text-emerald-400 font-semibold";
-  else if (edge >= 10) colorCls = "text-green-300 font-semibold";
-  else if (edge >= -5) colorCls = "text-neutral-300";
+  if (clamped >= 20) colorCls = "text-emerald-400 font-semibold";
+  else if (clamped >= 10) colorCls = "text-green-300 font-semibold";
+  else if (clamped >= -5) colorCls = "text-neutral-300";
   else colorCls = "text-red-400 font-semibold";
 
   return (
@@ -56,10 +51,7 @@ interface ExpandedPanelProps {
 }
 
 function ExpandedPanel({ row, displayRec }: ExpandedPanelProps) {
-  const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
-  const be = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
-  const rawEdgeExp = proj != null && be != null && !row.is_bye ? Math.round(proj - be) : null;
-  const edge = rawEdgeExp !== null ? (rawEdgeExp > 40 ? 40 : rawEdgeExp < -40 ? -40 : rawEdgeExp) : null;
+  const rawEdgeExp = !row.is_bye && row.edge != null ? row.edge : null;
   const edgeSign = rawEdgeExp != null ? (rawEdgeExp > 40 ? "40+" : rawEdgeExp < -40 ? "-40+" : (rawEdgeExp > 0 ? `+${rawEdgeExp}` : String(rawEdgeExp))) : null;
 
   const longWhy = row.long ?? row.why ?? null;
@@ -371,11 +363,7 @@ export function FreeTableRow({ row, idx, onRowClick, onUpgrade }: FreeTableRowPr
     : { touchAction: "manipulation" };
 
 
-  const be = row.breakeven !== null && row.breakeven !== undefined
-    ? Math.round(parseFloat(String(row.breakeven)))
-    : null;
-  const proj = row.projection_final ?? null;
-  const rawEdgeFree = be !== null && proj !== null && !row.is_bye ? Math.round(proj - be) : null;
+  const rawEdgeFree = !row.is_bye && row.edge != null ? row.edge : null;
   const edge = rawEdgeFree !== null ? (rawEdgeFree > 40 ? 40 : rawEdgeFree < -40 ? -40 : rawEdgeFree) : null;
   const edgeDisplay = rawEdgeFree === null ? null : rawEdgeFree > 40 ? "40+" : rawEdgeFree < -40 ? "-40+" : (edge! > 0 ? `+${edge}` : String(edge));
 
