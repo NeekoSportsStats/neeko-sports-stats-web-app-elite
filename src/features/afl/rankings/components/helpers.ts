@@ -1,34 +1,8 @@
 import { RankingRow, RankingsTab, SortKey, PositionFilter } from "./types";
 import { cleanAiText } from "../../../../utils/cleanAiText";
 
-// ─── Recommendation label guardrails ─────────────────────────────────────────
-// Captain-tier labels require minimum projection and confidence thresholds.
-// Below these, use value-oriented labels instead.
-export const CAPTAIN_MIN_PROJECTION = 85;
-export const CAPTAIN_MIN_CONFIDENCE = 55;
-export const VALUE_TAB_LABELS: Record<string, string> = {
-  "Elite Captain": "Upgrade Target",
-  "Strong Captain": "Best Cash Saver",
-  "Captain Option": "Speculative Value",
-};
-
-export function getDisplayRecommendation(row: RankingRow, tab: RankingsTab): string | null {
-  const rec = row.ai_recommendation;
-  if (!rec) return null;
-  if (tab === "value") {
-    const proj = row.projection_final ?? 0;
-    const conf = row.projection_confidence ?? 0;
-    const isCaptainLabel = ["Elite Captain", "Strong Captain", "Captain Option"].includes(rec);
-    if (isCaptainLabel && (proj < CAPTAIN_MIN_PROJECTION || conf < CAPTAIN_MIN_CONFIDENCE)) {
-      return VALUE_TAB_LABELS[rec] ?? "Bench Watch";
-    }
-  }
-  const proj = row.projection_final ?? 0;
-  const conf = row.projection_confidence ?? 0;
-  if (rec === "Elite Captain" && (proj < CAPTAIN_MIN_PROJECTION || conf < CAPTAIN_MIN_CONFIDENCE)) {
-    return "Strong Option";
-  }
-  return rec;
+export function getDisplayRecommendation(row: RankingRow, _tab: RankingsTab): string | null {
+  return row.ai_recommendation ?? null;
 }
 
 // ─── Matchup display helper ───────────────────────────────────────────────────
@@ -446,22 +420,16 @@ export function resolveRecommendationColor(
 // ─── KPI tile computation ─────────────────────────────────────────────────────
 
 export function computeKpiTiles(rows: RankingRow[]) {
-  const captainRows = rows
-    .filter((r) => r.captain_rating === "Elite Captain" || r.captain_rating === "Strong Captain")
+  const topRows = rows
+    .filter((r) => (r.edge_score ?? 0) >= 15)
     .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0))
     .slice(0, 5);
-  const captainAvgProj = captainRows.length
-    ? captainRows.reduce((s, r) => s + (r.projection_final ?? 0), 0) / captainRows.length
+  const captainAvgProj = topRows.length
+    ? topRows.reduce((s, r) => s + (r.projection_final ?? 0), 0) / topRows.length
     : null;
 
-  // value_score scale: >= 6.0 = ELITE VALUE, >= 4.5 = STRONG VALUE, >= 3.0 = SOLID VALUE
-  const valueUpgrades = rows.filter((r) => (r.value_score ?? 0) >= 4.5).length;
-  const trapAlerts = rows.filter((r) => {
-    const t = (r.value_tag ?? "").toUpperCase();
-    return t === "OVERPRICED" || t === "LOW VALUE" ||
-      (r.risk_rating ?? 0) >= 65 ||
-      (r.projection_confidence ?? 100) < 50;
-  }).length;
+  const valueUpgrades = rows.filter((r) => (r.value_score ?? 0) >= 5).length;
+  const trapAlerts = rows.filter((r) => (r.edge_score ?? 0) <= -6).length;
   const highConfidence = rows.filter((r) => (r.projection_confidence ?? 0) >= 65).length;
 
   return { captainAvgProj, valueUpgrades, trapAlerts, highConfidence };
