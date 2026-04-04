@@ -325,7 +325,6 @@ export default function AFLRankingsPage() {
         ?? r.ai_summary
         ?? null,
       ai_summary:           r.ai_summary ?? null,
-      start_sit_decision:   r.start_sit_decision ?? null,
       market_watch_category: r.market_watch_category ?? null,
       signal_tag:           r.signal_tag ?? null,
       signal:               r.signal ?? null,

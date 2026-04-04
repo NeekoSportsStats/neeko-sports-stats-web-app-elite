@@ -48,8 +48,6 @@ export interface RankingRow {
   why: string | null;
   /** LONG — exactly 5-sentence breakdown (maps to recommendation_why / ai_summary) */
   long: string | null;
-  /** Single-source decision: START / SIT / CONSIDER */
-  start_sit_decision: string | null;
   /** Market watch signal: TARGET | WATCH | AVOID */
   market_watch_category: string | null;
   /** 3-level signal tag for backwards compat: TARGET | WATCH | AVOID */

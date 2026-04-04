@@ -45,7 +45,7 @@ const COLUMNS =
   "price,prev_price,price_change,price_change_pct," +
   "breakeven,value_score,best_value_score,value_tag,value_tier," +
   "recommendation_strength,ai_summary,consistency_tier," +
-  "start_sit_decision,signal_tag," +
+  "signal_tag," +
   "market_watch_category,upside_pct," +
   "status,manual_status,is_available," +
   "bye_round,is_bye,bye_next_round,games_played," +
@@ -88,7 +88,6 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
     games_played: raw.games_played != null ? Number(raw.games_played) : null,
     why: (raw.ai_summary as string) ?? null,
     long: (raw.ai_summary as string) ?? null,
-    start_sit_decision: (raw.start_sit_decision as string) ?? null,
     market_watch_category: (raw.market_watch_category as string) ?? null,
     upside_pct: raw.upside_pct != null ? Number(raw.upside_pct) : null,
     ai_summary: (raw.ai_summary as string) ?? null,
