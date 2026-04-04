@@ -6,7 +6,7 @@ import {
   fmt, fmtInt, fmtPrice, fmtPriceChange, fmtValueScore,
   getNeekoRatingBadge, getRiskBadge, getValueTagStyle,
   getValueScoreColor, getConfidenceColor, getDisplayRecommendation,
-  resolveRecommendationColor, formatActionLabel,
+  resolveRecommendationColor,
 } from "./helpers";
 
 interface MobilePlayerCardProps {
@@ -160,7 +160,7 @@ export function MobilePlayerCard({
                 style={{ background: `${rc}18`, borderColor: `${rc}40` }}
               >
                 <p className="text-[9px] text-white/35 uppercase tracking-wider mb-0.5">AI Rec</p>
-                <p className="text-xs font-bold" style={{ color: rc }}>{formatActionLabel(displayRec)}</p>
+                <p className="text-xs font-bold" style={{ color: rc }}>{displayRec}</p>
                 {row.why && (
                   <p className="text-[11px] text-white/50 mt-1 leading-snug line-clamp-3">
                     {row.why}
