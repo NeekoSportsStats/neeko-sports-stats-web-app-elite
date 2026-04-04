@@ -838,10 +838,14 @@ function EdgeBoardPreview() {
       const watches = rows.filter(r => (r.edge_score ?? 0) >= -5 && (r.edge_score ?? 0) <= 5);
       const avoids  = rows.filter(r => (r.edge_score ?? 0) < -5);
 
-      const built: EdgeSignal[] = [
-        ...targets.slice(0, 1).map(row => ({ type: "target" as EdgeSignalType, ...SIGNAL_META.target, row })),
-        ...watches.slice(0, 1).map(row => ({ type: "watch"  as EdgeSignalType, ...SIGNAL_META.watch,  row })),
-        ...avoids.slice(0, 1) .map(row => ({ type: "avoid"  as EdgeSignalType, ...SIGNAL_META.avoid,  row })),
+      const targetRow  = targets[0] ?? rows[0];
+      const watchRow   = watches[0] ?? rows[Math.floor(rows.length / 2)] ?? rows[1] ?? rows[0];
+      const avoidRow   = avoids[0]  ?? rows[rows.length - 1] ?? rows[0];
+
+      const built: EdgeSignal[] = rows.length === 0 ? [] : [
+        { type: "target" as EdgeSignalType, ...SIGNAL_META.target, row: targetRow },
+        { type: "watch"  as EdgeSignalType, ...SIGNAL_META.watch,  row: watchRow  },
+        { type: "avoid"  as EdgeSignalType, ...SIGNAL_META.avoid,  row: avoidRow  },
       ];
 
       setSignals(built);
