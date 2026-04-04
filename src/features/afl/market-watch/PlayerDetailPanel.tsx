@@ -48,8 +48,6 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
 
   const extendedText = player.summary_long
     ? cleanAiText(player.summary_long)
-    : player.ai_recommendation
-    ? cleanAiText(player.ai_recommendation)
     : null;
 
   const formattedExtended = extendedText ? formatExtendedAnalysis(extendedText) : null;
@@ -322,7 +320,7 @@ function MetricRow({ label, value }: MetricRowProps) {
 }
 
 function getSignalConfig(player: DerivedPlayer) {
-  const canonicalSignal = signalFromField(player.signal ?? player.ai_recommendation);
+  const canonicalSignal = signalFromField(player.signal);
 
   if (canonicalSignal === "STRONG_BUY") {
     return {
@@ -384,7 +382,7 @@ function getSignalConfig(player: DerivedPlayer) {
 }
 
 function getVerdict(player: DerivedPlayer, delta: number): string {
-  const sig = signalFromField(player.signal ?? player.ai_recommendation);
+  const sig = signalFromField(player.signal);
 
   if (sig === "STRONG_BUY") return "Strong Buy — elite value with significant upside";
   if (sig === "BUY") {

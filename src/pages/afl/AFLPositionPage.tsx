@@ -7,6 +7,7 @@ import { ArrowLeft, ChevronRight, TrendingUp, Shield, Zap, Target } from 'lucide
 import { nameToSlug, POSITION_NAMES, POSITION_SLUG_TO_CODE } from '@/lib/slugs';
 import { useAuth } from '@/lib/auth';
 import { getPositionPlayersSafe } from '@/lib/playerAccess';
+import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from '@/utils/aflEdgeSignal';
 
 interface PositionPlayer {
   player_id?: number;
@@ -17,8 +18,7 @@ interface PositionPlayer {
   projection_confidence: number | null;
   value_score: number | null;
   price: number;
-  ai_recommendation: string | null;
-  recommendation_color: string | null;
+  signal: string | null;
   upside_pct: number | null;
   is_locked?: boolean;
 }
@@ -84,12 +84,6 @@ export default function AFLPositionPage() {
   const pageTitle = `Best AFL Fantasy ${positionName} 2026 Rankings & Projections | Neeko`;
   const pageDescription = `Top ${positionName} for AFL Fantasy 2026. ${players.length} ${positionName.toLowerCase()} ranked with projections, value scores, and AI recommendations. Find the best picks for your team.`;
   const pageUrl = `https://neekostats.com.au/sports/afl/positions/${position}`;
-
-  const getRecommendationColor = (color: string | null) => {
-    if (color === 'green') return '#22c55e';
-    if (color === 'red') return '#ef4444';
-    return '#94a3b8';
-  };
 
   const formatPrice = (price: number) => {
     return `$${Math.round(price / 1000)}k`;
@@ -242,7 +236,9 @@ export default function AFLPositionPage() {
             <h2 className="text-base font-semibold text-white mb-4">Top 50 {positionName}</h2>
             <div className="space-y-2">
               {players.map((player, idx) => {
-                const recColor = getRecommendationColor(player.recommendation_color);
+                const sig = signalFromField(player.signal);
+                const recColor = getEdgeSignalColor(sig);
+                const recLabel = formatEdgeSignalLabel(sig);
                 return (
                   <Link
                     key={player.player_name}
@@ -269,7 +265,7 @@ export default function AFLPositionPage() {
                           <p className="text-sm font-semibold text-emerald-400">{Math.round(player.value_score)}</p>
                         </div>
                       )}
-                      {player.ai_recommendation && (
+                      {!player.is_locked && (
                         <div
                           className="hidden md:flex items-center justify-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide"
                           style={{
@@ -278,7 +274,7 @@ export default function AFLPositionPage() {
                             border: `1px solid ${recColor}40`
                           }}
                         >
-                          {player.ai_recommendation}
+                          {recLabel}
                         </div>
                       )}
                       <ChevronRight size={18} className="text-white/30" />

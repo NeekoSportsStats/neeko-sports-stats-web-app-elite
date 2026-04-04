@@ -59,7 +59,6 @@ export default function MarketWatchPageElite() {
         signal: r.signal ?? null,
         category: (r.category ?? 'HOLD').toUpperCase(),
         action: (r.category ?? 'HOLD').toUpperCase(),
-        ai_recommendation: r.ai_recommendation ?? null,
         recommendation_short: r.recommendation_short ?? null,
         summary_short: r.summary_short ?? null,
         summary_long: r.summary_long ?? null,

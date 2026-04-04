@@ -6,8 +6,8 @@ import {
   fmt, fmtInt, fmtPrice, fmtPriceChange, fmtValueScore,
   getNeekoRatingBadge, getRiskBadge, getValueTagStyle,
   getValueScoreColor, getConfidenceColor, getDisplayRecommendation,
-  resolveRecommendationColor,
 } from "./helpers";
+import { signalFromField, getEdgeSignalColor } from "@/utils/aflEdgeSignal";
 
 interface MobilePlayerCardProps {
   row: RankingRow;
@@ -153,7 +153,7 @@ export function MobilePlayerCard({
           )}
 
           {isUnlocked && displayRec && (() => {
-            const rc = resolveRecommendationColor(row.recommendation_color, displayRec);
+            const rc = getEdgeSignalColor(signalFromField(row.signal));
             return (
               <div
                 className="rounded-lg border px-3 py-2.5 mb-3"

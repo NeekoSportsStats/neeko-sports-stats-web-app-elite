@@ -19,7 +19,6 @@ export interface MWPlayerRow {
   signal: string | null;
   category: MWSignal;
   action: MWSignal;
-  ai_recommendation: string | null;
   recommendation_short: string | null;
   summary_short: string | null;
   summary_long: string | null;

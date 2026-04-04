@@ -25,9 +25,10 @@ import {
   getConsistencyBadge, getConfidenceColor, getConfidenceLabel, getConfidenceLabelColor,
   getValueScoreColor,
   getFormColor, getMatchupColor, getUpsideColor, getRiskColor,
-  sharpenAIText, resolveRecommendationColor, isAITextStale,
+  sharpenAIText, isAITextStale,
   normaliseConfidence,
 } from "./helpers";
+import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from "@/utils/aflEdgeSignal";
 
 // ─── InfoTooltip ──────────────────────────────────────────────────────────────
 
@@ -791,7 +792,8 @@ export function PlayerDetailModal({
   }, [row.player_name, navigate, location.pathname]);
   const consistencyBadge = getConsistencyBadge(row.consistency_score ?? null);
   const capStyle = getCaptainStyle(row.captain_rating ?? null);
-  const recColor = resolveRecommendationColor(row.recommendation_color ?? null, row.ai_recommendation ?? null);
+  const signalValue = signalFromField(row.signal ?? null);
+  const recColor = getEdgeSignalColor(signalValue);
   const neekoRBadge = getNeekoRatingBadge(row.neeko_rating ?? null);
   const riskBadge = getRiskBadge(Number(row.risk_rating) ?? null);
 
@@ -881,15 +883,15 @@ export function PlayerDetailModal({
             </div>
           )}
 
-          {/* 2. AI Recommendation card — label + WHY sentence */}
-          {unlocked && row.ai_recommendation && (
+          {/* 2. Signal card — label + WHY sentence */}
+          {unlocked && row.signal && (
             <div
               className="rounded-lg border px-4 py-4"
               style={{ background: `${recColor}18`, borderColor: `${recColor}40` }}
             >
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">AI Recommendation</p>
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">AI Signal</p>
               <p className="text-base font-bold mb-2" style={{ color: recColor }}>
-                {row.ai_recommendation}
+                {formatEdgeSignalLabel(signalValue)}
               </p>
               {row.why && (
                 <p className="text-sm text-white/70 leading-relaxed">{row.why}</p>

@@ -34,11 +34,11 @@ interface RankingRow {
   value_score: number | null;
   ai_summary: string | null;
   summary_short: string | null;
-  ai_recommendation: string | null;
   signal_tag: string | null;
   signal: string | null;
+  edge: number | null;
+  breakeven: number | null;
   refreshed_at: string | null;
-  edge_score: number | null;
 }
 
 type Section = "captain" | "breakout" | "trap";
@@ -1173,11 +1173,11 @@ export default function AFLRoundEdgeBoard() {
           value_score:           r.value_score != null ? Number(r.value_score) : null,
           ai_summary:            r.ai_summary ?? null,
           summary_short:         r.summary_short ?? null,
-          ai_recommendation:     r.ai_recommendation ?? null,
           signal_tag:            r.signal_tag ?? null,
           signal:                r.signal ?? null,
+          edge:                  r.edge != null ? Number(r.edge) : null,
+          breakeven:             r.breakeven != null ? Number(r.breakeven) : null,
           refreshed_at:          r.refreshed_at ?? null,
-          edge_score:            r.edge_score != null ? Number(r.edge_score) : null,
         }));
       setRows(mapped);
       setRefreshedAt(mapped[0]?.refreshed_at ?? null);

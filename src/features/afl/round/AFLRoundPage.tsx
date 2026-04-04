@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
 import { TrendingUp, Star, TriangleAlert as AlertTriangle, Target, ArrowRight } from "lucide-react";
+import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from "@/utils/aflEdgeSignal";
 
 interface RoundPlayer {
   player_id: string;
@@ -13,9 +14,7 @@ interface RoundPlayer {
   projected_score: number | null;
   current_price: number | null;
   value_score: number | null;
-  ai_recommendation: string | null;
-  recommendation_short: string | null;
-  recommendation_color: string | null;
+  signal: string | null;
   breakeven: number | null;
   season_avg: number | null;
 }
@@ -32,18 +31,16 @@ function formatScore(s: number | null) {
   return Math.round(s).toString();
 }
 
-function RecommendationBadge({ color, short }: { color: string | null; short: string | null }) {
-  if (!short) return null;
-  const styles: Record<string, string> = {
-    green:  "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    red:    "bg-red-500/10 text-red-400 border-red-500/20",
-    yellow: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-    gray:   "bg-white/[0.05] text-white/40 border-white/10",
-  };
-  const cls = styles[color ?? "gray"] ?? styles.gray;
+function RecommendationBadge({ signal }: { signal: string | null }) {
+  const sig = signalFromField(signal);
+  const color = getEdgeSignalColor(sig);
+  const label = formatEdgeSignalLabel(sig);
   return (
-    <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border ${cls}`}>
-      {short}
+    <span
+      className="inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full border"
+      style={{ background: `${color}18`, color, borderColor: `${color}40` }}
+    >
+      {label}
     </span>
   );
 }
@@ -89,8 +86,8 @@ export default function AFLRoundPage() {
 
   const traps = players
     .filter((p) => {
-      const rec = (p.ai_recommendation ?? "").toLowerCase();
-      return rec.includes("sell") || rec.includes("avoid") || rec.includes("fade");
+      const s = signalFromField(p.signal);
+      return s === 'SELL' || s === 'STRONG_SELL';
     })
     .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))
     .slice(0, 5);
@@ -279,7 +276,7 @@ export default function AFLRoundPage() {
                       <div className="text-[11px] text-white/35">{p.team}</div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <RecommendationBadge color={p.recommendation_color} short={p.recommendation_short} />
+                      <RecommendationBadge signal={p.signal} />
                       <div className="text-right">
                         <div className="text-sm font-bold text-white">{formatScore(p.projected_score)}</div>
                         <div className="text-[10px] text-white/30">{formatPrice(p.current_price)}</div>

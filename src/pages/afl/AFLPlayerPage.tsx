@@ -16,10 +16,10 @@ import {
   getConsistencyBadge, getConfidenceColor, getConfidenceLabel, getConfidenceLabelColor,
   getValueScoreColor,
   getFormColor, getMatchupColor, getUpsideColor, getRiskColor,
-  sharpenAIText, resolveRecommendationColor, isAITextStale,
+  sharpenAIText, isAITextStale,
   normaliseConfidence,
 } from "@/features/afl/rankings/components/helpers";
-import { signalFromField } from "@/utils/aflEdgeSignal";
+import { signalFromField, formatEdgeSignalLabel } from "@/utils/aflEdgeSignal";
 
 interface PlayerData {
   player_id: number | string;
@@ -111,8 +111,8 @@ function InfoTooltip({ text }: { text: string }) {
 
 // ─── Rec Badge ────────────────────────────────────────────────────────────────
 
-function RecBadge({ rec, signal }: { rec: string | null | undefined; signal?: string | null }) {
-  if (!rec) return null;
+function RecBadge({ signal }: { signal?: string | null }) {
+  if (!signal) return null;
   const sig = signalFromField(signal);
   const isBuy = sig === "BUY" || sig === "STRONG_BUY";
   const isSell = sig === "SELL" || sig === "STRONG_SELL";
@@ -125,7 +125,7 @@ function RecBadge({ rec, signal }: { rec: string | null | undefined; signal?: st
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${cls}`}>
       <Icon size={12} />
-      {rec}
+      {formatEdgeSignalLabel(sig)}
     </span>
   );
 }
@@ -528,7 +528,7 @@ function PlayerSEOSection({
 
   const seoContent = `${player.player_name} is an AFL Fantasy ${pos} for ${player.team || player.team_name} in the 2026 season. Our AI-powered projection system rates ${player.player_name} with a projected fantasy score of ${Math.round(proj ?? 0)} points, with a ceiling of ${Math.round(ceilingVal ?? 0)} and floor of ${Math.round(floorVal ?? 0)}.
 
-${player.ai_recommendation ? `Current AI recommendation: ${player.ai_recommendation}. ` : ""}${player.summary_short ?? ""}
+${player.signal ? `Current AI signal: ${formatEdgeSignalLabel(signalFromField(player.signal))}. ` : ""}${player.summary_short ?? ""}
 
 Fantasy relevance: ${player.player_name} is ${valueLabel ? `categorised as ${valueLabel}` : "rated"} for the 2026 AFL Fantasy season. ${player.price ? `Current price: ${fmtPrice(player.price)}.` : ""} ${player.breakeven != null ? `Breakeven: ${Math.round(player.breakeven)} points to maintain current price.` : ""} ${player.captain_rating ? `Captain Rating: ${player.captain_rating}.` : ""}
 
@@ -718,7 +718,7 @@ export default function AFLPlayerPage() {
 
   const consistencyBadge = getConsistencyBadge(player.consistency_score ?? player.consistency ?? null);
   const capStyle         = getCaptainStyle(player.captain_rating ?? null);
-  const recColor         = resolveRecommendationColor(player.recommendation_color ?? null, player.ai_recommendation ?? null);
+  const recColor         = getEdgeSignalColor(signalFromField(player.signal ?? null));
   const neekoRBadge      = getNeekoRatingBadge(player.neeko_rating ?? null);
   const riskBadge        = getRiskBadge(Number(player.risk_rating) ?? null);
 
@@ -761,8 +761,8 @@ export default function AFLPlayerPage() {
   const isSell = _sig === "SELL" || _sig === "STRONG_SELL";
 
   const pageTitle = `${player.player_name} AFL Fantasy Stats, Projection & Value 2026 | Neeko`;
-  const pageDescription = player.value_score && player.ai_recommendation
-    ? `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points. ${getPositionName(player.player_position)} rankings, value score ${Math.round(player.value_score)}, AI-powered ${player.ai_recommendation.toLowerCase()} recommendation. Updated weekly.`
+  const pageDescription = player.value_score && player.signal
+    ? `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points. ${getPositionName(player.player_position)} rankings, value score ${Math.round(player.value_score)}, AI signal: ${formatEdgeSignalLabel(signalFromField(player.signal))}. Updated weekly.`
     : `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points, ${Math.round(player.neeko_rating ?? 0)} Neeko rating. ${getPositionName(player.player_position)} rankings and analysis. Updated weekly.`;
   const pageUrl  = `https://neekostats.com.au/sports/afl/players/${slug}`;
   const keywords = `${player.player_name}, ${player.team}, AFL Fantasy, ${player.player_position}, fantasy football, player stats, projection, value, ${getPositionName(player.player_position)}`;
@@ -845,8 +845,8 @@ export default function AFLPlayerPage() {
                 <p className="text-[11px] text-white/30 mt-1">AI-powered AFL Fantasy decision · 2026</p>
               </div>
               <div className="flex flex-col items-end gap-1.5 shrink-0">
-                {player.ai_recommendation && (
-                  <RecBadge rec={player.ai_recommendation} signal={player.signal} />
+                {player.signal && (
+                  <RecBadge signal={player.signal} />
                 )}
                 {player.manual_status && player.manual_status !== 'active' && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-red-500/25 bg-red-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-red-400">
@@ -904,13 +904,13 @@ export default function AFLPlayerPage() {
                     <Zap size={9} className="text-[#F5C84C]/60" />
                     Verdict
                   </p>
-                  {player.ai_recommendation ? (
+                  {player.signal ? (
                     <>
                       <p className="text-base font-bold leading-tight" style={{ color: recColor }}>
-                        {player.ai_recommendation}
+                        {formatEdgeSignalLabel(signalFromField(player.signal))}
                       </p>
-                      {player.recommendation_short && (
-                        <p className="text-[10px] text-white/40 mt-0.5 leading-snug line-clamp-2">{player.recommendation_short}</p>
+                      {player.why && (
+                        <p className="text-[10px] text-white/40 mt-0.5 leading-snug line-clamp-2">{player.why}</p>
                       )}
                     </>
                   ) : (

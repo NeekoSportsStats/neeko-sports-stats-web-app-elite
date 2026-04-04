@@ -415,7 +415,7 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
 });
 
 function getSignalStrength(player: DerivedPlayer) {
-  const canonicalSignal = signalFromField(player.signal ?? player.ai_recommendation);
+  const canonicalSignal = signalFromField(player.signal);
   const category = player._category?.toUpperCase() || player.category?.toUpperCase() || "HOLD";
   const baseLabel = mapMarketLabel(category);
 

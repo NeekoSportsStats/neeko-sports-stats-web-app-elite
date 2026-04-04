@@ -25,7 +25,6 @@ import {
   fmtUpdatedAt,
   normalisePosition,
   getValueScoreColor,
-  resolveRecommendationColor,
 } from "@/features/afl/rankings/components/helpers";
 import { signalFromField, formatEdgeSignalLabel, getEdgeSignalStyles } from "@/utils/aflEdgeSignal";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
@@ -42,13 +41,11 @@ const COLUMNS =
   "projection_final,ceiling_estimate,floor_estimate," +
   "matchup_rating,upside_rating,risk_rating,form_score," +
   "projection_confidence,captain_score,captain_rating," +
-  "neeko_rating,neeko_rating_scaled," +
+  "neeko_rating," +
   "price,prev_price,price_change,price_change_pct," +
   "breakeven,value_score,best_value_score,value_tag,value_tier," +
-  "ai_recommendation,recommendation_strength," +
-  "recommendation_color,recommendation_short,recommendation_why," +
-  "ai_summary,consistency_tier," +
-  "start_sit_decision,edge_score,edge_tier,signal_tag," +
+  "recommendation_strength,ai_summary,consistency_tier," +
+  "start_sit_decision,signal_tag," +
   "market_watch_category,upside_pct," +
   "status,manual_status,is_available," +
   "bye_round,is_bye,bye_next_round,games_played," +
@@ -73,7 +70,7 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
     captain_score: raw.captain_score != null ? Number(raw.captain_score) : null,
     captain_rating: (raw.captain_rating as string) ?? null,
     neeko_rating: raw.neeko_rating != null ? Number(raw.neeko_rating) : null,
-    neeko_rating_scaled: raw.neeko_rating_scaled != null ? Number(raw.neeko_rating_scaled) : null,
+    neeko_rating_scaled: null,
     price: raw.price != null ? Number(raw.price) : null,
     prev_price: raw.prev_price != null ? Number(raw.prev_price) : null,
     price_change: raw.price_change != null ? Number(raw.price_change) : null,
@@ -83,18 +80,18 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
     best_value_score: raw.best_value_score != null ? Number(raw.best_value_score) : null,
     value_tag: (raw.value_tag as string) ?? null,
     value_tier: (raw.value_tier as string) ?? null,
-    ai_recommendation: (raw.ai_recommendation as string) ?? null,
+    ai_recommendation: null,
     recommendation_strength: (raw.recommendation_strength as string) ?? null,
     ai_updated_at: null,
-    recommendation_color: (raw.recommendation_color as string) ?? null,
+    recommendation_color: null,
     consistency_tier: (raw.consistency_tier as string) ?? null,
     total_count: null,
     games_played: raw.games_played != null ? Number(raw.games_played) : null,
-    why: (raw.recommendation_short as string) ?? (raw.ai_summary as string) ?? null,
-    long: (raw.recommendation_why as string) ?? (raw.ai_summary as string) ?? null,
+    why: (raw.ai_summary as string) ?? null,
+    long: (raw.ai_summary as string) ?? null,
     start_sit_decision: (raw.start_sit_decision as string) ?? null,
-    edge_score: raw.edge_score != null ? Number(raw.edge_score) : null,
-    edge_tier: (raw.edge_tier as string) ?? null,
+    edge_score: null,
+    edge_tier: null,
     market_watch_category: (raw.market_watch_category as string) ?? null,
     upside_pct: raw.upside_pct != null ? Number(raw.upside_pct) : null,
     ai_summary: (raw.ai_summary as string) ?? null,
@@ -125,8 +122,6 @@ interface PlayerRowProps {
 }
 
 function PlayerRow({ row, rank, metric, isPremiumUser, onClick }: PlayerRowProps) {
-  const recColor = resolveRecommendationColor(row.recommendation_color, row.ai_recommendation);
-
   return (
     <button
       onClick={onClick}

@@ -43,9 +43,9 @@ interface EdgeRow {
   team: string;
   position: string | null;
   projection_final: number | null;
-  edge_score: number | null;
+  edge: number | null;
   signal_tag: string | null;
-  ai_recommendation: string | null;
+  signal: string | null;
   summary_short: string | null;
 }
 
@@ -808,10 +808,8 @@ const SIGNAL_META: Record<EdgeSignalType, { label: string; desc: string; accentC
   AVOID:  { label: "Avoid",  desc: "Model flags elevated risk this round — sell or avoid signal.", accentColor: "#f87171", icon: AlertTriangle },
 };
 
-function signalTagToActionLabel(tag: EdgeSignalType, rec: string | null): string {
-  if (tag === "TARGET") return rec === "STRONG_BUY" ? "STRONG BUY" : "BUY";
-  if (tag === "AVOID")  return rec === "STRONG_SELL" ? "STRONG SELL" : "SELL";
-  return "HOLD";
+function signalTagToActionLabel(signal: string | null): string {
+  return formatEdgeSignalLabel(signalFromField(signal));
 }
 
 function signalTagToActionColor(tag: EdgeSignalType): string {
@@ -835,7 +833,7 @@ function EdgeBoardPreview() {
     (async () => {
       const { data, error } = await supabase
         .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, projection_final, edge_score, signal_tag, ai_recommendation, summary_short")
+        .select("player_id, player_name, team, position, projection_final, edge, signal_tag, signal, summary_short")
         .not("signal_tag", "is", null)
         .gte("games_played", 3)
         .gt("projection_final", 50)
@@ -889,9 +887,9 @@ function EdgeBoardPreview() {
                   const { label, desc, accentColor, icon: Icon, row, type } = signal;
                   // signal_tag is the single source of truth — action label derived directly from it
                   const signalType = (row.signal_tag ?? type) as EdgeSignalType;
-                  const actionLabel = signalTagToActionLabel(signalType, row.ai_recommendation);
+                  const actionLabel = signalTagToActionLabel(row.signal);
                   const actionColor = signalTagToActionColor(signalType);
-                  const scoreColor = edgeScoreColor(row.edge_score);
+                  const scoreColor = edgeScoreColor(row.edge);
 
                   return (
                     <div
@@ -924,8 +922,8 @@ function EdgeBoardPreview() {
                         {row.projection_final != null && (
                           <EdgeStatRow label="Projection" value={`${Math.round(row.projection_final)} pts`} valueColor="text-[#F5C84C]" />
                         )}
-                        {row.edge_score != null && (
-                          <EdgeStatRow label="Edge Score" value={row.edge_score > 0 ? `+${row.edge_score.toFixed(1)}` : row.edge_score.toFixed(1)} valueColor={scoreColor} />
+                        {row.edge != null && (
+                          <EdgeStatRow label="Edge" value={row.edge > 0 ? `+${row.edge.toFixed(1)}` : row.edge.toFixed(1)} valueColor={scoreColor} />
                         )}
                         <EdgeStatRow
                           label="Action"

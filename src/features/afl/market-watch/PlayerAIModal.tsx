@@ -219,13 +219,13 @@ export function PlayerAIModal({ player, onClose }: PlayerAIModalProps) {
           </div>
 
           {/* Recommendation Badge */}
-          {(player.signal || player.ai_recommendation) && (
+          {player.signal && (
             <div className="flex items-center justify-between p-4 bg-white/[0.03] border border-white/10 rounded-xl">
-              <span className="text-sm text-gray-400">AI Recommendation</span>
+              <span className="text-sm text-gray-400">AI Signal</span>
               <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
-                getEdgeSignalStyles(signalFromField(player.signal ?? player.ai_recommendation))
+                getEdgeSignalStyles(signalFromField(player.signal))
               }`}>
-                {formatEdgeSignalLabel(signalFromField(player.signal ?? player.ai_recommendation))}
+                {formatEdgeSignalLabel(signalFromField(player.signal))}
               </span>
             </div>
           )}

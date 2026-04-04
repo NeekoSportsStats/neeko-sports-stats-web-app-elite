@@ -9,6 +9,7 @@ import { useAuth } from '@/lib/auth';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { getTeamAccentColour } from '@/config/aflTeamColours';
 import { PlayerStatusPill } from '@/features/afl/rankings/components/PlayerStatusPill';
+import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from '@/utils/aflEdgeSignal';
 
 interface TeamPlayer {
   player_id?: number;
@@ -21,8 +22,7 @@ interface TeamPlayer {
   best_value_score?: number | null;
   price: number;
   breakeven?: number | null;
-  ai_recommendation: string | null;
-  recommendation_color?: string;
+  signal: string | null;
   summary_short: string | null;
   summary_long?: string | null;
   is_locked?: boolean;
@@ -45,28 +45,24 @@ function fmtProj(p: number | null | undefined) {
   return Math.round(Number(p)).toString();
 }
 
-function recColorHex(rec: string | null) {
-  if (rec === 'BUY')  return '#4ade80';
-  if (rec === 'SELL') return '#f87171';
-  return '#94a3b8';
-}
-
-function RecBadge({ rec }: { rec: string | null }) {
-  if (!rec) return null;
-  const color = recColorHex(rec);
+function RecBadge({ signal }: { signal: string | null }) {
+  const sig = signalFromField(signal);
+  const color = getEdgeSignalColor(sig);
+  const label = formatEdgeSignalLabel(sig);
   return (
     <span
       className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide shrink-0"
       style={{ background: `${color}18`, color, border: `1px solid ${color}40` }}
     >
-      {rec}
+      {label}
     </span>
   );
 }
 
-function RecIcon({ rec }: { rec: string | null }) {
-  if (rec === 'BUY')  return <TrendingUp size={13} className="text-emerald-400 shrink-0" />;
-  if (rec === 'SELL') return <TrendingDown size={13} className="text-red-400 shrink-0" />;
+function RecIcon({ signal }: { signal: string | null }) {
+  const sig = signalFromField(signal);
+  if (sig === 'STRONG_BUY' || sig === 'BUY') return <TrendingUp size={13} className="text-emerald-400 shrink-0" />;
+  if (sig === 'STRONG_SELL' || sig === 'SELL') return <TrendingDown size={13} className="text-red-400 shrink-0" />;
   return <Minus size={13} className="text-white/30 shrink-0" />;
 }
 
@@ -91,8 +87,8 @@ function MiniBar({ value, max }: { value: number; max: number }) {
 function DistributionBar({ players }: { players: TeamPlayer[] }) {
   const unlocked = players.filter(p => !p.is_locked);
   if (unlocked.length === 0) return null;
-  const buys  = unlocked.filter(p => p.ai_recommendation === 'BUY').length;
-  const sells = unlocked.filter(p => p.ai_recommendation === 'SELL').length;
+  const buys  = unlocked.filter(p => { const s = signalFromField(p.signal); return s === 'BUY' || s === 'STRONG_BUY'; }).length;
+  const sells = unlocked.filter(p => { const s = signalFromField(p.signal); return s === 'SELL' || s === 'STRONG_SELL'; }).length;
   const holds = unlocked.length - buys - sells;
   const pctBuy  = Math.round((buys  / unlocked.length) * 100);
   const pctSell = Math.round((sells / unlocked.length) * 100);
@@ -174,7 +170,7 @@ function CategoryPlayerRow({ player, locked, partial }: { player: TeamPlayer; lo
   const content = (
     <div className={`flex items-center gap-3 px-4 py-3 ${locked ? 'opacity-60' : 'group hover:bg-white/[0.03] transition-colors'}`}>
       <div className="shrink-0">
-        <RecIcon rec={locked ? null : player.ai_recommendation} />
+        <RecIcon signal={locked ? null : player.signal} />
       </div>
 
       <div className="flex-1 min-w-0">
@@ -234,7 +230,7 @@ function CategoryPlayerRow({ player, locked, partial }: { player: TeamPlayer; lo
               <p className="text-sm font-bold text-white/80 tabular-nums">{fmtProj(proj)}</p>
               <p className="text-[9px] text-white/25 uppercase tracking-wide">proj</p>
             </div>
-            {!locked && <RecBadge rec={player.ai_recommendation} />}
+            {!locked && <RecBadge signal={player.signal} />}
             <ChevronRight size={13} className="text-white/20 group-hover:text-white/40 transition-colors" />
           </>
         )}
@@ -296,7 +292,7 @@ function FullPlayerRow({
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <span className="text-sm font-bold text-white/20 w-6 shrink-0 text-center">{rank}</span>
-        <RecIcon rec={player.ai_recommendation} />
+        <RecIcon signal={player.signal} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <p className="text-sm font-semibold text-white truncate group-hover:text-white/90 transition-colors">
@@ -337,7 +333,7 @@ function FullPlayerRow({
           <p className="text-sm font-bold text-white/80 tabular-nums">{fmtProj(proj)}</p>
           <p className="text-[9px] text-white/25 uppercase tracking-wide">proj</p>
         </div>
-        <RecBadge rec={player.ai_recommendation} />
+        <RecBadge signal={player.signal} />
         <ChevronRight size={14} className="text-white/20 group-hover:text-white/40 transition-colors" />
       </div>
     </Link>
@@ -424,7 +420,7 @@ function TeamSEOSection({ teamName, players }: { teamName: string; players: Team
   const shortName = teamName.split(' ')[0];
   const topPlayer = players[0];
   const topProj   = topPlayer ? Math.round(Number(topPlayer.projection_final)) : 0;
-  const buys      = players.filter(p => p.ai_recommendation === 'BUY');
+  const buys      = players.filter(p => { const s = signalFromField(p.signal); return s === 'BUY' || s === 'STRONG_BUY'; });
   const topBuy    = buys[0];
 
   const isHistoric = ['Adelaide', 'Hawthorn', 'Geelong', 'Richmond', 'Carlton', 'Collingwood'].includes(shortName);
@@ -550,7 +546,7 @@ export default function AFLTeamPage() {
   const avgProj      = players.length > 0 ? Math.round(projValues.reduce((a,b)=>a+b,0) / players.length) : 0;
   const ratingValues = players.map(p => parseFloat(String(p.neeko_rating)) || 0);
   const avgRating    = players.length > 0 ? (ratingValues.reduce((a,b)=>a+b,0) / players.length).toFixed(1) : '—';
-  const buyCt        = players.filter(p => p.ai_recommendation === 'BUY').length;
+  const buyCt        = players.filter(p => { const s = signalFromField(p.signal); return s === 'BUY' || s === 'STRONG_BUY'; }).length;
 
   const topPlayer    = players[0];
 
@@ -560,7 +556,7 @@ export default function AFLTeamPage() {
   const unlocked = players.filter(p => !p.is_locked);
 
   const valuePicks   = [...unlocked]
-    .filter(p => p.ai_recommendation === 'BUY' && p.value_score != null)
+    .filter(p => { const s = signalFromField(p.signal); return (s === 'BUY' || s === 'STRONG_BUY') && p.value_score != null; })
     .sort((a, b) => (Number(b.value_score) || 0) - (Number(a.value_score) || 0));
 
   const premiumPicks = [...unlocked]
@@ -569,7 +565,7 @@ export default function AFLTeamPage() {
     .slice(0, 8);
 
   const riskPlayers  = [...unlocked]
-    .filter(p => p.ai_recommendation === 'SELL')
+    .filter(p => { const s = signalFromField(p.signal); return s === 'SELL' || s === 'STRONG_SELL'; })
     .sort((a, b) => (Number(a.value_score) || 0) - (Number(b.value_score) || 0));
 
   const hiddenFull = !isPremium ? Math.max(0, players.length - FREE_PARTIAL) : 0;

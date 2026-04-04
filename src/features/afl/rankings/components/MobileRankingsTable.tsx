@@ -15,9 +15,9 @@ import {
   fmtPrice,
   getNeekoRatingBadge,
   getDisplayRecommendation,
-  resolveRecommendationColor,
   FREE_FULL_ROWS, PREMIUM_INITIAL_ROWS,
 } from "./helpers";
+import { signalFromField, getEdgeSignalColor } from "@/utils/aflEdgeSignal";
 
 // ─── Mobile sparkline ─────────────────────────────────────────────────────────
 
@@ -145,7 +145,7 @@ function ActionBadge({ row, activeTab, isPremium, onUpgrade }: {
   const displayRec = getDisplayRecommendation(row, activeTab);
   if (!displayRec) return null;
 
-  const rc = resolveRecommendationColor(row.recommendation_color, displayRec);
+  const rc = getEdgeSignalColor(signalFromField(row.signal));
   return (
     <span
       className="inline-block rounded-md border px-2 py-1 text-[11px] font-bold whitespace-nowrap"
