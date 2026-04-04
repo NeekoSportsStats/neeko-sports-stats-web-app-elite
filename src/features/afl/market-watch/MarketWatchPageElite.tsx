@@ -34,7 +34,11 @@ export default function MarketWatchPageElite() {
     try {
       const limit = premium ? 200 : 100;
       const viewName = premium ? "v_mw_premium" : "v_mw_free";
-      const { data, error } = await supabase.from(viewName).select("*").limit(limit);
+      const { data, error } = await supabase
+        .from(viewName)
+        .select("*")
+        .order("value_gap", { ascending: false })
+        .limit(limit);
 
       if (error) throw error;
 

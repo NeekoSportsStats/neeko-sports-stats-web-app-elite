@@ -1,5 +1,7 @@
 import { RankingRow, RankingsTab, SortKey, PositionFilter } from "./types";
 import { cleanAiText } from "../../../../utils/cleanAiText";
+import { computeEdgeSignal, formatEdgeSignalLabel, getEdgeSignalStyles, getEdgeSignalColor } from "../../../../utils/aflEdgeSignal";
+export { computeEdgeSignal, formatEdgeSignalLabel, getEdgeSignalStyles, getEdgeSignalColor };
 
 // ─── Recommendation label guardrails ─────────────────────────────────────────
 // Captain-tier labels require minimum projection and confidence thresholds.
@@ -12,23 +14,9 @@ export const VALUE_TAB_LABELS: Record<string, string> = {
   "Captain Option": "Speculative Value",
 };
 
-export function getDisplayRecommendation(row: RankingRow, tab: RankingsTab): string | null {
-  const rec = row.ai_recommendation;
-  if (!rec) return null;
-  if (tab === "value") {
-    const proj = row.projection_final ?? 0;
-    const conf = row.projection_confidence ?? 0;
-    const isCaptainLabel = ["Elite Captain", "Strong Captain", "Captain Option"].includes(rec);
-    if (isCaptainLabel && (proj < CAPTAIN_MIN_PROJECTION || conf < CAPTAIN_MIN_CONFIDENCE)) {
-      return VALUE_TAB_LABELS[rec] ?? "Bench Watch";
-    }
-  }
-  const proj = row.projection_final ?? 0;
-  const conf = row.projection_confidence ?? 0;
-  if (rec === "Elite Captain" && (proj < CAPTAIN_MIN_PROJECTION || conf < CAPTAIN_MIN_CONFIDENCE)) {
-    return "Strong Option";
-  }
-  return rec;
+export function getDisplayRecommendation(row: RankingRow, _tab: RankingsTab): string {
+  const signal = computeEdgeSignal(row.projection_final, row.breakeven);
+  return formatEdgeSignalLabel(signal);
 }
 
 // ─── Matchup display helper ───────────────────────────────────────────────────
@@ -428,6 +416,12 @@ const REC_LABEL_COLOR_MAP: Record<string, string> = {
   "SPECULATIVE VALUE": "#94a3b8",
   "STRONG OPTION":     "#10b981",
   "BENCH WATCH":       "#f59e0b",
+  // Edge signal labels
+  "STRONG_BUY":  "#4ade80",
+  "STRONG BUY":  "#4ade80",
+  "STRONG BUY (FORMATTED)": "#4ade80",
+  "STRONG SELL": "#f87171",
+  "STRONG_SELL": "#f87171",
 };
 
 export function resolveRecommendationColor(
@@ -509,13 +503,6 @@ export function formatActionLabel(action: string | null): string {
 
 export function getActionStyles(action: string | null): string {
   if (!action) return "";
-  const label = action.toUpperCase();
-  if (label === "STRONG_BUY" || label === "STRONG BUY") return "bg-green-500/15 text-green-400 border border-green-500/30";
-  if (label === "BUY" || label === "CAPTAIN OPTION") return "bg-green-400/10 text-green-300 border border-green-400/20";
-  if (label === "HOLD" || label === "WATCH") return "bg-yellow-400/10 text-yellow-300 border border-yellow-400/20";
-  if (label === "SELL") return "bg-red-400/10 text-red-300 border border-red-400/20";
-  if (label === "STRONG_SELL" || label === "STRONG SELL") return "bg-red-500/20 text-red-400 border border-red-500/30";
-  if (label.includes("ELITE CAPTAIN") || label.includes("STRONG CAPTAIN")) return "bg-yellow-400/10 text-yellow-300 border border-yellow-400/30";
-  return "bg-white/5 text-white/50 border border-white/10";
+  return getEdgeSignalStyles(action);
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { computeEdgeSignal, formatEdgeSignalLabel, getEdgeSignalStyles } from "@/utils/aflEdgeSignal";
 import {
   Crown, ArrowRight, Star, TrendingUp,
   TriangleAlert as AlertTriangle, Check, Database,
@@ -21,6 +22,7 @@ interface RankingRow {
   team: string | null;
   position: string | null;
   projection_final: number | null;
+  breakeven: number | null;
   ai_recommendation: string | null;
   summary_short: string | null;
 }
@@ -1199,14 +1201,7 @@ function formatActionLabel(action: string | null): string {
 }
 
 function getActionStyles(action: string | null): string {
-  switch ((action ?? "").toUpperCase()) {
-    case "STRONG_BUY":  return "bg-green-500/15 text-green-400 border border-green-500/30";
-    case "BUY":         return "bg-green-400/10 text-green-300 border border-green-400/20";
-    case "HOLD":        return "bg-yellow-400/10 text-yellow-300 border border-yellow-400/20";
-    case "SELL":        return "bg-red-400/10 text-red-300 border border-red-400/20";
-    case "STRONG_SELL": return "bg-red-500/20 text-red-400 border border-red-500/30";
-    default:            return "bg-white/5 text-white/30 border border-white/10";
-  }
+  return getEdgeSignalStyles(action);
 }
 
 function RankingsPreview() {
@@ -1217,7 +1212,7 @@ function RankingsPreview() {
     (async () => {
       const { data } = await supabase
         .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, projection_final, ai_recommendation, summary_short")
+        .select("player_id, player_name, team, position, projection_final, breakeven, ai_recommendation, summary_short")
         .gte("games_played", 3)
         .gt("projection_final", 50)
         .order("projection_final", { ascending: false })
@@ -1268,12 +1263,15 @@ function RankingsPreview() {
                         {row.projection_final != null ? Math.round(row.projection_final) : "—"}
                       </span>
                       <div className="flex justify-end">
-                        {row.ai_recommendation
-                          ? (
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold ${getActionStyles(row.ai_recommendation)}`}>
-                              {formatActionLabel(row.ai_recommendation)}
-                            </span>
-                          )
+                        {row.projection_final != null
+                          ? (() => {
+                              const sig = computeEdgeSignal(row.projection_final, row.breakeven);
+                              return (
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${getEdgeSignalStyles(sig)}`}>
+                                  {formatEdgeSignalLabel(sig)}
+                                </span>
+                              );
+                            })()
                           : <span className="text-xs text-white/30">—</span>
                         }
                       </div>
@@ -1332,12 +1330,15 @@ function RankingsPreview() {
                         {row.projection_final != null ? Math.round(row.projection_final) : "—"}
                       </span>
                       <div className="flex justify-end">
-                        {row.ai_recommendation
-                          ? (
-                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold ${getActionStyles(row.ai_recommendation)}`}>
-                              {formatActionLabel(row.ai_recommendation)}
-                            </span>
-                          )
+                        {row.projection_final != null
+                          ? (() => {
+                              const sig = computeEdgeSignal(row.projection_final, row.breakeven);
+                              return (
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${getEdgeSignalStyles(sig)}`}>
+                                  {formatEdgeSignalLabel(sig)}
+                                </span>
+                              );
+                            })()
                           : <span className="text-xs text-white/30">—</span>
                         }
                       </div>
