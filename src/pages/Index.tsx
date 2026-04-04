@@ -16,16 +16,13 @@ import { LandingMarketWatchSample } from "@/components/landing/LandingMarketWatc
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface RankingRow {
+  player_id: number;
   player_name: string;
-  player_team: string;
-  player_position: string | null;
   team: string | null;
   position: string | null;
   projection_final: number | null;
-  neeko_rating: number | null;
-  neeko_rating_scaled: number | null;
-  projection_confidence: number | null;
-  risk_rating: number | null;
+  ai_recommendation: string | null;
+  summary_short: string | null;
   value_score: number | null;
   value_tag: string | null;
 }
@@ -42,16 +39,15 @@ interface AccuracyExampleRow {
 }
 
 interface EdgeRow {
+  player_id: number;
   player_name: string;
   team: string;
   position: string | null;
-  neeko_rating: number | null;
   projection_final: number | null;
-  ceiling_estimate: number | null;
-  projection_confidence: number | null;
-  risk_rating: number | null;
-  upside_rating: number | null;
-  signal_type: "captain" | "breakout" | "trap";
+  breakeven: number | null;
+  edge_score: number | null;
+  ai_recommendation: string | null;
+  summary_short: string | null;
 }
 
 // ─── Static data ──────────────────────────────────────────────────────────────
@@ -796,8 +792,10 @@ function EdgeCardSkeleton() {
   );
 }
 
+type EdgeSignalType = "target" | "watch" | "avoid";
+
 interface EdgeSignal {
-  type: "captain" | "breakout" | "trap";
+  type: EdgeSignalType;
   label: string;
   desc: string;
   accentColor: string;
@@ -805,27 +803,18 @@ interface EdgeSignal {
   row: EdgeRow;
 }
 
-function edgeConfLabel(conf: number | null): { label: string; color: string } {
-  if (conf == null) return { label: "—",    color: "text-white/30" };
-  if (conf >= 75)   return { label: "High", color: "text-green-400" };
-  if (conf >= 55)   return { label: "Med",  color: "text-[#F5C84C]" };
-  return               { label: "Low",  color: "text-red-400" };
-}
-
-function riskLabelEdge(risk: number | null): { label: string; color: string } {
-  if (risk == null) return { label: "—",    color: "text-white/30" };
-  if (risk >= 35)   return { label: "High", color: "text-red-400" };
-  if (risk >= 22)   return { label: "Med",  color: "text-[#F5C84C]" };
-  return               { label: "Low",  color: "text-green-400" };
-}
-
-const SIGNAL_META: Record<"captain" | "breakout" | "trap", { label: string; desc: string; accentColor: string; icon: typeof Star }> = {
-  captain: { label: "Captain Lock",     desc: "Top captain pick — highest model score with strong confidence.",        accentColor: "#F5C84C", icon: Crown },
-  breakout: { label: "Must Have Value", desc: "Best value play — strong upside relative to price and projection.",     accentColor: "#34d399", icon: TrendingUp },
-  trap:     { label: "Do Not Start",    desc: "High-ranked player carrying elevated risk — fade with caution.",        accentColor: "#f87171", icon: AlertTriangle },
+const SIGNAL_META: Record<EdgeSignalType, { label: string; desc: string; accentColor: string; icon: typeof Star }> = {
+  target: { label: "Target",  desc: "Strong edge score — model favours this player this round.",   accentColor: "#34d399", icon: TrendingUp },
+  watch:  { label: "Watch",   desc: "Neutral signal — monitor before committing to this player.",  accentColor: "#F5C84C", icon: Star },
+  avoid:  { label: "Avoid",   desc: "Negative edge score — model flags elevated risk this round.", accentColor: "#f87171", icon: AlertTriangle },
 };
 
-const SIGNAL_ORDER: Array<"captain" | "breakout" | "trap"> = ["captain", "breakout", "trap"];
+function edgeScoreColor(score: number | null): string {
+  if (score == null) return "text-white/30";
+  if (score > 5)  return "text-green-400";
+  if (score < -5) return "text-red-400";
+  return "text-[#F5C84C]";
+}
 
 function EdgeBoardPreview() {
   const [signals, setSignals] = useState<EdgeSignal[]>([]);
@@ -834,29 +823,26 @@ function EdgeBoardPreview() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase
-        .from("v_edge_board_safe")
-        .select("player_name, team, position, neeko_rating, projection_final, ceiling_estimate, projection_confidence, risk_rating, upside_rating, signal_type");
+        .from("player_rankings_cache")
+        .select("player_id, player_name, team, position, projection_final, breakeven, edge_score, ai_recommendation, summary_short")
+        .gte("games_played", 3)
+        .gt("projection_final", 50)
+        .order("edge_score", { ascending: false })
+        .limit(50);
 
       const rows = ((data ?? []) as EdgeRow[]).filter(
-        (r) =>
-          r.player_name &&
-          r.team &&
-          (r.projection_final ?? 0) > 0 &&
-          (r.neeko_rating ?? 0) > 0,
+        (r) => r.player_name && r.team && (r.projection_final ?? 0) > 0,
       );
 
-      if (rows.length === 0) {
-        setSignals([]);
-        setLoading(false);
-        return;
-      }
+      const targets = rows.filter(r => (r.edge_score ?? 0) > 5);
+      const watches = rows.filter(r => (r.edge_score ?? 0) >= -5 && (r.edge_score ?? 0) <= 5);
+      const avoids  = rows.filter(r => (r.edge_score ?? 0) < -5);
 
-      const built: EdgeSignal[] = SIGNAL_ORDER.flatMap((type) => {
-        const row = rows.find((r) => r.signal_type === type);
-        if (!row) return [];
-        const meta = SIGNAL_META[type];
-        return [{ type, label: meta.label, desc: meta.desc, accentColor: meta.accentColor, icon: meta.icon, row }];
-      });
+      const built: EdgeSignal[] = [
+        ...targets.slice(0, 1).map(row => ({ type: "target" as EdgeSignalType, ...SIGNAL_META.target, row })),
+        ...watches.slice(0, 1).map(row => ({ type: "watch"  as EdgeSignalType, ...SIGNAL_META.watch,  row })),
+        ...avoids.slice(0, 1) .map(row => ({ type: "avoid"  as EdgeSignalType, ...SIGNAL_META.avoid,  row })),
+      ];
 
       setSignals(built);
       setLoading(false);
@@ -870,67 +856,66 @@ function EdgeBoardPreview() {
         <SectionHeading>This Round's Edge Signals</SectionHeading>
         <GoldDivider />
         <p className="text-center text-white/40 text-sm mb-6 max-w-xl mx-auto leading-relaxed">
-          Three model-derived signals from the Top 25 Neeko rankings — updated before every round lockout.
+          Model-derived signals from the top 50 players — updated before every round lockout.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {loading
             ? [0, 1, 2].map((i) => <EdgeCardSkeleton key={i} />)
-            : signals.map((signal) => {
-                const { label, desc, accentColor, icon: Icon, row, type } = signal;
-                const conf = edgeConfLabel(row.projection_confidence);
-                const risk = riskLabelEdge(row.risk_rating);
-                const upside = row.ceiling_estimate != null && row.projection_final != null
-                  ? Math.round(row.ceiling_estimate - row.projection_final)
-                  : null;
+            : signals.length > 0
+              ? signals.map((signal) => {
+                  const { label, desc, accentColor, icon: Icon, row, type } = signal;
+                  const scoreColor = edgeScoreColor(row.edge_score);
 
-                return (
-                  <div
-                    key={type}
-                    className="rounded-2xl bg-[#0e0e0e] p-5 hover:scale-[1.01] transition-all"
-                    style={{ border: `1px solid ${accentColor}25` }}
-                  >
-                    <div className="flex items-center gap-2 mb-4">
-                      <div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                        style={{ background: `${accentColor}15`, border: `1px solid ${accentColor}30` }}
-                      >
-                        <Icon size={16} style={{ color: accentColor }} />
+                  return (
+                    <div
+                      key={type}
+                      className="rounded-2xl bg-[#0e0e0e] p-5 hover:scale-[1.01] transition-all"
+                      style={{ border: `1px solid ${accentColor}25` }}
+                    >
+                      <div className="flex items-center gap-2 mb-4">
+                        <div
+                          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: `${accentColor}15`, border: `1px solid ${accentColor}30` }}
+                        >
+                          <Icon size={16} style={{ color: accentColor }} />
+                        </div>
+                        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: accentColor }}>
+                          {label}
+                        </span>
                       </div>
-                      <span className="text-xs font-bold uppercase tracking-widest" style={{ color: accentColor }}>
-                        {label}
-                      </span>
-                    </div>
 
-                    <p className="text-base font-bold text-white leading-tight mb-0.5">{row.player_name}</p>
-                    <p className="text-[11px] text-white/35 mb-1">{row.team}{row.position ? ` · ${row.position}` : ""}</p>
-                    <p className="text-[10px] text-white/20 mb-3 leading-snug">{desc}</p>
+                      <p className="text-base font-bold text-white leading-tight mb-0.5">{row.player_name}</p>
+                      <p className="text-[11px] text-white/35 mb-1">{row.team}{row.position ? ` · ${row.position}` : ""}</p>
+                      {row.summary_short && (
+                        <p className="text-[10px] text-white/30 mb-3 leading-snug italic">{row.summary_short}</p>
+                      )}
+                      {!row.summary_short && (
+                        <p className="text-[10px] text-white/20 mb-3 leading-snug">{desc}</p>
+                      )}
 
-                    <div>
-                      {row.projection_final != null && (
-                        <EdgeStatRow label="Projection" value={`${Math.round(row.projection_final)} pts`} valueColor="text-[#F5C84C]" />
-                      )}
-                      {row.ceiling_estimate != null && (
-                        <EdgeStatRow label="Ceiling" value={`${Math.round(row.ceiling_estimate)} pts`} valueColor="text-white/60" />
-                      )}
-                      {type === "breakout" && upside != null && (
-                        <EdgeStatRow label="Upside" value={`+${upside} pts`} valueColor="text-green-400" />
-                      )}
-                      {type === "trap" ? (
-                        <>
-                          <EdgeStatRow label="Confidence" value={conf.label} valueColor={conf.color} />
-                          <EdgeStatRow label="Risk" value={risk.label} valueColor={risk.color} />
-                        </>
-                      ) : (
-                        <EdgeStatRow label="Confidence" value={conf.label} valueColor={conf.color} />
-                      )}
-                      {row.neeko_rating != null && (
-                        <EdgeStatRow label="Neeko Rating" value={`${Math.round(row.neeko_rating)}`} valueColor="text-white/40" />
-                      )}
+                      <div>
+                        {row.projection_final != null && (
+                          <EdgeStatRow label="Projection" value={`${Math.round(row.projection_final)} pts`} valueColor="text-[#F5C84C]" />
+                        )}
+                        {row.breakeven != null && (
+                          <EdgeStatRow label="Breakeven" value={`${Math.round(row.breakeven)} pts`} valueColor="text-white/60" />
+                        )}
+                        {row.edge_score != null && (
+                          <EdgeStatRow label="Edge Score" value={row.edge_score.toFixed(1)} valueColor={scoreColor} />
+                        )}
+                        {row.ai_recommendation && (
+                          <EdgeStatRow label="Signal" value={row.ai_recommendation.replace(/_/g, " ")} valueColor="text-white/40" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })
+              : (
+                <div className="col-span-3 rounded-2xl border border-white/[0.07] bg-[#0e0e0e] p-8 text-center">
+                  <p className="text-sm text-white/30">Edge signals will appear once round data is processed.</p>
+                </div>
+              )
           }
         </div>
 
@@ -1177,20 +1162,6 @@ function OutcomeProofSection() {
 
 // ─── Rankings helpers ─────────────────────────────────────────────────────────
 
-function riskLabel(risk: number | null): { label: string; color: string } {
-  if (risk == null) return { label: "—",    color: "text-white/30" };
-  if (risk >= 55)   return { label: "HIGH", color: "text-red-400" };
-  if (risk >= 38)   return { label: "MED",  color: "text-[#F5C84C]" };
-  return               { label: "LOW",  color: "text-green-400" };
-}
-
-function confLabel(conf: number | null): { label: string; textColor: string; bg: string; border: string } {
-  if (conf == null) return { label: "—",    textColor: "text-white/30",  bg: "bg-white/5",        border: "border-white/10" };
-  if (conf >= 75)   return { label: "HIGH", textColor: "text-green-400", bg: "bg-green-400/10",   border: "border-green-400/30" };
-  if (conf >= 55)   return { label: "MED",  textColor: "text-[#F5C84C]", bg: "bg-[#F5C84C]/10",   border: "border-[#F5C84C]/30" };
-  return               { label: "LOW",  textColor: "text-red-400",   bg: "bg-red-400/10",     border: "border-red-400/30" };
-}
-
 function valueLabel(tag: string | null, score: number | null): { label: string; textColor: string; bg: string; border: string } {
   const t = (tag ?? "").toUpperCase();
   if (t.includes("ELITE") || t.includes("STRONG"))    return { label: "STRONG",    textColor: "text-green-400",  bg: "bg-green-400/10",  border: "border-green-400/30" };
@@ -1208,26 +1179,14 @@ function RankingsPreview() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.rpc("get_rankings_safe", {
-        p_user_id: null,
-        p_is_bot: false,
-        p_limit: 5,
-      });
-      const mapped = (data ?? []).map((r: Record<string, unknown>) => ({
-        player_name: r.player_name as string,
-        player_team: r.team as string,
-        player_position: r.position as string | null,
-        team: r.team as string | null,
-        position: r.position as string | null,
-        projection_final: r.projection_final as number | null,
-        neeko_rating: r.neeko_rating as number | null,
-        neeko_rating_scaled: r.neeko_rating_scaled as number | null,
-        projection_confidence: r.projection_confidence as number | null,
-        risk_rating: r.risk_rating as number | null,
-        value_score: r.value_score as number | null,
-        value_tag: r.value_tag as string | null,
-      }));
-      setRows(mapped);
+      const { data } = await supabase
+        .from("player_rankings_cache")
+        .select("player_id, player_name, team, position, projection_final, ai_recommendation, summary_short, value_score, value_tag")
+        .gte("games_played", 3)
+        .gt("projection_final", 50)
+        .order("projection_final", { ascending: false })
+        .limit(5);
+      setRows((data ?? []) as RankingRow[]);
       setLoading(false);
     })();
   }, []);
@@ -1265,11 +1224,11 @@ function RankingsPreview() {
                   {rows.map((row, idx) => {
                     const val  = valueLabel(row.value_tag, row.value_score);
                     return (
-                      <div key={idx} className="grid grid-cols-[2rem_1fr_5rem_7rem] gap-x-4 px-5 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors last:border-0 items-center">
+                      <div key={row.player_id ?? idx} className="grid grid-cols-[2rem_1fr_5rem_7rem] gap-x-4 px-5 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors last:border-0 items-center">
                         <span className="text-xs text-white/25 font-mono">{idx + 1}</span>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-white truncate leading-tight">{row.player_name}</p>
-                          {row.player_position && <p className="text-[10px] text-white/30 leading-tight">{row.player_position}</p>}
+                          {row.position && <p className="text-[10px] text-white/30 leading-tight">{row.position}</p>}
                         </div>
                         <span className="text-sm font-bold text-[#F5C84C] text-center tabular-nums">
                           {row.projection_final != null ? Math.round(row.projection_final) : "—"}
@@ -1335,7 +1294,7 @@ function RankingsPreview() {
                   {rows.map((row, idx) => {
                     const val = valueLabel(row.value_tag, row.value_score);
                     return (
-                      <div key={idx} className="grid grid-cols-[2rem_1fr_4.5rem_5rem] gap-x-3 px-4 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors last:border-0 items-center">
+                      <div key={row.player_id ?? idx} className="grid grid-cols-[2rem_1fr_4.5rem_5rem] gap-x-3 px-4 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors last:border-0 items-center">
                         <span className="text-xs text-white/25 font-mono">{idx + 1}</span>
                         <span className="text-sm font-bold text-white truncate">{row.player_name}</span>
                         <span className="text-sm font-bold text-[#F5C84C] text-center tabular-nums">

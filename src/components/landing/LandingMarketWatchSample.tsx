@@ -1,125 +1,73 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown, Minus, Lock, ArrowRight, Crown, CircleAlert as AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
-import { mapMarketLabel } from "@/utils/marketLabels";
 
 interface MarketWatchRow {
   player_id: number;
   player_name: string;
   team: string;
   position: string | null;
-  projection: number | null;
+  projection_final: number | null;
   breakeven: number | null;
-  value_score: number | null;
-  category: string | null;
-  action?: string | null;
-  price: number | null;
-  is_injured: boolean | null;
+  edge_score: number | null;
+  ai_recommendation: string | null;
+  summary_short: string | null;
   is_bye: boolean | null;
   status: string | null;
   manual_status: string | null;
-  value_label: string | null;
-  matchup_label: string | null;
-  recommendation_short: string | null;
 }
 
-function StatusPill({ isInjured, isBye }: { isInjured: boolean; isBye: boolean }) {
-  if (isInjured) {
-    return (
-      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-red-500/10 border border-red-500/30 text-red-400 text-[9px] font-bold uppercase tracking-wide">
-        <AlertCircle size={8} />
-        INJ
-      </span>
-    );
-  }
-  if (isBye) {
-    return (
-      <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[9px] font-bold uppercase tracking-wide">
-        BYE
-      </span>
-    );
-  }
-  return null;
+type SignalTier = "target" | "watch" | "avoid";
+
+function getSignalTier(edgeScore: number | null): SignalTier {
+  const s = edgeScore ?? 0;
+  if (s > 5) return "target";
+  if (s < -5) return "avoid";
+  return "watch";
 }
 
-function CategoryPill({ category }: { category: string | null }) {
-  if (!category) return null;
-
-  const cat = category.toUpperCase();
-
-  // Map both old (TARGET/WATCH/AVOID) and new (BUY/HOLD/SELL) to friendly labels
-  const normalizedCategory = cat === "TARGET" || cat === "BUY" ? "BUY"
-    : cat === "AVOID" || cat === "SELL" ? "SELL"
-    : "HOLD";
-
-  const mapped = mapMarketLabel(normalizedCategory);
-
-  const styles: Record<string, { bg: string; text: string; border: string; icon: typeof TrendingUp }> = {
-    "BUY": {
-      bg: "bg-green-400/10",
-      text: "text-green-400",
-      border: "border-green-400/30",
-      icon: TrendingUp,
-    },
-    "SELL": {
-      bg: "bg-red-400/10",
-      text: "text-red-400",
-      border: "border-red-400/30",
-      icon: TrendingDown,
-    },
-    "HOLD": {
-      bg: "bg-[#F5C84C]/10",
-      text: "text-[#F5C84C]",
-      border: "border-[#F5C84C]/30",
-      icon: Minus,
-    },
-  };
-
-  const style = styles[normalizedCategory];
-  const Icon = style.icon;
-
+function StatusPill({ isBye }: { isBye: boolean }) {
+  if (!isBye) return null;
   return (
-    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border ${style.bg} ${style.border}`}>
-      <Icon size={10} className={style.text} />
-      <span className={`text-[10px] font-bold uppercase tracking-wide ${style.text}`}>
-        {mapped.label.toUpperCase()}
-      </span>
+    <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[9px] font-bold uppercase tracking-wide">
+      BYE
+    </span>
+  );
+}
+
+function InjuryPill({ isInjured }: { isInjured: boolean }) {
+  if (!isInjured) return null;
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-red-500/10 border border-red-500/30 text-red-400 text-[9px] font-bold uppercase tracking-wide">
+      <AlertCircle size={8} />
+      INJ
+    </span>
+  );
+}
+
+function SignalPill({ tier }: { tier: SignalTier }) {
+  const config = {
+    target: { label: "TARGET", bg: "bg-green-400/10", text: "text-green-400", border: "border-green-400/30", icon: TrendingUp },
+    watch:  { label: "WATCH",  bg: "bg-[#F5C84C]/10",  text: "text-[#F5C84C]",  border: "border-[#F5C84C]/30",  icon: Minus },
+    avoid:  { label: "AVOID",  bg: "bg-red-400/10",    text: "text-red-400",    border: "border-red-400/30",    icon: TrendingDown },
+  };
+  const { label, bg, text, border, icon: Icon } = config[tier];
+  return (
+    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border ${bg} ${border}`}>
+      <Icon size={10} className={text} />
+      <span className={`text-[10px] font-bold uppercase tracking-wide ${text}`}>{label}</span>
     </div>
   );
 }
 
 function PlayerRow({ player, index }: { player: MarketWatchRow; index: number }) {
-  const projection = player.projection != null ? Math.round(player.projection) : "—";
+  const projection = player.projection_final != null ? Math.round(player.projection_final) : "—";
   const breakeven = player.breakeven != null ? Math.round(player.breakeven) : "—";
-  const valueGap = useMemo(() => {
-    if (player.projection == null || player.breakeven == null) return null;
-    return Math.round(player.projection - player.breakeven);
-  }, [player.projection, player.breakeven]);
-
-  const isInjured = player.is_injured === true || player.status === 'injured' || player.manual_status === 'injured';
-  const isBye = player.is_bye === true || player.status === 'bye' || player.manual_status === 'bye';
-
-  const aiWhy = useMemo(() => {
-    const cat = (player.category ?? '').toUpperCase();
-    const gap = valueGap ?? 0;
-    const proj = projection !== "—" ? projection : 0;
-
-    // Support both old (TARGET/WATCH/AVOID) and new (BUY/HOLD/SELL) values
-    if ((cat === 'TARGET' || cat === 'BUY') && gap > 0) {
-      return `+${gap} value gap with ${proj} projection — underpriced opportunity`;
-    }
-    if ((cat === 'AVOID' || cat === 'SELL') && gap < 0) {
-      return `${gap} value gap — priced above current output`;
-    }
-    if (cat === 'WATCH' || cat === 'HOLD') {
-      if (player.recommendation_short) {
-        return player.recommendation_short;
-      }
-      return `Projection: ${proj} · Breakeven: ${breakeven}`;
-    }
-    return `Projection: ${proj} · Breakeven: ${breakeven}`;
-  }, [player.category, valueGap, projection, breakeven, player.recommendation_short]);
+  const tier = getSignalTier(player.edge_score);
+  const isInjured = player.status === "injured" || player.manual_status === "injured";
+  const isBye = player.is_bye === true || player.status === "bye" || player.manual_status === "bye";
+  const whyText = player.summary_short ?? `Projection: ${projection} · Breakeven: ${breakeven}`;
 
   return (
     <div className="group">
@@ -128,7 +76,8 @@ function PlayerRow({ player, index }: { player: MarketWatchRow; index: number })
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <p className="text-sm font-bold text-white truncate leading-tight">{player.player_name}</p>
-            <StatusPill isInjured={isInjured} isBye={isBye} />
+            <InjuryPill isInjured={isInjured} />
+            <StatusPill isBye={isBye} />
           </div>
           <p className="text-[10px] text-white/30 leading-tight truncate">{player.team}{player.position ? ` · ${player.position}` : ""}</p>
         </div>
@@ -139,11 +88,11 @@ function PlayerRow({ player, index }: { player: MarketWatchRow; index: number })
           {breakeven}
         </span>
         <div className="flex justify-end">
-          <CategoryPill category={player.category} />
+          <SignalPill tier={tier} />
         </div>
       </div>
       <div className="px-3 md:px-4 py-1.5 bg-[#0a0a0a] border-b border-white/[0.03]">
-        <p className="text-[11px] text-white/35 leading-snug italic">{aiWhy}</p>
+        <p className="text-[11px] text-white/35 leading-snug italic">{whyText}</p>
       </div>
     </div>
   );
@@ -174,101 +123,21 @@ export function LandingMarketWatchSample() {
   useEffect(() => {
     (async () => {
       try {
-        // v_mw_free does not expose status/injury columns — select only what exists
-        const { data: freeData, error: freeError } = await supabase
-          .from("v_mw_free")
-          .select("player_id, player_name, team, position, projection, breakeven, value_score, category, action, price, value_label, matchup_label, recommendation_short")
-          .limit(30);
+        const { data } = await supabase
+          .from("player_rankings_cache")
+          .select("player_id, player_name, team, position, projection_final, breakeven, edge_score, ai_recommendation, summary_short, is_bye, status, manual_status")
+          .gte("games_played", 3)
+          .gt("projection_final", 50)
+          .order("projection_final", { ascending: false })
+          .limit(50);
 
-        type RawRow = {
-          player_id: number;
-          player_name: string;
-          team: string;
-          position: string | null;
-          projection: number | null;
-          breakeven: number | null;
-          value_score: number | null;
-          category: string | null;
-          action: string | null;
-          price: number | null;
-          value_label: string | null;
-          matchup_label: string | null;
-          recommendation_short: string | null;
-        };
+        const rows = (data ?? []) as MarketWatchRow[];
 
-        let rawRows: RawRow[] = [];
+        const targets = rows.filter(r => (r.edge_score ?? 0) > 5).slice(0, 2);
+        const watches = rows.filter(r => (r.edge_score ?? 0) >= -5 && (r.edge_score ?? 0) <= 5).slice(0, 2);
+        const avoids  = rows.filter(r => (r.edge_score ?? 0) < -5).slice(0, 2);
 
-        if (!freeError && freeData && freeData.length > 0) {
-          rawRows = freeData as RawRow[];
-        } else {
-          // Fallback: get balanced set from v_mw_premium
-          const [buyRes, holdRes, sellRes] = await Promise.all([
-            supabase
-              .from("v_mw_premium")
-              .select("player_id, player_name, team, position, projection, breakeven, value_score, action, price, value_label, matchup_label, recommendation_short")
-              .eq("action", "BUY")
-              .limit(5),
-            supabase
-              .from("v_mw_premium")
-              .select("player_id, player_name, team, position, projection, breakeven, value_score, action, price, value_label, matchup_label, recommendation_short")
-              .eq("action", "HOLD")
-              .limit(5),
-            supabase
-              .from("v_mw_premium")
-              .select("player_id, player_name, team, position, projection, breakeven, value_score, action, price, value_label, matchup_label, recommendation_short")
-              .eq("action", "SELL")
-              .limit(5),
-          ]);
-          rawRows = [
-            ...(buyRes.data ?? []),
-            ...(holdRes.data ?? []),
-            ...(sellRes.data ?? []),
-          ] as RawRow[];
-        }
-
-        // Normalise: use category field, fall back to action field
-        const availableRows: MarketWatchRow[] = rawRows.map(r => ({
-          ...r,
-          category: (r.category ?? r.action ?? null),
-          is_injured: null,
-          is_bye: null,
-          status: null,
-          manual_status: null,
-        }));
-
-        // Bucket by normalised category — category is already resolved from action above
-        const targets = availableRows.filter(r => {
-          const cat = (r.category ?? '').toUpperCase();
-          return cat === 'TARGET' || cat === 'BUY';
-        });
-        const watches = availableRows.filter(r => {
-          const cat = (r.category ?? '').toUpperCase();
-          return cat === 'WATCH' || cat === 'HOLD';
-        });
-        const avoids = availableRows.filter(r => {
-          const cat = (r.category ?? '').toUpperCase();
-          return cat === 'AVOID' || cat === 'SELL';
-        });
-
-        // Build a balanced 6-player sample — gracefully handle missing categories
-        // If a category is empty, fill slots with the best available from other categories
-        const targetSlice = targets.slice(0, 2);
-        const watchSlice = watches.slice(0, 2);
-        const avoidSlice = avoids.slice(0, 2);
-
-        let selected = [...targetSlice, ...watchSlice, ...avoidSlice];
-
-        // If we have fewer than 4 players, fill with best by value_score
-        if (selected.length < 4) {
-          const usedIds = new Set(selected.map(r => r.player_id));
-          const extras = availableRows
-            .filter(r => !usedIds.has(r.player_id))
-            .sort((a, b) => Math.abs(b.value_score ?? 0) - Math.abs(a.value_score ?? 0))
-            .slice(0, 6 - selected.length);
-          selected = [...selected, ...extras];
-        }
-
-        setPlayers(selected);
+        setPlayers([...targets, ...watches, ...avoids]);
       } catch (err) {
         console.error("[LandingMW] Error:", err);
         setPlayers([]);
