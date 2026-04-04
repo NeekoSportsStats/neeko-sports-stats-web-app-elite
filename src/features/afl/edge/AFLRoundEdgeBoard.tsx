@@ -221,12 +221,28 @@ function getPrimaryMetric(row: RankingRow, section: Section): { label: string; v
   }
 }
 
-function getRecommendationLabel(section: Section): { label: string; color: string; bg: string; border: string } {
-  switch (section) {
-    case "captain": return { label: "START — Captain", color: "text-yellow-300", bg: "bg-yellow-400/10", border: "border-yellow-400/25" };
-    case "breakout": return { label: "START — Value", color: "text-green-300", bg: "bg-green-500/10", border: "border-green-500/25" };
-    case "trap": return { label: "FADE — Do Not Start", color: "text-red-300", bg: "bg-red-500/10", border: "border-red-500/25" };
-  }
+function getSignal(edge: number | null): "TARGET" | "WATCH" | "AVOID" {
+  const e = edge ?? 0;
+  if (e > 5)  return "TARGET";
+  if (e >= -5) return "WATCH";
+  return "AVOID";
+}
+
+function getAction(edge: number | null): string {
+  const e = edge ?? 0;
+  if (e >= 15) return "STRONG BUY";
+  if (e >= 6)  return "BUY";
+  if (e >= -5) return "HOLD";
+  if (e >= -14) return "SELL";
+  return "STRONG SELL";
+}
+
+function getSignalStyles(edge: number | null): { label: string; color: string; bg: string; border: string } {
+  const signal = getSignal(edge);
+  const action = getAction(edge);
+  if (signal === "TARGET") return { label: `${signal} — ${action}`, color: "text-green-300", bg: "bg-green-500/10", border: "border-green-500/25" };
+  if (signal === "AVOID")  return { label: `${signal} — ${action}`, color: "text-red-300",   bg: "bg-red-500/10",   border: "border-red-500/25" };
+  return { label: `${signal} — ${action}`, color: "text-yellow-300", bg: "bg-yellow-400/10", border: "border-yellow-400/25" };
 }
 
 function buildConfidenceReasons(row: RankingRow, section: Section): string[] {
@@ -502,8 +518,13 @@ interface PlayerAnalysisModalProps {
 function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: PlayerAnalysisModalProps) {
   const cfg = getSectionLabel(section);
   const metric = getPrimaryMetric(row, section);
-  const reco = getRecommendationLabel(section);
+  const edge = Number(row.edge_score ?? 0);
+  const signal = getSignal(edge);
+  const action = getAction(edge);
+  const reco = getSignalStyles(edge);
   const conf = row.projection_confidence;
+
+  console.log({ player: row.player_name, edge, signal, action });
   const reasons = buildConfidenceReasons(row, section);
   const [shared, setShared] = useState(false);
 
@@ -742,6 +763,9 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
   const conf = row.projection_confidence;
   const oneLiner = row.ai_summary ? truncateWords(getOneLiner(row.ai_summary), 9) : null;
   const isCaptain = section === "captain";
+  const edge = Number(row.edge_score ?? 0);
+  const signal = getSignal(edge);
+  const action = getAction(edge);
 
   return (
     <button
@@ -814,6 +838,21 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
             <span className="text-[10px] text-[#F5C84C]/45">Reasoning locked — Neeko+</span>
           </div>
         ) : null}
+      </div>
+
+      {/* Signal + Action badge */}
+      <div className="px-4 pb-3 flex items-center gap-2">
+        <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+          signal === "TARGET" ? "text-green-300 bg-green-500/10 border-green-500/25" :
+          signal === "AVOID"  ? "text-red-300 bg-red-500/10 border-red-500/25" :
+                                "text-yellow-300 bg-yellow-400/10 border-yellow-400/25"
+        }`}>{signal}</span>
+        <span className="text-[10px] text-white/30 font-semibold">{action}</span>
+        {row.edge_score != null && (
+          <span className={`ml-auto text-[10px] font-bold tabular-nums ${edge > 5 ? "text-green-400" : edge < -5 ? "text-red-400" : "text-yellow-400"}`}>
+            {edge > 0 ? `+${edge.toFixed(1)}` : edge.toFixed(1)}
+          </span>
+        )}
       </div>
 
       {/* View Analysis CTA */}
