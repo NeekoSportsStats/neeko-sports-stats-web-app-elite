@@ -323,7 +323,7 @@ export function useSystemHealth() {
 
 async function loadFallbackFromDB(sb: typeof supabase): Promise<SystemHealthData> {
   const [cacheRes, projRes, pipelineRes] = await Promise.allSettled([
-    sb.from("afl.player_rankings_cache" as never).select("count", { count: "exact", head: true }),
+    sb.from("player_rankings_cache").select("count", { count: "exact", head: true }),
     sb.from("afl.player_projection" as never).select("count", { count: "exact", head: true }),
     sb.from("pipeline_runs").select("id,status,started_at,finished_at,label").order("started_at", { ascending: false }).limit(1),
   ]);
