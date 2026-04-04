@@ -9,6 +9,8 @@ interface RankingsCacheRow {
   team: string;
   position: string | null;
   price: number | null;
+  projection_final: number | null;
+  breakeven: number | null;
   value_gap: number | null;
   ai_recommendation: string | null;
   summary_short: string | null;
@@ -139,15 +141,22 @@ export function LandingMarketWatchSample() {
         const { data, error } = await supabase
           .schema("afl")
           .from("player_rankings_cache")
-          .select("player_id, player_name, team, position, price, value_gap, ai_recommendation, summary_short, is_bye, status, manual_status")
+          .select("player_id, player_name, team, position, price, projection_final, breakeven, ai_recommendation, summary_short, is_bye, status, manual_status")
           .not("ai_recommendation", "is", null)
           .gte("games_played", 3)
           .gt("projection_final", 50)
           .limit(100);
 
-        if (error) throw error;
+        if (error) {
+          console.error("[LandingMW] Error:", error);
+          setPlayers([]);
+          return;
+        }
 
-        const pool = (data ?? []) as RankingsCacheRow[];
+        const pool = ((data ?? []) as Omit<RankingsCacheRow, "value_gap">[]).map(p => ({
+          ...p,
+          value_gap: (p.projection_final ?? 0) - (p.breakeven ?? 0) || null,
+        })) as RankingsCacheRow[];
 
         const targets = pool.filter(p => mapRecommendationToSignal(p.ai_recommendation) === "TARGET");
         const watches = pool.filter(p => mapRecommendationToSignal(p.ai_recommendation) === "WATCH");
@@ -175,9 +184,6 @@ export function LandingMarketWatchSample() {
         }
 
         setPlayers(picks.slice(0, 6));
-      } catch (err) {
-        console.error("[LandingMW] Error:", err);
-        setPlayers([]);
       } finally {
         setLoading(false);
       }
