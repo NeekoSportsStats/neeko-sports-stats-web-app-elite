@@ -43,6 +43,7 @@ interface EdgeRow {
   position: string | null;
   projection_final: number | null;
   edge_score: number | null;
+  ai_recommendation: string | null;
   summary_short: string | null;
 }
 
@@ -800,10 +801,36 @@ interface EdgeSignal {
 }
 
 const SIGNAL_META: Record<EdgeSignalType, { label: string; desc: string; accentColor: string; icon: typeof Star }> = {
-  target: { label: "Target",  desc: "Strong edge score — model favours this player this round.",   accentColor: "#34d399", icon: TrendingUp },
-  watch:  { label: "Watch",   desc: "Neutral signal — monitor before committing to this player.",  accentColor: "#F5C84C", icon: Star },
-  avoid:  { label: "Avoid",   desc: "Negative edge score — model flags elevated risk this round.", accentColor: "#f87171", icon: AlertTriangle },
+  target: { label: "Target", desc: "Model favours this player this round — strong buy signal.",     accentColor: "#34d399", icon: TrendingUp },
+  watch:  { label: "Watch",  desc: "Neutral signal — monitor before committing to this player.",    accentColor: "#F5C84C", icon: Star },
+  avoid:  { label: "Avoid",  desc: "Model flags elevated risk this round — sell or avoid signal.",  accentColor: "#f87171", icon: AlertTriangle },
 };
+
+function mapRecToSignalType(rec: string | null): EdgeSignalType {
+  const r = (rec ?? "").toUpperCase();
+  if (r === "BUY" || r === "STRONG_BUY") return "target";
+  if (r === "SELL" || r === "STRONG_SELL") return "avoid";
+  return "watch";
+}
+
+function mapRecToActionLabel(rec: string | null): string {
+  switch ((rec ?? "").toUpperCase()) {
+    case "STRONG_BUY":  return "STRONG BUY";
+    case "BUY":         return "BUY";
+    case "SELL":        return "SELL";
+    case "STRONG_SELL": return "STRONG SELL";
+    default:            return "HOLD";
+  }
+}
+
+function actionLabelColor(rec: string | null): string {
+  const r = (rec ?? "").toUpperCase();
+  if (r === "STRONG_BUY")  return "text-green-400";
+  if (r === "BUY")         return "text-green-300";
+  if (r === "SELL")        return "text-red-300";
+  if (r === "STRONG_SELL") return "text-red-400";
+  return "text-yellow-300";
+}
 
 function edgeScoreColor(score: number | null): string {
   if (score == null) return "text-white/30";
@@ -812,46 +839,43 @@ function edgeScoreColor(score: number | null): string {
   return "text-[#F5C84C]";
 }
 
-function getActionFromEdge(edge: number | null): string {
-  const e = edge ?? 0;
-  if (e >= 15) return "STRONG BUY";
-  if (e >= 6)  return "BUY";
-  if (e >= -5) return "HOLD";
-  if (e >= -14) return "SELL";
-  return "STRONG SELL";
-}
-
 function EdgeBoardPreview() {
   const [signals, setSignals] = useState<EdgeSignal[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, projection_final, edge_score, summary_short")
+        .select("player_id, player_name, team, position, projection_final, edge_score, ai_recommendation, summary_short")
+        .not("ai_recommendation", "is", null)
         .gte("games_played", 3)
         .gt("projection_final", 50)
-        .order("edge_score", { ascending: false })
-        .limit(50);
+        .limit(100);
+
+      if (error) {
+        console.error("[EdgeBoardPreview] Error:", error);
+        setLoading(false);
+        return;
+      }
 
       const rows = ((data ?? []) as EdgeRow[]).filter(
-        (r) => r.player_name && r.team && (r.projection_final ?? 0) > 0,
+        (r) => r.player_name && r.team && (r.projection_final ?? 0) > 0 && r.ai_recommendation,
       );
 
-      const targets = rows.filter(r => (r.edge_score ?? 0) > 5);
-      const watches = rows.filter(r => (r.edge_score ?? 0) >= -5 && (r.edge_score ?? 0) <= 5);
-      const avoids  = rows.filter(r => (r.edge_score ?? 0) < -5);
+      const targets = rows.filter(r => r.ai_recommendation === "BUY" || r.ai_recommendation === "STRONG_BUY");
+      const watches = rows.filter(r => r.ai_recommendation === "HOLD");
+      const avoids  = rows.filter(r => r.ai_recommendation === "SELL" || r.ai_recommendation === "STRONG_SELL");
 
-      const targetRow  = targets[0] ?? rows[0];
-      const watchRow   = watches[0] ?? rows[Math.floor(rows.length / 2)] ?? rows[1] ?? rows[0];
-      const avoidRow   = avoids[0]  ?? rows[rows.length - 1] ?? rows[0];
+      const targetRow = targets[Math.floor(Math.random() * targets.length)] ?? null;
+      const watchRow  = watches[Math.floor(Math.random() * watches.length)] ?? null;
+      const avoidRow  = avoids[Math.floor(Math.random() * avoids.length)]   ?? null;
 
-      const built: EdgeSignal[] = rows.length === 0 ? [] : [
-        { type: "target" as EdgeSignalType, ...SIGNAL_META.target, row: targetRow },
-        { type: "watch"  as EdgeSignalType, ...SIGNAL_META.watch,  row: watchRow  },
-        { type: "avoid"  as EdgeSignalType, ...SIGNAL_META.avoid,  row: avoidRow  },
-      ];
+      const built: EdgeSignal[] = [
+        targetRow ? { type: "target" as EdgeSignalType, ...SIGNAL_META.target, row: targetRow } : null,
+        watchRow  ? { type: "watch"  as EdgeSignalType, ...SIGNAL_META.watch,  row: watchRow  } : null,
+        avoidRow  ? { type: "avoid"  as EdgeSignalType, ...SIGNAL_META.avoid,  row: avoidRow  } : null,
+      ].filter((s): s is EdgeSignal => s !== null);
 
       setSignals(built);
       setLoading(false);
@@ -874,7 +898,31 @@ function EdgeBoardPreview() {
             : signals.length > 0
               ? signals.map((signal) => {
                   const { label, desc, accentColor, icon: Icon, row, type } = signal;
+                  const rec = row.ai_recommendation;
+                  const derivedSignalType = mapRecToSignalType(rec);
+                  const actionLabel = mapRecToActionLabel(rec);
+                  const actionColor = actionLabelColor(rec);
                   const scoreColor = edgeScoreColor(row.edge_score);
+
+                  if (
+                    (derivedSignalType === "avoid" && (rec === "BUY" || rec === "STRONG_BUY")) ||
+                    (derivedSignalType === "target" && (rec === "SELL" || rec === "STRONG_SELL"))
+                  ) {
+                    console.error("Landing Edge Signals contradiction", {
+                      player: row.player_name,
+                      ai_recommendation: rec,
+                      signal: derivedSignalType,
+                      edge_score: row.edge_score,
+                    });
+                  }
+
+                  console.log("[EdgeSignalsCard]", {
+                    player: row.player_name,
+                    ai_recommendation: rec,
+                    signal: derivedSignalType,
+                    actionLabel,
+                    edge_score: row.edge_score,
+                  });
 
                   return (
                     <div
@@ -912,14 +960,8 @@ function EdgeBoardPreview() {
                         )}
                         <EdgeStatRow
                           label="Action"
-                          value={getActionFromEdge(row.edge_score)}
-                          valueColor={
-                            (row.edge_score ?? 0) >= 15 ? "text-green-400" :
-                            (row.edge_score ?? 0) >= 6  ? "text-green-300" :
-                            (row.edge_score ?? 0) >= -5 ? "text-yellow-300" :
-                            (row.edge_score ?? 0) >= -14 ? "text-red-300" :
-                            "text-red-400"
-                          }
+                          value={actionLabel}
+                          valueColor={actionColor}
                         />
                       </div>
                     </div>
