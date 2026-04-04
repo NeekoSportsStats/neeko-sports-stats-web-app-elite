@@ -1,5 +1,3 @@
-import { MWCategory } from "./types";
-
 export function fmtPrice(v: number | null | undefined): string {
   if (v == null || v === 0) return "—";
   const n = Number(v);
@@ -9,11 +7,9 @@ export function fmtPrice(v: number | null | undefined): string {
   const sign = n < 0 ? "-" : "";
 
   if (abs >= 1_000_000) {
-    // >= 1M → 1.126M (3 decimal places, no trailing zeros)
     return `${sign}$${(abs / 1_000_000).toFixed(3)}M`;
   }
 
-  // < 1M → 853K (no decimals)
   return `${sign}$${Math.floor(abs / 1000)}K`;
 }
 
@@ -79,81 +75,6 @@ export function priceChangeColor(v: number | null): string {
   return "text-red-400";
 }
 
-export function categoryLabel(cat: MWCategory): string {
-  switch (cat) {
-    case "buy_before_rise":  return "BUY";
-    case "upgrade_target":   return "UPGRADE";
-    case "sell_before_drop": return "SELL";
-    case "cash_cow":         return "CASH COW";
-    case "fade_trap":        return "TRAP";
-    case "monitor":          return "MONITOR";
-    default:                 return "SIGNAL";
-  }
-}
-
-export function categoryColor(cat: MWCategory): string {
-  switch (cat) {
-    case "buy_before_rise":  return "text-green-400 bg-green-400/10 border-green-400/25";
-    case "upgrade_target":   return "text-sky-400 bg-sky-400/10 border-sky-400/25";
-    case "sell_before_drop": return "text-red-400 bg-red-400/10 border-red-400/25";
-    case "cash_cow":         return "text-[#F5C84C] bg-[#F5C84C]/10 border-[#F5C84C]/25";
-    case "fade_trap":        return "text-orange-400 bg-orange-400/10 border-orange-400/25";
-    case "monitor":          return "text-white/50 bg-white/5 border-white/10";
-    default:                 return "text-white/40 bg-white/5 border-white/10";
-  }
-}
-
-export function verdictLabel(cat: MWCategory, score: number, expChange: number): string {
-  switch (cat) {
-    case "buy_before_rise":
-      if (score >= 85) return "Strong Buy";
-      if (score >= 70) return "Value Buy";
-      return "Buy Signal";
-    case "upgrade_target":
-      if (score >= 85) return "Elite Upgrade";
-      return "Upgrade Target";
-    case "sell_before_drop":
-      return "Sell Now";
-    case "cash_cow":
-      if (expChange > 30000) return "Fast Cash Growth";
-      return "Cash Growth";
-    case "fade_trap":
-      return "Trap Alert";
-    case "monitor":
-      return "Monitor";
-    default:
-      return "Signal";
-  }
-}
-
-export function verdictColor(cat: MWCategory, score: number): string {
-  switch (cat) {
-    case "buy_before_rise":
-      if (score >= 85) return "text-green-300 bg-green-400/15 border-green-400/35";
-      return "text-green-400 bg-green-400/10 border-green-400/25";
-    case "upgrade_target":
-      if (score >= 85) return "text-sky-300 bg-sky-400/15 border-sky-400/35";
-      return "text-sky-400 bg-sky-400/10 border-sky-400/25";
-    case "sell_before_drop":
-      return "text-red-300 bg-red-400/15 border-red-400/35";
-    case "cash_cow":
-      return "text-[#F5C84C] bg-[#F5C84C]/15 border-[#F5C84C]/35";
-    case "fade_trap":
-      return "text-orange-300 bg-orange-400/15 border-orange-400/35";
-    case "monitor":
-      return "text-white/50 bg-white/5 border-white/10";
-    default:
-      return "text-white/40 bg-white/5 border-white/10";
-  }
-}
-
-export function tradeScoreBadge(v: number): string {
-  if (v >= 80) return "text-green-400 bg-green-400/10 border-green-400/25";
-  if (v >= 60) return "text-[#F5C84C] bg-[#F5C84C]/10 border-[#F5C84C]/25";
-  if (v >= 40) return "text-white/60 bg-white/5 border-white/10";
-  return "text-orange-400 bg-orange-400/10 border-orange-400/25";
-}
-
 export function confidenceBadge(v: number): string {
   if (v >= 80) return "text-green-400 bg-green-400/10 border-green-400/25";
   if (v >= 60) return "text-[#F5C84C] bg-[#F5C84C]/10 border-[#F5C84C]/25";
@@ -166,86 +87,17 @@ export function confidenceLabel(v: number): string {
   return "Moderate";
 }
 
-export function actionMicrocopy(category: string, edgePts?: number | null, expChange?: number | null, risk?: number | null): string {
-  const edge = Number(edgePts ?? 0);
-  const change = Number(expChange ?? 0);
-  const riskV = Number(risk ?? 0);
-
-  if (category === "buy_before_rise") {
-    if (edge > 20) return "Underpriced relative to projection";
-    return "Buy signal — price rising, get in now";
-  }
-  if (category === "upgrade_target") {
-    return "Quality scorer — upgrade for points output";
-  }
-  if (category === "sell_before_drop") {
-    if (change < -10000) return "Overpriced — sell before value drops";
-    return "Sell window open — value declining";
-  }
-  if (category === "cash_cow") {
-    if (change > 20000) return "Generating fast price rise";
-    return "Cash Growth Target — scoring above breakeven";
-  }
-  if (category === "fade_trap") {
-    if (riskV > 70) return "Premium cost not justified by projection";
-    return "High-risk premium player to avoid";
-  }
-  if (category === "monitor") return "Monitor — watch this round";
-  return "Signal detected";
-}
-
-export function tradeScoreExplanation(): string {
-  return "Trade Score 0–100: percentile rank across all players. 80+ = elite value, 60–79 = strong, 40–59 = neutral, below 40 = avoid.";
-}
-
-export function tradeVerdict(ptsDelta: number, priceDelta: number, riskDelta: number, scoreDelta: number): string {
-  if (ptsDelta > 10 && priceDelta > 20000 && scoreDelta > 0) return "Recommended upgrade";
-  if (ptsDelta > 5 && priceDelta < -30000) return "Scoring upgrade, but cash risk";
-  if (ptsDelta < 0 && priceDelta > 30000) return "Safer cash move with smaller points gain";
-  if (ptsDelta < -5 && priceDelta < 0) return "Not worth the trade this round";
-  if (ptsDelta > 10) return "Strong points upgrade";
-  if (priceDelta > 30000) return "Value trade — cash upside";
-  return "Marginal trade — assess your team needs";
-}
-
 export const FREE_VISIBLE = 3;
 
 export function calculateValueRank(players: any[], currentPlayer: any): { rank: number; percentile: number } {
   const validPlayers = players
-    .filter(p => p.projection && p.breakeven)
-    .sort((a, b) => {
-      const deltaA = (a.projection || 0) - (a.breakeven || 0);
-      const deltaB = (b.projection || 0) - (b.breakeven || 0);
-      return deltaB - deltaA;
-    });
+    .filter(p => p.value_gap != null)
+    .sort((a, b) => (b.value_gap ?? 0) - (a.value_gap ?? 0));
 
   const rank = validPlayers.findIndex(p => p.player_id === currentPlayer.player_id) + 1;
   const percentile = rank > 0 ? Math.round((1 - (rank / validPlayers.length)) * 100) : 0;
 
   return { rank, percentile };
-}
-
-export function getTrendIndicator(player: any): { label: string; icon: string; color: string } {
-  const last3 = player.last3_avg || 0;
-  const last5 = player.last5_avg || 0;
-  const projection = player.projection || 0;
-
-  if (!last3 || !last5) {
-    return { label: "Stable Form", icon: "➡️", color: "text-white/60" };
-  }
-
-  const delta = projection - last3;
-  const trendStrength = (delta / last3) * 100;
-
-  if (trendStrength > 10) {
-    return { label: "Rising Form", icon: "📈", color: "text-green-400" };
-  }
-
-  if (trendStrength < -10) {
-    return { label: "Dropping Output", icon: "📉", color: "text-red-400" };
-  }
-
-  return { label: "Stable Form", icon: "➡️", color: "text-white/60" };
 }
 
 export function getValueRankLabel(percentile: number): string {
@@ -262,109 +114,30 @@ export function getValueRankColor(percentile: number): string {
   return "text-red-400";
 }
 
-export function getUrgencyMessage(player: any, delta: number): string | null {
-  const category = player.category?.toUpperCase() || "WATCH";
-  const projectedPriceChange = player.expected_price_change || 0;
-
-  if (category === "TARGET" || category === "BUY" || category === "BUY_BEFORE_RISE") {
-    if (delta > 15 && projectedPriceChange > 50000) {
-      return "Likely price rise next round";
-    }
-    if (delta > 10) {
-      return "Opportunity window: Short-term";
-    }
-    if (player.breakout_flag) {
-      return "Breakout candidate — act quickly";
-    }
-  }
-
-  if (category === "AVOID" || category === "SELL" || category === "SELL_BEFORE_DROP") {
-    if (projectedPriceChange < -50000) {
-      return "Expected price drop — exit recommended";
-    }
-    if (delta < -10) {
-      return "Value deteriorating — consider exit";
-    }
-  }
-
-  return null;
-}
-
 export function generateSmartWhy(player: any): string {
-  const delta = Math.round((player.projection || 0) - (player.breakeven || 0));
-  const projection = Math.round(player.projection || 0);
-  const deltaStr = delta > 0 ? `+${delta}` : `${delta}`;
+  const short = (player.summary_short ?? player.recommendation_short ?? '').trim();
+  if (short) return short;
 
-  const insight = getRealInsight(player, delta, projection);
-
-  return `${deltaStr} value gap with ${projection} projection — ${insight}`;
+  const gap = Math.round((player.value_gap ?? (player.projection ?? 0) - (player.breakeven ?? 0)));
+  const projection = Math.round(player.projection ?? 0);
+  const gapStr = gap > 0 ? `+${gap}` : `${gap}`;
+  return `${gapStr} value gap · ${projection} pts projected`;
 }
 
-function getRealInsight(player: any, delta: number, projection: number): string {
-  const last3 = player.last3_avg || null;
-  const last5 = player.last5_avg || null;
-  const consistency = player.consistency_score || null;
-  const matchup = player.matchup_label || null;
+export function getConsistencySignal(player: any): { label: string; color: string } | null {
+  const consistency = player.consistency ?? player.consistency_score;
 
-  if (last3 && projection > 0) {
-    const formDelta = projection - last3;
-    const formTrend = (formDelta / last3) * 100;
+  if (consistency === null || consistency === undefined) return null;
 
-    if (formTrend > 10) {
-      return `averaging ${Math.round(last3)} last 3, form trending up`;
-    }
-
-    if (formTrend < -10) {
-      return `averaging ${Math.round(last3)} last 3, scoring declining`;
-    }
-
-    if (consistency && consistency > 75) {
-      return `averaging ${Math.round(last3)} last 3, highly consistent`;
-    }
-
-    if (last3 > projection + 5) {
-      return `averaging ${Math.round(last3)} last 3, recent form strong`;
-    }
+  if (consistency > 75) {
+    return { label: "Consistent", color: "text-green-400" };
   }
 
-  if (matchup && matchup.toLowerCase().includes("favourable")) {
-    return getRoleContext(delta, projection, player.breakeven || 0) + ", strong matchup";
+  if (consistency < 40) {
+    return { label: "Boom/Bust", color: "text-orange-400" };
   }
 
-  if (consistency !== null) {
-    if (consistency > 75) {
-      return getRoleContext(delta, projection, player.breakeven || 0) + ", stable output";
-    }
-    if (consistency < 40) {
-      return getRoleContext(delta, projection, player.breakeven || 0) + ", volatile scorer";
-    }
-  }
-
-  return getRoleContext(delta, projection, player.breakeven || 0);
-}
-
-function getRoleContext(delta: number, projection: number, breakeven: number): string {
-  if (delta > 15) {
-    return "priced well below role expectation";
-  }
-
-  if (delta > 8) {
-    return "priced below role expectation";
-  }
-
-  if (delta > 0) {
-    return "slight discount to role output";
-  }
-
-  if (delta < -15) {
-    return "significantly overpriced for role";
-  }
-
-  if (delta < -8) {
-    return "priced above role expectation";
-  }
-
-  return "priced at role expectation";
+  return { label: "Volatile", color: "text-yellow-400" };
 }
 
 const BUY_NEGATIVE_PHRASES = [
@@ -390,57 +163,4 @@ export function isSummaryAligned(summary: string, category: string): boolean {
     return !SELL_POSITIVE_PHRASES.some(phrase => lower.includes(phrase));
   }
   return true;
-}
-
-export function getConfidenceTooltip(): string {
-  return "Based on projection stability, role certainty, and matchup";
-}
-
-export function getConfidenceDriver(player: any): string {
-  const consistency = player.consistency_score || 0;
-  const volatility = player.volatility_score || 0;
-  const confidence = player.projection_confidence || 0;
-
-  if (consistency > 75 && confidence > 75) {
-    return "Driven by: Form + Role Stability";
-  }
-
-  if (consistency > 60 && volatility < 30) {
-    return "Driven by: Consistent Output";
-  }
-
-  if (volatility > 60 || consistency < 40) {
-    return "Driven by: Volatility + Role Uncertainty";
-  }
-
-  if (confidence > 60) {
-    return "Driven by: Projection Stability";
-  }
-
-  return "Driven by: Model Confidence";
-}
-
-export function getFormSnapshot(player: any): string | null {
-  const last3 = player.last3_avg;
-  const last5 = player.last5_avg;
-
-  if (!last3) return null;
-
-  return `Form: ${Math.round(last3)} avg (last 3)`;
-}
-
-export function getConsistencySignal(player: any): { label: string; color: string } | null {
-  const consistency = player.consistency_score;
-
-  if (consistency === null || consistency === undefined) return null;
-
-  if (consistency > 75) {
-    return { label: "Consistent", color: "text-green-400" };
-  }
-
-  if (consistency < 40) {
-    return { label: "Boom/Bust", color: "text-orange-400" };
-  }
-
-  return { label: "Volatile", color: "text-yellow-400" };
 }

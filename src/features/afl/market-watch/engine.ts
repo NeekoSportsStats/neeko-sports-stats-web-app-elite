@@ -1,15 +1,9 @@
-import { MWPlayerRow } from "./types";
+import { MWPlayerRow, MWSignal } from "./types";
 
-// ────────────────────────────────────────────────────────────────────────────
-// SIMPLIFIED 3-CATEGORY SYSTEM
-// Single source of truth: ai_recommendation from player_rankings_cache
-// ────────────────────────────────────────────────────────────────────────────
-
-export type SimpleCategory = "BUY" | "HOLD" | "SELL";
+export type { MWSignal };
 
 export interface DerivedPlayer extends MWPlayerRow {
-  _category: SimpleCategory;
-  _delta: number;
+  _category: MWSignal;
 }
 
 export interface BestTrade {
@@ -22,8 +16,8 @@ export interface BestTrade {
   why: string;
 }
 
-function delta(row: MWPlayerRow): number {
-  return Number(row.projection ?? 0) - Number(row.breakeven ?? 0);
+function tag(row: MWPlayerRow, category: MWSignal): DerivedPlayer {
+  return { ...row, _category: category };
 }
 
 function proj(row: MWPlayerRow): number {
@@ -34,13 +28,11 @@ function price(row: MWPlayerRow): number {
   return Number(row.price ?? 0);
 }
 
-function tag(row: MWPlayerRow, category: SimpleCategory): DerivedPlayer {
-  return { ...row, _category: category, _delta: delta(row) };
-}
-
-// ────────────────────────────────────────────────────────────────────────────
-// CORE CLASSIFICATION ENGINE — MAPS AI_RECOMMENDATION TO 3 CATEGORIES
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// CORE CLASSIFICATION ENGINE
+// Signal comes from the DB (value_gap threshold logic).
+// Frontend only filters out unavailable players — no re-classification.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   buys: DerivedPlayer[];
@@ -48,67 +40,37 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   sells: DerivedPlayer[];
 } {
   if (!raw || !Array.isArray(raw)) {
-    return {
-      buys: [],
-      holds: [],
-      sells: [],
-    };
+    return { buys: [], holds: [], sells: [] };
   }
 
-  // ── STEP 1: GLOBAL FILTER ────────────────────────────────────────────────
   const filtered = raw.filter(p => {
-    // Exclude injured/bye players
+    if (!p.player_id || !p.player_name) return false;
     if (p.is_injured === true) return false;
     if (p.is_bye === true) return false;
-    if (p.status === 'injured') return false;
-    if (p.status === 'bye') return false;
-    if (p.manual_status === 'injured') return false;
-    if (p.manual_status === 'bye') return false;
-
-    // Must have valid identity data
-    if (!p.player_id) return false;
-    if (!p.player_name) return false;
-
+    const st = (p.status ?? '').toLowerCase();
+    const ms = (p.manual_status ?? '').toLowerCase();
+    if (st === 'injured' || st === 'out' || st === 'bye') return false;
+    if (ms === 'injured' || ms === 'out' || ms === 'bye') return false;
     return true;
   });
 
-  // ── STEP 2: MAP TO 3 CATEGORIES FROM SINGLE SOURCE OF TRUTH ─────────────
-  // action field comes from market_watch_snapshot_players.action which is
-  // now always set to ai_recommendation from afl.player_rankings_cache.
-  // ai_recommendation field is the direct cache value (joined in view).
-  // Priority: ai_recommendation > action > value_score fallback
   const buys: DerivedPlayer[] = [];
   const holds: DerivedPlayer[] = [];
   const sells: DerivedPlayer[] = [];
 
   for (const p of filtered) {
-    // ai_recommendation is the canonical source — use it first
-    const canonical = (p.ai_recommendation ?? '').toUpperCase();
-    const normalized = canonical === 'BUY' ? 'BUY'
-      : canonical === 'SELL' ? 'SELL'
-      : canonical === 'HOLD' ? 'HOLD'
-      : null;
-
-    if (normalized === 'BUY') {
-      buys.push(tag(p, 'BUY'));
-    } else if (normalized === 'SELL') {
-      sells.push(tag(p, 'SELL'));
-    } else {
-      holds.push(tag(p, 'HOLD'));
-    }
+    const sig = (p.category ?? 'HOLD').toUpperCase() as MWSignal;
+    if (sig === 'BUY')       buys.push(tag(p, 'BUY'));
+    else if (sig === 'SELL') sells.push(tag(p, 'SELL'));
+    else                     holds.push(tag(p, 'HOLD'));
   }
-
-  // ── STEP 3: PRESERVE BACKEND ORDER ───────────────────────────────────────
-  // Backend returns players sorted by value_score DESC, projection DESC.
-  // Do NOT re-sort within buckets — respect the backend ordering.
-
 
   return { buys, holds, sells };
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// TRADE BUILDING LOGIC (Simplified for 3-category system)
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// TRADE BUILDING LOGIC
+// ─────────────────────────────────────────────────────────────────────────────
 
 function tradeWhy(
   out: DerivedPlayer,
@@ -128,10 +90,7 @@ function tradeWhy(
   return `Quality upgrade — ${inn.player_name} scores ${proj(inn).toFixed(0)} pts/rd vs ${proj(out).toFixed(0)}`;
 }
 
-function tradeType(
-  cashGenerated: number,
-  projGain: number,
-): BestTrade["trade_type"] {
+function tradeType(cashGenerated: number, projGain: number): BestTrade["trade_type"] {
   if (cashGenerated > 150000) return "CASH_GENERATION";
   if (projGain >= 12) return "AGGRESSIVE_UPGRADE";
   return "BALANCED";
@@ -146,7 +105,6 @@ export function buildBestTrades(
 
   const allPairs: BestTrade[] = [];
 
-  // Build trades: SELL players OUT, BUY players IN
   for (const out of sells.slice(0, 15)) {
     for (const inn of buys.slice(0, 15)) {
       if (inn.player_id === out.player_id) continue;
@@ -160,8 +118,8 @@ export function buildBestTrades(
       const score =
         projGain * 4 +
         cashGenerated / 2000 +
-        (inn.value_score ?? 0) * 2 +
-        (out.value_score ?? 0) * -1;
+        (inn.value_gap ?? 0) * 2 +
+        (out.value_gap ?? 0) * -1;
 
       allPairs.push({
         out,
@@ -175,7 +133,6 @@ export function buildBestTrades(
     }
   }
 
-  // Deduplicate: each buy player appears at most once
   const seenBuy = new Set<number>();
   const dedupedByBuy = allPairs
     .sort((a, b) => b.score - a.score)
@@ -185,7 +142,6 @@ export function buildBestTrades(
       return true;
     });
 
-  // Each sell player appears at most 3 times
   const sellCount = new Map<number, number>();
   const result = dedupedByBuy.filter(t => {
     const n = sellCount.get(t.out.player_id) ?? 0;

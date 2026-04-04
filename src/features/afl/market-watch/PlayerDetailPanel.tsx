@@ -1,17 +1,12 @@
 import { useEffect, useState } from "react";
-import { X, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { X, ChevronDown, ChevronUp } from "lucide-react";
 import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
 import { cleanAiText } from "@/utils/cleanAiText";
 import { useAuth } from "@/lib/auth";
 import {
   calculateValueRank,
-  getTrendIndicator,
-  getConfidenceTooltip,
-  getUrgencyMessage,
   generateSmartWhy,
-  getConfidenceDriver,
-  getFormSnapshot,
   getConsistencySignal
 } from "./helpers";
 
@@ -44,13 +39,8 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
   const signalConfig = getSignalConfig(player);
   const verdict = getVerdict(player, delta);
   const confidence = getConfidence(player);
-  const confidenceTooltip = getConfidenceTooltip();
 
   const { rank, percentile } = calculateValueRank(allPlayers, player);
-  const trendIndicator = getTrendIndicator(player);
-  const urgencyMsg = getUrgencyMessage(player, delta);
-  const confidenceDriver = getConfidenceDriver(player);
-  const formSnapshot = getFormSnapshot(player);
   const consistencySignal = getConsistencySignal(player);
 
   const whyText = generateSmartWhy(player);
@@ -104,21 +94,8 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
               <span className="text-base">{signalConfig.icon}</span>
               <span>{signalConfig.label}</span>
             </div>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/10 rounded text-xs text-white/80 cursor-help group relative">
-                <span>{confidence}</span>
-                <Info className="w-3 h-3 text-white/40 group-hover:text-white/60 transition-colors" />
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-black border border-white/20 rounded text-[10px] text-white/80 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none w-56 text-center">
-                  {confidenceTooltip}
-                </div>
-              </div>
-              <div className="text-[10px] text-white/40 px-3">
-                {confidenceDriver}
-              </div>
-            </div>
-            <div className={`flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/10 rounded text-xs ${trendIndicator.color}`}>
-              <span>{trendIndicator.icon}</span>
-              <span>{trendIndicator.label}</span>
+            <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/10 rounded text-xs text-white/80">
+              <span>{confidence}</span>
             </div>
           </div>
 
@@ -146,16 +123,11 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
           {/* QUICK DECISION BLOCK + URGENCY */}
           <div className={`p-4 border-l-4 ${signalConfig.borderLeft} bg-white/[0.02] rounded-r-lg`}>
             <div className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2">
-              📊 Verdict
+              Verdict
             </div>
-            <p className="text-sm font-medium text-white leading-relaxed mb-2">
+            <p className="text-sm font-medium text-white leading-relaxed">
               {verdict}
             </p>
-            {urgencyMsg && (
-              <p className="text-xs text-[#F5C84C] font-medium">
-                {urgencyMsg}
-              </p>
-            )}
           </div>
 
           {/* KEY STATS - RESTRUCTURED 2x2 */}
@@ -184,19 +156,14 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
               />
             </div>
 
-            {/* FORM SNAPSHOT + CONSISTENCY */}
-            <div className="mt-3 flex items-center gap-3 flex-wrap">
-              {formSnapshot && (
-                <div className="text-xs text-white/60 px-3 py-1.5 bg-white/5 border border-white/10 rounded">
-                  {formSnapshot}
-                </div>
-              )}
-              {consistencySignal && (
-                <div className={`text-xs font-medium px-3 py-1.5 bg-white/5 border border-white/10 rounded ${consistencySignal.color}`}>
+            {/* CONSISTENCY SIGNAL */}
+            {consistencySignal && (
+              <div className="mt-3">
+                <div className={`inline-block text-xs font-medium px-3 py-1.5 bg-white/5 border border-white/10 rounded ${consistencySignal.color}`}>
                   {consistencySignal.label}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* WHY THIS PICK - HIGHLIGHTED */}
@@ -261,7 +228,7 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
           )}
 
           {/* ADVANCED METRICS - COLLAPSIBLE */}
-          {(player.value_score || player.ceiling || player.risk_pct || player.volatility_level) && (
+          {(player.value_gap != null || player.ceiling || player.risk_pct) && (
             <div>
               <button
                 onClick={() => setShowAdvanced(!showAdvanced)}
@@ -273,10 +240,10 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
 
               {showAdvanced && (
                 <div className="mt-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
-                  {player.value_score && <MetricRow label="Value Score" value={Math.round(player.value_score)} />}
+                  {player.value_gap != null && <MetricRow label="Value Gap" value={`${player.value_gap > 0 ? '+' : ''}${Math.round(player.value_gap)}`} />}
                   {player.ceiling && <MetricRow label="Ceiling" value={Math.round(player.ceiling)} />}
                   {player.risk_pct && <MetricRow label="Risk %" value={`${Math.round(player.risk_pct)}%`} />}
-                  {player.volatility_level && <MetricRow label="Volatility" value={player.volatility_level} />}
+                  {player.neeko_rating && <MetricRow label="Neeko Rating" value={Math.round(player.neeko_rating)} />}
                 </div>
               )}
             </div>
@@ -433,7 +400,7 @@ function getVerdict(player: DerivedPlayer, delta: number): string {
 }
 
 function getConfidence(player: DerivedPlayer): string {
-  const consistency = player.consistency_score || 0;
+  const consistency = player.consistency || 0;
   const projectionConfidence = player.projection_confidence || 0;
 
   const avgConfidence = (consistency + projectionConfidence) / 2;
@@ -460,17 +427,12 @@ function calculateUpside(player: DerivedPlayer): number {
 
 function calculateRisk(player: DerivedPlayer): number {
   const riskPct = player.risk_pct || 0;
-  const volatility = player.volatility_score || 0;
   const delta = (player.projection || 0) - (player.breakeven || 0);
 
   let risk = riskPct;
 
   if (delta < 0) {
     risk += Math.abs(delta) * 2;
-  }
-
-  if (volatility > 50) {
-    risk += 10;
   }
 
   return Math.min(100, Math.max(0, Math.round(risk)));

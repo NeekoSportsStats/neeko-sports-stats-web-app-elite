@@ -1,12 +1,12 @@
 import { useState, useMemo, memo } from "react";
 import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
-import { ChevronDown, ChevronUp, Info } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { cleanAiText } from "@/utils/cleanAiText";
 import { generateSmartWhy, getValueRankLabel, getValueRankColor, calculateValueRank } from "./helpers";
 import { mapMarketLabel } from "@/utils/marketLabels";
 
-type SortField = "player" | "projection" | "breakeven" | "price" | "value" | "signal";
+type SortField = "player" | "projection" | "breakeven" | "price" | "value_gap" | "signal";
 type SortDirection = "asc" | "desc";
 
 interface MarketDataTableProps {
@@ -16,7 +16,7 @@ interface MarketDataTableProps {
 }
 
 export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDataTableProps) {
-  const [sortField, setSortField] = useState<SortField>("value");
+  const [sortField, setSortField] = useState<SortField>("value_gap");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const allPlayers = players;
@@ -53,9 +53,9 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
           aVal = a.price || 0;
           bVal = b.price || 0;
           break;
-        case "value":
-          aVal = a.value_score || 0;
-          bVal = b.value_score || 0;
+        case "value_gap":
+          aVal = a.value_gap ?? 0;
+          bVal = b.value_gap ?? 0;
           break;
         case "signal":
           aVal = a.category || "";
@@ -124,17 +124,13 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 direction={sortDirection}
                 onSort={handleSort}
               />
-              <th className="px-5 py-2.5 text-left text-[10px] font-bold text-white/35 uppercase tracking-wider">
-                <div className="flex items-center gap-1.5 group cursor-help">
-                  <span>Value Gap</span>
-                  <div className="relative">
-                    <Info className="w-3 h-3 text-white/25 group-hover:text-white/40 transition-colors" />
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-black/90 border border-white/20 rounded text-[10px] text-white/80 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 shadow-lg">
-                      Projection minus breakeven
-                    </div>
-                  </div>
-                </div>
-              </th>
+              <SortableHeader
+                label="Value Gap"
+                field="value_gap"
+                currentField={sortField}
+                direction={sortDirection}
+                onSort={handleSort}
+              />
               <SortableHeader
                 label="Signal"
                 field="signal"
@@ -279,10 +275,9 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
   const signalStrength = useMemo(() => getSignalStrength(player), [player.category, player.ai_recommendation]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
-    player.value_label,
-    player.value_score,
-    player.matchup_label,
+    player.summary_short,
     player.recommendation_short,
+    player.value_gap,
   ]);
   const truncatedWhy = useMemo(() => truncateWhy(smartWhy, 80), [smartWhy]);
 
@@ -293,7 +288,7 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
       rankLabel: getValueRankLabel(percentile),
       rankColor: getValueRankColor(percentile),
     };
-  }, [allPlayers.length, player.value_score]);
+  }, [allPlayers.length, player.value_gap]);
 
   return (
     <tr
@@ -368,10 +363,9 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
   const signalStrength = useMemo(() => getSignalStrength(player), [player.category, player.ai_recommendation]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
-    player.value_label,
-    player.value_score,
-    player.matchup_label,
+    player.summary_short,
     player.recommendation_short,
+    player.value_gap,
   ]);
   const truncatedWhy = useMemo(() => truncateWhy(smartWhy, 60), [smartWhy]);
 

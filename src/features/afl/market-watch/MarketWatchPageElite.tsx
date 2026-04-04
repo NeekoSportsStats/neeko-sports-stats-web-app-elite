@@ -47,51 +47,28 @@ export default function MarketWatchPageElite() {
         price: r.price ?? 0,
         breakeven: r.breakeven ?? 0,
         projection: r.projection ?? 0,
-        ceiling: r.ceiling ?? 0,
-        floor_val: r.floor_val ?? 0,
-        risk_pct: r.risk_pct ?? 0,
-        price_edge_pts: r.price_edge_pts ?? 0,
-        expected_price_change: r.expected_price_change ?? 0,
-        projected_price: r.projected_price ?? 0,
-        projected_price_r1: r.projected_price_r1 ?? 0,
-        projected_price_r2: r.projected_price_r2 ?? 0,
-        projected_price_r3: r.projected_price_r3 ?? 0,
-        breakout_score: r.breakout_score ?? null,
-        breakout_flag: r.breakout_flag ?? null,
-        volatility_score: r.volatility_score ?? 0,
-        volatility_level: r.volatility_level ?? null,
-        category: (r.action ?? 'WATCH').toUpperCase(),
-        action: r.action ?? 'WATCH',
-        trade_score: r.trade_score ?? 0,
-        reasons: r.reasons ?? {},
-        category_reason: r.category_reason ?? null,
-        last3_avg: null,
-        estimated_price: r.price ?? null,
-        value_score: r.value_score ?? 0,
-        value_label: r.value_label ?? null,
-        price_range_top: null,
-        price_range_bottom: null,
-        value_momentum: r.value_momentum ?? null,
-        momentum_label: r.momentum_label ?? null,
-        peak_price: r.peak_price ?? null,
-        peak_round: r.peak_round ?? null,
-        peak_status: r.peak_status ?? null,
+        ceiling: r.ceiling ?? null,
+        floor_val: r.floor_val ?? null,
+        risk_pct: r.risk_pct ?? null,
+        value_gap: r.value_gap ?? 0,
+        category: (r.category ?? 'HOLD').toUpperCase(),
+        action: (r.category ?? 'HOLD').toUpperCase(),
+        ai_recommendation: r.ai_recommendation ?? null,
+        recommendation_short: r.recommendation_short ?? null,
+        summary_short: r.summary_short ?? null,
+        summary_long: r.summary_long ?? null,
+        matchup_label: r.matchup_label ?? null,
+        prev_price: r.prev_price ?? null,
+        price_change: r.price_change ?? null,
+        consistency: r.consistency ?? null,
+        projection_confidence: r.projection_confidence ?? null,
+        neeko_rating: r.neeko_rating ?? null,
         season: r.season ?? 2026,
         round_number: r.round_number ?? 1,
         snapshot_updated_at: r.snapshot_updated_at ?? new Date().toISOString(),
-        neeko_rating: r.neeko_rating ?? null,
-        consistency_score: r.consistency ?? null,
-        projection_confidence: r.projection_confidence ?? null,
-        avg_season: null,
-        last5_avg: null,
-        ai_recommendation: r.ai_recommendation ?? null,
-        recommendation_short: r.recommendation_short ?? null,
-        matchup_label: r.matchup_label ?? null,
-        summary_short: r.summary_short ?? null,
-        summary_long: r.summary_long ?? null,
         is_injured: ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()) || ['injured', 'out'].includes((r.manual_status ?? '').toLowerCase()),
         is_bye: r.is_bye === true || (r.status ?? '').toLowerCase() === 'bye' || (r.manual_status ?? '').toLowerCase() === 'bye',
-        status: r.status ?? r.manual_status ?? null,
+        status: r.status ?? null,
         manual_status: r.manual_status ?? null,
       }));
 
@@ -123,23 +100,13 @@ export default function MarketWatchPageElite() {
     return classifyPlayers(players);
   }, [players]);
 
-  // MEMOIZE: All derived players sorted by value_score DESC
-  // BUY signals (positive value_score) appear at top, HOLD in middle, SELL at bottom.
-  // Categories appear mixed naturally — no grouping, ordered by real value.
+  // MEMOIZE: All derived players in DB order (value_gap DESC from server — no re-sort)
   const allDerivedPlayers = useMemo(() => {
-    const all = [
+    return [
       ...(classified?.buys ?? []),
       ...(classified?.holds ?? []),
       ...(classified?.sells ?? []),
     ].filter(p => p && p.player_id);
-
-    all.sort((a, b) => {
-      const vs = (b.value_score ?? 0) - (a.value_score ?? 0);
-      if (vs !== 0) return vs;
-      return (b.projection ?? 0) - (a.projection ?? 0);
-    });
-
-    return all;
   }, [classified]);
 
   // MEMOIZE: Filtered players (prevents re-filter on every render)
@@ -201,17 +168,12 @@ export default function MarketWatchPageElite() {
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
 
-  // Top cards: best conviction player from each category
-  // BUY: highest value_score | HOLD: highest projection (closest to neutral) | SELL: lowest value_score
-  const topTarget = [...(classified?.buys ?? [])]
-    .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))[0] || null;
+  // Top cards: use value_gap directly (DB already ordered value_gap DESC)
+  const topTarget = (classified?.buys ?? [])[0] || null;
   const topWatch = [...(classified?.holds ?? [])]
-    .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))[0] || null;
+    .sort((a, b) => Math.abs(a.value_gap ?? 0) - Math.abs(b.value_gap ?? 0))[0] || null;
   const topAvoid = [...(classified?.sells ?? [])]
-    .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))[0] ||
-    [...allDerivedPlayers]
-      .filter(p => (p.value_score ?? 0) < 0)
-      .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))[0] || null;
+    .sort((a, b) => (a.value_gap ?? 0) - (b.value_gap ?? 0))[0] || null;
 
   if (loading) {
     return <MarketWatchSkeleton />;
