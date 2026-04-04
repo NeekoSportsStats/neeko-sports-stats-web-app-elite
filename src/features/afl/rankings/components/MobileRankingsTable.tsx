@@ -138,17 +138,6 @@ function edgeColor(edge: number): string {
   return "text-red-400";
 }
 
-function buildShortWhy(row: RankingRow, action: string): string {
-  const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
-  const label = action.toUpperCase();
-
-  if (label === "BUY" || label === "STRONG BUY") return "Projected strong, well above breakeven";
-  if (label === "HOLD") return "Projection near breakeven, stable output";
-  if (label === "AVOID" || label === "SELL") return "Below breakeven, limited scoring upside";
-  if (label === "WATCH") return "Slight value edge, monitor closely";
-  return "Slight value edge, monitor closely";
-}
-
 // ─── Action badge ─────────────────────────────────────────────────────────────
 
 function ActionBadge({ row, activeTab, isPremium, onUpgrade }: {
@@ -400,7 +389,7 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
   const edge = computeEdge(row);
 
   const displayRec = getDisplayRecommendation(row, activeTab);
-  const shortWhy = isPremium && displayRec ? buildShortWhy(row, displayRec) : null;
+  const shortWhy = isPremium && row.why ? row.why.slice(0, 60) : null;
 
   function handleTap() {
     if (isPremium) {
