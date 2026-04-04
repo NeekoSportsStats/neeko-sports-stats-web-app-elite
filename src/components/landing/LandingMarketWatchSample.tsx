@@ -11,7 +11,6 @@ interface MarketWatchRow {
   price: number | null;
   projection_final: number | null;
   edge_score: number | null;
-  ai_recommendation: string | null;
   summary_short: string | null;
   is_bye: boolean | null;
   status: string | null;
@@ -30,6 +29,15 @@ function getSignalTier(edgeScore: number | null): SignalTier {
 function formatPrice(price: number | null): string {
   if (!price) return "—";
   return `$${(price / 1000000).toFixed(2)}M`;
+}
+
+function shuffle<T>(array: T[]): T[] {
+  return [...array].sort(() => Math.random() - 0.5);
+}
+
+function pickRandom<T>(arr: T[]): T | null {
+  if (!arr.length) return null;
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
 function StatusPill({ isBye }: { isBye: boolean }) {
@@ -129,21 +137,50 @@ export function LandingMarketWatchSample() {
   useEffect(() => {
     (async () => {
       try {
-        const { data } = await supabase
-          .from("player_rankings_cache")
-          .select("player_id, player_name, team, position, price, projection_final, edge_score, ai_recommendation, summary_short, is_bye, status, manual_status")
-          .gte("games_played", 3)
-          .gt("projection_final", 50)
-          .order("projection_final", { ascending: false })
-          .limit(50);
+        const [rankResult, poolResult] = await Promise.all([
+          supabase
+            .from("player_rankings_cache")
+            .select("player_id")
+            .gte("games_played", 3)
+            .gt("projection_final", 50)
+            .order("projection_final", { ascending: false })
+            .limit(5),
+          supabase
+            .from("player_rankings_cache")
+            .select("player_id, player_name, team, position, price, projection_final, edge_score, summary_short, is_bye, status, manual_status")
+            .gte("games_played", 3)
+            .gt("projection_final", 50)
+            .order("projection_final", { ascending: false })
+            .limit(50),
+        ]);
 
-        const rows = (data ?? []) as MarketWatchRow[];
+        const rankingIds = new Set((rankResult.data ?? []).map((r: { player_id: number }) => r.player_id));
 
-        const targets = rows.filter(r => (r.edge_score ?? 0) > 5).slice(0, 2);
-        const watches = rows.filter(r => (r.edge_score ?? 0) >= -5 && (r.edge_score ?? 0) <= 5).slice(0, 2);
-        const avoids  = rows.filter(r => (r.edge_score ?? 0) < -5).slice(0, 2);
+        const pool = shuffle(
+          ((poolResult.data ?? []) as MarketWatchRow[]).filter(
+            r => r.player_name && !rankingIds.has(r.player_id),
+          ),
+        );
 
-        setPlayers([...targets, ...watches, ...avoids]);
+        const targets = pool.filter(p => (p.edge_score ?? 0) > 5);
+        const watches = pool.filter(p => (p.edge_score ?? 0) >= -5 && (p.edge_score ?? 0) <= 5);
+        const avoids  = pool.filter(p => (p.edge_score ?? 0) < -5);
+
+        const picks: MarketWatchRow[] = [
+          pickRandom(targets),
+          pickRandom(watches),
+          pickRandom(avoids),
+        ].filter((p): p is MarketWatchRow => p !== null);
+
+        const pickedIds = new Set(picks.map(p => p.player_id));
+        const remaining = pool.filter(p => !pickedIds.has(p.player_id));
+        let i = 0;
+        while (picks.length < 6 && i < remaining.length) {
+          picks.push(remaining[i]);
+          i++;
+        }
+
+        setPlayers(picks.slice(0, 6));
       } catch (err) {
         console.error("[LandingMW] Error:", err);
         setPlayers([]);
