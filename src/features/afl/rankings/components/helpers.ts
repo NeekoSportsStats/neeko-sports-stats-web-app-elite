@@ -476,7 +476,7 @@ export const TAB_SORT_KEY: Record<RankingsTab, string> = {
 };
 
 export const TAB_DEFAULT_SORT: Record<RankingsTab, SortKey> = {
-  best: "neeko_rating",
+  best: "projection_final",
   value: "best_value_score",
   projection: "projection_final",
 };
@@ -497,5 +497,25 @@ export const PREMIUM_INITIAL_ROWS = 20; // Initial visible rows for premium user
 export function getFreeTier(idx: number): "full" | "partial" | "locked" {
   if (idx < FREE_FULL_ROWS) return "full";
   return "locked";
+}
+
+export function formatActionLabel(action: string | null): string {
+  if (!action) return "—";
+  return action
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function getActionStyles(action: string | null): string {
+  if (!action) return "";
+  const label = action.toUpperCase();
+  if (label === "STRONG_BUY" || label === "STRONG BUY") return "bg-green-500/15 text-green-400 border border-green-500/30";
+  if (label === "BUY" || label === "CAPTAIN OPTION") return "bg-green-400/10 text-green-300 border border-green-400/20";
+  if (label === "HOLD" || label === "WATCH") return "bg-yellow-400/10 text-yellow-300 border border-yellow-400/20";
+  if (label === "SELL") return "bg-red-400/10 text-red-300 border border-red-400/20";
+  if (label === "STRONG_SELL" || label === "STRONG SELL") return "bg-red-500/20 text-red-400 border border-red-500/30";
+  if (label.includes("ELITE CAPTAIN") || label.includes("STRONG CAPTAIN")) return "bg-yellow-400/10 text-yellow-300 border border-yellow-400/30";
+  return "bg-white/5 text-white/50 border border-white/10";
 }
 

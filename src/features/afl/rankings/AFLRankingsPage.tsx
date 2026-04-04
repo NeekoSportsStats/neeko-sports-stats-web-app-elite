@@ -4,7 +4,7 @@ import { Search, X, RefreshCw, TrendingUp, Star, Zap, Crown } from "lucide-react
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
-import { DataFreshnessIndicator, StaleDataWarning } from "@/components/ui/DataFreshnessIndicator";
+import { DataFreshnessIndicator } from "@/components/ui/DataFreshnessIndicator";
 
 import {
   RankingRow, RankingsTab, PositionFilter, PremiumFilter, SortKey, SortDir, RowTier,
@@ -196,9 +196,9 @@ function SearchAutocomplete({
                 </p>
                 <p className="text-[11px] text-white/35 mt-0.5">{row.team}{row.position ? ` · ${row.position}` : ""}</p>
               </div>
-              {row.neeko_rating != null && (
+              {row.projection_final != null && (
                 <span className="text-xs font-semibold text-white/40 tabular-nums shrink-0 ml-2">
-                  {Number(row.neeko_rating).toFixed(0)}
+                  {Math.round(row.projection_final)}
                 </span>
               )}
             </button>
@@ -209,29 +209,6 @@ function SearchAutocomplete({
   );
 }
 
-
-const PREMIUM_COLUMNS =
-  "player_id,player_name,team,team_name,position,position_group," +
-  "projection_final,ceiling,floor," +
-  "consistency,form_score,neeko_rating,neeko_rating_scaled,price,prev_price,price_change,price_change_pct,breakeven,value_score,best_value_score,value_tag,value_tier," +
-  "projection_confidence,risk_rating,matchup_rating,matchup_label,matchup_multiplier," +
-  "upside_rating,upside_pct,captain_score,captain_rating,ai_recommendation,recommendation_strength,recommendation_color," +
-  "summary_short,summary_long,recommendation_short,recommendation_why,ai_summary,consistency_tier,total_count,cached_at,games_played,ai_updated_at," +
-  "start_sit_decision,edge_score,edge_tier,market_watch_category,status,manual_status,is_available," +
-  "bye_round,is_bye,bye_next_round";
-
-const FREE_COLUMNS =
-  "player_id,player_name,team,team_name,position,position_group," +
-  "projection_final,ceiling,floor," +
-  "consistency,form_score,neeko_rating,neeko_rating_scaled,price,prev_price,price_change,price_change_pct,breakeven,value_score,best_value_score,value_tag,value_tier," +
-  "projection_confidence,risk_rating,matchup_rating,matchup_label,matchup_multiplier," +
-  "ai_recommendation,recommendation_strength,recommendation_color,summary_short,summary_long,recommendation_short,recommendation_why,ai_summary," +
-  "consistency_tier,access_tier,total_count,cached_at,games_played,row_rank," +
-  "start_sit_decision,edge_score,edge_tier,market_watch_category,status,manual_status,is_available," +
-  "bye_round,is_bye,bye_next_round";
-
-const AI_COLUMNS =
-  "player_id,summary_short,summary_long,recommendation_short,recommendation_why,ai_summary,ai_updated_at";
 
 function InlineGateBlock({ onUpgrade }: { onUpgrade: () => void }) {
   return (
@@ -302,19 +279,6 @@ export default function AFLRankingsPage() {
     return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
   }, [searchTerm]);
 
-  useEffect(() => {
-    async function fetchUpdatedAt() {
-      try {
-        const { data, error } = await supabase.rpc("get_rankings_updated_at");
-        if (!error && data && Array.isArray(data) && data[0]) {
-          setUpdatedAt({ ts: data[0].updated_at, round: data[0].round_label ?? "Current Round" });
-        }
-      } catch {
-        // RPC unavailable — silently ignore
-      }
-    }
-    fetchUpdatedAt();
-  }, []);
 
   function normalizeRow(r: any): RankingRow {
     return {
@@ -376,23 +340,17 @@ export default function AFLRankingsPage() {
     };
   }
 
-  async function fetchAIForRow(row: RankingRow, forceView?: "master" | "free"): Promise<Partial<RankingRow>> {
+  async function fetchAIForRow(row: RankingRow): Promise<Partial<RankingRow>> {
     if (!row.player_id) return {};
-    const view = forceView ?? (isPremium ? "master" : "free");
-    if (view === "free") {
-      return {
-        why: row.why,
-      };
-    }
     const { data } = await supabase
-      .from("v_rankings_master")
-      .select(AI_COLUMNS)
+      .from("player_rankings_cache")
+      .select("player_id,summary_short,summary_long,ai_updated_at")
       .eq("player_id", row.player_id)
       .maybeSingle();
     if (!data) return {};
     return {
-      why:           (data as any).summary_short ?? (data as any).recommendation_short ?? row.why,
-      long:          (data as any).summary_long ?? (data as any).recommendation_why ?? row.long,
+      why:           (data as any).summary_short ?? row.why,
+      long:          (data as any).summary_long ?? row.long,
       ai_updated_at: (data as any).ai_updated_at ?? row.ai_updated_at,
     };
   }
@@ -402,44 +360,22 @@ export default function AFLRankingsPage() {
     setSelected(null);
     setHighlightedPlayerId(null);
 
-    if (isPremium) {
-      const { data, error } = await supabase
-        .from("v_rankings_master")
-        .select(PREMIUM_COLUMNS)
-        .order("neeko_rating_scaled", { ascending: false, nullsFirst: false });
+    const { data, error } = await supabase
+      .from("player_rankings_cache")
+      .select("*")
+      .order("projection_final", { ascending: false, nullsFirst: false });
 
-      if (error) {
-        console.error("Rankings fetch error (premium):", error);
-        setRows([]);
-        setLoading(false);
-        return;
-      }
-      const normalized = ((data as any[]) ?? []).map(normalizeRow);
-      setRows(normalized);
-      const firstCachedAt = (data as any[])?.[0]?.cached_at;
-      if (firstCachedAt) {
-        setUpdatedAt((prev) => prev ?? { ts: firstCachedAt, round: "Current Round" });
-      }
-    } else {
-      const { data: authData } = await supabase.auth.getUser();
-      const { data, error } = await supabase.rpc("get_rankings_safe", {
-        p_user_id: authData?.user?.id ?? null,
-        p_is_bot: false,
-        p_limit: 500,
-      });
-
-      if (error) {
-        console.error("Rankings fetch error (free):", error);
-        setRows([]);
-        setLoading(false);
-        return;
-      }
-      const normalized = ((data as any[]) ?? []).map(normalizeRow);
-      setRows(normalized);
-      const firstCachedAt = (data as any[])?.[0]?.cached_at;
-      if (firstCachedAt) {
-        setUpdatedAt((prev) => prev ?? { ts: firstCachedAt, round: "Current Round" });
-      }
+    if (error) {
+      console.error("Rankings fetch error:", error);
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+    const normalized = ((data as any[]) ?? []).map(normalizeRow);
+    setRows(normalized);
+    const firstCachedAt = (data as any[])?.[0]?.cached_at;
+    if (firstCachedAt) {
+      setUpdatedAt((prev) => prev ?? { ts: firstCachedAt, round: "Current Round" });
     }
 
     setLoading(false);
@@ -463,12 +399,6 @@ export default function AFLRankingsPage() {
     track("rankings_refresh_click");
     try {
       await fetchRankings();
-      try {
-        const { data, error } = await supabase.rpc("get_rankings_updated_at");
-        if (!error && data && Array.isArray(data) && data[0]) {
-          setUpdatedAt({ ts: data[0].updated_at, round: data[0].round_label ?? "Current Round" });
-        }
-      } catch { /* ignore */ }
     } finally {
       setIsRefreshing(false);
     }
@@ -510,11 +440,10 @@ export default function AFLRankingsPage() {
       is_unlocked:  isUnlocked,
       source:       "rankings",
     });
-    const isFreeTop5 = !isPremium && tier === "full";
-    if (isUnlocked || isFreeTop5) {
+    if (isUnlocked) {
       const needsAI = !row.why && !row.long;
       if (needsAI) {
-        const aiData = await fetchAIForRow(row, isFreeTop5 && !isPremium ? "free" : undefined);
+        const aiData = await fetchAIForRow(row);
         if (Object.keys(aiData).length > 0) {
           setSelected((prev) => prev ? { ...prev, row: { ...prev.row, ...aiData } } : prev);
         }
@@ -676,8 +605,6 @@ export default function AFLRankingsPage() {
                 />
               </div>
             )}
-            {updatedAt && <StaleDataWarning timestamp={updatedAt.ts} className="mb-4" />}
-
             {/* QUICK VALUE STRIP */}
             {!loading && displayRows.length > 0 && (
               <div className="mb-4">
@@ -863,8 +790,6 @@ export default function AFLRankingsPage() {
               />
             </div>
           )}
-          {updatedAt && <StaleDataWarning timestamp={updatedAt.ts} className="mt-2 mb-3" />}
-
           {/* TABS */}
           <div className="flex items-center gap-2 border-b border-white/[0.06] mb-0">
             {TABS.map(({ key, label }) => {

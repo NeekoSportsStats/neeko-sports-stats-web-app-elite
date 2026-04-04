@@ -5,6 +5,8 @@ import {
   fmt, fmtPrice,
   getDisplayRecommendation,
   FREE_FULL_ROWS,
+  formatActionLabel,
+  getActionStyles,
 } from "./helpers";
 import { InfoTooltip, LockedCell } from "./RankingsModals";
 import { ExpandedPlayerRow } from "./ExpandedPlayerRow";
@@ -16,26 +18,6 @@ const TOTAL_COLS = 7;
 const FREE_TOTAL_COLS = 5;
 
 const TH = "bg-[#0a0a0a] px-3 py-2.5 text-[11px] font-medium uppercase tracking-wider whitespace-nowrap border-b border-white/10 text-center";
-
-// ─── WHY text resolver ─────────────────────────────────────────────────────────
-
-function buildRichWhy(row: RankingRow): string {
-  if (row.why && row.why.trim().length > 0) return row.why.trim();
-
-  const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
-  const be = row.breakeven != null ? Math.round(parseFloat(String(row.breakeven))) : null;
-
-  if (proj != null && be != null && !row.is_bye) {
-    const edge = proj - be;
-    if (edge > 0) return `Projected ${proj} pts — clears breakeven by ${edge}.`;
-    if (edge === 0) return `Projected ${proj} pts — exactly at breakeven.`;
-    return `Projected ${proj} pts — ${Math.abs(edge)} below breakeven.`;
-  }
-
-  if (proj != null) return `Projected ${proj} pts this round.`;
-  if (be != null) return `Breakeven of ${be} — monitor projection closely.`;
-  return "Projection data pending.";
-}
 
 // ─── Edge cell ─────────────────────────────────────────────────────────────────
 
@@ -81,9 +63,7 @@ function ExpandedPanel({ row, displayRec }: ExpandedPanelProps) {
   const edgeSign = rawEdgeExp != null ? (rawEdgeExp > 40 ? "40+" : rawEdgeExp < -40 ? "-40+" : (rawEdgeExp > 0 ? `+${rawEdgeExp}` : String(rawEdgeExp))) : null;
 
   const longWhy = row.long ?? row.why ?? null;
-  const confidence = row.projection_confidence != null ? Math.round(row.projection_confidence) : null;
   const price = row.price != null ? fmtPrice(row.price) : null;
-  const rating = row.neeko_rating != null ? Number(row.neeko_rating).toFixed(1) : null;
 
   const edgeLabel = rawEdgeExp != null && edgeSign != null
     ? `${edgeSign} vs BE — ${rawEdgeExp >= 15 ? "strong underpriced play" : rawEdgeExp >= 5 ? "moderate edge" : rawEdgeExp >= -5 ? "near breakeven" : "price risk"}`
@@ -103,26 +83,12 @@ function ExpandedPanel({ row, displayRec }: ExpandedPanelProps) {
               <p className="text-[13px] text-white/55 leading-relaxed line-clamp-4">{longWhy}</p>
             )}
 
-            {(confidence != null || price != null || rating != null) && (
+            {price != null && (
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/[0.06] pt-3">
-                {confidence != null && (
-                  <div>
-                    <p className="text-[10px] text-white/30 uppercase tracking-wide mb-0.5">Confidence</p>
-                    <p className="text-sm font-semibold text-white tabular-nums">{confidence}%</p>
-                  </div>
-                )}
-                {price != null && (
-                  <div>
-                    <p className="text-[10px] text-white/30 uppercase tracking-wide mb-0.5">Price</p>
-                    <p className="text-sm font-semibold text-white tabular-nums">{price}</p>
-                  </div>
-                )}
-                {rating != null && (
-                  <div>
-                    <p className="text-[10px] text-white/30 uppercase tracking-wide mb-0.5">Neeko Rating</p>
-                    <p className="text-sm font-semibold text-white tabular-nums">{rating}</p>
-                  </div>
-                )}
+                <div>
+                  <p className="text-[10px] text-white/30 uppercase tracking-wide mb-0.5">Price</p>
+                  <p className="text-sm font-semibold text-white tabular-nums">{price}</p>
+                </div>
               </div>
             )}
           </div>
@@ -198,25 +164,6 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
   );
 }
 
-// ─── Recommendation color resolver ────────────────────────────────────────────
-
-function getActionStyle(rec: string): React.CSSProperties {
-  const label = rec.toUpperCase();
-  if (label.includes("ELITE CAPTAIN") || label.includes("STRONG CAPTAIN")) {
-    return { color: "#F5C84C", background: "#F5C84C18", borderColor: "#F5C84C50" };
-  }
-  if (label === "BUY" || label === "STRONG BUY" || label === "CAPTAIN OPTION") {
-    return { color: "#4ade80", background: "#4ade8018", borderColor: "#4ade8040" };
-  }
-  if (label === "HOLD" || label === "BENCH WATCH" || label === "WATCH") {
-    return { color: "#94a3b8", background: "#94a3b810", borderColor: "#94a3b830" };
-  }
-  if (label === "SELL" || label === "AVOID" || label === "FADE") {
-    return { color: "#f87171", background: "#f8717118", borderColor: "#f8717140" };
-  }
-  return { color: "#94a3b8", background: "#94a3b810", borderColor: "#94a3b830" };
-}
-
 // ─── Premium table row (with expandable panel) ────────────────────────────────
 
 interface TableRowProps {
@@ -235,8 +182,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
   const rank = idx + 1;
 
   const displayRec = getDisplayRecommendation(row, activeTab);
-  const richWhy = buildRichWhy(row);
-  const actionStyle = displayRec ? getActionStyle(displayRec) : undefined;
+  const whyText = row.why ?? "—";
 
   const isLocked = !isPremium && idx >= FREE_FULL_ROWS;
 
@@ -307,10 +253,9 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
             <LockedCell onClick={onUpgrade} />
           ) : displayRec ? (
             <span
-              className="inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap"
-              style={actionStyle}
+              className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${getActionStyles(displayRec)}`}
             >
-              {displayRec}
+              {formatActionLabel(displayRec)}
             </span>
           ) : <span className="text-white/20 text-xs">—</span>}
         </td>
@@ -319,8 +264,8 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           {isLocked ? (
             <span className="text-[11px] text-white/20 italic">Unlock to view</span>
           ) : (
-            <span className="block text-[12px] text-white/50 leading-[1.55] whitespace-normal">
-              {richWhy}
+            <span className="block text-[12px] text-white/50 leading-[1.55] max-w-[280px] line-clamp-2">
+              {whyText}
             </span>
           )}
         </td>
