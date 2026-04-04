@@ -8,8 +8,8 @@ interface MarketWatchRow {
   player_name: string;
   team: string;
   position: string | null;
+  price: number | null;
   projection_final: number | null;
-  breakeven: number | null;
   edge_score: number | null;
   ai_recommendation: string | null;
   summary_short: string | null;
@@ -25,6 +25,11 @@ function getSignalTier(edgeScore: number | null): SignalTier {
   if (s > 5) return "target";
   if (s < -5) return "avoid";
   return "watch";
+}
+
+function formatPrice(price: number | null): string {
+  if (!price) return "—";
+  return `$${(price / 1000000).toFixed(2)}M`;
 }
 
 function StatusPill({ isBye }: { isBye: boolean }) {
@@ -48,9 +53,9 @@ function InjuryPill({ isInjured }: { isInjured: boolean }) {
 
 function SignalPill({ tier }: { tier: SignalTier }) {
   const config = {
-    target: { label: "TARGET", bg: "bg-green-400/10", text: "text-green-400", border: "border-green-400/30", icon: TrendingUp },
-    watch:  { label: "WATCH",  bg: "bg-[#F5C84C]/10",  text: "text-[#F5C84C]",  border: "border-[#F5C84C]/30",  icon: Minus },
-    avoid:  { label: "AVOID",  bg: "bg-red-400/10",    text: "text-red-400",    border: "border-red-400/30",    icon: TrendingDown },
+    target: { label: "TARGET", bg: "bg-green-500/15",  text: "text-green-400",  border: "border-green-500/30",  icon: TrendingUp },
+    watch:  { label: "WATCH",  bg: "bg-yellow-400/10", text: "text-yellow-300", border: "border-yellow-400/20", icon: Minus },
+    avoid:  { label: "AVOID",  bg: "bg-red-500/15",    text: "text-red-400",    border: "border-red-500/30",    icon: TrendingDown },
   };
   const { label, bg, text, border, icon: Icon } = config[tier];
   return (
@@ -62,16 +67,15 @@ function SignalPill({ tier }: { tier: SignalTier }) {
 }
 
 function PlayerRow({ player, index }: { player: MarketWatchRow; index: number }) {
-  const projection = player.projection_final != null ? Math.round(player.projection_final) : "—";
-  const breakeven = player.breakeven != null ? Math.round(player.breakeven) : "—";
+  const valueGap = player.edge_score != null ? Math.round(player.edge_score) : null;
   const tier = getSignalTier(player.edge_score);
   const isInjured = player.status === "injured" || player.manual_status === "injured";
   const isBye = player.is_bye === true || player.status === "bye" || player.manual_status === "bye";
-  const whyText = player.summary_short ?? `Projection: ${projection} · Breakeven: ${breakeven}`;
+  const whyText = player.summary_short ?? null;
 
   return (
     <div className="group">
-      <div className="grid grid-cols-[2rem_1fr_4.5rem_4rem_5rem] md:grid-cols-[2.5rem_1fr_5rem_4.5rem_6rem] gap-x-2.5 md:gap-x-3 px-3 md:px-4 py-3 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors items-center">
+      <div className="grid grid-cols-[2rem_1fr_4.5rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_5rem_5rem_6rem] gap-x-2.5 md:gap-x-3 px-3 md:px-4 py-3 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors items-center">
         <span className="text-xs text-white/25 font-mono tabular-nums">{index}</span>
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -81,26 +85,28 @@ function PlayerRow({ player, index }: { player: MarketWatchRow; index: number })
           </div>
           <p className="text-[10px] text-white/30 leading-tight truncate">{player.team}{player.position ? ` · ${player.position}` : ""}</p>
         </div>
-        <span className="text-sm font-bold text-[#F5C84C] text-center tabular-nums">
-          {projection}
+        <span className="text-xs md:text-sm font-semibold text-white/60 text-center tabular-nums">
+          {formatPrice(player.price)}
         </span>
-        <span className="text-xs md:text-sm font-bold text-white/60 text-center tabular-nums">
-          {breakeven}
+        <span className={`text-sm font-bold text-center tabular-nums ${valueGap == null ? "text-white/30" : valueGap > 0 ? "text-green-400" : "text-red-400"}`}>
+          {valueGap == null ? "—" : valueGap > 0 ? `+${valueGap}` : `${valueGap}`}
         </span>
         <div className="flex justify-end">
           <SignalPill tier={tier} />
         </div>
       </div>
-      <div className="px-3 md:px-4 py-1.5 bg-[#0a0a0a] border-b border-white/[0.03]">
-        <p className="text-[11px] text-white/35 leading-snug italic">{whyText}</p>
-      </div>
+      {whyText && (
+        <div className="px-3 md:px-4 py-1.5 bg-[#0a0a0a] border-b border-white/[0.03]">
+          <p className="text-[11px] text-white/35 leading-snug italic">{whyText}</p>
+        </div>
+      )}
     </div>
   );
 }
 
 function LockedRow({ index }: { index: number }) {
   return (
-    <div className="grid grid-cols-[2rem_1fr_4.5rem_4rem_5rem] md:grid-cols-[2.5rem_1fr_5rem_4.5rem_6rem] gap-x-2.5 md:gap-x-3 px-3 md:px-4 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] items-center select-none">
+    <div className="grid grid-cols-[2rem_1fr_4.5rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_5rem_5rem_6rem] gap-x-2.5 md:gap-x-3 px-3 md:px-4 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] items-center select-none">
       <span className="text-xs text-white/15 font-mono tabular-nums">{index}</span>
       <div className="flex items-center gap-1.5 min-w-0">
         <Lock size={10} className="text-white/20 shrink-0" />
@@ -125,7 +131,7 @@ export function LandingMarketWatchSample() {
       try {
         const { data } = await supabase
           .from("player_rankings_cache")
-          .select("player_id, player_name, team, position, projection_final, breakeven, edge_score, ai_recommendation, summary_short, is_bye, status, manual_status")
+          .select("player_id, player_name, team, position, price, projection_final, edge_score, ai_recommendation, summary_short, is_bye, status, manual_status")
           .gte("games_played", 3)
           .gt("projection_final", 50)
           .order("projection_final", { ascending: false })
@@ -166,18 +172,18 @@ export function LandingMarketWatchSample() {
         </div>
 
         <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
-          <div className="grid grid-cols-[2rem_1fr_4.5rem_4rem_5rem] md:grid-cols-[2.5rem_1fr_5rem_4.5rem_6rem] gap-x-2.5 md:gap-x-3 px-3 md:px-4 py-3 text-[10px] font-semibold text-white/25 uppercase tracking-widest border-b border-white/[0.06] bg-[#0a0a0a]">
+          <div className="grid grid-cols-[2rem_1fr_4.5rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_5rem_5rem_6rem] gap-x-2.5 md:gap-x-3 px-3 md:px-4 py-3 text-[10px] font-semibold text-white/25 uppercase tracking-widest border-b border-white/[0.06] bg-[#0a0a0a]">
             <span>#</span>
             <span>Player</span>
-            <span className="text-center text-[#F5C84C]/60">Proj.</span>
-            <span className="text-center">BE</span>
+            <span className="text-center">Price</span>
+            <span className="text-center">Value Gap</span>
             <span className="text-right">Signal</span>
           </div>
 
           {loading ? (
             Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="grid grid-cols-[2rem_1fr_4.5rem_4rem_5rem] md:grid-cols-[2.5rem_1fr_5rem_4.5rem_6rem] gap-x-2.5 md:gap-x-3 px-3 md:px-4 py-4 border-b border-white/[0.04] bg-[#0c0c0c]">
+                <div className="grid grid-cols-[2rem_1fr_4.5rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_5rem_5rem_6rem] gap-x-2.5 md:gap-x-3 px-3 md:px-4 py-4 border-b border-white/[0.04] bg-[#0c0c0c]">
                   {Array.from({ length: 5 }).map((__, j) => (
                     <div key={j} className="h-4 bg-white/[0.06] rounded" />
                   ))}
@@ -224,7 +230,7 @@ export function LandingMarketWatchSample() {
             </div>
             <div>
               <p className="text-sm font-bold text-white leading-tight">Unlock Full Market Intelligence</p>
-              <p className="text-[11px] text-white/35 leading-tight mt-0.5">Complete value analysis for all 600+ players · Updated before lockout</p>
+              <p className="text-[11px] text-white/35 leading-tight mt-0.5">Complete trade analysis for all 600+ players · Updated before lockout</p>
             </div>
           </div>
           <Link

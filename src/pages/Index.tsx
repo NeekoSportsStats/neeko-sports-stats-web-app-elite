@@ -23,8 +23,6 @@ interface RankingRow {
   projection_final: number | null;
   ai_recommendation: string | null;
   summary_short: string | null;
-  value_score: number | null;
-  value_tag: string | null;
 }
 
 interface AccuracyExampleRow {
@@ -44,9 +42,7 @@ interface EdgeRow {
   team: string;
   position: string | null;
   projection_final: number | null;
-  breakeven: number | null;
   edge_score: number | null;
-  ai_recommendation: string | null;
   summary_short: string | null;
 }
 
@@ -816,6 +812,15 @@ function edgeScoreColor(score: number | null): string {
   return "text-[#F5C84C]";
 }
 
+function getActionFromEdge(edge: number | null): string {
+  const e = edge ?? 0;
+  if (e >= 15) return "STRONG BUY";
+  if (e >= 6)  return "BUY";
+  if (e >= -5) return "HOLD";
+  if (e >= -14) return "SELL";
+  return "STRONG SELL";
+}
+
 function EdgeBoardPreview() {
   const [signals, setSignals] = useState<EdgeSignal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -824,7 +829,7 @@ function EdgeBoardPreview() {
     (async () => {
       const { data } = await supabase
         .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, projection_final, breakeven, edge_score, ai_recommendation, summary_short")
+        .select("player_id, player_name, team, position, projection_final, edge_score, summary_short")
         .gte("games_played", 3)
         .gt("projection_final", 50)
         .order("edge_score", { ascending: false })
@@ -902,15 +907,20 @@ function EdgeBoardPreview() {
                         {row.projection_final != null && (
                           <EdgeStatRow label="Projection" value={`${Math.round(row.projection_final)} pts`} valueColor="text-[#F5C84C]" />
                         )}
-                        {row.breakeven != null && (
-                          <EdgeStatRow label="Breakeven" value={`${Math.round(row.breakeven)} pts`} valueColor="text-white/60" />
-                        )}
                         {row.edge_score != null && (
-                          <EdgeStatRow label="Edge Score" value={row.edge_score.toFixed(1)} valueColor={scoreColor} />
+                          <EdgeStatRow label="Edge Score" value={row.edge_score > 0 ? `+${row.edge_score.toFixed(1)}` : row.edge_score.toFixed(1)} valueColor={scoreColor} />
                         )}
-                        {row.ai_recommendation && (
-                          <EdgeStatRow label="Signal" value={row.ai_recommendation.replace(/_/g, " ")} valueColor="text-white/40" />
-                        )}
+                        <EdgeStatRow
+                          label="Action"
+                          value={getActionFromEdge(row.edge_score)}
+                          valueColor={
+                            (row.edge_score ?? 0) >= 15 ? "text-green-400" :
+                            (row.edge_score ?? 0) >= 6  ? "text-green-300" :
+                            (row.edge_score ?? 0) >= -5 ? "text-yellow-300" :
+                            (row.edge_score ?? 0) >= -14 ? "text-red-300" :
+                            "text-red-400"
+                          }
+                        />
                       </div>
                     </div>
                   );
@@ -1166,15 +1176,27 @@ function OutcomeProofSection() {
 
 // ─── Rankings helpers ─────────────────────────────────────────────────────────
 
-function valueLabel(tag: string | null, score: number | null): { label: string; textColor: string; bg: string; border: string } {
-  const t = (tag ?? "").toUpperCase();
-  if (t.includes("ELITE") || t.includes("STRONG"))    return { label: "STRONG",    textColor: "text-green-400",  bg: "bg-green-400/10",  border: "border-green-400/30" };
-  if (t.includes("SOLID") || t.includes("FAIR"))       return { label: "FAIR",       textColor: "text-white/50",   bg: "bg-white/5",       border: "border-white/10" };
-  if (t.includes("LOW") || t.includes("OVERPRICED"))   return { label: "LOW VALUE",  textColor: "text-orange-400", bg: "bg-orange-400/10", border: "border-orange-400/30" };
-  if (score == null)                                    return { label: "—",          textColor: "text-white/30",   bg: "bg-white/5",       border: "border-white/10" };
-  if (score >= 4.0)                                     return { label: "STRONG",    textColor: "text-green-400",  bg: "bg-green-400/10",  border: "border-green-400/30" };
-  if (score >= 1.7)                                     return { label: "FAIR",       textColor: "text-white/50",   bg: "bg-white/5",       border: "border-white/10" };
-  return                                                       { label: "LOW VALUE",  textColor: "text-orange-400", bg: "bg-orange-400/10", border: "border-orange-400/30" };
+function formatActionLabel(action: string | null): string {
+  if (!action) return "—";
+  switch (action.toUpperCase()) {
+    case "STRONG_BUY":  return "Strong Buy";
+    case "BUY":         return "Buy";
+    case "HOLD":        return "Hold";
+    case "SELL":        return "Sell";
+    case "STRONG_SELL": return "Strong Sell";
+    default:            return action.replace(/_/g, " ");
+  }
+}
+
+function getActionStyles(action: string | null): string {
+  switch ((action ?? "").toUpperCase()) {
+    case "STRONG_BUY":  return "bg-green-500/15 text-green-400 border border-green-500/30";
+    case "BUY":         return "bg-green-400/10 text-green-300 border border-green-400/20";
+    case "HOLD":        return "bg-yellow-400/10 text-yellow-300 border border-yellow-400/20";
+    case "SELL":        return "bg-red-400/10 text-red-300 border border-red-400/20";
+    case "STRONG_SELL": return "bg-red-500/20 text-red-400 border border-red-500/30";
+    default:            return "bg-white/5 text-white/30 border border-white/10";
+  }
 }
 
 function RankingsPreview() {
@@ -1185,7 +1207,7 @@ function RankingsPreview() {
     (async () => {
       const { data } = await supabase
         .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, projection_final, ai_recommendation, summary_short, value_score, value_tag")
+        .select("player_id, player_name, team, position, projection_final, ai_recommendation, summary_short")
         .gte("games_played", 3)
         .gt("projection_final", 50)
         .order("projection_final", { ascending: false })
@@ -1211,7 +1233,7 @@ function RankingsPreview() {
             <span>#</span>
             <span>Player</span>
             <span className="text-center text-[#F5C84C]/60">Projection</span>
-            <span className="text-right">Value</span>
+            <span className="text-right">Action</span>
           </div>
 
           {loading
@@ -1225,31 +1247,28 @@ function RankingsPreview() {
             : rows.length > 0
               ? (
                 <>
-                  {rows.map((row, idx) => {
-                    const val  = valueLabel(row.value_tag, row.value_score);
-                    return (
-                      <div key={row.player_id ?? idx} className="grid grid-cols-[2rem_1fr_5rem_7rem] gap-x-4 px-5 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors last:border-0 items-center">
-                        <span className="text-xs text-white/25 font-mono">{idx + 1}</span>
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-white truncate leading-tight">{row.player_name}</p>
-                          {row.position && <p className="text-[10px] text-white/30 leading-tight">{row.position}</p>}
-                        </div>
-                        <span className="text-sm font-bold text-[#F5C84C] text-center tabular-nums">
-                          {row.projection_final != null ? Math.round(row.projection_final) : "—"}
-                        </span>
-                        <div className="flex justify-end">
-                          {val.label === "—"
-                            ? <span className="text-xs text-white/30">—</span>
-                            : (
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${val.bg} ${val.border} ${val.textColor}`}>
-                                {val.label}
-                              </span>
-                            )
-                          }
-                        </div>
+                  {rows.map((row, idx) => (
+                    <div key={row.player_id ?? idx} className="grid grid-cols-[2rem_1fr_5rem_7rem] gap-x-4 px-5 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors last:border-0 items-center">
+                      <span className="text-xs text-white/25 font-mono">{idx + 1}</span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-white truncate leading-tight">{row.player_name}</p>
+                        {row.position && <p className="text-[10px] text-white/30 leading-tight">{row.position}</p>}
                       </div>
-                    );
-                  })}
+                      <span className="text-sm font-bold text-[#F5C84C] text-center tabular-nums">
+                        {row.projection_final != null ? Math.round(row.projection_final) : "—"}
+                      </span>
+                      <div className="flex justify-end">
+                        {row.ai_recommendation
+                          ? (
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold ${getActionStyles(row.ai_recommendation)}`}>
+                              {formatActionLabel(row.ai_recommendation)}
+                            </span>
+                          )
+                          : <span className="text-xs text-white/30">—</span>
+                        }
+                      </div>
+                    </div>
+                  ))}
 
                   {[6, 7].map((rank) => (
                     <div key={rank} className="grid grid-cols-[2rem_1fr_5rem_7rem] gap-x-4 px-5 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] last:border-0 items-center select-none">
@@ -1281,7 +1300,7 @@ function RankingsPreview() {
             <span>#</span>
             <span>Player</span>
             <span className="text-center text-[#F5C84C]/60">Proj.</span>
-            <span className="text-right">Value</span>
+            <span className="text-right">Action</span>
           </div>
 
           {loading
@@ -1295,28 +1314,25 @@ function RankingsPreview() {
             : rows.length > 0
               ? (
                 <>
-                  {rows.map((row, idx) => {
-                    const val = valueLabel(row.value_tag, row.value_score);
-                    return (
-                      <div key={row.player_id ?? idx} className="grid grid-cols-[2rem_1fr_4.5rem_5rem] gap-x-3 px-4 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors last:border-0 items-center">
-                        <span className="text-xs text-white/25 font-mono">{idx + 1}</span>
-                        <span className="text-sm font-bold text-white truncate">{row.player_name}</span>
-                        <span className="text-sm font-bold text-[#F5C84C] text-center tabular-nums">
-                          {row.projection_final != null ? Math.round(row.projection_final) : "—"}
-                        </span>
-                        <div className="flex justify-end">
-                          {val.label === "—"
-                            ? <span className="text-xs text-white/30">—</span>
-                            : (
-                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold border ${val.bg} ${val.border} ${val.textColor}`}>
-                                {val.label}
-                              </span>
-                            )
-                          }
-                        </div>
+                  {rows.map((row, idx) => (
+                    <div key={row.player_id ?? idx} className="grid grid-cols-[2rem_1fr_4.5rem_5rem] gap-x-3 px-4 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors last:border-0 items-center">
+                      <span className="text-xs text-white/25 font-mono">{idx + 1}</span>
+                      <span className="text-sm font-bold text-white truncate">{row.player_name}</span>
+                      <span className="text-sm font-bold text-[#F5C84C] text-center tabular-nums">
+                        {row.projection_final != null ? Math.round(row.projection_final) : "—"}
+                      </span>
+                      <div className="flex justify-end">
+                        {row.ai_recommendation
+                          ? (
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold ${getActionStyles(row.ai_recommendation)}`}>
+                              {formatActionLabel(row.ai_recommendation)}
+                            </span>
+                          )
+                          : <span className="text-xs text-white/30">—</span>
+                        }
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
 
                   {[6, 7].map((rank) => (
                     <div key={rank} className="grid grid-cols-[2rem_1fr_4.5rem_5rem] gap-x-3 px-4 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] last:border-0 items-center select-none">
