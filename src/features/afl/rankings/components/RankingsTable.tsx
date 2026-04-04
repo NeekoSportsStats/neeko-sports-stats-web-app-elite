@@ -154,12 +154,12 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
   return (
     <tr className="border-b border-[#222]">
       <th className={`${TH} text-white/40`} style={{ width: 44, minWidth: 44 }}>#</th>
-      <th className={`${TH} text-left text-white/40`} style={{ width: 240, minWidth: 180 }}>Player</th>
-      <SortableTh label="Proj" col="projection_final" width={90} tooltip="Expected fantasy points this round" />
-      <SortableTh label="BE" col="form_score" width={80} tooltip="Breakeven — score needed to maintain price" />
-      <SortableTh label="Edge" col="projection_final" width={90} tooltip="Projection minus Breakeven. Green = clears BE. Red = price risk." />
-      <Th label="Action" locked={!isPremium} width={100} />
-      <th className={`${TH} text-left text-white/35`} style={{ minWidth: 200 }}>Why</th>
+      <th className={`${TH} text-left text-white/40`} style={{ width: 200, minWidth: 160 }}>Player</th>
+      <SortableTh label="Proj" col="projection_final" width={80} tooltip="Expected fantasy points this round" />
+      <SortableTh label="BE" col="form_score" width={72} tooltip="Breakeven — score needed to maintain price" />
+      <SortableTh label="Edge" col="projection_final" width={80} tooltip="Projection minus Breakeven. Green = clears BE. Red = price risk." />
+      <Th label="Action" locked={!isPremium} width={96} />
+      <th className={`${TH} text-left text-white/35`} style={{ minWidth: 300 }}>Why</th>
     </tr>
   );
 }
@@ -221,7 +221,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           </span>
         </td>
 
-        <td className="px-3 py-3 whitespace-nowrap" style={{ width: 240, minWidth: 180, maxWidth: 240 }}>
+        <td className="px-3 py-3 whitespace-nowrap" style={{ width: 200, minWidth: 160, maxWidth: 200 }}>
           <div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className={`text-sm font-semibold truncate max-w-[180px] ${isTop3 ? "text-white" : "text-white/90"}`}>{row.player_name}</span>
@@ -260,11 +260,11 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           ) : <span className="text-white/20 text-xs">—</span>}
         </td>
 
-        <td className="px-3 py-3 text-left" style={{ minWidth: 200 }}>
+        <td className="px-3 py-3 text-left" style={{ minWidth: 300 }}>
           {isLocked ? (
             <span className="text-[11px] text-white/20 italic">Unlock to view</span>
           ) : (
-            <span className="block text-[12px] text-white/50 leading-[1.55] max-w-[280px] line-clamp-2">
+            <span className="block text-[12px] text-white/50 leading-[1.55] line-clamp-2">
               {whyText}
             </span>
           )}
