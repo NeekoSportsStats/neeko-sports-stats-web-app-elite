@@ -31,12 +31,9 @@ interface RankingRow {
   price: number | null;
   price_change: number | null;
   value_score: number | null;
-  value_tag: string | null;
   ai_summary: string | null;
-  recommendation_color: string | null;
   refreshed_at: string | null;
   edge_score: number | null;
-  edge_tier: string | null;
 }
 
 type Section = "captain" | "breakout" | "trap";
@@ -1186,32 +1183,38 @@ export default function AFLRoundEdgeBoard() {
           Number(r.price ?? 0) > 0 &&
           Number(r.value_score ?? 0) > 0,
         )
-        .map((r: any): RankingRow => ({
-        player_id:             r.player_id ?? null,
-        player_name:           r.player_name ?? "",
-        team:                  r.team ?? "",
-        position:              r.position ?? null,
-        section:               r.section ?? "",
-        section_rank:          r.section_rank ?? 0,
-        projection_final:      r.projection_final != null ? Number(r.projection_final) : null,
-        ceiling_estimate:      r.ceiling_estimate != null ? Number(r.ceiling_estimate) : null,
-        floor_estimate:        r.floor_estimate != null ? Number(r.floor_estimate) : null,
-        upside_rating:         r.upside_rating != null ? Number(r.upside_rating) : null,
-        risk_rating:           r.risk_rating != null ? Number(r.risk_rating) : null,
-        projection_confidence: r.projection_confidence != null ? Number(r.projection_confidence) : null,
-        captain_score:         r.captain_score != null ? Number(r.captain_score) : null,
-        captain_rating:        r.captain_rating ?? null,
-        neeko_rating:          r.neeko_rating != null ? Number(r.neeko_rating) : null,
-        price:                 r.price != null ? Number(r.price) : null,
-        price_change:          r.price_change != null ? Number(r.price_change) : null,
-        value_score:           r.value_score != null ? Number(r.value_score) : null,
-        value_tag:             r.value_tag ?? null,
-        ai_summary:            r.ai_summary ?? null,
-        recommendation_color:  r.recommendation_color ?? null,
-        refreshed_at:          r.refreshed_at ?? null,
-        edge_score:            r.edge_score != null ? Number(r.edge_score) : null,
-        edge_tier:             r.edge_tier ?? null,
-      }));
+        .map((r: any): RankingRow => {
+          const edge_score = r.edge_score != null ? Number(r.edge_score) : null;
+          const row: RankingRow = {
+            player_id:             r.player_id ?? null,
+            player_name:           r.player_name ?? "",
+            team:                  r.team ?? "",
+            position:              r.position ?? null,
+            section:               r.section ?? "",
+            section_rank:          r.section_rank ?? 0,
+            projection_final:      r.projection_final != null ? Number(r.projection_final) : null,
+            ceiling_estimate:      r.ceiling_estimate != null ? Number(r.ceiling_estimate) : null,
+            floor_estimate:        r.floor_estimate != null ? Number(r.floor_estimate) : null,
+            upside_rating:         r.upside_rating != null ? Number(r.upside_rating) : null,
+            risk_rating:           r.risk_rating != null ? Number(r.risk_rating) : null,
+            projection_confidence: r.projection_confidence != null ? Number(r.projection_confidence) : null,
+            captain_score:         r.captain_score != null ? Number(r.captain_score) : null,
+            captain_rating:        r.captain_rating ?? null,
+            neeko_rating:          r.neeko_rating != null ? Number(r.neeko_rating) : null,
+            price:                 r.price != null ? Number(r.price) : null,
+            price_change:          r.price_change != null ? Number(r.price_change) : null,
+            value_score:           r.value_score != null ? Number(r.value_score) : null,
+            ai_summary:            r.ai_summary ?? null,
+            refreshed_at:          r.refreshed_at ?? null,
+            edge_score,
+          };
+          const e = Number(edge_score ?? 0);
+          const computedSignal = e > 5 ? "TARGET" : e >= -5 ? "WATCH" : "AVOID";
+          if (e > 5 && computedSignal !== "TARGET") {
+            console.error("EDGE LOGIC BROKEN", row);
+          }
+          return row;
+        });
       setRows(mapped);
       setRefreshedAt(mapped[0]?.refreshed_at ?? null);
 
