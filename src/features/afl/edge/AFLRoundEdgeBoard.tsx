@@ -220,16 +220,18 @@ function getPrimaryMetric(row: RankingRow, section: Section): { label: string; v
   }
 }
 
-function mapRecommendationToSignal(rec: string | null): "TARGET" | "WATCH" | "AVOID" {
+function mapRecommendationToSignal(rec: string | null): "TARGET" | "WATCH" | "AVOID" | null {
   switch (rec) {
     case "STRONG_BUY":
     case "BUY":
       return "TARGET";
+    case "HOLD":
+      return "WATCH";
     case "SELL":
     case "STRONG_SELL":
       return "AVOID";
     default:
-      return "WATCH";
+      return null;
   }
 }
 
@@ -243,8 +245,9 @@ function mapRecommendationToAction(rec: string | null): string {
   }
 }
 
-function getSignalStyles(rec: string | null): { label: string; color: string; bg: string; border: string } {
+function getSignalStyles(rec: string | null): { label: string; color: string; bg: string; border: string } | null {
   const signal = mapRecommendationToSignal(rec);
+  if (signal === null) return null;
   const action = mapRecommendationToAction(rec);
   if (signal === "TARGET") return { label: `${signal} — ${action}`, color: "text-green-300", bg: "bg-green-500/10", border: "border-green-500/25" };
   if (signal === "AVOID")  return { label: `${signal} — ${action}`, color: "text-red-300",   bg: "bg-red-500/10",   border: "border-red-500/25" };
@@ -630,12 +633,14 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
 
           {/* Recommendation verdict */}
-          <div className={`flex items-center gap-3 rounded-xl border ${reco.border} ${reco.bg} px-4 py-3`}>
-            <div className="flex-1">
-              <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Recommendation</p>
-              <p className={`text-sm font-extrabold ${reco.color}`}>{reco.label}</p>
+          {reco && (
+            <div className={`flex items-center gap-3 rounded-xl border ${reco.border} ${reco.bg} px-4 py-3`}>
+              <div className="flex-1">
+                <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Recommendation</p>
+                <p className={`text-sm font-extrabold ${reco.color}`}>{reco.label}</p>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Confidence breakdown */}
           <div>
@@ -841,15 +846,17 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
         ) : null}
       </div>
 
-      {/* Signal + Action badge */}
-      <div className="px-4 pb-3 flex items-center gap-2">
-        <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-          signal === "TARGET" ? "text-green-300 bg-green-500/10 border-green-500/25" :
-          signal === "AVOID"  ? "text-red-300 bg-red-500/10 border-red-500/25" :
-                                "text-yellow-300 bg-yellow-400/10 border-yellow-400/25"
-        }`}>{signal}</span>
-        <span className="text-[10px] text-white/30 font-semibold">{action}</span>
-      </div>
+      {/* Signal + Action badge — only render when ai_recommendation is set */}
+      {signal !== null && (
+        <div className="px-4 pb-3 flex items-center gap-2">
+          <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+            signal === "TARGET" ? "text-green-300 bg-green-500/10 border-green-500/25" :
+            signal === "AVOID"  ? "text-red-300 bg-red-500/10 border-red-500/25" :
+                                  "text-yellow-300 bg-yellow-400/10 border-yellow-400/25"
+          }`}>{signal}</span>
+          <span className="text-[10px] text-white/30 font-semibold">{action}</span>
+        </div>
+      )}
 
       {/* View Analysis CTA */}
       <div className="px-4 pb-4">
@@ -1174,11 +1181,13 @@ export default function AFLRoundEdgeBoard() {
       ]);
 
       if (rpcResult.error) throw rpcResult.error;
+      const VALID_RECOMMENDATIONS = new Set(["STRONG_BUY", "BUY", "HOLD", "SELL", "STRONG_SELL"]);
       const mapped = ((rpcResult.data as any[]) ?? [])
         .filter((r: any) =>
           r.player_name &&
           r.team &&
           r.ai_recommendation != null &&
+          VALID_RECOMMENDATIONS.has(r.ai_recommendation) &&
           Number(r.projection_final ?? 0) > 0 &&
           Number(r.price ?? 0) > 0,
         )

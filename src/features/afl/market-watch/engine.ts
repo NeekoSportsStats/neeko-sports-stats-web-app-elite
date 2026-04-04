@@ -1,5 +1,4 @@
 import { MWPlayerRow } from "./types";
-import { normalizeAction } from "@/utils/marketAction";
 
 // ────────────────────────────────────────────────────────────────────────────
 // SIMPLIFIED 3-CATEGORY SYSTEM
@@ -90,35 +89,10 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
       : canonical === 'HOLD' ? 'HOLD'
       : null;
 
-    // Fallback to action field (normalised) if ai_recommendation missing
-    const actionFallback = normalized ?? normalizeAction(p.action || p.category);
-
-    // ── SAFETY GUARD ──────────────────────────────────────────────────────
-    // Log any state that violates the invariant so it's visible in devtools.
-    if (process.env.NODE_ENV !== 'production') {
-      const vs = p.value_score ?? 0;
-      if (actionFallback === 'BUY' && vs < -4.5) {
-        console.error('[MarketWatch] INVALID STATE — negative value_score with BUY', {
-          player: p.player_name, value_score: vs, ai_recommendation: p.ai_recommendation, action: p.action,
-        });
-      }
-      if (actionFallback === 'SELL' && vs > 4.5) {
-        console.error('[MarketWatch] INVALID STATE — positive value_score with SELL', {
-          player: p.player_name, value_score: vs, ai_recommendation: p.ai_recommendation, action: p.action,
-        });
-      }
-    }
-
-    if (actionFallback === 'BUY') {
+    if (normalized === 'BUY') {
       buys.push(tag(p, 'BUY'));
-    } else if (actionFallback === 'SELL') {
+    } else if (normalized === 'SELL') {
       sells.push(tag(p, 'SELL'));
-    } else if (actionFallback === null) {
-      // No recognized action — use value_score as last-resort classification
-      const vs = p.value_score ?? 0;
-      if (vs >= 5) buys.push(tag(p, 'BUY'));
-      else if (vs <= -5) sells.push(tag(p, 'SELL'));
-      else holds.push(tag(p, 'HOLD'));
     } else {
       holds.push(tag(p, 'HOLD'));
     }
