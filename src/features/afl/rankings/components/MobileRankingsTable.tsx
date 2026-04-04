@@ -16,6 +16,7 @@ import {
   getNeekoRatingBadge,
   getDisplayRecommendation,
   resolveRecommendationColor,
+  formatActionLabel,
   FREE_FULL_ROWS, PREMIUM_INITIAL_ROWS,
 } from "./helpers";
 
@@ -167,7 +168,7 @@ function ActionBadge({ row, activeTab, isPremium, onUpgrade }: {
       className="inline-block rounded-md border px-2 py-1 text-[11px] font-bold whitespace-nowrap"
       style={{ color: rc, background: `${rc}18`, borderColor: `${rc}40` }}
     >
-      {displayRec}
+      {formatActionLabel(displayRec)}
     </span>
   );
 }

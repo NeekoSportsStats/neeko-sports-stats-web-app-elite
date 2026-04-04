@@ -4,6 +4,7 @@ import { RankingRow, SortKey, SortDir, RankingsTab, RowTier } from "./types";
 import {
   fmt, fmtPrice,
   getDisplayRecommendation,
+  formatActionLabel,
   FREE_FULL_ROWS,
 } from "./helpers";
 import { InfoTooltip, LockedCell } from "./RankingsModals";
@@ -299,7 +300,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
               className="inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap"
               style={actionStyle}
             >
-              {displayRec}
+              {formatActionLabel(displayRec)}
             </span>
           ) : <span className="text-white/20 text-xs">—</span>}
         </td>

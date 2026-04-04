@@ -1,6 +1,7 @@
 import { X, TrendingUp, TrendingDown, Target, TriangleAlert as AlertTriangle, DollarSign, Activity, ChartBar as BarChart3, Shield } from "lucide-react";
 import { DerivedPlayer } from "./engine";
 import { fmtPrice } from "./helpers";
+import { formatActionLabel } from "@/utils/marketLabels";
 
 interface PlayerAIModalProps {
   player: DerivedPlayer | null;
@@ -221,14 +222,14 @@ export function PlayerAIModal({ player, onClose }: PlayerAIModalProps) {
           {player.ai_recommendation && (
             <div className="flex items-center justify-between p-4 bg-white/[0.03] border border-white/10 rounded-xl">
               <span className="text-sm text-gray-400">AI Recommendation</span>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
+              <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wide ${
                 player.ai_recommendation === 'BUY' || player.ai_recommendation === 'STRONG_BUY'
                   ? 'bg-green-500/10 text-green-400 border border-green-500/20'
-                  : player.ai_recommendation === 'SELL' || player.ai_recommendation === 'AVOID'
+                  : player.ai_recommendation === 'SELL' || player.ai_recommendation === 'AVOID' || player.ai_recommendation === 'STRONG_SELL'
                   ? 'bg-red-500/10 text-red-400 border border-red-500/20'
                   : 'bg-gray-500/10 text-gray-400 border border-gray-500/20'
               }`}>
-                {player.ai_recommendation}
+                {formatActionLabel(player.ai_recommendation)}
               </span>
             </div>
           )}

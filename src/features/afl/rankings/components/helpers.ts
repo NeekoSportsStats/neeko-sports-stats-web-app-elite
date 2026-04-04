@@ -5,6 +5,14 @@ export function getDisplayRecommendation(row: RankingRow, _tab: RankingsTab): st
   return row.ai_recommendation ?? null;
 }
 
+export function formatActionLabel(action: string | null | undefined): string {
+  if (!action) return "—";
+  return action
+    .toLowerCase()
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 // ─── Matchup display helper ───────────────────────────────────────────────────
 // DB stores matchup_rating as a decimal multiplier string e.g. "1.023", "0.912", "1.0"
 // We convert to a signed percentage label: +2.3%, -8.8%, Neutral
