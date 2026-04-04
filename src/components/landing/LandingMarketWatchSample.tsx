@@ -3,27 +3,27 @@ import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown, Minus, Lock, ArrowRight, Crown, CircleAlert as AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
-interface MarketWatchRow {
+interface RankingsCacheRow {
   player_id: number;
   player_name: string;
   team: string;
   position: string | null;
   price: number | null;
-  projection_final: number | null;
-  edge_score: number | null;
+  value_gap: number | null;
+  ai_recommendation: string | null;
   summary_short: string | null;
   is_bye: boolean | null;
   status: string | null;
   manual_status: string | null;
 }
 
-type SignalTier = "target" | "watch" | "avoid";
+type SignalTier = "TARGET" | "WATCH" | "AVOID";
 
-function getSignalTier(edgeScore: number | null): SignalTier {
-  const s = edgeScore ?? 0;
-  if (s > 5) return "target";
-  if (s < -5) return "avoid";
-  return "watch";
+function mapRecommendationToSignal(rec: string | null): SignalTier {
+  const r = (rec ?? "").toUpperCase();
+  if (r === "BUY" || r === "STRONG_BUY") return "TARGET";
+  if (r === "SELL" || r === "STRONG_SELL") return "AVOID";
+  return "WATCH";
 }
 
 function formatPrice(price: number | null): string {
@@ -61,9 +61,9 @@ function InjuryPill({ isInjured }: { isInjured: boolean }) {
 
 function SignalPill({ tier }: { tier: SignalTier }) {
   const config = {
-    target: { label: "TARGET", bg: "bg-green-500/15",  text: "text-green-400",  border: "border-green-500/30",  icon: TrendingUp },
-    watch:  { label: "WATCH",  bg: "bg-yellow-400/10", text: "text-yellow-300", border: "border-yellow-400/20", icon: Minus },
-    avoid:  { label: "AVOID",  bg: "bg-red-500/15",    text: "text-red-400",    border: "border-red-500/30",    icon: TrendingDown },
+    TARGET: { label: "TARGET", bg: "bg-green-500/15",  text: "text-green-400",  border: "border-green-500/30",  icon: TrendingUp },
+    WATCH:  { label: "WATCH",  bg: "bg-yellow-400/10", text: "text-yellow-300", border: "border-yellow-400/20", icon: Minus },
+    AVOID:  { label: "AVOID",  bg: "bg-red-500/15",    text: "text-red-400",    border: "border-red-500/30",    icon: TrendingDown },
   };
   const { label, bg, text, border, icon: Icon } = config[tier];
   return (
@@ -74,12 +74,11 @@ function SignalPill({ tier }: { tier: SignalTier }) {
   );
 }
 
-function PlayerRow({ player, index }: { player: MarketWatchRow; index: number }) {
-  const valueGap = player.edge_score != null ? Math.round(player.edge_score) : null;
-  const tier = getSignalTier(player.edge_score);
+function PlayerRow({ player, index }: { player: RankingsCacheRow; index: number }) {
+  const signal = mapRecommendationToSignal(player.ai_recommendation);
+  const valueGap = player.value_gap != null ? Math.round(player.value_gap) : null;
   const isInjured = player.status === "injured" || player.manual_status === "injured";
   const isBye = player.is_bye === true || player.status === "bye" || player.manual_status === "bye";
-  const whyText = player.summary_short ?? null;
 
   return (
     <div className="group">
@@ -100,12 +99,12 @@ function PlayerRow({ player, index }: { player: MarketWatchRow; index: number })
           {valueGap == null ? "—" : valueGap > 0 ? `+${valueGap}` : `${valueGap}`}
         </span>
         <div className="flex justify-end">
-          <SignalPill tier={tier} />
+          <SignalPill tier={signal} />
         </div>
       </div>
-      {whyText && (
+      {player.summary_short && (
         <div className="px-3 md:px-4 py-1.5 bg-[#0a0a0a] border-b border-white/[0.03]">
-          <p className="text-[11px] text-white/35 leading-snug italic">{whyText}</p>
+          <p className="text-[11px] text-white/35 leading-snug italic">{player.summary_short}</p>
         </div>
       )}
     </div>
@@ -131,52 +130,47 @@ function LockedRow({ index }: { index: number }) {
 }
 
 export function LandingMarketWatchSample() {
-  const [players, setPlayers] = useState<MarketWatchRow[]>([]);
+  const [players, setPlayers] = useState<RankingsCacheRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
-        const [rankResult, poolResult] = await Promise.all([
-          supabase
-            .from("player_rankings_cache")
-            .select("player_id")
-            .gte("games_played", 3)
-            .gt("projection_final", 50)
-            .order("projection_final", { ascending: false })
-            .limit(5),
-          supabase
-            .from("player_rankings_cache")
-            .select("player_id, player_name, team, position, price, projection_final, edge_score, summary_short, is_bye, status, manual_status")
-            .gte("games_played", 3)
-            .gt("projection_final", 50)
-            .order("projection_final", { ascending: false })
-            .limit(50),
-        ]);
+        const { data, error } = await supabase
+          .schema("afl")
+          .from("player_rankings_cache")
+          .select("player_id, player_name, team, position, price, value_gap, ai_recommendation, summary_short, is_bye, status, manual_status")
+          .not("ai_recommendation", "is", null)
+          .gte("games_played", 3)
+          .gt("projection_final", 50)
+          .limit(100);
 
-        const rankingIds = new Set((rankResult.data ?? []).map((r: { player_id: number }) => r.player_id));
+        if (error) throw error;
 
-        const pool = shuffle(
-          ((poolResult.data ?? []) as MarketWatchRow[]).filter(
-            r => r.player_name && !rankingIds.has(r.player_id),
-          ),
-        );
+        const pool = (data ?? []) as RankingsCacheRow[];
 
-        const targets = pool.filter(p => (p.edge_score ?? 0) > 5);
-        const watches = pool.filter(p => (p.edge_score ?? 0) >= -5 && (p.edge_score ?? 0) <= 5);
-        const avoids  = pool.filter(p => (p.edge_score ?? 0) < -5);
+        const targets = pool.filter(p => mapRecommendationToSignal(p.ai_recommendation) === "TARGET");
+        const watches = pool.filter(p => mapRecommendationToSignal(p.ai_recommendation) === "WATCH");
+        const avoids  = pool.filter(p => mapRecommendationToSignal(p.ai_recommendation) === "AVOID");
 
-        const picks: MarketWatchRow[] = [
-          pickRandom(targets),
-          pickRandom(watches),
-          pickRandom(avoids),
-        ].filter((p): p is MarketWatchRow => p !== null);
+        const shuffledTargets = shuffle(targets);
+        const shuffledWatches = shuffle(watches);
+        const shuffledAvoids  = shuffle(avoids);
+
+        const picks: RankingsCacheRow[] = [
+          pickRandom(shuffledTargets),
+          pickRandom(shuffledWatches),
+          pickRandom(shuffledAvoids),
+        ].filter((p): p is RankingsCacheRow => p !== null);
 
         const pickedIds = new Set(picks.map(p => p.player_id));
-        const remaining = pool.filter(p => !pickedIds.has(p.player_id));
+        const remaining = shuffle(pool.filter(p => !pickedIds.has(p.player_id)));
+
         let i = 0;
         while (picks.length < 6 && i < remaining.length) {
-          picks.push(remaining[i]);
+          if (remaining[i].ai_recommendation) {
+            picks.push(remaining[i]);
+          }
           i++;
         }
 
