@@ -1,4 +1,5 @@
 import { MWPlayerRow, MWSignal } from "./types";
+import { signalFromField } from "@/utils/aflEdgeSignal";
 
 export type { MWSignal };
 
@@ -30,8 +31,9 @@ function price(row: MWPlayerRow): number {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CORE CLASSIFICATION ENGINE
-// signal_tag is the single source of truth from DB — no frontend re-classification.
-// TARGET → buys, WATCH → holds, AVOID → sells
+// Uses canonical 5-level signal from DB as single source of truth.
+// STRONG_BUY/BUY → buys, HOLD → holds, SELL/STRONG_SELL → sells
+// Falls back to signal_tag (TARGET/WATCH/AVOID) if canonical signal is missing.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
@@ -59,11 +61,21 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   const sells: DerivedPlayer[] = [];
 
   for (const p of filtered) {
-    // signal_tag is the canonical source — fall back to category only if signal_tag missing
-    const sig = p.signal_tag ?? (p.category ?? 'HOLD').toUpperCase();
-    if (sig === 'TARGET' || sig === 'BUY')      buys.push(tag(p, 'BUY'));
-    else if (sig === 'AVOID' || sig === 'SELL') sells.push(tag(p, 'SELL'));
-    else                                         holds.push(tag(p, 'HOLD'));
+    if (p.signal != null) {
+      const canonicalSignal = signalFromField(p.signal);
+      if (canonicalSignal === 'STRONG_BUY' || canonicalSignal === 'BUY') {
+        buys.push(tag(p, 'BUY'));
+      } else if (canonicalSignal === 'SELL' || canonicalSignal === 'STRONG_SELL') {
+        sells.push(tag(p, 'SELL'));
+      } else {
+        holds.push(tag(p, 'HOLD'));
+      }
+    } else {
+      const fallback = p.signal_tag ?? (p.category ?? 'HOLD').toUpperCase();
+      if (fallback === 'TARGET' || fallback === 'BUY')      buys.push(tag(p, 'BUY'));
+      else if (fallback === 'AVOID' || fallback === 'SELL') sells.push(tag(p, 'SELL'));
+      else                                                   holds.push(tag(p, 'HOLD'));
+    }
   }
 
   return { buys, holds, sells };

@@ -33,19 +33,31 @@ export interface RankingRow {
   consistency_tier: string | null;
   total_count: number | null;
   games_played: number | null;
+  /** Canonical performance floor: 0.7*last3_avg + 0.3*season_avg (or season_avg if <5 games) */
+  baseline: number | null;
+  /** Canonical edge: projection_final - baseline */
+  edge: number | null;
+  /** Canonical 5-level signal: STRONG_BUY | BUY | HOLD | SELL | STRONG_SELL */
+  signal: string | null;
+  /** Season average fantasy points */
+  season_avg: number | null;
+  /** Last 3 games average */
+  last_3_avg: number | null;
+  /** Trade value ratio: (edge / price) * 100000 */
+  value: number | null;
   /** WHY — single sentence with strongest signal (maps to recommendation_short / primary_reason) */
   why: string | null;
   /** LONG — exactly 5-sentence breakdown (maps to recommendation_why / ai_summary) */
   long: string | null;
   /** Single-source decision: START / SIT / CONSIDER */
   start_sit_decision: string | null;
-  /** Computed edge score 0–100 from rankings cache */
+  /** Legacy computed edge score 0–100 from rankings cache */
   edge_score: number | null;
   /** Edge tier label: Elite Edge / Strong Edge / Playable Edge / Monitor */
   edge_tier: string | null;
-  /** Market watch signal: BUY TARGET / SELL / TRENDING UP / CASH COW / TRAP */
+  /** Market watch signal: TARGET | WATCH | AVOID */
   market_watch_category: string | null;
-  /** Single source of truth signal: TARGET | WATCH | AVOID */
+  /** 3-level signal tag for backwards compat: TARGET | WATCH | AVOID */
   signal_tag: string | null;
   /** Upside percentage from breakout model */
   upside_pct: number | null;

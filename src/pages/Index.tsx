@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { computeEdgeSignal, formatEdgeSignalLabel, getEdgeSignalStyles } from "@/utils/aflEdgeSignal";
+import { signalFromField, formatEdgeSignalLabel, getEdgeSignalStyles } from "@/utils/aflEdgeSignal";
 import {
   Crown, ArrowRight, Star, TrendingUp,
   TriangleAlert as AlertTriangle, Check, Database,
@@ -17,13 +17,12 @@ import { LandingMarketWatchSample } from "@/components/landing/LandingMarketWatc
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface RankingRow {
-  player_id: number;
+  player_id: string;
   player_name: string;
   team: string | null;
   position: string | null;
   projection_final: number | null;
-  breakeven: number | null;
-  ai_recommendation: string | null;
+  signal: string | null;
   summary_short: string | null;
 }
 
@@ -1211,13 +1210,22 @@ function RankingsPreview() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase
-        .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, projection_final, breakeven, ai_recommendation, summary_short")
+        .from("v_players_canonical")
+        .select("id, name, team, position, projection, signal, summary_short")
         .gte("games_played", 3)
-        .gt("projection_final", 50)
-        .order("projection_final", { ascending: false })
+        .gt("projection", 50)
+        .not("signal", "eq", "STRONG_SELL")
+        .order("projection", { ascending: false })
         .limit(5);
-      setRows((data ?? []) as RankingRow[]);
+      setRows((data ?? []).map((r: Record<string, unknown>) => ({
+        player_id: String(r.id ?? ""),
+        player_name: String(r.name ?? ""),
+        team: (r.team as string) ?? null,
+        position: (r.position as string) ?? null,
+        projection_final: r.projection != null ? Number(r.projection) : null,
+        signal: (r.signal as string) ?? null,
+        summary_short: (r.summary_short as string) ?? null,
+      })));
       setLoading(false);
     })();
   }, []);
@@ -1265,7 +1273,7 @@ function RankingsPreview() {
                       <div className="flex justify-end">
                         {row.projection_final != null
                           ? (() => {
-                              const sig = computeEdgeSignal(row.projection_final, row.breakeven);
+                              const sig = signalFromField(row.signal);
                               return (
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${getEdgeSignalStyles(sig)}`}>
                                   {formatEdgeSignalLabel(sig)}
@@ -1332,7 +1340,7 @@ function RankingsPreview() {
                       <div className="flex justify-end">
                         {row.projection_final != null
                           ? (() => {
-                              const sig = computeEdgeSignal(row.projection_final, row.breakeven);
+                              const sig = signalFromField(row.signal);
                               return (
                                 <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${getEdgeSignalStyles(sig)}`}>
                                   {formatEdgeSignalLabel(sig)}

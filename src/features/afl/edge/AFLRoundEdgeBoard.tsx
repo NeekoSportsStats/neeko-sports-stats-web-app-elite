@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { cleanAiText } from "@/utils/cleanAiText";
+import { signalFromField, formatEdgeSignalLabel, getEdgeSignalStyles } from "@/utils/aflEdgeSignal";
 import { createPortal } from "react-dom";
 import {
   Lock, Crown, X, ShieldCheck, Zap, Share2, Check,
@@ -35,6 +36,7 @@ interface RankingRow {
   summary_short: string | null;
   ai_recommendation: string | null;
   signal_tag: string | null;
+  signal: string | null;
   refreshed_at: string | null;
   edge_score: number | null;
 }
@@ -221,40 +223,6 @@ function getPrimaryMetric(row: RankingRow, section: Section): { label: string; v
   }
 }
 
-function mapRecommendationToSignal(signal_tag: string | null, rec: string | null): "TARGET" | "WATCH" | "AVOID" | null {
-  if (signal_tag === "TARGET" || signal_tag === "WATCH" || signal_tag === "AVOID") return signal_tag;
-  switch (rec) {
-    case "STRONG_BUY":
-    case "BUY":
-      return "TARGET";
-    case "HOLD":
-      return "WATCH";
-    case "SELL":
-    case "STRONG_SELL":
-      return "AVOID";
-    default:
-      return null;
-  }
-}
-
-function mapRecommendationToAction(rec: string | null): string {
-  switch (rec) {
-    case "STRONG_BUY": return "STRONG BUY";
-    case "BUY":        return "BUY";
-    case "SELL":       return "SELL";
-    case "STRONG_SELL": return "STRONG SELL";
-    default:           return "HOLD";
-  }
-}
-
-function getSignalStyles(signal_tag: string | null, rec: string | null): { label: string; color: string; bg: string; border: string } | null {
-  const signal = mapRecommendationToSignal(signal_tag, rec);
-  if (signal === null) return null;
-  const action = mapRecommendationToAction(rec);
-  if (signal === "TARGET") return { label: `${signal} — ${action}`, color: "text-green-300", bg: "bg-green-500/10", border: "border-green-500/25" };
-  if (signal === "AVOID")  return { label: `${signal} — ${action}`, color: "text-red-300",   bg: "bg-red-500/10",   border: "border-red-500/25" };
-  return { label: `${signal} — ${action}`, color: "text-yellow-300", bg: "bg-yellow-400/10", border: "border-yellow-400/25" };
-}
 
 function buildConfidenceReasons(row: RankingRow, section: Section): string[] {
   const reasons: string[] = [];
@@ -529,8 +497,7 @@ interface PlayerAnalysisModalProps {
 function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: PlayerAnalysisModalProps) {
   const cfg = getSectionLabel(section);
   const metric = getPrimaryMetric(row, section);
-  const signal = mapRecommendationToSignal(row.signal_tag, row.ai_recommendation);
-  const reco = getSignalStyles(row.signal_tag, row.ai_recommendation);
+  const sig = signalFromField(row.signal ?? row.ai_recommendation);
   const conf = row.projection_confidence;
   const reasons = buildConfidenceReasons(row, section);
   const [shared, setShared] = useState(false);
@@ -635,14 +602,12 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
 
           {/* Recommendation verdict */}
-          {reco && (
-            <div className={`flex items-center gap-3 rounded-xl border ${reco.border} ${reco.bg} px-4 py-3`}>
-              <div className="flex-1">
-                <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Recommendation</p>
-                <p className={`text-sm font-extrabold ${reco.color}`}>{reco.label}</p>
-              </div>
+          <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${getEdgeSignalStyles(sig)}`}>
+            <div className="flex-1">
+              <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Recommendation</p>
+              <p className="text-sm font-extrabold">{formatEdgeSignalLabel(sig)}</p>
             </div>
-          )}
+          </div>
 
           {/* Confidence breakdown */}
           <div>
@@ -772,8 +737,7 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
   const conf = row.projection_confidence;
   const oneLiner = row.summary_short ? truncateWords(row.summary_short, 9) : null;
   const isCaptain = section === "captain";
-  const signal = mapRecommendationToSignal(row.signal_tag, row.ai_recommendation);
-  const action = mapRecommendationToAction(row.ai_recommendation);
+  const sig = signalFromField(row.signal ?? row.ai_recommendation);
 
   return (
     <button
@@ -848,15 +812,12 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
         ) : null}
       </div>
 
-      {/* Signal + Action badge — only render when ai_recommendation is set */}
-      {signal !== null && (
+      {/* Signal badge */}
+      {row.signal != null && (
         <div className="px-4 pb-3 flex items-center gap-2">
-          <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-            signal === "TARGET" ? "text-green-300 bg-green-500/10 border-green-500/25" :
-            signal === "AVOID"  ? "text-red-300 bg-red-500/10 border-red-500/25" :
-                                  "text-yellow-300 bg-yellow-400/10 border-yellow-400/25"
-          }`}>{signal}</span>
-          <span className="text-[10px] text-white/30 font-semibold">{action}</span>
+          <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md ${getEdgeSignalStyles(sig)}`}>
+            {formatEdgeSignalLabel(sig)}
+          </span>
         </div>
       )}
 
@@ -1183,13 +1144,11 @@ export default function AFLRoundEdgeBoard() {
       ]);
 
       if (rpcResult.error) throw rpcResult.error;
-      const VALID_RECOMMENDATIONS = new Set(["STRONG_BUY", "BUY", "HOLD", "SELL", "STRONG_SELL"]);
       const mapped = ((rpcResult.data as any[]) ?? [])
         .filter((r: any) =>
           r.player_name &&
           r.team &&
-          r.ai_recommendation != null &&
-          VALID_RECOMMENDATIONS.has(r.ai_recommendation) &&
+          (r.signal != null || r.ai_recommendation != null) &&
           Number(r.projection_final ?? 0) > 0 &&
           Number(r.price ?? 0) > 0,
         )
@@ -1216,6 +1175,7 @@ export default function AFLRoundEdgeBoard() {
           summary_short:         r.summary_short ?? null,
           ai_recommendation:     r.ai_recommendation ?? null,
           signal_tag:            r.signal_tag ?? null,
+          signal:                r.signal ?? null,
           refreshed_at:          r.refreshed_at ?? null,
           edge_score:            r.edge_score != null ? Number(r.edge_score) : null,
         }));

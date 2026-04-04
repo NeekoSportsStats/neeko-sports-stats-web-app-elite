@@ -15,8 +15,10 @@ export const VALUE_TAB_LABELS: Record<string, string> = {
 };
 
 export function getDisplayRecommendation(row: RankingRow, _tab: RankingsTab): string {
-  const signal = computeEdgeSignal(row.projection_final, row.breakeven);
-  return formatEdgeSignalLabel(signal);
+  const sig = row.signal
+    ? row.signal
+    : computeEdgeSignal(row.projection_final, row.baseline ?? row.breakeven);
+  return formatEdgeSignalLabel(sig);
 }
 
 // ─── Matchup display helper ───────────────────────────────────────────────────

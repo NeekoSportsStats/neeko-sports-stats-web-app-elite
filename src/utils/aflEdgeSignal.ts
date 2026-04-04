@@ -1,33 +1,50 @@
 export type EdgeSignal = "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL";
 
+function normalise(s: string | null | undefined): string {
+  if (!s) return "HOLD";
+  return s.toUpperCase().replace(/ /g, "_").replace(/STRONG BUY/g, "STRONG_BUY").replace(/STRONG SELL/g, "STRONG_SELL");
+}
+
+export function signalFromField(signal: string | null | undefined): EdgeSignal {
+  const s = normalise(signal);
+  if (s === "STRONG_BUY" || s === "BUY" || s === "HOLD" || s === "SELL" || s === "STRONG_SELL")
+    return s as EdgeSignal;
+  return "HOLD";
+}
+
 export function computeEdgeSignal(
   projection: number | null | undefined,
-  breakeven: number | null | undefined,
+  baseline: number | null | undefined,
 ): EdgeSignal {
-  if (projection == null || breakeven == null) return "HOLD";
-  const edge = projection - breakeven;
-  if (edge >= 15) return "STRONG_BUY";
-  if (edge >= 6) return "BUY";
-  if (edge >= -5) return "HOLD";
+  if (projection == null || baseline == null) return "HOLD";
+  const edge = projection - baseline;
+  if (projection >= 95 && edge > -10) {
+    if (edge >= 15) return "STRONG_BUY";
+    if (edge >= 6)  return "BUY";
+    return "HOLD";
+  }
+  if (edge >= 15)  return "STRONG_BUY";
+  if (edge >= 6)   return "BUY";
+  if (edge >= -5)  return "HOLD";
   if (edge >= -15) return "SELL";
   return "STRONG_SELL";
 }
 
 export function formatEdgeSignalLabel(signal: EdgeSignal | string | null): string {
-  if (!signal) return "Hold";
-  switch (signal.toUpperCase()) {
+  const s = normalise(signal);
+  switch (s) {
     case "STRONG_BUY":  return "Strong Buy";
     case "BUY":         return "Buy";
     case "HOLD":        return "Hold";
     case "SELL":        return "Sell";
     case "STRONG_SELL": return "Strong Sell";
-    default:            return signal.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    default:            return s.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
   }
 }
 
 export function getEdgeSignalStyles(signal: EdgeSignal | string | null): string {
-  if (!signal) return "bg-white/5 text-white/50 border border-white/10";
-  switch (signal.toUpperCase()) {
+  const s = normalise(signal);
+  switch (s) {
     case "STRONG_BUY":
       return "bg-green-500/15 text-green-400 border border-green-500/30";
     case "BUY":
@@ -44,8 +61,8 @@ export function getEdgeSignalStyles(signal: EdgeSignal | string | null): string 
 }
 
 export function getEdgeSignalColor(signal: EdgeSignal | string | null): string {
-  if (!signal) return "#9ca3af";
-  switch (signal.toUpperCase()) {
+  const s = normalise(signal);
+  switch (s) {
     case "STRONG_BUY":  return "#4ade80";
     case "BUY":         return "#86efac";
     case "HOLD":        return "#fde047";
@@ -53,4 +70,10 @@ export function getEdgeSignalColor(signal: EdgeSignal | string | null): string {
     case "STRONG_SELL": return "#f87171";
     default:            return "#9ca3af";
   }
+}
+
+export function formatValueScore(value: number | null): string {
+  if (value == null) return "—";
+  if (value > 0) return `+${value.toFixed(1)}`;
+  return value.toFixed(1);
 }

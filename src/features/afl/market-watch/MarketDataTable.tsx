@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { cleanAiText } from "@/utils/cleanAiText";
 import { generateSmartWhy, getValueRankLabel, getValueRankColor, calculateValueRank } from "./helpers";
 import { mapMarketLabel } from "@/utils/marketLabels";
+import { signalFromField } from "@/utils/aflEdgeSignal";
 
 type SortField = "player" | "projection" | "breakeven" | "price" | "value_gap" | "signal";
 type SortDirection = "asc" | "desc";
@@ -272,7 +273,7 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
   const delta = useMemo(() => (player.projection || 0) - (player.breakeven || 0), [player.projection, player.breakeven]);
   const deltaColor = delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-white/60";
 
-  const signalStrength = useMemo(() => getSignalStrength(player), [player.category, player.ai_recommendation]);
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.signal, player._category, player.category]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
     player.summary_short,
@@ -360,7 +361,7 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
   const delta = useMemo(() => (player.projection || 0) - (player.breakeven || 0), [player.projection, player.breakeven]);
   const deltaColor = delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-white/60";
 
-  const signalStrength = useMemo(() => getSignalStrength(player), [player.category, player.ai_recommendation]);
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.signal, player._category, player.category]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
     player.summary_short,
@@ -414,62 +415,53 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
 });
 
 function getSignalStrength(player: DerivedPlayer) {
-  const category = player.category?.toUpperCase() || player.action?.toUpperCase() || "HOLD";
-  const aiReco = player.ai_recommendation?.toLowerCase() || "";
-
+  const canonicalSignal = signalFromField(player.signal ?? player.ai_recommendation);
+  const category = player._category?.toUpperCase() || player.category?.toUpperCase() || "HOLD";
   const baseLabel = mapMarketLabel(category);
 
-  if (category === "TARGET" || category === "BUY") {
-    if (aiReco.includes("strong buy") || aiReco.includes("elite")) {
-      return {
-        icon: "🔥",
-        label: `Strong ${baseLabel.label}`,
-        bg: "bg-green-500/20",
-        text: "text-green-400",
-        border: "border-green-500/40",
-      };
-    }
+  if (canonicalSignal === "STRONG_BUY") {
+    return {
+      icon: "🔥",
+      label: "Strong Buy",
+      bg: "bg-green-500/20",
+      text: "text-green-400",
+      border: "border-green-500/40",
+    };
+  }
+
+  if (canonicalSignal === "BUY") {
     return {
       icon: baseLabel.icon,
-      label: baseLabel.label,
+      label: "Buy",
       bg: baseLabel.bg,
       text: baseLabel.color,
       border: "border-green-500/30",
     };
   }
 
-  if (category === "AVOID" || category === "SELL") {
-    if (aiReco.includes("strong sell") || aiReco.includes("high risk")) {
-      return {
-        icon: "❌",
-        label: `Strong ${baseLabel.label}`,
-        bg: "bg-red-500/20",
-        text: "text-red-400",
-        border: "border-red-500/40",
-      };
-    }
+  if (canonicalSignal === "STRONG_SELL") {
+    return {
+      icon: "❌",
+      label: "Strong Sell",
+      bg: "bg-red-500/20",
+      text: "text-red-400",
+      border: "border-red-500/40",
+    };
+  }
+
+  if (canonicalSignal === "SELL") {
     return {
       icon: baseLabel.icon,
-      label: baseLabel.label,
+      label: "Sell",
       bg: baseLabel.bg,
       text: baseLabel.color,
       border: "border-red-500/30",
     };
   }
 
-  if (category === "WATCH" || category === "HOLD") {
-    return {
-      icon: baseLabel.icon,
-      label: baseLabel.label,
-      bg: baseLabel.bg,
-      text: baseLabel.color,
-      border: "border-yellow-500/30",
-    };
-  }
-
   return {
-    icon: "⚖️",
-    label: "Neutral",
+    icon: baseLabel.icon,
+    label: "Hold",
     bg: "bg-[#F5C84C]/10",
     text: "text-[#F5C84C]",
     border: "border-[#F5C84C]/30",

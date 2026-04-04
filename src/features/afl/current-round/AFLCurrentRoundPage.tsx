@@ -27,7 +27,7 @@ import {
   getValueScoreColor,
   resolveRecommendationColor,
 } from "@/features/afl/rankings/components/helpers";
-import { computeEdgeSignal, formatEdgeSignalLabel, getEdgeSignalStyles } from "@/utils/aflEdgeSignal";
+import { signalFromField, formatEdgeSignalLabel, getEdgeSignalStyles } from "@/utils/aflEdgeSignal";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
 import { PlayerDetailModal, UpgradeModal } from "@/features/afl/rankings/components/RankingsModals";
 import { PlayerStatusPill } from "@/features/afl/rankings/components/PlayerStatusPill";
@@ -51,7 +51,8 @@ const COLUMNS =
   "start_sit_decision,edge_score,edge_tier,signal_tag," +
   "market_watch_category,upside_pct," +
   "status,manual_status,is_available," +
-  "bye_round,is_bye,bye_next_round,games_played";
+  "bye_round,is_bye,bye_next_round,games_played," +
+  "signal,baseline,edge,season_avg,last_3_avg,value";
 
 function normalizeRow(raw: Record<string, unknown>): RankingRow {
   return {
@@ -104,6 +105,12 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
     is_bye: raw.is_bye != null ? Boolean(raw.is_bye) : null,
     bye_next_round: raw.bye_next_round != null ? Boolean(raw.bye_next_round) : null,
     signal_tag: (raw.signal_tag as string) ?? null,
+    signal:     (raw.signal as string) ?? null,
+    baseline:   raw.baseline != null ? Number(raw.baseline) : null,
+    edge:       raw.edge != null ? Number(raw.edge) : null,
+    season_avg: raw.season_avg != null ? Number(raw.season_avg) : null,
+    last_3_avg: raw.last_3_avg != null ? Number(raw.last_3_avg) : null,
+    value:      raw.value != null ? Number(raw.value) : null,
   };
 }
 
@@ -130,9 +137,9 @@ function PlayerRow({ row, rank, metric, isPremiumUser, onClick }: PlayerRowProps
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-sm font-semibold text-white truncate leading-tight">{row.player_name}</span>
           <PlayerStatusPill row={row} showUpcomingBye />
-          {row.projection_final != null && isPremiumUser && (
-            <span className={`text-[9px] px-1 py-px rounded border shrink-0 font-medium leading-none ${getEdgeSignalStyles(computeEdgeSignal(row.projection_final, row.breakeven))}`}>
-              {formatEdgeSignalLabel(computeEdgeSignal(row.projection_final, row.breakeven))}
+          {row.signal != null && isPremiumUser && (
+            <span className={`text-[9px] px-1 py-px rounded border shrink-0 font-medium leading-none ${getEdgeSignalStyles(signalFromField(row.signal))}`}>
+              {formatEdgeSignalLabel(signalFromField(row.signal))}
             </span>
           )}
         </div>

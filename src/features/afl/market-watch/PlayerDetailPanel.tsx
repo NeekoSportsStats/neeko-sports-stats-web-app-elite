@@ -4,6 +4,7 @@ import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
 import { cleanAiText } from "@/utils/cleanAiText";
 import { useAuth } from "@/lib/auth";
+import { signalFromField } from "@/utils/aflEdgeSignal";
 import {
   calculateValueRank,
   generateSmartWhy,
@@ -321,24 +322,24 @@ function MetricRow({ label, value }: MetricRowProps) {
 }
 
 function getSignalConfig(player: DerivedPlayer) {
-  const category = player.category?.toUpperCase() || "WATCH";
-  const aiReco = player.ai_recommendation?.toLowerCase() || "";
+  const canonicalSignal = signalFromField(player.signal ?? player.ai_recommendation);
 
-  if (category === "TARGET" || category === "BUY") {
-    if (aiReco.includes("strong buy") || aiReco.includes("elite")) {
-      return {
-        icon: "🔥",
-        label: "Strong Target",
-        bg: "bg-green-500/20",
-        text: "text-green-400",
-        border: "border-green-500/40",
-        borderLeft: "border-green-500",
-        glow: "shadow-[0_0_40px_rgba(34,197,94,0.25)]",
-      };
-    }
+  if (canonicalSignal === "STRONG_BUY") {
+    return {
+      icon: "🔥",
+      label: "Strong Buy",
+      bg: "bg-green-500/20",
+      text: "text-green-400",
+      border: "border-green-500/40",
+      borderLeft: "border-green-500",
+      glow: "shadow-[0_0_40px_rgba(34,197,94,0.25)]",
+    };
+  }
+
+  if (canonicalSignal === "BUY") {
     return {
       icon: "👍",
-      label: "Target",
+      label: "Buy",
       bg: "bg-green-500/10",
       text: "text-green-400",
       border: "border-green-500/30",
@@ -347,21 +348,22 @@ function getSignalConfig(player: DerivedPlayer) {
     };
   }
 
-  if (category === "AVOID" || category === "SELL") {
-    if (aiReco.includes("strong sell") || aiReco.includes("high risk")) {
-      return {
-        icon: "❌",
-        label: "Avoid",
-        bg: "bg-red-500/20",
-        text: "text-red-400",
-        border: "border-red-500/40",
-        borderLeft: "border-red-500",
-        glow: "shadow-[0_0_40px_rgba(239,68,68,0.25)]",
-      };
-    }
+  if (canonicalSignal === "STRONG_SELL") {
+    return {
+      icon: "❌",
+      label: "Strong Sell",
+      bg: "bg-red-500/20",
+      text: "text-red-400",
+      border: "border-red-500/40",
+      borderLeft: "border-red-500",
+      glow: "shadow-[0_0_40px_rgba(239,68,68,0.25)]",
+    };
+  }
+
+  if (canonicalSignal === "SELL") {
     return {
       icon: "⚠️",
-      label: "Risk",
+      label: "Sell",
       bg: "bg-red-500/10",
       text: "text-red-400",
       border: "border-red-500/30",
@@ -372,7 +374,7 @@ function getSignalConfig(player: DerivedPlayer) {
 
   return {
     icon: "⚖️",
-    label: "Neutral",
+    label: "Hold",
     bg: "bg-[#F5C84C]/10",
     text: "text-[#F5C84C]",
     border: "border-[#F5C84C]/30",
@@ -382,18 +384,18 @@ function getSignalConfig(player: DerivedPlayer) {
 }
 
 function getVerdict(player: DerivedPlayer, delta: number): string {
-  const category = player.category?.toUpperCase() || "WATCH";
+  const sig = signalFromField(player.signal ?? player.ai_recommendation);
 
-  if (category === "TARGET" || category === "BUY") {
-    if (delta > 15) return "Buy — elite value with significant upside";
+  if (sig === "STRONG_BUY") return "Strong Buy — elite value with significant upside";
+  if (sig === "BUY") {
     if (delta > 8) return "Buy — strong value with upside";
     return "Buy — solid value opportunity";
   }
 
-  if (category === "AVOID" || category === "SELL") {
-    if (delta < -15) return "Sell — severely overpriced, exit immediately";
+  if (sig === "STRONG_SELL") return "Strong Sell — severely overpriced, exit immediately";
+  if (sig === "SELL") {
     if (delta < -8) return "Sell — poor value, recommend exit";
-    return "Avoid — limited value, consider alternatives";
+    return "Sell — limited value, consider alternatives";
   }
 
   return "Hold — neutral value, monitor for changes";
