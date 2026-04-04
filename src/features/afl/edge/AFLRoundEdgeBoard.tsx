@@ -1134,24 +1134,25 @@ export default function AFLRoundEdgeBoard() {
     setError(null);
     try {
       const [rpcResult, accResult] = await Promise.all([
-        supabase.rpc("get_edge_board_data", { limit_n: isPremium ? 5 : 4 }),
+        supabase.rpc("get_edge_board_data"),
         supabase.from("v_projection_accuracy_homepage").select("within_20").maybeSingle(),
       ]);
 
-      if (rpcResult.error) throw rpcResult.error;
+      if (rpcResult.error) {
+        console.error("Edge Board Error:", rpcResult.error);
+        throw rpcResult.error;
+      }
       const mapped = ((rpcResult.data as any[]) ?? [])
         .filter((r: any) =>
           r.player_name &&
           r.team &&
-          Number(r.projection_final ?? 0) > 0 &&
-          Number(r.price ?? 0) > 0 &&
-          Number(r.value_score ?? 0) > 0,
+          Number(r.projection_final ?? 0) > 0,
         )
         .map((r: any): RankingRow => ({
         player_id:             r.player_id ?? null,
         player_name:           r.player_name ?? "",
         team:                  r.team ?? "",
-        position:              r.position ?? null,
+        position:              r.player_position ?? r.position ?? null,
         section:               r.section ?? "",
         section_rank:          r.section_rank ?? 0,
         projection_final:      r.projection_final != null ? Number(r.projection_final) : null,
