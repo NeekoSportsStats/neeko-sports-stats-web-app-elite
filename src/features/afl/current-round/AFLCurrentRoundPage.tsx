@@ -39,15 +39,14 @@ const PREMIUM_VISIBLE = 5;
 const COLUMNS =
   "player_id,player_name,team,position," +
   "projection_final,ceiling_estimate,floor_estimate," +
-  "consistency_score,form_rating,matchup_rating," +
-  "upside_rating,risk_rating,form_score," +
+  "matchup_rating,upside_rating,risk_rating,form_score," +
   "projection_confidence,captain_score,captain_rating," +
   "neeko_rating,neeko_rating_scaled," +
   "price,prev_price,price_change,price_change_pct," +
   "breakeven,value_score,best_value_score,value_tag,value_tier," +
   "ai_recommendation,recommendation_strength," +
-  "recommendation_color,consistency_tier," +
-  "why,long,summary_long,recommendation_why,ai_summary,ai_updated_at," +
+  "recommendation_color,recommendation_short,recommendation_why," +
+  "ai_summary,consistency_tier," +
   "start_sit_decision,edge_score,edge_tier," +
   "market_watch_category,upside_pct," +
   "status,manual_status,is_available," +
@@ -62,8 +61,8 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
     projection_final: raw.projection_final != null ? Number(raw.projection_final) : null,
     ceiling_estimate: raw.ceiling_estimate != null ? Number(raw.ceiling_estimate) : null,
     floor_estimate: raw.floor_estimate != null ? Number(raw.floor_estimate) : null,
-    consistency_score: raw.consistency_score != null ? Number(raw.consistency_score) : null,
-    form_rating: raw.form_rating != null ? Number(raw.form_rating) : null,
+    consistency_score: null,
+    form_rating: raw.form_score != null ? Number(raw.form_score) : null,
     matchup_rating: (raw.matchup_rating as string | number) ?? null,
     upside_rating: raw.upside_rating != null ? Number(raw.upside_rating) : null,
     risk_rating: raw.risk_rating != null ? Number(raw.risk_rating) : null,
@@ -84,13 +83,13 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
     value_tier: (raw.value_tier as string) ?? null,
     ai_recommendation: (raw.ai_recommendation as string) ?? null,
     recommendation_strength: (raw.recommendation_strength as string) ?? null,
-    ai_updated_at: (raw.ai_updated_at as string) ?? null,
+    ai_updated_at: null,
     recommendation_color: (raw.recommendation_color as string) ?? null,
     consistency_tier: (raw.consistency_tier as string) ?? null,
     total_count: null,
     games_played: raw.games_played != null ? Number(raw.games_played) : null,
-    why: (raw.why as string) ?? (raw.summary_short as string) ?? (raw.recommendation_short as string) ?? null,
-    long: (raw.long as string) ?? (raw.summary_long as string) ?? (raw.recommendation_why as string) ?? (raw.ai_summary as string) ?? null,
+    why: (raw.recommendation_short as string) ?? (raw.ai_summary as string) ?? null,
+    long: (raw.recommendation_why as string) ?? (raw.ai_summary as string) ?? null,
     start_sit_decision: (raw.start_sit_decision as string) ?? null,
     edge_score: raw.edge_score != null ? Number(raw.edge_score) : null,
     edge_tier: (raw.edge_tier as string) ?? null,
@@ -559,7 +558,9 @@ export default function AFLCurrentRoundPage() {
           .select(COLUMNS)
           .order("projection_final", { ascending: false, nullsFirst: false })
           .limit(200);
-        if (!error && data) {
+        if (error) {
+          console.error("Current Round error (premium):", error);
+        } else if (data) {
           setRows((data as Record<string, unknown>[]).map(normalizeRow));
         }
       } else {
@@ -569,7 +570,9 @@ export default function AFLCurrentRoundPage() {
           p_is_bot: false,
           p_limit: 200,
         });
-        if (!error && data) {
+        if (error) {
+          console.error("Current Round error (free):", error);
+        } else if (data) {
           setRows((data as Record<string, unknown>[]).map(normalizeRow));
         }
       }
