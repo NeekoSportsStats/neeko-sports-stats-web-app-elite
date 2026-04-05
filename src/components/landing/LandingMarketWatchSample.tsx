@@ -1,46 +1,27 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown, Minus, Lock, ArrowRight, Crown, CircleAlert as AlertCircle } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
+import type { DerivedPlayer } from "@/features/afl/market-watch/engine";
 
-interface RankingsCacheRow {
-  player_id: number;
-  player_name: string;
-  team: string;
-  position: string | null;
-  price: number | null;
-  projection_final: number | null;
-  breakeven: number | null;
-  value_score: number | null;
-  value_gap: number | null;
-  value_signal: string | null;
-  summary_short: string | null;
-  is_bye: boolean | null;
-  status: string | null;
-  manual_status: string | null;
-}
-
-type SignalTier = "TARGET" | "WATCH" | "AVOID";
-
-function mapValueSignalToTier(valueSignal: string | null): SignalTier {
-  const s = (valueSignal ?? "").toUpperCase();
-  if (s === "STRONG_BUY" || s === "BUY") return "TARGET";
-  if (s === "STRONG_SELL" || s === "SELL") return "AVOID";
-  return "WATCH";
-}
-
-function formatPrice(price: number | null): string {
+function formatPrice(price: number | null | undefined): string {
   if (!price) return "—";
   return `$${(price / 1000000).toFixed(2)}M`;
 }
 
-function shuffle<T>(array: T[]): T[] {
-  return [...array].sort(() => Math.random() - 0.5);
-}
+type SignalTier = "TARGET" | "WATCH" | "AVOID";
 
-function pickRandom<T>(arr: T[]): T | null {
-  if (!arr.length) return null;
-  return arr[Math.floor(Math.random() * arr.length)];
+function SignalPill({ tier }: { tier: SignalTier }) {
+  const config = {
+    TARGET: { label: "TARGET", bg: "bg-green-500/15",  text: "text-green-400",  border: "border-green-500/30",  icon: TrendingUp },
+    WATCH:  { label: "WATCH",  bg: "bg-yellow-400/10", text: "text-yellow-300", border: "border-yellow-400/20", icon: Minus },
+    AVOID:  { label: "AVOID",  bg: "bg-red-500/15",    text: "text-red-400",    border: "border-red-500/30",    icon: TrendingDown },
+  };
+  const { label, bg, text, border, icon: Icon } = config[tier];
+  return (
+    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border ${bg} ${border}`}>
+      <Icon size={10} className={text} />
+      <span className={`text-[10px] font-bold uppercase tracking-wide ${text}`}>{label}</span>
+    </div>
+  );
 }
 
 function StatusPill({ isBye }: { isBye: boolean }) {
@@ -62,26 +43,11 @@ function InjuryPill({ isInjured }: { isInjured: boolean }) {
   );
 }
 
-function SignalPill({ tier }: { tier: SignalTier }) {
-  const config = {
-    TARGET: { label: "TARGET", bg: "bg-green-500/15",  text: "text-green-400",  border: "border-green-500/30",  icon: TrendingUp },
-    WATCH:  { label: "WATCH",  bg: "bg-yellow-400/10", text: "text-yellow-300", border: "border-yellow-400/20", icon: Minus },
-    AVOID:  { label: "AVOID",  bg: "bg-red-500/15",    text: "text-red-400",    border: "border-red-500/30",    icon: TrendingDown },
-  };
-  const { label, bg, text, border, icon: Icon } = config[tier];
-  return (
-    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border ${bg} ${border}`}>
-      <Icon size={10} className={text} />
-      <span className={`text-[10px] font-bold uppercase tracking-wide ${text}`}>{label}</span>
-    </div>
-  );
-}
-
-function PlayerRow({ player, index }: { player: RankingsCacheRow; index: number }) {
-  const signal = mapValueSignalToTier(player.value_signal);
-  const valueGap = player.value_gap != null ? Math.round(player.value_gap) : null;
-  const isInjured = player.status === "injured" || player.manual_status === "injured";
-  const isBye = player.is_bye === true || player.status === "bye" || player.manual_status === "bye";
+function PlayerRow({ player, index }: { player: DerivedPlayer; index: number }) {
+  const tier = player.display_signal;
+  const valueGap = player.value_gap != null ? Math.round(Number(player.value_gap)) : null;
+  const isInjured = player.is_injured === true || (player.status ?? "").toLowerCase() === "injured" || (player.manual_status ?? "").toLowerCase() === "injured";
+  const isBye = player.is_bye === true || (player.status ?? "").toLowerCase() === "bye" || (player.manual_status ?? "").toLowerCase() === "bye";
 
   return (
     <div className="group">
@@ -93,7 +59,9 @@ function PlayerRow({ player, index }: { player: RankingsCacheRow; index: number 
             <InjuryPill isInjured={isInjured} />
             <StatusPill isBye={isBye} />
           </div>
-          <p className="text-[10px] text-white/30 leading-tight truncate">{player.team}{player.position ? ` · ${player.position}` : ""}</p>
+          <p className="text-[10px] text-white/30 leading-tight truncate">
+            {player.team}{player.position ? ` · ${player.position}` : ""}
+          </p>
         </div>
         <span className="text-xs md:text-sm font-semibold text-white/60 text-center tabular-nums">
           {formatPrice(player.price)}
@@ -102,12 +70,12 @@ function PlayerRow({ player, index }: { player: RankingsCacheRow; index: number 
           {valueGap == null ? "—" : valueGap > 0 ? `+${valueGap}` : `${valueGap}`}
         </span>
         <div className="flex justify-end">
-          <SignalPill tier={signal} />
+          <SignalPill tier={tier} />
         </div>
       </div>
-      {player.summary_short && (
+      {player.recommendation_short && (
         <div className="px-3 md:px-4 py-1.5 bg-[#0a0a0a] border-b border-white/[0.03]">
-          <p className="text-[11px] text-white/35 leading-snug italic">{player.summary_short}</p>
+          <p className="text-[11px] text-white/35 leading-snug italic">{player.recommendation_short}</p>
         </div>
       )}
     </div>
@@ -132,64 +100,19 @@ function LockedRow({ index }: { index: number }) {
   );
 }
 
-export function LandingMarketWatchSample() {
-  const [players, setPlayers] = useState<RankingsCacheRow[]>([]);
-  const [loading, setLoading] = useState(true);
+interface LandingMarketWatchSampleProps {
+  buys: DerivedPlayer[];
+  holds: DerivedPlayer[];
+  sells: DerivedPlayer[];
+  loading: boolean;
+}
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .schema("afl")
-          .from("player_rankings_cache")
-          .select("player_id, player_name, team, position, price, projection_final, breakeven, value_score, value_signal, summary_short, is_bye, status, manual_status")
-          .not("value_signal", "is", null)
-          .gte("games_played", 3)
-          .gt("projection_final", 50)
-          .limit(100);
-
-        if (error) {
-          console.error("[LandingMW] Error:", error);
-          setPlayers([]);
-          return;
-        }
-
-        const pool = ((data ?? []) as Omit<RankingsCacheRow, "value_gap">[]).map(p => ({
-          ...p,
-          value_gap: (p.projection_final ?? 0) - (p.breakeven ?? 0) || null,
-        })) as RankingsCacheRow[];
-
-        const targets = pool.filter(p => mapValueSignalToTier(p.value_signal) === "TARGET");
-        const watches = pool.filter(p => mapValueSignalToTier(p.value_signal) === "WATCH");
-        const avoids  = pool.filter(p => mapValueSignalToTier(p.value_signal) === "AVOID");
-
-        const shuffledTargets = shuffle(targets);
-        const shuffledWatches = shuffle(watches);
-        const shuffledAvoids  = shuffle(avoids);
-
-        const picks: RankingsCacheRow[] = [
-          pickRandom(shuffledTargets),
-          pickRandom(shuffledWatches),
-          pickRandom(shuffledAvoids),
-        ].filter((p): p is RankingsCacheRow => p !== null);
-
-        const pickedIds = new Set(picks.map(p => p.player_id));
-        const remaining = shuffle(pool.filter(p => !pickedIds.has(p.player_id)));
-
-        let i = 0;
-        while (picks.length < 6 && i < remaining.length) {
-          if (remaining[i].value_signal) {
-            picks.push(remaining[i]);
-          }
-          i++;
-        }
-
-        setPlayers(picks.slice(0, 6));
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
+export function LandingMarketWatchSample({ buys, holds, sells, loading }: LandingMarketWatchSampleProps) {
+  const players: DerivedPlayer[] = [
+    ...buys.slice(0, 2),
+    ...holds.slice(0, 2),
+    ...sells.slice(0, 2),
+  ];
 
   return (
     <section className="py-10 md:py-14 bg-[#070707] border-t border-white/[0.05]">

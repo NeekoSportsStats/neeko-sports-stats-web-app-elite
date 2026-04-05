@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { signalFromField, formatEdgeSignalLabel, getEdgeSignalStyles } from "@/utils/aflEdgeSignal";
 import {
   Crown, ArrowRight, Star, TrendingUp,
   TriangleAlert as AlertTriangle, Check, Database,
@@ -13,81 +12,59 @@ import { useAuth } from "@/lib/auth";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
 import MobileUpgradeBar from "@/components/mobile/MobileUpgradeBar";
 import { LandingMarketWatchSample } from "@/components/landing/LandingMarketWatchSample";
+import type { RankingRow } from "@/features/afl/rankings/components/types";
+import type { MWPlayerRow } from "@/features/afl/market-watch/types";
+import { buildEdgeBoardPlayers } from "@/features/afl/edge-board/engine";
+import { buildCurrentRoundPlayers } from "@/features/afl/current-round/engine";
+import { classifyPlayers } from "@/features/afl/market-watch/engine";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Adapter: RankingRow → MWPlayerRow ────────────────────────────────────────
 
-interface RankingRow {
-  player_id: string;
-  player_name: string;
-  team: string | null;
-  position: string | null;
-  projection_final: number | null;
-  trend_signal: string | null;
-  summary_short: string | null;
-}
-
-interface AccuracyExampleRow {
-  player_name:   string;
-  team_name:     string;
-  projection:    number;
-  actual_score:  number;
-  error:         number;
-  accuracy_tier: "ELITE" | "STRONG";
-  round_label:   string;
-  neeko_rank?:   number | null;
-}
-
-interface EdgeRow {
-  player_id: number;
-  player_name: string;
-  team: string;
-  position: string | null;
-  projection_final: number | null;
-  edge: number | null;
-  signal_tag: string | null;
-  signal: string | null;
-  summary_short: string | null;
+function toMWPlayerRow(r: RankingRow): MWPlayerRow {
+  return {
+    snapshot_id: r.player_id ?? "",
+    player_id: Number(r.player_id ?? 0),
+    player_name: r.player_name,
+    team: r.team,
+    position: r.position ?? "",
+    price: r.price ?? 0,
+    breakeven: r.breakeven ?? 0,
+    projection: r.projection_final ?? 0,
+    ceiling: r.ceiling_estimate ?? null,
+    floor_val: r.floor_estimate ?? null,
+    risk_pct: r.risk_rating ?? null,
+    value_gap: (r.projection_final ?? 0) - (r.breakeven ?? 0),
+    signal_tag: (r.signal_tag as MWPlayerRow["signal_tag"]) ?? null,
+    signal: r.signal ?? null,
+    category: "HOLD",
+    action: "HOLD",
+    recommendation_short: r.why ?? null,
+    summary_short: r.why ?? null,
+    summary_long: r.long ?? null,
+    matchup_label: null,
+    prev_price: r.prev_price ?? null,
+    price_change: r.price_change ?? null,
+    consistency: r.consistency_score ?? null,
+    projection_confidence: r.projection_confidence ?? null,
+    neeko_rating: r.neeko_rating ?? null,
+    status: r.status ?? null,
+    manual_status: r.manual_status ?? null,
+    is_bye: r.is_bye ?? false,
+    is_injured: r.manual_status === "INJURED" || r.status === "OUT",
+    snapshot_updated_at: r.ai_updated_at ?? new Date().toISOString(),
+    season: 2026,
+    round_number: 0,
+    value_signal: r.value_signal ?? null,
+    display_signal: "WATCH",
+  };
 }
 
 // ─── Static data ──────────────────────────────────────────────────────────────
 
-const HOW_IT_WORKS = [
-  {
-    step: "01",
-    icon: Database,
-    title: "Historical AFL Data Modelling",
-    desc: "Match data and player trends normalised into fantasy scoring metrics each round.",
-  },
-  {
-    step: "02",
-    icon: Cpu,
-    title: "Projection Engine",
-    desc: "Estimates scoring ranges, ceilings and volatility per player.",
-  },
-  {
-    step: "03",
-    icon: Radio,
-    title: "Edge Signals Delivered",
-    desc: "Captain picks, breakout alerts and trap warnings — ready before lockout.",
-  },
-];
-
 const WHO_FOR = [
-  {
-    icon: Trophy,
-    title: "Competitive League Players",
-    desc: "Looking for captain edges and matchup advantages.",
-  },
-  {
-    icon: BarChart2,
-    title: "Data Driven Coaches",
-    desc: "Prefer projections and metrics over guesswork.",
-  },
-  {
-    icon: Users,
-    title: "Fantasy Optimisers",
-    desc: "Trying to maximise every lineup decision.",
-  },
+  { icon: Trophy,   title: "Competitive League Players", desc: "Looking for captain edges and matchup advantages." },
+  { icon: BarChart2, title: "Data Driven Coaches",        desc: "Prefer projections and metrics over guesswork." },
+  { icon: Users,    title: "Fantasy Optimisers",          desc: "Trying to maximise every lineup decision." },
 ];
 
 const NEEKO_FEATURES = [
@@ -109,57 +86,25 @@ const FOOTER_LINKS = [
 ];
 
 const FEATURE_CARDS = [
-  {
-    icon: LineChart,
-    title: "Rankings",
-    desc: "Identify the best AFL Fantasy picks each week using projections and matchup modelling.",
-    link: "/sports/afl/rankings",
-    cta: "View Rankings",
-  },
-  {
-    icon: Sparkles,
-    title: "Edge Board",
-    desc: "Find captain edges, breakout players and trap warnings generated by the Neeko model.",
-    link: "/sports/afl/edge-board",
-    cta: "View Edge Board",
-  },
-  {
-    icon: ToggleRight,
-    title: "Start / Sit",
-    desc: "Compare players head-to-head using projections, volatility and matchup strength.",
-    link: "/sports/afl/start-sit",
-    cta: "View Start / Sit",
-  },
-  {
-    icon: TrendingUp,
-    title: "Market Watch",
-    desc: "Spot underpriced players before the market reacts.",
-    link: "/sports/afl/market-watch",
-    cta: "View Market Watch",
-  },
+  { icon: LineChart, title: "Rankings",     desc: "Identify the best AFL Fantasy picks each week using projections and matchup modelling.", link: "/sports/afl/rankings",     cta: "View Rankings" },
+  { icon: Sparkles,  title: "Edge Board",   desc: "Find captain edges, breakout players and trap warnings generated by the Neeko model.",  link: "/sports/afl/edge-board",   cta: "View Edge Board" },
+  { icon: ToggleRight, title: "Start / Sit", desc: "Compare players head-to-head using projections, volatility and matchup strength.",     link: "/sports/afl/start-sit",    cta: "View Start / Sit" },
+  { icon: TrendingUp, title: "Market Watch", desc: "Spot underpriced players before the market reacts.",                                   link: "/sports/afl/market-watch", cta: "View Market Watch" },
 ];
 
 const WHY_NEEKO_BLOCKS = [
-  {
-    icon: Shield,
-    title: "Opponent Adjusted Projections",
-    desc: "Projections adjusted for matchup difficulty every round.",
-  },
-  {
-    icon: AlertTriangle,
-    title: "Volatility & Risk Modelling",
-    desc: "Flags safe picks and high-variance players each week.",
-  },
-  {
-    icon: Zap,
-    title: "Market Value Detection",
-    desc: "Detects underpriced players before the market reacts.",
-  },
-  {
-    icon: Cpu,
-    title: "AI Player Analysis",
-    desc: "Plain-English insights explaining each projection and pick.",
-  },
+  { icon: Shield,       title: "Opponent Adjusted Projections", desc: "Projections adjusted for matchup difficulty every round." },
+  { icon: AlertTriangle, title: "Volatility & Risk Modelling",  desc: "Flags safe picks and high-variance players each week." },
+  { icon: Zap,          title: "Market Value Detection",        desc: "Detects underpriced players before the market reacts." },
+  { icon: Cpu,          title: "AI Player Analysis",            desc: "Plain-English insights explaining each projection and pick." },
+];
+
+const ROUND_DELIVERABLES = [
+  "Updated projections for 600+ players",
+  "Captain rankings",
+  "Breakout alerts",
+  "Trap warnings",
+  "Start/Sit comparisons",
 ];
 
 // ─── Shared layout ────────────────────────────────────────────────────────────
@@ -188,580 +133,15 @@ function GoldDivider() {
   );
 }
 
-// ─── Feature Cards ────────────────────────────────────────────────────────────
+// ─── Edge Board Preview ───────────────────────────────────────────────────────
 
-function FeatureCards() {
-  return (
-    <section className="py-10 md:py-14 bg-[#070707] border-t border-white/[0.05]">
-      <div className="max-w-5xl mx-auto px-4">
-        <div className="text-center mb-8">
-          <SectionLabel>Product Toolkit</SectionLabel>
-          <SectionHeading>Your Weekly AFL Fantasy Toolkit</SectionHeading>
-          <GoldDivider />
-          <p className="text-sm text-white/40 max-w-lg mx-auto leading-relaxed">
-            Everything you need each week to make smarter AFL Fantasy decisions.
-          </p>
-        </div>
+type EdgeSignalType = "must_have" | "breakout" | "avoid";
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {FEATURE_CARDS.map(({ icon: Icon, title, desc, link, cta }) => (
-            <Link
-              key={title}
-              to={link}
-              className="group flex flex-col bg-[#0f0f0f] border border-[#1f1f1f] rounded-xl p-6 transition-all hover:border-[#F5C84C] hover:shadow-[0_0_24px_rgba(245,200,76,0.12)] hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-[#F5C84C]/50"
-            >
-              <div className="w-10 h-10 rounded-xl bg-[#F5C84C]/10 border border-[#F5C84C]/20 flex items-center justify-center mb-4 shrink-0">
-                <Icon size={18} className="text-[#F5C84C]" />
-              </div>
-              <h3 className="text-base font-bold text-white leading-snug mb-2">{title}</h3>
-              <p className="text-sm text-white/40 leading-relaxed flex-1 mb-5">{desc}</p>
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#F5C84C]/70 group-hover:text-[#F5C84C] transition-colors">
-                {cta}
-                <ArrowRight size={12} />
-              </span>
-            </Link>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function teamAbbr(team: string) {
-  const map: Record<string, string> = {
-    "Adelaide": "ADE", "Brisbane Lions": "BRL", "Carlton": "CAR",
-    "Collingwood": "COL", "Essendon": "ESS", "Fremantle": "FRE",
-    "Geelong": "GEE", "Gold Coast": "GCS", "Greater Western Sydney": "GWS",
-    "Hawthorn": "HAW", "Melbourne": "MEL", "North Melbourne": "NME",
-    "Port Adelaide": "PAD", "Richmond": "RIC", "St Kilda": "STK",
-    "Sydney": "SYD", "West Coast": "WCE", "Western Bulldogs": "WBD",
-  };
-  return map[team] ?? team.slice(0, 3).toUpperCase();
-}
-
-// ─── Model Accuracy ───────────────────────────────────────────────────────────
-
-function formatRelativeTime(isoString: string | null): string | null {
-  if (!isoString) return null;
-  const diff = Date.now() - new Date(isoString).getTime();
-  const mins  = Math.floor(diff / 60_000);
-  const hours = Math.floor(diff / 3_600_000);
-  const days  = Math.floor(diff / 86_400_000);
-  if (mins < 2)   return "just now";
-  if (mins < 60)  return `${mins} minutes ago`;
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
-  return `${days} day${days === 1 ? "" : "s"} ago`;
-}
-
-interface AccuracyRow {
-  players_analysed: number | null;
-  avg_error: number | null;
-  median_error: number | null;
-  within_10: number | null;
-  within_15: number | null;
-  within_20: number | null;
-  latest_round: number | null;
-  total_predictions: number | null;
-  last_updated_at: string | null;
-  source: string | null;
-}
-
-function confidenceLevel(err: number | null): { label: string; color: string; bg: string; border: string; barColor: string } {
-  if (err == null) return { label: "—",        color: "text-white/30",    bg: "bg-white/5",         border: "border-white/10",         barColor: "bg-white/20" };
-  if (err < 16)    return { label: "ELITE",     color: "text-green-400",   bg: "bg-green-400/10",    border: "border-green-400/30",     barColor: "bg-green-400" };
-  if (err <= 18)   return { label: "STRONG",    color: "text-[#F5C84C]",   bg: "bg-[#F5C84C]/10",    border: "border-[#F5C84C]/30",     barColor: "bg-[#F5C84C]" };
-  return             { label: "MODERATE",       color: "text-red-400",     bg: "bg-red-400/10",      border: "border-red-400/30",       barColor: "bg-red-400" };
-}
-
-function reliabilityLevel(err: number | null): { label: string; color: string; bg: string; border: string } {
-  if (err == null) return { label: "—",        color: "text-white/30",   bg: "bg-white/5",        border: "border-white/10" };
-  if (err <= 16)   return { label: "ELITE",    color: "text-green-400",  bg: "bg-green-400/10",   border: "border-green-400/30" };
-  if (err <= 18)   return { label: "STRONG",   color: "text-[#F5C84C]",  bg: "bg-[#F5C84C]/10",   border: "border-[#F5C84C]/30" };
-  return             { label: "MODERATE",      color: "text-orange-400",  bg: "bg-orange-400/10",  border: "border-orange-400/30" };
-}
-
-interface DistBand {
-  label: string;
-  pct: number;
-  color: string;
-  bg: string;
-}
-
-function buildDistribution(row: AccuracyRow): DistBand[] {
-  const w10  = row.within_10  ?? 0;
-  const w15  = row.within_15  ?? 0;
-  const w20  = row.within_20  ?? 0;
-  return [
-    { label: "0 – 10 pts",  pct: Math.max(w10, 0),          color: "bg-green-400",    bg: "text-green-400" },
-    { label: "10 – 15 pts", pct: Math.max(w15 - w10, 0),    color: "bg-[#F5C84C]",    bg: "text-[#F5C84C]" },
-    { label: "15 – 20 pts", pct: Math.max(w20 - w15, 0),    color: "bg-orange-400",   bg: "text-orange-400" },
-    { label: "20+ pts",     pct: Math.max(100 - w20, 0),    color: "bg-red-500/70",   bg: "text-red-400" },
-  ];
-}
-
-function ErrorDistributionBlock({ row, loading }: { row: AccuracyRow | null; loading: boolean }) {
-  const hasData = !loading && row != null && (row.players_analysed ?? 0) > 0;
-  const rel     = reliabilityLevel(hasData ? (row?.avg_error ?? null) : null);
-  const bands   = hasData && row ? buildDistribution(row) : [];
-
-  return (
-    <div className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] overflow-hidden">
-      <div className="flex items-center justify-between gap-4 px-5 py-3 border-b border-white/[0.06] bg-[#0a0a0a] flex-wrap">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-white/[0.05] border border-white/[0.08]">
-            <BarChart2 size={13} className="text-white/50" />
-          </div>
-          <span className="text-sm font-semibold text-neutral-300">
-            Prediction Error Distribution
-          </span>
-        </div>
-        {!loading && (
-          <span className={`text-xs px-3 py-1 rounded-full border ${rel.bg} ${rel.border} ${rel.color}`}>
-            Reliability: {rel.label}
-          </span>
-        )}
-        {loading && <div className="h-6 w-36 bg-white/[0.06] rounded-full animate-pulse" />}
-      </div>
-
-      <div className="px-5 py-4 space-y-3">
-        {loading && (
-          <div className="space-y-3">
-            {[1,2,3,4].map(i => (
-              <div key={i} className="flex items-center gap-3">
-                <div className="w-20 h-3 bg-white/[0.06] rounded animate-pulse shrink-0" />
-                <div className="flex-1 h-2.5 bg-white/[0.06] rounded-full animate-pulse" />
-                <div className="w-8 h-3 bg-white/[0.06] rounded animate-pulse shrink-0" />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {!loading && !hasData && (
-          <p className="text-sm text-white/30 text-center py-2">
-            Accuracy metrics will appear after the first completed match.
-          </p>
-        )}
-
-        {!loading && hasData && bands.map(({ label, pct, color, bg }) => {
-          const rounded = Math.round(pct);
-          return (
-            <div key={label} className="flex items-center gap-3 group">
-              <span className="w-[72px] text-[11px] font-semibold text-white/40 shrink-0 tabular-nums">
-                {label}
-              </span>
-              <div className="flex-1 h-2.5 bg-white/[0.05] rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-700 ${color}`}
-                  style={{ width: `${Math.min(rounded, 100)}%` }}
-                />
-              </div>
-              <span className={`w-9 text-right text-[12px] font-bold tabular-nums shrink-0 ${bg}`}>
-                {rounded}%
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="px-5 pb-4">
-        <p className="text-[12px] text-white/30 leading-relaxed">
-          Most projections land within 10–15 points — a reliable weekly baseline for lineup decisions.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function AccuracyBar({ pct, barColor }: { pct: number | null; barColor: string }) {
-  const width = pct != null ? Math.min(Math.max(Math.round(pct), 0), 100) : 0;
-  return (
-    <div className="mt-2 h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
-      <div
-        className={`h-full rounded-full transition-all duration-700 ${barColor}`}
-        style={{ width: `${width}%` }}
-      />
-    </div>
-  );
-}
-
-function ModelAccuracySection() {
-  const [row, setRow]         = useState<AccuracyRow | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase
-        .from("v_projection_accuracy_homepage")
-        .select("*")
-        .maybeSingle();
-      if (error) {
-        console.warn("Accuracy data unavailable", error);
-        setRow(null);
-      } else {
-        setRow(data as AccuracyRow | null);
-      }
-      setLoading(false);
-    })();
-  }, []);
-
-  const hasData = !loading && row != null && (row.players_analysed ?? 0) > 0;
-  const conf = confidenceLevel(hasData ? (row?.avg_error ?? null) : null);
-
-  const latestRound = row?.latest_round ?? null;
-  const roundLabel = latestRound != null && latestRound > 0
-    ? `Round ${latestRound}`
-    : latestRound === 0
-    ? "Opening Round"
-    : null;
-
-  const proofLine = (() => {
-    if (!hasData || row?.avg_error == null) return null;
-    const err = row.avg_error;
-    const players = row?.players_analysed != null ? row.players_analysed.toLocaleString() : "—";
-    return `Projections average ${err.toFixed(1)} points error across ${players} players.`;
-  })();
-
-  const metrics = [
-    {
-      label: "Players Analysed",
-      value: hasData && row?.players_analysed != null ? row.players_analysed.toLocaleString() : "—",
-      suffix: "",
-      color: "text-white",
-      bar: null,
-    },
-    {
-      label: "Average Error",
-      value: hasData && row?.avg_error != null ? row.avg_error.toFixed(1) : "—",
-      suffix: " pts",
-      color: "text-[#F5C84C]",
-      bar: null,
-    },
-    {
-      label: "Median Error",
-      value: hasData && row?.median_error != null ? row.median_error.toFixed(1) : "—",
-      suffix: " pts",
-      color: "text-[#F5C84C]",
-      bar: null,
-    },
-    {
-      label: "Within 15 pts",
-      value: hasData && row?.within_15 != null ? Math.round(row.within_15).toString() : "—",
-      suffix: "%",
-      color: "text-green-400",
-      bar: hasData ? (row?.within_15 ?? null) : null,
-      barColor: "bg-green-400",
-    },
-  ];
-
-  const SIGNAL_CARDS = [
-    {
-      icon: Database,
-      stat: hasData && row?.players_analysed != null ? `${row.players_analysed.toLocaleString()} players` : "687 players",
-      desc: "Analysed every round — across all 18 AFL clubs",
-    },
-    {
-      icon: Cpu,
-      stat: "Daily updates",
-      desc: "Projection model refreshed continuously as new data arrives",
-    },
-    {
-      icon: BarChart2,
-      stat: "Price vs output",
-      desc: "Value scores driven by expected score relative to current price — not gut feel",
-    },
-    {
-      icon: Sparkles,
-      stat: "Real match data",
-      desc: "AI explanations built from live stats — not pre-written templates",
-    },
-  ];
-
-  return (
-    <section className="py-10 md:py-14 bg-[#070707] border-t border-white/[0.05]">
-      <div className="max-w-5xl mx-auto px-4">
-
-        <div className="text-center mb-8">
-          <span className="text-xs uppercase tracking-wide text-[#F5C84C]">
-            Real Performance Data
-          </span>
-          <div className="mt-2"><SectionHeading>Built on Real Performance Data</SectionHeading></div>
-          <p className="text-sm text-white/50 mt-3 max-w-xl mx-auto leading-relaxed">
-            Every recommendation is backed by live projections, pricing inefficiencies, and player performance signals — updated continuously.
-          </p>
-          {proofLine && (
-            <p className="text-[12px] text-white/30 mt-1.5 max-w-xl mx-auto leading-relaxed">
-              {proofLine} · 2026 season
-            </p>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-7">
-          {SIGNAL_CARDS.map(({ icon: Icon, stat, desc }) => (
-            <div key={stat} className="rounded-xl border border-white/[0.07] bg-[#0e0e0e] p-4 flex flex-col gap-2.5">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-[#F5C84C]/10 border border-[#F5C84C]/15 shrink-0">
-                <Icon size={13} className="text-[#F5C84C]" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-white leading-tight">{stat}</p>
-                <p className="text-[11px] text-white/35 mt-1 leading-snug">{desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] overflow-hidden">
-            <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-white/[0.06] bg-[#0a0a0a] flex-wrap">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-[#F5C84C]/10 border border-[#F5C84C]/20">
-                  <Target size={13} className="text-[#F5C84C]" />
-                </div>
-                <span className="text-[11px] font-bold uppercase tracking-widest text-white/40">
-                  {loading ? "Loading…" : "Projection Accuracy"}
-                </span>
-              </div>
-              {!loading && (
-                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg border ${conf.bg} ${conf.border}`}>
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/35">Confidence</span>
-                  <span className={`text-[11px] font-black uppercase tracking-wider ${conf.color}`}>{conf.label}</span>
-                </div>
-              )}
-              {loading && <div className="h-6 w-32 bg-white/[0.06] rounded-lg animate-pulse" />}
-            </div>
-
-            <div className="grid grid-cols-2 divide-x divide-y divide-neutral-800">
-              {metrics.map(({ label, value, suffix, color, bar, barColor }) => (
-                <div key={label} className="px-4 py-4 flex flex-col">
-                  <p className="text-[10px] text-white/30 uppercase tracking-widest font-semibold leading-tight mb-1.5">
-                    {label}
-                  </p>
-                  {loading ? (
-                    <div className="h-7 w-16 bg-white/[0.06] rounded animate-pulse" />
-                  ) : (
-                    <>
-                      <p className={`text-2xl font-extrabold tabular-nums leading-none ${color}`}>
-                        {value}
-                        <span className="text-sm font-bold text-white/30">
-                          {value !== "—" ? suffix : ""}
-                        </span>
-                      </p>
-                      {bar != null && barColor && (
-                        <AccuracyBar pct={bar} barColor={barColor} />
-                      )}
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {!loading && hasData && roundLabel && (
-              <div className="px-4 py-2 border-t border-white/[0.06] bg-[#0c0c0c]">
-                <p className="text-[11px] text-white/25 text-center tracking-wide">
-                  Updated through {roundLabel}
-                </p>
-              </div>
-            )}
-
-            {!loading && !hasData && (
-              <div className="px-4 py-4 border-t border-white/[0.06] bg-[#0c0c0c]">
-                <p className="text-sm text-white/30 text-center">
-                  Accuracy metrics will appear after the first completed match.
-                </p>
-              </div>
-            )}
-          </div>
-
-          <ErrorDistributionBlock row={row} loading={loading} />
-        </div>
-
-        <div className="flex items-center justify-center gap-2 text-xs text-neutral-500 mt-3">
-          <Database size={11} className="shrink-0" />
-          {hasData && row?.total_predictions != null
-            ? <span>Model evaluated on {row.total_predictions.toLocaleString()} AFL player projections · 2026 season</span>
-            : <span>Accuracy data building as rounds complete</span>
-          }
-        </div>
-        {hasData && row?.last_updated_at && (
-          <p className="text-center text-[10px] text-white/18 mt-1">
-            Data updated {formatRelativeTime(row.last_updated_at)}
-          </p>
-        )}
-
-        <div className="mt-6 p-5 border border-white/[0.08] rounded-xl bg-[#0d0d0d]">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-white/70 leading-relaxed">
-                This isn't opinion — it's measurable edge.
-              </p>
-              <p className="text-xs text-white/35 mt-1 leading-relaxed">
-                See every player ranked by projection, value, and confidence — updated before each round.
-              </p>
-            </div>
-            <Link
-              to="/sports/afl/rankings"
-              className="shrink-0 inline-flex items-center justify-center gap-2 bg-[#F5C84C] text-black font-bold text-sm px-5 py-2.5 rounded-xl hover:brightness-110 transition-all whitespace-nowrap"
-            >
-              See the Rankings
-              <ArrowRight size={13} />
-            </Link>
-          </div>
-        </div>
-
-      </div>
-    </section>
-  );
-}
-
-// ─── Why Coaches Use Neeko ────────────────────────────────────────────────────
-
-function WhyNeekoSection() {
-  return (
-    <section className="py-12 md:py-16 bg-[#0a0a0a] border-t border-white/[0.05]">
-      <div className="max-w-5xl mx-auto px-4">
-        <div className="text-center mb-8">
-          <SectionLabel>Model Advantages</SectionLabel>
-          <SectionHeading>WHY COACHES USE NEEKO</SectionHeading>
-          <GoldDivider />
-          <p className="text-base text-white/40 max-w-xl mx-auto leading-relaxed">
-            Advanced modelling designed specifically for AFL Fantasy.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
-          {WHY_NEEKO_BLOCKS.map(({ icon: Icon, title, desc }) => (
-            <div
-              key={title}
-              className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-xl p-5 hover:border-[#F5C84C]/25 hover:shadow-[0_0_20px_rgba(245,200,76,0.06)] transition-all"
-            >
-              <div className="w-10 h-10 rounded-xl bg-[#F5C84C]/10 border border-[#F5C84C]/20 flex items-center justify-center mb-4">
-                <Icon size={18} className="text-[#F5C84C]" />
-              </div>
-              <h3 className="text-sm font-bold text-white mb-2 leading-snug">{title}</h3>
-              <p className="text-xs text-white/40 leading-relaxed">{desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Premium Section ──────────────────────────────────────────────────────────
-
-const ROUND_DELIVERABLES = [
-  "Updated projections for 600+ players",
-  "Captain rankings",
-  "Breakout alerts",
-  "Trap warnings",
-  "Start/Sit comparisons",
-];
-
-function PremiumSection() {
-  return (
-    <section className="py-12 md:py-16 bg-[#070707] border-t border-white/[0.05]">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="text-center mb-8">
-          <SectionLabel>Pricing</SectionLabel>
-          <SectionHeading>UNLOCK THE FULL EDGE</SectionHeading>
-          <GoldDivider />
-          <p className="text-[13px] text-[#F5C84C]/60 font-semibold mb-1">
-            Less than the cost of a coffee per round.
-          </p>
-          <p className="text-sm text-white/40 max-w-md mx-auto leading-relaxed">
-            All insights updated before AFL Fantasy round lockout.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-          <div className="space-y-3">
-            <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4">
-              What's Included
-            </p>
-            {NEEKO_FEATURES.map((f) => (
-              <div key={f} className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-full bg-[#F5C84C]/15 border border-[#F5C84C]/30 flex items-center justify-center shrink-0">
-                  <Check size={10} className="text-[#F5C84C]" />
-                </div>
-                <span className="text-sm text-white/60">{f}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex flex-col gap-5">
-            <div
-              className="relative rounded-2xl p-7"
-              style={{
-                border: "1px solid rgba(245,200,76,0.35)",
-                background: "linear-gradient(160deg, #111 0%, #0d0d0d 100%)",
-                boxShadow: "0 0 40px rgba(245,200,76,0.08)",
-              }}
-            >
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="bg-[#F5C84C] text-black text-[11px] font-black px-3 py-0.5 rounded-full uppercase tracking-wide">
-                  Best Value
-                </span>
-              </div>
-              <p className="text-xs font-bold uppercase tracking-widest text-[#F5C84C]/60 mb-3">Neeko+ Yearly</p>
-              <div className="flex items-end gap-1.5 mb-1">
-                <span className="text-4xl font-extrabold text-white">$89</span>
-                <span className="text-sm text-white/35 mb-1">AUD / year</span>
-              </div>
-              <p className="text-xs text-[#F5C84C]/50 mb-1">Equivalent to $7.42/month · Cancel anytime</p>
-              <p className="text-xs text-white/25 mb-6">$89 per year — less than $0.25 per AFL round</p>
-              <Link
-                to="/neeko-plus"
-                className="block text-center bg-[#F5C84C] text-black font-bold text-sm py-3.5 rounded-xl hover:brightness-110 transition-all min-h-[48px] flex items-center justify-center"
-              >
-                <Crown size={14} className="mr-2" />
-                Start Winning With Neeko+
-              </Link>
-            </div>
-
-            <div className="rounded-2xl border border-white/[0.09] bg-[#0e0e0e] p-6">
-              <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Monthly</p>
-              <div className="flex items-end gap-1.5 mb-1">
-                <span className="text-3xl font-extrabold text-white">$9.99</span>
-                <span className="text-sm text-white/35 mb-1">AUD / month</span>
-              </div>
-              <p className="text-xs text-white/25 mb-5">{NEEKO_PRICING.monthly.billingNote}</p>
-              <Link
-                to="/neeko-plus"
-                className="block text-center border border-[#F5C84C]/40 text-[#F5C84C] font-semibold text-sm py-3 rounded-xl hover:bg-[#F5C84C]/10 transition-all min-h-[48px] flex items-center justify-center"
-              >
-                Start Monthly
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-8 rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-5 py-4">
-          <p className="text-xs font-bold uppercase tracking-widest text-white/30 text-center mb-3">
-            Every round, before lockout
-          </p>
-          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
-            {ROUND_DELIVERABLES.map((item) => (
-              <div key={item} className="flex items-center gap-1.5">
-                <div className="w-3.5 h-3.5 rounded-full bg-[#F5C84C]/15 border border-[#F5C84C]/30 flex items-center justify-center shrink-0">
-                  <Check size={7} className="text-[#F5C84C]" />
-                </div>
-                <span className="text-xs text-white/40">{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="text-center mt-4 space-y-1">
-          <p className="text-xs text-white/25">Cancel anytime. No lock-in contracts.</p>
-          <p className="text-xs text-white/20">All projections updated weekly during the AFL season.</p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Edge board preview ───────────────────────────────────────────────────────
+const EDGE_META: Record<EdgeSignalType, { label: string; desc: string; accentColor: string; icon: typeof Star }> = {
+  must_have: { label: "Must Have", desc: "Model strongly favours this player — priority start signal.", accentColor: "#34d399", icon: TrendingUp },
+  breakout:  { label: "Breakout",  desc: "Upside risk in this player — watch before locking in.",        accentColor: "#F5C84C", icon: Star },
+  avoid:     { label: "Avoid",     desc: "Model flags elevated risk this round — sell or avoid signal.",  accentColor: "#f87171", icon: AlertTriangle },
+};
 
 function EdgeStatRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   return (
@@ -781,7 +161,7 @@ function EdgeCardSkeleton() {
       </div>
       <div className="h-5 w-32 bg-white/[0.08] rounded mb-1 mt-4" />
       <div className="h-3 w-20 bg-white/[0.05] rounded mb-4" />
-      {[1, 2, 3, 4].map((i) => (
+      {[1, 2, 3].map((i) => (
         <div key={i} className="flex justify-between py-1.5 border-b border-white/[0.04]">
           <div className="h-3 w-16 bg-white/[0.05] rounded" />
           <div className="h-3 w-12 bg-white/[0.05] rounded" />
@@ -791,83 +171,19 @@ function EdgeCardSkeleton() {
   );
 }
 
-type EdgeSignalType = "TARGET" | "WATCH" | "AVOID";
-
-interface EdgeSignal {
-  type: EdgeSignalType;
-  label: string;
-  desc: string;
-  accentColor: string;
-  icon: typeof Star;
-  row: EdgeRow;
+interface EdgeBoardPreviewProps {
+  players: RankingRow[];
+  loading: boolean;
 }
 
-const SIGNAL_META: Record<EdgeSignalType, { label: string; desc: string; accentColor: string; icon: typeof Star }> = {
-  TARGET: { label: "Target", desc: "Model favours this player this round — strong buy signal.",    accentColor: "#34d399", icon: TrendingUp },
-  WATCH:  { label: "Watch",  desc: "Neutral signal — monitor before committing to this player.",   accentColor: "#F5C84C", icon: Star },
-  AVOID:  { label: "Avoid",  desc: "Model flags elevated risk this round — sell or avoid signal.", accentColor: "#f87171", icon: AlertTriangle },
-};
+function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
+  const edgeBoard = useMemo(() => buildEdgeBoardPlayers(players), [players]);
 
-function signalTagToActionLabel(signal: string | null): string {
-  return formatEdgeSignalLabel(signalFromField(signal));
-}
-
-function signalTagToActionColor(tag: EdgeSignalType): string {
-  if (tag === "TARGET") return "text-green-300";
-  if (tag === "AVOID")  return "text-red-300";
-  return "text-yellow-300";
-}
-
-function edgeScoreColor(score: number | null): string {
-  if (score == null) return "text-white/30";
-  if (score > 5)  return "text-green-400";
-  if (score < -5) return "text-red-400";
-  return "text-[#F5C84C]";
-}
-
-function EdgeBoardPreview() {
-  const [signals, setSignals] = useState<EdgeSignal[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase
-        .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, projection_final, edge, signal_tag, signal, summary_short")
-        .not("signal_tag", "is", null)
-        .gte("games_played", 3)
-        .gt("projection_final", 50)
-        .limit(150);
-
-      if (error) {
-        console.error("[EdgeBoardPreview] Error:", error);
-        setLoading(false);
-        return;
-      }
-
-      const rows = ((data ?? []) as EdgeRow[]).filter(
-        (r) => r.player_name && r.team && (r.projection_final ?? 0) > 0 && r.signal_tag,
-      );
-
-      // signal_tag is the single source of truth — no frontend remapping
-      const targets = rows.filter(r => r.signal_tag === "TARGET");
-      const watches = rows.filter(r => r.signal_tag === "WATCH");
-      const avoids  = rows.filter(r => r.signal_tag === "AVOID");
-
-      const targetRow = targets[Math.floor(Math.random() * targets.length)] ?? null;
-      const watchRow  = watches[Math.floor(Math.random() * watches.length)] ?? null;
-      const avoidRow  = avoids[Math.floor(Math.random() * avoids.length)]   ?? null;
-
-      const built: EdgeSignal[] = [
-        targetRow ? { type: "TARGET" as EdgeSignalType, ...SIGNAL_META.TARGET, row: targetRow } : null,
-        watchRow  ? { type: "WATCH"  as EdgeSignalType, ...SIGNAL_META.WATCH,  row: watchRow  } : null,
-        avoidRow  ? { type: "AVOID"  as EdgeSignalType, ...SIGNAL_META.AVOID,  row: avoidRow  } : null,
-      ].filter((s): s is EdgeSignal => s !== null);
-
-      setSignals(built);
-      setLoading(false);
-    })();
-  }, []);
+  const cards = [
+    edgeBoard.mustHave[0] ? { section: "must_have" as EdgeSignalType, player: edgeBoard.mustHave[0] } : null,
+    edgeBoard.breakout[0] ? { section: "breakout"  as EdgeSignalType, player: edgeBoard.breakout[0] } : null,
+    edgeBoard.avoid[0]    ? { section: "avoid"     as EdgeSignalType, player: edgeBoard.avoid[0]    } : null,
+  ].filter((c): c is { section: EdgeSignalType; player: (typeof edgeBoard.mustHave)[0] } => c !== null);
 
   return (
     <section className="py-10 md:py-14 bg-[#0a0a0a] border-t border-white/[0.05]">
@@ -876,24 +192,21 @@ function EdgeBoardPreview() {
         <SectionHeading>This Round's Edge Signals</SectionHeading>
         <GoldDivider />
         <p className="text-center text-white/40 text-sm mb-6 max-w-xl mx-auto leading-relaxed">
-          Model-derived signals from the top 50 players — updated before every round lockout.
+          Model-derived signals from the top players — updated before every round lockout.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {loading
             ? [0, 1, 2].map((i) => <EdgeCardSkeleton key={i} />)
-            : signals.length > 0
-              ? signals.map((signal) => {
-                  const { label, desc, accentColor, icon: Icon, row, type } = signal;
-                  // signal_tag is the single source of truth — action label derived directly from it
-                  const signalType = (row.signal_tag ?? type) as EdgeSignalType;
-                  const actionLabel = signalTagToActionLabel(row.signal);
-                  const actionColor = signalTagToActionColor(signalType);
-                  const scoreColor = edgeScoreColor(row.edge);
+            : cards.length > 0
+              ? cards.map(({ section, player }) => {
+                  const { label, desc, accentColor, icon: Icon } = EDGE_META[section];
+                  const edgeVal = player.edge ?? 0;
+                  const edgeColor = edgeVal > 5 ? "text-green-400" : edgeVal < -5 ? "text-red-400" : "text-[#F5C84C]";
 
                   return (
                     <div
-                      key={type}
+                      key={section}
                       className="rounded-2xl bg-[#0e0e0e] p-5 hover:scale-[1.01] transition-all"
                       style={{ border: `1px solid ${accentColor}25` }}
                     >
@@ -909,27 +222,20 @@ function EdgeBoardPreview() {
                         </span>
                       </div>
 
-                      <p className="text-base font-bold text-white leading-tight mb-0.5">{row.player_name}</p>
-                      <p className="text-[11px] text-white/35 mb-1">{row.team}{row.position ? ` · ${row.position}` : ""}</p>
-                      {row.summary_short && (
-                        <p className="text-[10px] text-white/30 mb-3 leading-snug italic">{row.summary_short}</p>
-                      )}
-                      {!row.summary_short && (
-                        <p className="text-[10px] text-white/20 mb-3 leading-snug">{desc}</p>
-                      )}
+                      <p className="text-base font-bold text-white leading-tight mb-0.5">{player.player_name}</p>
+                      <p className="text-[11px] text-white/35 mb-1">{player.team}{player.position ? ` · ${player.position}` : ""}</p>
+                      {player.why
+                        ? <p className="text-[10px] text-white/30 mb-3 leading-snug italic">{player.why}</p>
+                        : <p className="text-[10px] text-white/20 mb-3 leading-snug">{desc}</p>
+                      }
 
                       <div>
-                        {row.projection_final != null && (
-                          <EdgeStatRow label="Projection" value={`${Math.round(row.projection_final)} pts`} valueColor="text-[#F5C84C]" />
+                        {player.projection_final != null && (
+                          <EdgeStatRow label="Projection" value={`${Math.round(player.projection_final)} pts`} valueColor="text-[#F5C84C]" />
                         )}
-                        {row.edge != null && (
-                          <EdgeStatRow label="Edge" value={row.edge > 0 ? `+${row.edge.toFixed(1)}` : row.edge.toFixed(1)} valueColor={scoreColor} />
+                        {edgeVal !== 0 && (
+                          <EdgeStatRow label="Edge" value={edgeVal > 0 ? `+${edgeVal.toFixed(1)}` : edgeVal.toFixed(1)} valueColor={edgeColor} />
                         )}
-                        <EdgeStatRow
-                          label="Action"
-                          value={actionLabel}
-                          valueColor={actionColor}
-                        />
                       </div>
                     </div>
                   );
@@ -945,7 +251,6 @@ function EdgeBoardPreview() {
         <p className="text-center text-white/25 text-xs mt-4">
           Full edge board includes additional signals, matchup analysis and AI breakdowns.
         </p>
-
         <div className="mt-3 flex justify-center">
           <Link
             to="/neeko-plus"
@@ -960,265 +265,25 @@ function EdgeBoardPreview() {
   );
 }
 
-// ─── Who It's For ─────────────────────────────────────────────────────────────
-
-function WhoForSection() {
-  return (
-    <section className="py-10 md:py-14 bg-[#0a0a0a] border-t border-white/[0.05]">
-      <div className="max-w-4xl mx-auto px-4">
-        <SectionLabel>Who It's For</SectionLabel>
-        <SectionHeading>Built For Serious AFL Fantasy Coaches</SectionHeading>
-        <GoldDivider />
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-5 mt-6">
-          {WHO_FOR.map(({ icon: Icon, title, desc }) => (
-            <div
-              key={title}
-              className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] p-5 hover:border-white/[0.12] transition-all"
-            >
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.08] mb-4">
-                <Icon size={18} className="text-white/50" />
-              </div>
-              <h3 className="text-base font-bold text-white mb-2">{title}</h3>
-              <p className="text-sm text-white/40 leading-relaxed">{desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Problem Section ──────────────────────────────────────────────────────────
-
-function ProblemSection() {
-  const leftItems = [
-    "Captain based on gut feel",
-    "Trades based on hype",
-    "Matchups ignored",
-    "Value misunderstood",
-  ];
-
-  const rightItems = [
-    "Data-driven captain signals",
-    "Breakout probability modelling",
-    "Opponent-adjusted projections",
-    "Value engine detecting mispriced players",
-  ];
-
-  return (
-    <section className="py-10 md:py-14 bg-[#070707] border-t border-white/[0.05]">
-      <div className="max-w-4xl mx-auto px-4">
-        <SectionLabel>Competitive Advantage</SectionLabel>
-        <SectionHeading>Why Most AFL Fantasy Coaches Lose</SectionHeading>
-        <GoldDivider />
-
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d0d] p-5">
-            <p className="text-xs font-bold uppercase tracking-widest text-white/25 mb-5">
-              Typical Fantasy Decisions
-            </p>
-            <ul className="space-y-3">
-              {leftItems.map((item) => (
-                <li key={item} className="flex items-start gap-3">
-                  <span className="mt-1 w-4 h-4 rounded-full border border-white/15 flex items-center justify-center shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                  </span>
-                  <span className="text-sm text-white/30 leading-relaxed">{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div
-            className="rounded-2xl p-5"
-            style={{
-              border: "1px solid rgba(245,200,76,0.30)",
-              background: "linear-gradient(160deg, #131313 0%, #0e0e0e 100%)",
-              boxShadow: "0 0 36px rgba(245,200,76,0.08)",
-            }}
-          >
-            <p className="text-xs font-bold uppercase tracking-widest text-[#F5C84C]/60 mb-5">
-              Neeko Data Advantage
-            </p>
-            <ul className="space-y-3">
-              {rightItems.map((item) => (
-                <li key={item} className="flex items-start gap-3">
-                  <div className="mt-1 w-4 h-4 rounded-full bg-[#F5C84C]/15 border border-[#F5C84C]/30 flex items-center justify-center shrink-0">
-                    <Check size={8} className="text-[#F5C84C]" />
-                  </div>
-                  <span className="text-sm text-white/75 leading-relaxed">{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-center">
-          <Link
-            to="/neeko-plus"
-            className="inline-flex items-center justify-center gap-2 bg-[#F5C84C] text-black font-bold text-sm px-7 py-3.5 rounded-xl hover:brightness-110 transition-all shadow-[0_4px_30px_rgba(245,200,76,0.2)] min-h-[48px]"
-          >
-            <Crown size={14} />
-            Start Winning With Neeko+
-          </Link>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ─── Outcome Proof ────────────────────────────────────────────────────────────
-
-function accuracyBadge(tier: "ELITE" | "STRONG" | undefined) {
-  if (tier === "ELITE") {
-    return {
-      label:     "ELITE ACCURACY",
-      textColor: "text-green-400",
-      bg:        "bg-green-400/10",
-      border:    "border-green-400/30",
-    };
-  }
-  return {
-    label:     "STRONG ACCURACY",
-    textColor: "text-[#F5C84C]",
-    bg:        "bg-[#F5C84C]/10",
-    border:    "border-[#F5C84C]/30",
-  };
-}
-
-function OutcomeProofSection() {
-  const [rows, setRows]       = useState<AccuracyExampleRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      const { data: raw } = await supabase
-        .rpc("get_projection_accuracy_examples");
-      setRows((raw ?? []) as AccuracyExampleRow[]);
-      setLoading(false);
-    })();
-  }, []);
-
-  const skeletons = Array.from({ length: 3 });
-
-  return (
-    <section className="py-10 md:py-14 bg-[#070707] border-t border-white/[0.05]">
-      <div className="max-w-4xl mx-auto px-4">
-        <div className="text-center mb-8">
-          <SectionLabel>Projection Accuracy</SectionLabel>
-          <SectionHeading>Real Projection Accuracy</SectionHeading>
-          <GoldDivider />
-          <p className="text-sm text-white/40 max-w-lg mx-auto leading-relaxed">
-            Top-ranked players from the latest round where projections landed within 10 points of the final AFL Fantasy score.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          {loading
-            ? skeletons.map((_, i) => (
-                <div key={i} className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] p-5 animate-pulse">
-                  <div className="h-4 w-32 bg-white/[0.08] rounded mb-2" />
-                  <div className="h-3 w-24 bg-white/[0.05] rounded mb-4" />
-                  <div className="h-3 w-28 bg-white/[0.05] rounded mb-1.5" />
-                  <div className="h-3 w-28 bg-white/[0.05] rounded mb-3" />
-                  <div className="h-5 w-28 bg-green-400/10 rounded" />
-                </div>
-              ))
-            : rows.length > 0
-              ? rows.map((r, i) => {
-                  const err    = Number(r.error);
-                  const errStr = err < 1 ? "< 1 pt" : `${Math.round(err)} pt${Math.round(err) === 1 ? "" : "s"}`;
-                  const badge  = accuracyBadge(r.accuracy_tier);
-                  return (
-                    <div
-                      key={`${r.player_name}-${i}`}
-                      className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] p-5 hover:border-white/[0.12] transition-all"
-                    >
-                      <div className="flex items-start justify-between mb-0.5">
-                        <p className="text-base font-bold text-white leading-tight">{r.player_name}</p>
-                        {r.neeko_rank != null && (
-                          <span className="text-[10px] font-semibold text-[#F5C84C]/60 tabular-nums shrink-0 ml-2">#{r.neeko_rank}</span>
-                        )}
-                      </div>
-                      <p className="text-xs text-white/35 mb-4">{r.team_name}</p>
-
-                      <div className="space-y-2 mb-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] text-white/30 uppercase tracking-widest font-semibold">Projection</span>
-                          <span className="text-sm font-bold text-[#F5C84C]">{r.projection} pts</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] text-white/30 uppercase tracking-widest font-semibold">Actual</span>
-                          <span className="text-sm font-bold text-white">{r.actual_score} pts</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] text-white/30 uppercase tracking-widest font-semibold">Error</span>
-                          <span className="text-xs font-bold text-white/50">{errStr} off</span>
-                        </div>
-                      </div>
-
-                      <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${badge.bg} ${badge.border}`}>
-                        <Check size={9} className={badge.textColor} />
-                        <span className={`text-[10px] font-bold uppercase tracking-wide ${badge.textColor}`}>{badge.label}</span>
-                      </div>
-                    </div>
-                  );
-                })
-              : (
-                <div className="col-span-3 rounded-2xl border border-white/[0.07] bg-[#0e0e0e] p-8 text-center">
-                  <p className="text-sm font-semibold text-white/30">Accuracy data building...</p>
-                  <p className="text-xs text-white/18 mt-1">Examples will appear once round results are processed.</p>
-                </div>
-              )
-          }
-        </div>
-
-        <p className="text-center text-[11px] text-white/20 mt-5 tracking-wide">
-          Based on completed 2026 AFL season rounds. Individual results vary.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-
-// ─── Rankings helpers ─────────────────────────────────────────────────────────
+// ─── Rankings Preview ─────────────────────────────────────────────────────────
 
 function trendSignalToAction(trend: string | null): { label: string; styles: string } {
   const t = (trend ?? "").toUpperCase();
-  if (t === "STRONG_UP" || t === "UP")   return { label: "START", styles: "bg-green-500/15 text-green-400 border border-green-500/30" };
+  if (t === "STRONG_UP" || t === "UP")     return { label: "START", styles: "bg-green-500/15 text-green-400 border border-green-500/30" };
   if (t === "DOWN" || t === "STRONG_DOWN") return { label: "SIT",   styles: "bg-red-500/15 text-red-400 border border-red-500/30" };
   return { label: "HOLD", styles: "bg-yellow-400/10 text-yellow-300 border border-yellow-400/20" };
 }
 
-function RankingsPreview() {
-  const [rows, setRows] = useState<RankingRow[]>([]);
-  const [loading, setLoading] = useState(true);
+interface RankingsPreviewProps {
+  players: RankingRow[];
+  loading: boolean;
+}
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .schema("afl")
-        .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, projection_final, trend_signal, summary_short")
-        .gte("games_played", 3)
-        .gt("projection_final", 50)
-        .not("trend_signal", "is", null)
-        .order("projection_final", { ascending: false })
-        .limit(5);
-      setRows((data ?? []).map((r: Record<string, unknown>) => ({
-        player_id: String(r.player_id ?? ""),
-        player_name: String(r.player_name ?? ""),
-        team: (r.team as string) ?? null,
-        position: (r.position as string) ?? null,
-        projection_final: r.projection_final != null ? Number(r.projection_final) : null,
-        trend_signal: (r.trend_signal as string) ?? null,
-        summary_short: (r.summary_short as string) ?? null,
-      })));
-      setLoading(false);
-    })();
-  }, []);
+function RankingsPreview({ players, loading }: RankingsPreviewProps) {
+  const rows = useMemo(
+    () => [...players].sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)).slice(0, 5),
+    [players]
+  );
 
   return (
     <section className="py-10 md:py-14 bg-[#070707] border-t border-white/[0.05]">
@@ -1275,16 +340,13 @@ function RankingsPreview() {
                       </div>
                     </div>
                   ))}
-
                   {[6, 7].map((rank) => (
                     <div key={rank} className="grid grid-cols-[2rem_1fr_5rem_7rem] gap-x-4 px-5 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] last:border-0 items-center select-none">
                       <span className="text-xs text-white/15 font-mono">{rank}</span>
                       <div className="flex items-center gap-2">
                         <Lock size={11} className="text-white/20 shrink-0" />
                         <span className="text-sm font-bold text-white/20 blur-[3px]">Premium Player</span>
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#F5C84C]/10 border border-[#F5C84C]/20 text-[9px] font-bold text-[#F5C84C]/60 uppercase tracking-wide shrink-0">
-                          Neeko+
-                        </span>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#F5C84C]/10 border border-[#F5C84C]/20 text-[9px] font-bold text-[#F5C84C]/60 uppercase tracking-wide shrink-0">Neeko+</span>
                       </div>
                       <span className="text-xs text-white/15 text-center blur-[3px]">—</span>
                       <span className="text-xs text-white/15 text-right blur-[3px]">—</span>
@@ -1342,7 +404,6 @@ function RankingsPreview() {
                       </div>
                     </div>
                   ))}
-
                   {[6, 7].map((rank) => (
                     <div key={rank} className="grid grid-cols-[2rem_1fr_4.5rem_5rem] gap-x-3 px-4 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] last:border-0 items-center select-none">
                       <span className="text-xs text-white/15 font-mono">{rank}</span>
@@ -1390,10 +451,686 @@ function RankingsPreview() {
   );
 }
 
+// ─── Feature Cards ────────────────────────────────────────────────────────────
+
+function FeatureCards() {
+  return (
+    <section className="py-10 md:py-14 bg-[#070707] border-t border-white/[0.05]">
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="text-center mb-8">
+          <SectionLabel>Product Toolkit</SectionLabel>
+          <SectionHeading>Your Weekly AFL Fantasy Toolkit</SectionHeading>
+          <GoldDivider />
+          <p className="text-sm text-white/40 max-w-lg mx-auto leading-relaxed">
+            Everything you need each week to make smarter AFL Fantasy decisions.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {FEATURE_CARDS.map(({ icon: Icon, title, desc, link, cta }) => (
+            <Link
+              key={title}
+              to={link}
+              className="group flex flex-col bg-[#0f0f0f] border border-[#1f1f1f] rounded-xl p-6 transition-all hover:border-[#F5C84C] hover:shadow-[0_0_24px_rgba(245,200,76,0.12)] hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-[#F5C84C]/50"
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#F5C84C]/10 border border-[#F5C84C]/20 flex items-center justify-center mb-4 shrink-0">
+                <Icon size={18} className="text-[#F5C84C]" />
+              </div>
+              <h3 className="text-base font-bold text-white leading-snug mb-2">{title}</h3>
+              <p className="text-sm text-white/40 leading-relaxed flex-1 mb-5">{desc}</p>
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#F5C84C]/70 group-hover:text-[#F5C84C] transition-colors">
+                {cta}
+                <ArrowRight size={12} />
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Why Coaches Use Neeko ────────────────────────────────────────────────────
+
+function WhyNeekoSection() {
+  return (
+    <section className="py-12 md:py-16 bg-[#0a0a0a] border-t border-white/[0.05]">
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="text-center mb-8">
+          <SectionLabel>Model Advantages</SectionLabel>
+          <SectionHeading>WHY COACHES USE NEEKO</SectionHeading>
+          <GoldDivider />
+          <p className="text-base text-white/40 max-w-xl mx-auto leading-relaxed">
+            Advanced modelling designed specifically for AFL Fantasy.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
+          {WHY_NEEKO_BLOCKS.map(({ icon: Icon, title, desc }) => (
+            <div
+              key={title}
+              className="bg-[#0f0f0f] border border-[#1f1f1f] rounded-xl p-5 hover:border-[#F5C84C]/25 hover:shadow-[0_0_20px_rgba(245,200,76,0.06)] transition-all"
+            >
+              <div className="w-10 h-10 rounded-xl bg-[#F5C84C]/10 border border-[#F5C84C]/20 flex items-center justify-center mb-4">
+                <Icon size={18} className="text-[#F5C84C]" />
+              </div>
+              <h3 className="text-sm font-bold text-white mb-2 leading-snug">{title}</h3>
+              <p className="text-xs text-white/40 leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Premium Section ──────────────────────────────────────────────────────────
+
+function PremiumSection() {
+  return (
+    <section className="py-12 md:py-16 bg-[#070707] border-t border-white/[0.05]">
+      <div className="max-w-4xl mx-auto px-4">
+        <div className="text-center mb-8">
+          <SectionLabel>Pricing</SectionLabel>
+          <SectionHeading>UNLOCK THE FULL EDGE</SectionHeading>
+          <GoldDivider />
+          <p className="text-[13px] text-[#F5C84C]/60 font-semibold mb-1">
+            Less than the cost of a coffee per round.
+          </p>
+          <p className="text-sm text-white/40 max-w-md mx-auto leading-relaxed">
+            All insights updated before AFL Fantasy round lockout.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          <div className="space-y-3">
+            <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-4">What's Included</p>
+            {NEEKO_FEATURES.map((f) => (
+              <div key={f} className="flex items-center gap-3">
+                <div className="w-5 h-5 rounded-full bg-[#F5C84C]/15 border border-[#F5C84C]/30 flex items-center justify-center shrink-0">
+                  <Check size={10} className="text-[#F5C84C]" />
+                </div>
+                <span className="text-sm text-white/60">{f}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-5">
+            <div
+              className="relative rounded-2xl p-7"
+              style={{ border: "1px solid rgba(245,200,76,0.35)", background: "linear-gradient(160deg, #111 0%, #0d0d0d 100%)", boxShadow: "0 0 40px rgba(245,200,76,0.08)" }}
+            >
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="bg-[#F5C84C] text-black text-[11px] font-black px-3 py-0.5 rounded-full uppercase tracking-wide">Best Value</span>
+              </div>
+              <p className="text-xs font-bold uppercase tracking-widest text-[#F5C84C]/60 mb-3">Neeko+ Yearly</p>
+              <div className="flex items-end gap-1.5 mb-1">
+                <span className="text-4xl font-extrabold text-white">$89</span>
+                <span className="text-sm text-white/35 mb-1">AUD / year</span>
+              </div>
+              <p className="text-xs text-[#F5C84C]/50 mb-1">Equivalent to $7.42/month · Cancel anytime</p>
+              <p className="text-xs text-white/25 mb-6">$89 per year — less than $0.25 per AFL round</p>
+              <Link
+                to="/neeko-plus"
+                className="block text-center bg-[#F5C84C] text-black font-bold text-sm py-3.5 rounded-xl hover:brightness-110 transition-all min-h-[48px] flex items-center justify-center"
+              >
+                <Crown size={14} className="mr-2" />
+                Start Winning With Neeko+
+              </Link>
+            </div>
+
+            <div className="rounded-2xl border border-white/[0.09] bg-[#0e0e0e] p-6">
+              <p className="text-xs font-bold uppercase tracking-widest text-white/30 mb-3">Monthly</p>
+              <div className="flex items-end gap-1.5 mb-1">
+                <span className="text-3xl font-extrabold text-white">$9.99</span>
+                <span className="text-sm text-white/35 mb-1">AUD / month</span>
+              </div>
+              <p className="text-xs text-white/25 mb-5">{NEEKO_PRICING.monthly.billingNote}</p>
+              <Link
+                to="/neeko-plus"
+                className="block text-center border border-[#F5C84C]/40 text-[#F5C84C] font-semibold text-sm py-3 rounded-xl hover:bg-[#F5C84C]/10 transition-all min-h-[48px] flex items-center justify-center"
+              >
+                Start Monthly
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-5 py-4">
+          <p className="text-xs font-bold uppercase tracking-widest text-white/30 text-center mb-3">Every round, before lockout</p>
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2">
+            {ROUND_DELIVERABLES.map((item) => (
+              <div key={item} className="flex items-center gap-1.5">
+                <div className="w-3.5 h-3.5 rounded-full bg-[#F5C84C]/15 border border-[#F5C84C]/30 flex items-center justify-center shrink-0">
+                  <Check size={7} className="text-[#F5C84C]" />
+                </div>
+                <span className="text-xs text-white/40">{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="text-center mt-4 space-y-1">
+          <p className="text-xs text-white/25">Cancel anytime. No lock-in contracts.</p>
+          <p className="text-xs text-white/20">All projections updated weekly during the AFL season.</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Who It's For ─────────────────────────────────────────────────────────────
+
+function WhoForSection() {
+  return (
+    <section className="py-10 md:py-14 bg-[#0a0a0a] border-t border-white/[0.05]">
+      <div className="max-w-4xl mx-auto px-4">
+        <SectionLabel>Who It's For</SectionLabel>
+        <SectionHeading>Built For Serious AFL Fantasy Coaches</SectionHeading>
+        <GoldDivider />
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-5 mt-6">
+          {WHO_FOR.map(({ icon: Icon, title, desc }) => (
+            <div
+              key={title}
+              className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] p-5 hover:border-white/[0.12] transition-all"
+            >
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/[0.05] border border-white/[0.08] mb-4">
+                <Icon size={18} className="text-white/50" />
+              </div>
+              <h3 className="text-base font-bold text-white mb-2">{title}</h3>
+              <p className="text-sm text-white/40 leading-relaxed">{desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Problem Section ──────────────────────────────────────────────────────────
+
+function ProblemSection() {
+  const leftItems  = ["Captain based on gut feel", "Trades based on hype", "Matchups ignored", "Value misunderstood"];
+  const rightItems = ["Data-driven captain signals", "Breakout probability modelling", "Opponent-adjusted projections", "Value engine detecting mispriced players"];
+
+  return (
+    <section className="py-10 md:py-14 bg-[#070707] border-t border-white/[0.05]">
+      <div className="max-w-4xl mx-auto px-4">
+        <SectionLabel>Competitive Advantage</SectionLabel>
+        <SectionHeading>Why Most AFL Fantasy Coaches Lose</SectionHeading>
+        <GoldDivider />
+
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="rounded-2xl border border-white/[0.06] bg-[#0d0d0d] p-5">
+            <p className="text-xs font-bold uppercase tracking-widest text-white/25 mb-5">Typical Fantasy Decisions</p>
+            <ul className="space-y-3">
+              {leftItems.map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <span className="mt-1 w-4 h-4 rounded-full border border-white/15 flex items-center justify-center shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                  </span>
+                  <span className="text-sm text-white/30 leading-relaxed">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div
+            className="rounded-2xl p-5"
+            style={{ border: "1px solid rgba(245,200,76,0.30)", background: "linear-gradient(160deg, #131313 0%, #0e0e0e 100%)", boxShadow: "0 0 36px rgba(245,200,76,0.08)" }}
+          >
+            <p className="text-xs font-bold uppercase tracking-widest text-[#F5C84C]/60 mb-5">Neeko Data Advantage</p>
+            <ul className="space-y-3">
+              {rightItems.map((item) => (
+                <li key={item} className="flex items-start gap-3">
+                  <div className="mt-1 w-4 h-4 rounded-full bg-[#F5C84C]/15 border border-[#F5C84C]/30 flex items-center justify-center shrink-0">
+                    <Check size={8} className="text-[#F5C84C]" />
+                  </div>
+                  <span className="text-sm text-white/75 leading-relaxed">{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-center">
+          <Link
+            to="/neeko-plus"
+            className="inline-flex items-center justify-center gap-2 bg-[#F5C84C] text-black font-bold text-sm px-7 py-3.5 rounded-xl hover:brightness-110 transition-all shadow-[0_4px_30px_rgba(245,200,76,0.2)] min-h-[48px]"
+          >
+            <Crown size={14} />
+            Start Winning With Neeko+
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Model Accuracy ───────────────────────────────────────────────────────────
+
+function formatRelativeTime(isoString: string | null): string | null {
+  if (!isoString) return null;
+  const diff  = Date.now() - new Date(isoString).getTime();
+  const mins  = Math.floor(diff / 60_000);
+  const hours = Math.floor(diff / 3_600_000);
+  const days  = Math.floor(diff / 86_400_000);
+  if (mins < 2)   return "just now";
+  if (mins < 60)  return `${mins} minutes ago`;
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+interface AccuracyRow {
+  players_analysed:   number | null;
+  avg_error:          number | null;
+  median_error:       number | null;
+  within_10:          number | null;
+  within_15:          number | null;
+  within_20:          number | null;
+  latest_round:       number | null;
+  total_predictions:  number | null;
+  last_updated_at:    string | null;
+  source:             string | null;
+}
+
+interface AccuracyExampleRow {
+  player_name:   string;
+  team_name:     string;
+  projection:    number;
+  actual_score:  number;
+  error:         number;
+  accuracy_tier: "ELITE" | "STRONG";
+  round_label:   string;
+  neeko_rank?:   number | null;
+}
+
+function confidenceLevel(err: number | null): { label: string; color: string; bg: string; border: string; barColor: string } {
+  if (err == null) return { label: "—",        color: "text-white/30",   bg: "bg-white/5",        border: "border-white/10",        barColor: "bg-white/20" };
+  if (err < 16)    return { label: "ELITE",    color: "text-green-400",  bg: "bg-green-400/10",   border: "border-green-400/30",    barColor: "bg-green-400" };
+  if (err <= 18)   return { label: "STRONG",   color: "text-[#F5C84C]",  bg: "bg-[#F5C84C]/10",   border: "border-[#F5C84C]/30",    barColor: "bg-[#F5C84C]" };
+  return             { label: "MODERATE",      color: "text-red-400",    bg: "bg-red-400/10",     border: "border-red-400/30",      barColor: "bg-red-400" };
+}
+
+function reliabilityLevel(err: number | null): { label: string; color: string; bg: string; border: string } {
+  if (err == null) return { label: "—",        color: "text-white/30",   bg: "bg-white/5",        border: "border-white/10" };
+  if (err <= 16)   return { label: "ELITE",    color: "text-green-400",  bg: "bg-green-400/10",   border: "border-green-400/30" };
+  if (err <= 18)   return { label: "STRONG",   color: "text-[#F5C84C]",  bg: "bg-[#F5C84C]/10",   border: "border-[#F5C84C]/30" };
+  return             { label: "MODERATE",      color: "text-orange-400", bg: "bg-orange-400/10",  border: "border-orange-400/30" };
+}
+
+function buildDistribution(row: AccuracyRow) {
+  const w10 = row.within_10 ?? 0;
+  const w15 = row.within_15 ?? 0;
+  const w20 = row.within_20 ?? 0;
+  return [
+    { label: "0 – 10 pts",  pct: Math.max(w10, 0),          color: "bg-green-400",  pctColor: "text-green-400" },
+    { label: "10 – 15 pts", pct: Math.max(w15 - w10, 0),    color: "bg-[#F5C84C]",  pctColor: "text-[#F5C84C]" },
+    { label: "15 – 20 pts", pct: Math.max(w20 - w15, 0),    color: "bg-orange-400", pctColor: "text-orange-400" },
+    { label: "20+ pts",     pct: Math.max(100 - w20, 0),    color: "bg-red-500/70", pctColor: "text-red-400" },
+  ];
+}
+
+function ErrorDistributionBlock({ row, loading }: { row: AccuracyRow | null; loading: boolean }) {
+  const hasData = !loading && row != null && (row.players_analysed ?? 0) > 0;
+  const rel     = reliabilityLevel(hasData ? (row?.avg_error ?? null) : null);
+  const bands   = hasData && row ? buildDistribution(row) : [];
+
+  return (
+    <div className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] overflow-hidden">
+      <div className="flex items-center justify-between gap-4 px-5 py-3 border-b border-white/[0.06] bg-[#0a0a0a] flex-wrap">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-white/[0.05] border border-white/[0.08]">
+            <BarChart2 size={13} className="text-white/50" />
+          </div>
+          <span className="text-sm font-semibold text-neutral-300">Prediction Error Distribution</span>
+        </div>
+        {!loading && (
+          <span className={`text-xs px-3 py-1 rounded-full border ${rel.bg} ${rel.border} ${rel.color}`}>
+            Reliability: {rel.label}
+          </span>
+        )}
+        {loading && <div className="h-6 w-36 bg-white/[0.06] rounded-full animate-pulse" />}
+      </div>
+
+      <div className="px-5 py-4 space-y-3">
+        {loading && (
+          <div className="space-y-3">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-20 h-3 bg-white/[0.06] rounded animate-pulse shrink-0" />
+                <div className="flex-1 h-2.5 bg-white/[0.06] rounded-full animate-pulse" />
+                <div className="w-8 h-3 bg-white/[0.06] rounded animate-pulse shrink-0" />
+              </div>
+            ))}
+          </div>
+        )}
+        {!loading && !hasData && (
+          <p className="text-sm text-white/30 text-center py-2">Accuracy metrics will appear after the first completed match.</p>
+        )}
+        {!loading && hasData && bands.map(({ label, pct, color, pctColor }) => {
+          const rounded = Math.round(pct);
+          return (
+            <div key={label} className="flex items-center gap-3">
+              <span className="w-[72px] text-[11px] font-semibold text-white/40 shrink-0 tabular-nums">{label}</span>
+              <div className="flex-1 h-2.5 bg-white/[0.05] rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-700 ${color}`} style={{ width: `${Math.min(rounded, 100)}%` }} />
+              </div>
+              <span className={`w-9 text-right text-[12px] font-bold tabular-nums shrink-0 ${pctColor}`}>{rounded}%</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="px-5 pb-4">
+        <p className="text-[12px] text-white/30 leading-relaxed">
+          Most projections land within 10–15 points — a reliable weekly baseline for lineup decisions.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function AccuracyBar({ pct, barColor }: { pct: number | null; barColor: string }) {
+  const width = pct != null ? Math.min(Math.max(Math.round(pct), 0), 100) : 0;
+  return (
+    <div className="mt-2 h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
+      <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${width}%` }} />
+    </div>
+  );
+}
+
+const SIGNAL_CARDS_STATIC = [
+  { icon: Database,  stat: "687 players",    desc: "Analysed every round — across all 18 AFL clubs" },
+  { icon: Cpu,       stat: "Daily updates",  desc: "Projection model refreshed continuously as new data arrives" },
+  { icon: BarChart2, stat: "Price vs output", desc: "Value scores driven by expected score relative to current price — not gut feel" },
+  { icon: Sparkles,  stat: "Real match data", desc: "AI explanations built from live stats — not pre-written templates" },
+];
+
+function ModelAccuracySection() {
+  const [row, setRow]         = useState<AccuracyRow | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase
+        .from("v_projection_accuracy_homepage")
+        .select("*")
+        .maybeSingle();
+      if (!error) setRow(data as AccuracyRow | null);
+      setLoading(false);
+    })();
+  }, []);
+
+  const hasData   = !loading && row != null && (row.players_analysed ?? 0) > 0;
+  const conf      = confidenceLevel(hasData ? (row?.avg_error ?? null) : null);
+  const latestRnd = row?.latest_round ?? null;
+  const roundLabel = latestRnd != null && latestRnd > 0 ? `Round ${latestRnd}` : latestRnd === 0 ? "Opening Round" : null;
+
+  const proofLine = hasData && row?.avg_error != null
+    ? `Projections average ${row.avg_error.toFixed(1)} points error across ${row.players_analysed?.toLocaleString() ?? "—"} players.`
+    : null;
+
+  const metrics = [
+    { label: "Players Analysed", value: hasData && row?.players_analysed != null ? row.players_analysed.toLocaleString() : "—", suffix: "",      color: "text-white",      bar: null },
+    { label: "Average Error",    value: hasData && row?.avg_error != null ? row.avg_error.toFixed(1) : "—",                     suffix: " pts",   color: "text-[#F5C84C]",  bar: null },
+    { label: "Median Error",     value: hasData && row?.median_error != null ? row.median_error.toFixed(1) : "—",               suffix: " pts",   color: "text-[#F5C84C]",  bar: null },
+    { label: "Within 15 pts",    value: hasData && row?.within_15 != null ? Math.round(row.within_15).toString() : "—",         suffix: "%",      color: "text-green-400",  bar: hasData ? (row?.within_15 ?? null) : null, barColor: "bg-green-400" },
+  ];
+
+  return (
+    <section className="py-10 md:py-14 bg-[#070707] border-t border-white/[0.05]">
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="text-center mb-8">
+          <span className="text-xs uppercase tracking-wide text-[#F5C84C]">Real Performance Data</span>
+          <div className="mt-2"><SectionHeading>Built on Real Performance Data</SectionHeading></div>
+          <p className="text-sm text-white/50 mt-3 max-w-xl mx-auto leading-relaxed">
+            Every recommendation is backed by live projections, pricing inefficiencies, and player performance signals — updated continuously.
+          </p>
+          {proofLine && (
+            <p className="text-[12px] text-white/30 mt-1.5 max-w-xl mx-auto leading-relaxed">{proofLine} · 2026 season</p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-7">
+          {SIGNAL_CARDS_STATIC.map(({ icon: Icon, stat, desc }) => (
+            <div key={stat} className="rounded-xl border border-white/[0.07] bg-[#0e0e0e] p-4 flex flex-col gap-2.5">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-[#F5C84C]/10 border border-[#F5C84C]/15 shrink-0">
+                <Icon size={13} className="text-[#F5C84C]" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white leading-tight">{stat}</p>
+                <p className="text-[11px] text-white/35 mt-1 leading-snug">{desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] overflow-hidden">
+            <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-white/[0.06] bg-[#0a0a0a] flex-wrap">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center bg-[#F5C84C]/10 border border-[#F5C84C]/20">
+                  <Target size={13} className="text-[#F5C84C]" />
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-widest text-white/40">
+                  {loading ? "Loading…" : "Projection Accuracy"}
+                </span>
+              </div>
+              {!loading && (
+                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-lg border ${conf.bg} ${conf.border}`}>
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/35">Confidence</span>
+                  <span className={`text-[11px] font-black uppercase tracking-wider ${conf.color}`}>{conf.label}</span>
+                </div>
+              )}
+              {loading && <div className="h-6 w-32 bg-white/[0.06] rounded-lg animate-pulse" />}
+            </div>
+
+            <div className="grid grid-cols-2 divide-x divide-y divide-neutral-800">
+              {metrics.map(({ label, value, suffix, color, bar, barColor }) => (
+                <div key={label} className="px-4 py-4 flex flex-col">
+                  <p className="text-[10px] text-white/30 uppercase tracking-widest font-semibold leading-tight mb-1.5">{label}</p>
+                  {loading
+                    ? <div className="h-7 w-16 bg-white/[0.06] rounded animate-pulse" />
+                    : (
+                      <>
+                        <p className={`text-2xl font-extrabold tabular-nums leading-none ${color}`}>
+                          {value}
+                          <span className="text-sm font-bold text-white/30">{value !== "—" ? suffix : ""}</span>
+                        </p>
+                        {bar != null && barColor && <AccuracyBar pct={bar} barColor={barColor} />}
+                      </>
+                    )
+                  }
+                </div>
+              ))}
+            </div>
+
+            {!loading && hasData && roundLabel && (
+              <div className="px-4 py-2 border-t border-white/[0.06] bg-[#0c0c0c]">
+                <p className="text-[11px] text-white/25 text-center tracking-wide">Updated through {roundLabel}</p>
+              </div>
+            )}
+            {!loading && !hasData && (
+              <div className="px-4 py-4 border-t border-white/[0.06] bg-[#0c0c0c]">
+                <p className="text-sm text-white/30 text-center">Accuracy metrics will appear after the first completed match.</p>
+              </div>
+            )}
+          </div>
+
+          <ErrorDistributionBlock row={row} loading={loading} />
+        </div>
+
+        <div className="flex items-center justify-center gap-2 text-xs text-neutral-500 mt-3">
+          <Database size={11} className="shrink-0" />
+          {hasData && row?.total_predictions != null
+            ? <span>Model evaluated on {row.total_predictions.toLocaleString()} AFL player projections · 2026 season</span>
+            : <span>Accuracy data building as rounds complete</span>
+          }
+        </div>
+        {hasData && row?.last_updated_at && (
+          <p className="text-center text-[10px] text-white/18 mt-1">Data updated {formatRelativeTime(row.last_updated_at)}</p>
+        )}
+
+        <div className="mt-6 p-5 border border-white/[0.08] rounded-xl bg-[#0d0d0d]">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-white/70 leading-relaxed">This isn't opinion — it's measurable edge.</p>
+              <p className="text-xs text-white/35 mt-1 leading-relaxed">See every player ranked by projection, value, and confidence — updated before each round.</p>
+            </div>
+            <Link
+              to="/sports/afl/rankings"
+              className="shrink-0 inline-flex items-center justify-center gap-2 bg-[#F5C84C] text-black font-bold text-sm px-5 py-2.5 rounded-xl hover:brightness-110 transition-all whitespace-nowrap"
+            >
+              See the Rankings
+              <ArrowRight size={13} />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ─── Outcome Proof ────────────────────────────────────────────────────────────
+
+function accuracyBadge(tier: "ELITE" | "STRONG" | undefined) {
+  if (tier === "ELITE") return { label: "ELITE ACCURACY", textColor: "text-green-400", bg: "bg-green-400/10", border: "border-green-400/30" };
+  return { label: "STRONG ACCURACY", textColor: "text-[#F5C84C]", bg: "bg-[#F5C84C]/10", border: "border-[#F5C84C]/30" };
+}
+
+function OutcomeProofSection() {
+  const [rows, setRows]       = useState<AccuracyExampleRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const { data: raw } = await supabase.rpc("get_projection_accuracy_examples");
+      setRows((raw ?? []) as AccuracyExampleRow[]);
+      setLoading(false);
+    })();
+  }, []);
+
+  return (
+    <section className="py-10 md:py-14 bg-[#070707] border-t border-white/[0.05]">
+      <div className="max-w-4xl mx-auto px-4">
+        <div className="text-center mb-8">
+          <SectionLabel>Projection Accuracy</SectionLabel>
+          <SectionHeading>Real Projection Accuracy</SectionHeading>
+          <GoldDivider />
+          <p className="text-sm text-white/40 max-w-lg mx-auto leading-relaxed">
+            Top-ranked players from the latest round where projections landed within 10 points of the final AFL Fantasy score.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+          {loading
+            ? Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] p-5 animate-pulse">
+                  <div className="h-4 w-32 bg-white/[0.08] rounded mb-2" />
+                  <div className="h-3 w-24 bg-white/[0.05] rounded mb-4" />
+                  <div className="h-3 w-28 bg-white/[0.05] rounded mb-1.5" />
+                  <div className="h-3 w-28 bg-white/[0.05] rounded mb-3" />
+                  <div className="h-5 w-28 bg-green-400/10 rounded" />
+                </div>
+              ))
+            : rows.length > 0
+              ? rows.map((r, i) => {
+                  const err    = Number(r.error);
+                  const errStr = err < 1 ? "< 1 pt" : `${Math.round(err)} pt${Math.round(err) === 1 ? "" : "s"}`;
+                  const badge  = accuracyBadge(r.accuracy_tier);
+                  return (
+                    <div key={`${r.player_name}-${i}`} className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] p-5 hover:border-white/[0.12] transition-all">
+                      <div className="flex items-start justify-between mb-0.5">
+                        <p className="text-base font-bold text-white leading-tight">{r.player_name}</p>
+                        {r.neeko_rank != null && (
+                          <span className="text-[10px] font-semibold text-[#F5C84C]/60 tabular-nums shrink-0 ml-2">#{r.neeko_rank}</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-white/35 mb-4">{r.team_name}</p>
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-white/30 uppercase tracking-widest font-semibold">Projection</span>
+                          <span className="text-sm font-bold text-[#F5C84C]">{r.projection} pts</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-white/30 uppercase tracking-widest font-semibold">Actual</span>
+                          <span className="text-sm font-bold text-white">{r.actual_score} pts</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-white/30 uppercase tracking-widest font-semibold">Error</span>
+                          <span className="text-xs font-bold text-white/50">{errStr} off</span>
+                        </div>
+                      </div>
+                      <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border ${badge.bg} ${badge.border}`}>
+                        <Check size={9} className={badge.textColor} />
+                        <span className={`text-[10px] font-bold uppercase tracking-wide ${badge.textColor}`}>{badge.label}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              : (
+                <div className="col-span-3 rounded-2xl border border-white/[0.07] bg-[#0e0e0e] p-8 text-center">
+                  <p className="text-sm font-semibold text-white/30">Accuracy data building...</p>
+                  <p className="text-xs text-white/18 mt-1">Examples will appear once round results are processed.</p>
+                </div>
+              )
+          }
+        </div>
+
+        <p className="text-center text-[11px] text-white/20 mt-5 tracking-wide">
+          Based on completed 2026 AFL season rounds. Individual results vary.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+// ─── SEO Block ────────────────────────────────────────────────────────────────
+
+function SEOBlock() {
+  return (
+    <section className="py-10 md:py-14 bg-[#070707] border-t border-white/[0.05]">
+      <div className="max-w-4xl mx-auto px-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <h3 className="text-sm font-bold text-white mb-2">AFL Fantasy Rankings</h3>
+            <p className="text-xs text-white/35 leading-relaxed">
+              The Neeko rankings engine calculates a weekly projection for every AFL Fantasy player based on historical scoring, opponent difficulty, and recent form. Updated before every round lockout across 600+ players.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white mb-2">AFL Fantasy Market Watch</h3>
+            <p className="text-xs text-white/35 leading-relaxed">
+              Market Watch identifies players whose current fantasy price is misaligned with their projected scoring output. Buy signals flag underpriced breakout candidates; sell signals highlight expensive players at risk of price falls.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white mb-2">AFL Fantasy Edge Board</h3>
+            <p className="text-xs text-white/35 leading-relaxed">
+              The Edge Board surfaces the model's strongest signals each round — must-have captains, breakout picks, and players to avoid. Each signal is derived from the projection engine, not manually selected.
+            </p>
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-white mb-2">How AFL Fantasy Projections Work</h3>
+            <p className="text-xs text-white/35 leading-relaxed">
+              Projections are calculated using a weighted average of recent form, season average, and opponent concession rate by position. The result is a single expected score per player per round, with a confidence band indicating how reliable the estimate is.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function Index() {
   const { isPremium } = useAuth();
+
+  const [players, setPlayers]   = useState<RankingRow[]>([]);
+  const [playersLoading, setPlayersLoading] = useState(true);
 
   useEffect(() => {
     document.title = "Neeko Sports Stats — AI AFL Fantasy Intelligence";
@@ -1408,6 +1145,42 @@ export default function Index() {
     };
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .schema("afl")
+        .from("player_rankings_cache")
+        .select(`
+          player_id, player_name, team, position,
+          projection_final, breakeven, edge, neeko_rating,
+          captain_score, trend_signal, projection_confidence,
+          signal_tag, value_signal, why, long, status, manual_status,
+          is_bye, games_played, ceiling_estimate, floor_estimate,
+          risk_rating, consistency_score, ai_updated_at, prev_price,
+          price_change, signal, price, season_avg, last_3_avg,
+          form_score, value_score, upside_pct
+        `)
+        .gte("games_played", 3)
+        .gte("projection_final", 70)
+        .order("neeko_rating", { ascending: false })
+        .limit(300);
+
+      setPlayers((data ?? []) as RankingRow[]);
+      setPlayersLoading(false);
+    })();
+  }, []);
+
+  const market = useMemo(
+    () => classifyPlayers(players.map(toMWPlayerRow)),
+    [players]
+  );
+
+  const HOW_IT_WORKS = [
+    { step: "01", icon: Database,  title: "Historical AFL Data Modelling",  desc: "Match data and player trends normalised into fantasy scoring metrics each round." },
+    { step: "02", icon: Cpu,       title: "Projection Engine",              desc: "Estimates scoring ranges, ceilings and volatility per player." },
+    { step: "03", icon: Radio,     title: "Edge Signals Delivered",         desc: "Captain picks, breakout alerts and trap warnings — ready before lockout." },
+  ];
+
   return (
     <div className="min-h-screen bg-[#070707] text-white pb-[80px] sm:pb-0">
 
@@ -1415,17 +1188,11 @@ export default function Index() {
       <section className="relative overflow-hidden min-h-[72vh] flex items-center">
         <div
           className="absolute inset-0"
-          style={{
-            backgroundImage: "url(/hero.jpg)",
-            backgroundSize: "cover",
-            backgroundPosition: "center 65%",
-          }}
+          style={{ backgroundImage: "url(/hero.jpg)", backgroundSize: "cover", backgroundPosition: "center 65%" }}
         />
         <div
           className="absolute inset-0"
-          style={{
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.75) 60%, #070707 100%)",
-          }}
+          style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.75) 60%, #070707 100%)" }}
         />
 
         <div className="relative z-10 w-full max-w-4xl mx-auto px-5 py-16 md:py-24 text-center">
@@ -1465,40 +1232,70 @@ export default function Index() {
           </div>
 
           <div className="mt-5 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6">
-            <p className="text-[12px] text-white/30 font-medium tracking-wide">
-              Updated before every AFL Fantasy round lockout
-            </p>
+            <p className="text-[12px] text-white/30 font-medium tracking-wide">Updated before every AFL Fantasy round lockout</p>
             <span className="hidden sm:block text-white/15">·</span>
-            <p className="text-[12px] text-white/30 font-medium tracking-wide">
-              600+ players ranked every week
-            </p>
+            <p className="text-[12px] text-white/30 font-medium tracking-wide">600+ players ranked every week</p>
           </div>
         </div>
       </section>
 
-      {/* ── SECTION 2: RANKINGS PREVIEW ───────────────────────────────────────── */}
-      <RankingsPreview />
+      {/* ── HOW IT WORKS (static) ─────────────────────────────────────────────── */}
+      <section className="py-8 md:py-12 bg-[#0a0a0a] border-t border-white/[0.05]">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            {HOW_IT_WORKS.map(({ step, icon: Icon, title, desc }) => (
+              <div key={step} className="flex items-start gap-4">
+                <div className="w-9 h-9 rounded-xl bg-[#F5C84C]/10 border border-[#F5C84C]/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <Icon size={16} className="text-[#F5C84C]" />
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#F5C84C]/50 mb-1">{step}</p>
+                  <p className="text-sm font-bold text-white leading-snug mb-1">{title}</p>
+                  <p className="text-xs text-white/35 leading-relaxed">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-      {/* ── SECTION 3: EDGE SIGNALS PREVIEW ──────────────────────────────────── */}
-      <EdgeBoardPreview />
+      {/* ── RANKINGS PREVIEW ──────────────────────────────────────────────────── */}
+      <RankingsPreview players={players} loading={playersLoading} />
 
-      {/* ── SECTION 3B: MARKET WATCH SAMPLE ──────────────────────────────────── */}
-      <LandingMarketWatchSample />
+      {/* ── EDGE BOARD PREVIEW ────────────────────────────────────────────────── */}
+      <EdgeBoardPreview players={players} loading={playersLoading} />
 
-      {/* ── SECTION 4: FEATURE CARDS / TOOLKIT ───────────────────────────────── */}
+      {/* ── MARKET WATCH SAMPLE ───────────────────────────────────────────────── */}
+      <LandingMarketWatchSample
+        buys={market.buys}
+        holds={market.holds}
+        sells={market.sells}
+        loading={playersLoading}
+      />
+
+      {/* ── FEATURE CARDS ─────────────────────────────────────────────────────── */}
       <FeatureCards />
 
-      {/* ── SECTION 5: PROBLEM / WHY COACHES LOSE ────────────────────────────── */}
+      {/* ── PROBLEM SECTION ───────────────────────────────────────────────────── */}
       <ProblemSection />
 
-      {/* ── SECTION 6: MODEL ACCURACY ─────────────────────────────────────────── */}
+      {/* ── MODEL ACCURACY ────────────────────────────────────────────────────── */}
       <ModelAccuracySection />
 
-      {/* ── SECTION 7: PROJECTION ACCURACY ───────────────────────────────────── */}
+      {/* ── OUTCOME PROOF ─────────────────────────────────────────────────────── */}
       <OutcomeProofSection />
 
-      {/* ── SECTION 8: WHO IT'S FOR ───────────────────────────────────────────── */}
+      {/* ── WHO IT'S FOR ──────────────────────────────────────────────────────── */}
       <WhoForSection />
+
+      {/* ── WHY NEEKO ─────────────────────────────────────────────────────────── */}
+      <WhyNeekoSection />
+
+      {/* ── PREMIUM SECTION ───────────────────────────────────────────────────── */}
+      <PremiumSection />
+
+      {/* ── SEO BLOCK ─────────────────────────────────────────────────────────── */}
+      <SEOBlock />
 
       {/* ── FINAL CTA ─────────────────────────────────────────────────────────── */}
       <section className="py-12 md:py-16 bg-[#0a0a0a] border-t border-white/[0.05]">
@@ -1509,9 +1306,7 @@ export default function Index() {
           <h2 className="text-2xl md:text-4xl font-extrabold mb-3 leading-tight">
             Start Winning More AFL Fantasy Matchups
           </h2>
-          <p className="text-white/40 text-sm mb-5 max-w-sm mx-auto leading-relaxed">
-            Use data instead of guesswork.
-          </p>
+          <p className="text-white/40 text-sm mb-5 max-w-sm mx-auto leading-relaxed">Use data instead of guesswork.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
             <Link
               to="/neeko-plus"
@@ -1541,14 +1336,10 @@ export default function Index() {
       <footer className="border-t border-white/[0.05] bg-[#070707] py-8">
         <div className="max-w-4xl mx-auto px-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <p className="text-xs text-white/25">
-              © {new Date().getFullYear()} Neeko Sports Stats. All rights reserved.
-            </p>
+            <p className="text-xs text-white/25">© {new Date().getFullYear()} Neeko Sports Stats. All rights reserved.</p>
             <div className="flex gap-5 text-xs">
               {FOOTER_LINKS.map((l) => (
-                <Link key={l.to} to={l.to} className="text-white/25 hover:text-white/60 transition-colors">
-                  {l.label}
-                </Link>
+                <Link key={l.to} to={l.to} className="text-white/25 hover:text-white/60 transition-colors">{l.label}</Link>
               ))}
             </div>
           </div>
