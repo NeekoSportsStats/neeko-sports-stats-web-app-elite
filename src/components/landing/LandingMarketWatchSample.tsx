@@ -116,11 +116,11 @@ interface LandingMarketWatchSampleProps {
 }
 
 export function LandingMarketWatchSample({ buys, holds, sells, loading }: LandingMarketWatchSampleProps) {
-  const players: DerivedPlayer[] = [
-    ...buys.slice(0, 2),
-    ...holds.slice(0, 2),
-    ...sells.slice(0, 2),
-  ];
+  const allPlayers = [...buys, ...holds, ...sells];
+  const targets = allPlayers.filter(p => p.display_signal === "TARGET").slice(0, 2);
+  const watch   = allPlayers.filter(p => p.display_signal === "WATCH").slice(0, 2);
+  const avoid   = allPlayers.filter(p => p.display_signal === "AVOID").slice(0, 2);
+  const players: DerivedPlayer[] = [...targets, ...watch, ...avoid];
 
   return (
     <section className="py-10 md:py-14 bg-[#070707] border-t border-white/[0.05]">

@@ -243,8 +243,10 @@ function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
                   );
                 }
 
-                const edgeVal = player.edge ?? 0;
-                const edgeColor = edgeVal > 5 ? "text-green-400" : edgeVal < -5 ? "text-red-400" : "text-[#F5C84C]";
+                const roleText =
+                  section === "must_have" ? "Top projected scorer this round" :
+                  section === "breakout"  ? "Breakout upside — watch before locking in" :
+                  "Model flags elevated risk — sell or avoid";
 
                 return (
                   <div
@@ -272,9 +274,7 @@ function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
                       {player.projection_final != null && (
                         <EdgeStatRow label="Projection" value={`${Math.round(player.projection_final)} pts`} valueColor="text-[#F5C84C]" />
                       )}
-                      {edgeVal !== 0 && (
-                        <EdgeStatRow label="Edge" value={edgeVal > 0 ? `+${edgeVal.toFixed(1)}` : edgeVal.toFixed(1)} valueColor={edgeColor} />
-                      )}
+                      <EdgeStatRow label="Signal" value={roleText} valueColor="text-white/45" />
                     </div>
                   </div>
                 );
