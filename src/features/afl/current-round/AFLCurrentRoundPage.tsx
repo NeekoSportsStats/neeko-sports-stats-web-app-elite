@@ -48,7 +48,7 @@ const COLUMNS =
   "market_watch_category,upside_pct," +
   "status,manual_status,is_available," +
   "bye_round,is_bye,bye_next_round,games_played," +
-  "signal,baseline,edge,season_avg,last_3_avg,value," +
+  "signal,baseline,edge,season_avg,last_3_avg,value_score," +
   "trend_score,trend_signal,value_signal," +
   "form_delta,form_label";
 
@@ -104,7 +104,7 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
     edge:         raw.edge != null ? Number(raw.edge) : null,
     season_avg:   raw.season_avg != null ? Number(raw.season_avg) : null,
     last_3_avg:   raw.last_3_avg != null ? Number(raw.last_3_avg) : null,
-    value:        raw.value != null ? Number(raw.value) : null,
+    value_score:  raw.value_score != null ? Number(raw.value_score) : null,
     trend_score:  raw.trend_score != null ? Number(raw.trend_score) : null,
     trend_signal: (raw.trend_signal as string) ?? null,
     value_signal: (raw.value_signal as string) ?? null,
