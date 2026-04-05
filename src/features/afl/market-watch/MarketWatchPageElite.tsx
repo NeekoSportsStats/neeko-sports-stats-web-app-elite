@@ -43,41 +43,48 @@ export default function MarketWatchPageElite() {
 
       if (error) throw error;
 
-      const mapped: MWPlayerRow[] = (data ?? []).map((r: any) => ({
-        snapshot_id: r.snapshot_id ?? 'market-watch',
-        player_id: r.player_id,
-        player_name: r.player_name,
-        team: r.team,
-        position: r.position,
-        price: r.price ?? 0,
-        breakeven: r.breakeven ?? 0,
-        projection: r.projection ?? 0,
-        ceiling: r.ceiling ?? null,
-        floor_val: r.floor_val ?? null,
-        risk_pct: r.risk_pct ?? null,
-        value_gap: r.value_gap ?? 0,
-        signal_tag: r.signal_tag ?? null,
-        signal: r.signal ?? null,
-        category: (r.category ?? 'HOLD').toUpperCase(),
-        action: (r.category ?? 'HOLD').toUpperCase(),
-        recommendation_short: r.recommendation_short ?? null,
-        summary_short: r.summary_short ?? null,
-        summary_long: r.summary_long ?? null,
-        matchup_label: r.matchup_label ?? null,
-        prev_price: r.prev_price ?? null,
-        price_change: r.price_change ?? null,
-        consistency: r.consistency ?? null,
-        projection_confidence: r.projection_confidence ?? null,
-        neeko_rating: r.neeko_rating ?? null,
-        season: r.season ?? 2026,
-        round_number: r.round_number ?? 1,
-        snapshot_updated_at: r.snapshot_updated_at ?? new Date().toISOString(),
-        is_injured: ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()) || ['injured', 'out'].includes((r.manual_status ?? '').toLowerCase()),
-        is_bye: r.is_bye === true || (r.status ?? '').toLowerCase() === 'bye' || (r.manual_status ?? '').toLowerCase() === 'bye',
-        status: r.status ?? null,
-        manual_status: r.manual_status ?? null,
-        value_signal: r.value_signal ?? null,
-      }));
+      const mapped: MWPlayerRow[] = (data ?? []).map((r: any) => {
+        const valueGap = parseFloat(r.value_gap ?? '0') || 0;
+        const displaySignal: "TARGET" | "WATCH" | "AVOID" =
+          valueGap > 5 ? "TARGET" : valueGap < -5 ? "AVOID" : "WATCH";
+
+        return {
+          snapshot_id: r.snapshot_id ?? 'market-watch',
+          player_id: r.player_id,
+          player_name: r.player_name,
+          team: r.team,
+          position: r.position,
+          price: r.price ?? 0,
+          breakeven: parseFloat(r.breakeven ?? '0') || 0,
+          projection: parseFloat(r.projection ?? '0') || 0,
+          ceiling: r.ceiling ?? null,
+          floor_val: r.floor_val ?? null,
+          risk_pct: r.risk_pct ?? null,
+          value_gap: valueGap,
+          signal_tag: r.signal_tag ?? null,
+          signal: r.signal ?? null,
+          category: displaySignal === "TARGET" ? "BUY" : displaySignal === "AVOID" ? "SELL" : "HOLD",
+          action: displaySignal === "TARGET" ? "BUY" : displaySignal === "AVOID" ? "SELL" : "HOLD",
+          recommendation_short: r.recommendation_short ?? null,
+          summary_short: r.summary_short ?? null,
+          summary_long: r.summary_long ?? null,
+          matchup_label: r.matchup_label ?? null,
+          prev_price: r.prev_price ?? null,
+          price_change: r.price_change ?? null,
+          consistency: r.consistency ?? null,
+          projection_confidence: r.projection_confidence ?? null,
+          neeko_rating: r.neeko_rating ?? null,
+          season: r.season ?? 2026,
+          round_number: r.round_number ?? 1,
+          snapshot_updated_at: r.snapshot_updated_at ?? new Date().toISOString(),
+          is_injured: ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()) || ['injured', 'out'].includes((r.manual_status ?? '').toLowerCase()),
+          is_bye: r.is_bye === true || (r.status ?? '').toLowerCase() === 'bye' || (r.manual_status ?? '').toLowerCase() === 'bye',
+          status: r.status ?? null,
+          manual_status: r.manual_status ?? null,
+          value_signal: displaySignal,
+          display_signal: displaySignal,
+        };
+      });
 
       // FREE TIER: Filter out injured/bye players for cleaner first impression
       const finalPlayers = premium ? mapped : mapped.filter(p => !p.is_injured && !p.is_bye);
@@ -107,15 +114,20 @@ export default function MarketWatchPageElite() {
     return classifyPlayers(players);
   }, [players]);
 
-  // MEMOIZE: All derived players sorted by ABS(value_gap) DESC — strongest signals first
+  // MEMOIZE: All derived players — bucket-first (TARGET → WATCH → AVOID), then by value within bucket
   const allDerivedPlayers = useMemo(() => {
+    const bucketOrder: Record<string, number> = { BUY: 0, HOLD: 1, SELL: 2 };
     return [
       ...(classified?.buys ?? []),
       ...(classified?.holds ?? []),
       ...(classified?.sells ?? []),
     ]
       .filter(p => p && p.player_id)
-      .sort((a, b) => Math.abs(b.value_gap ?? 0) - Math.abs(a.value_gap ?? 0));
+      .sort((a, b) => {
+        const bucketDiff = (bucketOrder[a._category] ?? 1) - (bucketOrder[b._category] ?? 1);
+        if (bucketDiff !== 0) return bucketDiff;
+        return (b.value_gap ?? 0) - (a.value_gap ?? 0);
+      });
   }, [classified]);
 
   // MEMOIZE: Filtered players (prevents re-filter on every render)
@@ -177,25 +189,25 @@ export default function MarketWatchPageElite() {
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
 
-  // Top cards: source from value_signal, pick highest ABS(value_gap) in each category
+  // Top cards: use display_signal (computed from value_gap), pick strongest in each bucket
   const topTarget = useMemo(() => {
     const sorted = [...players]
-      .filter(p => { const vs = (p.value_signal ?? "").toUpperCase(); return vs === "STRONG_BUY" || vs === "BUY"; })
-      .sort((a, b) => Math.abs(b.value_gap ?? 0) - Math.abs(a.value_gap ?? 0));
+      .filter(p => p.display_signal === "TARGET" && !p.is_injured && !p.is_bye)
+      .sort((a, b) => (b.value_gap ?? 0) - (a.value_gap ?? 0));
     return sorted[0] ? { ...sorted[0], _category: 'BUY' as const } : null;
   }, [players]);
 
   const topWatch = useMemo(() => {
     const sorted = [...players]
-      .filter(p => (p.value_signal ?? "").toUpperCase() === "HOLD")
-      .sort((a, b) => Math.abs(b.value_gap ?? 0) - Math.abs(a.value_gap ?? 0));
+      .filter(p => p.display_signal === "WATCH" && !p.is_injured && !p.is_bye)
+      .sort((a, b) => (b.value_gap ?? 0) - (a.value_gap ?? 0));
     return sorted[0] ? { ...sorted[0], _category: 'HOLD' as const } : null;
   }, [players]);
 
   const topAvoid = useMemo(() => {
     const sorted = [...players]
-      .filter(p => { const vs = (p.value_signal ?? "").toUpperCase(); return vs === "SELL" || vs === "STRONG_SELL"; })
-      .sort((a, b) => Math.abs(b.value_gap ?? 0) - Math.abs(a.value_gap ?? 0));
+      .filter(p => p.display_signal === "AVOID" && !p.is_injured && !p.is_bye)
+      .sort((a, b) => (a.value_gap ?? 0) - (b.value_gap ?? 0));
     return sorted[0] ? { ...sorted[0], _category: 'SELL' as const } : null;
   }, [players]);
 

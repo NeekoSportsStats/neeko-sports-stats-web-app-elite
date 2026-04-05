@@ -36,6 +36,7 @@ export interface MWPlayerRow {
   season: number;
   round_number: number;
   value_signal: string | null;
+  display_signal: "TARGET" | "WATCH" | "AVOID";
 }
 
 export interface MWSummaryCard {

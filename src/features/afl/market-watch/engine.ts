@@ -1,8 +1,6 @@
 import { MWPlayerRow, MWSignal } from "./types";
-import { signalFromField } from "@/utils/aflEdgeSignal";
 
 export type { MWSignal };
-
 export interface DerivedPlayer extends MWPlayerRow {
   _category: MWSignal;
 }
@@ -61,19 +59,19 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   const sells: DerivedPlayer[] = [];
 
   for (const p of filtered) {
-    const valueSignal = (p.value_signal ?? p.signal ?? '').toUpperCase();
-    const canonical = signalFromField(valueSignal);
-    if (canonical === 'STRONG_BUY' || canonical === 'BUY') {
+    // Primary: use display_signal (computed from value_gap in mapper — always set)
+    if (p.display_signal === 'TARGET') {
       buys.push(tag(p, 'BUY'));
-    } else if (canonical === 'SELL' || canonical === 'STRONG_SELL') {
+    } else if (p.display_signal === 'AVOID') {
       sells.push(tag(p, 'SELL'));
-    } else if (canonical === 'HOLD') {
+    } else if (p.display_signal === 'WATCH') {
       holds.push(tag(p, 'HOLD'));
     } else {
-      const fallback = (p.signal_tag ?? (p.category ?? 'HOLD')).toUpperCase();
-      if (fallback === 'TARGET' || fallback === 'BUY')      buys.push(tag(p, 'BUY'));
-      else if (fallback === 'AVOID' || fallback === 'SELL') sells.push(tag(p, 'SELL'));
-      else                                                   holds.push(tag(p, 'HOLD'));
+      // Fallback for legacy rows without display_signal
+      const cat = (p.category ?? 'HOLD').toUpperCase();
+      if (cat === 'BUY' || cat === 'TARGET')        buys.push(tag(p, 'BUY'));
+      else if (cat === 'SELL' || cat === 'AVOID')   sells.push(tag(p, 'SELL'));
+      else                                           holds.push(tag(p, 'HOLD'));
     }
   }
 

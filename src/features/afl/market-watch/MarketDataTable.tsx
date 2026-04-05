@@ -271,7 +271,7 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
   const delta = useMemo(() => (player.projection || 0) - (player.breakeven || 0), [player.projection, player.breakeven]);
   const deltaColor = delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-white/60";
 
-  const signalStrength = useMemo(() => getSignalStrength(player), [player.value_signal]);
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.display_signal, player._category, player.value_gap]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
     player.summary_short,
@@ -353,7 +353,7 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
   const delta = useMemo(() => (player.projection || 0) - (player.breakeven || 0), [player.projection, player.breakeven]);
   const deltaColor = delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-white/60";
 
-  const signalStrength = useMemo(() => getSignalStrength(player), [player.value_signal]);
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.display_signal, player._category, player.value_gap]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
     player.summary_short,
@@ -413,19 +413,19 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
 });
 
 function getSignalStrength(player: DerivedPlayer) {
-  const vs = (player.value_signal ?? "HOLD").toUpperCase();
+  const sig = player.display_signal ?? (player._category === 'BUY' ? 'TARGET' : player._category === 'SELL' ? 'AVOID' : 'WATCH');
 
-  if (vs === "STRONG_BUY") {
-    return { icon: "🔥", label: "TARGET", bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/40" };
+  if (sig === "TARGET") {
+    const isStrong = (player.value_gap ?? 0) > 15;
+    return isStrong
+      ? { icon: "🔥", label: "TARGET", bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/40" }
+      : { icon: "✅", label: "TARGET", bg: "bg-green-500/15", text: "text-green-400", border: "border-green-500/30" };
   }
-  if (vs === "BUY") {
-    return { icon: "✅", label: "TARGET", bg: "bg-green-500/15", text: "text-green-400", border: "border-green-500/30" };
-  }
-  if (vs === "STRONG_SELL") {
-    return { icon: "🚫", label: "AVOID", bg: "bg-red-500/20", text: "text-red-400", border: "border-red-500/40" };
-  }
-  if (vs === "SELL") {
-    return { icon: "⚠️", label: "AVOID", bg: "bg-red-500/15", text: "text-red-400", border: "border-red-500/30" };
+  if (sig === "AVOID") {
+    const isStrong = (player.value_gap ?? 0) < -15;
+    return isStrong
+      ? { icon: "🚫", label: "AVOID", bg: "bg-red-500/20", text: "text-red-400", border: "border-red-500/40" }
+      : { icon: "⚠️", label: "AVOID", bg: "bg-red-500/15", text: "text-red-400", border: "border-red-500/30" };
   }
   return { icon: "👁", label: "WATCH", bg: "bg-[#F5C84C]/10", text: "text-[#F5C84C]", border: "border-[#F5C84C]/30" };
 }
