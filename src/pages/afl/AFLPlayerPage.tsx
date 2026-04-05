@@ -21,7 +21,7 @@ import {
   getTrendLabel, getTrendStyles, getTrendAction, getTrendActionStyles,
   getFormLabel, getFormStyles,
 } from "@/features/afl/rankings/components/helpers";
-import { signalFromField, formatEdgeSignalLabel } from "@/utils/aflEdgeSignal";
+import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from "@/utils/aflEdgeSignal";
 
 interface PlayerData {
   player_id: number | string;
