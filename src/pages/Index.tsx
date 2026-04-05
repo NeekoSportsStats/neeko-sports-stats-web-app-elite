@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import {
   Crown, ArrowRight, Star, TrendingUp,
@@ -1163,18 +1164,6 @@ export default function Index() {
   const [mwPlayers, setMwPlayers] = useState<MWPlayerRow[]>([]);
   const [mwLoading, setMwLoading] = useState(true);
 
-  useEffect(() => {
-    document.title = "Neeko Sports Stats — AI AFL Fantasy Intelligence";
-    const metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) metaDesc.setAttribute("content", "AI-powered AFL fantasy projections, rankings, and trade insights. Captain picks, breakout alerts and trade signals updated every round.");
-    const ogTitle = document.querySelector('meta[property="og:title"]');
-    if (ogTitle) ogTitle.setAttribute("content", "Neeko Sports Stats — AI AFL Fantasy Intelligence");
-    const ogDesc = document.querySelector('meta[property="og:description"]');
-    if (ogDesc) ogDesc.setAttribute("content", "AI-powered AFL fantasy projections, rankings, and trade insights.");
-    return () => {
-      document.title = "Neeko Sports Stats — AI AFL Fantasy Projections";
-    };
-  }, []);
 
   useEffect(() => {
     (async () => {
@@ -1337,6 +1326,23 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-[#070707] text-white pb-[80px] sm:pb-0">
+      <Helmet>
+        <title>Neeko Sports Stats — AI AFL Fantasy Intelligence</title>
+        <meta name="description" content="AI-powered AFL fantasy projections, rankings, and trade insights. Captain picks, breakout alerts and trade signals updated every round." />
+        <link rel="canonical" href="https://neekostats.com.au/" />
+        <meta property="og:title" content="Neeko Sports Stats — AI AFL Fantasy Intelligence" />
+        <meta property="og:description" content="AI-powered AFL fantasy projections, rankings, and trade insights. Captain picks, breakout alerts and trade signals updated every round." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://neekostats.com.au/" />
+        <meta property="og:site_name" content="Neeko Sports" />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Neeko Sports Stats — AI AFL Fantasy Intelligence" />
+        <meta name="twitter:description" content="AI-powered AFL fantasy projections, rankings, and trade insights. Captain picks, breakout alerts and trade signals updated every round." />
+        <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
+        <meta name="robots" content="index, follow" />
+        <meta name="author" content="Neeko Sports" />
+      </Helmet>
 
       {/* ── HERO ──────────────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden min-h-[72vh] flex items-center">
