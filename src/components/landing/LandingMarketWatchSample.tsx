@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { TrendingUp, TrendingDown, Minus, Lock, ArrowRight, Crown, CircleAlert as AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
-import { signalFromField } from "@/utils/aflEdgeSignal";
 
 interface RankingsCacheRow {
   player_id: number;
@@ -12,8 +11,9 @@ interface RankingsCacheRow {
   price: number | null;
   projection_final: number | null;
   breakeven: number | null;
+  value_score: number | null;
   value_gap: number | null;
-  signal: string | null;
+  value_signal: string | null;
   summary_short: string | null;
   is_bye: boolean | null;
   status: string | null;
@@ -22,10 +22,10 @@ interface RankingsCacheRow {
 
 type SignalTier = "TARGET" | "WATCH" | "AVOID";
 
-function mapSignalToTier(signal: string | null): SignalTier {
-  const s = signalFromField(signal);
-  if (s === "BUY" || s === "STRONG_BUY") return "TARGET";
-  if (s === "SELL" || s === "STRONG_SELL") return "AVOID";
+function mapValueSignalToTier(valueSignal: string | null): SignalTier {
+  const s = (valueSignal ?? "").toUpperCase();
+  if (s === "STRONG_BUY" || s === "BUY") return "TARGET";
+  if (s === "STRONG_SELL" || s === "SELL") return "AVOID";
   return "WATCH";
 }
 
@@ -78,7 +78,7 @@ function SignalPill({ tier }: { tier: SignalTier }) {
 }
 
 function PlayerRow({ player, index }: { player: RankingsCacheRow; index: number }) {
-  const signal = mapSignalToTier(player.signal);
+  const signal = mapValueSignalToTier(player.value_signal);
   const valueGap = player.value_gap != null ? Math.round(player.value_gap) : null;
   const isInjured = player.status === "injured" || player.manual_status === "injured";
   const isBye = player.is_bye === true || player.status === "bye" || player.manual_status === "bye";
@@ -142,8 +142,8 @@ export function LandingMarketWatchSample() {
         const { data, error } = await supabase
           .schema("afl")
           .from("player_rankings_cache")
-          .select("player_id, player_name, team, position, price, projection_final, breakeven, signal, summary_short, is_bye, status, manual_status")
-          .not("signal", "is", null)
+          .select("player_id, player_name, team, position, price, projection_final, breakeven, value_score, value_signal, summary_short, is_bye, status, manual_status")
+          .not("value_signal", "is", null)
           .gte("games_played", 3)
           .gt("projection_final", 50)
           .limit(100);
@@ -159,9 +159,9 @@ export function LandingMarketWatchSample() {
           value_gap: (p.projection_final ?? 0) - (p.breakeven ?? 0) || null,
         })) as RankingsCacheRow[];
 
-        const targets = pool.filter(p => mapSignalToTier(p.signal) === "TARGET");
-        const watches = pool.filter(p => mapSignalToTier(p.signal) === "WATCH");
-        const avoids  = pool.filter(p => mapSignalToTier(p.signal) === "AVOID");
+        const targets = pool.filter(p => mapValueSignalToTier(p.value_signal) === "TARGET");
+        const watches = pool.filter(p => mapValueSignalToTier(p.value_signal) === "WATCH");
+        const avoids  = pool.filter(p => mapValueSignalToTier(p.value_signal) === "AVOID");
 
         const shuffledTargets = shuffle(targets);
         const shuffledWatches = shuffle(watches);
@@ -178,7 +178,7 @@ export function LandingMarketWatchSample() {
 
         let i = 0;
         while (picks.length < 6 && i < remaining.length) {
-          if (remaining[i].signal) {
+          if (remaining[i].value_signal) {
             picks.push(remaining[i]);
           }
           i++;

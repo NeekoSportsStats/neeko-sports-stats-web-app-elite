@@ -22,7 +22,7 @@ interface RankingRow {
   team: string | null;
   position: string | null;
   projection_final: number | null;
-  signal: string | null;
+  trend_signal: string | null;
   summary_short: string | null;
 }
 
@@ -1185,20 +1185,11 @@ function OutcomeProofSection() {
 
 // ─── Rankings helpers ─────────────────────────────────────────────────────────
 
-function formatActionLabel(action: string | null): string {
-  if (!action) return "—";
-  switch (action.toUpperCase()) {
-    case "STRONG_BUY":  return "Strong Buy";
-    case "BUY":         return "Buy";
-    case "HOLD":        return "Hold";
-    case "SELL":        return "Sell";
-    case "STRONG_SELL": return "Strong Sell";
-    default:            return action.replace(/_/g, " ");
-  }
-}
-
-function getActionStyles(action: string | null): string {
-  return getEdgeSignalStyles(action);
+function trendSignalToAction(trend: string | null): { label: string; styles: string } {
+  const t = (trend ?? "").toUpperCase();
+  if (t === "STRONG_UP" || t === "UP")   return { label: "START", styles: "bg-green-500/15 text-green-400 border border-green-500/30" };
+  if (t === "DOWN" || t === "STRONG_DOWN") return { label: "SIT",   styles: "bg-red-500/15 text-red-400 border border-red-500/30" };
+  return { label: "HOLD", styles: "bg-yellow-400/10 text-yellow-300 border border-yellow-400/20" };
 }
 
 function RankingsPreview() {
@@ -1208,20 +1199,21 @@ function RankingsPreview() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase
-        .from("v_players_canonical")
-        .select("id, name, team, position, projection, signal, summary_short")
+        .schema("afl")
+        .from("player_rankings_cache")
+        .select("player_id, player_name, team, position, projection_final, trend_signal, summary_short")
         .gte("games_played", 3)
-        .gt("projection", 50)
-        .not("signal", "eq", "STRONG_SELL")
-        .order("projection", { ascending: false })
+        .gt("projection_final", 50)
+        .not("trend_signal", "is", null)
+        .order("projection_final", { ascending: false })
         .limit(5);
       setRows((data ?? []).map((r: Record<string, unknown>) => ({
-        player_id: String(r.id ?? ""),
-        player_name: String(r.name ?? ""),
+        player_id: String(r.player_id ?? ""),
+        player_name: String(r.player_name ?? ""),
         team: (r.team as string) ?? null,
         position: (r.position as string) ?? null,
-        projection_final: r.projection != null ? Number(r.projection) : null,
-        signal: (r.signal as string) ?? null,
+        projection_final: r.projection_final != null ? Number(r.projection_final) : null,
+        trend_signal: (r.trend_signal as string) ?? null,
         summary_short: (r.summary_short as string) ?? null,
       })));
       setLoading(false);
@@ -1271,10 +1263,10 @@ function RankingsPreview() {
                       <div className="flex justify-end">
                         {row.projection_final != null
                           ? (() => {
-                              const sig = signalFromField(row.signal);
+                              const action = trendSignalToAction(row.trend_signal);
                               return (
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold border ${getEdgeSignalStyles(sig)}`}>
-                                  {formatEdgeSignalLabel(sig)}
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold ${action.styles}`}>
+                                  {action.label}
                                 </span>
                               );
                             })()
@@ -1338,10 +1330,10 @@ function RankingsPreview() {
                       <div className="flex justify-end">
                         {row.projection_final != null
                           ? (() => {
-                              const sig = signalFromField(row.signal);
+                              const action = trendSignalToAction(row.trend_signal);
                               return (
-                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold border ${getEdgeSignalStyles(sig)}`}>
-                                  {formatEdgeSignalLabel(sig)}
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold ${action.styles}`}>
+                                  {action.label}
                                 </span>
                               );
                             })()
