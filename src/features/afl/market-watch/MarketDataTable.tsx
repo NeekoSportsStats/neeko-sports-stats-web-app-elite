@@ -3,9 +3,7 @@ import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { cleanAiText } from "@/utils/cleanAiText";
-import { generateSmartWhy, getValueRankLabel, getValueRankColor, calculateValueRank } from "./helpers";
-import { mapMarketLabel } from "@/utils/marketLabels";
-import { signalFromField } from "@/utils/aflEdgeSignal";
+import { generateSmartWhy, calculateValueRank } from "./helpers";
 
 type SortField = "player" | "projection" | "breakeven" | "price" | "value_gap" | "signal";
 type SortDirection = "asc" | "desc";
@@ -126,7 +124,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 onSort={handleSort}
               />
               <SortableHeader
-                label="Value Gap"
+                label="Value Rating"
                 field="value_gap"
                 currentField={sortField}
                 direction={sortDirection}
@@ -273,7 +271,7 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
   const delta = useMemo(() => (player.projection || 0) - (player.breakeven || 0), [player.projection, player.breakeven]);
   const deltaColor = delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-white/60";
 
-  const signalStrength = useMemo(() => getSignalStrength(player), [player.signal, player._category, player.category]);
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.value_signal]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
     player.summary_short,
@@ -282,12 +280,11 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
   ]);
   const truncatedWhy = useMemo(() => truncateWhy(smartWhy, 80), [smartWhy]);
 
-  const { percentile, rankLabel, rankColor } = useMemo(() => {
+  const { percentileLabel, percentileColor } = useMemo(() => {
     const { percentile } = calculateValueRank(allPlayers, player);
     return {
-      percentile,
-      rankLabel: getValueRankLabel(percentile),
-      rankColor: getValueRankColor(percentile),
+      percentileLabel: getPercentileLabel(percentile),
+      percentileColor: getPercentileColor(percentile),
     };
   }, [allPlayers.length, player.value_gap]);
 
@@ -329,14 +326,9 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
         {formatPrice(player.price || 0)}
       </td>
       <td className="px-5 py-2.5">
-        <div className="flex items-center gap-1.5">
-          <span className={`text-base font-bold tabular-nums ${delta > 5 ? 'text-green-400' : delta < -5 ? 'text-red-400' : 'text-white/60'}`}>
-            {delta > 0 ? '+' : ''}{Math.round(delta)}
-          </span>
-          <span className={`text-[9px] font-medium opacity-60 ${rankColor}`}>
-            {rankLabel}
-          </span>
-        </div>
+        <span className={`text-xs font-semibold ${percentileColor}`}>
+          {percentileLabel}
+        </span>
       </td>
       <td className="px-5 py-2.5">
         <div className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold border rounded ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
@@ -361,7 +353,7 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
   const delta = useMemo(() => (player.projection || 0) - (player.breakeven || 0), [player.projection, player.breakeven]);
   const deltaColor = delta > 0 ? "text-green-400" : delta < 0 ? "text-red-400" : "text-white/60";
 
-  const signalStrength = useMemo(() => getSignalStrength(player), [player.signal, player._category, player.category]);
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.value_signal]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
     player.summary_short,
@@ -369,6 +361,14 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
     player.value_gap,
   ]);
   const truncatedWhy = useMemo(() => truncateWhy(smartWhy, 60), [smartWhy]);
+
+  const { percentileLabel, percentileColor } = useMemo(() => {
+    const { percentile } = calculateValueRank(allPlayers, player);
+    return {
+      percentileLabel: getPercentileLabel(percentile),
+      percentileColor: getPercentileColor(percentile),
+    };
+  }, [allPlayers.length, player.value_gap]);
 
   return (
     <div
@@ -404,10 +404,8 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
           <div className="font-bold text-white/80 text-[11px]">{formatPrice(player.price || 0)}</div>
         </div>
         <div>
-          <div className="text-white/40 text-[10px] mb-1">Gap</div>
-          <div className={`font-bold ${delta > 5 ? 'text-green-400' : delta < -5 ? 'text-red-400' : 'text-white/60'}`}>
-            {delta > 0 ? '+' : ''}{Math.round(delta)}
-          </div>
+          <div className="text-white/40 text-[10px] mb-1">Value</div>
+          <div className={`font-bold text-[11px] ${percentileColor}`}>{percentileLabel}</div>
         </div>
       </div>
     </div>
@@ -415,57 +413,35 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
 });
 
 function getSignalStrength(player: DerivedPlayer) {
-  const canonicalSignal = signalFromField(player.signal);
-  const category = player._category?.toUpperCase() || player.category?.toUpperCase() || "HOLD";
-  const baseLabel = mapMarketLabel(category);
+  const vs = (player.value_signal ?? "HOLD").toUpperCase();
 
-  if (canonicalSignal === "STRONG_BUY") {
-    return {
-      icon: "🔥",
-      label: "Strong Buy",
-      bg: "bg-green-500/20",
-      text: "text-green-400",
-      border: "border-green-500/40",
-    };
+  if (vs === "STRONG_BUY") {
+    return { icon: "🔥", label: "TARGET", bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/40" };
   }
-
-  if (canonicalSignal === "BUY") {
-    return {
-      icon: baseLabel.icon,
-      label: "Buy",
-      bg: baseLabel.bg,
-      text: baseLabel.color,
-      border: "border-green-500/30",
-    };
+  if (vs === "BUY") {
+    return { icon: "✅", label: "TARGET", bg: "bg-green-500/15", text: "text-green-400", border: "border-green-500/30" };
   }
-
-  if (canonicalSignal === "STRONG_SELL") {
-    return {
-      icon: "❌",
-      label: "Strong Sell",
-      bg: "bg-red-500/20",
-      text: "text-red-400",
-      border: "border-red-500/40",
-    };
+  if (vs === "STRONG_SELL") {
+    return { icon: "🚫", label: "AVOID", bg: "bg-red-500/20", text: "text-red-400", border: "border-red-500/40" };
   }
-
-  if (canonicalSignal === "SELL") {
-    return {
-      icon: baseLabel.icon,
-      label: "Sell",
-      bg: baseLabel.bg,
-      text: baseLabel.color,
-      border: "border-red-500/30",
-    };
+  if (vs === "SELL") {
+    return { icon: "⚠️", label: "AVOID", bg: "bg-red-500/15", text: "text-red-400", border: "border-red-500/30" };
   }
+  return { icon: "👁", label: "WATCH", bg: "bg-[#F5C84C]/10", text: "text-[#F5C84C]", border: "border-[#F5C84C]/30" };
+}
 
-  return {
-    icon: baseLabel.icon,
-    label: "Hold",
-    bg: "bg-[#F5C84C]/10",
-    text: "text-[#F5C84C]",
-    border: "border-[#F5C84C]/30",
-  };
+function getPercentileLabel(percentile: number): string {
+  if (percentile >= 90) return "Top 10%";
+  if (percentile >= 75) return "Top 25%";
+  if (percentile >= 50) return "Top 50%";
+  return "Bottom 25%";
+}
+
+function getPercentileColor(percentile: number): string {
+  if (percentile >= 90) return "text-green-400";
+  if (percentile >= 75) return "text-green-300";
+  if (percentile >= 50) return "text-white/60";
+  return "text-red-400";
 }
 
 function truncateWhy(text: string, maxLength: number): string {

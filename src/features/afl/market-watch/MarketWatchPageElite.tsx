@@ -40,6 +40,7 @@ export default function MarketWatchPageElite() {
         .order("value_gap", { ascending: false })
         .limit(limit);
 
+
       if (error) throw error;
 
       const mapped: MWPlayerRow[] = (data ?? []).map((r: any) => ({
@@ -106,13 +107,15 @@ export default function MarketWatchPageElite() {
     return classifyPlayers(players);
   }, [players]);
 
-  // MEMOIZE: All derived players in DB order (value_gap DESC from server — no re-sort)
+  // MEMOIZE: All derived players sorted by ABS(value_gap) DESC — strongest signals first
   const allDerivedPlayers = useMemo(() => {
     return [
       ...(classified?.buys ?? []),
       ...(classified?.holds ?? []),
       ...(classified?.sells ?? []),
-    ].filter(p => p && p.player_id);
+    ]
+      .filter(p => p && p.player_id)
+      .sort((a, b) => Math.abs(b.value_gap ?? 0) - Math.abs(a.value_gap ?? 0));
   }, [classified]);
 
   // MEMOIZE: Filtered players (prevents re-filter on every render)
@@ -174,12 +177,27 @@ export default function MarketWatchPageElite() {
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
 
-  // Top cards: use value_gap directly (DB already ordered value_gap DESC)
-  const topTarget = (classified?.buys ?? [])[0] || null;
-  const topWatch = [...(classified?.holds ?? [])]
-    .sort((a, b) => Math.abs(a.value_gap ?? 0) - Math.abs(b.value_gap ?? 0))[0] || null;
-  const topAvoid = [...(classified?.sells ?? [])]
-    .sort((a, b) => (a.value_gap ?? 0) - (b.value_gap ?? 0))[0] || null;
+  // Top cards: source from value_signal, pick highest ABS(value_gap) in each category
+  const topTarget = useMemo(() => {
+    const sorted = [...players]
+      .filter(p => { const vs = (p.value_signal ?? "").toUpperCase(); return vs === "STRONG_BUY" || vs === "BUY"; })
+      .sort((a, b) => Math.abs(b.value_gap ?? 0) - Math.abs(a.value_gap ?? 0));
+    return sorted[0] ? { ...sorted[0], _category: 'BUY' as const } : null;
+  }, [players]);
+
+  const topWatch = useMemo(() => {
+    const sorted = [...players]
+      .filter(p => (p.value_signal ?? "").toUpperCase() === "HOLD")
+      .sort((a, b) => Math.abs(b.value_gap ?? 0) - Math.abs(a.value_gap ?? 0));
+    return sorted[0] ? { ...sorted[0], _category: 'HOLD' as const } : null;
+  }, [players]);
+
+  const topAvoid = useMemo(() => {
+    const sorted = [...players]
+      .filter(p => { const vs = (p.value_signal ?? "").toUpperCase(); return vs === "SELL" || vs === "STRONG_SELL"; })
+      .sort((a, b) => Math.abs(b.value_gap ?? 0) - Math.abs(a.value_gap ?? 0));
+    return sorted[0] ? { ...sorted[0], _category: 'SELL' as const } : null;
+  }, [players]);
 
   if (loading) {
     return <MarketWatchSkeleton />;
@@ -250,7 +268,7 @@ export default function MarketWatchPageElite() {
               Market Watch
             </h1>
             <p className="text-sm text-white/50">
-              AI-powered trade signals · Updated weekly
+              Players ranked by value relative to price. Top-rated players offer the best trade upside.
             </p>
           </div>
 
