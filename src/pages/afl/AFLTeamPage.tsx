@@ -24,7 +24,6 @@ interface TeamPlayer {
   ai_recommendation: string | null;
   status: string | null;
   is_bye: boolean | null;
-  manual_status: string | null;
   games_played: number | null;
 }
 
@@ -122,7 +121,7 @@ function RosterRow({ player, rank }: { player: TeamPlayer; rank: number }) {
             <PlayerStatusPill
               row={{
                 status: player.status ?? null,
-                manual_status: player.manual_status ?? null,
+                manual_status: null,
                 is_bye: player.is_bye ?? null,
                 bye_next_round: null,
                 bye_round: null,
@@ -335,7 +334,6 @@ export default function AFLTeamPage() {
           ai_recommendation,
           status,
           is_bye,
-          manual_status,
           games_played
         `)
         .eq('team', teamName)
