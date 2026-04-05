@@ -49,7 +49,6 @@ interface PlayerData {
   signal?: string | null;
   trend_signal?: string | null;
   trend_score?: number | null;
-  value_signal?: string | null;
   form_delta?: number | null;
   form_label?: string | null;
   season_avg?: number | null;
@@ -719,7 +718,7 @@ export default function AFLPlayerPage() {
 
   const consistencyBadge = getConsistencyBadge(player.consistency_score ?? player.consistency ?? null);
   const capStyle         = getCaptainStyle(player.captain_rating ?? null);
-  const recColor         = getEdgeSignalColor(signalFromField(player.value_signal ?? player.signal ?? null));
+  const recColor         = getEdgeSignalColor(signalFromField(player.signal ?? null));
   const neekoRBadge      = getNeekoRatingBadge(player.neeko_rating ?? null);
   const riskBadge        = getRiskBadge(Number(player.risk_rating) ?? null);
 
@@ -757,14 +756,14 @@ export default function AFLPlayerPage() {
   const matchupLabel    = fmtMatchup(player.matchup_rating);
   const hasMatchup      = matchupLabel != null && matchupLabel !== "—" && matchupLabel.toUpperCase() !== "NEUTRAL";
 
-  const _sig   = signalFromField(player.value_signal ?? player.signal);
+  const _sig   = signalFromField(player.signal);
   const isBuy  = _sig === "BUY" || _sig === "STRONG_BUY";
   const isSell = _sig === "SELL" || _sig === "STRONG_SELL";
 
   const pageTitle = `${player.player_name} AFL Fantasy Stats, Projection & Value 2026 | Neeko`;
-  const pageDescription = player.value_score && (player.value_signal || player.signal)
-    ? `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points. ${getPositionName(player.player_position)} rankings, value score ${Math.round(player.value_score)}, AI signal: ${formatEdgeSignalLabel(signalFromField(player.value_signal ?? player.signal))}. Updated weekly.`
-    : `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points, ${Math.round(player.neeko_rating ?? 0)} Neeko rating. ${getPositionName(player.player_position)} rankings and analysis. Updated weekly.`;
+  const pageDescription = player.value_score && player.signal
+    ? `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points. ${getPositionName(player.player_position)} rankings, value score ${Math.round(player.value_score)}, AI signal: ${formatEdgeSignalLabel(signalFromField(player.signal))}. Updated weekly.`
+    : `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points. ${getPositionName(player.player_position)} rankings and AI analysis. Updated weekly.`;
   const pageUrl  = `https://neekostats.com.au/sports/afl/players/${slug}`;
   const keywords = `${player.player_name}, ${player.team}, AFL Fantasy, ${player.player_position}, fantasy football, player stats, projection, value, ${getPositionName(player.player_position)}`;
 
@@ -905,10 +904,10 @@ export default function AFLPlayerPage() {
                     <Zap size={9} className="text-[#F5C84C]/60" />
                     Verdict
                   </p>
-                  {(player.value_signal || player.signal) ? (
+                  {player.signal ? (
                     <>
                       <p className="text-base font-bold leading-tight" style={{ color: recColor }}>
-                        {formatEdgeSignalLabel(signalFromField(player.value_signal ?? player.signal))}
+                        {formatEdgeSignalLabel(signalFromField(player.signal))}
                       </p>
                       {player.why && (
                         <p className="text-[10px] text-white/40 mt-0.5 leading-snug line-clamp-2">{player.why}</p>

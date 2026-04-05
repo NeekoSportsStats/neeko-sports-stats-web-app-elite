@@ -54,8 +54,8 @@ export interface UseAFLPlayersResult {
 }
 
 const CANONICAL_COLUMNS =
-  "id,name,team,position,price,games_played," +
-  "projection,season_avg,last_3_avg,baseline,edge,signal,value,signal_tag," +
+  "player_id,player_name,team,position,price,games_played," +
+  "projection_final,season_avg,last_3_avg,baseline,edge,signal,value,signal_tag," +
   "summary_short,summary_long,status,manual_status,is_available," +
   "is_bye,bye_round,bye_next_round," +
   "neeko_rating,value_score,form_score,projection_confidence," +
@@ -75,13 +75,13 @@ function mapRow(r: Record<string, unknown>): AFLPlayer {
   const rawTag = (r.signal_tag as string) ?? "WATCH";
 
   return {
-    id: (r.id as string) ?? "",
-    name: (r.name as string) ?? "",
+    id: String(r.player_id ?? ""),
+    name: (r.player_name as string) ?? "",
     team: (r.team as string) ?? "",
     position: (r.position as string) ?? "",
     price: r.price != null ? Number(r.price) : null,
     gamesPlayed: r.games_played != null ? Number(r.games_played) : 0,
-    projection: r.projection != null ? Number(r.projection) : null,
+    projection: r.projection_final != null ? Number(r.projection_final) : null,
     seasonAvg: r.season_avg != null ? Number(r.season_avg) : null,
     last3Avg: r.last_3_avg != null ? Number(r.last_3_avg) : null,
     baseline: r.baseline != null ? Number(r.baseline) : null,
@@ -151,7 +151,7 @@ export function useAFLPlayers(options: UseAFLPlayersOptions = {}): UseAFLPlayers
     setError(null);
     try {
       let query = supabase
-        .from("v_players_canonical")
+        .from("player_rankings_cache")
         .select(CANONICAL_COLUMNS)
         .limit(limit);
 
