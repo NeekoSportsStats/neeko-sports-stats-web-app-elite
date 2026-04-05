@@ -21,9 +21,9 @@ import { classifyPlayers } from "@/features/afl/market-watch/engine";
 // ─── Adapter: RankingRow → MWPlayerRow ────────────────────────────────────────
 
 function toMWPlayerRow(r: RankingRow): MWPlayerRow {
-  const edge = r.projection_final != null && r.breakeven != null
-    ? r.projection_final - r.breakeven
-    : 0;
+  const rawTag = (r.signal_tag ?? "").toLowerCase();
+  const displaySignal: "TARGET" | "WATCH" | "AVOID" =
+    rawTag === "target" ? "TARGET" : rawTag === "avoid" ? "AVOID" : "WATCH";
   return {
     snapshot_id: r.player_id ?? "",
     player_id: Number(r.player_id ?? 0),
@@ -36,11 +36,11 @@ function toMWPlayerRow(r: RankingRow): MWPlayerRow {
     ceiling: null,
     floor_val: null,
     risk_pct: null,
-    value_gap: edge,
+    value_gap: r.edge != null ? Number(r.edge) : 0,
     signal_tag: (r.signal_tag as MWPlayerRow["signal_tag"]) ?? null,
     signal: r.signal ?? null,
-    category: "HOLD",
-    action: "HOLD",
+    category: displaySignal === "TARGET" ? "BUY" : displaySignal === "AVOID" ? "SELL" : "HOLD",
+    action: displaySignal === "TARGET" ? "BUY" : displaySignal === "AVOID" ? "SELL" : "HOLD",
     recommendation_short: null,
     summary_short: null,
     summary_long: null,
@@ -57,8 +57,8 @@ function toMWPlayerRow(r: RankingRow): MWPlayerRow {
     snapshot_updated_at: new Date().toISOString(),
     season: 2026,
     round_number: 0,
-    value_signal: null,
-    display_signal: "WATCH",
+    value_signal: displaySignal,
+    display_signal: displaySignal,
   };
 }
 
@@ -1178,7 +1178,7 @@ export default function Index() {
       const { data } = await supabase
         .schema("afl")
         .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, price, projection_final, breakeven, value_score, projection_confidence, signal, signal_tag, games_played, status, is_bye")
+        .select("player_id, player_name, team, position, price, projection_final, breakeven, edge, value_score, projection_confidence, signal, signal_tag, games_played, status, is_bye")
         .gte("games_played", 3)
         .order("projection_final", { ascending: false })
         .limit(100);
@@ -1221,7 +1221,7 @@ export default function Index() {
           total_count:           null,
           games_played:          r.games_played != null ? Number(r.games_played) : null,
           baseline:              null,
-          edge:                  proj != null && be != null ? proj - be : null,
+          edge:                  r.edge != null ? Number(r.edge) : null,
           signal:                (r.signal as string) ?? null,
           season_avg:            null,
           last_3_avg:            null,

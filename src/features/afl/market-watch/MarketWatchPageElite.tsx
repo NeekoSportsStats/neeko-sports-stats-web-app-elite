@@ -33,34 +33,37 @@ export default function MarketWatchPageElite() {
     setLoading(true);
     try {
       const limit = premium ? 200 : 100;
-      const viewName = premium ? "v_mw_premium" : "v_mw_free";
       const { data, error } = await supabase
-        .from(viewName)
-        .select("*")
-        .order("value_gap", { ascending: false })
+        .schema("afl")
+        .from("player_rankings_cache")
+        .select("player_id, player_name, team, position, price, breakeven, projection_final, edge, ceiling, floor_score, value_score, signal_tag, signal, recommendation_short, summary_short, summary_long, matchup_label, prev_price, price_change, consistency_score, projection_confidence, neeko_rating, status, manual_status, is_bye, games_played")
+        .eq("season", 2026)
+        .order("edge", { ascending: false })
         .limit(limit);
-
 
       if (error) throw error;
 
       const mapped: MWPlayerRow[] = (data ?? []).map((r: any) => {
-        const valueGap = parseFloat(r.value_gap ?? '0') || 0;
+        const rawTag = (r.signal_tag ?? "").toLowerCase();
         const displaySignal: "TARGET" | "WATCH" | "AVOID" =
-          valueGap > 5 ? "TARGET" : valueGap < -5 ? "AVOID" : "WATCH";
+          rawTag === "target" ? "TARGET" : rawTag === "avoid" ? "AVOID" : "WATCH";
+
+        const isInjured = ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()) || ['injured', 'out'].includes((r.manual_status ?? '').toLowerCase());
+        const isBye = r.is_bye === true || (r.status ?? '').toLowerCase() === 'bye' || (r.manual_status ?? '').toLowerCase() === 'bye';
 
         return {
-          snapshot_id: r.snapshot_id ?? 'market-watch',
+          snapshot_id: 'market-watch',
           player_id: r.player_id,
           player_name: r.player_name,
           team: r.team,
           position: r.position,
           price: r.price ?? 0,
           breakeven: parseFloat(r.breakeven ?? '0') || 0,
-          projection: parseFloat(r.projection ?? '0') || 0,
+          projection: parseFloat(r.projection_final ?? '0') || 0,
           ceiling: r.ceiling ?? null,
-          floor_val: r.floor_val ?? null,
-          risk_pct: r.risk_pct ?? null,
-          value_gap: valueGap,
+          floor_val: r.floor_score ?? null,
+          risk_pct: null,
+          value_gap: r.edge != null ? Number(r.edge) : 0,
           signal_tag: r.signal_tag ?? null,
           signal: r.signal ?? null,
           category: displaySignal === "TARGET" ? "BUY" : displaySignal === "AVOID" ? "SELL" : "HOLD",
@@ -71,14 +74,14 @@ export default function MarketWatchPageElite() {
           matchup_label: r.matchup_label ?? null,
           prev_price: r.prev_price ?? null,
           price_change: r.price_change ?? null,
-          consistency: r.consistency ?? null,
+          consistency: r.consistency_score ?? null,
           projection_confidence: r.projection_confidence ?? null,
           neeko_rating: r.neeko_rating ?? null,
-          season: r.season ?? 2026,
-          round_number: r.round_number ?? 1,
-          snapshot_updated_at: r.snapshot_updated_at ?? new Date().toISOString(),
-          is_injured: ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()) || ['injured', 'out'].includes((r.manual_status ?? '').toLowerCase()),
-          is_bye: r.is_bye === true || (r.status ?? '').toLowerCase() === 'bye' || (r.manual_status ?? '').toLowerCase() === 'bye',
+          season: 2026,
+          round_number: 1,
+          snapshot_updated_at: new Date().toISOString(),
+          is_injured: isInjured,
+          is_bye: isBye,
           status: r.status ?? null,
           manual_status: r.manual_status ?? null,
           value_signal: displaySignal,

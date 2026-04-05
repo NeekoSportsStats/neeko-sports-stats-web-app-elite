@@ -24,38 +24,22 @@ export interface BestTrade {
 // ─────────────────────────────────────────────────────────────────────────────
 // CANONICAL MARKET CLASSIFIER
 //
-// Single source of truth for BOTH display_signal AND value_rating_label.
-// Both are derived from the same percentile_rank — there is no split-brain.
-//
-// Buckets (percentile of value_gap across eligible players):
-//   top 20%  → TARGET  — "Elite Value" (top 10%) or "Strong Value" (top 20%)
-//   mid 40%  → WATCH   — "Fair Price" or "Monitor"
-//   bot 40%  → AVOID   — "Overpriced" or "Major Risk"
+// Reads signal_tag directly from the database — single source of truth.
+// signal_tag values from DB: "Target" | "Watch" | "Avoid"
+// Maps to DisplaySignal: "TARGET" | "WATCH" | "AVOID"
 // ─────────────────────────────────────────────────────────────────────────────
 
-function computePercentileRank(sortedValueGaps: number[], valueGap: number): number {
-  const total = sortedValueGaps.length;
-  if (total === 0) return 50;
-  let below = 0;
-  for (const v of sortedValueGaps) {
-    if (v < valueGap) below++;
-  }
-  return Math.round((below / total) * 100);
+function displaySignalFromTag(p: MWPlayerRow): DisplaySignal {
+  const raw = (p.signal_tag ?? p.display_signal ?? "").toLowerCase();
+  if (raw === "target") return "TARGET";
+  if (raw === "avoid") return "AVOID";
+  return "WATCH";
 }
 
-function signalFromPercentile(pct: number): DisplaySignal {
-  if (pct >= 80) return "TARGET";
-  if (pct >= 40) return "WATCH";
-  return "AVOID";
-}
-
-function labelFromPercentile(pct: number): string {
-  if (pct >= 90) return "Elite Value";
-  if (pct >= 80) return "Strong Value";
-  if (pct >= 60) return "Fair Price";
-  if (pct >= 40) return "Monitor";
-  if (pct >= 20) return "Overpriced";
-  return "Major Risk";
+function labelFromSignal(sig: DisplaySignal): string {
+  if (sig === "TARGET") return "Strong Value";
+  if (sig === "AVOID") return "Overpriced";
+  return "Fair Price";
 }
 
 function mwSignalFromDisplay(sig: DisplaySignal): MWSignal {
@@ -89,17 +73,14 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   }
 
   const eligible = raw.filter(isEligible);
-  const sortedGaps = eligible.map(p => Number(p.value_gap ?? 0)).sort((a, b) => a - b);
 
   const buys: DerivedPlayer[] = [];
   const holds: DerivedPlayer[] = [];
   const sells: DerivedPlayer[] = [];
 
   for (const p of eligible) {
-    const gap = Number(p.value_gap ?? 0);
-    const pct = computePercentileRank(sortedGaps, gap);
-    const display_signal = signalFromPercentile(pct);
-    const value_rating_label = labelFromPercentile(pct);
+    const display_signal = displaySignalFromTag(p);
+    const value_rating_label = labelFromSignal(display_signal);
     const _category = mwSignalFromDisplay(display_signal);
 
     const derived: DerivedPlayer = {
@@ -107,7 +88,7 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
       _category,
       display_signal,
       value_rating_label,
-      percentile_rank: pct,
+      percentile_rank: 50,
     };
 
     if (_category === "BUY") buys.push(derived);

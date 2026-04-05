@@ -19,7 +19,7 @@ type Section = "must_have" | "breakout" | "do_not_start";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, value_score, projection_confidence, signal, signal_tag, games_played, status, is_bye";
+const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, edge, value_score, projection_confidence, signal, signal_tag, games_played, status, is_bye";
 
 // Round lock: Next Thursday 19:35 AEDT
 function getNextRoundLock(): Date {
@@ -827,7 +827,7 @@ export default function AFLRoundEdgeBoard() {
           total_count:           null,
           games_played:          r.games_played != null ? Number(r.games_played) : null,
           baseline:              null,
-          edge:                  proj != null && be != null ? proj - be : null,
+          edge:                  r.edge != null ? Number(r.edge) : null,
           signal:                (r.signal as string) ?? null,
           season_avg:            null,
           last_3_avg:            null,
