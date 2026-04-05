@@ -508,18 +508,11 @@ function HeroPickCard({ player, section, isPremium, onOpen }: HeroPickCardProps)
 
   return (
     <button
-      className={`relative flex flex-col w-full rounded-2xl border ${cfg.border} ${cfg.bg} overflow-hidden text-left transition-all duration-150 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/40 active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20`}
+      className={`relative flex flex-col w-full overflow-hidden text-left transition-all duration-150 hover:bg-white/[0.02] active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20`}
       onClick={() => onOpen(player, section)}
     >
-      {/* Label */}
-      <div className="px-4 pt-4 pb-2">
-        <span className={`text-[10px] font-extrabold tracking-widest uppercase ${cfg.accentText}`}>
-          {cfg.emoji} {cfg.label}
-        </span>
-      </div>
-
       {/* Player */}
-      <div className="px-4 pb-3 border-b border-white/[0.06]">
+      <div className="px-4 pt-4 pb-3 border-b border-white/[0.06]">
         <div className="flex items-start justify-between gap-2">
           <div>
             <h3 className="text-xl font-extrabold text-white leading-tight">{player.player_name}</h3>
@@ -884,6 +877,12 @@ export default function AFLRoundEdgeBoard() {
   const breakoutPick   = breakout[0] ?? null;
   const avoidPick      = avoid[0] ?? null;
 
+  const sections: { players: EdgeBoardPlayer[]; section: Section; label: string; accentText: string; border: string; bg: string; emoji: string }[] = [
+    { players: mustHave, section: "must_have",    label: "MUST HAVE VALUE",      accentText: "text-green-400",  border: "border-green-500/30",  bg: "bg-green-500/[0.05]",  emoji: "🟢" },
+    { players: breakout, section: "breakout",     label: "BREAKOUT / WATCHLIST", accentText: "text-sky-400",    border: "border-sky-500/30",    bg: "bg-sky-500/[0.05]",    emoji: "⚡" },
+    { players: avoid,    section: "do_not_start", label: "DO NOT START",         accentText: "text-red-400",    border: "border-red-500/30",    bg: "bg-red-500/[0.05]",    emoji: "🚨" },
+  ];
+
   function handleOpenModal(row: RankingRow, section: Section) {
     if (!isPremium) {
       if (freeOpenCount.current >= 1) {
@@ -917,10 +916,7 @@ export default function AFLRoundEdgeBoard() {
     );
   }
 
-  const heroPicks: { player: EdgeBoardPlayer; section: Section }[] = [];
-  if (mustHavePick) heroPicks.push({ player: mustHavePick, section: "must_have" });
-  if (breakoutPick) heroPicks.push({ player: breakoutPick, section: "breakout" });
-  if (avoidPick)    heroPicks.push({ player: avoidPick,    section: "do_not_start" });
+  const hasAnyPicks = mustHave.length > 0 || breakout.length > 0 || avoid.length > 0;
 
   return (
     <>
@@ -989,20 +985,75 @@ export default function AFLRoundEdgeBoard() {
             </div>
           </div>
 
-          {/* ── Hero Picks Grid ───────────────────────────────────────────────── */}
-          {heroPicks.length > 0 && (
-            <div className="mb-5">
-              <div className={`grid gap-4 ${heroPicks.length === 3 ? "grid-cols-1 sm:grid-cols-3" : heroPicks.length === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 max-w-sm"}`}>
-                {heroPicks.map(({ player, section }) => (
-                  <HeroPickCard
-                    key={section}
-                    player={player}
-                    section={section}
-                    isPremium={isPremium}
-                    onOpen={handleOpenModal}
-                  />
-                ))}
-              </div>
+          {/* ── 3-Section Edge Board (3 players each) ─────────────────────── */}
+          {sections.some((s) => s.players.length > 0) && (
+            <div className="mb-5 space-y-5">
+              {sections.map(({ players: sectionPlayers, section, label, accentText, border, bg, emoji }) => {
+                if (sectionPlayers.length === 0) return null;
+                const heroPick = sectionPlayers[0];
+                const secondaryPicks = sectionPlayers.slice(1);
+                return (
+                  <div key={section} className={`rounded-2xl border ${border} ${bg} overflow-hidden`}>
+                    {/* Section header */}
+                    <div className="px-4 pt-4 pb-3 border-b border-white/[0.06]">
+                      <span className={`text-[10px] font-extrabold tracking-widest uppercase ${accentText}`}>
+                        {emoji} {label}
+                      </span>
+                    </div>
+
+                    {/* Hero pick (first player — full card) */}
+                    <HeroPickCard
+                      player={heroPick}
+                      section={section}
+                      isPremium={isPremium}
+                      onOpen={handleOpenModal}
+                    />
+
+                    {/* Secondary picks (2nd and 3rd — compact rows) */}
+                    {secondaryPicks.length > 0 && (
+                      <div className="border-t border-white/[0.06] divide-y divide-white/[0.04]">
+                        {secondaryPicks.map((player) => {
+                          const metric = getPrimaryMetric(player, section);
+                          const edgeVal = player.projection_final != null && player.breakeven != null
+                            ? player.projection_final - player.breakeven
+                            : (player.edge ?? 0);
+                          const edgePositive = edgeVal > 0;
+                          return (
+                            <button
+                              key={player.player_id}
+                              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.03] transition-colors"
+                              onClick={() => handleOpenModal(player, section)}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-bold text-white truncate">{player.player_name}</span>
+                                  {player.position && (
+                                    <span className={`shrink-0 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${getPositionBadgeStyle(player.position)}`}>
+                                      {player.position}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[11px] text-white/35">{player.team}</span>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">{metric.label}</p>
+                                <p className={`text-base font-extrabold tabular-nums ${metric.color}`}>{metric.value}</p>
+                              </div>
+                              <div className="text-right shrink-0 w-14">
+                                <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Edge</p>
+                                <p className={`text-sm font-bold tabular-nums ${edgePositive ? "text-green-400" : "text-red-400"}`}>
+                                  {edgePositive ? "+" : ""}{Math.round(edgeVal)}
+                                </p>
+                              </div>
+                              <ChevronRight size={12} className="text-white/20 shrink-0" />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -1014,7 +1065,7 @@ export default function AFLRoundEdgeBoard() {
           )}
 
           {/* ── Share section ─────────────────────────────────────────────────── */}
-          {heroPicks.length > 0 && (
+          {hasAnyPicks && (
             <div className="mb-6">
               <RoundSummaryShare mustHave={mustHavePick} breakout={breakoutPick} avoid={avoidPick} />
             </div>
