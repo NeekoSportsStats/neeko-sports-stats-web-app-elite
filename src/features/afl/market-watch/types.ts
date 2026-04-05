@@ -15,7 +15,7 @@ export interface MWPlayerRow {
   floor_val: number | null;
   risk_pct: number | null;
   value_gap: number;
-  signal_tag: "TARGET" | "WATCH" | "AVOID" | null;
+  signal_tag: "Target" | "Watch" | "Avoid" | "TARGET" | "WATCH" | "AVOID" | null;
   signal: string | null;
   category: MWSignal;
   action: MWSignal;

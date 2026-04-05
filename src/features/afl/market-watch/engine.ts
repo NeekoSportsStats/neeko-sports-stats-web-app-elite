@@ -71,7 +71,7 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
         holds.push(tag(p, 'HOLD'));
       }
     } else {
-      const fallback = p.signal_tag ?? (p.category ?? 'HOLD').toUpperCase();
+      const fallback = (p.signal_tag ?? (p.category ?? 'HOLD')).toUpperCase();
       if (fallback === 'TARGET' || fallback === 'BUY')      buys.push(tag(p, 'BUY'));
       else if (fallback === 'AVOID' || fallback === 'SELL') sells.push(tag(p, 'SELL'));
       else                                                   holds.push(tag(p, 'HOLD'));
