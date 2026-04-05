@@ -1,8 +1,14 @@
 import { MWPlayerRow, MWSignal } from "./types";
 
 export type { MWSignal };
+
+export type DisplaySignal = "TARGET" | "WATCH" | "AVOID";
+
 export interface DerivedPlayer extends MWPlayerRow {
   _category: MWSignal;
+  display_signal: DisplaySignal;
+  value_rating_label: string;
+  percentile_rank: number;
 }
 
 export interface BestTrade {
@@ -15,23 +21,62 @@ export interface BestTrade {
   why: string;
 }
 
-function tag(row: MWPlayerRow, category: MWSignal): DerivedPlayer {
-  return { ...row, _category: category };
+// ─────────────────────────────────────────────────────────────────────────────
+// CANONICAL MARKET CLASSIFIER
+//
+// Single source of truth for BOTH display_signal AND value_rating_label.
+// Both are derived from the same percentile_rank — there is no split-brain.
+//
+// Buckets (percentile of value_gap across eligible players):
+//   top 20%  → TARGET  — "Elite Value" (top 10%) or "Strong Value" (top 20%)
+//   mid 40%  → WATCH   — "Fair Price" or "Monitor"
+//   bot 40%  → AVOID   — "Overpriced" or "Major Risk"
+// ─────────────────────────────────────────────────────────────────────────────
+
+function computePercentileRank(sortedValueGaps: number[], valueGap: number): number {
+  const total = sortedValueGaps.length;
+  if (total === 0) return 50;
+  let below = 0;
+  for (const v of sortedValueGaps) {
+    if (v < valueGap) below++;
+  }
+  return Math.round((below / total) * 100);
 }
 
-function proj(row: MWPlayerRow): number {
-  return Number(row.projection ?? 0);
+function signalFromPercentile(pct: number): DisplaySignal {
+  if (pct >= 80) return "TARGET";
+  if (pct >= 40) return "WATCH";
+  return "AVOID";
 }
 
-function price(row: MWPlayerRow): number {
-  return Number(row.price ?? 0);
+function labelFromPercentile(pct: number): string {
+  if (pct >= 90) return "Elite Value";
+  if (pct >= 80) return "Strong Value";
+  if (pct >= 60) return "Fair Price";
+  if (pct >= 40) return "Monitor";
+  if (pct >= 20) return "Overpriced";
+  return "Major Risk";
+}
+
+function mwSignalFromDisplay(sig: DisplaySignal): MWSignal {
+  if (sig === "TARGET") return "BUY";
+  if (sig === "AVOID") return "SELL";
+  return "HOLD";
+}
+
+function isEligible(p: MWPlayerRow): boolean {
+  if (!p.player_id || !p.player_name) return false;
+  if (p.is_injured === true) return false;
+  if (p.is_bye === true) return false;
+  const st = (p.status ?? "").toLowerCase();
+  const ms = (p.manual_status ?? "").toLowerCase();
+  if (st === "injured" || st === "out" || st === "bye") return false;
+  if (ms === "injured" || ms === "out" || ms === "bye") return false;
+  return true;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CORE CLASSIFICATION ENGINE
-// Uses canonical 5-level signal from DB as single source of truth.
-// STRONG_BUY/BUY → buys, HOLD → holds, SELL/STRONG_SELL → sells
-// Falls back to signal_tag (TARGET/WATCH/AVOID) if canonical signal is missing.
+// PUBLIC API
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
@@ -43,36 +88,31 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
     return { buys: [], holds: [], sells: [] };
   }
 
-  const filtered = raw.filter(p => {
-    if (!p.player_id || !p.player_name) return false;
-    if (p.is_injured === true) return false;
-    if (p.is_bye === true) return false;
-    const st = (p.status ?? '').toLowerCase();
-    const ms = (p.manual_status ?? '').toLowerCase();
-    if (st === 'injured' || st === 'out' || st === 'bye') return false;
-    if (ms === 'injured' || ms === 'out' || ms === 'bye') return false;
-    return true;
-  });
+  const eligible = raw.filter(isEligible);
+  const sortedGaps = eligible.map(p => Number(p.value_gap ?? 0)).sort((a, b) => a - b);
 
   const buys: DerivedPlayer[] = [];
   const holds: DerivedPlayer[] = [];
   const sells: DerivedPlayer[] = [];
 
-  for (const p of filtered) {
-    // Primary: use display_signal (computed from value_gap in mapper — always set)
-    if (p.display_signal === 'TARGET') {
-      buys.push(tag(p, 'BUY'));
-    } else if (p.display_signal === 'AVOID') {
-      sells.push(tag(p, 'SELL'));
-    } else if (p.display_signal === 'WATCH') {
-      holds.push(tag(p, 'HOLD'));
-    } else {
-      // Fallback for legacy rows without display_signal
-      const cat = (p.category ?? 'HOLD').toUpperCase();
-      if (cat === 'BUY' || cat === 'TARGET')        buys.push(tag(p, 'BUY'));
-      else if (cat === 'SELL' || cat === 'AVOID')   sells.push(tag(p, 'SELL'));
-      else                                           holds.push(tag(p, 'HOLD'));
-    }
+  for (const p of eligible) {
+    const gap = Number(p.value_gap ?? 0);
+    const pct = computePercentileRank(sortedGaps, gap);
+    const display_signal = signalFromPercentile(pct);
+    const value_rating_label = labelFromPercentile(pct);
+    const _category = mwSignalFromDisplay(display_signal);
+
+    const derived: DerivedPlayer = {
+      ...p,
+      _category,
+      display_signal,
+      value_rating_label,
+      percentile_rank: pct,
+    };
+
+    if (_category === "BUY") buys.push(derived);
+    else if (_category === "SELL") sells.push(derived);
+    else holds.push(derived);
   }
 
   return { buys, holds, sells };
@@ -81,6 +121,14 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
 // ─────────────────────────────────────────────────────────────────────────────
 // TRADE BUILDING LOGIC
 // ─────────────────────────────────────────────────────────────────────────────
+
+function proj(row: MWPlayerRow): number {
+  return Number(row.projection ?? 0);
+}
+
+function price(row: MWPlayerRow): number {
+  return Number(row.price ?? 0);
+}
 
 function tradeWhy(
   out: DerivedPlayer,

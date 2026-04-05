@@ -189,27 +189,21 @@ export default function MarketWatchPageElite() {
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
 
-  // Top cards: use display_signal (computed from value_gap), pick strongest in each bucket
+  // Top cards: pull directly from classified buckets (single source of truth from engine)
   const topTarget = useMemo(() => {
-    const sorted = [...players]
-      .filter(p => p.display_signal === "TARGET" && !p.is_injured && !p.is_bye)
-      .sort((a, b) => (b.value_gap ?? 0) - (a.value_gap ?? 0));
-    return sorted[0] ? { ...sorted[0], _category: 'BUY' as const } : null;
-  }, [players]);
+    const sorted = [...(classified?.buys ?? [])].sort((a, b) => b.percentile_rank - a.percentile_rank);
+    return sorted[0] ?? null;
+  }, [classified]);
 
   const topWatch = useMemo(() => {
-    const sorted = [...players]
-      .filter(p => p.display_signal === "WATCH" && !p.is_injured && !p.is_bye)
-      .sort((a, b) => (b.value_gap ?? 0) - (a.value_gap ?? 0));
-    return sorted[0] ? { ...sorted[0], _category: 'HOLD' as const } : null;
-  }, [players]);
+    const sorted = [...(classified?.holds ?? [])].sort((a, b) => b.percentile_rank - a.percentile_rank);
+    return sorted[0] ?? null;
+  }, [classified]);
 
   const topAvoid = useMemo(() => {
-    const sorted = [...players]
-      .filter(p => p.display_signal === "AVOID" && !p.is_injured && !p.is_bye)
-      .sort((a, b) => (a.value_gap ?? 0) - (b.value_gap ?? 0));
-    return sorted[0] ? { ...sorted[0], _category: 'SELL' as const } : null;
-  }, [players]);
+    const sorted = [...(classified?.sells ?? [])].sort((a, b) => a.percentile_rank - b.percentile_rank);
+    return sorted[0] ?? null;
+  }, [classified]);
 
   if (loading) {
     return <MarketWatchSkeleton />;
