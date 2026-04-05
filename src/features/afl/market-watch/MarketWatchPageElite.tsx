@@ -36,55 +36,61 @@ export default function MarketWatchPageElite() {
       const { data, error } = await supabase
         .schema("afl")
         .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, price, breakeven, projection_final, edge, signal_tag, signal, recommendation_short, summary_short, summary_long, matchup_label, prev_price, price_change, consistency, projection_confidence, neeko_rating, status, manual_status, is_bye, games_played")
-        .order("edge", { ascending: false })
+        .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, breakeven_canonical, edge_canonical, value_score_canonical, signal_canonical, category_canonical, action_canonical, recommendation_short, summary_short, summary_long, matchup_label, matchup_rating, matchup_multiplier, consistency, neeko_rating, status, manual_status, is_bye, games_played, cached_at")
+        .order("value_score_canonical", { ascending: false, nullsFirst: false })
         .limit(limit);
 
       if (error) throw error;
 
       const mapped: MWPlayerRow[] = (data ?? []).map((r: any) => {
-        const rawTag = (r.signal_tag ?? "").toLowerCase();
+        const catRaw = (r.category_canonical ?? "").toLowerCase();
         const displaySignal: "TARGET" | "WATCH" | "AVOID" =
-          rawTag === "target" ? "TARGET" : rawTag === "avoid" ? "AVOID" : "WATCH";
+          catRaw === "target" ? "TARGET" : catRaw === "avoid" ? "AVOID" : "WATCH";
 
         const isInjured = ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()) || ['injured', 'out'].includes((r.manual_status ?? '').toLowerCase());
         const isBye = r.is_bye === true || (r.status ?? '').toLowerCase() === 'bye' || (r.manual_status ?? '').toLowerCase() === 'bye';
 
         return {
-          snapshot_id: 'market-watch',
           player_id: r.player_id,
           player_name: r.player_name,
-          team: r.team,
+          team: r.team ?? r.team_name ?? '',
+          team_name: r.team_name ?? r.team ?? '',
           position: r.position,
           price: r.price ?? 0,
-          breakeven: parseFloat(r.breakeven ?? '0') || 0,
+          prev_price: r.prev_price ?? null,
+          price_change: r.price_change ?? null,
+          price_change_pct: null,
           projection: parseFloat(r.projection_final ?? '0') || 0,
+          projection_final: parseFloat(r.projection_final ?? '0') || 0,
+          season_avg: r.season_avg ?? null,
+          last_3_avg: r.last_3_avg ?? null,
+          last_5_avg: r.last_5_avg ?? null,
           ceiling: null,
           floor_val: null,
-          risk_pct: null,
-          value_gap: r.edge != null ? Number(r.edge) : 0,
-          signal_tag: r.signal_tag ?? null,
-          signal: r.signal ?? null,
-          category: displaySignal === "TARGET" ? "BUY" : displaySignal === "AVOID" ? "SELL" : "HOLD",
-          action: displaySignal === "TARGET" ? "BUY" : displaySignal === "AVOID" ? "SELL" : "HOLD",
+          breakeven_canonical: r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
+          edge_canonical: r.edge_canonical != null ? Number(r.edge_canonical) : null,
+          value_score_canonical: r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
+          signal_canonical: r.signal_canonical ?? null,
+          category_canonical: r.category_canonical ?? null,
+          action_canonical: r.action_canonical ?? null,
+          signal_tag: r.category_canonical ?? null,
+          signal: r.signal_canonical ?? null,
+          market_watch_category: r.category_canonical ?? null,
+          action: r.action_canonical ?? null,
           recommendation_short: r.recommendation_short ?? null,
           summary_short: r.summary_short ?? null,
           summary_long: r.summary_long ?? null,
           matchup_label: r.matchup_label ?? null,
-          prev_price: r.prev_price ?? null,
-          price_change: r.price_change ?? null,
+          matchup_rating: r.matchup_rating ?? null,
+          matchup_multiplier: r.matchup_multiplier ?? null,
           consistency: r.consistency ?? null,
-          projection_confidence: r.projection_confidence ?? null,
           neeko_rating: r.neeko_rating ?? null,
-          season: 2026,
-          round_number: 1,
-          snapshot_updated_at: new Date().toISOString(),
           is_injured: isInjured,
           is_bye: isBye,
           games_played: r.games_played ?? null,
           status: r.status ?? null,
           manual_status: r.manual_status ?? null,
-          value_signal: displaySignal,
+          cached_at: r.cached_at ?? null,
           display_signal: displaySignal,
         };
       });

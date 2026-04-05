@@ -227,7 +227,7 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
           )}
 
           {/* ADVANCED METRICS - COLLAPSIBLE */}
-          {(player.value_gap != null || player.ceiling || player.risk_pct) && (
+          {(player.edge_canonical != null || player.ceiling || player.neeko_rating) && (
             <div>
               <button
                 onClick={() => setShowAdvanced(!showAdvanced)}
@@ -239,9 +239,8 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
 
               {showAdvanced && (
                 <div className="mt-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
-                  {player.value_gap != null && <MetricRow label="Value Gap" value={`${player.value_gap > 0 ? '+' : ''}${Math.round(player.value_gap)}`} />}
+                  {player.edge_canonical != null && <MetricRow label="Edge" value={`${player.edge_canonical > 0 ? '+' : ''}${Math.round(player.edge_canonical)}`} />}
                   {player.ceiling && <MetricRow label="Ceiling" value={Math.round(player.ceiling)} />}
-                  {player.risk_pct && <MetricRow label="Risk %" value={`${Math.round(player.risk_pct)}%`} />}
                   {player.neeko_rating && <MetricRow label="Neeko Rating" value={Math.round(player.neeko_rating)} />}
                 </div>
               )}

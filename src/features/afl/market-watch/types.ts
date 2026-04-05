@@ -1,43 +1,60 @@
 export type MWSignal = "BUY" | "HOLD" | "SELL";
 
-export type MWSortKey = "value_gap" | "projection" | "breakeven" | "price";
+export type MWSortKey = "value_score_canonical" | "edge_canonical" | "projection" | "breakeven" | "price";
 
 export interface MWPlayerRow {
-  snapshot_id: string;
   player_id: number;
   player_name: string;
   team: string;
+  team_name?: string;
   position: string;
   price: number;
-  breakeven: number;
+  prev_price: number | null;
+  price_change: number | null;
+  price_change_pct: number | null;
+  projection_final?: number;
   projection: number;
+  season_avg?: number | null;
+  last_3_avg?: number | null;
+  last_5_avg?: number | null;
   ceiling: number | null;
   floor_val: number | null;
-  risk_pct: number | null;
-  value_gap: number;
-  signal_tag: "Target" | "Watch" | "Avoid" | "TARGET" | "WATCH" | "AVOID" | null;
-  signal: string | null;
-  category: MWSignal;
-  action: MWSignal;
+  games_played: number | null;
+  // canonical columns (source of truth)
+  breakeven_canonical: number | null;
+  edge_canonical: number | null;
+  value_score_canonical: number | null;
+  signal_canonical: "STRONG_UP" | "UP" | "STABLE" | "DOWN" | "STRONG_DOWN" | null;
+  category_canonical: "Target" | "Watch" | "Avoid" | null;
+  action_canonical: "BUY" | "HOLD" | "SELL" | null;
+  // legacy aliases (still exposed from DB view)
+  breakeven?: number | null;
+  edge?: number | null;
+  signal?: string | null;
+  signal_tag?: string | null;
+  market_watch_category?: string | null;
+  action?: string | null;
+  // deprecated — use edge_canonical instead
+  value_gap?: number | null;
+  // AI text
   recommendation_short: string | null;
   summary_short: string | null;
   summary_long: string | null;
+  // matchup
   matchup_label: string | null;
-  prev_price: number | null;
-  price_change: number | null;
+  matchup_rating?: string | null;
+  matchup_multiplier?: number | null;
+  // player state
   consistency: number | null;
-  projection_confidence: number | null;
   neeko_rating: number | null;
   status: string | null;
   manual_status: string | null;
   is_bye: boolean;
-  is_injured: boolean;
-  games_played: number | null;
-  snapshot_updated_at: string;
-  season: number;
-  round_number: number;
-  value_signal: string | null;
-  display_signal: "TARGET" | "WATCH" | "AVOID";
+  is_injured?: boolean;
+  // misc
+  snapshot_updated_at?: string;
+  cached_at?: string;
+  display_signal?: "TARGET" | "WATCH" | "AVOID";
 }
 
 export interface MWSummaryCard {

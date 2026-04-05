@@ -22,44 +22,42 @@ import { classifyPlayers } from "@/features/afl/market-watch/engine";
 // ─── Adapter: RankingRow → MWPlayerRow ────────────────────────────────────────
 
 function toMWPlayerRow(r: RankingRow): MWPlayerRow {
-  const rawTag = (r.signal_tag ?? "").toLowerCase();
+  const catRaw = ((r as any).category_canonical ?? r.signal_tag ?? "").toLowerCase();
   const displaySignal: "TARGET" | "WATCH" | "AVOID" =
-    rawTag === "target" ? "TARGET" : rawTag === "avoid" ? "AVOID" : "WATCH";
+    catRaw === "target" ? "TARGET" : catRaw === "avoid" ? "AVOID" : "WATCH";
+  const edgeCanonical = (r as any).edge_canonical != null ? Number((r as any).edge_canonical) : (r.edge != null ? Number(r.edge) : null);
   return {
-    snapshot_id: r.player_id ?? "",
     player_id: Number(r.player_id ?? 0),
     player_name: r.player_name,
     team: r.team,
     position: r.position ?? "",
     price: r.price ?? 0,
-    breakeven: r.breakeven ?? 0,
-    projection: r.projection_final ?? 0,
-    ceiling: null,
-    floor_val: null,
-    risk_pct: null,
-    value_gap: r.edge != null ? Number(r.edge) : 0,
-    signal_tag: (r.signal_tag as MWPlayerRow["signal_tag"]) ?? null,
-    signal: r.signal ?? null,
-    category: displaySignal === "TARGET" ? "BUY" : displaySignal === "AVOID" ? "SELL" : "HOLD",
-    action: displaySignal === "TARGET" ? "BUY" : displaySignal === "AVOID" ? "SELL" : "HOLD",
-    recommendation_short: null,
-    summary_short: null,
-    summary_long: null,
-    matchup_label: null,
     prev_price: null,
     price_change: null,
+    price_change_pct: null,
+    projection: r.projection_final ?? 0,
+    projection_final: r.projection_final ?? 0,
+    ceiling: null,
+    floor_val: null,
+    breakeven_canonical: (r as any).breakeven_canonical != null ? Number((r as any).breakeven_canonical) : (r.breakeven ?? null),
+    edge_canonical: edgeCanonical,
+    value_score_canonical: (r as any).value_score_canonical != null ? Number((r as any).value_score_canonical) : null,
+    signal_canonical: (r as any).signal_canonical ?? null,
+    category_canonical: (r as any).category_canonical ?? null,
+    action_canonical: (r as any).action_canonical ?? null,
+    signal_tag: r.signal_tag ?? null,
+    signal: r.signal ?? null,
+    recommendation_short: null,
+    summary_short: (r as any).summary_short ?? null,
+    summary_long: null,
+    matchup_label: null,
     consistency: null,
-    projection_confidence: null,
     neeko_rating: null,
     status: r.status ?? null,
     manual_status: r.manual_status ?? null,
     is_bye: r.is_bye ?? false,
     is_injured: ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()),
     games_played: r.games_played != null ? Number(r.games_played) : null,
-    snapshot_updated_at: new Date().toISOString(),
-    season: 2026,
-    round_number: 0,
-    value_signal: displaySignal,
     display_signal: displaySignal,
   };
 }
@@ -1170,7 +1168,7 @@ export default function Index() {
       const { data } = await supabase
         .schema("afl")
         .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, price, projection_final, breakeven, edge, value_score, projection_confidence, signal, signal_tag, games_played, status, manual_status, is_bye")
+        .select("player_id, player_name, team, team_name, position, price, projection_final, season_avg, last_3_avg, last_5_avg, breakeven_canonical, edge_canonical, value_score_canonical, signal_canonical, category_canonical, action_canonical, signal_tag, signal, summary_short, games_played, status, manual_status, is_bye")
         .gte("games_played", 3)
         .gte("projection_final", 55)
         .order("projection_final", { ascending: false })
@@ -1249,54 +1247,52 @@ export default function Index() {
       const { data } = await supabase
         .schema("afl")
         .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, price, breakeven, projection_final, edge, signal_tag, signal, recommendation_short, summary_short, summary_long, matchup_label, prev_price, price_change, consistency, projection_confidence, neeko_rating, status, manual_status, is_bye, games_played")
-        .order("edge", { ascending: false })
+        .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, breakeven_canonical, edge_canonical, value_score_canonical, signal_canonical, category_canonical, action_canonical, signal_tag, signal, recommendation_short, summary_short, summary_long, matchup_label, consistency, neeko_rating, status, manual_status, is_bye, games_played, cached_at")
+        .order("value_score_canonical", { ascending: false, nullsFirst: false })
         .limit(200);
 
       const rows: MWPlayerRow[] = ((data ?? []) as any[]).map((r): MWPlayerRow => {
-        const rawTag = (r.signal_tag ?? "").toLowerCase();
+        const catRaw = (r.category_canonical ?? r.signal_tag ?? "").toLowerCase();
         const displaySignal: "TARGET" | "WATCH" | "AVOID" =
-          rawTag === "target" ? "TARGET" : rawTag === "avoid" ? "AVOID" : "WATCH";
+          catRaw === "target" ? "TARGET" : catRaw === "avoid" ? "AVOID" : "WATCH";
         const isInjured = ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()) ||
           ['injured', 'out'].includes((r.manual_status ?? '').toLowerCase());
         const isBye = r.is_bye === true ||
           (r.status ?? '').toLowerCase() === 'bye' ||
           (r.manual_status ?? '').toLowerCase() === 'bye';
         return {
-          snapshot_id: 'market-watch',
           player_id: r.player_id,
           player_name: r.player_name,
-          team: r.team,
+          team: r.team ?? r.team_name ?? '',
+          team_name: r.team_name ?? r.team ?? '',
           position: r.position,
           price: r.price ?? 0,
-          breakeven: parseFloat(r.breakeven ?? '0') || 0,
+          prev_price: r.prev_price ?? null,
+          price_change: r.price_change ?? null,
+          price_change_pct: null,
           projection: parseFloat(r.projection_final ?? '0') || 0,
+          projection_final: parseFloat(r.projection_final ?? '0') || 0,
           ceiling: null,
           floor_val: null,
-          risk_pct: null,
-          value_gap: r.edge != null ? Number(r.edge) : 0,
-          signal_tag: r.signal_tag ?? null,
-          signal: r.signal ?? null,
-          category: displaySignal === "TARGET" ? "BUY" : displaySignal === "AVOID" ? "SELL" : "HOLD",
-          action: displaySignal === "TARGET" ? "BUY" : displaySignal === "AVOID" ? "SELL" : "HOLD",
+          breakeven_canonical: r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
+          edge_canonical: r.edge_canonical != null ? Number(r.edge_canonical) : null,
+          value_score_canonical: r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
+          signal_canonical: r.signal_canonical ?? null,
+          category_canonical: r.category_canonical ?? null,
+          action_canonical: r.action_canonical ?? null,
+          signal_tag: r.category_canonical ?? r.signal_tag ?? null,
+          signal: r.signal_canonical ?? r.signal ?? null,
           recommendation_short: r.recommendation_short ?? null,
           summary_short: r.summary_short ?? null,
           summary_long: r.summary_long ?? null,
           matchup_label: r.matchup_label ?? null,
-          prev_price: r.prev_price ?? null,
-          price_change: r.price_change ?? null,
           consistency: r.consistency ?? null,
-          projection_confidence: r.projection_confidence ?? null,
           neeko_rating: r.neeko_rating ?? null,
           status: r.status ?? null,
           manual_status: r.manual_status ?? null,
           is_bye: isBye,
           is_injured: isInjured,
           games_played: r.games_played ?? null,
-          snapshot_updated_at: new Date().toISOString(),
-          season: 2026,
-          round_number: 1,
-          value_signal: displaySignal,
           display_signal: displaySignal,
         };
       });

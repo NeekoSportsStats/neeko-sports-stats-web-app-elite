@@ -337,7 +337,7 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
   const smartWhy = useMemo(() => generateSmartWhy(player), [
     player.summary_short,
     player.recommendation_short,
-    player.value_gap,
+    player.edge_canonical,
   ]);
   const truncatedWhy = useMemo(() => truncateWhy(smartWhy, 80), [smartWhy]);
   const valueLabel = getValueLabel(player.value_rating_label);
@@ -411,7 +411,7 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
   const smartWhy = useMemo(() => generateSmartWhy(player), [
     player.summary_short,
     player.recommendation_short,
-    player.value_gap,
+    player.edge_canonical,
   ]);
   const truncatedWhy = useMemo(() => truncateWhy(smartWhy, 60), [smartWhy]);
   const valueLabel = getValueLabel(player.value_rating_label);

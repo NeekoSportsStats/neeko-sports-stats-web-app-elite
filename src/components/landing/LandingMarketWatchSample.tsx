@@ -43,17 +43,17 @@ function InjuryPill({ isInjured }: { isInjured: boolean }) {
   );
 }
 
-function valueLabel(valueGap: number | null): { label: string; textClass: string } {
-  if (valueGap == null) return { label: "—", textClass: "text-white/30" };
-  if (valueGap >= 15) return { label: "Elite Value", textClass: "text-green-400" };
-  if (valueGap >= -10) return { label: "Fair Value", textClass: "text-yellow-300" };
+function valueLabel(edge: number | null): { label: string; textClass: string } {
+  if (edge == null) return { label: "—", textClass: "text-white/30" };
+  if (edge >= 10) return { label: "Elite Value", textClass: "text-green-400" };
+  if (edge >= -5) return { label: "Fair Value", textClass: "text-yellow-300" };
   return { label: "Overvalued", textClass: "text-red-400" };
 }
 
 function PlayerRow({ player, index }: { player: DerivedPlayer; index: number }) {
   const tier = player.display_signal;
-  const valueGap = player.value_gap != null ? Math.round(Number(player.value_gap)) : null;
-  const { label: vLabel, textClass: vClass } = valueLabel(valueGap);
+  const edge = player.edge_canonical != null ? Number(player.edge_canonical) : null;
+  const { label: vLabel, textClass: vClass } = valueLabel(edge);
   const isInjured = player.is_injured === true || (player.status ?? "").toLowerCase() === "injured" || (player.manual_status ?? "").toLowerCase() === "injured";
   const isBye = player.is_bye === true || (player.status ?? "").toLowerCase() === "bye" || (player.manual_status ?? "").toLowerCase() === "bye";
 

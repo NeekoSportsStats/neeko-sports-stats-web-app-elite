@@ -24,13 +24,13 @@ export interface BestTrade {
 // ─────────────────────────────────────────────────────────────────────────────
 // CANONICAL MARKET CLASSIFIER
 //
-// Reads signal_tag directly from the database — single source of truth.
-// signal_tag values from DB: "Target" | "Watch" | "Avoid"
+// Reads category_canonical from the database — single source of truth.
+// category_canonical values: "Target" | "Watch" | "Avoid"
 // Maps to DisplaySignal: "TARGET" | "WATCH" | "AVOID"
 // ─────────────────────────────────────────────────────────────────────────────
 
 function displaySignalFromTag(p: MWPlayerRow): DisplaySignal {
-  const raw = (p.signal_tag ?? "").toLowerCase();
+  const raw = (p.category_canonical ?? p.market_watch_category ?? p.signal_tag ?? "").toLowerCase();
   if (raw === "target") return "TARGET";
   if (raw === "avoid") return "AVOID";
   return "WATCH";
@@ -157,8 +157,8 @@ export function buildBestTrades(
       const score =
         projGain * 4 +
         cashGenerated / 2000 +
-        (inn.value_gap ?? 0) * 2 +
-        (out.value_gap ?? 0) * -1;
+        (inn.edge_canonical ?? inn.value_gap ?? 0) * 2 +
+        (out.edge_canonical ?? out.value_gap ?? 0) * -1;
 
       allPairs.push({
         out,
