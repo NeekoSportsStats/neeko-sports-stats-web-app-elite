@@ -43,6 +43,24 @@ export function getDisplayRecommendation(row: RankingRow, _tab: RankingsTab): st
   return signalFromField(row.signal);
 }
 
+export function getTrendAction(trendSignal: string | null): string | null {
+  if (!trendSignal) return null;
+  const s = trendSignal.toUpperCase();
+  if (s === "STRONG_UP" || s === "UP") return "START";
+  if (s === "STABLE") return "HOLD";
+  if (s === "DOWN" || s === "STRONG_DOWN") return "SIT";
+  return null;
+}
+
+export function getTrendActionStyles(trendSignal: string | null): string {
+  const action = getTrendAction(trendSignal);
+  if (!action) return "text-white/30 border-white/10 bg-white/5";
+  if (action === "START") return "text-emerald-300 border-emerald-500/30 bg-emerald-500/10";
+  if (action === "HOLD")  return "text-white/55 border-white/15 bg-white/5";
+  if (action === "SIT")   return "text-orange-400 border-orange-500/25 bg-orange-500/10";
+  return "text-white/30 border-white/10 bg-white/5";
+}
+
 // ─── Matchup display helper ───────────────────────────────────────────────────
 // DB stores matchup_rating as a decimal multiplier string e.g. "1.023", "0.912", "1.0"
 // We convert to a signed percentage label: +2.3%, -8.8%, Neutral

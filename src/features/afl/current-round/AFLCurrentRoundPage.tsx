@@ -21,14 +21,11 @@ import { track } from "@/lib/analytics";
 import {
   fmt,
   fmtPrice,
-  fmtValueScore,
   fmtUpdatedAt,
   normalisePosition,
-  getValueScoreColor,
   getTrendLabel,
   getTrendStyles,
 } from "@/features/afl/rankings/components/helpers";
-import { signalFromField, formatEdgeSignalLabel, getEdgeSignalStyles } from "@/utils/aflEdgeSignal";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
 import { PlayerDetailModal, UpgradeModal } from "@/features/afl/rankings/components/RankingsModals";
 import { PlayerStatusPill } from "@/features/afl/rankings/components/PlayerStatusPill";
@@ -436,7 +433,7 @@ function CollapsibleSEO({ roundLabel, roundNum }: { roundLabel: string; roundNum
       >
         <div className="px-4 pb-5 space-y-5">
           <p className="text-[12px] text-white/40 leading-relaxed pt-3">
-            This page surfaces the best AFL Fantasy picks for {roundLabel} — captain options, value plays, top selections and trap alerts — powered by Neeko's AI projection model. Every player is scored on projected output, price value, matchup difficulty, consistency and role stability.
+            This page surfaces the best AFL Fantasy picks for {roundLabel} — captain options, top selections, safe picks and risk alerts — powered by Neeko's AI projection model and trend engine. Every player is scored on projected output, form trajectory, matchup difficulty, consistency and role stability.
           </p>
 
           <div className="space-y-3">
@@ -449,10 +446,10 @@ function CollapsibleSEO({ roundLabel, roundNum }: { roundLabel: string; roundNum
                 <strong className="text-white/55">Top Picks</strong> — Must-start players ranked by overall projected output. These are the highest-rated players heading into {roundLabel} based on recent form, role security and Neeko's projection model. Your foundation lineup picks.
               </li>
               <li>
-                <strong className="text-white/55">Value Plays</strong> — Underpriced AFL Fantasy players whose projected score exceeds what their current price implies. Positive value scores signal players primed for price rises — ideal trade-in targets before lockout.
+                <strong className="text-white/55">Safe Picks</strong> — Reliable, consistent performers with a stable trend signal. These players are projecting on or above their baseline — dependable selections for building a solid round score without volatility risk.
               </li>
               <li>
-                <strong className="text-white/55">Trap Alerts</strong> — Players flagged as overpriced or high-risk this round. Negative value scores indicate their projection falls short of what their price demands. Consider trading these players out before {roundLabel} locks.
+                <strong className="text-white/55">Risk Picks</strong> — Players flagged as trending down this round. Their recent form is below baseline expectations — consider monitoring or replacing these players before {roundLabel} locks.
               </li>
             </ul>
           </div>
@@ -460,14 +457,14 @@ function CollapsibleSEO({ roundLabel, roundNum }: { roundLabel: string; roundNum
           <div className="space-y-2">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/30">AFL Fantasy Strategy for {roundLabel}</h3>
             <p className="text-[12px] text-white/35 leading-relaxed">
-              Winning AFL Fantasy rounds comes down to three decisions: picking the right captain, identifying underpriced players before they rise, and avoiding traps. Neeko's AI analyses every player's recent performance, upcoming matchup difficulty, role consistency and price trajectory to surface the highest-conviction plays each round.
+              Winning AFL Fantasy rounds comes down to three decisions: picking the right captain, identifying players trending upward before the round, and avoiding form risks. Neeko's AI analyses every player's recent performance trend, upcoming matchup difficulty, role consistency and baseline performance to surface the highest-conviction plays each round.
             </p>
           </div>
 
           <div className="space-y-2">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/30">About the Projection Model</h3>
             <p className="text-[12px] text-white/35 leading-relaxed">
-              Projections are calculated using weighted recent-game performance, positional matchup data, venue factors and role stability signals. Value scores are derived by comparing projected output against a player's implied fantasy value at their current price point. All data updates weekly following each round.
+              Projections are calculated using weighted recent-game performance, positional matchup data, venue factors and role stability signals. Trend signals are derived by comparing a player's projection against their weighted baseline (season avg, last 5 games, last 3 games). All data updates weekly following each round.
             </p>
           </div>
 
@@ -616,32 +613,27 @@ export default function AFLCurrentRoundPage() {
     return result;
   }, [ranked]);
 
-  // 3. Value Plays — ranked by value_score desc, exclude Top Picks + Captain Picks
-  const valuePlays = useMemo(() => {
+  // 3. Safe Picks — trend_signal = STABLE, sorted by projection desc, exclude Top Picks + Captain Picks
+  const safePicks = useMemo(() => {
     const usedIds = new Set([...topPicks, ...captainPicks].map((r) => r.player_id));
-    const result = [...ranked]
-      .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
-      .filter((r) => !usedIds.has(r.player_id))
+    return [...ranked]
+      .filter((r) => !usedIds.has(r.player_id) && r.trend_signal === "STABLE")
       .slice(0, 10);
-    return result;
   }, [ranked, topPicks, captainPicks]);
 
-  // 4. Trap Alerts — worst value_score from full ranked list, exclude Top Picks + Captain Picks
-  const trapAlerts = useMemo(() => {
+  // 4. Risk Picks — trend_signal = DOWN or STRONG_DOWN, sorted by projection desc, exclude Top Picks + Captain Picks
+  const riskPicks = useMemo(() => {
     const usedIds = new Set([...topPicks, ...captainPicks].map((r) => r.player_id));
-    const result = [...ranked]
-      .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))
-      .filter((r) => !usedIds.has(r.player_id))
+    return [...ranked]
+      .filter((r) => !usedIds.has(r.player_id) && (r.trend_signal === "DOWN" || r.trend_signal === "STRONG_DOWN"))
       .slice(0, 8);
-    console.log("Trap Alerts:", result.length);
-    return result;
   }, [ranked, topPicks, captainPicks]);
 
   // ── HERO STATS ──────────────────────────────────────────────────────────────
   const topCaptainProj = captainPicks[0]?.projection_final ?? topPicks[0]?.projection_final ?? null;
   const topCaptainName = captainPicks[0]?.player_name ?? topPicks[0]?.player_name ?? null;
-  const bestValueScore = valuePlays[0]?.value_score ?? null;
-  const trapCount = trapAlerts.length;
+  const strongUpCount = ranked.filter((r) => r.trend_signal === "STRONG_UP" || r.trend_signal === "UP").length;
+  const riskCount = riskPicks.length;
 
   // ── AI SUMMARY LINES — unique players across all four categories ────────────
   const aiLines = useMemo((): AiCallLine[] => {
@@ -671,29 +663,29 @@ export default function AFLCurrentRoundPage() {
       });
     }
 
-    const value = valuePlays.find((r) => !usedIds.has(r.player_id));
-    if (value) {
-      usedIds.add(value.player_id);
+    const safePick = safePicks.find((r) => !usedIds.has(r.player_id));
+    if (safePick) {
+      usedIds.add(safePick.player_id);
       lines.push({
-        label: "Value",
-        text: `${value.player_name} is the best value play (score: ${fmtValueScore(value.value_score)}) — projected ${fmt(value.projection_final, 0)} pts, priced below expected output.`,
+        label: "Safe Pick",
+        text: `${safePick.player_name} is a reliable hold — trending stable at ${fmt(safePick.projection_final, 0)} pts projected with consistent recent form.`,
         color: "#4ade80",
         bgColor: "rgba(74,222,128,0.05)",
       });
     }
 
-    const trap = trapAlerts.find((r) => !usedIds.has(r.player_id));
-    if (trap) {
+    const riskPick = riskPicks.find((r) => !usedIds.has(r.player_id));
+    if (riskPick) {
       lines.push({
-        label: "Trap Alert",
-        text: `Fade ${trap.player_name} this round — value score ${fmtValueScore(trap.value_score)} signals overpriced relative to projection.`,
+        label: "Risk Alert",
+        text: `Monitor ${riskPick.player_name} this round — trending ${getTrendLabel(riskPick.trend_signal)} with projection at ${fmt(riskPick.projection_final, 0)} pts. Consider alternatives.`,
         color: "#f87171",
         bgColor: "rgba(248,113,113,0.05)",
       });
     }
 
     return lines;
-  }, [topPicks, captainPicks, valuePlays, trapAlerts]);
+  }, [topPicks, captainPicks, safePicks, riskPicks]);
 
   // ── SEO ─────────────────────────────────────────────────────────────────────
   const pageTitle = `AFL Fantasy ${roundLabel} Tips, Captain Picks & Value Players | Neeko Sports`;
@@ -802,18 +794,18 @@ export default function AFLCurrentRoundPage() {
               <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2.5">
                 <div className="flex items-center gap-1.5 mb-1">
                   <TrendingUp className="w-3 h-3 text-green-400" />
-                  <span className="text-[10px] uppercase tracking-wider text-white/30 font-medium">Best Value</span>
+                  <span className="text-[10px] uppercase tracking-wider text-white/30 font-medium">Rising</span>
                 </div>
-                <div className="text-xl font-bold text-green-400 tabular-nums">{bestValueScore != null ? fmtValueScore(bestValueScore) : "—"}</div>
-                <div className="text-[10px] text-white/25 mt-px">{valuePlays[0]?.player_name ?? "value score"}</div>
+                <div className="text-xl font-bold text-green-400 tabular-nums">{strongUpCount}</div>
+                <div className="text-[10px] text-white/25 mt-px">players trending up</div>
               </div>
               <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2.5">
                 <div className="flex items-center gap-1.5 mb-1">
                   <AlertTriangle className="w-3 h-3 text-red-400" />
-                  <span className="text-[10px] uppercase tracking-wider text-white/30 font-medium">Traps</span>
+                  <span className="text-[10px] uppercase tracking-wider text-white/30 font-medium">Risk</span>
                 </div>
-                <div className="text-xl font-bold text-red-400 tabular-nums">{trapCount}</div>
-                <div className="text-[10px] text-white/25 mt-px">players to avoid</div>
+                <div className="text-xl font-bold text-red-400 tabular-nums">{riskCount}</div>
+                <div className="text-[10px] text-white/25 mt-px">players trending down</div>
               </div>
             </div>
           </div>
@@ -863,45 +855,45 @@ export default function AFLCurrentRoundPage() {
             />
 
             <DecisionCard
-              title="Value Plays"
+              title="Safe Picks"
               icon={<TrendingUp className="w-4 h-4" />}
               accentColor="#4ade80"
-              players={valuePlays}
+              players={safePicks}
               freeLimit={FREE_VISIBLE}
               isPremiumUser={isPremium}
               onOpenRow={(row, rank) => openRow(row, rank)}
               onUpgrade={() => setShowUpgradeModal(true)}
-              hiddenCopy="Underpriced players primed to rise. Unlock with Neeko+."
-              blurCtaLabel="See all value opportunities →"
-              footerLink={{ label: "Market Watch", to: "/sports/afl/market-watch" }}
+              hiddenCopy="Consistent performers trending stable. Unlock with Neeko+."
+              blurCtaLabel="See all safe picks →"
+              footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
               renderMetric={(row) =>
-                row.value_score != null ? (
+                row.trend_signal != null ? (
                   <div className="text-right hidden sm:block">
-                    <div className={`text-xs font-bold tabular-nums ${getValueScoreColor(row.value_score)}`}>{fmtValueScore(row.value_score)}</div>
-                    <div className="text-[9px] text-white/25">value</div>
+                    <div className={`text-[10px] font-bold tabular-nums ${getTrendStyles(row.trend_signal)}`}>{getTrendLabel(row.trend_signal)}</div>
+                    <div className="text-[9px] text-white/25">form</div>
                   </div>
                 ) : undefined
               }
             />
 
             <DecisionCard
-              title="Trap Alerts"
+              title="Risk Picks"
               icon={<AlertTriangle className="w-4 h-4" />}
               accentColor="#f87171"
-              players={trapAlerts}
+              players={riskPicks}
               freeLimit={FREE_VISIBLE}
               isPremiumUser={isPremium}
               onOpenRow={(row, rank) => openRow(row, rank)}
               onUpgrade={() => setShowUpgradeModal(true)}
-              hiddenCopy="Players flagged as overpriced or high risk this round."
+              hiddenCopy="Players trending down — consider alternatives this round."
               blurCtaLabel="Reveal all risk flags →"
-              blurBadgeText="+6 traps hidden"
-              footerLink={{ label: "Market Watch", to: "/sports/afl/market-watch" }}
+              blurBadgeText="+6 risks hidden"
+              footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
               renderMetric={(row) =>
-                row.value_score != null ? (
+                row.trend_signal != null ? (
                   <div className="text-right hidden sm:block">
-                    <div className="text-xs font-bold text-red-400 tabular-nums">{fmtValueScore(row.value_score)}</div>
-                    <div className="text-[9px] text-white/25">value</div>
+                    <div className={`text-[10px] font-bold tabular-nums ${getTrendStyles(row.trend_signal)}`}>{getTrendLabel(row.trend_signal)}</div>
+                    <div className="text-[9px] text-white/25">form</div>
                   </div>
                 ) : undefined
               }

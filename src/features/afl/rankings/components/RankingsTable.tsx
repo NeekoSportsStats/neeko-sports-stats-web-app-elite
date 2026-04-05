@@ -6,6 +6,8 @@ import {
   getDisplayRecommendation,
   getTrendLabel,
   getTrendStyles,
+  getTrendAction,
+  getTrendActionStyles,
   FREE_FULL_ROWS,
 } from "./helpers";
 import { InfoTooltip, LockedCell } from "./RankingsModals";
@@ -245,9 +247,9 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
             <LockedCell onClick={onUpgrade} />
           ) : displayRec ? (
             <span
-              className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${getTrendStyles(displayRec)}`}
+              className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${getTrendActionStyles(displayRec)}`}
             >
-              {getTrendLabel(displayRec)}
+              {getTrendAction(displayRec) ?? getTrendLabel(displayRec)}
             </span>
           ) : <span className="text-white/20 text-xs">—</span>}
         </td>

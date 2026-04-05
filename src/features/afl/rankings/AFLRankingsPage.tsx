@@ -575,7 +575,7 @@ export default function AFLRankingsPage() {
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
                 <p className="text-sm text-white/45 mt-1.5 max-w-lg leading-relaxed">
-                  AI-ranked BUY, HOLD &amp; AVOID picks for this round
+                  AI-ranked by projected performance vs baseline
                 </p>
               </div>
               <div className="flex items-center gap-2 mt-1 shrink-0">
@@ -761,7 +761,7 @@ export default function AFLRankingsPage() {
           <div className="flex items-start justify-between gap-4 mb-1">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
-              <p className="text-sm text-white/40 mt-0.5">Edge-ranked by Proj vs Breakeven — updated weekly</p>
+              <p className="text-sm text-white/40 mt-0.5">Ranked by projected performance vs baseline — updated weekly</p>
             </div>
             <div className="flex items-center gap-3 mt-1 shrink-0">
               {updatedAt && (
