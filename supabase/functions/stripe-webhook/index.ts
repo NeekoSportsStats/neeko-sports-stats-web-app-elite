@@ -225,27 +225,24 @@ async function syncSubscriptionFromStripe(subscriptionId: string) {
       return;
     }
 
-    const periodStart = subscription.current_period_start
-      ? new Date(subscription.current_period_start * 1000).toISOString()
-      : null;
-    const periodEnd = subscription.current_period_end
-      ? new Date(subscription.current_period_end * 1000).toISOString()
-      : null;
+    const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
 
-    const { error: syncError } = await supabase.rpc('sync_subscription_to_profile', {
-      p_user_id: userId,
-      p_customer_id: customerId,
-      p_subscription_id: subscription.id,
-      p_status: subscription.status,
-      p_period_start: periodStart,
-      p_period_end: periodEnd,
-      p_cancel_at_period_end: subscription.cancel_at_period_end ?? false,
-    });
+    const { error: syncError } = await supabase
+      .from('stripe_subscriptions')
+      .upsert({
+        customer_id: customerId,
+        subscription_id: subscription.id,
+        price_id: priceId,
+        status: subscription.status,
+        current_period_start: subscription.current_period_start ?? null,
+        current_period_end: subscription.current_period_end ?? null,
+        cancel_at_period_end: subscription.cancel_at_period_end ?? false,
+      }, { onConflict: 'customer_id' });
 
     if (syncError) {
-      console.error('stripe-webhook: sync_subscription_to_profile error:', syncError.message);
+      console.error('stripe-webhook: stripe_subscriptions upsert error:', syncError.message);
     } else {
-      console.log(`stripe-webhook: successfully synced subscription — status=${subscription.status}, period_end=${periodEnd}`);
+      console.log(`stripe-webhook: successfully upserted stripe_subscriptions — status=${subscription.status}, sub=${subscription.id}`);
     }
   } catch (err: any) {
     console.error(`stripe-webhook: error syncing subscription ${subscriptionId}:`, err?.message ?? err);
