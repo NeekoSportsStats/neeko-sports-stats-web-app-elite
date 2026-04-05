@@ -354,9 +354,11 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
             {(player.manual_status === "OUT" || (!player.manual_status && player.status === "OUT")) ? (
               <span className="rounded bg-red-500/10 px-1 py-0.5 text-[8px] font-bold text-red-400 uppercase tracking-wide border border-red-500/25">OUT</span>
             ) : (player.manual_status === "INJURED" || (!player.manual_status && player.status === "INJURED")) ? (
-              <span className="rounded bg-orange-500/10 px-1 py-0.5 text-[8px] font-bold text-orange-400 uppercase tracking-wide border border-orange-500/25">INJ</span>
+              <span className="rounded bg-red-500/10 px-1 py-0.5 text-[8px] font-bold text-red-400 uppercase tracking-wide border border-red-500/25">INJ</span>
+            ) : (player.manual_status === "TEST" || (!player.manual_status && player.status === "TEST")) ? (
+              <span className="rounded bg-orange-500/10 px-1 py-0.5 text-[8px] font-bold text-orange-400 uppercase tracking-wide border border-orange-500/25">TEST</span>
             ) : player.is_bye ? (
-              <span className="rounded bg-white/[0.08] px-1 py-0.5 text-[8px] font-bold text-white/35 uppercase tracking-wide border border-white/10">BYE</span>
+              <span className="rounded bg-[#F5C84C]/10 px-1 py-0.5 text-[8px] font-bold text-[#F5C84C] uppercase tracking-wide border border-[#F5C84C]/25">BYE</span>
             ) : null}
           </div>
           <div className="text-[11px] text-white/35 leading-snug">
@@ -421,7 +423,18 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1 min-w-0 pr-3">
-          <div className="font-bold text-white text-sm mb-0.5 truncate">{player.player_name}</div>
+          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+            <div className="font-bold text-white text-sm truncate">{player.player_name}</div>
+            {(player.manual_status === "OUT" || (!player.manual_status && player.status === "OUT")) ? (
+              <span className="rounded bg-red-500/10 px-1 py-0.5 text-[8px] font-bold text-red-400 uppercase tracking-wide border border-red-500/25 shrink-0">OUT</span>
+            ) : (player.manual_status === "INJURED" || (!player.manual_status && player.status === "INJURED")) ? (
+              <span className="rounded bg-red-500/10 px-1 py-0.5 text-[8px] font-bold text-red-400 uppercase tracking-wide border border-red-500/25 shrink-0">INJ</span>
+            ) : (player.manual_status === "TEST" || (!player.manual_status && player.status === "TEST")) ? (
+              <span className="rounded bg-orange-500/10 px-1 py-0.5 text-[8px] font-bold text-orange-400 uppercase tracking-wide border border-orange-500/25 shrink-0">TEST</span>
+            ) : player.is_bye ? (
+              <span className="rounded bg-[#F5C84C]/10 px-1 py-0.5 text-[8px] font-bold text-[#F5C84C] uppercase tracking-wide border border-[#F5C84C]/25 shrink-0">BYE</span>
+            ) : null}
+          </div>
           <div className="text-xs text-white/45">{player.team} · {player.position}</div>
         </div>
         <div className={`flex items-center gap-1 px-2 py-1 text-[10px] font-bold border rounded-md shrink-0 ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>

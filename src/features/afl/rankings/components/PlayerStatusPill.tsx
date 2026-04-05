@@ -34,7 +34,7 @@ export function PlayerStatusPill({ row, showUpcomingBye = false }: PlayerStatusP
 
   if (row.is_bye) {
     return (
-      <span className="rounded-sm bg-white/10 px-1 py-0.5 text-[9px] font-semibold text-white/40 uppercase border border-white/15 shrink-0 leading-none">
+      <span className="rounded-sm bg-[#F5C84C]/15 px-1 py-0.5 text-[9px] font-semibold text-[#F5C84C] uppercase border border-[#F5C84C]/25 shrink-0 leading-none">
         BYE
       </span>
     );
@@ -42,7 +42,7 @@ export function PlayerStatusPill({ row, showUpcomingBye = false }: PlayerStatusP
 
   if (showUpcomingBye && row.bye_next_round) {
     return (
-      <span className="rounded-sm bg-white/[0.08] px-1 py-0.5 text-[9px] font-semibold text-white/30 uppercase border border-white/10 shrink-0 leading-none">
+      <span className="rounded-sm bg-[#F5C84C]/10 px-1 py-0.5 text-[9px] font-semibold text-[#F5C84C]/50 uppercase border border-[#F5C84C]/20 shrink-0 leading-none">
         {row.bye_round != null ? `BYE R${row.bye_round}` : "BYE"}
       </span>
     );

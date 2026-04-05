@@ -165,11 +165,11 @@ function StatusBadges({ row }: { row: RankingRow }) {
 
   if (row.is_bye) {
     badges.push(
-      <span key="bye" className="rounded-sm bg-sky-500/15 px-1.5 py-0.5 text-[9px] font-semibold text-sky-400 uppercase tracking-wide border border-sky-500/20">BYE</span>
+      <span key="bye" className="rounded-sm bg-[#F5C84C]/15 px-1.5 py-0.5 text-[9px] font-semibold text-[#F5C84C] uppercase tracking-wide border border-[#F5C84C]/25">BYE</span>
     );
   } else if (row.bye_next_round) {
     badges.push(
-      <span key="byenext" className="rounded-sm bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-sky-500/50 uppercase tracking-wide border border-sky-500/15">BYE R{row.bye_round}</span>
+      <span key="byenext" className="rounded-sm bg-[#F5C84C]/10 px-1.5 py-0.5 text-[9px] font-semibold text-[#F5C84C]/50 uppercase tracking-wide border border-[#F5C84C]/20">BYE R{row.bye_round}</span>
     );
   }
 

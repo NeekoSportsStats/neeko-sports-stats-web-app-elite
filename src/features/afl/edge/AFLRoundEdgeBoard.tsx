@@ -19,7 +19,7 @@ type Section = "must_have" | "breakout" | "do_not_start";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, edge, value_score, projection_confidence, signal, signal_tag, games_played, status, is_bye";
+const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, edge, value_score, projection_confidence, signal, signal_tag, games_played, status, manual_status, is_bye";
 
 // Round lock: Next Thursday 19:35 AEDT
 function getNextRoundLock(): Date {
@@ -515,7 +515,17 @@ function HeroPickCard({ player, section, isPremium, onOpen }: HeroPickCardProps)
       <div className="px-4 pt-4 pb-3 border-b border-white/[0.06]">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h3 className="text-xl font-extrabold text-white leading-tight">{player.player_name}</h3>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <h3 className="text-xl font-extrabold text-white leading-tight">{player.player_name}</h3>
+              {(() => {
+                const eff = (player.manual_status ?? player.status ?? "").toUpperCase();
+                if (eff === "OUT" || eff === "OMITTED") return <span className="rounded bg-red-500/10 px-1 py-0.5 text-[8px] font-bold text-red-400 uppercase tracking-wide border border-red-500/25 shrink-0">OUT</span>;
+                if (eff === "INJURED") return <span className="rounded bg-red-500/10 px-1 py-0.5 text-[8px] font-bold text-red-400 uppercase tracking-wide border border-red-500/25 shrink-0">INJ</span>;
+                if (eff === "TEST") return <span className="rounded bg-orange-500/10 px-1 py-0.5 text-[8px] font-bold text-orange-400 uppercase tracking-wide border border-orange-500/25 shrink-0">TEST</span>;
+                if (player.is_bye) return <span className="rounded bg-[#F5C84C]/10 px-1 py-0.5 text-[8px] font-bold text-[#F5C84C] uppercase tracking-wide border border-[#F5C84C]/25 shrink-0">BYE</span>;
+                return null;
+              })()}
+            </div>
             <p className="text-[11px] text-white/35 mt-0.5">{player.team}</p>
             {player.overallRank < 999 && (
               <p className="text-[10px] text-white/25 mt-0.5">Ranked #{player.overallRank} overall this week</p>
@@ -832,7 +842,7 @@ export default function AFLRoundEdgeBoard() {
           upside_pct:            null,
           ai_summary:            null,
           status:                (r.status as string) ?? null,
-          manual_status:         null,
+          manual_status:         (r.manual_status as string) ?? null,
           is_available:          null,
           bye_round:             null,
           is_bye:                r.is_bye ?? null,
@@ -1025,13 +1035,21 @@ export default function AFLRoundEdgeBoard() {
                               onClick={() => handleOpenModal(player, section)}
                             >
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1.5 flex-wrap">
                                   <span className="text-sm font-bold text-white truncate">{player.player_name}</span>
                                   {player.position && (
                                     <span className={`shrink-0 text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${getPositionBadgeStyle(player.position)}`}>
                                       {player.position}
                                     </span>
                                   )}
+                                  {(() => {
+                                    const eff = (player.manual_status ?? player.status ?? "").toUpperCase();
+                                    if (eff === "OUT" || eff === "OMITTED") return <span className="rounded bg-red-500/10 px-1 py-0.5 text-[8px] font-bold text-red-400 uppercase tracking-wide border border-red-500/25 shrink-0">OUT</span>;
+                                    if (eff === "INJURED") return <span className="rounded bg-red-500/10 px-1 py-0.5 text-[8px] font-bold text-red-400 uppercase tracking-wide border border-red-500/25 shrink-0">INJ</span>;
+                                    if (eff === "TEST") return <span className="rounded bg-orange-500/10 px-1 py-0.5 text-[8px] font-bold text-orange-400 uppercase tracking-wide border border-orange-500/25 shrink-0">TEST</span>;
+                                    if (player.is_bye) return <span className="rounded bg-[#F5C84C]/10 px-1 py-0.5 text-[8px] font-bold text-[#F5C84C] uppercase tracking-wide border border-[#F5C84C]/25 shrink-0">BYE</span>;
+                                    return null;
+                                  })()}
                                 </div>
                                 <span className="text-[11px] text-white/35">{player.team}</span>
                               </div>
