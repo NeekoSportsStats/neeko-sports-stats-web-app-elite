@@ -5,8 +5,14 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 import { cleanAiText } from "@/utils/cleanAiText";
 import { generateSmartWhy } from "./helpers";
 
-type SortField = "player" | "projection" | "breakeven" | "price" | "value_gap" | "signal";
+type SortField = "signal" | "value" | "projection" | "player" | "breakeven" | "price";
 type SortDirection = "asc" | "desc";
+
+const SORT_TABS: { label: string; field: SortField }[] = [
+  { label: "Signal", field: "signal" },
+  { label: "Value", field: "value" },
+  { label: "Projection", field: "projection" },
+];
 
 interface MarketDataTableProps {
   players: DerivedPlayer[];
@@ -15,32 +21,51 @@ interface MarketDataTableProps {
 }
 
 export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDataTableProps) {
-  const [sortField, setSortField] = useState<SortField>("value_gap");
+  const [sortField, setSortField] = useState<SortField>("signal");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
-  const handleSort = (field: SortField) => {
+  const handleTabSort = (field: SortField) => {
     if (sortField === field) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+      setSortDirection(d => d === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
       setSortDirection("desc");
     }
   };
 
-  // MEMOIZE: Sort computation (expensive for 200+ players)
+  const handleColumnSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
+    }
+  };
+
   const sortedPlayers = useMemo(() => {
-    const sorted = [...players].sort((a, b) => {
+    const bucketOrder: Record<string, number> = { BUY: 0, HOLD: 1, SELL: 2 };
+
+    return [...players].sort((a, b) => {
       let aVal: number | string = 0;
       let bVal: number | string = 0;
 
       switch (sortField) {
-        case "player":
-          aVal = a.player_name;
-          bVal = b.player_name;
+        case "signal":
+          aVal = bucketOrder[a._category] ?? 1;
+          bVal = bucketOrder[b._category] ?? 1;
+          if (aVal !== bVal) return (aVal as number) - (bVal as number);
+          return (b.percentile_rank ?? 0) - (a.percentile_rank ?? 0);
+        case "value":
+          aVal = a.percentile_rank ?? 0;
+          bVal = b.percentile_rank ?? 0;
           break;
         case "projection":
           aVal = a.projection || 0;
           bVal = b.projection || 0;
+          break;
+        case "player":
+          aVal = a.player_name;
+          bVal = b.player_name;
           break;
         case "breakeven":
           aVal = a.breakeven || 0;
@@ -50,39 +75,54 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
           aVal = a.price || 0;
           bVal = b.price || 0;
           break;
-        case "value_gap":
-          aVal = a.value_gap ?? 0;
-          bVal = b.value_gap ?? 0;
-          break;
-        case "signal":
-          aVal = a.category || "";
-          bVal = b.category || "";
-          break;
       }
+
+      if (sortField === "signal") return 0;
 
       const comparison = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
       return sortDirection === "asc" ? comparison : -comparison;
     });
-    return sorted;
   }, [players, sortField, sortDirection]);
 
-  const freeLimit = 15;
+  const freeLimit = 10;
 
-  // MEMOIZE: Player slicing
   const visiblePlayers = useMemo(() =>
     isPremium ? sortedPlayers : sortedPlayers.slice(0, freeLimit),
-    [sortedPlayers, isPremium, freeLimit]
+    [sortedPlayers, isPremium]
   );
 
   const blurredPlayers = useMemo(() =>
     !isPremium && sortedPlayers.length > freeLimit
       ? sortedPlayers.slice(freeLimit, freeLimit + 5)
       : [],
-    [sortedPlayers, isPremium, freeLimit]
+    [sortedPlayers, isPremium]
   );
 
   return (
     <div className="space-y-4">
+      {/* Sort toggle tabs */}
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest mr-1">Sort:</span>
+        {SORT_TABS.map(tab => (
+          <button
+            key={tab.field}
+            onClick={() => handleTabSort(tab.field)}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all duration-150 ${
+              sortField === tab.field
+                ? "bg-white/10 border-white/25 text-white"
+                : "bg-white/[0.02] border-white/[0.08] text-white/40 hover:bg-white/[0.05] hover:text-white/60"
+            }`}
+          >
+            {tab.label}
+            {sortField === tab.field && (
+              <span className="ml-1 opacity-60">
+                {sortDirection === "asc" ? "↑" : "↓"}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
       {/* Desktop Table */}
       <div className="hidden lg:block overflow-x-auto">
         <table className="w-full">
@@ -93,25 +133,17 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 field="player"
                 currentField={sortField}
                 direction={sortDirection}
-                onSort={handleSort}
+                onSort={handleColumnSort}
               />
               <th className="px-5 py-2.5 text-left text-[10px] font-bold text-white/35 uppercase tracking-wider">
-                Pos
+                Pos / Team
               </th>
               <SortableHeader
                 label="Projection"
                 field="projection"
                 currentField={sortField}
                 direction={sortDirection}
-                onSort={handleSort}
-                centered
-              />
-              <SortableHeader
-                label="Breakeven"
-                field="breakeven"
-                currentField={sortField}
-                direction={sortDirection}
-                onSort={handleSort}
+                onSort={handleColumnSort}
                 centered
               />
               <SortableHeader
@@ -119,22 +151,33 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 field="price"
                 currentField={sortField}
                 direction={sortDirection}
-                onSort={handleSort}
+                onSort={handleColumnSort}
               />
               <SortableHeader
                 label="Value Rating"
-                field="value_gap"
+                field="value"
                 currentField={sortField}
                 direction={sortDirection}
-                onSort={handleSort}
+                onSort={handleColumnSort}
               />
               <SortableHeader
                 label="Signal"
                 field="signal"
                 currentField={sortField}
                 direction={sortDirection}
-                onSort={handleSort}
+                onSort={handleColumnSort}
               />
+              {isPremium && (
+                <SortableHeader
+                  label="Breakeven"
+                  field="breakeven"
+                  currentField={sortField}
+                  direction={sortDirection}
+                  onSort={handleColumnSort}
+                  centered
+                  muted
+                />
+              )}
             </tr>
           </thead>
           <tbody>
@@ -144,10 +187,10 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 player={player}
                 onClick={() => onPlayerClick(player)}
                 isEven={index % 2 === 0}
+                isPremium={isPremium}
               />
             ))}
 
-            {/* Blurred rows for free users */}
             {blurredPlayers.map((player, index) => (
               <PlayerRow
                 key={player.player_id}
@@ -155,6 +198,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 onClick={() => {}}
                 isEven={(visiblePlayers.length + index) % 2 === 0}
                 isBlurred
+                isPremium={false}
               />
             ))}
           </tbody>
@@ -168,6 +212,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
             key={player.player_id}
             player={player}
             onClick={() => onPlayerClick(player)}
+            isPremium={isPremium}
           />
         ))}
 
@@ -177,47 +222,33 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
             player={player}
             onClick={() => {}}
             isBlurred
+            isPremium={false}
           />
         ))}
       </div>
 
-      {/* Premium Gate - CONVERSION LAYER */}
+      {/* Premium Gate */}
       {!isPremium && players.length > freeLimit && (
-        <div className="relative mt-6 p-10 border border-white/10 rounded-lg bg-gradient-to-b from-white/[0.02] to-white/[0.06] text-center overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-t from-[#F5C84C]/5 via-transparent to-transparent" />
+        <div className="relative mt-2 p-10 border border-white/10 rounded-xl bg-gradient-to-b from-white/[0.02] to-white/[0.05] text-center overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-t from-[#F5C84C]/[0.04] via-transparent to-transparent pointer-events-none" />
           <div className="relative z-10">
             <div className="text-4xl mb-4">🔒</div>
-            <h3 className="text-2xl font-bold text-white mb-2">
-              You're seeing a limited preview
+            <h3 className="text-xl font-bold text-white mb-2">
+              Unlock the full trade board
             </h3>
-            <p className="text-white/70 mb-1 text-base">
-              Unlock 600+ players with real value edges before price changes
+            <p className="text-white/60 mb-1 text-sm max-w-sm mx-auto">
+              Deeper player analysis, all value signals, and filters — with Neeko+
             </p>
-            <p className="text-xs text-white/40 mb-6 mt-2">
+            <p className="text-xs text-white/35 mb-6 mt-1.5">
               Updated weekly — edges disappear fast
             </p>
             <a
               href="/neeko-plus"
-              className="inline-block px-8 py-3.5 bg-[#F5C84C] text-black font-bold rounded-lg hover:bg-[#F5C84C]/90 transition-all shadow-lg shadow-[#F5C84C]/20 text-base"
+              className="inline-block px-8 py-3 bg-[#F5C84C] text-black font-bold rounded-lg hover:bg-[#F5C84C]/90 transition-all shadow-lg shadow-[#F5C84C]/20 text-sm"
             >
-              Unlock Neeko+
+              Unlock 600+ Players
             </a>
           </div>
-        </div>
-      )}
-
-      {/* Table Footer CTA - FREE USERS */}
-      {!isPremium && (
-        <div className="mt-6 p-6 border border-white/10 rounded-lg bg-white/[0.02] text-center">
-          <p className="text-sm text-white/60 mb-3">
-            Find every undervalued player — see the full market
-          </p>
-          <a
-            href="/neeko-plus"
-            className="inline-block px-6 py-2.5 bg-white/10 border border-white/20 text-white font-medium rounded-lg hover:bg-white/20 transition-all text-sm"
-          >
-            Unlock Full Market
-          </a>
         </div>
       )}
     </div>
@@ -231,17 +262,18 @@ interface SortableHeaderProps {
   direction: SortDirection;
   onSort: (field: SortField) => void;
   centered?: boolean;
+  muted?: boolean;
 }
 
-function SortableHeader({ label, field, currentField, direction, onSort, centered = false }: SortableHeaderProps) {
+function SortableHeader({ label, field, currentField, direction, onSort, centered = false, muted = false }: SortableHeaderProps) {
   const isActive = currentField === field;
 
   return (
     <th
-      className={`px-5 py-2.5 ${centered ? 'text-center' : 'text-left'} text-[10px] font-bold text-white/35 uppercase tracking-wider cursor-pointer hover:text-white/50 transition-colors select-none`}
+      className={`px-5 py-2.5 ${centered ? "text-center" : "text-left"} text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:text-white/50 transition-colors select-none ${muted ? "text-white/20 hover:text-white/35" : "text-white/35"}`}
       onClick={() => onSort(field)}
     >
-      <div className={`flex items-center gap-1 ${centered ? 'justify-center' : ''}`}>
+      <div className={`flex items-center gap-1 ${centered ? "justify-center" : ""}`}>
         <span>{label}</span>
         {isActive && (
           direction === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
@@ -256,11 +288,11 @@ interface PlayerRowProps {
   onClick: () => void;
   isEven: boolean;
   isBlurred?: boolean;
+  isPremium: boolean;
 }
 
-// MEMOIZE: PlayerRow component to prevent unnecessary re-renders
-const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred = false }: PlayerRowProps) {
-  const signalStrength = useMemo(() => getSignalStrength(player), [player.display_signal, player._category]);
+const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred = false, isPremium }: PlayerRowProps) {
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.display_signal, player.percentile_rank]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
     player.summary_short,
@@ -268,15 +300,14 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
     player.value_gap,
   ]);
   const truncatedWhy = useMemo(() => truncateWhy(smartWhy, 80), [smartWhy]);
-
-  const valueRatingColor = getRatingColor(player.value_rating_label);
+  const valueLabel = getValueLabel(player.value_rating_label);
 
   return (
     <tr
       onClick={isBlurred ? undefined : onClick}
-      className={`${isBlurred ? 'cursor-default' : 'cursor-pointer'} transition-all hover:bg-white/[0.04] border-b border-white/[0.03] ${isEven ? 'bg-white/[0.01]' : ''} ${isBlurred ? 'blur-sm pointer-events-none' : ''}`}
+      className={`transition-all duration-150 hover:bg-white/[0.05] hover:-translate-y-px border-b border-white/[0.03] ${isEven ? "bg-white/[0.01]" : ""} ${isBlurred ? "blur-sm pointer-events-none cursor-default" : "cursor-pointer"}`}
     >
-      <td className="px-5 py-2.5">
+      <td className="px-5 py-3">
         <div>
           <div className="flex items-center gap-1.5 mb-0.5">
             <div className="font-bold text-white text-sm leading-tight">{player.player_name}</div>
@@ -288,37 +319,39 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
               <span className="rounded bg-white/[0.08] px-1 py-0.5 text-[8px] font-bold text-white/35 uppercase tracking-wide border border-white/10">BYE</span>
             ) : null}
           </div>
-          <div className="text-[11px] text-white/40 leading-snug">
+          <div className="text-[11px] text-white/35 leading-snug">
             {formatWhyText(truncatedWhy)}
           </div>
         </div>
       </td>
-      <td className="px-5 py-2.5">
-        <div className="text-xs font-medium text-white/50">{player.position}</div>
+      <td className="px-5 py-3">
+        <div className="text-xs font-medium text-white/55">{player.position}</div>
         <div className="text-[10px] text-white/30">{player.team}</div>
       </td>
-      <td className="px-5 py-2.5 text-center">
+      <td className="px-5 py-3 text-center">
         <span className="text-lg font-bold tabular-nums text-white/80">
           {Math.round(player.projection || 0)}
         </span>
       </td>
-      <td className="px-5 py-2.5 text-center text-sm font-medium text-white/70 tabular-nums">
-        {Math.round(player.breakeven || 0)}
-      </td>
-      <td className="px-5 py-2.5 text-sm font-medium text-white/70 tabular-nums">
+      <td className="px-5 py-3 text-sm font-medium text-white/70 tabular-nums">
         {formatPrice(player.price || 0)}
       </td>
-      <td className="px-5 py-2.5">
-        <span className={`text-xs font-semibold ${valueRatingColor}`}>
-          {player.value_rating_label}
+      <td className="px-5 py-3">
+        <span className={`text-xs font-semibold ${valueLabel.color}`}>
+          {valueLabel.text}
         </span>
       </td>
-      <td className="px-5 py-2.5">
-        <div className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold border rounded ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
+      <td className="px-5 py-3">
+        <div className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold border rounded-md ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
           <span>{signalStrength.icon}</span>
           <span>{signalStrength.label}</span>
         </div>
       </td>
+      {isPremium && (
+        <td className="px-5 py-3 text-center text-xs font-medium text-white/35 tabular-nums">
+          {Math.round(player.breakeven || 0)}
+        </td>
+      )}
     </tr>
   );
 });
@@ -327,11 +360,11 @@ interface MobilePlayerCardProps {
   player: DerivedPlayer;
   onClick: () => void;
   isBlurred?: boolean;
+  isPremium: boolean;
 }
 
-// MEMOIZE: MobilePlayerCard component
-const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlurred = false }: MobilePlayerCardProps) {
-  const signalStrength = useMemo(() => getSignalStrength(player), [player.display_signal, player._category]);
+const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlurred = false, isPremium }: MobilePlayerCardProps) {
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.display_signal, player.percentile_rank]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
     player.summary_short,
@@ -339,45 +372,46 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
     player.value_gap,
   ]);
   const truncatedWhy = useMemo(() => truncateWhy(smartWhy, 60), [smartWhy]);
-
-  const valueRatingColor = getRatingColor(player.value_rating_label);
+  const valueLabel = getValueLabel(player.value_rating_label);
 
   return (
     <div
       onClick={isBlurred ? undefined : onClick}
-      className={`p-4 bg-white/[0.02] border border-white/10 rounded-lg hover:bg-white/[0.04] transition-all ${isBlurred ? 'blur-sm cursor-default pointer-events-none' : 'cursor-pointer'}`}
+      className={`p-4 bg-white/[0.02] border border-white/[0.08] rounded-xl hover:bg-white/[0.04] hover:-translate-y-px transition-all duration-150 ${isBlurred ? "blur-sm cursor-default pointer-events-none" : "cursor-pointer"}`}
     >
       <div className="flex items-start justify-between mb-2">
-        <div className="flex-1">
-          <div className="font-bold text-white text-sm mb-0.5">{player.player_name}</div>
-          <div className="text-xs text-white/50">{player.team} · {player.position}</div>
+        <div className="flex-1 min-w-0 pr-3">
+          <div className="font-bold text-white text-sm mb-0.5 truncate">{player.player_name}</div>
+          <div className="text-xs text-white/45">{player.team} · {player.position}</div>
         </div>
-        <div className={`flex items-center gap-1 px-2 py-1 text-[10px] font-bold border rounded ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
+        <div className={`flex items-center gap-1 px-2 py-1 text-[10px] font-bold border rounded-md shrink-0 ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
           <span>{signalStrength.icon}</span>
           <span className="hidden sm:inline">{signalStrength.label}</span>
         </div>
       </div>
 
-      <div className="text-xs text-white/50 leading-tight mb-3">
+      <div className="text-[11px] text-white/40 leading-tight mb-3">
         {formatWhyText(truncatedWhy)}
       </div>
 
       <div className="grid grid-cols-4 gap-3 text-xs">
         <div>
-          <div className="text-white/40 text-[10px] mb-1">Proj</div>
+          <div className="text-white/35 text-[10px] mb-0.5">Proj</div>
           <div className="font-bold text-white/80">{Math.round(player.projection || 0)}</div>
         </div>
         <div>
-          <div className="text-white/40 text-[10px] mb-1">Baseline</div>
-          <div className="font-bold text-white/80">{Math.round(player.breakeven || 0)}</div>
-        </div>
-        <div>
-          <div className="text-white/40 text-[10px] mb-1">Price</div>
+          <div className="text-white/35 text-[10px] mb-0.5">Price</div>
           <div className="font-bold text-white/80 text-[11px]">{formatPrice(player.price || 0)}</div>
         </div>
-        <div>
-          <div className="text-white/40 text-[10px] mb-1">Value</div>
-          <div className={`font-bold text-[11px] ${valueRatingColor}`}>{player.value_rating_label}</div>
+        {isPremium && (
+          <div>
+            <div className="text-white/25 text-[10px] mb-0.5">BE</div>
+            <div className="font-medium text-white/40">{Math.round(player.breakeven || 0)}</div>
+          </div>
+        )}
+        <div className={isPremium ? "" : "col-span-2"}>
+          <div className="text-white/35 text-[10px] mb-0.5">Value</div>
+          <div className={`font-bold text-[11px] ${valueLabel.color}`}>{valueLabel.text}</div>
         </div>
       </div>
     </div>
@@ -386,44 +420,46 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
 
 function getSignalStrength(player: DerivedPlayer) {
   const sig = player.display_signal;
+  const pct = player.percentile_rank ?? 50;
 
   if (sig === "TARGET") {
-    const isElite = (player.percentile_rank ?? 0) >= 90;
-    return isElite
+    return pct >= 90
       ? { icon: "🔥", label: "TARGET", bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/40" }
-      : { icon: "✅", label: "TARGET", bg: "bg-green-500/15", text: "text-green-400", border: "border-green-500/30" };
+      : { icon: "✅", label: "TARGET", bg: "bg-green-500/[0.12]", text: "text-green-400", border: "border-green-500/25" };
   }
   if (sig === "AVOID") {
-    const isMajorRisk = (player.percentile_rank ?? 50) < 20;
-    return isMajorRisk
-      ? { icon: "🚫", label: "AVOID", bg: "bg-red-500/20", text: "text-red-400", border: "border-red-500/40" }
-      : { icon: "⚠️", label: "AVOID", bg: "bg-orange-500/15", text: "text-orange-400", border: "border-orange-500/30" };
+    return pct < 20
+      ? { icon: "🚫", label: "AVOID", bg: "bg-red-500/[0.12]", text: "text-red-400", border: "border-red-500/30" }
+      : { icon: "⚠️", label: "AVOID", bg: "bg-orange-500/[0.10]", text: "text-orange-400", border: "border-orange-500/25" };
   }
-  return { icon: "👁", label: "WATCH", bg: "bg-[#F5C84C]/10", text: "text-[#F5C84C]", border: "border-[#F5C84C]/30" };
+  return { icon: "👁", label: "WATCH", bg: "bg-[#F5C84C]/[0.08]", text: "text-[#F5C84C]", border: "border-[#F5C84C]/25" };
 }
 
-function getRatingColor(label: string): string {
-  if (label === "Elite Value" || label === "Strong Value") return "text-green-400";
-  if (label === "Fair Price") return "text-white/60";
-  if (label === "Monitor") return "text-[#F5C84C]";
-  if (label === "Overpriced") return "text-orange-400";
-  return "text-red-400";
+function getValueLabel(raw: string): { text: string; color: string } {
+  switch (raw) {
+    case "Elite Value":  return { text: "🔥 Elite Target",  color: "text-green-400" };
+    case "Strong Value": return { text: "✅ Trade Target",  color: "text-green-400/80" };
+    case "Fair Price":   return { text: "👁 Neutral",        color: "text-white/50" };
+    case "Monitor":      return { text: "👁 Watch",          color: "text-[#F5C84C]" };
+    case "Overpriced":   return { text: "⚠️ Overpriced",    color: "text-orange-400" };
+    case "Major Risk":   return { text: "🚫 Avoid",          color: "text-red-400" };
+    default:             return { text: raw || "—",          color: "text-white/40" };
+  }
 }
 
 function truncateWhy(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   const truncated = text.slice(0, maxLength);
-  const lastSpace = truncated.lastIndexOf(' ');
-  return lastSpace > 0 ? truncated.slice(0, lastSpace) + '...' : truncated + '...';
+  const lastSpace = truncated.lastIndexOf(" ");
+  return lastSpace > 0 ? truncated.slice(0, lastSpace) + "..." : truncated + "...";
 }
 
 function formatWhyText(text: string): React.ReactNode {
   const numberRegex = /(\+?\-?\d+)/g;
   const parts = text.split(numberRegex);
-
   return parts.map((part, i) => {
     if (numberRegex.test(part)) {
-      return <strong key={i} className="text-white/80">{part}</strong>;
+      return <strong key={i} className="text-white/70">{part}</strong>;
     }
     return part;
   });

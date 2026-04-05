@@ -268,34 +268,61 @@ export default function MarketWatchPageElite() {
     <div className="min-h-screen bg-[#0D0D0D] text-white">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/[0.08] pb-5">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-1.5">
-              Market Watch
-            </h1>
-            <p className="text-sm text-white/50">
-              Players ranked by value relative to price. Top-rated players offer the best trade upside.
-            </p>
+        <div className="space-y-4 border-b border-white/[0.08] pb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-3xl md:text-4xl font-bold text-white mb-1.5">
+                Market Watch
+              </h1>
+              <p className="text-sm text-white/50">
+                Trade targets, fair-priced holds, and overpriced risks for the upcoming round.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              {players.length > 0 && (
+                <div className="hidden sm:block">
+                  <DataFreshnessIndicator
+                    timestamp={players[0]?.snapshot_updated_at}
+                    label="Market Data"
+                    variant="compact"
+                  />
+                </div>
+              )}
+              <button
+                onClick={handleRefresh}
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-lg hover:bg-white/[0.06] hover:border-white/[0.14] transition-all text-sm font-medium"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+                <span className="hidden sm:inline">Refresh</span>
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {players.length > 0 && (
-              <div className="hidden sm:block">
-                <DataFreshnessIndicator
-                  timestamp={players[0]?.snapshot_updated_at}
-                  label="Market Data"
-                  variant="compact"
-                />
+          {/* Helper badge strip */}
+          <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/[0.06] border border-green-500/20 rounded-lg">
+              <span className="text-sm">🔥</span>
+              <div>
+                <span className="text-[10px] font-bold text-green-400 uppercase tracking-wider mr-1.5">TARGET</span>
+                <span className="text-[11px] text-white/40">Underpriced players with upside</span>
               </div>
-            )}
-            <button
-              onClick={handleRefresh}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-lg hover:bg-white/[0.06] transition-all text-sm font-medium"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#F5C84C]/[0.04] border border-[#F5C84C]/15 rounded-lg">
+              <span className="text-sm">👁</span>
+              <div>
+                <span className="text-[10px] font-bold text-[#F5C84C] uppercase tracking-wider mr-1.5">WATCH</span>
+                <span className="text-[11px] text-white/40">Fair value or role-dependent</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-500/[0.04] border border-orange-500/15 rounded-lg">
+              <span className="text-sm">⚠️</span>
+              <div>
+                <span className="text-[10px] font-bold text-orange-400 uppercase tracking-wider mr-1.5">AVOID</span>
+                <span className="text-[11px] text-white/40">Overpriced or negative value</span>
+              </div>
+            </div>
           </div>
         </div>
 

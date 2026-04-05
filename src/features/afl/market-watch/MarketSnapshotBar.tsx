@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
-import { mapMarketLabel } from "@/utils/marketLabels";
+import { cleanAiText } from "@/utils/cleanAiText";
 
 interface MarketSnapshotBarProps {
   topTarget: DerivedPlayer | null;
@@ -10,32 +10,25 @@ interface MarketSnapshotBarProps {
 }
 
 export const MarketSnapshotBar = memo(function MarketSnapshotBar({ topTarget, topWatch, topAvoid }: MarketSnapshotBarProps) {
-  const targetLabel = mapMarketLabel("BUY");
-  const watchLabel = mapMarketLabel("HOLD");
-  const avoidLabel = mapMarketLabel("SELL");
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
       <SnapshotCard
         player={topTarget}
-        label={`TOP ${targetLabel.label.toUpperCase()}`}
-        icon={targetLabel.icon}
-        tagText="Strong Value"
-        tagColor="green"
+        heading="Best Trade Target"
+        emptyText="No targets this round"
+        variant="target"
       />
       <SnapshotCard
         player={topWatch}
-        label={`TOP ${watchLabel.label.toUpperCase()}`}
-        icon={watchLabel.icon}
-        tagText="Monitor"
-        tagColor="yellow"
+        heading="Monitor This Week"
+        emptyText="No watch players found"
+        variant="watch"
       />
       <SnapshotCard
         player={topAvoid}
-        label={`TOP ${avoidLabel.label.toUpperCase()}`}
-        icon={avoidLabel.icon}
-        tagText="Overpriced"
-        tagColor="red"
+        heading="Overpriced Risk"
+        emptyText="No overpriced players"
+        variant="avoid"
       />
     </div>
   );
@@ -43,73 +36,115 @@ export const MarketSnapshotBar = memo(function MarketSnapshotBar({ topTarget, to
 
 interface SnapshotCardProps {
   player: DerivedPlayer | null;
-  label: string;
-  icon: string;
-  tagText: string;
-  tagColor: "green" | "yellow" | "red";
+  heading: string;
+  emptyText: string;
+  variant: "target" | "watch" | "avoid";
 }
 
-function SnapshotCard({ player, label, icon, tagText, tagColor }: SnapshotCardProps) {
+const variantStyles = {
+  target: {
+    border: "border-green-500/30",
+    glow: "shadow-[0_0_24px_rgba(34,197,94,0.12)]",
+    hoverGlow: "hover:shadow-[0_0_32px_rgba(34,197,94,0.20)]",
+    headingColor: "text-green-400",
+    tagBg: "bg-green-500/10 text-green-400 border-green-500/30",
+    icon: "🔥",
+    headingLabel: "TARGET",
+    dot: "bg-green-500",
+  },
+  watch: {
+    border: "border-[#F5C84C]/20",
+    glow: "shadow-[0_0_24px_rgba(245,200,76,0.08)]",
+    hoverGlow: "hover:shadow-[0_0_32px_rgba(245,200,76,0.15)]",
+    headingColor: "text-[#F5C84C]",
+    tagBg: "bg-[#F5C84C]/10 text-[#F5C84C] border-[#F5C84C]/30",
+    icon: "👁",
+    headingLabel: "WATCH",
+    dot: "bg-[#F5C84C]",
+  },
+  avoid: {
+    border: "border-orange-500/20",
+    glow: "shadow-[0_0_24px_rgba(249,115,22,0.08)]",
+    hoverGlow: "hover:shadow-[0_0_32px_rgba(249,115,22,0.14)]",
+    headingColor: "text-orange-400",
+    tagBg: "bg-orange-500/10 text-orange-400 border-orange-500/25",
+    icon: "⚠️",
+    headingLabel: "AVOID",
+    dot: "bg-orange-500",
+  },
+};
+
+function SnapshotCard({ player, heading, emptyText, variant }: SnapshotCardProps) {
+  const styles = variantStyles[variant];
+
   if (!player) {
     return (
-      <div className="relative bg-white/[0.02] border border-white/10 rounded-lg p-4 overflow-hidden">
+      <div className={`relative bg-white/[0.02] border ${styles.border} rounded-xl p-4 overflow-hidden`}>
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-lg">{icon}</span>
-          <span className="text-xs font-bold text-white/40 tracking-wider">{label}</span>
+          <span className="text-base">{styles.icon}</span>
+          <span className="text-[10px] font-bold text-white/40 tracking-widest uppercase">{styles.headingLabel}</span>
         </div>
-        <div className="text-white/30 text-sm">No data</div>
+        <div className="text-sm font-semibold text-white/70 mb-1">{heading}</div>
+        <div className="text-white/30 text-xs mt-2">{emptyText}</div>
       </div>
     );
   }
 
-  const glowColors = {
-    green: 'shadow-[0_0_20px_rgba(34,197,94,0.15)]',
-    yellow: 'shadow-[0_0_20px_rgba(245,200,76,0.15)]',
-    red: 'shadow-[0_0_20px_rgba(239,68,68,0.15)]',
-  };
+  const aiWhy = player.recommendation_short
+    ? cleanAiText(player.recommendation_short)
+    : player.summary_short
+    ? cleanAiText(player.summary_short)
+    : null;
 
-  const borderColors = {
-    green: 'border-green-500/30',
-    yellow: 'border-[#F5C84C]/30',
-    red: 'border-red-500/30',
-  };
-
-  const tagColors = {
-    green: 'bg-green-500/10 text-green-400 border-green-500/30',
-    yellow: 'bg-[#F5C84C]/10 text-[#F5C84C] border-[#F5C84C]/30',
-    red: 'bg-red-500/10 text-red-400 border-red-500/30',
-  };
+  const truncatedWhy = aiWhy && aiWhy.length > 70
+    ? aiWhy.slice(0, 70).replace(/\s+\S*$/, "") + "..."
+    : aiWhy;
 
   return (
-    <div className={`relative bg-white/[0.02] border ${borderColors[tagColor]} rounded-lg p-4 overflow-hidden transition-all hover:bg-white/[0.04] ${glowColors[tagColor]}`}>
+    <div
+      className={`relative bg-white/[0.02] border ${styles.border} rounded-xl p-4 overflow-hidden transition-all duration-200 ${styles.glow} ${styles.hoverGlow} hover:-translate-y-0.5 hover:bg-white/[0.04] cursor-pointer`}
+    >
+      {/* Top label row */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-lg">{icon}</span>
-          <span className="text-xs font-bold text-white/40 tracking-wider">{label}</span>
+          <span className="text-base">{styles.icon}</span>
+          <span className="text-[10px] font-bold text-white/40 tracking-widest uppercase">{styles.headingLabel}</span>
         </div>
-        <span className={`px-2 py-0.5 text-[10px] font-bold border rounded ${tagColors[tagColor]}`}>
-          {tagText}
+        <span className={`px-2 py-0.5 text-[10px] font-bold border rounded-md ${styles.tagBg}`}>
+          {player.value_rating_label}
         </span>
       </div>
 
-      <div className="space-y-2">
-        <div>
-          <div className="text-sm font-bold text-white truncate">{player.player_name}</div>
-          <div className="text-xs text-white/50">{player.team} · {player.position}</div>
-        </div>
+      {/* Card heading */}
+      <div className={`text-sm font-bold ${styles.headingColor} mb-2 leading-tight`}>
+        {heading}
+      </div>
 
-        <div className="flex items-center gap-3 text-xs">
-          <div>
-            <div className="text-white/40 text-[10px]">Projection</div>
-            <div className="font-bold text-white">{Math.round(player.projection)}</div>
-          </div>
-          <div className="w-px h-6 bg-white/10" />
-          <div>
-            <div className="text-white/40 text-[10px]">Price</div>
-            <div className="font-bold text-white">{formatPrice(player.price)}</div>
-          </div>
+      {/* Player info */}
+      <div className="mb-3">
+        <div className="text-base font-bold text-white leading-tight truncate">{player.player_name}</div>
+        <div className="text-xs text-white/45 mt-0.5">{player.team} · {player.position}</div>
+      </div>
+
+      {/* Stats row */}
+      <div className="flex items-center gap-4 text-xs mb-3">
+        <div>
+          <div className="text-white/35 text-[10px] mb-0.5">Projection</div>
+          <div className="font-bold text-white tabular-nums">{Math.round(player.projection)}</div>
+        </div>
+        <div className="w-px h-6 bg-white/10" />
+        <div>
+          <div className="text-white/35 text-[10px] mb-0.5">Price</div>
+          <div className="font-bold text-white tabular-nums">{formatPrice(player.price)}</div>
         </div>
       </div>
+
+      {/* AI WHY */}
+      {truncatedWhy && (
+        <div className="text-[11px] text-white/40 leading-relaxed border-t border-white/[0.06] pt-2">
+          {truncatedWhy}
+        </div>
+      )}
     </div>
   );
 }
