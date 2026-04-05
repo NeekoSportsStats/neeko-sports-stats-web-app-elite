@@ -630,12 +630,11 @@ export default function AFLPlayerPage() {
       if (!player?.team) return [];
       const { data, error } = await supabase
         .from('player_rankings_cache')
-        .select('player_id, player_name, neeko_rating, projection_final')
+        .select('player_id, player_name, projection_final, price, breakeven, signal')
         .eq('team', player.team)
         .neq('player_id', player.player_id)
-        .eq('status', 'active')
-        .not('neeko_rating', 'is', null)
-        .order('neeko_rating', { ascending: false })
+        .not('projection_final', 'is', null)
+        .order('projection_final', { ascending: false })
         .limit(5);
       if (error) return [];
       return data ?? [];
@@ -649,12 +648,11 @@ export default function AFLPlayerPage() {
       if (!player?.player_position) return [];
       const { data, error } = await supabase
         .from('player_rankings_cache')
-        .select('player_id, player_name, neeko_rating, projection_final')
-        .eq('player_position', player.player_position)
+        .select('player_id, player_name, projection_final, price, breakeven, signal')
+        .eq('position', player.player_position)
         .neq('player_id', player.player_id)
-        .eq('status', 'active')
-        .not('neeko_rating', 'is', null)
-        .order('neeko_rating', { ascending: false })
+        .not('projection_final', 'is', null)
+        .order('projection_final', { ascending: false })
         .limit(5);
       if (error) return [];
       return data ?? [];

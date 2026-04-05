@@ -370,7 +370,17 @@ export default function AFLRankingsPage() {
 
     const { data, error } = await supabase
       .from("player_rankings_cache")
-      .select("*")
+      .select(
+        "player_id,player_name,team,position,projection_final,ceiling,floor,consistency,form_score," +
+        "neeko_rating,neeko_rating_scaled,price,prev_price,price_change,price_change_pct," +
+        "value_score,best_value_score,value_tag,value_tier,signal,signal_tag,baseline,edge," +
+        "season_avg,last_3_avg,value,breakeven,trend_score,trend_signal,form_delta,form_label," +
+        "summary_short,summary_long,ai_summary,ai_updated_at,recommendation_strength," +
+        "recommendation_color,consistency_tier,market_watch_category,total_count,cached_at," +
+        "games_played,status,manual_status,is_available,bye_round,is_bye,bye_next_round," +
+        "upside_pct,projection_confidence,risk_rating,matchup_rating,matchup_label," +
+        "upside_rating,captain_score,captain_rating"
+      )
       .order("projection_final", { ascending: false, nullsFirst: false });
 
     if (error) {
