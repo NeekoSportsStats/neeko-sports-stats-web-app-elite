@@ -712,9 +712,8 @@ export default function AFLPlayerPage() {
   const getPositionName = (positionCode: string): string =>
     POSITION_NAMES[positionCode] || positionCode || 'Unknown';
 
-  const unlocked         = isPremium || !player.is_locked;
-  const canSeeFullAI     = unlocked;
-  const canSeeChart      = unlocked;
+  const canSeeFullAI     = isPremium;
+  const canSeeChart      = isPremium;
 
   const consistencyBadge = getConsistencyBadge(player.consistency_score ?? player.consistency ?? null);
   const capStyle         = getCaptainStyle(player.captain_rating ?? null);
@@ -918,23 +917,33 @@ export default function AFLPlayerPage() {
                   )}
                 </div>
 
-                {/* Confidence */}
+                {/* Confidence — premium only */}
                 <div className="pl-4">
                   <p className="text-[9px] text-white/30 uppercase tracking-wider mb-1.5 flex items-center gap-1">
                     <Target size={9} className="text-[#F5C84C]/60" />
                     Confidence
                   </p>
-                  {displayConf != null ? (
-                    <>
-                      <p className={`text-base font-bold leading-tight tabular-nums ${getConfidenceColor(displayConf)}`}>
-                        {displayConf}%
-                      </p>
-                      <span className={`inline-block rounded px-1 py-px text-[8px] font-semibold border mt-0.5 ${confLabelCls}`}>
-                        {confLabel}
-                      </span>
-                    </>
+                  {isPremium ? (
+                    displayConf != null ? (
+                      <>
+                        <p className={`text-base font-bold leading-tight tabular-nums ${getConfidenceColor(displayConf)}`}>
+                          {displayConf}%
+                        </p>
+                        <span className={`inline-block rounded px-1 py-px text-[8px] font-semibold border mt-0.5 ${confLabelCls}`}>
+                          {confLabel}
+                        </span>
+                      </>
+                    ) : (
+                      <p className="text-sm text-white/20">—</p>
+                    )
                   ) : (
-                    <p className="text-sm text-white/20">—</p>
+                    <div>
+                      <p className="text-base font-bold leading-tight text-white/20 blur-[4px] select-none tabular-nums">72%</p>
+                      <span className="inline-flex items-center gap-0.5 mt-0.5 px-1 py-px rounded border border-[#F5C84C]/20 bg-[#F5C84C]/5 text-[8px] font-semibold text-[#F5C84C]/50">
+                        <Lock size={7} />
+                        Neeko+
+                      </span>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1010,125 +1019,144 @@ export default function AFLPlayerPage() {
             <ConsistencyRangeBar floor={floorVal} projection={proj} ceiling={ceilingVal} />
           </div>
 
-          {/* ── CONTEXT SECTIONS ─────────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {/* Why This Matters */}
-            <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-3">
-              <p className="text-[10px] text-[#F5C84C]/70 font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Flame size={11} />
-                Why This Matters
-              </p>
-              <ul className="space-y-1.5">
-                {proj != null && (
-                  <li className="text-[11px] text-white/55 leading-snug flex items-start gap-1.5">
-                    <span className="text-white/25 mt-0.5">·</span>
-                    Projected {fmt(proj)} pts this round
-                  </li>
-                )}
-                {player.captain_rating && player.captain_rating.toLowerCase().includes("captain") && (
-                  <li className="text-[11px] text-white/55 leading-snug flex items-start gap-1.5">
-                    <span className="text-[#F5C84C]/50 mt-0.5">·</span>
-                    Flagged as a captain option
-                  </li>
-                )}
-                {isBuy && (
-                  <li className="text-[11px] text-emerald-400/80 leading-snug flex items-start gap-1.5">
-                    <span className="mt-0.5">·</span>
-                    Strong buy signal this round
-                  </li>
-                )}
-                {player.breakeven != null && proj != null && player.breakeven < proj && (
-                  <li className="text-[11px] text-emerald-400/70 leading-snug flex items-start gap-1.5">
-                    <span className="mt-0.5">·</span>
-                    Projection beats breakeven by {Math.round(proj - player.breakeven)} pts
-                  </li>
-                )}
-                {hasMatchup && (
-                  <li className="text-[11px] text-white/55 leading-snug flex items-start gap-1.5">
-                    <span className="text-white/25 mt-0.5">·</span>
-                    Matchup: {matchupLabel}
-                  </li>
-                )}
-              </ul>
-            </div>
+          {/* ── CONTEXT SECTIONS (premium) ───────────────────────────────────── */}
+          {isPremium ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {/* Why This Matters */}
+              <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-3">
+                <p className="text-[10px] text-[#F5C84C]/70 font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Flame size={11} />
+                  Why This Matters
+                </p>
+                <ul className="space-y-1.5">
+                  {proj != null && (
+                    <li className="text-[11px] text-white/55 leading-snug flex items-start gap-1.5">
+                      <span className="text-white/25 mt-0.5">·</span>
+                      Projected {fmt(proj)} pts this round
+                    </li>
+                  )}
+                  {player.captain_rating && player.captain_rating.toLowerCase().includes("captain") && (
+                    <li className="text-[11px] text-white/55 leading-snug flex items-start gap-1.5">
+                      <span className="text-[#F5C84C]/50 mt-0.5">·</span>
+                      Flagged as a captain option
+                    </li>
+                  )}
+                  {isBuy && (
+                    <li className="text-[11px] text-emerald-400/80 leading-snug flex items-start gap-1.5">
+                      <span className="mt-0.5">·</span>
+                      Strong buy signal this round
+                    </li>
+                  )}
+                  {player.breakeven != null && proj != null && player.breakeven < proj && (
+                    <li className="text-[11px] text-emerald-400/70 leading-snug flex items-start gap-1.5">
+                      <span className="mt-0.5">·</span>
+                      Projection beats breakeven by {Math.round(proj - player.breakeven)} pts
+                    </li>
+                  )}
+                  {hasMatchup && (
+                    <li className="text-[11px] text-white/55 leading-snug flex items-start gap-1.5">
+                      <span className="text-white/25 mt-0.5">·</span>
+                      Matchup: {matchupLabel}
+                    </li>
+                  )}
+                </ul>
+              </div>
 
-            {/* Risk Factors */}
-            <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-3">
-              <p className="text-[10px] text-red-400/70 font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <AlertTriangle size={11} />
-                Risk Factors
-              </p>
-              <ul className="space-y-1.5">
-                {player.manual_status && player.manual_status !== 'active' && (
-                  <li className="text-[11px] text-red-400/80 leading-snug flex items-start gap-1.5">
-                    <span className="mt-0.5">·</span>
-                    Status: {player.manual_status}
-                  </li>
-                )}
-                {player.bye_round != null && (
-                  <li className="text-[11px] text-yellow-400/70 leading-snug flex items-start gap-1.5">
-                    <span className="mt-0.5">·</span>
-                    Bye in Round {player.bye_round}
-                  </li>
-                )}
-                {player.risk_rating != null && player.risk_rating > 60 && (
-                  <li className="text-[11px] text-red-400/70 leading-snug flex items-start gap-1.5">
-                    <span className="mt-0.5">·</span>
-                    High volatility ({fmtInt(player.risk_rating)}% risk)
-                  </li>
-                )}
-                {isSell && (
-                  <li className="text-[11px] text-red-400/70 leading-snug flex items-start gap-1.5">
-                    <span className="mt-0.5">·</span>
-                    AI flags as trade candidate
-                  </li>
-                )}
-                {player.breakeven != null && proj != null && player.breakeven > proj && (
-                  <li className="text-[11px] text-red-400/70 leading-snug flex items-start gap-1.5">
-                    <span className="mt-0.5">·</span>
-                    Must score {Math.round(player.breakeven - proj)} more than projected to hold value
-                  </li>
-                )}
-                {!player.manual_status && !player.bye_round && !isSell && player.risk_rating == null && (
-                  <li className="text-[11px] text-white/25 leading-snug">No major risks flagged</li>
-                )}
-              </ul>
-            </div>
+              {/* Risk Factors */}
+              <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-3">
+                <p className="text-[10px] text-red-400/70 font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <AlertTriangle size={11} />
+                  Risk Factors
+                </p>
+                <ul className="space-y-1.5">
+                  {player.manual_status && player.manual_status !== 'active' && (
+                    <li className="text-[11px] text-red-400/80 leading-snug flex items-start gap-1.5">
+                      <span className="mt-0.5">·</span>
+                      Status: {player.manual_status}
+                    </li>
+                  )}
+                  {player.bye_round != null && (
+                    <li className="text-[11px] text-yellow-400/70 leading-snug flex items-start gap-1.5">
+                      <span className="mt-0.5">·</span>
+                      Bye in Round {player.bye_round}
+                    </li>
+                  )}
+                  {player.risk_rating != null && player.risk_rating > 60 && (
+                    <li className="text-[11px] text-red-400/70 leading-snug flex items-start gap-1.5">
+                      <span className="mt-0.5">·</span>
+                      High volatility ({fmtInt(player.risk_rating)}% risk)
+                    </li>
+                  )}
+                  {isSell && (
+                    <li className="text-[11px] text-red-400/70 leading-snug flex items-start gap-1.5">
+                      <span className="mt-0.5">·</span>
+                      AI flags as trade candidate
+                    </li>
+                  )}
+                  {player.breakeven != null && proj != null && player.breakeven > proj && (
+                    <li className="text-[11px] text-red-400/70 leading-snug flex items-start gap-1.5">
+                      <span className="mt-0.5">·</span>
+                      Must score {Math.round(player.breakeven - proj)} more than projected to hold value
+                    </li>
+                  )}
+                  {!player.manual_status && !player.bye_round && !isSell && player.risk_rating == null && (
+                    <li className="text-[11px] text-white/25 leading-snug">No major risks flagged</li>
+                  )}
+                </ul>
+              </div>
 
-            {/* Upside Case */}
-            <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-3">
-              <p className="text-[10px] text-emerald-400/70 font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <TrendingUp size={11} />
-                Upside Case
-              </p>
-              <ul className="space-y-1.5">
-                {ceilingVal != null && (
-                  <li className="text-[11px] text-white/55 leading-snug flex items-start gap-1.5">
-                    <span className="mt-0.5">·</span>
-                    Ceiling: {fmt(ceilingVal)} pts in best case
-                  </li>
-                )}
-                {upsideVal != null && (
-                  <li className="text-[11px] text-emerald-400/80 leading-snug flex items-start gap-1.5">
-                    <span className="mt-0.5">·</span>
-                    +{fmtInt(upsideVal)}% upside over projection
-                  </li>
-                )}
-                {hasMatchup && !matchupLabel?.toLowerCase().includes("tough") && !matchupLabel?.toLowerCase().includes("brutal") && (
-                  <li className="text-[11px] text-white/55 leading-snug flex items-start gap-1.5">
-                    <span className="mt-0.5">·</span>
-                    Favourable matchup this week
-                  </li>
-                )}
-                {player.value_score != null && player.value_score >= 100 && (
-                  <li className="text-[11px] text-emerald-400/70 leading-snug flex items-start gap-1.5">
-                    <span className="mt-0.5">·</span>
-                    Strong value — priced below output
-                  </li>
-                )}
-              </ul>
+              {/* Upside Case */}
+              <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-3">
+                <p className="text-[10px] text-emerald-400/70 font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <TrendingUp size={11} />
+                  Upside Case
+                </p>
+                <ul className="space-y-1.5">
+                  {ceilingVal != null && (
+                    <li className="text-[11px] text-white/55 leading-snug flex items-start gap-1.5">
+                      <span className="mt-0.5">·</span>
+                      Ceiling: {fmt(ceilingVal)} pts in best case
+                    </li>
+                  )}
+                  {upsideVal != null && (
+                    <li className="text-[11px] text-emerald-400/80 leading-snug flex items-start gap-1.5">
+                      <span className="mt-0.5">·</span>
+                      +{fmtInt(upsideVal)}% upside over projection
+                    </li>
+                  )}
+                  {hasMatchup && !matchupLabel?.toLowerCase().includes("tough") && !matchupLabel?.toLowerCase().includes("brutal") && (
+                    <li className="text-[11px] text-white/55 leading-snug flex items-start gap-1.5">
+                      <span className="mt-0.5">·</span>
+                      Favourable matchup this week
+                    </li>
+                  )}
+                  {player.value_score != null && player.value_score >= 100 && (
+                    <li className="text-[11px] text-emerald-400/70 leading-snug flex items-start gap-1.5">
+                      <span className="mt-0.5">·</span>
+                      Strong value — priced below output
+                    </li>
+                  )}
+                </ul>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-4 flex items-center gap-4">
+              <div className="w-9 h-9 rounded-lg bg-[#F5C84C]/10 border border-[#F5C84C]/20 flex items-center justify-center shrink-0">
+                <Lock size={15} className="text-[#F5C84C]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-white leading-tight">Deep Context — Neeko+</p>
+                <p className="text-[11px] text-white/35 mt-0.5 leading-snug">Why this player matters, risk factors, and upside case. Unlocked with a subscription.</p>
+              </div>
+              <Link
+                to="/neeko-plus"
+                className="shrink-0 inline-flex items-center gap-1.5 bg-[#F5C84C] text-black font-bold text-xs px-4 py-2 rounded-lg hover:brightness-110 transition-all"
+              >
+                <Crown size={11} />
+                Unlock
+              </Link>
+            </div>
+          )}
 
           {/* ── AI ANALYSIS ──────────────────────────────────────────────────── */}
           <div className="rounded-xl border border-white/5 bg-white/[0.03] px-5 py-4">

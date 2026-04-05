@@ -51,9 +51,10 @@ function toMWPlayerRow(r: RankingRow): MWPlayerRow {
     projection_confidence: null,
     neeko_rating: null,
     status: r.status ?? null,
-    manual_status: null,
+    manual_status: r.manual_status ?? null,
     is_bye: r.is_bye ?? false,
-    is_injured: r.status === "OUT",
+    is_injured: ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()),
+    games_played: r.games_played != null ? Number(r.games_played) : null,
     snapshot_updated_at: new Date().toISOString(),
     season: 2026,
     round_number: 0,
@@ -1178,8 +1179,9 @@ export default function Index() {
       const { data } = await supabase
         .schema("afl")
         .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, price, projection_final, breakeven, edge, value_score, projection_confidence, signal, signal_tag, games_played, status, is_bye")
+        .select("player_id, player_name, team, position, price, projection_final, breakeven, edge, value_score, projection_confidence, signal, signal_tag, games_played, status, manual_status, is_bye")
         .gte("games_played", 3)
+        .gte("projection_final", 55)
         .order("projection_final", { ascending: false })
         .limit(100);
 

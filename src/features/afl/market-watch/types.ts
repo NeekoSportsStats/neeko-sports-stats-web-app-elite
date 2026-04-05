@@ -32,6 +32,7 @@ export interface MWPlayerRow {
   manual_status: string | null;
   is_bye: boolean;
   is_injured: boolean;
+  games_played: number | null;
   snapshot_updated_at: string;
   season: number;
   round_number: number;

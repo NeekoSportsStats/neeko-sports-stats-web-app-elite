@@ -81,6 +81,7 @@ export default function MarketWatchPageElite() {
           snapshot_updated_at: new Date().toISOString(),
           is_injured: isInjured,
           is_bye: isBye,
+          games_played: r.games_played ?? null,
           status: r.status ?? null,
           manual_status: r.manual_status ?? null,
           value_signal: displaySignal,
@@ -88,8 +89,14 @@ export default function MarketWatchPageElite() {
         };
       });
 
-      // FREE TIER: Filter out injured/bye players for cleaner first impression
-      const finalPlayers = premium ? mapped : mapped.filter(p => !p.is_injured && !p.is_bye);
+      // Eligibility filter: meaningful players only (no rookies, no noise)
+      const isEligible = (p: MWPlayerRow) =>
+        (p.games_played ?? 0) >= 3 &&
+        (p.projection ?? 0) >= 55 &&
+        !p.is_injured &&
+        !p.is_bye;
+
+      const finalPlayers = mapped.filter(isEligible);
 
       setPlayers(finalPlayers);
     } catch (error) {
@@ -191,19 +198,24 @@ export default function MarketWatchPageElite() {
   const updatedAt = players[0]?.snapshot_updated_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
 
+  // Hero card eligibility: stricter threshold — established player with real price
+  const isHeroEligible = (p: DerivedPlayer) =>
+    (p.projection ?? 0) >= 60 &&
+    (p.price ?? 0) >= 300000;
+
   // Top cards: pull directly from classified buckets (single source of truth from engine)
   const topTarget = useMemo(() => {
-    const sorted = [...(classified?.buys ?? [])].sort((a, b) => b.percentile_rank - a.percentile_rank);
+    const sorted = [...(classified?.buys ?? [])].filter(isHeroEligible).sort((a, b) => b.percentile_rank - a.percentile_rank);
     return sorted[0] ?? null;
   }, [classified]);
 
   const topWatch = useMemo(() => {
-    const sorted = [...(classified?.holds ?? [])].sort((a, b) => b.percentile_rank - a.percentile_rank);
+    const sorted = [...(classified?.holds ?? [])].filter(isHeroEligible).sort((a, b) => b.percentile_rank - a.percentile_rank);
     return sorted[0] ?? null;
   }, [classified]);
 
   const topAvoid = useMemo(() => {
-    const sorted = [...(classified?.sells ?? [])].sort((a, b) => a.percentile_rank - b.percentile_rank);
+    const sorted = [...(classified?.sells ?? [])].filter(isHeroEligible).sort((a, b) => a.percentile_rank - b.percentile_rank);
     return sorted[0] ?? null;
   }, [classified]);
 

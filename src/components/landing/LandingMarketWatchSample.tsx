@@ -117,9 +117,12 @@ interface LandingMarketWatchSampleProps {
 
 export function LandingMarketWatchSample({ buys, holds, sells, loading }: LandingMarketWatchSampleProps) {
   const allPlayers = [...buys, ...holds, ...sells];
-  const targets = allPlayers.filter(p => p.display_signal === "TARGET").slice(0, 2);
-  const watch   = allPlayers.filter(p => p.display_signal === "WATCH").slice(0, 2);
-  const avoid   = allPlayers.filter(p => p.display_signal === "AVOID").slice(0, 2);
+  const eligible = allPlayers.filter(
+    p => !p.is_injured && !p.is_bye && (p.projection ?? 0) >= 55 && (p.games_played ?? 0) >= 3
+  );
+  const targets = eligible.filter(p => p.display_signal === "TARGET").slice(0, 2);
+  const watch   = eligible.filter(p => p.display_signal === "WATCH").slice(0, 2);
+  const avoid   = eligible.filter(p => p.display_signal === "AVOID").slice(0, 2);
   const players: DerivedPlayer[] = [...targets, ...watch, ...avoid];
 
   return (
