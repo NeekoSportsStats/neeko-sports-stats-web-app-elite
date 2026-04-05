@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { X, Copy, Check, TrendingUp, TrendingDown, Minus, Search, ChevronDown, ChevronUp } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { MWPlayerRow } from "./types";
-import { fmtPrice, fmtNum, fmtPriceChange, priceChangeColor, tradeVerdict } from "./helpers";
+import { fmtPrice, fmtNum, fmtPriceChange, tradeVerdict } from "./helpers";
 import { track } from "@/lib/analytics";
 
 interface Props {
@@ -44,11 +44,55 @@ export function TradeImpactModal({ onClose, prefillOutId, prefillInId, allPlayer
   const searchPlayers = useCallback(async (query: string, excludeId: number | null): Promise<MWPlayerRow[]> => {
     if (query.length < 2) return [];
     const { data } = await supabase
-      .from("v_mw_premium")
-      .select("*")
+      .schema("afl")
+      .from("player_rankings_cache")
+      .select("player_id, player_name, team, position, price, breakeven, projection_final, edge, signal_tag, signal, status, manual_status, is_bye, recommendation_short, summary_short, summary_long, matchup_label, prev_price, price_change, consistency_score, projection_confidence, neeko_rating, ceiling, floor_score")
       .ilike("player_name", `%${query}%`)
+      .eq("season", 2026)
       .limit(20);
-    return ((data ?? []) as MWPlayerRow[]).filter(p => p.player_id !== excludeId);
+    return ((data ?? []) as any[])
+      .filter(r => r.player_id !== excludeId)
+      .map((r): MWPlayerRow => {
+        const rawTag = (r.signal_tag ?? "").toLowerCase();
+        const displaySignal: "TARGET" | "WATCH" | "AVOID" =
+          rawTag === "target" ? "TARGET" : rawTag === "avoid" ? "AVOID" : "WATCH";
+        return {
+          snapshot_id: "trade-modal",
+          player_id: r.player_id,
+          player_name: r.player_name,
+          team: r.team,
+          position: r.position,
+          price: r.price ?? 0,
+          breakeven: parseFloat(r.breakeven ?? "0") || 0,
+          projection: parseFloat(r.projection_final ?? "0") || 0,
+          ceiling: r.ceiling ?? null,
+          floor_val: r.floor_score ?? null,
+          risk_pct: null,
+          value_gap: r.edge != null ? Number(r.edge) : 0,
+          signal_tag: r.signal_tag ?? null,
+          signal: r.signal ?? null,
+          category: displaySignal === "TARGET" ? "BUY" : displaySignal === "AVOID" ? "SELL" : "HOLD",
+          action: displaySignal === "TARGET" ? "BUY" : displaySignal === "AVOID" ? "SELL" : "HOLD",
+          recommendation_short: r.recommendation_short ?? null,
+          summary_short: r.summary_short ?? null,
+          summary_long: r.summary_long ?? null,
+          matchup_label: r.matchup_label ?? null,
+          prev_price: r.prev_price ?? null,
+          price_change: r.price_change ?? null,
+          consistency: r.consistency_score ?? null,
+          projection_confidence: r.projection_confidence ?? null,
+          neeko_rating: r.neeko_rating ?? null,
+          status: r.status ?? null,
+          manual_status: r.manual_status ?? null,
+          is_bye: r.is_bye === true,
+          is_injured: ["injured", "out", "omitted"].includes((r.status ?? "").toLowerCase()),
+          snapshot_updated_at: new Date().toISOString(),
+          season: 2026,
+          round_number: 1,
+          value_signal: displaySignal,
+          display_signal: displaySignal,
+        };
+      });
   }, []);
 
   const handleOutSearch = useCallback((v: string) => {
@@ -242,9 +286,10 @@ function ComparisonPanel({ out, inn, showAdvanced, onToggleAdvanced }: {
   onToggleAdvanced: () => void;
 }) {
   const ptsDelta = inn.projection - out.projection;
-  const priceDelta = inn.expected_price_change - out.expected_price_change;
-  const riskDelta = inn.risk_pct - out.risk_pct;
-  const scoreDelta = inn.trade_score - out.trade_score;
+  const edgeDelta = (inn.value_gap ?? 0) - (out.value_gap ?? 0);
+  const priceDelta = (inn.price_change ?? 0) - (out.price_change ?? 0);
+  const riskDelta = (inn.risk_pct ?? 0) - (out.risk_pct ?? 0);
+  const scoreDelta = (inn.projection_confidence ?? 0) - (out.projection_confidence ?? 0);
   const verdict = tradeVerdict(ptsDelta, priceDelta, riskDelta, scoreDelta);
 
   const isPositiveVerdict = verdict.startsWith("Recommended") || verdict.startsWith("Strong");
@@ -265,25 +310,25 @@ function ComparisonPanel({ out, inn, showAdvanced, onToggleAdvanced }: {
       higherIsBetter: false,
     },
     {
-      label: "Exp. Price Change",
-      outVal: fmtPriceChange(out.expected_price_change),
-      inVal: fmtPriceChange(inn.expected_price_change),
-      delta: priceDelta,
+      label: "Edge",
+      outVal: fmtNum(out.value_gap, 1),
+      inVal: fmtNum(inn.value_gap, 1),
+      delta: edgeDelta,
       higherIsBetter: true,
     },
     {
-      label: "Trade Score",
-      outVal: fmtNum(out.trade_score, 0),
-      inVal: fmtNum(inn.trade_score, 0),
+      label: "Confidence",
+      outVal: out.projection_confidence != null ? `${fmtNum(out.projection_confidence, 0)}%` : "—",
+      inVal: inn.projection_confidence != null ? `${fmtNum(inn.projection_confidence, 0)}%` : "—",
       delta: scoreDelta,
       higherIsBetter: true,
     },
     {
-      label: "Risk %",
-      outVal: `${fmtNum(out.risk_pct, 0)}%`,
-      inVal: `${fmtNum(inn.risk_pct, 0)}%`,
-      delta: riskDelta,
-      higherIsBetter: false,
+      label: "Price Change",
+      outVal: fmtPriceChange(out.price_change),
+      inVal: fmtPriceChange(inn.price_change),
+      delta: priceDelta,
+      higherIsBetter: true,
     },
     {
       label: "Price",
@@ -296,24 +341,24 @@ function ComparisonPanel({ out, inn, showAdvanced, onToggleAdvanced }: {
 
   const advancedRows: { label: string; outVal: string; inVal: string; delta: number | null; higherIsBetter: boolean }[] = [
     {
-      label: "Price Edge",
-      outVal: `${fmtNum(out.price_edge_pts, 1)} pts`,
-      inVal: `${fmtNum(inn.price_edge_pts, 1)} pts`,
-      delta: inn.price_edge_pts - out.price_edge_pts,
+      label: "Ceiling",
+      outVal: fmtNum(out.ceiling, 1),
+      inVal: fmtNum(inn.ceiling, 1),
+      delta: (inn.ceiling ?? 0) - (out.ceiling ?? 0),
       higherIsBetter: true,
     },
     {
-      label: "Price R1",
-      outVal: fmtPrice(out.projected_price_r1 ?? out.projected_price ?? out.price),
-      inVal: fmtPrice(inn.projected_price_r1 ?? inn.projected_price ?? inn.price),
-      delta: (inn.projected_price_r1 ?? inn.projected_price ?? inn.price) - (out.projected_price_r1 ?? out.projected_price ?? out.price),
+      label: "Floor",
+      outVal: fmtNum(out.floor_val, 1),
+      inVal: fmtNum(inn.floor_val, 1),
+      delta: (inn.floor_val ?? 0) - (out.floor_val ?? 0),
       higherIsBetter: true,
     },
     {
-      label: "Price R3",
-      outVal: fmtPrice(out.projected_price_r3 ?? out.price),
-      inVal: fmtPrice(inn.projected_price_r3 ?? inn.price),
-      delta: (inn.projected_price_r3 ?? inn.price) - (out.projected_price_r3 ?? out.price),
+      label: "Prev Price",
+      outVal: fmtPrice(out.prev_price),
+      inVal: fmtPrice(inn.prev_price),
+      delta: (inn.prev_price ?? inn.price) - (out.prev_price ?? out.price),
       higherIsBetter: true,
     },
   ];
@@ -336,14 +381,14 @@ function ComparisonPanel({ out, inn, showAdvanced, onToggleAdvanced }: {
             positive={ptsDelta > 0}
           />
           <VerdictStat
-            label="Value Swing"
-            value={fmtPriceChange(priceDelta)}
-            positive={priceDelta > 0}
+            label="Edge Change"
+            value={edgeDelta >= 0 ? `+${edgeDelta.toFixed(1)}` : edgeDelta.toFixed(1)}
+            positive={edgeDelta > 0}
           />
           <VerdictStat
-            label="Risk Change"
-            value={riskDelta >= 0 ? `+${riskDelta.toFixed(0)}%` : `${riskDelta.toFixed(0)}%`}
-            positive={riskDelta < 0}
+            label="Price Change"
+            value={fmtPriceChange(inn.price_change)}
+            positive={(inn.price_change ?? 0) > 0}
           />
         </div>
       </div>
@@ -357,15 +402,15 @@ function ComparisonPanel({ out, inn, showAdvanced, onToggleAdvanced }: {
         {coreRows.map(row => <ComparisonRow key={row.label} row={row} />)}
       </div>
 
-      {(out.category_reason || inn.category_reason) && (
+      {(out.recommendation_short || inn.recommendation_short) && (
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl border border-red-400/15 bg-red-400/[0.03] px-3 py-3">
             <p className="text-[9px] text-red-400/60 uppercase tracking-wider mb-1.5">Why sell</p>
-            <p className="text-[11px] text-white/40 leading-snug">{out.category_reason || "—"}</p>
+            <p className="text-[11px] text-white/40 leading-snug">{out.recommendation_short || "—"}</p>
           </div>
           <div className="rounded-xl border border-green-400/15 bg-green-400/[0.03] px-3 py-3">
             <p className="text-[9px] text-green-400/60 uppercase tracking-wider mb-1.5">Why buy</p>
-            <p className="text-[11px] text-white/40 leading-snug">{inn.category_reason || "—"}</p>
+            <p className="text-[11px] text-white/40 leading-snug">{inn.recommendation_short || "—"}</p>
           </div>
         </div>
       )}
@@ -428,19 +473,19 @@ function ComparisonRow({ row }: {
 
 function buildSummaryText(out: MWPlayerRow, inn: MWPlayerRow): string {
   const ptsDelta = inn.projection - out.projection;
-  const priceDelta = inn.expected_price_change - out.expected_price_change;
-  const r3Delta = (inn.projected_price_r3 ?? inn.price) - (out.projected_price_r3 ?? out.price);
-  const riskDelta = inn.risk_pct - out.risk_pct;
-  const scoreDelta = inn.trade_score - out.trade_score;
+  const edgeDelta = (inn.value_gap ?? 0) - (out.value_gap ?? 0);
+  const priceDelta = (inn.price_change ?? 0) - (out.price_change ?? 0);
+  const riskDelta = (inn.risk_pct ?? 0) - (out.risk_pct ?? 0);
+  const scoreDelta = (inn.projection_confidence ?? 0) - (out.projection_confidence ?? 0);
   const verdict = tradeVerdict(ptsDelta, priceDelta, riskDelta, scoreDelta);
   return [
     `Trade Analysis: OUT ${out.player_name} → IN ${inn.player_name}`,
     `Verdict: ${verdict}`,
     `Points Gain: ${ptsDelta >= 0 ? "+" : ""}${ptsDelta.toFixed(1)}`,
-    `Value Swing: ${priceDelta >= 0 ? "+" : ""}$${Math.round(Math.abs(priceDelta) / 1000)}k`,
-    `Price Growth (3 Rounds): OUT ${fmtPrice(out.projected_price_r3 ?? out.price)} | IN ${fmtPrice(inn.projected_price_r3 ?? inn.price)} | Net ${r3Delta >= 0 ? "+" : ""}$${Math.round(Math.abs(r3Delta) / 1000)}k`,
-    `Risk Change: ${riskDelta >= 0 ? "+" : ""}${riskDelta.toFixed(0)}%`,
-    `Trade Score: ${out.trade_score.toFixed(0)} → ${inn.trade_score.toFixed(0)}`,
+    `Edge Change: ${edgeDelta >= 0 ? "+" : ""}${edgeDelta.toFixed(1)}`,
+    `Price Change (IN): ${fmtPriceChange(inn.price_change)}`,
+    `Breakeven: OUT ${fmtNum(out.breakeven, 1)} | IN ${fmtNum(inn.breakeven, 1)}`,
+    `Confidence Change: ${scoreDelta >= 0 ? "+" : ""}${scoreDelta.toFixed(0)}%`,
     `Generated by Neeko Sports`,
   ].join("\n");
 }

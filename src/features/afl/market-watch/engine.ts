@@ -30,7 +30,7 @@ export interface BestTrade {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function displaySignalFromTag(p: MWPlayerRow): DisplaySignal {
-  const raw = (p.signal_tag ?? p.display_signal ?? "").toLowerCase();
+  const raw = (p.signal_tag ?? "").toLowerCase();
   if (raw === "target") return "TARGET";
   if (raw === "avoid") return "AVOID";
   return "WATCH";
