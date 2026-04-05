@@ -1,7 +1,7 @@
 import { useState, useMemo, memo } from "react";
 import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Lock } from "lucide-react";
 import { cleanAiText } from "@/utils/cleanAiText";
 import { generateSmartWhy } from "./helpers";
 
@@ -25,6 +25,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const handleTabSort = (field: SortField) => {
+    if (!isPremium) return;
     if (sortField === field) {
       setSortDirection(d => d === "asc" ? "desc" : "asc");
     } else {
@@ -34,6 +35,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
   };
 
   const handleColumnSort = (field: SortField) => {
+    if (!isPremium) return;
     if (sortField === field) {
       setSortDirection(d => d === "asc" ? "desc" : "asc");
     } else {
@@ -101,26 +103,47 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
   return (
     <div className="space-y-4">
       {/* Sort toggle tabs */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest mr-1">Sort:</span>
-        {SORT_TABS.map(tab => (
-          <button
-            key={tab.field}
-            onClick={() => handleTabSort(tab.field)}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all duration-150 ${
-              sortField === tab.field
-                ? "bg-white/10 border-white/25 text-white"
-                : "bg-white/[0.02] border-white/[0.08] text-white/40 hover:bg-white/[0.05] hover:text-white/60"
-            }`}
+        {SORT_TABS.map(tab => {
+          const isLocked = !isPremium;
+          const isActive = sortField === tab.field;
+
+          return (
+            <button
+              key={tab.field}
+              onClick={() => handleTabSort(tab.field)}
+              disabled={isLocked}
+              title={isLocked ? "Sorting is a Neeko+ feature" : undefined}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg border transition-all duration-150 ${
+                isLocked
+                  ? "opacity-40 cursor-not-allowed bg-white/[0.02] border-white/[0.06] text-white/30"
+                  : isActive
+                  ? "bg-white/10 border-white/25 text-white"
+                  : "bg-white/[0.02] border-white/[0.08] text-white/40 hover:bg-white/[0.05] hover:text-white/60"
+              }`}
+            >
+              {tab.label}
+              {isLocked ? (
+                <Lock className="w-3 h-3" />
+              ) : (
+                isActive && (
+                  <span className="opacity-60">
+                    {sortDirection === "asc" ? "↑" : "↓"}
+                  </span>
+                )
+              )}
+            </button>
+          );
+        })}
+        {!isPremium && (
+          <a
+            href="/billing"
+            className="text-[10px] text-white/25 hover:text-white/50 underline underline-offset-2 transition-colors ml-1"
           >
-            {tab.label}
-            {sortField === tab.field && (
-              <span className="ml-1 opacity-60">
-                {sortDirection === "asc" ? "↑" : "↓"}
-              </span>
-            )}
-          </button>
-        ))}
+            Unlock sorting
+          </a>
+        )}
       </div>
 
       {/* Desktop Table */}
@@ -134,6 +157,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 currentField={sortField}
                 direction={sortDirection}
                 onSort={handleColumnSort}
+                isPremium={isPremium}
               />
               <th className="px-5 py-2.5 text-left text-[10px] font-bold text-white/35 uppercase tracking-wider">
                 Pos / Team
@@ -145,6 +169,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 direction={sortDirection}
                 onSort={handleColumnSort}
                 centered
+                isPremium={isPremium}
               />
               <SortableHeader
                 label="Price"
@@ -152,6 +177,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 currentField={sortField}
                 direction={sortDirection}
                 onSort={handleColumnSort}
+                isPremium={isPremium}
               />
               <SortableHeader
                 label="Value Rating"
@@ -159,6 +185,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 currentField={sortField}
                 direction={sortDirection}
                 onSort={handleColumnSort}
+                isPremium={isPremium}
               />
               <SortableHeader
                 label="Signal"
@@ -166,6 +193,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 currentField={sortField}
                 direction={sortDirection}
                 onSort={handleColumnSort}
+                isPremium={isPremium}
               />
               {isPremium && (
                 <SortableHeader
@@ -176,6 +204,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                   onSort={handleColumnSort}
                   centered
                   muted
+                  isPremium={isPremium}
                 />
               )}
             </tr>
@@ -263,21 +292,32 @@ interface SortableHeaderProps {
   onSort: (field: SortField) => void;
   centered?: boolean;
   muted?: boolean;
+  isPremium?: boolean;
 }
 
-function SortableHeader({ label, field, currentField, direction, onSort, centered = false, muted = false }: SortableHeaderProps) {
+function SortableHeader({ label, field, currentField, direction, onSort, centered = false, muted = false, isPremium = true }: SortableHeaderProps) {
   const isActive = currentField === field;
+  const isLocked = !isPremium;
 
   return (
     <th
-      className={`px-5 py-2.5 ${centered ? "text-center" : "text-left"} text-[10px] font-bold uppercase tracking-wider cursor-pointer hover:text-white/50 transition-colors select-none ${muted ? "text-white/20 hover:text-white/35" : "text-white/35"}`}
-      onClick={() => onSort(field)}
+      className={`px-5 py-2.5 ${centered ? "text-center" : "text-left"} text-[10px] font-bold uppercase tracking-wider select-none transition-colors ${
+        isLocked
+          ? "cursor-not-allowed opacity-40 text-white/25"
+          : muted
+          ? "cursor-pointer text-white/20 hover:text-white/35"
+          : "cursor-pointer text-white/35 hover:text-white/50"
+      }`}
+      onClick={() => !isLocked && onSort(field)}
+      title={isLocked ? "Sorting is a Neeko+ feature" : undefined}
     >
       <div className={`flex items-center gap-1 ${centered ? "justify-center" : ""}`}>
         <span>{label}</span>
-        {isActive && (
+        {isLocked ? (
+          <Lock className="w-2.5 h-2.5" />
+        ) : isActive ? (
           direction === "asc" ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
-        )}
+        ) : null}
       </div>
     </th>
   );
