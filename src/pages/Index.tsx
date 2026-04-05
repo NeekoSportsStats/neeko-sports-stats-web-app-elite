@@ -1160,6 +1160,8 @@ export default function Index() {
 
   const [players, setPlayers]   = useState<RankingRow[]>([]);
   const [playersLoading, setPlayersLoading] = useState(true);
+  const [mwPlayers, setMwPlayers] = useState<MWPlayerRow[]>([]);
+  const [mwLoading, setMwLoading] = useState(true);
 
   useEffect(() => {
     document.title = "Neeko Sports Stats — AI AFL Fantasy Intelligence";
@@ -1253,9 +1255,78 @@ export default function Index() {
     })();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .schema("afl")
+        .from("player_rankings_cache")
+        .select("player_id, player_name, team, position, price, breakeven, projection_final, edge, signal_tag, signal, recommendation_short, summary_short, summary_long, matchup_label, prev_price, price_change, consistency, projection_confidence, neeko_rating, status, manual_status, is_bye, games_played")
+        .order("edge", { ascending: false })
+        .limit(200);
+
+      const rows: MWPlayerRow[] = ((data ?? []) as any[]).map((r): MWPlayerRow => {
+        const rawTag = (r.signal_tag ?? "").toLowerCase();
+        const displaySignal: "TARGET" | "WATCH" | "AVOID" =
+          rawTag === "target" ? "TARGET" : rawTag === "avoid" ? "AVOID" : "WATCH";
+        const isInjured = ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()) ||
+          ['injured', 'out'].includes((r.manual_status ?? '').toLowerCase());
+        const isBye = r.is_bye === true ||
+          (r.status ?? '').toLowerCase() === 'bye' ||
+          (r.manual_status ?? '').toLowerCase() === 'bye';
+        return {
+          snapshot_id: 'market-watch',
+          player_id: r.player_id,
+          player_name: r.player_name,
+          team: r.team,
+          position: r.position,
+          price: r.price ?? 0,
+          breakeven: parseFloat(r.breakeven ?? '0') || 0,
+          projection: parseFloat(r.projection_final ?? '0') || 0,
+          ceiling: null,
+          floor_val: null,
+          risk_pct: null,
+          value_gap: r.edge != null ? Number(r.edge) : 0,
+          signal_tag: r.signal_tag ?? null,
+          signal: r.signal ?? null,
+          category: displaySignal === "TARGET" ? "BUY" : displaySignal === "AVOID" ? "SELL" : "HOLD",
+          action: displaySignal === "TARGET" ? "BUY" : displaySignal === "AVOID" ? "SELL" : "HOLD",
+          recommendation_short: r.recommendation_short ?? null,
+          summary_short: r.summary_short ?? null,
+          summary_long: r.summary_long ?? null,
+          matchup_label: r.matchup_label ?? null,
+          prev_price: r.prev_price ?? null,
+          price_change: r.price_change ?? null,
+          consistency: r.consistency ?? null,
+          projection_confidence: r.projection_confidence ?? null,
+          neeko_rating: r.neeko_rating ?? null,
+          status: r.status ?? null,
+          manual_status: r.manual_status ?? null,
+          is_bye: isBye,
+          is_injured: isInjured,
+          games_played: r.games_played ?? null,
+          snapshot_updated_at: new Date().toISOString(),
+          season: 2026,
+          round_number: 1,
+          value_signal: displaySignal,
+          display_signal: displaySignal,
+        };
+      });
+
+      const eligible = rows.filter(
+        p => (p.games_played ?? 0) >= 3 &&
+          (p.projection ?? 0) >= 55 &&
+          !p.is_injured &&
+          !p.is_bye
+      );
+
+      setMwPlayers(eligible);
+      setMwLoading(false);
+    })();
+  }, []);
+
   const market = useMemo(
-    () => classifyPlayers(players.map(toMWPlayerRow)),
-    [players]
+    () => classifyPlayers(mwPlayers),
+    [mwPlayers]
   );
 
   const HOW_IT_WORKS = [
@@ -1353,7 +1424,7 @@ export default function Index() {
         buys={market.buys}
         holds={market.holds}
         sells={market.sells}
-        loading={playersLoading}
+        loading={mwLoading}
       />
 
       {/* ── FEATURE CARDS ─────────────────────────────────────────────────────── */}
