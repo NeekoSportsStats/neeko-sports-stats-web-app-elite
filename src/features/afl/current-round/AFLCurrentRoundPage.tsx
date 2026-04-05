@@ -783,7 +783,7 @@ export default function AFLCurrentRoundPage() {
               <p className="text-[12px] text-white/40 mt-0.5">See the highest-conviction plays with no noise — just decisions.</p>
             </div>
             <Link
-              to="/sports/afl/edge"
+              to="/sports/afl/edge-board"
               className="shrink-0 flex items-center gap-1.5 text-[12px] font-bold text-white/70 hover:text-white border border-white/[0.12] hover:border-white/[0.25] px-3 py-2 rounded-lg transition-all"
             >
               Edge Board

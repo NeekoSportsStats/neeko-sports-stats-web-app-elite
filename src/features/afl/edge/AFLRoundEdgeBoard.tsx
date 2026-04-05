@@ -5,7 +5,7 @@ import { signalFromField, formatEdgeSignalLabel, getEdgeSignalStyles } from "@/u
 import { createPortal } from "react-dom";
 import {
   Lock, Crown, X, ShieldCheck, Zap, Share2, Check,
-  ChevronRight, ChevronDown, Timer, TrendingUp, Users,
+  ChevronRight, ChevronDown, Timer, TrendingUp,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
@@ -18,13 +18,6 @@ import { buildEdgeBoardPlayers, type EdgeBoardPlayer, type EdgeSection } from "@
 type Section = "must_have" | "breakout" | "do_not_start";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const AFL_TEAMS = [
-  "Adelaide", "Brisbane Lions", "Carlton", "Collingwood", "Essendon",
-  "Fremantle", "Geelong", "Gold Coast", "GWS Giants", "Hawthorn",
-  "Melbourne", "North Melbourne", "Port Adelaide", "Richmond",
-  "St Kilda", "Sydney Swans", "West Coast", "Western Bulldogs",
-];
 
 const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, value_score, projection_confidence, signal, signal_tag, games_played, status, is_bye";
 
@@ -209,124 +202,6 @@ function RoundLockCountdown() {
   );
 }
 
-// ─── My Team Edge Section ─────────────────────────────────────────────────────
-
-function MyTeamEdge({
-  myTeam,
-  onSetTeam,
-  mustHave,
-  breakout,
-  avoid,
-}: {
-  myTeam: string | null;
-  onSetTeam: (team: string) => void;
-  mustHave: EdgeBoardPlayer[];
-  breakout: EdgeBoardPlayer[];
-  avoid: EdgeBoardPlayer[];
-}) {
-  const [selecting, setSelecting] = useState(false);
-
-  if (!myTeam) {
-    return (
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-4 mb-5">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.08] shrink-0">
-            <Users size={14} className="text-white/30" />
-          </div>
-          <div>
-            <h3 className="text-sm font-extrabold text-white">Your Team Edge This Week</h3>
-            <p className="text-[11px] text-white/35">Connect your team to get personalised picks</p>
-          </div>
-        </div>
-        {!selecting ? (
-          <button
-            onClick={() => setSelecting(true)}
-            className="mt-2 w-full py-2.5 rounded-xl border border-[#F5C84C]/30 bg-[#F5C84C]/[0.06] text-[12px] font-bold text-[#F5C84C]/80 hover:text-[#F5C84C] hover:border-[#F5C84C]/50 hover:bg-[#F5C84C]/10 transition-all"
-          >
-            Connect your team
-          </button>
-        ) : (
-          <div className="mt-2">
-            <p className="text-[10px] text-white/30 mb-2 uppercase tracking-widest">Select your AFL Fantasy team</p>
-            <div className="grid grid-cols-3 gap-1.5">
-              {AFL_TEAMS.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => { onSetTeam(t); setSelecting(false); }}
-                  className="text-[10px] text-white/60 font-semibold px-2 py-1.5 rounded-lg border border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.06] hover:text-white hover:border-white/20 transition-all text-left truncate"
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  const teamMustHave   = mustHave.find(r => r.team === myTeam) ?? null;
-  const teamBreakout   = breakout.find(r => r.team === myTeam) ?? null;
-  const teamAvoid      = avoid.find(r => r.team === myTeam) ?? null;
-  const hasTeamPicks   = teamMustHave || teamBreakout || teamAvoid;
-
-  return (
-    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] px-5 py-4 mb-5">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-base">🏉</span>
-          <div>
-            <h3 className="text-[11px] font-extrabold text-white uppercase tracking-widest">Your Team Edge This Week</h3>
-            <p className="text-[10px] text-white/35">{myTeam} players in this week's picks</p>
-          </div>
-        </div>
-        <button
-          onClick={() => onSetTeam("")}
-          className="text-[10px] text-white/25 hover:text-white/50 transition-colors underline underline-offset-2"
-        >
-          Change
-        </button>
-      </div>
-
-      {!hasTeamPicks ? (
-        <p className="text-[12px] text-white/35 italic">No {myTeam} players featured in this week's top picks.</p>
-      ) : (
-        <div className="space-y-2">
-          {teamMustHave && (
-            <div className="flex items-center gap-3 rounded-xl border border-green-500/15 bg-green-500/[0.04] px-3 py-2.5">
-              <span className="text-xs">🟢</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-green-400/70 uppercase tracking-widest">Must Have Value</p>
-                <p className="text-sm font-extrabold text-white truncate">{teamMustHave.player_name}</p>
-              </div>
-              <span className="text-[11px] text-white/50 shrink-0">Score {fmtValueScore(teamMustHave.value_score)}</span>
-            </div>
-          )}
-          {teamBreakout && (
-            <div className="flex items-center gap-3 rounded-xl border border-sky-500/15 bg-sky-500/[0.04] px-3 py-2.5">
-              <span className="text-xs">⚡</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-sky-400/70 uppercase tracking-widest">Breakout Watch</p>
-                <p className="text-sm font-extrabold text-white truncate">{teamBreakout.player_name}</p>
-              </div>
-              <span className="text-[11px] text-white/50 shrink-0">{fmtInt(teamBreakout.projection_final)} pts</span>
-            </div>
-          )}
-          {teamAvoid && (
-            <div className="flex items-center gap-3 rounded-xl border border-red-500/15 bg-red-500/[0.04] px-3 py-2.5">
-              <span className="text-xs">🚨</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-red-400/70 uppercase tracking-widest">Do Not Start</p>
-                <p className="text-sm font-extrabold text-white truncate">{teamAvoid.player_name}</p>
-              </div>
-              <span className="text-[11px] text-white/50 shrink-0">{fmtInt(teamAvoid.projection_final)} pts</span>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── Trust Badge ──────────────────────────────────────────────────────────────
 
@@ -890,8 +765,6 @@ export default function AFLRoundEdgeBoard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
-  const [myTeam, setMyTeam] = useState<string | null>(null);
-
   const [activeModal, setActiveModal] = useState<{ row: RankingRow; section: Section } | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
@@ -1110,15 +983,6 @@ export default function AFLRoundEdgeBoard() {
               <RoundLockCountdown />
             </div>
           </div>
-
-          {/* ── My Team Edge ─────────────────────────────────────────────────── */}
-          <MyTeamEdge
-            myTeam={myTeam}
-            onSetTeam={setMyTeam}
-            mustHave={mustHave}
-            breakout={breakout}
-            avoid={avoid}
-          />
 
           {/* ── Hero Picks Grid ───────────────────────────────────────────────── */}
           {heroPicks.length > 0 && (

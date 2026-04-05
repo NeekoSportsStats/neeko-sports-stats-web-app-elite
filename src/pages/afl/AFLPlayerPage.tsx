@@ -1387,7 +1387,7 @@ export default function AFLPlayerPage() {
               <TrendingUp size={13} />
               Market Watch
             </Link>
-            <Link to="/sports/afl/edge"
+            <Link to="/sports/afl/edge-board"
               className="flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/8 text-white/60 hover:text-white transition-all px-3 py-2.5 text-xs font-medium">
               <Zap size={13} />
               Edge Board
