@@ -140,8 +140,14 @@ function GoldDivider() {
 
 function signalToAction(signal: string | null): { label: string; styles: string } {
   const s = (signal ?? "").toUpperCase();
-  if (s === "BUY" || s === "MUST_HAVE" || s === "BREAKOUT") return { label: "START", styles: "bg-green-500/15 text-green-400 border border-green-500/30" };
-  if (s === "SELL" || s === "AVOID" || s === "DO_NOT_START") return { label: "SIT",   styles: "bg-red-500/15 text-red-400 border border-red-500/30" };
+  if (s === "STRONG_UP" || s === "STRONG_BUY" || s === "MUST_HAVE" || s === "BREAKOUT")
+    return { label: "START", styles: "bg-green-500/15 text-green-400 border border-green-500/30" };
+  if (s === "UP" || s === "BUY")
+    return { label: "START", styles: "bg-green-400/10 text-green-300 border border-green-400/20" };
+  if (s === "STRONG_DOWN" || s === "STRONG_SELL" || s === "AVOID" || s === "DO_NOT_START")
+    return { label: "SIT", styles: "bg-red-500/15 text-red-400 border border-red-500/30" };
+  if (s === "DOWN" || s === "SELL")
+    return { label: "SIT", styles: "bg-red-400/10 text-red-300 border border-red-400/20" };
   return { label: "HOLD", styles: "bg-yellow-400/10 text-yellow-300 border border-yellow-400/20" };
 }
 
@@ -1153,7 +1159,7 @@ export default function Index() {
       const { data } = await supabase
         .schema("afl")
         .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, price, projection_final, breakeven, value_score, projection_confidence, signal, games_played, status, is_bye")
+        .select("player_id, player_name, team, position, price, projection_final, breakeven, value_score, projection_confidence, signal, signal_tag, games_played, status, is_bye")
         .gte("games_played", 3)
         .order("projection_final", { ascending: false })
         .limit(100);
@@ -1204,7 +1210,7 @@ export default function Index() {
           why:                   null,
           long:                  null,
           market_watch_category: null,
-          signal_tag:            null,
+          signal_tag:            (r.signal_tag as string) ?? null,
           upside_pct:            null,
           ai_summary:            null,
           status:                (r.status as string) ?? null,

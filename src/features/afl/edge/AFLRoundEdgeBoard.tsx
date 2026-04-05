@@ -26,7 +26,7 @@ const AFL_TEAMS = [
   "St Kilda", "Sydney Swans", "West Coast", "Western Bulldogs",
 ];
 
-const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, value_score, projection_confidence, signal, games_played, status, is_bye";
+const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, value_score, projection_confidence, signal, signal_tag, games_played, status, is_bye";
 
 // Round lock: Next Thursday 19:35 AEDT
 function getNextRoundLock(): Date {
@@ -957,7 +957,7 @@ export default function AFLRoundEdgeBoard() {
           why:                   null,
           long:                  null,
           market_watch_category: null,
-          signal_tag:            null,
+          signal_tag:            (r.signal_tag as string) ?? null,
           upside_pct:            null,
           ai_summary:            null,
           status:                (r.status as string) ?? null,

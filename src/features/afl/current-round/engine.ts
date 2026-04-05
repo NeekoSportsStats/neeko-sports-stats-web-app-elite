@@ -73,7 +73,10 @@ export function buildCurrentRoundPlayers(
     .filter(
       (p) =>
         !valueIds.has(p.player_id) &&
-        p.signal_tag === "HIGH"
+        (p.projection_final ?? 0) >= 80 &&
+        (p.edge ?? 0) >= -15 &&
+        p.signal !== "STRONG_DOWN" &&
+        p.signal !== "DOWN"
     )
     .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0))
     .slice(0, 10);

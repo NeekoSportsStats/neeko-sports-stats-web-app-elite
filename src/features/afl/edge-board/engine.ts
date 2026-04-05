@@ -61,15 +61,22 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
 
   const mustHave = pick(
     [...withEdge]
-      .filter((p) => (p.edge ?? 0) > 15 && (p.projection_final ?? 0) > 105)
-      .sort((a, b) => (b.edge ?? 0) - (a.edge ?? 0)),
+      .filter((p) =>
+        (p.signal === "STRONG_UP" || p.signal === "UP") &&
+        (p.projection_final ?? 0) >= 95
+      )
+      .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)),
     2,
     "must_have"
   );
 
   const breakout = pick(
     [...withEdge]
-      .filter((p) => (p.edge ?? 0) >= 8 && (p.edge ?? 0) <= 15 && (p.projection_final ?? 0) > 95)
+      .filter((p) =>
+        (p.signal === "UP" || p.signal === "STABLE") &&
+        (p.projection_final ?? 0) >= 85 &&
+        (p.edge ?? 0) >= -20
+      )
       .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)),
     2,
     "breakout"
@@ -77,7 +84,10 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
 
   const avoid = pick(
     [...withEdge]
-      .filter((p) => (p.edge ?? 0) < -10)
+      .filter((p) =>
+        p.signal === "STRONG_DOWN" || p.signal === "DOWN" ||
+        (p.signal_tag === "Avoid")
+      )
       .sort((a, b) => (a.edge ?? 0) - (b.edge ?? 0)),
     2,
     "avoid"

@@ -21,7 +21,8 @@ interface TeamPlayer {
   projection_final: number | null;
   breakeven: number | null;
   value_score: number | null;
-  ai_recommendation: string | null;
+  signal: string | null;
+  signal_tag: string | null;
   status: string | null;
   is_bye: boolean | null;
   games_played: number | null;
@@ -102,7 +103,7 @@ function SnapshotCard({
 
 function RosterRow({ player, rank }: { player: TeamPlayer; rank: number }) {
   const proj = player.projection_final;
-  const sig = signalFromField(player.ai_recommendation);
+  const sig = signalFromField(player.signal);
   const slug = nameToSlug(player.player_name);
 
   return (
@@ -112,7 +113,7 @@ function RosterRow({ player, rank }: { player: TeamPlayer; rank: number }) {
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <span className="text-sm font-bold text-white/20 w-6 shrink-0 text-center tabular-nums">{rank}</span>
-        <SignalIcon signal={player.ai_recommendation} />
+        <SignalIcon signal={player.signal} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <p className="text-sm font-semibold text-white truncate group-hover:text-white/90 transition-colors">
@@ -158,7 +159,7 @@ function RosterRow({ player, rank }: { player: TeamPlayer; rank: number }) {
           <p className="text-sm font-bold text-white/80 tabular-nums">{fmtProj(proj)}</p>
           <p className="text-[9px] text-white/25 uppercase tracking-wide">proj</p>
         </div>
-        <SignalBadge signal={player.ai_recommendation} />
+        <SignalBadge signal={player.signal} />
         <ChevronRight size={14} className="text-white/20 group-hover:text-white/40 transition-colors" />
       </div>
     </Link>
@@ -232,10 +233,7 @@ function TeamSEOBlock({ teamName, players }: { teamName: string; players: TeamPl
   const topPlayer = players[0];
   const topProj = topPlayer ? fmtProj(topPlayer.projection_final) : '—';
 
-  const buys = players.filter(p => {
-    const s = signalFromField(p.ai_recommendation);
-    return s === 'BUY' || s === 'STRONG_BUY';
-  });
+  const buys = players.filter(p => p.signal === 'STRONG_UP' || p.signal === 'UP');
 
   const valuePickNames = buys.slice(0, 3).map(p => p.player_name).join(', ');
 
@@ -331,7 +329,8 @@ export default function AFLTeamPage() {
           projection_final,
           breakeven,
           value_score,
-          ai_recommendation,
+          signal,
+          signal_tag,
           status,
           is_bye,
           games_played
@@ -340,7 +339,13 @@ export default function AFLTeamPage() {
         .gte('games_played', 3)
         .order('projection_final', { ascending: false });
 
-      if (err) { setError(true); setLoading(false); return; }
+      if (err) {
+        console.error("TEAM QUERY FAILED:", teamName, err);
+        setError(true); setLoading(false); return;
+      }
+      if (!data || data.length === 0) {
+        console.error("TEAM QUERY FAILED — no rows returned for:", teamName);
+      }
       setPlayers((data ?? []) as TeamPlayer[]);
       setLoading(false);
     })();
@@ -363,7 +368,7 @@ export default function AFLTeamPage() {
   const accentSafe = accentColor === '#FFD200' ? '#F5C84C' : accentColor;
 
   const buyCt = useMemo(() =>
-    players.filter(p => { const s = signalFromField(p.ai_recommendation); return s === 'BUY' || s === 'STRONG_BUY'; }).length,
+    players.filter(p => p.signal === 'STRONG_UP' || p.signal === 'UP').length,
     [players]
   );
 
