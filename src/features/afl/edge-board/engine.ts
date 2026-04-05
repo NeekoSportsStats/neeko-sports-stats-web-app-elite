@@ -59,32 +59,34 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
     return result;
   }
 
-  const mustHave = pick(
-    [...withEdge]
-      .filter((p) =>
-        p.signal_tag === "Target" &&
-        (p.edge ?? 0) > 0
-      )
-      .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)),
-    2,
-    "must_have"
-  );
+  const mustHavePrimary = [...withEdge]
+    .filter((p) => p.signal_tag === "Target" && (p.edge ?? 0) > 0)
+    .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0));
 
-  const breakout = pick(
-    [...withEdge]
-      .filter((p) => p.signal_tag === "Watch")
-      .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)),
-    2,
-    "breakout"
-  );
+  const mustHaveFallback = [...withEdge]
+    .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0));
 
-  const avoid = pick(
-    [...withEdge]
-      .filter((p) => p.signal_tag === "Avoid")
-      .sort((a, b) => (a.edge ?? 0) - (b.edge ?? 0)),
-    2,
-    "avoid"
-  );
+  const mustHave = pick(mustHavePrimary.length > 0 ? mustHavePrimary : mustHaveFallback, 2, "must_have");
+
+  const breakoutPrimary = [...withEdge]
+    .filter((p) => p.signal_tag === "Watch")
+    .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0));
+
+  const breakoutFallback = [...withEdge]
+    .filter((p) => !mustHave.some((m) => m.player_id === p.player_id))
+    .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0));
+
+  const breakout = pick(breakoutPrimary.length > 0 ? breakoutPrimary : breakoutFallback, 2, "breakout");
+
+  const avoidPrimary = [...withEdge]
+    .filter((p) => p.signal_tag === "Avoid")
+    .sort((a, b) => (a.edge ?? 0) - (b.edge ?? 0));
+
+  const avoidFallback = [...withEdge]
+    .filter((p) => !mustHave.some((m) => m.player_id === p.player_id) && !breakout.some((br) => br.player_id === p.player_id))
+    .sort((a, b) => (a.edge ?? 0) - (b.edge ?? 0));
+
+  const avoid = pick(avoidPrimary.length > 0 ? avoidPrimary : avoidFallback, 2, "avoid");
 
   const allEdgeIds = new Set<string>();
   [...mustHave, ...breakout, ...avoid].forEach((p) => {

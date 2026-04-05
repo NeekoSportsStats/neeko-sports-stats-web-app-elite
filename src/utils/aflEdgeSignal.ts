@@ -23,12 +23,11 @@ export function computeEdgeSignal(
 ): EdgeSignal {
   if (projection == null || baseline == null) return "HOLD";
   const edge = projection - baseline;
-  if (edge >= 9)  return "STRONG_BUY";
-  if (edge >= -3) return "BUY";
-  if (projection >= 95 && edge >= -30) return "HOLD";
-  if (edge >= -19) return "HOLD";
-  if (edge >= -30) return "SELL";
-  return "STRONG_SELL";
+  if (edge >= 10)  return "STRONG_BUY";
+  if (edge >= 3)   return "BUY";
+  if (edge > -3)   return "HOLD";
+  if (edge <= -10) return "STRONG_SELL";
+  return "SELL";
 }
 
 export function formatEdgeSignalLabel(signal: EdgeSignal | string | null): string {

@@ -139,7 +139,7 @@ function getPrimaryMetric(row: RankingRow, section: Section): { label: string; v
   switch (section) {
     case "must_have":    return { label: "Value Score",  value: fmtValueScore(row.value_score),  color: getValueScoreColor(row.value_score) };
     case "breakout":     return { label: "Projection",   value: fmtInt(row.projection_final),    color: "text-sky-400" };
-    case "do_not_start": return { label: "Edge",         value: row.edge != null ? fmtInt(row.edge) : "—", color: row.edge != null && row.edge < 0 ? "text-red-400" : "text-white/50" };
+    case "do_not_start": return { label: "Projection",   value: fmtInt(row.projection_final),              color: "text-red-400" };
   }
 }
 
@@ -153,10 +153,15 @@ function buildConfidenceReasons(row: RankingRow, section: Section): string[] {
   if (section === "breakout" && row.signal_tag === "HIGH") {
     reasons.push("High confidence signal — strong breakout candidate this round");
   }
-  if (section === "do_not_start" && row.edge != null) {
-    if (row.edge <= -20) reasons.push("Significant negative edge — heavily overpriced this round");
-    else if (row.edge <= -10) reasons.push("Negative edge detected — projected below breakeven");
-    else reasons.push("Edge below breakeven — consider alternatives");
+  if (section === "do_not_start") {
+    if (row.breakeven != null && row.projection_final != null) {
+      const edge = row.projection_final - row.breakeven;
+      if (edge <= -20) reasons.push("Significantly underperforming breakeven — heavily overpriced this round");
+      else if (edge <= -10) reasons.push("Projected below breakeven — overpriced given current form");
+      else reasons.push("Projection below breakeven — consider alternatives");
+    } else {
+      reasons.push("Low projection relative to price — consider alternatives");
+    }
   }
   if (row.projection_final != null) {
     reasons.push(`${fmtInt(row.projection_final)} pts projected this round`);
@@ -319,7 +324,7 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
   const keyFactors: string[] = [];
   if (row.projection_final != null) keyFactors.push(`Projection: ${fmtInt(row.projection_final)} pts`);
   if (row.price != null) keyFactors.push(`Price: ${fmtPrice(row.price)}`);
-  if (row.edge != null) keyFactors.push(`Edge: ${fmtInt(row.edge)} pts`);
+  if (row.breakeven != null) keyFactors.push(`Breakeven: ${fmtInt(row.breakeven)} pts`);
   if (row.value_score != null) keyFactors.push(`Value Score: ${fmtValueScore(row.value_score)}`);
 
   const aiText: string | null = null;

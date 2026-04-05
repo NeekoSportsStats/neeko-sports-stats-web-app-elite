@@ -46,8 +46,8 @@ function InjuryPill({ isInjured }: { isInjured: boolean }) {
 function valueLabel(valueGap: number | null): { label: string; textClass: string } {
   if (valueGap == null) return { label: "—", textClass: "text-white/30" };
   if (valueGap >= 15) return { label: "Elite Value", textClass: "text-green-400" };
-  if (valueGap >= -10) return { label: "Fair Price", textClass: "text-yellow-300" };
-  return { label: "Overpriced", textClass: "text-red-400" };
+  if (valueGap >= -10) return { label: "Fair Value", textClass: "text-yellow-300" };
+  return { label: "Overvalued", textClass: "text-red-400" };
 }
 
 function PlayerRow({ player, index }: { player: DerivedPlayer; index: number }) {
