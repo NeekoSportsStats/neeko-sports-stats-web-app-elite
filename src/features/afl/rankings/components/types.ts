@@ -68,10 +68,14 @@ export interface RankingRow {
   is_bye: boolean | null;
   /** True when the player's team has a bye in two rounds */
   bye_next_round: boolean | null;
-  /** TREND ENGINE: projection_final - season_avg (form vs own baseline) */
+  /** TREND ENGINE: projection_final - baseline (forward-looking model gap) */
   trend_score: number | null;
   /** TREND ENGINE: STRONG_UP | UP | STABLE | DOWN | STRONG_DOWN */
   trend_signal: string | null;
+  /** FORM ENGINE: form_score - season_avg (backward-looking recent performance) */
+  form_delta: number | null;
+  /** FORM ENGINE: HOT | IN FORM | NORMAL | COLD | ICE COLD */
+  form_label: string | null;
   /** VALUE ENGINE: edge vs breakeven — STRONG_BUY | BUY | HOLD | SELL | STRONG_SELL */
   value_signal: string | null;
 }

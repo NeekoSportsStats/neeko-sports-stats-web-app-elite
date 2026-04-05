@@ -43,15 +43,35 @@ export function getDisplayRecommendation(row: RankingRow, _tab: RankingsTab): st
 }
 
 export function getDisplayTrend(row: RankingRow): string | null {
-  return row.trend_signal ?? row.signal ?? null;
+  return row.trend_signal ?? null;
 }
 
 export function getTrendWhyText(row: RankingRow): string {
   const ts = row.trend_score;
   if (ts == null) return "Insufficient data to project this round.";
-  if (ts > 10) return "Projecting well above baseline with strong scoring form.";
-  if (ts >= 0) return "Projecting slightly above typical performance.";
-  return "Projection below usual output, indicating potential regression.";
+  if (ts >= 12) return "Model projects well above baseline — strong breakout signal.";
+  if (ts >= 5)  return "Projecting above baseline — positive forward outlook.";
+  if (ts >= -3) return "Projection aligned with baseline — steady performer.";
+  if (ts >= -10) return "Projecting below baseline — possible regression this round.";
+  return "Model projects well below baseline — high regression risk.";
+}
+
+// ─── Form helpers (backward-looking: recent vs season average) ────────────────
+
+export function getFormLabel(formLabel: string | null): string {
+  if (!formLabel) return "—";
+  return formLabel;
+}
+
+export function getFormStyles(formLabel: string | null): string {
+  if (!formLabel) return "text-white/30 border-white/10 bg-white/5";
+  const s = formLabel.toUpperCase();
+  if (s === "HOT")      return "text-orange-300 border-orange-500/30 bg-orange-500/10";
+  if (s === "IN FORM")  return "text-green-400 border-green-500/25 bg-green-500/8";
+  if (s === "NORMAL")   return "text-white/45 border-white/10 bg-white/5";
+  if (s === "COLD")     return "text-sky-400 border-sky-500/25 bg-sky-500/8";
+  if (s === "ICE COLD") return "text-sky-300 border-sky-400/30 bg-sky-500/10";
+  return "text-white/40 border-white/10 bg-white/5";
 }
 
 export function getTrendAction(trendSignal: string | null): string | null {

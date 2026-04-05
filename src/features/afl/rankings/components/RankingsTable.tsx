@@ -10,6 +10,8 @@ import {
   getTrendAction,
   getTrendActionStyles,
   getTrendWhyText,
+  getFormLabel,
+  getFormStyles,
   FREE_FULL_ROWS,
 } from "./helpers";
 import { InfoTooltip, LockedCell } from "./RankingsModals";
@@ -17,9 +19,9 @@ import { ExpandedPlayerRow } from "./ExpandedPlayerRow";
 import { PlayerStatusPill } from "./PlayerStatusPill";
 
 // ─── Column layout ─────────────────────────────────────────────────────────────
-// # (44) | Player (240) | PROJ (90) | BE (80) | EDGE (90) | ACTION (100) | WHY (flex)
-const TOTAL_COLS = 7;
-const FREE_TOTAL_COLS = 5;
+// # (44) | Player (200) | PROJ (80) | BASELINE (80) | TREND (90) | FORM (90) | ACTION (96) | WHY (flex)
+const TOTAL_COLS = 8;
+const FREE_TOTAL_COLS = 6;
 
 const TH = "bg-[#0a0a0a] px-3 py-2.5 text-[11px] font-medium uppercase tracking-wider whitespace-nowrap border-b border-white/10 text-center";
 
@@ -51,7 +53,33 @@ function TrendCell({ row }: { row: RankingRow }) {
     <div className="flex flex-col items-center gap-px">
       <span className={`text-sm font-semibold tabular-nums ${colorCls}`}>{label}</span>
       {scoreDisplay != null && (
-        <span className="text-[9px] text-white/25 leading-none tabular-nums">{scoreDisplay} vs avg</span>
+        <span className="text-[9px] text-white/25 leading-none tabular-nums">{scoreDisplay} vs baseline</span>
+      )}
+    </div>
+  );
+}
+
+// ─── Form cell (backward-looking: recent vs season average) ───────────────────
+
+function FormCell({ row }: { row: RankingRow }) {
+  if (row.is_bye) {
+    return <span className="text-sm text-white/20 tabular-nums">—</span>;
+  }
+
+  const label = getFormLabel(row.form_label);
+  const fd = row.form_delta;
+  const clampedFd = fd != null ? (fd > 40 ? 40 : fd < -40 ? -40 : fd) : null;
+  const deltaDisplay = fd == null ? null
+    : fd > 40 ? "+40+" : fd < -40 ? "-40+" : (clampedFd! > 0 ? `+${clampedFd!.toFixed(1)}` : clampedFd!.toFixed(1));
+
+  const styleCls = getFormStyles(row.form_label);
+  const [textCls] = styleCls.split(" ");
+
+  return (
+    <div className="flex flex-col items-center gap-px">
+      <span className={`text-[11px] font-semibold tabular-nums ${textCls}`}>{label}</span>
+      {deltaDisplay != null && (
+        <span className="text-[9px] text-white/25 leading-none tabular-nums">{deltaDisplay} vs avg</span>
       )}
     </div>
   );
@@ -72,7 +100,7 @@ function ExpandedPanel({ row, displayRec }: ExpandedPanelProps) {
   const price = row.price != null ? fmtPrice(row.price) : null;
 
   const edgeLabel = rawTs != null && tsSign != null
-    ? `${tsSign} vs avg — ${rawTs >= 20 ? "breakout form" : rawTs >= 10 ? "rising form" : rawTs >= -5 ? "stable form" : "form concern"}`
+    ? `${tsSign} vs baseline — ${rawTs >= 12 ? "breakout signal" : rawTs >= 5 ? "rising signal" : rawTs >= -3 ? "stable signal" : rawTs >= -10 ? "soft concern" : "regression risk"}`
     : null;
 
   return (
@@ -161,11 +189,12 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
     <tr className="border-b border-[#222]">
       <th className={`${TH} text-white/40`} style={{ width: 44, minWidth: 44 }}>#</th>
       <th className={`${TH} text-left text-white/40`} style={{ width: 200, minWidth: 160 }}>Player</th>
-      <SortableTh label="Proj" col="projection_final" width={80} tooltip="Expected fantasy points this round" />
-      <SortableTh label="Baseline" col="form_score" width={80} tooltip="Weighted average of season, last 5 and last 3 scores" />
-      <SortableTh label="Trend" col="projection_final" width={80} tooltip="Trend vs own season average. Green = above form. Red = below form." />
+      <SortableTh label="Proj" col="projection_final" width={80} tooltip="Model's expected fantasy score this round" />
+      <SortableTh label="Baseline" col="form_score" width={80} tooltip="Weighted average of recent and season scores" />
+      <SortableTh label="Trend" col="projection_final" width={90} tooltip="Forward signal: how projection compares to baseline. Drives ACTION." />
+      <Th label="Form" width={90} tooltip="Recent form vs season average — context only, not used for action." />
       <Th label="Action" locked={!isPremium} width={96} />
-      <th className={`${TH} text-left text-white/35`} style={{ minWidth: 300 }}>Why</th>
+      <th className={`${TH} text-left text-white/35`} style={{ minWidth: 260 }}>Why</th>
     </tr>
   );
 }
@@ -254,7 +283,11 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
           <TrendCell row={row} />
         </td>
 
-        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 100 }}>
+        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 90 }}>
+          <FormCell row={row} />
+        </td>
+
+        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 96 }}>
           {isLocked ? (
             <LockedCell onClick={onUpgrade} />
           ) : (
