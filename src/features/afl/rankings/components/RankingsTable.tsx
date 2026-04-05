@@ -4,10 +4,12 @@ import { RankingRow, SortKey, SortDir, RankingsTab, RowTier } from "./types";
 import {
   fmt, fmtPrice,
   getDisplayRecommendation,
+  getDisplayTrend,
   getTrendLabel,
   getTrendStyles,
   getTrendAction,
   getTrendActionStyles,
+  getTrendWhyText,
   FREE_FULL_ROWS,
 } from "./helpers";
 import { InfoTooltip, LockedCell } from "./RankingsModals";
@@ -24,23 +26,34 @@ const TH = "bg-[#0a0a0a] px-3 py-2.5 text-[11px] font-medium uppercase tracking-
 // ─── Trend cell ────────────────────────────────────────────────────────────────
 
 function TrendCell({ row }: { row: RankingRow }) {
-  if (row.is_bye || row.trend_score === null || row.trend_score === undefined) {
+  if (row.is_bye) {
     return <span className="text-sm text-white/20 tabular-nums">—</span>;
   }
 
+  const trend = getDisplayTrend(row);
+  const label = getTrendLabel(trend);
+
   const ts = row.trend_score;
-  const clamped = ts > 40 ? 40 : ts < -40 ? -40 : ts;
-  const display = ts > 40 ? "40+" : ts < -40 ? "-40+" : (clamped > 0 ? `+${clamped}` : String(clamped));
+  const clamped = ts != null ? (ts > 40 ? 40 : ts < -40 ? -40 : ts) : null;
+  const scoreDisplay = ts == null ? null
+    : ts > 40 ? "+40+" : ts < -40 ? "-40+" : (clamped! > 0 ? `+${clamped}` : String(clamped));
+
   let colorCls: string;
-  if (clamped >= 20) colorCls = "text-emerald-400 font-semibold";
-  else if (clamped >= 10) colorCls = "text-green-300 font-semibold";
-  else if (clamped >= -5) colorCls = "text-neutral-300";
-  else colorCls = "text-red-400 font-semibold";
+  const s = trend.toUpperCase();
+  if (s === "STRONG_UP")   colorCls = "text-emerald-400 font-bold";
+  else if (s === "UP")     colorCls = "text-green-300 font-semibold";
+  else if (s === "STABLE") colorCls = "text-neutral-300";
+  else if (s === "DOWN")   colorCls = "text-orange-400 font-semibold";
+  else                     colorCls = "text-red-400 font-bold";
+
+  console.log("TREND DEBUG", row.player_name, row.trend_signal, row.trend_score);
 
   return (
     <div className="flex flex-col items-center gap-px">
-      <span className={`text-sm font-semibold tabular-nums ${colorCls}`}>{display}</span>
-      <span className="text-[9px] text-white/25 leading-none">vs avg</span>
+      <span className={`text-sm font-semibold tabular-nums ${colorCls}`}>{label}</span>
+      {scoreDisplay != null && (
+        <span className="text-[9px] text-white/25 leading-none tabular-nums">{scoreDisplay} vs avg</span>
+      )}
     </div>
   );
 }
@@ -175,8 +188,8 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
   const [expanded, setExpanded] = useState(false);
   const rank = idx + 1;
 
-  const displayRec = getDisplayRecommendation(row, activeTab);
-  const whyText = row.why ?? "—";
+  const displayRec = getDisplayTrend(row);
+  const whyText = row.why ?? getTrendWhyText(row);
 
   const isLocked = !isPremium && idx >= FREE_FULL_ROWS;
 
@@ -245,13 +258,13 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
         <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 100 }}>
           {isLocked ? (
             <LockedCell onClick={onUpgrade} />
-          ) : displayRec ? (
+          ) : (
             <span
               className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${getTrendActionStyles(displayRec)}`}
             >
-              {getTrendAction(displayRec) ?? getTrendLabel(displayRec)}
+              {getTrendAction(displayRec) ?? "HOLD"}
             </span>
-          ) : <span className="text-white/20 text-xs">—</span>}
+          )}
         </td>
 
         <td className="px-3 py-3 text-left" style={{ minWidth: 300 }}>

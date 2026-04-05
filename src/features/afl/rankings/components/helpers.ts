@@ -39,8 +39,19 @@ export function getTrendStyles(trendSignal: string | null): string {
 }
 
 export function getDisplayRecommendation(row: RankingRow, _tab: RankingsTab): string {
-  if (row.trend_signal) return row.trend_signal;
-  return signalFromField(row.signal);
+  return getDisplayTrend(row);
+}
+
+export function getDisplayTrend(row: RankingRow): string {
+  return row.trend_signal ?? "STABLE";
+}
+
+export function getTrendWhyText(row: RankingRow): string {
+  const ts = row.trend_score;
+  if (ts == null) return "Insufficient data to project this round.";
+  if (ts > 10) return "Projecting well above baseline with strong scoring form.";
+  if (ts >= 0) return "Projecting slightly above typical performance.";
+  return "Projection below usual output, indicating potential regression.";
 }
 
 export function getTrendAction(trendSignal: string | null): string | null {
