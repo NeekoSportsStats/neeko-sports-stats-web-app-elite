@@ -43,7 +43,7 @@ interface RankingRow {
   refreshed_at: string | null;
 }
 
-type Section = "captain" | "breakout" | "trap";
+type Section = "must_have" | "breakout" | "do_not_start";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -211,17 +211,17 @@ function getRiskColor(v: number | null): string {
 
 function getSectionLabel(section: Section): { emoji: string; label: string; accentText: string; border: string; bg: string } {
   switch (section) {
-    case "captain": return { emoji: "🔥", label: "CAPTAIN LOCK", accentText: "text-yellow-400", border: "border-yellow-400/30", bg: "bg-yellow-400/[0.05]" };
-    case "breakout": return { emoji: "🟢", label: "MUST HAVE VALUE", accentText: "text-green-400", border: "border-green-500/30", bg: "bg-green-500/[0.05]" };
-    case "trap": return { emoji: "🚨", label: "DO NOT START", accentText: "text-red-400", border: "border-red-500/30", bg: "bg-red-500/[0.05]" };
+    case "must_have":     return { emoji: "🟢", label: "MUST HAVE VALUE",      accentText: "text-green-400",  border: "border-green-500/30",  bg: "bg-green-500/[0.05]" };
+    case "breakout":      return { emoji: "⚡", label: "BREAKOUT / WATCHLIST", accentText: "text-sky-400",    border: "border-sky-500/30",    bg: "bg-sky-500/[0.05]" };
+    case "do_not_start":  return { emoji: "🚨", label: "DO NOT START",         accentText: "text-red-400",    border: "border-red-500/30",    bg: "bg-red-500/[0.05]" };
   }
 }
 
 function getPrimaryMetric(row: RankingRow, section: Section): { label: string; value: string; color: string } {
   switch (section) {
-    case "captain": return { label: "Projection", value: fmtInt(row.projection_final), color: "text-yellow-400" };
-    case "breakout": return { label: "Value Score", value: fmtValueScore(row.value_score), color: getValueScoreColor(row.value_score) };
-    case "trap": return { label: "Risk", value: getRiskLabel(row.risk_rating), color: getRiskColor(row.risk_rating) };
+    case "must_have":    return { label: "Value Score",  value: fmtValueScore(row.value_score),  color: getValueScoreColor(row.value_score) };
+    case "breakout":     return { label: "Projection",   value: fmtInt(row.projection_final),    color: "text-sky-400" };
+    case "do_not_start": return { label: "Risk",         value: getRiskLabel(row.risk_rating),   color: getRiskColor(row.risk_rating) };
   }
 }
 
@@ -239,13 +239,21 @@ function buildConfidenceReasons(row: RankingRow, section: Section): string[] {
     if (upside >= 30) reasons.push(`${fmtInt(upside)} pt upside ceiling above projection`);
     else if (upside <= 5) reasons.push("Ceiling is tightly capped — limited upside");
   }
-  if (section === "breakout" && row.value_score != null) {
+  if (section === "must_have" && row.value_score != null) {
     if (row.value_score >= 1.25) reasons.push("Exceptional value relative to price point");
     else if (row.value_score >= 1.10) reasons.push("Priced below projected output — value play");
+    else reasons.push("Strong value-to-price ratio in current market");
   }
-  if (section === "trap" && row.risk_rating != null) {
+  if (section === "breakout" && row.trend_signal != null) {
+    if (row.trend_signal === "STRONG_UP") reasons.push("Form trending strongly upward — breakout signal active");
+  }
+  if (section === "do_not_start" && row.risk_rating != null) {
     if (row.risk_rating >= 35) reasons.push("Very high risk — multiple negative signals");
     else if (row.risk_rating >= 25) reasons.push("Elevated risk profile — caution advised");
+  }
+  if (section === "do_not_start" && row.trend_signal != null) {
+    if (row.trend_signal === "STRONG_DOWN") reasons.push("Form collapsing — strongest downward signal");
+    else if (row.trend_signal === "DOWN") reasons.push("Declining form over recent rounds");
   }
   if (row.neeko_rating != null) {
     if (row.neeko_rating >= 7.5) reasons.push(`Strong Neeko rating of ${row.neeko_rating.toFixed(1)}`);
@@ -266,17 +274,17 @@ function buildShareText(row: RankingRow, section: Section): string {
   const oneLiner = row.ai_summary ? getOneLiner(row.ai_summary) : null;
   const reasonStr = oneLiner ? `\n"${oneLiner}"` : "";
   switch (section) {
-    case "captain": return `🔥 AFL Fantasy Captain Pick (Neeko)\n${row.player_name} (${row.team}) — ${fmtInt(row.projection_final)} pts${confStr}${reasonStr}\n\nneekosports.com.au #AFLFantasy`;
-    case "breakout": return `🟢 AFL Fantasy Value Play (Neeko)\n${row.player_name} (${row.team}) — Value Score ${fmtValueScore(row.value_score)}${confStr}${reasonStr}\n\nneekosports.com.au #AFLFantasy`;
-    case "trap": return `🚨 AFL Fantasy Fade Alert (Neeko)\n${row.player_name} (${row.team}) — ${getRiskLabel(row.risk_rating)} Risk${confStr}${reasonStr}\n\nneekosports.com.au #AFLFantasy`;
+    case "must_have":    return `🟢 AFL Fantasy Must Have (Neeko)\n${row.player_name} (${row.team}) — Value Score ${fmtValueScore(row.value_score)}${confStr}${reasonStr}\n\nneekosports.com.au #AFLFantasy`;
+    case "breakout":     return `⚡ AFL Fantasy Breakout Watch (Neeko)\n${row.player_name} (${row.team}) — ${fmtInt(row.projection_final)} pts projected${confStr}${reasonStr}\n\nneekosports.com.au #AFLFantasy`;
+    case "do_not_start": return `🚨 AFL Fantasy Fade Alert (Neeko)\n${row.player_name} (${row.team}) — ${getRiskLabel(row.risk_rating)} Risk${confStr}${reasonStr}\n\nneekosports.com.au #AFLFantasy`;
   }
 }
 
-function buildRoundSummaryText(captain: RankingRow | null, value: RankingRow | null, trap: RankingRow | null): string {
-  const lines: string[] = ["🔥 My AFL Fantasy Picks (Neeko)\n"];
-  if (captain) lines.push(`C: ${captain.player_name} (${fmtInt(captain.projection_final)} pts)`);
-  if (value) lines.push(`Value: ${value.player_name} — Score ${fmtValueScore(value.value_score)}`);
-  if (trap) lines.push(`Avoid: ${trap.player_name} — ${getRiskLabel(trap.risk_rating)} risk`);
+function buildRoundSummaryText(mustHave: RankingRow | null, breakout: RankingRow | null, doNotStart: RankingRow | null): string {
+  const lines: string[] = ["⚡ My AFL Fantasy Edge Picks (Neeko)\n"];
+  if (mustHave) lines.push(`Must Have: ${mustHave.player_name} — Value ${fmtValueScore(mustHave.value_score)}`);
+  if (breakout) lines.push(`Breakout Watch: ${breakout.player_name} — ${fmtInt(breakout.projection_final)} pts projected`);
+  if (doNotStart) lines.push(`Avoid: ${doNotStart.player_name} — ${getRiskLabel(doNotStart.risk_rating)} risk`);
   lines.push("\nneekosports.com.au #AFLFantasy #NeekoEdge");
   return lines.join("\n");
 }
@@ -353,11 +361,10 @@ function MyTeamEdge({
     );
   }
 
-  // Filter rows relevant to team
-  const teamCaptain = rows.find(r => r.section === "captain" && r.team === myTeam);
-  const teamValue = rows.find(r => r.section === "breakout" && r.team === myTeam);
-  const teamTrap = rows.find(r => r.section === "trap" && r.team === myTeam);
-  const hasTeamPicks = teamCaptain || teamValue || teamTrap;
+  const teamMustHave  = rows.find(r => r.section === "must_have" && r.team === myTeam);
+  const teamBreakout  = rows.find(r => r.section === "breakout" && r.team === myTeam);
+  const teamDoNotStart = rows.find(r => r.section === "do_not_start" && r.team === myTeam);
+  const hasTeamPicks = teamMustHave || teamBreakout || teamDoNotStart;
 
   return (
     <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] px-5 py-4 mb-5">
@@ -381,34 +388,34 @@ function MyTeamEdge({
         <p className="text-[12px] text-white/35 italic">No {myTeam} players featured in this week's top picks.</p>
       ) : (
         <div className="space-y-2">
-          {teamCaptain && (
-            <div className="flex items-center gap-3 rounded-xl border border-yellow-400/15 bg-yellow-400/[0.04] px-3 py-2.5">
-              <span className="text-xs">🔥</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-yellow-400/70 uppercase tracking-widest">Captain Option</p>
-                <p className="text-sm font-extrabold text-white truncate">{teamCaptain.player_name}</p>
-              </div>
-              <span className="text-[11px] text-white/50 shrink-0">{fmtInt(teamCaptain.projection_final)} pts</span>
-            </div>
-          )}
-          {teamValue && (
+          {teamMustHave && (
             <div className="flex items-center gap-3 rounded-xl border border-green-500/15 bg-green-500/[0.04] px-3 py-2.5">
               <span className="text-xs">🟢</span>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-green-400/70 uppercase tracking-widest">Value Target</p>
-                <p className="text-sm font-extrabold text-white truncate">{teamValue.player_name}</p>
+                <p className="text-[10px] font-bold text-green-400/70 uppercase tracking-widest">Must Have Value</p>
+                <p className="text-sm font-extrabold text-white truncate">{teamMustHave.player_name}</p>
               </div>
-              <span className="text-[11px] text-white/50 shrink-0">Score {fmtValueScore(teamValue.value_score)}</span>
+              <span className="text-[11px] text-white/50 shrink-0">Score {fmtValueScore(teamMustHave.value_score)}</span>
             </div>
           )}
-          {teamTrap && (
+          {teamBreakout && (
+            <div className="flex items-center gap-3 rounded-xl border border-sky-500/15 bg-sky-500/[0.04] px-3 py-2.5">
+              <span className="text-xs">⚡</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold text-sky-400/70 uppercase tracking-widest">Breakout Watch</p>
+                <p className="text-sm font-extrabold text-white truncate">{teamBreakout.player_name}</p>
+              </div>
+              <span className="text-[11px] text-white/50 shrink-0">{fmtInt(teamBreakout.projection_final)} pts</span>
+            </div>
+          )}
+          {teamDoNotStart && (
             <div className="flex items-center gap-3 rounded-xl border border-red-500/15 bg-red-500/[0.04] px-3 py-2.5">
               <span className="text-xs">🚨</span>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-red-400/70 uppercase tracking-widest">Fade This Player</p>
-                <p className="text-sm font-extrabold text-white truncate">{teamTrap.player_name}</p>
+                <p className="text-[10px] font-bold text-red-400/70 uppercase tracking-widest">Do Not Start</p>
+                <p className="text-sm font-extrabold text-white truncate">{teamDoNotStart.player_name}</p>
               </div>
-              <span className="text-[11px] text-white/50 shrink-0">{getRiskLabel(teamTrap.risk_rating)} risk</span>
+              <span className="text-[11px] text-white/50 shrink-0">{getRiskLabel(teamDoNotStart.risk_rating)} risk</span>
             </div>
           )}
         </div>
@@ -739,7 +746,7 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
   const metric = getPrimaryMetric(row, section);
   const conf = row.projection_confidence;
   const oneLiner = row.summary_short ? truncateWords(row.summary_short, 9) : null;
-  const isCaptain = section === "captain";
+  const isCaptain = false;
   const sig = signalFromField(row.signal);
 
   return (
@@ -857,10 +864,10 @@ function BulletListSection({ title, emoji, accentText, rows, section, onOpen }: 
       <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] divide-y divide-white/[0.04] overflow-hidden">
         {rows.map((row) => {
           const stat =
-            section === "captain"
-              ? `${fmtInt(row.projection_final)} pts`
-              : section === "breakout"
+            section === "must_have"
               ? `Value ${fmtValueScore(row.value_score)}`
+              : section === "breakout"
+              ? `${fmtInt(row.projection_final)} pts projected`
               : `${getRiskLabel(row.risk_rating)} risk`;
           const confStr = row.projection_confidence != null ? ` · ${row.projection_confidence}% conf` : "";
 
@@ -884,11 +891,11 @@ function BulletListSection({ title, emoji, accentText, rows, section, onOpen }: 
 
 // ─── Locked Pick Row ──────────────────────────────────────────────────────────
 
-function LockedPickRow({ section, rank, onUnlock }: { section: "captain" | "value" | "trap"; rank: number; onUnlock: () => void }) {
+function LockedPickRow({ section, rank, onUnlock }: { section: "must_have" | "breakout" | "do_not_start"; rank: number; onUnlock: () => void }) {
   const accent =
-    section === "captain" ? { border: "border-yellow-400/10", label: `#${rank} Captain` }
-    : section === "value"  ? { border: "border-green-500/10",  label: `#${rank} Value` }
-    :                        { border: "border-red-500/10",     label: `#${rank} Trap` };
+    section === "must_have"    ? { border: "border-green-500/10",  label: `#${rank} Must Have` }
+    : section === "breakout"   ? { border: "border-sky-500/10",    label: `#${rank} Breakout` }
+    :                            { border: "border-red-500/10",    label: `#${rank} Avoid` };
 
   return (
     <div
@@ -931,9 +938,9 @@ function FreePaywall({ onUnlock, captainCount, valueCount, trapCount }: { onUnlo
         </a>
       </div>
       <div className="space-y-2">
-        {Array.from({ length: captainCount }).map((_, i) => <LockedPickRow key={`cap-${i}`} section="captain" rank={i + 2} onUnlock={onUnlock} />)}
-        {Array.from({ length: valueCount }).map((_, i) => <LockedPickRow key={`val-${i}`} section="value" rank={i + 2} onUnlock={onUnlock} />)}
-        {Array.from({ length: trapCount }).map((_, i) => <LockedPickRow key={`trap-${i}`} section="trap" rank={i + 2} onUnlock={onUnlock} />)}
+        {Array.from({ length: captainCount }).map((_, i) => <LockedPickRow key={`mh-${i}`} section="must_have" rank={i + 2} onUnlock={onUnlock} />)}
+        {Array.from({ length: valueCount }).map((_, i) => <LockedPickRow key={`bo-${i}`} section="breakout" rank={i + 2} onUnlock={onUnlock} />)}
+        {Array.from({ length: trapCount }).map((_, i) => <LockedPickRow key={`dns-${i}`} section="do_not_start" rank={i + 2} onUnlock={onUnlock} />)}
       </div>
       <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/[0.05]">
         <span className="text-[10px] text-white/25">From $9.99/mo</span>
@@ -947,9 +954,9 @@ function FreePaywall({ onUnlock, captainCount, valueCount, trapCount }: { onUnlo
 
 // ─── Round Summary Share Panel ─────────────────────────────────────────────────
 
-function RoundSummaryShare({ captain, value, trap }: { captain: RankingRow | null; value: RankingRow | null; trap: RankingRow | null }) {
+function RoundSummaryShare({ mustHave, breakout, doNotStart }: { mustHave: RankingRow | null; breakout: RankingRow | null; doNotStart: RankingRow | null }) {
   const [copied, setCopied] = useState(false);
-  const summaryText = buildRoundSummaryText(captain, value, trap);
+  const summaryText = buildRoundSummaryText(mustHave, breakout, doNotStart);
 
   async function handleCopy() {
     const ok = await copyToClipboard(summaryText);
@@ -976,22 +983,22 @@ function RoundSummaryShare({ captain, value, trap }: { captain: RankingRow | nul
       </div>
 
       <div className="rounded-xl border border-white/[0.06] bg-black/30 px-4 py-3 space-y-1.5 mb-3">
-        {captain && (
-          <div className="flex items-center gap-2">
-            <span className="text-[10px]">🔥</span>
-            <span className="text-[12px] text-white/60">C: <span className="text-white font-semibold">{captain.player_name}</span> ({fmtInt(captain.projection_final)} pts)</span>
-          </div>
-        )}
-        {value && (
+        {mustHave && (
           <div className="flex items-center gap-2">
             <span className="text-[10px]">🟢</span>
-            <span className="text-[12px] text-white/60">Value: <span className="text-white font-semibold">{value.player_name}</span> — Score {fmtValueScore(value.value_score)}</span>
+            <span className="text-[12px] text-white/60">Must Have: <span className="text-white font-semibold">{mustHave.player_name}</span> — Value {fmtValueScore(mustHave.value_score)}</span>
           </div>
         )}
-        {trap && (
+        {breakout && (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px]">⚡</span>
+            <span className="text-[12px] text-white/60">Breakout: <span className="text-white font-semibold">{breakout.player_name}</span> — {fmtInt(breakout.projection_final)} pts projected</span>
+          </div>
+        )}
+        {doNotStart && (
           <div className="flex items-center gap-2">
             <span className="text-[10px]">🚨</span>
-            <span className="text-[12px] text-white/60">Avoid: <span className="text-white font-semibold">{trap.player_name}</span> — {getRiskLabel(trap.risk_rating)} risk</span>
+            <span className="text-[12px] text-white/60">Avoid: <span className="text-white font-semibold">{doNotStart.player_name}</span> — {getRiskLabel(doNotStart.risk_rating)} risk</span>
           </div>
         )}
         <p className="text-[10px] text-white/20 pt-1">neekosports.com.au #AFLFantasy</p>
@@ -1237,23 +1244,23 @@ export default function AFLRoundEdgeBoard() {
     );
   }
 
-  const captainRows  = rows.filter(r => r.section === "captain").sort((a, b) => Number(a.section_rank) - Number(b.section_rank));
-  const breakoutRows = rows.filter(r => r.section === "breakout").sort((a, b) => Number(a.section_rank) - Number(b.section_rank));
-  const trapRows     = rows.filter(r => r.section === "trap").sort((a, b) => Number(a.section_rank) - Number(b.section_rank));
+  const mustHaveRows    = rows.filter(r => r.section === "must_have").sort((a, b) => Number(a.section_rank) - Number(b.section_rank));
+  const breakoutRows    = rows.filter(r => r.section === "breakout").sort((a, b) => Number(a.section_rank) - Number(b.section_rank));
+  const doNotStartRows  = rows.filter(r => r.section === "do_not_start").sort((a, b) => Number(a.section_rank) - Number(b.section_rank));
 
-  const captainPick = captainRows[0] ?? null;
-  const valuePick   = breakoutRows[0] ?? null;
-  const trapPick    = trapRows[0] ?? null;
+  const mustHavePick   = mustHaveRows[0] ?? null;
+  const breakoutPick   = breakoutRows[0] ?? null;
+  const doNotStartPick = doNotStartRows[0] ?? null;
 
   const heroPicks: { row: RankingRow; section: Section }[] = [];
-  if (captainPick) heroPicks.push({ row: captainPick, section: "captain" });
-  if (valuePick)   heroPicks.push({ row: valuePick,   section: "breakout" });
-  if (trapPick)    heroPicks.push({ row: trapPick,    section: "trap" });
+  if (mustHavePick)   heroPicks.push({ row: mustHavePick,   section: "must_have" });
+  if (breakoutPick)   heroPicks.push({ row: breakoutPick,   section: "breakout" });
+  if (doNotStartPick) heroPicks.push({ row: doNotStartPick, section: "do_not_start" });
 
-  const captainSecondary  = captainRows.slice(1, 1 + PREMIUM_SECONDARY);
-  const breakoutSecondary = breakoutRows.slice(1, 1 + PREMIUM_SECONDARY);
-  const trapSecondary     = trapRows.slice(1, 1 + PREMIUM_SECONDARY);
-  const hasSecondary = captainSecondary.length > 0 || breakoutSecondary.length > 0 || trapSecondary.length > 0;
+  const mustHaveSecondary   = mustHaveRows.slice(1, 1 + PREMIUM_SECONDARY);
+  const breakoutSecondary   = breakoutRows.slice(1, 1 + PREMIUM_SECONDARY);
+  const doNotStartSecondary = doNotStartRows.slice(1, 1 + PREMIUM_SECONDARY);
+  const hasSecondary = mustHaveSecondary.length > 0 || breakoutSecondary.length > 0 || doNotStartSecondary.length > 0;
 
   return (
     <>
@@ -1306,7 +1313,7 @@ export default function AFLRoundEdgeBoard() {
           </div>
           <h1 className="text-2xl font-extrabold text-white leading-tight">AFL Fantasy Edge Board — This Week's Picks</h1>
           <p className="text-sm text-white/40 mt-1">
-            Captain lock, best value breakout pick, and who to fade — all decided by Neeko's projection model.
+            Must have value picks, breakout watchlist, and who not to start — all decided by Neeko's projection model.
           </p>
 
           {/* Meta row: updated + trust + countdown */}
@@ -1342,7 +1349,7 @@ export default function AFLRoundEdgeBoard() {
         {/* ── Share section ────────────────────────────────────────────────── */}
         {heroPicks.length > 0 && (
           <div className="mb-6">
-            <RoundSummaryShare captain={captainPick} value={valuePick} trap={trapPick} />
+            <RoundSummaryShare mustHave={mustHavePick} breakout={breakoutPick} doNotStart={doNotStartPick} />
           </div>
         )}
 
@@ -1366,9 +1373,9 @@ export default function AFLRoundEdgeBoard() {
               <div className="flex-1 h-px bg-white/[0.06]" />
             </div>
             <div className="space-y-4">
-              <BulletListSection title="Other Captain Options" emoji="🔥" accentText="text-yellow-400" rows={captainSecondary} section="captain" onOpen={handleOpenModal} />
-              <BulletListSection title="Other Value Plays" emoji="🟢" accentText="text-green-400" rows={breakoutSecondary} section="breakout" onOpen={handleOpenModal} />
-              <BulletListSection title="Other Traps" emoji="🚨" accentText="text-red-400" rows={trapSecondary} section="trap" onOpen={handleOpenModal} />
+              <BulletListSection title="Other Must Have Value" emoji="🟢" accentText="text-green-400" rows={mustHaveSecondary} section="must_have" onOpen={handleOpenModal} />
+              <BulletListSection title="Other Breakout Watches" emoji="⚡" accentText="text-sky-400" rows={breakoutSecondary} section="breakout" onOpen={handleOpenModal} />
+              <BulletListSection title="Other Players to Avoid" emoji="🚨" accentText="text-red-400" rows={doNotStartSecondary} section="do_not_start" onOpen={handleOpenModal} />
             </div>
           </div>
         )}
