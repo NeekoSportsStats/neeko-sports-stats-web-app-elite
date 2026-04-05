@@ -213,7 +213,7 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
     : null;
 
   const edgeLabel = rawEdge != null && edgeSign != null
-    ? `${edgeSign} vs BE — ${
+    ? `${edgeSign} vs Baseline — ${
         rawEdge >= 15 ? "strong underpriced play"
         : rawEdge >= 5 ? "moderate edge"
         : rawEdge >= -5 ? "near breakeven"

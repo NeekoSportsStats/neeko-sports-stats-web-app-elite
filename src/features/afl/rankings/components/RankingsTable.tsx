@@ -148,7 +148,7 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
       <th className={`${TH} text-white/40`} style={{ width: 44, minWidth: 44 }}>#</th>
       <th className={`${TH} text-left text-white/40`} style={{ width: 200, minWidth: 160 }}>Player</th>
       <SortableTh label="Proj" col="projection_final" width={80} tooltip="Expected fantasy points this round" />
-      <SortableTh label="BE" col="form_score" width={72} tooltip="Breakeven — score needed to maintain price" />
+      <SortableTh label="Baseline" col="form_score" width={80} tooltip="Weighted average of season, last 5 and last 3 scores" />
       <SortableTh label="Form" col="projection_final" width={80} tooltip="Trend vs own season average. Green = above form. Red = below form." />
       <Th label="Action" locked={!isPremium} width={96} />
       <th className={`${TH} text-left text-white/35`} style={{ minWidth: 300 }}>Why</th>
@@ -178,8 +178,8 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
 
   const isLocked = !isPremium && idx >= FREE_FULL_ROWS;
 
-  const be = row.breakeven !== null && row.breakeven !== undefined
-    ? Math.round(parseFloat(String(row.breakeven)))
+  const be = row.baseline !== null && row.baseline !== undefined
+    ? Math.round(parseFloat(String(row.baseline)))
     : null;
 
   // Top-3 highlight ring
@@ -327,8 +327,8 @@ export function FreeTableHeader() {
       </th>
       <th className={`${TH} text-white/40`} style={{ width: 80, minWidth: 80 }}>
         <span className="inline-flex items-center gap-1 justify-center">
-          BE
-          <InfoTooltip text="Score needed to maintain price" />
+          Baseline
+          <InfoTooltip text="Weighted average of season, last 5 and last 3 scores" />
         </span>
       </th>
       <th className={`${TH} text-white/80 font-semibold`} style={{ width: 80, minWidth: 80 }}>
@@ -362,6 +362,10 @@ export function FreeTableRow({ row, idx, onRowClick, onUpgrade }: FreeTableRowPr
       }
     : { touchAction: "manipulation" };
 
+
+  const be = row.baseline !== null && row.baseline !== undefined
+    ? Math.round(parseFloat(String(row.baseline)))
+    : null;
 
   const rawTsFree = !row.is_bye && row.trend_score != null ? row.trend_score : null;
   const tsClamped = rawTsFree !== null ? (rawTsFree > 40 ? 40 : rawTsFree < -40 ? -40 : rawTsFree) : null;

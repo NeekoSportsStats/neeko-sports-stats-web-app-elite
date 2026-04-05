@@ -247,11 +247,14 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
   }, [row.player_id, row.player_name]);
 
   const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
+  const be = row.baseline !== null && row.baseline !== undefined
+    ? Math.round(parseFloat(String(row.baseline)))
+    : null;
   const edge = !row.is_bye && row.edge != null ? row.edge : null;
   const edgeDisplayStr = getEdgeDisplay(edge);
 
   const edgeLabel = edge != null && edgeDisplayStr != null
-    ? `${edgeDisplayStr} vs BE — ${edge >= 15 ? "strong underpriced play" : edge >= 5 ? "moderate edge" : edge >= -5 ? "near breakeven" : "price risk"}`
+    ? `${edgeDisplayStr} vs Baseline — ${edge >= 15 ? "strong underpriced play" : edge >= 5 ? "moderate edge" : edge >= -5 ? "near breakeven" : "price risk"}`
     : null;
 
   const longWhy = (row as any).long ?? row.why ?? null;
@@ -331,7 +334,7 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
         )}
         {be != null && (
           <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-white/30 font-normal">Breakeven</span>
+            <span className="text-[10px] text-white/30 font-normal">Baseline</span>
             <span className="text-[13px] font-bold text-white/60 tabular-nums">{be}</span>
           </div>
         )}
@@ -365,8 +368,8 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
 
   const proj = row.projection_final ?? null;
   const breakeven =
-    row.breakeven !== null && row.breakeven !== undefined
-      ? Math.round(parseFloat(String(row.breakeven)))
+    row.baseline !== null && row.baseline !== undefined
+      ? Math.round(parseFloat(String(row.baseline)))
       : null;
   const edge = !row.is_bye && row.edge != null ? row.edge : null;
 
