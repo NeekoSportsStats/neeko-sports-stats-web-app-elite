@@ -36,7 +36,7 @@ function TrendCell({ row }: { row: RankingRow }) {
   const ts = row.trend_score;
   const clamped = ts != null ? (ts > 40 ? 40 : ts < -40 ? -40 : ts) : null;
   const scoreDisplay = ts == null ? null
-    : ts > 40 ? "+40+" : ts < -40 ? "-40+" : (clamped! > 0 ? `+${clamped}` : String(clamped));
+    : ts > 40 ? "+40+" : ts < -40 ? "-40+" : (clamped! > 0 ? `+${clamped!.toFixed(1)}` : clamped!.toFixed(1));
 
   let colorCls: string;
   const s = (trend ?? "").toUpperCase();

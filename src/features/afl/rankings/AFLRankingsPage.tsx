@@ -340,8 +340,12 @@ export default function AFLRankingsPage() {
       bye_round:            r.bye_round != null ? Number(r.bye_round) : null,
       is_bye:               r.is_bye != null ? Boolean(r.is_bye) : null,
       bye_next_round:       r.bye_next_round != null ? Boolean(r.bye_next_round) : null,
-      trend_score:          r.trend_score != null ? Number(r.trend_score) : null,
-      trend_signal:         r.trend_signal ?? null,
+      trend_signal:         r.trend_signal ?? r.signal ?? null,
+      trend_score:          r.trend_score != null
+        ? Number(r.trend_score)
+        : (r.form_score != null && r.season_avg != null
+          ? Math.round((Number(r.form_score) - Number(r.season_avg)) * 10) / 10
+          : null),
       value_signal:         r.value_signal ?? null,
     };
   }

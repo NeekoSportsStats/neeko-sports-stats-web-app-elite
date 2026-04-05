@@ -43,7 +43,7 @@ export function getDisplayRecommendation(row: RankingRow, _tab: RankingsTab): st
 }
 
 export function getDisplayTrend(row: RankingRow): string | null {
-  return row.trend_signal ?? null;
+  return row.trend_signal ?? row.signal ?? null;
 }
 
 export function getTrendWhyText(row: RankingRow): string {
