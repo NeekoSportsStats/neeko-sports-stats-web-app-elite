@@ -36,8 +36,7 @@ export default function MarketWatchPageElite() {
       const { data, error } = await supabase
         .schema("afl")
         .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, price, breakeven, projection_final, edge, ceiling, floor, signal_tag, signal, recommendation_short, summary_short, summary_long, matchup_label, prev_price, price_change, consistency, projection_confidence, neeko_rating, status, manual_status, is_bye, games_played")
-        .eq("season", 2026)
+        .select("player_id, player_name, team, position, price, breakeven, projection_final, edge, signal_tag, signal, recommendation_short, summary_short, summary_long, matchup_label, prev_price, price_change, consistency, projection_confidence, neeko_rating, status, manual_status, is_bye, games_played")
         .order("edge", { ascending: false })
         .limit(limit);
 
@@ -60,8 +59,8 @@ export default function MarketWatchPageElite() {
           price: r.price ?? 0,
           breakeven: parseFloat(r.breakeven ?? '0') || 0,
           projection: parseFloat(r.projection_final ?? '0') || 0,
-          ceiling: r.ceiling ?? null,
-          floor_val: r.floor ?? null,
+          ceiling: null,
+          floor_val: null,
           risk_pct: null,
           value_gap: r.edge != null ? Number(r.edge) : 0,
           signal_tag: r.signal_tag ?? null,
