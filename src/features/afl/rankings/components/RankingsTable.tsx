@@ -39,14 +39,13 @@ function TrendCell({ row }: { row: RankingRow }) {
     : ts > 40 ? "+40+" : ts < -40 ? "-40+" : (clamped! > 0 ? `+${clamped}` : String(clamped));
 
   let colorCls: string;
-  const s = trend.toUpperCase();
+  const s = (trend ?? "").toUpperCase();
   if (s === "STRONG_UP")   colorCls = "text-emerald-400 font-bold";
   else if (s === "UP")     colorCls = "text-green-300 font-semibold";
   else if (s === "STABLE") colorCls = "text-neutral-300";
   else if (s === "DOWN")   colorCls = "text-orange-400 font-semibold";
-  else                     colorCls = "text-red-400 font-bold";
-
-  console.log("TREND DEBUG", row.player_name, row.trend_signal, row.trend_score);
+  else if (s === "STRONG_DOWN") colorCls = "text-red-400 font-bold";
+  else                     colorCls = "text-white/30";
 
   return (
     <div className="flex flex-col items-center gap-px">
@@ -164,7 +163,7 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
       <th className={`${TH} text-left text-white/40`} style={{ width: 200, minWidth: 160 }}>Player</th>
       <SortableTh label="Proj" col="projection_final" width={80} tooltip="Expected fantasy points this round" />
       <SortableTh label="Baseline" col="form_score" width={80} tooltip="Weighted average of season, last 5 and last 3 scores" />
-      <SortableTh label="Form" col="projection_final" width={80} tooltip="Trend vs own season average. Green = above form. Red = below form." />
+      <SortableTh label="Trend" col="projection_final" width={80} tooltip="Trend vs own season average. Green = above form. Red = below form." />
       <Th label="Action" locked={!isPremium} width={96} />
       <th className={`${TH} text-left text-white/35`} style={{ minWidth: 300 }}>Why</th>
     </tr>
@@ -262,7 +261,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
             <span
               className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${getTrendActionStyles(displayRec)}`}
             >
-              {getTrendAction(displayRec) ?? "HOLD"}
+              {getTrendAction(displayRec) ?? "—"}
             </span>
           )}
         </td>

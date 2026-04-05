@@ -38,12 +38,12 @@ export function getTrendStyles(trendSignal: string | null): string {
   return "text-white/40 border-white/10 bg-white/5";
 }
 
-export function getDisplayRecommendation(row: RankingRow, _tab: RankingsTab): string {
+export function getDisplayRecommendation(row: RankingRow, _tab: RankingsTab): string | null {
   return getDisplayTrend(row);
 }
 
-export function getDisplayTrend(row: RankingRow): string {
-  return row.trend_signal ?? "STABLE";
+export function getDisplayTrend(row: RankingRow): string | null {
+  return row.trend_signal ?? null;
 }
 
 export function getTrendWhyText(row: RankingRow): string {
