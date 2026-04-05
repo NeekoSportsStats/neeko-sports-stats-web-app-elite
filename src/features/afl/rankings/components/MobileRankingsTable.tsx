@@ -419,7 +419,7 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
           <>
             <span className="text-white/15 text-sm px-1.5">|</span>
             <div className="flex flex-col items-start px-2">
-              <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">BE</span>
+              <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Baseline</span>
               <span className="text-[14px] font-bold text-white/65 tabular-nums">{breakeven}</span>
             </div>
           </>

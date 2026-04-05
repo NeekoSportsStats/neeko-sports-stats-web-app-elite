@@ -7,7 +7,6 @@ export interface PlayerRow {
   team: string;
   position: string;
   status: string | null;
-  manual_status: string | null;
   is_available: boolean | null;
   projection_final: number;
   projection: number;
@@ -15,33 +14,20 @@ export interface PlayerRow {
   floor: number;
   price: number;
   neeko_rating: number;
-  neeko_rating_scaled: number;
   value_score: number;
-  value_tag: string;
   consistency: number;
   form_score: number;
-  captain_score: number;
-  captain_rating: string;
-  upside_rating: number;
   upside_pct: number;
-  risk_rating: number;
   matchup_rating: string;
-  matchup_multiplier: number;
   matchup_label: string;
-  ai_recommendation: string;
+  signal: string;
   recommendation_color: string;
-  recommendation_short: string;
-  recommendation_why: string;
-  market_watch_category: string;
-  best_value_score: number;
-  confidence_label: string;
-  edge_score: number;
-  edge_tier: string;
-  start_sit_decision: string;
-  recommendation_strength: string;
+  edge: number;
+  breakeven: number;
   games_played: number;
-  consistency_tier: string;
-  ai_summary: string;
+  bye_round: number | null;
+  is_bye: boolean;
+  cached_at: string;
 }
 
 export interface PlayerSignals {

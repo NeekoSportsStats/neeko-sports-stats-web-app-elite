@@ -396,7 +396,7 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
           <div className={`font-bold ${deltaColor}`}>{Math.round(player.projection || 0)}</div>
         </div>
         <div>
-          <div className="text-white/40 text-[10px] mb-1">BE</div>
+          <div className="text-white/40 text-[10px] mb-1">Baseline</div>
           <div className="font-bold text-white/80">{Math.round(player.breakeven || 0)}</div>
         </div>
         <div>

@@ -60,7 +60,7 @@ export function usePlayerExplorer() {
 
   const positions = useMemo(() => ["ALL", ...Array.from(new Set(rows.map(r => r.position).filter(Boolean))).sort()], [rows]);
   const teams = useMemo(() => ["ALL", ...Array.from(new Set(rows.map(r => r.team).filter(Boolean))).sort()], [rows]);
-  const recos = useMemo(() => ["ALL", ...Array.from(new Set(rows.map(r => r.ai_recommendation).filter(Boolean))).sort()], [rows]);
+  const recos = useMemo(() => ["ALL", ...Array.from(new Set(rows.map(r => r.signal).filter(Boolean))).sort()], [rows]);
 
   const filtered = useMemo(() => {
     let res = rows;
@@ -68,8 +68,8 @@ export function usePlayerExplorer() {
     if (search) res = res.filter(r => r.player_name?.toLowerCase().includes(search.toLowerCase()) || r.team?.toLowerCase().includes(search.toLowerCase()));
     if (posFilter !== "ALL") res = res.filter(r => r.position === posFilter);
     if (teamFilter !== "ALL") res = res.filter(r => r.team === teamFilter);
-    if (recoFilter !== "ALL") res = res.filter(r => r.ai_recommendation === recoFilter);
-    if (quickFilter === "high_edge")       res = res.filter(r => r.edge_score > 60);
+    if (recoFilter !== "ALL") res = res.filter(r => r.signal === recoFilter);
+    if (quickFilter === "high_edge")       res = res.filter(r => r.edge > 5);
     if (quickFilter === "high_confidence") res = res.filter(r => ["LOCK", "STRONG"].includes(r.confidence_label));
     if (quickFilter === "high_risk")       res = res.filter(r => r.risk_rating > 60);
     if (quickFilter === "signals_3plus")   res = res.filter(r => (signalsMap.get(r.player_id)?.signal_count ?? 0) >= 3);

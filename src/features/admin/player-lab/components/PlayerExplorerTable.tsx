@@ -59,24 +59,22 @@ export function PlayerExplorerTable() {
   ];
 
   const cols = [
-    { key: "player_name",        label: "Player" },
-    { key: "position",           label: "Pos" },
-    { key: "team",               label: "Team" },
-    { key: "status",             label: "Status" },
-    { key: "projection_final",   label: "Proj",     explain: "Final blended projection including matchup and role multipliers" },
-    { key: "ceiling",            label: "Ceil",     explain: "85th percentile outcome from recent 10 games" },
-    { key: "floor",              label: "Floor",    explain: "15th percentile outcome from recent 10 games" },
-    { key: "neeko_rating",       label: "Rating",   explain: "Neeko composite rating (0–100)" },
-    { key: "confidence_label",   label: "Conf",     explain: "Confidence tier: LOCK/STRONG/SOLID/RISKY/VOLATILE" },
-    { key: "value_score",        label: "Value",    explain: "Projected points per $100k" },
-    { key: "consistency",        label: "Cons%",    explain: "Fraction of recent games above own average" },
-    { key: "captain_score",      label: "Cap",      explain: "Captain score: upside-weighted captaincy rating" },
-    { key: "upside_pct",         label: "Upside%",  explain: "Probability of exceeding projection by >10%" },
-    { key: "matchup_multiplier", label: "Matchup",  explain: "Opponent difficulty multiplier (>1 = easier)" },
-    { key: "edge_score",         label: "Edge",     explain: "Edge score — composite of value, matchup, and upside signals" },
-    { key: "signal_count",       label: "Signals",  explain: "Number of active signals from the signal engine" },
-    { key: "price",              label: "Price" },
-    { key: "recommendation_short", label: "Reco" },
+    { key: "player_name",      label: "Player" },
+    { key: "position",         label: "Pos" },
+    { key: "team",             label: "Team" },
+    { key: "status",           label: "Status" },
+    { key: "projection_final", label: "Proj",    explain: "Final blended projection including matchup and role multipliers" },
+    { key: "ceiling",          label: "Ceil",    explain: "85th percentile outcome from recent 10 games" },
+    { key: "floor",            label: "Floor",   explain: "15th percentile outcome from recent 10 games" },
+    { key: "neeko_rating",     label: "Rating",  explain: "Neeko composite rating (0–100)" },
+    { key: "value_score",      label: "Value",   explain: "Projected points per $100k" },
+    { key: "consistency",      label: "Cons%",   explain: "Fraction of recent games above own average" },
+    { key: "upside_pct",       label: "Upside%", explain: "Probability of exceeding projection by >10%" },
+    { key: "matchup_rating",   label: "Matchup", explain: "Opponent matchup rating" },
+    { key: "edge",             label: "Edge",    explain: "Edge = projection minus breakeven" },
+    { key: "signal_count",     label: "Signals", explain: "Number of active signals from the signal engine" },
+    { key: "price",            label: "Price" },
+    { key: "signal",           label: "Signal" },
   ];
 
   return (
@@ -237,20 +235,18 @@ export function PlayerExplorerTable() {
                     <td className="px-2 py-2 tabular-nums text-emerald-400">{fmtNum(r.ceiling, 0)}</td>
                     <td className="px-2 py-2 tabular-nums text-red-400">{fmtNum(r.floor, 0)}</td>
                     <td className="px-2 py-2 tabular-nums font-semibold">{fmtNum(r.neeko_rating, 0)}</td>
-                    <td className="px-2 py-2"><ConfidenceBadge label={r.confidence_label} /></td>
                     <td className="px-2 py-2 tabular-nums text-amber-400">{fmtNum(r.value_score, 2)}</td>
                     <td className="px-2 py-2 tabular-nums">{pct(r.consistency)}</td>
-                    <td className="px-2 py-2 tabular-nums">{fmtNum(r.captain_score, 0)}</td>
                     <td className="px-2 py-2 tabular-nums">{pct(r.upside_pct)}</td>
-                    <td className="px-2 py-2 tabular-nums">{fmtNum(r.matchup_multiplier, 2)}</td>
-                    <td className="px-2 py-2 tabular-nums text-sky-400">{fmtNum(r.edge_score, 0)}</td>
+                    <td className="px-2 py-2 tabular-nums text-muted-foreground text-[10px]">{r.matchup_rating ?? "—"}</td>
+                    <td className="px-2 py-2 tabular-nums text-sky-400">{fmtNum(r.edge, 1)}</td>
                     <td className="px-2 py-2 tabular-nums">
                       {sigs && sigs.signal_count > 0 ? (
                         <span className="bg-muted/40 text-foreground/80 px-1.5 py-0.5 rounded font-mono">{sigs.signal_count}</span>
                       ) : "—"}
                     </td>
                     <td className="px-2 py-2 tabular-nums text-muted-foreground">{fmtPrice(r.price)}</td>
-                    <td className="px-2 py-2"><RecoBadge color={r.recommendation_color} short={r.recommendation_short} /></td>
+                    <td className="px-2 py-2"><RecoBadge color={r.recommendation_color} short={r.signal} /></td>
                   </tr>,
                   isExpanded && (
                     <tr key={`expand-${r.player_id}`} className="bg-muted/10">

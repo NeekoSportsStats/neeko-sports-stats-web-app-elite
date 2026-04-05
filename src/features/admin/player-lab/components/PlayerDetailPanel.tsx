@@ -6,7 +6,7 @@ import {
 } from "recharts";
 import type { PlayerRow, PlayerSignals, PlayerEdge, PlayerRoundHistory } from "../types";
 import { SIGNAL_CATEGORY_MAP } from "../constants";
-import { fmtNum, fmtPrice, ConfidenceBadge, RecoBadge } from "./SharedUI";
+import { fmtNum, fmtPrice, RecoBadge } from "./SharedUI";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 
 const STATUS_OPTIONS = [
@@ -145,16 +145,14 @@ export function PlayerDetailPanel({
             {onUpdateStatus && (
               <ManualStatusDropdown
                 playerId={player.player_id}
-                currentStatus={player.manual_status ?? null}
+                currentStatus={player.status ?? null}
                 onUpdate={onUpdateStatus}
               />
             )}
             <span className="text-muted-foreground">{player.team}</span>
             <span className="text-[10px] bg-muted/40 px-1.5 py-0.5 rounded font-mono">{player.position}</span>
-            <ConfidenceBadge label={player.confidence_label} />
-            <RecoBadge color={player.recommendation_color} short={player.recommendation_short} />
+            <RecoBadge color={player.recommendation_color} short={player.signal} />
           </div>
-          {console.log("Player Lab status sample:", player.player_name, "→", player.status, "| is_available:", player.is_available) as undefined}
           <div className="text-muted-foreground mt-1">{fmtPrice(player.price)} · Rating {fmtNum(player.neeko_rating, 0)} · {player.games_played ?? "—"} games</div>
         </div>
         <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded">
@@ -184,9 +182,9 @@ export function PlayerDetailPanel({
           <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Model Inputs</div>
           <div className="space-y-1.5">
             <EdgeBar label="Consistency" value={player.consistency * 100} color="bg-sky-500/70" />
-            <EdgeBar label="Form Score"  value={player.form_score}          color="bg-emerald-500/70" />
-            <EdgeBar label="Matchup"     value={(player.matchup_multiplier - 0.8) * 500} color="bg-blue-500/70" />
-            <EdgeBar label="Risk"        value={player.risk_rating} color="bg-red-500/70" positive={false} />
+            <EdgeBar label="Form Score"  value={player.form_score}         color="bg-emerald-500/70" />
+            <EdgeBar label="Value Score" value={player.value_score * 10}   color="bg-amber-500/70" />
+            <EdgeBar label="Edge"        value={player.edge + 30}          color="bg-blue-500/70" />
           </div>
         </div>
 
@@ -297,19 +295,19 @@ export function PlayerDetailPanel({
         </div>
       )}
 
-      {/* AI Summary */}
-      {player.ai_summary && (
-        <div className="space-y-1.5">
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">AI Summary</div>
-          <p className="text-muted-foreground leading-relaxed">{player.ai_summary}</p>
+      {/* Signal + Matchup Info */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Signal</div>
+          <div className="text-foreground font-medium">{player.signal ?? "—"}</div>
+          <div className="text-[10px] text-muted-foreground">Tag: {player.recommendation_color ?? "—"}</div>
         </div>
-      )}
-      {player.recommendation_why && (
-        <div className="space-y-1.5">
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Recommendation Rationale</div>
-          <p className="text-muted-foreground leading-relaxed">{player.recommendation_why}</p>
+        <div className="space-y-1">
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Matchup</div>
+          <div className="text-foreground font-medium">{player.matchup_label ?? "—"}</div>
+          <div className="text-[10px] text-muted-foreground">Rating: {player.matchup_rating ?? "—"}</div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
