@@ -18,6 +18,7 @@ import {
   getFormColor, getMatchupColor, getUpsideColor, getRiskColor,
   sharpenAIText, isAITextStale,
   normaliseConfidence,
+  getTrendLabel, getTrendStyles,
 } from "@/features/afl/rankings/components/helpers";
 import { signalFromField, formatEdgeSignalLabel } from "@/utils/aflEdgeSignal";
 
@@ -45,6 +46,8 @@ interface PlayerData {
   neeko_rating: number | null;
   neeko_rating_scaled?: number | null;
   signal?: string | null;
+  trend_signal?: string | null;
+  value_signal?: string | null;
   recommendation_color?: string | null;
   recommendation_short?: string | null;
   summary_short?: string | null;
@@ -110,21 +113,16 @@ function InfoTooltip({ text }: { text: string }) {
 
 // ─── Rec Badge ────────────────────────────────────────────────────────────────
 
-function RecBadge({ signal }: { signal?: string | null }) {
-  if (!signal) return null;
-  const sig = signalFromField(signal);
-  const isBuy = sig === "BUY" || sig === "STRONG_BUY";
-  const isSell = sig === "SELL" || sig === "STRONG_SELL";
-  const cls = isBuy
-    ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-    : isSell
-    ? "bg-red-500/15 border-red-500/30 text-red-400"
-    : "bg-white/8 border-white/15 text-white/60";
-  const Icon = isBuy ? TrendingUp : isSell ? TrendingDown : Minus;
+function RecBadge({ trendSignal }: { trendSignal?: string | null }) {
+  if (!trendSignal) return null;
+  const ts = trendSignal.toUpperCase();
+  const isUp = ts === "STRONG_UP" || ts === "UP";
+  const isDown = ts === "STRONG_DOWN" || ts === "DOWN";
+  const Icon = isUp ? TrendingUp : isDown ? TrendingDown : Minus;
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${cls}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${getTrendStyles(trendSignal)}`}>
       <Icon size={12} />
-      {formatEdgeSignalLabel(sig)}
+      {getTrendLabel(trendSignal)}
     </span>
   );
 }
@@ -717,7 +715,7 @@ export default function AFLPlayerPage() {
 
   const consistencyBadge = getConsistencyBadge(player.consistency_score ?? player.consistency ?? null);
   const capStyle         = getCaptainStyle(player.captain_rating ?? null);
-  const recColor         = getEdgeSignalColor(signalFromField(player.signal ?? null));
+  const recColor         = getEdgeSignalColor(signalFromField(player.value_signal ?? player.signal ?? null));
   const neekoRBadge      = getNeekoRatingBadge(player.neeko_rating ?? null);
   const riskBadge        = getRiskBadge(Number(player.risk_rating) ?? null);
 
@@ -755,13 +753,13 @@ export default function AFLPlayerPage() {
   const matchupLabel    = fmtMatchup(player.matchup_rating);
   const hasMatchup      = matchupLabel != null && matchupLabel !== "—" && matchupLabel.toUpperCase() !== "NEUTRAL";
 
-  const _sig   = signalFromField(player.signal);
+  const _sig   = signalFromField(player.value_signal ?? player.signal);
   const isBuy  = _sig === "BUY" || _sig === "STRONG_BUY";
   const isSell = _sig === "SELL" || _sig === "STRONG_SELL";
 
   const pageTitle = `${player.player_name} AFL Fantasy Stats, Projection & Value 2026 | Neeko`;
-  const pageDescription = player.value_score && player.signal
-    ? `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points. ${getPositionName(player.player_position)} rankings, value score ${Math.round(player.value_score)}, AI signal: ${formatEdgeSignalLabel(signalFromField(player.signal))}. Updated weekly.`
+  const pageDescription = player.value_score && (player.value_signal || player.signal)
+    ? `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points. ${getPositionName(player.player_position)} rankings, value score ${Math.round(player.value_score)}, AI signal: ${formatEdgeSignalLabel(signalFromField(player.value_signal ?? player.signal))}. Updated weekly.`
     : `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points, ${Math.round(player.neeko_rating ?? 0)} Neeko rating. ${getPositionName(player.player_position)} rankings and analysis. Updated weekly.`;
   const pageUrl  = `https://neekostats.com.au/sports/afl/players/${slug}`;
   const keywords = `${player.player_name}, ${player.team}, AFL Fantasy, ${player.player_position}, fantasy football, player stats, projection, value, ${getPositionName(player.player_position)}`;
@@ -844,8 +842,8 @@ export default function AFLPlayerPage() {
                 <p className="text-[11px] text-white/30 mt-1">AI-powered AFL Fantasy decision · 2026</p>
               </div>
               <div className="flex flex-col items-end gap-1.5 shrink-0">
-                {player.signal && (
-                  <RecBadge signal={player.signal} />
+                {(player.trend_signal || player.signal) && (
+                  <RecBadge trendSignal={player.trend_signal ?? player.signal} />
                 )}
                 {player.manual_status && player.manual_status !== 'active' && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-red-500/25 bg-red-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-red-400">
@@ -903,10 +901,10 @@ export default function AFLPlayerPage() {
                     <Zap size={9} className="text-[#F5C84C]/60" />
                     Verdict
                   </p>
-                  {player.signal ? (
+                  {(player.value_signal || player.signal) ? (
                     <>
                       <p className="text-base font-bold leading-tight" style={{ color: recColor }}>
-                        {formatEdgeSignalLabel(signalFromField(player.signal))}
+                        {formatEdgeSignalLabel(signalFromField(player.value_signal ?? player.signal))}
                       </p>
                       {player.why && (
                         <p className="text-[10px] text-white/40 mt-0.5 leading-snug line-clamp-2">{player.why}</p>

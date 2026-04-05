@@ -35,6 +35,7 @@ export interface MWPlayerRow {
   snapshot_updated_at: string;
   season: number;
   round_number: number;
+  value_signal: string | null;
 }
 
 export interface MWSummaryCard {

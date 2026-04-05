@@ -61,15 +61,14 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   const sells: DerivedPlayer[] = [];
 
   for (const p of filtered) {
-    if (p.signal != null) {
-      const canonicalSignal = signalFromField(p.signal);
-      if (canonicalSignal === 'STRONG_BUY' || canonicalSignal === 'BUY') {
-        buys.push(tag(p, 'BUY'));
-      } else if (canonicalSignal === 'SELL' || canonicalSignal === 'STRONG_SELL') {
-        sells.push(tag(p, 'SELL'));
-      } else {
-        holds.push(tag(p, 'HOLD'));
-      }
+    const valueSignal = (p.value_signal ?? p.signal ?? '').toUpperCase();
+    const canonical = signalFromField(valueSignal);
+    if (canonical === 'STRONG_BUY' || canonical === 'BUY') {
+      buys.push(tag(p, 'BUY'));
+    } else if (canonical === 'SELL' || canonical === 'STRONG_SELL') {
+      sells.push(tag(p, 'SELL'));
+    } else if (canonical === 'HOLD') {
+      holds.push(tag(p, 'HOLD'));
     } else {
       const fallback = (p.signal_tag ?? (p.category ?? 'HOLD')).toUpperCase();
       if (fallback === 'TARGET' || fallback === 'BUY')      buys.push(tag(p, 'BUY'));

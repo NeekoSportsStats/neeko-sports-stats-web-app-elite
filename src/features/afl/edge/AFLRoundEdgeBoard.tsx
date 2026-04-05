@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { cleanAiText } from "@/utils/cleanAiText";
 import { signalFromField, formatEdgeSignalLabel, getEdgeSignalStyles } from "@/utils/aflEdgeSignal";
+import { getTrendLabel, getTrendStyles } from "@/features/afl/rankings/components/helpers";
 import { createPortal } from "react-dom";
 import {
   Lock, Crown, X, ShieldCheck, Zap, Share2, Check,
@@ -36,6 +37,7 @@ interface RankingRow {
   summary_short: string | null;
   signal_tag: string | null;
   signal: string | null;
+  trend_signal: string | null;
   edge: number | null;
   breakeven: number | null;
   refreshed_at: string | null;
@@ -498,6 +500,7 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
   const cfg = getSectionLabel(section);
   const metric = getPrimaryMetric(row, section);
   const sig = signalFromField(row.signal);
+  const trendSig = row.trend_signal ?? null;
   const conf = row.projection_confidence;
   const reasons = buildConfidenceReasons(row, section);
   const [shared, setShared] = useState(false);
@@ -602,10 +605,10 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
 
           {/* Recommendation verdict */}
-          <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${getEdgeSignalStyles(sig)}`}>
+          <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${trendSig ? getTrendStyles(trendSig) : getEdgeSignalStyles(sig)}`}>
             <div className="flex-1">
-              <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Recommendation</p>
-              <p className="text-sm font-extrabold">{formatEdgeSignalLabel(sig)}</p>
+              <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Form Signal</p>
+              <p className="text-sm font-extrabold">{trendSig ? getTrendLabel(trendSig) : formatEdgeSignalLabel(sig)}</p>
             </div>
           </div>
 
@@ -813,10 +816,10 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
       </div>
 
       {/* Signal badge */}
-      {row.signal != null && (
+      {(row.trend_signal != null || row.signal != null) && (
         <div className="px-4 pb-3 flex items-center gap-2">
-          <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md ${getEdgeSignalStyles(sig)}`}>
-            {formatEdgeSignalLabel(sig)}
+          <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md ${row.trend_signal ? getTrendStyles(row.trend_signal) : getEdgeSignalStyles(sig)}`}>
+            {row.trend_signal ? getTrendLabel(row.trend_signal) : formatEdgeSignalLabel(sig)}
           </span>
         </div>
       )}
@@ -1148,7 +1151,6 @@ export default function AFLRoundEdgeBoard() {
         .filter((r: any) =>
           r.player_name &&
           r.team &&
-          r.signal != null &&
           Number(r.projection_final ?? 0) > 0 &&
           Number(r.price ?? 0) > 0,
         )
@@ -1175,6 +1177,7 @@ export default function AFLRoundEdgeBoard() {
           summary_short:         r.summary_short ?? null,
           signal_tag:            r.signal_tag ?? null,
           signal:                r.signal ?? null,
+          trend_signal:          r.trend_signal ?? null,
           edge:                  r.edge != null ? Number(r.edge) : null,
           breakeven:             r.breakeven != null ? Number(r.breakeven) : null,
           refreshed_at:          r.refreshed_at ?? null,

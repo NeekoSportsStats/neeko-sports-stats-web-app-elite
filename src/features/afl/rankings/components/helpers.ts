@@ -14,8 +14,33 @@ export const VALUE_TAB_LABELS: Record<string, string> = {
   "Captain Option": "Speculative Value",
 };
 
+const TREND_LABEL_MAP: Record<string, string> = {
+  STRONG_UP:   "Breakout",
+  UP:          "Rising",
+  STABLE:      "Stable",
+  DOWN:        "Falling",
+  STRONG_DOWN: "Crash Risk",
+};
+
+export function getTrendLabel(trendSignal: string | null): string {
+  if (!trendSignal) return "—";
+  return TREND_LABEL_MAP[trendSignal.toUpperCase()] ?? trendSignal;
+}
+
+export function getTrendStyles(trendSignal: string | null): string {
+  if (!trendSignal) return "text-white/30 border-white/10 bg-white/5";
+  const s = trendSignal.toUpperCase();
+  if (s === "STRONG_UP")   return "text-emerald-300 border-emerald-500/30 bg-emerald-500/10";
+  if (s === "UP")          return "text-green-400 border-green-500/25 bg-green-500/8";
+  if (s === "STABLE")      return "text-white/55 border-white/10 bg-white/5";
+  if (s === "DOWN")        return "text-orange-400 border-orange-500/25 bg-orange-500/10";
+  if (s === "STRONG_DOWN") return "text-red-400 border-red-500/30 bg-red-500/10";
+  return "text-white/40 border-white/10 bg-white/5";
+}
+
 export function getDisplayRecommendation(row: RankingRow, _tab: RankingsTab): string {
-  return formatEdgeSignalLabel(signalFromField(row.signal));
+  if (row.trend_signal) return row.trend_signal;
+  return signalFromField(row.signal);
 }
 
 // ─── Matchup display helper ───────────────────────────────────────────────────

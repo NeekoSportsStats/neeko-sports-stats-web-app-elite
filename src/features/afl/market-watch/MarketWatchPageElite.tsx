@@ -75,6 +75,7 @@ export default function MarketWatchPageElite() {
         is_bye: r.is_bye === true || (r.status ?? '').toLowerCase() === 'bye' || (r.manual_status ?? '').toLowerCase() === 'bye',
         status: r.status ?? null,
         manual_status: r.manual_status ?? null,
+        value_signal: r.value_signal ?? null,
       }));
 
       // FREE TIER: Filter out injured/bye players for cleaner first impression

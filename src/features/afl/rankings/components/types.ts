@@ -68,6 +68,12 @@ export interface RankingRow {
   is_bye: boolean | null;
   /** True when the player's team has a bye in two rounds */
   bye_next_round: boolean | null;
+  /** TREND ENGINE: projection_final - season_avg (form vs own baseline) */
+  trend_score: number | null;
+  /** TREND ENGINE: STRONG_UP | UP | STABLE | DOWN | STRONG_DOWN */
+  trend_signal: string | null;
+  /** VALUE ENGINE: edge vs breakeven — STRONG_BUY | BUY | HOLD | SELL | STRONG_SELL */
+  value_signal: string | null;
 }
 
 export interface ScoreHistoryPoint {

@@ -4,9 +4,9 @@ import { RankingRow, SortKey, SortDir, RankingsTab, RowTier } from "./types";
 import {
   fmt, fmtPrice,
   getDisplayRecommendation,
+  getTrendLabel,
+  getTrendStyles,
   FREE_FULL_ROWS,
-  formatActionLabel,
-  getActionStyles,
 } from "./helpers";
 import { InfoTooltip, LockedCell } from "./RankingsModals";
 import { ExpandedPlayerRow } from "./ExpandedPlayerRow";
@@ -19,16 +19,16 @@ const FREE_TOTAL_COLS = 5;
 
 const TH = "bg-[#0a0a0a] px-3 py-2.5 text-[11px] font-medium uppercase tracking-wider whitespace-nowrap border-b border-white/10 text-center";
 
-// ─── Edge cell ─────────────────────────────────────────────────────────────────
+// ─── Trend cell ────────────────────────────────────────────────────────────────
 
-function EdgeCell({ row }: { row: RankingRow }) {
-  if (row.is_bye || row.edge === null || row.edge === undefined) {
+function TrendCell({ row }: { row: RankingRow }) {
+  if (row.is_bye || row.trend_score === null || row.trend_score === undefined) {
     return <span className="text-sm text-white/20 tabular-nums">—</span>;
   }
 
-  const rawEdge = row.edge;
-  const clamped = rawEdge > 40 ? 40 : rawEdge < -40 ? -40 : rawEdge;
-  const edgeDisplay = rawEdge > 40 ? "40+" : rawEdge < -40 ? "-40+" : (clamped > 0 ? `+${clamped}` : String(clamped));
+  const ts = row.trend_score;
+  const clamped = ts > 40 ? 40 : ts < -40 ? -40 : ts;
+  const display = ts > 40 ? "40+" : ts < -40 ? "-40+" : (clamped > 0 ? `+${clamped}` : String(clamped));
   let colorCls: string;
   if (clamped >= 20) colorCls = "text-emerald-400 font-semibold";
   else if (clamped >= 10) colorCls = "text-green-300 font-semibold";
@@ -37,8 +37,8 @@ function EdgeCell({ row }: { row: RankingRow }) {
 
   return (
     <div className="flex flex-col items-center gap-px">
-      <span className={`text-sm font-semibold tabular-nums ${colorCls}`}>{edgeDisplay}</span>
-      <span className="text-[9px] text-white/25 leading-none">vs BE</span>
+      <span className={`text-sm font-semibold tabular-nums ${colorCls}`}>{display}</span>
+      <span className="text-[9px] text-white/25 leading-none">vs avg</span>
     </div>
   );
 }
@@ -51,14 +51,14 @@ interface ExpandedPanelProps {
 }
 
 function ExpandedPanel({ row, displayRec }: ExpandedPanelProps) {
-  const rawEdgeExp = !row.is_bye && row.edge != null ? row.edge : null;
-  const edgeSign = rawEdgeExp != null ? (rawEdgeExp > 40 ? "40+" : rawEdgeExp < -40 ? "-40+" : (rawEdgeExp > 0 ? `+${rawEdgeExp}` : String(rawEdgeExp))) : null;
+  const rawTs = !row.is_bye && row.trend_score != null ? row.trend_score : null;
+  const tsSign = rawTs != null ? (rawTs > 40 ? "40+" : rawTs < -40 ? "-40+" : (rawTs > 0 ? `+${rawTs}` : String(rawTs))) : null;
 
   const longWhy = row.long ?? row.why ?? null;
   const price = row.price != null ? fmtPrice(row.price) : null;
 
-  const edgeLabel = rawEdgeExp != null && edgeSign != null
-    ? `${edgeSign} vs BE — ${rawEdgeExp >= 15 ? "strong underpriced play" : rawEdgeExp >= 5 ? "moderate edge" : rawEdgeExp >= -5 ? "near breakeven" : "price risk"}`
+  const edgeLabel = rawTs != null && tsSign != null
+    ? `${tsSign} vs avg — ${rawTs >= 20 ? "breakout form" : rawTs >= 10 ? "rising form" : rawTs >= -5 ? "stable form" : "form concern"}`
     : null;
 
   return (
@@ -149,7 +149,7 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
       <th className={`${TH} text-left text-white/40`} style={{ width: 200, minWidth: 160 }}>Player</th>
       <SortableTh label="Proj" col="projection_final" width={80} tooltip="Expected fantasy points this round" />
       <SortableTh label="BE" col="form_score" width={72} tooltip="Breakeven — score needed to maintain price" />
-      <SortableTh label="Edge" col="projection_final" width={80} tooltip="Projection minus Breakeven. Green = clears BE. Red = price risk." />
+      <SortableTh label="Form" col="projection_final" width={80} tooltip="Trend vs own season average. Green = above form. Red = below form." />
       <Th label="Action" locked={!isPremium} width={96} />
       <th className={`${TH} text-left text-white/35`} style={{ minWidth: 300 }}>Why</th>
     </tr>
@@ -237,7 +237,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
         </td>
 
         <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 90 }}>
-          <EdgeCell row={row} />
+          <TrendCell row={row} />
         </td>
 
         <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 100 }}>
@@ -245,9 +245,9 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
             <LockedCell onClick={onUpgrade} />
           ) : displayRec ? (
             <span
-              className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${getActionStyles(displayRec)}`}
+              className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${getTrendStyles(displayRec)}`}
             >
-              {formatActionLabel(displayRec)}
+              {getTrendLabel(displayRec)}
             </span>
           ) : <span className="text-white/20 text-xs">—</span>}
         </td>
@@ -333,8 +333,8 @@ export function FreeTableHeader() {
       </th>
       <th className={`${TH} text-white/80 font-semibold`} style={{ width: 80, minWidth: 80 }}>
         <span className="inline-flex items-center gap-1 justify-center">
-          Edge
-          <InfoTooltip text="Projection minus Breakeven. Green = clears BE." />
+          Form
+          <InfoTooltip text="Trend vs own season average. Green = above form." />
         </span>
       </th>
     </tr>
@@ -363,14 +363,14 @@ export function FreeTableRow({ row, idx, onRowClick, onUpgrade }: FreeTableRowPr
     : { touchAction: "manipulation" };
 
 
-  const rawEdgeFree = !row.is_bye && row.edge != null ? row.edge : null;
-  const edge = rawEdgeFree !== null ? (rawEdgeFree > 40 ? 40 : rawEdgeFree < -40 ? -40 : rawEdgeFree) : null;
-  const edgeDisplay = rawEdgeFree === null ? null : rawEdgeFree > 40 ? "40+" : rawEdgeFree < -40 ? "-40+" : (edge! > 0 ? `+${edge}` : String(edge));
+  const rawTsFree = !row.is_bye && row.trend_score != null ? row.trend_score : null;
+  const tsClamped = rawTsFree !== null ? (rawTsFree > 40 ? 40 : rawTsFree < -40 ? -40 : rawTsFree) : null;
+  const edgeDisplay = rawTsFree === null ? null : rawTsFree > 40 ? "40+" : rawTsFree < -40 ? "-40+" : (tsClamped! > 0 ? `+${tsClamped}` : String(tsClamped));
 
-  const edgeColor = edge === null ? "text-white/20" :
-    edge >= 20 ? "text-emerald-400 font-semibold" :
-    edge >= 10 ? "text-green-300 font-semibold" :
-    edge >= -5 ? "text-neutral-300" :
+  const edgeColor = tsClamped === null ? "text-white/20" :
+    tsClamped >= 20 ? "text-emerald-400 font-semibold" :
+    tsClamped >= 10 ? "text-green-300 font-semibold" :
+    tsClamped >= -5 ? "text-neutral-300" :
     "text-red-400 font-semibold";
 
   return (
@@ -417,7 +417,7 @@ export function FreeTableRow({ row, idx, onRowClick, onUpgrade }: FreeTableRowPr
         {edgeDisplay !== null ? (
           <div className="flex flex-col items-center gap-0.5">
             <span className={`text-sm tabular-nums ${edgeColor}`}>{edgeDisplay}</span>
-            <span className="text-[9px] text-white/25 leading-none">vs BE</span>
+            <span className="text-[9px] text-white/25 leading-none">vs avg</span>
           </div>
         ) : (
           <span className="text-sm text-white/20 tabular-nums">—</span>
