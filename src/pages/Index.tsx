@@ -21,6 +21,9 @@ import { classifyPlayers } from "@/features/afl/market-watch/engine";
 // ─── Adapter: RankingRow → MWPlayerRow ────────────────────────────────────────
 
 function toMWPlayerRow(r: RankingRow): MWPlayerRow {
+  const edge = r.projection_final != null && r.breakeven != null
+    ? r.projection_final - r.breakeven
+    : 0;
   return {
     snapshot_id: r.player_id ?? "",
     player_id: Number(r.player_id ?? 0),
@@ -30,31 +33,31 @@ function toMWPlayerRow(r: RankingRow): MWPlayerRow {
     price: r.price ?? 0,
     breakeven: r.breakeven ?? 0,
     projection: r.projection_final ?? 0,
-    ceiling: r.ceiling_estimate ?? null,
-    floor_val: r.floor_estimate ?? null,
-    risk_pct: r.risk_rating ?? null,
-    value_gap: (r.projection_final ?? 0) - (r.breakeven ?? 0),
+    ceiling: null,
+    floor_val: null,
+    risk_pct: null,
+    value_gap: edge,
     signal_tag: (r.signal_tag as MWPlayerRow["signal_tag"]) ?? null,
     signal: r.signal ?? null,
     category: "HOLD",
     action: "HOLD",
-    recommendation_short: r.why ?? null,
-    summary_short: r.why ?? null,
-    summary_long: r.long ?? null,
+    recommendation_short: null,
+    summary_short: null,
+    summary_long: null,
     matchup_label: null,
-    prev_price: r.prev_price ?? null,
-    price_change: r.price_change ?? null,
-    consistency: r.consistency_score ?? null,
-    projection_confidence: r.projection_confidence ?? null,
-    neeko_rating: r.neeko_rating ?? null,
+    prev_price: null,
+    price_change: null,
+    consistency: null,
+    projection_confidence: null,
+    neeko_rating: null,
     status: r.status ?? null,
-    manual_status: r.manual_status ?? null,
+    manual_status: null,
     is_bye: r.is_bye ?? false,
-    is_injured: r.manual_status === "INJURED" || r.status === "OUT",
-    snapshot_updated_at: r.ai_updated_at ?? new Date().toISOString(),
+    is_injured: r.status === "OUT",
+    snapshot_updated_at: new Date().toISOString(),
     season: 2026,
     round_number: 0,
-    value_signal: r.value_signal ?? null,
+    value_signal: null,
     display_signal: "WATCH",
   };
 }
@@ -131,6 +134,15 @@ function GoldDivider() {
       <div className="w-10 h-0.5 rounded-full bg-[#F5C84C]/30" />
     </div>
   );
+}
+
+// ─── Signal helper (replaces trend_signal) ────────────────────────────────────
+
+function signalToAction(signal: string | null): { label: string; styles: string } {
+  const s = (signal ?? "").toUpperCase();
+  if (s === "BUY" || s === "MUST_HAVE" || s === "BREAKOUT") return { label: "START", styles: "bg-green-500/15 text-green-400 border border-green-500/30" };
+  if (s === "SELL" || s === "AVOID" || s === "DO_NOT_START") return { label: "SIT",   styles: "bg-red-500/15 text-red-400 border border-red-500/30" };
+  return { label: "HOLD", styles: "bg-yellow-400/10 text-yellow-300 border border-yellow-400/20" };
 }
 
 // ─── Edge Board Preview ───────────────────────────────────────────────────────
@@ -224,10 +236,7 @@ function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
 
                       <p className="text-base font-bold text-white leading-tight mb-0.5">{player.player_name}</p>
                       <p className="text-[11px] text-white/35 mb-1">{player.team}{player.position ? ` · ${player.position}` : ""}</p>
-                      {player.why
-                        ? <p className="text-[10px] text-white/30 mb-3 leading-snug italic">{player.why}</p>
-                        : <p className="text-[10px] text-white/20 mb-3 leading-snug">{desc}</p>
-                      }
+                      <p className="text-[10px] text-white/20 mb-3 leading-snug">{desc}</p>
 
                       <div>
                         {player.projection_final != null && (
@@ -267,12 +276,6 @@ function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
 
 // ─── Rankings Preview ─────────────────────────────────────────────────────────
 
-function trendSignalToAction(trend: string | null): { label: string; styles: string } {
-  const t = (trend ?? "").toUpperCase();
-  if (t === "STRONG_UP" || t === "UP")     return { label: "START", styles: "bg-green-500/15 text-green-400 border border-green-500/30" };
-  if (t === "DOWN" || t === "STRONG_DOWN") return { label: "SIT",   styles: "bg-red-500/15 text-red-400 border border-red-500/30" };
-  return { label: "HOLD", styles: "bg-yellow-400/10 text-yellow-300 border border-yellow-400/20" };
-}
 
 interface RankingsPreviewProps {
   players: RankingRow[];
@@ -328,7 +331,7 @@ function RankingsPreview({ players, loading }: RankingsPreviewProps) {
                       <div className="flex justify-end">
                         {row.projection_final != null
                           ? (() => {
-                              const action = trendSignalToAction(row.trend_signal);
+                              const action = signalToAction(row.signal);
                               return (
                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold ${action.styles}`}>
                                   {action.label}
@@ -392,7 +395,7 @@ function RankingsPreview({ players, loading }: RankingsPreviewProps) {
                       <div className="flex justify-end">
                         {row.projection_final != null
                           ? (() => {
-                              const action = trendSignalToAction(row.trend_signal);
+                              const action = signalToAction(row.signal);
                               return (
                                 <span className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold ${action.styles}`}>
                                   {action.label}
@@ -1150,22 +1153,76 @@ export default function Index() {
       const { data } = await supabase
         .schema("afl")
         .from("player_rankings_cache")
-        .select(`
-          player_id, player_name, team, position,
-          projection_final, breakeven, edge, neeko_rating,
-          captain_score, trend_signal, projection_confidence,
-          signal_tag, value_signal, why, long, status, manual_status,
-          is_bye, games_played, ceiling_estimate, floor_estimate,
-          risk_rating, consistency_score, ai_updated_at, prev_price,
-          price_change, signal, price, season_avg, last_3_avg,
-          form_score, value_score, upside_pct
-        `)
+        .select("player_id, player_name, team, position, price, projection_final, breakeven, value_score, confidence, ai_recommendation, games_played, status, is_bye")
+        .eq("status", "active")
         .gte("games_played", 3)
-        .gte("projection_final", 70)
-        .order("neeko_rating", { ascending: false })
-        .limit(300);
+        .order("projection_final", { ascending: false, nullsFirst: false })
+        .limit(100);
 
-      setPlayers((data ?? []) as RankingRow[]);
+      const mapped = ((data ?? []) as any[]).map((r): RankingRow => {
+        const proj = r.projection_final != null ? Number(r.projection_final) : null;
+        const be   = r.breakeven != null ? Number(r.breakeven) : null;
+        return {
+          player_id:             r.player_id ?? null,
+          player_name:           r.player_name ?? "",
+          team:                  r.team ?? "",
+          position:              r.position ?? null,
+          projection_final:      proj,
+          ceiling_estimate:      null,
+          floor_estimate:        null,
+          consistency_score:     null,
+          form_rating:           null,
+          matchup_rating:        null,
+          upside_rating:         null,
+          risk_rating:           null,
+          form_score:            null,
+          projection_confidence: null,
+          captain_score:         null,
+          captain_rating:        null,
+          neeko_rating:          null,
+          neeko_rating_scaled:   null,
+          price:                 r.price != null ? Number(r.price) : null,
+          prev_price:            null,
+          price_change:          null,
+          price_change_pct:      null,
+          breakeven:             be,
+          value_score:           r.value_score != null ? Number(r.value_score) : null,
+          best_value_score:      null,
+          value_tag:             null,
+          value_tier:            null,
+          recommendation_strength: null,
+          ai_updated_at:         null,
+          recommendation_color:  null,
+          consistency_tier:      null,
+          total_count:           null,
+          games_played:          r.games_played != null ? Number(r.games_played) : null,
+          baseline:              null,
+          edge:                  proj != null && be != null ? proj - be : null,
+          signal:                (r.ai_recommendation as string) ?? null,
+          season_avg:            null,
+          last_3_avg:            null,
+          value:                 null,
+          why:                   null,
+          long:                  null,
+          market_watch_category: null,
+          signal_tag:            (r.confidence as string) ?? null,
+          upside_pct:            null,
+          ai_summary:            null,
+          status:                (r.status as string) ?? null,
+          manual_status:         null,
+          is_available:          null,
+          bye_round:             null,
+          is_bye:                r.is_bye ?? null,
+          bye_next_round:        null,
+          trend_score:           null,
+          trend_signal:          null,
+          form_delta:            null,
+          form_label:            null,
+          value_signal:          null,
+        };
+      });
+
+      setPlayers(mapped);
       setPlayersLoading(false);
     })();
   }, []);
