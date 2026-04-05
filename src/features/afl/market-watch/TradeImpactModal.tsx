@@ -46,7 +46,7 @@ export function TradeImpactModal({ onClose, prefillOutId, prefillInId, allPlayer
     const { data } = await supabase
       .schema("afl")
       .from("player_rankings_cache")
-      .select("player_id, player_name, team, position, price, breakeven, projection_final, edge, signal_tag, signal, status, manual_status, is_bye, recommendation_short, summary_short, summary_long, matchup_label, prev_price, price_change, consistency_score, projection_confidence, neeko_rating, ceiling, floor_score")
+      .select("player_id, player_name, team, position, price, breakeven, projection_final, edge, signal_tag, signal, status, manual_status, is_bye, recommendation_short, summary_short, summary_long, matchup_label, prev_price, price_change, consistency, projection_confidence, neeko_rating, ceiling, floor")
       .ilike("player_name", `%${query}%`)
       .eq("season", 2026)
       .limit(20);
@@ -66,7 +66,7 @@ export function TradeImpactModal({ onClose, prefillOutId, prefillInId, allPlayer
           breakeven: parseFloat(r.breakeven ?? "0") || 0,
           projection: parseFloat(r.projection_final ?? "0") || 0,
           ceiling: r.ceiling ?? null,
-          floor_val: r.floor_score ?? null,
+          floor_val: r.floor ?? null,
           risk_pct: null,
           value_gap: r.edge != null ? Number(r.edge) : 0,
           signal_tag: r.signal_tag ?? null,
@@ -79,7 +79,7 @@ export function TradeImpactModal({ onClose, prefillOutId, prefillInId, allPlayer
           matchup_label: r.matchup_label ?? null,
           prev_price: r.prev_price ?? null,
           price_change: r.price_change ?? null,
-          consistency: r.consistency_score ?? null,
+          consistency: r.consistency ?? null,
           projection_confidence: r.projection_confidence ?? null,
           neeko_rating: r.neeko_rating ?? null,
           status: r.status ?? null,

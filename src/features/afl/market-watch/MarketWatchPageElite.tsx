@@ -36,7 +36,7 @@ export default function MarketWatchPageElite() {
       const { data, error } = await supabase
         .schema("afl")
         .from("player_rankings_cache")
-        .select("player_id, player_name, team, position, price, breakeven, projection_final, edge, ceiling, floor_score, value_score, signal_tag, signal, recommendation_short, summary_short, summary_long, matchup_label, prev_price, price_change, consistency_score, projection_confidence, neeko_rating, status, manual_status, is_bye, games_played")
+        .select("player_id, player_name, team, position, price, breakeven, projection_final, edge, ceiling, floor, signal_tag, signal, recommendation_short, summary_short, summary_long, matchup_label, prev_price, price_change, consistency, projection_confidence, neeko_rating, status, manual_status, is_bye, games_played")
         .eq("season", 2026)
         .order("edge", { ascending: false })
         .limit(limit);
@@ -61,7 +61,7 @@ export default function MarketWatchPageElite() {
           breakeven: parseFloat(r.breakeven ?? '0') || 0,
           projection: parseFloat(r.projection_final ?? '0') || 0,
           ceiling: r.ceiling ?? null,
-          floor_val: r.floor_score ?? null,
+          floor_val: r.floor ?? null,
           risk_pct: null,
           value_gap: r.edge != null ? Number(r.edge) : 0,
           signal_tag: r.signal_tag ?? null,
@@ -74,7 +74,7 @@ export default function MarketWatchPageElite() {
           matchup_label: r.matchup_label ?? null,
           prev_price: r.prev_price ?? null,
           price_change: r.price_change ?? null,
-          consistency: r.consistency_score ?? null,
+          consistency: r.consistency ?? null,
           projection_confidence: r.projection_confidence ?? null,
           neeko_rating: r.neeko_rating ?? null,
           season: 2026,
