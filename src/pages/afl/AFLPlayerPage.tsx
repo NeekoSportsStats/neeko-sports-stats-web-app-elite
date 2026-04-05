@@ -18,7 +18,8 @@ import {
   getFormColor, getMatchupColor, getUpsideColor, getRiskColor,
   sharpenAIText, isAITextStale,
   normaliseConfidence,
-  getTrendLabel, getTrendStyles,
+  getTrendLabel, getTrendStyles, getTrendAction, getTrendActionStyles,
+  getFormLabel, getFormStyles,
 } from "@/features/afl/rankings/components/helpers";
 import { signalFromField, formatEdgeSignalLabel } from "@/utils/aflEdgeSignal";
 
@@ -47,7 +48,12 @@ interface PlayerData {
   neeko_rating_scaled?: number | null;
   signal?: string | null;
   trend_signal?: string | null;
+  trend_score?: number | null;
   value_signal?: string | null;
+  form_delta?: number | null;
+  form_label?: string | null;
+  season_avg?: number | null;
+  last_3_avg?: number | null;
   recommendation_color?: string | null;
   recommendation_short?: string | null;
   summary_short?: string | null;
@@ -1202,9 +1208,29 @@ export default function AFLPlayerPage() {
             </div>
           )}
 
-          {/* ── SECONDARY STATS ───────���───────────────────────────────────────── */}
+          {/* ── SECONDARY STATS ───────────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-2">
-            {formScore != null && (
+            {player.trend_signal && (
+              <div className="rounded-lg bg-white/5 px-3 py-3">
+                <p className="text-[9px] text-white/35 uppercase tracking-wider mb-1 flex items-center gap-0.5">
+                  Trend <InfoTooltip text="Forward-looking projection vs baseline: START, HOLD or SIT" />
+                </p>
+                <p className={`text-sm font-semibold ${getTrendActionStyles(player.trend_signal).split(" ")[0]}`}>
+                  {getTrendAction(player.trend_signal) ?? getTrendLabel(player.trend_signal)}
+                </p>
+              </div>
+            )}
+            {player.form_label && (
+              <div className="rounded-lg bg-white/5 px-3 py-3">
+                <p className="text-[9px] text-white/35 uppercase tracking-wider mb-1 flex items-center gap-0.5">
+                  Form <InfoTooltip text="Recent scoring vs season average: HOT, IN FORM, NORMAL, COLD or ICE COLD" />
+                </p>
+                <p className={`text-sm font-semibold ${getFormStyles(player.form_label).split(" ")[0]}`}>
+                  {getFormLabel(player.form_label)}
+                </p>
+              </div>
+            )}
+            {!player.form_label && formScore != null && (
               <div className="rounded-lg bg-white/5 px-3 py-3">
                 <p className="text-[9px] text-white/35 uppercase tracking-wider mb-1 flex items-center gap-0.5">
                   Form <InfoTooltip text="Recent scoring strength over last 3 rounds vs season average" />

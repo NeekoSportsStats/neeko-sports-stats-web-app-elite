@@ -49,7 +49,8 @@ const COLUMNS =
   "status,manual_status,is_available," +
   "bye_round,is_bye,bye_next_round,games_played," +
   "signal,baseline,edge,season_avg,last_3_avg,value," +
-  "trend_score,trend_signal,value_signal";
+  "trend_score,trend_signal,value_signal," +
+  "form_delta,form_label";
 
 function normalizeRow(raw: Record<string, unknown>): RankingRow {
   return {
@@ -107,6 +108,8 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
     trend_score:  raw.trend_score != null ? Number(raw.trend_score) : null,
     trend_signal: (raw.trend_signal as string) ?? null,
     value_signal: (raw.value_signal as string) ?? null,
+    form_delta:   raw.form_delta != null ? Number(raw.form_delta) : null,
+    form_label:   (raw.form_label as string) ?? null,
   };
 }
 

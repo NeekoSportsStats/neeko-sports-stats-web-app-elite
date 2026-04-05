@@ -16,8 +16,11 @@ import {
   getNeekoRatingBadge,
   getDisplayRecommendation,
   FREE_FULL_ROWS, PREMIUM_INITIAL_ROWS,
+  getTrendAction,
+  getTrendActionStyles,
+  getFormLabel,
+  getFormStyles,
 } from "./helpers";
-import { signalFromField, getEdgeSignalColor } from "@/utils/aflEdgeSignal";
 
 // ─── Mobile sparkline ─────────────────────────────────────────────────────────
 
@@ -142,16 +145,15 @@ function ActionBadge({ row, activeTab, isPremium, onUpgrade }: {
     );
   }
 
-  const displayRec = getDisplayRecommendation(row, activeTab);
-  if (!displayRec) return null;
+  const action = getTrendAction(row.trend_signal);
+  if (!action) return null;
 
-  const rc = getEdgeSignalColor(signalFromField(row.signal));
+  const actionStyles = getTrendActionStyles(row.trend_signal);
   return (
     <span
-      className="inline-block rounded-md border px-2 py-1 text-[11px] font-bold whitespace-nowrap"
-      style={{ color: rc, background: `${rc}18`, borderColor: `${rc}40` }}
+      className={`inline-block rounded-md border px-2 py-1 text-[11px] font-bold whitespace-nowrap ${actionStyles}`}
     >
-      {displayRec}
+      {action}
     </span>
   );
 }
@@ -435,6 +437,18 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
               <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Edge</span>
               <span className={`text-[14px] font-bold tabular-nums ${edgeColor(edge)}`}>
                 {getEdgeDisplay(edge) ?? edge}
+              </span>
+            </div>
+          </>
+        )}
+
+        {row.form_label && (
+          <>
+            <span className="text-white/15 text-sm px-1.5">|</span>
+            <div className="flex flex-col items-start px-2">
+              <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Form</span>
+              <span className={`text-[12px] font-bold tabular-nums ${getFormStyles(row.form_label).split(" ")[0]}`}>
+                {getFormLabel(row.form_label)}
               </span>
             </div>
           </>
