@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { cleanAiText } from "@/utils/cleanAiText";
 import { signalFromField, formatEdgeSignalLabel, getEdgeSignalStyles } from "@/utils/aflEdgeSignal";
@@ -11,43 +11,14 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
+import type { RankingRow } from "@/features/afl/rankings/components/types";
+import { buildEdgeBoardPlayers, type EdgeBoardPlayer, type EdgeSection } from "@/features/afl/edge-board/engine";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-interface RankingRow {
-  player_id: string | null;
-  player_name: string;
-  team: string;
-  position: string | null;
-  section: string;
-  section_rank: number | string;
-  projection_final: number | null;
-  ceiling_estimate: number | null;
-  floor_estimate: number | null;
-  upside_rating: number | null;
-  risk_rating: number | null;
-  projection_confidence: number | null;
-  captain_score: number | null;
-  captain_rating: string | null;
-  neeko_rating: number | null;
-  price: number | null;
-  price_change: number | null;
-  value_score: number | null;
-  ai_summary: string | null;
-  summary_short: string | null;
-  signal_tag: string | null;
-  signal: string | null;
-  trend_signal: string | null;
-  edge: number | null;
-  breakeven: number | null;
-  refreshed_at: string | null;
-}
 
 type Section = "must_have" | "breakout" | "do_not_start";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const PREMIUM_SECONDARY = 3;
 
 const AFL_TEAMS = [
   "Adelaide", "Brisbane Lions", "Carlton", "Collingwood", "Essendon",
@@ -56,19 +27,32 @@ const AFL_TEAMS = [
   "St Kilda", "Sydney Swans", "West Coast", "Western Bulldogs",
 ];
 
-// Round lock: Round 1 lockout was Thu 13 Mar 2026 19:35 AEDT.
-// Each round locks Thursday ~7:35pm AEDT. UTC = AEDT - 11h (DST in March).
-// We'll compute next Thursday 19:35 AEDT from now.
+const COLUMNS = [
+  "player_id", "player_name", "team", "position",
+  "projection_final", "ceiling_estimate", "floor_estimate",
+  "neeko_rating", "neeko_rating_scaled",
+  "risk_rating", "upside_rating",
+  "projection_confidence", "captain_score", "captain_rating",
+  "price", "prev_price", "price_change",
+  "value_score", "best_value_score",
+  "edge", "breakeven", "baseline",
+  "season_avg", "last_3_avg", "games_played",
+  "ai_summary", "why", "long",
+  "signal", "signal_tag", "trend_signal", "trend_score",
+  "form_score", "form_label",
+  "value_signal", "value_tag", "value_tier",
+  "status", "manual_status", "is_available", "is_bye", "bye_round",
+  "recommendation_color", "recommendation_strength",
+].join(", ");
+
+// Round lock: Next Thursday 19:35 AEDT
 function getNextRoundLock(): Date {
   const now = new Date();
   const d = new Date(now);
-  // Find next Thursday (day 4)
   const day = d.getUTCDay();
   const daysUntilThursday = (4 - day + 7) % 7 || 7;
   d.setUTCDate(d.getUTCDate() + daysUntilThursday);
-  // Set to 08:35 UTC (= 19:35 AEDT / 18:35 AEST)
   d.setUTCHours(8, 35, 0, 0);
-  // If that time has already passed, add 7 days
   if (d.getTime() < now.getTime()) d.setUTCDate(d.getUTCDate() + 7);
   return d;
 }
@@ -124,13 +108,7 @@ function fmtPrice(v: number | null | undefined): string {
   if (v == null || v === 0) return "—";
   const n = Number(v);
   if (isNaN(n)) return "—";
-
-  if (n >= 1_000_000) {
-    // >= 1M → 1.126M (3 decimal places)
-    return `$${(n / 1_000_000).toFixed(3)}M`;
-  }
-
-  // < 1M → 853K (no decimals)
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(3)}M`;
   return `$${Math.floor(n / 1000)}K`;
 }
 
@@ -138,16 +116,8 @@ function fmtPriceChange(change: number | null | undefined): string {
   if (change == null || change === 0) return "";
   const n = Number(change);
   if (isNaN(n)) return "";
-
   const abs = Math.abs(n);
-  let formatted: string;
-
-  if (abs >= 1_000_000) {
-    formatted = `$${(abs / 1_000_000).toFixed(3)}M`;
-  } else {
-    formatted = `${Math.floor(abs / 1000)}K`;
-  }
-
+  const formatted = abs >= 1_000_000 ? `$${(abs / 1_000_000).toFixed(3)}M` : `${Math.floor(abs / 1000)}K`;
   return `${n > 0 ? "+" : "-"}${formatted}`;
 }
 
@@ -209,6 +179,11 @@ function getRiskColor(v: number | null): string {
   return "text-red-500";
 }
 
+function edgeSectionToSection(s: EdgeSection): Section {
+  if (s === "avoid") return "do_not_start";
+  return s;
+}
+
 function getSectionLabel(section: Section): { emoji: string; label: string; accentText: string; border: string; bg: string } {
   switch (section) {
     case "must_have":     return { emoji: "🟢", label: "MUST HAVE VALUE",      accentText: "text-green-400",  border: "border-green-500/30",  bg: "bg-green-500/[0.05]" };
@@ -224,7 +199,6 @@ function getPrimaryMetric(row: RankingRow, section: Section): { label: string; v
     case "do_not_start": return { label: "Risk",         value: getRiskLabel(row.risk_rating),   color: getRiskColor(row.risk_rating) };
   }
 }
-
 
 function buildConfidenceReasons(row: RankingRow, section: Section): string[] {
   const reasons: string[] = [];
@@ -262,8 +236,6 @@ function buildConfidenceReasons(row: RankingRow, section: Section): string[] {
   return reasons.length > 0 ? reasons : ["Based on combined projection and matchup modelling"];
 }
 
-// ─── Copy / Share helpers ─────────────────────────────────────────────────────
-
 async function copyToClipboard(text: string): Promise<boolean> {
   try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
 }
@@ -280,11 +252,11 @@ function buildShareText(row: RankingRow, section: Section): string {
   }
 }
 
-function buildRoundSummaryText(mustHave: RankingRow | null, breakout: RankingRow | null, doNotStart: RankingRow | null): string {
+function buildRoundSummaryText(mustHave: EdgeBoardPlayer | null, breakout: EdgeBoardPlayer | null, avoid: EdgeBoardPlayer | null): string {
   const lines: string[] = ["⚡ My AFL Fantasy Edge Picks (Neeko)\n"];
   if (mustHave) lines.push(`Must Have: ${mustHave.player_name} — Value ${fmtValueScore(mustHave.value_score)}`);
   if (breakout) lines.push(`Breakout Watch: ${breakout.player_name} — ${fmtInt(breakout.projection_final)} pts projected`);
-  if (doNotStart) lines.push(`Avoid: ${doNotStart.player_name} — ${getRiskLabel(doNotStart.risk_rating)} risk`);
+  if (avoid) lines.push(`Avoid: ${avoid.player_name} — ${getRiskLabel(avoid.risk_rating)} risk`);
   lines.push("\nneekosports.com.au #AFLFantasy #NeekoEdge");
   return lines.join("\n");
 }
@@ -294,11 +266,8 @@ function buildRoundSummaryText(mustHave: RankingRow | null, breakout: RankingRow
 function RoundLockCountdown() {
   const lockDate = useRef(getNextRoundLock()).current;
   const { days, hours, mins, secs, expired } = useCountdown(lockDate);
-
   if (expired) return null;
-
   const urgent = days === 0 && hours < 6;
-
   return (
     <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs font-semibold ${urgent ? "border-red-500/30 bg-red-500/[0.06] text-red-400" : "border-white/10 bg-white/[0.03] text-white/50"}`}>
       <Timer size={11} className={urgent ? "text-red-400" : "text-white/30"} />
@@ -314,11 +283,15 @@ function RoundLockCountdown() {
 function MyTeamEdge({
   myTeam,
   onSetTeam,
-  rows,
+  mustHave,
+  breakout,
+  avoid,
 }: {
   myTeam: string | null;
   onSetTeam: (team: string) => void;
-  rows: RankingRow[];
+  mustHave: EdgeBoardPlayer[];
+  breakout: EdgeBoardPlayer[];
+  avoid: EdgeBoardPlayer[];
 }) {
   const [selecting, setSelecting] = useState(false);
 
@@ -361,10 +334,10 @@ function MyTeamEdge({
     );
   }
 
-  const teamMustHave  = rows.find(r => r.section === "must_have" && r.team === myTeam);
-  const teamBreakout  = rows.find(r => r.section === "breakout" && r.team === myTeam);
-  const teamDoNotStart = rows.find(r => r.section === "do_not_start" && r.team === myTeam);
-  const hasTeamPicks = teamMustHave || teamBreakout || teamDoNotStart;
+  const teamMustHave   = mustHave.find(r => r.team === myTeam) ?? null;
+  const teamBreakout   = breakout.find(r => r.team === myTeam) ?? null;
+  const teamAvoid      = avoid.find(r => r.team === myTeam) ?? null;
+  const hasTeamPicks   = teamMustHave || teamBreakout || teamAvoid;
 
   return (
     <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] px-5 py-4 mb-5">
@@ -408,14 +381,14 @@ function MyTeamEdge({
               <span className="text-[11px] text-white/50 shrink-0">{fmtInt(teamBreakout.projection_final)} pts</span>
             </div>
           )}
-          {teamDoNotStart && (
+          {teamAvoid && (
             <div className="flex items-center gap-3 rounded-xl border border-red-500/15 bg-red-500/[0.04] px-3 py-2.5">
               <span className="text-xs">🚨</span>
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] font-bold text-red-400/70 uppercase tracking-widest">Do Not Start</p>
-                <p className="text-sm font-extrabold text-white truncate">{teamDoNotStart.player_name}</p>
+                <p className="text-sm font-extrabold text-white truncate">{teamAvoid.player_name}</p>
               </div>
-              <span className="text-[11px] text-white/50 shrink-0">{getRiskLabel(teamDoNotStart.risk_rating)} risk</span>
+              <span className="text-[11px] text-white/50 shrink-0">{getRiskLabel(teamAvoid.risk_rating)} risk</span>
             </div>
           )}
         </div>
@@ -443,7 +416,6 @@ function TrustBadge({ accuracy }: { accuracy: number | null }) {
 function UpgradePaywallModal({ onClose, openCount }: { onClose: () => void; openCount: number }) {
   const unlocked = openCount;
   const total = 3;
-
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-4 sm:p-6" onClick={onClose}>
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
@@ -478,10 +450,7 @@ function UpgradePaywallModal({ onClose, openCount }: { onClose: () => void; open
             </div>
           ))}
         </div>
-        <a
-          href="/neeko-plus"
-          className="block w-full bg-[#F5C84C] text-black font-bold rounded-xl py-3 text-sm hover:brightness-110 transition-all"
-        >
+        <a href="/neeko-plus" className="block w-full bg-[#F5C84C] text-black font-bold rounded-xl py-3 text-sm hover:brightness-110 transition-all">
           Upgrade to Neeko+
         </a>
         <button onClick={onClose} className="mt-3 text-xs text-white/30 hover:text-white/50 transition-colors">
@@ -553,22 +522,19 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
   }
   if (row.neeko_rating != null) keyFactors.push(`Neeko Rating: ${row.neeko_rating.toFixed(1)}`);
 
+  const aiText = row.why ?? row.ai_summary ?? null;
+
   return createPortal(
-    <div
-      className="fixed inset-0 z-[9998] flex items-end sm:items-center justify-center p-0 sm:p-6"
-      onClick={onClose}
-    >
+    <div className="fixed inset-0 z-[9998] flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={onClose}>
       <div className="absolute inset-0 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150" />
       <div
         className={`relative w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl border ${cfg.border} bg-[#0d0d0d] shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in slide-in-from-bottom-6 sm:slide-in-from-bottom-2 duration-200`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag handle (mobile) */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden shrink-0">
           <div className="w-10 h-1 rounded-full bg-white/15" />
         </div>
 
-        {/* Header */}
         <div className={`px-5 pt-4 pb-4 border-b border-white/[0.06] shrink-0 ${cfg.bg}`}>
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -593,7 +559,6 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
             </div>
           </div>
 
-          {/* Primary stat + confidence row */}
           <div className="flex items-center gap-4 mt-3">
             <div>
               <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">{metric.label}</p>
@@ -608,10 +573,7 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
           </div>
         </div>
 
-        {/* Scrollable body */}
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-
-          {/* Recommendation verdict */}
           <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${trendSig ? getTrendStyles(trendSig) : getEdgeSignalStyles(sig)}`}>
             <div className="flex-1">
               <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Form Signal</p>
@@ -619,7 +581,6 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
             </div>
           </div>
 
-          {/* Confidence breakdown */}
           <div>
             <p className="text-[9px] font-bold uppercase tracking-widest text-white/30 mb-2">Why this pick</p>
             <ul className="space-y-1.5">
@@ -632,12 +593,11 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
             </ul>
           </div>
 
-          {/* AI Analysis */}
           {isPremium ? (
-            row.summary_short ? (
+            aiText ? (
               <div>
                 <p className={`text-[9px] font-bold uppercase tracking-widest mb-2 ${cfg.accentText} opacity-70`}>AI Analysis</p>
-                <p className="text-[13px] text-white/75 leading-relaxed">{cleanAiText(row.summary_short)}</p>
+                <p className="text-[13px] text-white/75 leading-relaxed">{cleanAiText(aiText)}</p>
               </div>
             ) : (
               <p className="text-sm text-white/30 italic">No analysis available yet.</p>
@@ -660,7 +620,6 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
             </div>
           )}
 
-          {/* Key factors */}
           {keyFactors.length > 0 && (
             <div>
               <p className="text-[9px] font-bold uppercase tracking-widest text-white/30 mb-2">Key Factors</p>
@@ -679,7 +638,6 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
           )}
         </div>
 
-        {/* Footer CTA */}
         <div className="px-5 py-4 border-t border-white/[0.06] shrink-0 space-y-2.5">
           {!isPremium && (
             <a
@@ -690,7 +648,6 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
               Upgrade to Neeko+
             </a>
           )}
-
           <div className="flex items-center gap-2">
             <button
               onClick={onClose}
@@ -713,14 +670,12 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
             <button
               onClick={handleWhatsApp}
               className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-white/10 bg-white/[0.03] text-[12px] font-semibold text-white/40 hover:text-green-400 hover:border-green-500/30 hover:bg-green-500/[0.05] transition-all"
-              title="Share on WhatsApp"
             >
               <span className="text-[11px]">WhatsApp</span>
             </button>
             <button
               onClick={handleTwitter}
               className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-white/10 bg-white/[0.03] text-[12px] font-semibold text-white/40 hover:text-white/70 hover:border-white/20 hover:bg-white/[0.05] transition-all"
-              title="Share on X"
             >
               <span className="text-[11px]">X</span>
             </button>
@@ -735,33 +690,24 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
 // ─── Hero Pick Card ───────────────────────────────────────────────────────────
 
 interface HeroPickCardProps {
-  row: RankingRow;
+  player: EdgeBoardPlayer;
   section: Section;
   isPremium: boolean;
   onOpen: (row: RankingRow, section: Section) => void;
 }
 
-function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
+function HeroPickCard({ player, section, isPremium, onOpen }: HeroPickCardProps) {
   const cfg = getSectionLabel(section);
-  const metric = getPrimaryMetric(row, section);
-  const conf = row.projection_confidence;
-  const oneLiner = row.summary_short ? truncateWords(row.summary_short, 9) : null;
-  const isCaptain = false;
-  const sig = signalFromField(row.signal);
+  const metric = getPrimaryMetric(player, section);
+  const conf = player.projection_confidence;
+  const oneLiner = player.why ?? (player.ai_summary ? truncateWords(player.ai_summary, 9) : null);
+  const sig = signalFromField(player.signal);
 
   return (
     <button
-      className={`relative flex flex-col w-full rounded-2xl border ${cfg.border} ${cfg.bg} overflow-hidden text-left transition-all duration-150 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/40 active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 ${isCaptain ? "ring-1 ring-yellow-400/20" : ""}`}
-      onClick={() => onOpen(row, section)}
+      className={`relative flex flex-col w-full rounded-2xl border ${cfg.border} ${cfg.bg} overflow-hidden text-left transition-all duration-150 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/40 active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20`}
+      onClick={() => onOpen(player, section)}
     >
-      {/* Captain pulse dot */}
-      {isCaptain && (
-        <span className="absolute top-3 right-3 flex h-2.5 w-2.5">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-50" />
-          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-yellow-400/70" />
-        </span>
-      )}
-
       {/* Label */}
       <div className="px-4 pt-4 pb-2">
         <span className={`text-[10px] font-extrabold tracking-widest uppercase ${cfg.accentText}`}>
@@ -773,12 +719,15 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
       <div className="px-4 pb-3 border-b border-white/[0.06]">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h3 className="text-xl font-extrabold text-white leading-tight">{row.player_name}</h3>
-            <p className="text-xs text-white/40 mt-0.5">{row.team}</p>
+            <h3 className="text-xl font-extrabold text-white leading-tight">{player.player_name}</h3>
+            <p className="text-[11px] text-white/35 mt-0.5">{player.team}</p>
+            {player.overallRank < 999 && (
+              <p className="text-[10px] text-white/25 mt-0.5">Ranked #{player.overallRank} overall this week</p>
+            )}
           </div>
-          {row.position && (
-            <span className={`mt-1 shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${getPositionBadgeStyle(row.position)}`}>
-              {row.position}
+          {player.position && (
+            <span className={`mt-1 shrink-0 text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${getPositionBadgeStyle(player.position)}`}>
+              {player.position}
             </span>
           )}
         </div>
@@ -796,14 +745,14 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
             <span className={`text-[10px] font-bold ${getConfidenceColor(conf)}`}>{conf}% conf</span>
           </div>
         )}
-        {row.price != null && (
+        {player.price != null && (
           <div className="ml-auto text-right shrink-0">
             <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Price</p>
-            <p className="text-sm font-semibold text-white/60 tabular-nums">{fmtPrice(row.price)}</p>
+            <p className="text-sm font-semibold text-white/60 tabular-nums">{fmtPrice(player.price)}</p>
             {(() => {
-              const badge = fmtPriceChange(row.price_change);
+              const badge = fmtPriceChange(player.price_change);
               if (!badge) return null;
-              const isUp = (row.price_change ?? 0) > 0;
+              const isUp = (player.price_change ?? 0) > 0;
               return <p className={`text-[9px] font-semibold tabular-nums ${isUp ? "text-emerald-400" : "text-red-400"}`}>{badge}</p>;
             })()}
           </div>
@@ -813,7 +762,7 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
       {/* One-liner */}
       <div className="px-4 pb-3 flex-1">
         {isPremium && oneLiner ? (
-          <p className="text-[11px] text-white/50 leading-snug line-clamp-1">{oneLiner}</p>
+          <p className="text-[11px] text-white/50 leading-snug line-clamp-2">{oneLiner}</p>
         ) : !isPremium ? (
           <div className="flex items-center gap-1.5">
             <Lock size={9} className="text-[#F5C84C]/40 shrink-0" />
@@ -823,10 +772,10 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
       </div>
 
       {/* Signal badge */}
-      {(row.trend_signal != null || row.signal != null) && (
+      {(player.trend_signal != null || player.signal != null) && (
         <div className="px-4 pb-3 flex items-center gap-2">
-          <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md ${row.trend_signal ? getTrendStyles(row.trend_signal) : getEdgeSignalStyles(sig)}`}>
-            {row.trend_signal ? getTrendLabel(row.trend_signal) : formatEdgeSignalLabel(sig)}
+          <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md ${player.trend_signal ? getTrendStyles(player.trend_signal) : getEdgeSignalStyles(sig)}`}>
+            {player.trend_signal ? getTrendLabel(player.trend_signal) : formatEdgeSignalLabel(sig)}
           </span>
         </div>
       )}
@@ -834,7 +783,7 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
       {/* View Analysis CTA */}
       <div className="px-4 pb-4">
         <div className={`flex items-center justify-between w-full px-3 py-2 rounded-xl border ${cfg.border} bg-white/[0.04] hover:bg-white/[0.07] transition-colors`}>
-          <span className={`text-[11px] font-bold ${cfg.accentText}`}>View Analysis</span>
+          <span className={`text-[11px] font-bold ${cfg.accentText}`}>View Full Analysis</span>
           <ChevronRight size={13} className={cfg.accentText} />
         </div>
       </div>
@@ -842,85 +791,9 @@ function HeroPickCard({ row, section, isPremium, onOpen }: HeroPickCardProps) {
   );
 }
 
-// ─── Bullet List Section ──────────────────────────────────────────────────────
-
-interface BulletListSectionProps {
-  title: string;
-  emoji: string;
-  accentText: string;
-  rows: RankingRow[];
-  section: Section;
-  onOpen: (row: RankingRow, section: Section) => void;
-}
-
-function BulletListSection({ title, emoji, accentText, rows, section, onOpen }: BulletListSectionProps) {
-  if (rows.length === 0) return null;
-
-  return (
-    <div>
-      <p className={`text-[11px] font-bold uppercase tracking-widest mb-2 ${accentText}`}>
-        {emoji} {title}
-      </p>
-      <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] divide-y divide-white/[0.04] overflow-hidden">
-        {rows.map((row) => {
-          const stat =
-            section === "must_have"
-              ? `Value ${fmtValueScore(row.value_score)}`
-              : section === "breakout"
-              ? `${fmtInt(row.projection_final)} pts projected`
-              : `${getRiskLabel(row.risk_rating)} risk`;
-          const confStr = row.projection_confidence != null ? ` · ${row.projection_confidence}% conf` : "";
-
-          return (
-            <button
-              key={row.player_id ?? row.player_name}
-              className="flex items-center gap-3 w-full px-4 py-3 hover:bg-white/[0.04] transition-colors text-left"
-              onClick={() => onOpen(row, section)}
-            >
-              <span className="text-white/20 text-sm shrink-0">•</span>
-              <span className="text-sm text-white font-semibold flex-1">{row.player_name}</span>
-              <span className="text-[11px] text-white/40 shrink-0">{stat}{confStr}</span>
-              <ChevronRight size={11} className="text-white/20 shrink-0" />
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Locked Pick Row ──────────────────────────────────────────────────────────
-
-function LockedPickRow({ section, rank, onUnlock }: { section: "must_have" | "breakout" | "do_not_start"; rank: number; onUnlock: () => void }) {
-  const accent =
-    section === "must_have"    ? { border: "border-green-500/10",  label: `#${rank} Must Have` }
-    : section === "breakout"   ? { border: "border-sky-500/10",    label: `#${rank} Breakout` }
-    :                            { border: "border-red-500/10",    label: `#${rank} Avoid` };
-
-  return (
-    <div
-      className={`flex items-center gap-3 rounded-xl border ${accent.border} bg-white/[0.015] px-4 py-3 cursor-pointer hover:bg-white/[0.025] transition-colors`}
-      onClick={onUnlock}
-    >
-      <div className="shrink-0 flex items-center justify-center w-7 h-7 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-        <Lock size={9} className="text-white/20" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-white/25 mb-0.5">{accent.label}</p>
-        <div className="h-2.5 w-28 rounded bg-white/[0.06] animate-pulse" />
-      </div>
-      <div className="shrink-0 text-right space-y-1">
-        <div className="h-2 w-10 rounded bg-white/[0.05] ml-auto" />
-        <div className="h-2 w-6 rounded bg-white/[0.04] ml-auto" />
-      </div>
-    </div>
-  );
-}
-
 // ─── Free Paywall ─────────────────────────────────────────────────────────────
 
-function FreePaywall({ onUnlock, captainCount, valueCount, trapCount }: { onUnlock: () => void; captainCount: number; valueCount: number; trapCount: number }) {
-  const totalLocked = captainCount + valueCount + trapCount;
+function FreePaywall({ onUnlock }: { onUnlock: () => void }) {
   return (
     <div className="rounded-2xl border border-[#F5C84C]/25 bg-gradient-to-b from-[#F5C84C]/[0.06] to-[#F5C84C]/[0.01] px-5 py-4">
       <div className="flex items-center gap-3 mb-3">
@@ -928,21 +801,14 @@ function FreePaywall({ onUnlock, captainCount, valueCount, trapCount }: { onUnlo
           <Lock size={14} className="text-[#F5C84C]" />
         </div>
         <div>
-          <h3 className="text-sm font-extrabold text-white leading-tight">Unlock {totalLocked} more picks</h3>
-          <p className="text-[11px] text-white/40 mt-0.5">
-            {captainCount > 0 && `${captainCount} captain`}{captainCount > 0 && valueCount > 0 && " · "}{valueCount > 0 && `${valueCount} value`}{(captainCount > 0 || valueCount > 0) && trapCount > 0 && " · "}{trapCount > 0 && `${trapCount} trap`}
-          </p>
+          <h3 className="text-sm font-extrabold text-white leading-tight">Unlock full analysis for all picks</h3>
+          <p className="text-[11px] text-white/40 mt-0.5">AI reasoning, confidence scores, and edge ratings</p>
         </div>
         <a href="/neeko-plus" className="ml-auto shrink-0 bg-[#F5C84C] text-black font-bold text-xs px-4 py-2 rounded-lg hover:brightness-110 transition-all whitespace-nowrap">
           Unlock Neeko+
         </a>
       </div>
-      <div className="space-y-2">
-        {Array.from({ length: captainCount }).map((_, i) => <LockedPickRow key={`mh-${i}`} section="must_have" rank={i + 2} onUnlock={onUnlock} />)}
-        {Array.from({ length: valueCount }).map((_, i) => <LockedPickRow key={`bo-${i}`} section="breakout" rank={i + 2} onUnlock={onUnlock} />)}
-        {Array.from({ length: trapCount }).map((_, i) => <LockedPickRow key={`dns-${i}`} section="do_not_start" rank={i + 2} onUnlock={onUnlock} />)}
-      </div>
-      <div className="flex items-center justify-between mt-3 pt-3 border-t border-white/[0.05]">
+      <div className="flex items-center justify-between mt-1 pt-3 border-t border-white/[0.05]">
         <span className="text-[10px] text-white/25">From $9.99/mo</span>
         <button onClick={onUnlock} className="text-[11px] text-[#F5C84C]/50 hover:text-[#F5C84C]/80 transition-colors underline underline-offset-2">
           See what's included
@@ -954,9 +820,9 @@ function FreePaywall({ onUnlock, captainCount, valueCount, trapCount }: { onUnlo
 
 // ─── Round Summary Share Panel ─────────────────────────────────────────────────
 
-function RoundSummaryShare({ mustHave, breakout, doNotStart }: { mustHave: RankingRow | null; breakout: RankingRow | null; doNotStart: RankingRow | null }) {
+function RoundSummaryShare({ mustHave, breakout, avoid }: { mustHave: EdgeBoardPlayer | null; breakout: EdgeBoardPlayer | null; avoid: EdgeBoardPlayer | null }) {
   const [copied, setCopied] = useState(false);
-  const summaryText = buildRoundSummaryText(mustHave, breakout, doNotStart);
+  const summaryText = buildRoundSummaryText(mustHave, breakout, avoid);
 
   async function handleCopy() {
     const ok = await copyToClipboard(summaryText);
@@ -981,7 +847,6 @@ function RoundSummaryShare({ mustHave, breakout, doNotStart }: { mustHave: Ranki
           <p className="text-[11px] text-white/35 mt-0.5">Ready-to-post for X, WhatsApp or your league chat</p>
         </div>
       </div>
-
       <div className="rounded-xl border border-white/[0.06] bg-black/30 px-4 py-3 space-y-1.5 mb-3">
         {mustHave && (
           <div className="flex items-center gap-2">
@@ -995,15 +860,14 @@ function RoundSummaryShare({ mustHave, breakout, doNotStart }: { mustHave: Ranki
             <span className="text-[12px] text-white/60">Breakout: <span className="text-white font-semibold">{breakout.player_name}</span> — {fmtInt(breakout.projection_final)} pts projected</span>
           </div>
         )}
-        {doNotStart && (
+        {avoid && (
           <div className="flex items-center gap-2">
             <span className="text-[10px]">🚨</span>
-            <span className="text-[12px] text-white/60">Avoid: <span className="text-white font-semibold">{doNotStart.player_name}</span> — {getRiskLabel(doNotStart.risk_rating)} risk</span>
+            <span className="text-[12px] text-white/60">Avoid: <span className="text-white font-semibold">{avoid.player_name}</span> — {getRiskLabel(avoid.risk_rating)} risk</span>
           </div>
         )}
         <p className="text-[10px] text-white/20 pt-1">neekosports.com.au #AFLFantasy</p>
       </div>
-
       <div className="flex gap-2">
         <button
           onClick={handleCopy}
@@ -1040,11 +904,9 @@ function CollapsibleSEOGuide() {
 
   return (
     <div className="rounded-2xl overflow-hidden border border-white/[0.06] bg-white/[0.02]">
-      {/* Crawler-visible summary (always in DOM, visually hidden) */}
       <div className="sr-only">
-        AFL Fantasy Edge Board Guide: Captain Lock — double the player with the highest projected ceiling and favourable matchup. Breakout Value — underpriced players primed to rise. Fade / Trap — overpriced players to bench or trade before lockout. Picks refresh weekly after price changes.
+        AFL Fantasy Edge Board Guide: Must Have — players with strong edge and value above their price. Breakout — underpriced players with upside projection. Do Not Start — players likely to underperform their price point this week. Picks updated weekly after price changes.
       </div>
-
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-white/[0.02] transition-colors"
@@ -1059,46 +921,33 @@ function CollapsibleSEOGuide() {
           style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
         />
       </button>
-
       <div
         className="overflow-hidden transition-all duration-250"
-        style={{
-          maxHeight: open ? "900px" : "0px",
-          opacity: open ? 1 : 0,
-          transition: "max-height 0.25s ease, opacity 0.2s ease",
-        }}
+        style={{ maxHeight: open ? "900px" : "0px", opacity: open ? 1 : 0, transition: "max-height 0.25s ease, opacity 0.2s ease" }}
       >
         <div className="border-t border-white/[0.05] px-4 pb-5 pt-4 space-y-5">
           <div>
             <h2 className="text-sm font-semibold text-white mb-2">How to Use the AFL Fantasy Edge Board</h2>
             <p className="text-[12px] text-white/50 leading-relaxed">
-              The Edge Board is Neeko's most concentrated AFL Fantasy decision tool. Each week the projection model scans the full player pool and surfaces three high-conviction plays: the captain lock, the best value breakout target, and the player to fade. These aren't suggestions — they're the model's strongest signals for the upcoming round.
+              The Edge Board is Neeko's most concentrated AFL Fantasy decision tool. Each week the projection model scans the full player pool and surfaces three high-conviction plays: the must have value pick, the best breakout target, and the player to fade. These aren't suggestions — they're the model's strongest signals for the upcoming round.
             </p>
           </div>
-
           <div>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/30 mb-2.5">What each section means</h3>
             <ul className="space-y-2.5 text-[12px] text-white/45 leading-relaxed">
-              <li>
-                <strong className="text-white/65">Captain Lock</strong> — The player with the highest projected ceiling combined with strong confidence and a favourable matchup. Double this player's score for maximum points.
-              </li>
-              <li>
-                <strong className="text-white/65">Breakout Value</strong> — Underpriced relative to their output potential. Strong trade-in candidate and a high-upside start this round.
-              </li>
-              <li>
-                <strong className="text-white/65">Fade / Trap</strong> — Overpriced given their projected return. If they're in your squad consider benching or trading out before lockout.
-              </li>
+              <li><strong className="text-white/65">Must Have Value</strong> — Players where projection significantly exceeds their breakeven. Strong trade-in targets and high-confidence starts.</li>
+              <li><strong className="text-white/65">Breakout Watch</strong> — Underpriced relative to their output potential. High-upside targets worth monitoring or starting this round.</li>
+              <li><strong className="text-white/65">Do Not Start</strong> — Overpriced given their projected return. Consider benching or trading out before lockout.</li>
             </ul>
           </div>
-
           <div>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/30 mb-2">For this round</h3>
             <p className="text-[12px] text-white/45 leading-relaxed">
-              Edge Board picks are refreshed weekly after price changes are applied. Check back after Thursday lockout for the updated round analysis. Use the{" "}
-              <a href="/sports/afl/market-watch" className="text-white/60 underline underline-offset-2 hover:text-white transition-colors">Market Watch</a>{" "}
-              for a broader view of all trade targets, or the{" "}
+              Edge Board picks refresh weekly after price changes are applied. Use the{" "}
+              <a href="/sports/afl/current-round" className="text-white/60 underline underline-offset-2 hover:text-white transition-colors">Current Round</a>{" "}
+              for the full player landscape, or the{" "}
               <a href="/sports/afl/rankings" className="text-white/60 underline underline-offset-2 hover:text-white transition-colors">AFL Fantasy Rankings</a>{" "}
-              for the full player pool ordered by Neeko Rating.
+              for the complete player pool ordered by Neeko Rating.
             </p>
           </div>
         </div>
@@ -1116,7 +965,7 @@ function LoadingSkeleton() {
         <div className="h-8 w-56 rounded-xl bg-white/5 animate-pulse" />
         <div className="h-4 w-72 rounded-lg bg-white/5 animate-pulse" />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
-          {[1, 2, 3].map((i) => <div key={i} className="h-52 rounded-2xl bg-white/[0.03] animate-pulse" />)}
+          {[1, 2, 3].map((i) => <div key={i} className="h-64 rounded-2xl bg-white/[0.03] animate-pulse" />)}
         </div>
       </div>
     </div>
@@ -1127,19 +976,17 @@ function LoadingSkeleton() {
 
 export default function AFLRoundEdgeBoard() {
   const { isPremium } = useAuth();
-  const [rows, setRows] = useState<RankingRow[]>([]);
+  const [players, setPlayers] = useState<RankingRow[]>([]);
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [myTeam, setMyTeam] = useState<string | null>(null);
 
-  // Modal state
   const [activeModal, setActiveModal] = useState<{ row: RankingRow; section: Section } | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  // Free user interaction gate: 1 free open, then paywall
   const freeOpenCount = useRef(0);
-
   const relativeTime = useRelativeTime(refreshedAt);
 
   useEffect(() => { track("edge_board_view"); }, []);
@@ -1148,49 +995,74 @@ export default function AFLRoundEdgeBoard() {
     setLoading(true);
     setError(null);
     try {
-      const [rpcResult, accResult] = await Promise.all([
-        supabase.rpc("get_edge_board_data", { limit_n: isPremium ? 5 : 4 }),
+      const [rankResult, accResult] = await Promise.all([
+        supabase.from("player_rankings_cache").select(COLUMNS).order("neeko_rating", { ascending: false }).limit(300),
         supabase.from("v_projection_accuracy_homepage").select("within_20").maybeSingle(),
       ]);
 
-      if (rpcResult.error) throw rpcResult.error;
-      const mapped = ((rpcResult.data as any[]) ?? [])
-        .filter((r: any) =>
-          r.player_name &&
-          r.team &&
-          Number(r.projection_final ?? 0) > 0 &&
-          Number(r.price ?? 0) > 0,
-        )
-        .map((r: any): RankingRow => ({
-          player_id:             r.player_id ?? null,
-          player_name:           r.player_name ?? "",
-          team:                  r.team ?? "",
-          position:              r.position ?? r.player_position ?? null,
-          section:               r.section ?? "",
-          section_rank:          r.section_rank ?? 0,
-          projection_final:      r.projection_final != null ? Number(r.projection_final) : null,
-          ceiling_estimate:      r.ceiling_estimate != null ? Number(r.ceiling_estimate) : null,
-          floor_estimate:        r.floor_estimate != null ? Number(r.floor_estimate) : null,
-          upside_rating:         r.upside_rating != null ? Number(r.upside_rating) : null,
-          risk_rating:           r.risk_rating != null ? Number(r.risk_rating) : null,
-          projection_confidence: r.projection_confidence != null ? Number(r.projection_confidence) : null,
-          captain_score:         r.captain_score != null ? Number(r.captain_score) : null,
-          captain_rating:        r.captain_rating ?? null,
-          neeko_rating:          r.neeko_rating != null ? Number(r.neeko_rating) : null,
-          price:                 r.price != null ? Number(r.price) : null,
-          price_change:          r.price_change != null ? Number(r.price_change) : null,
-          value_score:           r.value_score != null ? Number(r.value_score) : null,
-          ai_summary:            r.ai_summary ?? null,
-          summary_short:         r.summary_short ?? null,
-          signal_tag:            r.signal_tag ?? null,
-          signal:                r.signal ?? null,
-          trend_signal:          r.trend_signal ?? null,
-          edge:                  r.edge != null ? Number(r.edge) : null,
-          breakeven:             r.breakeven != null ? Number(r.breakeven) : null,
-          refreshed_at:          r.refreshed_at ?? null,
-        }));
-      setRows(mapped);
-      setRefreshedAt(mapped[0]?.refreshed_at ?? null);
+      if (rankResult.error) throw rankResult.error;
+
+      const mapped = ((rankResult.data as any[]) ?? []).map((r: any): RankingRow => ({
+        player_id:             r.player_id ?? null,
+        player_name:           r.player_name ?? "",
+        team:                  r.team ?? "",
+        position:              r.position ?? null,
+        projection_final:      r.projection_final != null ? Number(r.projection_final) : null,
+        ceiling_estimate:      r.ceiling_estimate != null ? Number(r.ceiling_estimate) : null,
+        floor_estimate:        r.floor_estimate != null ? Number(r.floor_estimate) : null,
+        consistency_score:     null,
+        form_rating:           null,
+        matchup_rating:        null,
+        upside_rating:         r.upside_rating != null ? Number(r.upside_rating) : null,
+        risk_rating:           r.risk_rating != null ? Number(r.risk_rating) : null,
+        form_score:            r.form_score != null ? Number(r.form_score) : null,
+        projection_confidence: r.projection_confidence != null ? Number(r.projection_confidence) : null,
+        captain_score:         r.captain_score != null ? Number(r.captain_score) : null,
+        captain_rating:        r.captain_rating ?? null,
+        neeko_rating:          r.neeko_rating != null ? Number(r.neeko_rating) : null,
+        neeko_rating_scaled:   r.neeko_rating_scaled != null ? Number(r.neeko_rating_scaled) : null,
+        price:                 r.price != null ? Number(r.price) : null,
+        prev_price:            r.prev_price != null ? Number(r.prev_price) : null,
+        price_change:          r.price_change != null ? Number(r.price_change) : null,
+        price_change_pct:      null,
+        breakeven:             r.breakeven != null ? Number(r.breakeven) : null,
+        value_score:           r.value_score != null ? Number(r.value_score) : null,
+        best_value_score:      r.best_value_score != null ? Number(r.best_value_score) : null,
+        value_tag:             r.value_tag ?? null,
+        value_tier:            r.value_tier ?? null,
+        recommendation_strength: r.recommendation_strength ?? null,
+        ai_updated_at:         null,
+        recommendation_color:  r.recommendation_color ?? null,
+        consistency_tier:      null,
+        total_count:           null,
+        games_played:          r.games_played != null ? Number(r.games_played) : null,
+        baseline:              r.baseline != null ? Number(r.baseline) : null,
+        edge:                  r.edge != null ? Number(r.edge) : null,
+        signal:                r.signal ?? null,
+        season_avg:            r.season_avg != null ? Number(r.season_avg) : null,
+        last_3_avg:            r.last_3_avg != null ? Number(r.last_3_avg) : null,
+        value:                 null,
+        why:                   r.why ?? null,
+        long:                  r.long ?? null,
+        market_watch_category: null,
+        signal_tag:            r.signal_tag ?? null,
+        upside_pct:            r.upside_pct != null ? Number(r.upside_pct) : null,
+        ai_summary:            r.ai_summary ?? null,
+        status:                r.status ?? null,
+        manual_status:         r.manual_status ?? null,
+        is_available:          r.is_available ?? null,
+        bye_round:             r.bye_round != null ? Number(r.bye_round) : null,
+        is_bye:                r.is_bye ?? null,
+        bye_next_round:        null,
+        trend_score:           r.trend_score != null ? Number(r.trend_score) : null,
+        trend_signal:          r.trend_signal ?? null,
+        form_delta:            null,
+        form_label:            r.form_label ?? null,
+        value_signal:          r.value_signal ?? null,
+      }));
+
+      setPlayers(mapped);
+      setRefreshedAt((rankResult.data as any[])[0]?.ai_updated_at ?? null);
 
       if (!accResult.error && accResult.data) {
         const raw = (accResult.data as any).within_20;
@@ -1202,17 +1074,24 @@ export default function AFLRoundEdgeBoard() {
     } finally {
       setLoading(false);
     }
-  }, [isPremium]);
+  }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   useEffect(() => {
-    function onPricesApplied() {
-      fetchData();
-    }
+    function onPricesApplied() { fetchData(); }
     window.addEventListener("neeko:prices-applied", onPricesApplied);
     return () => window.removeEventListener("neeko:prices-applied", onPricesApplied);
   }, [fetchData]);
+
+  const { mustHave, breakout, avoid, allEdgeIds } = useMemo(
+    () => buildEdgeBoardPlayers(players),
+    [players]
+  );
+
+  const mustHavePick   = mustHave[0] ?? null;
+  const breakoutPick   = breakout[0] ?? null;
+  const avoidPick      = avoid[0] ?? null;
 
   function handleOpenModal(row: RankingRow, section: Section) {
     if (!isPremium) {
@@ -1227,9 +1106,12 @@ export default function AFLRoundEdgeBoard() {
     track("edge_board_modal_open", { section, player: row.player_name });
   }
 
-  function handleCloseModal() {
-    setActiveModal(null);
-  }
+  function handleCloseModal() { setActiveModal(null); }
+
+  // Export edge IDs so other pages can use them (stored on window for cross-page access)
+  useEffect(() => {
+    (window as any).__neekoEdgeBoardIds = allEdgeIds;
+  }, [allEdgeIds]);
 
   if (loading) return <LoadingSkeleton />;
 
@@ -1244,23 +1126,10 @@ export default function AFLRoundEdgeBoard() {
     );
   }
 
-  const mustHaveRows    = rows.filter(r => r.section === "must_have").sort((a, b) => Number(a.section_rank) - Number(b.section_rank));
-  const breakoutRows    = rows.filter(r => r.section === "breakout").sort((a, b) => Number(a.section_rank) - Number(b.section_rank));
-  const doNotStartRows  = rows.filter(r => r.section === "do_not_start").sort((a, b) => Number(a.section_rank) - Number(b.section_rank));
-
-  const mustHavePick   = mustHaveRows[0] ?? null;
-  const breakoutPick   = breakoutRows[0] ?? null;
-  const doNotStartPick = doNotStartRows[0] ?? null;
-
-  const heroPicks: { row: RankingRow; section: Section }[] = [];
-  if (mustHavePick)   heroPicks.push({ row: mustHavePick,   section: "must_have" });
-  if (breakoutPick)   heroPicks.push({ row: breakoutPick,   section: "breakout" });
-  if (doNotStartPick) heroPicks.push({ row: doNotStartPick, section: "do_not_start" });
-
-  const mustHaveSecondary   = mustHaveRows.slice(1, 1 + PREMIUM_SECONDARY);
-  const breakoutSecondary   = breakoutRows.slice(1, 1 + PREMIUM_SECONDARY);
-  const doNotStartSecondary = doNotStartRows.slice(1, 1 + PREMIUM_SECONDARY);
-  const hasSecondary = mustHaveSecondary.length > 0 || breakoutSecondary.length > 0 || doNotStartSecondary.length > 0;
+  const heroPicks: { player: EdgeBoardPlayer; section: Section }[] = [];
+  if (mustHavePick) heroPicks.push({ player: mustHavePick, section: "must_have" });
+  if (breakoutPick) heroPicks.push({ player: breakoutPick, section: "breakout" });
+  if (avoidPick)    heroPicks.push({ player: avoidPick,    section: "do_not_start" });
 
   return (
     <>
@@ -1296,119 +1165,123 @@ export default function AFLRoundEdgeBoard() {
           }
         })}</script>
       </Helmet>
-    <div className="min-h-screen bg-[#0a0a0a] px-4 py-8 md:px-8">
-      <div className="max-w-4xl mx-auto">
 
-        {/* ── Page header ─────────────────────────────────────────────────── */}
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-2">
-            <Zap size={13} className="text-[#F5C84C]" />
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-[#F5C84C]/60">AFL Fantasy · Edge Board</span>
-            {isPremium && (
-              <div className="ml-1 flex items-center gap-1 px-2 py-0.5 rounded-full border border-[#F5C84C]/35 bg-[#F5C84C]/10">
-                <ShieldCheck size={9} className="text-[#F5C84C]" />
-                <span className="text-[9px] font-bold text-[#F5C84C] tracking-wide">Neeko+ Active</span>
-              </div>
-            )}
-          </div>
-          <h1 className="text-2xl font-extrabold text-white leading-tight">AFL Fantasy Edge Board — This Week's Picks</h1>
-          <p className="text-sm text-white/40 mt-1">
-            Must have value picks, breakout watchlist, and who not to start — all decided by Neeko's projection model.
-          </p>
+      <div className="min-h-screen bg-[#0a0a0a] px-4 py-8 md:px-8">
+        <div className="max-w-4xl mx-auto">
 
-          {/* Meta row: updated + trust + countdown */}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {relativeTime && (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-white/10 bg-white/[0.03]">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-400/70" />
-                <span className="text-[10px] text-white/35">Updated {relativeTime}</span>
-              </div>
-            )}
-            <TrustBadge accuracy={accuracy} />
-            <RoundLockCountdown />
-          </div>
-        </div>
-
-        {/* ── Hero Picks ───────────────────────────────────────────────────── */}
-        {heroPicks.length > 0 && (
-          <div className="mb-5">
-            <div className={`grid gap-4 ${heroPicks.length === 3 ? "grid-cols-1 sm:grid-cols-3" : heroPicks.length === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 max-w-sm"}`}>
-              {heroPicks.map(({ row, section }) => (
-                <HeroPickCard
-                  key={section}
-                  row={row}
-                  section={section}
-                  isPremium={isPremium}
-                  onOpen={handleOpenModal}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Share section ────────────────────────────────────────────────── */}
-        {heroPicks.length > 0 && (
+          {/* ── Page header ─────────────────────────────────────────────────── */}
           <div className="mb-6">
-            <RoundSummaryShare mustHave={mustHavePick} breakout={breakoutPick} doNotStart={doNotStartPick} />
-          </div>
-        )}
-
-        {/* ── Free paywall ─────────────────────────────────────────────────── */}
-        {!isPremium && (
-          <div className="mb-6">
-            <FreePaywall
-              onUnlock={() => setShowUpgradeModal(true)}
-              captainCount={2}
-              valueCount={2}
-              trapCount={2}
-            />
-          </div>
-        )}
-
-        {/* ── Premium: More Plays This Round ───────────────────────────────── */}
-        {isPremium && hasSecondary && (
-          <div className="mt-2">
-            <div className="flex items-center gap-3 mb-4">
-              <h2 className="text-[11px] font-bold text-white uppercase tracking-widest">More Plays This Round</h2>
-              <div className="flex-1 h-px bg-white/[0.06]" />
+            <div className="flex items-center gap-2 mb-2">
+              <Zap size={13} className="text-[#F5C84C]" />
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-[#F5C84C]/60">AFL Fantasy · Edge Board</span>
+              {isPremium && (
+                <div className="ml-1 flex items-center gap-1 px-2 py-0.5 rounded-full border border-[#F5C84C]/35 bg-[#F5C84C]/10">
+                  <ShieldCheck size={9} className="text-[#F5C84C]" />
+                  <span className="text-[9px] font-bold text-[#F5C84C] tracking-wide">Neeko+ Active</span>
+                </div>
+              )}
             </div>
-            <div className="space-y-4">
-              <BulletListSection title="Other Must Have Value" emoji="🟢" accentText="text-green-400" rows={mustHaveSecondary} section="must_have" onOpen={handleOpenModal} />
-              <BulletListSection title="Other Breakout Watches" emoji="⚡" accentText="text-sky-400" rows={breakoutSecondary} section="breakout" onOpen={handleOpenModal} />
-              <BulletListSection title="Other Players to Avoid" emoji="🚨" accentText="text-red-400" rows={doNotStartSecondary} section="do_not_start" onOpen={handleOpenModal} />
+            <h1 className="text-2xl font-extrabold text-white leading-tight">This Week's Picks — No Noise. Just Decisions.</h1>
+            <p className="text-sm text-white/40 mt-1.5 leading-relaxed">
+              Neeko's highest conviction plays based on projection edge and pricing inefficiencies.
+            </p>
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {relativeTime && (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-white/10 bg-white/[0.03]">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400/70" />
+                  <span className="text-[10px] text-white/35">Updated {relativeTime}</span>
+                </div>
+              )}
+              <TrustBadge accuracy={accuracy} />
+              <RoundLockCountdown />
             </div>
           </div>
+
+          {/* ── My Team Edge ─────────────────────────────────────────────────── */}
+          <MyTeamEdge
+            myTeam={myTeam}
+            onSetTeam={setMyTeam}
+            mustHave={mustHave}
+            breakout={breakout}
+            avoid={avoid}
+          />
+
+          {/* ── Hero Picks Grid ───────────────────────────────────────────────── */}
+          {heroPicks.length > 0 && (
+            <div className="mb-5">
+              <div className={`grid gap-4 ${heroPicks.length === 3 ? "grid-cols-1 sm:grid-cols-3" : heroPicks.length === 2 ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 max-w-sm"}`}>
+                {heroPicks.map(({ player, section }) => (
+                  <HeroPickCard
+                    key={section}
+                    player={player}
+                    section={section}
+                    isPremium={isPremium}
+                    onOpen={handleOpenModal}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Free paywall banner ───────────────────────────────────────────── */}
+          {!isPremium && (
+            <div className="mb-6">
+              <FreePaywall onUnlock={() => setShowUpgradeModal(true)} />
+            </div>
+          )}
+
+          {/* ── Share section ─────────────────────────────────────────────────── */}
+          {heroPicks.length > 0 && (
+            <div className="mb-6">
+              <RoundSummaryShare mustHave={mustHavePick} breakout={breakoutPick} avoid={avoidPick} />
+            </div>
+          )}
+
+          {/* ── Current Round CTA ─────────────────────────────────────────────── */}
+          <div className="mb-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-white">Want the full picture?</p>
+              <p className="text-[12px] text-white/40 mt-0.5">Browse all captain picks, value plays, and form analysis for every player.</p>
+            </div>
+            <a
+              href="/sports/afl/current-round"
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-white/15 bg-white/[0.04] text-[12px] font-bold text-white/70 hover:text-white hover:border-white/25 hover:bg-white/[0.07] transition-all whitespace-nowrap"
+            >
+              View Full Round
+              <ChevronRight size={12} />
+            </a>
+          </div>
+
+          {/* ── SEO Guide ────────────────────────────────────────────────────── */}
+          <div className="mt-4">
+            <CollapsibleSEOGuide />
+          </div>
+
+          <div className="mt-10 pb-8 border-t border-white/[0.04] pt-4">
+            <p className="text-[10px] text-white/20 text-center tracking-wide">
+              Picks derived from the Neeko projection engine — blended rolling baseline with dynamic round weighting.
+            </p>
+          </div>
+        </div>
+
+        {/* ── Modals ─────────────────────────────────────────────────────────── */}
+        {activeModal && (
+          <PlayerAnalysisModal
+            row={activeModal.row}
+            section={activeModal.section}
+            isPremium={isPremium}
+            onClose={handleCloseModal}
+            onUpgrade={() => { handleCloseModal(); setShowUpgradeModal(true); }}
+          />
         )}
-
-        {/* ── SEO Guide (collapsible, bottom of page) ──────────────────────── */}
-        <div className="mt-8">
-          <CollapsibleSEOGuide />
-        </div>
-
-        <div className="mt-10 pb-8 border-t border-white/[0.04] pt-4">
-          <p className="text-[10px] text-white/20 text-center tracking-wide">
-            Picks derived from the Neeko projection engine — blended rolling baseline with dynamic round weighting.
-          </p>
-        </div>
+        {showUpgradeModal && (
+          <UpgradePaywallModal
+            onClose={() => setShowUpgradeModal(false)}
+            openCount={freeOpenCount.current}
+          />
+        )}
       </div>
-
-      {/* ── Modals ──────────────────────────────────────────────────────────── */}
-      {activeModal && (
-        <PlayerAnalysisModal
-          row={activeModal.row}
-          section={activeModal.section}
-          isPremium={isPremium}
-          onClose={handleCloseModal}
-          onUpgrade={() => { handleCloseModal(); setShowUpgradeModal(true); }}
-        />
-      )}
-      {showUpgradeModal && (
-        <UpgradePaywallModal
-          onClose={() => setShowUpgradeModal(false)}
-          openCount={freeOpenCount.current}
-        />
-      )}
-    </div>
     </>
   );
 }

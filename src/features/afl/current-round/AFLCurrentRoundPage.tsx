@@ -14,6 +14,8 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronRight,
+  Flame,
+  DollarSign,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
@@ -30,10 +32,11 @@ import type { RankingRow } from "@/features/afl/rankings/components/types";
 import { PlayerDetailModal, UpgradeModal } from "@/features/afl/rankings/components/RankingsModals";
 import { PlayerStatusPill } from "@/features/afl/rankings/components/PlayerStatusPill";
 import type { RowTier } from "@/features/afl/rankings/components/types";
+import { buildCurrentRoundPlayers, type CurrentRoundPlayer } from "@/features/afl/current-round/engine";
 
 // ─── LIMITS ──────────────────────────────────────────────────────────────────
-const FREE_VISIBLE = 2;
-const PREMIUM_VISIBLE = 5;
+const FREE_VISIBLE = 3;
+const PREMIUM_VISIBLE = 10;
 
 const COLUMNS =
   "player_id,player_name,team,position," +
@@ -48,7 +51,7 @@ const COLUMNS =
   "market_watch_category,upside_pct," +
   "status,manual_status,is_available," +
   "bye_round,is_bye,bye_next_round,games_played," +
-  "signal,baseline,edge,season_avg,last_3_avg,value_score," +
+  "signal,baseline,edge,season_avg,last_3_avg," +
   "trend_score,trend_signal,value_signal," +
   "form_delta,form_label";
 
@@ -99,24 +102,34 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
     is_bye: raw.is_bye != null ? Boolean(raw.is_bye) : null,
     bye_next_round: raw.bye_next_round != null ? Boolean(raw.bye_next_round) : null,
     signal_tag: (raw.signal_tag as string) ?? null,
-    signal:       (raw.signal as string) ?? null,
-    baseline:     raw.baseline != null ? Number(raw.baseline) : null,
-    edge:         raw.edge != null ? Number(raw.edge) : null,
-    season_avg:   raw.season_avg != null ? Number(raw.season_avg) : null,
-    last_3_avg:   raw.last_3_avg != null ? Number(raw.last_3_avg) : null,
-    value_score:  raw.value_score != null ? Number(raw.value_score) : null,
-    trend_score:  raw.trend_score != null ? Number(raw.trend_score) : null,
+    signal: (raw.signal as string) ?? null,
+    baseline: raw.baseline != null ? Number(raw.baseline) : null,
+    edge: raw.edge != null ? Number(raw.edge) : null,
+    season_avg: raw.season_avg != null ? Number(raw.season_avg) : null,
+    last_3_avg: raw.last_3_avg != null ? Number(raw.last_3_avg) : null,
+    trend_score: raw.trend_score != null ? Number(raw.trend_score) : null,
     trend_signal: (raw.trend_signal as string) ?? null,
     value_signal: (raw.value_signal as string) ?? null,
-    form_delta:   raw.form_delta != null ? Number(raw.form_delta) : null,
-    form_label:   (raw.form_label as string) ?? null,
+    form_delta: raw.form_delta != null ? Number(raw.form_delta) : null,
+    form_label: (raw.form_label as string) ?? null,
   };
+}
+
+// ─── FEATURED BADGE ──────────────────────────────────────────────────────────
+
+function FeaturedBadge() {
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-px rounded border border-orange-400/40 bg-orange-400/10 text-orange-400 shrink-0 leading-none">
+      <Flame className="w-2.5 h-2.5" />
+      Edge Pick
+    </span>
+  );
 }
 
 // ─── COMPACT PLAYER ROW ───────────────────────────────────────────────────────
 
 interface PlayerRowProps {
-  row: RankingRow;
+  row: CurrentRoundPlayer;
   rank: number;
   metric?: React.ReactNode;
   isPremiumUser: boolean;
@@ -133,6 +146,7 @@ function PlayerRow({ row, rank, metric, isPremiumUser, onClick }: PlayerRowProps
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-sm font-semibold text-white truncate leading-tight">{row.player_name}</span>
+          {row.isFeaturedPick && <FeaturedBadge />}
           <PlayerStatusPill row={row} showUpcomingBye />
           {row.trend_signal != null && isPremiumUser && (
             <span className={`text-[9px] px-1 py-px rounded border shrink-0 font-medium leading-none ${getTrendStyles(row.trend_signal)}`}>
@@ -157,9 +171,9 @@ function PlayerRow({ row, rank, metric, isPremiumUser, onClick }: PlayerRowProps
   );
 }
 
-// ─── BLURRED ROW (replaces LockedRow) ─────────────────────────────────────────
+// ─── BLURRED ROW ─────────────────────────────────────────────────────────────
 
-function BlurredRow({ row, rank, metric }: { row: RankingRow; rank: number; metric?: React.ReactNode }) {
+function BlurredRow({ row, rank, metric }: { row: CurrentRoundPlayer; rank: number; metric?: React.ReactNode }) {
   return (
     <div
       className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg select-none pointer-events-none"
@@ -251,12 +265,13 @@ function BlurOverlayCTA({
 
 interface DecisionCardProps {
   title: string;
+  description: string;
   icon: React.ReactNode;
   accentColor: string;
-  players: RankingRow[];
+  players: CurrentRoundPlayer[];
   freeLimit: number;
   isPremiumUser: boolean;
-  onOpenRow: (row: RankingRow, rank: number) => void;
+  onOpenRow: (row: CurrentRoundPlayer, rank: number) => void;
   onUpgrade: () => void;
   hiddenCopy: string;
   lockedCta?: string;
@@ -264,12 +279,13 @@ interface DecisionCardProps {
   blurCtaLabel?: string;
   blurBadgeText?: string;
   footerLink?: { label: string; to: string };
-  renderMetric?: (row: RankingRow) => React.ReactNode;
+  renderMetric?: (row: CurrentRoundPlayer) => React.ReactNode;
   premiumLocked?: boolean;
 }
 
 function DecisionCard({
   title,
+  description,
   icon,
   accentColor,
   players,
@@ -291,9 +307,7 @@ function DecisionCard({
   const hidden = isPremiumUser ? [] : players.slice(freeLimit, PREMIUM_VISIBLE);
   const totalHidden = isPremiumUser ? 0 : Math.max(0, players.length - freeLimit);
 
-  const borderColor = hovered
-    ? `${accentColor}60`
-    : `${accentColor}35`;
+  const borderColor = hovered ? `${accentColor}60` : `${accentColor}35`;
   const bgTint = `${accentColor}06`;
 
   if (premiumLocked && !isPremiumUser) {
@@ -311,10 +325,7 @@ function DecisionCard({
           className="flex items-center gap-2 px-4 py-3"
           style={{ borderBottom: `1px solid ${accentColor}18` }}
         >
-          <span
-            className="w-1.5 h-1.5 rounded-full shrink-0"
-            style={{ backgroundColor: accentColor }}
-          />
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
           <span style={{ color: accentColor }}>{icon}</span>
           <h2 className="text-sm font-bold text-white">{title}</h2>
         </div>
@@ -351,18 +362,18 @@ function DecisionCard({
       onMouseLeave={() => setHovered(false)}
     >
       <div
-        className="flex items-center gap-2 px-4 py-3"
+        className="px-4 pt-3 pb-2.5"
         style={{ borderBottom: `1px solid ${accentColor}18` }}
       >
-        <span
-          className="w-1.5 h-1.5 rounded-full shrink-0"
-          style={{ backgroundColor: accentColor }}
-        />
-        <span style={{ color: accentColor }}>{icon}</span>
-        <h2 className="text-sm font-bold text-white flex-1">{title}</h2>
-        {!isPremiumUser && totalHidden > 0 && (
-          <span className="text-[10px] text-white/25">{freeLimit} of {players.length}</span>
-        )}
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
+          <span style={{ color: accentColor }}>{icon}</span>
+          <h2 className="text-sm font-bold text-white flex-1">{title}</h2>
+          {!isPremiumUser && totalHidden > 0 && (
+            <span className="text-[10px] text-white/25">{freeLimit} of {players.length}</span>
+          )}
+        </div>
+        <p className="text-[11px] text-white/35 mt-1 ml-4 leading-relaxed">{description}</p>
       </div>
 
       <div className="flex-1 py-1">
@@ -432,27 +443,30 @@ function CollapsibleSEO({ roundLabel, roundNum }: { roundLabel: string; roundNum
       </button>
       <div
         className="border-t border-white/[0.05] overflow-hidden transition-all duration-200"
-        style={{ maxHeight: open ? "900px" : "0px", opacity: open ? 1 : 0 }}
+        style={{ maxHeight: open ? "1100px" : "0px", opacity: open ? 1 : 0 }}
       >
         <div className="px-4 pb-5 space-y-5">
           <p className="text-[12px] text-white/40 leading-relaxed pt-3">
-            This page surfaces the best AFL Fantasy picks for {roundLabel} — captain options, top selections, safe picks and risk alerts — powered by Neeko's AI projection model and trend engine. Every player is scored on projected output, form trajectory, matchup difficulty, consistency and role stability.
+            This page surfaces the best AFL Fantasy picks for {roundLabel} — captain options, top selections, value plays, safe picks and risk alerts — powered by Neeko's AI projection model and trend engine. Every player is scored on projected output, form trajectory, matchup difficulty, consistency and role stability.
           </p>
 
           <div className="space-y-3">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/30">How Each Section Works</h3>
             <ul className="space-y-3 text-[12px] text-white/35 leading-relaxed">
               <li>
-                <strong className="text-white/55">Captain Picks</strong> — The best AFL Fantasy captains for {roundLabel}. Ranked by a composite score combining projected points, consistency rating and matchup advantage. The players here are best for doubling up — high ceiling, proven reliability, and favourable opposition.
+                <strong className="text-white/55">Captain Picks</strong> — The best AFL Fantasy captains for {roundLabel}. Ranked by a composite captain score combining projected points, consistency rating and matchup advantage. The players here are best for doubling — high ceiling, proven reliability, and favourable opposition.
               </li>
               <li>
-                <strong className="text-white/55">Top Picks</strong> — Must-start players ranked by overall projected output. These are the highest-rated players heading into {roundLabel} based on recent form, role security and Neeko's projection model. Your foundation lineup picks.
+                <strong className="text-white/55">Top Picks</strong> — Highest projected scorers ranked by overall output. Your foundation lineup picks for {roundLabel} based on recent form, role security and Neeko's projection model.
               </li>
               <li>
-                <strong className="text-white/55">Safe Picks</strong> — Reliable, consistent performers with a stable trend signal. These players are projecting on or above their baseline — dependable selections for building a solid round score without volatility risk.
+                <strong className="text-white/55">Value Picks</strong> — Underpriced players with upside. These players project significantly above their breakeven score, making them strong trade-in targets with asymmetric price growth potential.
               </li>
               <li>
-                <strong className="text-white/55">Risk Picks</strong> — Players flagged as trending down this round. Their recent form is below baseline expectations — consider monitoring or replacing these players before {roundLabel} locks.
+                <strong className="text-white/55">Safe Picks</strong> — Consistent performers with a stable or rising trend signal. Dependable selections for building a solid round score without volatility risk.
+              </li>
+              <li>
+                <strong className="text-white/55">Risk Picks</strong> — Players flagged as trending down this round. Recent form is below baseline expectations — consider monitoring or replacing before {roundLabel} locks.
               </li>
             </ul>
           </div>
@@ -460,14 +474,14 @@ function CollapsibleSEO({ roundLabel, roundNum }: { roundLabel: string; roundNum
           <div className="space-y-2">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/30">AFL Fantasy Strategy for {roundLabel}</h3>
             <p className="text-[12px] text-white/35 leading-relaxed">
-              Winning AFL Fantasy rounds comes down to three decisions: picking the right captain, identifying players trending upward before the round, and avoiding form risks. Neeko's AI analyses every player's recent performance trend, upcoming matchup difficulty, role consistency and baseline performance to surface the highest-conviction plays each round.
+              Winning AFL Fantasy rounds comes down to three decisions: picking the right captain, identifying underpriced value before the round, and avoiding form risks. Neeko's AI analyses every player's recent performance trend, upcoming matchup difficulty, role consistency and baseline performance to surface the highest-conviction plays each round.
             </p>
           </div>
 
           <div className="space-y-2">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/30">About the Projection Model</h3>
             <p className="text-[12px] text-white/35 leading-relaxed">
-              Projections are calculated using weighted recent-game performance, positional matchup data, venue factors and role stability signals. Trend signals are derived by comparing a player's projection against their weighted baseline (season avg, last 5 games, last 3 games). All data updates weekly following each round.
+              Projections are calculated using weighted recent-game performance, positional matchup data, venue factors and role stability signals. Trend signals are derived by comparing a player's projection against their weighted baseline. Value scores are calculated by comparing projected output against current breakeven requirements. All data updates weekly following each round.
             </p>
           </div>
 
@@ -492,7 +506,6 @@ interface AiCallLine {
   label: string;
   text: string;
   color: string;
-  bgColor: string;
 }
 
 function AIQuickCallStrip({ lines, isPremiumUser, onUpgrade }: { lines: AiCallLine[]; isPremiumUser: boolean; onUpgrade: () => void }) {
@@ -543,7 +556,7 @@ function AIQuickCallStrip({ lines, isPremiumUser, onUpgrade }: { lines: AiCallLi
 
 export default function AFLCurrentRoundPage() {
   const { isPremium } = useAuth();
-  const [rows, setRows] = useState<RankingRow[]>([]);
+  const [players, setPlayers] = useState<RankingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [roundLabel, setRoundLabel] = useState("Current Round");
@@ -555,29 +568,16 @@ export default function AFLCurrentRoundPage() {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     try {
-      if (isPremium) {
-        const { data, error } = await supabase
-          .from("v_rankings_master")
-          .select(COLUMNS)
-          .order("projection_final", { ascending: false, nullsFirst: false })
-          .limit(200);
-        if (error) {
-          console.error("Current Round error (premium):", error);
-        } else if (data) {
-          setRows((data as Record<string, unknown>[]).map(normalizeRow));
-        }
-      } else {
-        const { data: authData } = await supabase.auth.getUser();
-        const { data, error } = await supabase.rpc("get_rankings_safe", {
-          p_user_id: authData?.user?.id ?? null,
-          p_is_bot: false,
-          p_limit: 200,
-        });
-        if (error) {
-          console.error("Current Round error (free):", error);
-        } else if (data) {
-          setRows((data as Record<string, unknown>[]).map(normalizeRow));
-        }
+      const { data, error } = await supabase
+        .from("player_rankings_cache")
+        .select(COLUMNS)
+        .order("neeko_rating", { ascending: false, nullsFirst: false })
+        .limit(300);
+
+      if (error) {
+        console.error("Current Round fetch error:", error);
+      } else if (data) {
+        setPlayers((data as Record<string, unknown>[]).map(normalizeRow));
       }
 
       try {
@@ -591,54 +591,31 @@ export default function AFLCurrentRoundPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [isPremium]);
+  }, []);
 
   useEffect(() => {
     fetchData();
     track("current_round_page_view");
   }, [fetchData]);
 
-  // ── DERIVED LISTS — all from same ranked dataset (canonical) ─────────────────
+  // ── ENGINE — derive all sections from canonical engine ────────────────────
+  const edgeBoardIds = useMemo<Set<string>>(() => {
+    const ids = (window as any).__neekoEdgeBoardIds;
+    return ids instanceof Set ? ids : new Set<string>();
+  }, []);
 
-  const ranked = useMemo(
-    () => [...rows].sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)),
-    [rows]
+  const { captains, topPicks, valuePicks, safePicks, riskPicks } = useMemo(
+    () => buildCurrentRoundPlayers(players, edgeBoardIds),
+    [players, edgeBoardIds]
   );
 
-  // 1. Top Picks — top of ranked list
-  const topPicks = useMemo(() => ranked.slice(0, 10), [ranked]);
-
-  // 2. Captain Picks — positions 2-6 of ranked list (skip #1 used in Top Picks hero)
-  const captainPicks = useMemo(() => {
-    const pool = ranked.slice(1, 6);
-    const result = pool.slice(0, 5);
-    console.log("Captain Picks:", result.length);
-    return result;
-  }, [ranked]);
-
-  // 3. Safe Picks — trend_signal = STABLE, sorted by projection desc, exclude Top Picks + Captain Picks
-  const safePicks = useMemo(() => {
-    const usedIds = new Set([...topPicks, ...captainPicks].map((r) => r.player_id));
-    return [...ranked]
-      .filter((r) => !usedIds.has(r.player_id) && r.trend_signal === "STABLE")
-      .slice(0, 10);
-  }, [ranked, topPicks, captainPicks]);
-
-  // 4. Risk Picks — trend_signal = DOWN or STRONG_DOWN, sorted by projection desc, exclude Top Picks + Captain Picks
-  const riskPicks = useMemo(() => {
-    const usedIds = new Set([...topPicks, ...captainPicks].map((r) => r.player_id));
-    return [...ranked]
-      .filter((r) => !usedIds.has(r.player_id) && (r.trend_signal === "DOWN" || r.trend_signal === "STRONG_DOWN"))
-      .slice(0, 8);
-  }, [ranked, topPicks, captainPicks]);
-
   // ── HERO STATS ──────────────────────────────────────────────────────────────
-  const topCaptainProj = captainPicks[0]?.projection_final ?? topPicks[0]?.projection_final ?? null;
-  const topCaptainName = captainPicks[0]?.player_name ?? topPicks[0]?.player_name ?? null;
-  const strongUpCount = ranked.filter((r) => r.trend_signal === "STRONG_UP" || r.trend_signal === "UP").length;
+  const topCaptainProj = captains[0]?.projection_final ?? null;
+  const topCaptainName = captains[0]?.player_name ?? null;
+  const strongUpCount = players.filter((r) => r.trend_signal === "STRONG_UP" || r.trend_signal === "UP").length;
   const riskCount = riskPicks.length;
 
-  // ── AI SUMMARY LINES — unique players across all four categories ────────────
+  // ── AI SUMMARY LINES ────────────────────────────────────────────────────────
   const aiLines = useMemo((): AiCallLine[] => {
     const lines: AiCallLine[] = [];
     const usedIds = new Set<string | null>();
@@ -650,11 +627,10 @@ export default function AFLCurrentRoundPage() {
         label: "Top Pick",
         text: `${topPick.player_name} leads this round — projected ${fmt(topPick.projection_final, 0)} pts with strong matchup and consistency.`,
         color: "#ffffff",
-        bgColor: "rgba(255,255,255,0.05)",
       });
     }
 
-    const captain = captainPicks.find((r) => !usedIds.has(r.player_id));
+    const captain = captains.find((r) => !usedIds.has(r.player_id));
     if (captain) {
       usedIds.add(captain.player_id);
       const ceilTxt = captain.ceiling_estimate ? ` (ceiling ${fmt(captain.ceiling_estimate, 0)})` : "";
@@ -662,7 +638,16 @@ export default function AFLCurrentRoundPage() {
         label: "Captain",
         text: `${captain.player_name} is the standout captain — ${fmt(captain.projection_final, 0)} pts projected${ceilTxt}. Best doubler this week.`,
         color: "#F5C84C",
-        bgColor: "rgba(245,200,76,0.05)",
+      });
+    }
+
+    const valuePick = valuePicks.find((r) => !usedIds.has(r.player_id));
+    if (valuePick) {
+      usedIds.add(valuePick.player_id);
+      lines.push({
+        label: "Value",
+        text: `${valuePick.player_name} is underpriced — edge of ${fmt(valuePick.edge, 0)} pts above breakeven. Strong trade target this week.`,
+        color: "#a78bfa",
       });
     }
 
@@ -673,7 +658,6 @@ export default function AFLCurrentRoundPage() {
         label: "Safe Pick",
         text: `${safePick.player_name} is a reliable hold — trending stable at ${fmt(safePick.projection_final, 0)} pts projected with consistent recent form.`,
         color: "#4ade80",
-        bgColor: "rgba(74,222,128,0.05)",
       });
     }
 
@@ -683,19 +667,17 @@ export default function AFLCurrentRoundPage() {
         label: "Risk Alert",
         text: `Monitor ${riskPick.player_name} this round — trending ${getTrendLabel(riskPick.trend_signal)} with projection at ${fmt(riskPick.projection_final, 0)} pts. Consider alternatives.`,
         color: "#f87171",
-        bgColor: "rgba(248,113,113,0.05)",
       });
     }
 
     return lines;
-  }, [topPicks, captainPicks, safePicks, riskPicks]);
+  }, [topPicks, captains, valuePicks, safePicks, riskPicks]);
 
   // ── SEO ─────────────────────────────────────────────────────────────────────
   const pageTitle = `AFL Fantasy ${roundLabel} Tips, Captain Picks & Value Players | Neeko Sports`;
   const roundNum = roundLabel.replace(/[^0-9]/g, "");
 
-  function openRow(row: RankingRow, rank: number, isVisible = true) {
-    if (!isVisible) { setShowUpgradeModal(true); return; }
+  function openRow(row: CurrentRoundPlayer, rank: number) {
     const tier: RowTier = isPremium ? "premium" : "full";
     setSelectedRow({ row, rank, tier, isUnlocked: true });
     track("current_round_player_click", { player_name: row.player_name, player_id: row.player_id });
@@ -762,7 +744,7 @@ export default function AFLCurrentRoundPage() {
                   Round Picks &amp; Predictions
                 </h1>
                 <p className="text-sm text-white/40 mt-1">
-                  Captain, value &amp; trap alerts — AI-powered, sorted by projection
+                  Captain picks, value plays &amp; risk alerts — browse all players, sorted by Neeko rating
                 </p>
               </div>
 
@@ -813,24 +795,39 @@ export default function AFLCurrentRoundPage() {
             </div>
           </div>
 
+          {/* ── EDGE BOARD CTA ──────────────────────────────────────────────── */}
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] px-5 py-4 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-white">Want Neeko's top 3 picks only?</p>
+              <p className="text-[12px] text-white/40 mt-0.5">See the highest-conviction plays with no noise — just decisions.</p>
+            </div>
+            <Link
+              to="/sports/afl/edge"
+              className="shrink-0 flex items-center gap-1.5 text-[12px] font-bold text-white/70 hover:text-white border border-white/[0.12] hover:border-white/[0.25] px-3 py-2 rounded-lg transition-all"
+            >
+              Edge Board
+              <ChevronRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+
           {/* ── SEO COLLAPSIBLE ────────────────────────────────────────────── */}
           <CollapsibleSEO roundLabel={roundLabel} roundNum={roundNum} />
 
-          {/* ── 2×2 DECISION GRID ──────────────────────────────────────────── */}
+          {/* ── CAPTAIN + TOP PICKS ROW ─────────────────────────────────────── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
             <DecisionCard
               title="Captain Picks"
+              description="Best options to double this round based on projection and matchup."
               icon={<Crown className="w-4 h-4" />}
               accentColor="#F5C84C"
-              players={captainPicks}
+              players={captains}
               freeLimit={FREE_VISIBLE}
               isPremiumUser={isPremium}
-              onOpenRow={(row, rank) => openRow(row, rank)}
+              onOpenRow={openRow}
               onUpgrade={() => setShowUpgradeModal(true)}
               hiddenCopy="Who to double this round based on projection + matchup."
               blurCtaLabel="Unlock full captain strategy →"
-              blurBadgeText="+3 captain options hidden"
+              blurBadgeText="+2 captain options hidden"
               footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
               renderMetric={(row) =>
                 row.ceiling_estimate != null ? (
@@ -844,27 +841,59 @@ export default function AFLCurrentRoundPage() {
 
             <DecisionCard
               title="Top Picks"
+              description="Highest projected scorers this round — your foundation lineup."
               icon={<Star className="w-4 h-4" fill="currentColor" />}
               accentColor="#3b82f6"
               players={topPicks}
               freeLimit={FREE_VISIBLE}
               isPremiumUser={isPremium}
-              onOpenRow={(row, rank) => openRow(row, rank)}
+              onOpenRow={openRow}
               onUpgrade={() => setShowUpgradeModal(true)}
               hiddenCopy="See all top picks for this round with Neeko+."
               blurCtaLabel="Unlock full rankings & AI insights →"
-              blurBadgeText="+8 picks hidden"
+              blurBadgeText="+7 picks hidden"
               footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
             />
+          </div>
 
+          {/* ── VALUE PICKS (full width) ─────────────────────────────────────── */}
+          <DecisionCard
+            title="Value Picks"
+            description="Underpriced players with upside — projecting above breakeven, strong trade targets."
+            icon={<DollarSign className="w-4 h-4" />}
+            accentColor="#a78bfa"
+            players={valuePicks}
+            freeLimit={FREE_VISIBLE}
+            isPremiumUser={isPremium}
+            onOpenRow={openRow}
+            onUpgrade={() => setShowUpgradeModal(true)}
+            hiddenCopy="Unlock value picks with price growth potential this week."
+            blurCtaLabel="Unlock all value plays →"
+            blurBadgeText="+7 value picks hidden"
+            footerLink={{ label: "Market Watch", to: "/sports/afl/market-watch" }}
+            renderMetric={(row) =>
+              row.edge != null ? (
+                <div className="text-right hidden sm:block">
+                  <div className={`text-xs font-bold tabular-nums ${row.edge > 0 ? "text-[#a78bfa]" : "text-white/40"}`}>
+                    {row.edge > 0 ? "+" : ""}{fmt(row.edge, 0)}
+                  </div>
+                  <div className="text-[9px] text-white/25">edge</div>
+                </div>
+              ) : undefined
+            }
+          />
+
+          {/* ── SAFE + RISK PICKS ROW ────────────────────────────────────────── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <DecisionCard
               title="Safe Picks"
+              description="Consistent performers trending stable or up — low-volatility holds."
               icon={<TrendingUp className="w-4 h-4" />}
               accentColor="#4ade80"
               players={safePicks}
               freeLimit={FREE_VISIBLE}
               isPremiumUser={isPremium}
-              onOpenRow={(row, rank) => openRow(row, rank)}
+              onOpenRow={openRow}
               onUpgrade={() => setShowUpgradeModal(true)}
               hiddenCopy="Consistent performers trending stable. Unlock with Neeko+."
               blurCtaLabel="See all safe picks →"
@@ -881,16 +910,17 @@ export default function AFLCurrentRoundPage() {
 
             <DecisionCard
               title="Risk Picks"
+              description="Players likely to underperform — trending down or below baseline."
               icon={<AlertTriangle className="w-4 h-4" />}
               accentColor="#f87171"
               players={riskPicks}
               freeLimit={FREE_VISIBLE}
               isPremiumUser={isPremium}
-              onOpenRow={(row, rank) => openRow(row, rank)}
+              onOpenRow={openRow}
               onUpgrade={() => setShowUpgradeModal(true)}
               hiddenCopy="Players trending down — consider alternatives this round."
               blurCtaLabel="Reveal all risk flags →"
-              blurBadgeText="+6 risks hidden"
+              blurBadgeText="+7 risks hidden"
               footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
               renderMetric={(row) =>
                 row.trend_signal != null ? (
@@ -958,7 +988,7 @@ export default function AFLCurrentRoundPage() {
                 </div>
                 <div>
                   <span className="text-[12px] font-semibold text-white/70">Win your round with Neeko+</span>
-                  <span className="hidden sm:inline text-[11px] text-white/30 ml-2">— full captain picks, AI insights &amp; trap alerts</span>
+                  <span className="hidden sm:inline text-[11px] text-white/30 ml-2">— full captain picks, AI insights &amp; value plays</span>
                 </div>
               </div>
               <span className="text-[12px] font-semibold text-[#F5C84C]/70 group-hover:text-[#F5C84C] transition-colors flex items-center gap-1 shrink-0">
