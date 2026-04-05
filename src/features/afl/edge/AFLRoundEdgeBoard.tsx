@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { cleanAiText } from "@/utils/cleanAiText";
 import { signalFromField, formatEdgeSignalLabel, getEdgeSignalStyles } from "@/utils/aflEdgeSignal";
-import { getTrendLabel, getTrendStyles } from "@/features/afl/rankings/components/helpers";
 import { createPortal } from "react-dom";
 import {
   Lock, Crown, X, ShieldCheck, Zap, Share2, Check,
@@ -27,23 +26,7 @@ const AFL_TEAMS = [
   "St Kilda", "Sydney Swans", "West Coast", "Western Bulldogs",
 ];
 
-const COLUMNS = [
-  "player_id", "player_name", "team", "position",
-  "projection_final", "ceiling_estimate", "floor_estimate",
-  "neeko_rating", "neeko_rating_scaled",
-  "risk_rating", "upside_rating",
-  "projection_confidence", "captain_score", "captain_rating",
-  "price", "prev_price", "price_change",
-  "value_score", "best_value_score",
-  "edge", "breakeven", "baseline",
-  "season_avg", "last_3_avg", "games_played",
-  "ai_summary", "why", "long",
-  "signal", "signal_tag", "trend_signal", "trend_score",
-  "form_score", "form_label",
-  "value_signal", "value_tag", "value_tier",
-  "status", "manual_status", "is_available", "is_bye", "bye_round",
-  "recommendation_color", "recommendation_strength",
-].join(", ");
+const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, value_score, confidence, ai_recommendation, games_played, status, is_bye";
 
 // Round lock: Next Thursday 19:35 AEDT
 function getNextRoundLock(): Date {
@@ -112,31 +95,6 @@ function fmtPrice(v: number | null | undefined): string {
   return `$${Math.floor(n / 1000)}K`;
 }
 
-function fmtPriceChange(change: number | null | undefined): string {
-  if (change == null || change === 0) return "";
-  const n = Number(change);
-  if (isNaN(n)) return "";
-  const abs = Math.abs(n);
-  const formatted = abs >= 1_000_000 ? `$${(abs / 1_000_000).toFixed(3)}M` : `${Math.floor(abs / 1000)}K`;
-  return `${n > 0 ? "+" : "-"}${formatted}`;
-}
-
-function getOneLiner(text: string): string {
-  const cleaned = text
-    .replace(/is expected to /gi, "")
-    .replace(/projects to /gi, "")
-    .replace(/may see /gi, "")
-    .replace(/could see /gi, "");
-  const first = cleaned.split(". ")[0].trim();
-  return first.length > 0 ? first : cleaned.slice(0, 80).trim();
-}
-
-function truncateWords(text: string, maxWords: number): string {
-  const words = text.split(" ");
-  if (words.length <= maxWords) return text;
-  return words.slice(0, maxWords).join(" ") + "…";
-}
-
 function getPositionBadgeStyle(pos: string | null): string {
   if (!pos) return "bg-white/10 text-white/40";
   const p = pos.toUpperCase();
@@ -145,14 +103,6 @@ function getPositionBadgeStyle(pos: string | null): string {
   if (p === "DEF") return "bg-emerald-500/20 text-emerald-300";
   if (p === "RUC") return "bg-amber-500/20 text-amber-300";
   return "bg-white/10 text-white/40";
-}
-
-function getConfidenceColor(v: number | null): string {
-  if (v == null) return "text-white/30";
-  if (v >= 80) return "text-green-400";
-  if (v >= 65) return "text-yellow-400";
-  if (v >= 45) return "text-orange-400";
-  return "text-red-400";
 }
 
 function getValueScoreColor(v: number | null): string {
@@ -196,44 +146,29 @@ function getPrimaryMetric(row: RankingRow, section: Section): { label: string; v
   switch (section) {
     case "must_have":    return { label: "Value Score",  value: fmtValueScore(row.value_score),  color: getValueScoreColor(row.value_score) };
     case "breakout":     return { label: "Projection",   value: fmtInt(row.projection_final),    color: "text-sky-400" };
-    case "do_not_start": return { label: "Risk",         value: getRiskLabel(row.risk_rating),   color: getRiskColor(row.risk_rating) };
+    case "do_not_start": return { label: "Edge",         value: row.edge != null ? fmtInt(row.edge) : "—", color: row.edge != null && row.edge < 0 ? "text-red-400" : "text-white/50" };
   }
 }
 
 function buildConfidenceReasons(row: RankingRow, section: Section): string[] {
   const reasons: string[] = [];
-  const conf = row.projection_confidence;
-  if (conf != null) {
-    if (conf >= 80) reasons.push("Model confidence is very high this round");
-    else if (conf >= 65) reasons.push("Moderate-to-high model confidence");
-    else reasons.push("Below-average model confidence — treat as speculative");
-  }
-  if (row.ceiling_estimate != null && row.projection_final != null) {
-    const upside = row.ceiling_estimate - row.projection_final;
-    if (upside >= 30) reasons.push(`${fmtInt(upside)} pt upside ceiling above projection`);
-    else if (upside <= 5) reasons.push("Ceiling is tightly capped — limited upside");
-  }
   if (section === "must_have" && row.value_score != null) {
     if (row.value_score >= 1.25) reasons.push("Exceptional value relative to price point");
     else if (row.value_score >= 1.10) reasons.push("Priced below projected output — value play");
     else reasons.push("Strong value-to-price ratio in current market");
   }
-  if (section === "breakout" && row.trend_signal != null) {
-    if (row.trend_signal === "STRONG_UP") reasons.push("Form trending strongly upward — breakout signal active");
+  if (section === "breakout" && row.signal_tag === "HIGH") {
+    reasons.push("High confidence signal — strong breakout candidate this round");
   }
-  if (section === "do_not_start" && row.risk_rating != null) {
-    if (row.risk_rating >= 35) reasons.push("Very high risk — multiple negative signals");
-    else if (row.risk_rating >= 25) reasons.push("Elevated risk profile — caution advised");
+  if (section === "do_not_start" && row.edge != null) {
+    if (row.edge <= -20) reasons.push("Significant negative edge — heavily overpriced this round");
+    else if (row.edge <= -10) reasons.push("Negative edge detected — projected below breakeven");
+    else reasons.push("Edge below breakeven — consider alternatives");
   }
-  if (section === "do_not_start" && row.trend_signal != null) {
-    if (row.trend_signal === "STRONG_DOWN") reasons.push("Form collapsing — strongest downward signal");
-    else if (row.trend_signal === "DOWN") reasons.push("Declining form over recent rounds");
+  if (row.projection_final != null) {
+    reasons.push(`${fmtInt(row.projection_final)} pts projected this round`);
   }
-  if (row.neeko_rating != null) {
-    if (row.neeko_rating >= 7.5) reasons.push(`Strong Neeko rating of ${row.neeko_rating.toFixed(1)}`);
-    else if (row.neeko_rating < 5) reasons.push(`Low Neeko rating of ${row.neeko_rating.toFixed(1)} — weak signal`);
-  }
-  return reasons.length > 0 ? reasons : ["Based on combined projection and matchup modelling"];
+  return reasons.length > 0 ? reasons : ["Based on combined projection and pricing model"];
 }
 
 async function copyToClipboard(text: string): Promise<boolean> {
@@ -241,14 +176,10 @@ async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 function buildShareText(row: RankingRow, section: Section): string {
-  const conf = row.projection_confidence;
-  const confStr = conf != null ? ` (${conf}% confidence)` : "";
-  const oneLiner = row.ai_summary ? getOneLiner(row.ai_summary) : null;
-  const reasonStr = oneLiner ? `\n"${oneLiner}"` : "";
   switch (section) {
-    case "must_have":    return `🟢 AFL Fantasy Must Have (Neeko)\n${row.player_name} (${row.team}) — Value Score ${fmtValueScore(row.value_score)}${confStr}${reasonStr}\n\nneekosports.com.au #AFLFantasy`;
-    case "breakout":     return `⚡ AFL Fantasy Breakout Watch (Neeko)\n${row.player_name} (${row.team}) — ${fmtInt(row.projection_final)} pts projected${confStr}${reasonStr}\n\nneekosports.com.au #AFLFantasy`;
-    case "do_not_start": return `🚨 AFL Fantasy Fade Alert (Neeko)\n${row.player_name} (${row.team}) — ${getRiskLabel(row.risk_rating)} Risk${confStr}${reasonStr}\n\nneekosports.com.au #AFLFantasy`;
+    case "must_have":    return `🟢 AFL Fantasy Must Have (Neeko)\n${row.player_name} (${row.team}) — Value Score ${fmtValueScore(row.value_score)}\n\nneekosports.com.au #AFLFantasy`;
+    case "breakout":     return `⚡ AFL Fantasy Breakout Watch (Neeko)\n${row.player_name} (${row.team}) — ${fmtInt(row.projection_final)} pts projected\n\nneekosports.com.au #AFLFantasy`;
+    case "do_not_start": return `🚨 AFL Fantasy Fade Alert (Neeko)\n${row.player_name} (${row.team}) — ${fmtInt(row.projection_final)} pts projected (negative edge)\n\nneekosports.com.au #AFLFantasy`;
   }
 }
 
@@ -256,7 +187,7 @@ function buildRoundSummaryText(mustHave: EdgeBoardPlayer | null, breakout: EdgeB
   const lines: string[] = ["⚡ My AFL Fantasy Edge Picks (Neeko)\n"];
   if (mustHave) lines.push(`Must Have: ${mustHave.player_name} — Value ${fmtValueScore(mustHave.value_score)}`);
   if (breakout) lines.push(`Breakout Watch: ${breakout.player_name} — ${fmtInt(breakout.projection_final)} pts projected`);
-  if (avoid) lines.push(`Avoid: ${avoid.player_name} — ${getRiskLabel(avoid.risk_rating)} risk`);
+  if (avoid) lines.push(`Avoid: ${avoid.player_name} — ${fmtInt(avoid.projection_final)} pts projected`);
   lines.push("\nneekosports.com.au #AFLFantasy #NeekoEdge");
   return lines.join("\n");
 }
@@ -388,7 +319,7 @@ function MyTeamEdge({
                 <p className="text-[10px] font-bold text-red-400/70 uppercase tracking-widest">Do Not Start</p>
                 <p className="text-sm font-extrabold text-white truncate">{teamAvoid.player_name}</p>
               </div>
-              <span className="text-[11px] text-white/50 shrink-0">{getRiskLabel(teamAvoid.risk_rating)} risk</span>
+              <span className="text-[11px] text-white/50 shrink-0">{fmtInt(teamAvoid.projection_final)} pts</span>
             </div>
           )}
         </div>
@@ -476,8 +407,6 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
   const cfg = getSectionLabel(section);
   const metric = getPrimaryMetric(row, section);
   const sig = signalFromField(row.signal);
-  const trendSig = row.trend_signal ?? null;
-  const conf = row.projection_confidence;
   const reasons = buildConfidenceReasons(row, section);
   const [shared, setShared] = useState(false);
 
@@ -514,15 +443,11 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
 
   const keyFactors: string[] = [];
   if (row.projection_final != null) keyFactors.push(`Projection: ${fmtInt(row.projection_final)} pts`);
-  if (row.ceiling_estimate != null) keyFactors.push(`Ceiling: ${fmtInt(row.ceiling_estimate)} pts`);
-  if (row.floor_estimate != null) keyFactors.push(`Floor: ${fmtInt(row.floor_estimate)} pts`);
-  if (row.price != null) {
-    const badge = fmtPriceChange(row.price_change);
-    keyFactors.push(`Price: ${fmtPrice(row.price)}${badge ? ` (${badge})` : ""}`);
-  }
-  if (row.neeko_rating != null) keyFactors.push(`Neeko Rating: ${row.neeko_rating.toFixed(1)}`);
+  if (row.price != null) keyFactors.push(`Price: ${fmtPrice(row.price)}`);
+  if (row.edge != null) keyFactors.push(`Edge: ${fmtInt(row.edge)} pts`);
+  if (row.value_score != null) keyFactors.push(`Value Score: ${fmtValueScore(row.value_score)}`);
 
-  const aiText = row.why ?? row.ai_summary ?? null;
+  const aiText: string | null = null;
 
   return createPortal(
     <div className="fixed inset-0 z-[9998] flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={onClose}>
@@ -564,20 +489,20 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
               <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">{metric.label}</p>
               <p className={`text-3xl font-extrabold tabular-nums leading-none ${metric.color}`}>{metric.value}</p>
             </div>
-            {conf != null && (
+            {row.signal_tag != null && (
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/10 bg-black/30 self-end">
-                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${conf >= 75 ? "bg-green-400" : conf >= 60 ? "bg-yellow-400" : "bg-orange-400"}`} />
-                <span className={`text-[11px] font-bold ${getConfidenceColor(conf)}`}>{conf}% confidence</span>
+                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${row.signal_tag === "HIGH" ? "bg-green-400" : row.signal_tag === "MEDIUM" ? "bg-yellow-400" : "bg-orange-400"}`} />
+                <span className={`text-[11px] font-bold ${row.signal_tag === "HIGH" ? "text-green-400" : row.signal_tag === "MEDIUM" ? "text-yellow-400" : "text-orange-400"}`}>{row.signal_tag}</span>
               </div>
             )}
           </div>
         </div>
 
         <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-          <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${trendSig ? getTrendStyles(trendSig) : getEdgeSignalStyles(sig)}`}>
+          <div className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${getEdgeSignalStyles(sig)}`}>
             <div className="flex-1">
-              <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Form Signal</p>
-              <p className="text-sm font-extrabold">{trendSig ? getTrendLabel(trendSig) : formatEdgeSignalLabel(sig)}</p>
+              <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Signal</p>
+              <p className="text-sm font-extrabold">{formatEdgeSignalLabel(sig)}</p>
             </div>
           </div>
 
@@ -699,8 +624,6 @@ interface HeroPickCardProps {
 function HeroPickCard({ player, section, isPremium, onOpen }: HeroPickCardProps) {
   const cfg = getSectionLabel(section);
   const metric = getPrimaryMetric(player, section);
-  const conf = player.projection_confidence;
-  const oneLiner = player.why ?? (player.ai_summary ? truncateWords(player.ai_summary, 9) : null);
   const sig = signalFromField(player.signal);
 
   return (
@@ -733,37 +656,23 @@ function HeroPickCard({ player, section, isPremium, onOpen }: HeroPickCardProps)
         </div>
       </div>
 
-      {/* Stat + confidence */}
+      {/* Stat */}
       <div className="px-4 py-3 flex items-center gap-3">
         <div>
           <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">{metric.label}</p>
           <p className={`text-3xl font-extrabold tabular-nums leading-none ${metric.color}`}>{metric.value}</p>
         </div>
-        {conf != null && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/10 bg-white/[0.04] self-end">
-            <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${conf >= 75 ? "bg-green-400" : conf >= 60 ? "bg-yellow-400" : "bg-orange-400"}`} />
-            <span className={`text-[10px] font-bold ${getConfidenceColor(conf)}`}>{conf}% conf</span>
-          </div>
-        )}
         {player.price != null && (
           <div className="ml-auto text-right shrink-0">
             <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Price</p>
             <p className="text-sm font-semibold text-white/60 tabular-nums">{fmtPrice(player.price)}</p>
-            {(() => {
-              const badge = fmtPriceChange(player.price_change);
-              if (!badge) return null;
-              const isUp = (player.price_change ?? 0) > 0;
-              return <p className={`text-[9px] font-semibold tabular-nums ${isUp ? "text-emerald-400" : "text-red-400"}`}>{badge}</p>;
-            })()}
           </div>
         )}
       </div>
 
-      {/* One-liner */}
+      {/* One-liner / lock */}
       <div className="px-4 pb-3 flex-1">
-        {isPremium && oneLiner ? (
-          <p className="text-[11px] text-white/50 leading-snug line-clamp-2">{oneLiner}</p>
-        ) : !isPremium ? (
+        {!isPremium ? (
           <div className="flex items-center gap-1.5">
             <Lock size={9} className="text-[#F5C84C]/40 shrink-0" />
             <span className="text-[10px] text-[#F5C84C]/45">Reasoning locked — Neeko+</span>
@@ -772,10 +681,10 @@ function HeroPickCard({ player, section, isPremium, onOpen }: HeroPickCardProps)
       </div>
 
       {/* Signal badge */}
-      {(player.trend_signal != null || player.signal != null) && (
+      {player.signal != null && (
         <div className="px-4 pb-3 flex items-center gap-2">
-          <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md ${player.trend_signal ? getTrendStyles(player.trend_signal) : getEdgeSignalStyles(sig)}`}>
-            {player.trend_signal ? getTrendLabel(player.trend_signal) : formatEdgeSignalLabel(sig)}
+          <span className={`text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md ${getEdgeSignalStyles(sig)}`}>
+            {formatEdgeSignalLabel(sig)}
           </span>
         </div>
       )}
@@ -863,7 +772,7 @@ function RoundSummaryShare({ mustHave, breakout, avoid }: { mustHave: EdgeBoardP
         {avoid && (
           <div className="flex items-center gap-2">
             <span className="text-[10px]">🚨</span>
-            <span className="text-[12px] text-white/60">Avoid: <span className="text-white font-semibold">{avoid.player_name}</span> — {getRiskLabel(avoid.risk_rating)} risk</span>
+            <span className="text-[12px] text-white/60">Avoid: <span className="text-white font-semibold">{avoid.player_name}</span> — {fmtInt(avoid.projection_final)} pts projected</span>
           </div>
         )}
         <p className="text-[10px] text-white/20 pt-1">neekosports.com.au #AFLFantasy</p>
@@ -996,73 +905,77 @@ export default function AFLRoundEdgeBoard() {
     setError(null);
     try {
       const [rankResult, accResult] = await Promise.all([
-        supabase.from("player_rankings_cache").select(COLUMNS).order("neeko_rating", { ascending: false }).limit(300),
+        supabase.schema("afl").from("player_rankings_cache").select(COLUMNS).order("projection_final", { ascending: false, nullsFirst: false }).limit(300),
         supabase.from("v_projection_accuracy_homepage").select("within_20").maybeSingle(),
       ]);
 
       if (rankResult.error) throw rankResult.error;
 
-      const mapped = ((rankResult.data as any[]) ?? []).map((r: any): RankingRow => ({
-        player_id:             r.player_id ?? null,
-        player_name:           r.player_name ?? "",
-        team:                  r.team ?? "",
-        position:              r.position ?? null,
-        projection_final:      r.projection_final != null ? Number(r.projection_final) : null,
-        ceiling_estimate:      r.ceiling_estimate != null ? Number(r.ceiling_estimate) : null,
-        floor_estimate:        r.floor_estimate != null ? Number(r.floor_estimate) : null,
-        consistency_score:     null,
-        form_rating:           null,
-        matchup_rating:        null,
-        upside_rating:         r.upside_rating != null ? Number(r.upside_rating) : null,
-        risk_rating:           r.risk_rating != null ? Number(r.risk_rating) : null,
-        form_score:            r.form_score != null ? Number(r.form_score) : null,
-        projection_confidence: r.projection_confidence != null ? Number(r.projection_confidence) : null,
-        captain_score:         r.captain_score != null ? Number(r.captain_score) : null,
-        captain_rating:        r.captain_rating ?? null,
-        neeko_rating:          r.neeko_rating != null ? Number(r.neeko_rating) : null,
-        neeko_rating_scaled:   r.neeko_rating_scaled != null ? Number(r.neeko_rating_scaled) : null,
-        price:                 r.price != null ? Number(r.price) : null,
-        prev_price:            r.prev_price != null ? Number(r.prev_price) : null,
-        price_change:          r.price_change != null ? Number(r.price_change) : null,
-        price_change_pct:      null,
-        breakeven:             r.breakeven != null ? Number(r.breakeven) : null,
-        value_score:           r.value_score != null ? Number(r.value_score) : null,
-        best_value_score:      r.best_value_score != null ? Number(r.best_value_score) : null,
-        value_tag:             r.value_tag ?? null,
-        value_tier:            r.value_tier ?? null,
-        recommendation_strength: r.recommendation_strength ?? null,
-        ai_updated_at:         null,
-        recommendation_color:  r.recommendation_color ?? null,
-        consistency_tier:      null,
-        total_count:           null,
-        games_played:          r.games_played != null ? Number(r.games_played) : null,
-        baseline:              r.baseline != null ? Number(r.baseline) : null,
-        edge:                  r.edge != null ? Number(r.edge) : null,
-        signal:                r.signal ?? null,
-        season_avg:            r.season_avg != null ? Number(r.season_avg) : null,
-        last_3_avg:            r.last_3_avg != null ? Number(r.last_3_avg) : null,
-        value:                 null,
-        why:                   r.why ?? null,
-        long:                  r.long ?? null,
-        market_watch_category: null,
-        signal_tag:            r.signal_tag ?? null,
-        upside_pct:            r.upside_pct != null ? Number(r.upside_pct) : null,
-        ai_summary:            r.ai_summary ?? null,
-        status:                r.status ?? null,
-        manual_status:         r.manual_status ?? null,
-        is_available:          r.is_available ?? null,
-        bye_round:             r.bye_round != null ? Number(r.bye_round) : null,
-        is_bye:                r.is_bye ?? null,
-        bye_next_round:        null,
-        trend_score:           r.trend_score != null ? Number(r.trend_score) : null,
-        trend_signal:          r.trend_signal ?? null,
-        form_delta:            null,
-        form_label:            r.form_label ?? null,
-        value_signal:          r.value_signal ?? null,
-      }));
+      const mapped = ((rankResult.data as any[]) ?? []).map((r: any): RankingRow => {
+        const proj = r.projection_final != null ? Number(r.projection_final) : null;
+        const be = r.breakeven != null ? Number(r.breakeven) : null;
+        return {
+          player_id:             r.player_id ?? null,
+          player_name:           r.player_name ?? "",
+          team:                  r.team ?? "",
+          position:              r.position ?? null,
+          projection_final:      proj,
+          ceiling_estimate:      null,
+          floor_estimate:        null,
+          consistency_score:     null,
+          form_rating:           null,
+          matchup_rating:        null,
+          upside_rating:         null,
+          risk_rating:           null,
+          form_score:            null,
+          projection_confidence: null,
+          captain_score:         null,
+          captain_rating:        null,
+          neeko_rating:          null,
+          neeko_rating_scaled:   null,
+          price:                 r.price != null ? Number(r.price) : null,
+          prev_price:            null,
+          price_change:          null,
+          price_change_pct:      null,
+          breakeven:             be,
+          value_score:           r.value_score != null ? Number(r.value_score) : null,
+          best_value_score:      null,
+          value_tag:             null,
+          value_tier:            null,
+          recommendation_strength: null,
+          ai_updated_at:         null,
+          recommendation_color:  null,
+          consistency_tier:      null,
+          total_count:           null,
+          games_played:          r.games_played != null ? Number(r.games_played) : null,
+          baseline:              null,
+          edge:                  proj != null && be != null ? proj - be : null,
+          signal:                (r.ai_recommendation as string) ?? null,
+          season_avg:            null,
+          last_3_avg:            null,
+          value:                 null,
+          why:                   null,
+          long:                  null,
+          market_watch_category: null,
+          signal_tag:            (r.confidence as string) ?? null,
+          upside_pct:            null,
+          ai_summary:            null,
+          status:                (r.status as string) ?? null,
+          manual_status:         null,
+          is_available:          null,
+          bye_round:             null,
+          is_bye:                r.is_bye ?? null,
+          bye_next_round:        null,
+          trend_score:           null,
+          trend_signal:          null,
+          form_delta:            null,
+          form_label:            null,
+          value_signal:          null,
+        };
+      });
 
       setPlayers(mapped);
-      setRefreshedAt((rankResult.data as any[])[0]?.ai_updated_at ?? null);
+      setRefreshedAt(null);
 
       if (!accResult.error && accResult.data) {
         const raw = (accResult.data as any).within_20;

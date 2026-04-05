@@ -27,7 +27,7 @@ export function buildCurrentRoundPlayers(
   );
 
   const rankedAll = [...players].sort(
-    (a, b) => (b.neeko_rating ?? 0) - (a.neeko_rating ?? 0)
+    (a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)
   );
   const rankMap = new Map<string, number>();
   rankedAll.forEach((p, i) => {
@@ -50,7 +50,7 @@ export function buildCurrentRoundPlayers(
   const enriched = filtered.map(enrich);
 
   const captains = [...enriched]
-    .sort((a, b) => (b.captain_score ?? b.projection_final ?? 0) - (a.captain_score ?? a.projection_final ?? 0))
+    .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0))
     .slice(0, 5);
 
   const captainIds = new Set(captains.map((p) => p.player_id));
@@ -73,10 +73,9 @@ export function buildCurrentRoundPlayers(
     .filter(
       (p) =>
         !valueIds.has(p.player_id) &&
-        (p.trend_signal === "STABLE" || p.trend_signal === "UP") &&
-        (p.projection_confidence ?? 0) >= 60
+        p.signal_tag === "HIGH"
     )
-    .sort((a, b) => (b.projection_confidence ?? 0) - (a.projection_confidence ?? 0))
+    .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0))
     .slice(0, 10);
 
   const safeIds = new Set([...valueIds, ...safePicks.map((p) => p.player_id)]);
@@ -85,9 +84,7 @@ export function buildCurrentRoundPlayers(
     .filter(
       (p) =>
         !safeIds.has(p.player_id) &&
-        (p.trend_signal === "DOWN" ||
-          p.trend_signal === "STRONG_DOWN" ||
-          (p.edge ?? 0) < -5)
+        (p.edge ?? 0) < -5
     )
     .sort((a, b) => (a.edge ?? 0) - (b.edge ?? 0))
     .slice(0, 10);

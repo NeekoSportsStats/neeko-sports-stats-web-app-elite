@@ -25,8 +25,6 @@ import {
   fmtPrice,
   fmtUpdatedAt,
   normalisePosition,
-  getTrendLabel,
-  getTrendStyles,
 } from "@/features/afl/rankings/components/helpers";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
 import { PlayerDetailModal, UpgradeModal } from "@/features/afl/rankings/components/RankingsModals";
@@ -38,80 +36,68 @@ import { buildCurrentRoundPlayers, type CurrentRoundPlayer } from "@/features/af
 const FREE_VISIBLE = 3;
 const PREMIUM_VISIBLE = 10;
 
-const COLUMNS =
-  "player_id,player_name,team,position," +
-  "projection_final,ceiling_estimate,floor_estimate," +
-  "matchup_rating,upside_rating,risk_rating,form_score," +
-  "projection_confidence,captain_score,captain_rating," +
-  "neeko_rating," +
-  "price,prev_price,price_change,price_change_pct," +
-  "breakeven,value_score,best_value_score,value_tag,value_tier," +
-  "recommendation_strength,ai_summary,consistency_tier," +
-  "signal_tag," +
-  "market_watch_category,upside_pct," +
-  "status,manual_status,is_available," +
-  "bye_round,is_bye,bye_next_round,games_played," +
-  "signal,baseline,edge,season_avg,last_3_avg," +
-  "trend_score,trend_signal,value_signal," +
-  "form_delta,form_label";
+const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, value_score, confidence, ai_recommendation, games_played, status, is_bye";
 
 function normalizeRow(raw: Record<string, unknown>): RankingRow {
+  const proj = raw.projection_final != null ? Number(raw.projection_final) : null;
+  const be = raw.breakeven != null ? Number(raw.breakeven) : null;
   return {
     player_id: (raw.player_id as string) ?? null,
     player_name: (raw.player_name as string) ?? "",
     team: (raw.team as string) ?? "",
     position: normalisePosition(raw.position as string | null),
-    projection_final: raw.projection_final != null ? Number(raw.projection_final) : null,
-    ceiling_estimate: raw.ceiling_estimate != null ? Number(raw.ceiling_estimate) : null,
-    floor_estimate: raw.floor_estimate != null ? Number(raw.floor_estimate) : null,
+    projection_final: proj,
+    ceiling_estimate: null,
+    floor_estimate: null,
     consistency_score: null,
-    form_rating: raw.form_score != null ? Number(raw.form_score) : null,
-    matchup_rating: (raw.matchup_rating as string | number) ?? null,
-    upside_rating: raw.upside_rating != null ? Number(raw.upside_rating) : null,
-    risk_rating: raw.risk_rating != null ? Number(raw.risk_rating) : null,
-    form_score: raw.form_score != null ? Number(raw.form_score) : null,
-    projection_confidence: raw.projection_confidence != null ? Number(raw.projection_confidence) : null,
-    captain_score: raw.captain_score != null ? Number(raw.captain_score) : null,
-    captain_rating: (raw.captain_rating as string) ?? null,
-    neeko_rating: raw.neeko_rating != null ? Number(raw.neeko_rating) : null,
+    form_rating: null,
+    matchup_rating: null,
+    upside_rating: null,
+    risk_rating: null,
+    form_score: null,
+    projection_confidence: null,
+    captain_score: null,
+    captain_rating: null,
+    neeko_rating: null,
     neeko_rating_scaled: null,
     price: raw.price != null ? Number(raw.price) : null,
-    prev_price: raw.prev_price != null ? Number(raw.prev_price) : null,
-    price_change: raw.price_change != null ? Number(raw.price_change) : null,
-    price_change_pct: raw.price_change_pct != null ? Number(raw.price_change_pct) : null,
-    breakeven: raw.breakeven != null ? Number(raw.breakeven) : null,
+    prev_price: null,
+    price_change: null,
+    price_change_pct: null,
+    breakeven: be,
     value_score: raw.value_score != null ? Number(raw.value_score) : null,
-    best_value_score: raw.best_value_score != null ? Number(raw.best_value_score) : null,
-    value_tag: (raw.value_tag as string) ?? null,
-    value_tier: (raw.value_tier as string) ?? null,
-    recommendation_strength: (raw.recommendation_strength as string) ?? null,
+    best_value_score: null,
+    value_tag: null,
+    value_tier: null,
+    recommendation_strength: null,
     ai_updated_at: null,
     recommendation_color: null,
-    consistency_tier: (raw.consistency_tier as string) ?? null,
+    consistency_tier: null,
     total_count: null,
     games_played: raw.games_played != null ? Number(raw.games_played) : null,
-    why: (raw.ai_summary as string) ?? null,
-    long: (raw.ai_summary as string) ?? null,
-    market_watch_category: (raw.market_watch_category as string) ?? null,
-    upside_pct: raw.upside_pct != null ? Number(raw.upside_pct) : null,
-    ai_summary: (raw.ai_summary as string) ?? null,
+    why: null,
+    long: null,
+    market_watch_category: null,
+    upside_pct: null,
+    ai_summary: null,
     status: (raw.status as string) ?? null,
-    manual_status: (raw.manual_status as string) ?? null,
-    is_available: raw.is_available != null ? Boolean(raw.is_available) : null,
-    bye_round: raw.bye_round != null ? Number(raw.bye_round) : null,
+    manual_status: null,
+    is_available: null,
+    bye_round: null,
     is_bye: raw.is_bye != null ? Boolean(raw.is_bye) : null,
-    bye_next_round: raw.bye_next_round != null ? Boolean(raw.bye_next_round) : null,
-    signal_tag: (raw.signal_tag as string) ?? null,
-    signal: (raw.signal as string) ?? null,
-    baseline: raw.baseline != null ? Number(raw.baseline) : null,
-    edge: raw.edge != null ? Number(raw.edge) : null,
-    season_avg: raw.season_avg != null ? Number(raw.season_avg) : null,
-    last_3_avg: raw.last_3_avg != null ? Number(raw.last_3_avg) : null,
-    trend_score: raw.trend_score != null ? Number(raw.trend_score) : null,
-    trend_signal: (raw.trend_signal as string) ?? null,
-    value_signal: (raw.value_signal as string) ?? null,
-    form_delta: raw.form_delta != null ? Number(raw.form_delta) : null,
-    form_label: (raw.form_label as string) ?? null,
+    bye_next_round: null,
+    signal_tag: (raw.confidence as string) ?? null,
+    signal: (raw.ai_recommendation as string) ?? null,
+    baseline: null,
+    edge: proj != null && be != null ? proj - be : null,
+    season_avg: null,
+    last_3_avg: null,
+    value: null,
+    trend_score: null,
+    trend_signal: null,
+    value_signal: null,
+    form_delta: null,
+    form_label: null,
   };
 }
 
@@ -148,11 +134,6 @@ function PlayerRow({ row, rank, metric, isPremiumUser, onClick }: PlayerRowProps
           <span className="text-sm font-semibold text-white truncate leading-tight">{row.player_name}</span>
           {row.isFeaturedPick && <FeaturedBadge />}
           <PlayerStatusPill row={row} showUpcomingBye />
-          {row.trend_signal != null && isPremiumUser && (
-            <span className={`text-[9px] px-1 py-px rounded border shrink-0 font-medium leading-none ${getTrendStyles(row.trend_signal)}`}>
-              {getTrendLabel(row.trend_signal)}
-            </span>
-          )}
         </div>
         <div className="text-[10px] text-white/30 mt-px">
           {normalisePosition(row.position) ?? "—"} · {row.team}
@@ -569,9 +550,10 @@ export default function AFLCurrentRoundPage() {
     else setLoading(true);
     try {
       const { data, error } = await supabase
+        .schema("afl")
         .from("player_rankings_cache")
         .select(COLUMNS)
-        .order("neeko_rating", { ascending: false, nullsFirst: false })
+        .order("projection_final", { ascending: false, nullsFirst: false })
         .limit(300);
 
       if (error) {
@@ -612,7 +594,7 @@ export default function AFLCurrentRoundPage() {
   // ── HERO STATS ──────────────────────────────────────────────────────────────
   const topCaptainProj = captains[0]?.projection_final ?? null;
   const topCaptainName = captains[0]?.player_name ?? null;
-  const strongUpCount = players.filter((r) => r.trend_signal === "STRONG_UP" || r.trend_signal === "UP").length;
+  const strongUpCount = valuePicks.length;
   const riskCount = riskPicks.length;
 
   // ── AI SUMMARY LINES ────────────────────────────────────────────────────────
@@ -633,10 +615,9 @@ export default function AFLCurrentRoundPage() {
     const captain = captains.find((r) => !usedIds.has(r.player_id));
     if (captain) {
       usedIds.add(captain.player_id);
-      const ceilTxt = captain.ceiling_estimate ? ` (ceiling ${fmt(captain.ceiling_estimate, 0)})` : "";
       lines.push({
         label: "Captain",
-        text: `${captain.player_name} is the standout captain — ${fmt(captain.projection_final, 0)} pts projected${ceilTxt}. Best doubler this week.`,
+        text: `${captain.player_name} is the standout captain — ${fmt(captain.projection_final, 0)} pts projected. Best doubler this week.`,
         color: "#F5C84C",
       });
     }
@@ -665,7 +646,7 @@ export default function AFLCurrentRoundPage() {
     if (riskPick) {
       lines.push({
         label: "Risk Alert",
-        text: `Monitor ${riskPick.player_name} this round — trending ${getTrendLabel(riskPick.trend_signal)} with projection at ${fmt(riskPick.projection_final, 0)} pts. Consider alternatives.`,
+        text: `Monitor ${riskPick.player_name} this round — projection at ${fmt(riskPick.projection_final, 0)} pts with negative edge. Consider alternatives.`,
         color: "#f87171",
       });
     }
@@ -779,10 +760,10 @@ export default function AFLCurrentRoundPage() {
               <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2.5">
                 <div className="flex items-center gap-1.5 mb-1">
                   <TrendingUp className="w-3 h-3 text-green-400" />
-                  <span className="text-[10px] uppercase tracking-wider text-white/30 font-medium">Rising</span>
+                  <span className="text-[10px] uppercase tracking-wider text-white/30 font-medium">Value</span>
                 </div>
                 <div className="text-xl font-bold text-green-400 tabular-nums">{strongUpCount}</div>
-                <div className="text-[10px] text-white/25 mt-px">players trending up</div>
+                <div className="text-[10px] text-white/25 mt-px">value plays found</div>
               </div>
               <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2.5">
                 <div className="flex items-center gap-1.5 mb-1">
@@ -829,14 +810,6 @@ export default function AFLCurrentRoundPage() {
               blurCtaLabel="Unlock full captain strategy →"
               blurBadgeText="+2 captain options hidden"
               footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
-              renderMetric={(row) =>
-                row.ceiling_estimate != null ? (
-                  <div className="text-right hidden sm:block">
-                    <div className="text-xs font-bold text-yellow-300 tabular-nums">{fmt(row.ceiling_estimate, 0)}</div>
-                    <div className="text-[9px] text-white/25">ceil</div>
-                  </div>
-                ) : undefined
-              }
             />
 
             <DecisionCard
@@ -899,10 +872,10 @@ export default function AFLCurrentRoundPage() {
               blurCtaLabel="See all safe picks →"
               footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
               renderMetric={(row) =>
-                row.trend_signal != null ? (
+                row.signal_tag != null ? (
                   <div className="text-right hidden sm:block">
-                    <div className={`text-[10px] font-bold tabular-nums ${getTrendStyles(row.trend_signal)}`}>{getTrendLabel(row.trend_signal)}</div>
-                    <div className="text-[9px] text-white/25">form</div>
+                    <div className="text-[10px] font-bold tabular-nums text-green-400">{row.signal_tag}</div>
+                    <div className="text-[9px] text-white/25">conf</div>
                   </div>
                 ) : undefined
               }
@@ -923,10 +896,10 @@ export default function AFLCurrentRoundPage() {
               blurBadgeText="+7 risks hidden"
               footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
               renderMetric={(row) =>
-                row.trend_signal != null ? (
+                row.edge != null ? (
                   <div className="text-right hidden sm:block">
-                    <div className={`text-[10px] font-bold tabular-nums ${getTrendStyles(row.trend_signal)}`}>{getTrendLabel(row.trend_signal)}</div>
-                    <div className="text-[9px] text-white/25">form</div>
+                    <div className="text-[10px] font-bold tabular-nums text-red-400">{fmt(row.edge, 0)}</div>
+                    <div className="text-[9px] text-white/25">edge</div>
                   </div>
                 ) : undefined
               }

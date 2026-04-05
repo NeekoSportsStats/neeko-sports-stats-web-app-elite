@@ -26,7 +26,7 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
   );
 
   const rankedAll = [...players]
-    .sort((a, b) => (b.neeko_rating ?? 0) - (a.neeko_rating ?? 0));
+    .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0));
 
   const rankMap = new Map<string, number>();
   rankedAll.forEach((p, i) => {
