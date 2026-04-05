@@ -36,7 +36,7 @@ import { buildCurrentRoundPlayers, type CurrentRoundPlayer } from "@/features/af
 const FREE_VISIBLE = 3;
 const PREMIUM_VISIBLE = 10;
 
-const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, value_score, confidence, ai_recommendation, games_played, status, is_bye";
+const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, value_score, projection_confidence, signal, games_played, status, is_bye";
 
 function normalizeRow(raw: Record<string, unknown>): RankingRow {
   const proj = raw.projection_final != null ? Number(raw.projection_final) : null;
@@ -86,8 +86,8 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
     bye_round: null,
     is_bye: raw.is_bye != null ? Boolean(raw.is_bye) : null,
     bye_next_round: null,
-    signal_tag: (raw.confidence as string) ?? null,
-    signal: (raw.ai_recommendation as string) ?? null,
+    signal_tag: null,
+    signal: (raw.signal as string) ?? null,
     baseline: null,
     edge: proj != null && be != null ? proj - be : null,
     season_avg: null,
