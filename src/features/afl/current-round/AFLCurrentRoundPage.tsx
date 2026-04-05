@@ -33,8 +33,8 @@ import type { RowTier } from "@/features/afl/rankings/components/types";
 import { buildCurrentRoundPlayers, type CurrentRoundPlayer } from "@/features/afl/current-round/engine";
 
 // ─── LIMITS ──────────────────────────────────────────────────────────────────
-const FREE_VISIBLE = 3;
-const PREMIUM_VISIBLE = 10;
+const FREE_VISIBLE = 2;
+const PREMIUM_VISIBLE = 5;
 
 const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, value_score, projection_confidence, signal, signal_tag, games_played, status, is_bye";
 
@@ -808,7 +808,7 @@ export default function AFLCurrentRoundPage() {
               onUpgrade={() => setShowUpgradeModal(true)}
               hiddenCopy="Who to double this round based on projection + matchup."
               blurCtaLabel="Unlock full captain strategy →"
-              blurBadgeText="+2 captain options hidden"
+              blurBadgeText="+3 captain options hidden"
               footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
             />
 
@@ -824,7 +824,7 @@ export default function AFLCurrentRoundPage() {
               onUpgrade={() => setShowUpgradeModal(true)}
               hiddenCopy="See all top picks for this round with Neeko+."
               blurCtaLabel="Unlock full rankings & AI insights →"
-              blurBadgeText="+7 picks hidden"
+              blurBadgeText="+3 picks hidden"
               footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
             />
           </div>
@@ -842,7 +842,7 @@ export default function AFLCurrentRoundPage() {
             onUpgrade={() => setShowUpgradeModal(true)}
             hiddenCopy="Unlock value picks with price growth potential this week."
             blurCtaLabel="Unlock all value plays →"
-            blurBadgeText="+7 value picks hidden"
+            blurBadgeText="+3 value picks hidden"
             footerLink={{ label: "Market Watch", to: "/sports/afl/market-watch" }}
             renderMetric={(row) =>
               row.edge != null ? (
@@ -893,7 +893,7 @@ export default function AFLCurrentRoundPage() {
               onUpgrade={() => setShowUpgradeModal(true)}
               hiddenCopy="Players trending down — consider alternatives this round."
               blurCtaLabel="Reveal all risk flags →"
-              blurBadgeText="+7 risks hidden"
+              blurBadgeText="+3 risks hidden"
               footerLink={{ label: "Full rankings", to: "/sports/afl/rankings" }}
               renderMetric={(row) =>
                 row.edge != null ? (

@@ -197,11 +197,11 @@ interface EdgeBoardPreviewProps {
 function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
   const edgeBoard = useMemo(() => buildEdgeBoardPlayers(players), [players]);
 
-  const cards = [
-    edgeBoard.mustHave[0] ? { section: "must_have" as EdgeSignalType, player: edgeBoard.mustHave[0] } : null,
-    edgeBoard.breakout[0] ? { section: "breakout"  as EdgeSignalType, player: edgeBoard.breakout[0] } : null,
-    edgeBoard.avoid[0]    ? { section: "avoid"     as EdgeSignalType, player: edgeBoard.avoid[0]    } : null,
-  ].filter((c): c is { section: EdgeSignalType; player: (typeof edgeBoard.mustHave)[0] } => c !== null);
+  const cards: { section: EdgeSignalType; player: (typeof edgeBoard.mustHave)[0] | null }[] = [
+    { section: "must_have", player: edgeBoard.mustHave[0] ?? null },
+    { section: "breakout",  player: edgeBoard.breakout[0] ?? null },
+    { section: "avoid",     player: edgeBoard.avoid[0]    ?? null },
+  ];
 
   return (
     <section className="py-10 md:py-14 bg-[#0a0a0a] border-t border-white/[0.05]">
@@ -216,50 +216,69 @@ function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {loading
             ? [0, 1, 2].map((i) => <EdgeCardSkeleton key={i} />)
-            : cards.length > 0
-              ? cards.map(({ section, player }) => {
-                  const { label, desc, accentColor, icon: Icon } = EDGE_META[section];
-                  const edgeVal = player.edge ?? 0;
-                  const edgeColor = edgeVal > 5 ? "text-green-400" : edgeVal < -5 ? "text-red-400" : "text-[#F5C84C]";
+            : cards.map(({ section, player }) => {
+                const { label, desc, accentColor, icon: Icon } = EDGE_META[section];
 
+                if (!player) {
                   return (
                     <div
                       key={section}
-                      className="rounded-2xl bg-[#0e0e0e] p-5 hover:scale-[1.01] transition-all"
-                      style={{ border: `1px solid ${accentColor}25` }}
+                      className="rounded-2xl bg-[#0e0e0e] p-5 flex flex-col"
+                      style={{ border: `1px solid ${accentColor}15` }}
                     >
                       <div className="flex items-center gap-2 mb-4">
                         <div
                           className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                          style={{ background: `${accentColor}15`, border: `1px solid ${accentColor}30` }}
+                          style={{ background: `${accentColor}10`, border: `1px solid ${accentColor}20` }}
                         >
-                          <Icon size={16} style={{ color: accentColor }} />
+                          <Icon size={16} style={{ color: `${accentColor}50` }} />
                         </div>
-                        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: accentColor }}>
+                        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: `${accentColor}50` }}>
                           {label}
                         </span>
                       </div>
-
-                      <p className="text-base font-bold text-white leading-tight mb-0.5">{player.player_name}</p>
-                      <p className="text-[11px] text-white/35 mb-1">{player.team}{player.position ? ` · ${player.position}` : ""}</p>
-                      <p className="text-[10px] text-white/20 mb-3 leading-snug">{desc}</p>
-
-                      <div>
-                        {player.projection_final != null && (
-                          <EdgeStatRow label="Projection" value={`${Math.round(player.projection_final)} pts`} valueColor="text-[#F5C84C]" />
-                        )}
-                        {edgeVal !== 0 && (
-                          <EdgeStatRow label="Edge" value={edgeVal > 0 ? `+${edgeVal.toFixed(1)}` : edgeVal.toFixed(1)} valueColor={edgeColor} />
-                        )}
-                      </div>
+                      <p className="text-[11px] text-white/20 leading-snug mt-auto">{desc}</p>
+                      <p className="text-[10px] text-white/15 mt-2">Signal updates before round lockout.</p>
                     </div>
                   );
-                })
-              : (
-                <div className="col-span-3 rounded-2xl border border-white/[0.07] bg-[#0e0e0e] p-8 text-center">
-                  <p className="text-sm text-white/30">Edge signals will appear once round data is processed.</p>
-                </div>
-              )
+                }
+
+                const edgeVal = player.edge ?? 0;
+                const edgeColor = edgeVal > 5 ? "text-green-400" : edgeVal < -5 ? "text-red-400" : "text-[#F5C84C]";
+
+                return (
+                  <div
+                    key={section}
+                    className="rounded-2xl bg-[#0e0e0e] p-5 hover:scale-[1.01] transition-all"
+                    style={{ border: `1px solid ${accentColor}25` }}
+                  >
+                    <div className="flex items-center gap-2 mb-4">
+                      <div
+                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ background: `${accentColor}15`, border: `1px solid ${accentColor}30` }}
+                      >
+                        <Icon size={16} style={{ color: accentColor }} />
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-widest" style={{ color: accentColor }}>
+                        {label}
+                      </span>
+                    </div>
+
+                    <p className="text-base font-bold text-white leading-tight mb-0.5">{player.player_name}</p>
+                    <p className="text-[11px] text-white/35 mb-1">{player.team}{player.position ? ` · ${player.position}` : ""}</p>
+                    <p className="text-[10px] text-white/20 mb-3 leading-snug">{desc}</p>
+
+                    <div>
+                      {player.projection_final != null && (
+                        <EdgeStatRow label="Projection" value={`${Math.round(player.projection_final)} pts`} valueColor="text-[#F5C84C]" />
+                      )}
+                      {edgeVal !== 0 && (
+                        <EdgeStatRow label="Edge" value={edgeVal > 0 ? `+${edgeVal.toFixed(1)}` : edgeVal.toFixed(1)} valueColor={edgeColor} />
+                      )}
+                    </div>
+                  </div>
+                );
+              })
           }
         </div>
 

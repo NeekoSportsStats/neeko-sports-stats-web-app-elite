@@ -43,15 +43,23 @@ function InjuryPill({ isInjured }: { isInjured: boolean }) {
   );
 }
 
+function valueLabel(valueGap: number | null): { label: string; textClass: string } {
+  if (valueGap == null) return { label: "—", textClass: "text-white/30" };
+  if (valueGap >= 15) return { label: "Elite Value", textClass: "text-green-400" };
+  if (valueGap >= -10) return { label: "Fair Price", textClass: "text-yellow-300" };
+  return { label: "Overpriced", textClass: "text-red-400" };
+}
+
 function PlayerRow({ player, index }: { player: DerivedPlayer; index: number }) {
   const tier = player.display_signal;
   const valueGap = player.value_gap != null ? Math.round(Number(player.value_gap)) : null;
+  const { label: vLabel, textClass: vClass } = valueLabel(valueGap);
   const isInjured = player.is_injured === true || (player.status ?? "").toLowerCase() === "injured" || (player.manual_status ?? "").toLowerCase() === "injured";
   const isBye = player.is_bye === true || (player.status ?? "").toLowerCase() === "bye" || (player.manual_status ?? "").toLowerCase() === "bye";
 
   return (
     <div className="group">
-      <div className="grid grid-cols-[2rem_1fr_4.5rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_5rem_5rem_6rem] gap-x-2.5 md:gap-x-3 px-3 md:px-4 py-3 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors items-center">
+      <div className="grid grid-cols-[2rem_1fr_4.5rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_5rem_5.5rem_6rem] gap-x-2.5 md:gap-x-3 px-3 md:px-4 py-3 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors items-center">
         <span className="text-xs text-white/25 font-mono tabular-nums">{index}</span>
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -66,8 +74,8 @@ function PlayerRow({ player, index }: { player: DerivedPlayer; index: number }) 
         <span className="text-xs md:text-sm font-semibold text-white/60 text-center tabular-nums">
           {formatPrice(player.price)}
         </span>
-        <span className={`text-sm font-bold text-center tabular-nums ${valueGap == null ? "text-white/30" : valueGap > 0 ? "text-green-400" : "text-red-400"}`}>
-          {valueGap == null ? "—" : valueGap > 0 ? `+${valueGap}` : `${valueGap}`}
+        <span className={`text-[11px] font-semibold text-center ${vClass}`}>
+          {vLabel}
         </span>
         <div className="flex justify-end">
           <SignalPill tier={tier} />
@@ -137,7 +145,7 @@ export function LandingMarketWatchSample({ buys, holds, sells, loading }: Landin
             <span>#</span>
             <span>Player</span>
             <span className="text-center">Price</span>
-            <span className="text-center">Value Gap</span>
+            <span className="text-center">Value</span>
             <span className="text-right">Signal</span>
           </div>
 
