@@ -4,13 +4,16 @@ import { Helmet } from 'react-helmet-async';
 import {
   ArrowLeft, ChevronRight, TrendingUp, TrendingDown, Minus,
   Users, Zap, ChartBar as BarChart2, Star, CircleAlert as AlertCircle,
-  Flame, Trophy, DollarSign,
+  Flame, Trophy, DollarSign, Lock,
 } from 'lucide-react';
 import { nameToSlug, POSITION_NAMES, TEAM_SLUG_TO_NAME } from '@/lib/slugs';
 import { supabase } from '@/lib/supabaseClient';
 import { getTeamAccentColour } from '@/config/aflTeamColours';
 import { PlayerStatusPill } from '@/features/afl/rankings/components/PlayerStatusPill';
 import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from '@/utils/aflEdgeSignal';
+import { useAccessState } from '@/hooks/useAccessState';
+
+const FREE_PLAYER_LIMIT = 8;
 
 interface TeamPlayer {
   player_id: string | null;
@@ -101,9 +104,17 @@ function SnapshotCard({
   );
 }
 
-function RosterRow({ player, rank }: { player: TeamPlayer; rank: number }) {
+function LockedField() {
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] text-white/20 select-none">
+      <Lock size={9} className="shrink-0" />
+      <span className="blur-[3px]">000</span>
+    </span>
+  );
+}
+
+function RosterRow({ player, rank, isPremium }: { player: TeamPlayer; rank: number; isPremium: boolean }) {
   const proj = player.projection_final;
-  const sig = signalFromField(player.signal);
   const slug = nameToSlug(player.player_name);
 
   return (
@@ -136,10 +147,16 @@ function RosterRow({ player, rank }: { player: TeamPlayer; rank: number }) {
             </span>
             <span className="text-[10px] text-white/20">·</span>
             <span className="text-[10px] text-white/35">{fmtPrice(player.price)}</span>
-            {player.breakeven != null && (
+            {isPremium && player.breakeven != null && (
               <>
                 <span className="text-[10px] text-white/20">·</span>
                 <span className="text-[10px] text-white/40">BE: {Math.round(player.breakeven)}</span>
+              </>
+            )}
+            {!isPremium && (
+              <>
+                <span className="text-[10px] text-white/20">·</span>
+                <span className="text-[10px] text-white/25">BE: <LockedField /></span>
               </>
             )}
           </div>
@@ -147,12 +164,18 @@ function RosterRow({ player, rank }: { player: TeamPlayer; rank: number }) {
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
-        {player.value_score != null && (
+        {isPremium && player.value_score != null && (
           <div className="text-right hidden sm:block">
             <p className="text-[9px] text-white/25 uppercase tracking-wide">Value</p>
             <p className="text-xs font-semibold text-amber-400 tabular-nums">
               {player.value_score > 0 ? '+' : ''}{Number(player.value_score).toFixed(1)}
             </p>
+          </div>
+        )}
+        {!isPremium && (
+          <div className="text-right hidden sm:block">
+            <p className="text-[9px] text-white/25 uppercase tracking-wide">Value</p>
+            <p className="text-xs text-white/20"><LockedField /></p>
           </div>
         )}
         <div className="text-right min-w-[40px]">
@@ -163,6 +186,37 @@ function RosterRow({ player, rank }: { player: TeamPlayer; rank: number }) {
         <ChevronRight size={14} className="text-white/20 group-hover:text-white/40 transition-colors" />
       </div>
     </Link>
+  );
+}
+
+function PremiumCTA({ teamName }: { teamName: string }) {
+  return (
+    <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.06] to-[#111] p-6 text-center">
+      <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 mx-auto mb-3">
+        <Lock size={18} className="text-amber-400" />
+      </div>
+      <h3 className="text-base font-bold text-white mb-1">
+        Unlock full {teamName} analysis
+      </h3>
+      <p className="text-[12px] text-white/45 mb-4">
+        View all players + breakeven scores, value ratings, and AI recommendations
+      </p>
+      <div className="flex flex-col sm:flex-row gap-2 justify-center">
+        <Link
+          to="/upgrade"
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-400 transition-colors px-5 py-2.5 text-sm font-bold text-black"
+        >
+          <Zap size={14} />
+          Unlock Neeko+
+        </Link>
+        <Link
+          to="/auth"
+          className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] transition-colors px-5 py-2.5 text-sm text-white/60 hover:text-white"
+        >
+          Sign in
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -234,7 +288,6 @@ function TeamSEOBlock({ teamName, players }: { teamName: string; players: TeamPl
   const topProj = topPlayer ? fmtProj(topPlayer.projection_final) : '—';
 
   const buys = players.filter(p => p.signal === 'STRONG_UP' || p.signal === 'UP');
-
   const valuePickNames = buys.slice(0, 3).map(p => p.player_name).join(', ');
 
   return (
@@ -288,8 +341,7 @@ function TeamSEOBlock({ teamName, players }: { teamName: string; players: TeamPl
           <p>
             Each {teamName} player's projection is computed using Neeko's statistical model, combining
             season averages, last-3-game form, opponent position concession rates, venue multipliers,
-            and role stability signals. The value score measures how efficiently a player scores relative
-            to their current price — higher is better. Click any player's name to view their full analysis,
+            and role stability signals. Click any player's name to view their full analysis,
             historical scores, and detailed AI breakdown.
           </p>
         </div>
@@ -308,6 +360,7 @@ export default function AFLTeamPage() {
   const { team } = useParams<{ team: string }>();
   const teamName = team ? TEAM_SLUG_TO_NAME[team] : '';
   const navigate = useNavigate();
+  const { isPremium } = useAccessState();
 
   const [players, setPlayers] = useState<TeamPlayer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -352,16 +405,15 @@ export default function AFLTeamPage() {
   }, [teamName]);
 
   const stats = useMemo(() => {
-    if (!players.length) return { totalPlayers: 0, topProj: 0, avgProj: 0, bestValuePlayer: null, topPlayer: null, mostExpensivePlayer: null };
+    if (!players.length) return { totalPlayers: 0, topProj: 0, avgProj: 0, topPlayer: null, mostExpensivePlayer: null };
 
     const projValues = players.map(p => Number(p.projection_final) || 0);
     const topProj = Math.max(...projValues);
     const avgProj = Math.round(projValues.reduce((a, b) => a + b, 0) / players.length);
     const topPlayer = players[0];
-    const bestValuePlayer = [...players].sort((a, b) => (Number(b.value_score) || 0) - (Number(a.value_score) || 0))[0];
     const mostExpensivePlayer = [...players].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0))[0];
 
-    return { totalPlayers: players.length, topProj: Math.round(topProj), avgProj, topPlayer, bestValuePlayer, mostExpensivePlayer };
+    return { totalPlayers: players.length, topProj: Math.round(topProj), avgProj, topPlayer, mostExpensivePlayer };
   }, [players]);
 
   const accentColor = getTeamAccentColour(teamName.split(' ')[0]) ?? '#4ade80';
@@ -372,14 +424,17 @@ export default function AFLTeamPage() {
     [players]
   );
 
+  const visiblePlayers = isPremium ? players : players.slice(0, FREE_PLAYER_LIMIT);
+  const hasMore = !isPremium && players.length > FREE_PLAYER_LIMIT;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0e0e0e]">
         <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
           <div className="h-6 w-32 rounded bg-white/[0.05] animate-pulse" />
           <div className="h-28 rounded-2xl bg-white/[0.04] animate-pulse" />
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {[1,2,3,4].map(i => <div key={i} className="h-24 rounded-xl bg-white/[0.04] animate-pulse" />)}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {[1,2,3].map(i => <div key={i} className="h-24 rounded-xl bg-white/[0.04] animate-pulse" />)}
           </div>
           <div className="space-y-2">
             {[1,2,3,4,5].map(i => <div key={i} className="h-16 rounded-xl bg-white/[0.04] animate-pulse" />)}
@@ -512,16 +567,14 @@ export default function AFLTeamPage() {
                   accentColor="#34d399"
                 />
               )}
-              {stats.bestValuePlayer && (
+              {stats.topPlayer && (
                 <SnapshotCard
                   icon={<Flame size={14} />}
-                  label="Best Value"
-                  playerName={stats.bestValuePlayer.player_name}
-                  stat={stats.bestValuePlayer.value_score != null
-                    ? `${stats.bestValuePlayer.value_score > 0 ? '+' : ''}${Number(stats.bestValuePlayer.value_score).toFixed(1)}`
-                    : '—'}
-                  statLabel="value score"
-                  slug={nameToSlug(stats.bestValuePlayer.player_name)}
+                  label="Team Avg Projection"
+                  playerName={`${teamName.split(' ')[0]} squad`}
+                  stat={String(stats.avgProj)}
+                  statLabel="avg pts"
+                  slug={nameToSlug(stats.topPlayer.player_name)}
                   accentColor="#F5C84C"
                 />
               )}
@@ -539,11 +592,11 @@ export default function AFLTeamPage() {
             </div>
           )}
 
-          {/* ── FULL ROSTER TABLE ── */}
+          {/* ── ROSTER TABLE ── */}
           <div>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-[13px] font-semibold text-white/80">
-                Full {teamName} Roster
+                {isPremium ? 'Full' : 'Top'} {teamName} Roster
               </h2>
               <span className="text-[10px] text-white/25 uppercase tracking-wide">
                 sorted by projection
@@ -557,13 +610,18 @@ export default function AFLTeamPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {players.map((player, idx) => (
+                {visiblePlayers.map((player, idx) => (
                   <RosterRow
                     key={player.player_id ?? player.player_name}
                     player={player}
                     rank={idx + 1}
+                    isPremium={isPremium}
                   />
                 ))}
+
+                {hasMore && (
+                  <PremiumCTA teamName={teamName} />
+                )}
               </div>
             )}
           </div>
