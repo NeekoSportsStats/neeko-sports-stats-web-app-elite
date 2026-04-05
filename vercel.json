@@ -27,7 +27,7 @@
       "destination": "https://zbomenuickrogthnsozb.supabase.co/functions/v1/:path*"
     },
     {
-      "source": "/((?!assets/|favicon\\.ico|robots\\.txt|sitemap\\.xml|sitemap-static\\.xml|logo\\.png|hero\\.jpg|placeholder\\.svg|hero-bg\\.svg).*)",
+      "source": "/((?!assets/|favicon\\.ico|robots\\.txt|sitemap\\.xml|sitemap-static\\.xml|logo\\.png|og-default\\.png|hero\\.jpg|placeholder\\.svg|hero-bg\\.svg).*)",
       "destination": "/index.html"
     }
   ]
