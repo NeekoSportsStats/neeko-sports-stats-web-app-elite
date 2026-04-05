@@ -152,33 +152,18 @@ function PlayerRow({ row, rank, metric, isPremiumUser, onClick }: PlayerRowProps
   );
 }
 
-// ─── BLURRED ROW ─────────────────────────────────────────────────────────────
+// ─── LOCKED PICK ROW ─────────────────────────────────────────────────────────
 
-function BlurredRow({ row, rank, metric }: { row: CurrentRoundPlayer; rank: number; metric?: React.ReactNode }) {
+function BlurredRow({ rank }: { row: CurrentRoundPlayer; rank: number; metric?: React.ReactNode }) {
   return (
-    <div
-      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg select-none pointer-events-none"
-      style={{ filter: "blur(4px)", opacity: 0.45 }}
-      aria-hidden="true"
-    >
+    <div className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg select-none pointer-events-none">
       <span className="text-[11px] text-white/20 w-4 text-right shrink-0 font-mono tabular-nums">{rank}</span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-sm font-semibold text-white truncate leading-tight">{row.player_name}</span>
-          <PlayerStatusPill row={row} showUpcomingBye />
-        </div>
-        <div className="text-[10px] text-white/30 mt-px">
-          {normalisePosition(row.position) ?? "—"} · {row.team}
-          {row.price ? ` · ${fmtPrice(row.price)}` : ""}
-        </div>
+      <div className="flex-1 min-w-0 flex items-center gap-2">
+        <Lock className="w-3 h-3 text-white/15 shrink-0" />
+        <div className="h-2.5 w-24 rounded bg-white/[0.06]" />
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        {metric}
-        <div className="text-right">
-          <div className="text-sm font-bold text-white tabular-nums">{fmt(row.projection_final, 0)}</div>
-          <div className="text-[9px] text-white/25">proj</div>
-        </div>
-        <ChevronRight className="w-3 h-3 text-white/15" />
+        <div className="h-2.5 w-10 rounded bg-white/[0.04]" />
       </div>
     </div>
   );

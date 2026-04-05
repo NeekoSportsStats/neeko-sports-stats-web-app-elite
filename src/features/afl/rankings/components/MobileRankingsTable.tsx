@@ -498,18 +498,17 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
 function LockedCard({ idx, onUpgrade }: { idx: number; onUpgrade: () => void }) {
   return (
     <div
-      className="rounded-xl border border-white/[0.04] bg-[#0e0e0e] p-4 cursor-pointer"
+      className="rounded-xl border border-white/[0.04] bg-[#0e0e0e] p-4 cursor-pointer flex items-center gap-3"
       onClick={onUpgrade}
       style={{ touchAction: "manipulation" }}
     >
-      <div className="flex items-center gap-3 select-none blur-sm opacity-25">
-        <span className="text-xs text-white/30 w-5 tabular-nums">{idx + 1}</span>
-        <div className="flex-1">
-          <div className="h-3.5 w-32 bg-white/15 rounded mb-1.5" />
-          <div className="h-2.5 w-20 bg-white/8 rounded" />
-        </div>
-        <div className="h-6 w-16 bg-white/10 rounded-md" />
+      <span className="text-xs text-white/20 w-5 tabular-nums shrink-0">{idx + 1}</span>
+      <Lock size={12} className="text-white/15 shrink-0" />
+      <div className="flex-1">
+        <div className="h-3 w-28 bg-white/[0.06] rounded mb-1.5" />
+        <div className="h-2 w-16 bg-white/[0.04] rounded" />
       </div>
+      <span className="text-[10px] font-semibold text-[#F5C84C]/40 shrink-0">Unlock</span>
     </div>
   );
 }

@@ -48,11 +48,11 @@ export function CollapsibleSEO() {
                 </p>
                 <p>
                   Use the{" "}
-                  <a href="/sports/afl/rankings?position=MID" className="text-[#F5C84C]/80 hover:text-[#F5C84C] underline underline-offset-2 transition-colors">
+                  <a href="/sports/afl/positions/mid" className="text-[#F5C84C]/80 hover:text-[#F5C84C] underline underline-offset-2 transition-colors">
                     Midfielders
                   </a>{" "}
                   and{" "}
-                  <a href="/sports/afl/rankings?position=FWD" className="text-[#F5C84C]/80 hover:text-[#F5C84C] underline underline-offset-2 transition-colors">
+                  <a href="/sports/afl/positions/fwd" className="text-[#F5C84C]/80 hover:text-[#F5C84C] underline underline-offset-2 transition-colors">
                     Forwards
                   </a>{" "}
                   filters to focus on your specific roster needs. For deeper trade analysis visit{" "}
@@ -78,10 +78,10 @@ export function CollapsibleSEO() {
             <p className="text-xs text-white/35 uppercase tracking-wider font-medium">By Position</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { label: "Midfielders", href: "/sports/afl/rankings?position=MID", sub: "Top MID rankings" },
-                { label: "Forwards",    href: "/sports/afl/rankings?position=FWD", sub: "Top FWD rankings" },
-                { label: "Defenders",   href: "/sports/afl/rankings?position=DEF", sub: "Top DEF rankings" },
-                { label: "Rucks",       href: "/sports/afl/rankings?position=RUC", sub: "Top RUC rankings" },
+                { label: "Midfielders", href: "/sports/afl/positions/mid", sub: "Top MID rankings" },
+                { label: "Forwards",    href: "/sports/afl/positions/fwd", sub: "Top FWD rankings" },
+                { label: "Defenders",   href: "/sports/afl/positions/def", sub: "Top DEF rankings" },
+                { label: "Rucks",       href: "/sports/afl/positions/ruc", sub: "Top RUC rankings" },
               ].map(({ label, href, sub }) => (
                 <a
                   key={href}

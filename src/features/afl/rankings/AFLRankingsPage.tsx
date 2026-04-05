@@ -212,39 +212,20 @@ function SearchAutocomplete({
 
 function InlineGateBlock({ onUpgrade }: { onUpgrade: () => void }) {
   return (
-    <div className="relative mt-0">
-      <div className="pointer-events-none select-none" aria-hidden="true">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="flex items-center h-[52px] border-b border-white/[0.04] px-4 gap-3"
-            style={{ opacity: 0.45 - i * 0.12, filter: `blur(${2 + i * 1.5}px)` }}
-          >
-            <div className="w-6 h-3 rounded bg-white/10" />
-            <div className="flex-1 h-3 rounded bg-white/10" />
-            <div className="w-16 h-3 rounded bg-white/10" />
-            <div className="w-12 h-3 rounded bg-white/10" />
-            <div className="w-14 h-3 rounded bg-white/10" />
-          </div>
-        ))}
-      </div>
-      <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-transparent via-[#070707]/70 to-[#070707]/90 rounded-b-xl">
-        <div className="text-center px-4 py-3">
-          <p className="text-sm font-semibold text-white/80 mb-1">
-            +{200}+ players ranked with AI analysis
-          </p>
-          <p className="text-xs text-white/40 mb-3">
-            Full projections, value scores &amp; weekly AI recommendations
-          </p>
-          <button
-            onClick={onUpgrade}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5C84C] hover:brightness-110 px-5 py-2 text-sm font-bold text-[#070707] transition-all shadow-lg"
-          >
-            <Crown size={13} />
-            Unlock Full Rankings
-          </button>
-        </div>
-      </div>
+    <div className="border-t border-white/[0.04] px-4 py-5 flex flex-col items-center text-center gap-3">
+      <p className="text-sm font-semibold text-white/70">
+        200+ players ranked with AI analysis
+      </p>
+      <p className="text-xs text-white/35">
+        Full projections, value scores &amp; weekly AI recommendations
+      </p>
+      <button
+        onClick={onUpgrade}
+        className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5C84C] hover:brightness-110 px-5 py-2 text-sm font-bold text-[#070707] transition-all shadow-lg"
+      >
+        <Crown size={13} />
+        Unlock Full Rankings
+      </button>
     </div>
   );
 }

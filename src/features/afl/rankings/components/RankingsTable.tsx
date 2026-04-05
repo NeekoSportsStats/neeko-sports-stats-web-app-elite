@@ -400,14 +400,7 @@ export function FreeTableRow({ row, idx, onRowClick, onUpgrade }: FreeTableRowPr
   const rank = idx + 1;
   const isTop3 = rank <= 3;
 
-  const isFading = idx >= 5;
-  const rowFadeStyle: React.CSSProperties = isFading
-    ? {
-        opacity: Math.max(0.4, 1 - (idx - 4) * 0.2),
-        filter: idx >= 7 ? "blur(1.2px)" : "none",
-        touchAction: "manipulation",
-      }
-    : { touchAction: "manipulation" };
+  const rowFadeStyle: React.CSSProperties = { touchAction: "manipulation" };
 
 
   const be = row.baseline !== null && row.baseline !== undefined

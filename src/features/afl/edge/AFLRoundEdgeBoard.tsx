@@ -410,9 +410,10 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
           ) : (
             <div className="rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/[0.04] p-4">
               <p className="text-[9px] font-bold uppercase tracking-widest text-[#F5C84C]/50 mb-2">AI Analysis</p>
-              <div className="relative mb-3">
-                <p className="text-[13px] text-white/20 leading-relaxed select-none blur-[4px] pointer-events-none line-clamp-4">
-                  Advanced ceiling modelling and matchup delta scoring indicates significant upside leverage this round. Opponent concession profile aligns strongly with this player's scoring patterns over the last 4 weeks, while position scarcity and role stability add further confidence to the projection.
+              <div className="flex items-center gap-2 mb-3 py-2">
+                <Lock size={12} className="text-[#F5C84C]/30 shrink-0" />
+                <p className="text-[12px] text-white/30">
+                  Full analysis unlocked with Neeko+ — ceiling modelling, matchup delta, role signals &amp; price outlook.
                 </p>
               </div>
               <button
