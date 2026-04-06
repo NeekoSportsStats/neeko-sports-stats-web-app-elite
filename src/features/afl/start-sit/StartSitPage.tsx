@@ -13,6 +13,7 @@ import { GameContextSelector, loadGameContext, type GameContext } from "./GameCo
 import { OpponentInput, loadOpponentModel, deriveOpponentState, getMargin, type OpponentModel } from "./OpponentInput";
 import type { WinProbabilityData } from "./WinProbabilityPanel";
 import { getAflRoundLabel } from "@/features/afl/shared/data/getAflRoundLabel";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 const CURRENT_SEASON = 2026;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
@@ -534,15 +535,13 @@ export default function StartSitPage() {
 
           {/* Error banner */}
           {error && (
-            <div className="mt-4 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 flex items-start justify-between gap-3">
-              <p className="text-sm text-red-400 leading-snug">{error}</p>
-              <button
-                onClick={handleCompare}
-                disabled={!canCompare}
-                className="shrink-0 text-xs text-red-400/70 hover:text-red-400 underline underline-offset-2 transition-colors disabled:opacity-40"
-              >
-                Retry
-              </button>
+            <div className="mt-4">
+              <ErrorState
+                variant="inline"
+                message={error}
+                onRetry={canCompare ? handleCompare : undefined}
+                retryLabel="Retry"
+              />
             </div>
           )}
 

@@ -20,6 +20,7 @@ import {
   getFormLabel, getFormStyles,
 } from "@/features/afl/rankings/components/helpers";
 import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from "@/utils/aflEdgeSignal";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 interface PlayerData {
   player_id: number | string;
@@ -642,7 +643,7 @@ export default function AFLPlayerPage() {
     }
   };
 
-  const { data: player, isLoading, error } = useQuery({
+  const { data: player, isLoading, error, refetch } = useQuery({
     queryKey: ['player-profile-safe', playerName, user?.id],
     queryFn: async () => {
       const data = await getPlayerDetailSafe(playerName, user?.id ?? null);
@@ -717,17 +718,36 @@ export default function AFLPlayerPage() {
     );
   }
 
-  if (error || !player) {
+  if (error) {
+    const isNotFound = error.message === 'Player not found';
     return (
-      <div className="min-h-screen bg-[#0e0e0e] flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <h2 className="text-2xl font-bold text-white mb-2">Player Not Found</h2>
-          <p className="text-white/50 mb-6">Could not find player: {playerName}</p>
-          <Link to="/sports/afl/rankings" className="inline-flex items-center gap-2 bg-white/5 border border-white/10 text-white rounded-lg px-4 py-2 hover:bg-white/10 transition-all text-sm">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Rankings
-          </Link>
-        </div>
+      <div className="min-h-screen bg-[#0e0e0e] flex flex-col items-center justify-center px-4 gap-6">
+        <ErrorState
+          variant="page"
+          message={isNotFound ? "Player not found" : "Failed to load player"}
+          detail={isNotFound ? `Could not find player: ${playerName}` : "Check your connection and try again."}
+          onRetry={isNotFound ? undefined : () => refetch()}
+        />
+        <Link to="/sports/afl/rankings" className="inline-flex items-center gap-2 text-white/40 hover:text-white/70 text-sm transition-colors">
+          <ArrowLeft className="h-4 w-4" />
+          Back to Rankings
+        </Link>
+      </div>
+    );
+  }
+
+  if (!player) {
+    return (
+      <div className="min-h-screen bg-[#0e0e0e] flex flex-col items-center justify-center px-4 gap-6">
+        <ErrorState
+          variant="page"
+          message="Player not found"
+          detail={`Could not find player: ${playerName}`}
+        />
+        <Link to="/sports/afl/rankings" className="inline-flex items-center gap-2 text-white/40 hover:text-white/70 text-sm transition-colors">
+          <ArrowLeft className="h-4 w-4" />
+          Back to Rankings
+        </Link>
       </div>
     );
   }

@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
 import { DataFreshnessIndicator } from "@/components/ui/DataFreshnessIndicator";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 import {
   RankingRow, RankingsTab, PositionFilter, PremiumFilter, SortKey, SortDir, RowTier,
@@ -254,6 +255,7 @@ export default function AFLRankingsPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [updatedAt, setUpdatedAt] = useState<{ ts: string; round: string } | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -369,6 +371,7 @@ export default function AFLRankingsPage() {
     }
 
     setLoading(true);
+    setFetchError(null);
     setSelected(null);
     setHighlightedPlayerId(null);
 
@@ -380,6 +383,7 @@ export default function AFLRankingsPage() {
 
     if (error) {
       console.error("Rankings fetch error:", error);
+      setFetchError("Failed to load rankings. Check your connection and try again.");
       setRows([]);
       setLoading(false);
       return;
@@ -645,6 +649,16 @@ export default function AFLRankingsPage() {
                     <tbody>
                       {loading ? (
                         <LoadingSkeletonRows />
+                      ) : fetchError ? (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-10">
+                            <ErrorState
+                              message={fetchError}
+                              onRetry={() => fetchRankings(true)}
+                              retrying={isRefreshing}
+                            />
+                          </td>
+                        </tr>
                       ) : displayRows.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="px-6 py-16 text-center">
@@ -682,6 +696,16 @@ export default function AFLRankingsPage() {
 
             {/* FREE TABLE — mobile */}
             <div className="md:hidden">
+              {fetchError && !loading && (
+                <div className="px-4 pb-4">
+                  <ErrorState
+                    variant="inline"
+                    message={fetchError}
+                    onRetry={() => fetchRankings(true)}
+                    retrying={isRefreshing}
+                  />
+                </div>
+              )}
               <MobileRankingsTable
                 rows={sortedRows}
                 loading={loading}

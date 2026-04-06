@@ -21,11 +21,13 @@ import { MarketDistributionBar } from "./MarketDistributionBar";
 import { MarketWatchSkeleton } from "./MarketWatchSkeleton";
 import { MarketSearchBar } from "./MarketSearchBar";
 import { DataFreshnessIndicator, StaleDataWarning } from "@/components/ui/DataFreshnessIndicator";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 export default function MarketWatchPageElite() {
   const { isPremium, user, loading: authLoading } = useAuth();
   const [players, setPlayers] = useState<MWPlayerRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<DerivedPlayer | null>(null);
   const [activeFilter, setActiveFilter] = useState<MarketFilter>("ALL");
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
@@ -48,6 +50,7 @@ export default function MarketWatchPageElite() {
       return;
     }
     setLoading(true);
+    setFetchError(null);
     try {
       const { data, error } = await supabase.rpc("get_market_watch_safe", {
         p_user_id: userId,
@@ -119,6 +122,7 @@ export default function MarketWatchPageElite() {
       setPlayers(finalPlayers);
     } catch (error) {
       console.error("[Market Watch] Error:", error);
+      setFetchError("Failed to load Market Watch data. Check your connection and try again.");
       setPlayers([]);
     } finally {
       setLoading(false);
@@ -243,16 +247,28 @@ export default function MarketWatchPageElite() {
     return <MarketWatchSkeleton />;
   }
 
+  if (fetchError) {
+    return (
+      <div className="min-h-screen bg-[#0D0D0D] text-white">
+        <ErrorState
+          variant="page"
+          message="Failed to load Market Watch"
+          detail={fetchError}
+          onRetry={handleRefresh}
+        />
+      </div>
+    );
+  }
+
   if (players.length === 0) {
     return (
       <div className="min-h-screen bg-[#0D0D0D] text-white flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="text-6xl">📊</div>
-          <h2 className="text-2xl font-bold">No Market Data</h2>
-          <p className="text-white/60">Check back after weekly price changes</p>
+          <p className="text-white/30 text-sm">No market data available</p>
+          <p className="text-white/20 text-xs">Check back after weekly price changes</p>
           <button
             onClick={handleRefresh}
-            className="mt-4 px-6 py-3 bg-white/10 border border-white/20 rounded-lg hover:bg-white/20 transition-colors"
+            className="mt-2 px-5 py-2 bg-white/8 border border-white/10 rounded-lg hover:bg-white/12 transition-colors text-sm text-white/60 hover:text-white/80"
           >
             Refresh
           </button>
