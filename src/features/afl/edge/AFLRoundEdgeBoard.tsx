@@ -19,7 +19,7 @@ type Section = "must_have" | "breakout" | "do_not_start";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, breakeven_canonical, edge, edge_canonical, value_score, projection_confidence, signal, signal_tag, games_played, status, manual_status, is_bye";
+const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven_canonical, edge_canonical, signal_canonical, category_canonical, action_canonical, games_played, status, manual_status, is_bye";
 
 // Round lock: Next Thursday 19:35 AEDT
 function getNextRoundLock(): Date {
@@ -787,77 +787,84 @@ export default function AFLRoundEdgeBoard() {
     setError(null);
     try {
       const [rankResult, accResult] = await Promise.all([
-        supabase.schema("afl").from("player_rankings_cache").select(COLUMNS).order("projection_final", { ascending: false, nullsFirst: false }).limit(300),
+        supabase
+          .schema("afl")
+          .from("player_rankings_cache")
+          .select(COLUMNS)
+          .gte("games_played", 3)
+          .gt("projection_final", 50)
+          .eq("is_bye", false)
+          .not("status", "in", '("injured","out","omitted")')
+          .not("manual_status", "in", '("injured","out","omitted")')
+          .order("edge_canonical", { ascending: false, nullsFirst: false }),
         supabase.from("v_projection_accuracy_homepage").select("within_20").maybeSingle(),
       ]);
 
       if (rankResult.error) throw rankResult.error;
 
       const mapped = ((rankResult.data as any[]) ?? []).map((r: any): RankingRow => {
-        const proj = r.projection_final != null ? Number(r.projection_final) : null;
-        const be = r.breakeven != null ? Number(r.breakeven) : null;
         return {
-          player_id:             r.player_id ?? null,
-          player_name:           r.player_name ?? "",
-          team:                  r.team ?? "",
-          position:              r.position ?? null,
-          projection_final:      proj,
-          ceiling_estimate:      null,
-          floor_estimate:        null,
-          consistency_score:     null,
-          form_rating:           null,
-          matchup_rating:        null,
-          upside_rating:         null,
-          risk_rating:           null,
-          form_score:            null,
-          projection_confidence: null,
-          captain_score:         null,
-          captain_rating:        null,
-          neeko_rating:          null,
-          neeko_rating_scaled:   null,
-          price:                 r.price != null ? Number(r.price) : null,
-          prev_price:            null,
-          price_change:          null,
-          price_change_pct:      null,
-          breakeven:             be,
-          value_score:           r.value_score != null ? Number(r.value_score) : null,
-          best_value_score:      null,
-          value_tag:             null,
-          value_tier:            null,
+          player_id:               r.player_id ?? null,
+          player_name:             r.player_name ?? "",
+          team:                    r.team ?? "",
+          position:                r.position ?? null,
+          projection_final:        r.projection_final != null ? Number(r.projection_final) : null,
+          ceiling_estimate:        null,
+          floor_estimate:          null,
+          consistency_score:       null,
+          form_rating:             null,
+          matchup_rating:          null,
+          upside_rating:           null,
+          risk_rating:             null,
+          form_score:              null,
+          projection_confidence:   null,
+          captain_score:           null,
+          captain_rating:          null,
+          neeko_rating:            null,
+          neeko_rating_scaled:     null,
+          price:                   r.price != null ? Number(r.price) : null,
+          prev_price:              null,
+          price_change:            null,
+          price_change_pct:        null,
+          breakeven:               r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
+          value_score:             null,
+          best_value_score:        null,
+          value_tag:               null,
+          value_tier:              null,
           recommendation_strength: null,
-          ai_updated_at:         null,
-          recommendation_color:  null,
-          consistency_tier:      null,
-          total_count:           null,
-          games_played:          r.games_played != null ? Number(r.games_played) : null,
-          baseline:              null,
-          edge:                  r.edge != null ? Number(r.edge) : null,
-          signal:                (r.signal as string) ?? null,
-          season_avg:            null,
-          last_3_avg:            null,
-          value:                 null,
-          why:                   null,
-          long:                  null,
-          market_watch_category: null,
-          signal_tag:            (r.signal_tag as string) ?? null,
-          upside_pct:            null,
-          ai_summary:            null,
-          status:                (r.status as string) ?? null,
-          manual_status:         (r.manual_status as string) ?? null,
-          is_available:          null,
-          bye_round:             null,
-          is_bye:                r.is_bye ?? null,
-          bye_next_round:        null,
-          trend_score:           null,
-          trend_signal:          null,
-          form_delta:            null,
-          form_label:            null,
-          value_signal:          null,
-          edge_canonical:        r.edge_canonical != null ? Number(r.edge_canonical) : null,
-          breakeven_canonical:   r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
-          signal_canonical:      (r.signal_canonical as string) ?? null,
-          category_canonical:    (r.category_canonical as string) ?? null,
-          action_canonical:      (r.action_canonical as string) ?? null,
+          ai_updated_at:           null,
+          recommendation_color:    null,
+          consistency_tier:        null,
+          total_count:             null,
+          games_played:            r.games_played != null ? Number(r.games_played) : null,
+          baseline:                null,
+          edge:                    r.edge_canonical != null ? Number(r.edge_canonical) : null,
+          signal:                  (r.signal_canonical as string) ?? null,
+          season_avg:              null,
+          last_3_avg:              null,
+          value:                   null,
+          why:                     null,
+          long:                    null,
+          market_watch_category:   (r.category_canonical as string) ?? null,
+          signal_tag:              (r.signal_canonical as string) ?? null,
+          upside_pct:              null,
+          ai_summary:              null,
+          status:                  (r.status as string) ?? null,
+          manual_status:           (r.manual_status as string) ?? null,
+          is_available:            null,
+          bye_round:               null,
+          is_bye:                  r.is_bye ?? null,
+          bye_next_round:          null,
+          trend_score:             null,
+          trend_signal:            null,
+          form_delta:              null,
+          form_label:              null,
+          value_signal:            null,
+          edge_canonical:          r.edge_canonical != null ? Number(r.edge_canonical) : null,
+          breakeven_canonical:     r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
+          signal_canonical:        (r.signal_canonical as string) ?? null,
+          category_canonical:      (r.category_canonical as string) ?? null,
+          action_canonical:        (r.action_canonical as string) ?? null,
         };
       });
 
