@@ -46,7 +46,7 @@ function ActionButton({ label, command, icon: Icon, variant = "outline", disable
     dispatch({ type: "START_JOB", payload: { jobType: command, label: `${label}…`, pct: 10 } });
     try {
       const res = await runCommand(command);
-      if (res.success) {
+      if (res.ok) {
         setLastStatus("ok");
         dispatch({ type: "UPDATE_JOB", payload: { pct: 100 } });
         setTimeout(() => dispatch({ type: "END_JOB" }), 1500);
@@ -113,7 +113,7 @@ function ConfirmDangerButton({ label, command, description, icon: Icon }: {
     dispatch({ type: "START_JOB", payload: { jobType: command, label: `${label}…`, pct: 10 } });
     try {
       const res = await runCommand(command);
-      if (res.success) {
+      if (res.ok) {
         dispatch({ type: "UPDATE_JOB", payload: { pct: 100 } });
         setTimeout(() => dispatch({ type: "END_JOB" }), 1500);
         toast({ title: `${label} complete` });

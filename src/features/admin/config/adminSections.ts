@@ -1,3 +1,4 @@
+import type { ElementType } from "react";
 import {
   LayoutDashboard,
   HeartPulse,
@@ -11,7 +12,7 @@ import {
 export interface AdminSection {
   path: string;
   label: string;
-  icon: React.ElementType;
+  icon: ElementType;
 }
 
 export const ADMIN_SECTIONS: AdminSection[] = [

@@ -61,11 +61,11 @@ function buildAlerts(s: CommandCenterStatus): Alert[] {
   if ((s.cron_failed_count ?? 0) > 0)
     alerts.push({ level: "warn", msg: `${s.cron_failed_count} cron jobs reporting failure`, route: "/admin/health" });
   if ((s.fantasy_unmatched_count ?? 0) > 20)
-    alerts.push({ level: "warn", msg: `${s.fantasy_unmatched_count} fantasy prices unmatched`, route: "/admin/command-center" });
+    alerts.push({ level: "warn", msg: `${s.fantasy_unmatched_count} fantasy prices unmatched`, route: "/admin/command" });
   if (!s.market_watch_last_refresh)
-    alerts.push({ level: "warn", msg: "Market Watch has no snapshot — refresh required", route: "/admin/command-center" });
+    alerts.push({ level: "warn", msg: "Market Watch has no snapshot — refresh required", route: "/admin/command" });
   if ((s.ai_missing_players ?? 0) > 100)
-    alerts.push({ level: "warn", msg: `${s.ai_missing_players} players missing AI analysis`, route: "/admin/command-center" });
+    alerts.push({ level: "warn", msg: `${s.ai_missing_players} players missing AI analysis`, route: "/admin/command" });
   if ((s.rankings_cache_rows ?? 0) < 300)
     alerts.push({ level: "error", msg: `Rankings cache only has ${s.rankings_cache_rows} rows`, route: "/admin/health" });
   if ((s.queue_pending ?? 0) > 200)
@@ -108,12 +108,12 @@ function fmtDuration(s: number | null | undefined) {
 }
 
 const NAV_TILES = [
-  { path: "/admin/health",         label: "Health",          sub: "Pipeline, AI & data integrity",  icon: HeartPulse },
-  { path: "/admin/user-metrics",   label: "User Metrics",    sub: "Usage, signups, conversions",     icon: Users },
-  { path: "/admin/command-center", label: "Command Center",  sub: "All operator actions",            icon: Terminal },
-  { path: "/admin/player-lab",     label: "Player Lab",      sub: "Player data explorer",            icon: FlaskConical },
-  { path: "/admin/marketing",      label: "Marketing",       sub: "Content & media tools",           icon: Megaphone },
-  { path: "/admin/admin",          label: "Admin",           sub: "Tasks, logs & flags",             icon: ShieldCheck },
+  { path: "/admin/health",     label: "Health",          sub: "Pipeline, AI & data integrity",  icon: HeartPulse },
+  { path: "/admin/users",      label: "User Metrics",    sub: "Usage, signups, conversions",     icon: Users },
+  { path: "/admin/command",    label: "Command Center",  sub: "All operator actions",            icon: Terminal },
+  { path: "/admin/player-lab", label: "Player Lab",      sub: "Player data explorer",            icon: FlaskConical },
+  { path: "/admin/marketing",  label: "Marketing",       sub: "Content & media tools",           icon: Megaphone },
+  { path: "/admin/admin",      label: "Admin",           sub: "Tasks, logs & flags",             icon: ShieldCheck },
 ];
 
 function GlobalStatusBanner({ status, loading }: { status: CommandCenterStatus | null; loading: boolean }) {
@@ -250,14 +250,14 @@ export default function AdminDashboard() {
       value: status ? `${status.ai_analysis_rows.toLocaleString()}` : "—",
       sub: status ? `${status.ai_missing_players} missing` : "",
       level: (status?.ai_missing_players ?? 999) > 100 ? "warn" as Level : "ok" as Level,
-      route: "/admin/command-center",
+      route: "/admin/command",
     },
     {
       label: "Market Watch",
       value: status?.market_watch_quality ?? "—",
       sub: status?.market_watch_last_refresh ? formatDate(status.market_watch_last_refresh) : "Never",
       level: toLevel(status?.market_watch_health),
-      route: "/admin/command-center",
+      route: "/admin/command",
     },
     {
       label: "AI Queue",
@@ -266,7 +266,7 @@ export default function AdminDashboard() {
       level: (status?.queue_failed ?? 0) > 10 ? "error" as Level
         : (status?.queue_pending ?? 0) > 200 ? "warn" as Level
         : "ok" as Level,
-      route: "/admin/command-center",
+      route: "/admin/command",
     },
     {
       label: "Edge Board",
@@ -394,7 +394,7 @@ export default function AdminDashboard() {
           </div>
           <p className="text-[11px] text-muted-foreground mt-2">
             For the full command library, go to{" "}
-            <button onClick={() => navigate("/admin/command-center")} className="underline underline-offset-2 hover:text-foreground transition-colors">Command Center</button>.
+            <button onClick={() => navigate("/admin/command")} className="underline underline-offset-2 hover:text-foreground transition-colors">Command Center</button>.
           </p>
         </div>
       )}

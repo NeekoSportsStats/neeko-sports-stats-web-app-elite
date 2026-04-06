@@ -9,6 +9,7 @@ export interface CommandCenterStatus {
   ai_analysis_rows: number;
   ai_missing_players: number;
   ai_last_updated: string | null;
+  ai_last_generation: string | null;
   reco_rows: number;
   reco_last_updated: string | null;
   ai_health: string;
