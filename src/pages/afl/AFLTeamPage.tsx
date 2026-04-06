@@ -379,8 +379,6 @@ export default function AFLTeamPage() {
           position,
           price,
           projection_final,
-          breakeven_canonical,
-          value_score_canonical,
           signal_canonical,
           signal_tag,
           status,

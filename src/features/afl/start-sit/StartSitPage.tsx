@@ -25,9 +25,7 @@ interface PlayerOption {
   team: string | null;
   position: string | null;
   projection_final: number | null;
-  edge_canonical: number | null;
   signal_canonical: string | null;
-  summary_short: string | null;
 }
 
 interface CompareResult {
@@ -181,7 +179,7 @@ export default function StartSitPage() {
     if (authLoading) return;
     supabase
       .from("v_player_rankings_cache")
-      .select("player_id, player_name, team, position, projection_final, edge_canonical, signal_canonical, summary_short")
+      .select("player_id, player_name, team, position, projection_final, signal_canonical")
       .not("player_id", "is", null)
       .order("projection_final", { ascending: false })
       .limit(200)
@@ -206,7 +204,7 @@ export default function StartSitPage() {
 
       const { data, error } = await supabase
         .from("v_player_rankings_cache")
-        .select("player_id, player_name, team, position, projection_final, edge_canonical, signal_canonical, summary_short")
+        .select("player_id, player_name, team, position, projection_final, signal_canonical")
         .in("player_name", ids.map((n) => n.replace(/-/g, " ")));
 
       if (error) {

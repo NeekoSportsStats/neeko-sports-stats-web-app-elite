@@ -1217,7 +1217,7 @@ export default function Index() {
     (async () => {
       const { data } = await supabase
         .from("v_player_rankings_cache")
-        .select("player_id, player_name, team, team_name, position, price, projection_final, season_avg, last_3_avg, last_5_avg, breakeven_canonical, edge_canonical, value_score_canonical, signal_canonical, category_canonical, action_canonical, signal_tag, signal, summary_short, games_played, status, manual_status, is_bye")
+        .select("player_id, player_name, team, team_name, position, price, projection_final, season_avg, last_3_avg, last_5_avg, signal_canonical, category_canonical, signal_tag, games_played, status, manual_status, is_bye")
         .gte("games_played", 3)
         .gte("projection_final", 55)
         .order("projection_final", { ascending: false })
@@ -1248,8 +1248,8 @@ export default function Index() {
           prev_price:            null,
           price_change:          null,
           price_change_pct:      null,
-          breakeven:             r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
-          value_score:           r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
+          breakeven:             null,
+          value_score:           null,
           best_value_score:      null,
           value_tag:             null,
           value_tier:            null,
@@ -1260,8 +1260,8 @@ export default function Index() {
           total_count:           null,
           games_played:          r.games_played != null ? Number(r.games_played) : null,
           baseline:              null,
-          edge:                  r.edge_canonical != null ? Number(r.edge_canonical) : null,
-          signal:                (r.signal as string) ?? null,
+          edge:                  null,
+          signal:                (r.signal_canonical as string) ?? null,
           season_avg:            null,
           last_3_avg:            null,
           value:                 null,
@@ -1281,11 +1281,11 @@ export default function Index() {
           form_delta:            null,
           form_label:            null,
           value_signal:          null,
-          edge_canonical:        r.edge_canonical != null ? Number(r.edge_canonical) : null,
-          breakeven_canonical:   r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
+          edge_canonical:        null,
+          breakeven_canonical:   null,
           signal_canonical:      (r.signal_canonical as string) ?? null,
           category_canonical:    (r.category_canonical as string) ?? null,
-          action_canonical:      (r.action_canonical as string) ?? null,
+          action_canonical:      null,
           manual_status:         (r.manual_status as string) ?? null,
         };
       });
@@ -1299,8 +1299,8 @@ export default function Index() {
     (async () => {
       const { data } = await supabase
         .from("v_player_rankings_cache")
-        .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, breakeven_canonical, edge_canonical, value_score_canonical, signal_canonical, category_canonical, action_canonical, signal_tag, signal, summary_short, summary_long, matchup_label, consistency, neeko_rating, status, manual_status, is_bye, games_played, cached_at")
-        .order("value_score_canonical", { ascending: false, nullsFirst: false })
+        .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, signal_canonical, category_canonical, signal_tag, status, manual_status, is_bye, games_played, cached_at")
+        .order("projection_final", { ascending: false, nullsFirst: false })
         .limit(50);
 
       const rows: MWPlayerRow[] = ((data ?? []) as any[]).map((r): MWPlayerRow => {
@@ -1326,20 +1326,20 @@ export default function Index() {
           projection_final: parseFloat(r.projection_final ?? '0') || 0,
           ceiling: null,
           floor_val: null,
-          breakeven_canonical: r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
-          edge_canonical: r.edge_canonical != null ? Number(r.edge_canonical) : null,
-          value_score_canonical: r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
+          breakeven_canonical: null,
+          edge_canonical: null,
+          value_score_canonical: null,
           signal_canonical: r.signal_canonical ?? null,
           category_canonical: r.category_canonical ?? null,
-          action_canonical: r.action_canonical ?? null,
+          action_canonical: null,
           signal_tag: r.category_canonical ?? r.signal_tag ?? null,
-          signal: r.signal_canonical ?? r.signal ?? null,
-          recommendation_short: r.summary_short ?? null,
-          summary_short: r.summary_short ?? null,
-          summary_long: r.summary_long ?? null,
-          matchup_label: r.matchup_label ?? null,
-          consistency: r.consistency ?? null,
-          neeko_rating: r.neeko_rating ?? null,
+          signal: r.signal_canonical ?? null,
+          recommendation_short: null,
+          summary_short: null,
+          summary_long: null,
+          matchup_label: null,
+          consistency: null,
+          neeko_rating: null,
           status: r.status ?? null,
           manual_status: r.manual_status ?? null,
           is_bye: isBye,
