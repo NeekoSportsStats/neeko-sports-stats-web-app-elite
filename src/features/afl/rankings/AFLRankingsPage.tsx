@@ -380,7 +380,7 @@ export default function AFLRankingsPage() {
     const { data, error } = await supabase.rpc("get_rankings_safe", {
       p_user_id: userId,
       p_is_bot: false,
-      p_limit: 100,
+      p_limit: isPremium ? 700 : 100,
     });
 
     if (error) {
