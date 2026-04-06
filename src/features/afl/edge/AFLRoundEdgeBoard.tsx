@@ -1008,8 +1008,9 @@ export default function AFLRoundEdgeBoard() {
             <div className="mb-5 space-y-5">
               {sections.map(({ players: sectionPlayers, section, label, accentText, border, bg, emoji }) => {
                 if (sectionPlayers.length === 0) return null;
-                const heroPick = sectionPlayers[0];
-                const secondaryPicks = sectionPlayers.slice(1);
+                const visiblePlayers = isPremium ? sectionPlayers.slice(0, 3) : sectionPlayers.slice(0, 1);
+                const heroPick = visiblePlayers[0];
+                const secondaryPicks = isPremium ? visiblePlayers.slice(1) : [];
                 return (
                   <div key={section} className={`rounded-2xl border ${border} ${bg} overflow-hidden`}>
                     {/* Section header */}
@@ -1027,8 +1028,8 @@ export default function AFLRoundEdgeBoard() {
                       onOpen={handleOpenModal}
                     />
 
-                    {/* Secondary picks (2nd and 3rd — compact rows) */}
-                    {secondaryPicks.length > 0 && (
+                    {/* Secondary picks (2nd and 3rd — premium only compact rows) */}
+                    {isPremium && secondaryPicks.length > 0 && (
                       <div className="border-t border-white/[0.06] divide-y divide-white/[0.04]">
                         {secondaryPicks.map((player) => {
                           const metric = getPrimaryMetric(player, section);
