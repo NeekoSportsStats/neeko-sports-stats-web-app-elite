@@ -1004,12 +1004,10 @@ export default function AFLRoundEdgeBoard() {
           </div>
 
           {/* ── 3-Section Edge Board (3 players each) ─────────────────────── */}
-          {sections.some((s) => s.players.length > 0) && (
-            <div className="mb-5 space-y-5">
+          <div className="mb-5 space-y-5">
               {sections.map(({ players: sectionPlayers, section, label, accentText, border, bg, emoji }) => {
-                if (sectionPlayers.length === 0) return null;
                 const visiblePlayers = isPremium ? sectionPlayers.slice(0, 3) : sectionPlayers.slice(0, 1);
-                const heroPick = visiblePlayers[0];
+                const heroPick = visiblePlayers[0] ?? null;
                 const secondaryPicks = isPremium ? visiblePlayers.slice(1) : [];
                 return (
                   <div key={section} className={`rounded-2xl border ${border} ${bg} overflow-hidden`}>
@@ -1021,12 +1019,18 @@ export default function AFLRoundEdgeBoard() {
                     </div>
 
                     {/* Hero pick (first player — full card) */}
-                    <HeroPickCard
-                      player={heroPick}
-                      section={section}
-                      isPremium={isPremium}
-                      onOpen={handleOpenModal}
-                    />
+                    {heroPick ? (
+                      <HeroPickCard
+                        player={heroPick}
+                        section={section}
+                        isPremium={isPremium}
+                        onOpen={handleOpenModal}
+                      />
+                    ) : (
+                      <div className="px-5 py-8 text-center">
+                        <p className="text-sm text-white/25">Loading picks...</p>
+                      </div>
+                    )}
 
                     {/* Secondary picks (2nd and 3rd — premium only compact rows) */}
                     {isPremium && secondaryPicks.length > 0 && (
@@ -1082,7 +1086,6 @@ export default function AFLRoundEdgeBoard() {
                 );
               })}
             </div>
-          )}
 
           {/* ── Free paywall banner ───────────────────────────────────────────── */}
           {!isPremium && (
