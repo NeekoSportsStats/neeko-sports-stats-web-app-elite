@@ -651,6 +651,7 @@ export default function AFLPlayerPage() {
       return data as PlayerData;
     },
     enabled: !!playerName,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: similarPlayers } = useQuery({
@@ -667,6 +668,7 @@ export default function AFLPlayerPage() {
       );
     },
     enabled: !!player,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: sameTeamPlayers } = useQuery({
@@ -685,6 +687,7 @@ export default function AFLPlayerPage() {
       return data ?? [];
     },
     enabled: !!player?.team,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { data: samePositionPlayers } = useQuery({
@@ -703,6 +706,7 @@ export default function AFLPlayerPage() {
       return data ?? [];
     },
     enabled: !!player?.player_position,
+    staleTime: 5 * 60 * 1000,
   });
 
   const aiLongText = useMemo(() => {

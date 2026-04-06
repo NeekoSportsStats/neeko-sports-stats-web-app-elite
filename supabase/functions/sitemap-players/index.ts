@@ -29,7 +29,8 @@ Deno.serve(async (req: Request) => {
       .from("player_rankings_cache")
       .select("player_name, cached_at")
       .not("player_name", "is", null)
-      .order("neeko_rating", { ascending: false });
+      .order("neeko_rating", { ascending: false })
+      .limit(1000);
 
     console.log("Players fetched:", players?.length);
 

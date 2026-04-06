@@ -184,7 +184,7 @@ export default function StartSitPage() {
       .select("player_id, player_name, team, position, projection_final, edge_canonical, signal_canonical, summary_short")
       .not("player_id", "is", null)
       .order("projection_final", { ascending: false })
-      .limit(400)
+      .limit(200)
       .then(({ data, error }) => {
         if (error) {
           console.error(error);

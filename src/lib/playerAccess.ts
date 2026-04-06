@@ -11,6 +11,11 @@ let cachedFreePlayerIds: number[] | null = null;
 let cacheTimestamp: number | null = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+export function invalidateFreePlayerCache(): void {
+  cachedFreePlayerIds = null;
+  cacheTimestamp = null;
+}
+
 /**
  * Get free player IDs (top 8 by neeko_rating)
  * Cached for 5 minutes to avoid excessive DB calls

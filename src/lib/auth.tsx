@@ -10,6 +10,7 @@ import {
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabaseClient";
 import { identifyUser, resetUser } from "@/lib/analytics";
+import { invalidateFreePlayerCache } from "@/lib/playerAccess";
 
 interface AuthContextType {
   user: User | null;
@@ -183,6 +184,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 return;
               }
               currentUserIdRef.current = newUserId;
+              invalidateFreePlayerCache();
               applySession(session, event);
               break;
             }
@@ -200,6 +202,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
             case "SIGNED_OUT":
               currentUserIdRef.current = null;
+              invalidateFreePlayerCache();
               try {
                 resetUser();
               } catch (err) {

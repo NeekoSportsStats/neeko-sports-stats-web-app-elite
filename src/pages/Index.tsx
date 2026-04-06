@@ -1273,7 +1273,6 @@ export default function Index() {
           upside_pct:            null,
           ai_summary:            null,
           status:                (r.status as string) ?? null,
-          manual_status:         null,
           is_available:          null,
           bye_round:             null,
           is_bye:                r.is_bye ?? null,
