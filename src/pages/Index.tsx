@@ -230,7 +230,7 @@ function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
     );
 
     const byValueDesc = [...available].sort(
-      (a, b) => (b.value_score_canonical ?? b.edge_canonical ?? b.edge ?? 0) - (a.value_score_canonical ?? a.edge_canonical ?? a.edge ?? 0)
+      (a, b) => (b.value_score ?? b.edge ?? 0) - (a.value_score ?? a.edge ?? 0)
     );
 
     const usedIds = new Set<string | number>();
@@ -297,7 +297,7 @@ function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
                 }
 
                 const proj      = player.projection_final != null ? Math.round(player.projection_final) : null;
-                const edge      = (player as any).edge_canonical != null ? Number((player as any).edge_canonical) : null;
+                const edge      = (player as any).edge != null ? Number((player as any).edge) : null;
                 const aiHook    = (player as any).summary_short as string | null | undefined;
 
                 return (
@@ -1296,7 +1296,7 @@ export default function Index() {
           price_change:          null,
           price_change_pct:      null,
           breakeven:             null,
-          value_score:           null,
+          value_score:           valueScoreDerived,
           best_value_score:      null,
           value_tag:             null,
           value_tier:            null,
@@ -1373,40 +1373,44 @@ export default function Index() {
         const isBye = r.is_bye === true ||
           (r.status ?? '').toLowerCase() === 'bye' ||
           (r.manual_status ?? '').toLowerCase() === 'bye';
+        const valueScore = breakeven > 0
+          ? parseFloat(((edgeDerived / breakeven) * 10).toFixed(2))
+          : edgeDerived;
         return {
-          player_id: r.player_id,
+          player_id: Number(r.player_id),
           player_name: r.player_name,
           team: r.team ?? r.team_name ?? '',
           team_name: r.team_name ?? r.team ?? '',
-          position: r.position,
+          position: r.position ?? '',
           price: r.price ?? 0,
           prev_price: r.prev_price ?? null,
           price_change: r.price_change ?? null,
           price_change_pct: null,
           projection: proj,
-          projection_final: proj,
-          ceiling: null,
-          floor_val: null,
-          breakeven_canonical: breakeven,
-          edge_canonical: edgeDerived,
-          value_score_canonical: breakeven > 0 ? parseFloat(((edgeDerived / breakeven) * 10).toFixed(2)) : edgeDerived,
-          signal_canonical: r.signal_canonical ?? null,
-          category_canonical: r.category_canonical ?? null,
-          action_canonical: null,
-          signal_tag: r.category_canonical ?? r.signal_tag ?? null,
+          season_avg: r.season_avg != null ? Number(r.season_avg) : null,
+          last_3_avg: r.last_3_avg != null ? Number(r.last_3_avg) : null,
+          last_5_avg: r.last_5_avg != null ? Number(r.last_5_avg) : null,
+          games_played: r.games_played ?? null,
+          breakeven,
+          edge: edgeDerived,
+          value_score: valueScore,
           signal: r.signal_canonical ?? null,
-          recommendation_short: null,
-          summary_short: null,
-          summary_long: null,
+          signal_display: null,
+          category: r.category_canonical ?? null,
+          action: null,
+          why: null,
+          why_long: null,
           matchup_label: null,
+          matchup_rating: null,
+          matchup_multiplier: null,
           consistency: null,
           neeko_rating: null,
           status: r.status ?? null,
           manual_status: r.manual_status ?? null,
           is_bye: isBye,
-          is_injured: isInjured,
-          games_played: r.games_played ?? null,
+          cached_at: r.cached_at ?? null,
           display_signal: displaySignal,
+          access_tier: 'locked',
         };
       });
 

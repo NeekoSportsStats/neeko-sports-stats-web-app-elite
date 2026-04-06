@@ -45,7 +45,7 @@ function InjuryPill({ isInjured }: { isInjured: boolean }) {
 
 function formatValueScore(v: number | null | undefined): { label: string; textClass: string } {
   if (v == null) {
-    console.warn("[LandingMW] value_score_canonical is null — check pipeline output");
+    console.warn("[LandingMW] value_score is null — check pipeline output");
     return { label: "—", textClass: "text-white/30" };
   }
   const n = Number(v);
