@@ -78,6 +78,16 @@ export interface RankingRow {
   form_label: string | null;
   /** VALUE ENGINE: edge vs breakeven — STRONG_BUY | BUY | HOLD | SELL | STRONG_SELL */
   value_signal: string | null;
+  /** CANONICAL: calibrated edge score (projection vs weighted baseline) */
+  edge_canonical: number | null;
+  /** CANONICAL: breakeven score from canonical model */
+  breakeven_canonical: number | null;
+  /** CANONICAL: signal — STRONG_UP | UP | STABLE | DOWN | STRONG_DOWN */
+  signal_canonical: string | null;
+  /** CANONICAL: category — Target | Watch | Avoid */
+  category_canonical: string | null;
+  /** CANONICAL: action — BUY | HOLD | SELL */
+  action_canonical: string | null;
 }
 
 export interface ScoreHistoryPoint {

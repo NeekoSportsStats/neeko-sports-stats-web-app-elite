@@ -1234,6 +1234,11 @@ export default function Index() {
           form_delta:            null,
           form_label:            null,
           value_signal:          null,
+          edge_canonical:        null,
+          breakeven_canonical:   null,
+          signal_canonical:      null,
+          category_canonical:    null,
+          action_canonical:      null,
         };
       });
 

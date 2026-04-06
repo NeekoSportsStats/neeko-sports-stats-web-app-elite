@@ -326,6 +326,11 @@ export default function AFLRankingsPage() {
       form_delta:           r.form_delta != null ? Number(r.form_delta) : null,
       form_label:           r.form_label ?? null,
       value_signal:         r.value_signal ?? null,
+      edge_canonical:       r.edge_canonical != null ? Number(r.edge_canonical) : null,
+      breakeven_canonical:  r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
+      signal_canonical:     r.signal_canonical ?? null,
+      category_canonical:   r.category_canonical ?? null,
+      action_canonical:     r.action_canonical ?? null,
     };
   }
 

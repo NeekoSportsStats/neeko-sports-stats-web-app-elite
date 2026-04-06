@@ -98,6 +98,11 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
     value_signal: null,
     form_delta: null,
     form_label: null,
+    edge_canonical: null,
+    breakeven_canonical: null,
+    signal_canonical: null,
+    category_canonical: null,
+    action_canonical: null,
   };
 }
 

@@ -17,13 +17,14 @@ export interface EdgeBoardResult {
 const PLAYERS_PER_SECTION = 3;
 
 export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
-  const filtered = players.filter(
+  const eligible = players.filter(
     (p) =>
       (p.games_played ?? 0) >= 3 &&
-      (p.projection_final ?? 0) >= 40 &&
-      p.status !== "OUT" &&
-      p.manual_status !== "OUT" &&
-      p.manual_status !== "INJURED" &&
+      (p.projection_final ?? 0) > 50 &&
+      (p.manual_status ?? "").toUpperCase() !== "OUT" &&
+      (p.manual_status ?? "").toUpperCase() !== "INJURED" &&
+      (p.manual_status ?? "").toUpperCase() !== "OMITTED" &&
+      (p.status ?? "").toUpperCase() !== "OUT" &&
       !p.is_bye
   );
 
@@ -36,18 +37,10 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
     if (p.player_id) rankMap.set(p.player_id, i + 1);
   });
 
-  const withEdge = filtered.map((p) => ({
-    ...p,
-    edge:
-      p.projection_final != null && p.breakeven != null
-        ? p.projection_final - p.breakeven
-        : (p.edge ?? 0),
-  }));
-
   const usedIds = new Set<string>();
 
   function pick(
-    list: typeof withEdge,
+    list: RankingRow[],
     count: number,
     section: EdgeSection
   ): EdgeBoardPlayer[] {
@@ -67,85 +60,31 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
     return result;
   }
 
-  // Must Have: STRONG_UP or UP signal + positive edge, sorted by value_score desc
-  const mustHavePrimary = [...withEdge]
+  // MUST HAVE: top edge_canonical DESC, positive edge only
+  const mustHavePool = [...eligible]
+    .filter((p) => (p.edge_canonical ?? 0) > 0)
+    .sort((a, b) => (b.edge_canonical ?? 0) - (a.edge_canonical ?? 0));
+
+  const mustHave = pick(mustHavePool, PLAYERS_PER_SECTION, "must_have");
+
+  // WATCH: next best edge_canonical (not already used), middle range
+  const watchPool = [...eligible]
+    .filter((p) => !mustHave.some((m) => m.player_id === p.player_id))
+    .sort((a, b) => (b.edge_canonical ?? 0) - (a.edge_canonical ?? 0));
+
+  const breakout = pick(watchPool, PLAYERS_PER_SECTION, "breakout");
+
+  // AVOID: worst edge_canonical DESC (most negative first), negative edge only
+  const avoidPool = [...eligible]
     .filter(
       (p) =>
-        (p.signal === "STRONG_UP" || p.signal === "UP") &&
-        (p.edge ?? 0) > 0
-    )
-    .sort((a, b) => (b.value_score ?? -99) - (a.value_score ?? -99));
-
-  // Fallback: any positive-edge player sorted by value_score
-  const mustHaveFallback = [...withEdge]
-    .filter((p) => (p.edge ?? 0) > 0)
-    .sort((a, b) => (b.value_score ?? -99) - (a.value_score ?? -99));
-
-  const mustHave = pick(
-    mustHavePrimary.length >= PLAYERS_PER_SECTION
-      ? mustHavePrimary
-      : [...mustHavePrimary, ...mustHaveFallback.filter(
-          (p) => !mustHavePrimary.some((m) => m.player_id === p.player_id)
-        )],
-    PLAYERS_PER_SECTION,
-    "must_have"
-  );
-
-  // Breakout: STRONG_UP signal specifically — highest projection upside
-  const breakoutPrimary = [...withEdge]
-    .filter(
-      (p) =>
-        p.signal === "STRONG_UP" &&
-        !mustHave.some((m) => m.player_id === p.player_id)
-    )
-    .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0));
-
-  // Fallback: UP signal players not yet used
-  const breakoutFallback = [...withEdge]
-    .filter(
-      (p) =>
-        p.signal === "UP" &&
-        !mustHave.some((m) => m.player_id === p.player_id)
-    )
-    .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0));
-
-  const breakout = pick(
-    breakoutPrimary.length >= PLAYERS_PER_SECTION
-      ? breakoutPrimary
-      : [...breakoutPrimary, ...breakoutFallback.filter(
-          (p) => !breakoutPrimary.some((b) => b.player_id === p.player_id)
-        )],
-    PLAYERS_PER_SECTION,
-    "breakout"
-  );
-
-  // Avoid: DOWN or STRONG_DOWN signal, worst edge first
-  const avoidPrimary = [...withEdge]
-    .filter(
-      (p) =>
-        (p.signal === "DOWN" || p.signal === "STRONG_DOWN") &&
+        (p.edge_canonical ?? 0) < 0 &&
         !mustHave.some((m) => m.player_id === p.player_id) &&
         !breakout.some((b) => b.player_id === p.player_id)
     )
-    .sort((a, b) => (a.edge ?? 0) - (b.edge ?? 0));
+    .sort((a, b) => (a.edge_canonical ?? 0) - (b.edge_canonical ?? 0));
 
-  // Fallback: most negative edge players not already used
-  const avoidFallback = [...withEdge]
-    .filter(
-      (p) =>
-        !mustHave.some((m) => m.player_id === p.player_id) &&
-        !breakout.some((b) => b.player_id === p.player_id) &&
-        !avoidPrimary.some((av) => av.player_id === p.player_id)
-    )
-    .sort((a, b) => (a.edge ?? 0) - (b.edge ?? 0));
-
-  const avoid = pick(
-    avoidPrimary.length >= PLAYERS_PER_SECTION
-      ? avoidPrimary
-      : [...avoidPrimary, ...avoidFallback],
-    PLAYERS_PER_SECTION,
-    "avoid"
-  );
+  const avoid = pick(avoidPool, PLAYERS_PER_SECTION, "avoid");
 
   const allEdgeIds = new Set<string>();
   [...mustHave, ...breakout, ...avoid].forEach((p) => {

@@ -19,7 +19,7 @@ type Section = "must_have" | "breakout" | "do_not_start";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, edge, value_score, projection_confidence, signal, signal_tag, games_played, status, manual_status, is_bye";
+const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, breakeven_canonical, edge, edge_canonical, value_score, projection_confidence, signal, signal_tag, games_played, status, manual_status, is_bye";
 
 // Round lock: Next Thursday 19:35 AEDT
 function getNextRoundLock(): Date {
@@ -853,6 +853,11 @@ export default function AFLRoundEdgeBoard() {
           form_delta:            null,
           form_label:            null,
           value_signal:          null,
+          edge_canonical:        r.edge_canonical != null ? Number(r.edge_canonical) : null,
+          breakeven_canonical:   r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
+          signal_canonical:      (r.signal_canonical as string) ?? null,
+          category_canonical:    (r.category_canonical as string) ?? null,
+          action_canonical:      (r.action_canonical as string) ?? null,
         };
       });
 
