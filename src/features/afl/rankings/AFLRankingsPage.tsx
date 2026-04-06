@@ -231,7 +231,7 @@ function InlineGateBlock({ onUpgrade }: { onUpgrade: () => void }) {
 }
 
 export default function AFLRankingsPage() {
-  const { isPremium } = useAuth();
+  const { isPremium, user } = useAuth();
 
   const [activeTab, setActiveTab] = useState<RankingsTab>("best");
   const [rows, setRows] = useState<RankingRow[]>([]);
@@ -355,6 +355,8 @@ export default function AFLRankingsPage() {
     setHighlightedPlayerId(null);
 
     const { data, error } = await supabase.rpc("get_rankings_safe", {
+      p_user_id: user?.id ?? null,
+      p_is_bot: false,
       p_limit: 500,
     });
 
@@ -372,7 +374,7 @@ export default function AFLRankingsPage() {
     }
 
     setLoading(false);
-  }, [isPremium]);
+  }, [user?.id]);
 
   useEffect(() => {
     fetchRankings();

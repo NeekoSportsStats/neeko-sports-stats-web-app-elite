@@ -18,7 +18,7 @@ import { MarketSearchBar } from "./MarketSearchBar";
 import { DataFreshnessIndicator, StaleDataWarning } from "@/components/ui/DataFreshnessIndicator";
 
 export default function MarketWatchPageElite() {
-  const { isPremium, loading: authLoading } = useAuth();
+  const { isPremium, user, loading: authLoading } = useAuth();
   const [players, setPlayers] = useState<MWPlayerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState<DerivedPlayer | null>(null);
@@ -29,17 +29,14 @@ export default function MarketWatchPageElite() {
   const [searchedPlayer, setSearchedPlayer] = useState<DerivedPlayer | null>(null);
   const [seoOpen, setSeoOpen] = useState(false);
 
-  const fetchData = useCallback(async (_premium: boolean) => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("v_player_rankings_cache")
-        .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, breakeven_canonical, edge_canonical, value_score_canonical, signal_canonical, category_canonical, action_canonical, summary_short, summary_long, matchup_label, matchup_rating, matchup_multiplier, consistency, neeko_rating, status, manual_status, is_bye, games_played, cached_at")
-        .gte("games_played", 3)
-        .gte("projection_final", 55)
-        .eq("is_bye", false)
-        .order("projection_final", { ascending: false, nullsFirst: false })
-        .limit(500);
+      const { data, error } = await supabase.rpc("get_market_watch_safe", {
+        p_user_id: user?.id ?? null,
+        p_is_bot: false,
+        p_limit: 300,
+      });
 
       if (error) throw error;
 
@@ -56,7 +53,7 @@ export default function MarketWatchPageElite() {
           player_name: r.player_name,
           team: r.team ?? r.team_name ?? '',
           team_name: r.team_name ?? r.team ?? '',
-          position: r.position,
+          position: r.player_position ?? r.position ?? '',
           price: r.price ?? 0,
           prev_price: r.prev_price ?? null,
           price_change: r.price_change ?? null,
@@ -83,7 +80,7 @@ export default function MarketWatchPageElite() {
           summary_long: r.summary_long ?? null,
           matchup_label: r.matchup_label ?? null,
           matchup_rating: r.matchup_rating ?? null,
-          matchup_multiplier: r.matchup_multiplier ?? null,
+          matchup_multiplier: r.matchup_multiplier != null ? Number(r.matchup_multiplier) : null,
           consistency: r.consistency ?? null,
           neeko_rating: r.neeko_rating ?? null,
           is_injured: isInjured,
@@ -93,6 +90,7 @@ export default function MarketWatchPageElite() {
           manual_status: r.manual_status ?? null,
           cached_at: r.cached_at ?? null,
           display_signal: displaySignal,
+          access_tier: r.access_tier ?? 'locked',
         };
       });
 
@@ -105,18 +103,18 @@ export default function MarketWatchPageElite() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   const handleRefresh = useCallback(() => {
     track("market_watch_refresh");
-    fetchData(isPremium);
-  }, [fetchData, isPremium]);
+    fetchData();
+  }, [fetchData]);
 
   useEffect(() => { track("market_watch_view"); }, []);
   useEffect(() => {
     if (authLoading) return;
-    fetchData(isPremium);
-  }, [authLoading, isPremium, fetchData]);
+    fetchData();
+  }, [authLoading, fetchData]);
 
   // MEMOIZE: Classification (expensive for 200+ players)
   const classified = useMemo(() => {

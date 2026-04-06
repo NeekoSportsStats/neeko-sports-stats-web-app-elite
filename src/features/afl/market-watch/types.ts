@@ -55,6 +55,7 @@ export interface MWPlayerRow {
   snapshot_updated_at?: string;
   cached_at?: string;
   display_signal?: "TARGET" | "WATCH" | "AVOID";
+  access_tier?: "premium" | "free" | "locked";
 }
 
 export interface MWSummaryCard {

@@ -768,7 +768,7 @@ function LoadingSkeleton() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AFLRoundEdgeBoard() {
-  const { isPremium } = useAuth();
+  const { isPremium, user } = useAuth();
   const [players, setPlayers] = useState<RankingRow[]>([]);
   const [refreshedAt, setRefreshedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -787,15 +787,11 @@ export default function AFLRoundEdgeBoard() {
     setError(null);
     try {
       const [rankResult, accResult] = await Promise.all([
-        supabase
-          .from("v_player_rankings_cache")
-          .select(COLUMNS)
-          .gte("games_played", 3)
-          .gt("projection_final", 50)
-          .eq("is_bye", false)
-          .not("status", "in", '("injured","out","omitted")')
-          .not("manual_status", "in", '("injured","out","omitted")')
-          .order("edge_canonical", { ascending: false, nullsFirst: false }),
+        supabase.rpc("get_edge_board_safe", {
+          p_user_id: user?.id ?? null,
+          p_is_bot: false,
+          p_limit: 200,
+        }),
         supabase.from("v_projection_accuracy_homepage").select("within_20").maybeSingle(),
       ]);
 
@@ -806,7 +802,7 @@ export default function AFLRoundEdgeBoard() {
           player_id:               r.player_id ?? null,
           player_name:             r.player_name ?? "",
           team:                    r.team ?? "",
-          position:                r.position ?? null,
+          position:                r.player_position ?? r.position ?? null,
           projection_final:        r.projection_final != null ? Number(r.projection_final) : null,
           ceiling_estimate:        null,
           floor_estimate:          null,
@@ -842,12 +838,12 @@ export default function AFLRoundEdgeBoard() {
           season_avg:              null,
           last_3_avg:              null,
           value:                   null,
-          why:                     null,
+          why:                     r.summary_short ?? null,
           long:                    null,
           market_watch_category:   (r.category_canonical as string) ?? null,
           signal_tag:              (r.signal_canonical as string) ?? null,
           upside_pct:              null,
-          ai_summary:              null,
+          ai_summary:              r.summary_short ?? null,
           status:                  (r.status as string) ?? null,
           manual_status:           (r.manual_status as string) ?? null,
           is_available:            null,
@@ -880,7 +876,7 @@ export default function AFLRoundEdgeBoard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.id]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
