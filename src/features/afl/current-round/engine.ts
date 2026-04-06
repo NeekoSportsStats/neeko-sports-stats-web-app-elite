@@ -25,13 +25,8 @@ export function buildCurrentRoundPlayers(
     return { captains: [], topPicks: [], valuePicks: [], safePicks: [], riskPicks: [] };
   }
 
-  // Exclude only genuinely unavailable players — no games_played or projection floor filter
   const available = players.filter(
-    (p) =>
-      (p.status ?? "").toUpperCase() !== "OUT" &&
-      (p.manual_status ?? "").toUpperCase() !== "OUT" &&
-      (p.manual_status ?? "").toUpperCase() !== "INJURED" &&
-      (p.manual_status ?? "").toUpperCase() !== "OMITTED"
+    (p) => !p.is_injured && !p.is_bye
   );
 
 

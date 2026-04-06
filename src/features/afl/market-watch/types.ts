@@ -41,6 +41,7 @@ export interface MWPlayerRow {
   status: string | null;
   manual_status: string | null;
   is_bye: boolean;
+  is_injured: boolean;
 
   cached_at: string | null;
   display_signal: "TARGET" | "WATCH" | "AVOID";

@@ -45,10 +45,11 @@ function tierFromSignal(p: MWPlayerRow): SignalTier {
 function isEligible(p: MWPlayerRow): boolean {
   if (!p.player_id || !p.player_name) return false;
   if (p.is_bye === true) return false;
-  const st = (p.status ?? "").toLowerCase();
-  const ms = (p.manual_status ?? "").toLowerCase();
-  if (st === "injured" || st === "out" || st === "bye") return false;
-  if (ms === "injured" || ms === "out" || ms === "bye") return false;
+  if (p.is_injured === true) return false;
+  const st = (p.status ?? "").toUpperCase();
+  const ms = (p.manual_status ?? "").toUpperCase();
+  if (st === "INJURED" || st === "OUT" || st === "OMITTED") return false;
+  if (ms === "INJURED" || ms === "OUT" || ms === "OMITTED") return false;
   return true;
 }
 

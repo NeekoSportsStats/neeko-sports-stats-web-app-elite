@@ -54,6 +54,7 @@ export interface RankingRow {
   bye_round: number | null;
   is_bye: boolean | null;
   bye_next_round: boolean | null;
+  is_injured: boolean | null;
 
   consistency: number | null;
   consistency_tier: string | null;

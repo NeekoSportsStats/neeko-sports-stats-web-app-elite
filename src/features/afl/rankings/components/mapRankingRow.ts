@@ -60,6 +60,11 @@ export function mapRankingRow(r: Record<string, unknown>): RankingRow {
     bye_round:               r.bye_round != null ? Number(r.bye_round) : null,
     is_bye:                  r.is_bye != null ? Boolean(r.is_bye) : null,
     bye_next_round:          r.bye_next_round != null ? Boolean(r.bye_next_round) : null,
+    is_injured:              r.is_injured != null ? Boolean(r.is_injured) : (
+      (['injured', 'out', 'omitted'].includes((r.status as string ?? '').toLowerCase()) ||
+       ['injured', 'out', 'omitted'].includes((r.manual_status as string ?? '').toLowerCase()))
+        ? true : false
+    ),
 
     consistency:             r.consistency != null ? Number(r.consistency) : null,
     consistency_tier:        (r.consistency_tier as string) ?? null,

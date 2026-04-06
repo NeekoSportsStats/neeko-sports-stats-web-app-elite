@@ -69,7 +69,10 @@ export default function MarketWatchPageElite() {
         const displaySignal: "TARGET" | "WATCH" | "AVOID" =
           catRaw === "target" ? "TARGET" : catRaw === "avoid" ? "AVOID" : "WATCH";
 
-        const isBye = r.is_bye === true || (r.status ?? '').toLowerCase() === 'bye' || (r.manual_status ?? '').toLowerCase() === 'bye';
+        const isBye = r.is_bye === true;
+        const isInjured = r.is_injured === true ||
+          ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()) ||
+          ['injured', 'out', 'omitted'].includes((r.manual_status ?? '').toLowerCase());
 
         return {
           player_id: r.player_id,
@@ -101,6 +104,7 @@ export default function MarketWatchPageElite() {
           consistency: r.consistency != null ? Number(r.consistency) : null,
           neeko_rating: r.neeko_rating != null ? Number(r.neeko_rating) : null,
           is_bye: isBye,
+          is_injured: isInjured,
           status: r.status ?? null,
           manual_status: r.manual_status ?? null,
           cached_at: r.cached_at ?? null,
@@ -109,7 +113,7 @@ export default function MarketWatchPageElite() {
         };
       });
 
-      const finalPlayers = mapped.filter(p => !p.is_bye);
+      const finalPlayers = mapped.filter(p => !p.is_bye && !p.is_injured);
 
       _mwCache.data = finalPlayers;
       _mwCache.ts = Date.now();

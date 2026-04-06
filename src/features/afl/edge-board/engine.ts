@@ -23,12 +23,7 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
   }
 
   const available = players.filter(
-    (p) =>
-      (p.manual_status ?? "").toUpperCase() !== "OUT" &&
-      (p.manual_status ?? "").toUpperCase() !== "INJURED" &&
-      (p.manual_status ?? "").toUpperCase() !== "OMITTED" &&
-      (p.status ?? "").toUpperCase() !== "OUT" &&
-      !p.is_bye
+    (p) => !p.is_injured && !p.is_bye
   );
 
   console.log(`[EdgeBoard] available players after status filter: ${available.length} / ${players.length}`);
