@@ -41,12 +41,22 @@ interface PlayerData {
   ceiling_estimate?: number | null;
   floor_estimate?: number | null;
   consistency?: number | null;
+  consistency_score?: number | null;
   form_score?: number | null;
   value_score?: number | null;
   best_value_score?: number | null;
   neeko_rating: number | null;
   neeko_rating_scaled?: number | null;
+  // legacy signal
   signal?: string | null;
+  signal_tag?: string | null;
+  // canonical fields (source of truth)
+  edge_canonical?: number | null;
+  breakeven_canonical?: number | null;
+  value_score_canonical?: number | null;
+  signal_canonical?: string | null;
+  category_canonical?: string | null;
+  action_canonical?: string | null;
   trend_signal?: string | null;
   trend_score?: number | null;
   form_delta?: number | null;
@@ -57,6 +67,8 @@ interface PlayerData {
   recommendation_short?: string | null;
   summary_short?: string | null;
   summary_long?: string | null;
+  ai_recommendation?: string | null;
+  ai_summary?: string | null;
   long?: string | null;
   why?: string | null;
   games_played?: number;
@@ -66,14 +78,18 @@ interface PlayerData {
   risk_rating?: number | null;
   form_rating?: number | null;
   matchup_rating?: string | number | null;
-  consistency_score?: number | null;
+  matchup_label?: string | null;
+  matchup_multiplier?: number | null;
   captain_rating?: string | null;
   captain_score?: number | null;
   value_tag?: string | null;
   value_tier?: string | null;
   breakeven?: number | null;
   bye_round?: number | null;
+  is_bye?: boolean | null;
   manual_status?: string | null;
+  status?: string | null;
+  is_available?: boolean | null;
   is_locked?: boolean;
   is_premium?: boolean;
 }
@@ -530,9 +546,9 @@ function PlayerSEOSection({
 
   const seoContent = `${player.player_name} is an AFL Fantasy ${pos} for ${player.team || player.team_name} in the 2026 season. Our AI-powered projection system rates ${player.player_name} with a projected fantasy score of ${Math.round(proj ?? 0)} points, with a ceiling of ${Math.round(ceilingVal ?? 0)} and floor of ${Math.round(floorVal ?? 0)}.
 
-${player.signal ? `Current AI signal: ${formatEdgeSignalLabel(signalFromField(player.signal))}. ` : ""}${player.summary_short ?? ""}
+${activeSignal ? `Current AI signal: ${formatEdgeSignalLabel(signalFromField(activeSignal))}. ` : ""}${player.summary_short ?? player.recommendation_short ?? ""}
 
-Fantasy relevance: ${player.player_name} is ${valueLabel ? `categorised as ${valueLabel}` : "rated"} for the 2026 AFL Fantasy season. ${player.price ? `Current price: ${fmtPrice(player.price)}.` : ""} ${player.breakeven != null ? `Breakeven: ${Math.round(player.breakeven)} points to maintain current price.` : ""} ${player.captain_rating ? `Captain Rating: ${player.captain_rating}.` : ""}
+Fantasy relevance: ${player.player_name} is ${valueLabel ? `categorised as ${valueLabel}` : "rated"} for the 2026 AFL Fantasy season. ${player.price ? `Current price: ${fmtPrice(player.price)}.` : ""} ${(player.breakeven_canonical ?? player.breakeven) != null ? `Breakeven: ${Math.round((player.breakeven_canonical ?? player.breakeven)!)} points to maintain current price.` : ""} ${player.captain_rating ? `Captain Rating: ${player.captain_rating}.` : ""}
 
 Use Neeko's weekly AFL Fantasy decision engine to track ${player.player_name}'s price movements, projection changes, matchup advantages, and whether to start, sit, trade, or captain this player each round.`;
 
@@ -659,32 +675,13 @@ export default function AFLPlayerPage() {
     enabled: !!player?.player_position,
   });
 
-  const [fetchedSummaryLong, setFetchedSummaryLong] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!player?.player_id) return;
-    if (player.long || player.summary_long) return;
-    let cancelled = false;
-    supabase
-      .schema("ai" as never)
-      .from("player_ai_analysis")
-      .select("summary_long")
-      .eq("player_id", player.player_id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) setFetchedSummaryLong((data as any)?.summary_long ?? null);
-      });
-    return () => { cancelled = true; };
-  }, [player?.player_id, player?.long, player?.summary_long]);
-
   const aiAnalysis = useMemo(() => {
     if (!player) return null;
-    if (!isPremium && player?.is_locked) return null;
-    const analysis = player.long ?? player.summary_long ?? fetchedSummaryLong ?? null;
+    const analysis = player.summary_long ?? player.ai_summary ?? player.ai_recommendation ?? player.long ?? null;
     const captain_recommendation = player.captain_rating ?? null;
     if (!analysis) return null;
     return { analysis, captain_recommendation };
-  }, [player?.long, player?.summary_long, fetchedSummaryLong, player?.captain_rating, player?.is_locked, isPremium]);
+  }, [player?.summary_long, player?.ai_summary, player?.ai_recommendation, player?.long, player?.captain_rating]);
 
   if (isLoading) {
     return (
@@ -717,7 +714,8 @@ export default function AFLPlayerPage() {
 
   const consistencyBadge = getConsistencyBadge(player.consistency_score ?? player.consistency ?? null);
   const capStyle         = getCaptainStyle(player.captain_rating ?? null);
-  const recColor         = getEdgeSignalColor(signalFromField(player.signal ?? null));
+  const activeSignal     = player.signal_canonical ?? player.signal ?? null;
+  const recColor         = getEdgeSignalColor(signalFromField(activeSignal));
   const neekoRBadge      = getNeekoRatingBadge(player.neeko_rating ?? null);
   const riskBadge        = getRiskBadge(Number(player.risk_rating) ?? null);
 
@@ -738,9 +736,11 @@ export default function AFLPlayerPage() {
 
   const formScore = player.form_score ?? player.form_rating ?? null;
 
-  const last3Avg = (ceilingVal != null && floorVal != null && proj != null)
-    ? Math.round(ceilingVal * 0.3 + proj * 0.4 + floorVal * 0.3)
-    : null;
+  const last3Avg = player.last_3_avg != null
+    ? Math.round(player.last_3_avg)
+    : (ceilingVal != null && floorVal != null && proj != null)
+      ? Math.round(ceilingVal * 0.3 + proj * 0.4 + floorVal * 0.3)
+      : null;
 
   const valueLabel = (() => {
     if (player.value_tag) return player.value_tag;
@@ -755,19 +755,19 @@ export default function AFLPlayerPage() {
   const matchupLabel    = fmtMatchup(player.matchup_rating);
   const hasMatchup      = matchupLabel != null && matchupLabel !== "—" && matchupLabel.toUpperCase() !== "NEUTRAL";
 
-  const _sig   = signalFromField(player.signal);
+  const _sig   = signalFromField(activeSignal);
   const isBuy  = _sig === "BUY" || _sig === "STRONG_BUY";
   const isSell = _sig === "SELL" || _sig === "STRONG_SELL";
 
   const pageTitle = `${player.player_name} AFL Fantasy Stats, Projection & Value 2026 | Neeko`;
-  const pageDescription = player.value_score && player.signal
-    ? `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points. ${getPositionName(player.player_position)} rankings, value score ${Math.round(player.value_score)}, AI signal: ${formatEdgeSignalLabel(signalFromField(player.signal))}. Updated weekly.`
+  const pageDescription = player.value_score && activeSignal
+    ? `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points. ${getPositionName(player.player_position)} rankings, value score ${Math.round(player.value_score)}, AI signal: ${formatEdgeSignalLabel(signalFromField(activeSignal))}. Updated weekly.`
     : `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points. ${getPositionName(player.player_position)} rankings and AI analysis. Updated weekly.`;
   const pageUrl  = `https://neekostats.com.au/sports/afl/players/${slug}`;
   const keywords = `${player.player_name}, ${player.team}, AFL Fantasy, ${player.player_position}, fantasy football, player stats, projection, value, ${getPositionName(player.player_position)}`;
 
   const aiCtx = { riskRating: player.risk_rating ?? null, confidence: player.projection_confidence ?? null };
-  const rawExtended  = player.long ?? aiAnalysis?.analysis ?? null;
+  const rawExtended  = aiAnalysis?.analysis ?? null;
   const extendedText = sharpenAIText(rawExtended, aiCtx);
   const hasAIText    = !!extendedText && extendedText !== "Model analysis is currently generating.";
   const isStale      = isAITextStale(rawExtended, { projection_final: player.projection_final, ceiling_estimate: ceilingVal, floor_estimate: floorVal });
@@ -844,8 +844,8 @@ export default function AFLPlayerPage() {
                 <p className="text-[11px] text-white/30 mt-1">AI-powered AFL Fantasy decision · 2026</p>
               </div>
               <div className="flex flex-col items-end gap-1.5 shrink-0">
-                {(player.trend_signal || player.signal) && (
-                  <RecBadge trendSignal={player.trend_signal ?? player.signal} />
+                {(player.trend_signal || activeSignal) && (
+                  <RecBadge trendSignal={player.trend_signal ?? activeSignal} />
                 )}
                 {player.manual_status && player.manual_status !== 'active' && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-red-500/25 bg-red-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-red-400">
@@ -903,13 +903,15 @@ export default function AFLPlayerPage() {
                     <Zap size={9} className="text-[#F5C84C]/60" />
                     Verdict
                   </p>
-                  {player.signal ? (
+                  {activeSignal ? (
                     <>
                       <p className="text-base font-bold leading-tight" style={{ color: recColor }}>
-                        {formatEdgeSignalLabel(signalFromField(player.signal))}
+                        {formatEdgeSignalLabel(signalFromField(activeSignal))}
                       </p>
-                      {player.why && (
-                        <p className="text-[10px] text-white/40 mt-0.5 leading-snug line-clamp-2">{player.why}</p>
+                      {(player.recommendation_short ?? player.summary_short ?? player.why) && (
+                        <p className="text-[10px] text-white/40 mt-0.5 leading-snug line-clamp-2">
+                          {player.recommendation_short ?? player.summary_short ?? player.why}
+                        </p>
                       )}
                     </>
                   ) : (
@@ -992,10 +994,10 @@ export default function AFLPlayerPage() {
             </div>
             <div className="rounded-lg bg-white/[0.04] border border-white/5 px-3 py-3">
               <p className="text-[9px] text-white/35 uppercase tracking-wider mb-1">Breakeven</p>
-              {player.breakeven != null ? (
+              {(player.breakeven_canonical ?? player.breakeven) != null ? (
                 <>
-                  <p className={`text-base font-bold tabular-nums ${proj != null && player.breakeven > proj ? "text-red-400" : "text-emerald-400"}`}>
-                    {Math.round(player.breakeven)}
+                  <p className={`text-base font-bold tabular-nums ${proj != null && (player.breakeven_canonical ?? player.breakeven)! > proj ? "text-red-400" : "text-emerald-400"}`}>
+                    {Math.round((player.breakeven_canonical ?? player.breakeven)!)}
                   </p>
                   <p className="text-[10px] text-white/30 mt-0.5">pts needed</p>
                 </>
@@ -1047,10 +1049,10 @@ export default function AFLPlayerPage() {
                       Strong buy signal this round
                     </li>
                   )}
-                  {player.breakeven != null && proj != null && player.breakeven < proj && (
+                  {(player.breakeven_canonical ?? player.breakeven) != null && proj != null && (player.breakeven_canonical ?? player.breakeven)! < proj && (
                     <li className="text-[11px] text-emerald-400/70 leading-snug flex items-start gap-1.5">
                       <span className="mt-0.5">·</span>
-                      Projection beats breakeven by {Math.round(proj - player.breakeven)} pts
+                      Projection beats breakeven by {Math.round(proj - (player.breakeven_canonical ?? player.breakeven)!)} pts
                     </li>
                   )}
                   {hasMatchup && (
@@ -1093,10 +1095,10 @@ export default function AFLPlayerPage() {
                       AI flags as trade candidate
                     </li>
                   )}
-                  {player.breakeven != null && proj != null && player.breakeven > proj && (
+                  {(player.breakeven_canonical ?? player.breakeven) != null && proj != null && (player.breakeven_canonical ?? player.breakeven)! > proj && (
                     <li className="text-[11px] text-red-400/70 leading-snug flex items-start gap-1.5">
                       <span className="mt-0.5">·</span>
-                      Must score {Math.round(player.breakeven - proj)} more than projected to hold value
+                      Must score {Math.round((player.breakeven_canonical ?? player.breakeven)! - proj)} more than projected to hold value
                     </li>
                   )}
                   {!player.manual_status && !player.bye_round && !isSell && player.risk_rating == null && (
