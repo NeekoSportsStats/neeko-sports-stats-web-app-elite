@@ -287,7 +287,7 @@ function TeamSEOBlock({ teamName, players }: { teamName: string; players: TeamPl
   const topPlayer = players[0];
   const topProj = topPlayer ? fmtProj(topPlayer.projection) : '—';
 
-  const buys = players.filter(p => p.signal === 'STRONG_UP' || p.signal === 'UP');
+  const buys = players.filter(p => { const sig = signalFromField(p.signal); return sig === 'STRONG_BUY' || sig === 'BUY'; });
   const valuePickNames = buys.slice(0, 3).map(p => p.player_name).join(', ');
 
   return (
@@ -413,7 +413,7 @@ export default function AFLTeamPage() {
   const accentSafe = accentColor === '#FFD200' ? '#F5C84C' : accentColor;
 
   const buyCt = useMemo(() =>
-    players.filter(p => p.signal === 'STRONG_UP' || p.signal === 'UP').length,
+    players.filter(p => { const sig = signalFromField(p.signal); return sig === 'STRONG_BUY' || sig === 'BUY'; }).length,
     [players]
   );
 
