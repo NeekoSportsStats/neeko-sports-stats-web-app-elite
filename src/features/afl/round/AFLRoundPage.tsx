@@ -317,15 +317,15 @@ export default function AFLRoundPage() {
                       <div className="text-[11px] text-white/35">{p.team} · {p.position}</div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-sm font-bold text-emerald-400">+{(p.value_score ?? 0).toFixed(1)}</div>
-                      <div className="text-[10px] text-white/30">value score</div>
+                      <div className="text-sm font-bold text-emerald-400">{(p.value_score ?? 0).toFixed(2)}</div>
+                      <div className="text-[10px] text-white/30">value ratio</div>
                     </div>
                   </Link>
                 ))}
               </div>
             )}
             <p className="mt-3 text-xs text-white/30 leading-relaxed">
-              Value score measures projected output relative to current price. Positive = underpriced.
+              Value ratio = projection ÷ baseline. Above 1.05 = strong value, below 0.95 = overpriced.
               See the full <Link to="/sports/afl/market-watch" className="text-white/50 underline underline-offset-2 hover:text-white transition-colors">Market Watch</Link> for all trade targets.
             </p>
           </section>
@@ -359,8 +359,8 @@ export default function AFLRoundPage() {
                       <div className="text-[11px] text-white/35">{p.team} · {p.position}</div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="text-sm font-bold text-red-400">{(p.value_score ?? 0).toFixed(1)}</div>
-                      <div className="text-[10px] text-white/30">value score</div>
+                      <div className="text-sm font-bold text-red-400">{(p.value_score ?? 0).toFixed(2)}</div>
+                      <div className="text-[10px] text-white/30">value ratio</div>
                     </div>
                   </Link>
                 ))}

@@ -190,6 +190,16 @@ export function fmtValueScore(v: number | null | undefined): string {
   return n.toFixed(2);
 }
 
+export function getValueScoreLabel(v: number | null | undefined): string {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (isNaN(n)) return "—";
+  if (n >= 1.2)  return "Elite Value";
+  if (n >= 1.05) return "Strong Value";
+  if (n >= 0.95) return "Fair Value";
+  return "Poor Value";
+}
+
 export function fmtUpdatedAt(ts: string | null): string {
   if (!ts) return "";
   try {
@@ -299,9 +309,9 @@ export function normaliseConfidence(
 
 export function getValueScoreColor(v: number | null): string {
   if (v == null) return "text-white/30";
-  if (v >= 6.0) return "text-green-400";
-  if (v >= 4.5) return "text-[#F5C84C]";
-  if (v >= 3.0) return "text-white/50";
+  if (v >= 1.2)  return "text-green-400";
+  if (v >= 1.05) return "text-[#F5C84C]";
+  if (v >= 0.95) return "text-white/50";
   return "text-red-400";
 }
 
@@ -521,8 +531,8 @@ export function computeKpiTiles(rows: RankingRow[]) {
     ? captainRows.reduce((s, r) => s + (r.projection_final ?? 0), 0) / captainRows.length
     : null;
 
-  // value_score scale: >= 6.0 = ELITE VALUE, >= 4.5 = STRONG VALUE, >= 3.0 = SOLID VALUE
-  const valueUpgrades = rows.filter((r) => (r.value_score ?? 0) >= 4.5).length;
+  // value_score_canonical ratio: >= 1.2 = Elite Value, >= 1.05 = Strong Value, >= 0.95 = Fair Value
+  const valueUpgrades = rows.filter((r) => (r.value_score ?? 0) >= 1.05).length;
   const trapAlerts = rows.filter((r) => {
     const t = (r.value_tag ?? "").toUpperCase();
     return t === "OVERPRICED" || t === "LOW VALUE" ||

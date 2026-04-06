@@ -827,10 +827,10 @@ export function PlayerDetailModal({
     if (row.value_tag) return row.value_tag;
     const vs = row.value_score;
     if (vs == null) return null;
-    if (vs >= 120) return "Elite Value";
-    if (vs >= 100) return "Strong Value";
-    if (vs >= 80) return "Fair Value";
-    return "Overpriced";
+    if (vs >= 1.2)  return "Elite Value";
+    if (vs >= 1.05) return "Strong Value";
+    if (vs >= 0.95) return "Fair Value";
+    return "Poor Value";
   })();
   const valueLabelStyle = getValueTagStyle(valueLabel);
   const matchupLabel = fmtMatchup(row.matchup_rating);

@@ -74,6 +74,7 @@ export function getEdgeSignalColor(signal: EdgeSignal | string | null): string {
 
 export function formatValueScore(value: number | null): string {
   if (value == null) return "—";
-  if (value > 0) return `+${value.toFixed(1)}`;
-  return value.toFixed(1);
+  const n = Number(value);
+  if (isNaN(n)) return "—";
+  return n.toFixed(2);
 }

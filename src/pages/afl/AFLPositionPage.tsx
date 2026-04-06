@@ -178,7 +178,7 @@ export default function AFLPositionPage() {
                       <p className="text-xs font-semibold text-white truncate">{player.player_name}</p>
                       <p className="text-[10px] text-white/40">{player.team}</p>
                     </div>
-                    <p className="text-sm font-bold text-emerald-400 ml-2">{Math.round(player.value_score || 0)}</p>
+                    <p className="text-sm font-bold text-emerald-400 ml-2">{(player.value_score || 0).toFixed(2)}</p>
                   </Link>
                 ))}
               </div>
@@ -262,7 +262,7 @@ export default function AFLPositionPage() {
                       {player.value_score != null && (
                         <div className="text-right hidden sm:block">
                           <p className="text-[10px] text-white/40 mb-0.5">Value</p>
-                          <p className="text-sm font-semibold text-emerald-400">{Math.round(player.value_score)}</p>
+                          <p className="text-sm font-semibold text-emerald-400">{(player.value_score ?? 0).toFixed(2)}</p>
                         </div>
                       )}
                       {!player.is_locked && (

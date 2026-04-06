@@ -100,8 +100,8 @@ function getPositionBadgeStyle(pos: string | null): string {
 
 function getValueScoreColor(v: number | null): string {
   if (v == null) return "text-white/30";
-  if (v >= 1.25) return "text-green-400";
-  if (v >= 1.10) return "text-[#F5C84C]";
+  if (v >= 1.2)  return "text-green-400";
+  if (v >= 1.05) return "text-[#F5C84C]";
   if (v >= 0.95) return "text-white/50";
   return "text-red-400";
 }
@@ -146,9 +146,9 @@ function getPrimaryMetric(row: RankingRow, section: Section): { label: string; v
 function buildConfidenceReasons(row: RankingRow, section: Section): string[] {
   const reasons: string[] = [];
   if (section === "must_have" && row.value_score != null) {
-    if (row.value_score >= 1.25) reasons.push("Exceptional value relative to price point");
-    else if (row.value_score >= 1.10) reasons.push("Priced below projected output — value play");
-    else reasons.push("Strong value-to-price ratio in current market");
+    if (row.value_score >= 1.2)  reasons.push("Elite value — projecting well above baseline");
+    else if (row.value_score >= 1.05) reasons.push("Strong value — priced below projected output");
+    else reasons.push("Fair value — projecting at or above baseline");
   }
   if (section === "breakout" && row.signal_tag === "HIGH") {
     reasons.push("High confidence signal — strong breakout candidate this round");

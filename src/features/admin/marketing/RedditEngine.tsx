@@ -61,8 +61,9 @@ function riskLabel(player: MarketingPlayer): string {
 
 function valueLabel(player: MarketingPlayer): string {
   const v = player.value_score ?? 0;
-  if (v >= 70) return "good value";
-  if (v >= 45) return "fair value";
+  if (v >= 1.2)  return "elite value";
+  if (v >= 1.05) return "strong value";
+  if (v >= 0.95) return "fair value";
   return "overpriced";
 }
 
