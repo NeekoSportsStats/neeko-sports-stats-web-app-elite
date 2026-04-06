@@ -235,9 +235,9 @@ Deno.serve(async (req: Request) => {
 
     } else if (command === "run_ai_worker") {
       const { data, error } = await supabase.rpc("fn_fire_ai_worker_wave_range", {
-        p_batch_size: 75,
-        p_start_id: null,
-        p_end_id: null,
+        p_limit_players: 75,
+        p_player_id_gte: null,
+        p_player_id_lt: null,
       });
       if (error) throw error;
       return ok(data);
@@ -248,7 +248,7 @@ Deno.serve(async (req: Request) => {
       return ok(data);
 
     } else if (command === "run_neeko_ai_pipeline") {
-      const { data, error } = await supabase.rpc("fn_run_neeko_ai_pipeline");
+      const { data, error } = await supabase.rpc("run_neeko_ai_pipeline");
       if (error) throw error;
       return ok(data);
 
@@ -310,9 +310,9 @@ Deno.serve(async (req: Request) => {
 
     } else if (command === "generate_all_ai") {
       const { data, error } = await supabase.rpc("fn_fire_ai_worker_wave_range", {
-        p_batch_size: 999,
-        p_start_id: null,
-        p_end_id: null,
+        p_limit_players: 999,
+        p_player_id_gte: null,
+        p_player_id_lt: null,
       });
       if (error) throw error;
       return ok(data);
@@ -324,9 +324,9 @@ Deno.serve(async (req: Request) => {
 
     } else if (command === "generate_player_ai") {
       const { data, error } = await supabase.rpc("fn_fire_ai_worker_wave_range", {
-        p_batch_size: 50,
-        p_start_id: null,
-        p_end_id: null,
+        p_limit_players: 50,
+        p_player_id_gte: null,
+        p_player_id_lt: null,
       });
       if (error) throw error;
       return ok(data);
