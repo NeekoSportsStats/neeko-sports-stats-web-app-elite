@@ -58,21 +58,21 @@ export function normalizePlayer(r: Record<string, unknown>): NormalizedPlayer {
     price_change: r.price_change != null ? Number(r.price_change) : null,
     price_change_pct: r.price_change_pct != null ? Number(r.price_change_pct) : null,
 
-    projection: r.projection_final != null ? Number(r.projection_final) : null,
-    breakeven: r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
-    edge: r.edge_canonical != null ? Number(r.edge_canonical) : null,
-    value_score: r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
+    projection: r.projection != null ? Number(r.projection) : null,
+    breakeven: r.breakeven != null ? Number(r.breakeven) : null,
+    edge: r.edge != null ? Number(r.edge) : null,
+    value_score: r.value_score != null ? Number(r.value_score) : null,
 
     season_avg: r.season_avg != null ? Number(r.season_avg) : null,
     last_3_avg: r.last_3_avg != null ? Number(r.last_3_avg) : null,
     last_5_avg: r.last_5_avg != null ? Number(r.last_5_avg) : null,
 
-    signal: r.signal_canonical != null ? String(r.signal_canonical) : null,
-    category: r.category_canonical != null ? String(r.category_canonical) : null,
-    action: r.action_canonical != null ? String(r.action_canonical) : null,
+    signal: r.signal != null ? String(r.signal) : null,
+    category: r.category != null ? String(r.category) : null,
+    action: r.action != null ? String(r.action) : null,
 
-    why: r.summary_short != null ? String(r.summary_short) : null,
-    why_long: r.summary_long != null ? String(r.summary_long) : null,
+    why: r.why != null ? String(r.why) : null,
+    why_long: r.why_long != null ? String(r.why_long) : null,
 
     games_played: r.games_played != null ? Number(r.games_played) : null,
     status: r.status != null ? String(r.status) : null,

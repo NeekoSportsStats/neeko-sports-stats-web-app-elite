@@ -6,7 +6,7 @@ export interface RankingRow {
   position: string | null;
   position_group?: string | null;
 
-  projection_final: number | null;
+  projection: number | null;
   ceiling_estimate: number | null;
   floor_estimate: number | null;
   form_score: number | null;
@@ -32,12 +32,12 @@ export interface RankingRow {
   last_5_avg: number | null;
   games_played: number | null;
 
-  breakeven_canonical: number | null;
-  edge_canonical: number | null;
-  value_score_canonical: number | null;
-  signal_canonical: string | null;
-  category_canonical: string | null;
-  action_canonical: string | null;
+  breakeven: number | null;
+  edge: number | null;
+  value_score: number | null;
+  signal: string | null;
+  category: string | null;
+  action: string | null;
 
   why: string | null;
   why_long: string | null;
@@ -89,7 +89,7 @@ export interface ChartDataPoint {
 export type RankingsTab = "best" | "value" | "projection";
 export type PositionFilter = "ALL" | "DEF" | "MID" | "FWD" | "RUC";
 export type PremiumFilter = "ALL" | "DEF" | "MID" | "FWD" | "RUC" | "TOP50" | "TOP100" | "ELITE";
-export type SortKey = "neeko_rating" | "projection_final" | "value_score_canonical" | "projection_confidence" | "risk_rating" | "form_score";
+export type SortKey = "neeko_rating" | "projection" | "value_score" | "projection_confidence" | "risk_rating" | "form_score";
 export type SortDir = "asc" | "desc";
 
 export type RowTier = "premium" | "full" | "partial" | "locked";

@@ -14,7 +14,7 @@ interface PositionPlayer {
   player_name: string;
   team: string;
   neeko_rating: number;
-  projection_final: number;
+  projection: number;
   projection_confidence: number | null;
   value_score: number | null;
   price: number;
@@ -78,7 +78,7 @@ export default function AFLPositionPage() {
     .sort((a, b) => (b.upside_pct || 0) - (a.upside_pct || 0))
     .slice(0, 5);
 
-  const topProjection = players.length > 0 ? Math.round(players[0].projection_final) : 0;
+  const topProjection = players.length > 0 ? Math.round(players[0].projection) : 0;
   const premiumCount = players.filter(p => p.neeko_rating >= 100).length;
 
   const pageTitle = `Best AFL Fantasy ${positionName} 2026 Rankings & Projections | Neeko`;
@@ -256,7 +256,7 @@ export default function AFLPositionPage() {
                     </div>
                     <div className="flex items-center gap-4 shrink-0">
                       <div className="text-right">
-                        <p className="text-base font-bold text-emerald-400 mb-0.5">{Math.round(player.projection_final)}</p>
+                        <p className="text-base font-bold text-emerald-400 mb-0.5">{Math.round(player.projection)}</p>
                         <p className="text-[10px] text-white/40">{formatPrice(player.price)}</p>
                       </div>
                       {player.value_score != null && (

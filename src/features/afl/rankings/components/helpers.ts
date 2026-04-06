@@ -365,12 +365,12 @@ export function getRiskBadge(risk: number | null) {
 
 export function isAITextStale(
   text: string | null | undefined,
-  row: { projection_final?: number | null; ceiling_estimate?: number | null; floor_estimate?: number | null }
+  row: { projection?: number | null; ceiling_estimate?: number | null; floor_estimate?: number | null }
 ): boolean {
   if (!text) return false;
   const nums = [...text.matchAll(/\b(\d{2,3}(?:\.\d)?)\b/g)].map((m) => parseFloat(m[1]));
   if (!nums.length) return false;
-  const fields = [row.projection_final, row.ceiling_estimate, row.floor_estimate].filter((v) => v != null) as number[];
+  const fields = [row.projection, row.ceiling_estimate, row.floor_estimate].filter((v) => v != null) as number[];
   if (!fields.length) return false;
   let mismatches = 0;
   for (const n of nums) {
@@ -525,13 +525,13 @@ export function resolveRecommendationColor(
 export function computeKpiTiles(rows: RankingRow[]) {
   const captainRows = rows
     .filter((r) => r.captain_rating === "Elite Captain" || r.captain_rating === "Strong Captain")
-    .sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0))
+    .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
     .slice(0, 5);
   const captainAvgProj = captainRows.length
-    ? captainRows.reduce((s, r) => s + (r.projection_final ?? 0), 0) / captainRows.length
+    ? captainRows.reduce((s, r) => s + (r.projection ?? 0), 0) / captainRows.length
     : null;
 
-  const valueUpgrades = rows.filter((r) => (r.value_score_canonical ?? 0) >= 1.05).length;
+  const valueUpgrades = rows.filter((r) => (r.value_score ?? 0) >= 1.05).length;
   const trapAlerts = rows.filter((r) =>
     (r.risk_rating ?? 0) >= 65 ||
     (r.projection_confidence ?? 100) < 50
@@ -550,9 +550,9 @@ export const TAB_SORT_KEY: Record<RankingsTab, string> = {
 };
 
 export const TAB_DEFAULT_SORT: Record<RankingsTab, SortKey> = {
-  best: "projection_final",
-  value: "value_score_canonical",
-  projection: "projection_final",
+  best: "projection",
+  value: "value_score",
+  projection: "projection",
 };
 
 export const TAB_DESCRIPTIONS: Record<RankingsTab, string> = {

@@ -19,7 +19,7 @@ type Section = "must_have" | "breakout" | "do_not_start";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven_canonical, edge_canonical, signal_canonical, category_canonical, action_canonical, games_played, status, manual_status, is_bye";
+const COLUMNS = "player_id, player_name, team, player_position, price, projection, breakeven, edge, signal, category, action, games_played, status, manual_status, is_bye";
 
 // Round lock: Next Thursday 19:35 AEDT
 function getNextRoundLock(): Date {
@@ -826,14 +826,17 @@ export default function AFLRoundEdgeBoard() {
           player_id:               r.player_id ?? null,
           player_name:             r.player_name ?? "",
           team:                    r.team ?? "",
+          team_name:               null,
           position:                r.player_position ?? r.position ?? null,
-          projection_final:        r.projection_final != null ? Number(r.projection_final) : null,
+          position_group:          null,
+          projection:              r.projection != null ? Number(r.projection) : null,
           ceiling_estimate:        null,
           floor_estimate:          null,
-          consistency_score:       null,
-          form_rating:             null,
           matchup_rating:          null,
+          matchup_label:           null,
+          matchup_multiplier:      null,
           upside_rating:           null,
+          upside_pct:              null,
           risk_rating:             null,
           form_score:              null,
           projection_confidence:   null,
@@ -845,31 +848,25 @@ export default function AFLRoundEdgeBoard() {
           prev_price:              null,
           price_change:            null,
           price_change_pct:        null,
-          breakeven:               r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
-          value_score:             r.value_score_canonical != null ? Number(r.value_score_canonical)
-                                    : r.edge_canonical != null ? Number(r.edge_canonical)
-                                    : null,
-          best_value_score:        null,
-          value_tag:               null,
-          value_tier:              null,
+          breakeven:               r.breakeven != null ? Number(r.breakeven) : null,
+          edge:                    r.edge != null ? Number(r.edge) : null,
+          value_score:             r.value_score != null ? Number(r.value_score) : null,
+          signal:                  (r.signal as string) ?? null,
+          category:                (r.category as string) ?? null,
+          action:                  (r.action as string) ?? null,
+          why:                     r.why ?? null,
+          why_long:                null,
           recommendation_strength: null,
-          ai_updated_at:           null,
           recommendation_color:    null,
+          consistency:             null,
           consistency_tier:        null,
           total_count:             null,
+          ai_updated_at:           null,
+          cached_at:               null,
           games_played:            r.games_played != null ? Number(r.games_played) : null,
-          baseline:                null,
-          edge:                    r.edge_canonical != null ? Number(r.edge_canonical) : null,
-          signal:                  (r.signal_canonical as string) ?? null,
           season_avg:              null,
           last_3_avg:              null,
-          value:                   null,
-          why:                     r.summary_short ?? null,
-          long:                    null,
-          market_watch_category:   (r.category_canonical as string) ?? null,
-          signal_tag:              (r.signal_canonical as string) ?? null,
-          upside_pct:              null,
-          ai_summary:              r.summary_short ?? null,
+          last_5_avg:              null,
           status:                  (r.status as string) ?? null,
           manual_status:           (r.manual_status as string) ?? null,
           is_available:            null,
@@ -880,15 +877,7 @@ export default function AFLRoundEdgeBoard() {
           trend_signal:            null,
           form_delta:              null,
           form_label:              null,
-          value_signal:            null,
-          edge_canonical:          r.edge_canonical != null ? Number(r.edge_canonical) : null,
-          breakeven_canonical:     r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
-          signal_canonical:        (r.signal_canonical as string) ?? null,
-          category_canonical:      (r.category_canonical as string) ?? null,
-          action_canonical:        (r.action_canonical as string) ?? null,
-          value_score_canonical:   r.value_score_canonical != null ? Number(r.value_score_canonical)
-                                     : r.edge_canonical != null ? Number(r.edge_canonical)
-                                     : null,
+          access_tier:             r.access_tier ?? "locked",
         };
       });
 

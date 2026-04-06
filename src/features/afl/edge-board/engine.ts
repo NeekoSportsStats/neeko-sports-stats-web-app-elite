@@ -34,7 +34,7 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
   console.log(`[EdgeBoard] available players after status filter: ${available.length} / ${players.length}`);
 
   const rankedAll = [...players].sort(
-    (a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)
+    (a, b) => (b.projection ?? 0) - (a.projection ?? 0)
   );
   const rankMap = new Map<string, number>();
   rankedAll.forEach((p, i) => {
@@ -42,7 +42,7 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
   });
 
   const byValueDesc = [...available].sort(
-    (a, b) => (b.value_score_canonical ?? 0) - (a.value_score_canonical ?? 0)
+    (a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)
   );
 
   const usedIds = new Set<string>();

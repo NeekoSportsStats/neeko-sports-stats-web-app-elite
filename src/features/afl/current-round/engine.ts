@@ -38,7 +38,7 @@ export function buildCurrentRoundPlayers(
   console.log(`[CurrentRound] available players after status filter: ${available.length} / ${players.length}`);
 
   const rankedAll = [...players].sort(
-    (a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)
+    (a, b) => (b.projection ?? 0) - (a.projection ?? 0)
   );
   const rankMap = new Map<string, number>();
   rankedAll.forEach((p, i) => {
@@ -49,7 +49,6 @@ export function buildCurrentRoundPlayers(
     const id = p.player_id ?? "";
     return {
       ...p,
-      edge_canonical: p.edge_canonical ?? null,
       overallRank: rankMap.get(id) ?? 999,
       isFeaturedPick: edgeBoardIds.has(id),
     };
@@ -58,13 +57,13 @@ export function buildCurrentRoundPlayers(
   const enriched = available.map(enrich);
 
   const byProjDesc = [...enriched].sort(
-    (a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)
+    (a, b) => (b.projection ?? 0) - (a.projection ?? 0)
   );
   const byEdgeDesc = [...enriched].sort(
-    (a, b) => (b.edge_canonical ?? 0) - (a.edge_canonical ?? 0)
+    (a, b) => (b.edge ?? 0) - (a.edge ?? 0)
   );
   const byEdgeAsc = [...enriched].sort(
-    (a, b) => (a.edge_canonical ?? 0) - (b.edge_canonical ?? 0)
+    (a, b) => (a.edge ?? 0) - (b.edge ?? 0)
   );
 
   // CAPTAINS: top projection players
@@ -85,12 +84,12 @@ export function buildCurrentRoundPlayers(
   // VALUE PICKS: highest edge players not already used
   // Primary: edge > 8, fallback: any positive edge, second fallback: top remaining by projection
   const valuePool = byEdgeDesc.filter((p) => !topIds.has(p.player_id));
-  const valuePrimary = valuePool.filter((p) => (p.edge_canonical ?? 0) > 8).slice(0, OTHER_LIMIT);
+  const valuePrimary = valuePool.filter((p) => (p.edge ?? 0) > 8).slice(0, OTHER_LIMIT);
 
   let valuePicks = valuePrimary;
   if (valuePicks.length < 3) {
     const extra = valuePool
-      .filter((p) => (p.edge_canonical ?? 0) > 0 && !valuePrimary.some((v) => v.player_id === p.player_id))
+      .filter((p) => (p.edge ?? 0) > 0 && !valuePrimary.some((v) => v.player_id === p.player_id))
       .slice(0, OTHER_LIMIT - valuePicks.length);
     valuePicks = [...valuePicks, ...extra];
   }
@@ -111,17 +110,17 @@ export function buildCurrentRoundPlayers(
   const safePrimary = safePool
     .filter(
       (p) =>
-        (p.projection_final ?? 0) >= 80 &&
-        (p.edge_canonical ?? 0) >= -15 &&
-        p.signal_canonical !== "STRONG_DOWN" &&
-        p.signal_canonical !== "DOWN"
+        (p.projection ?? 0) >= 80 &&
+        (p.edge ?? 0) >= -15 &&
+        p.signal !== "STRONG_DOWN" &&
+        p.signal !== "DOWN"
     )
     .slice(0, OTHER_LIMIT);
 
   let safePicks = safePrimary;
   if (safePicks.length < 3) {
     const extra = safePool
-      .filter((p) => !safePrimary.some((s) => s.player_id === p.player_id) && (p.edge_canonical ?? 0) >= -20)
+      .filter((p) => !safePrimary.some((s) => s.player_id === p.player_id) && (p.edge ?? 0) >= -20)
       .slice(0, OTHER_LIMIT - safePicks.length);
     safePicks = [...safePicks, ...extra];
   }
@@ -139,7 +138,7 @@ export function buildCurrentRoundPlayers(
   // RISK PICKS: lowest edge players not already used (derived from edge_canonical)
   // Primary: edge < -5, fallback: most negative edge available
   const riskPool = byEdgeAsc.filter((p) => !safeIds.has(p.player_id));
-  const riskPrimary = riskPool.filter((p) => (p.edge_canonical ?? 0) < -5).slice(0, OTHER_LIMIT);
+  const riskPrimary = riskPool.filter((p) => (p.edge ?? 0) < -5).slice(0, OTHER_LIMIT);
 
   let riskPicks = riskPrimary;
   if (riskPicks.length < 3) {

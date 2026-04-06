@@ -49,35 +49,35 @@ function ValueStrip({ rows }: { rows: RankingRow[] }) {
   const top8 = rows.slice(0, FREE_FULL_ROWS);
 
   const highestProj = top8.reduce<RankingRow | null>((best, r) => {
-    if (r.projection_final == null) return best;
-    if (!best || r.projection_final > (best.projection_final ?? 0)) return r;
+    if (r.projection == null) return best;
+    if (!best || r.projection > (best.projection ?? 0)) return r;
     return best;
   }, null);
 
   const bestValue = top8.reduce<RankingRow | null>((best, r) => {
-    if (r.value_score_canonical == null) return best;
-    if (!best || r.value_score_canonical > (best.value_score_canonical ?? 0)) return r;
+    if (r.value_score == null) return best;
+    if (!best || r.value_score > (best.value_score ?? 0)) return r;
     return best;
   }, null);
 
   const avgProj = (() => {
-    const valid = top8.filter((r) => r.projection_final != null && !r.is_bye);
+    const valid = top8.filter((r) => r.projection != null && !r.is_bye);
     if (valid.length === 0) return null;
-    return valid.reduce((sum, r) => sum + (r.projection_final ?? 0), 0) / valid.length;
+    return valid.reduce((sum, r) => sum + (r.projection ?? 0), 0) / valid.length;
   })();
 
   const cards = [
     {
       icon: <Star size={13} className="text-[#F5C84C]" />,
       label: "Highest Projection",
-      value: highestProj ? fmt(highestProj.projection_final) : "—",
+      value: highestProj ? fmt(highestProj.projection) : "—",
       sub: highestProj?.player_name ?? "—",
       color: "text-[#F5C84C]",
     },
     {
       icon: <TrendingUp size={13} className="text-emerald-400" />,
       label: "Best Value Pick",
-      value: bestValue ? fmtValueScore(bestValue.value_score_canonical) : "—",
+      value: bestValue ? fmtValueScore(bestValue.value_score) : "—",
       sub: bestValue?.player_name ?? "—",
       color: "text-emerald-400",
     },
@@ -202,9 +202,9 @@ function SearchAutocomplete({
                 </p>
                 <p className="text-[11px] text-white/35 mt-0.5">{row.team}{row.position ? ` · ${row.position}` : ""}</p>
               </div>
-              {row.projection_final != null && (
+              {row.projection != null && (
                 <span className="text-xs font-semibold text-white/40 tabular-nums shrink-0 ml-2">
-                  {Math.round(row.projection_final)}
+                  {Math.round(row.projection)}
                 </span>
               )}
             </button>
@@ -274,9 +274,9 @@ export default function AFLRankingsPage() {
       player_name:            r.player_name,
       team:                   r.team ?? r.team_name ?? "",
       team_name:              r.team_name ?? r.team ?? null,
-      position:               normalisePosition(r.position ?? r.position_group ?? null),
+      position:               normalisePosition(r.player_position ?? r.position ?? r.position_group ?? null),
       position_group:         r.position_group ?? null,
-      projection_final:       r.projection_final != null ? Number(r.projection_final) : null,
+      projection:             r.projection != null ? Number(r.projection) : null,
       ceiling_estimate:       r.ceiling != null ? Number(r.ceiling) : (r.ceiling_estimate != null ? Number(r.ceiling_estimate) : null),
       floor_estimate:         r.floor != null ? Number(r.floor) : (r.floor_estimate != null ? Number(r.floor_estimate) : null),
       neeko_rating:           r.neeko_rating_scaled != null ? Number(r.neeko_rating_scaled) : (r.neeko_rating != null ? Number(r.neeko_rating) : null),
@@ -299,14 +299,14 @@ export default function AFLRankingsPage() {
       last_3_avg:             r.last_3_avg != null ? Number(r.last_3_avg) : null,
       last_5_avg:             r.last_5_avg != null ? Number(r.last_5_avg) : null,
       games_played:           r.games_played != null ? Number(r.games_played) : null,
-      breakeven_canonical:    r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
-      edge_canonical:         r.edge_canonical != null ? Number(r.edge_canonical) : null,
-      value_score_canonical:  r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
-      signal_canonical:       r.signal_canonical ?? null,
-      category_canonical:     r.category_canonical ?? null,
-      action_canonical:       r.action_canonical ?? null,
-      why:                    r.summary_short ?? r.why ?? null,
-      why_long:               r.summary_long ?? r.why_long ?? null,
+      breakeven:              r.breakeven != null ? Number(r.breakeven) : null,
+      edge:                   r.edge != null ? Number(r.edge) : null,
+      value_score:            r.value_score != null ? Number(r.value_score) : null,
+      signal:                 r.signal ?? null,
+      category:               r.category ?? null,
+      action:                 r.action ?? null,
+      why:                    r.why ?? null,
+      why_long:               r.why_long ?? null,
       recommendation_strength: r.recommendation_strength ?? null,
       recommendation_color:   r.recommendation_color ?? null,
       consistency:            r.consistency != null ? Number(r.consistency) : null,
@@ -332,13 +332,13 @@ export default function AFLRankingsPage() {
     if (!row.player_id) return {};
     const { data } = await supabase
       .from("v_rankings_free")
-      .select("player_id,summary_short,summary_long,cached_at")
+      .select("player_id,why,why_long,cached_at")
       .eq("player_id", row.player_id)
       .maybeSingle();
     if (!data) return {};
     return {
-      why:           (data as any).summary_short ?? row.why,
-      why_long:      (data as any).summary_long ?? row.why_long,
+      why:           (data as any).why ?? row.why,
+      why_long:      (data as any).why_long ?? row.why_long,
       ai_updated_at: (data as any).cached_at ?? row.ai_updated_at,
     };
   }
@@ -451,7 +451,7 @@ export default function AFLRankingsPage() {
       source:       "rankings",
     });
     if (isUnlocked) {
-      const needsAI = !row.why && !row.long;
+      const needsAI = !row.why && !row.why_long;
       if (needsAI) {
         const aiData = await fetchAIForRow(row);
         if (Object.keys(aiData).length > 0) {
@@ -505,12 +505,12 @@ export default function AFLRankingsPage() {
       });
     } else {
       if (safeActiveTab === "best") {
-        filtered = [...filtered].sort((a, b) => ((b.projection_final ?? -Infinity) - (a.projection_final ?? -Infinity)));
+        filtered = [...filtered].sort((a, b) => ((b.projection ?? -Infinity) - (a.projection ?? -Infinity)));
       } else if (safeActiveTab === "value") {
         filtered = filtered.filter((r) => (r.games_played ?? 0) >= 1 && r.price != null && r.price > 0);
-        filtered = [...filtered].sort((a, b) => ((b.best_value_score ?? b.value_score ?? -Infinity) - (a.best_value_score ?? a.value_score ?? -Infinity)));
+        filtered = [...filtered].sort((a, b) => ((b.value_score ?? -Infinity) - (a.value_score ?? -Infinity)));
       } else if (safeActiveTab === "projection") {
-        filtered = [...filtered].sort((a, b) => ((b.projection_final ?? -Infinity) - (a.projection_final ?? -Infinity)));
+        filtered = [...filtered].sort((a, b) => ((b.projection ?? -Infinity) - (a.projection ?? -Infinity)));
       }
     }
 
