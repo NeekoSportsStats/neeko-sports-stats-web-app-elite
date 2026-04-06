@@ -91,7 +91,21 @@ export default function MarketWatchPageElite() {
           floor_val: null,
           breakeven_canonical: r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
           edge_canonical: r.edge_canonical != null ? Number(r.edge_canonical) : null,
-          value_score_canonical: r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
+          value_score_canonical: (() => {
+            if (r.value_score_canonical != null) return Number(r.value_score_canonical);
+            // Derive from edge_canonical when available (locked rows that have edge)
+            if (r.edge_canonical != null) return Number(r.edge_canonical);
+            // Last-resort: derive from projection vs breakeven
+            const proj = parseFloat(r.projection_final ?? '0') || 0;
+            const be = r.breakeven_canonical != null ? Number(r.breakeven_canonical)
+              : r.last_3_avg != null ? Number(r.last_3_avg)
+              : r.season_avg != null ? Number(r.season_avg)
+              : null;
+            if (be != null && be > 0 && proj > 0) {
+              return parseFloat(((proj - be) / be * 10).toFixed(2));
+            }
+            return null;
+          })(),
           signal_canonical: r.signal_canonical ?? null,
           category_canonical: r.category_canonical ?? null,
           action_canonical: r.action_canonical ?? null,

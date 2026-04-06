@@ -846,7 +846,9 @@ export default function AFLRoundEdgeBoard() {
           price_change:            null,
           price_change_pct:        null,
           breakeven:               r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
-          value_score:             r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
+          value_score:             r.value_score_canonical != null ? Number(r.value_score_canonical)
+                                    : r.edge_canonical != null ? Number(r.edge_canonical)
+                                    : null,
           best_value_score:        null,
           value_tag:               null,
           value_tier:              null,
@@ -884,7 +886,9 @@ export default function AFLRoundEdgeBoard() {
           signal_canonical:        (r.signal_canonical as string) ?? null,
           category_canonical:      (r.category_canonical as string) ?? null,
           action_canonical:        (r.action_canonical as string) ?? null,
-          value_score_canonical:   r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
+          value_score_canonical:   r.value_score_canonical != null ? Number(r.value_score_canonical)
+                                     : r.edge_canonical != null ? Number(r.edge_canonical)
+                                     : null,
         };
       });
 

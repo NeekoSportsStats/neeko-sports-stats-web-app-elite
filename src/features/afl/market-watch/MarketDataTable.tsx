@@ -496,7 +496,6 @@ function getValueScoreColor(v: number | null | undefined): string {
 
 function ValueScoreCell({ value, compact = false }: { value: number | null | undefined; compact?: boolean }) {
   if (value == null) {
-    console.warn("[MarketWatch] value_score_canonical is null for a player — check pipeline output");
     return <span className="text-white/25 text-xs">—</span>;
   }
   const n = Number(value);
