@@ -790,7 +790,7 @@ export default function AFLRoundEdgeBoard() {
         supabase.rpc("get_edge_board_safe", {
           p_user_id: user?.id ?? null,
           p_is_bot: false,
-          p_limit: 200,
+          p_limit: 50,
         }),
         supabase.from("v_projection_accuracy_homepage").select("within_20").maybeSingle(),
       ]);

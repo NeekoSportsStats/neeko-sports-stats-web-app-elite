@@ -25,6 +25,11 @@ import { CollapsibleSEO } from "./components/CollapsibleSEO";
 
 const POSITIONS: PositionFilter[] = ["ALL", "DEF", "MID", "FWD", "RUC"];
 
+const STALE_MS = 60_000;
+const _rankingsCache: { data: RankingRow[] | null; ts: number; userId: string | null } = {
+  data: null, ts: 0, userId: null,
+};
+
 const PREMIUM_QUICK_FILTERS: { key: PremiumFilter; label: string }[] = [
   { key: "ALL", label: "All" },
   { key: "DEF", label: "DEF" },
@@ -349,15 +354,28 @@ export default function AFLRankingsPage() {
     };
   }
 
-  const fetchRankings = useCallback(async () => {
+  const fetchRankings = useCallback(async (force = false) => {
+    const userId = user?.id ?? null;
+    const now = Date.now();
+    if (
+      !force &&
+      _rankingsCache.data &&
+      _rankingsCache.userId === userId &&
+      now - _rankingsCache.ts < STALE_MS
+    ) {
+      setRows(_rankingsCache.data);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setSelected(null);
     setHighlightedPlayerId(null);
 
     const { data, error } = await supabase.rpc("get_rankings_safe", {
-      p_user_id: user?.id ?? null,
+      p_user_id: userId,
       p_is_bot: false,
-      p_limit: 500,
+      p_limit: 100,
     });
 
     if (error) {
@@ -367,6 +385,9 @@ export default function AFLRankingsPage() {
       return;
     }
     const normalized = ((data as any[]) ?? []).map(normalizeRow);
+    _rankingsCache.data = normalized;
+    _rankingsCache.ts = Date.now();
+    _rankingsCache.userId = userId;
     setRows(normalized);
     const firstCachedAt = (data as any[])?.[0]?.cached_at;
     if (firstCachedAt) {
@@ -382,7 +403,7 @@ export default function AFLRankingsPage() {
 
   useEffect(() => {
     function onPricesApplied() {
-      fetchRankings();
+      fetchRankings(true);
     }
     window.addEventListener("neeko:prices-applied", onPricesApplied);
     return () => window.removeEventListener("neeko:prices-applied", onPricesApplied);
@@ -393,7 +414,7 @@ export default function AFLRankingsPage() {
     setIsRefreshing(true);
     track("rankings_refresh_click");
     try {
-      await fetchRankings();
+      await fetchRankings(true);
     } finally {
       setIsRefreshing(false);
     }

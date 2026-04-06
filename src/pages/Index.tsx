@@ -1303,7 +1303,7 @@ export default function Index() {
         .from("v_player_rankings_cache")
         .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, breakeven_canonical, edge_canonical, value_score_canonical, signal_canonical, category_canonical, action_canonical, signal_tag, signal, summary_short, summary_long, matchup_label, consistency, neeko_rating, status, manual_status, is_bye, games_played, cached_at")
         .order("value_score_canonical", { ascending: false, nullsFirst: false })
-        .limit(200);
+        .limit(50);
 
       const rows: MWPlayerRow[] = ((data ?? []) as any[]).map((r): MWPlayerRow => {
         const catRaw = (r.category_canonical ?? r.signal_tag ?? "").toLowerCase();

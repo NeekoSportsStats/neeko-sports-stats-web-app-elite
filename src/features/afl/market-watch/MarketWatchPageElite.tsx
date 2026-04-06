@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
 import { RefreshCw } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
@@ -6,10 +6,15 @@ import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
 import { MWPlayerRow } from "./types";
 import { classifyPlayers, DerivedPlayer } from "./engine";
+
+const _MW_STALE_MS = 60_000;
+const _mwCache: { data: MWPlayerRow[] | null; ts: number; userId: string | null } = {
+  data: null, ts: 0, userId: null,
+};
 import { MarketSnapshotBar } from "./MarketSnapshotBar";
 import { MarketMetricsStrip } from "./MarketMetricsStrip";
 import { MarketDataTable } from "./MarketDataTable";
-import { PlayerDetailPanel } from "./PlayerDetailPanel";
+const PlayerDetailPanel = lazy(() => import("./PlayerDetailPanel").then(m => ({ default: m.PlayerDetailPanel })));
 import { MarketControls, MarketFilter } from "./MarketControls";
 import { MarketAdvancedFilters } from "./MarketAdvancedFilters";
 import { MarketDistributionBar } from "./MarketDistributionBar";
@@ -29,13 +34,25 @@ export default function MarketWatchPageElite() {
   const [searchedPlayer, setSearchedPlayer] = useState<DerivedPlayer | null>(null);
   const [seoOpen, setSeoOpen] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (force = false) => {
+    const userId = user?.id ?? null;
+    const now = Date.now();
+    if (
+      !force &&
+      _mwCache.data &&
+      _mwCache.userId === userId &&
+      now - _mwCache.ts < _MW_STALE_MS
+    ) {
+      setPlayers(_mwCache.data);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const { data, error } = await supabase.rpc("get_market_watch_safe", {
-        p_user_id: user?.id ?? null,
+        p_user_id: userId,
         p_is_bot: false,
-        p_limit: 300,
+        p_limit: 100,
       });
 
       if (error) throw error;
@@ -96,6 +113,9 @@ export default function MarketWatchPageElite() {
 
       const finalPlayers = mapped.filter(p => !p.is_injured && !p.is_bye);
 
+      _mwCache.data = finalPlayers;
+      _mwCache.ts = Date.now();
+      _mwCache.userId = userId;
       setPlayers(finalPlayers);
     } catch (error) {
       console.error("[Market Watch] Error:", error);
@@ -107,7 +127,7 @@ export default function MarketWatchPageElite() {
 
   const handleRefresh = useCallback(() => {
     track("market_watch_refresh");
-    fetchData();
+    fetchData(true);
   }, [fetchData]);
 
   useEffect(() => { track("market_watch_view"); }, []);
@@ -488,11 +508,13 @@ export default function MarketWatchPageElite() {
       </div>
 
       {/* Player Detail Panel */}
-      <PlayerDetailPanel
-        player={selectedPlayer}
-        onClose={() => setSelectedPlayer(null)}
-        allPlayers={filteredPlayers}
-      />
+      <Suspense fallback={null}>
+        <PlayerDetailPanel
+          player={selectedPlayer}
+          onClose={() => setSelectedPlayer(null)}
+          allPlayers={filteredPlayers}
+        />
+      </Suspense>
     </div>
     </>
   );
