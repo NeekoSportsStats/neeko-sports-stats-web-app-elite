@@ -440,7 +440,7 @@ export default function AFLRankingsPage() {
       }
     }
 
-    if (isPremium && sortKey && sortKey !== TAB_DEFAULT_SORT[safeActiveTab]) {
+    if (isPremium && sortKey) {
       filtered = [...filtered].sort((a, b) => {
         const av = ((a as any)[sortKey] as number | null | undefined) ?? -Infinity;
         const bv = ((b as any)[sortKey] as number | null | undefined) ?? -Infinity;
