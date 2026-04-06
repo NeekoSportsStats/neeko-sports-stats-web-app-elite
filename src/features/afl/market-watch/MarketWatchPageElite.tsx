@@ -8,8 +8,8 @@ import { MWPlayerRow } from "./types";
 import { classifyPlayers, DerivedPlayer } from "./engine";
 
 const _MW_STALE_MS = 60_000;
-const _mwCache: { data: MWPlayerRow[] | null; ts: number; userId: string | null } = {
-  data: null, ts: 0, userId: null,
+const _mwCache: { data: MWPlayerRow[] | null; ts: number; userId: string | null; tier: string | null } = {
+  data: null, ts: 0, userId: null, tier: null,
 };
 import { MarketSnapshotBar } from "./MarketSnapshotBar";
 import { MarketMetricsStrip } from "./MarketMetricsStrip";
@@ -38,11 +38,13 @@ export default function MarketWatchPageElite() {
 
   const fetchData = useCallback(async (force = false) => {
     const userId = user?.id ?? null;
+    const tier = isPremium ? "premium" : "free";
     const now = Date.now();
     if (
       !force &&
       _mwCache.data &&
       _mwCache.userId === userId &&
+      _mwCache.tier === tier &&
       now - _mwCache.ts < _MW_STALE_MS
     ) {
       setPlayers(_mwCache.data);
@@ -119,6 +121,7 @@ export default function MarketWatchPageElite() {
       _mwCache.data = finalPlayers;
       _mwCache.ts = Date.now();
       _mwCache.userId = userId;
+      _mwCache.tier = tier;
       setPlayers(finalPlayers);
     } catch (error) {
       console.error("[Market Watch] Error:", error);
@@ -127,7 +130,7 @@ export default function MarketWatchPageElite() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [user?.id, isPremium]);
 
   const handleRefresh = useCallback(() => {
     track("market_watch_refresh");

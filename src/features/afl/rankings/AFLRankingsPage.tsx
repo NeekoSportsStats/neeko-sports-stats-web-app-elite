@@ -27,8 +27,8 @@ import { CollapsibleSEO } from "./components/CollapsibleSEO";
 const POSITIONS: PositionFilter[] = ["ALL", "DEF", "MID", "FWD", "RUC"];
 
 const STALE_MS = 60_000;
-const _rankingsCache: { data: RankingRow[] | null; ts: number; userId: string | null } = {
-  data: null, ts: 0, userId: null,
+const _rankingsCache: { data: RankingRow[] | null; ts: number; userId: string | null; tier: string | null } = {
+  data: null, ts: 0, userId: null, tier: null,
 };
 
 const PREMIUM_QUICK_FILTERS: { key: PremiumFilter; label: string }[] = [
@@ -358,11 +358,13 @@ export default function AFLRankingsPage() {
 
   const fetchRankings = useCallback(async (force = false) => {
     const userId = user?.id ?? null;
+    const tier = isPremium ? "premium" : "free";
     const now = Date.now();
     if (
       !force &&
       _rankingsCache.data &&
       _rankingsCache.userId === userId &&
+      _rankingsCache.tier === tier &&
       now - _rankingsCache.ts < STALE_MS
     ) {
       setRows(_rankingsCache.data);
@@ -392,6 +394,7 @@ export default function AFLRankingsPage() {
     _rankingsCache.data = normalized;
     _rankingsCache.ts = Date.now();
     _rankingsCache.userId = userId;
+    _rankingsCache.tier = tier;
     setRows(normalized);
     const firstCachedAt = (data as any[])?.[0]?.cached_at;
     if (firstCachedAt) {
@@ -399,7 +402,7 @@ export default function AFLRankingsPage() {
     }
 
     setLoading(false);
-  }, [user?.id]);
+  }, [user?.id, isPremium]);
 
   useEffect(() => {
     fetchRankings();
