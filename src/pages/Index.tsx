@@ -1299,7 +1299,7 @@ export default function Index() {
     (async () => {
       const { data } = await supabase
         .from("v_player_rankings_cache")
-        .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, signal_canonical, category_canonical, signal_tag, status, manual_status, is_bye, games_played, cached_at")
+        .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, value_score_canonical, breakeven_canonical, edge_canonical, signal_canonical, category_canonical, signal_tag, status, manual_status, is_bye, games_played, cached_at")
         .order("projection_final", { ascending: false, nullsFirst: false })
         .limit(50);
 
@@ -1326,9 +1326,9 @@ export default function Index() {
           projection_final: parseFloat(r.projection_final ?? '0') || 0,
           ceiling: null,
           floor_val: null,
-          breakeven_canonical: null,
-          edge_canonical: null,
-          value_score_canonical: null,
+          breakeven_canonical: r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
+          edge_canonical: r.edge_canonical != null ? Number(r.edge_canonical) : null,
+          value_score_canonical: r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
           signal_canonical: r.signal_canonical ?? null,
           category_canonical: r.category_canonical ?? null,
           action_canonical: null,

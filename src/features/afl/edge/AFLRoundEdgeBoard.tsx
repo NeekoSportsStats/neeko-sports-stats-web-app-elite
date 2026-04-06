@@ -546,14 +546,25 @@ function HeroPickCard({ player, section, isPremium, onOpen }: HeroPickCardProps)
           <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">{metric.label}</p>
           <p className={`text-3xl font-extrabold tabular-nums leading-none ${metric.color}`}>{metric.value}</p>
         </div>
-        {/* Value Score */}
-        {player.value_score != null && (
-          <div className="shrink-0">
-            <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Value Score</p>
-            <p className={`text-lg font-extrabold tabular-nums leading-none ${getValueScoreColor(player.value_score)}`}>
-              {fmtValueScore(player.value_score)}
-            </p>
-          </div>
+        {/* Secondary metric: Projection for must_have (avoids duplicating Value Score), Value Score for others */}
+        {section === "must_have" ? (
+          player.projection_final != null && (
+            <div className="shrink-0">
+              <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Projection</p>
+              <p className="text-lg font-extrabold tabular-nums leading-none text-white/70">
+                {fmtInt(player.projection_final)}
+              </p>
+            </div>
+          )
+        ) : (
+          player.value_score != null && (
+            <div className="shrink-0">
+              <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Value Score</p>
+              <p className={`text-lg font-extrabold tabular-nums leading-none ${getValueScoreColor(player.value_score)}`}>
+                {fmtValueScore(player.value_score)}
+              </p>
+            </div>
+          )
         )}
         {player.price != null && (
           <div className="ml-auto text-right shrink-0">
