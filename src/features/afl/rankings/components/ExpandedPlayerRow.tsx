@@ -205,7 +205,7 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
 
   // Derived values
   const scoreCount = scoreHistory.length;
-  const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
+  const proj = row.projection != null ? Math.round(row.projection) : null;
   const rawEdge = !row.is_bye && row.edge != null ? row.edge : null;
 
   const edgeSign = rawEdge != null

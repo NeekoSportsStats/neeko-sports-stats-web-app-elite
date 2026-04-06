@@ -13,8 +13,9 @@ import {
 import {
   TAB_SORT_KEY, TAB_DESCRIPTIONS, TAB_DEFAULT_SORT,
   FREE_FULL_ROWS, FREE_PARTIAL_ROWS, PREMIUM_INITIAL_ROWS,
-  getFreeTier, normalisePosition, fmtUpdatedAt, fmt, fmtValueScore,
+  getFreeTier, fmtUpdatedAt, fmt, fmtValueScore,
 } from "./components/helpers";
+import { mapRankingRow } from "./components/mapRankingRow";
 import {
   NeekoRatingInfoModal, UpgradeModal, PlayerDetailModal,
 } from "./components/RankingsModals";
@@ -268,67 +269,6 @@ export default function AFLRankingsPage() {
   }, [searchTerm]);
 
 
-  function normalizeRow(r: any): RankingRow {
-    return {
-      player_id:              r.player_id,
-      player_name:            r.player_name,
-      team:                   r.team ?? r.team_name ?? "",
-      team_name:              r.team_name ?? r.team ?? null,
-      position:               normalisePosition(r.player_position ?? r.position ?? r.position_group ?? null),
-      position_group:         r.position_group ?? null,
-      projection:             r.projection_final != null ? Number(r.projection_final) : (r.projection != null ? Number(r.projection) : null),
-      projection_final:       r.projection_final != null ? Number(r.projection_final) : (r.projection != null ? Number(r.projection) : null),
-      ceiling_estimate:       r.ceiling != null ? Number(r.ceiling) : (r.ceiling_estimate != null ? Number(r.ceiling_estimate) : null),
-      floor_estimate:         r.floor != null ? Number(r.floor) : (r.floor_estimate != null ? Number(r.floor_estimate) : null),
-      neeko_rating:           r.neeko_rating_scaled != null ? Number(r.neeko_rating_scaled) : (r.neeko_rating != null ? Number(r.neeko_rating) : null),
-      neeko_rating_scaled:    r.neeko_rating_scaled != null ? Number(r.neeko_rating_scaled) : null,
-      projection_confidence:  r.projection_confidence != null ? Number(r.projection_confidence) : null,
-      risk_rating:            r.risk_rating != null ? Number(r.risk_rating) : null,
-      form_score:             r.form_score != null ? Number(r.form_score) : null,
-      matchup_rating:         r.matchup_label ?? r.matchup_rating ?? null,
-      matchup_label:          r.matchup_label ?? null,
-      matchup_multiplier:     r.matchup_multiplier != null ? Number(r.matchup_multiplier) : null,
-      upside_rating:          r.upside_rating != null ? Number(r.upside_rating) : null,
-      upside_pct:             r.upside_pct != null ? Number(r.upside_pct) : null,
-      captain_score:          r.captain_score != null ? Number(r.captain_score) : null,
-      captain_rating:         r.captain_rating ?? null,
-      price:                  r.price != null ? Number(r.price) : null,
-      prev_price:             r.prev_price != null ? Number(r.prev_price) : null,
-      price_change:           r.price_change != null ? Number(r.price_change) : null,
-      price_change_pct:       r.price_change_pct != null ? Number(r.price_change_pct) : null,
-      season_avg:             r.season_avg != null ? Number(r.season_avg) : null,
-      last_3_avg:             r.last_3_avg != null ? Number(r.last_3_avg) : null,
-      last_5_avg:             r.last_5_avg != null ? Number(r.last_5_avg) : null,
-      games_played:           r.games_played != null ? Number(r.games_played) : null,
-      breakeven:              r.breakeven != null ? Number(r.breakeven) : null,
-      edge:                   r.edge != null ? Number(r.edge) : null,
-      value_score:            r.value_score != null ? Number(r.value_score) : null,
-      signal:                 r.signal ?? null,
-      signal_display:         r.signal_display ?? null,
-      category:               r.category ?? null,
-      action:                 r.action ?? null,
-      why:                    r.why ?? null,
-      why_long:               r.why_long ?? null,
-      recommendation_strength: r.recommendation_strength ?? null,
-      recommendation_color:   r.recommendation_color ?? null,
-      consistency:            r.consistency != null ? Number(r.consistency) : null,
-      consistency_tier:       r.consistency_tier ?? null,
-      total_count:            r.total_count != null ? Number(r.total_count) : null,
-      ai_updated_at:          r.ai_updated_at ?? null,
-      cached_at:              r.cached_at ?? null,
-      status:                 r.status ?? null,
-      manual_status:          r.manual_status ?? null,
-      is_available:           r.is_available != null ? Boolean(r.is_available) : null,
-      bye_round:              r.bye_round != null ? Number(r.bye_round) : null,
-      is_bye:                 r.is_bye != null ? Boolean(r.is_bye) : null,
-      bye_next_round:         r.bye_next_round != null ? Boolean(r.bye_next_round) : null,
-      trend_signal:           r.trend_signal ?? null,
-      trend_score:            r.trend_score != null ? Number(r.trend_score) : null,
-      form_delta:             r.form_delta != null ? Number(r.form_delta) : null,
-      form_label:             r.form_label ?? null,
-      access_tier:            r.access_tier ?? "locked",
-    };
-  }
 
   async function fetchAIForRow(row: RankingRow): Promise<Partial<RankingRow>> {
     if (!row.player_id || !row.player_name) return {};
@@ -380,7 +320,7 @@ export default function AFLRankingsPage() {
       setLoading(false);
       return;
     }
-    const normalized = ((data as any[]) ?? []).map(normalizeRow);
+    const normalized = ((data as any[]) ?? []).map(mapRankingRow);
     _rankingsCache.data = normalized;
     _rankingsCache.ts = Date.now();
     _rankingsCache.userId = userId;

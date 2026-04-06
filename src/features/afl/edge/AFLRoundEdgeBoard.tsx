@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
+import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
 import { buildEdgeBoardPlayers, type EdgeBoardPlayer, type EdgeSection } from "@/features/afl/edge-board/engine";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -142,8 +143,8 @@ function getSectionLabel(section: Section): { emoji: string; label: string; acce
 function getPrimaryMetric(row: RankingRow, section: Section): { label: string; value: string; color: string } {
   switch (section) {
     case "must_have":    return { label: "Value Score",  value: fmtValueScore(row.value_score),  color: getValueScoreColor(row.value_score) };
-    case "breakout":     return { label: "Projection",   value: fmtInt(row.projection_final),    color: "text-sky-400" };
-    case "do_not_start": return { label: "Projection",   value: fmtInt(row.projection_final),              color: "text-red-400" };
+    case "breakout":     return { label: "Projection",   value: fmtInt(row.projection),    color: "text-sky-400" };
+    case "do_not_start": return { label: "Projection",   value: fmtInt(row.projection),              color: "text-red-400" };
   }
 }
 
@@ -159,8 +160,8 @@ function buildConfidenceReasons(row: RankingRow, section: Section): string[] {
   }
   if (section === "do_not_start") {
     const beVal = row.breakeven;
-    if (beVal != null && row.projection_final != null) {
-      const edge = row.projection_final - beVal;
+    if (beVal != null && row.projection != null) {
+      const edge = row.projection - beVal;
       if (edge <= -20) reasons.push("Significantly underperforming breakeven — heavily overpriced this round");
       else if (edge <= -10) reasons.push("Projected below breakeven — overpriced given current form");
       else reasons.push("Projection below breakeven — consider alternatives");
@@ -168,8 +169,8 @@ function buildConfidenceReasons(row: RankingRow, section: Section): string[] {
       reasons.push("Low projection relative to price — consider alternatives");
     }
   }
-  if (row.projection_final != null) {
-    reasons.push(`${fmtInt(row.projection_final)} pts projected this round`);
+  if (row.projection != null) {
+    reasons.push(`${fmtInt(row.projection)} pts projected this round`);
   }
   return reasons.length > 0 ? reasons : ["Based on combined projection and pricing model"];
 }
@@ -181,16 +182,16 @@ async function copyToClipboard(text: string): Promise<boolean> {
 function buildShareText(row: RankingRow, section: Section): string {
   switch (section) {
     case "must_have":    return `🟢 AFL Fantasy Must Have (Neeko)\n${row.player_name} (${row.team}) — Value Score ${fmtValueScore(row.value_score)}\n\nneekosports.com.au #AFLFantasy`;
-    case "breakout":     return `⚡ AFL Fantasy Breakout Watch (Neeko)\n${row.player_name} (${row.team}) — ${fmtInt(row.projection_final)} pts projected\n\nneekosports.com.au #AFLFantasy`;
-    case "do_not_start": return `🚨 AFL Fantasy Fade Alert (Neeko)\n${row.player_name} (${row.team}) — ${fmtInt(row.projection_final)} pts projected (negative edge)\n\nneekosports.com.au #AFLFantasy`;
+    case "breakout":     return `⚡ AFL Fantasy Breakout Watch (Neeko)\n${row.player_name} (${row.team}) — ${fmtInt(row.projection)} pts projected\n\nneekosports.com.au #AFLFantasy`;
+    case "do_not_start": return `🚨 AFL Fantasy Fade Alert (Neeko)\n${row.player_name} (${row.team}) — ${fmtInt(row.projection)} pts projected (negative edge)\n\nneekosports.com.au #AFLFantasy`;
   }
 }
 
 function buildRoundSummaryText(mustHave: EdgeBoardPlayer | null, breakout: EdgeBoardPlayer | null, avoid: EdgeBoardPlayer | null): string {
   const lines: string[] = ["⚡ My AFL Fantasy Edge Picks (Neeko)\n"];
-  if (mustHave) lines.push(`Must Have: ${mustHave.player_name} — Value Score ${mustHave.value_score != null ? fmtValueScore(mustHave.value_score) : fmtInt(mustHave.projection_final) + " pts projected"}`);
-  if (breakout) lines.push(`Breakout Watch: ${breakout.player_name} — ${fmtInt(breakout.projection_final)} pts projected`);
-  if (avoid) lines.push(`Avoid: ${avoid.player_name} — ${fmtInt(avoid.projection_final)} pts projected`);
+  if (mustHave) lines.push(`Must Have: ${mustHave.player_name} — Value Score ${mustHave.value_score != null ? fmtValueScore(mustHave.value_score) : fmtInt(mustHave.projection) + " pts projected"}`);
+  if (breakout) lines.push(`Breakout Watch: ${breakout.player_name} — ${fmtInt(breakout.projection)} pts projected`);
+  if (avoid) lines.push(`Avoid: ${avoid.player_name} — ${fmtInt(avoid.projection)} pts projected`);
   lines.push("\nneekosports.com.au #AFLFantasy #NeekoEdge");
   return lines.join("\n");
 }
@@ -327,7 +328,7 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
   }
 
   const keyFactors: string[] = [];
-  if (row.projection_final != null) keyFactors.push(`Projection: ${fmtInt(row.projection_final)} pts`);
+  if (row.projection != null) keyFactors.push(`Projection: ${fmtInt(row.projection)} pts`);
   if (row.price != null) keyFactors.push(`Price: ${fmtPrice(row.price)}`);
   const beDisplay = row.breakeven;
   if (beDisplay != null) keyFactors.push(`Breakeven: ${fmtInt(beDisplay)} pts`);
@@ -554,11 +555,11 @@ function HeroPickCard({ player, section, isPremium, onOpen }: HeroPickCardProps)
         </div>
         {/* Secondary metric: Projection for must_have (avoids duplicating Value Score), Value Score for others */}
         {section === "must_have" ? (
-          player.projection_final != null && (
+          player.projection != null && (
             <div className="shrink-0">
               <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Projection</p>
               <p className="text-lg font-extrabold tabular-nums leading-none text-white/70">
-                {fmtInt(player.projection_final)}
+                {fmtInt(player.projection)}
               </p>
             </div>
           )
@@ -670,19 +671,19 @@ function RoundSummaryShare({ mustHave, breakout, avoid }: { mustHave: EdgeBoardP
         {mustHave && (
           <div className="flex items-center gap-2">
             <span className="text-[10px]">🟢</span>
-            <span className="text-[12px] text-white/60">Must Have: <span className="text-white font-semibold">{mustHave.player_name}</span> — Value Score {mustHave.value_score != null ? fmtValueScore(mustHave.value_score) : fmtInt(mustHave.projection_final) + " pts"}</span>
+            <span className="text-[12px] text-white/60">Must Have: <span className="text-white font-semibold">{mustHave.player_name}</span> — Value Score {mustHave.value_score != null ? fmtValueScore(mustHave.value_score) : fmtInt(mustHave.projection) + " pts"}</span>
           </div>
         )}
         {breakout && (
           <div className="flex items-center gap-2">
             <span className="text-[10px]">⚡</span>
-            <span className="text-[12px] text-white/60">Breakout: <span className="text-white font-semibold">{breakout.player_name}</span> — {fmtInt(breakout.projection_final)} pts projected</span>
+            <span className="text-[12px] text-white/60">Breakout: <span className="text-white font-semibold">{breakout.player_name}</span> — {fmtInt(breakout.projection)} pts projected</span>
           </div>
         )}
         {avoid && (
           <div className="flex items-center gap-2">
             <span className="text-[10px]">🚨</span>
-            <span className="text-[12px] text-white/60">Avoid: <span className="text-white font-semibold">{avoid.player_name}</span> — {fmtInt(avoid.projection_final)} pts projected</span>
+            <span className="text-[12px] text-white/60">Avoid: <span className="text-white font-semibold">{avoid.player_name}</span> — {fmtInt(avoid.projection)} pts projected</span>
           </div>
         )}
         <p className="text-[10px] text-white/20 pt-1">neekosports.com.au #AFLFantasy</p>
@@ -823,67 +824,7 @@ export default function AFLRoundEdgeBoard() {
 
       if (rankResult.error) throw rankResult.error;
 
-      const mapped = ((rankResult.data as any[]) ?? []).map((r: any): RankingRow => {
-        return {
-          player_id:               r.player_id ?? null,
-          player_name:             r.player_name ?? "",
-          team:                    r.team ?? "",
-          team_name:               null,
-          position:                r.player_position ?? r.position ?? null,
-          position_group:          null,
-          projection:              r.projection_final != null ? Number(r.projection_final) : (r.projection != null ? Number(r.projection) : null),
-          projection_final:        r.projection_final != null ? Number(r.projection_final) : (r.projection != null ? Number(r.projection) : null),
-          ceiling_estimate:        null,
-          floor_estimate:          null,
-          matchup_rating:          null,
-          matchup_label:           null,
-          matchup_multiplier:      null,
-          upside_rating:           null,
-          upside_pct:              null,
-          risk_rating:             null,
-          form_score:              null,
-          projection_confidence:   null,
-          captain_score:           null,
-          captain_rating:          null,
-          neeko_rating:            null,
-          neeko_rating_scaled:     null,
-          price:                   r.price != null ? Number(r.price) : null,
-          prev_price:              null,
-          price_change:            null,
-          price_change_pct:        null,
-          breakeven:               r.breakeven != null ? Number(r.breakeven) : null,
-          edge:                    r.edge != null ? Number(r.edge) : null,
-          value_score:             r.value_score != null ? Number(r.value_score) : null,
-          signal:                  (r.signal as string) ?? null,
-          signal_display:          (r.signal_display as string) ?? null,
-          category:                (r.category as string) ?? null,
-          action:                  (r.action as string) ?? null,
-          why:                     r.why ?? null,
-          why_long:                null,
-          recommendation_strength: null,
-          recommendation_color:    null,
-          consistency:             null,
-          consistency_tier:        null,
-          total_count:             null,
-          ai_updated_at:           null,
-          cached_at:               null,
-          games_played:            r.games_played != null ? Number(r.games_played) : null,
-          season_avg:              null,
-          last_3_avg:              null,
-          last_5_avg:              null,
-          status:                  (r.status as string) ?? null,
-          manual_status:           (r.manual_status as string) ?? null,
-          is_available:            null,
-          bye_round:               null,
-          is_bye:                  r.is_bye ?? null,
-          bye_next_round:          null,
-          trend_score:             null,
-          trend_signal:            null,
-          form_delta:              null,
-          form_label:              null,
-          access_tier:             r.access_tier ?? "locked",
-        };
-      });
+      const mapped = ((rankResult.data as any[]) ?? []).map(mapRankingRow);
 
       setPlayers(mapped);
       setRefreshedAt(null);
@@ -1061,8 +1002,8 @@ export default function AFLRoundEdgeBoard() {
                           const metric = getPrimaryMetric(player, section);
                           const edgeVal = player.edge != null
                             ? Number(player.edge)
-                            : player.projection_final != null && player.breakeven != null
-                              ? player.projection_final - player.breakeven
+                            : player.projection != null && player.breakeven != null
+                              ? player.projection - player.breakeven
                               : (player.projection ?? 0) - (player.breakeven ?? 0);
                           const edgePositive = edgeVal > 0;
                           const vsCanonical = player.value_score != null ? player.value_score : null;

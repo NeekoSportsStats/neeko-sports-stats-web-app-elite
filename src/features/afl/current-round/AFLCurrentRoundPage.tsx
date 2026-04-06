@@ -24,9 +24,9 @@ import {
   fmt,
   fmtPrice,
   fmtUpdatedAt,
-  normalisePosition,
 } from "@/features/afl/rankings/components/helpers";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
+import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
 import { PlayerDetailModal, UpgradeModal } from "@/features/afl/rankings/components/RankingsModals";
 import { PlayerStatusPill } from "@/features/afl/rankings/components/PlayerStatusPill";
 import type { RowTier } from "@/features/afl/rankings/components/types";
@@ -36,68 +36,6 @@ import { buildCurrentRoundPlayers, type CurrentRoundPlayer } from "@/features/af
 const FREE_VISIBLE = 2;
 const PREMIUM_VISIBLE = 5;
 
-
-function normalizeRow(raw: Record<string, unknown>): RankingRow {
-  const proj = raw.projection != null ? Number(raw.projection) : null;
-  return {
-    player_id:             (raw.player_id as string) ?? null,
-    player_name:           (raw.player_name as string) ?? "",
-    team:                  (raw.team as string) ?? (raw.team_name as string) ?? "",
-    team_name:             (raw.team_name as string) ?? null,
-    position:              normalisePosition((raw.player_position ?? raw.position) as string | null),
-    position_group:        (raw.position_group as string) ?? null,
-    projection:            proj,
-    ceiling_estimate:      raw.ceiling_estimate != null ? Number(raw.ceiling_estimate) : null,
-    floor_estimate:        raw.floor_estimate != null ? Number(raw.floor_estimate) : null,
-    matchup_rating:        (raw.matchup_label as string) ?? null,
-    matchup_label:         (raw.matchup_label as string) ?? null,
-    matchup_multiplier:    raw.matchup_multiplier != null ? Number(raw.matchup_multiplier) : null,
-    upside_rating:         raw.upside_rating != null ? Number(raw.upside_rating) : null,
-    upside_pct:            raw.upside_pct != null ? Number(raw.upside_pct) : null,
-    risk_rating:           raw.risk_rating != null ? Number(raw.risk_rating) : null,
-    form_score:            raw.form_score != null ? Number(raw.form_score) : null,
-    projection_confidence: raw.projection_confidence != null ? Number(raw.projection_confidence) : null,
-    captain_score:         raw.captain_score != null ? Number(raw.captain_score) : null,
-    captain_rating:        (raw.captain_rating as string) ?? null,
-    neeko_rating:          raw.neeko_rating_scaled != null ? Number(raw.neeko_rating_scaled) : (raw.neeko_rating != null ? Number(raw.neeko_rating) : null),
-    neeko_rating_scaled:   raw.neeko_rating_scaled != null ? Number(raw.neeko_rating_scaled) : null,
-    price:                 raw.price != null ? Number(raw.price) : null,
-    prev_price:            raw.prev_price != null ? Number(raw.prev_price) : null,
-    price_change:          raw.price_change != null ? Number(raw.price_change) : null,
-    price_change_pct:      raw.price_change_pct != null ? Number(raw.price_change_pct) : null,
-    breakeven:             raw.breakeven != null ? Number(raw.breakeven) : null,
-    edge:                  raw.edge != null ? Number(raw.edge) : null,
-    value_score:           raw.value_score != null ? Number(raw.value_score) : null,
-    signal:                (raw.signal as string) ?? null,
-    signal_display:        (raw.signal_display as string) ?? null,
-    category:              (raw.category as string) ?? null,
-    action:                (raw.action as string) ?? null,
-    why:                   (raw.why as string) ?? null,
-    why_long:              (raw.why_long as string) ?? null,
-    recommendation_strength: (raw.recommendation_strength as string) ?? null,
-    recommendation_color:  (raw.recommendation_color as string) ?? null,
-    consistency:           raw.consistency != null ? Number(raw.consistency) : null,
-    consistency_tier:      (raw.consistency_tier as string) ?? null,
-    total_count:           raw.total_count != null ? Number(raw.total_count) : null,
-    ai_updated_at:         null,
-    cached_at:             (raw.cached_at as string) ?? null,
-    games_played:          raw.games_played != null ? Number(raw.games_played) : null,
-    season_avg:            raw.season_avg != null ? Number(raw.season_avg) : null,
-    last_3_avg:            raw.last_3_avg != null ? Number(raw.last_3_avg) : null,
-    last_5_avg:            null,
-    status:                (raw.status as string) ?? null,
-    manual_status:         (raw.manual_status as string) ?? null,
-    is_available:          raw.is_available != null ? Boolean(raw.is_available) : null,
-    bye_round:             raw.bye_round != null ? Number(raw.bye_round) : null,
-    is_bye:                raw.is_bye != null ? Boolean(raw.is_bye) : null,
-    bye_next_round:        raw.bye_next_round != null ? Boolean(raw.bye_next_round) : null,
-    trend_score:           raw.trend_score != null ? Number(raw.trend_score) : null,
-    trend_signal:          (raw.trend_signal as string) ?? null,
-    form_delta:            raw.form_delta != null ? Number(raw.form_delta) : null,
-    form_label:            (raw.form_label as string) ?? null,
-    access_tier:           (raw.access_tier as "premium" | "free" | "locked") ?? "locked",
-  };
-}
 
 // ─── FEATURED BADGE ──────────────────────────────────────────────────────────
 
@@ -541,7 +479,7 @@ export default function AFLCurrentRoundPage() {
       if (error) {
         console.error("Current Round fetch error:", error);
       } else if (data) {
-        setPlayers((data as Record<string, unknown>[]).map(normalizeRow));
+        setPlayers((data as Record<string, unknown>[]).map(mapRankingRow));
       }
 
       try {

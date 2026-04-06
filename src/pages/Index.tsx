@@ -14,6 +14,7 @@ import { NEEKO_PRICING } from "@/config/neekoPricing";
 import MobileUpgradeBar from "@/components/mobile/MobileUpgradeBar";
 import { LandingMarketWatchSample } from "@/components/landing/LandingMarketWatchSample";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
+import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
 import type { MWPlayerRow } from "@/features/afl/market-watch/types";
 import { classifyPlayers } from "@/features/afl/market-watch/engine";
 
@@ -296,7 +297,7 @@ function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
                   );
                 }
 
-                const proj      = player.projection_final != null ? Math.round(player.projection_final) : null;
+                const proj      = player.projection != null ? Math.round(player.projection) : null;
                 const edge      = (player as any).edge != null ? Number((player as any).edge) : null;
                 const aiHook    = (player as any).summary_short as string | null | undefined;
 
@@ -394,7 +395,7 @@ interface RankingsPreviewProps {
 
 function RankingsPreview({ players, loading }: RankingsPreviewProps) {
   const rows = useMemo(
-    () => [...players].sort((a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)).slice(0, 5),
+    () => [...players].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0)).slice(0, 5),
     [players]
   );
 
@@ -436,10 +437,10 @@ function RankingsPreview({ players, loading }: RankingsPreviewProps) {
                         {row.position && <p className="text-[10px] text-white/30 leading-tight">{row.position}</p>}
                       </div>
                       <span className="text-sm font-bold text-[#F5C84C] text-center tabular-nums">
-                        {row.projection_final != null ? Math.round(row.projection_final) : "—"}
+                        {row.projection != null ? Math.round(row.projection) : "—"}
                       </span>
                       <div className="flex justify-end">
-                        {row.projection_final != null
+                        {row.projection != null
                           ? (() => {
                               const action = signalToAction(row.signal);
                               return (
@@ -500,10 +501,10 @@ function RankingsPreview({ players, loading }: RankingsPreviewProps) {
                       <span className="text-xs text-white/25 font-mono">{idx + 1}</span>
                       <span className="text-sm font-bold text-white truncate">{row.player_name}</span>
                       <span className="text-sm font-bold text-[#F5C84C] text-center tabular-nums">
-                        {row.projection_final != null ? Math.round(row.projection_final) : "—"}
+                        {row.projection != null ? Math.round(row.projection) : "—"}
                       </span>
                       <div className="flex justify-end">
-                        {row.projection_final != null
+                        {row.projection != null
                           ? (() => {
                               const action = signalToAction(row.signal);
                               return (
@@ -1262,65 +1263,7 @@ export default function Index() {
         return;
       }
 
-      const mapped = ((data ?? []) as any[]).map((r): RankingRow => ({
-        player_id:             r.player_id ?? null,
-        player_name:           r.player_name ?? "",
-        team:                  r.team ?? r.team_name ?? "",
-        team_name:             r.team_name ?? r.team ?? null,
-        position:              r.player_position ?? r.position ?? null,
-        position_group:        r.position_group ?? null,
-        projection:            r.projection != null ? Number(r.projection) : null,
-        projection_final:      r.projection != null ? Number(r.projection) : null,
-        ceiling_estimate:      r.ceiling_estimate != null ? Number(r.ceiling_estimate) : null,
-        floor_estimate:        r.floor_estimate != null ? Number(r.floor_estimate) : null,
-        form_score:            r.form_score != null ? Number(r.form_score) : null,
-        projection_confidence: r.projection_confidence != null ? Number(r.projection_confidence) : null,
-        captain_score:         r.captain_score != null ? Number(r.captain_score) : null,
-        captain_rating:        r.captain_rating ?? null,
-        neeko_rating:          r.neeko_rating_scaled != null ? Number(r.neeko_rating_scaled) : (r.neeko_rating != null ? Number(r.neeko_rating) : null),
-        neeko_rating_scaled:   r.neeko_rating_scaled != null ? Number(r.neeko_rating_scaled) : null,
-        upside_pct:            r.upside_pct != null ? Number(r.upside_pct) : null,
-        upside_rating:         r.upside_rating != null ? Number(r.upside_rating) : null,
-        risk_rating:           r.risk_rating != null ? Number(r.risk_rating) : null,
-        matchup_rating:        r.matchup_label ?? null,
-        matchup_label:         r.matchup_label ?? null,
-        matchup_multiplier:    r.matchup_multiplier != null ? Number(r.matchup_multiplier) : null,
-        price:                 r.price != null ? Number(r.price) : null,
-        prev_price:            r.prev_price != null ? Number(r.prev_price) : null,
-        price_change:          r.price_change != null ? Number(r.price_change) : null,
-        price_change_pct:      r.price_change_pct != null ? Number(r.price_change_pct) : null,
-        season_avg:            r.season_avg != null ? Number(r.season_avg) : null,
-        last_3_avg:            r.last_3_avg != null ? Number(r.last_3_avg) : null,
-        last_5_avg:            null,
-        games_played:          r.games_played != null ? Number(r.games_played) : null,
-        breakeven:             r.breakeven != null ? Number(r.breakeven) : null,
-        edge:                  r.edge != null ? Number(r.edge) : null,
-        value_score:           r.value_score != null ? Number(r.value_score) : null,
-        signal:                r.signal ?? null,
-        signal_display:        r.signal_display ?? null,
-        category:              r.category ?? null,
-        action:                r.action ?? null,
-        why:                   r.why ?? null,
-        why_long:              r.why_long ?? null,
-        recommendation_strength: r.recommendation_strength ?? null,
-        recommendation_color:  r.recommendation_color ?? null,
-        consistency:           r.consistency != null ? Number(r.consistency) : null,
-        consistency_tier:      r.consistency_tier ?? null,
-        total_count:           r.total_count != null ? Number(r.total_count) : null,
-        ai_updated_at:         r.ai_updated_at ?? null,
-        cached_at:             r.cached_at ?? null,
-        status:                r.status ?? null,
-        manual_status:         r.manual_status ?? null,
-        is_available:          r.is_available != null ? Boolean(r.is_available) : null,
-        bye_round:             r.bye_round != null ? Number(r.bye_round) : null,
-        is_bye:                r.is_bye != null ? Boolean(r.is_bye) : null,
-        bye_next_round:        r.bye_next_round != null ? Boolean(r.bye_next_round) : null,
-        trend_signal:          r.trend_signal ?? null,
-        trend_score:           r.trend_score != null ? Number(r.trend_score) : null,
-        form_delta:            r.form_delta != null ? Number(r.form_delta) : null,
-        form_label:            r.form_label ?? null,
-        access_tier:           r.access_tier ?? "locked",
-      }));
+      const mapped = ((data ?? []) as any[]).map(mapRankingRow);
 
       setPlayers(mapped);
       setPlayersLoading(false);

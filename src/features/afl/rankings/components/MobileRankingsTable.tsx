@@ -248,7 +248,7 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
     return () => { cancelled = true; };
   }, [row.player_id, row.player_name]);
 
-  const proj = row.projection_final != null ? Math.round(row.projection_final) : null;
+  const proj = row.projection != null ? Math.round(row.projection) : null;
   const be = row.baseline !== null && row.baseline !== undefined
     ? Math.round(parseFloat(String(row.baseline)))
     : null;
@@ -368,7 +368,7 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
   const [expanded, setExpanded] = useState(false);
   const rank = idx + 1;
 
-  const proj = row.projection_final ?? null;
+  const proj = row.projection ?? null;
   const breakeven =
     row.baseline !== null && row.baseline !== undefined
       ? Math.round(parseFloat(String(row.baseline)))

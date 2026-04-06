@@ -271,7 +271,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
         <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 90 }}>
           {row.is_bye
             ? <span className="text-sm font-semibold text-white/20 tabular-nums">—</span>
-            : <span className={`text-sm font-semibold tabular-nums ${isTop3 ? "text-[#F5C84C]" : "text-[#F5C84C]/80"}`}>{fmt(row.projection_final)}</span>
+            : <span className={`text-sm font-semibold tabular-nums ${isTop3 ? "text-[#F5C84C]" : "text-[#F5C84C]/80"}`}>{fmt(row.projection)}</span>
           }
         </td>
 
@@ -451,7 +451,7 @@ export function FreeTableRow({ row, idx, onRowClick, onUpgrade }: FreeTableRowPr
       <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 90 }}>
         {row.is_bye
           ? <span className="text-sm font-semibold text-white/20 tabular-nums">—</span>
-          : <span className={`text-sm font-bold tabular-nums ${isTop3 ? "text-[#F5C84C]" : "text-[#F5C84C]/80"}`}>{fmt(row.projection_final)}</span>
+          : <span className={`text-sm font-bold tabular-nums ${isTop3 ? "text-[#F5C84C]" : "text-[#F5C84C]/80"}`}>{fmt(row.projection)}</span>
         }
       </td>
       <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 80 }}>

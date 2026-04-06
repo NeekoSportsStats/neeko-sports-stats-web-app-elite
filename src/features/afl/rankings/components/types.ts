@@ -7,7 +7,6 @@ export interface RankingRow {
   position_group?: string | null;
 
   projection: number | null;
-  projection_final?: number | null;
   ceiling_estimate: number | null;
   floor_estimate: number | null;
   form_score: number | null;

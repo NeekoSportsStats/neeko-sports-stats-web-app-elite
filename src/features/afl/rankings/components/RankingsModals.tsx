@@ -330,7 +330,7 @@ export function PlayerDetailModal({
   const confLabel = getConfidenceLabel(displayConf);
   const confLabelCls = getConfidenceLabelColor(displayConf);
 
-  const proj = row.projection_final ?? null;
+  const proj = row.projection ?? null;
   const ceilingVal = row.ceiling_estimate ?? (proj != null ? Math.round(proj * 1.22) : null);
   const floorVal = row.floor_estimate ?? (proj != null ? Math.round(proj * 0.78) : null);
   const upsideVal = row.upside_rating ?? (ceilingVal != null && proj != null ? Math.round(((ceilingVal - proj) / proj) * 100) : null);
@@ -532,7 +532,7 @@ export function PlayerDetailModal({
             const extendedText = sharpenAIText(rawExtended, aiCtx);
             const hasText = !loadingAI && extendedText && extendedText !== "Model analysis is currently generating.";
             const isStale = isAITextStale(rawExtended, {
-              projection_final: row.projection_final,
+              projection_final: row.projection,
               ceiling_estimate: row.ceiling_estimate,
               floor_estimate: row.floor_estimate,
             });

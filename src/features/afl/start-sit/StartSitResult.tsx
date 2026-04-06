@@ -103,7 +103,7 @@ function buildDecisionContextCopy(
 ): string {
   const wLast = winner.player_name.split(" ").pop() ?? winner.player_name;
   const lLast = loser.player_name.split(" ").pop() ?? loser.player_name;
-  const projDiff = Math.round(Math.abs((winner.projection_final ?? 0) - (loser.projection_final ?? 0)));
+  const projDiff = Math.round(Math.abs((winner.projection ?? 0) - (loser.projection ?? 0)));
   const floorDiff = (winner.floor_estimate ?? 0) - (loser.floor_estimate ?? 0);
   const ceilDiff = (winner.ceiling_estimate ?? 0) - (loser.ceiling_estimate ?? 0);
 
@@ -134,10 +134,10 @@ function buildDecisionContextCopy(
 function buildFallbackReasons(winner: PlayerData, loser: PlayerData, aiSummary: string | null): string[] {
   const reasons: string[] = [];
 
-  const projDiff = (winner.projection_final ?? 0) - (loser.projection_final ?? 0);
+  const projDiff = (winner.projection ?? 0) - (loser.projection ?? 0);
   if (projDiff > 0) {
     const qual = projDiff >= 10 ? "Higher" : "Slight";
-    reasons.push(`${qual} projection edge — ${Math.round(winner.projection_final ?? 0)} vs ${Math.round(loser.projection_final ?? 0)} pts`);
+    reasons.push(`${qual} projection edge — ${Math.round(winner.projection ?? 0)} vs ${Math.round(loser.projection ?? 0)} pts`);
   }
 
   const floorDiff = (winner.floor_estimate ?? 0) - (loser.floor_estimate ?? 0);
@@ -319,16 +319,16 @@ export function StartSitResult({
 
   const decisionContextCopy = buildDecisionContextCopy(winner, loser, confidence, playStyle, isCloseCall);
 
-  const winnerProj = winner.projection_final != null ? Math.round(winner.projection_final) : null;
-  const loserProj = loser.projection_final != null ? Math.round(loser.projection_final) : null;
+  const winnerProj = winner.projection != null ? Math.round(winner.projection) : null;
+  const loserProj = loser.projection != null ? Math.round(loser.projection) : null;
 
   function handleCopyShare() {
     const edgeStr = isCloseCall
       ? `CLOSE CALL (${confidence}%). Small edges decide this.`
       : `${edge.label} — ${confidence}% confidence`;
     const shareText = [
-      `START: ${winner.player_name}${winner.projection_final != null ? " (" + Math.round(winner.projection_final) + " pts projected)" : ""}`,
-      `SIT: ${loser.player_name}${loser.projection_final != null ? " (" + Math.round(loser.projection_final) + " pts projected)" : ""}`,
+      `START: ${winner.player_name}${winner.projection != null ? " (" + Math.round(winner.projection) + " pts projected)" : ""}`,
+      `SIT: ${loser.player_name}${loser.projection != null ? " (" + Math.round(loser.projection) + " pts projected)" : ""}`,
       `${edgeStr}`,
       `neekostats.com.au/sports/afl/start-sit`,
     ].join("\n");
@@ -385,9 +385,9 @@ export function StartSitResult({
             {(winner.team || winner.position) && (
               <p className="text-[11px] text-white/28 mt-0.5">{[winner.team, winner.position].filter(Boolean).join(" · ")}</p>
             )}
-            {winner.projection_final != null && (
+            {winner.projection != null && (
               <div className="mt-2.5 flex items-baseline gap-1">
-                <span className="text-2xl font-extrabold text-[#F5C84C] tabular-nums leading-none">{Math.round(winner.projection_final)}</span>
+                <span className="text-2xl font-extrabold text-[#F5C84C] tabular-nums leading-none">{Math.round(winner.projection)}</span>
                 <span className="text-[10px] text-[#F5C84C]/40 font-semibold">proj</span>
               </div>
             )}
@@ -402,9 +402,9 @@ export function StartSitResult({
             {(loser.team || loser.position) && (
               <p className="text-[11px] text-white/20 mt-0.5">{[loser.team, loser.position].filter(Boolean).join(" · ")}</p>
             )}
-            {loser.projection_final != null && (
+            {loser.projection != null && (
               <div className="mt-2.5 flex items-baseline gap-1">
-                <span className="text-2xl font-extrabold text-white/25 tabular-nums leading-none">{Math.round(loser.projection_final)}</span>
+                <span className="text-2xl font-extrabold text-white/25 tabular-nums leading-none">{Math.round(loser.projection)}</span>
                 <span className="text-[10px] text-white/15 font-semibold">proj</span>
               </div>
             )}
@@ -650,10 +650,10 @@ export function StartSitResult({
                 <div className="px-4 sm:px-5">
                   <MetricCompareRow
                     label="Proj"
-                    aVal={fmt(playerA.projection_final)}
-                    bVal={fmt(playerB.projection_final)}
-                    aRaw={playerA.projection_final ?? 0}
-                    bRaw={playerB.projection_final ?? 0}
+                    aVal={fmt(playerA.projection)}
+                    bVal={fmt(playerB.projection)}
+                    aRaw={playerA.projection ?? 0}
+                    bRaw={playerB.projection ?? 0}
                     aIsWinner={winnerIsA}
                   />
                   <MetricCompareRow
@@ -950,7 +950,7 @@ export function StartSitResult({
                   </div>
                 ))}
                 <div className="mt-3 pt-3 border-t border-white/[0.04] flex items-center gap-2">
-                  {(winner.projection_final ?? 0) > (loser.projection_final ?? 0) ? (
+                  {(winner.projection ?? 0) > (loser.projection ?? 0) ? (
                     <TrendingUp size={10} className="text-emerald-400 shrink-0" />
                   ) : (
                     <TrendingDown size={10} className="text-red-400 shrink-0" />
