@@ -91,8 +91,8 @@ export const FREE_VISIBLE = 3;
 
 export function calculateValueRank(players: any[], currentPlayer: any): { rank: number; percentile: number } {
   const validPlayers = players
-    .filter(p => p.edge_canonical != null)
-    .sort((a, b) => (b.edge_canonical ?? 0) - (a.edge_canonical ?? 0));
+    .filter(p => p.edge != null)
+    .sort((a, b) => (b.edge ?? 0) - (a.edge ?? 0));
 
   const rank = validPlayers.findIndex(p => p.player_id === currentPlayer.player_id) + 1;
   const percentile = rank > 0 ? Math.round((1 - (rank / validPlayers.length)) * 100) : 0;
@@ -115,17 +115,17 @@ export function getValueRankColor(percentile: number): string {
 }
 
 export function generateSmartWhy(player: any): string {
-  const short = (player.summary_short ?? player.recommendation_short ?? '').trim();
+  const short = (player.why ?? '').trim();
   if (short) return short;
 
-  const edge = Math.round(player.edge_canonical ?? (player.projection ?? 0) - (player.breakeven_canonical ?? 0));
-  const projection = Math.round(player.projection_final ?? player.projection ?? 0);
+  const edge = Math.round(player.edge ?? 0);
+  const projection = Math.round(player.projection ?? 0);
   const edgeStr = edge > 0 ? `+${edge}` : `${edge}`;
   return `${edgeStr} edge · ${projection} pts projected`;
 }
 
 export function getConsistencySignal(player: any): { label: string; color: string } | null {
-  const consistency = player.consistency ?? player.consistency_score;
+  const consistency = player.consistency;
 
   if (consistency === null || consistency === undefined) return null;
 

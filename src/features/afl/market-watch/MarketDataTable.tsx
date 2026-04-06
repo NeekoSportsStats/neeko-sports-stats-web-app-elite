@@ -56,10 +56,10 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
           aVal = bucketOrder[a._category] ?? 1;
           bVal = bucketOrder[b._category] ?? 1;
           if (aVal !== bVal) return (aVal as number) - (bVal as number);
-          return (b.percentile_rank ?? 0) - (a.percentile_rank ?? 0);
+          return (b.value_score ?? 0) - (a.value_score ?? 0);
         case "value":
-          aVal = a.value_score_canonical ?? -999;
-          bVal = b.value_score_canonical ?? -999;
+          aVal = a.value_score ?? -999;
+          bVal = b.value_score ?? -999;
           break;
         case "projection":
           aVal = a.projection || 0;
@@ -332,12 +332,11 @@ interface PlayerRowProps {
 }
 
 const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred = false, isPremium }: PlayerRowProps) {
-  const signalStrength = useMemo(() => getSignalStrength(player), [player.display_signal, player.percentile_rank]);
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.display_signal, player.value_score]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
-    player.summary_short,
-    player.recommendation_short,
-    player.edge_canonical,
+    player.why,
+    player.edge,
   ]);
   const truncatedWhy = useMemo(() => truncateWhy(smartWhy, 80), [smartWhy]);
 
@@ -378,7 +377,7 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
         {formatPrice(player.price || 0)}
       </td>
       <td className="px-5 py-3">
-        <ValueScoreCell value={player.value_score_canonical} />
+        <ValueScoreCell value={player.value_score} />
       </td>
       <td className="px-5 py-3">
         <div className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold border rounded-md ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
@@ -388,7 +387,7 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
       </td>
       {isPremium && (
         <td className="px-5 py-3 text-center text-xs font-medium text-white/35 tabular-nums">
-          {player.breakeven_canonical != null ? Math.round(player.breakeven_canonical) : (player.breakeven != null ? Math.round(player.breakeven) : "—")}
+          {player.breakeven != null ? Math.round(player.breakeven) : "—"}
         </td>
       )}
     </tr>
@@ -403,12 +402,11 @@ interface MobilePlayerCardProps {
 }
 
 const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlurred = false, isPremium }: MobilePlayerCardProps) {
-  const signalStrength = useMemo(() => getSignalStrength(player), [player.display_signal, player.percentile_rank]);
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.display_signal, player.value_score]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
-    player.summary_short,
-    player.recommendation_short,
-    player.edge_canonical,
+    player.why,
+    player.edge,
   ]);
   const truncatedWhy = useMemo(() => truncateWhy(smartWhy, 60), [smartWhy]);
 
@@ -456,13 +454,13 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
           <div>
             <div className="text-white/25 text-[10px] mb-0.5">BE</div>
             <div className="font-medium text-white/40">
-              {player.breakeven_canonical != null ? Math.round(player.breakeven_canonical) : (player.breakeven != null ? Math.round(player.breakeven) : "—")}
+              {player.breakeven != null ? Math.round(player.breakeven) : "—"}
             </div>
           </div>
         )}
         <div className={isPremium ? "" : "col-span-2"}>
           <div className="text-white/35 text-[10px] mb-0.5">Value</div>
-          <ValueScoreCell value={player.value_score_canonical} compact />
+          <ValueScoreCell value={player.value_score} compact />
         </div>
       </div>
     </div>
@@ -471,15 +469,15 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
 
 function getSignalStrength(player: DerivedPlayer) {
   const sig = player.display_signal;
-  const pct = player.percentile_rank ?? 50;
+  const vs = player.value_score ?? 0;
 
   if (sig === "TARGET") {
-    return pct >= 90
+    return vs >= 15
       ? { icon: "🔥", label: "TARGET", bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/40" }
       : { icon: "✅", label: "TARGET", bg: "bg-green-500/[0.12]", text: "text-green-400", border: "border-green-500/25" };
   }
   if (sig === "AVOID") {
-    return pct < 20
+    return vs <= -15
       ? { icon: "🚫", label: "AVOID", bg: "bg-red-500/[0.12]", text: "text-red-400", border: "border-red-500/30" }
       : { icon: "⚠️", label: "AVOID", bg: "bg-orange-500/[0.10]", text: "text-orange-400", border: "border-orange-500/25" };
   }

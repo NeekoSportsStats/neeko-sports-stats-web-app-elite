@@ -46,8 +46,8 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
 
   const whyText = generateSmartWhy(player);
 
-  const extendedText = player.summary_long
-    ? cleanAiText(player.summary_long)
+  const extendedText = player.why_long
+    ? cleanAiText(player.why_long)
     : null;
 
   const formattedExtended = extendedText ? formatExtendedAnalysis(extendedText) : null;
@@ -227,7 +227,7 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
           )}
 
           {/* ADVANCED METRICS - COLLAPSIBLE */}
-          {(player.edge_canonical != null || player.ceiling || player.neeko_rating) && (
+          {(player.edge != null || player.neeko_rating) && (
             <div>
               <button
                 onClick={() => setShowAdvanced(!showAdvanced)}
@@ -239,8 +239,7 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
 
               {showAdvanced && (
                 <div className="mt-3 space-y-2 animate-in slide-in-from-top-2 duration-200">
-                  {player.edge_canonical != null && <MetricRow label="Edge" value={`${player.edge_canonical > 0 ? '+' : ''}${Math.round(player.edge_canonical)}`} />}
-                  {player.ceiling && <MetricRow label="Ceiling" value={Math.round(player.ceiling)} />}
+                  {player.edge != null && <MetricRow label="Edge" value={`${player.edge > 0 ? '+' : ''}${Math.round(player.edge)}`} />}
                   {player.neeko_rating && <MetricRow label="Neeko Rating" value={Math.round(player.neeko_rating)} />}
                 </div>
               )}
@@ -400,39 +399,34 @@ function getVerdict(player: DerivedPlayer, delta: number): string {
 
 function getConfidence(player: DerivedPlayer): string {
   const consistency = player.consistency || 0;
-  const projectionConfidence = player.projection_confidence || 0;
 
-  const avgConfidence = (consistency + projectionConfidence) / 2;
-
-  if (avgConfidence > 75) return "High Confidence";
-  if (avgConfidence > 50) return "Medium Confidence";
+  if (consistency > 75) return "High Confidence";
+  if (consistency > 50) return "Medium Confidence";
   return "Lower Confidence";
 }
 
 function calculateUpside(player: DerivedPlayer): number {
   const delta = (player.projection || 0) - (player.breakeven || 0);
-  const ceiling = player.ceiling || player.projection || 0;
   const projection = player.projection || 0;
 
   if (projection === 0) return 0;
 
-  const ceilingUpside = ((ceiling - projection) / projection) * 100;
   const valueUpside = delta > 0 ? (delta / projection) * 100 : 0;
-
-  const totalUpside = Math.min(100, Math.max(0, (ceilingUpside + valueUpside) / 2));
+  const totalUpside = Math.min(100, Math.max(0, valueUpside));
 
   return Math.round(totalUpside);
 }
 
 function calculateRisk(player: DerivedPlayer): number {
-  const riskPct = player.risk_pct || 0;
   const delta = (player.projection || 0) - (player.breakeven || 0);
 
-  let risk = riskPct;
-
+  let risk = 0;
   if (delta < 0) {
-    risk += Math.abs(delta) * 2;
+    risk = Math.min(100, Math.abs(delta) * 2);
   }
+
+  const consistency = player.consistency ?? 50;
+  if (consistency < 40) risk += 20;
 
   return Math.min(100, Math.max(0, Math.round(risk)));
 }

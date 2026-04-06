@@ -108,7 +108,7 @@ export default function MarketWatchPageElite() {
         };
       });
 
-      const finalPlayers = mapped.filter(p => !p.is_injured && !p.is_bye);
+      const finalPlayers = mapped.filter(p => !p.is_bye);
 
       _mwCache.data = finalPlayers;
       _mwCache.ts = Date.now();

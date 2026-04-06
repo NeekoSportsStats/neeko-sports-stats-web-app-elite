@@ -439,7 +439,7 @@ export function sharpenAIText(
   if (out.startsWith("{") || out.startsWith("[")) {
     try {
       const parsed = JSON.parse(out) as Record<string, string>;
-      out = parsed.analysis ?? parsed.recommendation_long ?? parsed.recommendation_short ?? out;
+      out = parsed.analysis ?? parsed.summary_long ?? parsed.summary_short ?? out;
     } catch {
       // not valid JSON — leave as-is
     }
@@ -531,14 +531,11 @@ export function computeKpiTiles(rows: RankingRow[]) {
     ? captainRows.reduce((s, r) => s + (r.projection_final ?? 0), 0) / captainRows.length
     : null;
 
-  // value_score_canonical ratio: >= 1.2 = Elite Value, >= 1.05 = Strong Value, >= 0.95 = Fair Value
-  const valueUpgrades = rows.filter((r) => (r.value_score ?? 0) >= 1.05).length;
-  const trapAlerts = rows.filter((r) => {
-    const t = (r.value_tag ?? "").toUpperCase();
-    return t === "OVERPRICED" || t === "LOW VALUE" ||
-      (r.risk_rating ?? 0) >= 65 ||
-      (r.projection_confidence ?? 100) < 50;
-  }).length;
+  const valueUpgrades = rows.filter((r) => (r.value_score_canonical ?? 0) >= 1.05).length;
+  const trapAlerts = rows.filter((r) =>
+    (r.risk_rating ?? 0) >= 65 ||
+    (r.projection_confidence ?? 100) < 50
+  ).length;
   const highConfidence = rows.filter((r) => (r.projection_confidence ?? 0) >= 65).length;
 
   return { captainAvgProj, valueUpgrades, trapAlerts, highConfidence };
@@ -554,7 +551,7 @@ export const TAB_SORT_KEY: Record<RankingsTab, string> = {
 
 export const TAB_DEFAULT_SORT: Record<RankingsTab, SortKey> = {
   best: "projection_final",
-  value: "best_value_score",
+  value: "value_score_canonical",
   projection: "projection_final",
 };
 
