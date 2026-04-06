@@ -35,6 +35,7 @@ export default function MarketWatchPageElite() {
   const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(50);
   const [searchedPlayer, setSearchedPlayer] = useState<DerivedPlayer | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [seoOpen, setSeoOpen] = useState(false);
 
   const fetchData = useCallback(async (force = false) => {
@@ -167,23 +168,18 @@ export default function MarketWatchPageElite() {
       });
   }, [classified]);
 
-  // MEMOIZE: Filtered players (prevents re-filter on every render)
+  // MEMOIZE: Filtered players — search happens on full dataset before visible slice
   const filteredPlayers = useMemo(() => {
-    // Search override: if a player was selected from search, show only that player
-    if (searchedPlayer) {
-      return allDerivedPlayers.filter(p => p.player_id === searchedPlayer.player_id);
-    }
-
     let filtered = allDerivedPlayers;
 
     // Apply signal filter using _category — premium only for TARGET/WATCH/AVOID
     if (isPremium) {
       if (activeFilter === "TARGET") {
-        filtered = allDerivedPlayers.filter(p => p._category === 'BUY');
+        filtered = filtered.filter(p => p._category === 'BUY');
       } else if (activeFilter === "WATCH") {
-        filtered = allDerivedPlayers.filter(p => p._category === 'HOLD');
+        filtered = filtered.filter(p => p._category === 'HOLD');
       } else if (activeFilter === "AVOID") {
-        filtered = allDerivedPlayers.filter(p => p._category === 'SELL');
+        filtered = filtered.filter(p => p._category === 'SELL');
       }
     }
 
@@ -205,8 +201,23 @@ export default function MarketWatchPageElite() {
       });
     }
 
+    // Apply text search on full filtered dataset (premium only) — before visible slice
+    if (isPremium && searchQuery.trim().length >= 2) {
+      const q = searchQuery.trim().toLowerCase();
+      filtered = filtered.filter(p =>
+        p.player_name?.toLowerCase().includes(q) ||
+        (p.team ?? '').toLowerCase().includes(q) ||
+        (p.position ?? '').toLowerCase().includes(q)
+      );
+    }
+
+    // Pin to single player when selected from dropdown (after text filter so it always resolves)
+    if (searchedPlayer && searchQuery.trim().length === 0) {
+      filtered = filtered.filter(p => p.player_id === searchedPlayer.player_id);
+    }
+
     return filtered;
-  }, [activeFilter, allDerivedPlayers, searchedPlayer, selectedTeam, selectedPosition, isPremium]);
+  }, [activeFilter, allDerivedPlayers, searchedPlayer, searchQuery, selectedTeam, selectedPosition, isPremium]);
 
   // Gate total pool: free users capped at 10, premium gets full list
   const gatedPlayers = useMemo(() => {
@@ -219,10 +230,10 @@ export default function MarketWatchPageElite() {
     return gatedPlayers.slice(0, visibleCount);
   }, [gatedPlayers, visibleCount]);
 
-  // Reset visible count when filters change
+  // Reset visible count when filters or search query change
   useEffect(() => {
     setVisibleCount(50);
-  }, [activeFilter, selectedTeam, selectedPosition, searchedPlayer]);
+  }, [activeFilter, selectedTeam, selectedPosition, searchedPlayer, searchQuery]);
 
   const hasMorePlayers = isPremium && gatedPlayers.length > visibleCount;
   const handleShowMore = useCallback(() => {
@@ -423,13 +434,20 @@ export default function MarketWatchPageElite() {
               isPremium={isPremium ?? false}
               onSelect={(p) => {
                 setSearchedPlayer(p);
-                if (p) setSelectedPlayer(p);
+                if (p) {
+                  setSelectedPlayer(p);
+                  setSearchQuery("");
+                }
+              }}
+              onQueryChange={(q) => {
+                setSearchQuery(q);
+                if (q.trim().length === 0) setSearchedPlayer(null);
               }}
               selectedPlayerId={searchedPlayer?.player_id ?? null}
             />
-            {searchedPlayer && (
+            {(searchedPlayer || searchQuery.trim().length >= 2) && (
               <button
-                onClick={() => setSearchedPlayer(null)}
+                onClick={() => { setSearchedPlayer(null); setSearchQuery(""); }}
                 className="text-xs text-white/40 hover:text-white/70 underline underline-offset-2 transition-colors"
               >
                 Clear search

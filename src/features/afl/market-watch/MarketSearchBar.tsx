@@ -8,6 +8,7 @@ interface MarketSearchBarProps {
   isPremium: boolean;
   onSelect: (player: DerivedPlayer | null) => void;
   selectedPlayerId: number | null;
+  onQueryChange?: (query: string) => void;
 }
 
 function formatPrice(price: number): string {
@@ -16,7 +17,7 @@ function formatPrice(price: number): string {
   return `$${price}`;
 }
 
-export function MarketSearchBar({ players, isPremium, onSelect, selectedPlayerId }: MarketSearchBarProps) {
+export function MarketSearchBar({ players, isPremium, onSelect, selectedPlayerId, onQueryChange }: MarketSearchBarProps) {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
@@ -26,9 +27,12 @@ export function MarketSearchBar({ players, isPremium, onSelect, selectedPlayerId
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQuery(query), 200);
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query);
+      onQueryChange?.(query);
+    }, 200);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, onQueryChange]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -84,6 +88,7 @@ export function MarketSearchBar({ players, isPremium, onSelect, selectedPlayerId
     setDebouncedQuery("");
     setShowDropdown(false);
     onSelect(null);
+    onQueryChange?.("");
     inputRef.current?.focus();
   }
 
