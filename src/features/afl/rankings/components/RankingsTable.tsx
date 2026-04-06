@@ -3,10 +3,8 @@ import { ChevronDown, ChevronUp, Lock, Crown, ChevronRight } from "lucide-react"
 import { RankingRow, SortKey, SortDir, RankingsTab, RowTier } from "./types";
 import {
   fmt, fmtPrice,
-  getDisplayRecommendation,
   getDisplayTrend,
   getTrendLabel,
-  getTrendStyles,
   getTrendAction,
   getTrendActionStyles,
   getTrendWhyText,
@@ -85,53 +83,6 @@ function FormCell({ row }: { row: RankingRow }) {
   );
 }
 
-// ─── Expandable panel (shown under a row when clicked) ────────────────────────
-
-interface ExpandedPanelProps {
-  row: RankingRow;
-  displayRec: string | null;
-}
-
-function ExpandedPanel({ row, displayRec }: ExpandedPanelProps) {
-  const rawTs = !row.is_bye && row.trend_score != null ? row.trend_score : null;
-  const tsSign = rawTs != null ? (rawTs > 40 ? "40+" : rawTs < -40 ? "-40+" : (rawTs > 0 ? `+${rawTs}` : String(rawTs))) : null;
-
-  const longWhy = row.long ?? row.why ?? null;
-  const price = row.price != null ? fmtPrice(row.price) : null;
-
-  const edgeLabel = rawTs != null && tsSign != null
-    ? `${tsSign} vs baseline — ${rawTs >= 12 ? "breakout signal" : rawTs >= 5 ? "rising signal" : rawTs >= -3 ? "stable signal" : rawTs >= -10 ? "soft concern" : "regression risk"}`
-    : null;
-
-  return (
-    <tr className="border-b border-white/[0.04] bg-[#0d0d0d]">
-      <td colSpan={TOTAL_COLS} className="px-4 pb-4 pt-0">
-        <div className="ml-[52px] rounded-xl border border-white/[0.08] bg-[#111] p-4">
-          <div className="flex flex-col gap-3">
-
-            {edgeLabel && (
-              <p className="text-sm font-semibold text-white/80">{edgeLabel}</p>
-            )}
-
-            {longWhy && (
-              <p className="text-[13px] text-white/55 leading-relaxed line-clamp-4">{longWhy}</p>
-            )}
-
-            {price != null && (
-              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/[0.06] pt-3">
-                <div>
-                  <p className="text-[10px] text-white/30 uppercase tracking-wide mb-0.5">Price</p>
-                  <p className="text-sm font-semibold text-white tabular-nums">{price}</p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
 // ─── Sort icon ─────────────────────────────────────────────────────────────────
 
 function SortIcon({ col, sortKey, sortDir, isPremium }: { col: SortKey; sortKey: SortKey; sortDir: SortDir; isPremium: boolean }) {
@@ -190,7 +141,7 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
       <th className={`${TH} text-white/40`} style={{ width: 44, minWidth: 44 }}>#</th>
       <th className={`${TH} text-left text-white/40`} style={{ width: 200, minWidth: 160 }}>Player</th>
       <SortableTh label="Proj" col="projection" width={80} tooltip="Model's expected fantasy score this round" />
-      <SortableTh label="Baseline" col="form_score" width={80} tooltip="Weighted average of recent and season scores" />
+      <SortableTh label="Avg Score" col="form_score" width={80} tooltip="Weighted average of recent and season scores" />
       <SortableTh label="Trend" col="projection" width={90} tooltip="Forward signal: how projection compares to baseline. Drives ACTION." />
       <Th label="Form" width={90} tooltip="Recent form vs season average — context only, not used for action." />
       <Th label="Action" locked={!isPremium} width={96} />
@@ -221,9 +172,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
 
   const isLocked = !isPremium && idx >= FREE_FULL_ROWS;
 
-  const be = row.baseline !== null && row.baseline !== undefined
-    ? Math.round(parseFloat(String(row.baseline)))
-    : null;
+  const be = row.form_score != null ? Math.round(row.form_score) : null;
 
   // Top-3 highlight ring
   const isTop3 = rank <= 3 && !isHighlighted;
@@ -374,7 +323,7 @@ export function FreeTableHeader() {
       </th>
       <th className={`${TH} text-white/40`} style={{ width: 80, minWidth: 80 }}>
         <span className="inline-flex items-center gap-1 justify-center">
-          Baseline
+          Avg Score
           <InfoTooltip text="Weighted average of season, last 5 and last 3 scores" />
         </span>
       </th>
@@ -403,9 +352,7 @@ export function FreeTableRow({ row, idx, onRowClick, onUpgrade }: FreeTableRowPr
   const rowFadeStyle: React.CSSProperties = { touchAction: "manipulation" };
 
 
-  const be = row.baseline !== null && row.baseline !== undefined
-    ? Math.round(parseFloat(String(row.baseline)))
-    : null;
+  const be = row.form_score != null ? Math.round(row.form_score) : null;
 
   const rawTsFree = !row.is_bye && row.trend_score != null ? row.trend_score : null;
   const tsClamped = rawTsFree !== null ? (rawTsFree > 40 ? 40 : rawTsFree < -40 ? -40 : rawTsFree) : null;

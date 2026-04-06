@@ -249,9 +249,7 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
   }, [row.player_id, row.player_name]);
 
   const proj = row.projection != null ? Math.round(row.projection) : null;
-  const be = row.baseline !== null && row.baseline !== undefined
-    ? Math.round(parseFloat(String(row.baseline)))
-    : null;
+  const be = row.form_score != null ? Math.round(row.form_score) : null;
   const edge = !row.is_bye && row.edge != null ? row.edge : null;
   const edgeDisplayStr = getEdgeDisplay(edge);
 
@@ -259,7 +257,7 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
     ? `${edgeDisplayStr} vs Baseline — ${edge >= 15 ? "strong underpriced play" : edge >= 5 ? "moderate edge" : edge >= -5 ? "near breakeven" : "price risk"}`
     : null;
 
-  const longWhy = (row as any).long ?? row.why ?? null;
+  const longWhy = row.why_long ?? row.why ?? null;
 
   const neekoRBadge = getNeekoRatingBadge(row.neeko_rating ?? null);
   const conf = row.projection_confidence != null ? Math.round(row.projection_confidence) : null;
@@ -336,7 +334,7 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
         )}
         {be != null && (
           <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-white/30 font-normal">Baseline</span>
+            <span className="text-[10px] text-white/30 font-normal">Avg Score</span>
             <span className="text-[13px] font-bold text-white/60 tabular-nums">{be}</span>
           </div>
         )}
@@ -369,10 +367,7 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
   const rank = idx + 1;
 
   const proj = row.projection ?? null;
-  const breakeven =
-    row.baseline !== null && row.baseline !== undefined
-      ? Math.round(parseFloat(String(row.baseline)))
-      : null;
+  const breakeven = row.form_score != null ? Math.round(row.form_score) : null;
   const edge = !row.is_bye && row.edge != null ? row.edge : null;
 
   const displayRec = getDisplayRecommendation(row, activeTab);
@@ -424,7 +419,7 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
           <>
             <span className="text-white/15 text-sm px-1.5">|</span>
             <div className="flex flex-col items-start px-2">
-              <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Baseline</span>
+              <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Avg Score</span>
               <span className="text-[14px] font-bold text-white/65 tabular-nums">{breakeven}</span>
             </div>
           </>

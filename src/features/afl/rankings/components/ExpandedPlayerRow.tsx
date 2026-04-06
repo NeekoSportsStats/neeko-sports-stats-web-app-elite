@@ -233,7 +233,7 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
     : rawEdge != null && rawEdge < -5 ? "red"
     :                                   "neutral";
 
-  const aiText = row.long ?? row.why ?? null;
+  const aiText = row.why_long ?? row.why ?? null;
 
   const confidence = row.projection_confidence != null ? Math.round(row.projection_confidence) : null;
   const price      = row.price != null ? fmtPrice(row.price) : null;
