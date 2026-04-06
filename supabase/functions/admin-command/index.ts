@@ -124,34 +124,74 @@ Deno.serve(async (req: Request) => {
       if (updateError) throw updateError;
       return ok(data);
 
-    } else if (command === "commit_price_ingest") {
+    } else if (command === "validate_price_ingest") {
       const { season, round, rows } = payload;
       if (!season || round === undefined || round === null || !rows) {
         return err("Missing required fields: season, round, rows");
       }
-      console.log(`[commit_price_ingest] season=${season} round=${round} rows=${rows.length}`);
-      const aflClient = createClient(supabaseUrl, supabaseServiceKey, {
-        auth: { persistSession: false, autoRefreshToken: false },
-        db: { schema: "afl" },
-      });
-      const { data, error } = await aflClient.rpc("commit_price_round", {
+      const { data, error } = await supabase.rpc("validate_price_ingest_rows", {
         p_season: season,
         p_round: round,
         p_rows: rows,
       });
-      if (error) {
-        console.error("[commit_price_ingest] RPC error:", error);
-        return err(`commit_price_round failed: ${error.message}`, 500);
-      }
-      console.log("[commit_price_ingest] result:", data);
+      if (error) throw error;
       return ok(data);
 
+    } else if (command === "commit_price_ingest") {
+      const { season, round, rows, session_id } = payload;
+      if (!season || round === undefined || round === null || !rows) {
+        return err("Missing required fields: season, round, rows");
+      }
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return err("rows must be a non-empty array");
+      }
+      console.log(`[commit_price_ingest] season=${season} round=${round} rows=${rows.length} session_id=${session_id ?? "none"}`);
+
+      const { data, error } = await supabase.rpc("commit_price_round_with_session", {
+        p_season: season,
+        p_round: round,
+        p_rows: rows,
+        p_session_id: session_id ?? null,
+      });
+      if (error) {
+        console.error("[commit_price_ingest] RPC error:", error);
+        const friendly = error.message.includes("locked")
+          ? `Round ${round} is locked. Unlock it from the Round Control screen before committing.`
+          : error.message.includes("not found")
+          ? "One or more player IDs were not found in the database. Re-check your matches."
+          : `Commit failed: ${error.message}`;
+        return err(friendly, 500);
+      }
+
+      if (data && !(data as Record<string, unknown>).ok) {
+        const errMsg = (data as Record<string, unknown>).error as string ?? "Commit failed";
+        return err(errMsg, 400);
+      }
+
+      console.log("[commit_price_ingest] committed:", data);
+
+      EdgeRuntime.waitUntil(
+        supabase.rpc("trigger_post_price_pipeline", {
+          p_season: season,
+          p_round: round,
+        }).then(({ data: pData, error: pErr }) => {
+          if (pErr) {
+            console.error("[commit_price_ingest] background pipeline failed:", pErr.message);
+          } else {
+            console.log("[commit_price_ingest] background pipeline done:", JSON.stringify(pData));
+          }
+        })
+      );
+
+      return ok({ ...(data as object), pipeline: "running_in_background" });
+
     } else if (command === "save_player_name_mapping") {
-      const { source_name, player_id } = payload;
+      const { source_name, player_id, match_method } = payload;
       if (!source_name || !player_id) return err("Missing source_name or player_id");
       const { data, error } = await supabase.rpc("save_player_name_mapping", {
         p_source_name: source_name,
         p_player_id: player_id,
+        p_match_method: match_method ?? "manual",
       });
       if (error) throw error;
       return ok(data);

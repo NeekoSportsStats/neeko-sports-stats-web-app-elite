@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import type { MappingRow, IngestByIdResult, PlayerOption, PriceRound } from "./types";
+import type { MappingRow, PriceRound, CommitResult, ValidationResult, IngestSession } from "./types";
 
 async function callAdminCommand(command: string, payload: Record<string, unknown>) {
   const { data: { session } } = await supabase.auth.getSession();
@@ -21,8 +21,8 @@ async function callAdminCommand(command: string, payload: Record<string, unknown
   return json.result;
 }
 
-export function usePlayerOptions(): PlayerOption[] {
-  const [players, setPlayers] = useState<PlayerOption[]>([]);
+export function usePlayerOptions() {
+  const [players, setPlayers] = useState<Array<{ player_id: number; player_name: string; position_group: string | null }>>([]);
 
   useEffect(() => {
     supabase
@@ -33,43 +33,11 @@ export function usePlayerOptions(): PlayerOption[] {
       .order("player_name" as never)
       .limit(1500)
       .then(({ data }) => {
-        if (data) setPlayers(data as unknown as PlayerOption[]);
+        if (data) setPlayers(data as typeof players);
       });
   }, []);
 
   return players;
-}
-
-export function useCommitPrices() {
-  const [committing, setCommitting] = useState(false);
-
-  const commitPrices = useCallback(async (
-    rows: MappingRow[],
-    season: number = 2026,
-    round: number = 0,
-  ): Promise<{ result: IngestByIdResult | null; error: string | null }> => {
-    setCommitting(true);
-    try {
-      const payload = rows
-        .filter(r => r.player_id !== null)
-        .map(r => ({
-          player_id: r.player_id,
-          cleaned_price: r.cleaned_price,
-          player_status: r.player_status ?? null,
-        }));
-
-      console.log(`[commit_price_ingest] season=${season} round=${round} rows=${payload.length}`);
-      const result = await callAdminCommand("commit_price_ingest", { rows: payload, season, round });
-      console.log(`[commit_price_ingest] result:`, result);
-      return { result: result as IngestByIdResult, error: null };
-    } catch (e) {
-      return { result: null, error: e instanceof Error ? e.message : "Commit failed" };
-    } finally {
-      setCommitting(false);
-    }
-  }, []);
-
-  return { committing, commitPrices };
 }
 
 export function usePriceRounds(season: number = 2026) {
@@ -96,6 +64,67 @@ export function usePriceRounds(season: number = 2026) {
   }, [season, fetchRounds]);
 
   return { rounds, loading, fetchRounds, toggleLock };
+}
+
+export function useCommitPrices() {
+  const [committing, setCommitting] = useState(false);
+  const [validating, setValidating] = useState(false);
+
+  const validateRows = useCallback(async (
+    rows: MappingRow[],
+    season: number,
+    round: number,
+  ): Promise<{ result: ValidationResult | null; error: string | null }> => {
+    setValidating(true);
+    try {
+      const payload = rows
+        .filter(r => r.player_id !== null)
+        .map(r => ({
+          player_id: r.player_id,
+          cleaned_price: r.cleaned_price,
+          player_status: r.player_status ?? null,
+          source_name: r.source_name,
+        }));
+      const result = await callAdminCommand("validate_price_ingest", { rows: payload, season, round });
+      return { result: result as ValidationResult, error: null };
+    } catch (e) {
+      return { result: null, error: e instanceof Error ? e.message : "Validation failed" };
+    } finally {
+      setValidating(false);
+    }
+  }, []);
+
+  const commitPrices = useCallback(async (
+    rows: MappingRow[],
+    season: number,
+    round: number,
+    sessionId?: string | null,
+  ): Promise<{ result: CommitResult | null; error: string | null }> => {
+    setCommitting(true);
+    try {
+      const payload = rows
+        .filter(r => r.player_id !== null)
+        .map(r => ({
+          player_id: r.player_id,
+          cleaned_price: r.cleaned_price,
+          player_status: r.player_status ?? null,
+        }));
+
+      const result = await callAdminCommand("commit_price_ingest", {
+        rows: payload,
+        season,
+        round,
+        session_id: sessionId ?? null,
+      });
+      return { result: result as CommitResult, error: null };
+    } catch (e) {
+      return { result: null, error: e instanceof Error ? e.message : "Commit failed" };
+    } finally {
+      setCommitting(false);
+    }
+  }, []);
+
+  return { committing, validating, validateRows, commitPrices };
 }
 
 export function useSavePending() {
@@ -127,11 +156,13 @@ export function useSaveMapping() {
   const saveMapping = useCallback(async (
     sourceName: string,
     playerId: number,
+    matchMethod: string = "manual",
   ): Promise<void> => {
     try {
       await callAdminCommand("save_player_name_mapping", {
         source_name: sourceName,
         player_id: playerId,
+        match_method: matchMethod,
       });
     } catch (e) {
       console.warn("[saveMapping] failed:", e instanceof Error ? e.message : e);
@@ -176,4 +207,44 @@ export async function lookupPersistedMappings(
   } catch {
     return [];
   }
+}
+
+export function usePersistedMappings(rows: MappingRow[]) {
+  const [persistedMappings, setPersistedMappings] = useState<Map<string, PersistedMapping>>(new Map());
+
+  const sourceNamesKey = useMemo(
+    () => rows.map(r => r.source_name).sort().join("|"),
+    [rows],
+  );
+
+  useEffect(() => {
+    if (rows.length === 0) return;
+    const sourceNames = rows.map(r => r.source_name);
+    lookupPersistedMappings(sourceNames).then(results => {
+      const index = new Map<string, PersistedMapping>();
+      for (const m of results) {
+        index.set(m.source_name.toLowerCase().trim().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " "), m);
+      }
+      setPersistedMappings(index);
+    });
+  }, [sourceNamesKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return persistedMappings;
+}
+
+export function useIngestSessions() {
+  const [sessions, setSessions] = useState<IngestSession[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchSessions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data } = await supabase.rpc("get_price_ingest_sessions", { p_limit: 10 });
+      if (data) setSessions(data as IngestSession[]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { sessions, loading, fetchSessions };
 }

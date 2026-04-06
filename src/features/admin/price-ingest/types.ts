@@ -13,16 +13,6 @@ export interface ParsedPriceRow {
   positions?: string[] | null;
 }
 
-export interface PreviewRow {
-  source_name: string;
-  normalized_name: string;
-  cleaned_price: number;
-  player_id: number | null;
-  player_name: string | null;
-  existing_price: number | null;
-  status: "matched" | "duplicate" | "unmatched";
-}
-
 export interface PlayerOption {
   player_id: number;
   player_name: string;
@@ -37,6 +27,15 @@ export type MatchStatus =
   | "manually_matched"
   | "manual_input";
 
+export type MatchMethod =
+  | "persisted_memory"
+  | "exact_fullname"
+  | "initial_surname_unique"
+  | "surname_unique"
+  | "partial_prefix"
+  | "manual"
+  | "manual_input";
+
 export interface MappingRow {
   id: string;
   source_name: string;
@@ -47,6 +46,7 @@ export interface MappingRow {
   player_name: string | null;
   manual_input_name: string | null;
   match_status: MatchStatus;
+  match_method: MatchMethod | null;
   confidence: number;
   suggestions: PlayerOption[];
   external_id?: number | null;
@@ -59,11 +59,6 @@ export interface MappingRow {
   positions?: string[] | null;
 }
 
-export interface RefreshStepResult {
-  ok: boolean;
-  error?: string;
-}
-
 export interface PriceRound {
   season: number;
   round: number;
@@ -73,45 +68,58 @@ export interface PriceRound {
   player_count: number;
 }
 
-export interface CommitPriceRoundResult {
+export interface CommitResult {
   ok: boolean;
   season: number;
   round: number;
-  deleted: number;
   inserted: number;
+  status_synced?: number;
+  skipped?: number;
   total: number;
+  matched?: number;
+  pipeline?: string;
+  session_id?: string | null;
   error?: string;
 }
 
-export interface IngestByIdResult {
-  inserted: number;
-  skipped_dup: number;
-  total: number;
-  season?: number;
-  round?: number;
-  deleted?: number;
-  refresh?: {
-    projection_engine: RefreshStepResult;
-    rankings_cache: RefreshStepResult;
-    rebuild_projection: RefreshStepResult;
-    refresh_mv: RefreshStepResult;
-    refresh_rankings: RefreshStepResult;
-  };
-}
-
-export interface IngestResult {
-  inserted: number;
-  skipped_dup: number;
-  unmatched: number;
+export interface ValidationResult {
+  valid: boolean;
+  errors: string[];
+  warnings: string[];
+  valid_count: number;
   total: number;
 }
 
-export interface UnmatchedRow {
+export interface IngestSession {
   id: string;
-  source_name: string;
-  normalized_source_name: string;
-  example_price: number | null;
-  resolved: boolean;
-  resolved_player_id: number | null;
+  season: number;
+  round: number;
+  label: string;
+  status: "draft" | "committed" | "failed";
+  rows_total: number;
+  rows_matched: number;
+  rows_unresolved: number;
+  rows_committed: number | null;
+  created_by_email: string | null;
+  committed_by_email: string | null;
+  committed_at: string | null;
+  pipeline_done: boolean;
+  pipeline_error: string | null;
   created_at: string;
+}
+
+export interface IngestCounts {
+  total: number;
+  auto: number;
+  manual: number;
+  suggested: number;
+  manualRequired: number;
+  pendingRecord: number;
+  manualInput: number;
+  readyToCommit: number;
+  statusChanges: number;
+  hasPositions: number;
+  hasTeams: number;
+  hasAvgPoints: number;
+  hasOwnership: number;
 }

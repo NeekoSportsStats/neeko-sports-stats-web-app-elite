@@ -1,16 +1,9 @@
-import type { PlayerOption, MappingRow } from "./types";
+import type { PlayerOption, MappingRow, MatchStatus, MatchMethod } from "./types";
 import type { PersistedMapping } from "./usePriceIngest";
-
-export type MatchStatus =
-  | "auto_matched"
-  | "suggested"
-  | "manual_required"
-  | "pending_player_record"
-  | "manually_matched"
-  | "manual_input";
 
 export interface MatchResult {
   status: MatchStatus;
+  method: MatchMethod | null;
   confidence: number;
   player_id: number | null;
   player_name: string | null;
@@ -95,6 +88,7 @@ export function matchPlayer(
       if (player) {
         return {
           status: "auto_matched",
+          method: "persisted_memory",
           confidence: 100,
           player_id: hit.player_id,
           player_name: hit.player_name,
@@ -107,7 +101,7 @@ export function matchPlayer(
   const parsed = parseName(sourceName);
 
   if (!parsed) {
-    return { status: "pending_player_record", confidence: 0, player_id: null, player_name: null, suggestions: [] };
+    return { status: "pending_player_record", method: null, confidence: 0, player_id: null, player_name: null, suggestions: [] };
   }
 
   const { initial, surname } = parsed;
@@ -133,6 +127,7 @@ export function matchPlayer(
   if (exactBoth.length === 1) {
     return {
       status: "auto_matched",
+      method: "initial_surname_unique",
       confidence: 95,
       player_id: exactBoth[0].player_id,
       player_name: exactBoth[0].player_name,
@@ -141,15 +136,15 @@ export function matchPlayer(
   }
 
   if (exactBoth.length > 1) {
-    return { status: "suggested", confidence: 75, player_id: null, player_name: null, suggestions: exactBoth.slice(0, 6) };
+    return { status: "suggested", method: null, confidence: 75, player_id: null, player_name: null, suggestions: exactBoth.slice(0, 6) };
   }
 
   if (exactSurnameOnly.length === 1) {
-    return { status: "suggested", confidence: 80, player_id: null, player_name: null, suggestions: exactSurnameOnly };
+    return { status: "suggested", method: null, confidence: 80, player_id: null, player_name: null, suggestions: exactSurnameOnly };
   }
 
   if (exactSurnameOnly.length > 1) {
-    return { status: "suggested", confidence: 60, player_id: null, player_name: null, suggestions: exactSurnameOnly.slice(0, 6) };
+    return { status: "suggested", method: null, confidence: 60, player_id: null, player_name: null, suggestions: exactSurnameOnly.slice(0, 6) };
   }
 
   const surnamePrefix = surname.slice(0, Math.max(4, surname.length - 1));
@@ -168,10 +163,10 @@ export function matchPlayer(
 
   const candidates = partial.length > 0 ? partial : partialLoose;
   if (candidates.length > 0) {
-    return { status: "manual_required", confidence: 35, player_id: null, player_name: null, suggestions: candidates.slice(0, 6) };
+    return { status: "manual_required", method: null, confidence: 35, player_id: null, player_name: null, suggestions: candidates.slice(0, 6) };
   }
 
-  return { status: "pending_player_record", confidence: 0, player_id: null, player_name: null, suggestions: [] };
+  return { status: "pending_player_record", method: null, confidence: 0, player_id: null, player_name: null, suggestions: [] };
 }
 
 export function applyAutoMatch(
@@ -190,6 +185,7 @@ export function applyAutoMatch(
         player_id: result.player_id,
         player_name: result.player_name,
         match_status: result.status,
+        match_method: result.method,
         confidence: result.confidence,
         suggestions: result.suggestions,
       };
@@ -198,8 +194,58 @@ export function applyAutoMatch(
     return {
       ...row,
       match_status: result.status,
+      match_method: result.method,
       confidence: result.confidence,
       suggestions: result.suggestions,
     };
+  });
+}
+
+export function computeIngestCounts(rows: MappingRow[]) {
+  const auto = rows.filter(r => r.match_status === "auto_matched").length;
+  const manual = rows.filter(r => r.match_status === "manually_matched").length;
+  const suggested = rows.filter(r => r.match_status === "suggested" && r.player_id === null).length;
+  const manualRequired = rows.filter(r => r.match_status === "manual_required").length;
+  const pendingRecord = rows.filter(r => r.match_status === "pending_player_record").length;
+  const manualInput = rows.filter(r => r.match_status === "manual_input").length;
+  const readyToCommit = auto + manual;
+  const statusChanges = rows.filter(r => r.player_status != null && r.player_status !== "AVAILABLE").length;
+  const hasPositions = rows.filter(r => r.position != null).length;
+  const hasTeams = rows.filter(r => r.team != null).length;
+  const hasAvgPoints = rows.filter(r => r.avg_points != null).length;
+  const hasOwnership = rows.filter(r => r.ownership_pct != null).length;
+  return {
+    total: rows.length,
+    auto,
+    manual,
+    suggested,
+    manualRequired,
+    pendingRecord,
+    manualInput,
+    readyToCommit,
+    statusChanges,
+    hasPositions,
+    hasTeams,
+    hasAvgPoints,
+    hasOwnership,
+  };
+}
+
+export function sortAndGroupRows(rows: MappingRow[]): MappingRow[] {
+  const GROUP_ORDER: MatchStatus[] = [
+    "pending_player_record",
+    "manual_input",
+    "manual_required",
+    "suggested",
+    "manually_matched",
+    "auto_matched",
+  ];
+  return [...rows].sort((a, b) => {
+    const ga = GROUP_ORDER.indexOf(a.match_status);
+    const gb = GROUP_ORDER.indexOf(b.match_status);
+    if (ga !== gb) return ga - gb;
+    const la = a.source_name.trim().split(/\s+/).pop()?.toLowerCase() ?? "";
+    const lb = b.source_name.trim().split(/\s+/).pop()?.toLowerCase() ?? "";
+    return la.localeCompare(lb);
   });
 }
