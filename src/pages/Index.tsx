@@ -15,8 +15,6 @@ import MobileUpgradeBar from "@/components/mobile/MobileUpgradeBar";
 import { LandingMarketWatchSample } from "@/components/landing/LandingMarketWatchSample";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
 import type { MWPlayerRow } from "@/features/afl/market-watch/types";
-import { buildEdgeBoardPlayers } from "@/features/afl/edge-board/engine";
-import { buildCurrentRoundPlayers } from "@/features/afl/current-round/engine";
 import { classifyPlayers } from "@/features/afl/market-watch/engine";
 
 // ─── Adapter: RankingRow → MWPlayerRow ────────────────────────────────────────
@@ -213,13 +211,52 @@ interface EdgeBoardPreviewProps {
 }
 
 function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
-  const edgeBoard = useMemo(() => buildEdgeBoardPlayers(players), [players]);
+  const cards: { section: EdgeSignalType; player: RankingRow | null }[] = useMemo(() => {
+    if (players.length === 0) {
+      return [
+        { section: "must_have", player: null },
+        { section: "breakout",  player: null },
+        { section: "avoid",     player: null },
+      ];
+    }
 
-  const cards: { section: EdgeSignalType; player: (typeof edgeBoard.mustHave)[0] | null }[] = [
-    { section: "must_have", player: edgeBoard.mustHave[0] ?? null },
-    { section: "breakout",  player: edgeBoard.breakout[0] ?? null },
-    { section: "avoid",     player: edgeBoard.avoid[0]    ?? null },
-  ];
+    const available = players.filter(
+      p =>
+        (p.manual_status ?? "").toUpperCase() !== "OUT" &&
+        (p.manual_status ?? "").toUpperCase() !== "INJURED" &&
+        (p.manual_status ?? "").toUpperCase() !== "OMITTED" &&
+        (p.status ?? "").toUpperCase() !== "OUT" &&
+        !p.is_bye
+    );
+
+    const byEdgeDesc = [...available].sort(
+      (a, b) => (b.edge_canonical ?? b.edge ?? 0) - (a.edge_canonical ?? a.edge ?? 0)
+    );
+    const byEdgeAsc = [...available].sort(
+      (a, b) => (a.edge_canonical ?? a.edge ?? 0) - (b.edge_canonical ?? b.edge ?? 0)
+    );
+
+    const usedIds = new Set<string | number>();
+    function pick(pool: RankingRow[]): RankingRow | null {
+      for (const p of pool) {
+        if (!usedIds.has(p.player_id ?? "")) {
+          usedIds.add(p.player_id ?? "");
+          return p;
+        }
+      }
+      return null;
+    }
+
+    const mustHavePlayer = pick(byEdgeDesc);
+    const breakoutPlayer = pick(byEdgeDesc);
+    const avoidPlayer    = pick(byEdgeAsc);
+
+    return [
+      { section: "must_have" as EdgeSignalType, player: mustHavePlayer },
+      { section: "breakout"  as EdgeSignalType, player: breakoutPlayer },
+      { section: "avoid"     as EdgeSignalType, player: avoidPlayer },
+    ];
+  }, [players]);
 
   return (
     <section className="py-12 md:py-16 bg-[#0a0a0a] border-t border-white/[0.05]">
@@ -1215,16 +1252,25 @@ export default function Index() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("v_player_rankings_cache")
         .select("player_id, player_name, team, team_name, position, price, projection_final, season_avg, last_3_avg, last_5_avg, signal_canonical, category_canonical, signal_tag, games_played, status, manual_status, is_bye")
-        .gte("games_played", 3)
-        .gte("projection_final", 55)
         .order("projection_final", { ascending: false })
-        .limit(100);
+        .limit(150);
+
+      if (error) {
+        console.error("[LandingPlayers] fetch error:", error.message);
+        setPlayersLoading(false);
+        return;
+      }
 
       const mapped = ((data ?? []) as any[]).map((r): RankingRow => {
         const proj = r.projection_final != null ? Number(r.projection_final) : null;
+        const last3 = r.last_3_avg != null ? Number(r.last_3_avg) : null;
+        const last5 = r.last_5_avg != null ? Number(r.last_5_avg) : null;
+        const seasonAvg = r.season_avg != null ? Number(r.season_avg) : null;
+        const breakeven = last3 ?? last5 ?? seasonAvg ?? (proj != null ? proj * 0.9 : null);
+        const edgeDerived = proj != null && breakeven != null ? proj - breakeven : null;
         return {
           player_id:             r.player_id ?? null,
           player_name:           r.player_name ?? "",
@@ -1260,10 +1306,10 @@ export default function Index() {
           total_count:           null,
           games_played:          r.games_played != null ? Number(r.games_played) : null,
           baseline:              null,
-          edge:                  null,
+          edge:                  edgeDerived,
           signal:                (r.signal_canonical as string) ?? null,
-          season_avg:            null,
-          last_3_avg:            null,
+          season_avg:            seasonAvg,
+          last_3_avg:            last3,
           value:                 null,
           why:                   null,
           long:                  null,
@@ -1281,8 +1327,8 @@ export default function Index() {
           form_delta:            null,
           form_label:            null,
           value_signal:          null,
-          edge_canonical:        null,
-          breakeven_canonical:   null,
+          edge_canonical:        edgeDerived,
+          breakeven_canonical:   breakeven,
           signal_canonical:      (r.signal_canonical as string) ?? null,
           category_canonical:    (r.category_canonical as string) ?? null,
           action_canonical:      null,
@@ -1297,13 +1343,26 @@ export default function Index() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("v_player_rankings_cache")
-        .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, value_score_canonical, breakeven_canonical, edge_canonical, signal_canonical, category_canonical, signal_tag, status, manual_status, is_bye, games_played, cached_at")
+        .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, signal_canonical, category_canonical, signal_tag, status, manual_status, is_bye, games_played, cached_at")
         .order("projection_final", { ascending: false, nullsFirst: false })
-        .limit(50);
+        .limit(100);
+
+      if (error) {
+        console.error("[LandingMW] fetch error:", error.message);
+        setMwLoading(false);
+        return;
+      }
 
       const rows: MWPlayerRow[] = ((data ?? []) as any[]).map((r): MWPlayerRow => {
+        const proj = parseFloat(r.projection_final ?? '0') || 0;
+        const last3 = r.last_3_avg != null ? Number(r.last_3_avg) : null;
+        const last5 = r.last_5_avg != null ? Number(r.last_5_avg) : null;
+        const seasonAvg = r.season_avg != null ? Number(r.season_avg) : null;
+        const breakeven = last3 ?? last5 ?? seasonAvg ?? (proj * 0.9);
+        const edgeDerived = proj - breakeven;
+
         const catRaw = (r.category_canonical ?? r.signal_tag ?? "").toLowerCase();
         const displaySignal: "TARGET" | "WATCH" | "AVOID" =
           catRaw === "target" ? "TARGET" : catRaw === "avoid" ? "AVOID" : "WATCH";
@@ -1322,13 +1381,13 @@ export default function Index() {
           prev_price: r.prev_price ?? null,
           price_change: r.price_change ?? null,
           price_change_pct: null,
-          projection: parseFloat(r.projection_final ?? '0') || 0,
-          projection_final: parseFloat(r.projection_final ?? '0') || 0,
+          projection: proj,
+          projection_final: proj,
           ceiling: null,
           floor_val: null,
-          breakeven_canonical: r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
-          edge_canonical: r.edge_canonical != null ? Number(r.edge_canonical) : null,
-          value_score_canonical: r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
+          breakeven_canonical: breakeven,
+          edge_canonical: edgeDerived,
+          value_score_canonical: breakeven > 0 ? parseFloat(((edgeDerived / breakeven) * 100).toFixed(1)) : null,
           signal_canonical: r.signal_canonical ?? null,
           category_canonical: r.category_canonical ?? null,
           action_canonical: null,
@@ -1350,10 +1409,7 @@ export default function Index() {
       });
 
       const eligible = rows.filter(
-        p => (p.games_played ?? 0) >= 3 &&
-          (p.projection ?? 0) >= 55 &&
-          !p.is_injured &&
-          !p.is_bye
+        p => !p.is_injured && !p.is_bye
       );
 
       setMwPlayers(eligible);

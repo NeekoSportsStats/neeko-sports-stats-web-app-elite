@@ -68,27 +68,24 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
   }
 
   const mustHavePool = byEdgeDesc.filter((p) => (p.edge_canonical ?? p.edge ?? 0) >= 10);
-  const mustHave = pickFromPool(mustHavePool, PLAYERS_PER_SECTION, "must_have");
-
-  if (mustHave.length < PLAYERS_PER_SECTION) {
-    console.warn(`[EdgeBoard] must_have: only ${mustHave.length}/${PLAYERS_PER_SECTION} players met the edge >= 10 threshold`);
+  let mustHave = pickFromPool(mustHavePool, PLAYERS_PER_SECTION, "must_have");
+  if (mustHave.length === 0) {
+    mustHave = pickFromPool(byEdgeDesc, PLAYERS_PER_SECTION, "must_have");
   }
 
   const breakoutPool = byEdgeDesc.filter((p) => {
     const e = p.edge_canonical ?? p.edge ?? 0;
     return e >= 3 && e < 10;
   });
-  const breakout = pickFromPool(breakoutPool, PLAYERS_PER_SECTION, "breakout");
-
-  if (breakout.length < PLAYERS_PER_SECTION) {
-    console.warn(`[EdgeBoard] breakout: only ${breakout.length}/${PLAYERS_PER_SECTION} players met the edge 3–10 threshold`);
+  let breakout = pickFromPool(breakoutPool, PLAYERS_PER_SECTION, "breakout");
+  if (breakout.length === 0) {
+    breakout = pickFromPool(byEdgeDesc, PLAYERS_PER_SECTION, "breakout");
   }
 
   const avoidPool = byEdgeAsc.filter((p) => (p.edge_canonical ?? p.edge ?? 0) < 3);
-  const avoid = pickFromPool(avoidPool, PLAYERS_PER_SECTION, "avoid");
-
-  if (avoid.length < PLAYERS_PER_SECTION) {
-    console.warn(`[EdgeBoard] avoid: only ${avoid.length}/${PLAYERS_PER_SECTION} players met the edge < 3 threshold`);
+  let avoid = pickFromPool(avoidPool, PLAYERS_PER_SECTION, "avoid");
+  if (avoid.length === 0) {
+    avoid = pickFromPool(byEdgeAsc, PLAYERS_PER_SECTION, "avoid");
   }
 
   const allEdgeIds = new Set<string>();
