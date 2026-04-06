@@ -47,14 +47,9 @@ export function buildCurrentRoundPlayers(
 
   function enrich(p: RankingRow): CurrentRoundPlayer {
     const id = p.player_id ?? "";
-    const edge =
-      p.edge_canonical != null ? p.edge_canonical :
-      p.projection_final != null && p.breakeven != null
-        ? p.projection_final - p.breakeven
-        : (p.edge ?? null);
     return {
       ...p,
-      edge,
+      edge_canonical: p.edge_canonical ?? null,
       overallRank: rankMap.get(id) ?? 999,
       isFeaturedPick: edgeBoardIds.has(id),
     };
@@ -66,10 +61,10 @@ export function buildCurrentRoundPlayers(
     (a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)
   );
   const byEdgeDesc = [...enriched].sort(
-    (a, b) => (b.edge ?? 0) - (a.edge ?? 0)
+    (a, b) => (b.edge_canonical ?? 0) - (a.edge_canonical ?? 0)
   );
   const byEdgeAsc = [...enriched].sort(
-    (a, b) => (a.edge ?? 0) - (b.edge ?? 0)
+    (a, b) => (a.edge_canonical ?? 0) - (b.edge_canonical ?? 0)
   );
 
   // CAPTAINS: top projection players
@@ -90,26 +85,20 @@ export function buildCurrentRoundPlayers(
   // VALUE PICKS: highest edge players not already used
   // Primary: edge > 8, fallback: any positive edge, second fallback: top remaining by projection
   const valuePool = byEdgeDesc.filter((p) => !topIds.has(p.player_id));
-  const valuePrimary = valuePool.filter((p) => (p.edge ?? 0) > 8).slice(0, OTHER_LIMIT);
+  const valuePrimary = valuePool.filter((p) => (p.edge_canonical ?? 0) > 8).slice(0, OTHER_LIMIT);
 
   let valuePicks = valuePrimary;
   if (valuePicks.length < 3) {
     const extra = valuePool
-      .filter((p) => (p.edge ?? 0) > 0 && !valuePrimary.some((v) => v.player_id === p.player_id))
+      .filter((p) => (p.edge_canonical ?? 0) > 0 && !valuePrimary.some((v) => v.player_id === p.player_id))
       .slice(0, OTHER_LIMIT - valuePicks.length);
     valuePicks = [...valuePicks, ...extra];
-    if (extra.length > 0) {
-      console.log(`[CurrentRound] valuePicks fallback1: added ${extra.length} from positive-edge pool`);
-    }
   }
   if (valuePicks.length < 3) {
     const extra = valuePool
       .filter((p) => !valuePicks.some((v) => v.player_id === p.player_id))
       .slice(0, OTHER_LIMIT - valuePicks.length);
     valuePicks = [...valuePicks, ...extra];
-    if (extra.length > 0) {
-      console.log(`[CurrentRound] valuePicks fallback2: added ${extra.length} from remaining pool`);
-    }
   }
 
   const valueIds = new Set([...topIds, ...valuePicks.map((p) => p.player_id)]);
@@ -123,30 +112,24 @@ export function buildCurrentRoundPlayers(
     .filter(
       (p) =>
         (p.projection_final ?? 0) >= 80 &&
-        (p.edge ?? 0) >= -15 &&
-        p.signal !== "STRONG_DOWN" &&
-        p.signal !== "DOWN"
+        (p.edge_canonical ?? 0) >= -15 &&
+        p.signal_canonical !== "STRONG_DOWN" &&
+        p.signal_canonical !== "DOWN"
     )
     .slice(0, OTHER_LIMIT);
 
   let safePicks = safePrimary;
   if (safePicks.length < 3) {
     const extra = safePool
-      .filter((p) => !safePrimary.some((s) => s.player_id === p.player_id) && (p.edge ?? 0) >= -20)
+      .filter((p) => !safePrimary.some((s) => s.player_id === p.player_id) && (p.edge_canonical ?? 0) >= -20)
       .slice(0, OTHER_LIMIT - safePicks.length);
     safePicks = [...safePicks, ...extra];
-    if (extra.length > 0) {
-      console.log(`[CurrentRound] safePicks fallback1: added ${extra.length} with relaxed edge threshold`);
-    }
   }
   if (safePicks.length < 3) {
     const extra = safePool
       .filter((p) => !safePicks.some((s) => s.player_id === p.player_id))
       .slice(0, OTHER_LIMIT - safePicks.length);
     safePicks = [...safePicks, ...extra];
-    if (extra.length > 0) {
-      console.log(`[CurrentRound] safePicks fallback2: added ${extra.length} from remaining pool`);
-    }
   }
 
   const safeIds = new Set([...valueIds, ...safePicks.map((p) => p.player_id)]);
@@ -156,7 +139,7 @@ export function buildCurrentRoundPlayers(
   // RISK PICKS: lowest edge players not already used (derived from edge_canonical)
   // Primary: edge < -5, fallback: most negative edge available
   const riskPool = byEdgeAsc.filter((p) => !safeIds.has(p.player_id));
-  const riskPrimary = riskPool.filter((p) => (p.edge ?? 0) < -5).slice(0, OTHER_LIMIT);
+  const riskPrimary = riskPool.filter((p) => (p.edge_canonical ?? 0) < -5).slice(0, OTHER_LIMIT);
 
   let riskPicks = riskPrimary;
   if (riskPicks.length < 3) {
@@ -164,9 +147,6 @@ export function buildCurrentRoundPlayers(
       .filter((p) => !riskPrimary.some((r) => r.player_id === p.player_id))
       .slice(0, OTHER_LIMIT - riskPicks.length);
     riskPicks = [...riskPicks, ...extra];
-    if (extra.length > 0) {
-      console.log(`[CurrentRound] riskPicks fallback: added ${extra.length} from lowest-edge pool`);
-    }
   }
 
   console.log(`[CurrentRound] riskPicks: ${riskPicks.length}`);

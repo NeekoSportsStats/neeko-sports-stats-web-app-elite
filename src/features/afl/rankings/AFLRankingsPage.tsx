@@ -55,8 +55,8 @@ function ValueStrip({ rows }: { rows: RankingRow[] }) {
   }, null);
 
   const bestValue = top8.reduce<RankingRow | null>((best, r) => {
-    if (r.value_score == null) return best;
-    if (!best || r.value_score > (best.value_score ?? 0)) return r;
+    if (r.value_score_canonical == null) return best;
+    if (!best || r.value_score_canonical > (best.value_score_canonical ?? 0)) return r;
     return best;
   }, null);
 
@@ -77,7 +77,7 @@ function ValueStrip({ rows }: { rows: RankingRow[] }) {
     {
       icon: <TrendingUp size={13} className="text-emerald-400" />,
       label: "Best Value Pick",
-      value: bestValue ? fmtValueScore(bestValue.value_score) : "—",
+      value: bestValue ? fmtValueScore(bestValue.value_score_canonical) : "—",
       sub: bestValue?.player_name ?? "—",
       color: "text-emerald-400",
     },
@@ -273,71 +273,58 @@ export default function AFLRankingsPage() {
       player_id:              r.player_id,
       player_name:            r.player_name,
       team:                   r.team ?? r.team_name ?? "",
+      team_name:              r.team_name ?? r.team ?? null,
       position:               normalisePosition(r.position ?? r.position_group ?? null),
+      position_group:         r.position_group ?? null,
       projection_final:       r.projection_final != null ? Number(r.projection_final) : null,
       ceiling_estimate:       r.ceiling != null ? Number(r.ceiling) : (r.ceiling_estimate != null ? Number(r.ceiling_estimate) : null),
       floor_estimate:         r.floor != null ? Number(r.floor) : (r.floor_estimate != null ? Number(r.floor_estimate) : null),
-      consistency_score:      r.consistency != null ? Number(r.consistency) : (r.consistency_score != null ? Number(r.consistency_score) : null),
-      form_rating:            r.form_score != null ? Number(r.form_score) : (r.form_rating != null ? Number(r.form_rating) : null),
       neeko_rating:           r.neeko_rating_scaled != null ? Number(r.neeko_rating_scaled) : (r.neeko_rating != null ? Number(r.neeko_rating) : null),
       neeko_rating_scaled:    r.neeko_rating_scaled != null ? Number(r.neeko_rating_scaled) : null,
       projection_confidence:  r.projection_confidence != null ? Number(r.projection_confidence) : null,
       risk_rating:            r.risk_rating != null ? Number(r.risk_rating) : null,
-      form_score:             r.form_score != null ? Number(r.form_score) : (r.form_rating != null ? Number(r.form_rating) : null),
+      form_score:             r.form_score != null ? Number(r.form_score) : null,
       matchup_rating:         r.matchup_label ?? r.matchup_rating ?? null,
+      matchup_label:          r.matchup_label ?? null,
+      matchup_multiplier:     r.matchup_multiplier != null ? Number(r.matchup_multiplier) : null,
       upside_rating:          r.upside_rating != null ? Number(r.upside_rating) : null,
+      upside_pct:             r.upside_pct != null ? Number(r.upside_pct) : null,
       captain_score:          r.captain_score != null ? Number(r.captain_score) : null,
       captain_rating:         r.captain_rating ?? null,
       price:                  r.price != null ? Number(r.price) : null,
       prev_price:             r.prev_price != null ? Number(r.prev_price) : null,
       price_change:           r.price_change != null ? Number(r.price_change) : null,
       price_change_pct:       r.price_change_pct != null ? Number(r.price_change_pct) : null,
-      breakeven:              r.breakeven != null ? Number(r.breakeven) : null,
-      value_score:            r.value_score != null ? Number(r.value_score) : null,
-      best_value_score:       r.best_value_score != null ? Number(r.best_value_score) : null,
-      value_tag:              r.value_tag ?? null,
-      value_tier:             r.value_tier ?? null,
+      season_avg:             r.season_avg != null ? Number(r.season_avg) : null,
+      last_3_avg:             r.last_3_avg != null ? Number(r.last_3_avg) : null,
+      last_5_avg:             r.last_5_avg != null ? Number(r.last_5_avg) : null,
+      games_played:           r.games_played != null ? Number(r.games_played) : null,
+      breakeven_canonical:    r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
+      edge_canonical:         r.edge_canonical != null ? Number(r.edge_canonical) : null,
+      value_score_canonical:  r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
+      signal_canonical:       r.signal_canonical ?? null,
+      category_canonical:     r.category_canonical ?? null,
+      action_canonical:       r.action_canonical ?? null,
+      why:                    r.summary_short ?? r.why ?? null,
+      why_long:               r.summary_long ?? r.why_long ?? null,
       recommendation_strength: r.recommendation_strength ?? null,
       recommendation_color:   r.recommendation_color ?? null,
+      consistency:            r.consistency != null ? Number(r.consistency) : null,
       consistency_tier:       r.consistency_tier ?? null,
       total_count:            r.total_count != null ? Number(r.total_count) : null,
-      games_played:           r.games_played != null ? Number(r.games_played) : null,
       ai_updated_at:          r.ai_updated_at ?? null,
-      why: r.why
-        ?? r.summary_short
-        ?? r.recommendation_short
-        ?? null,
-      long: r.long
-        ?? r.summary_long
-        ?? r.recommendation_why
-        ?? r.ai_summary
-        ?? null,
-      ai_summary:           r.ai_summary ?? null,
-      market_watch_category: r.market_watch_category ?? null,
-      signal_tag:           r.signal_tag ?? null,
-      signal:               r.signal ?? null,
-      baseline:             r.baseline != null ? Number(r.baseline) : null,
-      edge:                 r.edge != null ? Number(r.edge) : null,
-      season_avg:           r.season_avg != null ? Number(r.season_avg) : null,
-      last_3_avg:           r.last_3_avg != null ? Number(r.last_3_avg) : null,
-      value:                r.value != null ? Number(r.value) : null,
-      upside_pct:           r.upside_pct != null ? Number(r.upside_pct) : null,
-      status:               r.status ?? null,
-      manual_status:        r.manual_status ?? null,
-      is_available:         r.is_available != null ? Boolean(r.is_available) : null,
-      bye_round:            r.bye_round != null ? Number(r.bye_round) : null,
-      is_bye:               r.is_bye != null ? Boolean(r.is_bye) : null,
-      bye_next_round:       r.bye_next_round != null ? Boolean(r.bye_next_round) : null,
-      trend_signal:         r.trend_signal ?? null,
-      trend_score:          r.trend_score != null ? Number(r.trend_score) : null,
-      form_delta:           r.form_delta != null ? Number(r.form_delta) : null,
-      form_label:           r.form_label ?? null,
-      value_signal:         r.value_signal ?? null,
-      edge_canonical:       r.edge_canonical != null ? Number(r.edge_canonical) : null,
-      breakeven_canonical:  r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
-      signal_canonical:     r.signal_canonical ?? null,
-      category_canonical:   r.category_canonical ?? null,
-      action_canonical:     r.action_canonical ?? null,
+      cached_at:              r.cached_at ?? null,
+      status:                 r.status ?? null,
+      manual_status:          r.manual_status ?? null,
+      is_available:           r.is_available != null ? Boolean(r.is_available) : null,
+      bye_round:              r.bye_round != null ? Number(r.bye_round) : null,
+      is_bye:                 r.is_bye != null ? Boolean(r.is_bye) : null,
+      bye_next_round:         r.bye_next_round != null ? Boolean(r.bye_next_round) : null,
+      trend_signal:           r.trend_signal ?? null,
+      trend_score:            r.trend_score != null ? Number(r.trend_score) : null,
+      form_delta:             r.form_delta != null ? Number(r.form_delta) : null,
+      form_label:             r.form_label ?? null,
+      access_tier:            r.access_tier ?? "locked",
     };
   }
 
@@ -351,7 +338,7 @@ export default function AFLRankingsPage() {
     if (!data) return {};
     return {
       why:           (data as any).summary_short ?? row.why,
-      long:          (data as any).summary_long ?? row.long,
+      why_long:      (data as any).summary_long ?? row.why_long,
       ai_updated_at: (data as any).cached_at ?? row.ai_updated_at,
     };
   }

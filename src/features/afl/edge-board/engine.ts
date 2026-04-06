@@ -42,7 +42,7 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
   });
 
   const byValueDesc = [...available].sort(
-    (a, b) => (b.value_score_canonical ?? b.edge_canonical ?? b.edge ?? 0) - (a.value_score_canonical ?? a.edge_canonical ?? a.edge ?? 0)
+    (a, b) => (b.value_score_canonical ?? 0) - (a.value_score_canonical ?? 0)
   );
 
   const usedIds = new Set<string>();

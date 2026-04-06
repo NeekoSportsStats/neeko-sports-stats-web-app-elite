@@ -69,7 +69,6 @@ export default function MarketWatchPageElite() {
         const displaySignal: "TARGET" | "WATCH" | "AVOID" =
           catRaw === "target" ? "TARGET" : catRaw === "avoid" ? "AVOID" : "WATCH";
 
-        const isInjured = ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()) || ['injured', 'out'].includes((r.manual_status ?? '').toLowerCase());
         const isBye = r.is_bye === true || (r.status ?? '').toLowerCase() === 'bye' || (r.manual_status ?? '').toLowerCase() === 'bye';
 
         return {
@@ -78,52 +77,29 @@ export default function MarketWatchPageElite() {
           team: r.team ?? r.team_name ?? '',
           team_name: r.team_name ?? r.team ?? '',
           position: r.player_position ?? r.position ?? '',
-          price: r.price ?? 0,
-          prev_price: r.prev_price ?? null,
-          price_change: r.price_change ?? null,
+          price: r.price != null ? Number(r.price) : 0,
+          prev_price: r.prev_price != null ? Number(r.prev_price) : null,
+          price_change: r.price_change != null ? Number(r.price_change) : null,
           price_change_pct: null,
-          projection: parseFloat(r.projection_final ?? '0') || 0,
-          projection_final: parseFloat(r.projection_final ?? '0') || 0,
-          season_avg: r.season_avg ?? null,
-          last_3_avg: r.last_3_avg ?? null,
-          last_5_avg: r.last_5_avg ?? null,
-          ceiling: null,
-          floor_val: null,
-          breakeven_canonical: r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
-          edge_canonical: r.edge_canonical != null ? Number(r.edge_canonical) : null,
-          value_score_canonical: (() => {
-            if (r.value_score_canonical != null) return Number(r.value_score_canonical);
-            // Derive from edge_canonical when available (locked rows that have edge)
-            if (r.edge_canonical != null) return Number(r.edge_canonical);
-            // Last-resort: derive from projection vs breakeven
-            const proj = parseFloat(r.projection_final ?? '0') || 0;
-            const be = r.breakeven_canonical != null ? Number(r.breakeven_canonical)
-              : r.last_3_avg != null ? Number(r.last_3_avg)
-              : r.season_avg != null ? Number(r.season_avg)
-              : null;
-            if (be != null && be > 0 && proj > 0) {
-              return parseFloat(((proj - be) / be * 10).toFixed(2));
-            }
-            return null;
-          })(),
-          signal_canonical: r.signal_canonical ?? null,
-          category_canonical: r.category_canonical ?? null,
-          action_canonical: r.action_canonical ?? null,
-          signal_tag: r.category_canonical ?? null,
+          projection: r.projection_final != null ? Number(r.projection_final) : null,
+          season_avg: r.season_avg != null ? Number(r.season_avg) : null,
+          last_3_avg: r.last_3_avg != null ? Number(r.last_3_avg) : null,
+          last_5_avg: r.last_5_avg != null ? Number(r.last_5_avg) : null,
+          games_played: r.games_played != null ? Number(r.games_played) : null,
+          breakeven: r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
+          edge: r.edge_canonical != null ? Number(r.edge_canonical) : null,
+          value_score: r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
           signal: r.signal_canonical ?? null,
-          market_watch_category: r.category_canonical ?? null,
+          category: r.category_canonical ?? null,
           action: r.action_canonical ?? null,
-          recommendation_short: r.summary_short ?? null,
-          summary_short: r.summary_short ?? null,
-          summary_long: r.summary_long ?? null,
+          why: r.summary_short ?? null,
+          why_long: r.summary_long ?? null,
           matchup_label: r.matchup_label ?? null,
           matchup_rating: r.matchup_rating ?? null,
           matchup_multiplier: r.matchup_multiplier != null ? Number(r.matchup_multiplier) : null,
-          consistency: r.consistency ?? null,
-          neeko_rating: r.neeko_rating ?? null,
-          is_injured: isInjured,
+          consistency: r.consistency != null ? Number(r.consistency) : null,
+          neeko_rating: r.neeko_rating != null ? Number(r.neeko_rating) : null,
           is_bye: isBye,
-          games_played: r.games_played ?? null,
           status: r.status ?? null,
           manual_status: r.manual_status ?? null,
           cached_at: r.cached_at ?? null,
@@ -164,7 +140,6 @@ export default function MarketWatchPageElite() {
     return classifyPlayers(players);
   }, [players]);
 
-  // MEMOIZE: All derived players — sorted purely by value_score_canonical DESC
   const allDerivedPlayers = useMemo(() => {
     return [
       ...(classified?.buys ?? []),
@@ -173,7 +148,7 @@ export default function MarketWatchPageElite() {
     ]
       .filter(p => p && p.player_id)
       .sort((a, b) => {
-        const vDiff = (b.value_score_canonical ?? b.edge_canonical ?? 0) - (a.value_score_canonical ?? a.edge_canonical ?? 0);
+        const vDiff = (b.value_score ?? 0) - (a.value_score ?? 0);
         if (vDiff !== 0) return vDiff;
         return (b.projection ?? 0) - (a.projection ?? 0);
       });

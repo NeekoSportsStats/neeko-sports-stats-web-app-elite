@@ -60,10 +60,10 @@ function formatValueScore(v: number | null | undefined): { label: string; textCl
 
 function PlayerRow({ player, index }: { player: DerivedPlayer; index: number }) {
   const tier = player.display_signal;
-  const rawVal = player.value_score_canonical != null ? Number(player.value_score_canonical) : null;
+  const rawVal = player.value_score != null ? Number(player.value_score) : null;
   const { label: vLabel, textClass: vClass } = formatValueScore(rawVal);
-  const isInjured = player.is_injured === true || (player.status ?? "").toLowerCase() === "injured" || (player.manual_status ?? "").toLowerCase() === "injured";
-  const isBye = player.is_bye === true || (player.status ?? "").toLowerCase() === "bye" || (player.manual_status ?? "").toLowerCase() === "bye";
+  const isInjured = (player.status ?? "").toLowerCase() === "injured" || (player.manual_status ?? "").toLowerCase() === "injured";
+  const isBye = player.is_bye === true;
 
   return (
     <div className="group">
@@ -89,9 +89,9 @@ function PlayerRow({ player, index }: { player: DerivedPlayer; index: number }) 
           <SignalPill tier={tier} />
         </div>
       </div>
-      {player.recommendation_short && (
+      {player.why && (
         <div className="px-3 md:px-4 py-1.5 bg-[#0a0a0a] border-b border-white/[0.03]">
-          <p className="text-[11px] text-white/35 leading-snug italic">{player.recommendation_short}</p>
+          <p className="text-[11px] text-white/35 leading-snug italic">{player.why}</p>
         </div>
       )}
     </div>

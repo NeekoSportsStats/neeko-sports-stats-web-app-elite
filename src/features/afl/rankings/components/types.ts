@@ -2,94 +2,67 @@ export interface RankingRow {
   player_id: string | null;
   player_name: string;
   team: string;
+  team_name?: string | null;
   position: string | null;
+  position_group?: string | null;
+
   projection_final: number | null;
   ceiling_estimate: number | null;
   floor_estimate: number | null;
-  consistency_score: number | null;
-  form_rating: number | null;
-  matchup_rating: string | number | null;
-  upside_rating: number | null;
-  risk_rating: number | null;
   form_score: number | null;
   projection_confidence: number | null;
   captain_score: number | null;
   captain_rating: string | null;
   neeko_rating: number | null;
   neeko_rating_scaled: number | null;
+  upside_pct: number | null;
+  upside_rating: number | null;
+  risk_rating: number | null;
+  matchup_rating: string | number | null;
+  matchup_label: string | null;
+  matchup_multiplier: number | null;
+
   price: number | null;
   prev_price: number | null;
   price_change: number | null;
   price_change_pct: number | null;
-  breakeven: number | null;
-  value_score: number | null;
-  best_value_score: number | null;
-  value_tag: string | null;
-  value_tier: string | null;
-  recommendation_strength: string | null;
-  ai_updated_at: string | null;
-  recommendation_color: string | null;
-  consistency_tier: string | null;
-  total_count: number | null;
-  games_played: number | null;
-  /** Canonical performance floor: 0.7*last3_avg + 0.3*season_avg (or season_avg if <5 games) */
-  baseline: number | null;
-  /** Canonical edge: projection_final - baseline */
-  edge: number | null;
-  /** Canonical 5-level signal: STRONG_BUY | BUY | HOLD | SELL | STRONG_SELL */
-  signal: string | null;
-  /** Season average fantasy points */
+
   season_avg: number | null;
-  /** Last 3 games average */
   last_3_avg: number | null;
-  /** Trade value ratio: (edge / price) * 100000 */
-  value: number | null;
-  /** WHY — single sentence with strongest signal (maps to recommendation_short / primary_reason) */
-  why: string | null;
-  /** LONG — exactly 5-sentence breakdown (maps to recommendation_why / ai_summary) */
-  long: string | null;
-  /** Market watch signal: TARGET | WATCH | AVOID */
-  market_watch_category: string | null;
-  /** 3-level signal tag for backwards compat: TARGET | WATCH | AVOID */
-  signal_tag: string | null;
-  /** Upside percentage from breakout model */
-  upside_pct: number | null;
-  /** AI summary text */
-  ai_summary: string | null;
-  /** Player availability status: AVAILABLE | OUT | TEST | OMITTED | null */
-  status: string | null;
-  /** Admin-controlled manual override: OUT | INJURED | TEST | null */
-  manual_status: string | null;
-  /** Derived boolean — false when status = 'OUT' */
-  is_available: boolean | null;
-  /** Bye round number for this player's team (e.g. 13, 14, 15) */
-  bye_round: number | null;
-  /** True when the player's team has a bye next round */
-  is_bye: boolean | null;
-  /** True when the player's team has a bye in two rounds */
-  bye_next_round: boolean | null;
-  /** TREND ENGINE: projection_final - baseline (forward-looking model gap) */
-  trend_score: number | null;
-  /** TREND ENGINE: STRONG_UP | UP | STABLE | DOWN | STRONG_DOWN */
-  trend_signal: string | null;
-  /** FORM ENGINE: form_score - season_avg (backward-looking recent performance) */
-  form_delta: number | null;
-  /** FORM ENGINE: HOT | IN FORM | NORMAL | COLD | ICE COLD */
-  form_label: string | null;
-  /** VALUE ENGINE: edge vs breakeven — STRONG_BUY | BUY | HOLD | SELL | STRONG_SELL */
-  value_signal: string | null;
-  /** CANONICAL: calibrated edge score (projection vs weighted baseline) */
-  edge_canonical: number | null;
-  /** CANONICAL: breakeven score from canonical model */
+  last_5_avg: number | null;
+  games_played: number | null;
+
   breakeven_canonical: number | null;
-  /** CANONICAL: signal — STRONG_UP | UP | STABLE | DOWN | STRONG_DOWN */
+  edge_canonical: number | null;
+  value_score_canonical: number | null;
   signal_canonical: string | null;
-  /** CANONICAL: category — Target | Watch | Avoid */
   category_canonical: string | null;
-  /** CANONICAL: action — BUY | HOLD | SELL */
   action_canonical: string | null;
-  /** CANONICAL: normalised value score (edge vs price context) */
-  value_score_canonical?: number | null;
+
+  why: string | null;
+  why_long: string | null;
+
+  trend_signal: string | null;
+  trend_score: number | null;
+  form_delta: number | null;
+  form_label: string | null;
+
+  status: string | null;
+  manual_status: string | null;
+  is_available: boolean | null;
+  bye_round: number | null;
+  is_bye: boolean | null;
+  bye_next_round: boolean | null;
+
+  consistency: number | null;
+  consistency_tier: string | null;
+  recommendation_color: string | null;
+  recommendation_strength: string | null;
+  total_count: number | null;
+  ai_updated_at: string | null;
+  cached_at?: string | null;
+
+  access_tier?: "premium" | "free" | "locked";
 }
 
 export interface ScoreHistoryPoint {
@@ -116,7 +89,7 @@ export interface ChartDataPoint {
 export type RankingsTab = "best" | "value" | "projection";
 export type PositionFilter = "ALL" | "DEF" | "MID" | "FWD" | "RUC";
 export type PremiumFilter = "ALL" | "DEF" | "MID" | "FWD" | "RUC" | "TOP50" | "TOP100" | "ELITE";
-export type SortKey = "neeko_rating" | "projection_final" | "value_score" | "best_value_score" | "projection_confidence" | "risk_rating" | "form_score";
+export type SortKey = "neeko_rating" | "projection_final" | "value_score_canonical" | "projection_confidence" | "risk_rating" | "form_score";
 export type SortDir = "asc" | "desc";
 
 export type RowTier = "premium" | "full" | "partial" | "locked";

@@ -6,9 +6,6 @@ export type DisplaySignal = "TARGET" | "WATCH" | "AVOID";
 
 export interface DerivedPlayer extends MWPlayerRow {
   _category: MWSignal;
-  display_signal: DisplaySignal;
-  value_rating_label: string;
-  percentile_rank: number;
 }
 
 export interface BestTrade {
@@ -21,37 +18,11 @@ export interface BestTrade {
   why: string;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CANONICAL MARKET CLASSIFIER
-//
-// Reads category_canonical from the database — single source of truth.
-// category_canonical values: "Target" | "Watch" | "Avoid"
-// Maps to DisplaySignal: "TARGET" | "WATCH" | "AVOID"
-// ─────────────────────────────────────────────────────────────────────────────
-
-function displaySignalFromTag(p: MWPlayerRow): DisplaySignal {
-  const raw = (p.category_canonical ?? p.market_watch_category ?? "").toLowerCase();
+function displaySignalFromCategory(p: MWPlayerRow): DisplaySignal {
+  const raw = (p.category ?? "").toLowerCase();
   if (raw === "target") return "TARGET";
   if (raw === "avoid") return "AVOID";
-  if (raw === "watch") return "WATCH";
-
-  const vs = p.value_score_canonical;
-  if (vs != null) {
-    if (vs >= 1.8) return "TARGET";
-    if (vs <= -1.6) return "AVOID";
-  }
-
-  const sig = (p.signal_tag ?? "").toLowerCase();
-  if (sig === "target") return "TARGET";
-  if (sig === "avoid") return "AVOID";
-
   return "WATCH";
-}
-
-function labelFromSignal(sig: DisplaySignal): string {
-  if (sig === "TARGET") return "Strong Value";
-  if (sig === "AVOID") return "Overpriced";
-  return "Fair Price";
 }
 
 function mwSignalFromDisplay(sig: DisplaySignal): MWSignal {
@@ -62,7 +33,6 @@ function mwSignalFromDisplay(sig: DisplaySignal): MWSignal {
 
 function isEligible(p: MWPlayerRow): boolean {
   if (!p.player_id || !p.player_name) return false;
-  if (p.is_injured === true) return false;
   if (p.is_bye === true) return false;
   const st = (p.status ?? "").toLowerCase();
   const ms = (p.manual_status ?? "").toLowerCase();
@@ -70,10 +40,6 @@ function isEligible(p: MWPlayerRow): boolean {
   if (ms === "injured" || ms === "out" || ms === "bye") return false;
   return true;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PUBLIC API
-// ─────────────────────────────────────────────────────────────────────────────
 
 export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   buys: DerivedPlayer[];
@@ -91,16 +57,13 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   const sells: DerivedPlayer[] = [];
 
   for (const p of eligible) {
-    const display_signal = displaySignalFromTag(p);
-    const value_rating_label = labelFromSignal(display_signal);
+    const display_signal = displaySignalFromCategory(p);
     const _category = mwSignalFromDisplay(display_signal);
 
     const derived: DerivedPlayer = {
       ...p,
       _category,
       display_signal,
-      value_rating_label,
-      percentile_rank: 50,
     };
 
     if (_category === "BUY") buys.push(derived);
@@ -109,25 +72,13 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   }
 
   const byVal = (a: DerivedPlayer, b: DerivedPlayer) =>
-    (b.value_score_canonical ?? b.edge_canonical ?? 0) - (a.value_score_canonical ?? a.edge_canonical ?? 0);
+    (b.value_score ?? 0) - (a.value_score ?? 0);
 
   return {
     buys: buys.sort(byVal),
     holds: holds.sort(byVal),
     sells: sells.sort(byVal),
   };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TRADE BUILDING LOGIC
-// ─────────────────────────────────────────────────────────────────────────────
-
-function proj(row: MWPlayerRow): number {
-  return Number(row.projection ?? 0);
-}
-
-function price(row: MWPlayerRow): number {
-  return Number(row.price ?? 0);
 }
 
 function tradeWhy(
@@ -145,7 +96,7 @@ function tradeWhy(
   if (cashGained > 100000) {
     return `Cash generation trade — $${Math.round(cashGained / 1000)}k from downgrade, ${inn.player_name} rising`;
   }
-  return `Quality upgrade — ${inn.player_name} scores ${proj(inn).toFixed(0)} pts/rd vs ${proj(out).toFixed(0)}`;
+  return `Quality upgrade — ${inn.player_name} scores ${(inn.projection ?? 0).toFixed(0)} pts/rd vs ${(out.projection ?? 0).toFixed(0)}`;
 }
 
 function tradeType(cashGenerated: number, projGain: number): BestTrade["trade_type"] {
@@ -167,17 +118,17 @@ export function buildBestTrades(
     for (const inn of buys.slice(0, 15)) {
       if (inn.player_id === out.player_id) continue;
 
-      const cashGenerated = price(out) - price(inn);
+      const cashGenerated = (out.price ?? 0) - (inn.price ?? 0);
       if (cashGenerated < -150000) continue;
 
-      const projGain = proj(inn) - proj(out);
+      const projGain = (inn.projection ?? 0) - (out.projection ?? 0);
       if (projGain <= 3) continue;
 
       const score =
         projGain * 4 +
         cashGenerated / 2000 +
-        (inn.edge_canonical ?? 0) * 2 +
-        (out.edge_canonical ?? 0) * -1;
+        (inn.edge ?? 0) * 2 +
+        (out.edge ?? 0) * -1;
 
       allPairs.push({
         out,
