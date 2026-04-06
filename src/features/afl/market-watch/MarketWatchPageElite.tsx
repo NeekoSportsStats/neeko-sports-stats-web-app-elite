@@ -29,16 +29,18 @@ export default function MarketWatchPageElite() {
   const [searchedPlayer, setSearchedPlayer] = useState<DerivedPlayer | null>(null);
   const [seoOpen, setSeoOpen] = useState(false);
 
-  const fetchData = useCallback(async (premium: boolean) => {
+  const fetchData = useCallback(async (_premium: boolean) => {
     setLoading(true);
     try {
-      const limit = premium ? 200 : 100;
       const { data, error } = await supabase
         .schema("afl")
         .from("player_rankings_cache")
         .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, breakeven_canonical, edge_canonical, value_score_canonical, signal_canonical, category_canonical, action_canonical, recommendation_short, summary_short, summary_long, matchup_label, matchup_rating, matchup_multiplier, consistency, neeko_rating, status, manual_status, is_bye, games_played, cached_at")
-        .order("value_score_canonical", { ascending: false, nullsFirst: false })
-        .limit(limit);
+        .gte("games_played", 3)
+        .gte("projection_final", 55)
+        .eq("is_bye", false)
+        .order("projection_final", { ascending: false, nullsFirst: false })
+        .limit(500);
 
       if (error) throw error;
 
@@ -95,14 +97,7 @@ export default function MarketWatchPageElite() {
         };
       });
 
-      // Eligibility filter: meaningful players only (no rookies, no noise)
-      const isEligible = (p: MWPlayerRow) =>
-        (p.games_played ?? 0) >= 3 &&
-        (p.projection ?? 0) >= 55 &&
-        !p.is_injured &&
-        !p.is_bye;
-
-      const finalPlayers = mapped.filter(isEligible);
+      const finalPlayers = mapped.filter(p => !p.is_injured && !p.is_bye);
 
       setPlayers(finalPlayers);
     } catch (error) {
