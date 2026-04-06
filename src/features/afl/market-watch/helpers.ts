@@ -91,8 +91,8 @@ export const FREE_VISIBLE = 3;
 
 export function calculateValueRank(players: any[], currentPlayer: any): { rank: number; percentile: number } {
   const validPlayers = players
-    .filter(p => (p.edge_canonical ?? p.value_gap) != null)
-    .sort((a, b) => ((b.edge_canonical ?? b.value_gap) ?? 0) - ((a.edge_canonical ?? a.value_gap) ?? 0));
+    .filter(p => p.edge_canonical != null)
+    .sort((a, b) => (b.edge_canonical ?? 0) - (a.edge_canonical ?? 0));
 
   const rank = validPlayers.findIndex(p => p.player_id === currentPlayer.player_id) + 1;
   const percentile = rank > 0 ? Math.round((1 - (rank / validPlayers.length)) * 100) : 0;
@@ -118,7 +118,7 @@ export function generateSmartWhy(player: any): string {
   const short = (player.summary_short ?? player.recommendation_short ?? '').trim();
   if (short) return short;
 
-  const edge = Math.round(player.edge_canonical ?? player.value_gap ?? (player.projection ?? 0) - (player.breakeven_canonical ?? player.breakeven ?? 0));
+  const edge = Math.round(player.edge_canonical ?? (player.projection ?? 0) - (player.breakeven_canonical ?? 0));
   const projection = Math.round(player.projection_final ?? player.projection ?? 0);
   const edgeStr = edge > 0 ? `+${edge}` : `${edge}`;
   return `${edgeStr} edge · ${projection} pts projected`;

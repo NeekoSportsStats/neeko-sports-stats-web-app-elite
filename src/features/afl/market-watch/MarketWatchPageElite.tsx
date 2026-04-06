@@ -129,7 +129,7 @@ export default function MarketWatchPageElite() {
     return classifyPlayers(players);
   }, [players]);
 
-  // MEMOIZE: All derived players — bucket-first (TARGET → WATCH → AVOID), then by value within bucket
+  // MEMOIZE: All derived players — bucket-first (TARGET → WATCH → AVOID), then edge_canonical DESC within bucket
   const allDerivedPlayers = useMemo(() => {
     const bucketOrder: Record<string, number> = { BUY: 0, HOLD: 1, SELL: 2 };
     return [
@@ -141,7 +141,9 @@ export default function MarketWatchPageElite() {
       .sort((a, b) => {
         const bucketDiff = (bucketOrder[a._category] ?? 1) - (bucketOrder[b._category] ?? 1);
         if (bucketDiff !== 0) return bucketDiff;
-        return (b.value_gap ?? 0) - (a.value_gap ?? 0);
+        const edgeDiff = (b.edge_canonical ?? 0) - (a.edge_canonical ?? 0);
+        if (edgeDiff !== 0) return edgeDiff;
+        return (b.projection ?? 0) - (a.projection ?? 0);
       });
   }, [classified]);
 
@@ -201,7 +203,7 @@ export default function MarketWatchPageElite() {
     setVisibleCount(prev => prev + 50);
   }, []);
 
-  const updatedAt = players[0]?.snapshot_updated_at;
+  const updatedAt = players[0]?.cached_at;
   const relativeTime = updatedAt ? formatRelativeTime(updatedAt) : null;
 
   // Hero card eligibility: stricter threshold — established player with real price
@@ -303,7 +305,7 @@ export default function MarketWatchPageElite() {
               {players.length > 0 && (
                 <div className="hidden sm:block">
                   <DataFreshnessIndicator
-                    timestamp={players[0]?.snapshot_updated_at}
+                    timestamp={players[0]?.cached_at}
                     label="Market Data"
                     variant="compact"
                   />
@@ -348,7 +350,7 @@ export default function MarketWatchPageElite() {
 
         {/* Stale Data Warning */}
         {players.length > 0 && (
-          <StaleDataWarning timestamp={players[0]?.snapshot_updated_at} />
+          <StaleDataWarning timestamp={players[0]?.cached_at} />
         )}
 
         {/* Market Snapshot Bar */}
