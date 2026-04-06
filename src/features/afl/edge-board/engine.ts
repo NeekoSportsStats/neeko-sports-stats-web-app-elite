@@ -16,20 +16,12 @@ export interface EdgeBoardResult {
 
 const PLAYERS_PER_SECTION = 3;
 
-function deriveEdgeCategory(edge: number | null): EdgeSection {
-  const e = edge ?? 0;
-  if (e >= 10) return "must_have";
-  if (e >= 3)  return "breakout";
-  return "avoid";
-}
-
 export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
   if (players.length === 0) {
-    console.log("[EdgeBoard] No players supplied — returning empty result");
+    console.warn("[EdgeBoard] No players supplied — pipeline may not have run yet");
     return { mustHave: [], breakout: [], avoid: [], allEdgeIds: new Set() };
   }
 
-  // Exclude genuinely unavailable players — no games_played or projection_final filter
   const available = players.filter(
     (p) =>
       (p.manual_status ?? "").toUpperCase() !== "OUT" &&
@@ -41,7 +33,6 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
 
   console.log(`[EdgeBoard] available players after status filter: ${available.length} / ${players.length}`);
 
-  // Build overall rank from all players (not just available)
   const rankedAll = [...players].sort(
     (a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)
   );
@@ -50,17 +41,11 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
     if (p.player_id) rankMap.set(p.player_id, i + 1);
   });
 
-  // Sort available pool by edge descending as the baseline
   const byEdgeDesc = [...available].sort(
     (a, b) => (b.edge_canonical ?? b.edge ?? 0) - (a.edge_canonical ?? a.edge ?? 0)
   );
-
   const byEdgeAsc = [...available].sort(
     (a, b) => (a.edge_canonical ?? a.edge ?? 0) - (b.edge_canonical ?? b.edge ?? 0)
-  );
-
-  const byProjDesc = [...available].sort(
-    (a, b) => (b.projection_final ?? 0) - (a.projection_final ?? 0)
   );
 
   const usedIds = new Set<string>();
@@ -68,11 +53,7 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
   function toEdgeBoardPlayer(p: RankingRow, section: EdgeSection): EdgeBoardPlayer {
     const id = p.player_id ?? "";
     usedIds.add(id);
-    return {
-      ...p,
-      edgeSection: section,
-      overallRank: rankMap.get(id) ?? 999,
-    };
+    return { ...p, edgeSection: section, overallRank: rankMap.get(id) ?? 999 };
   }
 
   function pickFromPool(pool: RankingRow[], count: number, section: EdgeSection): EdgeBoardPlayer[] {
@@ -86,71 +67,36 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
     return result;
   }
 
-  // MUST HAVE: players whose edge_canonical >= 10, sorted by edge desc
   const mustHavePool = byEdgeDesc.filter((p) => (p.edge_canonical ?? p.edge ?? 0) >= 10);
   const mustHave = pickFromPool(mustHavePool, PLAYERS_PER_SECTION, "must_have");
 
-  // Fallback: fill must_have from top projection players if pool was too small
   if (mustHave.length < PLAYERS_PER_SECTION) {
-    const fallback = pickFromPool(byProjDesc, PLAYERS_PER_SECTION - mustHave.length, "must_have");
-    mustHave.push(...fallback);
-    if (fallback.length > 0) {
-      console.log(`[EdgeBoard] must_have fallback: filled ${fallback.length} from top projection`);
-    }
+    console.warn(`[EdgeBoard] must_have: only ${mustHave.length}/${PLAYERS_PER_SECTION} players met the edge >= 10 threshold`);
   }
 
-  console.log(`[EdgeBoard] must_have: ${mustHave.length} players`);
-
-  // BREAKOUT: edge between 3 and 10, sorted by edge desc
   const breakoutPool = byEdgeDesc.filter((p) => {
     const e = p.edge_canonical ?? p.edge ?? 0;
     return e >= 3 && e < 10;
   });
   const breakout = pickFromPool(breakoutPool, PLAYERS_PER_SECTION, "breakout");
 
-  // Fallback: fill breakout from middle-range edge players (anything not already used)
   if (breakout.length < PLAYERS_PER_SECTION) {
-    const fallback = pickFromPool(byEdgeDesc, PLAYERS_PER_SECTION - breakout.length, "breakout");
-    breakout.push(...fallback);
-    if (fallback.length > 0) {
-      console.log(`[EdgeBoard] breakout fallback: filled ${fallback.length} from edge desc pool`);
-    }
+    console.warn(`[EdgeBoard] breakout: only ${breakout.length}/${PLAYERS_PER_SECTION} players met the edge 3–10 threshold`);
   }
 
-  // Second fallback: fill from projection if still short
-  if (breakout.length < PLAYERS_PER_SECTION) {
-    const fallback = pickFromPool(byProjDesc, PLAYERS_PER_SECTION - breakout.length, "breakout");
-    breakout.push(...fallback);
-    if (fallback.length > 0) {
-      console.log(`[EdgeBoard] breakout fallback2: filled ${fallback.length} from projection`);
-    }
-  }
-
-  console.log(`[EdgeBoard] breakout: ${breakout.length} players`);
-
-  // AVOID: players whose edge_canonical < 3, sorted by edge asc (most negative first)
   const avoidPool = byEdgeAsc.filter((p) => (p.edge_canonical ?? p.edge ?? 0) < 3);
   const avoid = pickFromPool(avoidPool, PLAYERS_PER_SECTION, "avoid");
 
-  // Fallback: fill avoid from worst projection players
   if (avoid.length < PLAYERS_PER_SECTION) {
-    const fallback = pickFromPool(
-      [...byProjDesc].reverse(),
-      PLAYERS_PER_SECTION - avoid.length,
-      "avoid"
-    );
-    avoid.push(...fallback);
-    if (fallback.length > 0) {
-      console.log(`[EdgeBoard] avoid fallback: filled ${fallback.length} from lowest projection`);
-    }
+    console.warn(`[EdgeBoard] avoid: only ${avoid.length}/${PLAYERS_PER_SECTION} players met the edge < 3 threshold`);
   }
-
-  console.log(`[EdgeBoard] avoid: ${avoid.length} players`);
 
   const allEdgeIds = new Set<string>();
   [...mustHave, ...breakout, ...avoid].forEach((p) => {
     if (p.player_id) allEdgeIds.add(p.player_id);
   });
+
+  console.log(`[EdgeBoard] must_have:${mustHave.length} breakout:${breakout.length} avoid:${avoid.length}`);
 
   return { mustHave, breakout, avoid, allEdgeIds };
 }

@@ -121,7 +121,6 @@ interface LandingMarketWatchSampleProps {
 export function LandingMarketWatchSample({ buys, holds, sells, loading }: LandingMarketWatchSampleProps) {
   const allPlayers = [...buys, ...holds, ...sells];
 
-  // Exclude only genuinely unavailable — no games_played or projection floor
   const available = allPlayers.filter(
     p =>
       (p.status ?? "").toLowerCase() !== "out" &&
@@ -131,34 +130,16 @@ export function LandingMarketWatchSample({ buys, holds, sells, loading }: Landin
 
   const CARDS_PER_CAT = 2;
 
-  function pickCategory(signal: "TARGET" | "WATCH" | "AVOID", pool: DerivedPlayer[], used: Set<string | number>): DerivedPlayer[] {
-    const primary = pool
-      .filter(p => p.display_signal === signal && !used.has(p.player_id))
-      .slice(0, CARDS_PER_CAT);
-    primary.forEach(p => used.add(p.player_id));
+  const targets = available.filter(p => p.display_signal === "TARGET").slice(0, CARDS_PER_CAT);
+  const watch   = available.filter(p => p.display_signal === "WATCH").slice(0, CARDS_PER_CAT);
+  const avoid   = available.filter(p => p.display_signal === "AVOID").slice(0, CARDS_PER_CAT);
 
-    if (primary.length < CARDS_PER_CAT) {
-      const fallback = pool
-        .filter(p => !used.has(p.player_id))
-        .slice(0, CARDS_PER_CAT - primary.length);
-      if (fallback.length > 0) {
-        console.log(`[LandingMW] ${signal} fallback: filled ${fallback.length} from general pool`);
-        fallback.forEach(p => used.add(p.player_id));
-      }
-      return [...primary, ...fallback];
+  if (!loading) {
+    console.log(`[LandingMW] targets:${targets.length} watch:${watch.length} avoid:${avoid.length} (real data only, no fallback)`);
+    if (targets.length === 0 && watch.length === 0 && avoid.length === 0) {
+      console.warn("[LandingMW] No market data — backend pipeline may not have run yet");
     }
-    return primary;
   }
-
-  // Sort by projection desc so fallback picks are the best remaining
-  const byProj = [...available].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0));
-  const used = new Set<string | number>();
-
-  const targets = pickCategory("TARGET", byProj, used);
-  const watch   = pickCategory("WATCH",  byProj, used);
-  const avoid   = pickCategory("AVOID",  byProj, used);
-
-  console.log(`[LandingMW] targets:${targets.length} watch:${watch.length} avoid:${avoid.length}`);
 
   const players: DerivedPlayer[] = [...targets, ...watch, ...avoid];
 
