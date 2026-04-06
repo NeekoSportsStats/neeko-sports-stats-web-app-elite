@@ -788,8 +788,7 @@ export default function AFLRoundEdgeBoard() {
     try {
       const [rankResult, accResult] = await Promise.all([
         supabase
-          .schema("afl")
-          .from("player_rankings_cache")
+          .from("v_player_rankings_cache")
           .select(COLUMNS)
           .gte("games_played", 3)
           .gt("projection_final", 50)

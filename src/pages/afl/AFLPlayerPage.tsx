@@ -673,8 +673,7 @@ export default function AFLPlayerPage() {
     queryFn: async () => {
       if (!player?.team) return [];
       const { data, error: qErr } = await supabase
-        .schema('afl')
-        .from('player_rankings_cache')
+        .from('v_player_rankings_cache')
         .select('player_id, player_name, projection_final, price, breakeven_canonical, signal_canonical')
         .eq('team', player.team)
         .neq('player_id', player.player_id)
@@ -692,8 +691,7 @@ export default function AFLPlayerPage() {
     queryFn: async () => {
       if (!player?.player_position) return [];
       const { data, error: qErr } = await supabase
-        .schema('afl')
-        .from('player_rankings_cache')
+        .from('v_player_rankings_cache')
         .select('player_id, player_name, projection_final, price, breakeven_canonical, signal_canonical')
         .eq('position', player.player_position)
         .neq('player_id', player.player_id)

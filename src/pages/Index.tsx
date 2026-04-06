@@ -1166,8 +1166,7 @@ export default function Index() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase
-        .schema("afl")
-        .from("player_rankings_cache")
+        .from("v_player_rankings_cache")
         .select("player_id, player_name, team, team_name, position, price, projection_final, season_avg, last_3_avg, last_5_avg, breakeven_canonical, edge_canonical, value_score_canonical, signal_canonical, category_canonical, action_canonical, signal_tag, signal, summary_short, games_played, status, manual_status, is_bye")
         .gte("games_played", 3)
         .gte("projection_final", 55)
@@ -1250,9 +1249,8 @@ export default function Index() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase
-        .schema("afl")
-        .from("player_rankings_cache")
-        .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, breakeven_canonical, edge_canonical, value_score_canonical, signal_canonical, category_canonical, action_canonical, signal_tag, signal, recommendation_short, summary_short, summary_long, matchup_label, consistency, neeko_rating, status, manual_status, is_bye, games_played, cached_at")
+        .from("v_player_rankings_cache")
+        .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, breakeven_canonical, edge_canonical, value_score_canonical, signal_canonical, category_canonical, action_canonical, signal_tag, signal, summary_short, summary_long, matchup_label, consistency, neeko_rating, status, manual_status, is_bye, games_played, cached_at")
         .order("value_score_canonical", { ascending: false, nullsFirst: false })
         .limit(200);
 
@@ -1287,7 +1285,7 @@ export default function Index() {
           action_canonical: r.action_canonical ?? null,
           signal_tag: r.category_canonical ?? r.signal_tag ?? null,
           signal: r.signal_canonical ?? r.signal ?? null,
-          recommendation_short: r.recommendation_short ?? null,
+          recommendation_short: r.summary_short ?? null,
           summary_short: r.summary_short ?? null,
           summary_long: r.summary_long ?? null,
           matchup_label: r.matchup_label ?? null,

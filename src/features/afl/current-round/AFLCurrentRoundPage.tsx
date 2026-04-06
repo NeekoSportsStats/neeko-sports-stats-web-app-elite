@@ -36,11 +36,11 @@ import { buildCurrentRoundPlayers, type CurrentRoundPlayer } from "@/features/af
 const FREE_VISIBLE = 2;
 const PREMIUM_VISIBLE = 5;
 
-const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven, value_score, projection_confidence, signal, signal_tag, games_played, status, is_bye";
+const COLUMNS = "player_id, player_name, team, position, price, projection_final, breakeven_canonical, value_score_canonical, signal_canonical, signal_tag, games_played, status, is_bye";
 
 function normalizeRow(raw: Record<string, unknown>): RankingRow {
   const proj = raw.projection_final != null ? Number(raw.projection_final) : null;
-  const be = raw.breakeven != null ? Number(raw.breakeven) : null;
+  const be = raw.breakeven_canonical != null ? Number(raw.breakeven_canonical) : null;
   return {
     player_id: (raw.player_id as string) ?? null,
     player_name: (raw.player_name as string) ?? "",
@@ -65,7 +65,7 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
     price_change: null,
     price_change_pct: null,
     breakeven: be,
-    value_score: raw.value_score != null ? Number(raw.value_score) : null,
+    value_score: raw.value_score_canonical != null ? Number(raw.value_score_canonical) : null,
     best_value_score: null,
     value_tag: null,
     value_tier: null,
@@ -86,10 +86,10 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
     bye_round: null,
     is_bye: raw.is_bye != null ? Boolean(raw.is_bye) : null,
     bye_next_round: null,
-    signal_tag: null,
-    signal: (raw.signal as string) ?? null,
+    signal_tag: (raw.signal_tag as string) ?? null,
+    signal: (raw.signal_canonical as string) ?? null,
     baseline: null,
-    edge: proj != null && be != null ? proj - be : null,
+    edge: raw.edge_canonical != null ? Number(raw.edge_canonical) : (proj != null && be != null ? proj - be : null),
     season_avg: null,
     last_3_avg: null,
     value: null,
@@ -98,9 +98,9 @@ function normalizeRow(raw: Record<string, unknown>): RankingRow {
     value_signal: null,
     form_delta: null,
     form_label: null,
-    edge_canonical: null,
-    breakeven_canonical: null,
-    signal_canonical: null,
+    edge_canonical: raw.edge_canonical != null ? Number(raw.edge_canonical) : null,
+    breakeven_canonical: be,
+    signal_canonical: (raw.signal_canonical as string) ?? null,
     category_canonical: null,
     action_canonical: null,
   };
@@ -540,8 +540,7 @@ export default function AFLCurrentRoundPage() {
     else setLoading(true);
     try {
       const { data, error } = await supabase
-        .schema("afl")
-        .from("player_rankings_cache")
+        .from("v_player_rankings_cache")
         .select(COLUMNS)
         .order("projection_final", { ascending: false, nullsFirst: false })
         .limit(300);

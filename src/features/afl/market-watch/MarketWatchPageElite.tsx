@@ -33,9 +33,8 @@ export default function MarketWatchPageElite() {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .schema("afl")
-        .from("player_rankings_cache")
-        .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, breakeven_canonical, edge_canonical, value_score_canonical, signal_canonical, category_canonical, action_canonical, recommendation_short, summary_short, summary_long, matchup_label, matchup_rating, matchup_multiplier, consistency, neeko_rating, status, manual_status, is_bye, games_played, cached_at")
+        .from("v_player_rankings_cache")
+        .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, breakeven_canonical, edge_canonical, value_score_canonical, signal_canonical, category_canonical, action_canonical, summary_short, summary_long, matchup_label, matchup_rating, matchup_multiplier, consistency, neeko_rating, status, manual_status, is_bye, games_played, cached_at")
         .gte("games_played", 3)
         .gte("projection_final", 55)
         .eq("is_bye", false)
@@ -79,7 +78,7 @@ export default function MarketWatchPageElite() {
           signal: r.signal_canonical ?? null,
           market_watch_category: r.category_canonical ?? null,
           action: r.action_canonical ?? null,
-          recommendation_short: r.recommendation_short ?? null,
+          recommendation_short: r.summary_short ?? null,
           summary_short: r.summary_short ?? null,
           summary_long: r.summary_long ?? null,
           matchup_label: r.matchup_label ?? null,

@@ -22,9 +22,9 @@ interface TeamPlayer {
   position: string | null;
   price: number | null;
   projection_final: number | null;
-  breakeven: number | null;
-  value_score: number | null;
-  signal: string | null;
+  breakeven_canonical: number | null;
+  value_score_canonical: number | null;
+  signal_canonical: string | null;
   signal_tag: string | null;
   status: string | null;
   is_bye: boolean | null;
@@ -124,7 +124,7 @@ function RosterRow({ player, rank, isPremium }: { player: TeamPlayer; rank: numb
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <span className="text-sm font-bold text-white/20 w-6 shrink-0 text-center tabular-nums">{rank}</span>
-        <SignalIcon signal={player.signal} />
+        <SignalIcon signal={player.signal_canonical} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <p className="text-sm font-semibold text-white truncate group-hover:text-white/90 transition-colors">
@@ -147,10 +147,10 @@ function RosterRow({ player, rank, isPremium }: { player: TeamPlayer; rank: numb
             </span>
             <span className="text-[10px] text-white/20">·</span>
             <span className="text-[10px] text-white/35">{fmtPrice(player.price)}</span>
-            {isPremium && player.breakeven != null && (
+            {isPremium && player.breakeven_canonical != null && (
               <>
                 <span className="text-[10px] text-white/20">·</span>
-                <span className="text-[10px] text-white/40">BE: {Math.round(player.breakeven)}</span>
+                <span className="text-[10px] text-white/40">BE: {Math.round(player.breakeven_canonical)}</span>
               </>
             )}
             {!isPremium && (
@@ -164,11 +164,11 @@ function RosterRow({ player, rank, isPremium }: { player: TeamPlayer; rank: numb
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
-        {isPremium && player.value_score != null && (
+        {isPremium && player.value_score_canonical != null && (
           <div className="text-right hidden sm:block">
             <p className="text-[9px] text-white/25 uppercase tracking-wide">Value</p>
             <p className="text-xs font-semibold text-amber-400 tabular-nums">
-              {player.value_score > 0 ? '+' : ''}{Number(player.value_score).toFixed(1)}
+              {player.value_score_canonical > 0 ? '+' : ''}{Number(player.value_score_canonical).toFixed(1)}
             </p>
           </div>
         )}
@@ -182,7 +182,7 @@ function RosterRow({ player, rank, isPremium }: { player: TeamPlayer; rank: numb
           <p className="text-sm font-bold text-white/80 tabular-nums">{fmtProj(proj)}</p>
           <p className="text-[9px] text-white/25 uppercase tracking-wide">proj</p>
         </div>
-        <SignalBadge signal={player.signal} />
+        <SignalBadge signal={player.signal_canonical} />
         <ChevronRight size={14} className="text-white/20 group-hover:text-white/40 transition-colors" />
       </div>
     </Link>
@@ -287,7 +287,7 @@ function TeamSEOBlock({ teamName, players }: { teamName: string; players: TeamPl
   const topPlayer = players[0];
   const topProj = topPlayer ? fmtProj(topPlayer.projection_final) : '—';
 
-  const buys = players.filter(p => p.signal === 'STRONG_UP' || p.signal === 'UP');
+  const buys = players.filter(p => p.signal_canonical === 'STRONG_UP' || p.signal_canonical === 'UP');
   const valuePickNames = buys.slice(0, 3).map(p => p.player_name).join(', ');
 
   return (
@@ -371,8 +371,7 @@ export default function AFLTeamPage() {
 
     (async () => {
       const { data, error: err } = await supabase
-        .schema('afl')
-        .from('player_rankings_cache')
+        .from('v_player_rankings_cache')
         .select(`
           player_id,
           player_name,
@@ -380,9 +379,9 @@ export default function AFLTeamPage() {
           position,
           price,
           projection_final,
-          breakeven,
-          value_score,
-          signal,
+          breakeven_canonical,
+          value_score_canonical,
+          signal_canonical,
           signal_tag,
           status,
           is_bye,
@@ -420,7 +419,7 @@ export default function AFLTeamPage() {
   const accentSafe = accentColor === '#FFD200' ? '#F5C84C' : accentColor;
 
   const buyCt = useMemo(() =>
-    players.filter(p => p.signal === 'STRONG_UP' || p.signal === 'UP').length,
+    players.filter(p => p.signal_canonical === 'STRONG_UP' || p.signal_canonical === 'UP').length,
     [players]
   );
 
