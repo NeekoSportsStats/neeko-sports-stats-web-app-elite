@@ -36,6 +36,7 @@ export interface RankingRow {
   edge: number | null;
   value_score: number | null;
   signal: string | null;
+  signal_display: string | null;
   category: string | null;
   action: string | null;
 

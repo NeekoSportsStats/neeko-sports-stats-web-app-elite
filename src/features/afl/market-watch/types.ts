@@ -24,6 +24,7 @@ export interface MWPlayerRow {
   value_score: number | null;
 
   signal: string | null;
+  signal_display: string | null;
   category: string | null;
   action: string | null;
 

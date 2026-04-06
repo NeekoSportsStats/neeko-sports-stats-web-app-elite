@@ -45,18 +45,27 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
   };
 
   const sortedPlayers = useMemo(() => {
-    const bucketOrder: Record<string, number> = { BUY: 0, HOLD: 1, SELL: 2 };
+    const bucketOrder: Record<string, number> = {
+      STRONG_BUY: 0,
+      BUY: 1,
+      HOLD: 2,
+      SELL: 3,
+      STRONG_SELL: 4,
+    };
 
     return [...players].sort((a, b) => {
       let aVal: number | string = 0;
       let bVal: number | string = 0;
 
       switch (sortField) {
-        case "signal":
-          aVal = bucketOrder[a._category] ?? 1;
-          bVal = bucketOrder[b._category] ?? 1;
+        case "signal": {
+          const aSignal = (a.signal ?? "HOLD").toUpperCase();
+          const bSignal = (b.signal ?? "HOLD").toUpperCase();
+          aVal = bucketOrder[aSignal] ?? 2;
+          bVal = bucketOrder[bSignal] ?? 2;
           if (aVal !== bVal) return (aVal as number) - (bVal as number);
           return (b.value_score ?? 0) - (a.value_score ?? 0);
+        }
         case "value":
           aVal = a.value_score ?? -999;
           bVal = b.value_score ?? -999;
@@ -468,20 +477,21 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
 });
 
 function getSignalStrength(player: DerivedPlayer) {
-  const sig = player.display_signal;
-  const vs = player.value_score ?? 0;
+  const rawSignal = (player.signal ?? "HOLD").toUpperCase();
+  const displayLabel = player.signal_display ?? player.display_signal ?? "Watch";
 
-  if (sig === "TARGET") {
-    return vs >= 15
-      ? { icon: "🔥", label: "TARGET", bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/40" }
-      : { icon: "✅", label: "TARGET", bg: "bg-green-500/[0.12]", text: "text-green-400", border: "border-green-500/25" };
+  switch (rawSignal) {
+    case "STRONG_BUY":
+      return { icon: "🔥", label: displayLabel, bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/40" };
+    case "BUY":
+      return { icon: "✅", label: displayLabel, bg: "bg-green-500/[0.12]", text: "text-green-400", border: "border-green-500/25" };
+    case "STRONG_SELL":
+      return { icon: "🚫", label: displayLabel, bg: "bg-red-500/[0.15]", text: "text-red-400", border: "border-red-500/35" };
+    case "SELL":
+      return { icon: "⚠️", label: displayLabel, bg: "bg-orange-500/[0.10]", text: "text-orange-400", border: "border-orange-500/25" };
+    default:
+      return { icon: "👁", label: displayLabel, bg: "bg-[#F5C84C]/[0.08]", text: "text-[#F5C84C]", border: "border-[#F5C84C]/25" };
   }
-  if (sig === "AVOID") {
-    return vs <= -15
-      ? { icon: "🚫", label: "AVOID", bg: "bg-red-500/[0.12]", text: "text-red-400", border: "border-red-500/30" }
-      : { icon: "⚠️", label: "AVOID", bg: "bg-orange-500/[0.10]", text: "text-orange-400", border: "border-orange-500/25" };
-  }
-  return { icon: "👁", label: "WATCH", bg: "bg-[#F5C84C]/[0.08]", text: "text-[#F5C84C]", border: "border-[#F5C84C]/25" };
 }
 
 function getValueScoreColor(v: number | null | undefined): string {

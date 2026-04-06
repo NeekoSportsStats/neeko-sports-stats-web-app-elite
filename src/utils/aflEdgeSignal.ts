@@ -23,11 +23,24 @@ export function computeEdgeSignal(
 ): EdgeSignal {
   if (projection == null || baseline == null) return "HOLD";
   const edge = projection - baseline;
-  if (edge >= 10)  return "STRONG_BUY";
-  if (edge >= 3)   return "BUY";
-  if (edge > -3)   return "HOLD";
-  if (edge <= -10) return "STRONG_SELL";
-  return "SELL";
+  if (edge >= 18)  return "STRONG_BUY";
+  if (edge >= 10)  return "BUY";
+  if (edge <= -18) return "STRONG_SELL";
+  if (edge <= -10) return "SELL";
+  return "HOLD";
+}
+
+export function signalDisplayLabel(signalDisplay: string | null | undefined, signal: string | null | undefined): string {
+  if (signalDisplay) return signalDisplay;
+  const s = signalFromField(signal);
+  switch (s) {
+    case "STRONG_BUY":  return "🔥 Target";
+    case "BUY":         return "Target";
+    case "HOLD":        return "Watch";
+    case "SELL":        return "Avoid";
+    case "STRONG_SELL": return "🚫 Hard Avoid";
+    default:            return "Watch";
+  }
 }
 
 export function formatEdgeSignalLabel(signal: EdgeSignal | string | null): string {

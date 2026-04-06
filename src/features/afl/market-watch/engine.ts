@@ -3,9 +3,11 @@ import { MWPlayerRow, MWSignal } from "./types";
 export type { MWSignal };
 
 export type DisplaySignal = "TARGET" | "WATCH" | "AVOID";
+export type SignalTier = "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL";
 
 export interface DerivedPlayer extends MWPlayerRow {
   _category: MWSignal;
+  _tier: SignalTier;
 }
 
 export interface BestTrade {
@@ -28,6 +30,15 @@ function displaySignalFromCategory(p: MWPlayerRow): DisplaySignal {
 function mwSignalFromDisplay(sig: DisplaySignal): MWSignal {
   if (sig === "TARGET") return "BUY";
   if (sig === "AVOID") return "SELL";
+  return "HOLD";
+}
+
+function tierFromSignal(p: MWPlayerRow): SignalTier {
+  const raw = (p.signal ?? "HOLD").toUpperCase();
+  if (raw === "STRONG_BUY")  return "STRONG_BUY";
+  if (raw === "BUY")         return "BUY";
+  if (raw === "STRONG_SELL") return "STRONG_SELL";
+  if (raw === "SELL")        return "SELL";
   return "HOLD";
 }
 
@@ -59,10 +70,12 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
   for (const p of eligible) {
     const display_signal = displaySignalFromCategory(p);
     const _category = mwSignalFromDisplay(display_signal);
+    const _tier = tierFromSignal(p);
 
     const derived: DerivedPlayer = {
       ...p,
       _category,
+      _tier,
       display_signal,
     };
 
@@ -71,13 +84,24 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
     else holds.push(derived);
   }
 
-  const byVal = (a: DerivedPlayer, b: DerivedPlayer) =>
-    (b.value_score ?? 0) - (a.value_score ?? 0);
+  const tierPriority: Record<SignalTier, number> = {
+    STRONG_BUY: 0,
+    BUY: 1,
+    HOLD: 2,
+    SELL: 3,
+    STRONG_SELL: 4,
+  };
+
+  const byTierThenEdge = (a: DerivedPlayer, b: DerivedPlayer) => {
+    const tDiff = tierPriority[a._tier] - tierPriority[b._tier];
+    if (tDiff !== 0) return tDiff;
+    return (b.value_score ?? 0) - (a.value_score ?? 0);
+  };
 
   return {
-    buys: buys.sort(byVal),
-    holds: holds.sort(byVal),
-    sells: sells.sort(byVal),
+    buys: buys.sort(byTierThenEdge),
+    holds: holds.sort(byTierThenEdge),
+    sells: sells.sort(byTierThenEdge),
   };
 }
 
