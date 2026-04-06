@@ -183,7 +183,7 @@ function buildShareText(row: RankingRow, section: Section): string {
 
 function buildRoundSummaryText(mustHave: EdgeBoardPlayer | null, breakout: EdgeBoardPlayer | null, avoid: EdgeBoardPlayer | null): string {
   const lines: string[] = ["⚡ My AFL Fantasy Edge Picks (Neeko)\n"];
-  if (mustHave) lines.push(`Must Have: ${mustHave.player_name} — Value ${fmtValueScore(mustHave.value_score)}`);
+  if (mustHave) lines.push(`Must Have: ${mustHave.player_name} — Value Score ${mustHave.value_score != null ? fmtValueScore(mustHave.value_score) : fmtInt(mustHave.projection_final) + " pts projected"}`);
   if (breakout) lines.push(`Breakout Watch: ${breakout.player_name} — ${fmtInt(breakout.projection_final)} pts projected`);
   if (avoid) lines.push(`Avoid: ${avoid.player_name} — ${fmtInt(avoid.projection_final)} pts projected`);
   lines.push("\nneekosports.com.au #AFLFantasy #NeekoEdge");
@@ -546,25 +546,15 @@ function HeroPickCard({ player, section, isPremium, onOpen }: HeroPickCardProps)
           <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">{metric.label}</p>
           <p className={`text-3xl font-extrabold tabular-nums leading-none ${metric.color}`}>{metric.value}</p>
         </div>
-        {/* Value Score — premium shows number, free shows trending label */}
-        {(() => {
-          const edgeVal = player.edge_canonical != null ? Number(player.edge_canonical) : null;
-          if (edgeVal == null) return null;
-          return (
-            <div className="shrink-0">
-              <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Value Score</p>
-              {isPremium ? (
-                <p className={`text-lg font-extrabold tabular-nums leading-none ${edgeVal > 0 ? "text-green-400" : "text-red-400"}`}>
-                  {edgeVal > 0 ? "+" : ""}{Math.round(edgeVal)}
-                </p>
-              ) : (
-                <p className={`text-sm font-bold leading-none ${edgeVal > 0 ? "text-green-400" : edgeVal > -5 ? "text-yellow-400" : "text-red-400"}`}>
-                  {edgeVal > 0 ? "Value trending \u2191" : edgeVal > -5 ? "Neutral value" : "Value trending \u2193"}
-                </p>
-              )}
-            </div>
-          );
-        })()}
+        {/* Value Score */}
+        {player.value_score != null && (
+          <div className="shrink-0">
+            <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Value Score</p>
+            <p className={`text-lg font-extrabold tabular-nums leading-none ${getValueScoreColor(player.value_score)}`}>
+              {fmtValueScore(player.value_score)}
+            </p>
+          </div>
+        )}
         {player.price != null && (
           <div className="ml-auto text-right shrink-0">
             <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Price</p>
@@ -663,7 +653,7 @@ function RoundSummaryShare({ mustHave, breakout, avoid }: { mustHave: EdgeBoardP
         {mustHave && (
           <div className="flex items-center gap-2">
             <span className="text-[10px]">🟢</span>
-            <span className="text-[12px] text-white/60">Must Have: <span className="text-white font-semibold">{mustHave.player_name}</span> — Value {fmtValueScore(mustHave.value_score)}</span>
+            <span className="text-[12px] text-white/60">Must Have: <span className="text-white font-semibold">{mustHave.player_name}</span> — Value Score {mustHave.value_score != null ? fmtValueScore(mustHave.value_score) : fmtInt(mustHave.projection_final) + " pts"}</span>
           </div>
         )}
         {breakout && (
@@ -841,7 +831,7 @@ export default function AFLRoundEdgeBoard() {
           price_change:            null,
           price_change_pct:        null,
           breakeven:               r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
-          value_score:             null,
+          value_score:             r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
           best_value_score:        null,
           value_tag:               null,
           value_tier:              null,
@@ -1063,7 +1053,7 @@ export default function AFLRoundEdgeBoard() {
                               ? player.projection_final - player.breakeven
                               : (player.edge ?? 0);
                           const edgePositive = edgeVal > 0;
-                          const vsCanonical = player.value_score_canonical != null ? Number(player.value_score_canonical) : null;
+                          const vsCanonical = player.value_score != null ? player.value_score : null;
                           return (
                             <button
                               key={player.player_id}
@@ -1096,8 +1086,8 @@ export default function AFLRoundEdgeBoard() {
                               {vsCanonical != null ? (
                                 <div className="text-right shrink-0 w-16">
                                   <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Value</p>
-                                  <p className={`text-sm font-bold tabular-nums ${Math.round(vsCanonical) > 0 ? "text-green-400" : "text-red-400"}`}>
-                                    {Math.round(vsCanonical) > 0 ? "+" : ""}{Math.round(vsCanonical)}
+                                  <p className={`text-sm font-bold tabular-nums ${getValueScoreColor(vsCanonical)}`}>
+                                    {fmtValueScore(vsCanonical)}
                                   </p>
                                 </div>
                               ) : (
