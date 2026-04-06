@@ -189,9 +189,9 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
     <tr className="border-b border-[#222]">
       <th className={`${TH} text-white/40`} style={{ width: 44, minWidth: 44 }}>#</th>
       <th className={`${TH} text-left text-white/40`} style={{ width: 200, minWidth: 160 }}>Player</th>
-      <SortableTh label="Proj" col="projection_final" width={80} tooltip="Model's expected fantasy score this round" />
+      <SortableTh label="Proj" col="projection" width={80} tooltip="Model's expected fantasy score this round" />
       <SortableTh label="Baseline" col="form_score" width={80} tooltip="Weighted average of recent and season scores" />
-      <SortableTh label="Trend" col="projection_final" width={90} tooltip="Forward signal: how projection compares to baseline. Drives ACTION." />
+      <SortableTh label="Trend" col="projection" width={90} tooltip="Forward signal: how projection compares to baseline. Drives ACTION." />
       <Th label="Form" width={90} tooltip="Recent form vs season average — context only, not used for action." />
       <Th label="Action" locked={!isPremium} width={96} />
       <th className={`${TH} text-left text-white/35`} style={{ minWidth: 260 }}>Why</th>

@@ -532,7 +532,7 @@ export function PlayerDetailModal({
             const extendedText = sharpenAIText(rawExtended, aiCtx);
             const hasText = !loadingAI && extendedText && extendedText !== "Model analysis is currently generating.";
             const isStale = isAITextStale(rawExtended, {
-              projection_final: row.projection,
+              projection: row.projection,
               ceiling_estimate: row.ceiling_estimate,
               floor_estimate: row.floor_estimate,
             });
