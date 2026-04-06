@@ -25,8 +25,8 @@ export function usePlayerExplorer() {
     try {
       const [explorerRes, signalsRes, edgeRes] = await Promise.allSettled([
         supabase.from("v_player_lab_explorer").select("*").order("neeko_rating", { ascending: false }).limit(1000),
-        supabase.from("v_player_signals_master").select("player_id,signal_tags,signal_count,signal_strength_score").limit(1000),
-        supabase.from("v_player_edge_scores").select("player_id,value_edge,matchup_edge,role_edge,form_edge,risk_penalty,edge_total").limit(1000),
+        supabase.from("v_player_signals_master").select("player_id,signal,value_score,edge,market_watch_category").limit(1000),
+        supabase.from("v_player_edge_scores").select("player_id,edge,value_score,signal,recommendation_color,projection_final,market_watch_category,is_available").limit(1000),
       ]);
       if (explorerRes.status === "fulfilled") {
         const explorerData = (explorerRes.value.data as PlayerRow[]) ?? [];
@@ -72,17 +72,17 @@ export function usePlayerExplorer() {
     if (quickFilter === "high_edge")       res = res.filter(r => r.edge > 5);
     if (quickFilter === "high_confidence") res = res.filter(r => ["LOCK", "STRONG"].includes(r.confidence_label));
     if (quickFilter === "high_risk")       res = res.filter(r => r.risk_rating > 60);
-    if (quickFilter === "signals_3plus")   res = res.filter(r => (signalsMap.get(r.player_id)?.signal_count ?? 0) >= 3);
+    if (quickFilter === "signals_3plus")   res = res.filter(r => (signalsMap.get(r.player_id)?.edge ?? 0) >= 5);
     if (activeSignalFilters.length > 0) {
       res = res.filter(r => {
-        const tags = signalsMap.get(r.player_id)?.signal_tags ?? [];
-        return activeSignalFilters.every(f => tags.includes(f));
+        const sig = signalsMap.get(r.player_id)?.signal ?? "";
+        return activeSignalFilters.every(f => sig === f || sig.includes(f));
       });
     }
     return [...res].sort((a, b) => {
       if (sortCol === "signal_count") {
-        const av = signalsMap.get(a.player_id)?.signal_count ?? 0;
-        const bv = signalsMap.get(b.player_id)?.signal_count ?? 0;
+        const av = signalsMap.get(a.player_id)?.edge ?? 0;
+        const bv = signalsMap.get(b.player_id)?.edge ?? 0;
         return sortDir === "asc" ? av - bv : bv - av;
       }
       const av = (a as Record<string, unknown>)[sortCol] as number ?? 0;

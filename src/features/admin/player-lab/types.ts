@@ -32,19 +32,21 @@ export interface PlayerRow {
 
 export interface PlayerSignals {
   player_id: number;
-  signal_tags: string[];
-  signal_count: number;
-  signal_strength_score: number;
+  signal: string | null;
+  value_score: number | null;
+  edge: number | null;
+  market_watch_category: string | null;
 }
 
 export interface PlayerEdge {
   player_id: number;
-  value_edge: number;
-  matchup_edge: number;
-  role_edge: number;
-  form_edge: number;
-  risk_penalty: number;
-  edge_total: number;
+  edge: number | null;
+  value_score: number | null;
+  signal: string | null;
+  recommendation_color: string | null;
+  projection_final: number | null;
+  market_watch_category: string | null;
+  is_available: boolean | null;
 }
 
 export interface AccuracyKpi {
@@ -162,13 +164,19 @@ export interface SignalMasterRow {
   team: string;
   position: string;
   price: number;
+  projection_final: number;
   projection: number;
-  neeko_rating: number;
   status: string | null;
   is_available: boolean | null;
-  signal_tags: string[];
-  signal_count: number;
-  signal_strength_score: number;
+  signal: string | null;
+  value_score: number | null;
+  edge: number | null;
+  form_score: number | null;
+  consistency: number | null;
+  breakeven: number | null;
+  market_watch_category: string | null;
+  recommendation_color: string | null;
+  cached_at: string | null;
 }
 
 export interface PlayerRoundHistory {

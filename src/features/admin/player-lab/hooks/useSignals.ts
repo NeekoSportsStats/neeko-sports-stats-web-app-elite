@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import type { SignalMasterRow, LabPlayerRow } from "../types";
-import { SIGNAL_CATEGORY_MAP } from "../constants";
 
 export type SignalCategory = "master" | "best_buys" | "breakout" | "high_upside" | "risky_traps" | "safe_picks";
 
@@ -24,9 +23,9 @@ export function useSignals() {
     if (cat === "master") {
       const { data, error } = await supabase
         .from("v_player_signals_master")
-        .select("*")
-        .gt("signal_count", 0)
-        .order("signal_count", { ascending: false })
+        .select("player_id,player_name,team,position,price,projection_final,status,is_available,signal,value_score,edge,form_score,consistency,breakeven,market_watch_category,recommendation_color,cached_at")
+        .not("signal", "is", null)
+        .order("edge", { ascending: false })
         .limit(300);
       console.log("Signals master:", data?.length, "rows | error:", error);
       setMasterRows((data as SignalMasterRow[]) ?? []);
@@ -55,34 +54,31 @@ export function useSignals() {
   const signalDistribution = useMemo(() => {
     const counts: Record<string, number> = {};
     masterRows.forEach(r => {
-      (r.signal_tags ?? []).forEach(tag => {
-        counts[tag] = (counts[tag] ?? 0) + 1;
-      });
+      const sig = r.signal ?? "UNKNOWN";
+      counts[sig] = (counts[sig] ?? 0) + 1;
     });
     return Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 15)
-      .map(([name, count]) => ({ name, count, group: SIGNAL_CATEGORY_MAP[name] ?? "Other" }));
+      .map(([name, count]) => ({ name, count, group: name }));
   }, [masterRows]);
 
   const signalCountHistogram = useMemo(() => {
-    const buckets: Record<number, number> = {};
+    const buckets: Record<string, number> = {};
     masterRows.forEach(r => {
-      const sc = r.signal_count ?? 0;
-      buckets[sc] = (buckets[sc] ?? 0) + 1;
+      const cat = r.market_watch_category ?? "Unknown";
+      buckets[cat] = (buckets[cat] ?? 0) + 1;
     });
     return Object.entries(buckets)
-      .map(([k, v]) => ({ signals: Number(k), players: v }))
-      .sort((a, b) => a.signals - b.signals);
+      .map(([k, v]) => ({ signals: k, players: v }))
+      .sort((a, b) => b.players - a.players);
   }, [masterRows]);
 
   const categoryDistribution = useMemo(() => {
     const counts: Record<string, number> = {};
     masterRows.forEach(r => {
-      (r.signal_tags ?? []).forEach(tag => {
-        const grp = SIGNAL_CATEGORY_MAP[tag] ?? "Other";
-        counts[grp] = (counts[grp] ?? 0) + 1;
-      });
+      const grp = r.market_watch_category ?? "Unknown";
+      counts[grp] = (counts[grp] ?? 0) + 1;
     });
     return Object.entries(counts)
       .map(([name, count]) => ({ name, count }))
@@ -92,16 +88,15 @@ export function useSignals() {
   const signalInsights: SignalInsightRow[] = useMemo(() => {
     const map: Record<string, { count: number; projSum: number }> = {};
     masterRows.forEach(r => {
-      (r.signal_tags ?? []).forEach(tag => {
-        if (!map[tag]) map[tag] = { count: 0, projSum: 0 };
-        map[tag].count += 1;
-        map[tag].projSum += r.projection ?? 0;
-      });
+      const sig = r.signal ?? "UNKNOWN";
+      if (!map[sig]) map[sig] = { count: 0, projSum: 0 };
+      map[sig].count += 1;
+      map[sig].projSum += r.projection_final ?? r.projection ?? 0;
     });
     return Object.entries(map)
       .map(([signal_name, { count, projSum }]) => ({
         signal_name,
-        group: SIGNAL_CATEGORY_MAP[signal_name] ?? "Other",
+        group: signal_name,
         player_count: count,
         avg_projection: count > 0 ? Math.round(projSum / count) : 0,
       }))
@@ -110,14 +105,14 @@ export function useSignals() {
 
   const allSignalTypes = useMemo(() => {
     const types = new Set<string>();
-    masterRows.forEach(r => (r.signal_tags ?? []).forEach(t => types.add(t)));
+    masterRows.forEach(r => { if (r.signal) types.add(r.signal); });
     return Array.from(types).sort();
   }, [masterRows]);
 
   const filteredMaster = useMemo(() => {
     if (activeSignalPills.length === 0) return masterRows;
     return masterRows.filter(r =>
-      activeSignalPills.every(pill => (r.signal_tags ?? []).includes(pill))
+      activeSignalPills.every(pill => r.signal === pill || r.market_watch_category === pill)
     );
   }, [masterRows, activeSignalPills]);
 
@@ -129,9 +124,9 @@ export function useSignals() {
     if (top && top.count / total > 0.8) {
       warnings.push(`Signal "${top.name}" is dominant (${top.count}/${total} players). Distribution may be skewed.`);
     }
-    const noSignals = masterRows.filter(r => (r.signal_count ?? 0) === 0).length;
-    if (noSignals > total * 0.5) {
-      warnings.push(`${noSignals} of ${total} players have zero signals. Check signal engine.`);
+    const noSignal = masterRows.filter(r => !r.signal).length;
+    if (noSignal > total * 0.5) {
+      warnings.push(`${noSignal} of ${total} players have no signal. Check signal engine.`);
     }
     return warnings;
   }, [masterRows, signalDistribution]);

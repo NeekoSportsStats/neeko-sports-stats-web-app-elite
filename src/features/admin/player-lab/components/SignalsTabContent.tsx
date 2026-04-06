@@ -8,7 +8,7 @@ import {
 } from "recharts";
 import { fmtNum, fmtPrice, RecoBadge, DataWarningBanner } from "./SharedUI";
 import { StatusBadge } from "@/components/admin/StatusBadge";
-import { SIGNAL_GROUPS, SIGNAL_CATEGORY_MAP, SIGNAL_PILLS_BY_GROUP } from "../constants";
+import { SIGNAL_GROUPS, SIGNAL_PILLS_BY_GROUP } from "../constants";
 import { useSignals } from "../hooks/useSignals";
 import type { SignalCategory } from "../hooks/useSignals";
 
@@ -222,14 +222,14 @@ export function SignalsTabContent() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
-                      {["#", "Player", "Pos", "Team", "Rating", "Proj", "Price", "Signals", "Strength", "Signal Tags"].map(h => (
+                      {["#", "Player", "Pos", "Team", "Proj", "Price", "Value Score", "Edge", "Form", "Consistency", "Signal", "Category"].map(h => (
                         <th key={h} className="px-3 py-2 text-left font-medium text-muted-foreground">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {filteredMaster.length === 0 ? (
-                      <tr><td colSpan={10} className="text-center py-10 text-muted-foreground">No signal data</td></tr>
+                      <tr><td colSpan={12} className="text-center py-10 text-muted-foreground">No signal data</td></tr>
                     ) : filteredMaster.map((r, i) => (
                       <tr key={`${r.player_id}-${i}`} className="border-b border-border/40 hover:bg-muted/20">
                         <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
@@ -241,32 +241,29 @@ export function SignalsTabContent() {
                         </td>
                         <td className="px-3 py-2 text-muted-foreground font-mono">{r.position}</td>
                         <td className="px-3 py-2 text-muted-foreground">{r.team}</td>
-                        <td className="px-3 py-2 tabular-nums font-semibold">{fmtNum(r.neeko_rating, 0)}</td>
-                        <td className="px-3 py-2 tabular-nums">{fmtNum(r.projection, 0)}</td>
+                        <td className="px-3 py-2 tabular-nums">{fmtNum(r.projection_final ?? r.projection, 0)}</td>
                         <td className="px-3 py-2 tabular-nums text-muted-foreground">{fmtPrice(r.price)}</td>
-                        <td className="px-3 py-2 tabular-nums">
-                          <span className="font-mono font-bold text-foreground">{r.signal_count}</span>
+                        <td className="px-3 py-2 tabular-nums text-amber-400 font-semibold">{fmtNum(r.value_score, 2)}</td>
+                        <td className="px-3 py-2 tabular-nums text-blue-400">{fmtNum(r.edge, 1)}</td>
+                        <td className="px-3 py-2 tabular-nums">{fmtNum(r.form_score, 0)}</td>
+                        <td className="px-3 py-2 tabular-nums">{fmtNum(r.consistency, 0)}</td>
+                        <td className="px-3 py-2">
+                          {r.signal ? (
+                            <span className={`text-[9px] rounded px-1.5 py-0.5 border whitespace-nowrap font-mono ${GROUP_COLORS_MAP.Other}`}>
+                              {r.signal}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
                         </td>
-                        <td className="px-3 py-2 tabular-nums">
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-16 h-1.5 bg-muted/30 rounded-full overflow-hidden">
-                              <div className="h-full bg-sky-500/70 rounded-full" style={{ width: `${Math.min(100, +(r.signal_strength_score ?? 0))}%` }} />
-                            </div>
-                            <span className="text-[10px] tabular-nums text-muted-foreground">{fmtNum(r.signal_strength_score, 0)}</span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 max-w-[240px]">
-                          <div className="flex flex-wrap gap-0.5">
-                            {(r.signal_tags ?? []).map((tag, ti) => {
-                              const grp = SIGNAL_CATEGORY_MAP[tag] ?? "Other";
-                              const cls = GROUP_COLORS_MAP[grp] ?? GROUP_COLORS_MAP.Other;
-                              return (
-                                <span key={ti} className={`text-[9px] rounded px-1 py-0.5 border whitespace-nowrap font-mono ${cls}`}>
-                                  {tag}
-                                </span>
-                              );
-                            })}
-                          </div>
+                        <td className="px-3 py-2">
+                          {r.market_watch_category ? (
+                            <span className={`text-[9px] rounded px-1.5 py-0.5 border whitespace-nowrap font-mono ${
+                              r.market_watch_category === "Target" ? GROUP_COLORS_MAP.Form :
+                              r.market_watch_category === "Avoid" ? "text-red-400 bg-red-500/10 border-red-500/20" :
+                              GROUP_COLORS_MAP.Other
+                            }`}>
+                              {r.market_watch_category}
+                            </span>
+                          ) : <span className="text-muted-foreground">—</span>}
                         </td>
                       </tr>
                     ))}

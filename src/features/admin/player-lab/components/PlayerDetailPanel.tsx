@@ -5,7 +5,6 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import type { PlayerRow, PlayerSignals, PlayerEdge, PlayerRoundHistory } from "../types";
-import { SIGNAL_CATEGORY_MAP } from "../constants";
 import { fmtNum, fmtPrice, RecoBadge } from "./SharedUI";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 
@@ -111,12 +110,8 @@ export function PlayerDetailPanel({
       });
   }, [player?.player_id]);
 
-  const tagsByCategory: Record<string, string[]> = {};
-  (signals?.signal_tags ?? []).forEach(tag => {
-    const cat = SIGNAL_CATEGORY_MAP[tag] ?? "Other";
-    if (!tagsByCategory[cat]) tagsByCategory[cat] = [];
-    tagsByCategory[cat].push(tag);
-  });
+  const signalLabel = signals?.signal ?? null;
+  const signalCategory = signals?.market_watch_category ?? null;
 
   const GROUP_COLORS: Record<string, string> = {
     Value: "text-amber-400 bg-amber-500/10 border-amber-500/20",
@@ -189,17 +184,15 @@ export function PlayerDetailPanel({
         </div>
 
         <div className="space-y-2">
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Edge Breakdown</div>
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Edge Signals</div>
           {edge ? (
             <div className="space-y-1.5">
-              <EdgeBar label="Value Edge"   value={edge.value_edge}              color="bg-amber-500/70" />
-              <EdgeBar label="Matchup Edge" value={edge.matchup_edge}            color="bg-blue-500/70" />
-              <EdgeBar label="Role Edge"    value={edge.role_edge}               color="bg-sky-500/70" />
-              <EdgeBar label="Form Edge"    value={edge.form_edge}               color="bg-emerald-500/70" />
-              <EdgeBar label="Risk Penalty" value={Math.abs(edge.risk_penalty)}  color="bg-red-500/70" positive={false} />
+              <EdgeBar label="Edge Score"   value={(edge.edge ?? 0) + 30}        color="bg-blue-500/70" />
+              <EdgeBar label="Value Score"  value={(edge.value_score ?? 0) * 10} color="bg-amber-500/70" />
+              <EdgeBar label="Projection"   value={edge.projection_final ?? 0}   color="bg-emerald-500/70" />
               <div className="border-t border-border/40 pt-1.5 flex items-center justify-between">
-                <span className="text-muted-foreground">Edge Total</span>
-                <span className="font-bold tabular-nums text-sm">{fmtNum(edge.edge_total, 0)}</span>
+                <span className="text-muted-foreground">Market Category</span>
+                <span className="font-bold tabular-nums text-sm">{edge.market_watch_category ?? "—"}</span>
               </div>
             </div>
           ) : (
@@ -267,30 +260,30 @@ export function PlayerDetailPanel({
       </div>
 
       {/* Signals */}
-      {signals && signals.signal_tags.length > 0 && (
+      {signals && (signalLabel || signalCategory) && (
         <div className="space-y-2">
-          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            Signals
-            <span className="bg-muted/40 px-1.5 py-0.5 rounded text-[10px] font-mono">
-              {signals.signal_count} total · strength {fmtNum(signals.signal_strength_score, 0)}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            {Object.entries(tagsByCategory).map(([cat, tags]) => (
-              <div key={cat} className="space-y-1">
-                <div className="text-[10px] text-muted-foreground font-medium">{cat}</div>
-                <div className="flex flex-wrap gap-1">
-                  {tags.map(tag => {
-                    const cls = GROUP_COLORS[cat] ?? GROUP_COLORS.Other;
-                    return (
-                      <span key={tag} className={`text-[9px] rounded px-1.5 py-0.5 border font-mono whitespace-nowrap ${cls}`}>
-                        {tag}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Signal</div>
+          <div className="flex flex-wrap gap-2">
+            {signalLabel && (
+              <span className={`text-[10px] rounded px-2 py-1 border font-mono whitespace-nowrap ${GROUP_COLORS.Other}`}>
+                {signalLabel}
+              </span>
+            )}
+            {signalCategory && (
+              <span className={`text-[10px] rounded px-2 py-1 border font-mono whitespace-nowrap ${GROUP_COLORS.Value}`}>
+                {signalCategory}
+              </span>
+            )}
+            {signals.value_score != null && (
+              <span className={`text-[10px] rounded px-2 py-1 border font-mono whitespace-nowrap ${GROUP_COLORS.Form}`}>
+                Value {fmtNum(signals.value_score, 2)}
+              </span>
+            )}
+            {signals.edge != null && (
+              <span className={`text-[10px] rounded px-2 py-1 border font-mono whitespace-nowrap ${GROUP_COLORS.Matchup}`}>
+                Edge {fmtNum(signals.edge, 1)}
+              </span>
+            )}
           </div>
         </div>
       )}
