@@ -32,7 +32,7 @@ export default function MarketWatchPageElite() {
   const [activeFilter, setActiveFilter] = useState<MarketFilter>("ALL");
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
   const [selectedPosition, setSelectedPosition] = useState<string | null>(null);
-  const [visibleCount, setVisibleCount] = useState(100);
+  const [visibleCount, setVisibleCount] = useState(50);
   const [searchedPlayer, setSearchedPlayer] = useState<DerivedPlayer | null>(null);
   const [seoOpen, setSeoOpen] = useState(false);
 
@@ -57,7 +57,7 @@ export default function MarketWatchPageElite() {
       const { data, error } = await supabase.rpc("get_market_watch_safe", {
         p_user_id: userId,
         p_is_bot: false,
-        p_limit: 100,
+        p_limit: 250,
       });
 
       if (error) throw error;
@@ -207,17 +207,23 @@ export default function MarketWatchPageElite() {
     return filtered;
   }, [activeFilter, allDerivedPlayers, searchedPlayer, selectedTeam, selectedPosition, isPremium]);
 
-  // MEMOIZE: Visible players for progressive loading
+  // Gate total pool: free users capped at 10, premium gets full list
+  const gatedPlayers = useMemo(() => {
+    if (!isPremium) return filteredPlayers.slice(0, 10);
+    return filteredPlayers;
+  }, [filteredPlayers, isPremium]);
+
+  // MEMOIZE: Visible players for progressive loading (premium only pagination)
   const visiblePlayers = useMemo(() => {
-    return filteredPlayers.slice(0, visibleCount);
-  }, [filteredPlayers, visibleCount]);
+    return gatedPlayers.slice(0, visibleCount);
+  }, [gatedPlayers, visibleCount]);
 
   // Reset visible count when filters change
   useEffect(() => {
-    setVisibleCount(100);
+    setVisibleCount(50);
   }, [activeFilter, selectedTeam, selectedPosition, searchedPlayer]);
 
-  const hasMorePlayers = filteredPlayers.length > visibleCount;
+  const hasMorePlayers = isPremium && gatedPlayers.length > visibleCount;
   const handleShowMore = useCallback(() => {
     setVisibleCount(prev => prev + 50);
   }, []);
@@ -442,7 +448,10 @@ export default function MarketWatchPageElite() {
             />
 
             <div className="text-xs text-white/35 font-medium">
-              Showing {visiblePlayers.length} of {filteredPlayers.length} player{filteredPlayers.length !== 1 ? 's' : ''}
+              Showing {visiblePlayers.length} of {gatedPlayers.length} player{gatedPlayers.length !== 1 ? 's' : ''}
+              {!isPremium && filteredPlayers.length > 10 && (
+                <span className="ml-1 text-[#F5C84C]/60">— <a href="/neeko-plus" className="underline underline-offset-2 hover:text-[#F5C84C]/90 transition-colors">Neeko+ to see all {filteredPlayers.length}</a></span>
+              )}
             </div>
           </div>
 
@@ -471,7 +480,7 @@ export default function MarketWatchPageElite() {
               onClick={handleShowMore}
               className="px-8 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg hover:bg-white/[0.06] transition-all text-sm font-medium hover:border-white/20"
             >
-              Show More ({filteredPlayers.length - visibleCount} remaining)
+              Show More ({gatedPlayers.length - visibleCount} remaining)
             </button>
           </div>
         )}
