@@ -155,36 +155,54 @@ function signalToAction(signal: string | null): { label: string; styles: string 
 
 type EdgeSignalType = "must_have" | "breakout" | "avoid";
 
-const EDGE_META: Record<EdgeSignalType, { label: string; desc: string; accentColor: string; icon: typeof Star }> = {
-  must_have: { label: "Must Have", desc: "Model strongly favours this player — priority start signal.", accentColor: "#34d399", icon: TrendingUp },
-  breakout:  { label: "Breakout",  desc: "Upside risk in this player — watch before locking in.",        accentColor: "#F5C84C", icon: Star },
-  avoid:     { label: "Avoid",     desc: "Model flags elevated risk this round — sell or avoid signal.",  accentColor: "#f87171", icon: AlertTriangle },
+const EDGE_META: Record<EdgeSignalType, {
+  label: string;
+  tagline: string;
+  accentColor: string;
+  bgGradient: string;
+  icon: typeof Star;
+}> = {
+  must_have: {
+    label: "Must Have",
+    tagline: "Priority start — model strongly favours this player.",
+    accentColor: "#34d399",
+    bgGradient: "from-emerald-500/[0.06] to-transparent",
+    icon: TrendingUp,
+  },
+  breakout: {
+    label: "Breakout",
+    tagline: "Upside alert — watch before locking in your lineup.",
+    accentColor: "#F5C84C",
+    bgGradient: "from-yellow-400/[0.06] to-transparent",
+    icon: Star,
+  },
+  avoid: {
+    label: "Avoid",
+    tagline: "Trap warning — model flags elevated risk this round.",
+    accentColor: "#f87171",
+    bgGradient: "from-red-500/[0.06] to-transparent",
+    icon: AlertTriangle,
+  },
 };
-
-function EdgeStatRow({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
-  return (
-    <div className="flex items-center justify-between py-1 border-b border-white/[0.04] last:border-0">
-      <span className="text-[11px] text-white/35 font-medium">{label}</span>
-      <span className={`text-[12px] font-bold tabular-nums ${valueColor ?? "text-white/70"}`}>{value}</span>
-    </div>
-  );
-}
 
 function EdgeCardSkeleton() {
   return (
     <div className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] p-5 animate-pulse">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="w-9 h-9 rounded-lg bg-white/[0.06]" />
-        <div className="h-3 w-24 bg-white/[0.06] rounded" />
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-8 h-8 rounded-lg bg-white/[0.06]" />
+        <div className="h-3 w-20 bg-white/[0.06] rounded" />
       </div>
-      <div className="h-5 w-32 bg-white/[0.08] rounded mb-1 mt-4" />
+      <div className="h-5 w-36 bg-white/[0.08] rounded mb-1 mt-3" />
       <div className="h-3 w-20 bg-white/[0.05] rounded mb-4" />
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="flex justify-between py-1.5 border-b border-white/[0.04]">
-          <div className="h-3 w-16 bg-white/[0.05] rounded" />
-          <div className="h-3 w-12 bg-white/[0.05] rounded" />
-        </div>
-      ))}
+      <div className="h-8 w-full bg-white/[0.04] rounded mb-3" />
+      <div className="space-y-2">
+        {[1, 2].map((i) => (
+          <div key={i} className="flex justify-between py-1.5 border-b border-white/[0.04]">
+            <div className="h-3 w-16 bg-white/[0.05] rounded" />
+            <div className="h-3 w-14 bg-white/[0.05] rounded" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -204,77 +222,110 @@ function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
   ];
 
   return (
-    <section className="py-10 md:py-14 bg-[#0a0a0a] border-t border-white/[0.05]">
+    <section className="py-12 md:py-16 bg-[#0a0a0a] border-t border-white/[0.05]">
       <div className="max-w-3xl mx-auto px-4">
         <SectionLabel>Edge Signals</SectionLabel>
         <SectionHeading>This Round's Edge Signals</SectionHeading>
         <GoldDivider />
-        <p className="text-center text-white/40 text-sm mb-6 max-w-xl mx-auto leading-relaxed">
-          Model-derived signals from the top players — updated before every round lockout.
+        <p className="text-center text-white/40 text-sm mb-8 max-w-xl mx-auto leading-relaxed">
+          Model-backed signals identifying the best trades, breakouts, and traps for this round.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {loading
             ? [0, 1, 2].map((i) => <EdgeCardSkeleton key={i} />)
             : cards.map(({ section, player }) => {
-                const { label, desc, accentColor, icon: Icon } = EDGE_META[section];
+                const { label, tagline, accentColor, bgGradient, icon: Icon } = EDGE_META[section];
 
                 if (!player) {
                   return (
                     <div
                       key={section}
-                      className="rounded-2xl bg-[#0e0e0e] p-5 flex flex-col"
+                      className="rounded-2xl bg-[#0e0e0e] p-5 flex flex-col min-h-[220px]"
                       style={{ border: `1px solid ${accentColor}15` }}
                     >
                       <div className="flex items-center gap-2 mb-4">
                         <div
-                          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                           style={{ background: `${accentColor}10`, border: `1px solid ${accentColor}20` }}
                         >
-                          <Icon size={16} style={{ color: `${accentColor}50` }} />
+                          <Icon size={14} style={{ color: `${accentColor}40` }} />
                         </div>
-                        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: `${accentColor}50` }}>
+                        <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: `${accentColor}40` }}>
                           {label}
                         </span>
                       </div>
-                      <p className="text-[11px] text-white/20 leading-snug mt-auto">{desc}</p>
-                      <p className="text-[10px] text-white/15 mt-2">Signal updates before round lockout.</p>
+                      <p className="text-[11px] text-white/20 leading-snug mt-auto">{tagline}</p>
+                      <p className="text-[10px] text-white/12 mt-2">Signal available before round lockout.</p>
                     </div>
                   );
                 }
 
-                const roleText =
-                  section === "must_have" ? "Top projected scorer this round" :
-                  section === "breakout"  ? "Breakout upside — watch before locking in" :
-                  "Model flags elevated risk — sell or avoid";
+                const proj      = player.projection_final != null ? Math.round(player.projection_final) : null;
+                const edge      = (player as any).edge_canonical != null ? Number((player as any).edge_canonical) : null;
+                const aiHook    = (player as any).summary_short as string | null | undefined;
 
                 return (
                   <div
                     key={section}
-                    className="rounded-2xl bg-[#0e0e0e] p-5 hover:scale-[1.01] transition-all"
-                    style={{ border: `1px solid ${accentColor}25` }}
+                    className={`rounded-2xl bg-gradient-to-b ${bgGradient} bg-[#0e0e0e] p-5 hover:scale-[1.015] transition-all duration-200 flex flex-col`}
+                    style={{ border: `1px solid ${accentColor}28` }}
                   >
+                    {/* Category badge */}
                     <div className="flex items-center gap-2 mb-4">
                       <div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                        style={{ background: `${accentColor}15`, border: `1px solid ${accentColor}30` }}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                        style={{ background: `${accentColor}18`, border: `1px solid ${accentColor}35` }}
                       >
-                        <Icon size={16} style={{ color: accentColor }} />
+                        <Icon size={14} style={{ color: accentColor }} />
                       </div>
-                      <span className="text-xs font-bold uppercase tracking-widest" style={{ color: accentColor }}>
+                      <span className="text-[11px] font-bold uppercase tracking-widest" style={{ color: accentColor }}>
                         {label}
                       </span>
                     </div>
 
+                    {/* Player identity */}
                     <p className="text-base font-bold text-white leading-tight mb-0.5">{player.player_name}</p>
-                    <p className="text-[11px] text-white/35 mb-1">{player.team}{player.position ? ` · ${player.position}` : ""}</p>
-                    <p className="text-[10px] text-white/20 mb-3 leading-snug">{desc}</p>
+                    <p className="text-[11px] text-white/35 mb-3">{player.team}{player.position ? ` · ${player.position}` : ""}</p>
 
-                    <div>
-                      {player.projection_final != null && (
-                        <EdgeStatRow label="Projection" value={`${Math.round(player.projection_final)} pts`} valueColor="text-[#F5C84C]" />
+                    {/* Key stat highlights */}
+                    <div className="flex gap-2 mb-3">
+                      {proj != null && (
+                        <div
+                          className="flex-1 rounded-lg px-2.5 py-2 text-center"
+                          style={{ background: `${accentColor}10`, border: `1px solid ${accentColor}20` }}
+                        >
+                          <p className="text-[9px] text-white/30 uppercase tracking-wider mb-0.5">Projection</p>
+                          <p className="text-sm font-extrabold tabular-nums" style={{ color: accentColor }}>
+                            {proj} pts
+                          </p>
+                        </div>
                       )}
-                      <EdgeStatRow label="Signal" value={roleText} valueColor="text-white/45" />
+                      {edge != null && (
+                        <div className="flex-1 rounded-lg px-2.5 py-2 text-center bg-white/[0.03] border border-white/[0.06]">
+                          <p className="text-[9px] text-white/30 uppercase tracking-wider mb-0.5">Edge</p>
+                          <p className={`text-sm font-extrabold tabular-nums ${edge > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                            {edge > 0 ? "+" : ""}{Math.round(edge)} pts
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* AI hook */}
+                    {aiHook ? (
+                      <p className="text-[11px] text-white/40 leading-snug border-t border-white/[0.05] pt-2.5 mt-auto line-clamp-2">
+                        {aiHook}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-white/25 leading-snug border-t border-white/[0.05] pt-2.5 mt-auto">
+                        {tagline}
+                      </p>
+                    )}
+
+                    {/* Lock teaser */}
+                    <div className="mt-3 flex items-center gap-1.5">
+                      <Lock size={10} className="text-white/15 shrink-0" />
+                      <span className="text-[10px] text-white/20">Full AI breakdown — Neeko+</span>
                     </div>
                   </div>
                 );
@@ -282,17 +333,16 @@ function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
           }
         </div>
 
-        <p className="text-center text-white/25 text-xs mt-4">
-          Full edge board includes additional signals, matchup analysis and AI breakdowns.
-        </p>
-        <div className="mt-3 flex justify-center">
+        {/* CTA */}
+        <div className="mt-8 flex flex-col items-center gap-2">
           <Link
             to="/neeko-plus"
-            className="inline-flex items-center justify-center gap-2 bg-[#F5C84C] text-black font-bold text-sm px-7 py-3.5 rounded-xl hover:brightness-110 transition-all min-h-[48px]"
+            className="inline-flex items-center justify-center gap-2 bg-[#F5C84C] text-black font-bold text-sm px-8 py-3.5 rounded-xl hover:brightness-110 transition-all min-h-[48px] shadow-[0_0_20px_rgba(245,200,76,0.15)]"
           >
             <Crown size={14} />
-            Unlock All Edge Signals
+            Unlock All 9 Edge Signals + AI Breakdown
           </Link>
+          <p className="text-[11px] text-white/25">3 of 9 signals shown. Full board unlocks before each round.</p>
         </div>
       </div>
     </section>
@@ -1233,11 +1283,12 @@ export default function Index() {
           form_delta:            null,
           form_label:            null,
           value_signal:          null,
-          edge_canonical:        null,
-          breakeven_canonical:   null,
-          signal_canonical:      null,
-          category_canonical:    null,
-          action_canonical:      null,
+          edge_canonical:        r.edge_canonical != null ? Number(r.edge_canonical) : null,
+          breakeven_canonical:   r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
+          signal_canonical:      (r.signal_canonical as string) ?? null,
+          category_canonical:    (r.category_canonical as string) ?? null,
+          action_canonical:      (r.action_canonical as string) ?? null,
+          manual_status:         (r.manual_status as string) ?? null,
         };
       });
 
