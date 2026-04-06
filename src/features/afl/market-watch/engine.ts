@@ -30,15 +30,21 @@ export interface BestTrade {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function displaySignalFromTag(p: MWPlayerRow): DisplaySignal {
-  const vs = p.value_score_canonical;
-  if (vs != null) {
-    if (vs >= 3) return "TARGET";
-    if (vs < -2) return "AVOID";
-    return "WATCH";
-  }
-  const raw = (p.category_canonical ?? p.market_watch_category ?? p.signal_tag ?? "").toLowerCase();
+  const raw = (p.category_canonical ?? p.market_watch_category ?? "").toLowerCase();
   if (raw === "target") return "TARGET";
   if (raw === "avoid") return "AVOID";
+  if (raw === "watch") return "WATCH";
+
+  const vs = p.value_score_canonical;
+  if (vs != null) {
+    if (vs >= 1.8) return "TARGET";
+    if (vs <= -1.6) return "AVOID";
+  }
+
+  const sig = (p.signal_tag ?? "").toLowerCase();
+  if (sig === "target") return "TARGET";
+  if (sig === "avoid") return "AVOID";
+
   return "WATCH";
 }
 
