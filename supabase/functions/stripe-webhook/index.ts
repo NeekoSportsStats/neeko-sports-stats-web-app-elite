@@ -42,6 +42,7 @@ Deno.serve(async (req: Request) => {
 
     console.log(`stripe-webhook: received event ${event.type} [${event.id}]`);
 
+    // Idempotency check — query by event_id
     const { data: existing, error: existingErr } = await supabase
       .from('stripe_webhook_events')
       .select('id')
@@ -60,14 +61,19 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    await supabase.from('stripe_webhook_events').insert({
+    // Log the event — explicitly set event_id so idempotency works
+    const { error: logError } = await supabase.from('stripe_webhook_events').insert({
       event_id: event.id,
       event_type: event.type,
       payload: event as unknown as Record<string, unknown>,
-    }).then(({ error }) => {
-      if (error) console.warn('stripe-webhook: failed to log event (non-fatal):', error.message);
-      else console.log(`stripe-webhook: event logged to DB: ${event.id}`);
+      received_at: new Date().toISOString(),
     });
+
+    if (logError) {
+      console.warn('stripe-webhook: failed to log event (non-fatal):', logError.message);
+    } else {
+      console.log(`stripe-webhook: event logged to DB: ${event.id}`);
+    }
 
     EdgeRuntime.waitUntil(handleEvent(event));
 
@@ -142,6 +148,12 @@ async function handleEvent(event: Stripe.Event) {
         console.log(`stripe-webhook: unhandled event type: ${event.type}`);
     }
 
+    // Mark event processed
+    await supabase
+      .from('stripe_webhook_events')
+      .update({ processed_at: new Date().toISOString() })
+      .eq('event_id', event.id);
+
     console.log(`stripe-webhook: finished processing ${event.type} [${event.id}]`);
   } catch (err: any) {
     console.error(`stripe-webhook: error handling event ${event.type} [${event.id}]:`, err?.message ?? err);
@@ -149,10 +161,11 @@ async function handleEvent(event: Stripe.Event) {
 }
 
 async function resolveUserId(customerId: string): Promise<string | null> {
+  // Primary: stripe_customers table
   const { data, error } = await supabase
     .from('stripe_customers')
     .select('user_id')
-    .eq('customer_id', customerId)
+    .or(`customer_id.eq.${customerId},stripe_id.eq.${customerId}`)
     .maybeSingle();
 
   if (error) {
@@ -163,6 +176,7 @@ async function resolveUserId(customerId: string): Promise<string | null> {
     return data.user_id;
   }
 
+  // Fallback: profiles.stripe_customer_id
   const { data: profileData, error: profileError } = await supabase
     .from('profiles')
     .select('id')
@@ -177,7 +191,7 @@ async function resolveUserId(customerId: string): Promise<string | null> {
     return profileData.id;
   }
 
-  console.warn('stripe-webhook: could not resolve user for customer');
+  console.warn('stripe-webhook: could not resolve user for customer', customerId);
   return null;
 }
 
@@ -215,7 +229,7 @@ async function syncSubscriptionFromStripe(subscriptionId: string) {
     const userId = await resolveUserId(customerId);
 
     if (!userId) {
-      console.warn('stripe-webhook: no user found for customer — skipping profile update');
+      console.warn('stripe-webhook: no user found for customer — skipping sync');
       return;
     }
 
@@ -227,6 +241,8 @@ async function syncSubscriptionFromStripe(subscriptionId: string) {
 
     const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
 
+    // Write to stripe_subscriptions (raw Stripe mirror, unix timestamps)
+    // The DB trigger on this table auto-syncs into public.subscriptions
     const { error: syncError } = await supabase
       .from('stripe_subscriptions')
       .upsert({
@@ -242,7 +258,36 @@ async function syncSubscriptionFromStripe(subscriptionId: string) {
     if (syncError) {
       console.error('stripe-webhook: stripe_subscriptions upsert error:', syncError.message);
     } else {
-      console.log(`stripe-webhook: successfully upserted stripe_subscriptions — status=${subscription.status}, sub=${subscription.id}`);
+      console.log(`stripe-webhook: upserted stripe_subscriptions — status=${subscription.status}`);
+    }
+
+    // Also write directly to public.subscriptions (access control table)
+    // This is the direct path that makes is_premium_user() return true immediately
+    const periodStart = subscription.current_period_start
+      ? new Date(subscription.current_period_start * 1000).toISOString()
+      : null;
+    const periodEnd = subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000).toISOString()
+      : null;
+
+    const { error: subSyncError } = await supabase
+      .from('subscriptions')
+      .upsert({
+        user_id: userId,
+        profile_id: userId,
+        stripe_subscription_id: subscription.id,
+        stripe_customer_id: customerId,
+        status: subscription.status,
+        current_period_start: periodStart,
+        current_period_end: periodEnd,
+        cancel_at_period_end: subscription.cancel_at_period_end ?? false,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'stripe_subscription_id' });
+
+    if (subSyncError) {
+      console.error('stripe-webhook: subscriptions upsert error:', subSyncError.message);
+    } else {
+      console.log(`stripe-webhook: upserted subscriptions — status=${subscription.status}, user=${userId}`);
     }
   } catch (err: any) {
     console.error(`stripe-webhook: error syncing subscription ${subscriptionId}:`, err?.message ?? err);
