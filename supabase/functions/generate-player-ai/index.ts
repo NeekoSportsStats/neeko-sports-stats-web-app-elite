@@ -590,12 +590,11 @@ Deno.serve(async (req: Request) => {
     const authHeader = req.headers.get("Authorization");
     const token = authHeader?.replace("Bearer ", "") ?? "";
 
-    // Primary auth: service role JWT
-    let isAuthorized = token === serviceRoleKey;
+    // Auth: token must match a known secret stored in internal.cron_secrets
+    // The service role key is NOT accepted as a direct bearer token — use a dedicated cron_auth_token instead
+    let isAuthorized = false;
 
-    // Secondary auth: any known secret stored in internal.cron_secrets
-    // Covers both neeko-cron-* tokens AND sb_secret_* keys used by the DB pipeline
-    if (!isAuthorized && token.length > 10) {
+    if (token.length > 10) {
       try {
         const adminClient = createClient(supabaseUrl, serviceRoleKey);
         const { data: secrets } = await adminClient
