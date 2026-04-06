@@ -377,6 +377,27 @@ export function FantasyPricesTab() {
     );
   }
 
+  function handleQuickPaste(text: string) {
+    setPasteText(text);
+    const resolvedMode = detectMode(text, inputMode);
+    if (resolvedMode !== inputMode) setInputMode(resolvedMode);
+    const result = parseWithMode(text, resolvedMode);
+    setParseErrors(result.errors);
+    setMappingRows(rebuildRows(result.rows));
+  }
+
+  async function handleQuickImport(text: string) {
+    handleQuickPaste(text);
+    if (players.length > 0 && persistedMappings.size > 0) {
+      const resolvedMode = detectMode(text, inputMode);
+      const result = parseWithMode(text, resolvedMode);
+      const raw = buildMappingRows(result.rows);
+      const matched = sortAndGroupRows(applyAutoMatch(raw, players, persistedMappings));
+      setMappingRows(matched);
+    }
+    setScreen("review");
+  }
+
   return (
     <RoundScreen
       selectedRound={selectedRound}
@@ -389,6 +410,7 @@ export function FantasyPricesTab() {
       onRefresh={fetchRounds}
       onFetchSessions={fetchSessions}
       onNext={() => setScreen("paste")}
+      onQuickImport={handleQuickImport}
     />
   );
 }
@@ -398,7 +420,7 @@ export function FantasyPricesTab() {
 // ============================================================
 function RoundScreen({
   selectedRound, rounds, roundsLoading, sessions, sessionsLoading,
-  onRoundChange, onToggleLock, onRefresh, onFetchSessions, onNext,
+  onRoundChange, onToggleLock, onRefresh, onFetchSessions, onNext, onQuickImport,
 }: {
   selectedRound: number;
   rounds: ReturnType<typeof usePriceRounds>["rounds"];
@@ -410,8 +432,12 @@ function RoundScreen({
   onRefresh: () => void;
   onFetchSessions: () => void;
   onNext: () => void;
+  onQuickImport: (text: string) => void;
 }) {
   const [showHistory, setShowHistory] = useState(false);
+  const [quickText, setQuickText] = useState("");
+
+  const canQuickImport = quickText.trim().length > 20;
 
   return (
     <div className="space-y-5">
@@ -430,11 +456,44 @@ function RoundScreen({
         onRefresh={onRefresh}
       />
 
+      <div className="rounded-lg border border-border bg-card/40 p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold">Quick Import</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Paste your fantasy data below and click Import — auto-matches and jumps straight to review.
+            </p>
+          </div>
+          <Sparkles className="h-4 w-4 text-sky-400 shrink-0" />
+        </div>
+        <textarea
+          value={quickText}
+          onChange={e => setQuickText(e.target.value)}
+          placeholder={"Paste fantasy data here…\nSupports raw table, stacked blocks, JSON, or CSV"}
+          rows={5}
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
+        />
+        <div className="flex items-center gap-3 flex-wrap">
+          <Button
+            size="sm"
+            disabled={!canQuickImport}
+            onClick={() => onQuickImport(quickText)}
+            className="h-8 text-xs bg-sky-600 hover:bg-sky-500 text-white border-0"
+          >
+            <Zap className="h-3.5 w-3.5 mr-1.5" />
+            Quick Import
+          </Button>
+          <button
+            onClick={onNext}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+          >
+            Advanced options
+            <ChevronRight className="h-3 w-3" />
+          </button>
+        </div>
+      </div>
+
       <div className="flex items-center gap-3">
-        <Button onClick={onNext}>
-          Continue to Paste
-          <ChevronRight className="h-4 w-4 ml-1.5" />
-        </Button>
         <button
           onClick={() => {
             setShowHistory(v => !v);
@@ -782,6 +841,13 @@ function ReviewScreen({
 
   const singleSuggested = rows.filter(r => r.match_status === "suggested" && r.suggestions.length === 1).length;
 
+  const injuryOverrideCount = useMemo(() => {
+    return rows.filter(r => {
+      const s = r.player_status?.toLowerCase() ?? "";
+      return ["injured", "inj", "out", "dtd"].includes(s);
+    }).length;
+  }, [rows]);
+
   const visibleRows = useMemo(() => {
     let filtered = rows;
 
@@ -842,6 +908,16 @@ function ReviewScreen({
         <StatTile label="Unresolved" value={counts.manualRequired + counts.pendingRecord} color="orange" />
         <StatTile label="Ready" value={counts.readyToCommit} color="emerald" />
       </div>
+
+      {injuryOverrideCount > 0 && (
+        <div className="rounded-lg border border-red-500/20 bg-red-950/8 px-4 py-2.5 flex items-center gap-2.5 text-sm text-red-300">
+          <TriangleAlert className="h-4 w-4 shrink-0 text-red-400" />
+          <span>
+            <span className="font-semibold">{injuryOverrideCount} player{injuryOverrideCount !== 1 ? "s" : ""} marked injured</span>
+            {" "}— status will be overridden in the DB on commit.
+          </span>
+        </div>
+      )}
 
       {pendingMappingCount > 0 && (
         <div className="rounded-lg border border-sky-500/25 bg-sky-950/10 px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
@@ -1337,17 +1413,26 @@ function MatchBadge({ status, confidence, method }: { status: MatchStatus; confi
 
 function PlayerStatusBadge({ status }: { status: string | null | undefined }) {
   if (!status) return null;
-  if (status === "OUT") return (
-    <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/25">OUT</span>
+  const norm = status.toLowerCase();
+  if (norm === "out" || norm === "injured" || norm === "inj") return (
+    <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-500/15 text-red-400 border border-red-500/25">
+      INJ
+    </span>
   );
-  if (status === "TEST") return (
-    <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/25">TEST</span>
+  if (norm === "dtd" || norm === "test") return (
+    <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/25">DTD</span>
   );
-  if (status === "AVAILABLE") return (
-    <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">AVAIL</span>
+  if (norm === "bye") return (
+    <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-500/15 text-slate-400 border border-slate-500/25">BYE</span>
+  );
+  if (norm === "emergency" || norm === "emg") return (
+    <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded bg-orange-500/15 text-orange-400 border border-orange-500/25">EMG</span>
+  );
+  if (norm === "playing" || norm === "available") return (
+    <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">OK</span>
   );
   return (
-    <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-500/15 text-slate-400 border border-slate-500/25">{status}</span>
+    <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-500/15 text-slate-400 border border-slate-500/25">{status.slice(0, 4).toUpperCase()}</span>
   );
 }
 

@@ -139,6 +139,21 @@ function isStackedBlockFormat(lines: string[]): boolean {
 //      line is the player name. Collect the next ~6 lines to find the price.
 //   3. Extract name (clean "playing"/"bye" prefix), position, first price.
 
+const STATUS_PREFIX_RE = /^(playing|bye|inj|injured|out|dtd|emergency|emg)\s*/i;
+
+function extractStatusFromPrefix(raw: string): { cleanedName: string; status: string | null } {
+  const match = raw.match(/^(playing|bye|inj|injured|out|dtd|emergency|emg)\s*/i);
+  if (!match) return { cleanedName: raw.trim(), status: null };
+  const prefix = match[1].toLowerCase();
+  let status: string | null = null;
+  if (prefix === "playing") status = "playing";
+  else if (prefix === "bye") status = "bye";
+  else if (["inj", "injured", "out", "dtd"].includes(prefix)) status = "injured";
+  else if (["emergency", "emg"].includes(prefix)) status = "emergency";
+  const cleanedName = raw.replace(STATUS_PREFIX_RE, "").trim();
+  return { cleanedName, status };
+}
+
 function parseStackedBlocks(lines: string[]): ParseResult {
   const rows: ParsedPriceRow[] = [];
   const errors: ParseError[] = [];
@@ -175,10 +190,8 @@ function parseStackedBlocks(lines: string[]): ParseResult {
       continue;
     }
 
-    // Clean name: strip leading "playing" / "bye" / "inj" prefixes (case-insensitive)
-    const cleanedName = rawName
-      .replace(/^(playing|bye|inj|injured|out|dtd)\s*/i, "")
-      .trim();
+    // Extract status from leading prefix, then clean the name
+    const { cleanedName, status } = extractStatusFromPrefix(rawName);
 
     if (!cleanedName || cleanedName.length < 2 || !/[A-Za-z]/.test(cleanedName)) {
       errors.push({ line: posIdx + 1, raw: rawName, reason: `Name looks invalid: "${rawName}"` });
@@ -218,6 +231,7 @@ function parseStackedBlocks(lines: string[]): ParseResult {
       cleaned_price: price,
       position,
       team: null,
+      status,
     });
   }
 
@@ -314,6 +328,21 @@ export function parseRawFantasyText(text: string): ParseResult {
     const team = teamResult.team;
     tokens = teamResult.remaining;
 
+    // Extract status keywords from token list
+    const STATUS_TOKENS = new Set(["playing", "injured", "inj", "out", "dtd", "bye", "emergency", "emg"]);
+    let rowStatus: string | null = null;
+    tokens = tokens.filter(t => {
+      const lower = t.toLowerCase();
+      if (STATUS_TOKENS.has(lower)) {
+        if (lower === "playing") rowStatus = "playing";
+        else if (lower === "bye") rowStatus = "bye";
+        else if (["inj", "injured", "out", "dtd"].includes(lower)) rowStatus = "injured";
+        else if (["emergency", "emg"].includes(lower)) rowStatus = "emergency";
+        return false;
+      }
+      return true;
+    });
+
     const cleanedName = tokens.join(" ").trim().replace(/\s+/g, " ");
     if (!cleanedName || cleanedName.length < 2) {
       errors.push({ line: si + 1, raw: seg.slice(0, 60), reason: "Could not extract player name" });
@@ -330,6 +359,7 @@ export function parseRawFantasyText(text: string): ParseResult {
       cleaned_price: price,
       position,
       team,
+      status: rowStatus,
     });
   }
 
