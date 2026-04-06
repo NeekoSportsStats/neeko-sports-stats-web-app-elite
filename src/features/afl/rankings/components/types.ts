@@ -7,6 +7,7 @@ export interface RankingRow {
   position_group?: string | null;
 
   projection: number | null;
+  projection_final?: number | null;
   ceiling_estimate: number | null;
   floor_estimate: number | null;
   form_score: number | null;
@@ -64,6 +65,14 @@ export interface RankingRow {
   cached_at?: string | null;
 
   access_tier?: "premium" | "free" | "locked";
+
+  breakeven_canonical?: number | null;
+  edge_canonical?: number | null;
+  signal_canonical?: string | null;
+  category_canonical?: string | null;
+  action_canonical?: string | null;
+  value_score_canonical?: number | null;
+  signal_tag?: string | null;
 }
 
 export interface ScoreHistoryPoint {

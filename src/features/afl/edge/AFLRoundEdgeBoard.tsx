@@ -158,8 +158,9 @@ function buildConfidenceReasons(row: RankingRow, section: Section): string[] {
     reasons.push("High confidence signal — strong breakout candidate this round");
   }
   if (section === "do_not_start") {
-    if (row.breakeven_canonical != null && row.projection_final != null) {
-      const edge = row.projection_final - row.breakeven_canonical;
+    const beVal = row.breakeven_canonical ?? row.breakeven;
+    if (beVal != null && row.projection_final != null) {
+      const edge = row.projection_final - beVal;
       if (edge <= -20) reasons.push("Significantly underperforming breakeven — heavily overpriced this round");
       else if (edge <= -10) reasons.push("Projected below breakeven — overpriced given current form");
       else reasons.push("Projection below breakeven — consider alternatives");
@@ -328,7 +329,8 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
   const keyFactors: string[] = [];
   if (row.projection_final != null) keyFactors.push(`Projection: ${fmtInt(row.projection_final)} pts`);
   if (row.price != null) keyFactors.push(`Price: ${fmtPrice(row.price)}`);
-  if (row.breakeven_canonical != null) keyFactors.push(`Breakeven: ${fmtInt(row.breakeven_canonical)} pts`);
+  const beDisplay = row.breakeven_canonical ?? row.breakeven;
+  if (beDisplay != null) keyFactors.push(`Breakeven: ${fmtInt(beDisplay)} pts`);
   if (row.value_score != null) keyFactors.push(`Value Score: ${fmtValueScore(row.value_score)}`);
 
   const aiText: string | null = null;
@@ -829,7 +831,8 @@ export default function AFLRoundEdgeBoard() {
           team_name:               null,
           position:                r.player_position ?? r.position ?? null,
           position_group:          null,
-          projection:              r.projection != null ? Number(r.projection) : null,
+          projection:              r.projection_final != null ? Number(r.projection_final) : (r.projection != null ? Number(r.projection) : null),
+          projection_final:        r.projection_final != null ? Number(r.projection_final) : (r.projection != null ? Number(r.projection) : null),
           ceiling_estimate:        null,
           floor_estimate:          null,
           matchup_rating:          null,
@@ -1055,11 +1058,11 @@ export default function AFLRoundEdgeBoard() {
                       <div className="border-t border-white/[0.06] divide-y divide-white/[0.04]">
                         {secondaryPicks.map((player) => {
                           const metric = getPrimaryMetric(player, section);
-                          const edgeVal = player.edge_canonical != null
-                            ? Number(player.edge_canonical)
+                          const edgeVal = player.edge != null
+                            ? Number(player.edge)
                             : player.projection_final != null && player.breakeven != null
                               ? player.projection_final - player.breakeven
-                              : (player.edge ?? 0);
+                              : (player.projection ?? 0) - (player.breakeven ?? 0);
                           const edgePositive = edgeVal > 0;
                           const vsCanonical = player.value_score != null ? player.value_score : null;
                           return (
