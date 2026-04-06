@@ -20,43 +20,43 @@ import { classifyPlayers } from "@/features/afl/market-watch/engine";
 // ─── Adapter: RankingRow → MWPlayerRow ────────────────────────────────────────
 
 function toMWPlayerRow(r: RankingRow): MWPlayerRow {
-  const catRaw = ((r as any).category_canonical ?? r.signal_tag ?? "").toLowerCase();
+  const catRaw = (r.category ?? "").toLowerCase();
   const displaySignal: "TARGET" | "WATCH" | "AVOID" =
     catRaw === "target" ? "TARGET" : catRaw === "avoid" ? "AVOID" : "WATCH";
-  const edgeCanonical = (r as any).edge_canonical != null ? Number((r as any).edge_canonical) : (r.edge != null ? Number(r.edge) : null);
   return {
     player_id: Number(r.player_id ?? 0),
     player_name: r.player_name,
     team: r.team,
+    team_name: r.team_name ?? r.team ?? "",
     position: r.position ?? "",
     price: r.price ?? 0,
     prev_price: null,
     price_change: null,
     price_change_pct: null,
-    projection: r.projection_final ?? 0,
-    projection_final: r.projection_final ?? 0,
-    ceiling: null,
-    floor_val: null,
-    breakeven_canonical: (r as any).breakeven_canonical != null ? Number((r as any).breakeven_canonical) : (r.breakeven ?? null),
-    edge_canonical: edgeCanonical,
-    value_score_canonical: (r as any).value_score_canonical != null ? Number((r as any).value_score_canonical) : null,
-    signal_canonical: (r as any).signal_canonical ?? null,
-    category_canonical: (r as any).category_canonical ?? null,
-    action_canonical: (r as any).action_canonical ?? null,
-    signal_tag: r.signal_tag ?? null,
+    projection: r.projection ?? 0,
+    season_avg: r.season_avg ?? null,
+    last_3_avg: r.last_3_avg ?? null,
+    last_5_avg: null,
+    games_played: r.games_played != null ? Number(r.games_played) : null,
+    breakeven: r.breakeven ?? null,
+    edge: r.edge ?? null,
+    value_score: r.value_score ?? null,
     signal: r.signal ?? null,
-    recommendation_short: null,
-    summary_short: (r as any).summary_short ?? null,
-    summary_long: null,
-    matchup_label: null,
-    consistency: null,
-    neeko_rating: null,
+    category: r.category ?? null,
+    action: r.action ?? null,
+    why: r.why ?? null,
+    why_long: r.why_long ?? null,
+    matchup_label: r.matchup_label ?? null,
+    matchup_rating: null,
+    matchup_multiplier: null,
+    consistency: r.consistency ?? null,
+    neeko_rating: r.neeko_rating ?? null,
     status: r.status ?? null,
     manual_status: r.manual_status ?? null,
     is_bye: r.is_bye ?? false,
-    is_injured: ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()),
-    games_played: r.games_played != null ? Number(r.games_played) : null,
+    cached_at: r.cached_at ?? null,
     display_signal: displaySignal,
+    access_tier: (r.access_tier as "premium" | "free" | "locked") ?? "locked",
   };
 }
 

@@ -36,7 +36,6 @@ import { buildCurrentRoundPlayers, type CurrentRoundPlayer } from "@/features/af
 const FREE_VISIBLE = 2;
 const PREMIUM_VISIBLE = 5;
 
-const COLUMNS = "player_id, player_name, team, player_position, price, projection, signal, games_played, status, is_bye";
 
 function normalizeRow(raw: Record<string, unknown>): RankingRow {
   const proj = raw.projection != null ? Number(raw.projection) : null;
@@ -532,11 +531,11 @@ export default function AFLCurrentRoundPage() {
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("v_player_rankings_cache")
-        .select(COLUMNS)
-        .order("projection_final", { ascending: false, nullsFirst: false })
-        .limit(300);
+      const { data, error } = await supabase.rpc("get_rankings_safe", {
+        p_user_id: null,
+        p_is_bot: false,
+        p_limit: 300,
+      });
 
       if (error) {
         console.error("Current Round fetch error:", error);
@@ -574,7 +573,7 @@ export default function AFLCurrentRoundPage() {
   );
 
   // ── HERO STATS ──────────────────────────────────────────────────────────────
-  const topCaptainProj = captains[0]?.projection_final ?? null;
+  const topCaptainProj = captains[0]?.projection ?? null;
   const topCaptainName = captains[0]?.player_name ?? null;
   const strongUpCount = valuePicks.length;
   const riskCount = riskPicks.length;
@@ -589,7 +588,7 @@ export default function AFLCurrentRoundPage() {
       usedIds.add(topPick.player_id);
       lines.push({
         label: "Top Pick",
-        text: `${topPick.player_name} leads this round — projected ${fmt(topPick.projection_final, 0)} pts with strong matchup and consistency.`,
+        text: `${topPick.player_name} leads this round — projected ${fmt(topPick.projection, 0)} pts with strong matchup and consistency.`,
         color: "#ffffff",
       });
     }
@@ -599,7 +598,7 @@ export default function AFLCurrentRoundPage() {
       usedIds.add(captain.player_id);
       lines.push({
         label: "Captain",
-        text: `${captain.player_name} is the standout captain — ${fmt(captain.projection_final, 0)} pts projected. Best doubler this week.`,
+        text: `${captain.player_name} is the standout captain — ${fmt(captain.projection, 0)} pts projected. Best doubler this week.`,
         color: "#F5C84C",
       });
     }
@@ -619,7 +618,7 @@ export default function AFLCurrentRoundPage() {
       usedIds.add(safePick.player_id);
       lines.push({
         label: "Safe Pick",
-        text: `${safePick.player_name} is a reliable hold — trending stable at ${fmt(safePick.projection_final, 0)} pts projected with consistent recent form.`,
+        text: `${safePick.player_name} is a reliable hold — trending stable at ${fmt(safePick.projection, 0)} pts projected with consistent recent form.`,
         color: "#4ade80",
       });
     }
@@ -628,7 +627,7 @@ export default function AFLCurrentRoundPage() {
     if (riskPick) {
       lines.push({
         label: "Risk Alert",
-        text: `Monitor ${riskPick.player_name} this round — projection at ${fmt(riskPick.projection_final, 0)} pts with negative edge. Consider alternatives.`,
+        text: `Monitor ${riskPick.player_name} this round — projection at ${fmt(riskPick.projection, 0)} pts with negative edge. Consider alternatives.`,
         color: "#f87171",
       });
     }

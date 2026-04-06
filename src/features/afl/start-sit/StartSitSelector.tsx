@@ -8,7 +8,7 @@ interface PlayerOption {
   team: string | null;
   position: string | null;
   player_pos?: string | null;
-  projection_final: number | null;
+  projection: number | null;
   neeko_rating: number | null;
 }
 
@@ -50,7 +50,7 @@ async function fetchPlayers(
       player_name: p.player_name,
       team: p.team ?? null,
       position: p.player_pos ?? null,
-      projection_final: p.projection_final != null ? Number(p.projection_final) : null,
+      projection: p.projection_final != null ? Number(p.projection_final) : null,
       neeko_rating: p.neeko_rating != null ? Number(p.neeko_rating) : null,
     }))
     .filter((p) => String(p.player_id) !== String(excludeId ?? ""));
@@ -163,8 +163,8 @@ export function StartSitSelector({ label, value, excludeId, onChange }: StartSit
             <p className="text-sm font-bold text-white truncate">{value.player_name}</p>
             <p className="text-[11px] text-white/40 mt-0.5">
               {[value.team, value.position].filter(Boolean).join(" · ")}
-              {value.projection_final != null && (
-                <span className="ml-2 text-[#F5C84C]/70">Proj {Math.round(value.projection_final)}</span>
+              {value.projection != null && (
+                <span className="ml-2 text-[#F5C84C]/70">Proj {Math.round(value.projection)}</span>
               )}
             </p>
           </div>
@@ -248,9 +248,9 @@ export function StartSitSelector({ label, value, excludeId, onChange }: StartSit
                     </p>
                   </div>
                   <div className="shrink-0 ml-3 flex items-center gap-2">
-                    {p.projection_final != null && (
+                    {p.projection != null && (
                       <span className="text-[10px] text-white/25 tabular-nums hidden sm:inline">
-                        {Math.round(p.projection_final)} proj
+                        {Math.round(p.projection)} proj
                       </span>
                     )}
                     {p.neeko_rating != null && (

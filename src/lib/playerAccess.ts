@@ -86,8 +86,8 @@ export function markLockedPlayers<T extends { player_id?: number | null }>(
  */
 export function sanitizeLockedPlayerData<T extends {
   player_id?: number | null;
-  summary_short?: string | null;
-  summary_long?: string | null;
+  why?: string | null;
+  why_long?: string | null;
   value_score?: number | null;
   best_value_score?: number | null;
   avg_last_3?: number | null;
@@ -110,8 +110,8 @@ export function sanitizeLockedPlayerData<T extends {
   // Strip advanced stats for locked players
   return {
     ...player,
-    summary_short: null,
-    summary_long: null,
+    why: null,
+    why_long: null,
     value_score: null,
     best_value_score: null,
     avg_last_3: null,

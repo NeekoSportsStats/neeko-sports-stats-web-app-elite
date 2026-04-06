@@ -24,8 +24,8 @@ interface PlayerOption {
   player_name: string;
   team: string | null;
   position: string | null;
-  projection_final: number | null;
-  signal_canonical: string | null;
+  projection: number | null;
+  signal: string | null;
 }
 
 interface CompareResult {
@@ -178,17 +178,22 @@ export default function StartSitPage() {
   useEffect(() => {
     if (authLoading) return;
     supabase
-      .from("v_player_rankings_cache")
-      .select("player_id, player_name, team, position, projection_final, signal_canonical")
-      .not("player_id", "is", null)
-      .order("projection_final", { ascending: false })
-      .limit(200)
+      .rpc("get_rankings_safe", { p_user_id: null, p_is_bot: false, p_limit: 200 })
       .then(({ data, error }) => {
         if (error) {
           console.error(error);
           return;
         }
-        if (data) setTopPlayers(data as PlayerOption[]);
+        if (data) {
+          setTopPlayers((data as any[]).map((r) => ({
+            player_id: r.player_id,
+            player_name: r.player_name,
+            team: r.team ?? null,
+            position: r.player_position ?? r.position ?? null,
+            projection: r.projection != null ? Number(r.projection) : null,
+            signal: r.signal ?? null,
+          })));
+        }
       });
   }, [authLoading, isPremium]);
 
@@ -203,16 +208,25 @@ export default function StartSitPage() {
       if (ids.length === 0) return;
 
       const { data, error } = await supabase
-        .from("v_player_rankings_cache")
-        .select("player_id, player_name, team, position, projection_final, signal_canonical")
-        .in("player_name", ids.map((n) => n.replace(/-/g, " ")));
+        .rpc("get_rankings_safe", { p_user_id: null, p_is_bot: false, p_limit: 500 });
 
       if (error) {
         console.error(error);
         return;
       }
       if (!data) return;
-      const [found1, found2] = data as PlayerOption[];
+      const names = ids.map((n) => n.replace(/-/g, " ").toLowerCase());
+      const matched = (data as any[])
+        .filter((r) => names.includes((r.player_name ?? "").toLowerCase()))
+        .map((r) => ({
+          player_id: r.player_id,
+          player_name: r.player_name,
+          team: r.team ?? null,
+          position: r.player_position ?? r.position ?? null,
+          projection: r.projection != null ? Number(r.projection) : null,
+          signal: r.signal ?? null,
+        }));
+      const [found1, found2] = matched as PlayerOption[];
       if (found1) setPlayerA(found1);
       if (found2) setPlayerB(found2);
     }
@@ -361,8 +375,8 @@ export default function StartSitPage() {
     url.searchParams.set("playerA", playerA.player_name.replace(/\s+/g, "-"));
     url.searchParams.set("playerB", playerB.player_name.replace(/\s+/g, "-"));
     const winnerProj = result.playerA && String(result.winner_player_id) === String(result.playerA.player_id)
-      ? result.playerA.projection_final
-      : result.playerB?.projection_final;
+      ? result.playerA.projection
+      : result.playerB?.projection;
     const edgeLabel = result.confidence >= 80 ? "Strong Edge" : result.confidence >= 68 ? "Clear Edge" : "Lean Edge";
     const oppState = deriveOpponentState(opponentModel);
     const oppMargin = getMargin(opponentModel);

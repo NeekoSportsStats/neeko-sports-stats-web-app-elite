@@ -65,7 +65,7 @@ export default function MarketWatchPageElite() {
       if (error) throw error;
 
       const mapped: MWPlayerRow[] = (data ?? []).map((r: any) => {
-        const catRaw = (r.category_canonical ?? "").toLowerCase();
+        const catRaw = (r.category ?? "").toLowerCase();
         const displaySignal: "TARGET" | "WATCH" | "AVOID" =
           catRaw === "target" ? "TARGET" : catRaw === "avoid" ? "AVOID" : "WATCH";
 
@@ -81,19 +81,19 @@ export default function MarketWatchPageElite() {
           prev_price: r.prev_price != null ? Number(r.prev_price) : null,
           price_change: r.price_change != null ? Number(r.price_change) : null,
           price_change_pct: null,
-          projection: r.projection_final != null ? Number(r.projection_final) : null,
+          projection: r.projection != null ? Number(r.projection) : null,
           season_avg: r.season_avg != null ? Number(r.season_avg) : null,
           last_3_avg: r.last_3_avg != null ? Number(r.last_3_avg) : null,
           last_5_avg: r.last_5_avg != null ? Number(r.last_5_avg) : null,
           games_played: r.games_played != null ? Number(r.games_played) : null,
-          breakeven: r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
-          edge: r.edge_canonical != null ? Number(r.edge_canonical) : null,
-          value_score: r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
-          signal: r.signal_canonical ?? null,
-          category: r.category_canonical ?? null,
-          action: r.action_canonical ?? null,
-          why: r.summary_short ?? null,
-          why_long: r.summary_long ?? null,
+          breakeven: r.breakeven != null ? Number(r.breakeven) : null,
+          edge: r.edge != null ? Number(r.edge) : null,
+          value_score: r.value_score != null ? Number(r.value_score) : null,
+          signal: r.signal ?? null,
+          category: r.category ?? null,
+          action: r.action ?? null,
+          why: r.why ?? null,
+          why_long: r.why_long ?? null,
           matchup_label: r.matchup_label ?? null,
           matchup_rating: r.matchup_rating ?? null,
           matchup_multiplier: r.matchup_multiplier != null ? Number(r.matchup_multiplier) : null,
