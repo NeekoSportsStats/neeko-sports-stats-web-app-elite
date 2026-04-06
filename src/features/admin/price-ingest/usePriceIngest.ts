@@ -172,6 +172,44 @@ export function useSaveMapping() {
   return { saveMapping };
 }
 
+export interface BatchMapping {
+  source_name: string;
+  player_id: number;
+}
+
+export function useBatchSaveMapping() {
+  const [saving, setSaving] = useState(false);
+
+  const batchSave = useCallback(async (
+    mappings: BatchMapping[],
+  ): Promise<{ saved: number; error: string | null }> => {
+    if (mappings.length === 0) return { saved: 0, error: null };
+    setSaving(true);
+    try {
+      let saved = 0;
+      for (const m of mappings) {
+        try {
+          await callAdminCommand("save_player_name_mapping", {
+            source_name: m.source_name,
+            player_id: m.player_id,
+            match_method: "manual",
+          });
+          saved++;
+        } catch (e) {
+          console.warn("[batchSave] mapping failed:", m.source_name, e instanceof Error ? e.message : e);
+        }
+      }
+      return { saved, error: null };
+    } catch (e) {
+      return { saved: 0, error: e instanceof Error ? e.message : "Batch save failed" };
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  return { saving, batchSave };
+}
+
 export async function resolvePlayerName(
   normalizedName: string,
   playerId: number,

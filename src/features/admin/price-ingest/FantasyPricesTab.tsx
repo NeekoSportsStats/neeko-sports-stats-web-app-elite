@@ -7,15 +7,16 @@ import {
 } from "./parseUtils";
 import {
   usePlayerOptions, useCommitPrices, useSavePending,
-  usePriceRounds, useSaveMapping, usePersistedMappings,
-  useIngestSessions,
+  usePriceRounds, usePersistedMappings,
+  useIngestSessions, useBatchSaveMapping,
+  type BatchMapping,
 } from "./usePriceIngest";
 import { RoundSelector } from "./RoundSelector";
 import { PlayerSearchDropdown } from "./PlayerSearchDropdown";
 import {
   applyAutoMatch, computeIngestCounts, sortAndGroupRows,
 } from "./matchEngine";
-import type { ParsedPriceRow, MappingRow, MatchStatus, CommitResult, ValidationResult } from "./types";
+import type { ParsedPriceRow, MappingRow, CommitResult, ValidationResult } from "./types";
 
 type Screen =
   | "round"
@@ -72,12 +73,14 @@ export function FantasyPricesTab() {
   const [commitError, setCommitError] = useState<string | null>(null);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [pendingMappings, setPendingMappings] = useState<Map<string, BatchMapping>>(new Map());
+  const [saveToast, setSaveToast] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const players = usePlayerOptions();
   const { committing, validating, validateRows, commitPrices } = useCommitPrices();
   const { saving, savePending } = useSavePending();
-  const { saveMapping } = useSaveMapping();
+  const { saving: savingMappings, batchSave } = useBatchSaveMapping();
   const { rounds, loading: roundsLoading, fetchRounds, toggleLock } = usePriceRounds(CURRENT_SEASON);
   const persistedMappings = usePersistedMappings(mappingRows);
   const { sessions, loading: sessionsLoading, fetchSessions } = useIngestSessions();
@@ -133,6 +136,7 @@ export function FantasyPricesTab() {
 
   const handlePlayerSelect = useCallback((rowId: string, playerId: number | null, playerName: string | null, isManualInput?: boolean) => {
     setMappingRows(prev => {
+      const row = prev.find(r => r.id === rowId);
       const updated = prev.map(r => {
         if (r.id !== rowId) return r;
         if (isManualInput) {
@@ -155,22 +159,30 @@ export function FantasyPricesTab() {
         };
       });
 
-      if (!isManualInput && playerId !== null && playerName !== null) {
-        const row = prev.find(r => r.id === rowId);
-        if (row) {
-          saveMapping(row.source_name, playerId, "manual");
-        }
+      if (!isManualInput && playerId !== null && playerName !== null && row) {
+        setPendingMappings(pm => {
+          const next = new Map(pm);
+          next.set(rowId, { source_name: row.source_name, player_id: playerId });
+          return next;
+        });
+      } else if (isManualInput && row) {
+        setPendingMappings(pm => {
+          const next = new Map(pm);
+          next.delete(rowId);
+          return next;
+        });
       }
 
       return updated;
     });
-  }, [saveMapping]);
+  }, []);
 
   function handleBulkAcceptSuggested() {
+    const bulkPending = new Map<string, BatchMapping>();
     setMappingRows(prev => prev.map(r => {
       if (r.match_status === "suggested" && r.suggestions.length === 1) {
         const p = r.suggestions[0];
-        saveMapping(r.source_name, p.player_id, "manual");
+        bulkPending.set(r.id, { source_name: r.source_name, player_id: p.player_id });
         return {
           ...r,
           player_id: p.player_id,
@@ -181,6 +193,26 @@ export function FantasyPricesTab() {
       }
       return r;
     }));
+    if (bulkPending.size > 0) {
+      setPendingMappings(pm => {
+        const next = new Map(pm);
+        bulkPending.forEach((v, k) => next.set(k, v));
+        return next;
+      });
+    }
+  }
+
+  async function handleSaveMappings() {
+    const mappings = Array.from(pendingMappings.values());
+    if (mappings.length === 0) return;
+    const { saved, error } = await batchSave(mappings);
+    if (error) {
+      setSaveToast(`Save failed: ${error}`);
+    } else {
+      setPendingMappings(new Map());
+      setSaveToast(`${saved} match${saved !== 1 ? "es" : ""} saved — will auto-apply on next import.`);
+    }
+    setTimeout(() => setSaveToast(null), 4000);
   }
 
   async function handleGoToReview() {
@@ -251,6 +283,8 @@ export function FantasyPricesTab() {
     setCommitError(null);
     setValidationResult(null);
     setValidationError(null);
+    setPendingMappings(new Map());
+    setSaveToast(null);
     if (fileRef.current) fileRef.current.value = "";
   }
 
@@ -296,10 +330,14 @@ export function FantasyPricesTab() {
         players={players}
         counts={counts}
         saving={saving}
+        savingMappings={savingMappings}
+        pendingMappingCount={pendingMappings.size}
+        saveToast={saveToast}
         roundLabel={roundLabel}
         isRoundLocked={isRoundLocked}
         onSelect={handlePlayerSelect}
         onBulkAcceptSuggested={handleBulkAcceptSuggested}
+        onSaveMappings={handleSaveMappings}
         onSavePending={handleSavePending}
         onValidateAndConfirm={handleValidateAndConfirm}
         validating={validating}
@@ -718,17 +756,22 @@ function SummaryScreen({
 // Screen 4: Review Queue
 // ============================================================
 function ReviewScreen({
-  rows, players, counts, saving, roundLabel, isRoundLocked,
-  onSelect, onBulkAcceptSuggested, onSavePending, onValidateAndConfirm, validating, onBack,
+  rows, players, counts, saving, savingMappings, pendingMappingCount, saveToast,
+  roundLabel, isRoundLocked,
+  onSelect, onBulkAcceptSuggested, onSaveMappings, onSavePending, onValidateAndConfirm, validating, onBack,
 }: {
   rows: MappingRow[];
   players: ReturnType<typeof usePlayerOptions>;
   counts: ReturnType<typeof computeIngestCounts>;
   saving: boolean;
+  savingMappings: boolean;
+  pendingMappingCount: number;
+  saveToast: string | null;
   roundLabel: string;
   isRoundLocked: boolean;
   onSelect: (rowId: string, playerId: number | null, playerName: string | null, isManualInput?: boolean) => void;
   onBulkAcceptSuggested: () => void;
+  onSaveMappings: () => void;
   onSavePending: () => void;
   onValidateAndConfirm: () => void;
   validating: boolean;
@@ -799,6 +842,36 @@ function ReviewScreen({
         <StatTile label="Unresolved" value={counts.manualRequired + counts.pendingRecord} color="orange" />
         <StatTile label="Ready" value={counts.readyToCommit} color="emerald" />
       </div>
+
+      {pendingMappingCount > 0 && (
+        <div className="rounded-lg border border-sky-500/25 bg-sky-950/10 px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-sm text-sky-300">
+            <CircleCheck className="h-4 w-4 shrink-0" />
+            <span>
+              <span className="font-semibold">{pendingMappingCount} match{pendingMappingCount !== 1 ? "es" : ""}</span>
+              {" "}ready to save — click to remember for future imports.
+            </span>
+          </div>
+          <Button
+            size="sm"
+            onClick={onSaveMappings}
+            disabled={savingMappings}
+            className="h-7 text-xs shrink-0 bg-sky-600 hover:bg-sky-500 text-white border-0"
+          >
+            {savingMappings
+              ? <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+              : <Sparkles className="h-3 w-3 mr-1" />}
+            {savingMappings ? "Saving…" : `Save ${pendingMappingCount} Match${pendingMappingCount !== 1 ? "es" : ""}`}
+          </Button>
+        </div>
+      )}
+
+      {saveToast && (
+        <div className="rounded-lg border border-emerald-500/25 bg-emerald-950/10 px-4 py-2.5 flex items-center gap-2 text-sm text-emerald-400">
+          <CircleCheck className="h-4 w-4 shrink-0" />
+          {saveToast}
+        </div>
+      )}
 
       {singleSuggested > 0 && (
         <div className="rounded-lg border border-amber-500/20 bg-amber-950/10 px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
