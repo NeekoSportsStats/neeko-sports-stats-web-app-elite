@@ -30,6 +30,12 @@ export interface BestTrade {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function displaySignalFromTag(p: MWPlayerRow): DisplaySignal {
+  const vs = p.value_score_canonical;
+  if (vs != null) {
+    if (vs >= 3) return "TARGET";
+    if (vs < -2) return "AVOID";
+    return "WATCH";
+  }
   const raw = (p.category_canonical ?? p.market_watch_category ?? p.signal_tag ?? "").toLowerCase();
   if (raw === "target") return "TARGET";
   if (raw === "avoid") return "AVOID";
@@ -96,7 +102,14 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
     else holds.push(derived);
   }
 
-  return { buys, holds, sells };
+  const byVal = (a: DerivedPlayer, b: DerivedPlayer) =>
+    (b.value_score_canonical ?? b.edge_canonical ?? 0) - (a.value_score_canonical ?? a.edge_canonical ?? 0);
+
+  return {
+    buys: buys.sort(byVal),
+    holds: holds.sort(byVal),
+    sells: sells.sort(byVal),
+  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

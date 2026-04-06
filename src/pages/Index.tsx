@@ -229,11 +229,8 @@ function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
         !p.is_bye
     );
 
-    const byEdgeDesc = [...available].sort(
-      (a, b) => (b.edge_canonical ?? b.edge ?? 0) - (a.edge_canonical ?? a.edge ?? 0)
-    );
-    const byEdgeAsc = [...available].sort(
-      (a, b) => (a.edge_canonical ?? a.edge ?? 0) - (b.edge_canonical ?? b.edge ?? 0)
+    const byValueDesc = [...available].sort(
+      (a, b) => (b.value_score_canonical ?? b.edge_canonical ?? b.edge ?? 0) - (a.value_score_canonical ?? a.edge_canonical ?? a.edge ?? 0)
     );
 
     const usedIds = new Set<string | number>();
@@ -247,9 +244,10 @@ function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
       return null;
     }
 
-    const mustHavePlayer = pick(byEdgeDesc);
-    const breakoutPlayer = pick(byEdgeDesc);
-    const avoidPlayer    = pick(byEdgeAsc);
+    const mustHavePlayer = pick(byValueDesc);
+    const breakoutPlayer = pick(byValueDesc);
+    const byValueAsc = [...byValueDesc].reverse();
+    const avoidPlayer    = pick(byValueAsc);
 
     return [
       { section: "must_have" as EdgeSignalType, player: mustHavePlayer },
@@ -1271,6 +1269,9 @@ export default function Index() {
         const seasonAvg = r.season_avg != null ? Number(r.season_avg) : null;
         const breakeven = last3 ?? last5 ?? seasonAvg ?? (proj != null ? proj * 0.9 : null);
         const edgeDerived = proj != null && breakeven != null ? proj - breakeven : null;
+        const valueScoreDerived = breakeven != null && breakeven > 0 && edgeDerived != null
+          ? parseFloat(((edgeDerived / breakeven) * 10).toFixed(2))
+          : edgeDerived;
         return {
           player_id:             r.player_id ?? null,
           player_name:           r.player_name ?? "",
@@ -1333,6 +1334,7 @@ export default function Index() {
           category_canonical:    (r.category_canonical as string) ?? null,
           action_canonical:      null,
           manual_status:         (r.manual_status as string) ?? null,
+          value_score_canonical: valueScoreDerived,
         };
       });
 
@@ -1387,7 +1389,7 @@ export default function Index() {
           floor_val: null,
           breakeven_canonical: breakeven,
           edge_canonical: edgeDerived,
-          value_score_canonical: breakeven > 0 ? parseFloat(((edgeDerived / breakeven) * 100).toFixed(1)) : null,
+          value_score_canonical: breakeven > 0 ? parseFloat(((edgeDerived / breakeven) * 10).toFixed(2)) : edgeDerived,
           signal_canonical: r.signal_canonical ?? null,
           category_canonical: r.category_canonical ?? null,
           action_canonical: null,

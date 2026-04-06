@@ -150,9 +150,8 @@ export default function MarketWatchPageElite() {
     return classifyPlayers(players);
   }, [players]);
 
-  // MEMOIZE: All derived players — bucket-first (TARGET → WATCH → AVOID), then edge_canonical DESC within bucket
+  // MEMOIZE: All derived players — sorted purely by value_score_canonical DESC
   const allDerivedPlayers = useMemo(() => {
-    const bucketOrder: Record<string, number> = { BUY: 0, HOLD: 1, SELL: 2 };
     return [
       ...(classified?.buys ?? []),
       ...(classified?.holds ?? []),
@@ -160,10 +159,8 @@ export default function MarketWatchPageElite() {
     ]
       .filter(p => p && p.player_id)
       .sort((a, b) => {
-        const bucketDiff = (bucketOrder[a._category] ?? 1) - (bucketOrder[b._category] ?? 1);
-        if (bucketDiff !== 0) return bucketDiff;
-        const edgeDiff = (b.edge_canonical ?? 0) - (a.edge_canonical ?? 0);
-        if (edgeDiff !== 0) return edgeDiff;
+        const vDiff = (b.value_score_canonical ?? b.edge_canonical ?? 0) - (a.value_score_canonical ?? a.edge_canonical ?? 0);
+        if (vDiff !== 0) return vDiff;
         return (b.projection ?? 0) - (a.projection ?? 0);
       });
   }, [classified]);
