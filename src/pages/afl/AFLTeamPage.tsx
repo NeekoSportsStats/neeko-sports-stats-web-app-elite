@@ -7,7 +7,8 @@ import {
   Flame, Trophy, DollarSign, Lock,
 } from 'lucide-react';
 import { nameToSlug, POSITION_NAMES, TEAM_SLUG_TO_NAME } from '@/lib/slugs';
-import { supabase } from '@/lib/supabaseClient';
+import { getTeamPlayersSafe } from '@/lib/playerAccess';
+import { useAuth } from '@/lib/auth';
 import { getTeamAccentColour } from '@/config/aflTeamColours';
 import { PlayerStatusPill } from '@/features/afl/rankings/components/PlayerStatusPill';
 import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from '@/utils/aflEdgeSignal';
@@ -360,6 +361,7 @@ export default function AFLTeamPage() {
   const teamName = team ? TEAM_SLUG_TO_NAME[team] : '';
   const navigate = useNavigate();
   const { isPremium } = useAccessState();
+  const { user } = useAuth();
 
   const [players, setPlayers] = useState<TeamPlayer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -369,37 +371,31 @@ export default function AFLTeamPage() {
     if (!teamName) { setError(true); setLoading(false); return; }
 
     (async () => {
-      const { data, error: err } = await supabase
-        .from('v_player_rankings_cache')
-        .select(`
-          player_id,
-          player_name,
-          team,
-          position,
-          price,
-          projection,
-          breakeven,
-          value_score,
-          signal,
-          status,
-          is_bye,
-          games_played
-        `)
-        .eq('team', teamName)
-        .gte('games_played', 3)
-        .order('projection', { ascending: false });
-
-      if (err) {
+      try {
+        const data = await getTeamPlayersSafe(teamName, user?.id ?? null);
+        const mapped = ((data ?? []) as any[]).map((r: any): TeamPlayer => ({
+          player_id: r.player_id ?? null,
+          player_name: r.player_name ?? '',
+          team: r.team ?? r.team_name ?? null,
+          position: r.player_position ?? r.position ?? null,
+          price: r.price != null ? Number(r.price) : null,
+          projection: r.projection != null ? Number(r.projection) : null,
+          breakeven: r.breakeven != null ? Number(r.breakeven) : null,
+          value_score: r.value_score != null ? Number(r.value_score) : null,
+          signal: r.signal ?? null,
+          status: r.status ?? null,
+          is_bye: r.is_bye != null ? Boolean(r.is_bye) : null,
+          games_played: r.games_played != null ? Number(r.games_played) : null,
+        }));
+        setPlayers(mapped);
+        setLoading(false);
+      } catch (err) {
         console.error("TEAM QUERY FAILED:", teamName, err);
-        setError(true); setLoading(false); return;
+        setError(true);
+        setLoading(false);
       }
-      if (!data || data.length === 0) {
-        console.error("TEAM QUERY FAILED — no rows returned for:", teamName);
-      }
-      setPlayers((data ?? []) as TeamPlayer[]);
-      setLoading(false);
     })();
-  }, [teamName]);
+  }, [teamName, user?.id]);
 
   const stats = useMemo(() => {
     if (!players.length) return { totalPlayers: 0, topProj: 0, avgProj: 0, topPlayer: null, mostExpensivePlayer: null };

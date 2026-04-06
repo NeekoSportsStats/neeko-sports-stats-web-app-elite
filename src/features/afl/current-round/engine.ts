@@ -22,7 +22,6 @@ export function buildCurrentRoundPlayers(
   edgeBoardIds: Set<string> = new Set()
 ): CurrentRoundResult {
   if (players.length === 0) {
-    console.log("[CurrentRound] No players supplied — returning empty result");
     return { captains: [], topPicks: [], valuePicks: [], safePicks: [], riskPicks: [] };
   }
 
@@ -35,7 +34,6 @@ export function buildCurrentRoundPlayers(
       (p.manual_status ?? "").toUpperCase() !== "OMITTED"
   );
 
-  console.log(`[CurrentRound] available players after status filter: ${available.length} / ${players.length}`);
 
   const rankedAll = [...players].sort(
     (a, b) => (b.projection ?? 0) - (a.projection ?? 0)
@@ -70,7 +68,6 @@ export function buildCurrentRoundPlayers(
   const captains = byProjDesc.slice(0, CAPTAIN_LIMIT);
   const captainIds = new Set(captains.map((p) => p.player_id));
 
-  console.log(`[CurrentRound] captains: ${captains.length}`);
 
   // TOP PICKS: next best projection (not captain)
   const topPicks = byProjDesc
@@ -79,7 +76,6 @@ export function buildCurrentRoundPlayers(
 
   const topIds = new Set([...captainIds, ...topPicks.map((p) => p.player_id)]);
 
-  console.log(`[CurrentRound] topPicks: ${topPicks.length}`);
 
   // VALUE PICKS: highest edge players not already used
   // Primary: edge > 8, fallback: any positive edge, second fallback: top remaining by projection
@@ -102,7 +98,6 @@ export function buildCurrentRoundPlayers(
 
   const valueIds = new Set([...topIds, ...valuePicks.map((p) => p.player_id)]);
 
-  console.log(`[CurrentRound] valuePicks: ${valuePicks.length}`);
 
   // SAFE PICKS: good projection, no strong negative signal, not already used
   // Primary: projection >= 80 and edge >= -15, fallback: any not used, by projection desc
@@ -133,7 +128,6 @@ export function buildCurrentRoundPlayers(
 
   const safeIds = new Set([...valueIds, ...safePicks.map((p) => p.player_id)]);
 
-  console.log(`[CurrentRound] safePicks: ${safePicks.length}`);
 
   // RISK PICKS: lowest edge players not already used (derived from edge_canonical)
   // Primary: edge < -5, fallback: most negative edge available
@@ -148,7 +142,6 @@ export function buildCurrentRoundPlayers(
     riskPicks = [...riskPicks, ...extra];
   }
 
-  console.log(`[CurrentRound] riskPicks: ${riskPicks.length}`);
 
   return { captains, topPicks, valuePicks, safePicks, riskPicks };
 }

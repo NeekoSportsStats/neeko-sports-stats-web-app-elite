@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Crown, Lock, Info, ExternalLink, ChevronRight, TrendingUp, TrendingDown, Minus, TriangleAlert as AlertTriangle, Zap, ChevronDown, ChevronUp, ChartBar as BarChart2, Target, Shield, Flame } from 'lucide-react';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
 import { slugToName, nameToSlug, POSITION_NAMES } from '@/lib/slugs';
-import { getSimilarPlayersSafe, getPlayerDetailSafe } from '@/lib/playerAccess';
+import { getSimilarPlayersSafe, getPlayerDetailSafe, getTeamPlayersSafe } from '@/lib/playerAccess';
 import { useAuth } from '@/lib/auth';
 import { ComposedChart, Line, Area, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Dot } from "recharts";
 import {
@@ -663,38 +663,29 @@ export default function AFLPlayerPage() {
   });
 
   const { data: sameTeamPlayers } = useQuery({
-    queryKey: ['same-team-players', player?.player_id, player?.team],
+    queryKey: ['same-team-players', player?.player_id, player?.team, user?.id],
     queryFn: async () => {
       if (!player?.team) return [];
-      const { data, error: qErr } = await supabase
-        .from('v_player_rankings_cache')
-        .select('player_id, player_name, projection, price, signal')
-        .eq('team', player.team)
-        .neq('player_id', player.player_id)
-        .not('projection', 'is', null)
-        .order('projection', { ascending: false })
-        .limit(5);
-      if (qErr) return [];
-      return data ?? [];
+      const rows = await getTeamPlayersSafe(player.team, user?.id ?? null);
+      return (rows as any[]).filter((r: any) => String(r.player_id) !== String(player.player_id));
     },
     enabled: !!player?.team,
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: samePositionPlayers } = useQuery({
-    queryKey: ['same-position-players', player?.player_id, player?.player_position],
+    queryKey: ['same-position-players', player?.player_id, player?.player_position, user?.id],
     queryFn: async () => {
       if (!player?.player_position) return [];
-      const { data, error: qErr } = await supabase
-        .from('v_player_rankings_cache')
-        .select('player_id, player_name, projection, price, signal')
-        .eq('position', player.player_position)
-        .neq('player_id', player.player_id)
-        .not('projection', 'is', null)
-        .order('projection', { ascending: false })
-        .limit(5);
-      if (qErr) return [];
-      return data ?? [];
+      const rows = await getSimilarPlayersSafe(
+        Number(player.player_id),
+        player.player_position,
+        0,
+        9999,
+        user?.id ?? null,
+        6
+      );
+      return (rows as any[]).filter((r: any) => String(r.player_id) !== String(player.player_id));
     },
     enabled: !!player?.player_position,
     staleTime: 5 * 60 * 1000,

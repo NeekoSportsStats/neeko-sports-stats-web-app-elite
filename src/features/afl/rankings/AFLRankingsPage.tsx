@@ -331,17 +331,18 @@ export default function AFLRankingsPage() {
   }
 
   async function fetchAIForRow(row: RankingRow): Promise<Partial<RankingRow>> {
-    if (!row.player_id) return {};
+    if (!row.player_id || !row.player_name) return {};
     const { data } = await supabase
-      .from("v_rankings_free")
-      .select("player_id,why,why_long,cached_at")
-      .eq("player_id", row.player_id)
-      .maybeSingle();
-    if (!data) return {};
+      .rpc("get_player_detail_safe", {
+        p_player_name: row.player_name,
+        p_user_id: user?.id ?? null,
+      });
+    if (!data || !data[0]) return {};
+    const d = data[0] as any;
     return {
-      why:           (data as any).why ?? row.why,
-      why_long:      (data as any).why_long ?? row.why_long,
-      ai_updated_at: (data as any).cached_at ?? row.ai_updated_at,
+      why:           d.why ?? row.why,
+      why_long:      d.why_long ?? row.why_long,
+      cached_at:     d.cached_at ?? row.cached_at,
     };
   }
 
