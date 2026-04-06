@@ -6,16 +6,14 @@ import { supabase } from '@/lib/supabaseClient';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Crown, Lock, Info, ExternalLink, ChevronRight, TrendingUp, TrendingDown, Minus, TriangleAlert as AlertTriangle, Zap, ChevronDown, ChevronUp, ChartBar as BarChart2, Target, Shield, Flame } from 'lucide-react';
 import { useSubscriptionStatus } from '@/hooks/useSubscriptionStatus';
-import { slugToName, nameToSlug, POSITION_SLUGS, POSITION_NAMES } from '@/lib/slugs';
+import { slugToName, nameToSlug, POSITION_NAMES } from '@/lib/slugs';
 import { getSimilarPlayersSafe, getPlayerDetailSafe } from '@/lib/playerAccess';
 import { useAuth } from '@/lib/auth';
 import { ComposedChart, Line, Area, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, Dot } from "recharts";
 import {
-  fmt, fmtInt, fmtPrice, fmtValueScore, fmtMatchup,
-  getCaptainStyle, getValueTagStyle, getNeekoRatingBadge, getRiskBadge,
-  getConsistencyBadge, getConfidenceColor, getConfidenceLabel, getConfidenceLabelColor,
-  getValueScoreColor,
-  getFormColor, getMatchupColor, getUpsideColor, getRiskColor,
+  fmt, fmtInt, fmtPrice,
+  getCaptainStyle, getConsistencyBadge, getConfidenceColor, getConfidenceLabel, getConfidenceLabelColor,
+  getFormColor, getMatchupColor, getRiskColor,
   sharpenAIText, isAITextStale,
   normaliseConfidence,
   getTrendLabel, getTrendStyles, getTrendAction, getTrendActionStyles,
@@ -47,10 +45,8 @@ interface PlayerData {
   best_value_score?: number | null;
   neeko_rating: number | null;
   neeko_rating_scaled?: number | null;
-  // legacy signal
   signal?: string | null;
   signal_tag?: string | null;
-  // canonical fields (source of truth)
   edge_canonical?: number | null;
   breakeven_canonical?: number | null;
   value_score_canonical?: number | null;
@@ -69,8 +65,6 @@ interface PlayerData {
   summary_long?: string | null;
   ai_recommendation?: string | null;
   ai_summary?: string | null;
-  long?: string | null;
-  why?: string | null;
   games_played?: number;
   projection_confidence?: number | null;
   upside_pct?: number | null;
@@ -528,10 +522,44 @@ function ConsistencyRangeBar({ floor, projection, ceiling }: { floor: number | n
   );
 }
 
+// ─── Value score helpers ────────────────────────────────────────────────────────
+
+function getValueLabel(valueScoreCanonical: number | null, valueScoreLegacy: number | null): string | null {
+  // value_score_canonical is a ratio (e.g. 1.2 = 20% above fair value)
+  const vs = valueScoreCanonical;
+  if (vs == null) {
+    // fallback: legacy value_score is also a ratio stored in 0-2 range
+    const leg = valueScoreLegacy;
+    if (leg == null) return null;
+    if (leg >= 1.2) return "Elite Value";
+    if (leg >= 1.0) return "Strong Value";
+    if (leg >= 0.85) return "Fair Value";
+    return "Overpriced";
+  }
+  if (vs >= 1.2) return "Elite Value";
+  if (vs >= 1.0) return "Strong Value";
+  if (vs >= 0.85) return "Fair Value";
+  return "Overpriced";
+}
+
+function getValueLabelStyle(label: string | null): { text: string; bg: string; border: string } {
+  if (label === "Elite Value")  return { text: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20" };
+  if (label === "Strong Value") return { text: "text-emerald-300", bg: "bg-emerald-500/8",  border: "border-emerald-500/15" };
+  if (label === "Fair Value")   return { text: "text-white/60",    bg: "bg-white/5",         border: "border-white/8" };
+  if (label === "Overpriced")   return { text: "text-red-400",     bg: "bg-red-500/10",      border: "border-red-500/20" };
+  return { text: "text-white/40", bg: "bg-white/5", border: "border-white/8" };
+}
+
+function fmtValueRatio(vs: number | null): string {
+  if (vs == null) return "—";
+  const pct = Math.round((vs - 1) * 100);
+  return pct >= 0 ? `+${pct}% value` : `${pct}% value`;
+}
+
 // ─── Player SEO Section ────────────────────────────────────────────────────────
 
 function PlayerSEOSection({
-  player, proj, getPositionName, ceilingVal, floorVal, valueLabel,
+  player, proj, getPositionName, ceilingVal, floorVal, valueLabel, activeSignal,
 }: {
   player: PlayerData;
   proj: number | null;
@@ -539,6 +567,7 @@ function PlayerSEOSection({
   ceilingVal: number | null;
   floorVal: number | null;
   valueLabel: string | null;
+  activeSignal: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const pos = getPositionName(player.player_position);
@@ -546,9 +575,9 @@ function PlayerSEOSection({
 
   const seoContent = `${player.player_name} is an AFL Fantasy ${pos} for ${player.team || player.team_name} in the 2026 season. Our AI-powered projection system rates ${player.player_name} with a projected fantasy score of ${Math.round(proj ?? 0)} points, with a ceiling of ${Math.round(ceilingVal ?? 0)} and floor of ${Math.round(floorVal ?? 0)}.
 
-${activeSignal ? `Current AI signal: ${formatEdgeSignalLabel(signalFromField(activeSignal))}. ` : ""}${player.summary_short ?? player.recommendation_short ?? ""}
+${activeSignal ? `Current AI signal: ${formatEdgeSignalLabel(signalFromField(activeSignal))}. ` : ""}${player.summary_short ?? ""}
 
-Fantasy relevance: ${player.player_name} is ${valueLabel ? `categorised as ${valueLabel}` : "rated"} for the 2026 AFL Fantasy season. ${player.price ? `Current price: ${fmtPrice(player.price)}.` : ""} ${(player.breakeven_canonical ?? player.breakeven) != null ? `Breakeven: ${Math.round((player.breakeven_canonical ?? player.breakeven)!)} points to maintain current price.` : ""} ${player.captain_rating ? `Captain Rating: ${player.captain_rating}.` : ""}
+Fantasy relevance: ${player.player_name} is ${valueLabel ? `categorised as ${valueLabel}` : "rated"} for the 2026 AFL Fantasy season. ${player.price ? `Current price: ${fmtPrice(player.price)}.` : ""} ${player.breakeven_canonical != null ? `Breakeven: ${Math.round(player.breakeven_canonical)} points to maintain current price.` : ""}
 
 Use Neeko's weekly AFL Fantasy decision engine to track ${player.player_name}'s price movements, projection changes, matchup advantages, and whether to start, sit, trade, or captain this player each round.`;
 
@@ -643,15 +672,16 @@ export default function AFLPlayerPage() {
     queryKey: ['same-team-players', player?.player_id, player?.team],
     queryFn: async () => {
       if (!player?.team) return [];
-      const { data, error } = await supabase
+      const { data, error: qErr } = await supabase
+        .schema('afl')
         .from('player_rankings_cache')
-        .select('player_id, player_name, projection_final, price, breakeven, signal')
+        .select('player_id, player_name, projection_final, price, breakeven_canonical, signal_canonical')
         .eq('team', player.team)
         .neq('player_id', player.player_id)
         .not('projection_final', 'is', null)
         .order('projection_final', { ascending: false })
         .limit(5);
-      if (error) return [];
+      if (qErr) return [];
       return data ?? [];
     },
     enabled: !!player?.team,
@@ -661,27 +691,25 @@ export default function AFLPlayerPage() {
     queryKey: ['same-position-players', player?.player_id, player?.player_position],
     queryFn: async () => {
       if (!player?.player_position) return [];
-      const { data, error } = await supabase
+      const { data, error: qErr } = await supabase
+        .schema('afl')
         .from('player_rankings_cache')
-        .select('player_id, player_name, projection_final, price, breakeven, signal')
+        .select('player_id, player_name, projection_final, price, breakeven_canonical, signal_canonical')
         .eq('position', player.player_position)
         .neq('player_id', player.player_id)
         .not('projection_final', 'is', null)
         .order('projection_final', { ascending: false })
         .limit(5);
-      if (error) return [];
+      if (qErr) return [];
       return data ?? [];
     },
     enabled: !!player?.player_position,
   });
 
-  const aiAnalysis = useMemo(() => {
+  const aiLongText = useMemo(() => {
     if (!player) return null;
-    const analysis = player.summary_long ?? player.ai_summary ?? player.ai_recommendation ?? player.long ?? null;
-    const captain_recommendation = player.captain_rating ?? null;
-    if (!analysis) return null;
-    return { analysis, captain_recommendation };
-  }, [player?.summary_long, player?.ai_summary, player?.ai_recommendation, player?.long, player?.captain_rating]);
+    return player.summary_long ?? player.ai_summary ?? player.ai_recommendation ?? null;
+  }, [player?.summary_long, player?.ai_summary, player?.ai_recommendation]);
 
   if (isLoading) {
     return (
@@ -709,15 +737,13 @@ export default function AFLPlayerPage() {
   const getPositionName = (positionCode: string): string =>
     POSITION_NAMES[positionCode] || positionCode || 'Unknown';
 
-  const canSeeFullAI     = isPremium;
-  const canSeeChart      = isPremium;
+  const canSeeFullAI  = isPremium;
+  const canSeeChart   = isPremium;
 
   const consistencyBadge = getConsistencyBadge(player.consistency_score ?? player.consistency ?? null);
   const capStyle         = getCaptainStyle(player.captain_rating ?? null);
   const activeSignal     = player.signal_canonical ?? player.signal ?? null;
   const recColor         = getEdgeSignalColor(signalFromField(activeSignal));
-  const neekoRBadge      = getNeekoRatingBadge(player.neeko_rating ?? null);
-  const riskBadge        = getRiskBadge(Number(player.risk_rating) ?? null);
 
   const rawDisplayConf = normaliseConfidence(
     player.projection_confidence ?? null,
@@ -725,58 +751,59 @@ export default function AFLPlayerPage() {
     player.risk_rating ?? null,
     0,
   );
-  const displayConf    = rawDisplayConf;
-  const confLabel      = getConfidenceLabel(displayConf);
-  const confLabelCls   = getConfidenceLabelColor(displayConf);
+  const displayConf  = rawDisplayConf;
+  const confLabel    = getConfidenceLabel(displayConf);
+  const confLabelCls = getConfidenceLabelColor(displayConf);
 
-  const proj        = player.projection_final ?? null;
-  const ceilingVal  = player.ceiling_estimate ?? player.ceiling ?? null;
-  const floorVal    = player.floor_estimate ?? player.floor ?? null;
-  const upsideVal   = player.upside_pct ?? player.upside_rating ?? null;
+  const proj       = player.projection_final ?? null;
+  const ceilingVal = player.ceiling_estimate ?? player.ceiling ?? null;
+  const floorVal   = player.floor_estimate ?? player.floor ?? null;
 
   const formScore = player.form_score ?? player.form_rating ?? null;
 
-  const last3Avg = player.last_3_avg != null
-    ? Math.round(player.last_3_avg)
-    : (ceilingVal != null && floorVal != null && proj != null)
-      ? Math.round(ceilingVal * 0.3 + proj * 0.4 + floorVal * 0.3)
-      : null;
+  const breakeven = player.breakeven_canonical ?? player.breakeven ?? null;
 
-  const valueLabel = (() => {
-    if (player.value_tag) return player.value_tag;
-    const vs = player.value_score;
-    if (vs == null) return null;
-    if (vs >= 120) return "Elite Value";
-    if (vs >= 100) return "Strong Value";
-    if (vs >= 80) return "Fair Value";
-    return "Overpriced";
+  const valueLabel      = getValueLabel(
+    player.value_score_canonical != null ? Number(player.value_score_canonical) : null,
+    player.value_score != null ? Number(player.value_score) : null
+  );
+  const valueLabelStyle = getValueLabelStyle(valueLabel);
+  const valueRatioDisplay = fmtValueRatio(
+    player.value_score_canonical != null ? Number(player.value_score_canonical) :
+    player.value_score != null ? Number(player.value_score) : null
+  );
+
+  const matchupLabel = (() => {
+    if (player.matchup_label) return player.matchup_label;
+    if (typeof player.matchup_rating === 'string') return player.matchup_rating;
+    return null;
   })();
-  const valueLabelStyle = getValueTagStyle(valueLabel);
-  const matchupLabel    = fmtMatchup(player.matchup_rating);
-  const hasMatchup      = matchupLabel != null && matchupLabel !== "—" && matchupLabel.toUpperCase() !== "NEUTRAL";
+  const hasMatchup = !!matchupLabel && matchupLabel.toUpperCase() !== "NEUTRAL";
 
   const _sig   = signalFromField(activeSignal);
   const isBuy  = _sig === "BUY" || _sig === "STRONG_BUY";
   const isSell = _sig === "SELL" || _sig === "STRONG_SELL";
 
+  const edgeVal = player.edge_canonical ?? null;
+
   const pageTitle = `${player.player_name} AFL Fantasy Stats, Projection & Value 2026 | Neeko`;
-  const pageDescription = player.value_score && activeSignal
-    ? `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points. ${getPositionName(player.player_position)} rankings, value score ${Math.round(player.value_score)}, AI signal: ${formatEdgeSignalLabel(signalFromField(activeSignal))}. Updated weekly.`
+  const pageDescription = activeSignal
+    ? `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points. ${getPositionName(player.player_position)}, AI signal: ${formatEdgeSignalLabel(signalFromField(activeSignal))}. Updated weekly.`
     : `${player.player_name} (${player.team}) AFL Fantasy 2026: ${Math.round(proj ?? 0)} projected points. ${getPositionName(player.player_position)} rankings and AI analysis. Updated weekly.`;
   const pageUrl  = `https://neekostats.com.au/sports/afl/players/${slug}`;
   const keywords = `${player.player_name}, ${player.team}, AFL Fantasy, ${player.player_position}, fantasy football, player stats, projection, value, ${getPositionName(player.player_position)}`;
 
-  const aiCtx = { riskRating: player.risk_rating ?? null, confidence: player.projection_confidence ?? null };
-  const rawExtended  = aiAnalysis?.analysis ?? null;
-  const extendedText = sharpenAIText(rawExtended, aiCtx);
-  const hasAIText    = !!extendedText && extendedText !== "Model analysis is currently generating.";
-  const isStale      = isAITextStale(rawExtended, { projection_final: player.projection_final, ceiling_estimate: ceilingVal, floor_estimate: floorVal });
+  const aiCtx         = { riskRating: player.risk_rating ?? null, confidence: player.projection_confidence ?? null };
+  const rawLong       = aiLongText;
+  const extendedText  = sharpenAIText(rawLong, aiCtx);
+  const hasAILong     = !!extendedText && extendedText !== "Model analysis is currently generating.";
+  const isStale       = isAITextStale(rawLong, { projection_final: player.projection_final, ceiling_estimate: ceilingVal, floor_estimate: floorVal });
 
   const TRUNCATE_CHARS = 400;
-  const isTruncated    = !canSeeFullAI && hasAIText && extendedText!.length > TRUNCATE_CHARS;
+  const isTruncated    = !canSeeFullAI && hasAILong && extendedText!.length > TRUNCATE_CHARS;
   const truncateBase   = isTruncated ? extendedText!.slice(0, TRUNCATE_CHARS) : extendedText!;
   const lastSpace      = isTruncated ? truncateBase.lastIndexOf(" ") : -1;
-  const displayText    = isTruncated ? (lastSpace > 0 ? truncateBase.slice(0, lastSpace) : truncateBase) : extendedText;
+  const displayLongText = isTruncated ? (lastSpace > 0 ? truncateBase.slice(0, lastSpace) : truncateBase) : extendedText;
 
   const teamSlug = player.team ? player.team.toLowerCase().replace(/\s+/g, '-') : '';
 
@@ -814,9 +841,9 @@ export default function AFLPlayerPage() {
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             "itemListElement": [
-              { "@type": "ListItem", "position": 1, "name": "Home",                    "item": "https://neekostats.com.au" },
-              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy Rankings",    "item": "https://neekostats.com.au/sports/afl/rankings" },
-              { "@type": "ListItem", "position": 3, "name": player.player_name,        "item": pageUrl },
+              { "@type": "ListItem", "position": 1, "name": "Home",                 "item": "https://neekostats.com.au" },
+              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy Rankings", "item": "https://neekostats.com.au/sports/afl/rankings" },
+              { "@type": "ListItem", "position": 3, "name": player.player_name,     "item": pageUrl },
             ],
           },
         ])}</script>
@@ -847,10 +874,10 @@ export default function AFLPlayerPage() {
                 {(player.trend_signal || activeSignal) && (
                   <RecBadge trendSignal={player.trend_signal ?? activeSignal} />
                 )}
-                {player.manual_status && player.manual_status !== 'active' && (
+                {player.manual_status && player.manual_status.toUpperCase() !== 'ACTIVE' && player.manual_status.toUpperCase() !== 'AVAILABLE' && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-red-500/25 bg-red-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-red-400">
                     <AlertTriangle size={9} />
-                    {player.manual_status.charAt(0).toUpperCase() + player.manual_status.slice(1)}
+                    {player.manual_status.charAt(0).toUpperCase() + player.manual_status.slice(1).toLowerCase()}
                   </span>
                 )}
                 {player.bye_round != null && (
@@ -861,7 +888,6 @@ export default function AFLPlayerPage() {
               </div>
             </div>
 
-            {/* Price change badge */}
             {player.prev_price != null && player.price != null && player.price !== player.prev_price && (
               <div className="flex items-center gap-2 mt-2">
                 <span className="text-[11px] text-white/30">Price change:</span>
@@ -873,32 +899,15 @@ export default function AFLPlayerPage() {
             )}
           </div>
 
-          {/* ── DECISION BAR (Captain + AI Rec + Confidence) ─────────────────── */}
+          {/* ── DECISION BAR (Verdict + Edge + Confidence) ────────────────────── */}
           <div className="rounded-xl border bg-gradient-to-br from-white/[0.04] to-transparent overflow-hidden"
             style={{ borderColor: `${recColor}35` }}>
             <div className="px-5 pt-4 pb-3">
               <p className="text-[10px] text-white/35 uppercase tracking-widest mb-3 font-semibold">This Round Decision</p>
               <div className="grid grid-cols-3 gap-0 divide-x divide-white/8">
-                {/* Captain Rating */}
-                <div className="pr-4">
-                  <p className="text-[9px] text-white/30 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <Crown size={9} className="text-[#F5C84C]/60" />
-                    Captain
-                  </p>
-                  {player.captain_rating ? (
-                    <>
-                      <p className={`text-base font-bold leading-tight ${capStyle.text}`}>{player.captain_rating}</p>
-                      {player.captain_score != null && (
-                        <p className="text-[10px] text-white/30 mt-0.5 tabular-nums">{fmt(player.captain_score)} pts</p>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-sm text-white/20">—</p>
-                  )}
-                </div>
 
-                {/* AI Recommendation */}
-                <div className="px-4">
+                {/* Verdict */}
+                <div className="pr-4">
                   <p className="text-[9px] text-white/30 uppercase tracking-wider mb-1.5 flex items-center gap-1">
                     <Zap size={9} className="text-[#F5C84C]/60" />
                     Verdict
@@ -908,11 +917,29 @@ export default function AFLPlayerPage() {
                       <p className="text-base font-bold leading-tight" style={{ color: recColor }}>
                         {formatEdgeSignalLabel(signalFromField(activeSignal))}
                       </p>
-                      {(player.recommendation_short ?? player.summary_short ?? player.why) && (
+                      {player.summary_short && (
                         <p className="text-[10px] text-white/40 mt-0.5 leading-snug line-clamp-2">
-                          {player.recommendation_short ?? player.summary_short ?? player.why}
+                          {player.summary_short}
                         </p>
                       )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-white/20">—</p>
+                  )}
+                </div>
+
+                {/* Edge Score */}
+                <div className="px-4">
+                  <p className="text-[9px] text-white/30 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                    <Target size={9} className="text-[#F5C84C]/60" />
+                    Edge Score
+                  </p>
+                  {edgeVal != null ? (
+                    <>
+                      <p className={`text-base font-bold leading-tight tabular-nums ${edgeVal > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                        {edgeVal > 0 ? "+" : ""}{Math.round(edgeVal)}
+                      </p>
+                      <p className="text-[10px] text-white/30 mt-0.5">vs breakeven</p>
                     </>
                   ) : (
                     <p className="text-sm text-white/20">—</p>
@@ -922,7 +949,7 @@ export default function AFLPlayerPage() {
                 {/* Confidence — premium only */}
                 <div className="pl-4">
                   <p className="text-[9px] text-white/30 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <Target size={9} className="text-[#F5C84C]/60" />
+                    <Shield size={9} className="text-[#F5C84C]/60" />
                     Confidence
                   </p>
                   {isPremium ? (
@@ -950,35 +977,71 @@ export default function AFLPlayerPage() {
                 </div>
               </div>
             </div>
-            {displayConf != null && (
-              <div className="h-1 w-full">
+            {edgeVal != null && (
+              <div className="h-1 w-full bg-white/5">
                 <div
                   className="h-full transition-all"
                   style={{
-                    width: `${Math.min(100, Math.max(0, displayConf))}%`,
-                    background: `linear-gradient(to right, ${recColor}60, ${recColor})`,
+                    width: `${Math.min(100, Math.max(0, Math.abs(edgeVal) / 40 * 100))}%`,
+                    background: edgeVal > 0
+                      ? `linear-gradient(to right, ${recColor}60, ${recColor})`
+                      : `linear-gradient(to right, rgba(239,68,68,0.4), rgba(239,68,68,0.8))`,
                   }}
                 />
               </div>
             )}
           </div>
 
+          {/* ── AI INSIGHT (summary_short — free for all) ─────────────────────── */}
+          {player.summary_short && (
+            <div className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-3.5">
+              <p className="text-[9px] text-white/30 uppercase tracking-wider mb-1.5 font-semibold">AI Insight</p>
+              <p className="text-sm text-white/65 leading-relaxed">{player.summary_short}</p>
+            </div>
+          )}
+
           {/* ── KEY METRICS ──────────────────────────────────────────────────── */}
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-lg bg-white/5 px-3 py-3">
               <p className="text-[9px] text-white/35 uppercase tracking-wider mb-1">Projection</p>
               <p className="text-xl font-bold text-[#F5C84C]">{fmt(proj)}</p>
-              {last3Avg != null && <p className="text-[10px] text-white/30 mt-0.5">L3 ~{last3Avg}</p>}
+              {player.season_avg != null && (
+                <p className="text-[10px] text-white/30 mt-0.5">Avg {Math.round(player.season_avg)}</p>
+              )}
             </div>
             <div className="rounded-lg bg-white/5 px-3 py-3">
               <p className="text-[9px] text-white/35 uppercase tracking-wider mb-1">Ceiling</p>
-              <p className="text-xl font-bold text-emerald-400">{fmt(ceilingVal)}</p>
-              <p className="text-[10px] text-white/30 mt-0.5">Best case</p>
+              {isPremium ? (
+                <>
+                  <p className="text-xl font-bold text-emerald-400">{fmt(ceilingVal)}</p>
+                  <p className="text-[10px] text-white/30 mt-0.5">Best case</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xl font-bold text-white/20 blur-[4px] select-none">149</p>
+                  <span className="inline-flex items-center gap-0.5 mt-0.5 px-1 py-px rounded border border-[#F5C84C]/20 bg-[#F5C84C]/5 text-[8px] font-semibold text-[#F5C84C]/50">
+                    <Lock size={7} />
+                    Neeko+
+                  </span>
+                </>
+              )}
             </div>
             <div className="rounded-lg bg-white/5 px-3 py-3">
               <p className="text-[9px] text-white/35 uppercase tracking-wider mb-1">Floor</p>
-              <p className="text-xl font-bold text-red-400">{fmt(floorVal)}</p>
-              <p className="text-[10px] text-white/30 mt-0.5">Worst case</p>
+              {isPremium ? (
+                <>
+                  <p className="text-xl font-bold text-red-400">{fmt(floorVal)}</p>
+                  <p className="text-[10px] text-white/30 mt-0.5">Worst case</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-xl font-bold text-white/20 blur-[4px] select-none">89</p>
+                  <span className="inline-flex items-center gap-0.5 mt-0.5 px-1 py-px rounded border border-[#F5C84C]/20 bg-[#F5C84C]/5 text-[8px] font-semibold text-[#F5C84C]/50">
+                    <Lock size={7} />
+                    Neeko+
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
@@ -994,10 +1057,10 @@ export default function AFLPlayerPage() {
             </div>
             <div className="rounded-lg bg-white/[0.04] border border-white/5 px-3 py-3">
               <p className="text-[9px] text-white/35 uppercase tracking-wider mb-1">Breakeven</p>
-              {(player.breakeven_canonical ?? player.breakeven) != null ? (
+              {breakeven != null ? (
                 <>
-                  <p className={`text-base font-bold tabular-nums ${proj != null && (player.breakeven_canonical ?? player.breakeven)! > proj ? "text-red-400" : "text-emerald-400"}`}>
-                    {Math.round((player.breakeven_canonical ?? player.breakeven)!)}
+                  <p className={`text-base font-bold tabular-nums ${proj != null && breakeven > proj ? "text-red-400" : "text-emerald-400"}`}>
+                    {Math.round(breakeven)}
                   </p>
                   <p className="text-[10px] text-white/30 mt-0.5">pts needed</p>
                 </>
@@ -1008,23 +1071,22 @@ export default function AFLPlayerPage() {
             <div className={`rounded-lg border px-3 py-3 ${valueLabelStyle.bg} ${valueLabelStyle.border}`}>
               <p className="text-[9px] text-white/35 uppercase tracking-wider mb-1">Value</p>
               <p className={`text-sm font-bold leading-tight ${valueLabelStyle.text}`}>{valueLabel ?? "—"}</p>
-              {player.value_score != null && (
-                <p className={`text-[10px] mt-0.5 tabular-nums ${getValueScoreColor(player.value_score)}`}>
-                  {fmtValueScore(player.value_score)}
-                </p>
-              )}
+              <p className={`text-[10px] mt-0.5 tabular-nums ${valueLabelStyle.text} opacity-70`}>
+                {valueRatioDisplay}
+              </p>
             </div>
           </div>
 
-          {/* ── SCORING RANGE ─────────────────────────────────────────────────── */}
-          <div className="rounded-xl bg-white/[0.03] border border-white/5 px-4 py-4">
-            <ConsistencyRangeBar floor={floorVal} projection={proj} ceiling={ceilingVal} />
-          </div>
+          {/* ── SCORING RANGE (premium gated) ─────────────────────────────────── */}
+          {isPremium && ceilingVal != null && floorVal != null && proj != null && (
+            <div className="rounded-xl bg-white/[0.03] border border-white/5 px-4 py-4">
+              <ConsistencyRangeBar floor={floorVal} projection={proj} ceiling={ceilingVal} />
+            </div>
+          )}
 
           {/* ── CONTEXT SECTIONS (premium) ───────────────────────────────────── */}
           {isPremium ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              {/* Why This Matters */}
               <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-3">
                 <p className="text-[10px] text-[#F5C84C]/70 font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <Flame size={11} />
@@ -1049,10 +1111,10 @@ export default function AFLPlayerPage() {
                       Strong buy signal this round
                     </li>
                   )}
-                  {(player.breakeven_canonical ?? player.breakeven) != null && proj != null && (player.breakeven_canonical ?? player.breakeven)! < proj && (
+                  {breakeven != null && proj != null && breakeven < proj && (
                     <li className="text-[11px] text-emerald-400/70 leading-snug flex items-start gap-1.5">
                       <span className="mt-0.5">·</span>
-                      Projection beats breakeven by {Math.round(proj - (player.breakeven_canonical ?? player.breakeven)!)} pts
+                      Projection beats breakeven by {Math.round(proj - breakeven)} pts
                     </li>
                   )}
                   {hasMatchup && (
@@ -1061,17 +1123,19 @@ export default function AFLPlayerPage() {
                       Matchup: {matchupLabel}
                     </li>
                   )}
+                  {!proj && !isBuy && !hasMatchup && (
+                    <li className="text-[11px] text-white/25 leading-snug">No signals flagged</li>
+                  )}
                 </ul>
               </div>
 
-              {/* Risk Factors */}
               <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-3">
                 <p className="text-[10px] text-red-400/70 font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <AlertTriangle size={11} />
                   Risk Factors
                 </p>
                 <ul className="space-y-1.5">
-                  {player.manual_status && player.manual_status !== 'active' && (
+                  {player.manual_status && player.manual_status.toUpperCase() !== 'ACTIVE' && player.manual_status.toUpperCase() !== 'AVAILABLE' && (
                     <li className="text-[11px] text-red-400/80 leading-snug flex items-start gap-1.5">
                       <span className="mt-0.5">·</span>
                       Status: {player.manual_status}
@@ -1095,19 +1159,18 @@ export default function AFLPlayerPage() {
                       AI flags as trade candidate
                     </li>
                   )}
-                  {(player.breakeven_canonical ?? player.breakeven) != null && proj != null && (player.breakeven_canonical ?? player.breakeven)! > proj && (
+                  {breakeven != null && proj != null && breakeven > proj && (
                     <li className="text-[11px] text-red-400/70 leading-snug flex items-start gap-1.5">
                       <span className="mt-0.5">·</span>
-                      Must score {Math.round((player.breakeven_canonical ?? player.breakeven)! - proj)} more than projected to hold value
+                      Must score {Math.round(breakeven - proj)} more than projected to hold value
                     </li>
                   )}
-                  {!player.manual_status && !player.bye_round && !isSell && player.risk_rating == null && (
+                  {!player.manual_status && !player.bye_round && !isSell && !player.risk_rating && (
                     <li className="text-[11px] text-white/25 leading-snug">No major risks flagged</li>
                   )}
                 </ul>
               </div>
 
-              {/* Upside Case */}
               <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-3">
                 <p className="text-[10px] text-emerald-400/70 font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <TrendingUp size={11} />
@@ -1120,10 +1183,10 @@ export default function AFLPlayerPage() {
                       Ceiling: {fmt(ceilingVal)} pts in best case
                     </li>
                   )}
-                  {upsideVal != null && (
+                  {edgeVal != null && edgeVal > 0 && (
                     <li className="text-[11px] text-emerald-400/80 leading-snug flex items-start gap-1.5">
                       <span className="mt-0.5">·</span>
-                      +{fmtInt(upsideVal)}% upside over projection
+                      +{Math.round(edgeVal)} pts edge over breakeven
                     </li>
                   )}
                   {hasMatchup && !matchupLabel?.toLowerCase().includes("tough") && !matchupLabel?.toLowerCase().includes("brutal") && (
@@ -1132,11 +1195,14 @@ export default function AFLPlayerPage() {
                       Favourable matchup this week
                     </li>
                   )}
-                  {player.value_score != null && player.value_score >= 100 && (
+                  {valueLabel === "Elite Value" || valueLabel === "Strong Value" ? (
                     <li className="text-[11px] text-emerald-400/70 leading-snug flex items-start gap-1.5">
                       <span className="mt-0.5">·</span>
-                      Strong value — priced below output
+                      {valueLabel} — priced below output
                     </li>
+                  ) : null}
+                  {!ceilingVal && edgeVal == null && !hasMatchup && (
+                    <li className="text-[11px] text-white/25 leading-snug">Upside data pending</li>
                   )}
                 </ul>
               </div>
@@ -1148,7 +1214,7 @@ export default function AFLPlayerPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-white leading-tight">Deep Context — Neeko+</p>
-                <p className="text-[11px] text-white/35 mt-0.5 leading-snug">Why this player matters, risk factors, and upside case. Unlocked with a subscription.</p>
+                <p className="text-[11px] text-white/35 mt-0.5 leading-snug">Why this player matters, risk factors, and upside case. Ceiling / floor range. Unlocked with a subscription.</p>
               </div>
               <Link
                 to="/neeko-plus"
@@ -1160,43 +1226,41 @@ export default function AFLPlayerPage() {
             </div>
           )}
 
-          {/* ── AI ANALYSIS ──────────────────────────────────────────────────── */}
-          <div className="rounded-xl border border-white/5 bg-white/[0.03] px-5 py-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold flex items-center gap-1.5">
-                <BarChart2 size={11} />
-                AI Analysis
-              </p>
-              {!canSeeFullAI && (
-                <span className="text-[9px] text-white/25 italic">preview</span>
-              )}
-            </div>
-            {hasAIText ? (
+          {/* ── AI FULL ANALYSIS (premium-only deep text) ────────────────────── */}
+          {hasAILong ? (
+            <div className="rounded-xl border border-white/5 bg-white/[0.03] px-5 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold flex items-center gap-1.5">
+                  <BarChart2 size={11} />
+                  Full AI Analysis
+                </p>
+                {!canSeeFullAI && (
+                  <span className="text-[9px] text-white/25 italic">preview</span>
+                )}
+              </div>
               <div className="relative">
-                <p className="text-sm text-white/65 leading-relaxed">{displayText}</p>
+                <p className="text-sm text-white/65 leading-relaxed">{displayLongText}</p>
                 {isTruncated && (
                   <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-[#111111] to-transparent pointer-events-none" />
                 )}
               </div>
-            ) : (
-              <p className="text-sm text-white/30 italic">Analysis not available yet.</p>
-            )}
-            {hasAIText && isStale && canSeeFullAI && (
-              <p className="mt-3 text-[10px] text-white/20 italic border-t border-white/5 pt-2">
-                Analysis generated prior to latest projection update.
-              </p>
-            )}
-          </div>
-
-          {canSeeFullAI && aiAnalysis?.captain_recommendation && (
-            <div className="rounded-xl border border-white/5 bg-white/[0.03] px-5 py-3">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Captain Verdict</p>
-              <p className="text-sm text-white/70 leading-relaxed italic">{sharpenAIText(aiAnalysis.captain_recommendation, aiCtx)}</p>
+              {hasAILong && isStale && canSeeFullAI && (
+                <p className="mt-3 text-[10px] text-white/20 italic border-t border-white/5 pt-2">
+                  Analysis generated prior to latest projection update.
+                </p>
+              )}
+              {isTruncated && (
+                <div className="mt-4 pt-3 border-t border-white/[0.06] flex items-center gap-3">
+                  <Lock size={12} className="text-[#F5C84C]/50 shrink-0" />
+                  <p className="text-[11px] text-white/35 flex-1">Full reasoning, matchup breakdown and projection drivers</p>
+                  <Link to="/neeko-plus" className="inline-flex items-center gap-1.5 bg-[#F5C84C] text-black font-semibold rounded-lg hover:brightness-110 transition-all px-3 py-1.5 text-[11px] shrink-0">
+                    <Crown size={10} />
+                    Unlock
+                  </Link>
+                </div>
+              )}
             </div>
-          )}
-
-          {/* ── PREMIUM DEEP INSIGHTS (gated) ────────────────────────────────── */}
-          {!canSeeFullAI && (
+          ) : !isPremium ? (
             <div className="rounded-xl border border-white/10 bg-white/[0.02] px-5 py-4">
               <div className="flex items-start gap-3">
                 <Lock size={14} className="text-[#F5C84C]/50 shrink-0 mt-0.5" />
@@ -1211,29 +1275,14 @@ export default function AFLPlayerPage() {
                     ))}
                   </div>
                   <p className="text-[11px] text-white/35 mb-3">Unlock full player breakdown with Neeko+</p>
-                  <a href="/neeko-plus" className="inline-flex items-center gap-1.5 bg-[#F5C84C] text-black font-semibold rounded-lg hover:brightness-110 transition-all px-3 py-1.5 text-[11px]">
+                  <Link to="/neeko-plus" className="inline-flex items-center gap-1.5 bg-[#F5C84C] text-black font-semibold rounded-lg hover:brightness-110 transition-all px-3 py-1.5 text-[11px]">
                     <Crown size={11} />
                     Unlock full analysis
-                  </a>
+                  </Link>
                 </div>
               </div>
             </div>
-          )}
-
-          {isTruncated && (
-            <div className="rounded-xl border border-white/8 bg-white/[0.02] px-5 py-3 flex items-center gap-3">
-              <Lock size={13} className="text-[#F5C84C]/50 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-[11px] text-white/40 leading-snug mb-2">
-                  Unlock full breakdown including matchup, role impact, and projection edge
-                </p>
-                <a href="/neeko-plus" className="inline-flex items-center gap-1.5 bg-[#F5C84C] text-black font-semibold rounded-lg hover:brightness-110 transition-all px-3 py-1.5 text-[11px]">
-                  <Crown size={11} />
-                  Unlock full analysis
-                </a>
-              </div>
-            </div>
-          )}
+          ) : null}
 
           {/* ── SECONDARY STATS ───────────────────────────────────────────── */}
           <div className="grid grid-cols-2 gap-2">
@@ -1273,14 +1322,6 @@ export default function AFLPlayerPage() {
                 {matchupLabel && matchupLabel !== "—" ? matchupLabel : "Neutral"}
               </p>
             </div>
-            {upsideVal != null && (
-              <div className="rounded-lg bg-white/5 px-3 py-3">
-                <p className="text-[9px] text-white/35 uppercase tracking-wider mb-1 flex items-center gap-0.5">
-                  Upside <InfoTooltip text="Potential to significantly exceed projection based on ceiling gap" />
-                </p>
-                <p className={`text-sm font-semibold ${getUpsideColor(upsideVal)}`}>+{fmtInt(upsideVal)}%</p>
-              </div>
-            )}
             {player.risk_rating != null && (
               <div className="rounded-lg bg-white/5 px-3 py-3">
                 <p className="text-[9px] text-white/35 uppercase tracking-wider mb-1 flex items-center gap-0.5">
@@ -1293,12 +1334,18 @@ export default function AFLPlayerPage() {
               <p className="text-[9px] text-white/35 uppercase tracking-wider mb-1">Consistency</p>
               <p className={`text-sm font-semibold ${consistencyBadge.className}`}>{consistencyBadge.label}</p>
             </div>
-            <div className="rounded-lg bg-white/5 px-3 py-3">
-              <p className="text-[9px] text-white/35 uppercase tracking-wider mb-1 flex items-center gap-0.5">
-                Neeko Rating <InfoTooltip text="Composite player strength score combining projection, form and value" />
-              </p>
-              <p className={`text-sm font-semibold ${neekoRBadge.className}`}>{fmt(player.neeko_rating)}</p>
-            </div>
+            {player.last_3_avg != null && (
+              <div className="rounded-lg bg-white/5 px-3 py-3">
+                <p className="text-[9px] text-white/35 uppercase tracking-wider mb-1">Last 3 Avg</p>
+                <p className="text-sm font-semibold text-white/70 tabular-nums">{Math.round(player.last_3_avg)}</p>
+              </div>
+            )}
+            {player.captain_rating && (
+              <div className="rounded-lg bg-white/5 px-3 py-3">
+                <p className="text-[9px] text-white/35 uppercase tracking-wider mb-1">Captain</p>
+                <p className={`text-sm font-semibold ${capStyle.text}`}>{player.captain_rating}</p>
+              </div>
+            )}
           </div>
 
           {/* ── TREND GRAPH ──────────────────────────────────────────────────── */}
@@ -1317,10 +1364,10 @@ export default function AFLPlayerPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] text-white/50 font-medium mb-1">Last 10 Games Chart</p>
                   <p className="text-[10px] text-white/35 leading-snug mb-2">View detailed scoring history and performance trends</p>
-                  <a href="/neeko-plus" className="inline-flex items-center gap-1.5 bg-[#F5C84C] text-black font-semibold rounded-lg hover:brightness-110 transition-all px-3 py-1.5 text-[11px]">
+                  <Link to="/neeko-plus" className="inline-flex items-center gap-1.5 bg-[#F5C84C] text-black font-semibold rounded-lg hover:brightness-110 transition-all px-3 py-1.5 text-[11px]">
                     <Crown size={11} />
                     Unlock Chart
-                  </a>
+                  </Link>
                 </div>
               </div>
             </div>
@@ -1334,7 +1381,7 @@ export default function AFLPlayerPage() {
                 Compare Alternatives
               </h2>
               <div className="space-y-1.5">
-                {similarPlayers.slice(0, isPremium ? 6 : 2).map((p: any, i: number) => (
+                {similarPlayers.slice(0, isPremium ? 6 : 2).map((p: any) => (
                   <Link
                     key={p.player_id}
                     to={`/sports/afl/players/${nameToSlug(p.player_name)}`}
@@ -1347,10 +1394,10 @@ export default function AFLPlayerPage() {
                 {!isPremium && similarPlayers.length > 2 && (
                   <div className="rounded-lg border border-white/8 bg-white/[0.02] px-3 py-2.5 flex items-center justify-between">
                     <span className="text-[11px] text-white/30">+{similarPlayers.length - 2} more alternatives</span>
-                    <a href="/neeko-plus" className="inline-flex items-center gap-1 text-[11px] text-[#F5C84C]/70 hover:text-[#F5C84C] transition-colors font-semibold">
+                    <Link to="/neeko-plus" className="inline-flex items-center gap-1 text-[11px] text-[#F5C84C]/70 hover:text-[#F5C84C] transition-colors font-semibold">
                       <Crown size={10} />
                       Unlock
-                    </a>
+                    </Link>
                   </div>
                 )}
               </div>
@@ -1358,7 +1405,7 @@ export default function AFLPlayerPage() {
           )}
 
           {/* ── INTERNAL LINKS — Team & Position ─────────────────────────────── */}
-          {(sameTeamPlayers?.length > 0 || samePositionPlayers?.length > 0) && (
+          {(sameTeamPlayers && sameTeamPlayers.length > 0 || samePositionPlayers && samePositionPlayers.length > 0) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {sameTeamPlayers && sameTeamPlayers.length > 0 && (
                 <div className="rounded-xl bg-white/[0.02] border border-white/5 px-4 py-4">
@@ -1403,6 +1450,7 @@ export default function AFLPlayerPage() {
             ceilingVal={ceilingVal}
             floorVal={floorVal}
             valueLabel={valueLabel}
+            activeSignal={activeSignal}
           />
 
           {/* ── BOTTOM NAV ─────────────────────────────────────────────────────── */}
