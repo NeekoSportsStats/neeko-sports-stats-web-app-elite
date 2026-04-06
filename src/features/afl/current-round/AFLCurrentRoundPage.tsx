@@ -36,6 +36,16 @@ import { buildCurrentRoundPlayers, type CurrentRoundPlayer } from "@/features/af
 const FREE_VISIBLE = 2;
 const PREMIUM_VISIBLE = 5;
 
+function normalisePosition(pos: string | null | undefined): string | null {
+  if (!pos) return null;
+  const p = pos.toUpperCase().trim();
+  if (p === "MID" || p === "MIDFIELDER") return "MID";
+  if (p === "FWD" || p === "FORWARD") return "FWD";
+  if (p === "DEF" || p === "DEFENDER") return "DEF";
+  if (p === "RUC" || p === "RUCK") return "RUC";
+  return p;
+}
+
 
 // ─── FEATURED BADGE ──────────────────────────────────────────────────────────
 

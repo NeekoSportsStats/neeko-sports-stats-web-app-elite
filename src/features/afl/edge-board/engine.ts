@@ -26,7 +26,6 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
     (p) => !p.is_injured && !p.is_bye
   );
 
-  console.log(`[EdgeBoard] available players after status filter: ${available.length} / ${players.length}`);
 
   const rankedAll = [...players].sort(
     (a, b) => (b.projection ?? 0) - (a.projection ?? 0)
@@ -70,7 +69,6 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
     if (p.player_id) allEdgeIds.add(p.player_id);
   });
 
-  console.log(`[EdgeBoard] built from ranked dataset — must_have:${mustHave.length} breakout:${breakout.length} avoid:${avoid.length}`);
 
   return { mustHave, breakout, avoid, allEdgeIds };
 }

@@ -12,7 +12,7 @@ interface PlayerData {
   player_name: string;
   team: string | null;
   position: string | null;
-  projection_final: number | null;
+  projection: number | null;
   ceiling_estimate: number | null;
   floor_estimate: number | null;
   projection_confidence: number | null;

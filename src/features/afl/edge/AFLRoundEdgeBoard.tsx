@@ -75,10 +75,7 @@ function fmtInt(v: number | null | undefined): string {
 }
 
 function fmtValueScore(v: number | null | undefined): string {
-  if (v == null) {
-    console.warn("[EdgeBoard] value_score is null — check pipeline output");
-    return "—";
-  }
+  if (v == null) return "—";
   const n = Number(v);
   if (isNaN(n)) return "—";
   const sign = n > 0 ? "+" : "";

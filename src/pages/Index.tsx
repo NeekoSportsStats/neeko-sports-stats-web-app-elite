@@ -231,7 +231,7 @@ function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
     );
 
     const byValueDesc = [...available].sort(
-      (a, b) => (b.value_score ?? b.edge ?? 0) - (a.value_score ?? a.edge ?? 0)
+      (a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)
     );
 
     const usedIds = new Set<string | number>();
