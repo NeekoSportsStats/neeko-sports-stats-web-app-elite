@@ -1250,11 +1250,11 @@ export default function Index() {
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase
-        .from("v_player_rankings_cache")
-        .select("player_id, player_name, team, team_name, position, price, projection_final, season_avg, last_3_avg, last_5_avg, signal_canonical, category_canonical, signal_tag, games_played, status, manual_status, is_bye")
-        .order("projection_final", { ascending: false })
-        .limit(150);
+      const { data, error } = await supabase.rpc("get_rankings_safe", {
+        p_user_id: null,
+        p_is_bot: false,
+        p_limit: 150,
+      });
 
       if (error) {
         console.error("[LandingPlayers] fetch error:", error.message);
@@ -1262,81 +1262,65 @@ export default function Index() {
         return;
       }
 
-      const mapped = ((data ?? []) as any[]).map((r): RankingRow => {
-        const proj = r.projection_final != null ? Number(r.projection_final) : null;
-        const last3 = r.last_3_avg != null ? Number(r.last_3_avg) : null;
-        const last5 = r.last_5_avg != null ? Number(r.last_5_avg) : null;
-        const seasonAvg = r.season_avg != null ? Number(r.season_avg) : null;
-        const breakeven = last3 ?? last5 ?? seasonAvg ?? (proj != null ? proj * 0.9 : null);
-        const edgeDerived = proj != null && breakeven != null ? proj - breakeven : null;
-        const valueScoreDerived = breakeven != null && breakeven > 0 && edgeDerived != null
-          ? parseFloat(((edgeDerived / breakeven) * 10).toFixed(2))
-          : edgeDerived;
-        return {
-          player_id:             r.player_id ?? null,
-          player_name:           r.player_name ?? "",
-          team:                  r.team ?? "",
-          position:              r.position ?? null,
-          projection_final:      proj,
-          ceiling_estimate:      null,
-          floor_estimate:        null,
-          consistency_score:     null,
-          form_rating:           null,
-          matchup_rating:        null,
-          upside_rating:         null,
-          risk_rating:           null,
-          form_score:            null,
-          projection_confidence: null,
-          captain_score:         null,
-          captain_rating:        null,
-          neeko_rating:          null,
-          neeko_rating_scaled:   null,
-          price:                 r.price != null ? Number(r.price) : null,
-          prev_price:            null,
-          price_change:          null,
-          price_change_pct:      null,
-          breakeven:             null,
-          value_score:           valueScoreDerived,
-          best_value_score:      null,
-          value_tag:             null,
-          value_tier:            null,
-          recommendation_strength: null,
-          ai_updated_at:         null,
-          recommendation_color:  null,
-          consistency_tier:      null,
-          total_count:           null,
-          games_played:          r.games_played != null ? Number(r.games_played) : null,
-          baseline:              null,
-          edge:                  edgeDerived,
-          signal:                (r.signal_canonical as string) ?? null,
-          season_avg:            seasonAvg,
-          last_3_avg:            last3,
-          value:                 null,
-          why:                   null,
-          long:                  null,
-          market_watch_category: null,
-          signal_tag:            (r.signal_tag as string) ?? null,
-          upside_pct:            null,
-          ai_summary:            null,
-          status:                (r.status as string) ?? null,
-          is_available:          null,
-          bye_round:             null,
-          is_bye:                r.is_bye ?? null,
-          bye_next_round:        null,
-          trend_score:           null,
-          trend_signal:          null,
-          form_delta:            null,
-          form_label:            null,
-          value_signal:          null,
-          edge_canonical:        edgeDerived,
-          breakeven_canonical:   breakeven,
-          signal_canonical:      (r.signal_canonical as string) ?? null,
-          category_canonical:    (r.category_canonical as string) ?? null,
-          action_canonical:      null,
-          manual_status:         (r.manual_status as string) ?? null,
-          value_score_canonical: valueScoreDerived,
-        };
-      });
+      const mapped = ((data ?? []) as any[]).map((r): RankingRow => ({
+        player_id:             r.player_id ?? null,
+        player_name:           r.player_name ?? "",
+        team:                  r.team ?? r.team_name ?? "",
+        team_name:             r.team_name ?? r.team ?? null,
+        position:              r.player_position ?? r.position ?? null,
+        position_group:        r.position_group ?? null,
+        projection:            r.projection != null ? Number(r.projection) : null,
+        projection_final:      r.projection != null ? Number(r.projection) : null,
+        ceiling_estimate:      r.ceiling_estimate != null ? Number(r.ceiling_estimate) : null,
+        floor_estimate:        r.floor_estimate != null ? Number(r.floor_estimate) : null,
+        form_score:            r.form_score != null ? Number(r.form_score) : null,
+        projection_confidence: r.projection_confidence != null ? Number(r.projection_confidence) : null,
+        captain_score:         r.captain_score != null ? Number(r.captain_score) : null,
+        captain_rating:        r.captain_rating ?? null,
+        neeko_rating:          r.neeko_rating_scaled != null ? Number(r.neeko_rating_scaled) : (r.neeko_rating != null ? Number(r.neeko_rating) : null),
+        neeko_rating_scaled:   r.neeko_rating_scaled != null ? Number(r.neeko_rating_scaled) : null,
+        upside_pct:            r.upside_pct != null ? Number(r.upside_pct) : null,
+        upside_rating:         r.upside_rating != null ? Number(r.upside_rating) : null,
+        risk_rating:           r.risk_rating != null ? Number(r.risk_rating) : null,
+        matchup_rating:        r.matchup_label ?? null,
+        matchup_label:         r.matchup_label ?? null,
+        matchup_multiplier:    r.matchup_multiplier != null ? Number(r.matchup_multiplier) : null,
+        price:                 r.price != null ? Number(r.price) : null,
+        prev_price:            r.prev_price != null ? Number(r.prev_price) : null,
+        price_change:          r.price_change != null ? Number(r.price_change) : null,
+        price_change_pct:      r.price_change_pct != null ? Number(r.price_change_pct) : null,
+        season_avg:            r.season_avg != null ? Number(r.season_avg) : null,
+        last_3_avg:            r.last_3_avg != null ? Number(r.last_3_avg) : null,
+        last_5_avg:            null,
+        games_played:          r.games_played != null ? Number(r.games_played) : null,
+        breakeven:             r.breakeven != null ? Number(r.breakeven) : null,
+        edge:                  r.edge != null ? Number(r.edge) : null,
+        value_score:           r.value_score != null ? Number(r.value_score) : null,
+        signal:                r.signal ?? null,
+        signal_display:        r.signal_display ?? null,
+        category:              r.category ?? null,
+        action:                r.action ?? null,
+        why:                   r.why ?? null,
+        why_long:              r.why_long ?? null,
+        recommendation_strength: r.recommendation_strength ?? null,
+        recommendation_color:  r.recommendation_color ?? null,
+        consistency:           r.consistency != null ? Number(r.consistency) : null,
+        consistency_tier:      r.consistency_tier ?? null,
+        total_count:           r.total_count != null ? Number(r.total_count) : null,
+        ai_updated_at:         r.ai_updated_at ?? null,
+        cached_at:             r.cached_at ?? null,
+        status:                r.status ?? null,
+        manual_status:         r.manual_status ?? null,
+        is_available:          r.is_available != null ? Boolean(r.is_available) : null,
+        bye_round:             r.bye_round != null ? Number(r.bye_round) : null,
+        is_bye:                r.is_bye != null ? Boolean(r.is_bye) : null,
+        bye_next_round:        r.bye_next_round != null ? Boolean(r.bye_next_round) : null,
+        trend_signal:          r.trend_signal ?? null,
+        trend_score:           r.trend_score != null ? Number(r.trend_score) : null,
+        form_delta:            r.form_delta != null ? Number(r.form_delta) : null,
+        form_label:            r.form_label ?? null,
+        access_tier:           r.access_tier ?? "locked",
+      }));
 
       setPlayers(mapped);
       setPlayersLoading(false);
@@ -1345,11 +1329,11 @@ export default function Index() {
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase
-        .from("v_player_rankings_cache")
-        .select("player_id, player_name, team, team_name, position, price, prev_price, price_change, projection_final, season_avg, last_3_avg, last_5_avg, signal_canonical, category_canonical, signal_tag, status, manual_status, is_bye, games_played, cached_at")
-        .order("projection_final", { ascending: false, nullsFirst: false })
-        .limit(100);
+      const { data, error } = await supabase.rpc("get_market_watch_safe", {
+        p_user_id: null,
+        p_is_bot: false,
+        p_limit: 100,
+      });
 
       if (error) {
         console.error("[LandingMW] fetch error:", error.message);
@@ -1358,67 +1342,51 @@ export default function Index() {
       }
 
       const rows: MWPlayerRow[] = ((data ?? []) as any[]).map((r): MWPlayerRow => {
-        const proj = parseFloat(r.projection_final ?? '0') || 0;
-        const last3 = r.last_3_avg != null ? Number(r.last_3_avg) : null;
-        const last5 = r.last_5_avg != null ? Number(r.last_5_avg) : null;
-        const seasonAvg = r.season_avg != null ? Number(r.season_avg) : null;
-        const breakeven = last3 ?? last5 ?? seasonAvg ?? (proj * 0.9);
-        const edgeDerived = proj - breakeven;
-
-        const catRaw = (r.category_canonical ?? r.signal_tag ?? "").toLowerCase();
+        const catRaw = (r.category ?? "").toLowerCase();
         const displaySignal: "TARGET" | "WATCH" | "AVOID" =
           catRaw === "target" ? "TARGET" : catRaw === "avoid" ? "AVOID" : "WATCH";
-        const isInjured = ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()) ||
-          ['injured', 'out'].includes((r.manual_status ?? '').toLowerCase());
         const isBye = r.is_bye === true ||
           (r.status ?? '').toLowerCase() === 'bye' ||
           (r.manual_status ?? '').toLowerCase() === 'bye';
-        const valueScore = breakeven > 0
-          ? parseFloat(((edgeDerived / breakeven) * 10).toFixed(2))
-          : edgeDerived;
         return {
           player_id: Number(r.player_id),
           player_name: r.player_name,
           team: r.team ?? r.team_name ?? '',
           team_name: r.team_name ?? r.team ?? '',
-          position: r.position ?? '',
-          price: r.price ?? 0,
-          prev_price: r.prev_price ?? null,
-          price_change: r.price_change ?? null,
+          position: r.player_position ?? r.position ?? '',
+          price: r.price != null ? Number(r.price) : 0,
+          prev_price: r.prev_price != null ? Number(r.prev_price) : null,
+          price_change: r.price_change != null ? Number(r.price_change) : null,
           price_change_pct: null,
-          projection: proj,
+          projection: r.projection != null ? Number(r.projection) : null,
           season_avg: r.season_avg != null ? Number(r.season_avg) : null,
           last_3_avg: r.last_3_avg != null ? Number(r.last_3_avg) : null,
           last_5_avg: r.last_5_avg != null ? Number(r.last_5_avg) : null,
-          games_played: r.games_played ?? null,
-          breakeven,
-          edge: edgeDerived,
-          value_score: valueScore,
-          signal: r.signal_canonical ?? null,
-          signal_display: null,
-          category: r.category_canonical ?? null,
-          action: null,
-          why: null,
-          why_long: null,
-          matchup_label: null,
+          games_played: r.games_played != null ? Number(r.games_played) : null,
+          breakeven: r.breakeven != null ? Number(r.breakeven) : null,
+          edge: r.edge != null ? Number(r.edge) : null,
+          value_score: r.value_score != null ? Number(r.value_score) : null,
+          signal: r.signal ?? null,
+          signal_display: r.signal_display ?? null,
+          category: r.category ?? null,
+          action: r.action ?? null,
+          why: r.why ?? null,
+          why_long: r.why_long ?? null,
+          matchup_label: r.matchup_label ?? null,
           matchup_rating: null,
-          matchup_multiplier: null,
-          consistency: null,
-          neeko_rating: null,
+          matchup_multiplier: r.matchup_multiplier != null ? Number(r.matchup_multiplier) : null,
+          consistency: r.consistency != null ? Number(r.consistency) : null,
+          neeko_rating: r.neeko_rating != null ? Number(r.neeko_rating) : null,
           status: r.status ?? null,
           manual_status: r.manual_status ?? null,
           is_bye: isBye,
           cached_at: r.cached_at ?? null,
           display_signal: displaySignal,
-          access_tier: 'locked',
+          access_tier: (r.access_tier as "premium" | "free" | "locked") ?? 'locked',
         };
       });
 
-      const eligible = rows.filter(
-        p => !p.is_injured && !p.is_bye
-      );
-
-      setMwPlayers(eligible);
+      setMwPlayers(rows.filter(p => !p.is_bye));
       setMwLoading(false);
     })();
   }, []);

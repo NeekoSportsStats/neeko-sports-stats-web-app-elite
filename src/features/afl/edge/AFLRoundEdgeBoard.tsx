@@ -158,7 +158,7 @@ function buildConfidenceReasons(row: RankingRow, section: Section): string[] {
     reasons.push("High confidence signal — strong breakout candidate this round");
   }
   if (section === "do_not_start") {
-    const beVal = row.breakeven_canonical ?? row.breakeven;
+    const beVal = row.breakeven;
     if (beVal != null && row.projection_final != null) {
       const edge = row.projection_final - beVal;
       if (edge <= -20) reasons.push("Significantly underperforming breakeven — heavily overpriced this round");
@@ -329,7 +329,7 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
   const keyFactors: string[] = [];
   if (row.projection_final != null) keyFactors.push(`Projection: ${fmtInt(row.projection_final)} pts`);
   if (row.price != null) keyFactors.push(`Price: ${fmtPrice(row.price)}`);
-  const beDisplay = row.breakeven_canonical ?? row.breakeven;
+  const beDisplay = row.breakeven;
   if (beDisplay != null) keyFactors.push(`Breakeven: ${fmtInt(beDisplay)} pts`);
   if (row.value_score != null) keyFactors.push(`Value Score: ${fmtValueScore(row.value_score)}`);
 
@@ -855,6 +855,7 @@ export default function AFLRoundEdgeBoard() {
           edge:                    r.edge != null ? Number(r.edge) : null,
           value_score:             r.value_score != null ? Number(r.value_score) : null,
           signal:                  (r.signal as string) ?? null,
+          signal_display:          (r.signal_display as string) ?? null,
           category:                (r.category as string) ?? null,
           action:                  (r.action as string) ?? null,
           why:                     r.why ?? null,

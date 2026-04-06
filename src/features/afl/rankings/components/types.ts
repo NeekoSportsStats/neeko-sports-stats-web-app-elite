@@ -65,13 +65,6 @@ export interface RankingRow {
   cached_at?: string | null;
 
   access_tier?: "premium" | "free" | "locked";
-
-  breakeven_canonical?: number | null;
-  edge_canonical?: number | null;
-  signal_canonical?: string | null;
-  category_canonical?: string | null;
-  action_canonical?: string | null;
-  value_score_canonical?: number | null;
   signal_tag?: string | null;
 }
 

@@ -90,6 +90,7 @@ export default function MarketWatchPageElite() {
           edge: r.edge != null ? Number(r.edge) : null,
           value_score: r.value_score != null ? Number(r.value_score) : null,
           signal: r.signal ?? null,
+          signal_display: r.signal_display ?? null,
           category: r.category ?? null,
           action: r.action ?? null,
           why: r.why ?? null,
