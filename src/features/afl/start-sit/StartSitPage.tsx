@@ -315,13 +315,14 @@ export default function StartSitPage() {
         win_probability: json.win_probability ?? null,
       });
 
-      supabase.from("start_sit_decisions").insert({
-        player_a_id:      pA.player_id,
-        player_a_name:    pA.player_name,
-        player_b_id:      pB.player_id,
-        player_b_name:    pB.player_name,
-        winner_player_id: String(json.winner_player_id),
-        session_id:       typeof crypto !== "undefined" ? crypto.randomUUID?.() ?? null : null,
+      const sessionId = typeof crypto !== "undefined" ? (crypto.randomUUID?.() ?? null) : null;
+      supabase.rpc("record_start_sit_decision", {
+        p_player_a_id:      String(pA.player_id),
+        p_player_b_id:      String(pB.player_id),
+        p_player_a_name:    pA.player_name,
+        p_player_b_name:    pB.player_name,
+        p_winner_player_id: String(json.winner_player_id),
+        p_session_id:       sessionId,
       }).then(() => {});
     } catch {
       setError("Unable to generate comparison. Please try again.");
