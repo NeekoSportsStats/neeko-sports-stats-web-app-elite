@@ -43,17 +43,20 @@ function InjuryPill({ isInjured }: { isInjured: boolean }) {
   );
 }
 
-function valueLabel(edge: number | null): { label: string; textClass: string } {
-  if (edge == null) return { label: "—", textClass: "text-white/30" };
-  if (edge >= 10) return { label: "Elite Value", textClass: "text-green-400" };
-  if (edge >= -5) return { label: "Fair Value", textClass: "text-yellow-300" };
-  return { label: "Overvalued", textClass: "text-red-400" };
+function formatValueScore(v: number | null | undefined): { label: string; textClass: string } {
+  if (v == null) return { label: "—", textClass: "text-white/30" };
+  const n = Math.round(Number(v));
+  if (isNaN(n)) return { label: "—", textClass: "text-white/30" };
+  const formatted = n > 0 ? `+${n}` : `${n}`;
+  if (n >= 10) return { label: formatted, textClass: "text-green-400" };
+  if (n >= -5) return { label: formatted, textClass: "text-yellow-300" };
+  return { label: formatted, textClass: "text-red-400" };
 }
 
 function PlayerRow({ player, index }: { player: DerivedPlayer; index: number }) {
   const tier = player.display_signal;
-  const edge = player.edge_canonical != null ? Number(player.edge_canonical) : null;
-  const { label: vLabel, textClass: vClass } = valueLabel(edge);
+  const rawVal = player.value_score_canonical != null ? Number(player.value_score_canonical) : null;
+  const { label: vLabel, textClass: vClass } = formatValueScore(rawVal);
   const isInjured = player.is_injured === true || (player.status ?? "").toLowerCase() === "injured" || (player.manual_status ?? "").toLowerCase() === "injured";
   const isBye = player.is_bye === true || (player.status ?? "").toLowerCase() === "bye" || (player.manual_status ?? "").toLowerCase() === "bye";
 

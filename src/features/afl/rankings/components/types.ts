@@ -88,6 +88,8 @@ export interface RankingRow {
   category_canonical: string | null;
   /** CANONICAL: action — BUY | HOLD | SELL */
   action_canonical: string | null;
+  /** CANONICAL: normalised value score (edge vs price context) */
+  value_score_canonical?: number | null;
 }
 
 export interface ScoreHistoryPoint {

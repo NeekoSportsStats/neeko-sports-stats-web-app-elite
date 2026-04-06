@@ -546,6 +546,25 @@ function HeroPickCard({ player, section, isPremium, onOpen }: HeroPickCardProps)
           <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">{metric.label}</p>
           <p className={`text-3xl font-extrabold tabular-nums leading-none ${metric.color}`}>{metric.value}</p>
         </div>
+        {/* Value Score — premium shows number, free shows trending label */}
+        {(() => {
+          const edgeVal = player.edge_canonical != null ? Number(player.edge_canonical) : null;
+          if (edgeVal == null) return null;
+          return (
+            <div className="shrink-0">
+              <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Value Score</p>
+              {isPremium ? (
+                <p className={`text-lg font-extrabold tabular-nums leading-none ${edgeVal > 0 ? "text-green-400" : "text-red-400"}`}>
+                  {edgeVal > 0 ? "+" : ""}{Math.round(edgeVal)}
+                </p>
+              ) : (
+                <p className={`text-sm font-bold leading-none ${edgeVal > 0 ? "text-green-400" : edgeVal > -5 ? "text-yellow-400" : "text-red-400"}`}>
+                  {edgeVal > 0 ? "Value trending \u2191" : edgeVal > -5 ? "Neutral value" : "Value trending \u2193"}
+                </p>
+              )}
+            </div>
+          );
+        })()}
         {player.price != null && (
           <div className="ml-auto text-right shrink-0">
             <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Price</p>
@@ -860,6 +879,7 @@ export default function AFLRoundEdgeBoard() {
           signal_canonical:        (r.signal_canonical as string) ?? null,
           category_canonical:      (r.category_canonical as string) ?? null,
           action_canonical:        (r.action_canonical as string) ?? null,
+          value_score_canonical:   r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
         };
       });
 
@@ -1037,10 +1057,13 @@ export default function AFLRoundEdgeBoard() {
                       <div className="border-t border-white/[0.06] divide-y divide-white/[0.04]">
                         {secondaryPicks.map((player) => {
                           const metric = getPrimaryMetric(player, section);
-                          const edgeVal = player.projection_final != null && player.breakeven != null
-                            ? player.projection_final - player.breakeven
-                            : (player.edge ?? 0);
+                          const edgeVal = player.edge_canonical != null
+                            ? Number(player.edge_canonical)
+                            : player.projection_final != null && player.breakeven != null
+                              ? player.projection_final - player.breakeven
+                              : (player.edge ?? 0);
                           const edgePositive = edgeVal > 0;
+                          const vsCanonical = player.value_score_canonical != null ? Number(player.value_score_canonical) : null;
                           return (
                             <button
                               key={player.player_id}
@@ -1070,12 +1093,21 @@ export default function AFLRoundEdgeBoard() {
                                 <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">{metric.label}</p>
                                 <p className={`text-base font-extrabold tabular-nums ${metric.color}`}>{metric.value}</p>
                               </div>
-                              <div className="text-right shrink-0 w-14">
-                                <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Edge</p>
-                                <p className={`text-sm font-bold tabular-nums ${edgePositive ? "text-green-400" : "text-red-400"}`}>
-                                  {edgePositive ? "+" : ""}{Math.round(edgeVal)}
-                                </p>
-                              </div>
+                              {vsCanonical != null ? (
+                                <div className="text-right shrink-0 w-16">
+                                  <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Value</p>
+                                  <p className={`text-sm font-bold tabular-nums ${Math.round(vsCanonical) > 0 ? "text-green-400" : "text-red-400"}`}>
+                                    {Math.round(vsCanonical) > 0 ? "+" : ""}{Math.round(vsCanonical)}
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="text-right shrink-0 w-14">
+                                  <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Edge</p>
+                                  <p className={`text-sm font-bold tabular-nums ${edgePositive ? "text-green-400" : "text-red-400"}`}>
+                                    {edgePositive ? "+" : ""}{Math.round(edgeVal)}
+                                  </p>
+                                </div>
+                              )}
                               <ChevronRight size={12} className="text-white/20 shrink-0" />
                             </button>
                           );

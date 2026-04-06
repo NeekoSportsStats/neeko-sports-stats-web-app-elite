@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, lazy, Suspense } from "react";
-import { RefreshCw } from "lucide-react";
+import { Link } from "react-router-dom";
+import { RefreshCw, Lock, Crown } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
@@ -472,6 +473,47 @@ export default function MarketWatchPageElite() {
             isPremium={isPremium}
           />
         </div>
+
+        {/* Free User CTA — shown after gated list */}
+        {!isPremium && filteredPlayers.length > 10 && (
+          <div className="relative animate-in fade-in slide-in-from-bottom-4 duration-500">
+            {/* Gradient fade above CTA */}
+            <div className="absolute -top-16 left-0 right-0 h-16 bg-gradient-to-b from-transparent to-[#0D0D0D] pointer-events-none z-10" />
+
+            {/* CTA Card */}
+            <div
+              className="relative rounded-2xl border border-[#F5C84C]/30 bg-[#0e0e0e] px-5 py-6 sm:px-8 sm:py-7 overflow-hidden"
+              style={{ boxShadow: "0 0 40px rgba(245,200,76,0.06), 0 0 0 1px rgba(245,200,76,0.12)" }}
+            >
+              {/* Subtle background glow */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#F5C84C]/[0.04] to-transparent pointer-events-none" />
+
+              <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-5 sm:gap-6">
+                <div className="flex items-center justify-center w-11 h-11 rounded-xl border border-[#F5C84C]/30 bg-[#F5C84C]/10 shrink-0">
+                  <Lock size={18} className="text-[#F5C84C]" />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-base sm:text-lg font-extrabold text-white leading-tight mb-1">
+                    You're missing {filteredPlayers.length - 10}+ trade opportunities
+                  </p>
+                  <p className="text-sm text-white/45 leading-relaxed">
+                    Unlock full Market Watch with value scores, edge signals, and AI insights
+                  </p>
+                </div>
+
+                <Link
+                  to="/neeko-plus"
+                  onClick={() => track("market_watch_cta_click")}
+                  className="shrink-0 inline-flex items-center justify-center gap-2 bg-[#F5C84C] text-black font-bold text-sm px-6 py-3 rounded-xl hover:brightness-110 transition-all min-h-[48px] w-full sm:w-auto whitespace-nowrap"
+                >
+                  <Crown size={14} />
+                  Unlock Full Market Watch
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Show More Button */}
         {hasMorePlayers && (
