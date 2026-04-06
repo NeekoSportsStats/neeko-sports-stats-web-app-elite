@@ -44,12 +44,17 @@ function InjuryPill({ isInjured }: { isInjured: boolean }) {
 }
 
 function formatValueScore(v: number | null | undefined): { label: string; textClass: string } {
-  if (v == null) return { label: "—", textClass: "text-white/30" };
-  const n = Math.round(Number(v));
+  if (v == null) {
+    console.warn("[LandingMW] value_score_canonical is null — check pipeline output");
+    return { label: "—", textClass: "text-white/30" };
+  }
+  const n = Number(v);
   if (isNaN(n)) return { label: "—", textClass: "text-white/30" };
-  const formatted = n > 0 ? `+${n}` : `${n}`;
-  if (n >= 10) return { label: formatted, textClass: "text-green-400" };
-  if (n >= -5) return { label: formatted, textClass: "text-yellow-300" };
+  const sign = n > 0 ? "+" : "";
+  const formatted = `${sign}${n.toFixed(1)}`;
+  if (n >= 15) return { label: formatted, textClass: "text-green-400" };
+  if (n >= 5)  return { label: formatted, textClass: "text-yellow-300" };
+  if (n >= -5) return { label: formatted, textClass: "text-white/50" };
   return { label: formatted, textClass: "text-red-400" };
 }
 

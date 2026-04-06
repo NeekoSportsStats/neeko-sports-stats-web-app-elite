@@ -74,10 +74,14 @@ function fmtInt(v: number | null | undefined): string {
 }
 
 function fmtValueScore(v: number | null | undefined): string {
-  if (v == null) return "—";
+  if (v == null) {
+    console.warn("[EdgeBoard] value_score is null — check pipeline output");
+    return "—";
+  }
   const n = Number(v);
   if (isNaN(n)) return "—";
-  return n.toFixed(2);
+  const sign = n > 0 ? "+" : "";
+  return `${sign}${n.toFixed(1)}`;
 }
 
 function fmtPrice(v: number | null | undefined): string {
@@ -100,9 +104,9 @@ function getPositionBadgeStyle(pos: string | null): string {
 
 function getValueScoreColor(v: number | null): string {
   if (v == null) return "text-white/30";
-  if (v >= 1.2)  return "text-green-400";
-  if (v >= 1.05) return "text-[#F5C84C]";
-  if (v >= 0.95) return "text-white/50";
+  if (v >= 15)  return "text-green-400";
+  if (v >= 5)   return "text-[#F5C84C]";
+  if (v >= -5)  return "text-white/50";
   return "text-red-400";
 }
 
@@ -146,16 +150,16 @@ function getPrimaryMetric(row: RankingRow, section: Section): { label: string; v
 function buildConfidenceReasons(row: RankingRow, section: Section): string[] {
   const reasons: string[] = [];
   if (section === "must_have" && row.value_score != null) {
-    if (row.value_score >= 1.2)  reasons.push("Elite value — projecting well above baseline");
-    else if (row.value_score >= 1.05) reasons.push("Strong value — priced below projected output");
-    else reasons.push("Fair value — projecting at or above baseline");
+    if (row.value_score >= 15)  reasons.push("Elite value — projecting well above breakeven");
+    else if (row.value_score >= 5) reasons.push("Strong value — projecting above breakeven");
+    else reasons.push("Fair value — projecting at or above breakeven");
   }
   if (section === "breakout" && row.signal_tag === "HIGH") {
     reasons.push("High confidence signal — strong breakout candidate this round");
   }
   if (section === "do_not_start") {
-    if (row.breakeven != null && row.projection_final != null) {
-      const edge = row.projection_final - row.breakeven;
+    if (row.breakeven_canonical != null && row.projection_final != null) {
+      const edge = row.projection_final - row.breakeven_canonical;
       if (edge <= -20) reasons.push("Significantly underperforming breakeven — heavily overpriced this round");
       else if (edge <= -10) reasons.push("Projected below breakeven — overpriced given current form");
       else reasons.push("Projection below breakeven — consider alternatives");
@@ -324,7 +328,7 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
   const keyFactors: string[] = [];
   if (row.projection_final != null) keyFactors.push(`Projection: ${fmtInt(row.projection_final)} pts`);
   if (row.price != null) keyFactors.push(`Price: ${fmtPrice(row.price)}`);
-  if (row.breakeven != null) keyFactors.push(`Breakeven: ${fmtInt(row.breakeven)} pts`);
+  if (row.breakeven_canonical != null) keyFactors.push(`Breakeven: ${fmtInt(row.breakeven_canonical)} pts`);
   if (row.value_score != null) keyFactors.push(`Value Score: ${fmtValueScore(row.value_score)}`);
 
   const aiText: string | null = null;

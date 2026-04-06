@@ -58,8 +58,8 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
           if (aVal !== bVal) return (aVal as number) - (bVal as number);
           return (b.percentile_rank ?? 0) - (a.percentile_rank ?? 0);
         case "value":
-          aVal = a.percentile_rank ?? 0;
-          bVal = b.percentile_rank ?? 0;
+          aVal = a.value_score_canonical ?? -999;
+          bVal = b.value_score_canonical ?? -999;
           break;
         case "projection":
           aVal = a.projection || 0;
@@ -340,7 +340,6 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
     player.edge_canonical,
   ]);
   const truncatedWhy = useMemo(() => truncateWhy(smartWhy, 80), [smartWhy]);
-  const valueLabel = getValueLabel(player.value_rating_label);
 
   return (
     <tr
@@ -379,9 +378,7 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
         {formatPrice(player.price || 0)}
       </td>
       <td className="px-5 py-3">
-        <span className={`text-xs font-semibold ${valueLabel.color}`}>
-          {valueLabel.text}
-        </span>
+        <ValueScoreCell value={player.value_score_canonical} />
       </td>
       <td className="px-5 py-3">
         <div className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold border rounded-md ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
@@ -391,7 +388,7 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
       </td>
       {isPremium && (
         <td className="px-5 py-3 text-center text-xs font-medium text-white/35 tabular-nums">
-          {Math.round(player.breakeven || 0)}
+          {player.breakeven_canonical != null ? Math.round(player.breakeven_canonical) : (player.breakeven != null ? Math.round(player.breakeven) : "—")}
         </td>
       )}
     </tr>
@@ -414,7 +411,6 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
     player.edge_canonical,
   ]);
   const truncatedWhy = useMemo(() => truncateWhy(smartWhy, 60), [smartWhy]);
-  const valueLabel = getValueLabel(player.value_rating_label);
 
   return (
     <div
@@ -459,12 +455,14 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
         {isPremium && (
           <div>
             <div className="text-white/25 text-[10px] mb-0.5">BE</div>
-            <div className="font-medium text-white/40">{Math.round(player.breakeven || 0)}</div>
+            <div className="font-medium text-white/40">
+              {player.breakeven_canonical != null ? Math.round(player.breakeven_canonical) : (player.breakeven != null ? Math.round(player.breakeven) : "—")}
+            </div>
           </div>
         )}
         <div className={isPremium ? "" : "col-span-2"}>
           <div className="text-white/35 text-[10px] mb-0.5">Value</div>
-          <div className={`font-bold text-[11px] ${valueLabel.color}`}>{valueLabel.text}</div>
+          <ValueScoreCell value={player.value_score_canonical} compact />
         </div>
       </div>
     </div>
@@ -488,16 +486,28 @@ function getSignalStrength(player: DerivedPlayer) {
   return { icon: "👁", label: "WATCH", bg: "bg-[#F5C84C]/[0.08]", text: "text-[#F5C84C]", border: "border-[#F5C84C]/25" };
 }
 
-function getValueLabel(raw: string): { text: string; color: string } {
-  switch (raw) {
-    case "Elite Value":  return { text: "🔥 Elite Target",  color: "text-green-400" };
-    case "Strong Value": return { text: "✅ Trade Target",  color: "text-green-400/80" };
-    case "Fair Price":   return { text: "👁 Neutral",        color: "text-white/50" };
-    case "Monitor":      return { text: "👁 Watch",          color: "text-[#F5C84C]" };
-    case "Overpriced":   return { text: "⚠️ Overpriced",    color: "text-orange-400" };
-    case "Major Risk":   return { text: "🚫 Avoid",          color: "text-red-400" };
-    default:             return { text: raw || "—",          color: "text-white/40" };
+function getValueScoreColor(v: number | null | undefined): string {
+  if (v == null) return "text-white/30";
+  if (v >= 15)  return "text-green-400";
+  if (v >= 5)   return "text-[#F5C84C]";
+  if (v >= -5)  return "text-white/50";
+  return "text-red-400";
+}
+
+function ValueScoreCell({ value, compact = false }: { value: number | null | undefined; compact?: boolean }) {
+  if (value == null) {
+    console.warn("[MarketWatch] value_score_canonical is null for a player — check pipeline output");
+    return <span className="text-white/25 text-xs">—</span>;
   }
+  const n = Number(value);
+  const sign = n > 0 ? "+" : "";
+  const formatted = `${sign}${n.toFixed(1)}`;
+  const color = getValueScoreColor(n);
+  return (
+    <span className={`${compact ? "text-[11px]" : "text-xs"} font-semibold tabular-nums ${color}`}>
+      {formatted}
+    </span>
+  );
 }
 
 function truncateWhy(text: string, maxLength: number): string {
