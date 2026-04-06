@@ -208,21 +208,11 @@ Deno.serve(async (req: Request) => {
     } else if (command === "save_pending_players") {
       const { rows } = payload;
       if (!rows) return err("Missing rows");
-      let saved = 0;
-      for (const row of rows) {
-        if (!row.source_name) continue;
-        const { error } = await supabase
-          .schema("afl" as never)
-          .from("unmatched_player_names" as never)
-          .upsert({
-            source_name: row.source_name,
-            normalized_source_name: row.source_name.toLowerCase().trim().replace(/[^a-z0-9\s]/g, ""),
-            example_price: row.cleaned_price ?? null,
-            resolved: false,
-          } as never, { onConflict: "normalized_source_name" } as never);
-        if (!error) saved++;
-      }
-      return ok({ saved, total: rows.length });
+      const { data, error } = await supabase.rpc("save_pending_players", {
+        p_rows: rows,
+      });
+      if (error) throw error;
+      return ok(data);
 
     } else if (command === "resolve_player_name") {
       const { normalized_name, player_id } = payload;
