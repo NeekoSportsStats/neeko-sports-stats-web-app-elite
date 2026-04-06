@@ -145,30 +145,66 @@ Deno.serve(async (req: Request) => {
       if (!Array.isArray(rows) || rows.length === 0) {
         return err("rows must be a non-empty array");
       }
-      console.log(`[commit_price_ingest] season=${season} round=${round} rows=${rows.length} session_id=${session_id ?? "none"}`);
 
+      // Step 1: Filter out null player_id rows and log them
+      const nullIdRows = rows.filter((r: Record<string, unknown>) => r.player_id == null);
+      const validRows = rows.filter((r: Record<string, unknown>) => r.player_id != null && (r.cleaned_price as number) > 0);
+
+      if (nullIdRows.length > 0) {
+        console.warn(
+          `[commit_price_ingest] Skipping ${nullIdRows.length} rows with null player_id:`,
+          nullIdRows.map((r: Record<string, unknown>) => ({
+            source_name: r.source_name ?? "unknown",
+            cleaned_price: r.cleaned_price,
+          }))
+        );
+      }
+
+      if (validRows.length === 0) {
+        return err("No valid rows to commit — all rows are missing player_id or have zero price. Resolve unmatched players first.");
+      }
+
+      console.log(
+        `[commit_price_ingest] season=${season} round=${round} total=${rows.length} valid=${validRows.length} skipped=${nullIdRows.length} session_id=${session_id ?? "none"}`
+      );
+
+      // Step 2: Attempt commit with valid rows only
       const { data, error } = await supabase.rpc("commit_price_round_with_session", {
         p_season: season,
         p_round: round,
-        p_rows: rows,
+        p_rows: validRows,
         p_session_id: session_id ?? null,
       });
+
       if (error) {
-        console.error("[commit_price_ingest] RPC error:", error);
+        console.error("[commit_price_ingest] RPC error:", {
+          message: error.message,
+          code: error.code,
+          season,
+          round,
+          valid_rows: validRows.length,
+          sample_row: validRows[0] ?? null,
+        });
         const friendly = error.message.includes("locked")
           ? `Round ${round} is locked. Unlock it from the Round Control screen before committing.`
           : error.message.includes("not found")
           ? "One or more player IDs were not found in the database. Re-check your matches."
+          : error.message.includes("duplicate")
+          ? "Duplicate player detected in commit batch. Each player should appear only once."
           : `Commit failed: ${error.message}`;
         return err(friendly, 500);
       }
 
       if (data && !(data as Record<string, unknown>).ok) {
         const errMsg = (data as Record<string, unknown>).error as string ?? "Commit failed";
+        console.error("[commit_price_ingest] logical error from RPC:", errMsg);
         return err(errMsg, 400);
       }
 
-      console.log("[commit_price_ingest] committed:", data);
+      console.log("[commit_price_ingest] committed successfully:", {
+        ...(data as object),
+        skipped_null_ids: nullIdRows.length,
+      });
 
       EdgeRuntime.waitUntil(
         supabase.rpc("trigger_post_price_pipeline", {
@@ -183,17 +219,29 @@ Deno.serve(async (req: Request) => {
         })
       );
 
-      return ok({ ...(data as object), pipeline: "running_in_background" });
+      return ok({
+        ...(data as object),
+        skipped_null_ids: nullIdRows.length,
+        skipped_names: nullIdRows.map((r: Record<string, unknown>) => r.source_name ?? "unknown"),
+        pipeline: "running_in_background",
+      });
 
     } else if (command === "save_player_name_mapping") {
       const { source_name, player_id, match_method } = payload;
-      if (!source_name || !player_id) return err("Missing source_name or player_id");
+      if (!source_name || !player_id) {
+        console.warn("[save_player_name_mapping] missing params:", { source_name, player_id });
+        return err("Missing source_name or player_id");
+      }
+      console.log(`[save_player_name_mapping] source="${source_name}" player_id=${player_id} method=${match_method ?? "manual"}`);
       const { data, error } = await supabase.rpc("save_player_name_mapping", {
         p_source_name: source_name,
         p_player_id: player_id,
         p_match_method: match_method ?? "manual",
       });
-      if (error) throw error;
+      if (error) {
+        console.error("[save_player_name_mapping] RPC error:", error.message, { source_name, player_id });
+        throw error;
+      }
       return ok(data);
 
     } else if (command === "lookup_player_name_mappings") {

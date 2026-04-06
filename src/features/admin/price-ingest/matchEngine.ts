@@ -25,27 +25,33 @@ function normalizeForLookup(raw: string): string {
 
 interface ParsedName {
   initial: string;
+  lastName: string;
   tokens: string[];
-  surname: string;
 }
 
-function parseName(sourceName: string): ParsedName | null {
+/**
+ * Parses "F. Last" or "First Last" or "F Last" source formats.
+ * Returns first initial + last name (handles double-barrelled surnames).
+ */
+export function parseName(sourceName: string): ParsedName | null {
   const norm = normalizeName(sourceName);
   const tokens = norm.split(" ").filter(Boolean);
   if (tokens.length < 2) return null;
 
-  const initial = tokens[0].charAt(0);
-  const surnameTokens = tokens.slice(1);
-  const surname = surnameTokens.join(" ");
+  // Detect "F." initial-only format vs full first name
+  const firstToken = tokens[0];
+  const initial = firstToken.charAt(0);
+  const lastNameTokens = tokens.slice(1);
+  const lastName = lastNameTokens.join(" ");
 
-  if (!initial || !surname) return null;
-  return { initial, tokens, surname };
+  if (!initial || !lastName) return null;
+  return { initial, lastName, tokens };
 }
 
 interface ParsedPlayerName {
   initial: string;
+  lastName: string;
   tokens: string[];
-  surname: string;
   fullNorm: string;
 }
 
@@ -60,8 +66,8 @@ function getPlayerNameMap(players: PlayerOption[]): Map<number, ParsedPlayerName
     const tokens = norm.split(" ").filter(Boolean);
     if (tokens.length < 2) continue;
     const initial = tokens[0].charAt(0);
-    const surname = tokens.slice(1).join(" ");
-    map.set(p.player_id, { initial, tokens, surname, fullNorm: norm });
+    const lastName = tokens.slice(1).join(" ");
+    map.set(p.player_id, { initial, lastName, tokens, fullNorm: norm });
   }
   playerNameCache.set(players, map);
   return map;
@@ -75,11 +81,23 @@ export function buildMappingIndex(mappings: PersistedMapping[]): Map<string, Per
   return index;
 }
 
+/**
+ * Matches a source name to a player from the local player list.
+ *
+ * Priority order:
+ * 1. Persisted memory (exact normalized match)
+ * 2. Exact last_name + initial match (unique)
+ * 3. Exact last_name + initial match (multiple → suggested)
+ * 4. Exact last_name only (single or multiple → suggested)
+ * 5. Partial last_name prefix (with or without initial match)
+ * 6. pending_player_record (no candidates found)
+ */
 export function matchPlayer(
   sourceName: string,
   players: PlayerOption[],
   persistedMappings?: Map<string, PersistedMapping>,
 ): MatchResult {
+  // 1. Persisted memory — highest priority
   if (persistedMappings && persistedMappings.size > 0) {
     const key = normalizeForLookup(sourceName);
     const hit = persistedMappings.get(key);
@@ -101,29 +119,31 @@ export function matchPlayer(
   const parsed = parseName(sourceName);
 
   if (!parsed) {
+    console.warn(`[matchEngine] Could not parse name: "${sourceName}"`);
     return { status: "pending_player_record", method: null, confidence: 0, player_id: null, player_name: null, suggestions: [] };
   }
 
-  const { initial, surname } = parsed;
+  const { initial, lastName } = parsed;
   const nameMap = getPlayerNameMap(players);
 
   const exactBoth: PlayerOption[] = [];
-  const exactSurnameOnly: PlayerOption[] = [];
+  const exactLastNameOnly: PlayerOption[] = [];
 
   for (const p of players) {
     const pp = nameMap.get(p.player_id);
     if (!pp) continue;
 
-    const surnameMatch = pp.surname === surname;
+    const lastNameMatch = pp.lastName === lastName;
     const initialMatch = pp.initial === initial;
 
-    if (surnameMatch && initialMatch) {
+    if (lastNameMatch && initialMatch) {
       exactBoth.push(p);
-    } else if (surnameMatch) {
-      exactSurnameOnly.push(p);
+    } else if (lastNameMatch) {
+      exactLastNameOnly.push(p);
     }
   }
 
+  // 2. Exact last_name + initial — unique match
   if (exactBoth.length === 1) {
     return {
       status: "auto_matched",
@@ -135,37 +155,46 @@ export function matchPlayer(
     };
   }
 
+  // 3. Exact last_name + initial — multiple matches (ambiguous)
   if (exactBoth.length > 1) {
+    console.warn(`[matchEngine] Ambiguous match for "${sourceName}": ${exactBoth.map(p => p.player_name).join(", ")}`);
     return { status: "suggested", method: null, confidence: 75, player_id: null, player_name: null, suggestions: exactBoth.slice(0, 6) };
   }
 
-  if (exactSurnameOnly.length === 1) {
-    return { status: "suggested", method: null, confidence: 80, player_id: null, player_name: null, suggestions: exactSurnameOnly };
+  // 4. Exact last_name only — single match (no initial conflict, likely correct)
+  if (exactLastNameOnly.length === 1) {
+    return { status: "suggested", method: null, confidence: 80, player_id: null, player_name: null, suggestions: exactLastNameOnly };
   }
 
-  if (exactSurnameOnly.length > 1) {
-    return { status: "suggested", method: null, confidence: 60, player_id: null, player_name: null, suggestions: exactSurnameOnly.slice(0, 6) };
+  // 4b. Exact last_name only — multiple matches
+  if (exactLastNameOnly.length > 1) {
+    console.warn(`[matchEngine] Surname-only ambiguous for "${sourceName}": ${exactLastNameOnly.map(p => p.player_name).join(", ")}`);
+    return { status: "suggested", method: null, confidence: 60, player_id: null, player_name: null, suggestions: exactLastNameOnly.slice(0, 6) };
   }
 
-  const surnamePrefix = surname.slice(0, Math.max(4, surname.length - 1));
+  // 5. Partial last_name prefix match
+  const surnamePrefix = lastName.slice(0, Math.max(4, lastName.length - 1));
   const partial: PlayerOption[] = [];
   for (const p of players) {
     const pp = nameMap.get(p.player_id);
-    if (pp && pp.surname.startsWith(surnamePrefix) && pp.initial === initial) partial.push(p);
+    if (pp && pp.lastName.startsWith(surnamePrefix) && pp.initial === initial) partial.push(p);
   }
   const partialLoose: PlayerOption[] = [];
   if (partial.length === 0) {
     for (const p of players) {
       const pp = nameMap.get(p.player_id);
-      if (pp && pp.surname.startsWith(surnamePrefix)) partialLoose.push(p);
+      if (pp && pp.lastName.startsWith(surnamePrefix)) partialLoose.push(p);
     }
   }
 
   const candidates = partial.length > 0 ? partial : partialLoose;
   if (candidates.length > 0) {
+    console.warn(`[matchEngine] Partial match only for "${sourceName}" (${candidates.length} candidates)`);
     return { status: "manual_required", method: null, confidence: 35, player_id: null, player_name: null, suggestions: candidates.slice(0, 6) };
   }
 
+  // 6. No match at all
+  console.warn(`[matchEngine] No match found for "${sourceName}" (last="${lastName}", initial="${initial}")`);
   return { status: "pending_player_record", method: null, confidence: 0, player_id: null, player_name: null, suggestions: [] };
 }
 
