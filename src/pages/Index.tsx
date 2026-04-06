@@ -1225,7 +1225,6 @@ export default function Index() {
 
       const mapped = ((data ?? []) as any[]).map((r): RankingRow => {
         const proj = r.projection_final != null ? Number(r.projection_final) : null;
-        const be   = r.breakeven != null ? Number(r.breakeven) : null;
         return {
           player_id:             r.player_id ?? null,
           player_name:           r.player_name ?? "",
@@ -1249,8 +1248,8 @@ export default function Index() {
           prev_price:            null,
           price_change:          null,
           price_change_pct:      null,
-          breakeven:             be,
-          value_score:           r.value_score != null ? Number(r.value_score) : null,
+          breakeven:             r.breakeven_canonical != null ? Number(r.breakeven_canonical) : null,
+          value_score:           r.value_score_canonical != null ? Number(r.value_score_canonical) : null,
           best_value_score:      null,
           value_tag:             null,
           value_tier:            null,
@@ -1261,7 +1260,7 @@ export default function Index() {
           total_count:           null,
           games_played:          r.games_played != null ? Number(r.games_played) : null,
           baseline:              null,
-          edge:                  r.edge != null ? Number(r.edge) : null,
+          edge:                  r.edge_canonical != null ? Number(r.edge_canonical) : null,
           signal:                (r.signal as string) ?? null,
           season_avg:            null,
           last_3_avg:            null,
