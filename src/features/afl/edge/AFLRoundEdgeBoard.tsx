@@ -997,13 +997,7 @@ export default function AFLRoundEdgeBoard() {
                       <div className="border-t border-white/[0.06] divide-y divide-white/[0.04]">
                         {secondaryPicks.map((player) => {
                           const metric = getPrimaryMetric(player, section);
-                          const edgeVal = player.edge != null
-                            ? Number(player.edge)
-                            : player.projection != null && player.breakeven != null
-                              ? player.projection - player.breakeven
-                              : (player.projection ?? 0) - (player.breakeven ?? 0);
-                          const edgePositive = edgeVal > 0;
-                          const vsCanonical = player.value_score != null ? player.value_score : null;
+                          const vsCanonical = player.value_score != null ? Number(player.value_score) : null;
                           return (
                             <button
                               key={player.player_id}
@@ -1033,18 +1027,11 @@ export default function AFLRoundEdgeBoard() {
                                 <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">{metric.label}</p>
                                 <p className={`text-base font-extrabold tabular-nums ${metric.color}`}>{metric.value}</p>
                               </div>
-                              {vsCanonical != null ? (
+                              {vsCanonical != null && (
                                 <div className="text-right shrink-0 w-16">
                                   <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Value</p>
                                   <p className={`text-sm font-bold tabular-nums ${getValueScoreColor(vsCanonical)}`}>
                                     {fmtValueScore(vsCanonical)}
-                                  </p>
-                                </div>
-                              ) : (
-                                <div className="text-right shrink-0 w-14">
-                                  <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Edge</p>
-                                  <p className={`text-sm font-bold tabular-nums ${edgePositive ? "text-green-400" : "text-red-400"}`}>
-                                    {edgePositive ? "+" : ""}{Math.round(edgeVal)}
                                   </p>
                                 </div>
                               )}

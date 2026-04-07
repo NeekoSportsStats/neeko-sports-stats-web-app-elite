@@ -88,7 +88,6 @@ export default function MarketWatchPageElite() {
           last_5_avg: r.last_5_avg != null ? Number(r.last_5_avg) : null,
           games_played: r.games_played != null ? Number(r.games_played) : null,
           breakeven: r.breakeven != null ? Number(r.breakeven) : null,
-          edge: r.edge != null ? Number(r.edge) : null,
           value_score: r.value_score != null ? Number(r.value_score) : null,
           signal: r.signal ?? null,
           signal_display: r.signal_display ?? null,

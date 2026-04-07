@@ -152,8 +152,8 @@ export function buildBestTrades(
       const score =
         projGain * 4 +
         cashGenerated / 2000 +
-        (inn.edge ?? 0) * 2 +
-        (out.edge ?? 0) * -1;
+        (inn.value_score ?? 0) * 2 +
+        (out.value_score ?? 0) * -1;
 
       allPairs.push({
         out,

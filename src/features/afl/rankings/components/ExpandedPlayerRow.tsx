@@ -206,32 +206,32 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
   // Derived values
   const scoreCount = scoreHistory.length;
   const proj = row.projection != null ? Math.round(row.projection) : null;
-  const rawEdge = !row.is_bye && row.edge != null ? row.edge : null;
+  const rawValue = !row.is_bye && row.value_score != null ? row.value_score : null;
 
-  const edgeSign = rawEdge != null
-    ? (rawEdge > 40 ? "+40+" : rawEdge < -40 ? "-40+" : rawEdge > 0 ? `+${rawEdge}` : String(rawEdge))
+  const valueSign = rawValue != null
+    ? (rawValue > 40 ? "+40+" : rawValue < -40 ? "-40+" : rawValue > 0 ? `+${Math.round(rawValue)}` : String(Math.round(rawValue)))
     : null;
 
-  const edgeLabel = rawEdge != null && edgeSign != null
-    ? `${edgeSign} vs Baseline — ${
-        rawEdge >= 15 ? "strong underpriced play"
-        : rawEdge >= 5 ? "moderate edge"
-        : rawEdge >= -5 ? "near breakeven"
+  const edgeLabel = rawValue != null && valueSign != null
+    ? `${valueSign} vs Baseline — ${
+        rawValue >= 15 ? "strong underpriced play"
+        : rawValue >= 5 ? "moderate edge"
+        : rawValue >= -5 ? "near breakeven"
         : "price risk"
       }`
     : null;
 
   const edgeHeadlineColor =
-    rawEdge == null         ? "text-white/50"
-    : rawEdge >= 15         ? "text-emerald-400"
-    : rawEdge >= 5          ? "text-green-300"
-    : rawEdge >= -5         ? "text-white/70"
+    rawValue == null        ? "text-white/50"
+    : rawValue >= 15        ? "text-emerald-400"
+    : rawValue >= 5         ? "text-green-300"
+    : rawValue >= -5        ? "text-white/70"
     :                         "text-red-400";
 
   const sparkColor: "green" | "red" | "neutral" =
-    rawEdge != null && rawEdge >= 5  ? "green"
-    : rawEdge != null && rawEdge < -5 ? "red"
-    :                                   "neutral";
+    rawValue != null && rawValue >= 5  ? "green"
+    : rawValue != null && rawValue < -5 ? "red"
+    :                                    "neutral";
 
   const aiText = row.why_long ?? row.why ?? null;
 
@@ -241,16 +241,16 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
   const confColor  = getConfidenceColor(confidence);
 
   const TrendIcon =
-    rawEdge == null  ? Minus
-    : rawEdge >= 5   ? TrendingUp
-    : rawEdge < -5   ? TrendingDown
-    :                  Minus;
+    rawValue == null  ? Minus
+    : rawValue >= 5   ? TrendingUp
+    : rawValue < -5   ? TrendingDown
+    :                   Minus;
 
   const trendIconColor =
-    rawEdge == null  ? "text-white/20"
-    : rawEdge >= 5   ? "text-emerald-400"
-    : rawEdge < -5   ? "text-red-400"
-    :                  "text-white/30";
+    rawValue == null  ? "text-white/20"
+    : rawValue >= 5   ? "text-emerald-400"
+    : rawValue < -5   ? "text-red-400"
+    :                   "text-white/30";
 
   function handleViewPlayer() {
     navigate(`/sports/afl/players/${nameToSlug(row.player_name)}`);

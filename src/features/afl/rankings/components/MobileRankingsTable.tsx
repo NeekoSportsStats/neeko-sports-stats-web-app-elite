@@ -47,10 +47,10 @@ function MobileSparkTooltip({ active, payload }: any) {
   );
 }
 
-function MobileSparkline({ points, edge }: { points: MobileSparkPoint[]; edge: number | null }) {
+function MobileSparkline({ points, valueScore }: { points: MobileSparkPoint[]; valueScore: number | null }) {
   const stroke =
-    edge != null && edge >= 5 ? "#4ade80" :
-    edge != null && edge < -5 ? "#f87171" :
+    valueScore != null && valueScore >= 5 ? "#4ade80" :
+    valueScore != null && valueScore < -5 ? "#f87171" :
     "#94a3b8";
 
   const gradientId = "mobile-spark-fill";
@@ -108,19 +108,19 @@ function MobileSparkline({ points, edge }: { points: MobileSparkPoint[]; edge: n
   );
 }
 
-// ─── Edge helpers ─────────────────────────────────────────────────────────────
+// ─── Value helpers ─────────────────────────────────────────────────────────────
 
-function getEdgeDisplay(edge: number | null): string | null {
-  if (edge === null) return null;
-  if (edge > 40) return "40+";
-  if (edge < -40) return "-40+";
-  return edge > 0 ? `+${edge}` : String(edge);
+function getValueDisplay(value: number | null): string | null {
+  if (value === null) return null;
+  if (value > 40) return "+40+";
+  if (value < -40) return "-40+";
+  return value > 0 ? `+${Math.round(value)}` : String(Math.round(value));
 }
 
-function edgeColor(edge: number): string {
-  if (edge >= 20) return "text-emerald-400";
-  if (edge >= 10) return "text-green-300";
-  if (edge >= -5) return "text-neutral-300";
+function valueColor(value: number): string {
+  if (value >= 20) return "text-emerald-400";
+  if (value >= 10) return "text-green-300";
+  if (value >= -5) return "text-neutral-300";
   return "text-red-400";
 }
 
@@ -250,11 +250,11 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
 
   const proj = row.projection != null ? Math.round(row.projection) : null;
   const be = row.form_score != null ? Math.round(row.form_score) : null;
-  const edge = !row.is_bye && row.edge != null ? row.edge : null;
-  const edgeDisplayStr = getEdgeDisplay(edge);
+  const valueScore = !row.is_bye && row.value_score != null ? row.value_score : null;
+  const valueDisplayStr = getValueDisplay(valueScore);
 
-  const edgeLabel = edge != null && edgeDisplayStr != null
-    ? `${edgeDisplayStr} vs Baseline — ${edge >= 15 ? "strong underpriced play" : edge >= 5 ? "moderate edge" : edge >= -5 ? "near breakeven" : "price risk"}`
+  const edgeLabel = valueScore != null && valueDisplayStr != null
+    ? `${valueDisplayStr} vs Baseline — ${valueScore >= 15 ? "strong underpriced play" : valueScore >= 5 ? "moderate edge" : valueScore >= -5 ? "near breakeven" : "price risk"}`
     : null;
 
   const longWhy = row.why_long ?? row.why ?? null;
@@ -290,7 +290,7 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
           {historyLoading ? (
             <div className="w-full rounded bg-white/[0.03] animate-pulse" style={{ height: 80 }} />
           ) : scoreHistory.length >= 3 ? (
-            <MobileSparkline points={scoreHistory} edge={edge} />
+            <MobileSparkline points={scoreHistory} valueScore={valueScore} />
           ) : null}
         </div>
       )}
@@ -338,11 +338,11 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
             <span className="text-[13px] font-bold text-white/60 tabular-nums">{be}</span>
           </div>
         )}
-        {edge != null && !row.is_bye && (
+        {valueScore != null && !row.is_bye && (
           <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-white/30 font-normal">Edge</span>
-            <span className={`text-[13px] font-bold tabular-nums ${edgeColor(edge)}`}>
-              {getEdgeDisplay(edge) ?? edge}
+            <span className="text-[10px] text-white/30 font-normal">Value</span>
+            <span className={`text-[13px] font-bold tabular-nums ${valueColor(valueScore)}`}>
+              {getValueDisplay(valueScore) ?? Math.round(valueScore)}
             </span>
           </div>
         )}
@@ -368,7 +368,7 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
 
   const proj = row.projection ?? null;
   const breakeven = row.form_score != null ? Math.round(row.form_score) : null;
-  const edge = !row.is_bye && row.edge != null ? row.edge : null;
+  const valueScore = !row.is_bye && row.value_score != null ? row.value_score : null;
 
   const displayRec = getDisplayRecommendation(row, activeTab);
   const shortWhy = isPremium ? (row.why ?? null) : null;
@@ -425,13 +425,13 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
           </>
         )}
 
-        {edge !== null && !row.is_bye && (
+        {valueScore !== null && !row.is_bye && (
           <>
             <span className="text-white/15 text-sm px-1.5">|</span>
             <div className="flex flex-col items-start px-2">
-              <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Edge</span>
-              <span className={`text-[14px] font-bold tabular-nums ${edgeColor(edge)}`}>
-                {getEdgeDisplay(edge) ?? edge}
+              <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Value</span>
+              <span className={`text-[14px] font-bold tabular-nums ${valueColor(valueScore)}`}>
+                {getValueDisplay(valueScore) ?? Math.round(valueScore)}
               </span>
             </div>
           </>

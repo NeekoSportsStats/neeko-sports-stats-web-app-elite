@@ -1,6 +1,6 @@
 export type MWSignal = "BUY" | "HOLD" | "SELL";
 
-export type MWSortKey = "value_score" | "edge" | "projection" | "breakeven" | "price";
+export type MWSortKey = "value_score" | "projection" | "breakeven" | "price";
 
 export interface MWPlayerRow {
   player_id: number;
@@ -20,7 +20,6 @@ export interface MWPlayerRow {
   games_played: number | null;
 
   breakeven: number | null;
-  edge: number | null;
   value_score: number | null;
 
   signal: string | null;
