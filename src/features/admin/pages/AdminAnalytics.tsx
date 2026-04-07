@@ -570,6 +570,43 @@ function EngagementTab({
           <KPICard label="Breakout Clicks" value={formatNum(eventCounts30d["market_breakout_click"])} />
         </div>
       </div>
+
+      <div>
+        <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Page Performance — Key Routes (30d)</h3>
+        {loading && topPages.length === 0 ? (
+          <LoadingRows count={5} />
+        ) : (
+          <div className="rounded-md border border-border overflow-hidden bg-card">
+            {(() => {
+              const KEY_ROUTES = [
+                { match: /\/afl\/rankings/, label: "Rankings" },
+                { match: /\/afl\/market-watch/, label: "Market Watch" },
+                { match: /\/afl\/players\//, label: "Player Pages" },
+                { match: /\/afl\/edge-board/, label: "Edge Board" },
+                { match: /\/afl\/start-sit/, label: "Start / Sit" },
+                { match: /\/(pricing|subscribe|neeko-plus)/, label: "Pricing" },
+              ];
+              const buckets = KEY_ROUTES.map(({ match, label }) => ({
+                label,
+                views: topPages.filter((p) => match.test(p.page)).reduce((s, p) => s + p.views, 0),
+              })).filter((b) => b.views > 0);
+              const maxViews = Math.max(...buckets.map((b) => b.views), 1);
+              if (buckets.length === 0) return (
+                <p className="text-sm text-muted-foreground py-4 text-center px-4">No route data yet.</p>
+              );
+              return buckets.sort((a, b) => b.views - a.views).map((b, i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-2.5 border-b border-border/50 last:border-0">
+                  <span className="text-xs font-medium w-32 shrink-0">{b.label}</span>
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="h-full bg-sky-500 rounded-full" style={{ width: `${(b.views / maxViews) * 100}%` }} />
+                  </div>
+                  <span className="text-xs tabular-nums text-muted-foreground w-16 text-right">{formatNum(b.views)} views</span>
+                </div>
+              ));
+            })()}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -617,10 +654,23 @@ function ConversionTab({
   if (!phAvailable) return <PHUnavailable />;
 
   const f = funnel;
+  const overallCvr = f?.page_views ? pct(f.checkout_success ?? 0, f.page_views) : "—";
+  const paywallCvr = f?.upgrade_clicks ? pct(f.checkout_success ?? 0, f.upgrade_clicks) : "—";
+  const checkoutCvr = f?.checkout_started ? pct(f.checkout_success ?? 0, f.checkout_started) : "—";
 
   return (
     <div className="space-y-6">
       {error && <ErrorBanner message={error} />}
+
+      <div>
+        <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Conversion Rates — Key Metrics (30d)</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <KPICard label="Visitor → Paid" value={overallCvr} sub="page views to checkout success" color="green" />
+          <KPICard label="Paywall → Paid" value={paywallCvr} sub="upgrade click to success" color="green" />
+          <KPICard label="Checkout CVR" value={checkoutCvr} sub="started to success" color="green" />
+          <KPICard label="Abandon Rate" value={f?.checkout_started ? pct(f.checkout_cancelled ?? 0, f.checkout_started) : "—"} sub="started to cancelled" color="amber" />
+        </div>
+      </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         <div>
@@ -650,6 +700,38 @@ function ConversionTab({
               <FunnelStep label="Checkout Cancelled" count={f?.checkout_cancelled ?? 0} fromCount={f?.checkout_started} color="text-red-500" />
             </div>
           )}
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">CTA Performance — Click Signals (30d)</h3>
+        <div className="rounded-md border border-border overflow-hidden bg-card">
+          {[
+            { label: "Upgrade Click (any paywall / CTA)", key: "upgrade_clicks", denominator: f?.page_views, color: "bg-emerald-500" },
+            { label: "Plan Selected (pricing page)", key: "plan_selected", denominator: f?.pricing_views, color: "bg-sky-500" },
+            { label: "Checkout Started", key: "checkout_started", denominator: f?.plan_selected, color: "bg-sky-500" },
+            { label: "Checkout Success (paid)", key: "checkout_success", denominator: f?.checkout_started, color: "bg-emerald-500" },
+            { label: "Checkout Cancelled / Abandoned", key: "checkout_cancelled", denominator: f?.checkout_started, color: "bg-red-500" },
+            { label: "New Signups", key: "signups", denominator: f?.page_views, color: "bg-blue-500" },
+          ].map(({ label, key, denominator, color }, i) => {
+            const val = (f as unknown as Record<string, number>)?.[key] ?? 0;
+            const rate = denominator ? pct(val, denominator) : null;
+            return (
+              <div key={i} className="flex items-center gap-3 px-4 py-2.5 border-b border-border/50 last:border-0">
+                <span className="text-xs font-medium w-56 shrink-0">{label}</span>
+                <span className="text-sm tabular-nums font-semibold w-14 shrink-0">{formatNum(val)}</span>
+                {rate !== null && (
+                  <span className="text-xs text-muted-foreground w-16 shrink-0">{rate} CVR</span>
+                )}
+                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${color} rounded-full`}
+                    style={{ width: denominator && denominator > 0 ? `${Math.min((val / denominator) * 100 * 5, 100)}%` : "0%" }}
+                  />
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

@@ -252,6 +252,110 @@ function PriorityAlertStrip({ alerts, running, onAction }: {
   );
 }
 
+function SystemStatusSummary({ status, loading, overallHealth, overallConfidence, aiConfidence, pipelineRunStatus, mwStatus }: {
+  status: CommandCenterStatus | null;
+  loading: boolean;
+  overallHealth: StatusLevel;
+  overallConfidence: number;
+  aiConfidence: number;
+  pipelineRunStatus: StatusLevel;
+  mwStatus: StatusLevel;
+}) {
+  const stateLabel = overallHealth === "ok" ? "HEALTHY" : overallHealth === "warn" ? "DEGRADED" : overallHealth === "error" ? "CRITICAL" : "CHECKING";
+  const stateCls = overallHealth === "ok" ? "text-emerald-400 border-emerald-500/30 bg-emerald-950/15"
+    : overallHealth === "warn" ? "text-amber-400 border-amber-500/30 bg-amber-950/15"
+    : overallHealth === "error" ? "text-red-400 border-red-500/30 bg-red-950/15"
+    : "text-muted-foreground border-border bg-card";
+  const dotCls = overallHealth === "ok" ? "bg-emerald-500" : overallHealth === "warn" ? "bg-amber-500" : overallHealth === "error" ? "bg-red-500 animate-pulse" : "bg-muted-foreground animate-pulse";
+
+  const aiMissing = status?.ai_missing_players ?? 0;
+  const aiFreshness = Math.round(aiConfidence);
+  const cacheRows = status?.rankings_cache_rows ?? 0;
+  const edgeRows = status?.edge_board_rows ?? 0;
+  const pipelineLastRun = status?.pipeline_last_run ?? null;
+  const cacheStatus: StatusLevel = cacheRows >= 300 ? "ok" : cacheRows > 0 ? "warn" : "error";
+  const edgeStatus: StatusLevel = edgeRows >= 5 ? "ok" : edgeRows > 0 ? "warn" : "error";
+  const aiStatus: StatusLevel = aiMissing > 300 ? "error" : aiMissing > 100 ? "warn" : "ok";
+
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-border bg-card px-5 py-4 animate-pulse">
+        <div className="h-4 w-48 bg-muted rounded mb-3" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[1,2,3,4].map(i => <div key={i} className="h-12 rounded-lg bg-muted" />)}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`rounded-xl border ${stateCls} px-5 py-4 space-y-4`}>
+      <div className="flex items-center gap-3">
+        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${dotCls}`} />
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <span className="text-xs font-black tracking-widest">{stateLabel}</span>
+          <span className="text-xs text-muted-foreground">·</span>
+          <span className="text-xs text-muted-foreground">
+            {overallHealth === "ok" ? "All critical systems are operating normally"
+              : overallHealth === "warn" ? "One or more systems need attention — check alerts below"
+              : overallHealth === "error" ? "Critical issues detected — immediate action required"
+              : "Fetching system status…"}
+          </span>
+        </div>
+        <span className="text-[11px] font-semibold text-muted-foreground shrink-0">
+          Confidence: {loading ? "—" : `${overallConfidence}%`}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-2.5">
+        {[
+          {
+            label: "Last Pipeline Run",
+            value: pipelineLastRun ? new Date(pipelineLastRun).toLocaleString("en-AU", { dateStyle: "short", timeStyle: "short" }) : "Never",
+            status: pipelineRunStatus,
+          },
+          {
+            label: "AI Freshness",
+            value: `${aiFreshness}%`,
+            status: aiStatus,
+            note: aiMissing > 0 ? `${aiMissing} missing` : "Full coverage",
+          },
+          {
+            label: "Rankings Cache",
+            value: cacheRows > 0 ? `${cacheRows.toLocaleString()} players` : "Empty",
+            status: cacheStatus,
+          },
+          {
+            label: "Edge Board",
+            value: edgeRows > 0 ? `${edgeRows} rows` : "Empty",
+            status: edgeStatus,
+          },
+          {
+            label: "Market Watch",
+            value: status?.market_watch_last_refresh ? new Date(status.market_watch_last_refresh).toLocaleString("en-AU", { dateStyle: "short", timeStyle: "short" }) : "No snapshot",
+            status: mwStatus,
+          },
+          {
+            label: "Queue Failed",
+            value: `${status?.queue_failed ?? 0} jobs`,
+            status: (status?.queue_failed ?? 0) > 10 ? "error" as StatusLevel : (status?.queue_failed ?? 0) > 0 ? "warn" as StatusLevel : "ok" as StatusLevel,
+          },
+        ].map(({ label, value, status: s, note }) => {
+          const vc = s === "ok" ? "text-emerald-400" : s === "warn" ? "text-amber-400" : s === "error" ? "text-red-400" : "text-foreground";
+          const bc = s === "ok" ? "border-emerald-900/30" : s === "warn" ? "border-amber-900/30" : s === "error" ? "border-red-900/30" : "border-border";
+          return (
+            <div key={label} className={`rounded-lg border ${bc} bg-card/60 px-3 py-2`}>
+              <p className="text-[10px] text-muted-foreground mb-1 leading-tight">{label}</p>
+              <p className={`text-xs font-bold leading-tight ${vc}`}>{value}</p>
+              {note && <p className="text-[10px] text-muted-foreground mt-0.5">{note}</p>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function SystemTimeline({ data }: {
   data: {
     lastIngestion: string | null;
@@ -845,25 +949,14 @@ export default function AdminHealth() {
         detail="This page pulls from the admin-health edge function and multiple Supabase views: v_pipeline_health, v_ai_worker_health, v_command_center_status, and more. All checks are live — refresh at any time."
       />
 
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-4 flex-wrap">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2 flex-wrap">
           <ConfidenceGauge score={overallConfidence} loading={isLoading} />
-          <div className="flex flex-col gap-1.5">
-            <StatusChip
-              level={overallHealth}
-              label={
-                overallHealth === "ok" ? "All Systems OK"
-                : overallHealth === "warn" ? "Warnings Active"
-                : overallHealth === "error" ? "Action Required"
-                : "Checking…"
-              }
-            />
-            {lastRefreshed && (
-              <span className="text-[11px] text-muted-foreground">
-                Updated {lastRefreshed.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-              </span>
-            )}
-          </div>
+          {lastRefreshed && (
+            <span className="text-[11px] text-muted-foreground">
+              Updated {lastRefreshed.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </span>
+          )}
         </div>
         <Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={isLoading} className="shrink-0">
           <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
@@ -871,19 +964,22 @@ export default function AdminHealth() {
         </Button>
       </div>
 
-      {!isLoading && (
-        <SystemTimeline data={timelineData} />
-      )}
+      <SystemStatusSummary
+        status={cmdStatus}
+        loading={isLoading}
+        overallHealth={overallHealth}
+        overallConfidence={overallConfidence}
+        aiConfidence={aiConfidence}
+        pipelineRunStatus={pipelineRunStatus}
+        mwStatus={mwStatus}
+      />
 
       {!isLoading && priorityAlerts.length > 0 && (
         <PriorityAlertStrip alerts={priorityAlerts} running={running} onAction={handleFlowAction} />
       )}
 
-      {!isLoading && priorityAlerts.length === 0 && (
-        <div className="flex items-center gap-3 rounded-lg px-3.5 py-2.5 border border-emerald-900/40 bg-emerald-950/20 text-emerald-400 text-sm font-medium">
-          <CheckCircle className="h-3.5 w-3.5 shrink-0" />
-          All systems operating normally — no action required
-        </div>
+      {!isLoading && (
+        <SystemTimeline data={timelineData} />
       )}
 
       <div>

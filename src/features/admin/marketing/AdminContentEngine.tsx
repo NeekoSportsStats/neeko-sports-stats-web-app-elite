@@ -1632,8 +1632,108 @@ export default function AdminContentEngine() {
   const totalReady = posts.filter(p => p.status === "ready").length;
   const totalPosts = posts.length;
 
+  const readyPosts = posts.filter(p => p.status === "ready");
+  const avgConversionScore = readyPosts.length > 0
+    ? (readyPosts.reduce((s, p) => s + (p.conversion_score ?? 0), 0) / readyPosts.length).toFixed(1)
+    : null;
+
+  const categoryCounts = posts.reduce<Record<string, number>>((acc, p) => {
+    acc[p.category] = (acc[p.category] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const topHookPosts = readyPosts
+    .filter(p => (p.hook_score ?? 0) > 0)
+    .sort((a, b) => (b.hook_score ?? 0) - (a.hook_score ?? 0))
+    .slice(0, 3);
+
+  const playerUsage = posts.reduce<Record<string, number>>((acc, p) => {
+    if (p.player_name) acc[p.player_name] = (acc[p.player_name] ?? 0) + 1;
+    return acc;
+  }, {});
+  const duplicateWarnings = Object.entries(playerUsage).filter(([, count]) => count > 1);
+
   return (
     <div className="space-y-5">
+      {/* Weekly Strategy Summary */}
+      {totalPosts > 0 && (
+        <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Weekly Strategy Summary</h3>
+            <span className="text-xs text-muted-foreground">{weekKey}</span>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="rounded-md bg-muted/30 p-3 text-center">
+              <p className="text-xl font-bold tabular-nums">{totalReady}/{totalPosts}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Posts Ready</p>
+            </div>
+            <div className="rounded-md bg-muted/30 p-3 text-center">
+              <p className="text-xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{avgConversionScore ?? "—"}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Avg Conversion Score</p>
+            </div>
+            <div className="rounded-md bg-muted/30 p-3 text-center">
+              <p className="text-xl font-bold tabular-nums">{Object.keys(categoryCounts).length}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Content Types</p>
+            </div>
+            <div className={`rounded-md p-3 text-center ${duplicateWarnings.length > 0 ? "bg-amber-500/10 border border-amber-500/30" : "bg-muted/30"}`}>
+              <p className={`text-xl font-bold tabular-nums ${duplicateWarnings.length > 0 ? "text-amber-600 dark:text-amber-400" : ""}`}>
+                {duplicateWarnings.length}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Duplicate Players</p>
+            </div>
+          </div>
+
+          {duplicateWarnings.length > 0 && (
+            <div className="flex items-start gap-2 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-md">
+              <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-medium text-amber-700 dark:text-amber-300">Duplicate player protection</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {duplicateWarnings.map(([name, count]) => `${name} (×${count})`).join(", ")} — consider swapping for variety
+                </p>
+              </div>
+            </div>
+          )}
+
+          {Object.keys(categoryCounts).length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Category Mix</p>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(categoryCounts)
+                  .sort(([, a], [, b]) => b - a)
+                  .map(([cat, count]) => {
+                    const meta = CATEGORY_META[cat];
+                    return (
+                      <span key={cat} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${meta?.bg ?? "bg-muted/30"} ${meta?.color ?? "text-foreground"} ${meta?.border ?? "border-border"}`}>
+                        {count}× {cat}
+                      </span>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {topHookPosts.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Top Hook Posts</p>
+              <div className="space-y-1">
+                {topHookPosts.map((post) => (
+                  <button
+                    key={post.id}
+                    onClick={() => setSelectedPostId(post.id)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-md border border-border hover:bg-accent transition-colors text-left"
+                  >
+                    <span className="text-xs font-medium truncate">{post.player_name ?? "Top 3"} — {post.category}</span>
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold shrink-0 ml-2">Hook {post.hook_score}/10</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Today's Top 3 */}
       <TodayTopPostsSection />
 

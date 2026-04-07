@@ -87,16 +87,36 @@ function ActionButton({ label, command, icon: Icon, variant = "outline", disable
 }
 
 interface ActionGroupProps {
-  title: string;
+  title: React.ReactNode;
   children: React.ReactNode;
 }
 
 function ActionGroup({ title, children }: ActionGroupProps) {
   return (
     <div>
-      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{title}</p>
+      <div className="flex items-center gap-2 mb-2">
+        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{title}</p>
+      </div>
       <div className="space-y-1.5">{children}</div>
     </div>
+  );
+}
+
+function RiskBadge({ level }: { level: "safe" | "recovery" | "heavy" }) {
+  if (level === "safe") return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+      SAFE
+    </span>
+  );
+  if (level === "recovery") return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+      RECOVERY
+    </span>
+  );
+  return (
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/30">
+      HEAVY
+    </span>
   );
 }
 
@@ -188,8 +208,8 @@ export default function AdminNewCommandCenter() {
         detail="Actions call the admin-command edge function, which proxies to Supabase RPCs. Commands run asynchronously — the page bar shows progress. Always check Health first to understand current system state before taking action."
       />
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
           {status && !loading && (
             <>
               <StatusDot ok={status.pipeline_health === "ok"} />
@@ -206,6 +226,13 @@ export default function AdminNewCommandCenter() {
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
           Refresh
         </Button>
+      </div>
+
+      <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Action risk guide</span>
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">SAFE</span> Fast refresh — safe any time, no data at risk</span>
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30">RECOVERY</span> Pipeline re-run — may overwrite derived data</span>
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/30">HEAVY</span> Full AI regen — expensive, long-running, irreversible</span>
       </div>
 
       <div className="border-b border-border">
@@ -237,7 +264,7 @@ export default function AdminNewCommandCenter() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-[11px] text-muted-foreground">Master pipeline: ingest raw stats, transform, build projections, populate rankings cache, refresh market watch. Takes ~3–8 minutes.</p>
-              <ActionGroup title="Run">
+              <ActionGroup title={<span className="flex items-center gap-2">Run <RiskBadge level="recovery" /></span>}>
                 <ActionButton label="Run Full AFL Pipeline" command="run_full_pipeline" icon={Play} onComplete={fetchStatus} />
                 <AdminActionExplain
                   what="Runs the complete AFL data pipeline end-to-end: raw stat ingestion, transformation, projection engine, rankings cache, market watch snapshot."
@@ -256,7 +283,7 @@ export default function AdminNewCommandCenter() {
                 />
               </ActionGroup>
 
-              <ActionGroup title="Rankings">
+              <ActionGroup title={<span className="flex items-center gap-2">Rankings <RiskBadge level="safe" /></span>}>
                 <ActionButton label="Refresh Rankings Cache" command="refresh_rankings" icon={Database} onComplete={fetchStatus} />
                 <AdminActionExplain
                   what="Rebuilds the player_rankings_cache table from the projection engine (mv_player_projection) and AI analysis tables."
@@ -291,7 +318,7 @@ export default function AdminNewCommandCenter() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-[11px] text-muted-foreground">Price signals, trade recommendations, buy/sell/fade categories. Rebuilds from projection and price data.</p>
-              <ActionGroup title="Refresh">
+              <ActionGroup title={<span className="flex items-center gap-2">Refresh <RiskBadge level="safe" /></span>}>
                 <ActionButton label="Refresh Market Watch" command="refresh_market_watch" icon={TrendingUp} onComplete={fetchStatus} />
                 <AdminActionExplain
                   what="Runs the market watch snapshot function to rebuild price signals, trade recommendations, and category assignments for all players."
@@ -328,6 +355,68 @@ export default function AdminNewCommandCenter() {
       )}
 
       {tab === "ai" && (
+        <div className="space-y-5">
+          {/* AI Status Panel */}
+          {status && (
+            <div className={`rounded-lg border p-4 ${
+              (status.ai_missing_players ?? 0) > 300 ? "bg-red-950/10 border-red-900/40" :
+              (status.ai_missing_players ?? 0) > 100 ? "bg-amber-950/10 border-amber-900/40" :
+              "bg-emerald-950/10 border-emerald-900/30"
+            }`}>
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <p className={`text-sm font-semibold ${
+                    (status.ai_missing_players ?? 0) > 300 ? "text-red-400" :
+                    (status.ai_missing_players ?? 0) > 100 ? "text-amber-400" :
+                    "text-emerald-400"
+                  }`}>
+                    {(status.ai_missing_players ?? 0) > 300 ? "CRITICAL — AI coverage low"
+                      : (status.ai_missing_players ?? 0) > 100 ? "WARNING — AI needs attention"
+                      : "AI coverage healthy"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {status.ai_analysis_rows?.toLocaleString() ?? "—"} players analysed · {(status.ai_missing_players ?? 0) > 0 ? `${status.ai_missing_players} missing` : "none missing"}
+                    {status.ai_last_generation ? ` · Last run ${fmtTs(status.ai_last_generation)}` : ""}
+                  </p>
+                </div>
+                <div className="flex gap-4 text-center">
+                  <div>
+                    <p className="text-lg font-bold tabular-nums">{status.ai_analysis_rows?.toLocaleString() ?? "—"}</p>
+                    <p className="text-[10px] text-muted-foreground">Analysed</p>
+                  </div>
+                  <div>
+                    <p className={`text-lg font-bold tabular-nums ${(status.ai_missing_players ?? 0) > 100 ? "text-amber-400" : ""} ${(status.ai_missing_players ?? 0) > 300 ? "text-red-400" : ""}`}>
+                      {status.ai_missing_players?.toLocaleString() ?? "—"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Missing</p>
+                  </div>
+                  <div>
+                    <p className={`text-lg font-bold tabular-nums ${(status.queue_failed ?? 0) > 0 ? "text-red-400" : "text-emerald-400"}`}>
+                      {status.queue_failed?.toLocaleString() ?? "—"}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Queue Failed</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold tabular-nums">{status.queue_pending?.toLocaleString() ?? "—"}</p>
+                    <p className="text-[10px] text-muted-foreground">Pending</p>
+                  </div>
+                </div>
+              </div>
+              {(status.ai_missing_players ?? 0) > 300 && (
+                <div className="mt-3 flex items-center gap-2 text-xs text-red-400">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  Over 300 players without AI analysis — run Enqueue All Players then Run AI Worker to recover.
+                </div>
+              )}
+              {(status.ai_missing_players ?? 0) > 100 && (status.ai_missing_players ?? 0) <= 300 && (
+                <div className="mt-3 flex items-center gap-2 text-xs text-amber-400">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  Over 100 players missing AI analysis — consider running the Neeko AI pipeline soon.
+                </div>
+              )}
+            </div>
+          )}
+
         <div className="grid gap-5 sm:grid-cols-2">
           <Card>
             <CardHeader className="pb-3">
@@ -338,7 +427,7 @@ export default function AdminNewCommandCenter() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-[11px] text-muted-foreground">Run AI generation pipelines to produce player analyses, recommendations, and summaries via OpenAI.</p>
-              <ActionGroup title="Generate">
+              <ActionGroup title={<span className="flex items-center gap-2">Generate <RiskBadge level="recovery" /></span>}>
                 <ActionButton label="Run AI Worker (1 batch)" command="run_ai_worker" icon={Bot} onComplete={fetchStatus} />
                 <AdminActionExplain
                   what="Processes one batch of queued AI jobs — calls OpenAI for pending player analysis entries in the ai_generation_queue table."
@@ -357,7 +446,7 @@ export default function AdminNewCommandCenter() {
                 />
               </ActionGroup>
 
-              <ActionGroup title="AI Rankings">
+              <ActionGroup title={<span className="flex items-center gap-2">AI Rankings <RiskBadge level="heavy" /></span>}>
                 <ActionButton label="Run Full AI Neeko Pipeline" command="run_neeko_ai_pipeline" icon={Zap} onComplete={fetchStatus} />
                 <AdminActionExplain
                   what="Runs the full Neeko AI pipeline: enqueues players, drains the AI generation queue, refreshes rankings cache and market watch."
@@ -400,7 +489,7 @@ export default function AdminNewCommandCenter() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-[11px] text-muted-foreground">Projection engine and accuracy model refresh actions.</p>
-              <ActionGroup title="Projections">
+              <ActionGroup title={<span className="flex items-center gap-2">Projections <RiskBadge level="recovery" /></span>}>
                 <ActionButton label="Rebuild Projection Engine" command="refresh_projections" icon={Target} onComplete={fetchStatus} />
                 <AdminActionExplain
                   what="Rebuilds the player projection engine: refreshes features, recalculates projections, applies calibration. Does not touch AI."
@@ -421,6 +510,7 @@ export default function AdminNewCommandCenter() {
             </CardContent>
           </Card>
         </div>
+        </div>
       )}
 
       {tab === "data" && (
@@ -434,7 +524,7 @@ export default function AdminNewCommandCenter() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-[11px] text-muted-foreground">Manage AFL Fantasy price data. Prices are imported via the Player Lab price ingest tool, then applied via these actions.</p>
-              <ActionGroup title="Apply">
+              <ActionGroup title={<span className="flex items-center gap-2">Apply <RiskBadge level="recovery" /></span>}>
                 <ActionButton label="Apply Fantasy Prices" command="apply_fantasy_prices" icon={DollarSign} onComplete={fetchStatus} />
                 <AdminActionExplain
                   what="Runs the apply_fantasy_prices pipeline: validates price data, checks match rate (≥85% required), applies prices, refreshes rankings and market watch."
@@ -473,7 +563,7 @@ export default function AdminNewCommandCenter() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-[11px] text-muted-foreground">Raw data ingestion from the AFL API. Use sparingly — the pipeline handles this automatically.</p>
-              <ActionGroup title="Ingest">
+              <ActionGroup title={<span className="flex items-center gap-2">Ingest <RiskBadge level="recovery" /></span>}>
                 <ActionButton label="Run Ingestion Pipeline" command="run_ingestion" icon={Activity} onComplete={fetchStatus} />
                 <AdminActionExplain
                   what="Fetches latest AFL game and player stat data from the API and inserts into raw_2026_games and raw_2026_player_stats tables."

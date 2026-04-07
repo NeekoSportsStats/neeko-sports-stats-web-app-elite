@@ -5,7 +5,7 @@ import { runCommand } from "@/hooks/useAdminCommand";
 import { useAdminUIState } from "@/features/admin/state/AdminUIStateContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshCw, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, Circle as XCircle, Clock, ChevronRight, HeartPulse, Users, Terminal, FlaskConical, Megaphone, ShieldCheck, Play, Bot, ChartBar as BarChart2, Zap } from "lucide-react";
+import { RefreshCw, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, Clock, ChevronRight, HeartPulse, Users, Terminal, FlaskConical, Megaphone, ShieldCheck, Play, Bot, ChartBar as BarChart2, Zap } from "lucide-react";
 import { formatDate } from "@/features/admin/shared/adminUtils";
 import { AdminSectionIntro } from "@/features/admin/shared/AdminExplain";
 import type { CommandCenterStatus } from "@/features/admin/shared/types";
@@ -50,27 +50,100 @@ function StatusTile({ label, value, sub, level, onClick }: {
   );
 }
 
-interface Alert { level: "warn" | "error"; msg: string; route?: string }
+function WhatNeedsAttention({ status, loading, navigate }: {
+  status: CommandCenterStatus | null;
+  loading: boolean;
+  navigate: (path: string) => void;
+}) {
+  if (loading || !status) {
+    return (
+      <div className="rounded-lg border border-border bg-card px-4 py-3 animate-pulse">
+        <div className="h-4 w-36 bg-muted rounded mb-3" />
+        <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-7 rounded bg-muted" />)}</div>
+      </div>
+    );
+  }
 
-function buildAlerts(s: CommandCenterStatus): Alert[] {
-  const alerts: Alert[] = [];
-  if ((s.queue_failed ?? 0) > 10)
-    alerts.push({ level: "error", msg: `${s.queue_failed} AI jobs failed in queue`, route: "/admin/health" });
-  if (s.pipeline_status === "failed")
-    alerts.push({ level: "error", msg: "AFL pipeline last run failed", route: "/admin/health" });
-  if ((s.cron_failed_count ?? 0) > 0)
-    alerts.push({ level: "warn", msg: `${s.cron_failed_count} cron jobs reporting failure`, route: "/admin/health" });
-  if ((s.fantasy_unmatched_count ?? 0) > 20)
-    alerts.push({ level: "warn", msg: `${s.fantasy_unmatched_count} fantasy prices unmatched`, route: "/admin/command" });
-  if (!s.market_watch_last_refresh)
-    alerts.push({ level: "warn", msg: "Market Watch has no snapshot — refresh required", route: "/admin/command" });
-  if ((s.ai_missing_players ?? 0) > 100)
-    alerts.push({ level: "warn", msg: `${s.ai_missing_players} players missing AI analysis`, route: "/admin/command" });
-  if ((s.rankings_cache_rows ?? 0) < 300)
-    alerts.push({ level: "error", msg: `Rankings cache only has ${s.rankings_cache_rows} rows`, route: "/admin/health" });
-  if ((s.queue_pending ?? 0) > 200)
-    alerts.push({ level: "warn", msg: `AI backlog high — ${s.queue_pending} jobs pending`, route: "/admin/health" });
-  return alerts;
+  interface ActionItem {
+    level: "error" | "warn" | "ok";
+    title: string;
+    detail: string;
+    action?: string;
+    route?: string;
+  }
+
+  const items: ActionItem[] = [];
+
+  const pipelineMinsAgo = status.pipeline_last_run
+    ? (Date.now() - new Date(status.pipeline_last_run).getTime()) / 60000
+    : null;
+
+  if (status.pipeline_status === "failed")
+    items.push({ level: "error", title: "Pipeline failed", detail: "Last AFL pipeline run ended in an error — rerun from Command Center", action: "Go to Command Center", route: "/admin/command" });
+
+  if ((status.rankings_cache_rows ?? 0) < 300)
+    items.push({ level: "error", title: `Rankings cache low (${status.rankings_cache_rows} rows)`, detail: "Expected 600+ players — trigger a cache refresh", action: "Command Center", route: "/admin/command" });
+
+  if ((status.ai_missing_players ?? 0) > 300)
+    items.push({ level: "error", title: `${status.ai_missing_players} players have no AI analysis`, detail: "Critical AI gap — run AI pipeline immediately", action: "Command Center", route: "/admin/command" });
+  else if ((status.ai_missing_players ?? 0) > 100)
+    items.push({ level: "warn", title: `${status.ai_missing_players} players missing AI summaries`, detail: "Run AI pipeline to fill coverage gap", action: "Command Center", route: "/admin/command" });
+
+  if (!status.market_watch_last_refresh)
+    items.push({ level: "warn", title: "Market Watch snapshot is empty", detail: "No snapshot exists — refresh market watch to populate", action: "Command Center", route: "/admin/command" });
+
+  if ((status.queue_failed ?? 0) > 10)
+    items.push({ level: "error", title: `${status.queue_failed} AI jobs failed`, detail: "High failure count in generation queue — check logs", action: "Health", route: "/admin/health" });
+
+  if (pipelineMinsAgo !== null && pipelineMinsAgo > 1440 && status.pipeline_status !== "running")
+    items.push({ level: "warn", title: "Pipeline not run in 24+ hours", detail: "Schedule may have lapsed — check cron jobs in Health", action: "Health", route: "/admin/health" });
+
+  if ((status.edge_board_rows ?? 0) < 5)
+    items.push({ level: "warn", title: `Edge board has ${status.edge_board_rows ?? 0} rows`, detail: "Edge board is nearly empty — refresh it from Command Center", action: "Command Center", route: "/admin/command" });
+
+  if ((status.fantasy_unmatched_count ?? 0) > 20)
+    items.push({ level: "warn", title: `${status.fantasy_unmatched_count} unmatched fantasy prices`, detail: "Open Name Resolver in Price Ingest to fix", action: "Price Ingest", route: "/admin/command" });
+
+  if (items.length === 0) {
+    return (
+      <div className="rounded-lg border border-emerald-900/30 bg-emerald-950/10 px-4 py-3 flex items-center gap-3">
+        <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
+        <div>
+          <p className="text-sm font-semibold text-emerald-300">Nothing needs attention right now</p>
+          <p className="text-xs text-emerald-400/70 mt-0.5">All systems are healthy and data is fresh</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-border bg-muted/20 flex items-center gap-2">
+        <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+        <span className="text-xs font-semibold text-foreground">What Needs Attention</span>
+        <span className="ml-auto text-[11px] text-muted-foreground">{items.length} item{items.length !== 1 ? "s" : ""}</span>
+      </div>
+      <div className="divide-y divide-border/30">
+        {items.map((item, i) => (
+          <div key={i} className="flex items-center gap-3 px-4 py-2.5">
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${item.level === "error" ? "bg-red-500 animate-pulse" : "bg-amber-500"}`} />
+            <div className="flex-1 min-w-0">
+              <p className={`text-xs font-semibold leading-tight ${item.level === "error" ? "text-red-300" : "text-amber-300"}`}>{item.title}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight">{item.detail}</p>
+            </div>
+            {item.route && (
+              <button
+                onClick={() => navigate(item.route!)}
+                className="shrink-0 text-[10px] font-semibold text-muted-foreground hover:text-foreground border border-border rounded px-2 py-1 transition-colors"
+              >
+                {item.action ?? "View"}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 interface RunRow {
@@ -225,7 +298,6 @@ export default function AdminDashboard() {
     }
   }
 
-  const alerts = status ? buildAlerts(status) : [];
 
   const tiles = [
     {
@@ -330,35 +402,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {!loading && alerts.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Active Alerts</p>
-          {alerts.map((a, i) => (
-            <button
-              key={i}
-              onClick={() => a.route && navigate(a.route)}
-              className={`w-full flex items-center gap-3 rounded-lg border px-4 py-2.5 text-left hover:opacity-80 transition-opacity ${
-                a.level === "error"
-                  ? "border-red-500/30 bg-red-950/10"
-                  : "border-amber-500/30 bg-amber-950/10"
-              }`}
-            >
-              {a.level === "error"
-                ? <XCircle className="h-4 w-4 text-red-400 shrink-0" />
-                : <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />}
-              <span className={`text-sm flex-1 ${a.level === "error" ? "text-red-300" : "text-amber-300"}`}>{a.msg}</span>
-              {a.route && <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {!loading && alerts.length === 0 && status && (
-        <div className="flex items-center gap-3 rounded-lg border border-emerald-500/20 bg-emerald-950/10 px-4 py-3">
-          <CheckCircle className="h-4 w-4 text-emerald-400 shrink-0" />
-          <span className="text-sm text-emerald-300">All systems operational — no active alerts</span>
-        </div>
-      )}
+      <WhatNeedsAttention status={status} loading={loading} navigate={navigate} />
 
       {!loading && status && (
         <div className="space-y-2">
