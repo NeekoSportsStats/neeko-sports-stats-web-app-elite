@@ -31,10 +31,10 @@ function toMWPlayerRow(r: RankingRow): MWPlayerRow {
     team_name: r.team_name ?? r.team ?? "",
     position: r.position ?? "",
     price: r.price ?? 0,
-    prev_price: null,
-    price_change: null,
-    price_change_pct: null,
-    projection: r.projection ?? 0,
+    prev_price: r.prev_price ?? null,
+    price_change: r.price_change ?? null,
+    price_change_pct: r.price_change_pct ?? null,
+    projection: r.projection ?? null,
     season_avg: r.season_avg ?? null,
     last_3_avg: r.last_3_avg ?? null,
     last_5_avg: null,
@@ -43,18 +43,20 @@ function toMWPlayerRow(r: RankingRow): MWPlayerRow {
     edge: r.edge ?? null,
     value_score: r.value_score ?? null,
     signal: r.signal ?? null,
+    signal_display: r.signal_display ?? null,
     category: r.category ?? null,
     action: r.action ?? null,
     why: r.why ?? null,
     why_long: r.why_long ?? null,
     matchup_label: r.matchup_label ?? null,
     matchup_rating: null,
-    matchup_multiplier: null,
+    matchup_multiplier: r.matchup_multiplier ?? null,
     consistency: r.consistency ?? null,
     neeko_rating: r.neeko_rating ?? null,
     status: r.status ?? null,
     manual_status: r.manual_status ?? null,
     is_bye: r.is_bye ?? false,
+    is_injured: r.is_injured ?? false,
     cached_at: r.cached_at ?? null,
     display_signal: displaySignal,
     access_tier: (r.access_tier as "premium" | "free" | "locked") ?? "locked",
@@ -1249,7 +1251,6 @@ export default function Index() {
 
   const [players, setPlayers]   = useState<RankingRow[]>([]);
   const [playersLoading, setPlayersLoading] = useState(true);
-  const [mwPlayers, setMwPlayers] = useState<MWPlayerRow[]>([]);
   const [mwLoading, setMwLoading] = useState(true);
 
 
@@ -1267,88 +1268,18 @@ export default function Index() {
         return;
       }
 
-      console.log("[TRACE LANDING RAW]", (data as any[])?.filter(p =>
-        ["Max Holmes","Nick Daicos","Dayne Zorko"].includes(p.player_name)
-      ));
       const mapped = ((data ?? []) as any[]).map(mapRankingRow);
-      console.log("[TRACE LANDING MAPPED]", mapped.filter(p =>
-        ["Max Holmes","Nick Daicos","Dayne Zorko"].includes(p.player_name)
-      ));
 
       setPlayers(mapped);
       setPlayersLoading(false);
-    })();
-  }, []);
-
-  useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase.rpc("get_market_watch_safe", {
-        p_user_id: null,
-        p_is_bot: false,
-        p_limit: 100,
-      });
-
-      if (error) {
-        console.error("[LandingMW] fetch error:", error.message);
-        setMwLoading(false);
-        return;
-      }
-
-      const rows: MWPlayerRow[] = ((data ?? []) as any[]).map((r): MWPlayerRow => {
-        const catRaw = (r.category ?? "").toLowerCase();
-        const displaySignal: "TARGET" | "WATCH" | "AVOID" =
-          catRaw === "target" ? "TARGET" : catRaw === "avoid" ? "AVOID" : "WATCH";
-        const isBye = r.is_bye === true ||
-          (r.status ?? '').toLowerCase() === 'bye' ||
-          (r.manual_status ?? '').toLowerCase() === 'bye';
-        return {
-          player_id: Number(r.player_id),
-          player_name: r.player_name,
-          team: r.team ?? r.team_name ?? '',
-          team_name: r.team_name ?? r.team ?? '',
-          position: r.player_position ?? r.position ?? '',
-          price: r.price != null ? Number(r.price) : 0,
-          prev_price: r.prev_price != null ? Number(r.prev_price) : null,
-          price_change: r.price_change != null ? Number(r.price_change) : null,
-          price_change_pct: null,
-          projection: r.projection != null ? Number(r.projection) : null,
-          season_avg: r.season_avg != null ? Number(r.season_avg) : null,
-          last_3_avg: r.last_3_avg != null ? Number(r.last_3_avg) : null,
-          last_5_avg: r.last_5_avg != null ? Number(r.last_5_avg) : null,
-          games_played: r.games_played != null ? Number(r.games_played) : null,
-          breakeven: r.breakeven != null ? Number(r.breakeven) : null,
-          edge: r.edge != null ? Number(r.edge) : null,
-          value_score: r.value_score != null ? Number(r.value_score) : null,
-          signal: r.signal ?? null,
-          signal_display: r.signal_display ?? null,
-          category: r.category ?? null,
-          action: r.action ?? null,
-          why: r.why ?? null,
-          why_long: r.why_long ?? null,
-          matchup_label: r.matchup_label ?? null,
-          matchup_rating: null,
-          matchup_multiplier: r.matchup_multiplier != null ? Number(r.matchup_multiplier) : null,
-          consistency: r.consistency != null ? Number(r.consistency) : null,
-          neeko_rating: r.neeko_rating != null ? Number(r.neeko_rating) : null,
-          status: r.status ?? null,
-          manual_status: r.manual_status ?? null,
-          is_bye: isBye,
-          cached_at: r.cached_at ?? null,
-          display_signal: displaySignal,
-          access_tier: (r.access_tier as "premium" | "free" | "locked") ?? 'locked',
-        };
-      });
-
-      console.log("[TRACE LANDING MW RAW]", (data as any[])?.filter(p =>
-        ["Max Holmes","Nick Daicos","Dayne Zorko"].includes(p.player_name)
-      ));
-      console.log("[TRACE LANDING MW MAPPED]", rows.filter(p =>
-        ["Max Holmes","Nick Daicos","Dayne Zorko"].includes(p.player_name)
-      ));
-      setMwPlayers(rows.filter(p => !p.is_bye));
       setMwLoading(false);
     })();
   }, []);
+
+  const mwPlayers = useMemo<MWPlayerRow[]>(
+    () => players.map(toMWPlayerRow).filter(p => !p.is_bye && !p.is_injured),
+    [players]
+  );
 
   const market = useMemo(
     () => classifyPlayers(mwPlayers),

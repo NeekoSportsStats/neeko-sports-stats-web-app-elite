@@ -7,6 +7,51 @@ import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
 import { MWPlayerRow } from "./types";
 import { classifyPlayers, DerivedPlayer } from "./engine";
+import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
+import type { RankingRow } from "@/features/afl/rankings/components/types";
+
+function rankingToMW(r: RankingRow): MWPlayerRow {
+  const catRaw = (r.category ?? "").toLowerCase();
+  const displaySignal: "TARGET" | "WATCH" | "AVOID" =
+    catRaw === "target" ? "TARGET" : catRaw === "avoid" ? "AVOID" : "WATCH";
+  return {
+    player_id: Number(r.player_id ?? 0),
+    player_name: r.player_name,
+    team: r.team ?? "",
+    team_name: r.team_name ?? r.team ?? "",
+    position: r.position ?? "",
+    price: r.price ?? 0,
+    prev_price: r.prev_price ?? null,
+    price_change: r.price_change ?? null,
+    price_change_pct: r.price_change_pct ?? null,
+    projection: r.projection ?? null,
+    season_avg: r.season_avg ?? null,
+    last_3_avg: r.last_3_avg ?? null,
+    last_5_avg: null,
+    games_played: r.games_played ?? null,
+    breakeven: r.breakeven ?? null,
+    edge: r.edge ?? null,
+    value_score: r.value_score ?? null,
+    signal: r.signal ?? null,
+    signal_display: r.signal_display ?? null,
+    category: r.category ?? null,
+    action: r.action ?? null,
+    why: r.why ?? null,
+    why_long: r.why_long ?? null,
+    matchup_label: r.matchup_label ?? null,
+    matchup_rating: null,
+    matchup_multiplier: r.matchup_multiplier ?? null,
+    consistency: r.consistency ?? null,
+    neeko_rating: r.neeko_rating ?? null,
+    status: r.status ?? null,
+    manual_status: r.manual_status ?? null,
+    is_bye: r.is_bye ?? false,
+    is_injured: r.is_injured ?? false,
+    cached_at: r.cached_at ?? null,
+    display_signal: displaySignal,
+    access_tier: r.access_tier ?? "locked",
+  };
+}
 
 const _MW_STALE_MS = 60_000;
 const _mwCache: { data: MWPlayerRow[] | null; ts: number; userId: string | null; tier: string | null } = {
@@ -56,59 +101,17 @@ export default function MarketWatchPageElite() {
     setLoading(true);
     setFetchError(null);
     try {
-      const { data, error } = await supabase.rpc("get_market_watch_safe", {
+      const { data, error } = await supabase.rpc("get_rankings_safe", {
         p_user_id: userId,
         p_is_bot: false,
-        p_limit: 250,
+        p_limit: isPremium ? 700 : 250,
       });
 
       if (error) throw error;
 
-      const mapped: MWPlayerRow[] = (data ?? []).map((r: any) => {
-        const sigDisplay = (r.signal_display ?? "").toUpperCase();
-        const displaySignal: "TARGET" | "WATCH" | "AVOID" =
-          sigDisplay.includes("TARGET") ? "TARGET" : sigDisplay.includes("AVOID") ? "AVOID" : "WATCH";
-
-        const isBye = r.is_bye === true;
-        const isInjured = r.is_injured === true;
-
-        return {
-          player_id: r.player_id,
-          player_name: r.player_name,
-          team: r.team ?? '',
-          team_name: r.team_name ?? '',
-          position: r.player_position ?? '',
-          price: r.price != null ? Number(r.price) : 0,
-          prev_price: r.prev_price != null ? Number(r.prev_price) : null,
-          price_change: r.price_change != null ? Number(r.price_change) : null,
-          price_change_pct: null,
-          projection: r.projection != null ? Number(r.projection) : null,
-          season_avg: r.season_avg != null ? Number(r.season_avg) : null,
-          last_3_avg: r.last_3_avg != null ? Number(r.last_3_avg) : null,
-          last_5_avg: r.last_5_avg != null ? Number(r.last_5_avg) : null,
-          games_played: r.games_played != null ? Number(r.games_played) : null,
-          breakeven: r.breakeven != null ? Number(r.breakeven) : null,
-          value_score: r.value_score != null ? Number(r.value_score) : null,
-          signal: r.signal ?? null,
-          signal_display: r.signal_display ?? null,
-          category: r.category ?? null,
-          action: r.action ?? null,
-          why: r.why ?? null,
-          why_long: r.why_long ?? null,
-          matchup_label: r.matchup_label ?? null,
-          matchup_rating: r.matchup_rating ?? null,
-          matchup_multiplier: r.matchup_multiplier != null ? Number(r.matchup_multiplier) : null,
-          consistency: r.consistency != null ? Number(r.consistency) : null,
-          neeko_rating: r.neeko_rating != null ? Number(r.neeko_rating) : null,
-          is_bye: isBye,
-          is_injured: isInjured,
-          status: r.status ?? null,
-          manual_status: r.manual_status ?? null,
-          cached_at: r.cached_at ?? null,
-          display_signal: displaySignal,
-          access_tier: r.access_tier ?? 'locked',
-        };
-      });
+      const mapped: MWPlayerRow[] = ((data ?? []) as any[])
+        .map(mapRankingRow)
+        .map(rankingToMW);
 
       const finalPlayers = mapped.filter(p => !p.is_bye && !p.is_injured);
 

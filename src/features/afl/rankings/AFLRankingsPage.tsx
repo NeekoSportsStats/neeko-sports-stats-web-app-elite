@@ -320,13 +320,7 @@ export default function AFLRankingsPage() {
       setLoading(false);
       return;
     }
-    console.log("[TRACE RANKINGS RAW]", (data as any[])?.filter(p =>
-      ["Max Holmes","Nick Daicos","Dayne Zorko"].includes(p.player_name)
-    ));
     const normalized = ((data as any[]) ?? []).map(mapRankingRow);
-    console.log("[TRACE RANKINGS MAPPED]", normalized.filter(p =>
-      ["Max Holmes","Nick Daicos","Dayne Zorko"].includes(p.player_name)
-    ));
     _rankingsCache.data = normalized;
     _rankingsCache.ts = Date.now();
     _rankingsCache.userId = userId;
