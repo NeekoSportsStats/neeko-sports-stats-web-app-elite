@@ -81,7 +81,7 @@ export function CollapsibleSEO() {
                 { label: "Midfielders", href: "/sports/afl/positions/mid", sub: "Top MID rankings" },
                 { label: "Forwards",    href: "/sports/afl/positions/fwd", sub: "Top FWD rankings" },
                 { label: "Defenders",   href: "/sports/afl/positions/def", sub: "Top DEF rankings" },
-                { label: "Rucks",       href: "/sports/afl/positions/ruc", sub: "Top RUC rankings" },
+                { label: "Rucks",       href: "/sports/afl/positions/ruck", sub: "Top RUC rankings" },
               ].map(({ label, href, sub }) => (
                 <a
                   key={href}

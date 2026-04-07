@@ -21,6 +21,15 @@
       ]
     }
   ],
+  "redirects": [
+    { "source": "/products/:path*", "destination": "/404", "permanent": false, "statusCode": 410 },
+    { "source": "/nba/:path*",      "destination": "/404", "permanent": false, "statusCode": 410 },
+    { "source": "/epl/:path*",      "destination": "/404", "permanent": false, "statusCode": 410 },
+    { "source": "/sports/nba/:path*", "destination": "/404", "permanent": false, "statusCode": 410 },
+    { "source": "/sports/epl/:path*", "destination": "/404", "permanent": false, "statusCode": 410 },
+    { "source": "/sports/nba",      "destination": "/404", "permanent": false, "statusCode": 410 },
+    { "source": "/sports/epl",      "destination": "/404", "permanent": false, "statusCode": 410 }
+  ],
   "rewrites": [
     {
       "source": "/functions/v1/:path*",

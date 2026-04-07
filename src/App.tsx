@@ -155,6 +155,8 @@ function App() {
       <Route path="/nba/*" element={<NotFound />} />
       <Route path="/epl/*" element={<NotFound />} />
       <Route path="/products/*" element={<NotFound />} />
+      <Route path="/sports/nba/*" element={<NotFound />} />
+      <Route path="/sports/epl/*" element={<NotFound />} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>

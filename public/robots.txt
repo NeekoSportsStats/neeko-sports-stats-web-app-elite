@@ -19,5 +19,10 @@ Disallow: /checkout
 Disallow: /success
 Disallow: /cancel
 Disallow: /functions/
+Disallow: /products/
+Disallow: /nba/
+Disallow: /epl/
+Disallow: /sports/nba/
+Disallow: /sports/epl/
 
 Sitemap: https://neekostats.com.au/sitemap.xml

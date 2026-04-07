@@ -13,6 +13,13 @@ function nameToSlug(name: string): string {
   return name.toLowerCase().replace(/\s+/g, "-");
 }
 
+function isValidSlug(slug: string): boolean {
+  if (!slug || slug.length < 3) return false;
+  if (!/^[a-z]/.test(slug)) return false;
+  if (!/[a-z0-9]$/.test(slug)) return false;
+  return true;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
@@ -29,6 +36,7 @@ Deno.serve(async (req: Request) => {
       .from("player_rankings_cache")
       .select("player_name, cached_at")
       .not("player_name", "is", null)
+      .neq("player_name", "")
       .order("neeko_rating", { ascending: false })
       .limit(1000);
 
@@ -38,8 +46,9 @@ Deno.serve(async (req: Request) => {
 
     const uniquePlayers = new Map<string, string>();
     for (const p of players ?? []) {
-      if (!p.player_name) continue;
-      const slug = nameToSlug(p.player_name);
+      if (!p.player_name || p.player_name.trim().length < 3) continue;
+      const slug = nameToSlug(p.player_name.trim());
+      if (!isValidSlug(slug)) continue;
       if (!uniquePlayers.has(slug)) {
         uniquePlayers.set(slug, p.cached_at ?? new Date().toISOString());
       }
