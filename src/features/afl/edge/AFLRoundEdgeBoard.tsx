@@ -823,6 +823,14 @@ export default function AFLRoundEdgeBoard() {
 
       const mapped = ((rankResult.data as any[]) ?? []).map(mapRankingRow);
 
+      if (mapped.length === 0) {
+        console.warn("[EdgeBoard] RPC returned 0 players", {
+          p_user_id: user?.id ?? null,
+          p_is_bot: false,
+          p_limit: 50,
+        });
+      }
+
       setPlayers(mapped);
       setRefreshedAt(null);
 
