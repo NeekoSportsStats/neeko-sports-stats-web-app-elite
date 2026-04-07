@@ -30,7 +30,6 @@ export function usePlayerExplorer() {
       ]);
       if (explorerRes.status === "fulfilled") {
         const explorerData = (explorerRes.value.data as PlayerRow[]) ?? [];
-        console.log("Player Lab status sample:", explorerData.slice(0, 5).map(p => ({ name: p.player_name, status: p.status, is_available: p.is_available })));
         setRows(explorerData);
       }
       if (signalsRes.status === "fulfilled") {

@@ -59,11 +59,6 @@ const NeekoPlusPurchase = () => {
     track("view_pricing_page", { source: "neeko_plus" });
   }, []);
 
-  useEffect(() => {
-    if (isPremium) {
-      console.log("User already premium");
-    }
-  }, [isPremium]);
 
   const handleSubscribe = async (plan: Plan) => {
     if (isPremium) {

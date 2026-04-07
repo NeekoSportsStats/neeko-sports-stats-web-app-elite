@@ -27,20 +27,17 @@ export function initAnalytics() {
       "https://eu.posthog.com"; // ✅ FIXED HOST
 
     if (!key) {
-      console.log("Analytics disabled - no PostHog key");
       return;
     }
 
     posthog.init(key, {
       api_host: host,
-      capture_pageview: true, // ✅ turn ON
+      capture_pageview: true,
       persistence: "localStorage",
       advanced_disable_feature_flags: true,
     });
-
-    console.log("Analytics initialized");
-  } catch (err) {
-    console.warn("Analytics init failed:", err);
+  } catch {
+    // init failure is non-critical
   }
 }
 
@@ -55,8 +52,8 @@ export function track(event: string, properties?: Record<string, unknown>) {
       ...properties,
       session_id: getSessionId(), // helpful for debugging
     });
-  } catch (err) {
-    console.warn("[analytics] posthog failed:", err);
+  } catch {
+    // non-critical
   }
 }
 
@@ -72,8 +69,8 @@ export function identifyUser(user: { id: string; email?: string }) {
     posthog.identify(user.id, {
       email: user.email ?? undefined,
     });
-  } catch (err) {
-    console.warn("PostHog identify failed", err);
+  } catch {
+    // non-critical
   }
 }
 
@@ -85,7 +82,7 @@ export function resetUser() {
 
   try {
     posthog.reset();
-  } catch (err) {
-    console.warn("PostHog reset failed", err);
+  } catch {
+    // non-critical
   }
 }

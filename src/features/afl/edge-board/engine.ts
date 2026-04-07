@@ -18,7 +18,6 @@ const PLAYERS_PER_SECTION = 3;
 
 export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
   if (players.length === 0) {
-    console.warn("[EdgeBoard] No players supplied — pipeline may not have run yet");
     return { mustHave: [], breakout: [], avoid: [], allEdgeIds: new Set() };
   }
 

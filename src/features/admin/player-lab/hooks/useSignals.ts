@@ -27,7 +27,6 @@ export function useSignals() {
         .not("signal", "is", null)
         .order("edge", { ascending: false })
         .limit(300);
-      console.log("Signals master:", data?.length, "rows | error:", error);
       setMasterRows((data as SignalMasterRow[]) ?? []);
     } else {
       const viewMap: Record<Exclude<SignalCategory, "master">, string> = {
@@ -43,7 +42,6 @@ export function useSignals() {
         .select("*")
         .order("total_score", { ascending: false })
         .limit(50);
-      console.log(`Signals [${cat}]:`, data?.length, "rows | error:", error);
       setLabRows((data as LabPlayerRow[]) ?? []);
     }
     setLoading(false);

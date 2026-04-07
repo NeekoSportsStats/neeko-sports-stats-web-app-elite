@@ -165,7 +165,6 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
               score: Number(d.fantasy_points),
               label: d.round_label ?? formatRoundLabel(Number(d.round_number ?? 0)),
             }));
-          console.log(row.player_name, pts.map((p) => p.label));
           setScoreHistory(pts);
           return;
         }
@@ -189,7 +188,6 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
               score: Number(d.fantasy_score),
               label: formatRoundLabel(Number(d.week ?? 0)),
             }));
-          console.log(row.player_name, "(fallback)", pts.map((p) => p.label));
           setScoreHistory(pts);
         }
       } catch {

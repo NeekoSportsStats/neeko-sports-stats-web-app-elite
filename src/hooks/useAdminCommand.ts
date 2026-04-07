@@ -20,8 +20,6 @@ export async function runCommand(
 
   const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-command`;
 
-  console.log("[admin-command] →", command, payload ? { payload } : "");
-
   let raw: Record<string, unknown>;
   try {
     const res = await fetch(url, {
@@ -43,7 +41,6 @@ export async function runCommand(
   const succeeded = raw.ok === true;
 
   if (succeeded) {
-    console.log("[admin-command] ✓", command, `(${raw.duration_ms ?? "?"}ms)`, raw.message ?? "");
     window.dispatchEvent(new Event("neeko:refresh"));
   } else {
     console.error("[admin-command] ✗", command, raw.error ?? raw);

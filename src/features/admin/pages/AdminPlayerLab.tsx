@@ -58,7 +58,6 @@ function PriceFullTable() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase.from("v_player_price_full").select("*").limit(600);
-    console.log("Price full table:", data?.length, "rows | error:", error);
     setRows((data as PriceRow[]) ?? []);
     setLoading(false);
   }, []);

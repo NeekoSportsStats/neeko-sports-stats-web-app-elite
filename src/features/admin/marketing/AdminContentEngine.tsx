@@ -679,7 +679,6 @@ function TodayTopPostsSection() {
   const generate = async () => {
     setLoading(true);
     try {
-      console.log("[AdminContentEngine] Fetching rankings from player_rankings_cache");
       const { data, error } = await supabase
         .schema("afl" as never)
         .from("player_rankings_cache")
@@ -695,11 +694,8 @@ function TodayTopPostsSection() {
       }
 
       if (!data || data.length === 0) {
-        console.warn("[AdminContentEngine] No players returned from rankings query");
         return;
       }
-
-      console.log(`[AdminContentEngine] Fetched ${data.length} players`);
 
       const players = data as TopPostPlayer[];
       const valuePlayer = [...players].sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))[0];
@@ -1458,8 +1454,6 @@ export default function AdminContentEngine() {
     setGeneratingPostId(post.id);
     updatePost({ ...post, status: "generating" });
 
-    console.log("[ContentEngine] Generating post:", { post_id: post.id, category: post.category, player_id: post.player_id, player_name: post.player_name });
-
     try {
       const { data, error: fnError } = await supabase.functions.invoke(
         "generate-content-post",
@@ -1469,7 +1463,6 @@ export default function AdminContentEngine() {
       if (fnError) throw new Error(fnError.message ?? "Post generation failed");
       if (!data?.post) throw new Error(data?.error ?? "No post returned");
 
-      console.log("[ContentEngine] Post generated:", post.id, "status:", data.post.status);
       updatePost(data.post as WeeklyContentPost);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Generation failed";
