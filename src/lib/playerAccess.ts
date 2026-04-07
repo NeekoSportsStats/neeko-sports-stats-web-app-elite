@@ -89,9 +89,6 @@ export function sanitizeLockedPlayerData<T extends {
   why?: string | null;
   why_long?: string | null;
   value_score?: number | null;
-  best_value_score?: number | null;
-  avg_last_3?: number | null;
-  avg_last_5?: number | null;
 }>(
   player: T,
   isPremium: boolean,
@@ -107,15 +104,12 @@ export function sanitizeLockedPlayerData<T extends {
     };
   }
 
-  // Strip advanced stats for locked players
+  // Strip premium-only fields for locked players
   return {
     ...player,
     why: null,
     why_long: null,
     value_score: null,
-    best_value_score: null,
-    avg_last_3: null,
-    avg_last_5: null,
     is_locked: true,
   };
 }
