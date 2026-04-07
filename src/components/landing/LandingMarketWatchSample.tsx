@@ -161,6 +161,9 @@ export function LandingMarketWatchSample({ buys, holds, sells, loading }: Landin
   const watch   = available.filter(p => p.display_signal === "WATCH").slice(0, CARDS_PER_CAT);
   const avoid   = available.filter(p => p.display_signal === "AVOID").slice(0, CARDS_PER_CAT);
 
+  const freeRowCount = targets.length + watch.length + avoid.length;
+  const lockedRowCount = Math.max(0, 6 - freeRowCount);
+
   const players: DerivedPlayer[] = [...targets, ...watch, ...avoid];
 
   return (
@@ -209,8 +212,9 @@ export function LandingMarketWatchSample({ buys, holds, sells, loading }: Landin
               {players.map((player, idx) => (
                 <PlayerRow key={player.player_id} player={player} index={idx + 1} />
               ))}
-              <LockedRow index={players.length + 1} />
-              <LockedRow index={players.length + 2} />
+              {Array.from({ length: lockedRowCount }).map((_, i) => (
+                <LockedRow key={`locked-${i}`} index={players.length + i + 1} />
+              ))}
             </>
           ) : (
             <div className="px-4 py-10 text-center bg-[#0c0c0c]">
