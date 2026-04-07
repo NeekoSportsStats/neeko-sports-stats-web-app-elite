@@ -1,4 +1,4 @@
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
 import { track } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
@@ -14,18 +14,33 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
 
 const POLL_INTERVAL_MS = 2000;
-const POLL_MAX_ATTEMPTS = 15; // 30 seconds total polling window
+const POLL_MAX_ATTEMPTS = 15;
+const REDIRECT_DELAY_MS = 1500;
+const REDIRECT_DESTINATION = "/sports/afl/rankings";
 
 export default function Success() {
   const [params] = useSearchParams();
   const sessionId = params.get("session_id");
+  const navigate = useNavigate();
 
   const { loading, isPremium, refreshPremiumStatus, user } = useAuth();
   const refreshTriggeredRef = useRef(false);
+  const hasRedirectedRef = useRef(false);
   const pollCountRef = useRef(0);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [authTimedOut, setAuthTimedOut] = useState(false);
   const [polling, setPolling] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
+
+  const triggerRedirect = () => {
+    if (hasRedirectedRef.current) return;
+    hasRedirectedRef.current = true;
+    setRedirecting(true);
+    redirectTimerRef.current = setTimeout(() => {
+      navigate(REDIRECT_DESTINATION, { replace: true });
+    }, REDIRECT_DELAY_MS);
+  };
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -64,6 +79,7 @@ export default function Success() {
         const { data } = await supabase.rpc("get_access_state").catch(() => ({ data: null }));
         if (data?.is_premium === true) {
           setPolling(false);
+          triggerRedirect();
           return;
         }
 
@@ -77,13 +93,17 @@ export default function Success() {
 
     return () => {
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
     };
   }, [loading, authTimedOut, user, refreshPremiumStatus, sessionId]);
 
   useEffect(() => {
-    if (isPremium && pollTimerRef.current) {
-      clearTimeout(pollTimerRef.current);
-      setPolling(false);
+    if (isPremium) {
+      if (pollTimerRef.current) {
+        clearTimeout(pollTimerRef.current);
+        setPolling(false);
+      }
+      triggerRedirect();
     }
   }, [isPremium]);
 
@@ -128,10 +148,20 @@ export default function Success() {
             </p>
           </div>
 
-          {isPremium ? (
+          {redirecting ? (
+            <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4 space-y-3">
+              <p className="text-sm text-green-900 dark:text-green-100 font-medium">
+                Neeko+ Activated — taking you to premium insights...
+              </p>
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-green-600 dark:text-green-400 shrink-0" />
+                <p className="text-xs text-green-700 dark:text-green-300">Redirecting you now...</p>
+              </div>
+            </div>
+          ) : isPremium ? (
             <div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4 space-y-2">
               <p className="text-sm text-green-900 dark:text-green-100 font-medium">
-                ✓ Premium access activated successfully
+                Premium access activated successfully
               </p>
               {user?.email && (
                 <p className="text-xs text-green-700 dark:text-green-300">
