@@ -1286,6 +1286,20 @@ export default function Index() {
     [mwPlayers]
   );
 
+  useEffect(() => {
+    if (players.length === 0) return;
+    console.log("[FINAL RAW]", players.slice(0, 5));
+    const holmes = players.find(p => p.player_name === "Max Holmes");
+    if (holmes) console.log("[CHECK HOLMES RAW]", holmes);
+  }, [players]);
+
+  useEffect(() => {
+    if (mwPlayers.length === 0) return;
+    console.log("[FINAL MW DERIVED]", mwPlayers.slice(0, 5));
+    const holmes = mwPlayers.find(p => p.player_name === "Max Holmes");
+    if (holmes) console.log("[CHECK HOLMES MW]", holmes);
+  }, [mwPlayers]);
+
   const HOW_IT_WORKS = [
     { step: "01", icon: Database,  title: "Historical AFL Data Modelling",  desc: "Match data and player trends normalised into fantasy scoring metrics each round." },
     { step: "02", icon: Cpu,       title: "Projection Engine",              desc: "Estimates scoring ranges, ceilings and volatility per player." },
