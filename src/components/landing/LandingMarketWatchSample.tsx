@@ -45,7 +45,6 @@ function InjuryPill({ isInjured }: { isInjured: boolean }) {
 
 function formatValueScore(v: number | null | undefined): { label: string; textClass: string } {
   if (v == null) {
-    console.warn("[LandingMW] value_score is null — check pipeline output");
     return { label: "—", textClass: "text-white/30" };
   }
   const n = Number(v);
@@ -60,7 +59,9 @@ function formatValueScore(v: number | null | undefined): { label: string; textCl
 
 function PlayerRow({ player, index }: { player: DerivedPlayer; index: number }) {
   const tier = player.display_signal;
-  const rawVal = player.value_score != null ? Number(player.value_score) : null;
+  const rawVal = player.value_score != null
+    ? Number(player.value_score)
+    : (player.projection != null && player.breakeven != null ? player.projection - player.breakeven : null);
   const { label: vLabel, textClass: vClass } = formatValueScore(rawVal);
   const isInjured = (player.status ?? "").toLowerCase() === "injured" || (player.manual_status ?? "").toLowerCase() === "injured";
   const isBye = player.is_bye === true;
@@ -139,12 +140,6 @@ export function LandingMarketWatchSample({ buys, holds, sells, loading }: Landin
   const watch   = available.filter(p => p.display_signal === "WATCH").slice(0, CARDS_PER_CAT);
   const avoid   = available.filter(p => p.display_signal === "AVOID").slice(0, CARDS_PER_CAT);
 
-  if (!loading) {
-    console.log(`[LandingMW] targets:${targets.length} watch:${watch.length} avoid:${avoid.length} (real data only, no fallback)`);
-    if (targets.length === 0 && watch.length === 0 && avoid.length === 0) {
-      console.warn("[LandingMW] No market data — backend pipeline may not have run yet");
-    }
-  }
 
   const players: DerivedPlayer[] = [...targets, ...watch, ...avoid];
 

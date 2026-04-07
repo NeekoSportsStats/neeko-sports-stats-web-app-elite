@@ -93,10 +93,16 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
     STRONG_SELL: 4,
   };
 
+  function effectiveMWValue(p: DerivedPlayer): number {
+    if (p.value_score != null) return p.value_score;
+    if (p.projection != null && p.breakeven != null) return p.projection - p.breakeven;
+    return 0;
+  }
+
   const byTierThenEdge = (a: DerivedPlayer, b: DerivedPlayer) => {
     const tDiff = tierPriority[a._tier] - tierPriority[b._tier];
     if (tDiff !== 0) return tDiff;
-    return (b.value_score ?? 0) - (a.value_score ?? 0);
+    return effectiveMWValue(b) - effectiveMWValue(a);
   };
 
   return {

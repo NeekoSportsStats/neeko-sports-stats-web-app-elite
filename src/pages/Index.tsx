@@ -302,8 +302,8 @@ function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
                 }
 
                 const proj      = player.projection != null ? Math.round(player.projection) : null;
-                const edge      = (player as any).edge != null ? Number((player as any).edge) : null;
-                const aiHook    = (player as any).summary_short as string | null | undefined;
+                const edge      = player.edge != null ? Number(player.edge) : null;
+                const aiHook    = player.why ?? null;
 
                 return (
                   <div
