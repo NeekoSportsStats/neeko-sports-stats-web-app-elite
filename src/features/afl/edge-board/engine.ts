@@ -35,8 +35,14 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
     if (p.player_id) rankMap.set(p.player_id, i + 1);
   });
 
+  function effectiveValue(p: RankingRow): number {
+    if (p.value_score != null) return p.value_score;
+    if (p.projection != null && p.breakeven != null) return p.projection - p.breakeven;
+    return 0;
+  }
+
   const byValueDesc = [...available].sort(
-    (a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)
+    (a, b) => effectiveValue(b) - effectiveValue(a)
   );
 
   const usedIds = new Set<string>();

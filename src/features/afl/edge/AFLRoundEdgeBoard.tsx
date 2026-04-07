@@ -139,9 +139,12 @@ function getSectionLabel(section: Section): { emoji: string; label: string; acce
 
 function getPrimaryMetric(row: RankingRow, section: Section): { label: string; value: string; color: string } {
   switch (section) {
-    case "must_have":    return { label: "Value Score",  value: fmtValueScore(row.value_score),  color: getValueScoreColor(row.value_score) };
+    case "must_have": {
+      const vs = row.value_score ?? (row.projection != null && row.breakeven != null ? row.projection - row.breakeven : null);
+      return { label: "Value Score", value: fmtValueScore(vs), color: getValueScoreColor(vs) };
+    }
     case "breakout":     return { label: "Projection",   value: fmtInt(row.projection),    color: "text-sky-400" };
-    case "do_not_start": return { label: "Projection",   value: fmtInt(row.projection),              color: "text-red-400" };
+    case "do_not_start": return { label: "Projection",   value: fmtInt(row.projection),    color: "text-red-400" };
   }
 }
 
