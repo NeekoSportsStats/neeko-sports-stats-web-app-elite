@@ -231,7 +231,11 @@ function EdgeBoardPreview({ players, loading }: EdgeBoardPreviewProps) {
     );
 
     const byValueDesc = [...available].sort(
-      (a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)
+      (a, b) => {
+        const aVal = a.value_score ?? (a.projection != null && a.breakeven != null ? a.projection - a.breakeven : 0);
+        const bVal = b.value_score ?? (b.projection != null && b.breakeven != null ? b.projection - b.breakeven : 0);
+        return bVal - aVal;
+      }
     );
 
     const usedIds = new Set<string | number>();

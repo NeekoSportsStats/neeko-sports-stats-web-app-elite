@@ -48,7 +48,7 @@ export function getDisplayTrend(row: RankingRow): string | null {
 
 export function getTrendWhyText(row: RankingRow): string {
   const ts = row.trend_score;
-  if (ts == null) return "Insufficient data to project this round.";
+  if (ts == null) return row.projection != null ? "Projection available — trend data updating." : "Data updating.";
   if (ts >= 12) return "Model projects well above baseline — strong breakout signal.";
   if (ts >= 5)  return "Projecting above baseline — positive forward outlook.";
   if (ts >= -3) return "Projection aligned with baseline — steady performer.";
