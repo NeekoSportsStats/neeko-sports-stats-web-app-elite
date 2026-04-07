@@ -62,6 +62,22 @@ function PlayerRow({ player, index }: { player: DerivedPlayer; index: number }) 
   const rawVal = player.value_score != null
     ? Number(player.value_score)
     : (player.projection != null && player.breakeven != null ? player.projection - player.breakeven : null);
+  if (["Max Holmes","Nick Daicos","Dayne Zorko"].includes(player.player_name)) {
+    console.log("[TRACE VALUE LOGIC]", {
+      name: player.player_name,
+      projection: player.projection,
+      breakeven: player.breakeven,
+      value_score: player.value_score,
+      display_value: player.value_score ?? (
+        player.projection != null && player.breakeven != null
+          ? player.projection - player.breakeven
+          : null
+      ),
+      display_signal: player.display_signal,
+      category: player.category,
+      access_tier: player.access_tier,
+    });
+  }
   const { label: vLabel, textClass: vClass } = formatValueScore(rawVal);
   const isInjured = (player.status ?? "").toLowerCase() === "injured" || (player.manual_status ?? "").toLowerCase() === "injured";
   const isBye = player.is_bye === true;

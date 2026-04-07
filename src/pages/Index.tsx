@@ -1267,7 +1267,13 @@ export default function Index() {
         return;
       }
 
+      console.log("[TRACE LANDING RAW]", (data as any[])?.filter(p =>
+        ["Max Holmes","Nick Daicos","Dayne Zorko"].includes(p.player_name)
+      ));
       const mapped = ((data ?? []) as any[]).map(mapRankingRow);
+      console.log("[TRACE LANDING MAPPED]", mapped.filter(p =>
+        ["Max Holmes","Nick Daicos","Dayne Zorko"].includes(p.player_name)
+      ));
 
       setPlayers(mapped);
       setPlayersLoading(false);
@@ -1333,6 +1339,12 @@ export default function Index() {
         };
       });
 
+      console.log("[TRACE LANDING MW RAW]", (data as any[])?.filter(p =>
+        ["Max Holmes","Nick Daicos","Dayne Zorko"].includes(p.player_name)
+      ));
+      console.log("[TRACE LANDING MW MAPPED]", rows.filter(p =>
+        ["Max Holmes","Nick Daicos","Dayne Zorko"].includes(p.player_name)
+      ));
       setMwPlayers(rows.filter(p => !p.is_bye));
       setMwLoading(false);
     })();
