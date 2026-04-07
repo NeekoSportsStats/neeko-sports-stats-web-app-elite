@@ -12,9 +12,9 @@ function formatProj(v: number | null | undefined): string {
   return Math.round(Number(v)).toString();
 }
 
-type SignalTier = "TARGET" | "WATCH" | "AVOID";
+type DisplaySignal = "TARGET" | "WATCH" | "AVOID";
 
-function SignalPill({ tier }: { tier: SignalTier }) {
+function SignalPill({ tier, locked }: { tier: DisplaySignal; locked?: boolean }) {
   const config = {
     TARGET: { label: "TARGET", bg: "bg-green-500/15",  text: "text-green-400",  border: "border-green-500/30",  icon: TrendingUp },
     WATCH:  { label: "WATCH",  bg: "bg-yellow-400/10", text: "text-yellow-300", border: "border-yellow-400/20", icon: Minus },
@@ -22,115 +22,176 @@ function SignalPill({ tier }: { tier: SignalTier }) {
   };
   const { label, bg, text, border, icon: Icon } = config[tier];
   return (
-    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border ${bg} ${border}`}>
-      <Icon size={10} className={text} />
+    <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border ${bg} ${border} ${locked ? "opacity-50" : ""}`}>
+      {locked ? <Lock size={9} className={text} /> : <Icon size={10} className={text} />}
       <span className={`text-[10px] font-bold uppercase tracking-wide ${text}`}>{label}</span>
     </div>
   );
 }
 
-function StatusPill({ isBye }: { isBye: boolean }) {
-  if (!isBye) return null;
-  return (
-    <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[9px] font-bold uppercase tracking-wide">
-      BYE
-    </span>
-  );
-}
-
-function InjuryPill({ isInjured }: { isInjured: boolean }) {
-  if (!isInjured) return null;
-  return (
-    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-red-500/10 border border-red-500/30 text-red-400 text-[9px] font-bold uppercase tracking-wide">
-      <AlertCircle size={8} />
-      INJ
-    </span>
-  );
-}
-
-function formatValueScore(v: number | null | undefined): { label: string; textClass: string } {
-  if (v == null) return { label: "—", textClass: "text-white/30" };
+function formatValueScore(v: number | null | undefined): { label: string; textClass: string; isLocked: boolean } {
+  if (v == null) return { label: "Unlock", isLocked: true, textClass: "text-white/30" };
   const n = Number(v);
-  if (isNaN(n)) return { label: "—", textClass: "text-white/30" };
+  if (isNaN(n)) return { label: "Unlock", isLocked: true, textClass: "text-white/30" };
   const sign = n > 0 ? "+" : "";
   const formatted = `${sign}${n.toFixed(1)}`;
-  if (n >= 15) return { label: formatted, textClass: "text-green-400" };
-  if (n >= 5)  return { label: formatted, textClass: "text-yellow-300" };
-  if (n >= -5) return { label: formatted, textClass: "text-white/50" };
-  return { label: formatted, textClass: "text-red-400" };
+  if (n >= 15) return { label: formatted, isLocked: false, textClass: "text-green-400" };
+  if (n >= 5)  return { label: formatted, isLocked: false, textClass: "text-yellow-300" };
+  if (n >= -5) return { label: formatted, isLocked: false, textClass: "text-white/50" };
+  return { label: formatted, isLocked: false, textClass: "text-red-400" };
 }
 
-function buildInsightLine(player: DerivedPlayer): string | null {
-  const parts: string[] = [];
-  if (player.projection != null) parts.push(`Proj ${Math.round(Number(player.projection))}`);
-  if (player.breakeven != null) parts.push(`BE ${Math.round(Number(player.breakeven))}`);
-  const vs = player.value_score;
-  if (vs != null) {
-    const n = Number(vs);
-    const sign = n >= 0 ? "+" : "";
-    parts.push(`Edge ${sign}${n.toFixed(1)}`);
+function buildInsightLine(player: DerivedPlayer): { text: string; locked: boolean } {
+  const proj = player.projection != null ? `Proj ${Math.round(Number(player.projection))}` : null;
+  const be   = player.breakeven != null ? `BE ${Math.round(Number(player.breakeven))}` : null;
+  const vs   = player.value_score != null ? (() => {
+    const n = Number(player.value_score);
+    return `Edge ${n >= 0 ? "+" : ""}${n.toFixed(1)}`;
+  })() : null;
+
+  if (proj && be && vs) {
+    return { text: `${proj} | ${be} | ${vs}`, locked: false };
   }
-  return parts.length > 0 ? parts.join(" | ") : null;
+  if (proj) {
+    return { text: `${proj} | Unlock full edge data`, locked: true };
+  }
+  return { text: "Unlock full edge data", locked: true };
 }
 
-function PlayerRow({ player, index }: { player: DerivedPlayer; index: number }) {
-  const tier = player.display_signal;
-  const { label: vLabel, textClass: vClass } = formatValueScore(player.value_score);
+interface PlayerRowProps {
+  player: DerivedPlayer;
+  index: number;
+}
+
+function PlayerRow({ player, index }: PlayerRowProps) {
+  const tier = (player.display_signal ?? "WATCH") as DisplaySignal;
+  const { label: vLabel, textClass: vClass, isLocked } = formatValueScore(player.value_score);
   const isInjured = (player.status ?? "").toLowerCase() === "injured" || (player.manual_status ?? "").toLowerCase() === "injured";
   const isBye = player.is_bye === true;
-  const insightLine = buildInsightLine(player);
+  const { text: insightText, locked: insightLocked } = buildInsightLine(player);
 
   return (
-    <div className="group">
+    <div className={`group ${isLocked ? "opacity-80" : ""}`}>
       <div className="grid grid-cols-[2rem_1fr_3.5rem_4rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_4rem_4.5rem_5rem_6rem] gap-x-2 md:gap-x-3 px-3 md:px-4 py-3 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors items-center">
         <span className="text-xs text-white/25 font-mono tabular-nums">{index}</span>
+
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <p className="text-sm font-bold text-white truncate leading-tight">{player.player_name}</p>
-            <InjuryPill isInjured={isInjured} />
-            <StatusPill isBye={isBye} />
+            {isInjured && (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-red-500/10 border border-red-500/30 text-red-400 text-[9px] font-bold uppercase tracking-wide">
+                <AlertCircle size={8} />INJ
+              </span>
+            )}
+            {isBye && (
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-orange-500/10 border border-orange-500/30 text-orange-400 text-[9px] font-bold uppercase tracking-wide">
+                BYE
+              </span>
+            )}
           </div>
           <p className="text-[10px] text-white/30 leading-tight truncate">
             {player.team}{player.position ? ` · ${player.position}` : ""}
           </p>
         </div>
+
         <span className="text-xs md:text-sm font-bold text-white tabular-nums text-center">
           {formatProj(player.projection)}
         </span>
+
         <span className="text-xs md:text-sm font-semibold text-white/50 text-center tabular-nums">
           {formatPrice(player.price)}
         </span>
-        <span className={`text-[11px] font-semibold text-center tabular-nums ${vClass}`}>
-          {vLabel}
-        </span>
+
+        {isLocked ? (
+          <span className="flex items-center justify-center gap-1 text-[10px] text-white/30">
+            <Lock size={9} className="text-white/25 shrink-0" />
+            <span>Unlock</span>
+          </span>
+        ) : (
+          <span className={`text-[11px] font-semibold text-center tabular-nums ${vClass}`}>
+            {vLabel}
+          </span>
+        )}
+
         <div className="flex justify-end">
-          <SignalPill tier={tier} />
+          <SignalPill tier={tier} locked={isLocked} />
         </div>
       </div>
-      {insightLine && (
-        <div className="px-3 md:px-4 py-1.5 bg-[#0a0a0a] border-b border-white/[0.03]">
-          <p className="text-[11px] text-white/30 leading-snug font-mono">{insightLine}</p>
-        </div>
-      )}
+
+      <div className="px-3 md:px-4 py-1.5 bg-[#0a0a0a] border-b border-white/[0.03]">
+        {insightLocked ? (
+          <p className="text-[11px] font-mono leading-snug flex items-center gap-1.5">
+            <span className="text-white/35">
+              {insightText.split(" | ")[0]}
+            </span>
+            <span className="text-white/20">|</span>
+            <span className="inline-flex items-center gap-1 text-[#F5C84C]/40">
+              <Lock size={8} />
+              <span>Unlock full edge data</span>
+            </span>
+          </p>
+        ) : (
+          <p className="text-[11px] text-white/35 leading-snug font-mono">{insightText}</p>
+        )}
+      </div>
     </div>
   );
 }
 
-function LockedRow({ index }: { index: number }) {
+function LockedRow({ index, tier }: { index: number; tier: DisplaySignal }) {
+  const tierConfig: Record<DisplaySignal, { color: string }> = {
+    TARGET: { color: "text-green-400/40" },
+    WATCH:  { color: "text-yellow-300/40" },
+    AVOID:  { color: "text-red-400/40" },
+  };
+  const { color } = tierConfig[tier];
+
   return (
-    <div className="grid grid-cols-[2rem_1fr_3.5rem_4rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_4rem_4.5rem_5rem_6rem] gap-x-2 md:gap-x-3 px-3 md:px-4 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] items-center select-none">
-      <span className="text-xs text-white/15 font-mono tabular-nums">{index}</span>
-      <div className="flex items-center gap-1.5 min-w-0">
-        <Lock size={10} className="text-white/20 shrink-0" />
-        <span className="text-sm font-bold text-white/20 blur-[3px] truncate">Premium Player</span>
-        <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#F5C84C]/10 border border-[#F5C84C]/20 text-[9px] font-bold text-[#F5C84C]/60 uppercase tracking-wide shrink-0">
-          +
-        </span>
+    <div>
+      <div className="grid grid-cols-[2rem_1fr_3.5rem_4rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_4rem_4.5rem_5rem_6rem] gap-x-2 md:gap-x-3 px-3 md:px-4 py-3 border-b border-white/[0.04] bg-[#0c0c0c] items-center select-none opacity-50">
+        <span className="text-xs text-white/15 font-mono tabular-nums">{index}</span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Lock size={10} className="text-white/20 shrink-0" />
+          <span className="text-sm font-bold text-white/20 blur-[3px] truncate select-none">Locked Player Name</span>
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#F5C84C]/10 border border-[#F5C84C]/20 text-[9px] font-bold text-[#F5C84C]/60 uppercase tracking-wide shrink-0">
+            +
+          </span>
+        </div>
+        <span className="text-xs text-white/15 text-center blur-[4px] select-none">112</span>
+        <span className="text-xs text-white/15 text-center blur-[4px] select-none">$1.05M</span>
+        <span className={`text-[10px] text-center blur-[4px] select-none ${color}`}>+18.4</span>
+        <div className="flex justify-end">
+          <span className={`text-[10px] font-bold uppercase blur-[4px] select-none ${color}`}>{tier}</span>
+        </div>
       </div>
-      <span className="text-xs text-white/15 text-center blur-[3px]">—</span>
-      <span className="text-xs text-white/15 text-center blur-[3px]">—</span>
-      <span className="text-xs text-white/15 text-center blur-[3px]">—</span>
-      <span className="text-xs text-white/15 text-right blur-[3px]">—</span>
+      <div className="px-3 md:px-4 py-1.5 bg-[#0a0a0a] border-b border-white/[0.03]">
+        <p className="text-[11px] font-mono leading-snug flex items-center gap-1.5 opacity-50">
+          <span className="text-white/20 blur-[3px] select-none">Proj 112</span>
+          <span className="text-white/15">|</span>
+          <span className="inline-flex items-center gap-1 text-[#F5C84C]/35">
+            <Lock size={8} />
+            <span>Premium signal locked</span>
+          </span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function CategoryHeader({ tier, lockedCount }: { tier: DisplaySignal; lockedCount: number }) {
+  const config = {
+    TARGET: { label: "Target Buys",  dot: "bg-green-400",  text: "text-green-400/70",  note: "Best underpriced picks" },
+    WATCH:  { label: "Watch List",   dot: "bg-yellow-300", text: "text-yellow-300/70", note: "Monitor for moves" },
+    AVOID:  { label: "Traps",        dot: "bg-red-400",    text: "text-red-400/70",    note: lockedCount > 0 ? "Premium traps hidden" : "Overpriced to avoid" },
+  };
+  const { label, dot, text, note } = config[tier];
+  return (
+    <div className="flex items-center justify-between px-3 md:px-4 py-2 bg-[#080808] border-b border-white/[0.05]">
+      <div className="flex items-center gap-2">
+        <div className={`w-1.5 h-1.5 rounded-full ${dot} opacity-70`} />
+        <span className={`text-[10px] font-bold uppercase tracking-widest ${text}`}>{label}</span>
+      </div>
+      <span className="text-[9px] text-white/20 uppercase tracking-wide">{note}</span>
     </div>
   );
 }
@@ -158,13 +219,14 @@ export function LandingMarketWatchSample({ buys, holds, sells, loading }: Landin
   const CARDS_PER_CAT = 2;
 
   const targets = available.filter(p => p.display_signal === "TARGET").slice(0, CARDS_PER_CAT);
-  const watch   = available.filter(p => p.display_signal === "WATCH").slice(0, CARDS_PER_CAT);
-  const avoid   = available.filter(p => p.display_signal === "AVOID").slice(0, CARDS_PER_CAT);
+  const watches = available.filter(p => p.display_signal === "WATCH").slice(0, CARDS_PER_CAT);
+  const avoids  = available.filter(p => p.display_signal === "AVOID").slice(0, CARDS_PER_CAT);
 
-  const freeRowCount = targets.length + watch.length + avoid.length;
-  const lockedRowCount = Math.max(0, 6 - freeRowCount);
+  const targetLocked = Math.max(0, CARDS_PER_CAT - targets.length);
+  const watchLocked  = Math.max(0, CARDS_PER_CAT - watches.length);
+  const avoidLocked  = Math.max(0, CARDS_PER_CAT - avoids.length);
 
-  const players: DerivedPlayer[] = [...targets, ...watch, ...avoid];
+  let rowIndex = 0;
 
   return (
     <section className="py-10 md:py-14 bg-[#070707] border-t border-white/[0.05]">
@@ -184,18 +246,25 @@ export function LandingMarketWatchSample({ buys, holds, sells, loading }: Landin
           </p>
         </div>
 
+        <div className="mb-3 px-3 py-2 rounded-lg bg-[#F5C84C]/[0.04] border border-[#F5C84C]/15 flex items-center gap-2">
+          <Lock size={11} className="text-[#F5C84C]/50 shrink-0" />
+          <p className="text-[11px] text-white/40 leading-snug">
+            Top trade targets shown. <span className="text-[#F5C84C]/60 font-semibold">Neeko+ unlocks full signals, edge scores and traps for all 600+ players.</span>
+          </p>
+        </div>
+
         <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
-          <div className="grid grid-cols-[2rem_1fr_3.5rem_4rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_4rem_4.5rem_5rem_6rem] gap-x-2 md:gap-x-3 px-3 md:px-4 py-3 text-[10px] font-semibold text-white/25 uppercase tracking-widest border-b border-white/[0.06] bg-[#0a0a0a]">
+          <div className="grid grid-cols-[2rem_1fr_3.5rem_4rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_4rem_4.5rem_5rem_6rem] gap-x-2 md:gap-x-3 px-3 md:px-4 py-2.5 text-[10px] font-semibold text-white/25 uppercase tracking-widest border-b border-white/[0.06] bg-[#0a0a0a]">
             <span>#</span>
             <span>Player</span>
             <span className="text-center">Proj</span>
             <span className="text-center">Price</span>
-            <span className="text-center">Value</span>
+            <span className="text-center">Edge</span>
             <span className="text-right">Signal</span>
           </div>
 
           {loading ? (
-            Array.from({ length: 6 }).map((_, i) => (
+            Array.from({ length: CARDS_PER_CAT * 3 }).map((_, i) => (
               <div key={i} className="animate-pulse">
                 <div className="grid grid-cols-[2rem_1fr_3.5rem_4rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_4rem_4.5rem_5rem_6rem] gap-x-2 md:gap-x-3 px-3 md:px-4 py-4 border-b border-white/[0.04] bg-[#0c0c0c]">
                   {Array.from({ length: 6 }).map((__, j) => (
@@ -207,54 +276,52 @@ export function LandingMarketWatchSample({ buys, holds, sells, loading }: Landin
                 </div>
               </div>
             ))
-          ) : players.length > 0 ? (
-            <>
-              {players.map((player, idx) => (
-                <PlayerRow key={player.player_id} player={player} index={idx + 1} />
-              ))}
-              {Array.from({ length: lockedRowCount }).map((_, i) => (
-                <LockedRow key={`locked-${i}`} index={players.length + i + 1} />
-              ))}
-            </>
           ) : (
-            <div className="px-4 py-10 text-center bg-[#0c0c0c]">
-              <p className="text-sm text-white/30 mb-3">No market data available yet — check back after weekly price changes.</p>
-              <Link
-                to="/sports/afl/market-watch"
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#F5C84C]/70 hover:text-[#F5C84C] transition-colors"
-              >
-                View Market Watch
-                <ArrowRight size={12} />
-              </Link>
-            </div>
+            <>
+              <CategoryHeader tier="TARGET" lockedCount={targetLocked} />
+              {targets.map((p) => {
+                rowIndex++;
+                return <PlayerRow key={p.player_id} player={p} index={rowIndex} />;
+              })}
+              {Array.from({ length: targetLocked }).map((_, i) => {
+                rowIndex++;
+                return <LockedRow key={`tl-${i}`} index={rowIndex} tier="TARGET" />;
+              })}
+
+              <CategoryHeader tier="WATCH" lockedCount={watchLocked} />
+              {watches.map((p) => {
+                rowIndex++;
+                return <PlayerRow key={p.player_id} player={p} index={rowIndex} />;
+              })}
+              {Array.from({ length: watchLocked }).map((_, i) => {
+                rowIndex++;
+                return <LockedRow key={`wl-${i}`} index={rowIndex} tier="WATCH" />;
+              })}
+
+              <CategoryHeader tier="AVOID" lockedCount={avoidLocked} />
+              {avoids.map((p) => {
+                rowIndex++;
+                return <PlayerRow key={p.player_id} player={p} index={rowIndex} />;
+              })}
+              {Array.from({ length: avoidLocked }).map((_, i) => {
+                rowIndex++;
+                return <LockedRow key={`al-${i}`} index={rowIndex} tier="AVOID" />;
+              })}
+            </>
           )}
-        </div>
 
-        <div className="mt-4 px-4 py-2.5 rounded-lg bg-[#0a0a0a] border border-white/[0.05]">
-          <p className="text-[11px] text-white/30 text-center leading-relaxed">
-            Updated weekly using live projections and pricing data · 600+ more players available with Neeko+
-          </p>
-        </div>
-
-        <div className="mt-5 rounded-xl border border-[#F5C84C]/20 bg-[#0d0d0d] px-5 py-4 flex flex-col sm:flex-row items-center justify-between gap-4"
-          style={{ boxShadow: "0 0 24px rgba(245,200,76,0.04)" }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#F5C84C]/10 border border-[#F5C84C]/20 flex items-center justify-center shrink-0">
-              <Lock size={14} className="text-[#F5C84C]" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-white leading-tight">Unlock Full Market Intelligence</p>
-              <p className="text-[11px] text-white/35 leading-tight mt-0.5">Complete trade analysis for all 600+ players · Updated before lockout</p>
-            </div>
+          <div className="px-4 py-3.5 bg-[#090909] border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-[11px] text-white/30 leading-snug">
+              Unlock full trade intelligence for all <span className="text-white/50 font-semibold">600+ players</span> — edge scores, traps, breakevens and AI breakdowns.
+            </p>
+            <Link
+              to="/neeko-plus"
+              className="shrink-0 inline-flex items-center justify-center gap-1.5 bg-[#F5C84C] text-black font-bold text-xs px-4 py-2 rounded-lg hover:brightness-110 transition-all whitespace-nowrap"
+            >
+              <Crown size={11} />
+              Unlock Neeko+
+            </Link>
           </div>
-          <Link
-            to="/neeko-plus"
-            className="shrink-0 inline-flex items-center justify-center gap-2 bg-[#F5C84C] text-black font-bold text-sm px-6 py-2.5 rounded-xl hover:brightness-110 transition-all min-h-[44px] w-full sm:w-auto"
-          >
-            <Crown size={13} />
-            Unlock Neeko+
-          </Link>
         </div>
 
         <div className="mt-3 text-center">
