@@ -595,7 +595,7 @@ function PlayerIdentityIssuesCard({ issues, loading }: { issues: PlayerIdentityI
 
 export default function AdminHealth() {
   const { data, loading, error, lastRefreshed, refresh } = useSystemHealth();
-  const { dispatch } = useAdminUIState();
+  const { setActiveJob } = useAdminUIState();
 
   const [tab, setTab] = useState<Tab>("pipeline");
   const [running, setRunning] = useState<string | null>(null);
@@ -649,11 +649,11 @@ export default function AdminHealth() {
 
   async function runAdminCommand(label: string, jobType: string, command: string) {
     setRunning(jobType);
-    dispatch({ type: "START_JOB", payload: { jobType, label, pct: 10 } });
+    setActiveJob(jobType, 10, label);
     try {
       await runCommand(command);
-      dispatch({ type: "UPDATE_JOB", payload: { pct: 100 } });
-      setTimeout(() => dispatch({ type: "END_JOB" }), 1500);
+      setActiveJob(jobType, 100, label);
+      setTimeout(() => setActiveJob(null, 0, null), 1500);
       await fetchPipelineData();
     } finally {
       setRunning(null);

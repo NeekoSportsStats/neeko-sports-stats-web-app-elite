@@ -688,7 +688,7 @@ function SubscribersTab({
   const manual = subMetrics?.manual_premium_count ?? 0;
   const expired = subMetrics?.expired_count ?? 0;
   const mrrEstimate = (active * 9.99).toFixed(2);
-  const arrEstimate = (active * 99).toLocaleString();
+  const arrEstimate = (active * 89).toLocaleString();
 
   return (
     <div className="space-y-6">
@@ -709,7 +709,7 @@ function SubscribersTab({
         <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Revenue Estimate</h3>
         <div className="grid grid-cols-3 gap-3">
           <KPICard label="MRR (est.)" value={`$${mrrEstimate}`} sub="at $9.99/mo blended" color="green" />
-          <KPICard label="ARR (est.)" value={`$${arrEstimate}`} sub="at $99/yr blended" color="green" />
+          <KPICard label="ARR (est.)" value={`$${arrEstimate}`} sub="at $89/yr blended" color="green" />
           <KPICard label="Active Paying" value={active + trialing} sub="active + trialing" />
         </div>
       </div>
