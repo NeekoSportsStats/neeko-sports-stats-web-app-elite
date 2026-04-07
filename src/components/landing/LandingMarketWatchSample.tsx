@@ -7,6 +7,11 @@ function formatPrice(price: number | null | undefined): string {
   return `$${(price / 1000000).toFixed(2)}M`;
 }
 
+function formatProj(v: number | null | undefined): string {
+  if (v == null) return "—";
+  return Math.round(Number(v)).toString();
+}
+
 type SignalTier = "TARGET" | "WATCH" | "AVOID";
 
 function SignalPill({ tier }: { tier: SignalTier }) {
@@ -44,9 +49,7 @@ function InjuryPill({ isInjured }: { isInjured: boolean }) {
 }
 
 function formatValueScore(v: number | null | undefined): { label: string; textClass: string } {
-  if (v == null) {
-    return { label: "—", textClass: "text-white/30" };
-  }
+  if (v == null) return { label: "—", textClass: "text-white/30" };
   const n = Number(v);
   if (isNaN(n)) return { label: "—", textClass: "text-white/30" };
   const sign = n > 0 ? "+" : "";
@@ -57,18 +60,29 @@ function formatValueScore(v: number | null | undefined): { label: string; textCl
   return { label: formatted, textClass: "text-red-400" };
 }
 
+function buildInsightLine(player: DerivedPlayer): string | null {
+  const parts: string[] = [];
+  if (player.projection != null) parts.push(`Proj ${Math.round(Number(player.projection))}`);
+  if (player.breakeven != null) parts.push(`BE ${Math.round(Number(player.breakeven))}`);
+  const vs = player.value_score;
+  if (vs != null) {
+    const n = Number(vs);
+    const sign = n >= 0 ? "+" : "";
+    parts.push(`Edge ${sign}${n.toFixed(1)}`);
+  }
+  return parts.length > 0 ? parts.join(" | ") : null;
+}
+
 function PlayerRow({ player, index }: { player: DerivedPlayer; index: number }) {
   const tier = player.display_signal;
-  const rawVal = player.value_score != null
-    ? Number(player.value_score)
-    : (player.projection != null && player.breakeven != null ? player.projection - player.breakeven : null);
-  const { label: vLabel, textClass: vClass } = formatValueScore(rawVal);
+  const { label: vLabel, textClass: vClass } = formatValueScore(player.value_score);
   const isInjured = (player.status ?? "").toLowerCase() === "injured" || (player.manual_status ?? "").toLowerCase() === "injured";
   const isBye = player.is_bye === true;
+  const insightLine = buildInsightLine(player);
 
   return (
     <div className="group">
-      <div className="grid grid-cols-[2rem_1fr_4.5rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_5rem_5.5rem_6rem] gap-x-2.5 md:gap-x-3 px-3 md:px-4 py-3 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors items-center">
+      <div className="grid grid-cols-[2rem_1fr_3.5rem_4rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_4rem_4.5rem_5rem_6rem] gap-x-2 md:gap-x-3 px-3 md:px-4 py-3 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors items-center">
         <span className="text-xs text-white/25 font-mono tabular-nums">{index}</span>
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -80,19 +94,22 @@ function PlayerRow({ player, index }: { player: DerivedPlayer; index: number }) 
             {player.team}{player.position ? ` · ${player.position}` : ""}
           </p>
         </div>
-        <span className="text-xs md:text-sm font-semibold text-white/60 text-center tabular-nums">
+        <span className="text-xs md:text-sm font-bold text-white tabular-nums text-center">
+          {formatProj(player.projection)}
+        </span>
+        <span className="text-xs md:text-sm font-semibold text-white/50 text-center tabular-nums">
           {formatPrice(player.price)}
         </span>
-        <span className={`text-[11px] font-semibold text-center ${vClass}`}>
+        <span className={`text-[11px] font-semibold text-center tabular-nums ${vClass}`}>
           {vLabel}
         </span>
         <div className="flex justify-end">
           <SignalPill tier={tier} />
         </div>
       </div>
-      {player.why && (
+      {insightLine && (
         <div className="px-3 md:px-4 py-1.5 bg-[#0a0a0a] border-b border-white/[0.03]">
-          <p className="text-[11px] text-white/35 leading-snug italic">{player.why}</p>
+          <p className="text-[11px] text-white/30 leading-snug font-mono">{insightLine}</p>
         </div>
       )}
     </div>
@@ -101,7 +118,7 @@ function PlayerRow({ player, index }: { player: DerivedPlayer; index: number }) 
 
 function LockedRow({ index }: { index: number }) {
   return (
-    <div className="grid grid-cols-[2rem_1fr_4.5rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_5rem_5rem_6rem] gap-x-2.5 md:gap-x-3 px-3 md:px-4 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] items-center select-none">
+    <div className="grid grid-cols-[2rem_1fr_3.5rem_4rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_4rem_4.5rem_5rem_6rem] gap-x-2 md:gap-x-3 px-3 md:px-4 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] items-center select-none">
       <span className="text-xs text-white/15 font-mono tabular-nums">{index}</span>
       <div className="flex items-center gap-1.5 min-w-0">
         <Lock size={10} className="text-white/20 shrink-0" />
@@ -110,6 +127,7 @@ function LockedRow({ index }: { index: number }) {
           +
         </span>
       </div>
+      <span className="text-xs text-white/15 text-center blur-[3px]">—</span>
       <span className="text-xs text-white/15 text-center blur-[3px]">—</span>
       <span className="text-xs text-white/15 text-center blur-[3px]">—</span>
       <span className="text-xs text-white/15 text-right blur-[3px]">—</span>
@@ -127,19 +145,21 @@ interface LandingMarketWatchSampleProps {
 export function LandingMarketWatchSample({ buys, holds, sells, loading }: LandingMarketWatchSampleProps) {
   const allPlayers = [...buys, ...holds, ...sells];
 
-  const available = allPlayers.filter(
-    p =>
-      (p.status ?? "").toLowerCase() !== "out" &&
-      (p.manual_status ?? "").toLowerCase() !== "out" &&
-      (p.manual_status ?? "").toLowerCase() !== "injured"
-  );
+  const available = allPlayers.filter(p => {
+    if ((p.status ?? "").toLowerCase() === "out") return false;
+    if ((p.manual_status ?? "").toLowerCase() === "out") return false;
+    if ((p.manual_status ?? "").toLowerCase() === "injured") return false;
+    if (p.is_bye === true) return false;
+    if ((p.games_played ?? 0) < 3) return false;
+    if ((p.projection ?? 0) <= 50) return false;
+    return true;
+  });
 
   const CARDS_PER_CAT = 2;
 
   const targets = available.filter(p => p.display_signal === "TARGET").slice(0, CARDS_PER_CAT);
   const watch   = available.filter(p => p.display_signal === "WATCH").slice(0, CARDS_PER_CAT);
   const avoid   = available.filter(p => p.display_signal === "AVOID").slice(0, CARDS_PER_CAT);
-
 
   const players: DerivedPlayer[] = [...targets, ...watch, ...avoid];
 
@@ -162,9 +182,10 @@ export function LandingMarketWatchSample({ buys, holds, sells, loading }: Landin
         </div>
 
         <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
-          <div className="grid grid-cols-[2rem_1fr_4.5rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_5rem_5rem_6rem] gap-x-2.5 md:gap-x-3 px-3 md:px-4 py-3 text-[10px] font-semibold text-white/25 uppercase tracking-widest border-b border-white/[0.06] bg-[#0a0a0a]">
+          <div className="grid grid-cols-[2rem_1fr_3.5rem_4rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_4rem_4.5rem_5rem_6rem] gap-x-2 md:gap-x-3 px-3 md:px-4 py-3 text-[10px] font-semibold text-white/25 uppercase tracking-widest border-b border-white/[0.06] bg-[#0a0a0a]">
             <span>#</span>
             <span>Player</span>
+            <span className="text-center">Proj</span>
             <span className="text-center">Price</span>
             <span className="text-center">Value</span>
             <span className="text-right">Signal</span>
@@ -173,8 +194,8 @@ export function LandingMarketWatchSample({ buys, holds, sells, loading }: Landin
           {loading ? (
             Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="grid grid-cols-[2rem_1fr_4.5rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_5rem_5rem_6rem] gap-x-2.5 md:gap-x-3 px-3 md:px-4 py-4 border-b border-white/[0.04] bg-[#0c0c0c]">
-                  {Array.from({ length: 5 }).map((__, j) => (
+                <div className="grid grid-cols-[2rem_1fr_3.5rem_4rem_4.5rem_5rem] md:grid-cols-[2.5rem_1fr_4rem_4.5rem_5rem_6rem] gap-x-2 md:gap-x-3 px-3 md:px-4 py-4 border-b border-white/[0.04] bg-[#0c0c0c]">
+                  {Array.from({ length: 6 }).map((__, j) => (
                     <div key={j} className="h-4 bg-white/[0.06] rounded" />
                   ))}
                 </div>
