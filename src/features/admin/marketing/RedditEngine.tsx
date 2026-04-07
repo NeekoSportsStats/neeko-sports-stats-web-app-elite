@@ -117,7 +117,7 @@ function generateThread(
   const form      = formLabel(player);
   const price     = priceStr(player);
   const why       = shortWhy(player);
-  const rec       = (player.ai_recommendation ?? "").toLowerCase();
+  const rec       = (player.action_canonical ?? "").toLowerCase();
   const comp      = findComparable(player, allPlayers);
   const compName  = comp?.player_name ?? "another option at this tier";
   const compProj  = fmt(comp?.projection_final);
@@ -467,8 +467,8 @@ function PlayerSelect({
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-[10px] font-semibold text-muted-foreground">{fmt(p.projection_final)} proj</p>
-                  {p.ai_recommendation && (
-                    <p className="text-[9px] text-muted-foreground/60 capitalize">{p.ai_recommendation}</p>
+                  {p.action_canonical && (
+                    <p className="text-[9px] text-muted-foreground/60 capitalize">{p.action_canonical}</p>
                   )}
                 </div>
               </button>
@@ -631,9 +631,9 @@ export default function RedditEngine() {
                 <div><span className="text-muted-foreground/60">Floor</span><span className="ml-1 font-medium">{fmt(selectedPlayer.floor)}</span></div>
                 <div><span className="text-muted-foreground/60">Value</span><span className="ml-1 font-medium">{fmt(selectedPlayer.value_score)}</span></div>
               </div>
-              {selectedPlayer.ai_recommendation && (
+              {selectedPlayer.action_canonical && (
                 <p className="text-[10px] capitalize text-muted-foreground/70 border-t border-border pt-1.5">
-                  {selectedPlayer.ai_recommendation}
+                  {selectedPlayer.action_canonical}
                 </p>
               )}
             </div>

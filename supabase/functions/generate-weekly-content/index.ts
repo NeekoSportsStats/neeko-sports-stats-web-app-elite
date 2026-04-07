@@ -71,7 +71,7 @@ interface PlayerData {
   upside_pct: number;
   matchup_label: string;
   signal: string;
-  ai_recommendation: string;
+  action_canonical: string;
   recommendation_short: string;
   market_watch_category: string;
   games_played: number;
@@ -462,7 +462,7 @@ function buildWeekPlan(
           upside_pct: 10,
           matchup_label: "Good",
           signal: "stable",
-          ai_recommendation: "Good",
+          action_canonical: "HOLD",
           recommendation_short: "Good pick",
           market_watch_category: "Value",
           games_played: 10,
@@ -1046,7 +1046,7 @@ Deno.serve(async (req: Request) => {
         projection_final, ceiling, floor, price, prev_price, price_change,
         value_score, best_value_score, neeko_rating_scaled, form_score, consistency,
         captain_score, risk_rating, upside_pct, matchup_label, signal,
-        ai_recommendation, recommendation_short, market_watch_category, games_played,
+        action_canonical, recommendation_short, market_watch_category, games_played,
         is_bye, manual_status, status
       `)
       .eq("is_available", true)
@@ -1063,7 +1063,7 @@ Deno.serve(async (req: Request) => {
         projection_final, ceiling, floor, price, prev_price, price_change,
         value_score, best_value_score, neeko_rating_scaled, form_score, consistency,
         captain_score, risk_rating, upside_pct, matchup_label, signal,
-        ai_recommendation, recommendation_short, market_watch_category, games_played,
+        action_canonical, recommendation_short, market_watch_category, games_played,
         is_bye, manual_status, status, last_game_date
       `)
       .eq("is_available", false)
@@ -1113,7 +1113,7 @@ Deno.serve(async (req: Request) => {
         upside_pct: Number(p.upside_pct ?? 0),
         matchup_label: (p.matchup_label as string) ?? "",
         signal: (p.signal as string) ?? "",
-        ai_recommendation: (p.ai_recommendation as string) ?? "",
+        action_canonical: (p.action_canonical as string) ?? (p.signal_tag as string) ?? (p.signal as string) ?? "",
         recommendation_short: (p.recommendation_short as string) ?? "",
         market_watch_category: (p.market_watch_category as string) ?? "",
         games_played: Number(p.games_played ?? 0),

@@ -23,7 +23,7 @@ export interface MarketingPlayer {
   value_tag: string | null;
   value_tier: string | null;
   consistency_tier: string | null;
-  ai_recommendation: string | null;
+  action_canonical: string | null;
   recommendation_strength: string | null;
   recommendation_color: string | null;
   recommendation_short: string | null;
