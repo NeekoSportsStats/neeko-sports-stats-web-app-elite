@@ -172,7 +172,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
 
   const isLocked = !isPremium && idx >= FREE_FULL_ROWS;
 
-  const be = row.form_score != null ? Math.round(row.form_score) : null;
+  const be = row.breakeven != null ? Math.round(row.breakeven) : null;
 
   // Top-3 highlight ring
   const isTop3 = rank <= 3 && !isHighlighted;
@@ -352,7 +352,7 @@ export function FreeTableRow({ row, idx, onRowClick, onUpgrade }: FreeTableRowPr
   const rowFadeStyle: React.CSSProperties = { touchAction: "manipulation" };
 
 
-  const be = row.form_score != null ? Math.round(row.form_score) : null;
+  const be = row.breakeven != null ? Math.round(row.breakeven) : null;
 
   const rawTsFree = !row.is_bye && row.trend_score != null ? row.trend_score : null;
   const tsClamped = rawTsFree !== null ? (rawTsFree > 40 ? 40 : rawTsFree < -40 ? -40 : rawTsFree) : null;

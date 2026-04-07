@@ -206,6 +206,7 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
   // Derived values
   const scoreCount = scoreHistory.length;
   const proj = row.projection != null ? Math.round(row.projection) : null;
+  const be = row.breakeven != null ? Math.round(row.breakeven) : null;
   const rawValue = !row.is_bye && row.value_score != null ? row.value_score : null;
 
   const valueSign = rawValue != null

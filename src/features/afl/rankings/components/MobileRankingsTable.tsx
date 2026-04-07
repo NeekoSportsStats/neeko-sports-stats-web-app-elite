@@ -249,7 +249,7 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
   }, [row.player_id, row.player_name]);
 
   const proj = row.projection != null ? Math.round(row.projection) : null;
-  const be = row.form_score != null ? Math.round(row.form_score) : null;
+  const be = row.breakeven != null ? Math.round(row.breakeven) : null;
   const valueScore = !row.is_bye && row.value_score != null ? row.value_score : null;
   const valueDisplayStr = getValueDisplay(valueScore);
 
@@ -367,7 +367,7 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
   const rank = idx + 1;
 
   const proj = row.projection ?? null;
-  const breakeven = row.form_score != null ? Math.round(row.form_score) : null;
+  const breakeven = row.breakeven != null ? Math.round(row.breakeven) : null;
   const valueScore = !row.is_bye && row.value_score != null ? row.value_score : null;
 
   const displayRec = getDisplayRecommendation(row, activeTab);

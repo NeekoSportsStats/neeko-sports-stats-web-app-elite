@@ -90,11 +90,7 @@ function SnapshotCard({ player, heading, emptyText, variant }: SnapshotCardProps
     );
   }
 
-  const aiWhy = player.recommendation_short
-    ? cleanAiText(player.recommendation_short)
-    : player.summary_short
-    ? cleanAiText(player.summary_short)
-    : null;
+  const aiWhy = player.why ? cleanAiText(player.why) : null;
 
   const truncatedWhy = aiWhy && aiWhy.length > 70
     ? aiWhy.slice(0, 70).replace(/\s+\S*$/, "") + "..."
