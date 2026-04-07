@@ -1,15 +1,68 @@
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from 'npm:@supabase/supabase-js@2.49.1';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
-};
+const ALLOWED_ORIGINS = new Set([
+  'https://www.neekostats.com.au',
+  'https://neekostats.com.au',
+  'http://localhost:5173',
+  'http://localhost:3000',
+]);
+
+function getCorsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') ?? '';
+  const allowedOrigin = ALLOWED_ORIGINS.has(origin) ? origin : 'https://www.neekostats.com.au';
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Client-Info, Apikey',
+    'Vary': 'Origin',
+  };
+}
+
+async function verifyAdmin(req: Request): Promise<{ ok: boolean; status?: number; error?: string }> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) return { ok: false, status: 401, error: 'Missing Authorization header' };
+
+  const token = authHeader.replace('Bearer ', '').trim();
+  if (!token) return { ok: false, status: 401, error: 'Missing bearer token' };
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  if (!supabaseUrl || !serviceKey) return { ok: false, status: 500, error: 'Server misconfiguration' };
+
+  if (token === serviceKey) return { ok: true };
+
+  const supabase = createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+  if (userError || !user) return { ok: false, status: 401, error: 'Invalid or expired token' };
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (profile?.is_admin !== true) return { ok: false, status: 403, error: 'Forbidden: admin access required' };
+
+  return { ok: true };
+}
 
 Deno.serve(async (req: Request) => {
+  const corsHeaders = getCorsHeaders(req);
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 200, headers: corsHeaders });
+  }
+
+  const auth = await verifyAdmin(req);
+  if (!auth.ok) {
+    return new Response(JSON.stringify({ error: auth.error }), {
+      status: auth.status ?? 401,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   try {
@@ -81,8 +134,9 @@ Deno.serve(async (req: Request) => {
           body: JSON.stringify(alertPayload),
         });
         console.log(`subscription-health-check: webhook dispatched — status=${webhookRes.status}`);
-      } catch (webhookErr: any) {
-        console.warn('subscription-health-check: webhook dispatch failed (non-fatal):', webhookErr?.message);
+      } catch (webhookErr: unknown) {
+        const msg = webhookErr instanceof Error ? webhookErr.message : String(webhookErr);
+        console.warn('subscription-health-check: webhook dispatch failed (non-fatal):', msg);
       }
     }
 
@@ -91,8 +145,9 @@ Deno.serve(async (req: Request) => {
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (err: any) {
-    console.error('subscription-health-check: unhandled error:', err?.message ?? err);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('subscription-health-check: unhandled error:', msg);
     return new Response(
       JSON.stringify({ ok: false, error: 'Internal error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
