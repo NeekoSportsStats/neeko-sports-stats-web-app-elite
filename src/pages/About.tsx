@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { Trophy, Target, ChartBar as BarChart, TrendingUp, Star, TriangleAlert as AlertTriangle, Shield, ArrowRight, Cpu } from "lucide-react";
 
 const FOCUS_AREAS = [
@@ -55,6 +56,19 @@ const PRINCIPLES = [
 export default function About() {
   return (
     <div className="min-h-screen bg-[#070707] text-white">
+      <Helmet>
+        <title>About Neeko Sports Stats — AFL Fantasy Analytics Platform</title>
+        <meta name="description" content="Neeko Sports Stats is an AI-powered AFL Fantasy analytics platform providing weekly player rankings, captain signals, breakout alerts, trap warnings and projection modelling." />
+        <link rel="canonical" href="https://neekostats.com.au/about" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://neekostats.com.au/about" />
+        <meta property="og:title" content="About Neeko Sports Stats — AFL Fantasy Analytics Platform" />
+        <meta property="og:description" content="Neeko Sports Stats is an AI-powered AFL Fantasy analytics platform providing weekly player rankings, captain signals, breakout alerts, trap warnings and projection modelling." />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="About Neeko Sports Stats — AFL Fantasy Analytics Platform" />
+        <meta name="twitter:description" content="Neeko Sports Stats is an AI-powered AFL Fantasy analytics platform providing weekly player rankings, captain signals, breakout alerts, trap warnings and projection modelling." />
+      </Helmet>
       <div className="max-w-4xl mx-auto px-4 py-16">
 
         {/* Header */}

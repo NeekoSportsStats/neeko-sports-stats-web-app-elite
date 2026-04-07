@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import {
   Accordion,
   AccordionContent,
@@ -7,6 +8,28 @@ import {
 } from "@/components/ui/accordion";
 import { ArrowLeft } from "lucide-react";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
+
+const FAQ_SCHEMA_ITEMS = [
+  { q: "What is Neeko Sports Stats?", a: "Neeko Sports Stats is an AFL Fantasy analytics platform. It provides weekly player rankings, captain signals, breakout alerts, trap warnings and projection modelling — designed to support selection decisions before each round's lockout." },
+  { q: "How are projections calculated?", a: "Projections are built from a multi-factor model that combines historical fantasy scores, recent form velocity, opponent defensive ratings by position, and venue context. No single variable determines the output — the model weights each factor and produces a projected score range." },
+  { q: "How often are rankings updated?", a: "Rankings are updated weekly, after each round's data is processed. They reflect the most recent completed round and the upcoming fixture." },
+  { q: "Do projections update weekly?", a: "Yes. Projections are regenerated each round using the latest match data. Stale projections from prior rounds are not carried forward." },
+  { q: "Does the platform cover sports other than AFL?", a: "No. The platform is scoped entirely to AFL Fantasy." },
+  { q: "Why are some players blurred or restricted?", a: "Free users have access to a limited player set. Restricted content requires a Neeko+ subscription." },
+  { q: "Does Neeko Sports Stats provide gambling or betting advice?", a: "No. The platform provides AFL Fantasy analytics only. Nothing on the platform constitutes betting or financial advice." },
+  { q: "Are projections guaranteed?", a: "No. Projections are model outputs based on historical and current data. They represent likely ranges, not certainties. AFL is inherently variable." },
+  { q: "Why don't all players have AI analysis?", a: "AI analysis requires a minimum data threshold. Players with limited game history may not have enough data for the model to generate a reliable output." },
+  { q: "What does Neeko+ include?", a: "Neeko+ unlocks the full player pool across all rankings, captain recommendations, breakout and trap boards, AI-generated player analysis, and detailed projection data. Free access covers a limited subset of players." },
+  { q: "How much does Neeko+ cost?", a: `Neeko+ is available in two subscription options: Monthly at $${NEEKO_PRICING.monthly.price} AUD per month, or Yearly at $${NEEKO_PRICING.yearly.price} AUD per year (save ${NEEKO_PRICING.savingsPercent}% compared to monthly). Your subscription includes full access to all premium features. Subscriptions renew automatically and can be cancelled anytime.` },
+  { q: "Can I cancel anytime?", a: "Yes. Cancel from your account settings at any time. Access continues until the end of the current billing period." },
+  { q: "Can I use Neeko+ across multiple devices?", a: "Yes. Your subscription is tied to your account. Log in from any device to access it." },
+  { q: "Are refunds available?", a: "Refund requests are reviewed on a case-by-case basis. Refer to the Refund Policy for full details." },
+  { q: "Do I need an account to use the platform?", a: "Some free content is accessible without an account. An account is required to access Neeko+ and to save preferences." },
+  { q: "What payment methods are accepted?", a: "Payments are processed via Stripe. Major debit and credit cards are supported." },
+  { q: "Is my payment information secure?", a: "Yes. Neeko does not store card details. All payment data is handled by Stripe using industry-standard encryption." },
+  { q: "What personal data is stored?", a: "Only essential account information is stored. See the Privacy Policy for full details on data handling." },
+  { q: "What should I do if I find a bug?", a: "Report it via the Contact page. Include a description of what happened and the device or browser you were using." },
+];
 
 const PRICING_ANSWER = (
   <div className="space-y-4">
@@ -140,8 +163,35 @@ const FAQ_GROUPS = [
 export default function FAQ() {
   const navigate = useNavigate();
 
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": FAQ_SCHEMA_ITEMS.map(({ q, a }) => ({
+      "@type": "Question",
+      "name": q,
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": a,
+      },
+    })),
+  };
+
   return (
     <div className="min-h-screen bg-[#070707] text-white">
+      <Helmet>
+        <title>FAQ — Neeko Sports Stats | AFL Fantasy Analytics</title>
+        <meta name="description" content="Frequently asked questions about Neeko Sports Stats — AFL Fantasy analytics, projections, Neeko+ subscription, pricing, accounts and platform features." />
+        <link rel="canonical" href="https://neekostats.com.au/faq" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://neekostats.com.au/faq" />
+        <meta property="og:title" content="FAQ — Neeko Sports Stats | AFL Fantasy Analytics" />
+        <meta property="og:description" content="Frequently asked questions about Neeko Sports Stats — AFL Fantasy analytics, projections, Neeko+ subscription, pricing, accounts and platform features." />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="FAQ — Neeko Sports Stats | AFL Fantasy Analytics" />
+        <meta name="twitter:description" content="Frequently asked questions about Neeko Sports Stats — AFL Fantasy analytics, projections, Neeko+ subscription, pricing, accounts and platform features." />
+        <script type="application/ld+json">{JSON.stringify(faqSchema)}</script>
+      </Helmet>
       <div className="max-w-3xl mx-auto px-4 py-16">
 
         <button

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
@@ -124,8 +125,64 @@ const NeekoPlusPurchase = () => {
     }
   };
 
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": "Neeko+",
+    "description": "Premium AFL Fantasy analytics subscription. Unlock full player rankings, AI player breakdowns, captain edge board, breakout alerts, trap warnings and advanced projections.",
+    "url": "https://neekostats.com.au/neeko-plus",
+    "brand": {
+      "@type": "Brand",
+      "name": "Neeko Sports Stats",
+    },
+    "offers": [
+      {
+        "@type": "Offer",
+        "name": "Neeko+ Monthly",
+        "price": NEEKO_PRICING.monthly.price,
+        "priceCurrency": "AUD",
+        "priceSpecification": {
+          "@type": "UnitPriceSpecification",
+          "price": NEEKO_PRICING.monthly.price,
+          "priceCurrency": "AUD",
+          "billingDuration": "P1M",
+        },
+        "url": "https://neekostats.com.au/neeko-plus",
+        "availability": "https://schema.org/InStock",
+      },
+      {
+        "@type": "Offer",
+        "name": "Neeko+ Yearly",
+        "price": NEEKO_PRICING.yearly.price,
+        "priceCurrency": "AUD",
+        "priceSpecification": {
+          "@type": "UnitPriceSpecification",
+          "price": NEEKO_PRICING.yearly.price,
+          "priceCurrency": "AUD",
+          "billingDuration": "P1Y",
+        },
+        "url": "https://neekostats.com.au/neeko-plus",
+        "availability": "https://schema.org/InStock",
+      },
+    ],
+  };
+
   return (
     <div className="container max-w-4xl py-8 md:py-12 px-4">
+      <Helmet>
+        <title>Neeko+ — Premium AFL Fantasy Analytics Subscription | Neeko Sports Stats</title>
+        <meta name="description" content={`Upgrade to Neeko+ for full AFL Fantasy rankings, AI player analysis, captain signals, breakout alerts and trade targets. From $${NEEKO_PRICING.monthly.price} AUD/month.`} />
+        <link rel="canonical" href="https://neekostats.com.au/neeko-plus" />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://neekostats.com.au/neeko-plus" />
+        <meta property="og:title" content="Neeko+ — Premium AFL Fantasy Analytics Subscription" />
+        <meta property="og:description" content={`Upgrade to Neeko+ for full AFL Fantasy rankings, AI player analysis, captain signals, breakout alerts and trade targets. From $${NEEKO_PRICING.monthly.price} AUD/month.`} />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Neeko+ — Premium AFL Fantasy Analytics Subscription" />
+        <meta name="twitter:description" content={`Upgrade to Neeko+ for full AFL Fantasy rankings, AI player analysis, captain signals, breakout alerts and trade targets. From $${NEEKO_PRICING.monthly.price} AUD/month.`} />
+        <script type="application/ld+json">{JSON.stringify(productSchema)}</script>
+      </Helmet>
       <Button
         variant="ghost"
         className="mb-6 flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"

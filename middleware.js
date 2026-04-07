@@ -1,6 +1,9 @@
 export const config = {
   matcher: [
     "/",
+    "/about",
+    "/faq",
+    "/neeko-plus",
     "/sports/afl/rankings",
     "/sports/afl/market-watch",
     "/sports/afl/edge-board",
@@ -79,6 +82,33 @@ function getPageMeta(pathname) {
       title: "Neeko Sports Stats — AI AFL Fantasy Projections",
       description: DEFAULT_DESCRIPTION,
       canonical: DOMAIN,
+    };
+  }
+
+  if (p === "/about") {
+    return {
+      title: "About Neeko Sports Stats — AFL Fantasy Analytics Platform",
+      description:
+        "Neeko Sports Stats is an AI-powered AFL Fantasy analytics platform providing weekly player rankings, captain signals, breakout alerts, trap warnings and projection modelling.",
+      canonical: `${DOMAIN}/about`,
+    };
+  }
+
+  if (p === "/faq") {
+    return {
+      title: "FAQ — Neeko Sports Stats | AFL Fantasy Analytics",
+      description:
+        "Frequently asked questions about Neeko Sports Stats — AFL Fantasy analytics, projections, Neeko+ subscription, pricing, accounts and platform features.",
+      canonical: `${DOMAIN}/faq`,
+    };
+  }
+
+  if (p === "/neeko-plus") {
+    return {
+      title: "Neeko+ — Premium AFL Fantasy Analytics Subscription | Neeko Sports Stats",
+      description:
+        "Upgrade to Neeko+ for full AFL Fantasy rankings, AI player analysis, captain signals, breakout alerts and trade targets. From $9.99 AUD/month.",
+      canonical: `${DOMAIN}/neeko-plus`,
     };
   }
 

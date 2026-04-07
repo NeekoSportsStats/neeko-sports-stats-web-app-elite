@@ -1311,6 +1311,31 @@ export default function Index() {
         <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
         <meta name="robots" content="index, follow" />
         <meta name="author" content="Neeko Sports" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          "name": "Neeko Sports Stats",
+          "applicationCategory": "SportsApplication",
+          "operatingSystem": "Web",
+          "url": "https://neekostats.com.au",
+          "description": "AI-powered AFL Fantasy analytics platform providing weekly player rankings, captain signals, breakout alerts, trap warnings and projection modelling for AFL Fantasy coaches.",
+          "offers": {
+            "@type": "Offer",
+            "price": "9.99",
+            "priceCurrency": "AUD",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "9.99",
+              "priceCurrency": "AUD",
+              "billingDuration": "P1M"
+            }
+          },
+          "publisher": {
+            "@type": "Organization",
+            "name": "Neeko Sports Stats",
+            "url": "https://neekostats.com.au"
+          }
+        })}</script>
       </Helmet>
 
       {/* ── HERO ──────────────────────────────────────────────────────────────── */}

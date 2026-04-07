@@ -433,7 +433,7 @@ export default function AFLPlayerPage() {
     );
   }
 
-  const pageTitle = `${player.player_name} AFL Fantasy 2026 | ${posName} | Neeko`;
+  const pageTitle = `${player.player_name}${player.team ? ` (${player.team})` : ''} AFL Fantasy 2026 | ${posName} Rankings & Projection | Neeko`;
   const pageDescription = `${player.player_name} AFL Fantasy stats for 2026. Projected score: ${fmtProj(player.projection)} pts. Price: ${fmtPrice(player.price)}. Signal: ${sigLabel}. Updated weekly by Neeko.`;
   const pageUrl = `https://neekostats.com.au/sports/afl/players/${slug}`;
 
