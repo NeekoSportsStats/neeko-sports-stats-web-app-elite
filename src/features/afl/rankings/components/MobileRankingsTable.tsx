@@ -252,6 +252,7 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
 
   const proj = row.projection != null ? Math.round(row.projection) : null;
   const be = row.breakeven != null ? Math.round(row.breakeven) : null;
+  const avgScore = row.season_avg ?? row.last_5_avg ?? row.last_3_avg ?? null;
   const valueScore = !row.is_bye && row.value_score != null ? row.value_score : null;
   const valueDisplayStr = getValueDisplay(valueScore);
 
@@ -334,10 +335,10 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
             <span className="text-[13px] font-bold text-[#F5C84C] tabular-nums">{proj}</span>
           </div>
         )}
-        {be != null && (
+        {avgScore != null && (
           <div className="flex flex-col gap-0.5">
             <span className="text-[10px] text-white/30 font-normal">Avg Score</span>
-            <span className="text-[13px] font-bold text-white/60 tabular-nums">{be}</span>
+            <span className="text-[13px] font-bold text-white/60 tabular-nums">{Math.round(Number(avgScore))}</span>
           </div>
         )}
         {valueScore != null && !row.is_bye && (
@@ -370,6 +371,7 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
 
   const proj = row.projection ?? null;
   const breakeven = row.breakeven != null ? Math.round(row.breakeven) : null;
+  const rowAvgScore = row.season_avg ?? row.last_5_avg ?? row.last_3_avg ?? null;
   const valueScore = !row.is_bye && row.value_score != null ? row.value_score : null;
 
   const displayRec = getDisplayRecommendation(row, activeTab);
@@ -417,12 +419,12 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
           </span>
         </div>
 
-        {breakeven !== null && (
+        {rowAvgScore != null && (
           <>
             <span className="text-white/15 text-sm px-1.5">|</span>
             <div className="flex flex-col items-start px-2">
               <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Avg Score</span>
-              <span className="text-[14px] font-bold text-white/65 tabular-nums">{breakeven}</span>
+              <span className="text-[14px] font-bold text-white/65 tabular-nums">{Math.round(Number(rowAvgScore))}</span>
             </div>
           </>
         )}

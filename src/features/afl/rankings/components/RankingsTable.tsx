@@ -194,7 +194,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
 
   const isLocked = !isPremium && idx >= FREE_FULL_ROWS;
 
-  const be = row.breakeven != null ? Math.round(row.breakeven) : null;
+  const avgScore = row.season_avg ?? row.last_5_avg ?? row.last_3_avg ?? null;
 
   // Top-3 highlight ring
   const isTop3 = rank <= 3 && !isHighlighted;
@@ -247,7 +247,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
         </td>
 
         <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 80 }}>
-          <span className="text-sm tabular-nums text-white/60">{be !== null ? be : "—"}</span>
+          <span className="text-sm tabular-nums text-white/60">{avgScore != null ? fmt(avgScore, 1) : "—"}</span>
         </td>
 
         <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 90 }}>
@@ -374,7 +374,7 @@ export function FreeTableRow({ row, idx, onRowClick, onUpgrade }: FreeTableRowPr
   const rowFadeStyle: React.CSSProperties = { touchAction: "manipulation" };
 
 
-  const be = row.breakeven != null ? Math.round(row.breakeven) : null;
+  const avgScore = row.season_avg ?? row.last_5_avg ?? row.last_3_avg ?? null;
 
   const rawTsFree = !row.is_bye && row.trend_score != null ? row.trend_score : null;
   const tsClamped = rawTsFree !== null ? (rawTsFree > 40 ? 40 : rawTsFree < -40 ? -40 : rawTsFree) : null;
@@ -424,7 +424,7 @@ export function FreeTableRow({ row, idx, onRowClick, onUpgrade }: FreeTableRowPr
         }
       </td>
       <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 80 }}>
-        <span className="text-sm tabular-nums text-white/55">{be !== null ? be : "—"}</span>
+        <span className="text-sm tabular-nums text-white/55">{avgScore != null ? fmt(avgScore, 1) : "—"}</span>
       </td>
       <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 80 }}>
         {edgeDisplay !== null ? (
