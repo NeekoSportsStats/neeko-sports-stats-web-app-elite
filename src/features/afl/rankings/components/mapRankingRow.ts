@@ -7,9 +7,9 @@ export function mapRankingRow(r: Record<string, unknown>): RankingRow {
   return {
     player_id:               (r.player_id as string) ?? null,
     player_name:             (r.player_name as string) ?? "",
-    team:                    (r.team as string) ?? (r.team_name as string) ?? "",
-    team_name:               (r.team_name as string) ?? (r.team as string) ?? null,
-    position:                normalisePosition((r.player_position ?? r.position) as string | null),
+    team:                    (r.team as string) ?? "",
+    team_name:               (r.team_name as string) ?? null,
+    position:                normalisePosition((r.player_position) as string | null),
     position_group:          (r.position_group as string) ?? null,
 
     projection,

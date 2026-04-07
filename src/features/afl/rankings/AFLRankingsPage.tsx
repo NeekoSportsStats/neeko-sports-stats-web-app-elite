@@ -280,9 +280,9 @@ export default function AFLRankingsPage() {
     if (!data || !data[0]) return {};
     const d = data[0] as any;
     return {
-      why:           d.why ?? row.why,
-      why_long:      d.why_long ?? row.why_long,
-      cached_at:     d.cached_at ?? row.cached_at,
+      why:           d.why ?? null,
+      why_long:      d.why_long ?? null,
+      cached_at:     d.cached_at ?? null,
     };
   }
 

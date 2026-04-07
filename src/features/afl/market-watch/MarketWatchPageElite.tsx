@@ -65,21 +65,19 @@ export default function MarketWatchPageElite() {
       if (error) throw error;
 
       const mapped: MWPlayerRow[] = (data ?? []).map((r: any) => {
-        const catRaw = (r.category ?? "").toLowerCase();
+        const sigDisplay = (r.signal_display ?? "").toUpperCase();
         const displaySignal: "TARGET" | "WATCH" | "AVOID" =
-          catRaw === "target" ? "TARGET" : catRaw === "avoid" ? "AVOID" : "WATCH";
+          sigDisplay.includes("TARGET") ? "TARGET" : sigDisplay.includes("AVOID") ? "AVOID" : "WATCH";
 
         const isBye = r.is_bye === true;
-        const isInjured = r.is_injured === true ||
-          ['injured', 'out', 'omitted'].includes((r.status ?? '').toLowerCase()) ||
-          ['injured', 'out', 'omitted'].includes((r.manual_status ?? '').toLowerCase());
+        const isInjured = r.is_injured === true;
 
         return {
           player_id: r.player_id,
           player_name: r.player_name,
-          team: r.team ?? r.team_name ?? '',
-          team_name: r.team_name ?? r.team ?? '',
-          position: r.player_position ?? r.position ?? '',
+          team: r.team ?? '',
+          team_name: r.team_name ?? '',
+          position: r.player_position ?? '',
           price: r.price != null ? Number(r.price) : 0,
           prev_price: r.prev_price != null ? Number(r.prev_price) : null,
           price_change: r.price_change != null ? Number(r.price_change) : null,
