@@ -20,6 +20,7 @@ import {
   getTrendActionStyles,
   getFormLabel,
   getFormStyles,
+  getDisplayTrend,
 } from "./helpers";
 
 // ─── Mobile sparkline ─────────────────────────────────────────────────────────
@@ -145,10 +146,11 @@ function ActionBadge({ row, activeTab, isPremium, onUpgrade }: {
     );
   }
 
-  const action = getTrendAction(row.trend_signal);
+  const displayTrend = getDisplayTrend(row);
+  const action = getTrendAction(displayTrend);
   if (!action) return null;
 
-  const actionStyles = getTrendActionStyles(row.trend_signal);
+  const actionStyles = getTrendActionStyles(displayTrend);
   return (
     <span
       className={`inline-block rounded-md border px-2 py-1 text-[11px] font-bold whitespace-nowrap ${actionStyles}`}
@@ -437,17 +439,31 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
           </>
         )}
 
-        {row.form_label && (
-          <>
-            <span className="text-white/15 text-sm px-1.5">|</span>
-            <div className="flex flex-col items-start px-2">
-              <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Form</span>
-              <span className={`text-[12px] font-bold tabular-nums ${getFormStyles(row.form_label).split(" ")[0]}`}>
-                {getFormLabel(row.form_label)}
-              </span>
-            </div>
-          </>
-        )}
+        {(() => {
+          const fl = row.form_label ?? (() => {
+            const fs = row.form_score;
+            const avg = row.season_avg ?? row.last_5_avg;
+            if (fs == null || avg == null || avg === 0) return null;
+            const d = fs - avg;
+            if (d >= 15) return "HOT";
+            if (d >= 5)  return "IN FORM";
+            if (d >= -5) return "NORMAL";
+            if (d >= -15) return "COLD";
+            return "ICE COLD";
+          })();
+          if (!fl) return null;
+          return (
+            <>
+              <span className="text-white/15 text-sm px-1.5">|</span>
+              <div className="flex flex-col items-start px-2">
+                <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Form</span>
+                <span className={`text-[12px] font-bold tabular-nums ${getFormStyles(fl).split(" ")[0]}`}>
+                  {getFormLabel(fl)}
+                </span>
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* Row 3 — Short WHY + tap affordance */}

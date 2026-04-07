@@ -59,18 +59,40 @@ function TrendCell({ row }: { row: RankingRow }) {
 
 // ─── Form cell (backward-looking: recent vs season average) ───────────────────
 
+function deriveFormLabel(row: RankingRow): string | null {
+  if (row.form_label) return row.form_label;
+  const fs = row.form_score;
+  const avg = row.season_avg ?? row.last_5_avg;
+  if (fs == null || avg == null || avg === 0) return null;
+  const delta = fs - avg;
+  if (delta >= 15)  return "HOT";
+  if (delta >= 5)   return "IN FORM";
+  if (delta >= -5)  return "NORMAL";
+  if (delta >= -15) return "COLD";
+  return "ICE COLD";
+}
+
+function deriveFormDelta(row: RankingRow): number | null {
+  if (row.form_delta != null) return row.form_delta;
+  const fs = row.form_score;
+  const avg = row.season_avg ?? row.last_5_avg;
+  if (fs == null || avg == null) return null;
+  return fs - avg;
+}
+
 function FormCell({ row }: { row: RankingRow }) {
   if (row.is_bye) {
     return <span className="text-sm text-white/20 tabular-nums">—</span>;
   }
 
-  const label = getFormLabel(row.form_label);
-  const fd = row.form_delta;
+  const resolvedLabel = deriveFormLabel(row);
+  const label = getFormLabel(resolvedLabel);
+  const fd = deriveFormDelta(row);
   const clampedFd = fd != null ? (fd > 40 ? 40 : fd < -40 ? -40 : fd) : null;
   const deltaDisplay = fd == null ? null
     : fd > 40 ? "+40+" : fd < -40 ? "-40+" : (clampedFd! > 0 ? `+${clampedFd!.toFixed(1)}` : clampedFd!.toFixed(1));
 
-  const styleCls = getFormStyles(row.form_label);
+  const styleCls = getFormStyles(resolvedLabel);
   const [textCls] = styleCls.split(" ");
 
   return (

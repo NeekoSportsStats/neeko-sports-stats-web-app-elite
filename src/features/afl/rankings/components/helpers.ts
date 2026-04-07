@@ -43,7 +43,12 @@ export function getDisplayRecommendation(row: RankingRow, _tab: RankingsTab): st
 }
 
 export function getDisplayTrend(row: RankingRow): string | null {
-  return row.trend_signal ?? null;
+  if (row.trend_signal) return row.trend_signal;
+  const a = (row.action ?? "").toUpperCase();
+  if (a === "BUY" || a === "STRONG_BUY")  return "UP";
+  if (a === "HOLD")                        return "STABLE";
+  if (a === "SELL" || a === "STRONG_SELL") return "DOWN";
+  return null;
 }
 
 export function getTrendWhyText(row: RankingRow): string {
