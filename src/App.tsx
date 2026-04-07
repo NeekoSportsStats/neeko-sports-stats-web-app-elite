@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { track } from "@/lib/analytics";
+import { useCanonical } from "@/hooks/useCanonical";
 import { Layout } from "@/components/Layout";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireAdmin } from "@/components/RequireAdmin";
@@ -84,6 +85,8 @@ const Generic = <GenericPageSkeleton />;
 function App() {
   const location = useLocation();
 
+  useCanonical();
+
   useEffect(() => {
     track("Page View", { path: location.pathname });
   }, [location.pathname]);
@@ -147,6 +150,11 @@ function App() {
 
         <Route path="/pipeline-history" element={<RequireAdmin><S fallback={Generic}><PipelineHistory /></S></RequireAdmin>} />
       </Route>
+
+      {/* Legacy / deprecated routes — explicit 404 to prevent soft-404 indexing */}
+      <Route path="/nba/*" element={<NotFound />} />
+      <Route path="/epl/*" element={<NotFound />} />
+      <Route path="/products/*" element={<NotFound />} />
 
       <Route path="*" element={<NotFound />} />
     </Routes>
