@@ -93,9 +93,9 @@ function deriveFormDeltaLabel(fd: number | null): string | null {
   const clamped = fd > 40 ? 40 : fd < -40 ? -40 : fd;
   const sign = clamped > 0 ? "+" : "";
   const formatted = `${sign}${clamped.toFixed(1)}`;
-  if (Math.abs(clamped) < 4) return `Slight ${clamped >= 0 ? "Up" : "Down"} (${formatted})`;
-  if (clamped >= 4) return `Up (${formatted})`;
-  return `Down (${formatted})`;
+  if (Math.abs(clamped) < 4) return `Slight ${clamped >= 0 ? "Rise" : "Drop"} (${formatted})`;
+  if (clamped >= 4) return `Strong Rise (${formatted})`;
+  return `Dropping (${formatted})`;
 }
 
 function FormCell({ row }: { row: RankingRow }) {
@@ -288,7 +288,7 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
                   {getTrendAction(displayRec) ?? "—"}
                 </span>
                 <span className={`text-[8px] font-semibold uppercase tracking-wide px-1.5 py-px rounded border ${confStyles}`}>
-                  {conf}
+                  {conf === "HIGH_NEG" ? "HIGH" : conf}
                 </span>
               </div>
             );

@@ -15,11 +15,11 @@ export const VALUE_TAB_LABELS: Record<string, string> = {
 };
 
 const TREND_LABEL_MAP: Record<string, string> = {
-  STRONG_UP:    "Strong Start",
-  UP:           "Start",
-  STABLE:       "Hold",
-  DOWN:         "Sit",
-  STRONG_DOWN:  "Strong Sit",
+  STRONG_UP:    "Elite Upside",
+  UP:           "Rising",
+  STABLE:       "Stable",
+  DOWN:         "Falling",
+  STRONG_DOWN:  "Major Drop",
 };
 
 export function getTrendLabel(trendSignal: string | null): string {
@@ -81,17 +81,18 @@ export function getFormStyles(formLabel: string | null): string {
   return "text-white/40 border-white/10 bg-white/5";
 }
 
-export function deriveEdgeConfidence(edge: number | null): "HIGH" | "MEDIUM" | "LOW" {
+export function deriveEdgeConfidence(edge: number | null): "HIGH" | "HIGH_NEG" | "MEDIUM" | "LOW" {
   if (edge == null) return "LOW";
-  const abs = Math.abs(edge);
-  if (abs >= 20) return "HIGH";
-  if (abs >= 10) return "MEDIUM";
+  if (edge >= 20)  return "HIGH";
+  if (edge <= -20) return "HIGH_NEG";
+  if (Math.abs(edge) >= 10) return "MEDIUM";
   return "LOW";
 }
 
-export function getEdgeConfidenceStyles(conf: "HIGH" | "MEDIUM" | "LOW"): string {
-  if (conf === "HIGH")   return "text-emerald-400 border-emerald-500/25 bg-emerald-500/8";
-  if (conf === "MEDIUM") return "text-[#F5C84C] border-[#F5C84C]/20 bg-[#F5C84C]/8";
+export function getEdgeConfidenceStyles(conf: "HIGH" | "HIGH_NEG" | "MEDIUM" | "LOW"): string {
+  if (conf === "HIGH")     return "text-emerald-400 border-emerald-500/25 bg-emerald-500/8";
+  if (conf === "HIGH_NEG") return "text-red-400 border-red-500/25 bg-red-500/8";
+  if (conf === "MEDIUM")   return "text-[#F5C84C] border-[#F5C84C]/20 bg-[#F5C84C]/8";
   return "text-white/30 border-white/10 bg-white/5";
 }
 

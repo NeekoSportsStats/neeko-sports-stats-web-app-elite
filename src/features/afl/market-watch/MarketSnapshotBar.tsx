@@ -14,19 +14,19 @@ export const MarketSnapshotBar = memo(function MarketSnapshotBar({ topTarget, to
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
       <SnapshotCard
         player={topTarget}
-        heading="Best Trade Target"
+        heading="Must Have This Week"
         emptyText="No targets this round"
         variant="target"
       />
       <SnapshotCard
         player={topWatch}
-        heading="Monitor This Week"
+        heading="Watch Closely"
         emptyText="No watch players found"
         variant="watch"
       />
       <SnapshotCard
         player={topAvoid}
-        heading="Overpriced Risk"
+        heading="Avoid At All Costs"
         emptyText="No overpriced players"
         variant="avoid"
       />
