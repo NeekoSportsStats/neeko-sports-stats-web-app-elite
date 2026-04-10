@@ -323,7 +323,7 @@ function getSignalConfig(player: DerivedPlayer) {
   if (canonicalSignal === "STRONG_BUY") {
     return {
       icon: "🔥",
-      label: "Strong Buy",
+      label: "Strong Start",
       bg: "bg-green-500/20",
       text: "text-green-400",
       border: "border-green-500/40",
@@ -335,7 +335,7 @@ function getSignalConfig(player: DerivedPlayer) {
   if (canonicalSignal === "BUY") {
     return {
       icon: "👍",
-      label: "Buy",
+      label: "Start",
       bg: "bg-green-500/10",
       text: "text-green-400",
       border: "border-green-500/30",
@@ -346,8 +346,8 @@ function getSignalConfig(player: DerivedPlayer) {
 
   if (canonicalSignal === "STRONG_SELL") {
     return {
-      icon: "❌",
-      label: "Strong Sell",
+      icon: "🚫",
+      label: "Strong Sit",
       bg: "bg-red-500/20",
       text: "text-red-400",
       border: "border-red-500/40",
@@ -359,7 +359,7 @@ function getSignalConfig(player: DerivedPlayer) {
   if (canonicalSignal === "SELL") {
     return {
       icon: "⚠️",
-      label: "Sell",
+      label: "Sit",
       bg: "bg-red-500/10",
       text: "text-red-400",
       border: "border-red-500/30",
@@ -382,16 +382,16 @@ function getSignalConfig(player: DerivedPlayer) {
 function getVerdict(player: DerivedPlayer, delta: number): string {
   const sig = signalFromField(player.signal_tag ?? player.signal);
 
-  if (sig === "STRONG_BUY") return "Strong Buy — elite value with significant upside";
+  if (sig === "STRONG_BUY") return "Strong Start — elite value with significant upside";
   if (sig === "BUY") {
-    if (delta > 8) return "Buy — strong value with upside";
-    return "Buy — solid value opportunity";
+    if (delta > 8) return "Start — strong value with upside";
+    return "Start — solid value opportunity";
   }
 
-  if (sig === "STRONG_SELL") return "Strong Sell — severely overpriced, exit immediately";
+  if (sig === "STRONG_SELL") return "Strong Sit — severely overpriced, exit immediately";
   if (sig === "SELL") {
-    if (delta < -8) return "Sell — poor value, recommend exit";
-    return "Sell — limited value, consider alternatives";
+    if (delta < -8) return "Sit — poor value, recommend exit";
+    return "Sit — limited value, consider alternatives";
   }
 
   return "Hold — neutral value, monitor for changes";

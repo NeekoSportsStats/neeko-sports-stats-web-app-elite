@@ -26,7 +26,7 @@ export function CollapsibleSEO() {
                   Each player receives a Neeko Rating — a composite score that weighs ceiling potential,
                   floor consistency, breakeven requirement, and upcoming matchup quality. Every round
                   the model refreshes with the latest pricing and opponent data, translating numbers
-                  into a clear BUY, HOLD, WATCH, or AVOID signal.
+                  into a clear Start, Hold, or Sit signal.
                 </p>
                 <p>
                   The Value Score highlights players whose projected output significantly exceeds their

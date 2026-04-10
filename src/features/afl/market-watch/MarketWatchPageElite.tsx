@@ -167,11 +167,11 @@ export default function MarketWatchPageElite() {
     // Apply signal filter using _category — premium only for TARGET/WATCH/AVOID
     if (isPremium) {
       if (activeFilter === "TARGET") {
-        filtered = filtered.filter(p => p._category === 'BUY');
+        filtered = filtered.filter(p => p._category === 'START');
       } else if (activeFilter === "WATCH") {
         filtered = filtered.filter(p => p._category === 'HOLD');
       } else if (activeFilter === "AVOID") {
-        filtered = filtered.filter(p => p._category === 'SELL');
+        filtered = filtered.filter(p => p._category === 'SIT');
       }
     }
 

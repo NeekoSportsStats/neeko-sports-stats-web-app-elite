@@ -1,4 +1,4 @@
-export type MWSignal = "BUY" | "HOLD" | "SELL";
+export type MWSignal = "START" | "HOLD" | "SIT";
 
 export type MWSortKey = "value_score" | "projection" | "breakeven" | "price";
 

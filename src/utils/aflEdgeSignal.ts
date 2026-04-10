@@ -2,18 +2,18 @@ export type EdgeSignal = "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL";
 
 function normalise(s: string | null | undefined): string {
   if (!s) return "HOLD";
-  return s.toUpperCase().replace(/ /g, "_").replace(/STRONG BUY/g, "STRONG_BUY").replace(/STRONG SELL/g, "STRONG_SELL");
+  return s.toUpperCase().replace(/ /g, "_").replace(/STRONG_START/g, "STRONG_BUY").replace(/STRONG_SIT/g, "STRONG_SELL").replace(/\bSTART\b/g, "BUY").replace(/\bSIT\b/g, "SELL");
 }
 
 export function signalFromField(signal: string | null | undefined): EdgeSignal {
   const s = normalise(signal);
   if (s === "STRONG_BUY" || s === "BUY" || s === "HOLD" || s === "SELL" || s === "STRONG_SELL")
     return s as EdgeSignal;
-  if (s === "STRONG_UP" || s === "STRONG_START")  return "STRONG_BUY";
-  if (s === "UP" || s === "START")                return "BUY";
-  if (s === "STABLE")                             return "HOLD";
-  if (s === "DOWN" || s === "SIT")                return "SELL";
-  if (s === "STRONG_DOWN" || s === "STRONG_SIT")  return "STRONG_SELL";
+  if (s === "STRONG_UP")  return "STRONG_BUY";
+  if (s === "UP")         return "BUY";
+  if (s === "STABLE")     return "HOLD";
+  if (s === "DOWN")       return "SELL";
+  if (s === "STRONG_DOWN") return "STRONG_SELL";
   return "HOLD";
 }
 
@@ -34,23 +34,23 @@ export function signalDisplayLabel(signalDisplay: string | null | undefined, sig
   if (signalDisplay) return signalDisplay;
   const s = signalFromField(signal);
   switch (s) {
-    case "STRONG_BUY":  return "🔥 Target";
-    case "BUY":         return "Target";
-    case "HOLD":        return "Watch";
-    case "SELL":        return "Avoid";
-    case "STRONG_SELL": return "🚫 Hard Avoid";
-    default:            return "Watch";
+    case "STRONG_BUY":  return "🔥 Strong Start";
+    case "BUY":         return "Start";
+    case "HOLD":        return "Hold";
+    case "SELL":        return "Sit";
+    case "STRONG_SELL": return "🚫 Strong Sit";
+    default:            return "Hold";
   }
 }
 
 export function formatEdgeSignalLabel(signal: EdgeSignal | string | null): string {
   const s = normalise(signal);
   switch (s) {
-    case "STRONG_BUY":  return "Strong Buy";
-    case "BUY":         return "Buy";
+    case "STRONG_BUY":  return "Strong Start";
+    case "BUY":         return "Start";
     case "HOLD":        return "Hold";
-    case "SELL":        return "Sell";
-    case "STRONG_SELL": return "Strong Sell";
+    case "SELL":        return "Sit";
+    case "STRONG_SELL": return "Strong Sit";
     default:            return s.toLowerCase().replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
   }
 }

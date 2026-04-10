@@ -24,6 +24,7 @@ interface PlayerData {
   breakeven: number | null;
   value_score: number | null;
   signal: string | null;
+  signal_tag: string | null;
   signal_display: string | null;
   status: string | null;
   manual_status: string | null;
@@ -50,6 +51,7 @@ interface SimilarPlayer {
   projection: number | null;
   value_score: number | null;
   signal: string | null;
+  signal_tag: string | null;
   is_locked: boolean | null;
 }
 
@@ -123,7 +125,7 @@ function LockedField() {
 
 function SimilarPlayerRow({ player }: { player: SimilarPlayer }) {
   const slug = nameToSlug(player.player_name);
-  const sig = signalFromField(player.signal);
+  const sig = signalFromField(player.signal_tag ?? player.signal);
   const color = getEdgeSignalColor(sig);
   return (
     <Link
@@ -263,7 +265,7 @@ function PlayerSEOBlock({ player }: { player: PlayerData }) {
   const posName = getPositionName(player.player_position);
   const team = player.team ?? 'their AFL club';
   const proj = player.projection != null ? Math.round(player.projection) : null;
-  const sig = signalFromField(player.signal);
+  const sig = signalFromField(player.signal_tag ?? player.signal);
   const sigLabel = formatEdgeSignalLabel(sig);
 
   return (
@@ -337,6 +339,7 @@ export default function AFLPlayerPage() {
           breakeven: raw.breakeven != null ? Number(raw.breakeven) : null,
           value_score: raw.value_score != null ? Number(raw.value_score) : null,
           signal: raw.signal ?? null,
+          signal_tag: raw.signal_tag ?? null,
           signal_display: raw.signal_display ?? null,
           status: raw.status ?? null,
           manual_status: raw.manual_status ?? null,
@@ -376,6 +379,7 @@ export default function AFLPlayerPage() {
             projection: s.projection != null ? Number(s.projection) : null,
             value_score: s.value_score != null ? Number(s.value_score) : null,
             signal: s.signal ?? null,
+            signal_tag: s.signal_tag ?? null,
             is_locked: s.is_locked != null ? Boolean(s.is_locked) : null,
           }));
           setSimilar(mappedSimilar);
@@ -390,7 +394,7 @@ export default function AFLPlayerPage() {
 
   const posSlug = player ? getPositionSlug(player.player_position) : null;
   const posName = player ? getPositionName(player.player_position) : '';
-  const sig = player ? signalFromField(player.signal) : 'HOLD';
+  const sig = player ? signalFromField(player.signal_tag ?? player.signal) : 'HOLD';
   const sigColor = getEdgeSignalColor(sig);
   const sigLabel = formatEdgeSignalLabel(sig);
 
@@ -516,7 +520,7 @@ export default function AFLPlayerPage() {
                     {player.player_name}
                   </h1>
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <SignalBadge signal={player.signal} />
+                    <SignalBadge signal={player.signal_tag ?? player.signal} />
                     {player.neeko_rating != null && (
                       <span className="text-[11px] font-bold text-amber-400 tabular-nums">
                         {Number(player.neeko_rating).toFixed(1)} Rating
@@ -528,7 +532,7 @@ export default function AFLPlayerPage() {
                   className="flex items-center justify-center w-10 h-10 rounded-xl shrink-0"
                   style={{ background: `${sigColor}18`, border: `1px solid ${sigColor}30` }}
                 >
-                  <SignalIcon signal={player.signal} />
+                  <SignalIcon signal={player.signal_tag ?? player.signal} />
                 </div>
               </div>
 

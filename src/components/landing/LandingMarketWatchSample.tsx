@@ -16,9 +16,9 @@ type DisplaySignal = "TARGET" | "WATCH" | "AVOID";
 
 function SignalPill({ tier, locked }: { tier: DisplaySignal; locked?: boolean }) {
   const config = {
-    TARGET: { label: "TARGET", bg: "bg-green-500/15",  text: "text-green-400",  border: "border-green-500/30",  icon: TrendingUp },
-    WATCH:  { label: "WATCH",  bg: "bg-yellow-400/10", text: "text-yellow-300", border: "border-yellow-400/20", icon: Minus },
-    AVOID:  { label: "AVOID",  bg: "bg-red-500/15",    text: "text-red-400",    border: "border-red-500/30",    icon: TrendingDown },
+    TARGET: { label: "Start",  bg: "bg-green-500/15",  text: "text-green-400",  border: "border-green-500/30",  icon: TrendingUp },
+    WATCH:  { label: "Hold",   bg: "bg-yellow-400/10", text: "text-yellow-300", border: "border-yellow-400/20", icon: Minus },
+    AVOID:  { label: "Sit",    bg: "bg-red-500/15",    text: "text-red-400",    border: "border-red-500/30",    icon: TrendingDown },
   };
   const { label, bg, text, border, icon: Icon } = config[tier];
   return (

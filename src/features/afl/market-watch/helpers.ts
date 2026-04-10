@@ -21,8 +21,9 @@ export function fmtNum(v: number | null | undefined, decimals = 0): string {
 }
 
 export function signalColor(signal: string | null): string {
-  if (signal === "BUY")  return "text-green-400 bg-green-400/10 border-green-400/25";
-  if (signal === "SELL") return "text-red-400 bg-red-400/10 border-red-400/25";
+  const s = (signal ?? "").toUpperCase();
+  if (s === "START" || s === "STRONG_START") return "text-green-400 bg-green-400/10 border-green-400/25";
+  if (s === "SIT" || s === "STRONG_SIT")     return "text-red-400 bg-red-400/10 border-red-400/25";
   return "text-white/40 bg-white/5 border-white/10";
 }
 
@@ -156,10 +157,10 @@ const SELL_POSITIVE_PHRASES = [
 export function isSummaryAligned(summary: string, category: string): boolean {
   const lower = summary.toLowerCase();
   const cat = (category ?? '').toUpperCase();
-  if (cat === 'BUY' || cat === 'TARGET') {
+  if (cat === 'START' || cat === 'STRONG_START' || cat === 'TARGET') {
     return !BUY_NEGATIVE_PHRASES.some(phrase => lower.includes(phrase));
   }
-  if (cat === 'SELL' || cat === 'AVOID') {
+  if (cat === 'SIT' || cat === 'STRONG_SIT' || cat === 'AVOID') {
     return !SELL_POSITIVE_PHRASES.some(phrase => lower.includes(phrase));
   }
   return true;

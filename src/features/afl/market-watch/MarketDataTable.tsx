@@ -46,9 +46,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
 
   const sortedPlayers = useMemo(() => {
     const bucketOrder: Record<string, number> = {
-      STRONG_BUY: 0,  BUY: 1,  HOLD: 2,  SELL: 3,  STRONG_SELL: 4,
-      STRONG_START: 0, START: 1, SIT: 3,  STRONG_SIT: 4,
-      TARGET: 1, WATCH: 2, AVOID: 3,
+      STRONG_START: 0, START: 1, HOLD: 2, SIT: 3, STRONG_SIT: 4,
     };
 
     return [...players].sort((a, b) => {
@@ -57,8 +55,8 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
 
       switch (sortField) {
         case "signal": {
-          const aSignal = (a.signal_tag ?? a.signal ?? a.display_signal ?? "HOLD").toUpperCase();
-          const bSignal = (b.signal_tag ?? b.signal ?? b.display_signal ?? "HOLD").toUpperCase();
+          const aSignal = (a.signal_tag ?? "HOLD").toUpperCase();
+          const bSignal = (b.signal_tag ?? "HOLD").toUpperCase();
           aVal = bucketOrder[aSignal] ?? 2;
           bVal = bucketOrder[bSignal] ?? 2;
           if (aVal !== bVal) return (aVal as number) - (bVal as number);
@@ -339,7 +337,7 @@ interface PlayerRowProps {
 }
 
 const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred = false, isPremium }: PlayerRowProps) {
-  const signalStrength = useMemo(() => getSignalStrength(player), [player.display_signal, player.value_score]);
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.signal_tag, player.value_score]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
     player.why,
@@ -409,7 +407,7 @@ interface MobilePlayerCardProps {
 }
 
 const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlurred = false, isPremium }: MobilePlayerCardProps) {
-  const signalStrength = useMemo(() => getSignalStrength(player), [player.display_signal, player.value_score]);
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.signal_tag, player.value_score]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
     player.why,
@@ -475,26 +473,19 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
 });
 
 function getSignalStrength(player: DerivedPlayer) {
-  const rawSignal = (player.signal_tag ?? player.signal ?? player.display_signal ?? "HOLD").toUpperCase();
-  const displayLabel = player.signal_display ?? player.display_signal ?? "Watch";
+  const rawSignal = (player.signal_tag ?? "HOLD").toUpperCase();
 
   switch (rawSignal) {
     case "STRONG_START":
-    case "STRONG_BUY":
-    case "TARGET":
-      return { icon: "🔥", label: displayLabel, bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/40" };
+      return { icon: "🔥", label: "Strong Start", bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/40" };
     case "START":
-    case "BUY":
-      return { icon: "✅", label: displayLabel, bg: "bg-green-500/[0.12]", text: "text-green-400", border: "border-green-500/25" };
+      return { icon: "✅", label: "Start", bg: "bg-green-500/[0.12]", text: "text-green-400", border: "border-green-500/25" };
     case "STRONG_SIT":
-    case "STRONG_SELL":
-    case "AVOID":
-      return { icon: "🚫", label: displayLabel, bg: "bg-red-500/[0.15]", text: "text-red-400", border: "border-red-500/35" };
+      return { icon: "🚫", label: "Strong Sit", bg: "bg-red-500/[0.15]", text: "text-red-400", border: "border-red-500/35" };
     case "SIT":
-    case "SELL":
-      return { icon: "⚠️", label: displayLabel, bg: "bg-orange-500/[0.10]", text: "text-orange-400", border: "border-orange-500/25" };
+      return { icon: "⚠️", label: "Sit", bg: "bg-orange-500/[0.10]", text: "text-orange-400", border: "border-orange-500/25" };
     default:
-      return { icon: "👁", label: displayLabel, bg: "bg-[#F5C84C]/[0.08]", text: "text-[#F5C84C]", border: "border-[#F5C84C]/25" };
+      return { icon: "👁", label: "Hold", bg: "bg-[#F5C84C]/[0.08]", text: "text-[#F5C84C]", border: "border-[#F5C84C]/25" };
   }
 }
 

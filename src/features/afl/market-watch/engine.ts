@@ -1,9 +1,8 @@
-import { MWPlayerRow, MWSignal } from "./types";
+import { MWPlayerRow } from "./types";
 
-export type { MWSignal };
-
+export type SignalTier = "STRONG_START" | "START" | "HOLD" | "SIT" | "STRONG_SIT";
 export type DisplaySignal = "TARGET" | "WATCH" | "AVOID";
-export type SignalTier = "STRONG_BUY" | "BUY" | "HOLD" | "SELL" | "STRONG_SELL";
+export type MWSignal = "START" | "HOLD" | "SIT";
 
 export interface DerivedPlayer extends MWPlayerRow {
   _category: MWSignal;
@@ -28,17 +27,17 @@ function displaySignalFromCategory(p: MWPlayerRow): DisplaySignal {
 }
 
 function mwSignalFromDisplay(sig: DisplaySignal): MWSignal {
-  if (sig === "TARGET") return "BUY";
-  if (sig === "AVOID") return "SELL";
+  if (sig === "TARGET") return "START";
+  if (sig === "AVOID") return "SIT";
   return "HOLD";
 }
 
 function tierFromSignal(p: MWPlayerRow): SignalTier {
-  const raw = (p.signal_tag ?? p.signal ?? "HOLD").toUpperCase();
-  if (raw === "STRONG_START" || raw === "STRONG_BUY") return "STRONG_BUY";
-  if (raw === "START"        || raw === "BUY")        return "BUY";
-  if (raw === "STRONG_SIT"   || raw === "STRONG_SELL") return "STRONG_SELL";
-  if (raw === "SIT"          || raw === "SELL")       return "SELL";
+  const raw = (p.signal_tag ?? "HOLD").toUpperCase();
+  if (raw === "STRONG_START") return "STRONG_START";
+  if (raw === "START")        return "START";
+  if (raw === "STRONG_SIT")   return "STRONG_SIT";
+  if (raw === "SIT")          return "SIT";
   return "HOLD";
 }
 
@@ -80,17 +79,17 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
       display_signal,
     };
 
-    if (_category === "BUY") buys.push(derived);
-    else if (_category === "SELL") sells.push(derived);
+    if (_category === "START") buys.push(derived);
+    else if (_category === "SIT") sells.push(derived);
     else holds.push(derived);
   }
 
   const tierPriority: Record<SignalTier, number> = {
-    STRONG_BUY: 0,
-    BUY: 1,
+    STRONG_START: 0,
+    START: 1,
     HOLD: 2,
-    SELL: 3,
-    STRONG_SELL: 4,
+    SIT: 3,
+    STRONG_SIT: 4,
   };
 
   function effectiveMWValue(p: DerivedPlayer): number {

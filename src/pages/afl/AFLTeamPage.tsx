@@ -287,7 +287,7 @@ function TeamSEOBlock({ teamName, players }: { teamName: string; players: TeamPl
   const topPlayer = players[0];
   const topProj = topPlayer ? fmtProj(topPlayer.projection) : '—';
 
-  const buys = players.filter(p => { const sig = signalFromField(p.signal); return sig === 'STRONG_BUY' || sig === 'BUY'; });
+  const buys = players.filter(p => { const sig = signalFromField(p.signal_tag); return sig === 'STRONG_BUY' || sig === 'BUY'; });
   const valuePickNames = buys.slice(0, 3).map(p => p.player_name).join(', ');
 
   return (
@@ -326,8 +326,8 @@ function TeamSEOBlock({ teamName, players }: { teamName: string; players: TeamPl
               {teamName} Value Picks
             </h3>
             <p>
-              Current BUY signals from the {teamName} squad include {valuePickNames}.
-              BUY signals identify underpriced players whose projected scores exceed their breakeven,
+              Current Start signals from the {teamName} squad include {valuePickNames}.
+              Start signals identify underpriced players whose projected scores exceed their breakeven,
               meaning they are expected to increase in price. These represent the strongest trade-in
               targets from the {shortName} roster right now.
             </p>
@@ -413,7 +413,7 @@ export default function AFLTeamPage() {
   const accentSafe = accentColor === '#FFD200' ? '#F5C84C' : accentColor;
 
   const buyCt = useMemo(() =>
-    players.filter(p => { const sig = signalFromField(p.signal); return sig === 'STRONG_BUY' || sig === 'BUY'; }).length,
+    players.filter(p => { const sig = signalFromField(p.signal_tag); return sig === 'STRONG_BUY' || sig === 'BUY'; }).length,
     [players]
   );
 
@@ -457,7 +457,7 @@ export default function AFLTeamPage() {
   }
 
   const pageTitle = `${teamName} AFL Fantasy Players 2026 | Neeko`;
-  const pageDescription = `${teamName} AFL Fantasy players for 2026. Projected scores, prices, and rankings for every ${teamName} player this round. ${stats.totalPlayers} players listed, ${buyCt} BUY signals identified.`;
+  const pageDescription = `${teamName} AFL Fantasy players for 2026. Projected scores, prices, and rankings for every ${teamName} player this round. ${stats.totalPlayers} players listed, ${buyCt} Start signals identified.`;
   const pageUrl = `https://neekostats.com.au/sports/afl/teams/${team}`;
 
   return (
@@ -541,7 +541,7 @@ export default function AFLTeamPage() {
                 <div className="w-px h-6 bg-white/[0.07]" />
                 <StatPill label="Avg Proj" value={stats.avgProj} color="text-white/70" />
                 <div className="w-px h-6 bg-white/[0.07]" />
-                <StatPill label="BUY Signals" value={buyCt} color={buyCt > 0 ? 'text-emerald-400' : 'text-white/40'} />
+                <StatPill label="Start Signals" value={buyCt} color={buyCt > 0 ? 'text-emerald-400' : 'text-white/40'} />
               </div>
             </div>
           </div>

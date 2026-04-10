@@ -15,11 +15,11 @@ export const VALUE_TAB_LABELS: Record<string, string> = {
 };
 
 const TREND_LABEL_MAP: Record<string, string> = {
-  STRONG_UP:   "Breakout",
-  UP:          "Rising",
-  STABLE:      "Stable",
-  DOWN:        "Falling",
-  STRONG_DOWN: "Crash Risk",
+  STRONG_UP:    "Strong Start",
+  UP:           "Start",
+  STABLE:       "Hold",
+  DOWN:         "Sit",
+  STRONG_DOWN:  "Strong Sit",
 };
 
 export function getTrendLabel(trendSignal: string | null): string {
@@ -473,7 +473,7 @@ export function sharpenAIText(
 
 // ─── Recommendation pill colour resolver ──────────────────────────────────────
 // Maps DB colour names / labels to accessible hex values for pill display.
-// BUY → emerald, START → teal, CAPTAIN → gold, HOLD → slate, SIT → amber, SELL → red
+// START → teal, CAPTAIN → gold, HOLD → slate, SIT → amber
 
 const REC_COLOR_MAP: Record<string, string> = {
   // By recommendation_color field (DB value)
@@ -492,25 +492,22 @@ const REC_COLOR_MAP: Record<string, string> = {
 };
 
 const REC_LABEL_COLOR_MAP: Record<string, string> = {
-  BUY:     "#10b981",
-  START:   "#14b8a6",
-  CAPTAIN: "#F5C84C",
+  START:         "#14b8a6",
+  "STRONG START": "#4ade80",
+  CAPTAIN:       "#F5C84C",
   "ELITE CAPTAIN":  "#F5C84C",
   "STRONG CAPTAIN": "#F5C84C",
   "CAPTAIN OPTION": "#e2b93b",
-  HOLD:    "#64748b",
-  SIT:     "#f59e0b",
-  SELL:    "#ef4444",
+  HOLD:          "#64748b",
+  SIT:           "#f59e0b",
+  "STRONG SIT":  "#f87171",
   "UPGRADE TARGET":    "#10b981",
   "BEST CASH SAVER":   "#14b8a6",
   "SPECULATIVE VALUE": "#94a3b8",
   "STRONG OPTION":     "#10b981",
   "BENCH WATCH":       "#f59e0b",
-  // Edge signal labels
+  // Normalised internal enum (used by getEdgeSignalStyles pipeline)
   "STRONG_BUY":  "#4ade80",
-  "STRONG BUY":  "#4ade80",
-  "STRONG BUY (FORMATTED)": "#4ade80",
-  "STRONG SELL": "#f87171",
   "STRONG_SELL": "#f87171",
 };
 

@@ -93,15 +93,19 @@ export function MarketSearchBar({ players, isPremium, onSelect, selectedPlayerId
   }
 
   const categoryColor = (cat: string) => {
-    if (cat === "BUY") return "text-green-400";
-    if (cat === "SELL") return "text-red-400";
+    const c = cat.toUpperCase();
+    if (c === "START" || c === "STRONG_START") return "text-green-400";
+    if (c === "SIT"   || c === "STRONG_SIT")   return "text-red-400";
     return "text-[#F5C84C]";
   };
 
   const categoryLabel = (cat: string) => {
-    if (cat === "BUY") return "Target";
-    if (cat === "SELL") return "Avoid";
-    return "Watch";
+    const c = cat.toUpperCase();
+    if (c === "STRONG_START") return "Strong Start";
+    if (c === "START") return "Start";
+    if (c === "STRONG_SIT") return "Strong Sit";
+    if (c === "SIT") return "Sit";
+    return "Hold";
   };
 
   return (
