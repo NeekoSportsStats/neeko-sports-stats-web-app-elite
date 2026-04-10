@@ -65,10 +65,10 @@ function deriveFormLabel(row: RankingRow): string | null {
   const avg = row.season_avg ?? row.last_5_avg;
   if (l3 == null || avg == null || avg === 0) return null;
   const delta = l3 - avg;
-  if (delta >= 15)  return "HOT";
-  if (delta >= 5)   return "RISING";
-  if (delta > -5)   return "STABLE";
-  if (delta > -15)  return "COLD";
+  if (delta >= 12)  return "HOT";
+  if (delta >= 4)   return "RISING";
+  if (delta > -4)   return "STABLE";
+  if (delta > -12)  return "COLD";
   return "ICE_COLD";
 }
 

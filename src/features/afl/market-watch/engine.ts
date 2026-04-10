@@ -49,6 +49,9 @@ function isEligible(p: MWPlayerRow): boolean {
   const ms = (p.manual_status ?? "").toUpperCase();
   if (st === "INJURED" || st === "OUT" || st === "OMITTED") return false;
   if (ms === "INJURED" || ms === "OUT" || ms === "OMITTED") return false;
+  const gp = p.games_played ?? 0;
+  const hasHistory = p.last_5_avg != null || p.last_3_avg != null;
+  if (gp < 2 && !hasHistory) return false;
   return true;
 }
 
