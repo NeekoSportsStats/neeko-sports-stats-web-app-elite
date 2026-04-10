@@ -101,6 +101,16 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
     [sortedPlayers, isPremium]
   );
 
+  const getGroupLabel = (index: number, total: number): string | null => {
+    if (!isPremium) return null;
+    const top = Math.min(10, Math.ceil(total * 0.2));
+    const mid = Math.ceil(total * 0.6);
+    if (index === 0) return "Top Targets";
+    if (index === top) return "Solid Options";
+    if (index === mid) return "Risk / Avoid";
+    return null;
+  };
+
   return (
     <div className="space-y-4">
       {/* Sort toggle tabs */}
@@ -199,15 +209,31 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
             </tr>
           </thead>
           <tbody>
-            {visiblePlayers.map((player, index) => (
-              <PlayerRow
-                key={player.player_id}
-                player={player}
-                onClick={() => onPlayerClick(player)}
-                isEven={index % 2 === 0}
-                isPremium={isPremium}
-              />
-            ))}
+            {visiblePlayers.map((player, index) => {
+              const groupLabel = getGroupLabel(index, visiblePlayers.length);
+              return (
+                <React.Fragment key={player.player_id}>
+                  {groupLabel && (
+                    <tr>
+                      <td colSpan={6} className="px-5 pt-5 pb-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">
+                            {groupLabel === "Top Targets" ? "Top Targets" : groupLabel === "Solid Options" ? "Solid Options" : "Risk / Avoid"}
+                          </span>
+                          <div className="flex-1 h-px bg-white/[0.06]" />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  <PlayerRow
+                    player={player}
+                    onClick={() => onPlayerClick(player)}
+                    isEven={index % 2 === 0}
+                    isPremium={isPremium}
+                  />
+                </React.Fragment>
+              );
+            })}
 
             {blurredPlayers.map((player, index) => (
               <PlayerRow
@@ -225,14 +251,26 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
 
       {/* Mobile Cards */}
       <div className="lg:hidden space-y-2">
-        {visiblePlayers.map((player) => (
-          <MobilePlayerCard
-            key={player.player_id}
-            player={player}
-            onClick={() => onPlayerClick(player)}
-            isPremium={isPremium}
-          />
-        ))}
+        {visiblePlayers.map((player, index) => {
+          const groupLabel = getGroupLabel(index, visiblePlayers.length);
+          return (
+            <React.Fragment key={player.player_id}>
+              {groupLabel && (
+                <div className="flex items-center gap-2 pt-3 pb-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">
+                    {groupLabel}
+                  </span>
+                  <div className="flex-1 h-px bg-white/[0.06]" />
+                </div>
+              )}
+              <MobilePlayerCard
+                player={player}
+                onClick={() => onPlayerClick(player)}
+                isPremium={isPremium}
+              />
+            </React.Fragment>
+          );
+        })}
 
         {blurredPlayers.map((player) => (
           <MobilePlayerCard

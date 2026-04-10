@@ -10,6 +10,8 @@ import {
   getTrendWhyText,
   getFormLabel,
   getFormStyles,
+  deriveEdgeConfidence,
+  getEdgeConfidenceStyles,
   FREE_FULL_ROWS,
 } from "./helpers";
 import { InfoTooltip, LockedCell } from "./RankingsModals";
@@ -60,15 +62,21 @@ function TrendCell({ row }: { row: RankingRow }) {
 // ─── Form cell (backward-looking: recent vs season average) ───────────────────
 
 function deriveFormLabel(row: RankingRow): string | null {
-  if (row.form_label) return row.form_label;
+  if (row.form_label) {
+    const raw = row.form_label.toUpperCase().replace(/ /g, "_");
+    if (raw === "NORMAL") return "NEUTRAL";
+    if (raw === "IN_FORM" || raw === "IN FORM") return "RISING";
+    if (raw === "COLD") return "DROPPING";
+    return row.form_label;
+  }
   const l3 = row.last_3_avg;
   const avg = row.season_avg ?? row.last_5_avg;
   if (l3 == null || avg == null || avg === 0) return null;
   const delta = l3 - avg;
   if (delta >= 12)  return "HOT";
   if (delta >= 4)   return "RISING";
-  if (delta > -4)   return "STABLE";
-  if (delta > -12)  return "COLD";
+  if (delta > -4)   return "NEUTRAL";
+  if (delta > -12)  return "DROPPING";
   return "ICE_COLD";
 }
 
@@ -80,6 +88,16 @@ function deriveFormDelta(row: RankingRow): number | null {
   return l3 - avg;
 }
 
+function deriveFormDeltaLabel(fd: number | null): string | null {
+  if (fd == null) return null;
+  const clamped = fd > 40 ? 40 : fd < -40 ? -40 : fd;
+  const sign = clamped > 0 ? "+" : "";
+  const formatted = `${sign}${clamped.toFixed(1)}`;
+  if (Math.abs(clamped) < 4) return `Slight ${clamped >= 0 ? "Up" : "Down"} (${formatted})`;
+  if (clamped >= 4) return `Up (${formatted})`;
+  return `Down (${formatted})`;
+}
+
 function FormCell({ row }: { row: RankingRow }) {
   if (row.is_bye) {
     return <span className="text-sm text-white/20 tabular-nums">—</span>;
@@ -88,9 +106,7 @@ function FormCell({ row }: { row: RankingRow }) {
   const resolvedLabel = deriveFormLabel(row);
   const label = getFormLabel(resolvedLabel);
   const fd = deriveFormDelta(row);
-  const clampedFd = fd != null ? (fd > 40 ? 40 : fd < -40 ? -40 : fd) : null;
-  const deltaDisplay = fd == null ? null
-    : fd > 40 ? "+40+" : fd < -40 ? "-40+" : (clampedFd! > 0 ? `+${clampedFd!.toFixed(1)}` : clampedFd!.toFixed(1));
+  const deltaLabel = deriveFormDeltaLabel(fd);
 
   const styleCls = getFormStyles(resolvedLabel);
   const [textCls] = styleCls.split(" ");
@@ -98,8 +114,8 @@ function FormCell({ row }: { row: RankingRow }) {
   return (
     <div className="flex flex-col items-center gap-px">
       <span className={`text-[11px] font-semibold tabular-nums ${textCls}`}>{label}</span>
-      {deltaDisplay != null && (
-        <span className="text-[9px] text-white/25 leading-none tabular-nums">{deltaDisplay} vs avg</span>
+      {deltaLabel != null && (
+        <span className="text-[9px] text-white/25 leading-none tabular-nums">{deltaLabel}</span>
       )}
     </div>
   );
@@ -261,13 +277,22 @@ export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, 
         <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 96 }}>
           {isLocked ? (
             <LockedCell onClick={onUpgrade} />
-          ) : (
-            <span
-              className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${getTrendActionStyles(displayRec)}`}
-            >
-              {getTrendAction(displayRec) ?? "—"}
-            </span>
-          )}
+          ) : (() => {
+            const conf = deriveEdgeConfidence(row.edge ?? null);
+            const confStyles = getEdgeConfidenceStyles(conf);
+            return (
+              <div className="flex flex-col items-center gap-0.5">
+                <span
+                  className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${getTrendActionStyles(displayRec)}`}
+                >
+                  {getTrendAction(displayRec) ?? "—"}
+                </span>
+                <span className={`text-[8px] font-semibold uppercase tracking-wide px-1.5 py-px rounded border ${confStyles}`}>
+                  {conf}
+                </span>
+              </div>
+            );
+          })()}
         </td>
 
         <td className="px-3 py-3 text-left" style={{ minWidth: 300 }}>

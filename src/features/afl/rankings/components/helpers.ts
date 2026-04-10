@@ -73,12 +73,26 @@ export function getFormLabel(formLabel: string | null): string {
 export function getFormStyles(formLabel: string | null): string {
   if (!formLabel) return "text-white/30 border-white/10 bg-white/5";
   const s = formLabel.toUpperCase().replace(/ /g, "_");
-  if (s === "HOT")       return "text-orange-300 border-orange-500/30 bg-orange-500/10";
+  if (s === "HOT")                            return "text-orange-300 border-orange-500/30 bg-orange-500/10";
   if (s === "RISING" || s === "IN_FORM" || s === "IN FORM") return "text-green-400 border-green-500/25 bg-green-500/8";
-  if (s === "STABLE" || s === "NORMAL") return "text-white/45 border-white/10 bg-white/5";
-  if (s === "COLD")      return "text-sky-400 border-sky-500/25 bg-sky-500/8";
-  if (s === "ICE_COLD" || s === "ICE COLD") return "text-sky-300 border-sky-400/30 bg-sky-500/10";
+  if (s === "NEUTRAL" || s === "STABLE" || s === "NORMAL")  return "text-white/45 border-white/10 bg-white/5";
+  if (s === "DROPPING" || s === "COLD")       return "text-sky-400 border-sky-500/25 bg-sky-500/8";
+  if (s === "ICE_COLD" || s === "ICE COLD")   return "text-sky-300 border-sky-400/30 bg-sky-500/10";
   return "text-white/40 border-white/10 bg-white/5";
+}
+
+export function deriveEdgeConfidence(edge: number | null): "HIGH" | "MEDIUM" | "LOW" {
+  if (edge == null) return "LOW";
+  const abs = Math.abs(edge);
+  if (abs >= 20) return "HIGH";
+  if (abs >= 10) return "MEDIUM";
+  return "LOW";
+}
+
+export function getEdgeConfidenceStyles(conf: "HIGH" | "MEDIUM" | "LOW"): string {
+  if (conf === "HIGH")   return "text-emerald-400 border-emerald-500/25 bg-emerald-500/8";
+  if (conf === "MEDIUM") return "text-[#F5C84C] border-[#F5C84C]/20 bg-[#F5C84C]/8";
+  return "text-white/30 border-white/10 bg-white/5";
 }
 
 export function getTrendAction(trendSignal: string | null): string | null {
