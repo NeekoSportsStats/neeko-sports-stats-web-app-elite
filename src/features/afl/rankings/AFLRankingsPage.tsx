@@ -28,8 +28,9 @@ import { CollapsibleSEO } from "./components/CollapsibleSEO";
 const POSITIONS: PositionFilter[] = ["ALL", "DEF", "MID", "FWD", "RUC"];
 
 const STALE_MS = 60_000;
-const _rankingsCache: { data: RankingRow[] | null; ts: number; userId: string | null; tier: string | null } = {
-  data: null, ts: 0, userId: null, tier: null,
+const CACHE_VERSION = "v2-trend";
+const _rankingsCache: { data: RankingRow[] | null; ts: number; userId: string | null; tier: string | null; version: string } = {
+  data: null, ts: 0, userId: null, tier: null, version: "",
 };
 
 const PREMIUM_QUICK_FILTERS: { key: PremiumFilter; label: string }[] = [
@@ -295,6 +296,7 @@ export default function AFLRankingsPage() {
       _rankingsCache.data &&
       _rankingsCache.userId === userId &&
       _rankingsCache.tier === tier &&
+      _rankingsCache.version === CACHE_VERSION &&
       now - _rankingsCache.ts < STALE_MS
     ) {
       setRows(_rankingsCache.data);
@@ -325,6 +327,7 @@ export default function AFLRankingsPage() {
     _rankingsCache.ts = Date.now();
     _rankingsCache.userId = userId;
     _rankingsCache.tier = tier;
+    _rankingsCache.version = CACHE_VERSION;
     setRows(normalized);
     const firstCachedAt = (data as any[])?.[0]?.cached_at;
     if (firstCachedAt) {

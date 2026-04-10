@@ -378,7 +378,7 @@ export function FreeTableRow({ row, idx, onRowClick, onUpgrade }: FreeTableRowPr
 
   const rawTsFree = !row.is_bye && row.trend_score != null ? row.trend_score : null;
   const tsClamped = rawTsFree !== null ? (rawTsFree > 40 ? 40 : rawTsFree < -40 ? -40 : rawTsFree) : null;
-  const edgeDisplay = rawTsFree === null ? null : rawTsFree > 40 ? "40+" : rawTsFree < -40 ? "-40+" : (tsClamped! > 0 ? `+${tsClamped}` : String(tsClamped));
+  const edgeDisplay = rawTsFree === null ? null : rawTsFree > 40 ? "40+" : rawTsFree < -40 ? "-40+" : (tsClamped! > 0 ? `+${tsClamped!.toFixed(1)}` : tsClamped!.toFixed(1));
 
   const edgeColor = tsClamped === null ? "text-white/20" :
     tsClamped >= 20 ? "text-emerald-400 font-semibold" :
