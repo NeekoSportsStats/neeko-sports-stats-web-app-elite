@@ -9,11 +9,11 @@ export function signalFromField(signal: string | null | undefined): EdgeSignal {
   const s = normalise(signal);
   if (s === "STRONG_BUY" || s === "BUY" || s === "HOLD" || s === "SELL" || s === "STRONG_SELL")
     return s as EdgeSignal;
-  if (s === "STRONG_UP")   return "STRONG_BUY";
-  if (s === "UP")          return "BUY";
-  if (s === "STABLE")      return "HOLD";
-  if (s === "DOWN")        return "SELL";
-  if (s === "STRONG_DOWN") return "STRONG_SELL";
+  if (s === "STRONG_UP" || s === "STRONG_START")  return "STRONG_BUY";
+  if (s === "UP" || s === "START")                return "BUY";
+  if (s === "STABLE")                             return "HOLD";
+  if (s === "DOWN" || s === "SIT")                return "SELL";
+  if (s === "STRONG_DOWN" || s === "STRONG_SIT")  return "STRONG_SELL";
   return "HOLD";
 }
 

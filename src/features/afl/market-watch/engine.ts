@@ -34,11 +34,11 @@ function mwSignalFromDisplay(sig: DisplaySignal): MWSignal {
 }
 
 function tierFromSignal(p: MWPlayerRow): SignalTier {
-  const raw = (p.signal ?? "HOLD").toUpperCase();
-  if (raw === "STRONG_BUY")  return "STRONG_BUY";
-  if (raw === "BUY")         return "BUY";
-  if (raw === "STRONG_SELL") return "STRONG_SELL";
-  if (raw === "SELL")        return "SELL";
+  const raw = (p.signal_tag ?? p.signal ?? "HOLD").toUpperCase();
+  if (raw === "STRONG_START" || raw === "STRONG_BUY") return "STRONG_BUY";
+  if (raw === "START"        || raw === "BUY")        return "BUY";
+  if (raw === "STRONG_SIT"   || raw === "STRONG_SELL") return "STRONG_SELL";
+  if (raw === "SIT"          || raw === "SELL")       return "SELL";
   return "HOLD";
 }
 

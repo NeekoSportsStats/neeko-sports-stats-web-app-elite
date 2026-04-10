@@ -44,7 +44,7 @@ export function mapRankingRow(r: Record<string, unknown>): RankingRow {
     signal:                  (r.signal as string) ?? null,
     signal_display:          (r.signal_display as string) ?? null,
     category:                (r.category as string) ?? null,
-    action:                  (r.action_canonical as string) ?? (r.signal_tag as string) ?? (r.signal as string) ?? null,
+    action:                  (r.action as string) ?? (r.signal_tag as string) ?? (r.signal as string) ?? null,
 
     why:                     (r.why as string) ?? null,
     why_long:                (r.why_long as string) ?? null,

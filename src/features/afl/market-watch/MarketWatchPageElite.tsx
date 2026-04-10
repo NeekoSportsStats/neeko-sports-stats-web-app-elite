@@ -33,6 +33,7 @@ function rankingToMW(r: RankingRow): MWPlayerRow {
     edge: r.edge ?? null,
     value_score: r.value_score ?? null,
     signal: r.signal ?? null,
+    signal_tag: r.signal_tag ?? null,
     signal_display: r.signal_display ?? null,
     category: r.category ?? null,
     action: r.action ?? null,
@@ -241,17 +242,17 @@ export default function MarketWatchPageElite() {
 
   // Top cards: pull directly from classified buckets (single source of truth from engine)
   const topTarget = useMemo(() => {
-    const sorted = [...(classified?.buys ?? [])].filter(isHeroEligible).sort((a, b) => b.percentile_rank - a.percentile_rank);
+    const sorted = [...(classified?.buys ?? [])].filter(isHeroEligible).sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0));
     return sorted[0] ?? null;
   }, [classified]);
 
   const topWatch = useMemo(() => {
-    const sorted = [...(classified?.holds ?? [])].filter(isHeroEligible).sort((a, b) => b.percentile_rank - a.percentile_rank);
+    const sorted = [...(classified?.holds ?? [])].filter(isHeroEligible).sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0));
     return sorted[0] ?? null;
   }, [classified]);
 
   const topAvoid = useMemo(() => {
-    const sorted = [...(classified?.sells ?? [])].filter(isHeroEligible).sort((a, b) => a.percentile_rank - b.percentile_rank);
+    const sorted = [...(classified?.sells ?? [])].filter(isHeroEligible).sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0));
     return sorted[0] ?? null;
   }, [classified]);
 

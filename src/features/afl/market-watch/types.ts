@@ -20,9 +20,11 @@ export interface MWPlayerRow {
   games_played: number | null;
 
   breakeven: number | null;
+  edge: number | null;
   value_score: number | null;
 
   signal: string | null;
+  signal_tag: string | null;
   signal_display: string | null;
   category: string | null;
   action: string | null;

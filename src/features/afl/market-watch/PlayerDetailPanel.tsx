@@ -318,7 +318,7 @@ function MetricRow({ label, value }: MetricRowProps) {
 }
 
 function getSignalConfig(player: DerivedPlayer) {
-  const canonicalSignal = signalFromField(player.signal);
+  const canonicalSignal = signalFromField(player.signal_tag ?? player.signal);
 
   if (canonicalSignal === "STRONG_BUY") {
     return {
@@ -380,7 +380,7 @@ function getSignalConfig(player: DerivedPlayer) {
 }
 
 function getVerdict(player: DerivedPlayer, delta: number): string {
-  const sig = signalFromField(player.signal);
+  const sig = signalFromField(player.signal_tag ?? player.signal);
 
   if (sig === "STRONG_BUY") return "Strong Buy — elite value with significant upside";
   if (sig === "BUY") {
