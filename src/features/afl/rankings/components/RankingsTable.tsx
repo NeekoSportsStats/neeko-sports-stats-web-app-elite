@@ -61,23 +61,23 @@ function TrendCell({ row }: { row: RankingRow }) {
 
 function deriveFormLabel(row: RankingRow): string | null {
   if (row.form_label) return row.form_label;
-  const fs = row.form_score;
+  const l3 = row.last_3_avg;
   const avg = row.season_avg ?? row.last_5_avg;
-  if (fs == null || avg == null || avg === 0) return null;
-  const delta = fs - avg;
+  if (l3 == null || avg == null || avg === 0) return null;
+  const delta = l3 - avg;
   if (delta >= 15)  return "HOT";
-  if (delta >= 5)   return "IN FORM";
-  if (delta >= -5)  return "NORMAL";
-  if (delta >= -15) return "COLD";
-  return "ICE COLD";
+  if (delta >= 5)   return "RISING";
+  if (delta > -5)   return "STABLE";
+  if (delta > -15)  return "COLD";
+  return "ICE_COLD";
 }
 
 function deriveFormDelta(row: RankingRow): number | null {
   if (row.form_delta != null) return row.form_delta;
-  const fs = row.form_score;
+  const l3 = row.last_3_avg;
   const avg = row.season_avg ?? row.last_5_avg;
-  if (fs == null || avg == null) return null;
-  return fs - avg;
+  if (l3 == null || avg == null) return null;
+  return l3 - avg;
 }
 
 function FormCell({ row }: { row: RankingRow }) {

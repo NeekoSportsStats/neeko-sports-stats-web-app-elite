@@ -5,7 +5,7 @@ import { ChevronDown, ChevronUp, Lock } from "lucide-react";
 import { cleanAiText } from "@/utils/cleanAiText";
 import { generateSmartWhy } from "./helpers";
 
-type SortField = "signal" | "value" | "projection" | "player" | "breakeven" | "price";
+type SortField = "signal" | "value" | "projection" | "player" | "price";
 type SortDirection = "asc" | "desc";
 
 const SORT_TABS: { label: string; field: SortField }[] = [
@@ -21,7 +21,7 @@ interface MarketDataTableProps {
 }
 
 export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDataTableProps) {
-  const [sortField, setSortField] = useState<SortField>("signal");
+  const [sortField, setSortField] = useState<SortField>("value");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const handleTabSort = (field: SortField) => {
@@ -73,10 +73,6 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
         case "player":
           aVal = a.player_name;
           bVal = b.player_name;
-          break;
-        case "breakeven":
-          aVal = a.breakeven || 0;
-          bVal = b.breakeven || 0;
           break;
         case "price":
           aVal = a.price || 0;
@@ -200,18 +196,6 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 onSort={handleColumnSort}
                 isPremium={isPremium}
               />
-              {isPremium && (
-                <SortableHeader
-                  label="Breakeven"
-                  field="breakeven"
-                  currentField={sortField}
-                  direction={sortDirection}
-                  onSort={handleColumnSort}
-                  centered
-                  muted
-                  isPremium={isPremium}
-                />
-              )}
             </tr>
           </thead>
           <tbody>
@@ -390,11 +374,6 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
           <span>{signalStrength.label}</span>
         </div>
       </td>
-      {isPremium && (
-        <td className="px-5 py-3 text-center text-xs font-medium text-white/35 tabular-nums">
-          {player.breakeven != null ? Math.round(player.breakeven) : "—"}
-        </td>
-      )}
     </tr>
   );
 });
@@ -446,7 +425,7 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
         {formatWhyText(truncatedWhy)}
       </div>
 
-      <div className="grid grid-cols-4 gap-3 text-xs">
+      <div className="grid grid-cols-3 gap-3 text-xs">
         <div>
           <div className="text-white/35 text-[10px] mb-0.5">Proj</div>
           <div className="font-bold text-white/80">{Math.round(player.projection || 0)}</div>
@@ -455,15 +434,7 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
           <div className="text-white/35 text-[10px] mb-0.5">Price</div>
           <div className="font-bold text-white/80 text-[11px]">{formatPrice(player.price || 0)}</div>
         </div>
-        {isPremium && (
-          <div>
-            <div className="text-white/25 text-[10px] mb-0.5">BE</div>
-            <div className="font-medium text-white/40">
-              {player.breakeven != null ? Math.round(player.breakeven) : "—"}
-            </div>
-          </div>
-        )}
-        <div className={isPremium ? "" : "col-span-2"}>
+        <div>
           <div className="text-white/35 text-[10px] mb-0.5">Value</div>
           <ValueScoreCell value={player.value_score} compact />
         </div>
