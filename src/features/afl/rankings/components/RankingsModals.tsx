@@ -304,7 +304,7 @@ export function PlayerDetailModal({
       },
     });
   }, [row.player_name, navigate, location.pathname]);
-  const consistencyBadge = getConsistencyBadge(row.consistency_score ?? null);
+  const consistencyBadge = getConsistencyBadge(row.consistency ?? null);
   const capStyle = getCaptainStyle(row.captain_rating ?? null);
   const signalValue = signalFromField(row.signal ?? null);
   const recColor = getEdgeSignalColor(signalValue);
@@ -320,7 +320,7 @@ export function PlayerDetailModal({
 
   const rawDisplayConf = normaliseConfidence(
     row.projection_confidence ?? null,
-    (row as { consistency_score?: number | null }).consistency_score ?? null,
+    row.consistency ?? null,
     row.risk_rating ?? null,
     rank,
   );
@@ -464,16 +464,14 @@ export function PlayerDetailModal({
                 <p className={`text-sm font-semibold ${getFormColor(row.form_rating ?? null)}`}>{fmtInt(row.form_rating)}</p>
               </div>
             )}
-            <div className="rounded-lg bg-white/5 px-3 py-3">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1 flex items-center gap-0.5">
-                Matchup {hasMatchup && <InfoTooltip text="Opponent difficulty for this round" />}
-              </p>
-              {matchupLabel && matchupLabel !== "—" ? (
+            {hasMatchup && (
+              <div className="rounded-lg bg-white/5 px-3 py-3">
+                <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1 flex items-center gap-0.5">
+                  Matchup <InfoTooltip text="Opponent difficulty for this round" />
+                </p>
                 <p className={`text-sm font-semibold ${getMatchupColor(row.matchup_rating ?? null)}`}>{matchupLabel}</p>
-              ) : (
-                <p className={`text-sm font-semibold ${getMatchupColor("NEUTRAL")}`}>Neutral</p>
-              )}
-            </div>
+              </div>
+            )}
             {upsideVal != null && (
               <div className="rounded-lg bg-white/5 px-3 py-3">
                 <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1 flex items-center gap-0.5">
@@ -494,48 +492,48 @@ export function PlayerDetailModal({
                 </p>
               </div>
             )}
-            <div className="rounded-lg bg-white/5 px-3 py-3">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Consistency</p>
-              <p className={`text-sm font-semibold ${consistencyBadge.className}`}>{consistencyBadge.label}</p>
-            </div>
-            <div className="rounded-lg bg-white/5 px-3 py-3">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1 flex items-center gap-0.5">
-                Confidence <InfoTooltip text="Forecast reliability — reflects projection stability, role consistency, and risk." />
-              </p>
-              <>
+            {row.consistency != null && (
+              <div className="rounded-lg bg-white/5 px-3 py-3">
+                <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">Consistency</p>
+                <p className={`text-sm font-semibold ${consistencyBadge.className}`}>{consistencyBadge.label}</p>
+              </div>
+            )}
+            {displayConf != null && (
+              <div className="rounded-lg bg-white/5 px-3 py-3">
+                <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1 flex items-center gap-0.5">
+                  Confidence <InfoTooltip text="Forecast reliability — reflects projection stability, role consistency, and risk." />
+                </p>
                 <div className="flex items-baseline gap-1.5 mb-1.5">
                   <p className={`text-sm font-semibold tabular-nums ${getConfidenceColor(displayConf)}`}>
-                    {displayConf != null ? `${displayConf}%` : "—"}
+                    {displayConf}%
                   </p>
-                  {displayConf != null && (
-                    <span className={`inline-block rounded px-1 py-px text-[8px] font-semibold border ${confLabelCls}`}>
-                      {confLabel}
-                    </span>
-                  )}
+                  <span className={`inline-block rounded px-1 py-px text-[8px] font-semibold border ${confLabelCls}`}>
+                    {confLabel}
+                  </span>
                 </div>
-                {displayConf != null && (
-                  <div className="h-1.5 w-full rounded-full bg-white/[0.05] overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-yellow-300 transition-all"
-                      style={{ width: `${Math.min(100, Math.max(0, displayConf))}%` }}
-                    />
-                  </div>
-                )}
-              </>
-            </div>
+                <div className="h-1.5 w-full rounded-full bg-white/[0.05] overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-yellow-300 transition-all"
+                    style={{ width: `${Math.min(100, Math.max(0, displayConf))}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* 7. AI Analysis — short preview for free, full for premium */}
-          {canSeeAI ? (() => {
+          {/* 7. AI Analysis — only renders when there is text or loading */}
+          {canSeeAI && (() => {
             const aiCtx = { riskRating: row.risk_rating ?? null, confidence: row.projection_confidence ?? null };
-            const rawExtended = row.long ?? aiAnalysis?.analysis ?? null;
+            const rawExtended = (row as Record<string, unknown>).long as string | null ?? aiAnalysis?.analysis ?? null;
             const extendedText = sharpenAIText(rawExtended, aiCtx);
-            const hasText = !loadingAI && extendedText && extendedText !== "Model analysis is currently generating.";
+            const hasText = !loadingAI && !!extendedText && extendedText !== "Model analysis is currently generating.";
             const isStale = isAITextStale(rawExtended, {
               projection: row.projection,
               ceiling_estimate: row.ceiling_estimate,
               floor_estimate: row.floor_estimate,
             });
+
+            if (!hasText && !loadingAI) return null;
 
             const TRUNCATE_CHARS = 300;
             const isTruncated = !isPremium && hasText && extendedText!.length > TRUNCATE_CHARS;
@@ -555,15 +553,13 @@ export function PlayerDetailModal({
                       <div className="h-3 w-4/5 animate-pulse rounded bg-white/5" />
                       <div className="h-3 w-3/5 animate-pulse rounded bg-white/5" />
                     </div>
-                  ) : hasText ? (
+                  ) : (
                     <div className="relative">
                       <p className="text-sm text-white/65 leading-relaxed">{displayText}</p>
                       {isTruncated && (
                         <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-[#111111] to-transparent pointer-events-none" />
                       )}
                     </div>
-                  ) : (
-                    <p className="text-sm text-white/30 italic">Analysis not available yet.</p>
                   )}
                   {hasText && isStale && isPremium && (
                     <p className="mt-3 text-[10px] text-white/25 italic border-t border-white/5 pt-2">
@@ -598,7 +594,7 @@ export function PlayerDetailModal({
                 )}
               </>
             );
-          })() : null}
+          })()}
 
           {/* 8. Last 10 Games — visible for all free 1–8 */}
           {canSeeAI && (

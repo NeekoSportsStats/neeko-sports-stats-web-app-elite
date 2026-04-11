@@ -20,6 +20,8 @@ import {
   X,
   Search,
   ChevronUp,
+  ShieldAlert,
+  Target,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
@@ -42,8 +44,43 @@ import { buildCurrentRoundPlayers, type CurrentRoundPlayer } from "@/features/af
 const MUST_BUY_FREE    = 2;
 const TRAP_FREE        = 2;
 const CAPTAIN_FREE     = 1;
-const CASH_COW_GAMES   = 8;
+const BUDGET_PRICE_CAP = 350_000;
+const BUDGET_GAMES_CAP = 10;
 const PREMIUM_LIMIT    = 8;
+
+// ─── PRICE HELPERS ────────────────────────────────────────────────────────────
+function isBudgetPlayer(p: RankingRow): boolean {
+  const price = p.price ?? 0;
+  const games = p.games_played ?? 999;
+  return price < BUDGET_PRICE_CAP || games <= BUDGET_GAMES_CAP;
+}
+
+function getRiskTag(row: CurrentRoundPlayer): string {
+  const signal = (row.action ?? row.signal_tag ?? row.signal ?? "").toUpperCase();
+  if (signal.includes("VOLATILE")) return "Volatile";
+  if (signal.includes("ROLE")) return "Role Risk";
+  const edge = row.edge ?? 0;
+  const price = row.price ?? 0;
+  const proj = row.projection ?? 0;
+  const breakeven = row.breakeven ?? 0;
+  if (breakeven > 0 && proj < breakeven * 0.75) return "Overpriced";
+  if (price > 700_000 && edge < -10) return "Premium Trap";
+  if (edge < -20) return "Strong Fade";
+  if (edge < -10) return "Overpriced";
+  return "Watch";
+}
+
+function getCaptainTier(rank: number, row: CurrentRoundPlayer): { label: string; color: string; desc: string } {
+  const captScore = row.captain_score ?? 0;
+  const proj = row.projection ?? 0;
+  if (rank === 1 || captScore >= 80 || proj >= 120) {
+    return { label: "Lock", color: "#F5C84C", desc: "Highest confidence double" };
+  }
+  if (rank <= 3 || captScore >= 65 || proj >= 100) {
+    return { label: "Safe", color: "#4ade80", desc: "Reliable doubling option" };
+  }
+  return { label: "POD", color: "#60a5fa", desc: "Point of difference pick" };
+}
 
 function normalisePosition(pos: string | null | undefined): string | null {
   if (!pos) return null;
@@ -66,6 +103,15 @@ function BuyBadge() {
   );
 }
 
+function StrongValueBadge() {
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-px rounded border border-emerald-400/40 bg-emerald-400/10 text-emerald-400 shrink-0 leading-none">
+      <Star className="w-2.5 h-2.5" />
+      VALUE
+    </span>
+  );
+}
+
 function AvoidBadge() {
   return (
     <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-px rounded border border-red-500/40 bg-red-500/15 text-red-400 shrink-0 leading-none">
@@ -75,20 +121,24 @@ function AvoidBadge() {
   );
 }
 
-function CaptainBadge() {
+function CaptainBadge({ tier }: { tier?: string }) {
+  const color =
+    tier === "Lock" ? "border-yellow-400/40 bg-yellow-400/15 text-yellow-400" :
+    tier === "Safe" ? "border-green-400/30 bg-green-400/10 text-green-400" :
+    "border-blue-400/30 bg-blue-400/10 text-blue-400";
   return (
-    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-px rounded border border-yellow-400/40 bg-yellow-400/15 text-yellow-400 shrink-0 leading-none">
+    <span className={`inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-px rounded border shrink-0 leading-none ${color}`}>
       <Crown className="w-2.5 h-2.5" />
-      CAPTAIN
+      {tier ?? "CAPTAIN"}
     </span>
   );
 }
 
-function CashCowBadge() {
+function BudgetBadge() {
   return (
-    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-px rounded border border-emerald-400/40 bg-emerald-400/15 text-emerald-400 shrink-0 leading-none">
+    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-px rounded border border-teal-400/40 bg-teal-400/10 text-teal-400 shrink-0 leading-none">
       <Sprout className="w-2.5 h-2.5" />
-      CASH COW
+      BUDGET
     </span>
   );
 }
@@ -268,7 +318,7 @@ interface SectionCardProps {
   blurCtaLabel?: string;
   blurBadgeText?: string;
   footerLink?: { label: string; to: string };
-  renderBadge?: (row: CurrentRoundPlayer) => React.ReactNode;
+  renderBadge?: (row: CurrentRoundPlayer, idx: number) => React.ReactNode;
   renderMetric?: (row: CurrentRoundPlayer) => React.ReactNode;
   renderSubtext?: (row: CurrentRoundPlayer) => string | null;
 }
@@ -324,7 +374,7 @@ function SectionCard({
             key={row.player_id ?? idx}
             row={row}
             rank={idx + 1}
-            badge={renderBadge ? renderBadge(row) : undefined}
+            badge={renderBadge ? renderBadge(row, idx) : undefined}
             metric={renderMetric ? renderMetric(row) : undefined}
             subtext={renderSubtext ? renderSubtext(row) : null}
             onClick={() => onOpenRow(row, idx + 1)}
@@ -361,6 +411,327 @@ function SectionCard({
           </Link>
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── CAPTAIN SECTION (tiered) ─────────────────────────────────────────────────
+
+interface CaptainSectionProps {
+  captains: CurrentRoundPlayer[];
+  freeLimit: number;
+  isPremiumUser: boolean;
+  onOpenRow: (row: CurrentRoundPlayer, rank: number) => void;
+  onUpgrade: () => void;
+}
+
+function CaptainSection({ captains, freeLimit, isPremiumUser, onOpenRow, onUpgrade }: CaptainSectionProps) {
+  const [hovered, setHovered] = useState(false);
+  const accentColor = "#F5C84C";
+  const limit = isPremiumUser ? PREMIUM_LIMIT : freeLimit;
+  const visible = captains.slice(0, limit);
+  const hidden = isPremiumUser ? [] : captains.slice(freeLimit, Math.min(PREMIUM_LIMIT, captains.length));
+  const totalHidden = isPremiumUser ? 0 : Math.max(0, captains.length - freeLimit);
+
+  const tiers = isPremiumUser
+    ? [
+        { key: "Lock",  color: "#F5C84C", desc: "Highest confidence double",    players: captains.filter((_, i) => getCaptainTier(i + 1, _).label === "Lock")  },
+        { key: "Safe",  color: "#4ade80", desc: "Reliable doubling option",     players: captains.filter((_, i) => getCaptainTier(i + 1, _).label === "Safe")  },
+        { key: "POD",   color: "#60a5fa", desc: "Point of difference pick",     players: captains.filter((_, i) => getCaptainTier(i + 1, _).label === "POD")   },
+      ].filter((t) => t.players.length > 0)
+    : null;
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden flex flex-col transition-all duration-200"
+      style={{
+        border: `1px solid ${hovered ? `${accentColor}60` : `${accentColor}30`}`,
+        background: `linear-gradient(135deg, ${accentColor}06 0%, transparent 60%)`,
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div className="px-4 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${accentColor}18` }}>
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
+          <span style={{ color: accentColor }}><Crown className="w-4 h-4" /></span>
+          <h2 className="text-sm font-bold text-white flex-1">Captain Picks</h2>
+          {!isPremiumUser && totalHidden > 0 && (
+            <span className="text-[10px] text-white/25">{freeLimit} of {captains.length}</span>
+          )}
+        </div>
+        <p className="text-[11px] text-white/35 mt-1 ml-4 leading-relaxed">
+          {isPremiumUser
+            ? "Tiered by confidence — Lock for the sure things, Safe for reliability, POD for differential upside."
+            : "Best doubling options ranked by projection, consistency and matchup advantage."}
+        </p>
+      </div>
+
+      <div className="flex-1 py-1">
+        {isPremiumUser && tiers ? (
+          tiers.map((tier) => (
+            <div key={tier.key}>
+              <div className="flex items-center gap-2 px-4 pt-2.5 pb-1">
+                <div className="h-px flex-1" style={{ background: `${tier.color}20` }} />
+                <span
+                  className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
+                  style={{ color: tier.color, background: `${tier.color}12`, border: `1px solid ${tier.color}25` }}
+                >
+                  {tier.key} — {tier.desc}
+                </span>
+                <div className="h-px flex-1" style={{ background: `${tier.color}20` }} />
+              </div>
+              {tier.players.map((row, idx) => {
+                const globalIdx = captains.indexOf(row);
+                return (
+                  <PlayerRow
+                    key={row.player_id ?? idx}
+                    row={row}
+                    rank={globalIdx + 1}
+                    badge={<CaptainBadge tier={tier.key} />}
+                    metric={
+                      row.captain_score != null ? (
+                        <div className="text-right hidden sm:block">
+                          <div className="text-xs font-bold tabular-nums" style={{ color: tier.color }}>
+                            {fmt(row.captain_score, 0)}
+                          </div>
+                          <div className="text-[9px] text-white/25">cap score</div>
+                        </div>
+                      ) : undefined
+                    }
+                    subtext={row.captain_rating ?? null}
+                    onClick={() => onOpenRow(row, globalIdx + 1)}
+                  />
+                );
+              })}
+            </div>
+          ))
+        ) : (
+          visible.map((row, idx) => {
+            const tier = getCaptainTier(idx + 1, row);
+            return (
+              <PlayerRow
+                key={row.player_id ?? idx}
+                row={row}
+                rank={idx + 1}
+                badge={<CaptainBadge tier={tier.label} />}
+                metric={
+                  row.captain_score != null ? (
+                    <div className="text-right hidden sm:block">
+                      <div className="text-xs font-bold tabular-nums text-[#F5C84C]">
+                        {fmt(row.captain_score, 0)}
+                      </div>
+                      <div className="text-[9px] text-white/25">cap score</div>
+                    </div>
+                  ) : undefined
+                }
+                subtext={tier.desc}
+                onClick={() => onOpenRow(row, idx + 1)}
+              />
+            );
+          })
+        )}
+
+        {hidden.length > 0 && (
+          <div className="relative pb-12">
+            {hidden.map((row, idx) => (
+              <BlurredRow key={row.player_id ?? idx} rank={freeLimit + idx + 1} />
+            ))}
+            <LockStripCTA
+              hiddenCount={totalHidden}
+              accentColor={accentColor}
+              onUpgrade={onUpgrade}
+              ctaLabel="Unlock full captain strategy →"
+              badgeText={`+${totalHidden} options hidden`}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${accentColor}12` }}>
+        <Link
+          to="/sports/afl/rankings"
+          className="flex items-center gap-1 text-[11px] transition-colors"
+          style={{ color: `${accentColor}60` }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = `${accentColor}99`)}
+          onMouseLeave={(e) => (e.currentTarget.style.color = `${accentColor}60`)}
+        >
+          Full Rankings
+          <ChevronRight className="w-3 h-3" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ─── MUST BUY SECTION (split into tiers for premium) ─────────────────────────
+
+interface MustBuysSectionProps {
+  mustBuys: CurrentRoundPlayer[];
+  freeLimit: number;
+  isPremiumUser: boolean;
+  onOpenRow: (row: CurrentRoundPlayer, rank: number) => void;
+  onUpgrade: () => void;
+}
+
+function MustBuysSection({ mustBuys, freeLimit, isPremiumUser, onOpenRow, onUpgrade }: MustBuysSectionProps) {
+  const [hovered, setHovered] = useState(false);
+  const accentColor = "#4ade80";
+  const limit = isPremiumUser ? mustBuys.length : freeLimit;
+  const visible = mustBuys.slice(0, limit);
+  const hidden = isPremiumUser ? [] : mustBuys.slice(freeLimit, Math.min(PREMIUM_LIMIT, mustBuys.length));
+  const totalHidden = isPremiumUser ? 0 : Math.max(0, mustBuys.length - freeLimit);
+
+  const mustBuyPlayers = isPremiumUser
+    ? visible.filter((p) => (p.value_score ?? 0) >= 1.1 || (p.edge ?? 0) >= 15)
+    : visible;
+  const strongValuePlayers = isPremiumUser
+    ? visible.filter((p) => !mustBuyPlayers.includes(p))
+    : [];
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden flex flex-col transition-all duration-200"
+      style={{
+        border: `1px solid ${hovered ? `${accentColor}60` : `${accentColor}30`}`,
+        background: `linear-gradient(135deg, ${accentColor}06 0%, transparent 60%)`,
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div className="px-4 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${accentColor}18` }}>
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
+          <span style={{ color: accentColor }}><TrendingUp className="w-4 h-4" /></span>
+          <h2 className="text-sm font-bold text-white flex-1">Must Buys</h2>
+          {!isPremiumUser && totalHidden > 0 && (
+            <span className="text-[10px] text-white/25">{freeLimit} of {mustBuys.length}</span>
+          )}
+        </div>
+        <p className="text-[11px] text-white/35 mt-1 ml-4 leading-relaxed">
+          {isPremiumUser
+            ? "Clearest trade-in targets this round — sorted by value edge, not just projection."
+            : "Highest value score this round — strongest trade-in targets sorted by value, not popularity."}
+        </p>
+      </div>
+
+      <div className="flex-1 py-1">
+        {isPremiumUser ? (
+          <>
+            {mustBuyPlayers.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 px-4 pt-2.5 pb-1">
+                  <div className="h-px flex-1 bg-green-500/15" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full text-green-400 bg-green-400/10 border border-green-400/20">
+                    Must Buy — Strongest Signal
+                  </span>
+                  <div className="h-px flex-1 bg-green-500/15" />
+                </div>
+                {mustBuyPlayers.map((row, idx) => (
+                  <PlayerRow
+                    key={row.player_id ?? idx}
+                    row={row}
+                    rank={idx + 1}
+                    badge={<BuyBadge />}
+                    metric={
+                      row.value_score != null ? (
+                        <div className="text-right hidden sm:block">
+                          <div className={`text-xs font-bold tabular-nums ${(row.value_score ?? 0) >= 1.05 ? "text-green-400" : "text-white/40"}`}>
+                            {(row.value_score ?? 0).toFixed(2)}
+                          </div>
+                          <div className="text-[9px] text-white/25">value</div>
+                        </div>
+                      ) : undefined
+                    }
+                    subtext={row.edge != null ? `+${fmt(row.edge, 0)} edge` : null}
+                    onClick={() => onOpenRow(row, idx + 1)}
+                  />
+                ))}
+              </>
+            )}
+            {strongValuePlayers.length > 0 && (
+              <>
+                <div className="flex items-center gap-2 px-4 pt-2.5 pb-1">
+                  <div className="h-px flex-1 bg-emerald-400/12" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full text-emerald-400 bg-emerald-400/08 border border-emerald-400/18">
+                    Strong Value — Worth Considering
+                  </span>
+                  <div className="h-px flex-1 bg-emerald-400/12" />
+                </div>
+                {strongValuePlayers.map((row, idx) => (
+                  <PlayerRow
+                    key={row.player_id ?? idx}
+                    row={row}
+                    rank={mustBuyPlayers.length + idx + 1}
+                    badge={<StrongValueBadge />}
+                    metric={
+                      row.value_score != null ? (
+                        <div className="text-right hidden sm:block">
+                          <div className="text-xs font-bold tabular-nums text-emerald-400">
+                            {(row.value_score ?? 0).toFixed(2)}
+                          </div>
+                          <div className="text-[9px] text-white/25">value</div>
+                        </div>
+                      ) : undefined
+                    }
+                    subtext={row.edge != null ? `+${fmt(row.edge, 0)} edge` : null}
+                    onClick={() => onOpenRow(row, mustBuyPlayers.length + idx + 1)}
+                  />
+                ))}
+              </>
+            )}
+          </>
+        ) : (
+          visible.map((row, idx) => (
+            <PlayerRow
+              key={row.player_id ?? idx}
+              row={row}
+              rank={idx + 1}
+              badge={<BuyBadge />}
+              metric={
+                row.value_score != null ? (
+                  <div className="text-right hidden sm:block">
+                    <div className={`text-xs font-bold tabular-nums ${(row.value_score ?? 0) >= 1.05 ? "text-green-400" : "text-white/40"}`}>
+                      {(row.value_score ?? 0).toFixed(2)}
+                    </div>
+                    <div className="text-[9px] text-white/25">value</div>
+                  </div>
+                ) : undefined
+              }
+              subtext={row.edge != null ? `+${fmt(row.edge, 0)} edge` : null}
+              onClick={() => onOpenRow(row, idx + 1)}
+            />
+          ))
+        )}
+
+        {hidden.length > 0 && (
+          <div className="relative pb-12">
+            {hidden.map((row, idx) => (
+              <BlurredRow key={row.player_id ?? idx} rank={freeLimit + idx + 1} />
+            ))}
+            <LockStripCTA
+              hiddenCount={totalHidden}
+              accentColor={accentColor}
+              onUpgrade={onUpgrade}
+              ctaLabel="Unlock all trade targets →"
+              badgeText={`+${Math.max(0, mustBuys.length - freeLimit)} picks hidden`}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${accentColor}12` }}>
+        <Link
+          to="/sports/afl/market-watch"
+          className="flex items-center gap-1 text-[11px] transition-colors"
+          style={{ color: `${accentColor}60` }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = `${accentColor}99`)}
+          onMouseLeave={(e) => (e.currentTarget.style.color = `${accentColor}60`)}
+        >
+          Market Watch
+          <ChevronRight className="w-3 h-3" />
+        </Link>
+      </div>
     </div>
   );
 }
@@ -448,7 +819,6 @@ function StartSitModal({ players, onClose, onOpenPlayer }: StartSitModalProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          {/* Player A */}
           <PlayerSearchSlot
             label="Player A"
             accentColor="#3b82f6"
@@ -467,7 +837,6 @@ function StartSitModal({ players, onClose, onOpenPlayer }: StartSitModalProps) {
             <div className="flex-1 h-px bg-white/[0.06]" />
           </div>
 
-          {/* Player B */}
           <PlayerSearchSlot
             label="Player B"
             accentColor="#f87171"
@@ -480,7 +849,6 @@ function StartSitModal({ players, onClose, onOpenPlayer }: StartSitModalProps) {
             onOpenPlayer={onOpenPlayer}
           />
 
-          {/* Result */}
           {result && (
             <div
               className="rounded-xl p-4 space-y-2"
@@ -649,13 +1017,13 @@ function CollapsibleSEO({ roundLabel, roundNum }: { roundLabel: string; roundNum
       >
         <div className="px-4 pb-5 pt-3 space-y-4">
           <p className="text-[12px] text-white/40 leading-relaxed">
-            This page surfaces the highest-conviction AFL Fantasy decisions for {roundLabel} — must-buy targets, cash cow rookies, traps to avoid, and captain picks — powered by Neeko's AI projection model and trend engine.
+            This page surfaces the highest-conviction AFL Fantasy decisions for {roundLabel} — must-buy targets, budget value plays, traps to avoid, and captain picks — powered by Neeko's AI projection model and trend engine.
           </p>
           <div className="space-y-2.5">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/30">How Each Section Works</h3>
             <ul className="space-y-2.5 text-[12px] text-white/35 leading-relaxed">
               <li><strong className="text-white/55">Must Buys</strong> — Players with strong upside projecting well above their breakeven. Best trade-in targets for {roundLabel}.</li>
-              <li><strong className="text-white/55">Cheap Value / Cash Cows</strong> — Rookies and cheap options early in their pricing cycle. Identified by low games played relative to current output.</li>
+              <li><strong className="text-white/55">Budget Upside</strong> — Affordable options with genuine scoring potential. Identified by price relative to projected output.</li>
               <li><strong className="text-white/55">Traps / Avoids</strong> — Players trending down or with negative edge scores. Consider replacing before {roundLabel} locks.</li>
               <li><strong className="text-white/55">Captain Picks</strong> — Best doubling options ranked by composite captain score: projection, consistency, and matchup advantage.</li>
             </ul>
@@ -744,14 +1112,14 @@ export default function AFLCurrentRoundPage() {
     return combined.sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)).slice(0, PREMIUM_LIMIT + 3);
   }, [valuePicks, topPicks]);
 
-  // ── CASH COWS — low games played, actively scoring ────────────────────────
-  const cashCows = useMemo<CurrentRoundPlayer[]>(() => {
+  // ── BUDGET UPSIDE — strictly priced under $350k OR low games, not in mustBuys
+  const budgetPicks = useMemo<CurrentRoundPlayer[]>(() => {
     const usedIds = new Set(mustBuys.map((p) => p.player_id));
     const available = players.filter(
       (p) => !p.is_injured && !p.is_bye && p.projection != null && p.projection > 0
     );
     return available
-      .filter((p) => (p.games_played ?? 999) <= CASH_COW_GAMES && !usedIds.has(p.player_id))
+      .filter((p) => isBudgetPlayer(p) && !usedIds.has(p.player_id))
       .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
       .slice(0, PREMIUM_LIMIT)
       .map((p) => {
@@ -764,10 +1132,13 @@ export default function AFLCurrentRoundPage() {
   const traps = useMemo(() => riskPicks.slice(0, PREMIUM_LIMIT + 3), [riskPicks]);
 
   // ── SUMMARY STRIP data ────────────────────────────────────────────────────
-  const bestBuy   = mustBuys[0] ?? null;
-  const bestTrap  = traps[0] ?? null;
-  const bestCap   = captains[0] ?? null;
-  const confPct   = players.filter((p) => (p.projection_confidence ?? 0) >= 65).length;
+  const bestBuy  = mustBuys[0] ?? null;
+  const bestTrap = traps[0] ?? null;
+  const bestCap  = captains[0] ?? null;
+
+  const buyPoolCount  = mustBuys.length;
+  const trapCount     = traps.length;
+  const captainLocks  = captains.filter((_, i) => getCaptainTier(i + 1, _).label === "Lock").length;
 
   const roundNum = roundLabel.replace(/[^0-9]/g, "");
   const pageTitle = `AFL Fantasy ${roundLabel} Tips, Captain Picks & Value Players | Neeko Sports`;
@@ -790,7 +1161,7 @@ export default function AFLCurrentRoundPage() {
     <>
       <Helmet>
         <title>{pageTitle}</title>
-        <meta name="description" content="Discover the best AFL Fantasy players for this round — must buys, cash cows, traps, and captain picks powered by AI projections." />
+        <meta name="description" content="Discover the best AFL Fantasy players for this round — must buys, budget value, traps, and captain picks powered by AI projections." />
         <link rel="canonical" href="https://neekostats.com.au/sports/afl/current-round" />
         <meta name="robots" content="index, follow" />
         <meta property="og:title" content={pageTitle} />
@@ -833,7 +1204,7 @@ export default function AFLCurrentRoundPage() {
                 <span className="text-[10px] uppercase tracking-wider text-[#F5C84C] font-semibold">{roundLabel}</span>
               </div>
               <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight">Weekly Game Plan</h1>
-              <p className="text-sm text-white/40 mt-1">Your round briefing — buys, traps, cash cows &amp; captain calls</p>
+              <p className="text-sm text-white/40 mt-1">Your round briefing — buys, traps, budget plays &amp; captain calls</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               {updatedAt && (
@@ -883,23 +1254,34 @@ export default function AFLCurrentRoundPage() {
               stat={fmt(bestCap?.projection, 0)}
               statLabel="pts proj"
               reason={bestCap?.why ?? null}
-              badge={<CaptainBadge />}
+              badge={<CaptainBadge tier="Lock" />}
             />
+            {/* Round Snapshot — user-facing decision stats */}
             <div
               className="rounded-2xl p-4 flex flex-col gap-2"
               style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.08)" }}
             >
               <div className="flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-[#F5C84C]" />
+                <Target className="w-3.5 h-3.5 text-[#F5C84C]" />
                 <span className="text-[10px] uppercase tracking-wider font-semibold text-white/30">Round Snapshot</span>
               </div>
-              <div>
-                <p className="text-base font-bold text-white leading-tight">{confPct} players</p>
-                <p className="text-[11px] text-white/35 mt-1 leading-relaxed">above 65% model confidence</p>
+              <div className="space-y-1.5 flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-white/35">Best Buy Pool</span>
+                  <span className="text-[11px] font-bold text-green-400 tabular-nums">{buyPoolCount}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-white/35">Trap Alerts</span>
+                  <span className="text-[11px] font-bold text-red-400 tabular-nums">{trapCount}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-white/35">Captain Locks</span>
+                  <span className="text-[11px] font-bold text-[#F5C84C] tabular-nums">{captainLocks}</span>
+                </div>
               </div>
-              <div className="flex items-baseline gap-1 mt-auto">
-                <span className="text-2xl font-bold text-[#F5C84C] tabular-nums">{traps.length}</span>
-                <span className="text-[10px] text-white/25">trap alerts</span>
+              <div className="flex items-center gap-1 pt-0.5 border-t border-white/[0.05]">
+                <Clock className="w-2.5 h-2.5 text-white/20" />
+                <span className="text-[9px] text-white/25">Updated before lockout</span>
               </div>
             </div>
           </div>
@@ -908,55 +1290,34 @@ export default function AFLCurrentRoundPage() {
           <CollapsibleSEO roundLabel={roundLabel} roundNum={roundNum} />
 
           {/* ── SECTION 1: MUST BUYS ─────────────────────────────────────── */}
-          <SectionCard
-            title="Must Buys"
-            description="Highest value score this round — strongest trade-in targets sorted by value, not popularity."
-            icon={<TrendingUp className="w-4 h-4" />}
-            accentColor="#4ade80"
-            players={mustBuys}
+          <MustBuysSection
+            mustBuys={mustBuys}
             freeLimit={MUST_BUY_FREE}
             isPremiumUser={isPremium}
             onOpenRow={openRow}
             onUpgrade={() => setShowUpgradeModal(true)}
-            blurCtaLabel="Unlock all trade targets →"
-            blurBadgeText={`+${Math.max(0, mustBuys.length - MUST_BUY_FREE)} picks hidden`}
-            footerLink={{ label: "Market Watch", to: "/sports/afl/market-watch" }}
-            renderBadge={() => <BuyBadge />}
-            renderMetric={(row) =>
-              row.value_score != null ? (
-                <div className="text-right hidden sm:block">
-                  <div className={`text-xs font-bold tabular-nums ${(row.value_score ?? 0) >= 1.05 ? "text-green-400" : "text-white/40"}`}>
-                    {(row.value_score ?? 0).toFixed(2)}
-                  </div>
-                  <div className="text-[9px] text-white/25">value</div>
-                </div>
-              ) : undefined
-            }
-            renderSubtext={(row) =>
-              row.edge != null ? `+${fmt(row.edge, 0)} edge` : null
-            }
           />
 
-          {/* ── SECTION 2: ROOKIE WATCH ──────────────────────────────────── */}
-          {cashCows.length > 0 && (
+          {/* ── SECTION 2: BUDGET UPSIDE ─────────────────────────────────── */}
+          {budgetPicks.length > 0 && (
             <SectionCard
-              title="Cheap Value / Rookie Watch"
-              description="Early-season players generating value before their price rises. Low games played, high upside."
+              title="Budget Upside"
+              description="Affordable options with genuine scoring potential — priced under $350k or early in their pricing cycle."
               icon={<Sprout className="w-4 h-4" />}
-              accentColor="#34d399"
-              players={cashCows}
+              accentColor="#2dd4bf"
+              players={budgetPicks}
               freeLimit={isPremium ? PREMIUM_LIMIT : 3}
               isPremiumUser={isPremium}
               onOpenRow={openRow}
               onUpgrade={() => setShowUpgradeModal(true)}
-              blurCtaLabel="Unlock all cash cows →"
-              blurBadgeText={`+${Math.max(0, cashCows.length - 3)} hidden`}
+              blurCtaLabel="Unlock all budget plays →"
+              blurBadgeText={`+${Math.max(0, budgetPicks.length - 3)} hidden`}
               footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
-              renderBadge={() => <CashCowBadge />}
+              renderBadge={() => <BudgetBadge />}
               renderMetric={(row) =>
                 row.price != null ? (
                   <div className="text-right hidden sm:block">
-                    <div className="text-xs font-bold tabular-nums text-emerald-400">{fmtPrice(row.price)}</div>
+                    <div className="text-xs font-bold tabular-nums text-teal-400">{fmtPrice(row.price)}</div>
                     <div className="text-[9px] text-white/25">price</div>
                   </div>
                 ) : undefined
@@ -970,8 +1331,8 @@ export default function AFLCurrentRoundPage() {
           {/* ── SECTION 3: TRAPS / AVOIDS ────────────────────────────────── */}
           <SectionCard
             title="Overpriced / Risk"
-            description="Players whose price exceeds their projected value — ranked by value score ascending. Consider trading out."
-            icon={<AlertTriangle className="w-4 h-4" />}
+            description="Players whose price exceeds their projected value — ranked by edge score ascending. Consider trading out before lockout."
+            icon={<ShieldAlert className="w-4 h-4" />}
             accentColor="#f87171"
             players={traps}
             freeLimit={TRAP_FREE}
@@ -990,63 +1351,46 @@ export default function AFLCurrentRoundPage() {
                 </div>
               ) : undefined
             }
-            renderSubtext={(row) =>
-              row.projection_confidence != null
-                ? getConfidenceLabel(row.projection_confidence)
-                : null
-            }
+            renderSubtext={(row) => {
+              const tag = getRiskTag(row);
+              const conf = row.projection_confidence;
+              const confLabel = conf != null ? getConfidenceLabel(conf) : null;
+              const parts = [tag, confLabel].filter(Boolean);
+              return parts.length > 0 ? parts.join(" · ") : null;
+            }}
           />
 
-          {/* ── SECTION 4: CAPTAINS ──────────────────────────────────────── */}
-          <SectionCard
-            title="Captain Picks"
-            description="Best doubling options ranked by projection, consistency and matchup advantage."
-            icon={<Crown className="w-4 h-4" />}
-            accentColor="#F5C84C"
-            players={captains}
+          {/* ── SECTION 4: CAPTAINS (tiered) ─────────────────────────────── */}
+          <CaptainSection
+            captains={captains}
             freeLimit={CAPTAIN_FREE}
             isPremiumUser={isPremium}
             onOpenRow={openRow}
             onUpgrade={() => setShowUpgradeModal(true)}
-            blurCtaLabel="Unlock full captain strategy →"
-            blurBadgeText={`+${Math.max(0, captains.length - CAPTAIN_FREE)} options hidden`}
-            footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
-            renderBadge={() => <CaptainBadge />}
-            renderMetric={(row) =>
-              row.captain_score != null ? (
-                <div className="text-right hidden sm:block">
-                  <div className="text-xs font-bold tabular-nums text-[#F5C84C]">{fmt(row.captain_score, 0)}</div>
-                  <div className="text-[9px] text-white/25">cap score</div>
-                </div>
-              ) : undefined
-            }
-            renderSubtext={(row) =>
-              row.captain_rating ?? null
-            }
           />
 
-          {/* ── SECTION 5: START/SIT TOOL ────────────────────────────────── */}
+          {/* ── SECTION 5: COMPARE PLAYERS CTA ──────────────────────────── */}
           <div
             className="rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-5"
             style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}
           >
             <div className="flex items-start gap-3">
               <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5"
                 style={{ background: "rgba(245,200,76,0.12)", border: "1px solid rgba(245,200,76,0.22)" }}
               >
-                <Zap className="w-4.5 h-4.5 text-[#F5C84C]" />
+                <Zap className="w-4 h-4 text-[#F5C84C]" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-white">Not sure between two players?</h3>
+                <h3 className="text-sm font-bold text-white">Torn between two players?</h3>
                 <p className="text-[12px] text-white/35 mt-0.5 leading-relaxed">
-                  Compare any two players side-by-side — projection, edge, confidence — and get a clear start/sit call.
+                  Projection, edge, confidence — one clear start/sit answer. Compare any two players instantly.
                 </p>
               </div>
             </div>
             <button
               onClick={() => { setShowStartSit(true); track("start_sit_tool_open"); }}
-              className="shrink-0 flex items-center gap-1.5 text-[13px] font-bold text-[#F5C84C] border border-[#F5C84C]/30 hover:border-[#F5C84C]/60 hover:bg-[#F5C84C]/08 px-4 py-2.5 rounded-xl transition-all"
+              className="shrink-0 flex items-center gap-1.5 text-[13px] font-bold text-[#F5C84C] border border-[#F5C84C]/30 hover:border-[#F5C84C]/60 hover:bg-[#F5C84C]/[0.08] px-4 py-2.5 rounded-xl transition-all"
             >
               Compare Players
               <ArrowRight className="w-4 h-4" />
@@ -1082,7 +1426,6 @@ export default function AFLCurrentRoundPage() {
               <ArrowRight className="w-4 h-4 text-white/20 group-hover:text-white/50 group-hover:translate-x-0.5 transition-all" />
             </Link>
           </div>
-
 
         </div>
       </div>
