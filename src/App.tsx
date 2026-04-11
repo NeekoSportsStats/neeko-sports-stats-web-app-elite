@@ -116,9 +116,10 @@ function App() {
         <Route path="/neeko-plus" element={<S fallback={Generic}><NeekoPlusPurchase /></S>} />
 
         {/* AFL Routes */}
-        <Route path="/sports/afl" element={<Navigate to="/sports/afl/rankings" replace />} />
+        <Route path="/sports/afl" element={<Navigate to="/sports/afl/current-round" replace />} />
         <Route path="/sports/afl/rankings" element={<S fallback={Players}><AFLRankingsPage /></S>} />
         <Route path="/sports/afl/current-round" element={<S fallback={Players}><AFLCurrentRoundPage /></S>} />
+        <Route path="/sports/afl/players" element={<Navigate to="/sports/afl/rankings" replace />} />
         <Route path="/sports/afl/players/:slug" element={<S fallback={Players}><AFLPlayerPage /></S>} />
 
         {/* SEO-ONLY ROUTES: Teams & Positions pages accessible via direct URL only, hidden from UX */}

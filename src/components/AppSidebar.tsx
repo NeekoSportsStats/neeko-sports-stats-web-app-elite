@@ -3,40 +3,24 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubItem,
-  SidebarMenuSubButton,
-  SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
 
-import { Chrome as Home, Trophy, Crown, Users, Share2, ChevronDown, User, Mail, CircleHelp as HelpCircle, FileText, X, TrendingUp } from "lucide-react";
+import { Chrome as Home, Trophy, TrendingUp, Star, ChartBar as BarChart2, User, Crown, Users, Share2, CircleHelp as HelpCircle, FileText, Mail } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Separator } from "@/components/ui/separator";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 
 export function AppSidebar() {
-  const { open: sidebarOpen, isMobile, setOpenMobile, setOpen } = useSidebar();
-  const { user, isPremium } = useAuth();
+  const { isMobile, setOpenMobile, setOpen } = useSidebar();
+  const { isPremium } = useAuth();
   const location = useLocation();
   const currentPath = location.pathname;
-
-  const [sportsOpen, setSportsOpen] = useState(
-    currentPath.startsWith("/sports")
-  );
 
   const handleLinkClick = () => {
     if (isMobile) {
@@ -48,172 +32,80 @@ export function AppSidebar() {
 
   const isActive = (path: string) => {
     if (path === "/") return currentPath === "/";
-    return currentPath.startsWith(path);
+    return currentPath === path || currentPath.startsWith(path + "/");
   };
+
+  const mainNav = [
+    { title: "Home",         url: "/",                          icon: Home,      exact: true },
+    { title: "Current Week", url: "/sports/afl/current-round",  icon: Trophy },
+    { title: "Market Watch", url: "/sports/afl/market-watch",   icon: TrendingUp },
+    { title: "Captains",     url: "/sports/afl/captains",       icon: Star },
+    { title: "Rankings",     url: "/sports/afl/rankings",       icon: BarChart2 },
+    { title: "Players",      url: "/sports/afl/players",        icon: User },
+  ];
+
+  const infoNav = [
+    { title: "About Us",   url: "/about",    icon: Users },
+    { title: "Socials",    url: "/socials",  icon: Share2 },
+    { title: "FAQ",        url: "/faq",      icon: HelpCircle },
+    { title: "Policies",   url: "/policies", icon: FileText },
+    { title: "Contact Us", url: "/contact",  icon: Mail },
+  ];
 
   return (
     <Sidebar collapsible="icon" className="z-50">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* HOME */}
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild className="py-1.5">
-                  <NavLink
-                    to="/"
-                    end
-                    className="hover:bg-muted/50"
-                    activeClassName="bg-muted text-primary font-medium"
-                    onClick={handleLinkClick}
-                  >
-                    <Home className="h-4 w-4" />
-                    <span>Home</span>
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              {/* SPORTS GROUP */}
-              <Collapsible open={sportsOpen} onOpenChange={setSportsOpen}>
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton
-                      className={`py-1.5 hover:bg-muted/50 ${
-                        isActive("/sports")
-                          ? "bg-muted text-primary font-medium"
-                          : ""
-                      }`}
-                    >
-                      <Trophy className="h-4 w-4" />
-                      <span>Sports</span>
-
-                      <ChevronDown
-                        className={`ml-auto h-4 w-4 transition-transform ${
-                          sportsOpen ? "rotate-180" : ""
+              {mainNav.map(({ title, url, icon: Icon, exact }) => {
+                const active = exact ? currentPath === url : isActive(url);
+                return (
+                  <SidebarMenuItem key={title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={url}
+                        end={exact}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/50 ${
+                          active ? "bg-muted text-primary" : "text-foreground/70"
                         }`}
-                      />
+                        onClick={handleLinkClick}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span>{title}</span>
+                      </NavLink>
                     </SidebarMenuButton>
-                  </CollapsibleTrigger>
+                  </SidebarMenuItem>
+                );
+              })}
 
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {/* AFL */}
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton asChild className="py-0.5">
-                          <NavLink
-                            to="/sports/afl"
-                            className="hover:bg-muted/50 pl-6 font-semibold text-xs"
-                            activeClassName="bg-muted text-primary font-medium"
-                            onClick={handleLinkClick}
-                          >
-                            AFL
-                          </NavLink>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-
-                      {[
-                        { title: "Rankings", url: "/sports/afl/rankings" },
-                        { title: "Current Round", url: "/sports/afl/current-round" },
-                      ].map((item) => (
-                        <SidebarMenuSubItem key={item.title}>
-                          <SidebarMenuSubButton asChild className="py-0.5">
-                            <NavLink
-                              to={item.url}
-                              className="hover:bg-muted/50 pl-8 text-xs"
-                              activeClassName="bg-muted text-primary font-medium"
-                              onClick={handleLinkClick}
-                            >
-                              {item.title}
-                            </NavLink>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton asChild className="py-0.5">
-                          <NavLink
-                            to="/sports/afl/edge-board"
-                            className="hover:bg-muted/50 pl-8 text-xs"
-                            activeClassName="bg-muted text-primary font-medium"
-                            onClick={handleLinkClick}
-                          >
-                            Edge Board
-                          </NavLink>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton asChild className="py-0.5">
-                          <NavLink
-                            to="/sports/afl/start-sit"
-                            className="hover:bg-muted/50 pl-8 text-xs"
-                            activeClassName="bg-muted text-primary font-medium"
-                            onClick={handleLinkClick}
-                          >
-                            Start / Sit
-                          </NavLink>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton asChild className="py-0.5">
-                          <NavLink
-                            to="/sports/afl/market-watch"
-                            className="hover:bg-muted/50 pl-8 text-xs"
-                            activeClassName="bg-muted text-primary font-medium"
-                            onClick={handleLinkClick}
-                          >
-                            Market Watch
-                          </NavLink>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton asChild className="py-0.5">
-                          <NavLink
-                            to="/sports/afl/captains"
-                            className="hover:bg-muted/50 pl-8 text-xs"
-                            activeClassName="bg-muted text-primary font-medium"
-                            onClick={handleLinkClick}
-                          >
-                            Captains
-                          </NavLink>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
-
-              {/* CORE — CONDITIONAL Neeko+ */}
               {!isPremium && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild className="py-1.5">
+                  <SidebarMenuButton asChild>
                     <NavLink
                       to="/neeko-plus"
-                      className="hover:bg-muted/50"
-                      activeClassName="bg-muted text-primary font-medium"
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/50 ${
+                        isActive("/neeko-plus") ? "bg-muted text-primary" : "text-[#F5C84C]/80"
+                      }`}
                       onClick={handleLinkClick}
                     >
-                      <Crown className="h-4 w-4" />
+                      <Crown className="h-4 w-4 shrink-0 text-[#F5C84C]" />
                       <span>Neeko+</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
 
-              {/* ACCOUNT */}
               <SidebarMenuItem>
-                <SidebarMenuButton asChild className="py-1.5">
+                <SidebarMenuButton asChild>
                   <NavLink
                     to="/account"
-                    className="hover:bg-muted/50"
-                    activeClassName="bg-muted text-primary font-medium"
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/50 ${
+                      isActive("/account") ? "bg-muted text-primary" : "text-foreground/70"
+                    }`}
                     onClick={handleLinkClick}
                   >
-                    <User className="h-4 w-4" />
+                    <User className="h-4 w-4 shrink-0" />
                     <span>Account</span>
                   </NavLink>
                 </SidebarMenuButton>
@@ -224,27 +116,21 @@ export function AppSidebar() {
 
         <Separator className="my-2" />
 
-        {/* INFO SECTION */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {[
-                { title: "About Us", url: "/about", icon: Users },
-                { title: "Socials", url: "/socials", icon: Share2 },
-                { title: "FAQ", url: "/faq", icon: HelpCircle },
-                { title: "Policies", url: "/policies", icon: FileText },
-                { title: "Contact Us", url: "/contact", icon: Mail },
-              ].map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild className="py-1.5">
+              {infoNav.map(({ title, url, icon: Icon }) => (
+                <SidebarMenuItem key={title}>
+                  <SidebarMenuButton asChild>
                     <NavLink
-                      to={item.url}
-                      className="hover:bg-muted/50"
-                      activeClassName="bg-muted text-primary font-medium"
+                      to={url}
+                      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/50 ${
+                        isActive(url) ? "bg-muted text-primary" : "text-foreground/60"
+                      }`}
                       onClick={handleLinkClick}
                     >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span>{title}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
