@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { Crown, ArrowRight, Check, Lock, TrendingUp, Target, TriangleAlert as AlertTriangle, Star, Zap, Eye, Shield } from "lucide-react";
+import { Crown, ArrowRight, Check, Lock, TrendingUp, TriangleAlert as AlertTriangle, Star, Zap, Shield, Clock, Users } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
@@ -18,24 +18,6 @@ const FOOTER_LINKS = [
   { label: "FAQ",      to: "/faq" },
 ];
 
-const WHY_BULLETS = [
-  {
-    icon: Target,
-    title: "Identify value opportunities",
-    desc: "Spot underpriced players before the market reacts — giving you a trade edge every round.",
-  },
-  {
-    icon: AlertTriangle,
-    title: "Highlight traps early",
-    desc: "Avoid expensive players the model flags as overpriced or at risk of a score drop.",
-  },
-  {
-    icon: Eye,
-    title: "Explain every decision",
-    desc: "AI-written plain-English breakdowns tell you exactly why a player is a buy, hold or avoid.",
-  },
-];
-
 const NEEKO_FEATURES = [
   "Full projections for 600+ players",
   "Captain picks and edge signals",
@@ -45,6 +27,12 @@ const NEEKO_FEATURES = [
   "Market Watch — buy/sell timing",
   "Start/Sit comparisons",
   "Updated before every round lockout",
+];
+
+const TRUST_ITEMS = [
+  { icon: Clock, text: "Updated before every round lockout" },
+  { icon: Users, text: "600+ players analysed weekly" },
+  { icon: Shield, text: "Model-driven, not opinion-based" },
 ];
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -93,7 +81,7 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   );
 }
 
-// ─── SECTION 2 — This Week Preview ────────────────────────────────────────────
+// ─── SECTION 1 — This Week's 3 Moves ──────────────────────────────────────────
 
 interface GamePlanPreviewProps {
   players: RankingRow[];
@@ -132,7 +120,7 @@ function GamePlanPreview({ players, loading }: GamePlanPreviewProps) {
     {
       key: "must_have",
       icon: TrendingUp,
-      label: "MUST HAVE",
+      label: "MUST BUY",
       accentColor: "#34d399",
       accentBg: "rgba(52,211,153,0.08)",
       accentBorder: "rgba(52,211,153,0.25)",
@@ -170,11 +158,11 @@ function GamePlanPreview({ players, loading }: GamePlanPreviewProps) {
   return (
     <section className="py-12 md:py-16 bg-[#070707] border-t border-white/[0.05]">
       <div className="max-w-3xl mx-auto px-4">
-        <SectionLabel>This Week's Game Plan</SectionLabel>
-        <SectionHeading>Your 3 Key Decisions This Round</SectionHeading>
+        <SectionLabel>This Week's Moves</SectionLabel>
+        <SectionHeading>Make These 3 Moves This Week</SectionHeading>
         <GoldDivider />
         <p className="text-center text-white/40 text-sm mb-8 max-w-lg mx-auto leading-relaxed">
-          One player per category — ranked by the Neeko model. Updated before each round lockout.
+          One player per category, ranked by the Neeko model. Updated before each round lockout.
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -218,8 +206,8 @@ function GamePlanPreview({ players, loading }: GamePlanPreviewProps) {
 
             const proj = player.projection != null ? Math.round(player.projection) : null;
             const reason = player[reasonKey] ?? null;
-            const truncatedReason = reason && reason.length > 80
-              ? reason.slice(0, 80).replace(/\s+\S*$/, "") + "..."
+            const truncatedReason = reason && reason.length > 72
+              ? reason.slice(0, 72).replace(/\s+\S*$/, "") + "..."
               : reason;
 
             return (
@@ -273,22 +261,25 @@ function GamePlanPreview({ players, loading }: GamePlanPreviewProps) {
           })}
         </div>
 
-        <div className="mt-8 text-center">
+        <p className="text-center text-[12px] text-white/30 mt-6 italic">
+          This is all most coaches need each week.
+        </p>
+
+        <div className="mt-5 text-center">
           <Link
             to="/sports/afl/edge-board"
             className="inline-flex items-center justify-center gap-2 bg-[#F5C84C] text-black font-bold text-sm px-8 py-3.5 rounded-xl hover:brightness-110 transition-all min-h-[48px] shadow-[0_0_20px_rgba(245,200,76,0.15)]"
           >
-            View Full Game Plan
+            View This Week's Game Plan
             <ArrowRight size={14} />
           </Link>
-          <p className="text-[11px] text-white/25 mt-2">All signals shown free. Full AI breakdown requires Neeko+.</p>
         </div>
       </div>
     </section>
   );
 }
 
-// ─── SECTION 3 — Market Watch Preview ─────────────────────────────────────────
+// ─── SECTION 2 — Best Value Picks ─────────────────────────────────────────────
 
 interface MarketPreviewProps {
   players: RankingRow[];
@@ -296,77 +287,137 @@ interface MarketPreviewProps {
 }
 
 function MarketWatchPreview({ players, loading }: MarketPreviewProps) {
-  const preview = useMemo(() => {
+  const { bestBuy, watchOption, risk } = useMemo(() => {
     const available = players.filter(
       p => !p.is_bye && !p.is_injured && p.price != null && p.projection != null
     );
-    const byValue = [...available].sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0));
-    return byValue.slice(0, 3);
+    const buys = [...available]
+      .filter(p => ["BUY", "STRONG_BUY", "MUST_HAVE", "BREAKOUT", "UP", "STRONG_UP"].includes((p.signal ?? "").toUpperCase()))
+      .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0));
+    const holds = [...available]
+      .filter(p => !["BUY", "STRONG_BUY", "MUST_HAVE", "BREAKOUT", "UP", "STRONG_UP", "AVOID", "DOWN", "SELL", "STRONG_DOWN", "STRONG_SELL", "DO_NOT_START"].includes((p.signal ?? "").toUpperCase()))
+      .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0));
+    const avoids = [...available]
+      .filter(p => ["AVOID", "DOWN", "SELL", "STRONG_DOWN", "STRONG_SELL", "DO_NOT_START"].includes((p.signal ?? "").toUpperCase()))
+      .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0));
+
+    return {
+      bestBuy: buys[0] ?? null,
+      watchOption: holds[0] ?? null,
+      risk: avoids[0] ?? null,
+    };
   }, [players]);
+
+  const cards = [
+    {
+      key: "buy",
+      label: "Best Buy",
+      sublabel: "Highest value score this round",
+      accentColor: "#34d399",
+      accentBg: "rgba(52,211,153,0.06)",
+      accentBorder: "rgba(52,211,153,0.20)",
+      badgeLabel: "BUY",
+      badgeStyle: "bg-green-500/15 text-green-400 border border-green-500/30",
+      player: bestBuy,
+    },
+    {
+      key: "watch",
+      label: "Watch Option",
+      sublabel: "Hold and monitor this week",
+      accentColor: "rgba(255,255,255,0.35)",
+      accentBg: "rgba(255,255,255,0.03)",
+      accentBorder: "rgba(255,255,255,0.08)",
+      badgeLabel: "HOLD",
+      badgeStyle: "bg-white/10 text-white/50 border border-white/15",
+      player: watchOption,
+    },
+    {
+      key: "risk",
+      label: "Risk",
+      sublabel: "Overpriced or trending down",
+      accentColor: "#f87171",
+      accentBg: "rgba(248,113,113,0.06)",
+      accentBorder: "rgba(248,113,113,0.20)",
+      badgeLabel: "AVOID",
+      badgeStyle: "bg-red-500/15 text-red-400 border border-red-500/30",
+      player: risk,
+    },
+  ];
 
   return (
     <section className="py-12 md:py-16 bg-[#0a0a0a] border-t border-white/[0.05]">
       <div className="max-w-3xl mx-auto px-4">
         <SectionLabel>Market Watch</SectionLabel>
-        <SectionHeading>Top Value Opportunities</SectionHeading>
+        <SectionHeading>Best Value Picks This Week</SectionHeading>
         <GoldDivider />
         <p className="text-center text-white/40 text-sm mb-8 max-w-lg mx-auto leading-relaxed">
-          Players whose price is misaligned with their projected output. Updated weekly.
+          Players whose price is misaligned with their projected output. Sorted by value score.
         </p>
 
-        <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
-          <div className="grid grid-cols-[1fr_5rem_5rem_5rem] gap-x-4 px-5 py-3 text-[10px] font-semibold text-white/25 uppercase tracking-widest border-b border-white/[0.06] bg-[#0a0a0a]">
-            <span>Player</span>
-            <span className="text-center">Action</span>
-            <span className="text-center text-[#F5C84C]/60">Value</span>
-            <span className="text-right">Price</span>
-          </div>
-
-          {loading
-            ? Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="animate-pulse grid grid-cols-[1fr_5rem_5rem_5rem] gap-x-4 px-5 py-4 border-b border-white/[0.04] bg-[#0c0c0c] last:border-0">
-                  <div className="h-4 bg-white/[0.06] rounded" />
-                  <div className="h-4 bg-white/[0.06] rounded" />
-                  <div className="h-4 bg-white/[0.06] rounded" />
-                  <div className="h-4 bg-white/[0.06] rounded" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {cards.map(({ key, label, sublabel, accentColor, accentBg, accentBorder, badgeLabel, badgeStyle, player }) => {
+            if (loading) {
+              return (
+                <div key={key} className="rounded-xl bg-[#0c0c0c] border border-white/[0.06] p-4 animate-pulse">
+                  <div className="h-3 w-16 bg-white/[0.06] rounded mb-3" />
+                  <div className="h-4 w-28 bg-white/[0.08] rounded mb-2" />
+                  <div className="h-3 w-20 bg-white/[0.05] rounded" />
                 </div>
-              ))
-            : preview.length > 0
-              ? preview.map((p, idx) => {
-                  const act = actionFromSignal(p.signal);
-                  const valScore = p.value_score != null ? Number(p.value_score).toFixed(1) : "—";
-                  return (
-                    <div
-                      key={p.player_id ?? idx}
-                      className="grid grid-cols-[1fr_5rem_5rem_5rem] gap-x-4 px-5 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors last:border-0 items-center"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-white truncate leading-tight">{p.player_name}</p>
-                        <p className="text-[10px] text-white/30 leading-tight">{p.team}{p.position ? ` · ${p.position}` : ""}</p>
-                      </div>
-                      <div className="flex justify-center">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${act.styles}`}>
-                          {act.label}
-                        </span>
-                      </div>
-                      <span className="text-sm font-bold text-[#F5C84C] text-center tabular-nums">{valScore}</span>
-                      <span className="text-sm font-semibold text-white/60 text-right tabular-nums">{fmt(p.price)}</span>
+              );
+            }
+
+            if (!player) {
+              return (
+                <div
+                  key={key}
+                  className="rounded-xl p-4"
+                  style={{ background: accentBg, border: `1px solid ${accentBorder}` }}
+                >
+                  <p className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: accentColor }}>{label}</p>
+                  <p className="text-xs text-white/20">{sublabel}</p>
+                  <p className="text-xs text-white/15 mt-3">Data pending.</p>
+                </div>
+              );
+            }
+
+            const proj = player.projection != null ? Math.round(player.projection) : null;
+            const valScore = player.value_score != null ? Number(player.value_score).toFixed(2) : null;
+
+            return (
+              <div
+                key={key}
+                className="rounded-xl p-4 flex flex-col"
+                style={{ background: accentBg, border: `1px solid ${accentBorder}` }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: accentColor }}>{label}</p>
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${badgeStyle}`}>{badgeLabel}</span>
+                </div>
+                <p className="text-sm font-bold text-white leading-tight truncate">{player.player_name}</p>
+                <p className="text-[10px] text-white/30 mt-0.5">{player.team}{player.position ? ` · ${player.position}` : ""}</p>
+                <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/[0.06]">
+                  {proj != null && (
+                    <div>
+                      <div className="text-sm font-bold text-white tabular-nums">{proj}</div>
+                      <div className="text-[9px] text-white/25">proj pts</div>
                     </div>
-                  );
-                })
-              : (
-                <div className="px-5 py-8 text-center text-sm text-white/25 bg-[#0c0c0c]">
-                  Market data available when round data is processed.
+                  )}
+                  {valScore != null && (
+                    <div>
+                      <div className="text-sm font-bold tabular-nums" style={{ color: accentColor }}>{valScore}</div>
+                      <div className="text-[9px] text-white/25">value</div>
+                    </div>
+                  )}
+                  {player.price != null && (
+                    <div className="ml-auto">
+                      <div className="text-sm font-bold text-white/50 tabular-nums">{fmt(player.price)}</div>
+                      <div className="text-[9px] text-white/25">price</div>
+                    </div>
+                  )}
                 </div>
-              )
-          }
-
-          <div className="px-5 py-3 border-t border-white/[0.05] bg-[#0a0a0a] flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <Lock size={10} className="text-white/20" />
-              <span className="text-[10px] text-white/25">Full list + AI insights — Neeko+</span>
-            </div>
-          </div>
+              </div>
+            );
+          })}
         </div>
 
         <div className="mt-6 text-center">
@@ -374,7 +425,7 @@ function MarketWatchPreview({ players, loading }: MarketPreviewProps) {
             to="/sports/afl/market-watch"
             className="inline-flex items-center justify-center gap-2 border border-white/15 text-white/70 hover:text-white hover:border-white/30 font-semibold text-sm px-7 py-3 rounded-xl transition-all min-h-[44px]"
           >
-            View Market Watch
+            View Full Market Watch
             <ArrowRight size={13} />
           </Link>
         </div>
@@ -383,62 +434,66 @@ function MarketWatchPreview({ players, loading }: MarketPreviewProps) {
   );
 }
 
-// ─── SECTION 4 — Rankings Preview ─────────────────────────────────────────────
+// ─── SECTION 3 — Biggest Value Movers ─────────────────────────────────────────
 
-interface RankingsPreviewProps {
+interface ValueMoversProps {
   players: RankingRow[];
   loading: boolean;
 }
 
-function RankingsPreview({ players, loading }: RankingsPreviewProps) {
-  const top5 = useMemo(
-    () => [...players].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0)).slice(0, 5),
-    [players]
-  );
+function ValueMoversSection({ players, loading }: ValueMoversProps) {
+  const movers = useMemo(() => {
+    const available = players.filter(
+      p => !p.is_bye && !p.is_injured && p.price != null && p.projection != null && p.value_score != null
+    );
+    return [...available]
+      .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
+      .slice(0, 5);
+  }, [players]);
 
   return (
     <section className="py-12 md:py-16 bg-[#070707] border-t border-white/[0.05]">
       <div className="max-w-3xl mx-auto px-4">
-        <SectionLabel>Rankings Preview</SectionLabel>
-        <SectionHeading>Top 5 This Round</SectionHeading>
+        <SectionLabel>Value Engine</SectionLabel>
+        <SectionHeading>Biggest Value Movers This Week</SectionHeading>
         <GoldDivider />
         <p className="text-center text-white/40 text-sm mb-8 max-w-lg mx-auto leading-relaxed">
-          600+ players ranked by projection. Only 5 shown — full list behind Neeko+.
+          Players with the highest value score — projection vs price gap. Sorted by value, not popularity.
         </p>
 
         <div className="rounded-2xl border border-white/[0.07] overflow-hidden">
-          <div className="grid grid-cols-[2rem_1fr_5rem_5rem] gap-x-4 px-5 py-3 text-[10px] font-semibold text-white/25 uppercase tracking-widest border-b border-white/[0.06] bg-[#0a0a0a]">
-            <span>#</span>
+          <div className="grid grid-cols-[1fr_4.5rem_4.5rem_4.5rem] gap-x-4 px-5 py-3 text-[10px] font-semibold text-white/25 uppercase tracking-widest border-b border-white/[0.06] bg-[#0a0a0a]">
             <span>Player</span>
-            <span className="text-center text-[#F5C84C]/60">Projection</span>
+            <span className="text-center text-[#F5C84C]/60">Value</span>
+            <span className="text-center">Proj</span>
             <span className="text-right">Action</span>
           </div>
 
           {loading
             ? Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="animate-pulse grid grid-cols-[2rem_1fr_5rem_5rem] gap-x-4 px-5 py-4 border-b border-white/[0.04] bg-[#0c0c0c] last:border-0">
+                <div key={i} className="animate-pulse grid grid-cols-[1fr_4.5rem_4.5rem_4.5rem] gap-x-4 px-5 py-4 border-b border-white/[0.04] bg-[#0c0c0c] last:border-0">
                   <div className="h-4 bg-white/[0.06] rounded" />
                   <div className="h-4 bg-white/[0.06] rounded" />
                   <div className="h-4 bg-white/[0.06] rounded" />
                   <div className="h-4 bg-white/[0.06] rounded" />
                 </div>
               ))
-            : top5.length > 0
-              ? top5.map((row, idx) => {
+            : movers.length > 0
+              ? movers.map((row, idx) => {
                   const act = actionFromSignal(row.signal);
+                  const valScore = row.value_score != null ? Number(row.value_score).toFixed(2) : "—";
+                  const proj = row.projection != null ? Math.round(row.projection) : "—";
                   return (
                     <div
                       key={row.player_id ?? idx}
-                      className="grid grid-cols-[2rem_1fr_5rem_5rem] gap-x-4 px-5 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors last:border-0 items-center"
+                      className="grid grid-cols-[1fr_4.5rem_4.5rem_4.5rem] gap-x-4 px-5 py-3.5 border-b border-white/[0.04] bg-[#0c0c0c] hover:bg-[#111] transition-colors last:border-0 items-center"
                     >
-                      <span className="text-xs text-white/25 font-mono">{idx + 1}</span>
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-white truncate leading-tight">{row.player_name}</p>
-                        {row.position && <p className="text-[10px] text-white/30 leading-tight">{row.position}</p>}
+                        <p className="text-[10px] text-white/30 leading-tight">{row.team}{row.position ? ` · ${row.position}` : ""}</p>
                       </div>
-                      <span className="text-sm font-bold text-[#F5C84C] text-center tabular-nums">
-                        {row.projection != null ? Math.round(row.projection) : "—"}
-                      </span>
+                      <span className="text-sm font-bold text-[#F5C84C] text-center tabular-nums">{valScore}</span>
+                      <span className="text-sm font-semibold text-white/60 text-center tabular-nums">{proj}</span>
                       <div className="flex justify-end">
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${act.styles}`}>
                           {act.label}
@@ -449,58 +504,37 @@ function RankingsPreview({ players, loading }: RankingsPreviewProps) {
                 })
               : (
                 <div className="px-5 py-8 text-center text-sm text-white/25 bg-[#0c0c0c]">
-                  Rankings available when round data is processed.
+                  Value data available when round data is processed.
                 </div>
               )
           }
 
-          <div className="grid grid-cols-[2rem_1fr_5rem_5rem] gap-x-4 px-5 py-3.5 border-t border-white/[0.04] bg-[#0c0c0c] items-center select-none">
-            <span className="text-xs text-white/15 font-mono">6+</span>
-            <div className="flex items-center gap-2">
-              <Lock size={10} className="text-white/20 shrink-0" />
-              <span className="text-sm font-bold text-white/20 blur-[3px]">Premium Player</span>
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-[#F5C84C]/10 border border-[#F5C84C]/20 text-[9px] font-bold text-[#F5C84C]/60 uppercase tracking-wide shrink-0">Neeko+</span>
-            </div>
-            <span className="text-xs text-white/15 text-center blur-[3px]">—</span>
-            <span className="text-xs text-white/15 text-right blur-[3px]">—</span>
+          <div className="px-5 py-3 border-t border-white/[0.05] bg-[#0a0a0a] flex items-center gap-1.5">
+            <Lock size={10} className="text-white/20" />
+            <span className="text-[10px] text-white/25">Full value engine — Neeko+</span>
           </div>
-        </div>
-
-        <div className="mt-6 text-center">
-          <Link
-            to="/sports/afl/rankings"
-            className="inline-flex items-center justify-center gap-2 border border-white/15 text-white/70 hover:text-white hover:border-white/30 font-semibold text-sm px-7 py-3 rounded-xl transition-all min-h-[44px]"
-          >
-            View Full Rankings
-            <ArrowRight size={13} />
-          </Link>
         </div>
       </div>
     </section>
   );
 }
 
-// ─── SECTION 5 — Why This Works ────────────────────────────────────────────────
+// ─── SECTION 4 — Trust Block ───────────────────────────────────────────────────
 
-function WhySection() {
+function TrustBlock() {
   return (
-    <section className="py-12 md:py-16 bg-[#0a0a0a] border-t border-white/[0.05]">
+    <section className="py-10 md:py-14 bg-[#0a0a0a] border-t border-white/[0.05]">
       <div className="max-w-3xl mx-auto px-4">
-        <SectionLabel>Why It Works</SectionLabel>
-        <SectionHeading>Make Better Decisions Every Round</SectionHeading>
-        <GoldDivider />
-
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-5">
-          {WHY_BULLETS.map(({ icon: Icon, title, desc }) => (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {TRUST_ITEMS.map(({ icon: Icon, text }) => (
             <div
-              key={title}
-              className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] p-5 hover:border-[#F5C84C]/25 hover:shadow-[0_0_20px_rgba(245,200,76,0.06)] transition-all"
+              key={text}
+              className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-[#0e0e0e] px-4 py-4"
             >
-              <div className="w-10 h-10 rounded-xl bg-[#F5C84C]/10 border border-[#F5C84C]/20 flex items-center justify-center mb-4">
-                <Icon size={18} className="text-[#F5C84C]" />
+              <div className="w-8 h-8 rounded-lg bg-[#F5C84C]/10 border border-[#F5C84C]/20 flex items-center justify-center shrink-0">
+                <Icon size={15} className="text-[#F5C84C]" />
               </div>
-              <h3 className="text-sm font-bold text-white mb-2 leading-snug">{title}</h3>
-              <p className="text-xs text-white/40 leading-relaxed">{desc}</p>
+              <p className="text-sm font-semibold text-white/70 leading-snug">{text}</p>
             </div>
           ))}
         </div>
@@ -509,7 +543,7 @@ function WhySection() {
   );
 }
 
-// ─── SECTION 6 — CTA / Pricing ─────────────────────────────────────────────────
+// ─── SECTION 5 — Pricing ───────────────────────────────────────────────────────
 
 function PricingCTA() {
   return (
@@ -520,7 +554,10 @@ function PricingCTA() {
           Unlock Full Access
         </h2>
         <GoldDivider />
-        <p className="text-white/40 text-sm mb-8 max-w-sm mx-auto leading-relaxed">
+        <p className="text-white/40 text-sm mb-3 max-w-sm mx-auto leading-relaxed">
+          Want full access to all players and insights?
+        </p>
+        <p className="text-white/30 text-xs mb-8 max-w-sm mx-auto">
           Every insight updated before round lockout. Cancel anytime.
         </p>
 
@@ -563,7 +600,7 @@ function PricingCTA() {
             className="flex items-center justify-center gap-2 bg-[#F5C84C] text-black font-bold text-sm py-3.5 rounded-xl hover:brightness-110 transition-all min-h-[48px]"
           >
             <Crown size={14} />
-            Start Winning With Neeko+
+            Unlock Full Access
           </Link>
         </div>
 
@@ -604,7 +641,7 @@ function SEOBlock() {
           <div>
             <h3 className="text-sm font-bold text-white mb-2">AFL Fantasy Market Watch</h3>
             <p className="text-xs text-white/35 leading-relaxed">
-              Market Watch identifies players whose current fantasy price is misaligned with their projected scoring output. Buy signals flag underpriced breakout candidates; sell signals highlight expensive players at risk of price falls.
+              Market Watch identifies players whose current fantasy price is misaligned with their projected scoring output. Buy signals flag underpriced breakout candidates; avoid signals highlight expensive players at risk of price falls.
             </p>
           </div>
           <div>
@@ -653,17 +690,17 @@ export default function Index() {
     <div className="min-h-screen bg-[#070707] text-white pb-[80px] sm:pb-0">
       <Helmet>
         <title>Neeko Sports Stats — AI AFL Fantasy Intelligence</title>
-        <meta name="description" content="Trade targets, traps, and captain picks powered by live AFL data — explained simply. Updated before every round lockout." />
+        <meta name="description" content="Win your AFL Fantasy week in 30 seconds. Trades, captains, and traps powered by real data and explained simply. Updated before every round lockout." />
         <link rel="canonical" href="https://neekostats.com.au/" />
         <meta property="og:title" content="Neeko Sports Stats — AI AFL Fantasy Intelligence" />
-        <meta property="og:description" content="Trade targets, traps, and captain picks powered by live AFL data — explained simply. Updated before every round lockout." />
+        <meta property="og:description" content="Win your AFL Fantasy week in 30 seconds. Trades, captains, and traps powered by real data and explained simply." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://neekostats.com.au/" />
         <meta property="og:site_name" content="Neeko Sports" />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Neeko Sports Stats — AI AFL Fantasy Intelligence" />
-        <meta name="twitter:description" content="Trade targets, traps, and captain picks powered by live AFL data — explained simply. Updated before every round lockout." />
+        <meta name="twitter:description" content="Win your AFL Fantasy week in 30 seconds. Trades, captains, and traps powered by real data and explained simply." />
         <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
         <meta name="robots" content="index, follow" />
         <meta name="author" content="Neeko Sports" />
@@ -688,7 +725,7 @@ export default function Index() {
         })}</script>
       </Helmet>
 
-      {/* ── SECTION 1 — HERO ──────────────────────────────────────────────────── */}
+      {/* ── HERO ──────────────────────────────────────────────────────────────── */}
       <section className="relative overflow-hidden min-h-[80vh] flex items-center">
         <div
           className="absolute inset-0"
@@ -712,11 +749,11 @@ export default function Index() {
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-[1.08] tracking-tight mb-5">
-            This Week's AFL Fantasy<br className="hidden sm:block" /> Game Plan
+            Win Your AFL Fantasy<br className="hidden sm:block" /> Week in 30 Seconds
           </h1>
 
           <p className="text-base md:text-lg text-neutral-400 font-medium mb-10 max-w-xl mx-auto leading-relaxed">
-            Trade targets, traps, and captain picks powered by live AFL data and explained simply.
+            Trades, captains, and traps — powered by real data and explained simply.
           </p>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-center sm:items-center">
@@ -724,7 +761,7 @@ export default function Index() {
               to="/sports/afl/edge-board"
               className="flex items-center justify-center gap-2 bg-[#F5C84C] text-black font-bold text-sm px-8 rounded-xl hover:brightness-110 transition-all shadow-[0_4px_30px_rgba(245,200,76,0.25)] min-h-[52px] w-full sm:w-auto"
             >
-              View This Week
+              View This Week's Game Plan
               <ArrowRight size={14} />
             </Link>
             {!isPremium && (
@@ -744,20 +781,20 @@ export default function Index() {
         </div>
       </section>
 
-      {/* ── SECTION 2 — This Week Preview ─────────────────────────────────────── */}
+      {/* ── SECTION 1 — 3 Key Moves ───────────────────────────────────────────── */}
       <GamePlanPreview players={players} loading={playersLoading} />
 
-      {/* ── SECTION 3 — Market Watch Preview ──────────────────────────────────── */}
+      {/* ── SECTION 2 — Best Value Picks ──────────────────────────────────────── */}
       <MarketWatchPreview players={players} loading={playersLoading} />
 
-      {/* ── SECTION 4 — Rankings Preview ──────────────────────────────────────── */}
-      <RankingsPreview players={players} loading={playersLoading} />
-
-      {/* ── SECTION 5 — Why This Works ────────────────────────────────────────── */}
-      <WhySection />
-
-      {/* ── SECTION 6 — Pricing CTA ───────────────────────────────────────────── */}
+      {/* ── SECTION 3 — Pricing (moved up) ────────────────────────────────────── */}
       <PricingCTA />
+
+      {/* ── SECTION 4 — Biggest Value Movers ─────────────────────────────────── */}
+      <ValueMoversSection players={players} loading={playersLoading} />
+
+      {/* ── SECTION 5 — Trust Block ───────────────────────────────────────────── */}
+      <TrustBlock />
 
       {/* ── SEO BLOCK ─────────────────────────────────────────────────────────── */}
       <SEOBlock />

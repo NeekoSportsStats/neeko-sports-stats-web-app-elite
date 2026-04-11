@@ -66,18 +66,18 @@ function ValueStrip({ rows }: { rows: RankingRow[] }) {
 
   const cards = [
     {
+      icon: <TrendingUp size={13} className="text-emerald-400" />,
+      label: "Top Value Pick",
+      value: bestValue ? fmtValueScore(bestValue.value_score) : "—",
+      sub: bestValue?.player_name ?? "—",
+      color: "text-emerald-400",
+    },
+    {
       icon: <Star size={13} className="text-[#F5C84C]" />,
       label: "Highest Projection",
       value: highestProj ? fmt(highestProj.projection) : "—",
       sub: highestProj?.player_name ?? "—",
       color: "text-[#F5C84C]",
-    },
-    {
-      icon: <TrendingUp size={13} className="text-emerald-400" />,
-      label: "Best Value Pick",
-      value: bestValue ? fmtValueScore(bestValue.value_score) : "—",
-      sub: bestValue?.player_name ?? "—",
-      color: "text-emerald-400",
     },
     {
       icon: <Zap size={13} className="text-blue-400" />,
@@ -246,7 +246,7 @@ export default function AFLRankingsPage() {
   const [selected, setSelected] = useState<{ row: RankingRow; rank: number; tier: RowTier; isUnlocked: boolean } | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [ratingInfoOpen, setRatingInfoOpen] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey>("projection");
+  const [sortKey, setSortKey] = useState<SortKey>("value_score");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [updatedAt, setUpdatedAt] = useState<{ ts: string; round: string } | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -482,9 +482,9 @@ export default function AFLRankingsPage() {
           {/* HEADER */}
           <div className="flex items-start justify-between gap-4 mb-2">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">Player Rankings</h1>
               <p className="text-sm text-white/45 mt-1.5 max-w-lg leading-relaxed">
-                AI-ranked by projected performance vs baseline — updated weekly
+                Reference tool — sorted by value score. Use alongside Market Watch and Current Round for trade decisions.
               </p>
             </div>
             <div className="flex items-center gap-2 mt-1 shrink-0">

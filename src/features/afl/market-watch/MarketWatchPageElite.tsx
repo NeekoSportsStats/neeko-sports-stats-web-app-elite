@@ -530,8 +530,8 @@ export default function MarketWatchPageElite() {
                 <span className="h-px w-6 bg-white/[0.06]" />
                 <span className="text-[10px] uppercase tracking-wider text-[#F5C84C] font-semibold">Market Watch</span>
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight">Trade Decision Table</h1>
-              <p className="text-sm text-white/40 mt-1">Sorted by value score — BUY, HOLD &amp; AVOID signals in one place</p>
+              <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight">Market Watch</h1>
+              <p className="text-sm text-white/40 mt-1">Value-sorted trade signals — who to buy, hold and move on from this round</p>
             </div>
             <button
               onClick={() => fetchData(true)}
@@ -698,11 +698,11 @@ export default function MarketWatchPageElite() {
             {/* Grouped view (default ALL tab, no filters) */}
             {groupedView ? (
               <>
-                {/* Top Targets */}
+                {/* Must Have */}
                 {groupedView.targets.length > 0 && (
                   <div>
                     <GroupHeader
-                      label="Top Targets"
+                      label="Must Have"
                       count={buys.length}
                       accentColor="#4ade80"
                       icon={<TrendingUp className="w-3 h-3" />}
@@ -713,11 +713,11 @@ export default function MarketWatchPageElite() {
                   </div>
                 )}
 
-                {/* Solid Options */}
+                {/* Strong Value */}
                 {groupedView.options.length > 0 && (
                   <div>
                     <GroupHeader
-                      label="Solid Options"
+                      label="Strong Value"
                       count={holds.length}
                       accentColor="rgba(255,255,255,0.40)"
                       icon={<Minus className="w-3 h-3" />}
@@ -742,7 +742,7 @@ export default function MarketWatchPageElite() {
                 {isPremium && sells.length > 0 && (
                   <div>
                     <GroupHeader
-                      label="Risk / Avoid"
+                      label="Overpriced / Avoid"
                       count={sells.length}
                       accentColor="#f87171"
                       icon={<AlertTriangle className="w-3 h-3" />}

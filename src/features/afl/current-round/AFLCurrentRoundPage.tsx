@@ -856,7 +856,7 @@ export default function AFLCurrentRoundPage() {
           {/* ── SUMMARY STRIP ────────────────────────────────────────────── */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <SummaryCard
-              label="Best Buy"
+              label="Must Buy"
               icon={<TrendingUp className="w-3.5 h-3.5" />}
               accentColor="#4ade80"
               playerName={bestBuy?.player_name ?? null}
@@ -876,7 +876,7 @@ export default function AFLCurrentRoundPage() {
               badge={<AvoidBadge />}
             />
             <SummaryCard
-              label="Best Captain"
+              label="Captain Pick"
               icon={<Crown className="w-3.5 h-3.5" />}
               accentColor="#F5C84C"
               playerName={bestCap?.player_name ?? null}
@@ -891,11 +891,11 @@ export default function AFLCurrentRoundPage() {
             >
               <div className="flex items-center gap-1.5">
                 <Zap className="w-3.5 h-3.5 text-[#F5C84C]" />
-                <span className="text-[10px] uppercase tracking-wider font-semibold text-white/30">Model Confidence</span>
+                <span className="text-[10px] uppercase tracking-wider font-semibold text-white/30">Round Snapshot</span>
               </div>
               <div>
                 <p className="text-base font-bold text-white leading-tight">{confPct} players</p>
-                <p className="text-[11px] text-white/35 mt-1 leading-relaxed">scoring 65%+ confidence this round</p>
+                <p className="text-[11px] text-white/35 mt-1 leading-relaxed">above 65% model confidence</p>
               </div>
               <div className="flex items-baseline gap-1 mt-auto">
                 <span className="text-2xl font-bold text-[#F5C84C] tabular-nums">{traps.length}</span>
@@ -910,7 +910,7 @@ export default function AFLCurrentRoundPage() {
           {/* ── SECTION 1: MUST BUYS ─────────────────────────────────────── */}
           <SectionCard
             title="Must Buys"
-            description="Players projecting well above breakeven — strongest trade-in targets this round."
+            description="Highest value score this round — strongest trade-in targets sorted by value, not popularity."
             icon={<TrendingUp className="w-4 h-4" />}
             accentColor="#4ade80"
             players={mustBuys}
@@ -937,11 +937,11 @@ export default function AFLCurrentRoundPage() {
             }
           />
 
-          {/* ── SECTION 2: CASH COWS ─────────────────────────────────────── */}
+          {/* ── SECTION 2: ROOKIE WATCH ──────────────────────────────────── */}
           {cashCows.length > 0 && (
             <SectionCard
-              title="Cheap Value / Cash Cows"
-              description="Low-priced rookies and early-season options generating value — trade in before their price rises."
+              title="Cheap Value / Rookie Watch"
+              description="Early-season players generating value before their price rises. Low games played, high upside."
               icon={<Sprout className="w-4 h-4" />}
               accentColor="#34d399"
               players={cashCows}
@@ -969,8 +969,8 @@ export default function AFLCurrentRoundPage() {
 
           {/* ── SECTION 3: TRAPS / AVOIDS ────────────────────────────────── */}
           <SectionCard
-            title="Traps / Avoids"
-            description="Players trending down or projecting below breakeven — consider moving on before this round locks."
+            title="Overpriced / Risk"
+            description="Players whose price exceeds their projected value — ranked by value score ascending. Consider trading out."
             icon={<AlertTriangle className="w-4 h-4" />}
             accentColor="#f87171"
             players={traps}
@@ -1083,29 +1083,6 @@ export default function AFLCurrentRoundPage() {
             </Link>
           </div>
 
-          {/* ── UPGRADE CTA (free users) ──────────────────────────────────── */}
-          {!isPremium && (
-            <a
-              href="/neeko-plus"
-              className="group flex items-center justify-between px-4 py-3.5 rounded-xl transition-all duration-200"
-              style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.035)"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.02)"; }}
-            >
-              <div className="flex items-center gap-2.5">
-                <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(245,200,76,0.12)", border: "1px solid rgba(245,200,76,0.2)" }}>
-                  <Crown className="w-3.5 h-3.5 text-[#F5C84C]" />
-                </div>
-                <div>
-                  <span className="text-[12px] font-semibold text-white/70">Win your round with Neeko+</span>
-                  <span className="hidden sm:inline text-[11px] text-white/30 ml-2">— full captain picks, AI insights &amp; value plays</span>
-                </div>
-              </div>
-              <span className="text-[12px] font-semibold text-[#F5C84C]/70 group-hover:text-[#F5C84C] transition-colors flex items-center gap-1 shrink-0">
-                Upgrade →
-              </span>
-            </a>
-          )}
 
         </div>
       </div>
