@@ -93,8 +93,8 @@ function WhiteboardCard(p: CardProps) {
           borderRadius: 10,
           border: `1.5px solid ${p.color}20`,
           boxShadow: hovered
-            ? `0 12px 36px rgba(0,0,0,0.22)`
-            : "0 2px 12px rgba(0,0,0,0.12)",
+            ? `0 18px 48px rgba(0,0,0,0.32)`
+            : "0 12px 30px rgba(0,0,0,0.25)",
           transform: hovered ? "translateY(-4px)" : "translateY(0)",
           transition: "all 0.2s ease",
           overflow: "hidden",
@@ -345,18 +345,18 @@ export default function Index() {
           {/* Overlay */}
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.30)", zIndex: 1 }} />
 
-          {/* Bottom fade → dark section */}
+          {/* Bottom fade → dark section — starts BELOW cards */}
           <div style={{
-            position: "absolute", bottom: 0, left: 0, right: 0, height: "38%",
-            background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(10,10,10,0.85) 60%, #0a0a0a 100%)",
+            position: "absolute", bottom: 0, left: 0, right: 0, height: "42%",
+            background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 55%, rgba(10,10,10,0.9) 80%, #0a0a0a 100%)",
             zIndex: 2,
             pointerEvents: "none",
           }} />
 
-          {/* ── HERO TEXT: top: 18%, centered on chalkboard ── */}
+          {/* ── HERO TEXT: top: 12%, higher to sit inside chalkboard ── */}
           <div style={{
             position: "absolute",
-            top: "18%",
+            top: "12%",
             left: "50%",
             transform: "translateX(-50%)",
             textAlign: "center",
@@ -395,6 +395,7 @@ export default function Index() {
                 padding: "12px 32px", borderRadius: 7, textDecoration: "none",
                 boxShadow: "0 4px 20px rgba(245,196,81,0.42), inset 0 1px 0 rgba(255,255,255,0.28)",
                 letterSpacing: "0.02em",
+                transform: "scale(1.05)",
               }}>
                 Get Started Free <ArrowRight size={15} />
               </Link>
@@ -405,6 +406,7 @@ export default function Index() {
                   fontWeight: 800, fontSize: 15,
                   padding: "12px 32px", borderRadius: 7, textDecoration: "none",
                   border: "1.5px solid rgba(245,196,81,0.38)", letterSpacing: "0.02em",
+                  opacity: 0.85,
                 }}>
                   <Crown size={15} /> Unlock Full Access
                 </Link>
@@ -416,16 +418,16 @@ export default function Index() {
             </p>
           </div>
 
-          {/* ── PLAYER CARDS: top: 48%, centered on whiteboard ── */}
+          {/* ── PLAYER CARDS: top: 55%, resting on whiteboard surface ── */}
           <div style={{
             position: "absolute",
-            top: "48%",
+            top: "55%",
             left: "50%",
             transform: "translateX(-50%)",
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 24,
-            width: "min(1100px, 94vw)",
+            gap: 32,
+            width: "min(1250px, 96vw)",
             zIndex: 10,
           }}>
             {loading
@@ -437,14 +439,14 @@ export default function Index() {
           {/* ── ICON ROW: directly below cards ── */}
           <div style={{
             position: "absolute",
-            top: "calc(48% + 250px)",
+            top: "calc(55% + 260px)",
             left: "50%",
             transform: "translateX(-50%)",
             display: "flex",
             justifyContent: "center",
             gap: 32,
             zIndex: 10,
-            width: "min(1100px, 94vw)",
+            width: "min(1250px, 96vw)",
             flexWrap: "wrap",
           }}>
             {quickActions.map(({ to, icon, label, color }) => (
