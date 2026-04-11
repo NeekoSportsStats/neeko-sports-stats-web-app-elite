@@ -9,23 +9,24 @@ import {
   XAxis,
 } from "recharts";
 import { supabase } from "@/lib/supabaseClient";
-import { RankingRow, RankingsTab } from "./types";
+import { RankingRow } from "./types";
 import {
   fmt,
   fmtPrice,
-  getNeekoRatingBadge,
-  getDisplayRecommendation,
-  FREE_FULL_ROWS, PREMIUM_INITIAL_ROWS,
+  getDisplayTrend,
   getTrendAction,
   getTrendActionStyles,
-  getFormLabel,
-  getFormStyles,
-  getDisplayTrend,
+  getTrendWhyText,
+  getConfidenceColor,
+  getValueScoreColor,
+  fmtValueScore,
+  FREE_FULL_ROWS,
+  PREMIUM_INITIAL_ROWS,
 } from "./helpers";
 
-// ─── Mobile sparkline ─────────────────────────────────────────────────────────
+// ─── Sparkline ─────────────────────────────────────────────────────────────────
 
-interface MobileSparkPoint { score: number; label: string; }
+interface SparkPoint { score: number; label: string; }
 
 function formatRoundLabel(week: number): string {
   if (week === 0) return "OR";
@@ -36,7 +37,7 @@ function formatRoundLabel(week: number): string {
   return `R${week}`;
 }
 
-function MobileSparkTooltip({ active, payload }: any) {
+function SparkTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
   const val = payload[0]?.value;
   const label = payload[0]?.payload?.label;
@@ -48,17 +49,16 @@ function MobileSparkTooltip({ active, payload }: any) {
   );
 }
 
-function MobileSparkline({ points, valueScore }: { points: MobileSparkPoint[]; valueScore: number | null }) {
+function MobileSparkline({ points, valueScore }: { points: SparkPoint[]; valueScore: number | null }) {
   const stroke =
     valueScore != null && valueScore >= 5 ? "#4ade80" :
     valueScore != null && valueScore < -5 ? "#f87171" :
     "#94a3b8";
 
-  const gradientId = "mobile-spark-fill";
   const scores = points.map((p) => p.score);
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
   const min = Math.min(...scores);
   const max = Math.max(...scores);
-  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
 
   const n = points.length;
   const tickIndices = n <= 1 ? [0] : [0, Math.floor((n - 1) / 2), n - 1];
@@ -70,7 +70,7 @@ function MobileSparkline({ points, valueScore }: { points: MobileSparkPoint[]; v
       <ResponsiveContainer width="100%" height={80}>
         <AreaChart data={points} margin={{ top: 4, right: 2, bottom: 16, left: 2 }}>
           <defs>
-            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="mspark" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor={stroke} stopOpacity={0.2} />
               <stop offset="100%" stopColor={stroke} stopOpacity={0} />
             </linearGradient>
@@ -92,12 +92,12 @@ function MobileSparkline({ points, valueScore }: { points: MobileSparkPoint[]; v
             strokeWidth={1.6}
             dot={false}
             activeDot={{ r: 3, fill: stroke, strokeWidth: 0 }}
-            fill={`url(#${gradientId})`}
+            fill="url(#mspark)"
             isAnimationActive
             animationDuration={400}
             animationEasing="ease-out"
           />
-          <Tooltip content={<MobileSparkTooltip />} cursor={{ stroke: stroke, strokeOpacity: 0.2, strokeWidth: 1, strokeDasharray: "3 3" }} />
+          <Tooltip content={<SparkTooltip />} cursor={{ stroke, strokeOpacity: 0.2, strokeWidth: 1, strokeDasharray: "3 3" }} />
         </AreaChart>
       </ResponsiveContainer>
       <div className="flex justify-between mt-0.5 px-0.5">
@@ -106,57 +106,6 @@ function MobileSparkline({ points, valueScore }: { points: MobileSparkPoint[]; v
         <span className="text-[9px] text-white/20 tabular-nums">High {Math.round(max)}</span>
       </div>
     </div>
-  );
-}
-
-// ─── Value helpers ─────────────────────────────────────────────────────────────
-
-function getValueDisplay(value: number | null): string | null {
-  if (value === null) return null;
-  if (value > 40) return "+40+";
-  if (value < -40) return "-40+";
-  return value > 0 ? `+${Math.round(value)}` : String(Math.round(value));
-}
-
-function valueColor(value: number): string {
-  if (value >= 20) return "text-emerald-400";
-  if (value >= 10) return "text-green-300";
-  if (value >= -5) return "text-neutral-300";
-  return "text-red-400";
-}
-
-
-// ─── Action badge ─────────────────────────────────────────────────────────────
-
-function ActionBadge({ row, activeTab, isPremium, onUpgrade }: {
-  row: RankingRow;
-  activeTab: RankingsTab;
-  isPremium: boolean;
-  onUpgrade: () => void;
-}) {
-  if (!isPremium) {
-    return (
-      <button
-        onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
-        className="flex items-center gap-1 rounded-md border border-[#F5C84C]/30 bg-[#F5C84C]/[0.08] px-2 py-1"
-      >
-        <Lock size={8} className="text-[#F5C84C]/60" />
-        <span className="text-[10px] font-semibold text-[#F5C84C]/70">Unlock</span>
-      </button>
-    );
-  }
-
-  const displayTrend = getDisplayTrend(row);
-  const action = getTrendAction(displayTrend);
-  if (!action) return null;
-
-  const actionStyles = getTrendActionStyles(displayTrend);
-  return (
-    <span
-      className={`inline-block rounded-md border px-2 py-1 text-[11px] font-bold whitespace-nowrap ${actionStyles}`}
-    >
-      {action}
-    </span>
   );
 }
 
@@ -193,17 +142,67 @@ function StatusBadges({ row }: { row: RankingRow }) {
   return <>{badges}</>;
 }
 
-// ─── Expanded section ─────────────────────────────────────────────────────────
+// ─── Action badge ─────────────────────────────────────────────────────────────
 
-function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec: string | null }) {
-  const [scoreHistory, setScoreHistory] = useState<MobileSparkPoint[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(true);
+function ActionBadge({ row, isPremium, onUpgrade }: { row: RankingRow; isPremium: boolean; onUpgrade: () => void }) {
+  if (!isPremium) {
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
+        className="flex items-center gap-1 rounded-md border border-[#F5C84C]/30 bg-[#F5C84C]/[0.08] px-2 py-1"
+      >
+        <Lock size={8} className="text-[#F5C84C]/60" />
+        <span className="text-[10px] font-semibold text-[#F5C84C]/70">Unlock</span>
+      </button>
+    );
+  }
+
+  const trend = getDisplayTrend(row);
+  const action = getTrendAction(trend);
+  if (!action) return <span className="text-xs text-white/20">—</span>;
+
+  const cls = getTrendActionStyles(trend);
+  return (
+    <span className={`inline-block rounded-md border px-2 py-1 text-[11px] font-bold whitespace-nowrap ${cls}`}>
+      {action}
+    </span>
+  );
+}
+
+// ─── Confidence bar ────────────────────────────────────────────────────────────
+
+function ConfidenceBar({ value }: { value: number | null }) {
+  if (value == null) return <span className="text-xs text-white/20">—</span>;
+  const pct = Math.max(0, Math.min(100, value));
+  const color = getConfidenceColor(pct);
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className={`text-[13px] font-semibold tabular-nums ${color}`}>{Math.round(pct)}%</span>
+      <div className="w-8 h-0.5 rounded-full bg-white/[0.07] overflow-hidden">
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${pct}%`,
+            backgroundColor: pct >= 75 ? "#4ade80" : pct >= 55 ? "#F5C84C" : "#fb923c",
+            opacity: 0.7,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Expanded card section ─────────────────────────────────────────────────────
+
+function ExpandedSection({ row }: { row: RankingRow }) {
+  const [history, setHistory] = useState<SparkPoint[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     async function load() {
-      setHistoryLoading(true);
-      if (!row.player_id) { setHistoryLoading(false); return; }
+      setLoading(true);
+      if (!row.player_id) { setLoading(false); return; }
       try {
         const { data, error } = await supabase.rpc("get_player_score_history_by_id", {
           player_id_in: String(row.player_id),
@@ -211,16 +210,15 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
         });
         if (error) throw error;
         if (!cancelled && data && Array.isArray(data) && data.length > 0) {
-          const pts: MobileSparkPoint[] = (data as any[])
+          const pts = (data as any[])
             .filter((d: any) => d.fantasy_points != null)
             .map((d: any) => ({
               score: Number(d.fantasy_points),
               label: d.round_label ?? formatRoundLabel(Number(d.round_number ?? 0)),
             }));
-          setScoreHistory(pts);
+          setHistory(pts);
           return;
         }
-        // Fallback: query afl.player_games directly
         const { data: fallback } = await supabase
           .schema("afl" as any)
           .from("player_games")
@@ -232,118 +230,91 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
           .order("week", { ascending: false })
           .limit(10);
         if (!cancelled && fallback && Array.isArray(fallback)) {
-          const pts: MobileSparkPoint[] = [...fallback].reverse().map((d: any) => ({
+          const pts = [...fallback].reverse().map((d: any) => ({
             score: Number(d.fantasy_score),
             label: formatRoundLabel(Number(d.week ?? 0)),
           }));
-          setScoreHistory(pts);
+          setHistory(pts);
         }
       } catch {
         // non-critical
       } finally {
-        if (!cancelled) setHistoryLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
     load();
     return () => { cancelled = true; };
   }, [row.player_id, row.player_name]);
 
+  const valueScore = !row.is_bye && row.value_score != null ? row.value_score : null;
   const proj = row.projection != null ? Math.round(row.projection) : null;
   const be = row.breakeven != null ? Math.round(row.breakeven) : null;
-  const avgScore = row.season_avg ?? row.last_5_avg ?? row.last_3_avg ?? null;
-  const valueScore = !row.is_bye && row.value_score != null ? row.value_score : null;
-  const valueDisplayStr = getValueDisplay(valueScore);
-
-  const edgeLabel = valueScore != null && valueDisplayStr != null
-    ? `${valueDisplayStr} vs Baseline — ${valueScore >= 15 ? "strong underpriced play" : valueScore >= 5 ? "moderate edge" : valueScore >= -5 ? "near breakeven" : "price risk"}`
-    : null;
-
-  const longWhy = row.why_long ?? row.why ?? null;
-
-  const neekoRBadge = getNeekoRatingBadge(row.neeko_rating ?? null);
   const conf = row.projection_confidence != null ? Math.round(row.projection_confidence) : null;
-  const price = (row as any).price ?? null;
+  const price = row.price != null ? fmtPrice(row.price) : null;
+  const confColor = getConfidenceColor(conf);
+  const aiText = row.why_long ?? row.why ?? null;
 
   return (
     <div className="mt-3 rounded-xl border border-white/[0.08] bg-[#111] p-4 flex flex-col gap-3">
-      {/* Section 1 — edge summary */}
-      {edgeLabel && (
-        <div>
-          <p className="text-[10px] text-white/30 uppercase tracking-wide font-semibold mb-1">Edge Summary</p>
-          <p className="text-[13px] font-semibold text-white/80 leading-snug">{edgeLabel}</p>
-        </div>
-      )}
 
-      {/* Section 2 — full AI WHY */}
-      {longWhy && (
+      {/* AI analysis */}
+      {aiText ? (
         <div>
           <p className="text-[10px] text-white/30 uppercase tracking-wide font-semibold mb-1">AI Analysis</p>
-          <p className="text-[12px] text-white/55 leading-relaxed line-clamp-4">{longWhy}</p>
+          <p className="text-[12px] text-white/55 leading-relaxed line-clamp-4">{aiText}</p>
         </div>
+      ) : (
+        <p className="text-[11px] text-white/20 italic">AI analysis pending for this player.</p>
       )}
 
-      {/* Section 2b — score history sparkline */}
-      {(historyLoading || scoreHistory.length >= 3) && (
+      {/* Sparkline */}
+      {(loading || history.length >= 3) && (
         <div className="border-t border-white/[0.05] pt-3">
           <p className="text-[10px] text-white/25 uppercase tracking-wide font-semibold mb-2">
-            Last {historyLoading ? "—" : scoreHistory.length} games
+            Last {loading ? "—" : history.length} games
           </p>
-          {historyLoading ? (
+          {loading ? (
             <div className="w-full rounded bg-white/[0.03] animate-pulse" style={{ height: 80 }} />
-          ) : scoreHistory.length >= 3 ? (
-            <MobileSparkline points={scoreHistory} valueScore={valueScore} />
+          ) : history.length >= 3 ? (
+            <MobileSparkline points={history} valueScore={valueScore} />
           ) : null}
         </div>
       )}
-
-      {!historyLoading && scoreHistory.length < 3 && (
-        <div className="border-t border-white/[0.05] pt-3">
-          <p className="text-[10px] text-white/20 italic">No recent games</p>
-        </div>
+      {!loading && history.length < 3 && (
+        <p className="text-[10px] text-white/20 italic border-t border-white/[0.05] pt-3">No recent games</p>
       )}
 
-      {/* Section 3 — metrics grid */}
-      <div className="grid grid-cols-3 gap-2 pt-1">
+      {/* Metrics grid */}
+      <div className="grid grid-cols-3 gap-2 border-t border-white/[0.05] pt-3">
         {conf != null && (
           <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-white/30 font-normal">Confidence</span>
-            <span className="text-[13px] font-bold text-white/70 tabular-nums">{conf}%</span>
+            <span className="text-[10px] text-white/30">Confidence</span>
+            <span className={`text-[13px] font-bold tabular-nums ${confColor}`}>{conf}%</span>
+          </div>
+        )}
+        {proj != null && !row.is_bye && (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] text-white/30">Projection</span>
+            <span className="text-[13px] font-bold text-[#F5C84C] tabular-nums">{proj}</span>
+          </div>
+        )}
+        {be != null && !row.is_bye && (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[10px] text-white/30">Breakeven</span>
+            <span className="text-[13px] font-bold text-white/60 tabular-nums">{be}</span>
           </div>
         )}
         {price != null && (
           <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-white/30 font-normal">Price</span>
-            <span className="text-[13px] font-bold text-white/70 tabular-nums">{fmtPrice(price)}</span>
+            <span className="text-[10px] text-white/30">Price</span>
+            <span className="text-[13px] font-bold text-white/60 tabular-nums">{price}</span>
           </div>
         )}
-        {row.neeko_rating != null && (
+        {valueScore != null && (
           <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-white/30 font-normal">Neeko Rtg</span>
-            <span
-              className={`text-[13px] font-bold tabular-nums ${neekoRBadge.text}`}
-              style={neekoRBadge.glow ? { filter: neekoRBadge.glow } : undefined}
-            >
-              {Number(row.neeko_rating).toFixed(0)}
-            </span>
-          </div>
-        )}
-        {proj != null && (
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-white/30 font-normal">Projection</span>
-            <span className="text-[13px] font-bold text-[#F5C84C] tabular-nums">{proj}</span>
-          </div>
-        )}
-        {avgScore != null && (
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-white/30 font-normal">Avg Score</span>
-            <span className="text-[13px] font-bold text-white/60 tabular-nums">{Math.round(Number(avgScore))}</span>
-          </div>
-        )}
-        {valueScore != null && !row.is_bye && (
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-white/30 font-normal">Value</span>
-            <span className={`text-[13px] font-bold tabular-nums ${valueColor(valueScore)}`}>
-              {getValueDisplay(valueScore) ?? Math.round(valueScore)}
+            <span className="text-[10px] text-white/30">Value</span>
+            <span className={`text-[13px] font-bold tabular-nums ${getValueScoreColor(valueScore)}`}>
+              {fmtValueScore(valueScore)}
             </span>
           </div>
         )}
@@ -352,28 +323,50 @@ function ExpandedCardSection({ row, displayRec }: { row: RankingRow; displayRec:
   );
 }
 
-// ─── Single player card ────────────────────────────────────────────────────────
+// ─── Player card ───────────────────────────────────────────────────────────────
 
 interface PlayerCardProps {
   row: RankingRow;
   idx: number;
   isPremium: boolean;
-  activeTab: RankingsTab;
   onTap: () => void;
   onUpgrade: () => void;
 }
 
-function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: PlayerCardProps) {
+function PlayerCard({ row, idx, isPremium, onTap, onUpgrade }: PlayerCardProps) {
   const [expanded, setExpanded] = useState(false);
   const rank = idx + 1;
+  const isTop3 = rank <= 3;
 
-  const proj = row.projection ?? null;
-  const breakeven = row.breakeven != null ? Math.round(row.breakeven) : null;
-  const rowAvgScore = row.season_avg ?? row.last_5_avg ?? row.last_3_avg ?? null;
+  const proj = row.projection;
   const valueScore = !row.is_bye && row.value_score != null ? row.value_score : null;
+  const whyText = row.why ?? getTrendWhyText(row);
 
-  const displayRec = getDisplayRecommendation(row, activeTab);
-  const shortWhy = isPremium ? (row.why ?? null) : null;
+  const trend = getDisplayTrend(row);
+  const trendScore = row.trend_score;
+  const trendDisplay =
+    trendScore == null ? null :
+    trendScore > 40 ? "+40+" :
+    trendScore < -40 ? "-40+" :
+    trendScore > 0 ? `+${trendScore.toFixed(1)}` :
+    trendScore.toFixed(1);
+
+  const l3 = row.last_3_avg;
+  const avg = row.season_avg ?? row.last_5_avg;
+  const formDelta = l3 != null && avg != null && avg !== 0 ? l3 - avg : null;
+  const formLabel =
+    formDelta == null ? null :
+    formDelta >= 12 ? "HOT" :
+    formDelta >= 4 ? "RISING" :
+    formDelta > -4 ? "NEUTRAL" :
+    formDelta > -12 ? "DROPPING" : "COLD";
+  const formColor =
+    formDelta == null ? "text-white/30" :
+    formDelta >= 12 ? "text-orange-300 font-bold" :
+    formDelta >= 4 ? "text-green-300 font-semibold" :
+    formDelta > -4 ? "text-white/40" :
+    formDelta > -12 ? "text-sky-400 font-semibold" :
+    "text-sky-300 font-bold";
 
   function handleTap() {
     if (isPremium) {
@@ -385,17 +378,23 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
 
   return (
     <div
-      className="rounded-xl border border-white/[0.07] bg-[#0e0e0e] p-4 flex flex-col gap-2.5 active:bg-white/[0.03] transition-colors cursor-pointer"
+      className={`rounded-xl border bg-[#0e0e0e] p-4 flex flex-col gap-2.5 active:bg-white/[0.03] transition-colors cursor-pointer ${
+        isTop3 ? "border-[#F5C84C]/15" : "border-white/[0.07]"
+      }`}
       onClick={handleTap}
       style={{ touchAction: "manipulation" }}
     >
-      {/* Row 1 — rank + name + ACTION BADGE */}
+      {/* Row 1 — rank + name + action badge */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <span className="text-xs text-white/25 tabular-nums w-5 shrink-0 text-right">{rank}</span>
+          <span className={`text-xs tabular-nums w-5 shrink-0 text-right ${isTop3 ? "text-[#F5C84C]/70 font-bold" : "text-white/25"}`}>
+            {rank}
+          </span>
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[14px] font-semibold text-white leading-tight truncate">{row.player_name}</span>
+              <span className={`text-[14px] font-semibold leading-tight truncate ${isTop3 ? "text-white" : "text-white/90"}`}>
+                {row.player_name}
+              </span>
               <StatusBadges row={row} />
             </div>
             <p className="text-[11px] text-white/35 mt-0.5 leading-none">
@@ -404,80 +403,78 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
           </div>
         </div>
         <div className="shrink-0">
-          <ActionBadge row={row} activeTab={activeTab} isPremium={isPremium} onUpgrade={onUpgrade} />
+          <ActionBadge row={row} isPremium={isPremium} onUpgrade={onUpgrade} />
         </div>
       </div>
 
-      {/* Row 2 — Proj | BE | Edge inline stats */}
-      <div className="flex items-center gap-0 pl-7">
+      {/* Row 2 — Proj | Confidence | Value | Trend | Form */}
+      <div className="flex items-center gap-0 pl-7 flex-wrap">
         <div className="flex flex-col items-start pr-3">
-          <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Proj</span>
+          <span className="text-[10px] text-white/35 leading-none mb-0.5">Proj</span>
           <span className="text-[14px] font-bold text-[#F5C84C] tabular-nums">
             {row.is_bye ? "—" : fmt(proj, 0)}
           </span>
         </div>
 
-        {rowAvgScore != null && (
+        {row.projection_confidence != null && (
           <>
             <span className="text-white/15 text-sm px-1.5">|</span>
             <div className="flex flex-col items-start px-2">
-              <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Avg Score</span>
-              <span className="text-[14px] font-bold text-white/65 tabular-nums">{Math.round(Number(rowAvgScore))}</span>
+              <span className="text-[10px] text-white/35 leading-none mb-0.5">Conf</span>
+              <ConfidenceBar value={row.projection_confidence} />
             </div>
           </>
         )}
 
-        {valueScore !== null && !row.is_bye && (
+        {valueScore != null && (
           <>
             <span className="text-white/15 text-sm px-1.5">|</span>
             <div className="flex flex-col items-start px-2">
-              <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Value</span>
-              <span className={`text-[14px] font-bold tabular-nums ${valueColor(valueScore)}`}>
-                {getValueDisplay(valueScore) ?? Math.round(valueScore)}
+              <span className="text-[10px] text-white/35 leading-none mb-0.5">Value</span>
+              <span className={`text-[13px] font-semibold tabular-nums ${getValueScoreColor(valueScore)}`}>
+                {fmtValueScore(valueScore)}
               </span>
             </div>
           </>
         )}
 
-        {(() => {
-          const fl = row.form_label ?? (() => {
-            const fs = row.form_score;
-            const avg = row.season_avg ?? row.last_5_avg;
-            if (fs == null || avg == null || avg === 0) return null;
-            const d = fs - avg;
-            if (d >= 15) return "HOT";
-            if (d >= 5)  return "IN FORM";
-            if (d >= -5) return "NORMAL";
-            if (d >= -15) return "COLD";
-            return "ICE COLD";
-          })();
-          if (!fl) return null;
-          return (
-            <>
-              <span className="text-white/15 text-sm px-1.5">|</span>
-              <div className="flex flex-col items-start px-2">
-                <span className="text-[10px] text-white/35 font-normal leading-none mb-0.5">Form</span>
-                <span className={`text-[12px] font-bold tabular-nums ${getFormStyles(fl).split(" ")[0]}`}>
-                  {getFormLabel(fl)}
-                </span>
-              </div>
-            </>
-          );
-        })()}
+        {trendDisplay != null && !row.is_bye && (
+          <>
+            <span className="text-white/15 text-sm px-1.5">|</span>
+            <div className="flex flex-col items-start px-2">
+              <span className="text-[10px] text-white/35 leading-none mb-0.5">Trend</span>
+              <span className={`text-[12px] tabular-nums ${
+                (trendScore ?? 0) >= 20 ? "text-emerald-400 font-bold" :
+                (trendScore ?? 0) >= 8 ? "text-green-300 font-semibold" :
+                (trendScore ?? 0) >= -5 ? "text-white/40" :
+                (trendScore ?? 0) >= -15 ? "text-orange-400 font-semibold" :
+                "text-red-400 font-bold"
+              }`}>
+                {trendDisplay}
+              </span>
+            </div>
+          </>
+        )}
+
+        {formLabel != null && (
+          <>
+            <span className="text-white/15 text-sm px-1.5">|</span>
+            <div className="flex flex-col items-start px-2">
+              <span className="text-[10px] text-white/35 leading-none mb-0.5">Form</span>
+              <span className={`text-[11px] ${formColor}`}>{formLabel}</span>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Row 3 — Short WHY + tap affordance */}
+      {/* Row 3 — Why text + expand affordance */}
       {isPremium ? (
         <div className="pl-7 flex items-start justify-between gap-2">
-          {shortWhy ? (
-            <span className="text-[12px] text-white/45 leading-snug line-clamp-2 max-w-[240px]">{shortWhy}</span>
-          ) : (
-            <span className="text-[11px] text-white/20 italic leading-none">—</span>
-          )}
+          <span className="text-[12px] text-white/45 leading-snug line-clamp-2 max-w-[240px]">
+            {whyText || <span className="italic text-white/20">—</span>}
+          </span>
           <div className="flex items-center gap-1 shrink-0">
-            <span className="text-[10px] text-white/25">
-              {expanded ? "Collapse" : "Tap to expand"}
-            </span>
+            <span className="text-[10px] text-white/25">{expanded ? "Collapse" : "Details"}</span>
             <ChevronDown
               size={12}
               className={`text-white/20 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
@@ -497,14 +494,12 @@ function PlayerCard({ row, idx, isPremium, activeTab, onTap, onUpgrade }: Player
       )}
 
       {/* Expanded section */}
-      {expanded && isPremium && (
-        <ExpandedCardSection row={row} displayRec={displayRec} />
-      )}
+      {expanded && isPremium && <ExpandedSection row={row} />}
     </div>
   );
 }
 
-// ─── Locked blurred card ───────────────────────────────────────────────────────
+// ─── Locked card ───────────────────────────────────────────────────────────────
 
 function LockedCard({ idx, onUpgrade }: { idx: number; onUpgrade: () => void }) {
   return (
@@ -526,26 +521,26 @@ function LockedCard({ idx, onUpgrade }: { idx: number; onUpgrade: () => void }) 
 
 // ─── Loading skeleton ──────────────────────────────────────────────────────────
 
-function LoadingSkeletonCards() {
+function SkeletonCards() {
   return (
     <div className="flex flex-col gap-2">
       {Array.from({ length: 8 }).map((_, i) => (
         <div key={i} className="rounded-xl border border-white/[0.04] bg-[#0e0e0e] p-4">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex items-start gap-2.5 flex-1">
-              <div className="h-3 w-4 animate-pulse rounded bg-white/8 mt-0.5" />
+              <div className="h-3 w-4 animate-pulse rounded bg-white/[0.08] mt-0.5" />
               <div>
                 <div className="h-4 w-28 animate-pulse rounded bg-white/10 mb-1.5" />
-                <div className="h-2.5 w-16 animate-pulse rounded bg-white/6" />
+                <div className="h-2.5 w-16 animate-pulse rounded bg-white/[0.06]" />
               </div>
             </div>
-            <div className="h-6 w-16 animate-pulse rounded-md bg-white/8" />
+            <div className="h-6 w-16 animate-pulse rounded-md bg-white/[0.08]" />
           </div>
           <div className="flex gap-4 pl-7">
             {[48, 40, 48].map((w, j) => (
               <div key={j} className="flex flex-col gap-1">
                 <div className="h-2 w-8 animate-pulse rounded bg-white/5" />
-                <div className="h-4 animate-pulse rounded bg-white/8" style={{ width: w }} />
+                <div className="h-4 animate-pulse rounded bg-white/[0.08]" style={{ width: w }} />
               </div>
             ))}
           </div>
@@ -555,7 +550,7 @@ function LoadingSkeletonCards() {
   );
 }
 
-// ─── Mobile conversion wall ────────────────────────────────────────────────────
+// ─── Conversion wall ───────────────────────────────────────────────────────────
 
 export function MobileConversionWall({ onUpgrade }: { onUpgrade: () => void }) {
   return (
@@ -568,49 +563,45 @@ export function MobileConversionWall({ onUpgrade }: { onUpgrade: () => void }) {
           <Crown size={18} className="text-[#F5C84C]" />
         </div>
         <div>
-          <p className="text-base font-bold text-white leading-snug">You're only seeing the obvious picks</p>
-          <p className="text-sm text-white/45 mt-1.5 leading-relaxed">The real edge is hidden below</p>
-          <p className="text-xs text-white/30 mt-1 leading-relaxed">Most coaches won't see these before lockout</p>
+          <p className="text-base font-bold text-white leading-snug">Full rankings unlocked with Neeko+</p>
+          <p className="text-sm text-white/45 mt-1.5 leading-relaxed">AI analysis, value scores &amp; edge signals for every player</p>
         </div>
         <button
           onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
           className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-[#F5C84C] hover:brightness-110 px-6 py-2.5 text-sm font-bold text-[#070707] transition-all"
         >
           <Crown size={13} />
-          Unlock Winning Picks
+          Unlock Full Rankings
         </button>
-        <span className="text-[11px] text-white/30 italic">$10/month · Cancel anytime</span>
+        <span className="text-[11px] text-white/30">$10/month · Cancel anytime</span>
       </div>
     </div>
   );
 }
 
-// ─── Main mobile rankings table ────────────────────────────────────────────────
+// ─── Main export ───────────────────────────────────────────────────────────────
 
 interface MobileRankingsTableProps {
   rows: RankingRow[];
   loading: boolean;
   isPremium: boolean;
-  activeTab: RankingsTab;
   onOpenRow: (row: RankingRow, idx: number) => void;
   onUpgrade: () => void;
 }
 
-const SHOW_MORE_INITIAL = PREMIUM_INITIAL_ROWS;
 const SHOW_MORE_STEP = 50;
 
 export function MobileRankingsTable({
   rows,
   loading,
   isPremium,
-  activeTab,
   onOpenRow,
   onUpgrade,
 }: MobileRankingsTableProps) {
-  const [visibleCount, setVisibleCount] = useState(SHOW_MORE_INITIAL);
+  const [visibleCount, setVisibleCount] = useState(PREMIUM_INITIAL_ROWS);
 
   useEffect(() => {
-    setVisibleCount(SHOW_MORE_INITIAL);
+    setVisibleCount(PREMIUM_INITIAL_ROWS);
   }, [rows]);
 
   const visibleRows = isPremium
@@ -622,7 +613,7 @@ export function MobileRankingsTable({
   return (
     <div className="w-full pb-[80px]">
       {loading ? (
-        <LoadingSkeletonCards />
+        <SkeletonCards />
       ) : (
         <div className="flex flex-col gap-2">
           {visibleRows.map((row, idx) => (
@@ -631,13 +622,12 @@ export function MobileRankingsTable({
               row={row}
               idx={idx}
               isPremium={isPremium}
-              activeTab={activeTab}
               onTap={() => onOpenRow(row, idx)}
               onUpgrade={onUpgrade}
             />
           ))}
 
-          {!isPremium && !loading && rows.length > FREE_FULL_ROWS && (
+          {!isPremium && rows.length > FREE_FULL_ROWS && (
             <>
               {Array.from({ length: 5 }).map((_, i) => (
                 <LockedCard key={i} idx={FREE_FULL_ROWS + i} onUpgrade={onUpgrade} />
@@ -658,7 +648,7 @@ export function MobileRankingsTable({
         </div>
       )}
 
-      {!loading && isPremium && !hasMore && rows.length > SHOW_MORE_INITIAL && (
+      {!loading && isPremium && !hasMore && rows.length > PREMIUM_INITIAL_ROWS && (
         <div className="pt-3 pb-1">
           <p className="text-center text-[11px] text-white/25">All {rows.length} players loaded</p>
         </div>

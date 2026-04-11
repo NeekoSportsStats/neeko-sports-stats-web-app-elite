@@ -8,24 +8,21 @@ import { DataFreshnessIndicator } from "@/components/ui/DataFreshnessIndicator";
 import { ErrorState } from "@/components/ui/ErrorState";
 
 import {
-  RankingRow, RankingsTab, PositionFilter, PremiumFilter, SortKey, SortDir, RowTier,
+  RankingRow, PositionFilter, PremiumFilter, SortKey, SortDir, RowTier,
 } from "./components/types";
 import {
-  TAB_SORT_KEY, TAB_DESCRIPTIONS, TAB_DEFAULT_SORT,
-  FREE_FULL_ROWS, FREE_PARTIAL_ROWS, PREMIUM_INITIAL_ROWS,
-  getFreeTier, fmtUpdatedAt, fmt, fmtValueScore,
+  FREE_FULL_ROWS, PREMIUM_INITIAL_ROWS,
+  getFreeTier, fmt, fmtValueScore,
 } from "./components/helpers";
 import { mapRankingRow } from "./components/mapRankingRow";
 import {
   NeekoRatingInfoModal, UpgradeModal, PlayerDetailModal,
 } from "./components/RankingsModals";
 import {
-  TableHeader, TableRow, LoadingSkeletonRows,
+  TableHeader, TableRow, ConversionWallRow, LoadingSkeletonRows,
 } from "./components/RankingsTable";
 import { MobileRankingsTable } from "./components/MobileRankingsTable";
 import { CollapsibleSEO } from "./components/CollapsibleSEO";
-
-const POSITIONS: PositionFilter[] = ["ALL", "DEF", "MID", "FWD", "RUC"];
 
 const STALE_MS = 60_000;
 const CACHE_VERSION = "v2-trend";
@@ -43,7 +40,6 @@ const PREMIUM_QUICK_FILTERS: { key: PremiumFilter; label: string }[] = [
   { key: "TOP100", label: "Top 100" },
   { key: "ELITE", label: "Elite Only" },
 ];
-
 
 function ValueStrip({ rows }: { rows: RankingRow[] }) {
   if (rows.length === 0) return null;
@@ -217,7 +213,6 @@ function SearchAutocomplete({
   );
 }
 
-
 function InlineGateBlock({ onUpgrade }: { onUpgrade: () => void }) {
   return (
     <div className="border-t border-white/[0.04] px-4 py-5 flex flex-col items-center text-center gap-3">
@@ -241,11 +236,9 @@ function InlineGateBlock({ onUpgrade }: { onUpgrade: () => void }) {
 export default function AFLRankingsPage() {
   const { isPremium, user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<RankingsTab>("best");
   const [rows, setRows] = useState<RankingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(PREMIUM_INITIAL_ROWS);
-  const [positionFilter, setPositionFilter] = useState<PositionFilter>("ALL");
   const [premiumFilter, setPremiumFilter] = useState<PremiumFilter>("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -253,7 +246,7 @@ export default function AFLRankingsPage() {
   const [selected, setSelected] = useState<{ row: RankingRow; rank: number; tier: RowTier; isUnlocked: boolean } | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [ratingInfoOpen, setRatingInfoOpen] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey>(TAB_DEFAULT_SORT["best"]);
+  const [sortKey, setSortKey] = useState<SortKey>("projection");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [updatedAt, setUpdatedAt] = useState<{ ts: string; round: string } | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -269,8 +262,6 @@ export default function AFLRankingsPage() {
     return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
   }, [searchTerm]);
 
-
-
   async function fetchAIForRow(row: RankingRow): Promise<Partial<RankingRow>> {
     if (!row.player_id || !row.player_name) return {};
     const { data } = await supabase
@@ -281,9 +272,9 @@ export default function AFLRankingsPage() {
     if (!data || !data[0]) return {};
     const d = data[0] as any;
     return {
-      why:           d.why ?? null,
-      why_long:      d.why_long ?? null,
-      cached_at:     d.cached_at ?? null,
+      why:       d.why ?? null,
+      why_long:  d.why_long ?? null,
+      cached_at: d.cached_at ?? null,
     };
   }
 
@@ -360,22 +351,6 @@ export default function AFLRankingsPage() {
     }
   }
 
-  const PREMIUM_TABS: RankingsTab[] = ["value", "projection"];
-
-  function handleTabChange(tab: RankingsTab) {
-    if (!isPremium && PREMIUM_TABS.includes(tab)) {
-      setShowUpgradeModal(true);
-      return;
-    }
-    setActiveTab(tab);
-    setPremiumFilter("ALL");
-    setSearchTerm("");
-    setDebouncedSearch("");
-    setSortKey(TAB_DEFAULT_SORT[tab]);
-    setSortDir("desc");
-    setVisibleCount(50);
-  }
-
   function handleSortClick(col: SortKey) {
     if (!isPremium) return;
     if (sortKey === col) {
@@ -389,12 +364,12 @@ export default function AFLRankingsPage() {
   async function openRow(row: RankingRow, rank: number, tier: RowTier, isUnlocked: boolean) {
     setSelected({ row, rank, tier, isUnlocked });
     track("player_modal_open", {
-      player_name:  row.player_name,
-      player_id:    row.player_id,
-      position:     row.position,
-      team:         row.team,
-      is_unlocked:  isUnlocked,
-      source:       "rankings",
+      player_name: row.player_name,
+      player_id:   row.player_id,
+      position:    row.position,
+      team:        row.team,
+      is_unlocked: isUnlocked,
+      source:      "rankings",
     });
     if (isUnlocked) {
       const needsAI = !row.why && !row.why_long;
@@ -416,8 +391,6 @@ export default function AFLRankingsPage() {
       openRow(row, idx + 1, tier, isUnlocked);
     }
   }
-
-  const safeActiveTab: RankingsTab = (!isPremium && PREMIUM_TABS.includes(activeTab)) ? "best" : activeTab;
 
   const sortedRows = useMemo(() => {
     let filtered = [...rows];
@@ -443,36 +416,19 @@ export default function AFLRankingsPage() {
       }
     }
 
-    if (isPremium && sortKey) {
-      filtered = [...filtered].sort((a, b) => {
-        const av = ((a as any)[sortKey] as number | null | undefined) ?? -Infinity;
-        const bv = ((b as any)[sortKey] as number | null | undefined) ?? -Infinity;
-        return sortDir === "desc" ? bv - av : av - bv;
-      });
-    } else {
-      if (safeActiveTab === "best") {
-        filtered = [...filtered].sort((a, b) => ((b.projection ?? -Infinity) - (a.projection ?? -Infinity)));
-      } else if (safeActiveTab === "value") {
-        filtered = filtered.filter((r) => (r.games_played ?? 0) >= 1 && r.price != null && r.price > 0);
-        filtered = [...filtered].sort((a, b) => ((b.value_score ?? -Infinity) - (a.value_score ?? -Infinity)));
-      } else if (safeActiveTab === "projection") {
-        filtered = [...filtered].sort((a, b) => ((b.projection ?? -Infinity) - (a.projection ?? -Infinity)));
-      }
-    }
+    filtered = [...filtered].sort((a, b) => {
+      const av = ((a as any)[sortKey] as number | null | undefined) ?? -Infinity;
+      const bv = ((b as any)[sortKey] as number | null | undefined) ?? -Infinity;
+      return sortDir === "desc" ? bv - av : av - bv;
+    });
 
     return filtered;
-  }, [rows, debouncedSearch, isPremium, premiumFilter, sortKey, sortDir, safeActiveTab]);
+  }, [rows, debouncedSearch, isPremium, premiumFilter, sortKey, sortDir]);
 
   const displayRows = useMemo(() => {
     if (!isPremium) return sortedRows.slice(0, FREE_FULL_ROWS);
     return sortedRows.slice(0, visibleCount);
   }, [sortedRows, isPremium, visibleCount]);
-
-  const TABS: { key: RankingsTab; label: string; premiumOnly: boolean }[] = [
-    { key: "best", label: "Best Overall", premiumOnly: false },
-    { key: "value", label: "Best Value", premiumOnly: true },
-    { key: "projection", label: "Top Projections", premiumOnly: true },
-  ];
 
   const rankingsHelmet = (
     <Helmet>
@@ -516,190 +472,22 @@ export default function AFLRankingsPage() {
     </Helmet>
   );
 
-  if (!isPremium) {
-    return (
-      <>
-        {rankingsHelmet}
-
-        <div className="min-h-screen bg-[#070707] text-white">
-          <div className="w-full max-w-[1240px] mx-auto px-4 pt-10 pb-10">
-
-            {/* FREE HERO */}
-            <div className="flex items-start justify-between gap-4 mb-2">
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
-                <p className="text-sm text-white/45 mt-1.5 max-w-lg leading-relaxed">
-                  AI-ranked by projected performance vs baseline
-                </p>
-              </div>
-              <div className="flex items-center gap-2 mt-1 shrink-0">
-                {updatedAt && (
-                  <div className="hidden md:block">
-                    <DataFreshnessIndicator
-                      timestamp={updatedAt.ts}
-                      label="Rankings"
-                      variant="compact"
-                      className="text-[#F5C84C]"
-                    />
-                  </div>
-                )}
-                <button
-                  onClick={handleRefresh}
-                  disabled={isRefreshing}
-                  title="Refresh rankings data"
-                  className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-medium text-white/50 hover:border-white/20 hover:text-white/70 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <RefreshCw size={12} className={isRefreshing ? "animate-spin" : ""} />
-                  <span className="hidden sm:inline">{isRefreshing ? "Refreshing..." : "Refresh"}</span>
-                </button>
-              </div>
-            </div>
-
-            {updatedAt && (
-              <div className="md:hidden mb-2">
-                <DataFreshnessIndicator
-                  timestamp={updatedAt.ts}
-                  label="Rankings"
-                  variant="compact"
-                  className="text-[#F5C84C]"
-                />
-              </div>
-            )}
-            {/* QUICK VALUE STRIP */}
-            {!loading && displayRows.length > 0 && (
-              <div className="mb-4">
-                <ValueStrip rows={displayRows} />
-              </div>
-            )}
-
-            {/* FREE TABLE — desktop */}
-            <div className="hidden md:block">
-              <div className="rounded-xl border border-white/[0.06] overflow-hidden">
-                <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
-                  <table className="w-full min-w-[860px] border-collapse">
-                    <thead className="sticky top-0 z-30 bg-[#0a0a0a] border-b border-[#222]">
-                      <TableHeader
-                        isPremium={false}
-                        sortKey={sortKey}
-                        sortDir={sortDir}
-                        onSortClick={handleSortClick}
-                        onRatingInfoOpen={() => setRatingInfoOpen(true)}
-                      />
-                    </thead>
-                    <tbody>
-                      {loading ? (
-                        <LoadingSkeletonRows />
-                      ) : fetchError ? (
-                        <tr>
-                          <td colSpan={7} className="px-6 py-10">
-                            <ErrorState
-                              message={fetchError}
-                              onRetry={() => fetchRankings(true)}
-                              retrying={isRefreshing}
-                            />
-                          </td>
-                        </tr>
-                      ) : displayRows.length === 0 ? (
-                        <tr>
-                          <td colSpan={7} className="px-6 py-16 text-center">
-                            <p className="text-sm text-white/30">No players available.</p>
-                          </td>
-                        </tr>
-                      ) : (
-                        <>
-                          {displayRows.map((row, idx) => {
-                            const tier: RowTier = getFreeTier(idx);
-                            const isUnlocked = tier === "full";
-                            return (
-                              <TableRow
-                                key={row.player_id ?? idx}
-                                row={row}
-                                idx={idx}
-                                isPremium={false}
-                                tier={tier}
-                                activeTab={activeTab}
-                                onRowClick={() => openRow(row, idx + 1, tier, isUnlocked)}
-                                onUpgrade={() => setShowUpgradeModal(true)}
-                              />
-                            );
-                          })}
-                        </>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                {!loading && displayRows.length > 0 && (
-                  <InlineGateBlock onUpgrade={() => setShowUpgradeModal(true)} />
-                )}
-              </div>
-            </div>
-
-            {/* FREE TABLE — mobile */}
-            <div className="md:hidden">
-              {fetchError && !loading && (
-                <div className="px-4 pb-4">
-                  <ErrorState
-                    variant="inline"
-                    message={fetchError}
-                    onRetry={() => fetchRankings(true)}
-                    retrying={isRefreshing}
-                  />
-                </div>
-              )}
-              <MobileRankingsTable
-                rows={sortedRows}
-                loading={loading}
-                isPremium={false}
-                activeTab={activeTab}
-                onOpenRow={(row, idx) => {
-                  const tier: RowTier = getFreeTier(idx);
-                  const isUnlocked = tier === "full";
-                  openRow(row, idx + 1, tier, isUnlocked);
-                }}
-                onUpgrade={() => setShowUpgradeModal(true)}
-              />
-              {!loading && (
-                <InlineGateBlock onUpgrade={() => setShowUpgradeModal(true)} />
-              )}
-            </div>
-
-            <CollapsibleSEO />
-
-          </div>
-        </div>
-
-        {ratingInfoOpen && <NeekoRatingInfoModal onClose={() => setRatingInfoOpen(false)} />}
-        {showUpgradeModal && <UpgradeModal onClose={() => setShowUpgradeModal(false)} />}
-        {selected && (
-          <PlayerDetailModal
-            row={selected.row}
-            rank={selected.rank}
-            isPremium={false}
-            isUnlocked={selected.isUnlocked}
-            tier={selected.tier}
-            isFreeTop5={selected.tier === "full"}
-            onClose={() => setSelected(null)}
-          />
-        )}
-      </>
-    );
-  }
-
-  // ── PREMIUM LAYOUT ──────────────────────────────────────────────────────────
   return (
     <>
       {rankingsHelmet}
 
       <div className="min-h-screen bg-[#070707] text-white">
-        <div className="w-full max-w-[1240px] mx-auto px-4 pt-7 pb-10">
+        <div className="w-full max-w-[1240px] mx-auto px-4 pt-8 pb-10">
 
           {/* HEADER */}
-          <div className="flex items-start justify-between gap-4 mb-1">
+          <div className="flex items-start justify-between gap-4 mb-2">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
-              <p className="text-sm text-white/40 mt-0.5">Ranked by projected performance vs baseline — updated weekly</p>
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">AFL Fantasy Rankings 2026</h1>
+              <p className="text-sm text-white/45 mt-1.5 max-w-lg leading-relaxed">
+                AI-ranked by projected performance vs baseline — updated weekly
+              </p>
             </div>
-            <div className="flex items-center gap-3 mt-1 shrink-0">
+            <div className="flex items-center gap-2 mt-1 shrink-0">
               {updatedAt && (
                 <div className="hidden md:block">
                   <DataFreshnessIndicator
@@ -723,7 +511,7 @@ export default function AFLRankingsPage() {
           </div>
 
           {updatedAt && (
-            <div className="md:hidden mt-2 mb-1">
+            <div className="md:hidden mb-2">
               <DataFreshnessIndicator
                 timestamp={updatedAt.ts}
                 label="Rankings"
@@ -732,118 +520,110 @@ export default function AFLRankingsPage() {
               />
             </div>
           )}
-          {/* TABS */}
-          <div className="flex items-center gap-2 border-b border-white/[0.06] mb-0">
-            {TABS.map(({ key, label }) => {
-              const isActive = activeTab === key;
-              return (
-                <button
-                  key={key}
-                  onClick={() => handleTabChange(key)}
-                  className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                    isActive
-                      ? "border-[#F5C84C] text-[#F5C84C]"
-                      : "border-transparent text-white/40 hover:text-white/70"
-                  }`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-
-          <p className="text-xs text-white/30 mt-2 mb-3 leading-relaxed max-w-2xl">
-            {TAB_DESCRIPTIONS[safeActiveTab]}
-          </p>
-
-          {/* SEARCH */}
-          <div className="mb-3">
-            <SearchAutocomplete
-              rows={rows}
-              value={searchTerm}
-              isPremium={isPremium}
-              onUpgrade={() => setShowUpgradeModal(true)}
-              onChange={setSearchTerm}
-              onSelect={handleSearchSelect}
-            />
-          </div>
-
-          {/* QUICK FILTERS */}
-          <div className="sticky top-[72px] z-30 bg-[#070707] pb-2 -mx-4 px-4 mb-3 flex flex-wrap gap-1.5">
-            {PREMIUM_QUICK_FILTERS.map(({ key, label }) => (
-              <button
-                key={key}
-                onClick={() => setPremiumFilter(key)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                  premiumFilter === key
-                    ? "bg-[#F5C84C] text-[#070707]"
-                    : "border border-white/10 bg-white/[0.03] text-white/50 hover:border-white/20 hover:text-white/70"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
 
           {/* VALUE STRIP */}
           {!loading && displayRows.length > 0 && (
-            <div className="mb-3">
+            <div className="mb-4">
               <ValueStrip rows={displayRows} />
             </div>
           )}
 
+          {/* PREMIUM CONTROLS */}
+          {isPremium && (
+            <>
+              <div className="mb-3">
+                <SearchAutocomplete
+                  rows={rows}
+                  value={searchTerm}
+                  isPremium={isPremium}
+                  onUpgrade={() => setShowUpgradeModal(true)}
+                  onChange={setSearchTerm}
+                  onSelect={handleSearchSelect}
+                />
+              </div>
+
+              <div className="sticky top-[72px] z-30 bg-[#070707] pb-2 -mx-4 px-4 mb-3 flex flex-wrap gap-1.5">
+                {PREMIUM_QUICK_FILTERS.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setPremiumFilter(key)}
+                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                      premiumFilter === key
+                        ? "bg-[#F5C84C] text-[#070707]"
+                        : "border border-white/10 bg-white/[0.03] text-white/50 hover:border-white/20 hover:text-white/70"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
           {/* TABLE — desktop */}
           <div className="hidden md:block">
-            <div
-              className="overflow-x-auto rounded-xl border border-white/5"
-              style={{ WebkitOverflowScrolling: "touch" }}
-            >
-              <table className="w-full min-w-[900px] border-collapse">
-                <thead className="sticky top-0 z-30 bg-[#0a0a0a] border-b border-[#222]">
-                  <TableHeader
-                    isPremium={isPremium}
-                    sortKey={sortKey}
-                    sortDir={sortDir}
-                    onSortClick={handleSortClick}
-                    onRatingInfoOpen={() => setRatingInfoOpen(true)}
-                  />
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <LoadingSkeletonRows />
-                  ) : displayRows.length === 0 ? (
-                    <tr>
-                      <td colSpan={10} className="px-6 py-16 text-center">
-                        <p className="text-sm text-white/30">No players match the current filter.</p>
-                      </td>
-                    </tr>
-                  ) : (
-                    <>
-                      {displayRows.map((row, idx) => {
-                        const tier: RowTier = "premium";
-                        const isUnlocked = true;
-                        const isHighlighted = highlightedPlayerId != null && row.player_id === highlightedPlayerId;
-                        return (
-                          <TableRow
-                            key={row.player_id ?? idx}
-                            row={row}
-                            idx={idx}
-                            isPremium={isPremium}
-                            tier={tier}
-                            activeTab={activeTab}
-                            isHighlighted={isHighlighted}
-                            onRowClick={() => openRow(row, idx + 1, tier, isUnlocked)}
-                            onUpgrade={() => setShowUpgradeModal(true)}
+            <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+              <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
+                <table className="w-full min-w-[860px] border-collapse">
+                  <thead className="sticky top-0 z-30 bg-[#0a0a0a] border-b border-[#222]">
+                    <TableHeader
+                      isPremium={isPremium}
+                      sortKey={sortKey}
+                      sortDir={sortDir}
+                      onSortClick={handleSortClick}
+                      onRatingInfoOpen={() => setRatingInfoOpen(true)}
+                    />
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <LoadingSkeletonRows />
+                    ) : fetchError ? (
+                      <tr>
+                        <td colSpan={9} className="px-6 py-10">
+                          <ErrorState
+                            message={fetchError}
+                            onRetry={() => fetchRankings(true)}
+                            retrying={isRefreshing}
                           />
-                        );
-                      })}
-                    </>
-                  )}
-                </tbody>
-              </table>
+                        </td>
+                      </tr>
+                    ) : displayRows.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="px-6 py-16 text-center">
+                          <p className="text-sm text-white/30">No players match the current filter.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      <>
+                        {displayRows.map((row, idx) => {
+                          const tier: RowTier = isPremium ? "premium" : getFreeTier(idx);
+                          const isUnlocked = isPremium || tier === "full";
+                          const isHighlighted = highlightedPlayerId != null && row.player_id === highlightedPlayerId;
+                          return (
+                            <TableRow
+                              key={row.player_id ?? idx}
+                              row={row}
+                              idx={idx}
+                              isPremium={isPremium}
+                              tier={tier}
+                              activeTab="best"
+                              isHighlighted={isHighlighted}
+                              onRowClick={() => openRow(row, idx + 1, tier, isUnlocked)}
+                              onUpgrade={() => setShowUpgradeModal(true)}
+                            />
+                          );
+                        })}
+                        {!isPremium && !loading && (
+                          <ConversionWallRow onUpgrade={() => setShowUpgradeModal(true)} />
+                        )}
+                      </>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
-            {!loading && visibleCount < sortedRows.length && (
+            {isPremium && !loading && visibleCount < sortedRows.length && (
               <div className="mt-4 flex flex-col items-center gap-2">
                 <button
                   onClick={() => setVisibleCount((v) => v + 50)}
@@ -857,17 +637,30 @@ export default function AFLRankingsPage() {
 
           {/* TABLE — mobile */}
           <div className="md:hidden">
+            {fetchError && !loading && (
+              <div className="px-4 pb-4">
+                <ErrorState
+                  variant="inline"
+                  message={fetchError}
+                  onRetry={() => fetchRankings(true)}
+                  retrying={isRefreshing}
+                />
+              </div>
+            )}
             <MobileRankingsTable
               rows={sortedRows}
               loading={loading}
               isPremium={isPremium}
-              activeTab={activeTab}
               onOpenRow={(row, idx) => {
-                const tier: RowTier = "premium";
-                openRow(row, idx + 1, tier, true);
+                const tier: RowTier = isPremium ? "premium" : getFreeTier(idx);
+                const isUnlocked = isPremium || tier === "full";
+                openRow(row, idx + 1, tier, isUnlocked);
               }}
               onUpgrade={() => setShowUpgradeModal(true)}
             />
+            {!isPremium && !loading && (
+              <InlineGateBlock onUpgrade={() => setShowUpgradeModal(true)} />
+            )}
           </div>
 
           <CollapsibleSEO />
@@ -875,14 +668,8 @@ export default function AFLRankingsPage() {
         </div>
       </div>
 
-      {ratingInfoOpen && (
-        <NeekoRatingInfoModal onClose={() => setRatingInfoOpen(false)} />
-      )}
-
-      {showUpgradeModal && (
-        <UpgradeModal onClose={() => setShowUpgradeModal(false)} />
-      )}
-
+      {ratingInfoOpen && <NeekoRatingInfoModal onClose={() => setRatingInfoOpen(false)} />}
+      {showUpgradeModal && <UpgradeModal onClose={() => setShowUpgradeModal(false)} />}
       {selected && (
         <PlayerDetailModal
           row={selected.row}
@@ -890,7 +677,7 @@ export default function AFLRankingsPage() {
           isPremium={isPremium}
           isUnlocked={selected.isUnlocked}
           tier={selected.tier}
-          isFreeTop5={false}
+          isFreeTop5={selected.tier === "full"}
           onClose={() => setSelected(null)}
         />
       )}

@@ -1,152 +1,147 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp, Lock, Crown, ChevronRight } from "lucide-react";
+import { ChevronRight, Crown, Lock } from "lucide-react";
 import { RankingRow, SortKey, SortDir, RankingsTab, RowTier } from "./types";
 import {
-  fmt, fmtPrice,
+  fmt,
+  fmtPrice,
+  fmtValueScore,
   getDisplayTrend,
-  getTrendLabel,
   getTrendAction,
   getTrendActionStyles,
   getTrendWhyText,
-  getFormLabel,
-  getFormStyles,
-  deriveEdgeConfidence,
-  getEdgeConfidenceStyles,
+  getConfidenceColor,
+  getValueScoreColor,
   FREE_FULL_ROWS,
 } from "./helpers";
-import { InfoTooltip, LockedCell } from "./RankingsModals";
+import { LockedCell } from "./RankingsModals";
 import { ExpandedPlayerRow } from "./ExpandedPlayerRow";
 import { PlayerStatusPill } from "./PlayerStatusPill";
 
-// ─── Column layout ─────────────────────────────────────────────────────────────
-// # (44) | Player (200) | PROJ (80) | BASELINE (80) | TREND (90) | FORM (90) | ACTION (96) | WHY (flex)
+// ─── Column widths ─────────────────────────────────────────────────────────────
+// Player | Action | Confidence | Why (flex) | Projection | Value | Trend | Form
 const TOTAL_COLS = 8;
-const FREE_TOTAL_COLS = 6;
 
-const TH = "bg-[#0a0a0a] px-3 py-2.5 text-[11px] font-medium uppercase tracking-wider whitespace-nowrap border-b border-white/10 text-center";
+const TH =
+  "bg-[#0a0a0a] px-3 py-2.5 text-[11px] font-medium uppercase tracking-wider whitespace-nowrap border-b border-white/10 text-center";
 
-// ─── Trend cell ────────────────────────────────────────────────────────────────
+// ─── Action badge ──────────────────────────────────────────────────────────────
 
-function TrendCell({ row }: { row: RankingRow }) {
-  if (row.is_bye) {
-    return <span className="text-sm text-white/20 tabular-nums">—</span>;
-  }
+function ActionBadge({ row, locked, onUpgrade }: { row: RankingRow; locked?: boolean; onUpgrade: () => void }) {
+  if (locked) return <LockedCell onClick={onUpgrade} />;
 
   const trend = getDisplayTrend(row);
-  const label = getTrendLabel(trend);
-
-  const ts = row.trend_score;
-  const clamped = ts != null ? (ts > 40 ? 40 : ts < -40 ? -40 : ts) : null;
-  const scoreDisplay = ts == null ? null
-    : ts > 40 ? "+40+" : ts < -40 ? "-40+" : (clamped! > 0 ? `+${clamped!.toFixed(1)}` : clamped!.toFixed(1));
-
-  let colorCls: string;
-  const s = (trend ?? "").toUpperCase();
-  if (s === "STRONG_UP")   colorCls = "text-emerald-400 font-bold";
-  else if (s === "UP")     colorCls = "text-green-300 font-semibold";
-  else if (s === "STABLE") colorCls = "text-neutral-300";
-  else if (s === "DOWN")   colorCls = "text-orange-400 font-semibold";
-  else if (s === "STRONG_DOWN") colorCls = "text-red-400 font-bold";
-  else                     colorCls = "text-white/30";
+  const action = getTrendAction(trend) ?? "—";
+  const cls = getTrendActionStyles(trend);
 
   return (
-    <div className="flex flex-col items-center gap-px">
-      <span className={`text-sm font-semibold tabular-nums ${colorCls}`}>{label}</span>
-      {scoreDisplay != null && (
-        <span className="text-[9px] text-white/25 leading-none tabular-nums">{scoreDisplay} vs baseline</span>
-      )}
+    <span className={`inline-block rounded-md border px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap ${cls}`}>
+      {action}
+    </span>
+  );
+}
+
+// ─── Confidence cell ───────────────────────────────────────────────────────────
+
+function ConfidenceCell({ value }: { value: number | null }) {
+  if (value == null) return <span className="text-sm text-white/20">—</span>;
+  const pct = Math.max(0, Math.min(100, value));
+  const color = getConfidenceColor(pct);
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className={`text-sm font-semibold tabular-nums ${color}`}>{Math.round(pct)}%</span>
+      <div className="w-10 h-0.5 rounded-full bg-white/[0.07] overflow-hidden">
+        <div
+          className="h-full rounded-full"
+          style={{
+            width: `${pct}%`,
+            backgroundColor: pct >= 75 ? "#4ade80" : pct >= 55 ? "#F5C84C" : "#fb923c",
+            opacity: 0.7,
+          }}
+        />
+      </div>
     </div>
   );
 }
 
-// ─── Form cell (backward-looking: recent vs season average) ───────────────────
+// ─── Trend cell ────────────────────────────────────────────────────────────────
 
-function deriveFormLabel(row: RankingRow): string | null {
-  if (row.form_label) {
-    const raw = row.form_label.toUpperCase().replace(/ /g, "_");
-    if (raw === "NORMAL") return "NEUTRAL";
-    if (raw === "IN_FORM" || raw === "IN FORM") return "RISING";
-    if (raw === "COLD") return "DROPPING";
-    return row.form_label;
-  }
-  const l3 = row.last_3_avg;
-  const avg = row.season_avg ?? row.last_5_avg;
-  if (l3 == null || avg == null || avg === 0) return null;
-  const delta = l3 - avg;
-  if (delta >= 12)  return "HOT";
-  if (delta >= 4)   return "RISING";
-  if (delta > -4)   return "NEUTRAL";
-  if (delta > -12)  return "DROPPING";
-  return "ICE_COLD";
-}
+function TrendCell({ row }: { row: RankingRow }) {
+  if (row.is_bye) return <span className="text-sm text-white/20">—</span>;
 
-function deriveFormDelta(row: RankingRow): number | null {
-  if (row.form_delta != null) return row.form_delta;
-  const l3 = row.last_3_avg;
-  const avg = row.season_avg ?? row.last_5_avg;
-  if (l3 == null || avg == null) return null;
-  return l3 - avg;
-}
+  const ts = row.trend_score;
+  if (ts == null) return <span className="text-sm text-white/20">—</span>;
 
-function deriveFormDeltaLabel(fd: number | null): string | null {
-  if (fd == null) return null;
-  const clamped = fd > 40 ? 40 : fd < -40 ? -40 : fd;
-  const sign = clamped > 0 ? "+" : "";
-  const formatted = `${sign}${clamped.toFixed(1)}`;
-  if (Math.abs(clamped) < 4) return `Slight ${clamped >= 0 ? "Rise" : "Drop"} (${formatted})`;
-  if (clamped >= 4) return `Strong Rise (${formatted})`;
-  return `Dropping (${formatted})`;
-}
+  const clamped = ts > 40 ? 40 : ts < -40 ? -40 : ts;
+  const display = ts > 40 ? "+40+" : ts < -40 ? "-40+" : clamped > 0 ? `+${clamped.toFixed(1)}` : clamped.toFixed(1);
 
-function FormCell({ row }: { row: RankingRow }) {
-  if (row.is_bye) {
-    return <span className="text-sm text-white/20 tabular-nums">—</span>;
-  }
-
-  const resolvedLabel = deriveFormLabel(row);
-  const label = getFormLabel(resolvedLabel);
-  const fd = deriveFormDelta(row);
-  const deltaLabel = deriveFormDeltaLabel(fd);
-
-  const styleCls = getFormStyles(resolvedLabel);
-  const [textCls] = styleCls.split(" ");
+  const color =
+    ts >= 20 ? "text-emerald-400 font-bold" :
+    ts >= 8  ? "text-green-300 font-semibold" :
+    ts >= -5 ? "text-white/40" :
+    ts >= -15 ? "text-orange-400 font-semibold" :
+               "text-red-400 font-bold";
 
   return (
     <div className="flex flex-col items-center gap-px">
-      <span className={`text-[11px] font-semibold tabular-nums ${textCls}`}>{label}</span>
-      {deltaLabel != null && (
-        <span className="text-[9px] text-white/25 leading-none tabular-nums">{deltaLabel}</span>
-      )}
+      <span className={`text-sm tabular-nums ${color}`}>{display}</span>
+      <span className="text-[9px] text-white/20 leading-none">vs avg</span>
     </div>
+  );
+}
+
+// ─── Form cell ─────────────────────────────────────────────────────────────────
+
+function FormCell({ row }: { row: RankingRow }) {
+  if (row.is_bye) return <span className="text-sm text-white/20">—</span>;
+
+  const l3 = row.last_3_avg;
+  const avg = row.season_avg ?? row.last_5_avg;
+  if (l3 == null || avg == null || avg === 0) return <span className="text-sm text-white/20">—</span>;
+
+  const delta = l3 - avg;
+  const clamped = delta > 40 ? 40 : delta < -40 ? -40 : delta;
+  const sign = clamped > 0 ? "+" : "";
+  const display = `${sign}${clamped.toFixed(1)}`;
+
+  let label: string;
+  let color: string;
+  if (delta >= 12) { label = "HOT"; color = "text-orange-300 font-bold"; }
+  else if (delta >= 4) { label = "RISING"; color = "text-green-300 font-semibold"; }
+  else if (delta > -4) { label = "NEUTRAL"; color = "text-white/40"; }
+  else if (delta > -12) { label = "DROPPING"; color = "text-sky-400 font-semibold"; }
+  else { label = "COLD"; color = "text-sky-300 font-bold"; }
+
+  return (
+    <div className="flex flex-col items-center gap-px">
+      <span className={`text-[11px] tabular-nums ${color}`}>{label}</span>
+      <span className="text-[9px] text-white/20 leading-none tabular-nums">{display} vs avg</span>
+    </div>
+  );
+}
+
+// ─── Value cell ────────────────────────────────────────────────────────────────
+
+function ValueCell({ row }: { row: RankingRow }) {
+  if (row.is_bye || row.value_score == null) return <span className="text-sm text-white/20">—</span>;
+  const vs = row.value_score;
+  const color = getValueScoreColor(vs);
+  return (
+    <span className={`text-sm font-semibold tabular-nums ${color}`}>{fmtValueScore(vs)}</span>
   );
 }
 
 // ─── Sort icon ─────────────────────────────────────────────────────────────────
 
-function SortIcon({ col, sortKey, sortDir, isPremium }: { col: SortKey; sortKey: SortKey; sortDir: SortDir; isPremium: boolean }) {
-  if (!isPremium) return null;
-  if (sortKey !== col) return <ChevronDown size={11} className="text-white/20 inline-block ml-0.5" />;
-  return sortDir === "desc"
-    ? <ChevronDown size={11} className="text-[#F5C84C] inline-block ml-0.5" />
-    : <ChevronUp size={11} className="text-[#F5C84C] inline-block ml-0.5" />;
-}
-
-function Th({ label, gold, locked, width, tooltip }: { label: string; gold?: boolean; locked?: boolean; width?: number; tooltip?: string }) {
+function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
+  const isActive = sortKey === col;
   return (
-    <th
-      className={`${TH} ${gold ? "text-[#F5C84C]" : locked ? "text-white/25" : "text-white/40"}`}
-      style={width ? { width, minWidth: width } : undefined}
-    >
-      <span className="inline-flex items-center gap-1 justify-center">
-        {locked && <Lock size={10} className="text-[#F5C84C]/50" />}
-        {label}
-        {tooltip && <InfoTooltip text={tooltip} />}
-      </span>
-    </th>
+    <span className={`ml-0.5 text-[10px] ${isActive ? "text-[#F5C84C]" : "text-white/20"}`}>
+      {isActive ? (sortDir === "desc" ? "▼" : "▲") : "↕"}
+    </span>
   );
 }
 
-// ─── Premium table header ──────────────────────────────────────────────────────
+// ─── Table header ──────────────────────────────────────────────────────────────
 
 interface TableHeaderProps {
   isPremium: boolean;
@@ -156,19 +151,28 @@ interface TableHeaderProps {
   onRatingInfoOpen: () => void;
 }
 
-export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRatingInfoOpen }: TableHeaderProps) {
-  function SortableTh({ label, col, width, tooltip }: { label: string; col: SortKey; width?: number; tooltip?: string }) {
-    const isActive = isPremium && sortKey === col;
+export function TableHeader({ isPremium, sortKey, sortDir, onSortClick }: TableHeaderProps) {
+  function SortableTh({
+    label,
+    col,
+    width,
+    align = "center",
+  }: {
+    label: string;
+    col: SortKey;
+    width?: number;
+    align?: "center" | "left";
+  }) {
+    const isActive = sortKey === col;
     return (
       <th
-        className={`${TH} ${isActive ? "text-[#F5C84C]" : "text-white/40"} ${isPremium ? "cursor-pointer hover:text-white/70 select-none" : ""} transition-colors`}
+        className={`${TH} ${isActive ? "text-[#F5C84C]" : "text-white/40"} ${isPremium ? "cursor-pointer hover:text-white/70 select-none" : ""} transition-colors text-${align}`}
         style={width ? { width, minWidth: width } : undefined}
         onClick={isPremium ? () => onSortClick(col) : undefined}
       >
-        <span className="inline-flex items-center gap-0.5 justify-center">
+        <span className={`inline-flex items-center gap-0.5 ${align === "left" ? "" : "justify-center"}`}>
           {label}
-          {tooltip && <InfoTooltip text={tooltip} />}
-          <SortIcon col={col} sortKey={sortKey} sortDir={sortDir} isPremium={isPremium} />
+          {isPremium && <SortIcon col={col} sortKey={sortKey} sortDir={sortDir} />}
         </span>
       </th>
     );
@@ -177,18 +181,19 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick, onRating
   return (
     <tr className="border-b border-[#222]">
       <th className={`${TH} text-white/40`} style={{ width: 44, minWidth: 44 }}>#</th>
-      <th className={`${TH} text-left text-white/40`} style={{ width: 200, minWidth: 160 }}>Player</th>
-      <SortableTh label="Proj" col="projection" width={80} tooltip="Model's expected fantasy score this round" />
-      <SortableTh label="Avg Score" col="form_score" width={80} tooltip="Weighted average of recent and season scores" />
-      <SortableTh label="Trend" col="projection" width={90} tooltip="Forward signal: how projection compares to baseline. Drives ACTION." />
-      <Th label="Form" width={90} tooltip="Recent form vs season average — context only, not used for action." />
-      <Th label="Action" locked={!isPremium} width={96} />
+      <th className={`${TH} text-left text-white/40`} style={{ minWidth: 180 }}>Player</th>
+      <th className={`${TH} text-white/40`} style={{ width: 72 }}>Action</th>
+      <th className={`${TH} text-white/40`} style={{ width: 88 }}>Confidence</th>
       <th className={`${TH} text-left text-white/35`} style={{ minWidth: 260 }}>Why</th>
+      <SortableTh label="Proj" col="projection" width={80} />
+      <SortableTh label="Value" col="value_score" width={72} />
+      <th className={`${TH} text-white/40`} style={{ width: 80 }}>Trend</th>
+      <th className={`${TH} text-white/40`} style={{ width: 80 }}>Form</th>
     </tr>
   );
 }
 
-// ─── Premium table row (with expandable panel) ────────────────────────────────
+// ─── Table row ─────────────────────────────────────────────────────────────────
 
 interface TableRowProps {
   row: RankingRow;
@@ -201,344 +206,162 @@ interface TableRowProps {
   onUpgrade: () => void;
 }
 
-export function TableRow({ row, idx, isPremium, tier, activeTab, isHighlighted, onRowClick, onUpgrade }: TableRowProps) {
+export function TableRow({
+  row,
+  idx,
+  isPremium,
+  tier,
+  isHighlighted,
+  onRowClick,
+  onUpgrade,
+}: TableRowProps) {
   const [expanded, setExpanded] = useState(false);
   const rank = idx + 1;
+  const isLocked = !isPremium && idx >= FREE_FULL_ROWS;
+  const isTop3 = rank <= 3;
 
-  const displayRec = getDisplayTrend(row);
   const whyText = row.why ?? getTrendWhyText(row);
 
-  const isLocked = !isPremium && idx >= FREE_FULL_ROWS;
-
-  const avgScore = row.season_avg ?? row.last_5_avg ?? row.last_3_avg ?? null;
-
-  // Top-3 highlight ring
-  const isTop3 = rank <= 3 && !isHighlighted;
-  const rowBase = isHighlighted
-    ? "border-b border-[#F5C84C]/30 bg-[#F5C84C]/[0.04]"
-    : isTop3
-    ? "border-b border-white/[0.06] bg-white/[0.02]"
-    : "border-b border-white/[0.04]";
-
-  const rowClass = `${rowBase} cursor-pointer hover:bg-neutral-900/80 transition-all duration-150 group`;
-
-  function handleRowClick() {
-    setExpanded((e) => !e);
-  }
+  const rowCls = [
+    "border-b cursor-pointer hover:bg-white/[0.018] transition-colors duration-100 group",
+    isHighlighted ? "border-[#F5C84C]/20 bg-[#F5C84C]/[0.03]" : "border-white/[0.04]",
+    isTop3 ? "bg-white/[0.012]" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <>
-      <tr className={`${rowClass}`} onClick={handleRowClick}>
-        <td className="px-3 py-3 text-sm text-white/30 tabular-nums text-center whitespace-nowrap" style={{ width: 44, minWidth: 44 }}>
+      <tr className={rowCls} onClick={() => setExpanded((e) => !e)}>
+        {/* # */}
+        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 44 }}>
           <span className="inline-flex items-center gap-0.5">
-            {isTop3 && !isHighlighted ? (
-              <span className="text-[#F5C84C]/60 font-bold">{rank}</span>
-            ) : (
-              rank
-            )}
+            <span className={`text-sm tabular-nums ${isTop3 ? "text-[#F5C84C]/70 font-bold" : "text-white/25"}`}>
+              {rank}
+            </span>
             <ChevronRight
               size={10}
-              className={`text-white/15 transition-transform duration-150 ${expanded ? "rotate-90 text-[#F5C84C]/50" : ""}`}
+              className={`text-white/15 transition-transform duration-150 ${expanded ? "rotate-90 text-[#F5C84C]/40" : ""}`}
             />
           </span>
         </td>
 
-        <td className="px-3 py-3 whitespace-nowrap" style={{ width: 200, minWidth: 160, maxWidth: 200 }}>
-          <div>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className={`text-sm font-semibold truncate max-w-[180px] ${isTop3 ? "text-white" : "text-white/90"}`}>{row.player_name}</span>
-              <PlayerStatusPill row={row} showUpcomingBye />
-            </div>
-            <div className="text-[11px] text-neutral-500 mt-0.5 leading-tight">
-              {row.team}{row.position ? ` · ${row.position}` : ""}
-            </div>
+        {/* Player */}
+        <td className="px-3 py-3 whitespace-nowrap" style={{ minWidth: 180 }}>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className={`text-sm font-semibold ${isTop3 ? "text-white" : "text-white/85"}`}>
+              {row.player_name}
+            </span>
+            <PlayerStatusPill row={row} showUpcomingBye />
+          </div>
+          <div className="text-[11px] text-white/30 mt-0.5 leading-tight">
+            {row.team}{row.position ? ` · ${row.position}` : ""}
           </div>
         </td>
 
-        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 90 }}>
-          {row.is_bye
-            ? <span className="text-sm font-semibold text-white/20 tabular-nums">—</span>
-            : <span className={`text-sm font-semibold tabular-nums ${isTop3 ? "text-[#F5C84C]" : "text-[#F5C84C]/80"}`}>{fmt(row.projection)}</span>
-          }
+        {/* Action */}
+        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 72 }}>
+          <ActionBadge row={row} locked={isLocked} onUpgrade={onUpgrade} />
         </td>
 
-        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 80 }}>
-          <span className="text-sm tabular-nums text-white/60">{avgScore != null ? fmt(avgScore, 1) : "—"}</span>
-        </td>
-
-        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 90 }}>
-          <TrendCell row={row} />
-        </td>
-
-        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 90 }}>
-          <FormCell row={row} />
-        </td>
-
-        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 96 }}>
+        {/* Confidence */}
+        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 88 }}>
           {isLocked ? (
             <LockedCell onClick={onUpgrade} />
-          ) : (() => {
-            const conf = deriveEdgeConfidence(row.edge ?? null);
-            const confStyles = getEdgeConfidenceStyles(conf);
-            return (
-              <div className="flex flex-col items-center gap-0.5">
-                <span
-                  className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-bold whitespace-nowrap ${getTrendActionStyles(displayRec)}`}
-                >
-                  {getTrendAction(displayRec) ?? "—"}
-                </span>
-                <span className={`text-[8px] font-semibold uppercase tracking-wide px-1.5 py-px rounded border ${confStyles}`}>
-                  {conf === "HIGH_NEG" ? "HIGH" : conf}
-                </span>
-              </div>
-            );
-          })()}
+          ) : (
+            <ConfidenceCell value={row.projection_confidence} />
+          )}
         </td>
 
-        <td className="px-3 py-3 text-left" style={{ minWidth: 300 }}>
+        {/* Why */}
+        <td className="px-3 py-3 text-left" style={{ minWidth: 260 }}>
           {isLocked ? (
-            <span className="text-[11px] text-white/20 italic">Unlock to view</span>
+            <span className="text-[11px] text-white/15 italic">Unlock to view</span>
           ) : (
-            <span className="block text-[12px] text-white/50 leading-[1.55] line-clamp-2">
+            <span className="block text-[12px] text-white/45 leading-[1.55] line-clamp-2">
               {whyText}
             </span>
           )}
         </td>
+
+        {/* Projection */}
+        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 80 }}>
+          {row.is_bye ? (
+            <span className="text-sm text-white/20">BYE</span>
+          ) : (
+            <span className={`text-sm font-bold tabular-nums ${isTop3 ? "text-[#F5C84C]" : "text-[#F5C84C]/80"}`}>
+              {fmt(row.projection, 0)}
+            </span>
+          )}
+        </td>
+
+        {/* Value */}
+        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 72 }}>
+          {isLocked ? <LockedCell onClick={onUpgrade} /> : <ValueCell row={row} />}
+        </td>
+
+        {/* Trend */}
+        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 80 }}>
+          {isLocked ? <LockedCell onClick={onUpgrade} /> : <TrendCell row={row} />}
+        </td>
+
+        {/* Form */}
+        <td className="px-3 py-3 text-center whitespace-nowrap" style={{ width: 80 }}>
+          {isLocked ? <LockedCell onClick={onUpgrade} /> : <FormCell row={row} />}
+        </td>
       </tr>
 
-      {expanded && (
+      {expanded && !isLocked && (
         <ExpandedPlayerRow row={row} colSpan={TOTAL_COLS} isPremium={isPremium} onUpgrade={onUpgrade} />
       )}
     </>
   );
 }
 
-// ─── Premium paywall row ───────────────────────────────────────────────────────
+// ─── Paywall row ───────────────────────────────────────────────────────────────
 
 export function ConversionWallRow({ onUpgrade, colSpan = TOTAL_COLS }: { onUpgrade: () => void; colSpan?: number }) {
   return (
     <tr>
       <td colSpan={colSpan} className="px-4 pt-4 pb-6">
         <div
-          className="relative flex flex-col items-center gap-3 rounded-2xl border border-[#F5C84C]/25 bg-gradient-to-b from-[#F5C84C]/[0.08] via-[#0d0d0d] to-[#0a0a0a] px-8 py-8 text-center overflow-hidden hover:border-[#F5C84C]/40 transition-all duration-200 cursor-pointer"
-          onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 40px rgba(245,200,76,0.10)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
+          className="flex flex-col items-center gap-3 rounded-2xl border border-[#F5C84C]/20 bg-gradient-to-b from-[#F5C84C]/[0.06] to-transparent px-8 py-8 text-center cursor-pointer hover:border-[#F5C84C]/35 transition-all duration-200"
+          onClick={onUpgrade}
         >
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-px bg-gradient-to-r from-transparent via-[#F5C84C]/40 to-transparent" />
-          <div className="flex items-center justify-center w-11 h-11 rounded-full bg-[#F5C84C]/15 border border-[#F5C84C]/30">
-            <Crown size={18} className="text-[#F5C84C]" />
+          <div className="w-10 h-10 rounded-full bg-[#F5C84C]/15 border border-[#F5C84C]/25 flex items-center justify-center">
+            <Crown size={16} className="text-[#F5C84C]" />
           </div>
           <div>
-            <p className="text-lg font-bold text-white mb-1">You're only seeing the obvious picks</p>
-            <p className="text-sm text-white/50 max-w-md leading-relaxed">The real edge is hidden below.</p>
-            <p className="text-sm text-white/35 mt-1">Most coaches won't see these before lockout.</p>
+            <p className="text-base font-bold text-white mb-1">Full rankings unlocked with Neeko+</p>
+            <p className="text-sm text-white/40 max-w-sm leading-relaxed">
+              AI analysis, value scores &amp; edge signals for every player — updated weekly.
+            </p>
           </div>
-          <div className="flex flex-wrap justify-center gap-2">
-            {["Full Rankings", "AI Analysis", "Market Watch", "Edge Board"].map((f) => (
-              <span key={f} className="rounded-full border border-[#F5C84C]/20 bg-[#F5C84C]/[0.06] px-3 py-1 text-[11px] text-[#F5C84C]/70 font-medium">{f}</span>
-            ))}
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5C84C] hover:brightness-110 px-7 py-3 text-sm font-bold text-[#070707] transition-all shadow-lg"
-            >
-              <Crown size={14} />
-              Unlock Winning Picks
-            </button>
-            <span className="text-xs text-white/30">$10/month · Cancel anytime</span>
-          </div>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-// ─── Free table ────────────────────────────────────────────────────────────────
-
-export function FreeTableHeader() {
-  return (
-    <tr className="border-b border-[#222]">
-      <th className={`${TH} text-white/40`} style={{ width: 44, minWidth: 44 }}>#</th>
-      <th className={`${TH} text-left text-white/40`} style={{ minWidth: 160 }}>Player</th>
-      <th className={`${TH} text-[#F5C84C]`} style={{ width: 90, minWidth: 90 }}>
-        <span className="inline-flex items-center gap-1 justify-center">
-          Proj
-          <InfoTooltip text="Expected fantasy points this round" />
-        </span>
-      </th>
-      <th className={`${TH} text-white/40`} style={{ width: 80, minWidth: 80 }}>
-        <span className="inline-flex items-center gap-1 justify-center">
-          Avg Score
-          <InfoTooltip text="Weighted average of season, last 5 and last 3 scores" />
-        </span>
-      </th>
-      <th className={`${TH} text-white/80 font-semibold`} style={{ width: 80, minWidth: 80 }}>
-        <span className="inline-flex items-center gap-1 justify-center">
-          Form
-          <InfoTooltip text="Trend vs own season average. Green = above form." />
-        </span>
-      </th>
-    </tr>
-  );
-}
-
-interface FreeTableRowProps {
-  row: RankingRow;
-  idx: number;
-  onRowClick: () => void;
-  onUpgrade: () => void;
-}
-
-export function FreeTableRow({ row, idx, onRowClick, onUpgrade }: FreeTableRowProps) {
-  const [expanded, setExpanded] = useState(false);
-  const rank = idx + 1;
-  const isTop3 = rank <= 3;
-
-  const rowFadeStyle: React.CSSProperties = { touchAction: "manipulation" };
-
-
-  const avgScore = row.season_avg ?? row.last_5_avg ?? row.last_3_avg ?? null;
-
-  const rawTsFree = !row.is_bye && row.trend_score != null ? row.trend_score : null;
-  const tsClamped = rawTsFree !== null ? (rawTsFree > 40 ? 40 : rawTsFree < -40 ? -40 : rawTsFree) : null;
-  const edgeDisplay = rawTsFree === null ? null : rawTsFree > 40 ? "40+" : rawTsFree < -40 ? "-40+" : (tsClamped! > 0 ? `+${tsClamped!.toFixed(1)}` : tsClamped!.toFixed(1));
-
-  const edgeColor = tsClamped === null ? "text-white/20" :
-    tsClamped >= 20 ? "text-emerald-400 font-semibold" :
-    tsClamped >= 10 ? "text-green-300 font-semibold" :
-    tsClamped >= -5 ? "text-neutral-300" :
-    "text-red-400 font-semibold";
-
-  return (
-    <>
-    <tr
-      className={`border-b cursor-pointer hover:bg-neutral-900/80 transition-colors duration-100 group ${isTop3 ? "border-white/[0.06] bg-white/[0.015]" : "border-white/[0.04]"}`}
-      style={rowFadeStyle}
-      onClick={() => setExpanded((e) => !e)}
-    >
-      <td className="px-3 py-3 text-sm tabular-nums text-center whitespace-nowrap" style={{ width: 44 }}>
-        <span className="inline-flex items-center gap-0.5">
-          {isTop3 ? (
-            <span className="text-[#F5C84C]/60 font-bold">{rank}</span>
-          ) : (
-            <span className="text-white/30">{rank}</span>
-          )}
-          <ChevronRight
-            size={10}
-            className={`text-white/15 transition-transform duration-150 ${expanded ? "rotate-90 text-[#F5C84C]/50" : ""}`}
-          />
-        </span>
-      </td>
-      <td className="px-4 py-3 whitespace-nowrap" style={{ minWidth: 160 }}>
-        <div>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span className={`text-sm font-semibold ${isTop3 ? "text-white" : "text-white/90"}`}>{row.player_name}</span>
-            <PlayerStatusPill row={row} showUpcomingBye />
-          </div>
-          <div className="text-[11px] text-white/40 mt-0.5">
-            {row.team}{row.position ? ` · ${row.position}` : ""}
-          </div>
-        </div>
-      </td>
-      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 90 }}>
-        {row.is_bye
-          ? <span className="text-sm font-semibold text-white/20 tabular-nums">—</span>
-          : <span className={`text-sm font-bold tabular-nums ${isTop3 ? "text-[#F5C84C]" : "text-[#F5C84C]/80"}`}>{fmt(row.projection)}</span>
-        }
-      </td>
-      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 80 }}>
-        <span className="text-sm tabular-nums text-white/55">{avgScore != null ? fmt(avgScore, 1) : "—"}</span>
-      </td>
-      <td className="px-4 py-3 text-center whitespace-nowrap" style={{ width: 80 }}>
-        {edgeDisplay !== null ? (
-          <div className="flex flex-col items-center gap-0.5">
-            <span className={`text-sm tabular-nums ${edgeColor}`}>{edgeDisplay}</span>
-            <span className="text-[9px] text-white/25 leading-none">vs avg</span>
-          </div>
-        ) : (
-          <span className="text-sm text-white/20 tabular-nums">—</span>
-        )}
-      </td>
-    </tr>
-    {expanded && (
-      <ExpandedPlayerRow row={row} colSpan={FREE_TOTAL_COLS} isPremium={false} onUpgrade={onUpgrade} />
-    )}
-    </>
-  );
-}
-
-export function FreeConversionWallRow({ onUpgrade }: { onUpgrade: () => void }) {
-  return (
-    <>
-      <tr>
-        <td colSpan={FREE_TOTAL_COLS} className="px-4 pt-4 pb-1 text-center">
-          <p className="text-[11px] font-semibold text-white/30 uppercase tracking-widest">More high-confidence picks hidden below</p>
-        </td>
-      </tr>
-      <tr>
-        <td colSpan={FREE_TOTAL_COLS} className="px-4 pt-2 pb-6">
-          <div
-            className="relative flex flex-col items-center gap-3 rounded-2xl border border-[#F5C84C]/25 bg-gradient-to-b from-[#F5C84C]/[0.07] via-[#0d0d0d] to-[#0a0a0a] px-8 py-8 text-center overflow-hidden hover:border-[#F5C84C]/40 transition-all duration-200 cursor-pointer"
+          <button
             onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "0 0 40px rgba(245,200,76,0.08)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = "none"; }}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5C84C] hover:brightness-110 px-6 py-2.5 text-sm font-bold text-[#070707] transition-all shadow-lg"
           >
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-px bg-gradient-to-r from-transparent via-[#F5C84C]/40 to-transparent" />
-            <div className="flex items-center justify-center w-11 h-11 rounded-full bg-[#F5C84C]/15 border border-[#F5C84C]/30">
-              <Crown size={18} className="text-[#F5C84C]" />
-            </div>
-            <div>
-              <p className="text-lg font-bold text-white mb-1">You're only seeing the obvious picks</p>
-              <p className="text-sm text-white/50 max-w-sm leading-relaxed">The real edge is hidden below.</p>
-              <p className="text-sm text-white/35 mt-1">Most coaches won't see these before lockout.</p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2">
-              {["Full Rankings", "AI Analysis", "Price Tracking", "Edge Board"].map((f) => (
-                <span key={f} className="rounded-full border border-[#F5C84C]/20 bg-[#F5C84C]/[0.06] px-3 py-1 text-[11px] text-[#F5C84C]/70 font-medium">{f}</span>
-              ))}
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[#F5C84C] hover:brightness-110 px-6 py-2.5 text-sm font-bold text-[#070707] transition-all shadow-lg"
-              >
-                <Crown size={13} />
-                Unlock Winning Picks
-              </button>
-              <span className="text-xs text-white/25">$10/month · Cancel anytime</span>
-            </div>
-          </div>
-        </td>
-      </tr>
-    </>
+            <Crown size={13} />
+            Unlock Full Rankings
+          </button>
+          <span className="text-xs text-white/25">$10/month · Cancel anytime</span>
+        </div>
+      </td>
+    </tr>
   );
 }
 
 // ─── Skeletons ─────────────────────────────────────────────────────────────────
 
-export function FreeLoadingSkeletonRows({ rows = 8 }: { rows?: number }) {
+export function LoadingSkeletonRows({ cols = TOTAL_COLS, rows = 8 }: { cols?: number; rows?: number }) {
   return (
     <>
       {Array.from({ length: rows }).map((_, i) => (
-        <tr key={i} className="border-b border-white/5">
-          {Array.from({ length: FREE_TOTAL_COLS }).map((__, j) => (
-            <td key={j} className="px-4 py-3"><div className="h-4 animate-pulse rounded bg-white/5" /></td>
-          ))}
-        </tr>
-      ))}
-    </>
-  );
-}
-
-export function LoadingSkeletonRows({ cols = TOTAL_COLS, rows = 10 }: { cols?: number; rows?: number }) {
-  return (
-    <>
-      {Array.from({ length: rows }).map((_, i) => (
-        <tr key={i} className="border-b border-white/5">
+        <tr key={i} className="border-b border-white/[0.04]">
           {Array.from({ length: cols }).map((__, j) => (
-            <td key={j} className="px-4 py-3"><div className="h-4 animate-pulse rounded bg-white/5" /></td>
+            <td key={j} className="px-3 py-3">
+              <div className="h-4 animate-pulse rounded bg-white/[0.04]" />
+            </td>
           ))}
         </tr>
       ))}
