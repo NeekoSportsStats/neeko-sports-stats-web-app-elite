@@ -1,10 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
   ArrowLeft, ChevronRight, TrendingUp, TrendingDown, Minus,
   Zap, ChartBar as BarChart2, Star, CircleAlert as AlertCircle,
-  Lock, Users,
+  Lock, Users, GitCompare, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { slugToName, nameToSlug, POSITION_SLUGS, POSITION_NAMES, TEAM_SLUG_TO_NAME } from '@/lib/slugs';
 import { getPlayerDetailSafe, getSimilarPlayersSafe } from '@/lib/playerAccess';
@@ -12,6 +12,13 @@ import { useAuth } from '@/lib/auth';
 import { useAccessState } from '@/hooks/useAccessState';
 import { PlayerStatusPill } from '@/features/afl/rankings/components/PlayerStatusPill';
 import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from '@/utils/aflEdgeSignal';
+import {
+  getTrendAction, getTrendActionStyles,
+  getFormStyles, fmtPrice as fmtPriceHelper,
+  getValueScoreColor, fmtValueScore,
+} from '@/features/afl/rankings/components/helpers';
+
+const ScoreHistoryChart = lazy(() => import('@/features/afl/rankings/components/ScoreHistoryChart'));
 
 interface PlayerData {
   player_id: number;
@@ -55,20 +62,9 @@ interface SimilarPlayer {
   is_locked: boolean | null;
 }
 
-function fmtPrice(p: number | null) {
-  if (!p) return '—';
-  return `$${Math.round(p / 1000)}k`;
-}
-
 function fmtProj(p: number | null | undefined) {
   if (p == null) return '—';
   return Math.round(Number(p)).toString();
-}
-
-function fmtDelta(n: number | null | undefined) {
-  if (n == null) return '—';
-  const v = Number(n);
-  return (v >= 0 ? '+' : '') + Math.round(v);
 }
 
 function getPositionSlug(positionCode: string | null | undefined): string | null {
@@ -79,6 +75,40 @@ function getPositionSlug(positionCode: string | null | undefined): string | null
 function getPositionName(positionCode: string | null | undefined): string {
   if (!positionCode) return 'Unknown';
   return POSITION_NAMES[positionCode] ?? positionCode;
+}
+
+function deriveFormLabel(avg3: number | null, seasonAvg: number | null): string {
+  if (avg3 == null || seasonAvg == null || seasonAvg === 0) return 'Neutral';
+  const delta = avg3 - seasonAvg;
+  if (delta >= 12) return 'HOT';
+  if (delta >= 4)  return 'Rising';
+  if (delta > -4)  return 'Neutral';
+  if (delta > -12) return 'Dropping';
+  return 'Cold';
+}
+
+function getActionColor(action: string | null): string {
+  if (!action) return '#94a3b8';
+  if (action === 'START') return '#10b981';
+  if (action === 'HOLD')  return '#94a3b8';
+  if (action === 'SIT')   return '#f59e0b';
+  return '#94a3b8';
+}
+
+function ActionBadge({ signal }: { signal: string | null }) {
+  const sig = signalFromField(signal);
+  const trendMap: Record<string, string> = {
+    STRONG_BUY: 'STRONG_UP', BUY: 'UP', HOLD: 'STABLE', SELL: 'DOWN', STRONG_SELL: 'STRONG_DOWN',
+  };
+  const trend = trendMap[sig] ?? 'STABLE';
+  const action = getTrendAction(trend);
+  const actionStyles = getTrendActionStyles(trend);
+  if (!action) return null;
+  return (
+    <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest border ${actionStyles}`}>
+      {action}
+    </span>
+  );
 }
 
 function SignalBadge({ signal }: { signal: string | null }) {
@@ -95,31 +125,36 @@ function SignalBadge({ signal }: { signal: string | null }) {
   );
 }
 
-function SignalIcon({ signal }: { signal: string | null }) {
-  const sig = signalFromField(signal);
-  if (sig === 'STRONG_BUY' || sig === 'BUY')
-    return <TrendingUp size={14} className="text-emerald-400 shrink-0" />;
-  if (sig === 'STRONG_SELL' || sig === 'SELL')
-    return <TrendingDown size={14} className="text-red-400 shrink-0" />;
-  return <Minus size={14} className="text-white/30 shrink-0" />;
-}
-
-function StatBlock({ label, value, sub, color = 'text-white' }: { label: string; value: string | number; sub?: string; color?: string }) {
+function MetricPill({
+  label, value, color = 'text-white/80', sub,
+}: {
+  label: string; value: string | number; color?: string; sub?: string;
+}) {
   return (
-    <div className="flex flex-col items-center gap-0.5 text-center">
-      <span className={`text-xl font-bold tabular-nums ${color}`}>{value}</span>
-      <span className="text-[9px] uppercase tracking-wider text-white/30">{label}</span>
-      {sub && <span className="text-[9px] text-white/20">{sub}</span>}
+    <div className="flex flex-col items-center gap-0.5 min-w-[60px]">
+      <span className={`text-[18px] font-bold tabular-nums leading-tight ${color}`}>{value}</span>
+      <span className="text-[9px] uppercase tracking-widest text-white/30">{label}</span>
+      {sub && <span className="text-[9px] text-white/20 mt-0.5">{sub}</span>}
     </div>
   );
 }
 
-function LockedField() {
+function FormChip({ avg3, seasonAvg }: { avg3: number | null; seasonAvg: number | null }) {
+  const label = deriveFormLabel(avg3, seasonAvg);
+  const styleClass = getFormStyles(label);
+  const delta = avg3 != null && seasonAvg != null ? avg3 - seasonAvg : null;
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] text-white/20 select-none">
-      <Lock size={9} className="shrink-0" />
-      <span className="blur-[3px]">000</span>
-    </span>
+    <div className="flex flex-col items-center gap-0.5 min-w-[60px]">
+      <span className={`text-[11px] font-bold px-2 py-0.5 rounded border ${styleClass} uppercase tracking-wide`}>
+        {label}
+      </span>
+      <span className="text-[9px] uppercase tracking-widest text-white/30">Form</span>
+      {delta != null && (
+        <span className={`text-[9px] ${delta >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+          {delta >= 0 ? '+' : ''}{Math.round(delta)} vs avg
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -144,7 +179,7 @@ function SimilarPlayerRow({ player }: { player: SimilarPlayer }) {
             {player.player_name}
           </p>
           <p className="text-[10px] text-white/35 mt-0.5">
-            {player.team ?? '—'} · {fmtPrice(player.price)}
+            {player.team ?? '—'} · {fmtPriceHelper(player.price)}
           </p>
         </div>
       </div>
@@ -162,37 +197,6 @@ function SimilarPlayerRow({ player }: { player: SimilarPlayer }) {
         <ChevronRight size={13} className="text-white/20 group-hover:text-white/40 transition-colors" />
       </div>
     </Link>
-  );
-}
-
-function PremiumCTA({ playerName }: { playerName: string }) {
-  return (
-    <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.06] to-[#111] p-6 text-center">
-      <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 mx-auto mb-3">
-        <Lock size={18} className="text-amber-400" />
-      </div>
-      <h3 className="text-base font-bold text-white mb-1">
-        Unlock full {playerName} analysis
-      </h3>
-      <p className="text-[12px] text-white/45 mb-4">
-        View AI recommendations, value scores, breakeven analysis, and more
-      </p>
-      <div className="flex flex-col sm:flex-row gap-2 justify-center">
-        <Link
-          to="/upgrade"
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-400 transition-colors px-5 py-2.5 text-sm font-bold text-black"
-        >
-          <Zap size={14} />
-          Unlock Neeko+
-        </Link>
-        <Link
-          to="/auth"
-          className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] transition-colors px-5 py-2.5 text-sm text-white/60 hover:text-white"
-        >
-          Sign in
-        </Link>
-      </div>
-    </div>
   );
 }
 
@@ -291,7 +295,7 @@ function PlayerSEOBlock({ player }: { player: PlayerData }) {
           <p>
             Neeko's projection engine analyses {player.player_name}'s recent form, opponent concession rates,
             venue factors, and role stability to generate a weekly fantasy projection.
-            {player.price != null && ` At ${fmtPrice(player.price)}, `}
+            {player.price != null && ` At ${fmtPriceHelper(player.price)}, `}
             {player.breakeven != null && `their breakeven score is ${Math.round(player.breakeven)} points.`}
             {!player.breakeven && ' Breakeven data will update with each price change.'}
           </p>
@@ -300,7 +304,7 @@ function PlayerSEOBlock({ player }: { player: PlayerData }) {
       <p className="sr-only">
         {player.player_name} AFL Fantasy 2026 — {posName}, {team}.
         Projection: {proj ?? 'TBC'} pts. Signal: {sigLabel}.
-        Price: {fmtPrice(player.price)}. Breakeven: {player.breakeven != null ? Math.round(player.breakeven) : 'TBC'}.
+        Price: {fmtPriceHelper(player.price)}. Breakeven: {player.breakeven != null ? Math.round(player.breakeven) : 'TBC'}.
         Updated weekly by Neeko Sports fantasy analytics.
       </p>
     </section>
@@ -319,6 +323,7 @@ export default function AFLPlayerPage() {
   const [similar, setSimilar] = useState<SimilarPlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [showFullAnalysis, setShowFullAnalysis] = useState(false);
 
   useEffect(() => {
     if (!playerName) { setError(true); setLoading(false); return; }
@@ -398,19 +403,22 @@ export default function AFLPlayerPage() {
   const sigColor = getEdgeSignalColor(sig);
   const sigLabel = formatEdgeSignalLabel(sig);
 
+  const trendMap: Record<string, string> = {
+    STRONG_BUY: 'STRONG_UP', BUY: 'UP', HOLD: 'STABLE', SELL: 'DOWN', STRONG_SELL: 'STRONG_DOWN',
+  };
+  const trend = player ? (trendMap[sig] ?? 'STABLE') : 'STABLE';
+  const action = getTrendAction(trend);
+  const actionColor = getActionColor(action);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0e0e0e]">
         <div className="max-w-2xl mx-auto px-4 py-8 space-y-4">
           <div className="h-5 w-28 rounded bg-white/[0.05] animate-pulse" />
-          <div className="h-36 rounded-2xl bg-white/[0.04] animate-pulse" />
-          <div className="grid grid-cols-3 gap-3">
-            {[1, 2, 3].map(i => <div key={i} className="h-20 rounded-xl bg-white/[0.04] animate-pulse" />)}
-          </div>
+          <div className="h-40 rounded-2xl bg-white/[0.04] animate-pulse" />
+          <div className="h-16 rounded-xl bg-white/[0.04] animate-pulse" />
+          <div className="h-48 rounded-xl bg-white/[0.04] animate-pulse" />
           <div className="h-32 rounded-xl bg-white/[0.04] animate-pulse" />
-          <div className="space-y-2">
-            {[1, 2, 3].map(i => <div key={i} className="h-16 rounded-xl bg-white/[0.04] animate-pulse" />)}
-          </div>
         </div>
       </div>
     );
@@ -438,10 +446,12 @@ export default function AFLPlayerPage() {
   }
 
   const pageTitle = `${player.player_name}${player.team ? ` (${player.team})` : ''} AFL Fantasy 2026 | ${posName} Rankings & Projection | Neeko`;
-  const pageDescription = `${player.player_name} AFL Fantasy stats for 2026. Projected score: ${fmtProj(player.projection)} pts. Price: ${fmtPrice(player.price)}. Signal: ${sigLabel}. Updated weekly by Neeko.`;
+  const pageDescription = `${player.player_name} AFL Fantasy stats for 2026. Projected score: ${fmtProj(player.projection)} pts. Price: ${fmtPriceHelper(player.price)}. Signal: ${sigLabel}. Updated weekly by Neeko.`;
   const pageUrl = `https://neekostats.com.au/sports/afl/players/${slug}`;
-
   const teamSlug = Object.entries(TEAM_SLUG_TO_NAME).find(([, name]) => name === player.team)?.[0];
+
+  const hasAI = !!(player.why || player.why_long);
+  const isLocked = player.is_locked || (!isPremium && !hasAI);
 
   return (
     <>
@@ -481,6 +491,7 @@ export default function AFLPlayerPage() {
       <div className="min-h-screen bg-[#0e0e0e]">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
+          {/* ── BACK ── */}
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-white/40 hover:text-white/70 transition-colors text-[12px]"
@@ -489,20 +500,21 @@ export default function AFLPlayerPage() {
             Back
           </button>
 
-          {/* ── HERO ── */}
+          {/* ── HEADER ── */}
           <div
             className="rounded-2xl border border-white/[0.07] p-5 relative overflow-hidden"
-            style={{ background: `linear-gradient(135deg, ${sigColor}10 0%, #111 60%)` }}
+            style={{ background: `linear-gradient(135deg, ${sigColor}12 0%, #111 65%)` }}
           >
             <div
               className="absolute inset-0 pointer-events-none"
-              style={{ background: `radial-gradient(ellipse at top left, ${sigColor}12 0%, transparent 60%)` }}
+              style={{ background: `radial-gradient(ellipse at top left, ${sigColor}14 0%, transparent 60%)` }}
             />
-            <div className="relative">
-              <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="relative space-y-4">
+              {/* Name + Status */}
+              <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <p className="text-[10px] uppercase tracking-widest text-white/30">
+                    <p className="text-[10px] uppercase tracking-widest text-white/35">
                       {player.team ?? 'AFL'} · {posName.replace(/s$/, '')}
                     </p>
                     <PlayerStatusPill
@@ -516,102 +528,184 @@ export default function AFLPlayerPage() {
                       showUpcomingBye
                     />
                   </div>
-                  <h1 className="text-2xl font-bold text-white leading-tight">
+                  <h1 className="text-[26px] font-bold text-white leading-tight tracking-tight">
                     {player.player_name}
                   </h1>
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <SignalBadge signal={player.signal_tag ?? player.signal} />
-                    {player.neeko_rating != null && (
-                      <span className="text-[11px] font-bold text-amber-400 tabular-nums">
-                        {Number(player.neeko_rating).toFixed(1)} Rating
-                      </span>
-                    )}
-                  </div>
                 </div>
-                <div
-                  className="flex items-center justify-center w-10 h-10 rounded-xl shrink-0"
-                  style={{ background: `${sigColor}18`, border: `1px solid ${sigColor}30` }}
+                {/* Action indicator */}
+                {action && (
+                  <div
+                    className="flex flex-col items-center justify-center w-14 h-14 rounded-xl shrink-0 border"
+                    style={{ background: `${actionColor}15`, borderColor: `${actionColor}30` }}
+                  >
+                    <span className="text-[9px] uppercase tracking-widest" style={{ color: `${actionColor}90` }}>Signal</span>
+                    <span className="text-[13px] font-black uppercase tracking-wider" style={{ color: actionColor }}>{action}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Signal badge + Rating */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <SignalBadge signal={player.signal_tag ?? player.signal} />
+                {player.neeko_rating != null && (
+                  <span className="text-[11px] font-bold text-[#F5C84C] tabular-nums">
+                    {Number(player.neeko_rating).toFixed(1)} Rating
+                  </span>
+                )}
+              </div>
+
+              {/* Key metrics strip */}
+              <div className="flex items-center gap-4 flex-wrap pt-1">
+                <MetricPill
+                  label="Proj"
+                  value={fmtProj(player.projection)}
+                  color="text-white"
+                />
+                <div className="w-px h-7 bg-white/[0.07]" />
+                <MetricPill
+                  label="Price"
+                  value={fmtPriceHelper(player.price)}
+                />
+                <div className="w-px h-7 bg-white/[0.07]" />
+                <MetricPill
+                  label="Breakeven"
+                  value={isPremium && player.breakeven != null ? Math.round(player.breakeven) : '—'}
+                  color={
+                    isPremium && player.breakeven != null && player.avg_last_3 != null
+                      ? player.avg_last_3 >= player.breakeven ? 'text-emerald-400' : 'text-red-400'
+                      : 'text-white/50'
+                  }
+                />
+                <div className="w-px h-7 bg-white/[0.07]" />
+                <MetricPill
+                  label="Games"
+                  value={player.games_played ?? '—'}
+                  color="text-white/60"
+                />
+                <div className="w-px h-7 bg-white/[0.07]" />
+                <FormChip avg3={player.avg_last_3} seasonAvg={player.season_avg} />
+              </div>
+
+              {/* Compare Player button */}
+              <div className="pt-1">
+                <button
+                  onClick={() => navigate('/sports/afl/start-sit', { state: { playerA: player.player_name } })}
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/[0.10] bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/[0.18] transition-all px-4 py-2 text-[12px] text-white/60 hover:text-white/90"
                 >
-                  <SignalIcon signal={player.signal_tag ?? player.signal} />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-5 flex-wrap">
-                <StatBlock label="Proj" value={fmtProj(player.projection)} color="text-white" />
-                <div className="w-px h-6 bg-white/[0.07]" />
-                <StatBlock label="Price" value={fmtPrice(player.price)} />
-                <div className="w-px h-6 bg-white/[0.07]" />
-                <StatBlock label="Breakeven" value={player.breakeven != null && isPremium ? Math.round(player.breakeven) : '—'} />
-                <div className="w-px h-6 bg-white/[0.07]" />
-                <StatBlock label="Games" value={player.games_played ?? '—'} />
+                  <GitCompare size={13} className="shrink-0" />
+                  Compare Player
+                </button>
               </div>
             </div>
           </div>
 
-          {/* ── FORM STATS ── */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-xl border border-white/[0.07] bg-[#111] p-4 text-center">
-              <p className="text-lg font-bold text-white/80 tabular-nums">
-                {player.avg_last_3 != null ? Math.round(player.avg_last_3) : '—'}
-              </p>
-              <p className="text-[9px] uppercase tracking-wider text-white/30 mt-0.5">Last 3 Avg</p>
-            </div>
-            <div className="rounded-xl border border-white/[0.07] bg-[#111] p-4 text-center">
-              <p className="text-lg font-bold text-white/80 tabular-nums">
-                {player.avg_last_5 != null ? Math.round(player.avg_last_5) : '—'}
-              </p>
-              <p className="text-[9px] uppercase tracking-wider text-white/30 mt-0.5">Last 5 Avg</p>
-            </div>
-            <div className="rounded-xl border border-white/[0.07] bg-[#111] p-4 text-center">
-              <p className="text-lg font-bold text-white/80 tabular-nums">
-                {player.season_avg != null ? Math.round(player.season_avg) : '—'}
-              </p>
-              <p className="text-[9px] uppercase tracking-wider text-white/30 mt-0.5">Season Avg</p>
-            </div>
-          </div>
-
-          {/* ── PREMIUM VALUE INFO ── */}
-          {isPremium && (player.value_score != null || player.edge != null) && (
-            <div className="rounded-xl border border-white/[0.07] bg-[#111] p-4">
-              <p className="text-[10px] uppercase tracking-wider text-white/30 mb-3">Value Analysis</p>
-              <div className="flex items-center gap-5 flex-wrap">
-                {player.value_score != null && (
-                  <div className="text-center">
-                    <p className={`text-lg font-bold tabular-nums ${player.value_score > 0 ? 'text-emerald-400' : player.value_score < 0 ? 'text-red-400' : 'text-white/60'}`}>
-                      {player.value_score > 0 ? '+' : ''}{Number(player.value_score).toFixed(1)}
+          {/* ── VALUE SCORE (premium only) ── */}
+          {isPremium && player.value_score != null && (
+            <div className="rounded-xl border border-white/[0.07] bg-[#111] px-4 py-3 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-white/30 mb-0.5">Value Score</p>
+                <p className={`text-xl font-bold tabular-nums ${getValueScoreColor(player.value_score)}`}>
+                  {fmtValueScore(player.value_score)}
+                </p>
+              </div>
+              {player.edge != null && (
+                <>
+                  <div className="w-px h-8 bg-white/[0.07] shrink-0" />
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-white/30 mb-0.5">Edge vs BE</p>
+                    <p className={`text-xl font-bold tabular-nums ${player.edge > 0 ? 'text-emerald-400' : player.edge < 0 ? 'text-red-400' : 'text-white/50'}`}>
+                      {player.edge > 0 ? '+' : ''}{Math.round(player.edge)}
                     </p>
-                    <p className="text-[9px] uppercase tracking-wider text-white/30 mt-0.5">Value Score</p>
                   </div>
-                )}
-                {player.edge != null && (
-                  <>
-                    <div className="w-px h-6 bg-white/[0.07]" />
-                    <div className="text-center">
-                      <p className={`text-lg font-bold tabular-nums ${player.edge > 0 ? 'text-emerald-400' : player.edge < 0 ? 'text-red-400' : 'text-white/60'}`}>
-                        {fmtDelta(player.edge)}
-                      </p>
-                      <p className="text-[9px] uppercase tracking-wider text-white/30 mt-0.5">Edge vs BE</p>
-                    </div>
-                  </>
-                )}
+                </>
+              )}
+              <div className="ml-auto text-right">
+                <p className="text-[10px] uppercase tracking-wider text-white/30 mb-0.5">Season Avg</p>
+                <p className="text-xl font-bold tabular-nums text-white/70">
+                  {player.season_avg != null ? Math.round(player.season_avg) : '—'}
+                </p>
               </div>
             </div>
           )}
 
-          {/* ── AI ANALYSIS ── */}
-          {isPremium && player.why && (
-            <div className="rounded-xl border border-white/[0.07] bg-[#111] p-4">
-              <p className="text-[10px] uppercase tracking-wider text-white/30 mb-2">AI Analysis</p>
-              <p className="text-[13px] text-white/70 leading-relaxed">{player.why}</p>
-              {player.why_long && (
-                <p className="text-[12px] text-white/45 leading-relaxed mt-2">{player.why_long}</p>
+          {/* ── SCORE HISTORY CHART ── */}
+          <div className="rounded-xl border border-white/[0.07] bg-[#111] overflow-hidden">
+            <div className="px-4 pt-3 pb-1">
+              <p className="text-[10px] uppercase tracking-wider text-white/30">Last 10 Games</p>
+            </div>
+            <Suspense fallback={
+              <div className="h-48 flex items-center justify-center">
+                <div className="h-32 w-full mx-4 rounded bg-white/[0.03] animate-pulse" />
+              </div>
+            }>
+              <ScoreHistoryChart
+                playerName={player.player_name}
+                playerId={String(player.player_id)}
+              />
+            </Suspense>
+          </div>
+
+          {/* ── AI EXPLANATION ── */}
+          {hasAI && (
+            <div className="rounded-xl border border-white/[0.07] bg-[#111] p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] uppercase tracking-wider text-white/30">AI Analysis</p>
+                {player.why_long && (
+                  <button
+                    onClick={() => setShowFullAnalysis(v => !v)}
+                    className="flex items-center gap-1 text-[10px] text-white/35 hover:text-white/60 transition-colors"
+                  >
+                    {showFullAnalysis ? (
+                      <><ChevronUp size={11} /> Less</>
+                    ) : (
+                      <><ChevronDown size={11} /> Full analysis</>
+                    )}
+                  </button>
+                )}
+              </div>
+              {player.why && (
+                <p className="text-[14px] font-medium text-white/85 leading-relaxed">
+                  {player.why}
+                </p>
+              )}
+              {showFullAnalysis && player.why_long && (
+                <div className="border-t border-white/[0.06] pt-3">
+                  <p className="text-[13px] text-white/55 leading-relaxed whitespace-pre-line">
+                    {player.why_long}
+                  </p>
+                </div>
               )}
             </div>
           )}
 
-          {/* ── LOCKED UPGRADE CTA ── */}
+          {/* ── PREMIUM CTA (free + no AI) ── */}
           {!isPremium && (
-            <PremiumCTA playerName={player.player_name} />
+            <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.06] to-[#111] p-6 text-center">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 mx-auto mb-3">
+                <Lock size={18} className="text-amber-400" />
+              </div>
+              <h3 className="text-base font-bold text-white mb-1">
+                Unlock full {player.player_name} analysis
+              </h3>
+              <p className="text-[12px] text-white/45 mb-4">
+                AI recommendations, value scores, breakeven analysis, price projections and more
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <Link
+                  to="/upgrade"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg bg-amber-500 hover:bg-amber-400 transition-colors px-5 py-2.5 text-sm font-bold text-black"
+                >
+                  <Zap size={14} />
+                  Unlock Neeko+
+                </Link>
+                <Link
+                  to="/auth"
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] transition-colors px-5 py-2.5 text-sm text-white/60 hover:text-white"
+                >
+                  Sign in
+                </Link>
+              </div>
+            </div>
           )}
 
           {/* ── SIMILAR PLAYERS ── */}
