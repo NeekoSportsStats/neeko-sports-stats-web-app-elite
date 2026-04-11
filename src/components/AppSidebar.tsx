@@ -169,6 +169,19 @@ export function AppSidebar() {
                           </NavLink>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
+
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton asChild className="py-0.5">
+                          <NavLink
+                            to="/sports/afl/captains"
+                            className="hover:bg-muted/50 pl-8 text-xs"
+                            activeClassName="bg-muted text-primary font-medium"
+                            onClick={handleLinkClick}
+                          >
+                            Captains
+                          </NavLink>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
                     </SidebarMenuSub>
                   </CollapsibleContent>
                 </SidebarMenuItem>
