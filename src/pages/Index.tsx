@@ -308,7 +308,7 @@ export default function Index() {
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1 }} />
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "30%", background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(10,10,10,0.92) 70%, #0a0a0a 100%)", zIndex: 2 }} />
 
-          <div style={{ position: "relative", zIndex: 10, padding: "80px 20px 32px", textAlign: "center" }}>
+          <div style={{ position: "relative", zIndex: 10, padding: "56px 20px 32px", textAlign: "center" }}>
             <img src="/logo.png" alt="Neeko" style={{ height: 24, marginBottom: 16, opacity: 0.88 }} />
             <h1 style={{ fontSize: "1.9rem", fontWeight: 900, lineHeight: 1.08, letterSpacing: "-0.025em", color: "#ffffff", textShadow: "0 2px 24px rgba(0,0,0,0.9)", marginBottom: 12 }}>
               Win Your <span style={{ color: "#F5C451" }}>AFL Fantasy</span><br />Week in 30 Seconds
@@ -370,7 +370,7 @@ export default function Index() {
             backgroundImage: "url('/hero/image.png')",
             backgroundSize: "cover",
             backgroundRepeat: "no-repeat",
-            backgroundPosition: "center 18%",
+            backgroundPosition: "center 0%",
             zIndex: 0,
           }} />
 
@@ -403,7 +403,7 @@ export default function Index() {
               Position text block at top: 140px (headline centred ~220px). ══ */}
           <div style={{
             position: "absolute",
-            top: 220,
+            top: 150,
             left: "50%",
             transform: "translateX(-50%)",
             textAlign: "center",
@@ -466,7 +466,7 @@ export default function Index() {
               Cards sit from ~430px to ~680px = clean on white surface. ══ */}
           <div style={{
             position: "absolute",
-            top: 422,
+            top: 340,
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 10,
@@ -499,7 +499,7 @@ export default function Index() {
               At 920px hero: whiteboard ends ~690px, actions at ~700px. ══ */}
           <div style={{
             position: "absolute",
-            top: 700,
+            top: 620,
             left: "50%",
             transform: "translateX(-50%)",
             display: "flex",
