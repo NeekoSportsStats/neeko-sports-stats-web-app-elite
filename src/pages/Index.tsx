@@ -332,19 +332,25 @@ export default function Index() {
           </div>
         </section>
       ) : (
-        /* ── DESKTOP: scene-based poster layout
-             Image is placed as <img> so we control its exact height
-             and avoid aggressive cover-crop. All UI is absolutely
-             positioned relative to the scene height. ── */
+        /* ── DESKTOP: scene-based poster layout.
+             The image is rendered at a fixed large pixel width (1700px)
+             with height: auto — this removes ALL cropping and shows the
+             full scene: chalkboard → whiteboard → tray → football.
+             The section height is driven by the image's natural height. ── */
         <section style={{
           position: "relative",
           width: "100%",
-          /* Scene height matches image aspect — reference is ~portrait, so use 1260px */
-          height: 1260,
           overflow: "hidden",
           background: "#0a0a0a",
+          /* Scene height = rendered image height at 1700px wide.
+             image.png is ~890px wide × ~1780px tall (portrait).
+             At 1700px wide → height = 1700 × (1780/890) ≈ 3400px.
+             We cap the section so it doesn't get absurdly tall on wide screens.
+             Target visible region: top 1200px of the scene shows the full board. */
+          height: 1200,
         }}>
-          {/* Background image — pinned absolutely, fills scene width, full height visible */}
+          {/* The image itself — fixed 1700px wide, top-anchored, centered.
+              height: auto preserves aspect ratio — NO cropping, NO cover zoom. */}
           <img
             src="/image.png"
             alt=""
@@ -354,40 +360,39 @@ export default function Index() {
               top: 0,
               left: "50%",
               transform: "translateX(-50%)",
-              /* Show the full image: width drives the display, height is auto */
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              objectPosition: "center top",
+              width: 1700,
+              height: "auto",
+              maxWidth: "none",
               zIndex: 0,
               pointerEvents: "none",
               userSelect: "none",
+              display: "block",
             }}
           />
 
-          {/* Bottom fade — starts near 78% so tray/football stay fully visible */}
+          {/* Bottom fade — only bottom 18%, keeps tray + football fully visible */}
           <div style={{
-            position: "absolute", bottom: 0, left: 0, right: 0, height: "22%",
-            background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(5,5,5,0.55) 55%, rgba(10,10,10,0.92) 80%, #0a0a0a 100%)",
+            position: "absolute", bottom: 0, left: 0, right: 0, height: "18%",
+            background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(8,8,8,0.60) 50%, rgba(10,10,10,0.94) 80%, #0a0a0a 100%)",
             zIndex: 2,
             pointerEvents: "none",
           }} />
 
-          {/* ══ HERO TEXT — chalkboard zone, ~11–14% from top ══ */}
+          {/* ══ HERO TEXT — inside chalkboard zone, ~10% from top of 1200px scene = 120px ══ */}
           <div style={{
             position: "absolute",
-            top: 132,
+            top: 118,
             left: "50%",
             transform: "translateX(-50%)",
             textAlign: "center",
-            width: "min(780px, 88vw)",
+            width: "min(700px, 86vw)",
             zIndex: 10,
           }}>
             <h1 style={{
-              fontSize: "clamp(2rem, 3.4vw, 2.75rem)",
+              fontSize: "clamp(1.9rem, 3.2vw, 2.7rem)",
               fontWeight: 900, lineHeight: 1.06, letterSpacing: "-0.026em",
               color: "#ffffff",
-              textShadow: "0 2px 28px rgba(0,0,0,0.85)",
+              textShadow: "0 2px 28px rgba(0,0,0,0.90)",
               marginBottom: 10,
             }}>
               Win Your <span style={{ color: "#F5C451" }}>AFL Fantasy</span>
@@ -431,35 +436,35 @@ export default function Index() {
             </p>
           </div>
 
-          {/* ══ COACH'S WHITEBOARD label — sits right at whiteboard transition ══ */}
+          {/* ══ COACH'S WHITEBOARD label — transition zone ~38% = 456px ══ */}
           <div style={{
             position: "absolute",
-            top: 428,
+            top: 456,
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 10,
             textAlign: "center",
-            width: "min(1240px, 96vw)",
+            width: "min(1200px, 94vw)",
           }}>
             <p style={{
               fontSize: 9, fontWeight: 900, letterSpacing: "0.38em",
-              textTransform: "uppercase", color: "rgba(60,48,20,0.50)",
+              textTransform: "uppercase", color: "rgba(55,42,14,0.48)",
               marginBottom: 8,
             }}>
               Coach's Whiteboard
             </p>
           </div>
 
-          {/* ══ PLAYER CARDS — whiteboard surface, ~36% down (≈454px of 1260) ══ */}
+          {/* ══ PLAYER CARDS — whiteboard zone ~40% = 480px ══ */}
           <div style={{
             position: "absolute",
-            top: 448,
+            top: 476,
             left: "50%",
             transform: "translateX(-50%)",
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 18,
-            width: "min(1240px, 96vw)",
+            gap: 16,
+            width: "min(1200px, 94vw)",
             zIndex: 10,
           }}>
             {loading
@@ -468,17 +473,17 @@ export default function Index() {
             }
           </div>
 
-          {/* ══ QUICK ACTION ROW — below cards, tray zone ~62% (≈782px) ══ */}
+          {/* ══ QUICK ACTIONS — tray zone ~77% = 924px ══ */}
           <div style={{
             position: "absolute",
-            top: 782,
+            top: 820,
             left: "50%",
             transform: "translateX(-50%)",
             display: "flex",
             justifyContent: "center",
-            gap: 20,
+            gap: 18,
             zIndex: 10,
-            width: "min(1240px, 96vw)",
+            width: "min(1200px, 94vw)",
             flexWrap: "wrap",
           }}>
             {quickActions.map(({ to, icon, label, color }) => (
@@ -486,23 +491,23 @@ export default function Index() {
                 key={label} to={to}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  fontSize: 12, fontWeight: 700, color: "rgba(35,25,8,0.70)",
+                  fontSize: 12, fontWeight: 700, color: "rgba(35,25,8,0.72)",
                   textDecoration: "none",
-                  background: "rgba(252,248,238,0.62)",
-                  border: "1px solid rgba(180,155,90,0.28)",
+                  background: "rgba(250,245,230,0.65)",
+                  border: "1px solid rgba(170,145,80,0.28)",
                   padding: "7px 18px", borderRadius: 24,
                   backdropFilter: "blur(3px)",
                   transition: "all 0.15s ease",
                 }}
                 onMouseEnter={e => {
                   const el = e.currentTarget as HTMLElement;
-                  el.style.background = "rgba(255,252,242,0.88)";
+                  el.style.background = "rgba(255,252,240,0.90)";
                   el.style.color = "#1a1208";
                 }}
                 onMouseLeave={e => {
                   const el = e.currentTarget as HTMLElement;
-                  el.style.background = "rgba(252,248,238,0.62)";
-                  el.style.color = "rgba(35,25,8,0.70)";
+                  el.style.background = "rgba(250,245,230,0.65)";
+                  el.style.color = "rgba(35,25,8,0.72)";
                 }}
               >
                 <span style={{ color }}>{icon}</span>{label}
