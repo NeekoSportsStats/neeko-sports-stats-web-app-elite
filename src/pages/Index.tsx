@@ -446,7 +446,7 @@ export default function Index() {
             </div>
 
             {/* ── LOCKOUT NOTE ── */}
-            <p style={{ marginTop: 12, fontSize: 11, color: "rgba(255,255,255,0.32)", letterSpacing: "0.03em" }}>
+            <p style={{ marginTop: 9, fontSize: 11, color: "rgba(255,255,255,0.32)", letterSpacing: "0.03em" }}>
               Updated before every AFL Fantasy round lockout · 630+ players fully analysed weekly
             </p>
 
