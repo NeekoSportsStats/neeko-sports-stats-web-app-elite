@@ -93,14 +93,14 @@ function WhiteboardCard(p: CardProps) {
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
-          background: "#f8f6f2",
-          borderRadius: 10,
-          border: `1px solid rgba(0,0,0,0.08)`,
+          background: "rgba(250,247,242,0.96)",
+          borderRadius: 14,
+          border: `1px solid rgba(0,0,0,0.09)`,
           boxShadow: hovered
-            ? `0 4px 8px rgba(0,0,0,0.28), 0 16px 40px rgba(0,0,0,0.32)`
-            : `0 2px 6px rgba(0,0,0,0.25), 0 10px 20px rgba(0,0,0,0.25)`,
+            ? `0 2px 4px rgba(0,0,0,0.18), 0 10px 28px rgba(0,0,0,0.28), 0 28px 56px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.75)`
+            : `0 2px 4px rgba(0,0,0,0.15), 0 8px 20px rgba(0,0,0,0.22), 0 22px 44px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.7)`,
           transform: hovered
-            ? `rotate(${rotation}deg) translateY(-5px)`
+            ? `rotate(${rotation}deg) translateY(-6px)`
             : `rotate(${rotation}deg) translateY(0)`,
           transition: "all 0.2s ease",
           overflow: "hidden",
@@ -374,14 +374,21 @@ export default function Index() {
             zIndex: 0,
           }} />
 
-          {/* OVERLAY — single div, combined gradients, no filters */}
+          {/* OVERLAY — combined gradient, no filters */}
           <div style={{
             position: "absolute",
             inset: 0,
-            background: `
-              linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 35%, rgba(0,0,0,0.15) 55%, rgba(0,0,0,0.75) 100%)
-            `,
+            background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 35%, rgba(0,0,0,0.15) 55%, rgba(0,0,0,0.75) 100%)",
             zIndex: 1,
+            pointerEvents: "none",
+          }} />
+
+          {/* BOARD LIGHTING — real light hitting board from centre */}
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            background: "radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.07) 0%, rgba(0,0,0,0.38) 100%)",
+            zIndex: 2,
             pointerEvents: "none",
           }} />
 
@@ -404,7 +411,7 @@ export default function Index() {
               lineHeight: 1.1,
               letterSpacing: "-0.02em",
               color: "#f5f5f5",
-              textShadow: "0 2px 4px rgba(0,0,0,0.6), 0 8px 24px rgba(0,0,0,0.5)",
+              textShadow: "0 2px 4px rgba(0,0,0,0.65), 0 8px 20px rgba(0,0,0,0.45), 0 20px 48px rgba(0,0,0,0.3)",
             }}>
               Win Your <span style={{ color: "#f4c542" }}>AFL Fantasy</span>
               <br />Week in 30 Seconds
@@ -416,7 +423,7 @@ export default function Index() {
               fontSize: 18,
               color: "rgba(255,255,255,0.85)",
               lineHeight: 1.6,
-              textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+              textShadow: "0 1px 3px rgba(0,0,0,0.65), 0 4px 10px rgba(0,0,0,0.35)",
             }}>
               Trades, targets, captains, and traps — powered by data, just like an AFL coach.
             </p>
@@ -425,28 +432,29 @@ export default function Index() {
             <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 11 }}>
               <Link to="/auth" style={{
                 display: "flex", alignItems: "center", gap: 8,
-                background: "linear-gradient(to bottom, #f7d774, #e6b800)",
-                color: "#111",
+                background: "linear-gradient(to bottom, #facc15, #d4a000)",
+                color: "#1f1f1f",
                 fontWeight: 700, fontSize: 14,
                 padding: "14px 28px", borderRadius: 10, textDecoration: "none",
-                border: "1px solid rgba(0,0,0,0.25)",
-                boxShadow: "0 2px 0 rgba(0,0,0,0.4), 0 6px 12px rgba(0,0,0,0.4)",
+                border: "1px solid rgba(0,0,0,0.22)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 2px 0 rgba(0,0,0,0.35), 0 6px 14px rgba(0,0,0,0.32)",
                 letterSpacing: "0.02em",
-                transform: "translateY(0)",
-                transition: "transform 0.15s ease",
+                transition: "all 0.15s ease",
               }}>
                 Get Started Free <ArrowRight size={14} />
               </Link>
               {!isPremium && (
                 <Link to="/neeko-plus" style={{
                   display: "flex", alignItems: "center", gap: 8,
-                  background: "rgba(255,255,255,0.15)",
-                  border: "1px solid rgba(255,255,255,0.2)",
+                  background: "rgba(255,255,255,0.14)",
+                  backdropFilter: "blur(6px)",
+                  WebkitBackdropFilter: "blur(6px)",
+                  border: "1px solid rgba(255,255,255,0.28)",
                   color: "#ffffff",
                   fontWeight: 700, fontSize: 14,
                   padding: "14px 28px", borderRadius: 10, textDecoration: "none",
                   letterSpacing: "0.02em",
-                  boxShadow: "0 4px 10px rgba(0,0,0,0.4)",
+                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 12px rgba(0,0,0,0.35)",
                 }}>
                   <Crown size={14} /> Unlock Full Access
                 </Link>
