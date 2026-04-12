@@ -423,7 +423,7 @@ export default function Index() {
           paddingBottom: 48,
           minHeight: 600,
         }}>
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.52)", zIndex: 1 }} />
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 1 }} />
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "30%", background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(10,10,10,0.92) 70%, #0a0a0a 100%)", zIndex: 2 }} />
 
           <div style={{ position: "relative", zIndex: 10, padding: "52px 20px 24px", textAlign: "center" }}>
@@ -501,7 +501,7 @@ export default function Index() {
           {/* Darker overlay for text contrast */}
           <div style={{
             position: "absolute", inset: 0,
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.64) 0%, rgba(0,0,0,0.44) 32%, rgba(0,0,0,0.22) 55%, rgba(0,0,0,0.80) 100%)",
+            background: "linear-gradient(to bottom, rgba(0,0,0,0.50) 0%, rgba(0,0,0,0.30) 32%, rgba(0,0,0,0.10) 55%, rgba(0,0,0,0.68) 100%)",
             zIndex: 1,
             pointerEvents: "none",
           }} />
@@ -612,30 +612,20 @@ export default function Index() {
                               style={{
                                 display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
                                 textDecoration: "none",
-                                background: "rgba(255,255,255,0.07)",
-                                border: "1px solid rgba(255,255,255,0.11)",
-                                padding: "10px 12px", borderRadius: 6,
-                                transition: "all 0.15s ease",
+                                padding: "10px 12px",
+                                transition: "opacity 0.15s ease",
                                 textAlign: "center",
                                 marginTop: 8,
                               }}
-                              onMouseEnter={e => {
-                                const el = e.currentTarget as HTMLElement;
-                                el.style.background = "rgba(255,255,255,0.12)";
-                                el.style.borderColor = "rgba(255,255,255,0.20)";
-                              }}
-                              onMouseLeave={e => {
-                                const el = e.currentTarget as HTMLElement;
-                                el.style.background = "rgba(255,255,255,0.07)";
-                                el.style.borderColor = "rgba(255,255,255,0.11)";
-                              }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = "0.75"; }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
                             >
-                              <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
                                 <span style={{ color: qa.color }}>{qa.icon}</span>
-                                <span style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.75)", letterSpacing: "0.01em" }}>{qa.label}</span>
-                                <ChevronRight size={9} style={{ color: "rgba(255,255,255,0.25)" }} />
+                                <span style={{ fontSize: 13, fontWeight: 800, color: "rgba(255,255,255,0.92)", letterSpacing: "0.01em" }}>{qa.label}</span>
+                                <ChevronRight size={11} style={{ color: "rgba(255,255,255,0.45)" }} />
                               </div>
-                              <span style={{ fontSize: 8.5, color: "rgba(255,255,255,0.28)", fontWeight: 500, lineHeight: 1.3 }}>{qa.desc}</span>
+                              <span style={{ fontSize: 10.5, color: "rgba(255,255,255,0.52)", fontWeight: 500, lineHeight: 1.3 }}>{qa.desc}</span>
                             </Link>
                           )}
                         </div>
