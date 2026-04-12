@@ -15,7 +15,7 @@ export function Layout() {
 
         <div className="w-full flex flex-col">
           {/* HEADER */}
-          <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <header className="sticky top-0 z-40 w-full border-b border-transparent bg-transparent">
             <div className="container flex h-14 items-center px-4">
               <SidebarTrigger className="mr-2 lg:mr-4" />
 
