@@ -25,7 +25,7 @@ export function Layout() {
                   <img
                     src="/logo.png"
                     alt="Neeko Sports Logo"
-                    className="h-[10.5rem] w-auto -my-3"
+                    className="h-[12rem] w-auto -my-3"
                   />
                 </Link>
               </div>
