@@ -403,7 +403,7 @@ export default function Index() {
               Position text block at top: 140px (headline centred ~220px). ══ */}
           <div style={{
             position: "absolute",
-            top: 130,
+            top: 220,
             left: "50%",
             transform: "translateX(-50%)",
             textAlign: "center",
