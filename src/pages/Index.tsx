@@ -407,7 +407,7 @@ export default function Index() {
 
             {/* ── SUBHEADING ── */}
             <p style={{
-              marginTop: 16,
+              marginTop: 8,
               fontSize: 18,
               color: "rgba(255,255,255,0.85)",
               lineHeight: 1.6,
@@ -417,7 +417,7 @@ export default function Index() {
             </p>
 
             {/* ── CTA BUTTONS ── */}
-            <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 22 }}>
+            <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 11 }}>
               <Link to="/auth" style={{
                 display: "flex", alignItems: "center", gap: 8,
                 background: "linear-gradient(to bottom, #facc15, #eab308)",
