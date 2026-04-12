@@ -547,40 +547,40 @@ export default function Index() {
 
             {/* Subheading */}
             <p style={{
-              marginTop: 10,
-              fontSize: 16,
+              marginTop: 9,
+              fontSize: 14.4,
               color: "rgba(255,255,255,0.72)",
               lineHeight: 1.6,
               textShadow: "0 1px 4px rgba(0,0,0,0.70)",
-              maxWidth: 560,
-              margin: "10px auto 0",
+              maxWidth: 504,
+              margin: "9px auto 0",
             }}>
               Trades, captains, and traps — powered by 600+ player projections updated every round.
             </p>
 
             {/* CTAs */}
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 14 }}>
+            <div style={{ display: "flex", gap: 10.8, justifyContent: "center", marginTop: 12.6 }}>
               <Link to="/auth" style={{
-                display: "flex", alignItems: "center", gap: 8,
+                display: "flex", alignItems: "center", gap: 7.2,
                 background: "linear-gradient(to bottom, #fad52a, #d09800)",
                 color: "#1a1000",
-                fontWeight: 800, fontSize: 14,
-                padding: "13px 26px", borderRadius: 7, textDecoration: "none",
+                fontWeight: 800, fontSize: 12.6,
+                padding: "11.7px 23.4px", borderRadius: 6.3, textDecoration: "none",
                 border: "1px solid rgba(0,0,0,0.20)",
                 boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 16px rgba(0,0,0,0.30)",
                 letterSpacing: "0.01em",
               }}>
-                Unlock This Week's Game Plan <ArrowRight size={14} />
+                Unlock This Week's Game Plan <ArrowRight size={12.6} />
               </Link>
               <Link to="/sports/afl/current-round" style={{
-                display: "flex", alignItems: "center", gap: 8,
+                display: "flex", alignItems: "center", gap: 7.2,
                 background: "rgba(255,255,255,0.12)",
                 backdropFilter: "blur(6px)",
                 WebkitBackdropFilter: "blur(6px)",
                 border: "1px solid rgba(255,255,255,0.24)",
                 color: "#ffffff",
-                fontWeight: 700, fontSize: 14,
-                padding: "13px 26px", borderRadius: 7, textDecoration: "none",
+                fontWeight: 700, fontSize: 12.6,
+                padding: "11.7px 23.4px", borderRadius: 6.3, textDecoration: "none",
                 letterSpacing: "0.01em",
                 boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 12px rgba(0,0,0,0.30)",
               }}>
@@ -588,18 +588,8 @@ export default function Index() {
               </Link>
             </div>
 
-            {/* Lockout note */}
-            <p style={{ marginTop: 8, fontSize: 10.5, color: "rgba(255,255,255,0.28)", letterSpacing: "0.02em" }}>
-              Updated before every AFL Fantasy round lockout · 630+ players fully analysed weekly
-            </p>
-
             {/* ── WHITEBOARD ZONE ── */}
-            <div style={{ marginTop: -10, maxWidth: 1020, marginLeft: "auto", marginRight: "auto" }}>
-
-              {/* Updated label */}
-              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.38)", textAlign: "center", marginBottom: 10, lineHeight: 1.65 }}>
-                Weekly must buys, traps, targets and captains — powered by AFL data. Updated before every lockout.
-              </p>
+            <div style={{ marginTop: -80, maxWidth: 1020, marginLeft: "auto", marginRight: "auto" }}>
 
               {/* Cards + quick action links */}
               <div style={{
