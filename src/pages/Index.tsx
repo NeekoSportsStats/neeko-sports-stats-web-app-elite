@@ -332,102 +332,120 @@ export default function Index() {
           </div>
         </section>
       ) : (
-        /* ── DESKTOP: pixel-locked absolute layout ── */
+        /* ── DESKTOP: scene-based absolute layout, pixel-locked to background image ── */
         <section style={{
           position: "relative",
-          backgroundImage: "url('/image.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center center",
-          backgroundRepeat: "no-repeat",
-          minHeight: "100vh",
+          width: "100%",
+          height: "100vh",
           overflow: "hidden",
         }}>
-          {/* Overlay */}
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.30)", zIndex: 1 }} />
-
-          {/* Bottom fade → dark section — starts BELOW cards */}
+          {/* Background image — full bleed, no overlay, no blur */}
           <div style={{
-            position: "absolute", bottom: 0, left: 0, right: 0, height: "42%",
-            background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 55%, rgba(10,10,10,0.9) 80%, #0a0a0a 100%)",
+            position: "absolute", inset: 0,
+            backgroundImage: "url('/image.png')",
+            backgroundSize: "cover",
+            backgroundPosition: "center center",
+            backgroundRepeat: "no-repeat",
+            zIndex: 0,
+          }} />
+
+          {/* Bottom fade — starts at 70%, well below whiteboard cards */}
+          <div style={{
+            position: "absolute", bottom: 0, left: 0, right: 0, height: "30%",
+            background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 40%, rgba(10,10,10,0.88) 75%, #0a0a0a 100%)",
             zIndex: 2,
             pointerEvents: "none",
           }} />
 
-          {/* ── HERO TEXT: top: 12%, higher to sit inside chalkboard ── */}
+          {/* ── HERO TEXT: locked inside chalkboard zone, top 16% ── */}
           <div style={{
             position: "absolute",
-            top: "12%",
+            top: "16%",
             left: "50%",
             transform: "translateX(-50%)",
             textAlign: "center",
-            maxWidth: 900,
+            width: "min(820px, 90vw)",
             zIndex: 10,
-            width: "100%",
-            padding: "0 24px",
           }}>
-            <img src="/logo.png" alt="Neeko" style={{ height: 28, marginBottom: 20, opacity: 0.90 }} />
-
             <h1 style={{
-              fontSize: "clamp(2rem, 4.2vw, 3.2rem)",
+              fontSize: "clamp(2rem, 4vw, 3rem)",
               fontWeight: 900, lineHeight: 1.05, letterSpacing: "-0.028em",
               color: "#ffffff",
-              textShadow: "0 2px 32px rgba(0,0,0,0.70)",
-              marginBottom: 16,
+              textShadow: "0 2px 24px rgba(0,0,0,0.80)",
+              marginBottom: 12,
             }}>
               Win Your <span style={{ color: "#F5C451" }}>AFL Fantasy</span>
               <br />Week in 30 Seconds
             </h1>
 
             <p style={{
-              fontSize: "clamp(13px, 1.6vw, 16px)",
-              color: "rgba(255,255,255,0.65)",
-              maxWidth: 520, marginBottom: 30, lineHeight: 1.65,
-              marginLeft: "auto", marginRight: "auto",
+              fontSize: "clamp(12px, 1.5vw, 15px)",
+              color: "rgba(255,255,255,0.70)",
+              marginBottom: 22, lineHeight: 1.6,
             }}>
               Trades, targets, captains, and traps — powered by data, just like an AFL coach.
             </p>
 
-            <div style={{ display: "flex", gap: 16, justifyContent: "center", marginBottom: 18 }}>
+            <div style={{ display: "flex", gap: 14, justifyContent: "center", marginBottom: 12 }}>
               <Link to="/auth" style={{
                 display: "flex", alignItems: "center", gap: 8,
                 background: "#F5C451", color: "#1a0e00",
-                fontWeight: 800, fontSize: 15,
-                padding: "12px 32px", borderRadius: 7, textDecoration: "none",
-                boxShadow: "0 4px 20px rgba(245,196,81,0.42), inset 0 1px 0 rgba(255,255,255,0.28)",
+                fontWeight: 800, fontSize: 14,
+                padding: "11px 28px", borderRadius: 6, textDecoration: "none",
+                boxShadow: "0 4px 20px rgba(245,196,81,0.45), inset 0 1px 0 rgba(255,255,255,0.28)",
                 letterSpacing: "0.02em",
                 transform: "scale(1.05)",
               }}>
-                Get Started Free <ArrowRight size={15} />
+                Get Started Free <ArrowRight size={14} />
               </Link>
               {!isPremium && (
                 <Link to="/neeko-plus" style={{
                   display: "flex", alignItems: "center", gap: 8,
-                  background: "rgba(245,196,81,0.10)", color: "#F5C451",
-                  fontWeight: 800, fontSize: 15,
-                  padding: "12px 32px", borderRadius: 7, textDecoration: "none",
-                  border: "1.5px solid rgba(245,196,81,0.38)", letterSpacing: "0.02em",
+                  background: "rgba(245,196,81,0.12)", color: "#F5C451",
+                  fontWeight: 800, fontSize: 14,
+                  padding: "11px 28px", borderRadius: 6, textDecoration: "none",
+                  border: "1.5px solid rgba(245,196,81,0.42)", letterSpacing: "0.02em",
                   opacity: 0.85,
                 }}>
-                  <Crown size={15} /> Unlock Full Access
+                  <Crown size={14} /> Unlock Full Access
                 </Link>
               )}
             </div>
 
-            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.24)", letterSpacing: "0.03em" }}>
+            <p style={{ fontSize: 10, color: "rgba(255,255,255,0.22)", letterSpacing: "0.03em" }}>
               Updated before every AFL Fantasy round lockout · 630+ players analysed weekly
             </p>
           </div>
 
-          {/* ── PLAYER CARDS: top: 55%, resting on whiteboard surface ── */}
+          {/* ── WHITEBOARD LABEL: sits at the boundary between chalkboard and whiteboard ── */}
           <div style={{
             position: "absolute",
-            top: "55%",
+            top: "44%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 10,
+            textAlign: "center",
+            width: "min(1100px, 94vw)",
+          }}>
+            <p style={{
+              fontSize: 9, fontWeight: 900, letterSpacing: "0.36em",
+              textTransform: "uppercase", color: "rgba(80,60,30,0.55)",
+              marginBottom: 10,
+            }}>
+              Coach's Whiteboard
+            </p>
+          </div>
+
+          {/* ── PLAYER CARDS: top 46%, anchored to whiteboard surface ── */}
+          <div style={{
+            position: "absolute",
+            top: "46%",
             left: "50%",
             transform: "translateX(-50%)",
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 32,
-            width: "min(1250px, 96vw)",
+            gap: 20,
+            width: "min(1100px, 94vw)",
             zIndex: 10,
           }}>
             {loading
@@ -436,17 +454,17 @@ export default function Index() {
             }
           </div>
 
-          {/* ── ICON ROW: directly below cards ── */}
+          {/* ── ICON ROW: 68% — below whiteboard cards ── */}
           <div style={{
             position: "absolute",
-            top: "calc(55% + 260px)",
+            top: "68%",
             left: "50%",
             transform: "translateX(-50%)",
             display: "flex",
             justifyContent: "center",
-            gap: 32,
+            gap: 24,
             zIndex: 10,
-            width: "min(1250px, 96vw)",
+            width: "min(1100px, 94vw)",
             flexWrap: "wrap",
           }}>
             {quickActions.map(({ to, icon, label, color }) => (
@@ -454,34 +472,29 @@ export default function Index() {
                 key={label} to={to}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.55)",
+                  fontSize: 12, fontWeight: 700, color: "rgba(40,30,10,0.65)",
                   textDecoration: "none",
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.13)",
-                  padding: "7px 16px", borderRadius: 24,
-                  backdropFilter: "blur(6px)",
+                  background: "rgba(255,255,255,0.55)",
+                  border: "1px solid rgba(180,160,100,0.30)",
+                  padding: "7px 18px", borderRadius: 24,
+                  backdropFilter: "blur(4px)",
                   transition: "all 0.15s ease",
                 }}
                 onMouseEnter={e => {
                   const el = e.currentTarget as HTMLElement;
-                  el.style.background = `${color}1e`;
-                  el.style.borderColor = `${color}50`;
-                  el.style.color = "#fff";
+                  el.style.background = `rgba(255,255,255,0.80)`;
+                  el.style.color = "#1a1208";
                 }}
                 onMouseLeave={e => {
                   const el = e.currentTarget as HTMLElement;
-                  el.style.background = "rgba(255,255,255,0.08)";
-                  el.style.borderColor = "rgba(255,255,255,0.13)";
-                  el.style.color = "rgba(255,255,255,0.55)";
+                  el.style.background = "rgba(255,255,255,0.55)";
+                  el.style.color = "rgba(40,30,10,0.65)";
                 }}
               >
                 <span style={{ color }}>{icon}</span>{label}
               </Link>
             ))}
           </div>
-
-          {/* spacer to push dark section below */}
-          <div style={{ height: "100vh" }} />
         </section>
       )}
 
