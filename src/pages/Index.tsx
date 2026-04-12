@@ -363,7 +363,7 @@ export default function Index() {
             backgroundImage: "url('/hero/image.png')",
             backgroundSize: "cover",
             backgroundRepeat: "no-repeat",
-            backgroundPosition: "center 35%",
+            backgroundPosition: "center 38%",
             zIndex: 0,
           }} />
 
@@ -386,9 +386,9 @@ export default function Index() {
             position: "relative",
             zIndex: 10,
             width: "100%",
-            maxWidth: 1100,
+            maxWidth: 900,
             textAlign: "center",
-            paddingTop: 120,
+            paddingTop: 180,
           }}>
 
             {/* ── HEADLINE ── */}
@@ -450,8 +450,13 @@ export default function Index() {
               Updated before every AFL Fantasy round lockout · 630+ players fully analysed weekly
             </p>
 
-            {/* ── CARDS — pushes onto whiteboard zone ── */}
-            <div style={{ marginTop: 150 }}>
+            {/* ── CARDS + ACTIONS — whiteboard zone ── */}
+            <div style={{
+              marginTop: 60,
+              maxWidth: 1000,
+              marginLeft: "auto",
+              marginRight: "auto",
+            }}>
               <p style={{
                 fontSize: 8.5, fontWeight: 900, letterSpacing: "0.42em",
                 textTransform: "uppercase", color: "rgba(80,58,18,0.40)",
@@ -463,7 +468,7 @@ export default function Index() {
               <div style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(4, 1fr)",
-                gap: 13,
+                gap: 16,
                 width: "100%",
               }}>
                 {loading
@@ -471,43 +476,42 @@ export default function Index() {
                   : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
                 }
               </div>
-            </div>
 
-            {/* ── QUICK ACTIONS ── */}
-            <div style={{
-              marginTop: 28,
-              display: "flex",
-              justifyContent: "center",
-              gap: 12,
-              flexWrap: "wrap",
-            }}>
-              {quickActions.map(({ to, icon, label, color }) => (
-                <Link
-                  key={label} to={to}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 6,
-                    fontSize: 12, fontWeight: 700, color: "rgba(30,20,5,0.72)",
-                    textDecoration: "none",
-                    background: "rgba(252,246,228,0.75)",
-                    border: "1px solid rgba(160,125,55,0.22)",
-                    padding: "7px 18px", borderRadius: 24,
-                    backdropFilter: "blur(6px)",
-                    transition: "all 0.15s ease",
-                  }}
-                  onMouseEnter={e => {
-                    const el = e.currentTarget as HTMLElement;
-                    el.style.background = "rgba(255,252,238,0.96)";
-                    el.style.color = "#1a1208";
-                  }}
-                  onMouseLeave={e => {
-                    const el = e.currentTarget as HTMLElement;
-                    el.style.background = "rgba(252,246,228,0.75)";
-                    el.style.color = "rgba(30,20,5,0.72)";
-                  }}
-                >
-                  <span style={{ color }}>{icon}</span>{label}
-                </Link>
-              ))}
+              {/* ── QUICK ACTIONS: 4-col aligned under cards ── */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                gap: 16,
+                marginTop: 20,
+              }}>
+                {quickActions.map(({ to, icon, label, color }) => (
+                  <Link
+                    key={label} to={to}
+                    style={{
+                      display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                      fontSize: 12, fontWeight: 700, color: "rgba(30,20,5,0.72)",
+                      textDecoration: "none",
+                      background: "rgba(252,246,228,0.75)",
+                      border: "1px solid rgba(160,125,55,0.22)",
+                      padding: "7px 18px", borderRadius: 24,
+                      backdropFilter: "blur(6px)",
+                      transition: "all 0.15s ease",
+                    }}
+                    onMouseEnter={e => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.background = "rgba(255,252,238,0.96)";
+                      el.style.color = "#1a1208";
+                    }}
+                    onMouseLeave={e => {
+                      const el = e.currentTarget as HTMLElement;
+                      el.style.background = "rgba(252,246,228,0.75)";
+                      el.style.color = "rgba(30,20,5,0.72)";
+                    }}
+                  >
+                    <span style={{ color }}>{icon}</span>{label}
+                  </Link>
+                ))}
+              </div>
             </div>
 
           </div>
