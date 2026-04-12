@@ -534,7 +534,7 @@ export default function Index() {
             {/* Headline */}
             <h1 style={{
               margin: 0,
-              fontSize: "clamp(2.2rem, 3.6vw, 3.1rem)",
+              fontSize: "clamp(1.98rem, 3.24vw, 2.79rem)",
               fontWeight: 900,
               lineHeight: 1.08,
               letterSpacing: "-0.025em",
