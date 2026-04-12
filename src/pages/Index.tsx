@@ -360,7 +360,7 @@ export default function Index() {
             backgroundImage: "url('/hero/image.png')",
             backgroundSize: "cover",
             backgroundRepeat: "no-repeat",
-            backgroundPosition: "center 92%",
+            backgroundPosition: "center 102%",
             zIndex: 0,
           }} />
 
