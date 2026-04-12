@@ -345,64 +345,69 @@ export default function Index() {
           </div>
         </section>
       ) : (
-        /* ── DESKTOP: full-bleed hero — physically grounded in the board ── */
+        /* ── DESKTOP: full-bleed hero — flex flow, board zones aligned ── */
         <section style={{
           position: "relative",
           width: "100%",
-          height: "clamp(860px, 96vh, 1020px)",
+          height: 820,
           overflow: "hidden",
           background: "#1a1008",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "center",
         }}>
-          {/* BACKGROUND: image fills from top, board zones align to content */}
+          {/* BACKGROUND */}
           <div style={{
             position: "absolute",
             inset: 0,
             backgroundImage: "url('/hero/image.png')",
             backgroundSize: "cover",
             backgroundRepeat: "no-repeat",
-            backgroundPosition: "center 102%",
+            backgroundPosition: "center 35%",
             zIndex: 0,
           }} />
 
-          {/* VIGNETTE: depth, makes content feel grounded */}
+          {/* VIGNETTE */}
           <div style={{
             position: "absolute", inset: 0,
             background: "radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.52) 100%)",
             zIndex: 1, pointerEvents: "none",
           }} />
 
-          {/* BOTTOM fade into page */}
+          {/* BOTTOM fade */}
           <div style={{
             position: "absolute", bottom: 0, left: 0, right: 0, height: "14%",
             background: "linear-gradient(to bottom, transparent 0%, rgba(10,8,4,0.85) 60%, #0a0a0a 100%)",
             zIndex: 2, pointerEvents: "none",
           }} />
 
-          {/* ── HEADLINE BLOCK: locked to chalkboard zone ── */}
+          {/* CONTENT WRAPPER — single flow column */}
           <div style={{
-            position: "absolute",
-            top: 138,
-            left: "50%",
-            transform: "translateX(-50%)",
-            textAlign: "center",
-            width: "min(820px, 82vw)",
+            position: "relative",
             zIndex: 10,
+            width: "100%",
+            maxWidth: 1100,
+            textAlign: "center",
+            paddingTop: 120,
           }}>
+
+            {/* ── HEADLINE ── */}
             <h1 style={{
+              margin: 0,
               fontSize: "clamp(2.4rem, 3.8vw, 3.2rem)",
               fontWeight: 800,
               lineHeight: 1.1,
               letterSpacing: "-0.02em",
               color: "#f5f5f5",
               textShadow: "0 2px 6px rgba(0,0,0,0.6), 0 1px 2px rgba(0,0,0,0.4)",
-              marginBottom: 0,
             }}>
               Win Your <span style={{ color: "#facc15" }}>AFL Fantasy</span>
               <br />Week in 30 Seconds
             </h1>
 
+            {/* ── SUBHEADING ── */}
             <p style={{
-              marginTop: 14,
+              marginTop: 16,
               fontSize: 18,
               color: "rgba(255,255,255,0.85)",
               lineHeight: 1.6,
@@ -411,6 +416,7 @@ export default function Index() {
               Trades, targets, captains, and traps — powered by data, just like an AFL coach.
             </p>
 
+            {/* ── CTA BUTTONS ── */}
             <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 22 }}>
               <Link to="/auth" style={{
                 display: "flex", alignItems: "center", gap: 8,
@@ -439,81 +445,71 @@ export default function Index() {
               )}
             </div>
 
-            <p style={{ marginTop: 10, fontSize: 11, color: "rgba(255,255,255,0.32)", letterSpacing: "0.03em" }}>
+            {/* ── LOCKOUT NOTE ── */}
+            <p style={{ marginTop: 12, fontSize: 11, color: "rgba(255,255,255,0.32)", letterSpacing: "0.03em" }}>
               Updated before every AFL Fantasy round lockout · 630+ players fully analysed weekly
             </p>
-          </div>
 
-          {/* ── CARDS: sit on whiteboard zone ── */}
-          <div style={{
-            position: "absolute",
-            top: 390,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 10,
-            textAlign: "center",
-            width: "min(1140px, 90vw)",
-          }}>
-            <p style={{
-              fontSize: 8.5, fontWeight: 900, letterSpacing: "0.42em",
-              textTransform: "uppercase", color: "rgba(80,58,18,0.40)",
-              marginBottom: 10,
-            }}>
-              Coach's Whiteboard
-            </p>
+            {/* ── CARDS — pushes onto whiteboard zone ── */}
+            <div style={{ marginTop: 150 }}>
+              <p style={{
+                fontSize: 8.5, fontWeight: 900, letterSpacing: "0.42em",
+                textTransform: "uppercase", color: "rgba(80,58,18,0.40)",
+                marginBottom: 10,
+              }}>
+                Coach's Whiteboard
+              </p>
 
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 13,
-            }}>
-              {loading
-                ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
-                : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
-              }
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                gap: 13,
+                width: "100%",
+              }}>
+                {loading
+                  ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
+                  : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
+                }
+              </div>
             </div>
-          </div>
 
-          {/* ── QUICK ACTIONS: above tray ── */}
-          <div style={{
-            position: "absolute",
-            top: 670,
-            left: "50%",
-            transform: "translateX(-50%)",
-            display: "flex",
-            justifyContent: "center",
-            gap: 12,
-            zIndex: 10,
-            width: "min(1140px, 90vw)",
-            flexWrap: "wrap",
-          }}>
-            {quickActions.map(({ to, icon, label, color }) => (
-              <Link
-                key={label} to={to}
-                style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  fontSize: 12, fontWeight: 700, color: "rgba(30,20,5,0.72)",
-                  textDecoration: "none",
-                  background: "rgba(252,246,228,0.75)",
-                  border: "1px solid rgba(160,125,55,0.22)",
-                  padding: "7px 18px", borderRadius: 24,
-                  backdropFilter: "blur(6px)",
-                  transition: "all 0.15s ease",
-                }}
-                onMouseEnter={e => {
-                  const el = e.currentTarget as HTMLElement;
-                  el.style.background = "rgba(255,252,238,0.96)";
-                  el.style.color = "#1a1208";
-                }}
-                onMouseLeave={e => {
-                  const el = e.currentTarget as HTMLElement;
-                  el.style.background = "rgba(252,246,228,0.75)";
-                  el.style.color = "rgba(30,20,5,0.72)";
-                }}
-              >
-                <span style={{ color }}>{icon}</span>{label}
-              </Link>
-            ))}
+            {/* ── QUICK ACTIONS ── */}
+            <div style={{
+              marginTop: 28,
+              display: "flex",
+              justifyContent: "center",
+              gap: 12,
+              flexWrap: "wrap",
+            }}>
+              {quickActions.map(({ to, icon, label, color }) => (
+                <Link
+                  key={label} to={to}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    fontSize: 12, fontWeight: 700, color: "rgba(30,20,5,0.72)",
+                    textDecoration: "none",
+                    background: "rgba(252,246,228,0.75)",
+                    border: "1px solid rgba(160,125,55,0.22)",
+                    padding: "7px 18px", borderRadius: 24,
+                    backdropFilter: "blur(6px)",
+                    transition: "all 0.15s ease",
+                  }}
+                  onMouseEnter={e => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.background = "rgba(255,252,238,0.96)";
+                    el.style.color = "#1a1208";
+                  }}
+                  onMouseLeave={e => {
+                    const el = e.currentTarget as HTMLElement;
+                    el.style.background = "rgba(252,246,228,0.75)";
+                    el.style.color = "rgba(30,20,5,0.72)";
+                  }}
+                >
+                  <span style={{ color }}>{icon}</span>{label}
+                </Link>
+              ))}
+            </div>
+
           </div>
         </section>
       )}
