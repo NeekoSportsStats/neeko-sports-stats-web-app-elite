@@ -10,19 +10,19 @@ export function LandingLayout() {
       {/* HEADER — transparent, floats over hero */}
       <header style={{
         position: "absolute",
-        top: 21,
+        top: 12,
         left: 0,
         right: 0,
         zIndex: 50,
         background: "transparent",
         display: "flex",
         alignItems: "center",
-        height: 42,
+        height: 72,
         padding: "0 32px",
       }}>
         {/* LOGO */}
         <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", marginRight: "auto" }}>
-          <img src="/logo.png" alt="Neeko" style={{ height: 68, width: "auto" }} />
+          <img src="/logo.png" alt="Neeko" style={{ height: 136, width: "auto" }} />
         </Link>
 
         {/* RIGHT BUTTONS */}

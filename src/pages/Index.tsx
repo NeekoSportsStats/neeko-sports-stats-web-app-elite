@@ -490,8 +490,7 @@ export default function Index() {
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 1 }} />
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "30%", background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(10,10,10,0.92) 70%, #0a0a0a 100%)", zIndex: 2 }} />
 
-          <div style={{ position: "relative", zIndex: 10, padding: "52px 20px 24px", textAlign: "center" }}>
-            <img src="/logo.png" alt="Neeko" style={{ height: 25, marginBottom: 14, opacity: 0.88 }} />
+          <div style={{ position: "relative", zIndex: 10, padding: "140px 20px 24px", textAlign: "center" }}>
             <h1 style={{ fontSize: "1.75rem", fontWeight: 900, lineHeight: 1.1, letterSpacing: "-0.025em", color: "#ffffff", textShadow: "0 2px 20px rgba(0,0,0,0.9)", marginBottom: 10 }}>
               Stop Guessing.<br />
               <span style={{ color: C.gold }}>Start Winning</span> Your<br />
@@ -540,7 +539,7 @@ export default function Index() {
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.50) 0%, rgba(0,0,0,0.30) 32%, rgba(0,0,0,0.10) 55%, rgba(0,0,0,0.68) 100%)", zIndex: 1, pointerEvents: "none" }} />
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.32) 100%)", zIndex: 2, pointerEvents: "none" }} />
 
-          <div style={{ position: "relative", zIndex: 20, width: "100%", maxWidth: 900, margin: "0 auto", textAlign: "center", paddingTop: 138 }}>
+          <div style={{ position: "relative", zIndex: 20, width: "100%", maxWidth: 900, margin: "0 auto", textAlign: "center", paddingTop: 168 }}>
             <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(245,196,81,0.70)", marginBottom: 10, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
               AFL Fantasy Intelligence
             </p>
