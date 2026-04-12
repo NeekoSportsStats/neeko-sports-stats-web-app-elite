@@ -594,7 +594,7 @@ export default function Index() {
             </p>
 
             {/* ── WHITEBOARD ZONE ── */}
-            <div style={{ marginTop: 20, maxWidth: 1020, marginLeft: "auto", marginRight: "auto" }}>
+            <div style={{ marginTop: 5, maxWidth: 1020, marginLeft: "auto", marginRight: "auto" }}>
 
               {/* Round context bar */}
               <div style={{ textAlign: "center", marginBottom: 10 }}>
