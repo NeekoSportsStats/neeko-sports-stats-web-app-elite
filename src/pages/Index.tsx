@@ -589,7 +589,7 @@ export default function Index() {
             </div>
 
             {/* ── WHITEBOARD ZONE ── */}
-            <div style={{ marginTop: -80, maxWidth: 1020, marginLeft: "auto", marginRight: "auto" }}>
+            <div style={{ marginTop: -16, maxWidth: 1020, marginLeft: "auto", marginRight: "auto" }}>
 
               {/* Cards + quick action links */}
               <div style={{
