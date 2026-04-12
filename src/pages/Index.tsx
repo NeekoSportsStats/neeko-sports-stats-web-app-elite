@@ -5,6 +5,7 @@ import {
   Crown, ArrowRight, Check, TrendingUp,
   TriangleAlert as AlertTriangle, Star,
   ChartBar as BarChart3, GitCompare, Bookmark, ChevronRight,
+  Zap, Database, Clock, ListChecks,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
@@ -37,24 +38,24 @@ function PlayerAvatar({ name, color }: { name: string; color: string }) {
   const initials = name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
   return (
     <div style={{
-      width: 40, height: 40, borderRadius: "50%", flexShrink: 0,
-      background: `linear-gradient(135deg, ${color}18 0%, ${color}36 100%)`,
-      border: `1.5px solid ${color}40`,
+      width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+      background: `${color}1a`,
+      border: `1.5px solid ${color}38`,
       display: "flex", alignItems: "center", justifyContent: "center",
       overflow: "hidden", position: "relative",
     }}>
       <div style={{
         position: "absolute", bottom: -2, left: "50%", transform: "translateX(-50%)",
-        width: 24, height: 28,
-        background: `linear-gradient(180deg, ${color}30 0%, ${color}58 100%)`,
+        width: 22, height: 26,
+        background: `${color}28`,
         borderRadius: "50% 50% 0 0",
       }} />
       <div style={{
         position: "absolute", top: 6, left: "50%", transform: "translateX(-50%)",
-        width: 16, height: 16, borderRadius: "50%",
-        background: `linear-gradient(135deg, ${color}58 0%, ${color}88 100%)`,
+        width: 14, height: 14, borderRadius: "50%",
+        background: `${color}44`,
       }} />
-      <span style={{ position: "relative", zIndex: 1, fontSize: 9, fontWeight: 900, color, letterSpacing: "-0.02em", marginTop: 10 }}>{initials}</span>
+      <span style={{ position: "relative", zIndex: 1, fontSize: 9, fontWeight: 900, color, letterSpacing: "-0.02em", marginTop: 9 }}>{initials}</span>
     </div>
   );
 }
@@ -63,7 +64,7 @@ type CardProps = {
   label: string;
   icon: React.ReactNode;
   color: string;
-  headerBg: string;
+  paperBg: string;
   playerName: string;
   team: string;
   position?: string | null;
@@ -73,10 +74,39 @@ type CardProps = {
   ctaLabel: string;
   ctaTo: string;
   badge?: string;
+  confidence?: number;
   index?: number;
 };
 
-const CARD_ROTATIONS = [-0.5, 0.6, -0.4, 0.5];
+const CARD_ROTATIONS = [-1.8, 1.4, -1.2, 1.6];
+
+const STICKY_PAPERS: Record<number, { bg: string; lines: string; headerBorder: string }> = {
+  0: { bg: "#edf5eb", lines: "rgba(30,100,44,0.06)",  headerBorder: "rgba(30,100,44,0.18)" },
+  1: { bg: "#f7eded", lines: "rgba(130,30,30,0.06)",  headerBorder: "rgba(130,30,30,0.18)" },
+  2: { bg: "#f7f3e4", lines: "rgba(140,110,0,0.06)",  headerBorder: "rgba(140,110,0,0.18)" },
+  3: { bg: "#eaeff8", lines: "rgba(20,70,148,0.06)",  headerBorder: "rgba(20,70,148,0.18)" },
+};
+
+function StickyPin({ color }: { color: string }) {
+  return (
+    <div style={{
+      position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)",
+      zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center",
+      filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))",
+    }}>
+      <div style={{
+        width: 13, height: 13, borderRadius: "50%",
+        background: `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.6) 0%, ${color} 50%, rgba(0,0,0,0.25) 100%)`,
+        border: "1px solid rgba(0,0,0,0.22)",
+      }} />
+      <div style={{
+        width: 2, height: 7,
+        background: "linear-gradient(to bottom, rgba(110,90,70,0.9), rgba(50,40,30,0.55))",
+        marginTop: -1,
+      }} />
+    </div>
+  );
+}
 
 function WhiteboardCard(p: CardProps) {
   const [hovered, setHovered] = useState(false);
@@ -85,90 +115,132 @@ function WhiteboardCard(p: CardProps) {
   const priceStr = p.priceChange != null
     ? `${up ? "+" : ""}${Math.round(p.priceChange / 1000)}k`
     : null;
-  const rotation = CARD_ROTATIONS[p.index ?? 0] ?? -0.5;
+  const rotation = CARD_ROTATIONS[p.index ?? 0] ?? -1.8;
+  const paper = STICKY_PAPERS[p.index ?? 0] ?? STICKY_PAPERS[0];
 
   return (
-    <Link to={p.ctaTo} style={{ textDecoration: "none", display: "block" }}>
-      <div
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          background: "rgba(250,247,242,0.96)",
-          borderRadius: 14,
-          border: `1px solid rgba(0,0,0,0.09)`,
-          boxShadow: hovered
-            ? `0 2px 4px rgba(0,0,0,0.18), 0 10px 28px rgba(0,0,0,0.28), 0 28px 56px rgba(0,0,0,0.32), inset 0 1px 0 rgba(255,255,255,0.75)`
-            : `0 2px 4px rgba(0,0,0,0.15), 0 8px 20px rgba(0,0,0,0.22), 0 22px 44px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.7)`,
-          transform: hovered
-            ? `rotate(${rotation}deg) translateY(-6px)`
-            : `rotate(${rotation}deg) translateY(0)`,
-          transition: "all 0.2s ease",
-          overflow: "hidden",
-        }}
-      >
-        <div style={{
-          background: p.headerBg,
-          padding: "8px 10px",
-          opacity: 0.92,
-          borderBottom: `1px solid rgba(0,0,0,0.1)`,
-          display: "flex", alignItems: "center", gap: 5,
-        }}>
-          <span style={{ color: p.color, display: "flex", alignItems: "center", flexShrink: 0 }}>{p.icon}</span>
-          <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.18em", textTransform: "uppercase", color: p.color, flex: 1 }}>{p.label}</span>
-          {p.position && (
-            <span style={{ fontSize: 7, fontWeight: 800, textTransform: "uppercase", background: `${p.color}18`, color: p.color, padding: "2px 4px", borderRadius: 3 }}>{p.position}</span>
-          )}
-          {p.badge && (
-            <span style={{ fontSize: 7, fontWeight: 900, textTransform: "uppercase", background: p.color, color: "#fff", padding: "2px 4px", borderRadius: 3 }}>{p.badge}</span>
-          )}
-        </div>
-
-        <div style={{ padding: "9px 10px 3px", display: "flex", alignItems: "center", gap: 7 }}>
-          <PlayerAvatar name={p.playerName} color={p.color} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ fontSize: 12, fontWeight: 800, color: "#1a1208", lineHeight: 1.2, letterSpacing: "-0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.playerName}</p>
-            <p style={{ fontSize: 8, color: "#9a8060", marginTop: 1, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.team}</p>
-          </div>
-        </div>
-
-        <div style={{ padding: "2px 10px 5px", display: "flex", alignItems: "baseline", gap: 4 }}>
-          {pts != null ? (
-            <>
-              <span style={{ fontSize: 28, fontWeight: 900, color: p.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{pts}</span>
-              <span style={{ fontSize: 9, color: "#b09070", fontWeight: 700 }}>pts</span>
-              {priceStr && (
-                <span style={{ fontSize: 8, fontWeight: 800, color: up ? "#1f6e2a" : "#8b1a1a", background: up ? "#e6f4ea" : "#fbe8e8", padding: "1px 4px", borderRadius: 3, marginLeft: 2 }}>
-                  {up ? "▲" : "▼"}{priceStr}
-                </span>
-              )}
-            </>
-          ) : (
-            <span style={{ fontSize: 13, color: "#ccc", fontWeight: 700 }}>—</span>
-          )}
-        </div>
-
-        <div style={{ padding: "0 10px 7px", display: "flex", flexDirection: "column", gap: 3 }}>
-          {p.bullets.map((b, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 5 }}>
-              <div style={{ width: 4, height: 4, borderRadius: 1, background: `${p.color}55`, flexShrink: 0, marginTop: 3 }} />
-              <span style={{ fontSize: 8, color: "#6a5040", fontWeight: 600, lineHeight: 1.4 }}>{b}</span>
-            </div>
-          ))}
-        </div>
-
-        <div style={{ padding: "0 9px 9px" }}>
+    <Link to={p.ctaTo} style={{ textDecoration: "none", display: "block", paddingTop: 14 }}>
+      <div style={{ position: "relative" }}>
+        <StickyPin color={p.color} />
+        <div
+          onMouseEnter={() => setHovered(true)}
+          onMouseLeave={() => setHovered(false)}
+          style={{
+            background: paper.bg,
+            backgroundImage: `repeating-linear-gradient(transparent, transparent 17px, ${paper.lines} 17px, ${paper.lines} 18px)`,
+            borderRadius: 2,
+            border: `1px solid rgba(0,0,0,0.10)`,
+            boxShadow: hovered
+              ? `0 2px 4px rgba(0,0,0,0.22), 0 10px 24px rgba(0,0,0,0.26), 0 20px 44px rgba(0,0,0,0.18), 5px 16px 28px rgba(0,0,0,0.14)`
+              : `0 1px 3px rgba(0,0,0,0.16), 0 5px 14px rgba(0,0,0,0.20), 0 12px 28px rgba(0,0,0,0.16), 3px 10px 18px rgba(0,0,0,0.12)`,
+            transform: hovered
+              ? `rotate(${rotation}deg) translateY(-7px) scale(1.025)`
+              : `rotate(${rotation}deg) translateY(0)`,
+            transition: "all 0.22s ease",
+            overflow: "visible",
+            position: "relative",
+          }}
+        >
+          {/* Top edge highlight */}
           <div style={{
-            background: "#e8dfcf",
-            color: "rgba(30,20,5,0.78)",
-            fontSize: 8, fontWeight: 800, textAlign: "center",
-            padding: "6px 8px", borderRadius: 5,
-            letterSpacing: "0.06em",
-            border: "1px solid rgba(0,0,0,0.15)",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 3,
+            position: "absolute", top: 0, left: 0, right: 0, height: 1.5,
+            background: "linear-gradient(to bottom, rgba(255,255,255,0.55), transparent)",
+            borderRadius: "2px 2px 0 0",
+            pointerEvents: "none",
+          }} />
+
+          {/* Header */}
+          <div style={{
+            borderBottom: `1px solid ${paper.headerBorder}`,
+            padding: "7px 10px 6px",
+            display: "flex", alignItems: "center", gap: 5,
           }}>
-            {p.ctaLabel} <ChevronRight size={7} />
+            <span style={{ color: p.color, display: "flex", alignItems: "center", flexShrink: 0 }}>{p.icon}</span>
+            <span style={{ fontSize: 7.5, fontWeight: 900, letterSpacing: "0.24em", textTransform: "uppercase", color: p.color, flex: 1 }}>{p.label}</span>
+            {p.confidence != null && (
+              <span style={{
+                fontSize: 7, fontWeight: 800, color: p.color,
+                background: `${p.color}14`, border: `1px solid ${p.color}28`,
+                padding: "1px 5px", borderRadius: 3,
+              }}>{p.confidence}%</span>
+            )}
+            {p.position && (
+              <span style={{ fontSize: 7, fontWeight: 800, textTransform: "uppercase", background: `${p.color}16`, color: p.color, padding: "1px 4px", borderRadius: 3, border: `1px solid ${p.color}25` }}>{p.position}</span>
+            )}
+            {p.badge && (
+              <span style={{ fontSize: 7, fontWeight: 900, textTransform: "uppercase", background: p.color, color: "#fff", padding: "1px 5px", borderRadius: 3 }}>{p.badge}</span>
+            )}
           </div>
+
+          {/* Player */}
+          <div style={{ padding: "8px 10px 2px", display: "flex", alignItems: "center", gap: 7 }}>
+            <PlayerAvatar name={p.playerName} color={p.color} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 11.5, fontWeight: 800, color: "#1c1208", lineHeight: 1.2, letterSpacing: "-0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.playerName}</p>
+              <p style={{ fontSize: 8, color: "#857060", marginTop: 1, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.team}</p>
+            </div>
+          </div>
+
+          {/* Score */}
+          <div style={{ padding: "1px 10px 4px", display: "flex", alignItems: "baseline", gap: 4 }}>
+            {pts != null ? (
+              <>
+                <span style={{ fontSize: 26, fontWeight: 900, color: p.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{pts}</span>
+                <span style={{ fontSize: 8.5, color: "#a08060", fontWeight: 700 }}>pts</span>
+                {priceStr && (
+                  <span style={{
+                    fontSize: 7.5, fontWeight: 800,
+                    color: up ? "#1a5e22" : "#7a1818",
+                    background: up ? "#d8eed8" : "#f2dada",
+                    padding: "1px 4px", borderRadius: 3, marginLeft: 2,
+                    border: up ? "1px solid #b4d8b4" : "1px solid #e0b8b8",
+                  }}>
+                    {up ? "▲" : "▼"}{priceStr}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span style={{ fontSize: 13, color: "#bbb", fontWeight: 700 }}>—</span>
+            )}
+          </div>
+
+          {/* Bullets */}
+          <div style={{ padding: "2px 10px 7px", display: "flex", flexDirection: "column", gap: 3.5 }}>
+            {p.bullets.map((b, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 5 }}>
+                <div style={{
+                  width: 4, height: 4, borderRadius: "50%",
+                  background: `${p.color}50`, flexShrink: 0, marginTop: 4,
+                  border: `1px solid ${p.color}30`,
+                }} />
+                <span style={{ fontSize: 7.5, color: "#4a3828", fontWeight: 600, lineHeight: 1.45 }}>{b}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <div style={{ padding: "0 9px 10px" }}>
+            <div style={{
+              background: `linear-gradient(to bottom, ${p.color}ee, ${p.color})`,
+              color: "#fff",
+              fontSize: 7.5, fontWeight: 800, textAlign: "center",
+              padding: "6px 8px", borderRadius: 4,
+              letterSpacing: "0.07em",
+              boxShadow: `inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 6px rgba(0,0,0,0.28)`,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 3,
+            }}>
+              {p.ctaLabel} <ChevronRight size={7} />
+            </div>
+          </div>
+
+          {/* Curl shadow */}
+          <div style={{
+            position: "absolute", bottom: -2, right: 6, width: "38%", height: 5,
+            boxShadow: "4px 5px 9px rgba(0,0,0,0.20)",
+            borderRadius: "0 0 50% 50%",
+            transform: "rotate(1.5deg)",
+            pointerEvents: "none",
+          }} />
         </div>
       </div>
     </Link>
@@ -178,10 +250,9 @@ function WhiteboardCard(p: CardProps) {
 function SkeletonCard() {
   return (
     <div style={{
-      height: 230, borderRadius: 10,
-      background: "rgba(255,255,255,0.15)",
-      border: "1px solid rgba(255,255,255,0.10)",
-      animation: "pulse 1.5s ease-in-out infinite",
+      height: 220, borderRadius: 4,
+      background: "rgba(255,255,255,0.12)",
+      border: "1px solid rgba(255,255,255,0.08)",
     }} />
   );
 }
@@ -231,56 +302,109 @@ export default function Index() {
   const trapAlso = players.filter(isAvoid).filter(p => p.player_id !== trapP?.player_id).slice(0, 1).map(p => p.player_name);
   const capAlso  = players.filter(p => p.player_id !== captainP?.player_id).sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0)).slice(0, 1).map(p => p.player_name);
 
+  const mBPriceChange = (mB as RankingRow).price_change ?? MOCK.mustBuy.price_change;
+  const mBPriceK = mBPriceChange != null ? Math.round(Math.abs(mBPriceChange) / 1000) : null;
+
   const cards: CardProps[] = [
     {
-      label: "Must Buy", icon: <TrendingUp size={10} />,
-      color: "#1a6628", headerBg: "linear-gradient(135deg, #eaf4eb 0%, #ceebd1 100%)",
+      label: "Must Buy", icon: <TrendingUp size={9} />,
+      color: "#1a6028", paperBg: "#edf5eb",
       playerName: mB.player_name, team: mB.team ?? "", position: mB.position,
-      projection: mB.projection, priceChange: (mB as RankingRow).price_change ?? MOCK.mustBuy.price_change,
-      bullets: buyAlso.length ? [buyAlso[0], "Strong form last 3 rounds", "Price rising"] : ["Strong form last 3 rounds", "Price rising fast"],
+      projection: mB.projection, priceChange: mBPriceChange,
+      confidence: 87,
+      bullets: [
+        mBPriceK != null ? `+${mBPriceK}k above breakeven — price surge incoming` : "Above breakeven — price surge incoming",
+        ...(buyAlso.length ? [buyAlso[0]] : ["Strong form last 3 rounds"]),
+      ],
       ctaLabel: "View Must Buys", ctaTo: "/sports/afl/current-round",
+      index: 0,
     },
     {
-      label: "Trap Alert", icon: <AlertTriangle size={10} />,
-      color: "#8b1a1a", headerBg: "linear-gradient(135deg, #fceaea 0%, #f5d2d2 100%)",
+      label: "Trap Alert", icon: <AlertTriangle size={9} />,
+      color: "#881818", paperBg: "#f7eded",
       playerName: tr.player_name, team: tr.team ?? "", position: tr.position,
       projection: tr.projection, priceChange: (tr as RankingRow).price_change ?? MOCK.trap.price_change,
-      bullets: trapAlso.length ? [trapAlso[0], "Tough matchup this week"] : ["Tough matchup this week", "Ownership risk"],
+      confidence: 82,
+      bullets: [
+        "Overpriced vs projection — avoid this week",
+        ...(trapAlso.length ? [trapAlso[0]] : ["Tough matchup, high ownership risk"]),
+      ],
       ctaLabel: "View Trap Alerts", ctaTo: "/sports/afl/current-round",
+      index: 1,
     },
     {
-      label: "Captain Pick", icon: <Star size={10} />, badge: "C",
-      color: "#7a4e00", headerBg: "linear-gradient(135deg, #fdf5e0 0%, #f8e8b0 100%)",
+      label: "Captain Pick", icon: <Star size={9} />, badge: "C",
+      color: "#7a4800", paperBg: "#f7f3e4",
       playerName: cp.player_name, team: cp.team ?? "", position: cp.position,
       projection: cp.projection, priceChange: (cp as RankingRow).price_change ?? MOCK.captain.price_change,
-      bullets: capAlso.length ? [capAlso[0], "Premium matchup this round"] : ["Premium matchup this round", "Elite ceiling"],
+      confidence: 79,
+      bullets: [
+        "Top projected scorer this round",
+        ...(capAlso.length ? [capAlso[0]] : ["Elite ceiling, premium matchup"]),
+      ],
       ctaLabel: "View Captains", ctaTo: "/sports/afl/captains",
+      index: 2,
     },
     {
-      label: "Best Value", icon: <BarChart3 size={10} />,
-      color: "#0e4a7a", headerBg: "linear-gradient(135deg, #e4eef8 0%, #c8ddf2 100%)",
+      label: "Best Value", icon: <BarChart3 size={9} />,
+      color: "#0d4278", paperBg: "#eaeff8",
       playerName: vl.player_name, team: vl.team ?? "", position: vl.position,
       projection: vl.projection, priceChange: (vl as RankingRow).price_change ?? MOCK.value.price_change,
-      bullets: ["Underpriced vs projection", "Rising ownership trend"],
+      confidence: 74,
+      bullets: [
+        "Underpriced vs projection — strong value",
+        "Rising ownership trend this week",
+      ],
       ctaLabel: "Open Market Watch", ctaTo: "/sports/afl/market-watch",
+      index: 3,
     },
   ];
 
   const quickActions = [
-    { to: "/sports/afl/current-round", icon: <GitCompare size={12} />, label: "Compare Players", color: "#1a6628" },
-    { to: "/sports/afl/rankings",      icon: <Bookmark size={12} />,   label: "Watchlist",       color: "#7a4e00" },
-    { to: "/sports/afl/current-round", icon: <AlertTriangle size={12} />, label: "Trap Alerts",  color: "#8b1a1a" },
-    { to: "/sports/afl/rankings",      icon: <Star size={12} />,       label: "Full Rankings",   color: "#0e4a7a" },
+    {
+      to: "/sports/afl/current-round",
+      icon: <GitCompare size={13} />,
+      label: "Compare Players",
+      desc: "Head-to-head breakdowns",
+      color: "#1a6028",
+    },
+    {
+      to: "/sports/afl/rankings",
+      icon: <Bookmark size={13} />,
+      label: "Watchlist",
+      desc: "Track your trade targets",
+      color: "#7a4800",
+    },
+    {
+      to: "/sports/afl/current-round",
+      icon: <AlertTriangle size={13} />,
+      label: "Trap Alerts",
+      desc: "Avoid costly mistakes",
+      color: "#881818",
+    },
+    {
+      to: "/sports/afl/rankings",
+      icon: <ListChecks size={13} />,
+      label: "Full Rankings",
+      desc: "600+ players by projection",
+      color: "#0d4278",
+    },
+  ];
+
+  const trustBar = [
+    { icon: <Zap size={11} />, text: "Updated before every round lockout" },
+    { icon: <Database size={11} />, text: "Built from real AFL Fantasy data" },
+    { icon: <Clock size={11} />, text: "Takes 30 seconds to plan your week" },
   ];
 
   return (
     <div style={{ background: "#0a0a0a", overflowX: "hidden" }}>
       <Helmet>
         <title>Neeko Sports Stats — AFL Fantasy Coach's Desk</title>
-        <meta name="description" content="Win your AFL Fantasy week in 30 seconds. Trade targets, trap warnings, and captain picks powered by real AFL data — updated before every lockout." />
+        <meta name="description" content="Stop guessing. Win your AFL Fantasy week in 30 seconds. Trade targets, trap warnings, and captain picks powered by 600+ player projections — updated before every lockout." />
         <link rel="canonical" href="https://neekostats.com.au/" />
         <meta property="og:title" content="Neeko Sports Stats — AFL Fantasy Coach's Desk" />
-        <meta property="og:description" content="Win your AFL Fantasy week in 30 seconds. Trade targets, trap warnings, and captain picks powered by real AFL data." />
+        <meta property="og:description" content="Stop guessing. Win your AFL Fantasy week with trade targets, captain picks, and trap alerts powered by real AFL data." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://neekostats.com.au/" />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
@@ -288,22 +412,6 @@ export default function Index() {
         <meta name="robots" content="index, follow" />
       </Helmet>
 
-      {/* ══════════════════════════════════════════════════════════════
-          HERO — coach's board background
-          New image: /hero/image.png — 1536 × 1024px (landscape 3:2)
-
-          ZONE MAP (% of image height = 1024px):
-            Wood top rail:       0  – 12%  (~0–123px)
-            Chalkboard (dark):  12% – 45%  (~123–461px) ← headline here
-            Whiteboard (white): 45% – 75%  (~461–768px) ← cards here
-            Tray + football:    75% – 90%  (~768–922px) ← visible at bottom
-            Bottom wood:        90% – 100%
-
-          STRATEGY: background-size: cover, background-position: center 18%
-            → at any viewport width the image fills edge-to-edge
-            → 18% vertical offset means the chalkboard sits in the upper-centre
-               of the viewport, whiteboard in the mid-section, tray fully visible
-      ══════════════════════════════════════════════════════════════ */}
       {isMobile ? (
         /* ── MOBILE ── */
         <section style={{
@@ -315,39 +423,57 @@ export default function Index() {
           paddingBottom: 48,
           minHeight: 600,
         }}>
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 1 }} />
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.52)", zIndex: 1 }} />
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "30%", background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(10,10,10,0.92) 70%, #0a0a0a 100%)", zIndex: 2 }} />
 
-          <div style={{ position: "relative", zIndex: 10, padding: "56px 20px 32px", textAlign: "center" }}>
-            <img src="/logo.png" alt="Neeko" style={{ height: 24, marginBottom: 16, opacity: 0.88 }} />
-            <h1 style={{ fontSize: "1.9rem", fontWeight: 900, lineHeight: 1.08, letterSpacing: "-0.025em", color: "#ffffff", textShadow: "0 2px 24px rgba(0,0,0,0.9)", marginBottom: 12 }}>
-              Win Your <span style={{ color: "#F5C451" }}>AFL Fantasy</span><br />Week in 30 Seconds
+          <div style={{ position: "relative", zIndex: 10, padding: "52px 20px 24px", textAlign: "center" }}>
+            <img src="/logo.png" alt="Neeko" style={{ height: 22, marginBottom: 14, opacity: 0.88 }} />
+            <h1 style={{ fontSize: "1.75rem", fontWeight: 900, lineHeight: 1.1, letterSpacing: "-0.025em", color: "#ffffff", textShadow: "0 2px 20px rgba(0,0,0,0.9)", marginBottom: 10 }}>
+              Stop Guessing.<br />
+              <span style={{ color: "#F5C451" }}>Start Winning</span> Your<br />
+              AFL Fantasy Week.
             </h1>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", marginBottom: 24, lineHeight: 1.6, maxWidth: 340, margin: "0 auto 24px" }}>
-              Trades, targets, captains, and traps — powered by real data.
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.60)", marginBottom: 20, lineHeight: 1.6, maxWidth: 320, margin: "0 auto 20px" }}>
+              Trades, captains, and traps — powered by 600+ player projections updated every round.
             </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "center", marginBottom: 32 }}>
-              <Link to="/auth" style={{ display: "flex", alignItems: "center", gap: 7, background: "#F5C451", color: "#1a0e00", fontWeight: 800, fontSize: 14, padding: "12px 32px", borderRadius: 7, textDecoration: "none", letterSpacing: "0.02em", boxShadow: "0 4px 18px rgba(245,196,81,0.40)" }}>
-                Get Started Free <ArrowRight size={14} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 9, alignItems: "center", marginBottom: 28 }}>
+              <Link to="/auth" style={{ display: "flex", alignItems: "center", gap: 7, background: "#F5C451", color: "#1a0e00", fontWeight: 800, fontSize: 14, padding: "12px 28px", borderRadius: 6, textDecoration: "none", letterSpacing: "0.02em", boxShadow: "0 4px 18px rgba(245,196,81,0.38)" }}>
+                Unlock This Week's Game Plan <ArrowRight size={14} />
               </Link>
               {!isPremium && (
-                <Link to="/neeko-plus" style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(245,196,81,0.10)", color: "#F5C451", fontWeight: 800, fontSize: 14, padding: "12px 32px", borderRadius: 7, textDecoration: "none", border: "1.5px solid rgba(245,196,81,0.35)", letterSpacing: "0.02em" }}>
-                  <Crown size={14} /> Unlock Full Access
+                <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.75)", fontWeight: 700, fontSize: 13, padding: "11px 24px", borderRadius: 6, textDecoration: "none", border: "1px solid rgba(255,255,255,0.20)", letterSpacing: "0.02em" }}>
+                  View Free Picks
                 </Link>
               )}
             </div>
           </div>
 
           <div style={{ position: "relative", zIndex: 10, padding: "0 16px 0" }}>
-            <p style={{ textAlign: "center", fontSize: 9, fontWeight: 900, letterSpacing: "0.36em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 14 }}>
-              Coach's Whiteboard
-            </p>
+            {/* Round context bar */}
+            <div style={{ textAlign: "center", marginBottom: 12 }}>
+              <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(245,196,81,0.6)", marginBottom: 3 }}>
+                This Week's Game Plan
+              </p>
+              <p style={{ fontSize: 9, color: "rgba(255,255,255,0.30)", fontWeight: 600, letterSpacing: "0.04em" }}>
+                Updated Today · Data from 600+ players
+              </p>
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
               {loading ? [0,1,2,3].map(i => <SkeletonCard key={i} />) : cards.map(c => <WhiteboardCard key={c.label} {...c} />)}
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 16 }}>
+
+            {/* Trust bar mobile */}
+            <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 7, alignItems: "center" }}>
+              {trustBar.map(({ icon, text }) => (
+                <div key={text} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "rgba(255,255,255,0.40)", fontWeight: 600 }}>
+                  <span style={{ color: "rgba(245,196,81,0.60)" }}>{icon}</span>{text}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, justifyContent: "center", marginTop: 16 }}>
               {quickActions.map(({ to, icon, label, color }) => (
-                <Link key={label} to={to} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.58)", textDecoration: "none", background: "rgba(255,255,255,0.09)", border: "1px solid rgba(255,255,255,0.13)", padding: "6px 13px", borderRadius: 24 }}>
+                <Link key={label} to={to} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.55)", textDecoration: "none", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)", padding: "6px 12px", borderRadius: 24 }}>
                   <span style={{ color }}>{icon}</span>{label}
                 </Link>
               ))}
@@ -355,18 +481,16 @@ export default function Index() {
           </div>
         </section>
       ) : (
-        /* ── DESKTOP: full-bleed hero ── */
+        /* ── DESKTOP ── */
         <section style={{
           position: "relative",
           width: "100%",
-          height: 820,
+          height: 800,
           overflow: "hidden",
           background: "#1a1008",
         }}>
-          {/* BACKGROUND — pure CSS, no transforms, no filters */}
           <div style={{
-            position: "absolute",
-            inset: 0,
+            position: "absolute", inset: 0,
             backgroundImage: "url('/hero/image.png')",
             backgroundSize: "cover",
             backgroundRepeat: "no-repeat",
@@ -374,119 +498,125 @@ export default function Index() {
             zIndex: 0,
           }} />
 
-          {/* OVERLAY — combined gradient, no filters */}
+          {/* Darker overlay for text contrast */}
           <div style={{
-            position: "absolute",
-            inset: 0,
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 35%, rgba(0,0,0,0.15) 55%, rgba(0,0,0,0.75) 100%)",
+            position: "absolute", inset: 0,
+            background: "linear-gradient(to bottom, rgba(0,0,0,0.64) 0%, rgba(0,0,0,0.44) 32%, rgba(0,0,0,0.22) 55%, rgba(0,0,0,0.80) 100%)",
             zIndex: 1,
             pointerEvents: "none",
           }} />
 
-          {/* BOARD LIGHTING — real light hitting board from centre */}
           <div style={{
-            position: "absolute",
-            inset: 0,
-            background: "radial-gradient(ellipse at 50% 42%, rgba(255,255,255,0.07) 0%, rgba(0,0,0,0.38) 100%)",
+            position: "absolute", inset: 0,
+            background: "radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.32) 100%)",
             zIndex: 2,
             pointerEvents: "none",
           }} />
 
-          {/* CONTENT WRAPPER — single flow column */}
           <div style={{
-            position: "relative",
-            zIndex: 20,
-            width: "100%",
-            maxWidth: 900,
+            position: "relative", zIndex: 20,
+            width: "100%", maxWidth: 900,
             margin: "0 auto",
             textAlign: "center",
-            paddingTop: 153,
+            paddingTop: 138,
           }}>
 
-            {/* ── HEADLINE ── */}
-            <h1 style={{
-              margin: 0,
-              fontSize: "clamp(2.4rem, 3.8vw, 3.2rem)",
-              fontWeight: 800,
-              lineHeight: 1.1,
-              letterSpacing: "-0.02em",
-              color: "#f5f5f5",
-              textShadow: "0 2px 4px rgba(0,0,0,0.65), 0 8px 20px rgba(0,0,0,0.45), 0 20px 48px rgba(0,0,0,0.3)",
-            }}>
-              Win Your <span style={{ color: "#f4c542" }}>AFL Fantasy</span>
-              <br />Week in 30 Seconds
-            </h1>
-
-            {/* ── SUBHEADING ── */}
+            {/* Eyebrow */}
             <p style={{
-              marginTop: 8,
-              fontSize: 18,
-              color: "rgba(255,255,255,0.85)",
-              lineHeight: 1.6,
-              textShadow: "0 1px 3px rgba(0,0,0,0.65), 0 4px 10px rgba(0,0,0,0.35)",
+              fontSize: 9, fontWeight: 900, letterSpacing: "0.40em",
+              textTransform: "uppercase", color: "rgba(245,196,81,0.70)",
+              marginBottom: 10,
+              textShadow: "0 1px 3px rgba(0,0,0,0.6)",
             }}>
-              Trades, targets, captains, and traps — powered by data, just like an AFL coach.
+              AFL Fantasy Intelligence
             </p>
 
-            {/* ── CTA BUTTONS ── */}
-            <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 11 }}>
+            {/* Headline */}
+            <h1 style={{
+              margin: 0,
+              fontSize: "clamp(2.2rem, 3.6vw, 3.1rem)",
+              fontWeight: 900,
+              lineHeight: 1.08,
+              letterSpacing: "-0.025em",
+              color: "#f5f5f5",
+              textShadow: "0 2px 4px rgba(0,0,0,0.70), 0 8px 22px rgba(0,0,0,0.50)",
+            }}>
+              Stop Guessing. <span style={{ color: "#f4c542" }}>Start Winning</span>
+              <br />Your AFL Fantasy Week.
+            </h1>
+
+            {/* Subheading */}
+            <p style={{
+              marginTop: 10,
+              fontSize: 16,
+              color: "rgba(255,255,255,0.72)",
+              lineHeight: 1.6,
+              textShadow: "0 1px 4px rgba(0,0,0,0.70)",
+              maxWidth: 560,
+              margin: "10px auto 0",
+            }}>
+              Trades, captains, and traps — powered by 600+ player projections updated every round.
+            </p>
+
+            {/* CTAs */}
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 14 }}>
               <Link to="/auth" style={{
                 display: "flex", alignItems: "center", gap: 8,
-                background: "linear-gradient(to bottom, #facc15, #d4a000)",
-                color: "#1f1f1f",
-                fontWeight: 700, fontSize: 14,
-                padding: "14px 28px", borderRadius: 10, textDecoration: "none",
-                border: "1px solid rgba(0,0,0,0.22)",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.45), 0 2px 0 rgba(0,0,0,0.35), 0 6px 14px rgba(0,0,0,0.32)",
-                letterSpacing: "0.02em",
-                transition: "all 0.15s ease",
+                background: "linear-gradient(to bottom, #fad52a, #d09800)",
+                color: "#1a1000",
+                fontWeight: 800, fontSize: 14,
+                padding: "13px 26px", borderRadius: 7, textDecoration: "none",
+                border: "1px solid rgba(0,0,0,0.20)",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 16px rgba(0,0,0,0.30)",
+                letterSpacing: "0.01em",
               }}>
-                Get Started Free <ArrowRight size={14} />
+                Unlock This Week's Game Plan <ArrowRight size={14} />
               </Link>
-              {!isPremium && (
-                <Link to="/neeko-plus" style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  background: "rgba(255,255,255,0.14)",
-                  backdropFilter: "blur(6px)",
-                  WebkitBackdropFilter: "blur(6px)",
-                  border: "1px solid rgba(255,255,255,0.28)",
-                  color: "#ffffff",
-                  fontWeight: 700, fontSize: 14,
-                  padding: "14px 28px", borderRadius: 10, textDecoration: "none",
-                  letterSpacing: "0.02em",
-                  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2), 0 4px 12px rgba(0,0,0,0.35)",
-                }}>
-                  <Crown size={14} /> Unlock Full Access
-                </Link>
-              )}
+              <Link to="/sports/afl/current-round" style={{
+                display: "flex", alignItems: "center", gap: 8,
+                background: "rgba(255,255,255,0.12)",
+                backdropFilter: "blur(6px)",
+                WebkitBackdropFilter: "blur(6px)",
+                border: "1px solid rgba(255,255,255,0.24)",
+                color: "#ffffff",
+                fontWeight: 700, fontSize: 14,
+                padding: "13px 26px", borderRadius: 7, textDecoration: "none",
+                letterSpacing: "0.01em",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 12px rgba(0,0,0,0.30)",
+              }}>
+                View Free Picks
+              </Link>
             </div>
 
-            {/* ── LOCKOUT NOTE ── */}
-            <p style={{ marginTop: 9, fontSize: 11, color: "rgba(255,255,255,0.32)", letterSpacing: "0.03em" }}>
+            {/* Lockout note */}
+            <p style={{ marginTop: 8, fontSize: 10.5, color: "rgba(255,255,255,0.28)", letterSpacing: "0.02em" }}>
               Updated before every AFL Fantasy round lockout · 630+ players fully analysed weekly
             </p>
 
-            {/* ── CARDS + ACTIONS — whiteboard zone ── */}
-            <div style={{
-              marginTop: 23,
-              maxWidth: 1000,
-              marginLeft: "auto",
-              marginRight: "auto",
-            }}>
-              <p style={{
-                fontSize: 8.5, fontWeight: 900, letterSpacing: "0.42em",
-                textTransform: "uppercase", color: "rgba(244,197,66,0.55)",
-                marginBottom: 10,
-                textShadow: "0 1px 2px rgba(0,0,0,0.4)",
-              }}>
-                Coach's Whiteboard
-              </p>
+            {/* ── WHITEBOARD ZONE ── */}
+            <div style={{ marginTop: 20, maxWidth: 1020, marginLeft: "auto", marginRight: "auto" }}>
 
+              {/* Round context bar */}
+              <div style={{ textAlign: "center", marginBottom: 10 }}>
+                <p style={{
+                  display: "inline-flex", alignItems: "center", gap: 10,
+                  fontSize: 8, fontWeight: 900, letterSpacing: "0.36em",
+                  textTransform: "uppercase", color: "rgba(244,197,66,0.58)",
+                  textShadow: "0 1px 2px rgba(0,0,0,0.45)",
+                }}>
+                  <span style={{ width: 28, height: 1, background: "rgba(244,197,66,0.28)", display: "inline-block" }} />
+                  This Week's Game Plan &nbsp;·&nbsp; Updated Today &nbsp;·&nbsp; Data from 600+ Players
+                  <span style={{ width: 28, height: 1, background: "rgba(244,197,66,0.28)", display: "inline-block" }} />
+                </p>
+              </div>
+
+              {/* Cards */}
               <div style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(4, 1fr)",
-                gap: 16,
+                gap: 20,
                 width: "100%",
+                alignItems: "end",
               }}>
                 {loading
                   ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
@@ -494,40 +624,61 @@ export default function Index() {
                 }
               </div>
 
-              {/* ── QUICK ACTIONS: 4-col aligned under cards ── */}
+              {/* Trust bar */}
               <div style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
-                gap: 16,
-                marginTop: 20,
+                display: "flex", justifyContent: "center", alignItems: "center",
+                gap: 28, marginTop: 14,
               }}>
-                {quickActions.map(({ to, icon, label, color }) => (
-                  <Link
-                    key={label} to={to}
-                    style={{
-                      display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                      fontSize: 12, fontWeight: 700, color: "rgba(30,20,5,0.78)",
-                      textDecoration: "none",
-                      background: "#e8dfcf",
-                      border: "1px solid rgba(0,0,0,0.15)",
-                      padding: "7px 18px", borderRadius: 24,
-                      boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
-                      transition: "all 0.15s ease",
-                    }}
-                    onMouseEnter={e => {
-                      const el = e.currentTarget as HTMLElement;
-                      el.style.background = "#f0e8d6";
-                      el.style.color = "#1a1208";
-                    }}
-                    onMouseLeave={e => {
-                      const el = e.currentTarget as HTMLElement;
-                      el.style.background = "#e8dfcf";
-                      el.style.color = "rgba(30,20,5,0.78)";
-                    }}
-                  >
-                    <span style={{ color }}>{icon}</span>{label}
-                  </Link>
+                {trustBar.map(({ icon, text }) => (
+                  <div key={text} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: "rgba(255,255,255,0.36)", fontWeight: 600 }}>
+                    <span style={{ color: "rgba(244,197,66,0.55)" }}>{icon}</span>
+                    {text}
+                  </div>
                 ))}
+              </div>
+
+              {/* ── GO DEEPER ── */}
+              <div style={{ marginTop: 16 }}>
+                <p style={{ fontSize: 7.5, fontWeight: 900, letterSpacing: "0.32em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)", marginBottom: 9, textAlign: "center" }}>
+                  Go Deeper
+                </p>
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, 1fr)",
+                  gap: 10,
+                }}>
+                  {quickActions.map(({ to, icon, label, desc, color }) => (
+                    <Link
+                      key={label} to={to}
+                      style={{
+                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
+                        textDecoration: "none",
+                        background: "rgba(255,255,255,0.07)",
+                        border: "1px solid rgba(255,255,255,0.11)",
+                        padding: "10px 12px", borderRadius: 6,
+                        transition: "all 0.15s ease",
+                        textAlign: "center",
+                      }}
+                      onMouseEnter={e => {
+                        const el = e.currentTarget as HTMLElement;
+                        el.style.background = "rgba(255,255,255,0.12)";
+                        el.style.borderColor = "rgba(255,255,255,0.20)";
+                      }}
+                      onMouseLeave={e => {
+                        const el = e.currentTarget as HTMLElement;
+                        el.style.background = "rgba(255,255,255,0.07)";
+                        el.style.borderColor = "rgba(255,255,255,0.11)";
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2 }}>
+                        <span style={{ color }}>{icon}</span>
+                        <span style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.75)", letterSpacing: "0.01em" }}>{label}</span>
+                        <ChevronRight size={9} style={{ color: "rgba(255,255,255,0.25)" }} />
+                      </div>
+                      <span style={{ fontSize: 8.5, color: "rgba(255,255,255,0.28)", fontWeight: 500, lineHeight: 1.3 }}>{desc}</span>
+                    </Link>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -535,9 +686,7 @@ export default function Index() {
         </section>
       )}
 
-      {/* ══════════════════════════════════════════════
-          DARK SECTION — normal flow resumes here
-      ══════════════════════════════════════════════ */}
+      {/* ── DARK SECTION ── */}
       <section style={{ background: "#0a0a0a", padding: "48px clamp(16px, 4vw, 32px) clamp(64px, 9vw, 104px)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
 
@@ -555,103 +704,101 @@ export default function Index() {
             </p>
           </div>
 
-          {/* 3 feature cards */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, marginBottom: 72 }}>
             {[
-              { num: "01", title: "Check Your Gameplan", color: "#1a6628", icon: <BarChart3 size={22} />, desc: "Get weekly Must Buys, Trap Alerts, and Captain Picks — all backed by real AFL performance data." },
-              { num: "02", title: "Make Smarter Trades",  color: "#7a4e00", icon: <TrendingUp size={22} />, desc: "Trade in form players before price rises. Our value engine spots underpriced stars early." },
-              { num: "03", title: "Avoid Costly Traps",   color: "#8b1a1a", icon: <AlertTriangle size={22} />, desc: "Skip the players everyone else is picking. Our trap alerts flag over-owned risks before lockout." },
+              { num: "01", title: "Check Your Gameplan", color: "#1a6028", icon: <BarChart3 size={22} />, desc: "Get weekly Must Buys, Trap Alerts, and Captain Picks — all backed by real AFL performance data." },
+              { num: "02", title: "Make Smarter Trades",  color: "#7a4800", icon: <TrendingUp size={22} />, desc: "Trade in form players before price rises. Our value engine spots underpriced stars early." },
+              { num: "03", title: "Avoid Costly Traps",   color: "#881818", icon: <AlertTriangle size={22} />, desc: "Skip the players everyone else is picking. Our trap alerts flag over-owned risks before lockout." },
             ].map(({ num, title, color, icon, desc }) => (
               <div
                 key={num}
-                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "28px 24px", transition: "all 0.2s ease" }}
+                style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "28px 24px", transition: "all 0.2s ease" }}
                 onMouseEnter={e => {
                   const el = e.currentTarget as HTMLElement;
                   el.style.background = "rgba(255,255,255,0.07)";
-                  el.style.borderColor = `${color}38`;
-                  el.style.boxShadow = `0 8px 32px ${color}12`;
+                  el.style.borderColor = `${color}35`;
+                  el.style.boxShadow = `0 8px 32px ${color}10`;
                 }}
                 onMouseLeave={e => {
                   const el = e.currentTarget as HTMLElement;
                   el.style.background = "rgba(255,255,255,0.04)";
-                  el.style.borderColor = "rgba(255,255,255,0.08)";
+                  el.style.borderColor = "rgba(255,255,255,0.07)";
                   el.style.boxShadow = "none";
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18 }}>
-                  <div style={{ width: 46, height: 46, borderRadius: 10, background: `${color}1e`, border: `1px solid ${color}32`, display: "flex", alignItems: "center", justifyContent: "center", color, flexShrink: 0 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 9, background: `${color}18`, border: `1px solid ${color}28`, display: "flex", alignItems: "center", justifyContent: "center", color, flexShrink: 0 }}>
                     {icon}
                   </div>
-                  <span style={{ fontSize: 11, fontWeight: 900, color: `${color}70`, letterSpacing: "0.04em" }}>{num}</span>
+                  <span style={{ fontSize: 11, fontWeight: 900, color: `${color}65`, letterSpacing: "0.04em" }}>{num}</span>
                 </div>
-                <h3 style={{ fontSize: 17, fontWeight: 800, color: "#fff", marginBottom: 10, letterSpacing: "-0.01em" }}>{title}</h3>
-                <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.38)", lineHeight: 1.65 }}>{desc}</p>
+                <h3 style={{ fontSize: 16, fontWeight: 800, color: "#fff", marginBottom: 10, letterSpacing: "-0.01em" }}>{title}</h3>
+                <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.36)", lineHeight: 1.65 }}>{desc}</p>
               </div>
             ))}
           </div>
 
-          {/* Pricing */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20, alignItems: "start" }}>
 
-            <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 12, padding: "28px 24px" }}>
-              <p style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: "0.26em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 14 }}>Free Plan</p>
+            <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 10, padding: "28px 24px" }}>
+              <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.26em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 14 }}>Free Plan</p>
               <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 22 }}>
                 <span style={{ fontSize: 38, fontWeight: 900, color: "#fff" }}>$0</span>
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>/month</span>
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.30)" }}>/month</span>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 11, marginBottom: 22 }}>
                 {["Basic rankings (top 20 players)", "Must Buy snapshot", "Round summary"].map(f => (
                   <div key={f} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Check size={12} style={{ color: "#3a9040", flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.48)" }}>{f}</span>
+                    <Check size={12} style={{ color: "#2e8836", flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>{f}</span>
                   </div>
                 ))}
               </div>
-              <Link to="/auth" style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.60)", fontWeight: 700, fontSize: 13, padding: "10px 16px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.13)", textDecoration: "none", letterSpacing: "0.03em" }}>
+              <Link to="/auth" style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)", fontWeight: 700, fontSize: 13, padding: "10px 16px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.11)", textDecoration: "none", letterSpacing: "0.03em" }}>
                 Get Started Free
               </Link>
             </div>
 
-            <div style={{ background: "linear-gradient(160deg, #1a1206 0%, #120d04 100%)", border: "1.5px solid rgba(245,196,81,0.32)", borderRadius: 12, padding: "28px 24px", boxShadow: "0 10px 44px rgba(245,196,81,0.09)", position: "relative", overflow: "hidden" }}>
+            <div style={{ background: "linear-gradient(160deg, #1a1206 0%, #120d04 100%)", border: "1.5px solid rgba(245,196,81,0.30)", borderRadius: 10, padding: "28px 24px", boxShadow: "0 10px 44px rgba(245,196,81,0.08)", position: "relative", overflow: "hidden" }}>
               <div style={{ position: "absolute", top: -40, right: -40, width: 140, height: 140, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,196,81,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <p style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: "0.26em", textTransform: "uppercase", color: "#F5C451" }}>Neeko Plus</p>
+                <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.26em", textTransform: "uppercase", color: "#F5C451" }}>Neeko Plus</p>
                 <span style={{ fontSize: 8.5, fontWeight: 800, background: "#F5C451", color: "#1a0e00", padding: "3px 8px", borderRadius: 4, letterSpacing: "0.08em" }}>BEST VALUE</span>
               </div>
               <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 6 }}>
                 <span style={{ fontSize: 38, fontWeight: 900, color: "#fff" }}>${NEEKO_PRICING.yearly.monthlyEquivalent}</span>
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>/month</span>
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.30)" }}>/month</span>
               </div>
-              <p style={{ fontSize: 10.5, color: "rgba(255,255,255,0.22)", marginBottom: 22 }}>Billed yearly. Cancel anytime.</p>
+              <p style={{ fontSize: 10.5, color: "rgba(255,255,255,0.20)", marginBottom: 22 }}>Billed yearly. Cancel anytime.</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 11, marginBottom: 24 }}>
                 {["Full rankings — 630+ players", "Must Buys & Trap Alerts", "Captain Picks with confidence score", "Market Watch & price changes", "Start/Sit AI decisions", "Updated before every round lockout"].map(f => (
                   <div key={f} style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Check size={12} style={{ color: "#F5C451", flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.60)" }}>{f}</span>
+                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.58)" }}>{f}</span>
                   </div>
                 ))}
               </div>
-              <Link to="/neeko-plus" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, background: "#F5C451", color: "#1a0e00", fontWeight: 800, fontSize: 14, padding: "12px 16px", borderRadius: 7, textDecoration: "none", boxShadow: "0 4px 18px rgba(245,196,81,0.32), inset 0 1px 0 rgba(255,255,255,0.28)", letterSpacing: "0.03em" }}>
+              <Link to="/neeko-plus" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, background: "#F5C451", color: "#1a0e00", fontWeight: 800, fontSize: 14, padding: "12px 16px", borderRadius: 6, textDecoration: "none", boxShadow: "0 4px 18px rgba(245,196,81,0.30), inset 0 1px 0 rgba(255,255,255,0.26)", letterSpacing: "0.03em" }}>
                 <Crown size={13} /> Unlock Full Access
               </Link>
             </div>
 
-            <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "28px 24px", display: "flex", flexDirection: "column", gap: 22 }}>
-              <p style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: "0.26em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)" }}>Why coaches use Neeko</p>
+            <div style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, padding: "28px 24px", display: "flex", flexDirection: "column", gap: 22 }}>
+              <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.26em", textTransform: "uppercase", color: "rgba(255,255,255,0.20)" }}>Why coaches use Neeko</p>
               {[
                 { q: "Made my best trade of the season using the Must Buy list.", from: "AFL Fantasy manager" },
                 { q: "The trap alerts saved me from a 40-point disaster.", from: "SuperCoach player" },
               ].map(({ q, from }) => (
-                <div key={from} style={{ borderLeft: "2px solid rgba(245,196,81,0.25)", paddingLeft: 14 }}>
-                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.48)", lineHeight: 1.65, fontStyle: "italic", marginBottom: 6 }}>"{q}"</p>
-                  <p style={{ fontSize: 10, color: "rgba(255,255,255,0.20)", fontWeight: 600 }}>— {from}</p>
+                <div key={from} style={{ borderLeft: "2px solid rgba(245,196,81,0.22)", paddingLeft: 14 }}>
+                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.44)", lineHeight: 1.65, fontStyle: "italic", marginBottom: 6 }}>"{q}"</p>
+                  <p style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", fontWeight: 600 }}>— {from}</p>
                 </div>
               ))}
               <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
                 {["Real AFL data, not guesses", "Updated weekly, every season", "Used by 1,000+ coaches"].map(t => (
                   <div key={t} style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                    <Check size={11} style={{ color: "#3a9040" }} />
-                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.36)", fontWeight: 600 }}>{t}</span>
+                    <Check size={11} style={{ color: "#2e8836" }} />
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.34)", fontWeight: 600 }}>{t}</span>
                   </div>
                 ))}
               </div>
@@ -662,13 +809,13 @@ export default function Index() {
 
       <footer style={{ background: "#07090d", borderTop: "1px solid rgba(255,255,255,0.05)", padding: "20px clamp(16px, 4vw, 32px)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.16)" }}>© {new Date().getFullYear()} Neeko Sports Stats</p>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.14)" }}>© {new Date().getFullYear()} Neeko Sports Stats</p>
           <div style={{ display: "flex", gap: 22, flexWrap: "wrap" }}>
             {[{ l: "Policies", t: "/policies" }, { l: "Contact", t: "/contact" }, { l: "About", t: "/about" }, { l: "FAQ", t: "/faq" }].map(x => (
               <Link key={x.t} to={x.t}
-                style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", textDecoration: "none", transition: "color 0.15s" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.52)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.18)"; }}
+                style={{ fontSize: 11, color: "rgba(255,255,255,0.16)", textDecoration: "none", transition: "color 0.15s" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.48)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.16)"; }}
               >{x.l}</Link>
             ))}
           </div>
