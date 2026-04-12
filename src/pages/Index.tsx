@@ -452,7 +452,7 @@ export default function Index() {
 
             {/* ── CARDS + ACTIONS — whiteboard zone ── */}
             <div style={{
-              marginTop: 45,
+              marginTop: 23,
               maxWidth: 1000,
               marginLeft: "auto",
               marginRight: "auto",
