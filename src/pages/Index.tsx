@@ -360,7 +360,7 @@ export default function Index() {
             backgroundImage: "url('/hero/image.png')",
             backgroundSize: "cover",
             backgroundRepeat: "no-repeat",
-            backgroundPosition: "center 38%",
+            backgroundPosition: "center 52%",
             zIndex: 0,
           }} />
 
@@ -381,7 +381,7 @@ export default function Index() {
           {/* ── HEADLINE BLOCK: locked to chalkboard zone ── */}
           <div style={{
             position: "absolute",
-            top: 110,
+            top: 130,
             left: "50%",
             transform: "translateX(-50%)",
             textAlign: "center",
@@ -447,7 +447,7 @@ export default function Index() {
           {/* ── CARDS: sit on whiteboard zone ── */}
           <div style={{
             position: "absolute",
-            top: 370,
+            top: 390,
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 10,
@@ -477,7 +477,7 @@ export default function Index() {
           {/* ── QUICK ACTIONS: above tray ── */}
           <div style={{
             position: "absolute",
-            top: 650,
+            top: 670,
             left: "50%",
             transform: "translateX(-50%)",
             display: "flex",
