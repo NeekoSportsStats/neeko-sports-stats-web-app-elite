@@ -549,15 +549,13 @@ export default function Index() {
             <p style={{
               marginTop: 9,
               fontSize: 14.4,
-              color: "rgba(255,255,255,0.72)",
-              lineHeight: 1.7,
-              textShadow: "0 1px 4px rgba(0,0,0,0.70)",
-              maxWidth: 420,
+              color: "rgba(255,255,255,0.90)",
+              lineHeight: 1.6,
+              textShadow: "0 1px 6px rgba(0,0,0,0.90)",
+              maxWidth: 504,
               margin: "9px auto 0",
-              letterSpacing: "0.01em",
             }}>
-              Trades, captains, and traps.<br />
-              <span style={{ color: "rgba(255,255,255,0.50)", fontSize: 13 }}>600+ player projections updated every round.</span>
+              Trades, captains, and traps — powered by 600+ player projections updated every round.
             </p>
 
             {/* CTAs */}
