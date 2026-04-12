@@ -381,7 +381,7 @@ export default function Index() {
           {/* ── HEADLINE BLOCK: locked to chalkboard zone ── */}
           <div style={{
             position: "absolute",
-            top: 120,
+            top: 138,
             left: "50%",
             transform: "translateX(-50%)",
             textAlign: "center",
