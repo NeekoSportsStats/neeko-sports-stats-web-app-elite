@@ -355,18 +355,15 @@ export default function Index() {
           </div>
         </section>
       ) : (
-        /* ── DESKTOP: full-bleed hero — flex flow, board zones aligned ── */
+        /* ── DESKTOP: full-bleed hero ── */
         <section style={{
           position: "relative",
           width: "100%",
           height: 820,
           overflow: "hidden",
           background: "#1a1008",
-          display: "flex",
-          alignItems: "flex-start",
-          justifyContent: "center",
         }}>
-          {/* BACKGROUND */}
+          {/* BACKGROUND — pure CSS, no transforms, no filters */}
           <div style={{
             position: "absolute",
             inset: 0,
@@ -377,25 +374,15 @@ export default function Index() {
             zIndex: 0,
           }} />
 
-          {/* CINEMATIC OVERLAY — depth + readability */}
+          {/* OVERLAY — single div, combined gradients, no filters */}
           <div style={{
-            position: "absolute", inset: 0,
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 35%, rgba(0,0,0,0.15) 55%, rgba(0,0,0,0.6) 100%)",
-            zIndex: 1, pointerEvents: "none",
-          }} />
-
-          {/* VIGNETTE — directional, not symmetric */}
-          <div style={{
-            position: "absolute", inset: 0,
-            background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.48) 100%)",
-            zIndex: 2, pointerEvents: "none",
-          }} />
-
-          {/* BOTTOM fade */}
-          <div style={{
-            position: "absolute", bottom: 0, left: 0, right: 0, height: "18%",
-            background: "linear-gradient(to bottom, transparent 0%, rgba(10,8,4,0.92) 65%, #0a0a0a 100%)",
-            zIndex: 3, pointerEvents: "none",
+            position: "absolute",
+            inset: 0,
+            background: `
+              linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 35%, rgba(0,0,0,0.15) 55%, rgba(0,0,0,0.75) 100%)
+            `,
+            zIndex: 1,
+            pointerEvents: "none",
           }} />
 
           {/* CONTENT WRAPPER — single flow column */}
@@ -404,6 +391,7 @@ export default function Index() {
             zIndex: 20,
             width: "100%",
             maxWidth: 900,
+            margin: "0 auto",
             textAlign: "center",
             paddingTop: 153,
           }}>
@@ -453,7 +441,6 @@ export default function Index() {
                 <Link to="/neeko-plus" style={{
                   display: "flex", alignItems: "center", gap: 8,
                   background: "rgba(255,255,255,0.15)",
-                  backdropFilter: "blur(6px)",
                   border: "1px solid rgba(255,255,255,0.2)",
                   color: "#ffffff",
                   fontWeight: 700, fontSize: 14,
