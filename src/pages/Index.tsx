@@ -17,20 +17,6 @@ import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow"
 import { classifyPlayers } from "@/features/afl/market-watch/engine";
 import type { MWPlayerRow } from "@/features/afl/market-watch/types";
 
-// ── Signal helpers (same logic as Rankings page) ──────────────────────────────
-const BUY_SIGNALS   = ["STRONG_UP","STRONG_BUY","MUST_HAVE","BREAKOUT","UP","BUY","TARGET","STRONG_START","START"];
-const AVOID_SIGNALS = ["STRONG_DOWN","STRONG_SELL","AVOID","DO_NOT_START","DOWN","SELL","STRONG_SIT","SIT"];
-
-function resolveSignal(r: RankingRow): string {
-  return ((r.action ?? r.signal_tag ?? r.signal ?? "") as string).toUpperCase();
-}
-function isBuy(r: RankingRow)   { return BUY_SIGNALS.includes(resolveSignal(r)); }
-function isAvoid(r: RankingRow) { return AVOID_SIGNALS.includes(resolveSignal(r)); }
-function isPlayable(p: RankingRow): boolean {
-  const ms = (p.manual_status ?? "").toUpperCase();
-  return ms !== "OUT" && ms !== "INJURED" && !p.is_bye && !p.is_injured;
-}
-
 // ── Design tokens ──────────────────────────────────────────────────────────────
 const C = {
   bgDark:    "#0B0F14",
@@ -162,14 +148,16 @@ function WhiteboardCard(p: CardProps) {
           </div>
 
           {/* Bullets */}
-          <div style={{ padding: "2px 10px 7px", display: "flex", flexDirection: "column", gap: 3.5 }}>
-            {p.bullets.map((b, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 5 }}>
-                <div style={{ width: 4, height: 4, borderRadius: "50%", background: `${p.color}50`, flexShrink: 0, marginTop: 4, border: `1px solid ${p.color}30` }} />
-                <span style={{ fontSize: 7.5, color: "#4a3828", fontWeight: 600, lineHeight: 1.45 }}>{b}</span>
-              </div>
-            ))}
-          </div>
+          {p.bullets.length > 0 && (
+            <div style={{ padding: "2px 10px 7px", display: "flex", flexDirection: "column", gap: 3.5 }}>
+              {p.bullets.map((b, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 5 }}>
+                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: `${p.color}50`, flexShrink: 0, marginTop: 4, border: `1px solid ${p.color}30` }} />
+                  <span style={{ fontSize: 7.5, color: "#4a3828", fontWeight: 600, lineHeight: 1.45 }}>{b}</span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* CTA */}
           <div style={{ padding: "0 9px 10px" }}>
@@ -191,12 +179,11 @@ function SkeletonCard() {
 
 // ── Rankings preview row ───────────────────────────────────────────────────────
 function RankRow({ rank, player, locked }: { rank: number; player: RankingRow; locked: boolean }) {
-  const signal = resolveSignal(player);
-  const isBuySignal = BUY_SIGNALS.includes(signal);
-  const isAvoidSignal = AVOID_SIGNALS.includes(signal);
+  const category = (player.category ?? "").toLowerCase();
+  const isBuySignal   = category === "target";
+  const isAvoidSignal = category === "avoid";
   const pillColor = isBuySignal ? C.gold : isAvoidSignal ? C.red : C.textSec;
   const pillBg    = isBuySignal ? "rgba(244,197,66,0.12)" : isAvoidSignal ? "rgba(239,68,68,0.12)" : "rgba(255,255,255,0.06)";
-
   const label = isBuySignal ? "Target" : isAvoidSignal ? "Avoid" : "Watch";
 
   if (locked) {
@@ -231,7 +218,7 @@ function RankRow({ rank, player, locked }: { rank: number; player: RankingRow; l
 
 // ── Market Watch card ──────────────────────────────────────────────────────────
 function MWCard({ player, categoryColor }: { player: RankingRow; categoryColor: string }) {
-  const priceK = player.price != null ? `$${Math.round(player.price / 1000)}k` : null;
+  const priceK  = player.price != null ? `$${Math.round(player.price / 1000)}k` : null;
   const changeK = player.price_change != null ? `${player.price_change > 0 ? "+" : ""}${Math.round(player.price_change / 1000)}k` : null;
   const up = (player.price_change ?? 0) > 0;
 
@@ -242,21 +229,36 @@ function MWCard({ player, categoryColor }: { player: RankingRow; categoryColor: 
         <p style={{ fontSize: 11, color: "#6B7280", marginTop: 2 }}>{player.position ?? ""} · {player.team}</p>
       </div>
       <div style={{ textAlign: "right", flexShrink: 0 }}>
-        {priceK && <p style={{ fontSize: 12.5, fontWeight: 700, color: C.textDark }}>{priceK}</p>}
-        {changeK && (
-          <p style={{ fontSize: 11, fontWeight: 700, color: up ? "#16a34a" : "#dc2626", marginTop: 2 }}>{changeK}</p>
-        )}
+        {priceK  && <p style={{ fontSize: 12.5, fontWeight: 700, color: C.textDark }}>{priceK}</p>}
+        {changeK && <p style={{ fontSize: 11, fontWeight: 700, color: up ? "#16a34a" : "#dc2626", marginTop: 2 }}>{changeK}</p>}
       </div>
       <div style={{ width: 8, height: 8, borderRadius: "50%", background: categoryColor, flexShrink: 0 }} />
     </div>
   );
 }
 
+// ── Helpers — all classification delegated to canonical engine ─────────────────
+function toMWRow(r: RankingRow): MWPlayerRow {
+  const rawSignal = r.action ?? r.signal_tag ?? r.signal ?? null;
+  return {
+    ...r,
+    player_id:      Number(r.player_id) || 0,
+    is_bye:         r.is_bye ?? false,
+    is_injured:     r.is_injured ?? false,
+    display_signal: (rawSignal as MWPlayerRow["display_signal"]) ?? "WATCH",
+    access_tier:    r.access_tier ?? "locked",
+    team_name:      r.team_name ?? r.team ?? "",
+    games_played:   r.games_played ?? null,
+    cached_at:      r.cached_at ?? null,
+    price:          r.price ?? 0,
+  };
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function Index() {
   const { isPremium } = useAuth();
-  const [players, setPlayers]   = useState<RankingRow[]>([]);
-  const [loading, setLoading]   = useState(true);
+  const [players, setPlayers] = useState<RankingRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
@@ -276,90 +278,80 @@ export default function Index() {
     })();
   }, []);
 
-  // ── Hero cards — derived from same logic as Rankings + Edge Board ─────────
-  const { mustBuyP, trapP, captainP, valueP, topRows, mwBuys, mwSells } = useMemo(() => {
-    const avail  = players.filter(p => isPlayable(p) && p.projection != null);
-    const buys   = avail.filter(isBuy).sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0));
-    const avoids = avail.filter(isAvoid).sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0));
-    const byCap  = [...avail].sort((a, b) => (b.captain_score ?? b.projection ?? 0) - (a.captain_score ?? a.projection ?? 0));
+  // ── All classification via canonical engine ────────────────────────────────
+  const { mustBuyP, trapP, captainP, valueP, topRows, mwBuys, mwHolds, mwSells } = useMemo(() => {
+    const mwInput: MWPlayerRow[] = players.map(toMWRow);
+    const { buys, holds, sells } = classifyPlayers(mwInput);
 
-    const mustBuyP = buys[0] ?? avail.sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))[0] ?? null;
-    const trapP    = avoids[0] ?? null;
+    // Players eligible for hero selection: in engine buy or hold buckets, with a projection
+    const playable = [...buys, ...holds].filter(p => p.projection != null);
+
+    // Hero card selections
+    const buysSorted = buys.filter(p => p.projection != null).sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0));
+    const sellsSorted = sells.filter(p => p.projection != null).sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0));
+    const byCap = [...playable].sort((a, b) => (b.captain_score ?? b.projection ?? 0) - (a.captain_score ?? a.projection ?? 0));
+
+    const mustBuyP = buysSorted[0] ?? null;
+    const trapP    = sellsSorted[0] ?? null;
     const captainP = byCap.find(p => p.player_id !== mustBuyP?.player_id) ?? null;
-    const valueP   = buys.find(p => p.player_id !== mustBuyP?.player_id && (p.price ?? 999999) < 650000) ?? buys[1] ?? null;
+    const valueP   = buysSorted.find(p => p.player_id !== mustBuyP?.player_id) ?? null;
 
-    // Rankings preview — top 8 free rows
-    const topRows = [...avail]
+    // Rankings preview — top 12 sorted by neeko_rating
+    const topRows = players
+      .filter(p => p.projection != null)
       .sort((a, b) => (b.neeko_rating ?? b.projection ?? 0) - (a.neeko_rating ?? a.projection ?? 0))
       .slice(0, 12);
 
-    // Market Watch — classify using same engine as MW page
-    const mwInput: MWPlayerRow[] = avail.map(r => ({ ...r, display_signal: undefined }));
-    const { buys: mwBuys, sells: mwSells } = classifyPlayers(mwInput);
-
-    return { mustBuyP, trapP, captainP, valueP, topRows, mwBuys, mwSells };
+    return { mustBuyP, trapP, captainP, valueP, topRows, mwBuys: buys, mwHolds: holds, mwSells: sells };
   }, [players]);
 
-  // Supporting context bullets from real data
-  const buyAlso  = players.filter(isBuy).filter(p => p.player_id !== mustBuyP?.player_id).slice(0, 1).map(p => p.player_name);
-  const trapAlso = players.filter(isAvoid).filter(p => p.player_id !== trapP?.player_id).slice(0, 1).map(p => p.player_name);
-  const capAlso  = players.filter(p => p.player_id !== captainP?.player_id).sort((a, b) => (b.captain_score ?? b.projection ?? 0) - (a.captain_score ?? a.projection ?? 0)).slice(0, 1).map(p => p.player_name);
+  // ── Hero card bullet derivation — only from real fields ───────────────────
+  function mustBuyBullets(): string[] {
+    if (!mustBuyP) return [];
+    const bullets: string[] = [];
+    if (mustBuyP.price_change != null && mustBuyP.price_change > 0) {
+      bullets.push(`+${Math.round(mustBuyP.price_change / 1000)}k above breakeven — price rise likely`);
+    } else if (mustBuyP.season_avg != null && mustBuyP.projection != null && mustBuyP.projection > mustBuyP.season_avg) {
+      bullets.push(`${Math.round(mustBuyP.projection - mustBuyP.season_avg)}pts above season avg — in form`);
+    }
+    const also = mwBuys.find(p => p.player_id !== mustBuyP.player_id);
+    if (also) bullets.push(`Also consider: ${also.player_name}`);
+    return bullets;
+  }
 
-  const cards: CardProps[] = mustBuyP ? [
-    {
-      label: "Must Buy", icon: <TrendingUp size={9} />,
-      color: "#1a6028",
-      playerName: mustBuyP.player_name, team: mustBuyP.team ?? "", position: mustBuyP.position,
-      projection: mustBuyP.projection, priceChange: mustBuyP.price_change,
-      bullets: [
-        mustBuyP.price_change != null && mustBuyP.price_change > 0
-          ? `+${Math.round(mustBuyP.price_change / 1000)}k above breakeven — price rise likely`
-          : mustBuyP.season_avg != null && mustBuyP.projection != null && mustBuyP.projection > mustBuyP.season_avg
-            ? `${Math.round(mustBuyP.projection - mustBuyP.season_avg)}pts above season avg — in form`
-            : "Top value signal this week",
-        buyAlso.length ? `Also consider: ${buyAlso[0]}` : "Strong form last 3 rounds",
-      ],
-      ctaLabel: "View Must Buys", ctaTo: "/sports/afl/current-round", index: 0,
-    },
-    {
-      label: "Trap Alert", icon: <AlertTriangle size={9} />,
-      color: "#881818",
-      playerName: trapP?.player_name ?? "Loading...", team: trapP?.team ?? "", position: trapP?.position,
-      projection: trapP?.projection, priceChange: trapP?.price_change,
-      bullets: [
-        trapP?.breakeven != null && trapP?.projection != null && trapP.projection < trapP.breakeven
-          ? `Scoring below breakeven — price drop risk`
-          : "Avoid signal from ranking engine",
-        trapAlso.length ? `Also flagged: ${trapAlso[0]}` : "Tough matchup, high ownership risk",
-      ],
-      ctaLabel: "View Trap Alerts", ctaTo: "/sports/afl/current-round", index: 1,
-    },
-    {
-      label: "Captain Pick", icon: <Star size={9} />, badge: "C",
-      color: "#7a4800",
-      playerName: captainP?.player_name ?? "Loading...", team: captainP?.team ?? "", position: captainP?.position,
-      projection: captainP?.projection, priceChange: captainP?.price_change,
-      bullets: [
-        captainP?.captain_rating ? `${captainP.captain_rating} — top ranked captain` : "Highest projected scorer this round",
-        capAlso.length ? `Alt: ${capAlso[0]}` : "Elite ceiling, favourable matchup",
-      ],
-      ctaLabel: "View Captains", ctaTo: "/sports/afl/captains", index: 2,
-    },
-    {
-      label: "Best Value", icon: <BarChart3 size={9} />,
-      color: "#0d4278",
-      playerName: valueP?.player_name ?? captainP?.player_name ?? "Loading...",
-      team: (valueP ?? captainP)?.team ?? "",
-      position: (valueP ?? captainP)?.position,
-      projection: (valueP ?? captainP)?.projection,
-      priceChange: (valueP ?? captainP)?.price_change,
-      bullets: [
-        valueP?.price != null ? `Priced at $${Math.round(valueP.price / 1000)}k — strong value for projection` : "Underpriced vs projection this round",
-        "Rising market signal from value engine",
-      ],
-      ctaLabel: "Open Market Watch", ctaTo: "/sports/afl/market-watch", index: 3,
-    },
-  ] : [];
+  function trapBullets(): string[] {
+    if (!trapP) return [];
+    const bullets: string[] = [];
+    if (trapP.breakeven != null && trapP.projection != null && trapP.projection < trapP.breakeven) {
+      bullets.push(`Scoring below breakeven — price drop risk`);
+    }
+    const also = mwSells.find(p => p.player_id !== trapP.player_id);
+    if (also) bullets.push(`Also flagged: ${also.player_name}`);
+    return bullets;
+  }
+
+  function captainBullets(): string[] {
+    if (!captainP) return [];
+    const bullets: string[] = [];
+    if (captainP.captain_rating) bullets.push(`${captainP.captain_rating} — top ranked captain`);
+    const also = mwBuys.find(p => p.player_id !== captainP.player_id && p.player_id !== mustBuyP?.player_id);
+    if (also) bullets.push(`Alt: ${also.player_name}`);
+    return bullets;
+  }
+
+  function valueBullets(): string[] {
+    if (!valueP) return [];
+    const bullets: string[] = [];
+    if (valueP.price != null && valueP.price > 0) {
+      bullets.push(`Priced at $${Math.round(valueP.price / 1000)}k — strong value for projection`);
+    }
+    if (valueP.value_score != null && valueP.value_score > 0) {
+      bullets.push(`Value score: ${valueP.value_score.toFixed(1)} — above-market edge`);
+    }
+    return bullets;
+  }
+
+  const FREE_PREVIEW = 5;
 
   const trustBar = [
     { icon: <Zap size={11} />,      text: "Updated before every round lockout" },
@@ -367,7 +359,44 @@ export default function Index() {
     { icon: <Clock size={11} />,    text: "Takes 30 seconds to plan your week" },
   ];
 
-  const FREE_PREVIEW = 5;
+  const allHeroReady = mustBuyP && trapP && captainP && valueP;
+
+  const cards: CardProps[] = !loading && allHeroReady ? [
+    {
+      label: "Must Buy", icon: <TrendingUp size={9} />,
+      color: "#1a6028",
+      playerName: mustBuyP.player_name, team: mustBuyP.team ?? "", position: mustBuyP.position,
+      projection: mustBuyP.projection, priceChange: mustBuyP.price_change,
+      bullets: mustBuyBullets(),
+      ctaLabel: "View Must Buys", ctaTo: "/sports/afl/current-round", index: 0,
+    },
+    {
+      label: "Trap Alert", icon: <AlertTriangle size={9} />,
+      color: "#881818",
+      playerName: trapP.player_name, team: trapP.team ?? "", position: trapP.position,
+      projection: trapP.projection, priceChange: trapP.price_change,
+      bullets: trapBullets(),
+      ctaLabel: "View Trap Alerts", ctaTo: "/sports/afl/current-round", index: 1,
+    },
+    {
+      label: "Captain Pick", icon: <Star size={9} />, badge: "C",
+      color: "#7a4800",
+      playerName: captainP.player_name, team: captainP.team ?? "", position: captainP.position,
+      projection: captainP.projection, priceChange: captainP.price_change,
+      bullets: captainBullets(),
+      ctaLabel: "View Captains", ctaTo: "/sports/afl/captains", index: 2,
+    },
+    {
+      label: "Best Value", icon: <BarChart3 size={9} />,
+      color: "#0d4278",
+      playerName: valueP.player_name, team: valueP.team ?? "", position: valueP.position,
+      projection: valueP.projection, priceChange: valueP.price_change,
+      bullets: valueBullets(),
+      ctaLabel: "Open Market Watch", ctaTo: "/sports/afl/market-watch", index: 3,
+    },
+  ] : [];
+
+  const showSkeleton = loading || (!loading && !allHeroReady);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -429,7 +458,7 @@ export default function Index() {
               <p style={{ fontSize: 9, color: "rgba(255,255,255,0.30)", fontWeight: 600, letterSpacing: "0.04em" }}>Updated Today · Data from 600+ players</p>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
-              {loading || cards.length === 0
+              {showSkeleton
                 ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
                 : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
               }
@@ -473,7 +502,7 @@ export default function Index() {
             {/* Cards grid */}
             <div style={{ marginTop: 24, maxWidth: 1020, marginLeft: "auto", marginRight: "auto" }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, width: "100%", alignItems: "end" }}>
-                {loading || cards.length === 0
+                {showSkeleton
                   ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
                   : cards.map((c) => (
                     <div key={c.label} style={{ display: "flex", flexDirection: "column" }}>
@@ -646,19 +675,19 @@ export default function Index() {
               ) : mwBuys.length === 0 ? (
                 <p style={{ fontSize: 13, color: "#9CA3AF", padding: "16px 0", textAlign: "center" }}>No targets this round</p>
               ) : (
-                mwBuys.slice(0, 4).map((p) => <MWCard key={p.player_id} player={p} categoryColor="#16a34a" />)
+                mwBuys.slice(0, 4).map((p) => <MWCard key={p.player_id} player={p as unknown as RankingRow} categoryColor="#16a34a" />)
               )}
               <Link to="/sports/afl/market-watch" style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 16, color: "#16a34a", fontWeight: 700, fontSize: 12.5, textDecoration: "none" }}>
                 View All Targets <ChevronRight size={13} />
               </Link>
             </div>
 
-            {/* Watch List */}
+            {/* Watch List — from engine holds bucket */}
             <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px", border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#d97706" }} />
                 <h3 style={{ fontSize: 14, fontWeight: 800, color: C.textDark, letterSpacing: "0.01em" }}>Watch List</h3>
-                <span style={{ marginLeft: "auto", fontSize: 11, color: "#6B7280" }}>{loading ? "—" : `${Math.max(0, players.filter(isPlayable).length - mwBuys.length - mwSells.length)} players`}</span>
+                <span style={{ marginLeft: "auto", fontSize: 11, color: "#6B7280" }}>{loading ? "—" : `${mwHolds.length} players`}</span>
               </div>
               {loading ? (
                 Array.from({ length: 3 }).map((_, i) => (
@@ -667,15 +696,13 @@ export default function Index() {
                     <div style={{ width: 36, height: 13, background: "#f3f4f6", borderRadius: 3 }} />
                   </div>
                 ))
+              ) : mwHolds.length === 0 ? (
+                <p style={{ fontSize: 13, color: "#9CA3AF", padding: "16px 0", textAlign: "center" }}>No watch list data</p>
               ) : (
-                players
-                  .filter(p => isPlayable(p) && !isBuy(p) && !isAvoid(p) && p.projection != null)
+                mwHolds
                   .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
                   .slice(0, 4)
-                  .map((p) => <MWCard key={p.player_id} player={p} categoryColor="#d97706" />)
-              )}
-              {!loading && players.length === 0 && (
-                <p style={{ fontSize: 13, color: "#9CA3AF", padding: "16px 0", textAlign: "center" }}>No watch list data</p>
+                  .map((p) => <MWCard key={p.player_id} player={p as unknown as RankingRow} categoryColor="#d97706" />)
               )}
               <Link to="/sports/afl/market-watch" style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 16, color: "#d97706", fontWeight: 700, fontSize: 12.5, textDecoration: "none" }}>
                 View Watch List <ChevronRight size={13} />
@@ -699,7 +726,7 @@ export default function Index() {
               ) : mwSells.length === 0 ? (
                 <p style={{ fontSize: 13, color: "#9CA3AF", padding: "16px 0", textAlign: "center" }}>No traps flagged this round</p>
               ) : (
-                mwSells.slice(0, 4).map((p) => <MWCard key={p.player_id} player={p} categoryColor={C.red} />)
+                mwSells.slice(0, 4).map((p) => <MWCard key={p.player_id} player={p as unknown as RankingRow} categoryColor={C.red} />)
               )}
               <Link to="/sports/afl/market-watch" style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 16, color: C.red, fontWeight: 700, fontSize: 12.5, textDecoration: "none" }}>
                 View All Traps <ChevronRight size={13} />
