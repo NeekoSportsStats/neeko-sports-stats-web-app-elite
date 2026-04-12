@@ -594,21 +594,7 @@ export default function Index() {
             </p>
 
             {/* ── WHITEBOARD ZONE ── */}
-            <div style={{ marginTop: 5, maxWidth: 1020, marginLeft: "auto", marginRight: "auto" }}>
-
-              {/* Round context bar */}
-              <div style={{ textAlign: "center", marginBottom: 10 }}>
-                <p style={{
-                  display: "inline-flex", alignItems: "center", gap: 10,
-                  fontSize: 8, fontWeight: 900, letterSpacing: "0.36em",
-                  textTransform: "uppercase", color: "rgba(244,197,66,0.58)",
-                  textShadow: "0 1px 2px rgba(0,0,0,0.45)",
-                }}>
-                  <span style={{ width: 28, height: 1, background: "rgba(244,197,66,0.28)", display: "inline-block" }} />
-                  This Week's Game Plan &nbsp;·&nbsp; Updated Today &nbsp;·&nbsp; Data from 600+ Players
-                  <span style={{ width: 28, height: 1, background: "rgba(244,197,66,0.28)", display: "inline-block" }} />
-                </p>
-              </div>
+            <div style={{ marginTop: -10, maxWidth: 1020, marginLeft: "auto", marginRight: "auto" }}>
 
               {/* Cards */}
               <div style={{
