@@ -360,7 +360,7 @@ export default function Index() {
             backgroundImage: "url('/hero/image.png')",
             backgroundSize: "cover",
             backgroundRepeat: "no-repeat",
-            backgroundPosition: "center 80%",
+            backgroundPosition: "center 92%",
             zIndex: 0,
           }} />
 
@@ -381,7 +381,7 @@ export default function Index() {
           {/* ── HEADLINE BLOCK: locked to chalkboard zone ── */}
           <div style={{
             position: "absolute",
-            top: 130,
+            top: 160,
             left: "50%",
             transform: "translateX(-50%)",
             textAlign: "center",
