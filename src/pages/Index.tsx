@@ -388,7 +388,7 @@ export default function Index() {
             width: "100%",
             maxWidth: 900,
             textAlign: "center",
-            paddingTop: 180,
+            paddingTop: 153,
           }}>
 
             {/* ── HEADLINE ── */}
