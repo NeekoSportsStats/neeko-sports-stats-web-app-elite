@@ -17,12 +17,12 @@ export function LandingLayout() {
         background: "transparent",
         display: "flex",
         alignItems: "center",
-        height: 64,
+        height: 42,
         padding: "0 32px",
       }}>
         {/* LOGO */}
         <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", marginRight: "auto" }}>
-          <img src="/logo.png" alt="Neeko" style={{ height: 52, width: "auto" }} />
+          <img src="/logo.png" alt="Neeko" style={{ height: 34, width: "auto" }} />
         </Link>
 
         {/* RIGHT BUTTONS */}
