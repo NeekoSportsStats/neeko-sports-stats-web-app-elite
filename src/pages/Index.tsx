@@ -637,7 +637,7 @@ export default function Index() {
               {/* Trust bar */}
               <div style={{
                 display: "flex", justifyContent: "center", alignItems: "center",
-                gap: 28, marginTop: 14,
+                gap: 28, marginTop: 7,
               }}>
                 {trustBar.map(({ icon, text }) => (
                   <div key={text} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: "rgba(255,255,255,0.36)", fontWeight: 600 }}>
