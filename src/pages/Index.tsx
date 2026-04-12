@@ -1,13 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import {
-  Crown, ArrowRight, Check, TrendingUp,
-  TriangleAlert as AlertTriangle, Star,
-  ChartBar as BarChart3, ChevronRight,
-  Zap, Database, Clock, Target, ShieldAlert,
-  Users, ListOrdered, Swords, GitCompare,
-} from "lucide-react";
+import { Crown, ArrowRight, Check, TrendingUp, TriangleAlert as AlertTriangle, Star, ChartBar as BarChart3, ChevronRight, Zap, Database, Clock, Target, ShieldAlert, Users, ListOrdered, Swords, GitCompare, CalendarDays, SquareSplitHorizontal as SplitSquareHorizontal } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
@@ -16,6 +10,72 @@ import type { RankingRow } from "@/features/afl/rankings/components/types";
 import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
 import { classifyPlayers } from "@/features/afl/market-watch/engine";
 import type { MWPlayerRow } from "@/features/afl/market-watch/types";
+
+// ── Hero nav pills ─────────────────────────────────────────────────────────────
+const NAV_PILLS = [
+  { label: "Current Week", icon: <CalendarDays size={14} />, to: "/sports/afl/current-round", primary: true },
+  { label: "Market Watch", icon: <TrendingUp size={14} />,   to: "/sports/afl/market-watch" },
+  { label: "Captains",     icon: <Star size={14} />,          to: "/sports/afl/captains" },
+  { label: "Rankings",     icon: <BarChart3 size={14} />,     to: "/sports/afl/rankings" },
+  { label: "Compare",      icon: <SplitSquareHorizontal size={14} />, to: "/sports/afl/compare" },
+] as const;
+
+function HeroNavPills({ style }: { style?: React.CSSProperties }) {
+  return (
+    <div style={{
+      width: "100%",
+      overflowX: "auto",
+      scrollbarWidth: "none",
+      msOverflowStyle: "none",
+      WebkitOverflowScrolling: "touch",
+      ...style,
+    }}>
+      <div style={{
+        display: "flex",
+        gap: 10,
+        justifyContent: "center",
+        padding: "2px 16px",
+        minWidth: "max-content",
+        margin: "0 auto",
+      }}>
+        {NAV_PILLS.map(({ label, icon, to, primary }) => (
+          <Link
+            key={to}
+            to={to}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "9px 16px",
+              borderRadius: 999,
+              fontSize: 13,
+              fontWeight: 500,
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+              transition: "background 0.15s, border-color 0.15s",
+              background: primary ? "rgba(244,197,66,0.14)" : "rgba(255,255,255,0.06)",
+              border: `1px solid ${primary ? "rgba(244,197,66,0.32)" : "rgba(255,255,255,0.08)"}`,
+              color: primary ? "#F4C542" : "#EAEAEA",
+            }}
+            onMouseEnter={e => {
+              const el = e.currentTarget as HTMLAnchorElement;
+              el.style.background = primary ? "rgba(244,197,66,0.22)" : "rgba(255,255,255,0.12)";
+              el.style.borderColor = primary ? "rgba(244,197,66,0.45)" : "rgba(255,255,255,0.15)";
+            }}
+            onMouseLeave={e => {
+              const el = e.currentTarget as HTMLAnchorElement;
+              el.style.background = primary ? "rgba(244,197,66,0.14)" : "rgba(255,255,255,0.06)";
+              el.style.borderColor = primary ? "rgba(244,197,66,0.32)" : "rgba(255,255,255,0.08)";
+            }}
+          >
+            <span style={{ opacity: 0.7, display: "flex", alignItems: "center" }}>{icon}</span>
+            {label}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 const C = {
@@ -470,6 +530,8 @@ export default function Index() {
                 </div>
               ))}
             </div>
+
+            <HeroNavPills style={{ marginTop: 22 }} />
           </div>
         </section>
       ) : (
@@ -519,6 +581,8 @@ export default function Index() {
                   </div>
                 ))}
               </div>
+
+              <HeroNavPills style={{ marginTop: 24 }} />
             </div>
           </div>
         </section>
