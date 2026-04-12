@@ -73,7 +73,10 @@ type CardProps = {
   ctaLabel: string;
   ctaTo: string;
   badge?: string;
+  index?: number;
 };
+
+const CARD_ROTATIONS = [-0.5, 0.6, -0.4, 0.5];
 
 function WhiteboardCard(p: CardProps) {
   const [hovered, setHovered] = useState(false);
@@ -82,6 +85,7 @@ function WhiteboardCard(p: CardProps) {
   const priceStr = p.priceChange != null
     ? `${up ? "+" : ""}${Math.round(p.priceChange / 1000)}k`
     : null;
+  const rotation = CARD_ROTATIONS[p.index ?? 0] ?? -0.5;
 
   return (
     <Link to={p.ctaTo} style={{ textDecoration: "none", display: "block" }}>
@@ -91,11 +95,13 @@ function WhiteboardCard(p: CardProps) {
         style={{
           background: "#f8f6f2",
           borderRadius: 10,
-          border: `1.5px solid ${p.color}20`,
+          border: `1px solid rgba(0,0,0,0.08)`,
           boxShadow: hovered
-            ? `0 18px 48px rgba(0,0,0,0.32)`
-            : "0 12px 30px rgba(0,0,0,0.25)",
-          transform: hovered ? "translateY(-4px)" : "translateY(0)",
+            ? `0 4px 8px rgba(0,0,0,0.28), 0 16px 40px rgba(0,0,0,0.32)`
+            : `0 2px 6px rgba(0,0,0,0.25), 0 10px 20px rgba(0,0,0,0.25)`,
+          transform: hovered
+            ? `rotate(${rotation}deg) translateY(-5px)`
+            : `rotate(${rotation}deg) translateY(0)`,
           transition: "all 0.2s ease",
           overflow: "hidden",
         }}
@@ -103,7 +109,8 @@ function WhiteboardCard(p: CardProps) {
         <div style={{
           background: p.headerBg,
           padding: "8px 10px",
-          borderBottom: `1px solid ${p.color}18`,
+          opacity: 0.92,
+          borderBottom: `1px solid rgba(0,0,0,0.1)`,
           display: "flex", alignItems: "center", gap: 5,
         }}>
           <span style={{ color: p.color, display: "flex", alignItems: "center", flexShrink: 0 }}>{p.icon}</span>
@@ -151,10 +158,13 @@ function WhiteboardCard(p: CardProps) {
 
         <div style={{ padding: "0 9px 9px" }}>
           <div style={{
-            background: p.color, color: "#fff",
+            background: "#e8dfcf",
+            color: "rgba(30,20,5,0.78)",
             fontSize: 8, fontWeight: 800, textAlign: "center",
             padding: "6px 8px", borderRadius: 5,
             letterSpacing: "0.06em",
+            border: "1px solid rgba(0,0,0,0.15)",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 3,
           }}>
             {p.ctaLabel} <ChevronRight size={7} />
@@ -367,24 +377,31 @@ export default function Index() {
             zIndex: 0,
           }} />
 
-          {/* VIGNETTE */}
+          {/* CINEMATIC OVERLAY — depth + readability */}
           <div style={{
             position: "absolute", inset: 0,
-            background: "radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.52) 100%)",
+            background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 35%, rgba(0,0,0,0.15) 55%, rgba(0,0,0,0.6) 100%)",
             zIndex: 1, pointerEvents: "none",
+          }} />
+
+          {/* VIGNETTE — directional, not symmetric */}
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.48) 100%)",
+            zIndex: 2, pointerEvents: "none",
           }} />
 
           {/* BOTTOM fade */}
           <div style={{
-            position: "absolute", bottom: 0, left: 0, right: 0, height: "14%",
-            background: "linear-gradient(to bottom, transparent 0%, rgba(10,8,4,0.85) 60%, #0a0a0a 100%)",
-            zIndex: 2, pointerEvents: "none",
+            position: "absolute", bottom: 0, left: 0, right: 0, height: "18%",
+            background: "linear-gradient(to bottom, transparent 0%, rgba(10,8,4,0.92) 65%, #0a0a0a 100%)",
+            zIndex: 3, pointerEvents: "none",
           }} />
 
           {/* CONTENT WRAPPER — single flow column */}
           <div style={{
             position: "relative",
-            zIndex: 10,
+            zIndex: 20,
             width: "100%",
             maxWidth: 900,
             textAlign: "center",
@@ -399,9 +416,9 @@ export default function Index() {
               lineHeight: 1.1,
               letterSpacing: "-0.02em",
               color: "#f5f5f5",
-              textShadow: "0 2px 6px rgba(0,0,0,0.6), 0 1px 2px rgba(0,0,0,0.4)",
+              textShadow: "0 2px 4px rgba(0,0,0,0.6), 0 8px 24px rgba(0,0,0,0.5)",
             }}>
-              Win Your <span style={{ color: "#facc15" }}>AFL Fantasy</span>
+              Win Your <span style={{ color: "#f4c542" }}>AFL Fantasy</span>
               <br />Week in 30 Seconds
             </h1>
 
@@ -411,7 +428,7 @@ export default function Index() {
               fontSize: 18,
               color: "rgba(255,255,255,0.85)",
               lineHeight: 1.6,
-              textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+              textShadow: "0 1px 2px rgba(0,0,0,0.5)",
             }}>
               Trades, targets, captains, and traps — powered by data, just like an AFL coach.
             </p>
@@ -420,25 +437,29 @@ export default function Index() {
             <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 11 }}>
               <Link to="/auth" style={{
                 display: "flex", alignItems: "center", gap: 8,
-                background: "linear-gradient(to bottom, #facc15, #eab308)",
+                background: "linear-gradient(to bottom, #f7d774, #e6b800)",
                 color: "#111",
                 fontWeight: 700, fontSize: 14,
                 padding: "14px 28px", borderRadius: 10, textDecoration: "none",
-                boxShadow: "0 4px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4)",
+                border: "1px solid rgba(0,0,0,0.25)",
+                boxShadow: "0 2px 0 rgba(0,0,0,0.4), 0 6px 12px rgba(0,0,0,0.4)",
                 letterSpacing: "0.02em",
+                transform: "translateY(0)",
+                transition: "transform 0.15s ease",
               }}>
                 Get Started Free <ArrowRight size={14} />
               </Link>
               {!isPremium && (
                 <Link to="/neeko-plus" style={{
                   display: "flex", alignItems: "center", gap: 8,
-                  background: "rgba(255,255,255,0.08)",
+                  background: "rgba(255,255,255,0.15)",
                   backdropFilter: "blur(6px)",
                   border: "1px solid rgba(255,255,255,0.2)",
                   color: "#ffffff",
                   fontWeight: 700, fontSize: 14,
                   padding: "14px 28px", borderRadius: 10, textDecoration: "none",
                   letterSpacing: "0.02em",
+                  boxShadow: "0 4px 10px rgba(0,0,0,0.4)",
                 }}>
                   <Crown size={14} /> Unlock Full Access
                 </Link>
@@ -459,8 +480,9 @@ export default function Index() {
             }}>
               <p style={{
                 fontSize: 8.5, fontWeight: 900, letterSpacing: "0.42em",
-                textTransform: "uppercase", color: "rgba(80,58,18,0.40)",
+                textTransform: "uppercase", color: "rgba(244,197,66,0.55)",
                 marginBottom: 10,
+                textShadow: "0 1px 2px rgba(0,0,0,0.4)",
               }}>
                 Coach's Whiteboard
               </p>
@@ -473,7 +495,7 @@ export default function Index() {
               }}>
                 {loading
                   ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
-                  : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
+                  : cards.map((c, i) => <WhiteboardCard key={c.label} {...c} index={i} />)
                 }
               </div>
 
@@ -489,23 +511,23 @@ export default function Index() {
                     key={label} to={to}
                     style={{
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                      fontSize: 12, fontWeight: 700, color: "rgba(30,20,5,0.72)",
+                      fontSize: 12, fontWeight: 700, color: "rgba(30,20,5,0.78)",
                       textDecoration: "none",
-                      background: "rgba(252,246,228,0.75)",
-                      border: "1px solid rgba(160,125,55,0.22)",
+                      background: "#e8dfcf",
+                      border: "1px solid rgba(0,0,0,0.15)",
                       padding: "7px 18px", borderRadius: 24,
-                      backdropFilter: "blur(6px)",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.2)",
                       transition: "all 0.15s ease",
                     }}
                     onMouseEnter={e => {
                       const el = e.currentTarget as HTMLElement;
-                      el.style.background = "rgba(255,252,238,0.96)";
+                      el.style.background = "#f0e8d6";
                       el.style.color = "#1a1208";
                     }}
                     onMouseLeave={e => {
                       const el = e.currentTarget as HTMLElement;
-                      el.style.background = "rgba(252,246,228,0.75)";
-                      el.style.color = "rgba(30,20,5,0.72)";
+                      el.style.background = "#e8dfcf";
+                      el.style.color = "rgba(30,20,5,0.78)";
                     }}
                   >
                     <span style={{ color }}>{icon}</span>{label}
