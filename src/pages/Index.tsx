@@ -332,80 +332,94 @@ export default function Index() {
           </div>
         </section>
       ) : (
-        /* ── DESKTOP: scene-based absolute layout, pixel-locked to background image ── */
+        /* ── DESKTOP: scene-based poster layout
+             Image is placed as <img> so we control its exact height
+             and avoid aggressive cover-crop. All UI is absolutely
+             positioned relative to the scene height. ── */
         <section style={{
           position: "relative",
           width: "100%",
-          height: "100vh",
+          /* Scene height matches image aspect — reference is ~portrait, so use 1260px */
+          height: 1260,
           overflow: "hidden",
+          background: "#0a0a0a",
         }}>
-          {/* Background image — full bleed, no overlay, no blur */}
-          <div style={{
-            position: "absolute", inset: 0,
-            backgroundImage: "url('/image.png')",
-            backgroundSize: "cover",
-            backgroundPosition: "center center",
-            backgroundRepeat: "no-repeat",
-            zIndex: 0,
-          }} />
+          {/* Background image — pinned absolutely, fills scene width, full height visible */}
+          <img
+            src="/image.png"
+            alt=""
+            aria-hidden="true"
+            style={{
+              position: "absolute",
+              top: 0,
+              left: "50%",
+              transform: "translateX(-50%)",
+              /* Show the full image: width drives the display, height is auto */
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              objectPosition: "center top",
+              zIndex: 0,
+              pointerEvents: "none",
+              userSelect: "none",
+            }}
+          />
 
-          {/* Bottom fade — starts at 70%, well below whiteboard cards */}
+          {/* Bottom fade — starts near 78% so tray/football stay fully visible */}
           <div style={{
-            position: "absolute", bottom: 0, left: 0, right: 0, height: "30%",
-            background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.2) 40%, rgba(10,10,10,0.88) 75%, #0a0a0a 100%)",
+            position: "absolute", bottom: 0, left: 0, right: 0, height: "22%",
+            background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(5,5,5,0.55) 55%, rgba(10,10,10,0.92) 80%, #0a0a0a 100%)",
             zIndex: 2,
             pointerEvents: "none",
           }} />
 
-          {/* ── HERO TEXT: locked inside chalkboard zone, top 16% ── */}
+          {/* ══ HERO TEXT — chalkboard zone, ~11–14% from top ══ */}
           <div style={{
             position: "absolute",
-            top: "16%",
+            top: 132,
             left: "50%",
             transform: "translateX(-50%)",
             textAlign: "center",
-            width: "min(820px, 90vw)",
+            width: "min(780px, 88vw)",
             zIndex: 10,
           }}>
             <h1 style={{
-              fontSize: "clamp(2rem, 4vw, 3rem)",
-              fontWeight: 900, lineHeight: 1.05, letterSpacing: "-0.028em",
+              fontSize: "clamp(2rem, 3.4vw, 2.75rem)",
+              fontWeight: 900, lineHeight: 1.06, letterSpacing: "-0.026em",
               color: "#ffffff",
-              textShadow: "0 2px 24px rgba(0,0,0,0.80)",
-              marginBottom: 12,
+              textShadow: "0 2px 28px rgba(0,0,0,0.85)",
+              marginBottom: 10,
             }}>
               Win Your <span style={{ color: "#F5C451" }}>AFL Fantasy</span>
               <br />Week in 30 Seconds
             </h1>
 
             <p style={{
-              fontSize: "clamp(12px, 1.5vw, 15px)",
-              color: "rgba(255,255,255,0.70)",
-              marginBottom: 22, lineHeight: 1.6,
+              fontSize: 14,
+              color: "rgba(255,255,255,0.68)",
+              marginBottom: 20, lineHeight: 1.6,
             }}>
               Trades, targets, captains, and traps — powered by data, just like an AFL coach.
             </p>
 
-            <div style={{ display: "flex", gap: 14, justifyContent: "center", marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 10 }}>
               <Link to="/auth" style={{
                 display: "flex", alignItems: "center", gap: 8,
                 background: "#F5C451", color: "#1a0e00",
                 fontWeight: 800, fontSize: 14,
-                padding: "11px 28px", borderRadius: 6, textDecoration: "none",
-                boxShadow: "0 4px 20px rgba(245,196,81,0.45), inset 0 1px 0 rgba(255,255,255,0.28)",
+                padding: "11px 26px", borderRadius: 6, textDecoration: "none",
+                boxShadow: "0 4px 20px rgba(245,196,81,0.44), inset 0 1px 0 rgba(255,255,255,0.28)",
                 letterSpacing: "0.02em",
-                transform: "scale(1.05)",
               }}>
                 Get Started Free <ArrowRight size={14} />
               </Link>
               {!isPremium && (
                 <Link to="/neeko-plus" style={{
                   display: "flex", alignItems: "center", gap: 8,
-                  background: "rgba(245,196,81,0.12)", color: "#F5C451",
+                  background: "rgba(245,196,81,0.10)", color: "#F5C451",
                   fontWeight: 800, fontSize: 14,
-                  padding: "11px 28px", borderRadius: 6, textDecoration: "none",
-                  border: "1.5px solid rgba(245,196,81,0.42)", letterSpacing: "0.02em",
-                  opacity: 0.85,
+                  padding: "11px 26px", borderRadius: 6, textDecoration: "none",
+                  border: "1.5px solid rgba(245,196,81,0.40)", letterSpacing: "0.02em",
                 }}>
                   <Crown size={14} /> Unlock Full Access
                 </Link>
@@ -417,35 +431,35 @@ export default function Index() {
             </p>
           </div>
 
-          {/* ── WHITEBOARD LABEL: sits at the boundary between chalkboard and whiteboard ── */}
+          {/* ══ COACH'S WHITEBOARD label — sits right at whiteboard transition ══ */}
           <div style={{
             position: "absolute",
-            top: "44%",
+            top: 428,
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 10,
             textAlign: "center",
-            width: "min(1100px, 94vw)",
+            width: "min(1240px, 96vw)",
           }}>
             <p style={{
-              fontSize: 9, fontWeight: 900, letterSpacing: "0.36em",
-              textTransform: "uppercase", color: "rgba(80,60,30,0.55)",
-              marginBottom: 10,
+              fontSize: 9, fontWeight: 900, letterSpacing: "0.38em",
+              textTransform: "uppercase", color: "rgba(60,48,20,0.50)",
+              marginBottom: 8,
             }}>
               Coach's Whiteboard
             </p>
           </div>
 
-          {/* ── PLAYER CARDS: top 46%, anchored to whiteboard surface ── */}
+          {/* ══ PLAYER CARDS — whiteboard surface, ~36% down (≈454px of 1260) ══ */}
           <div style={{
             position: "absolute",
-            top: "46%",
+            top: 448,
             left: "50%",
             transform: "translateX(-50%)",
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 20,
-            width: "min(1100px, 94vw)",
+            gap: 18,
+            width: "min(1240px, 96vw)",
             zIndex: 10,
           }}>
             {loading
@@ -454,17 +468,17 @@ export default function Index() {
             }
           </div>
 
-          {/* ── ICON ROW: 68% — below whiteboard cards ── */}
+          {/* ══ QUICK ACTION ROW — below cards, tray zone ~62% (≈782px) ══ */}
           <div style={{
             position: "absolute",
-            top: "68%",
+            top: 782,
             left: "50%",
             transform: "translateX(-50%)",
             display: "flex",
             justifyContent: "center",
-            gap: 24,
+            gap: 20,
             zIndex: 10,
-            width: "min(1100px, 94vw)",
+            width: "min(1240px, 96vw)",
             flexWrap: "wrap",
           }}>
             {quickActions.map(({ to, icon, label, color }) => (
@@ -472,23 +486,23 @@ export default function Index() {
                 key={label} to={to}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  fontSize: 12, fontWeight: 700, color: "rgba(40,30,10,0.65)",
+                  fontSize: 12, fontWeight: 700, color: "rgba(35,25,8,0.70)",
                   textDecoration: "none",
-                  background: "rgba(255,255,255,0.55)",
-                  border: "1px solid rgba(180,160,100,0.30)",
+                  background: "rgba(252,248,238,0.62)",
+                  border: "1px solid rgba(180,155,90,0.28)",
                   padding: "7px 18px", borderRadius: 24,
-                  backdropFilter: "blur(4px)",
+                  backdropFilter: "blur(3px)",
                   transition: "all 0.15s ease",
                 }}
                 onMouseEnter={e => {
                   const el = e.currentTarget as HTMLElement;
-                  el.style.background = `rgba(255,255,255,0.80)`;
+                  el.style.background = "rgba(255,252,242,0.88)";
                   el.style.color = "#1a1208";
                 }}
                 onMouseLeave={e => {
                   const el = e.currentTarget as HTMLElement;
-                  el.style.background = "rgba(255,255,255,0.55)";
-                  el.style.color = "rgba(40,30,10,0.65)";
+                  el.style.background = "rgba(252,248,238,0.62)";
+                  el.style.color = "rgba(35,25,8,0.70)";
                 }}
               >
                 <span style={{ color }}>{icon}</span>{label}
@@ -501,7 +515,7 @@ export default function Index() {
       {/* ══════════════════════════════════════════════
           DARK SECTION — normal flow resumes here
       ══════════════════════════════════════════════ */}
-      <section style={{ background: "#0a0a0a", padding: "clamp(64px, 9vw, 104px) clamp(16px, 4vw, 32px)" }}>
+      <section style={{ background: "#0a0a0a", padding: "48px clamp(16px, 4vw, 32px) clamp(64px, 9vw, 104px)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
 
           <div style={{ textAlign: "center", marginBottom: 52 }}>
