@@ -596,7 +596,12 @@ export default function Index() {
             {/* ── WHITEBOARD ZONE ── */}
             <div style={{ marginTop: -10, maxWidth: 1020, marginLeft: "auto", marginRight: "auto" }}>
 
-              {/* Cards */}
+              {/* Updated label */}
+              <p style={{ fontSize: 14, color: "rgba(255,255,255,0.38)", textAlign: "center", marginBottom: 10, lineHeight: 1.65 }}>
+                Weekly must buys, traps, targets and captains — powered by AFL data. Updated before every lockout.
+              </p>
+
+              {/* Cards + quick action links */}
               <div style={{
                 display: "grid",
                 gridTemplateColumns: "repeat(4, 1fr)",
@@ -606,7 +611,46 @@ export default function Index() {
               }}>
                 {loading
                   ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
-                  : cards.map((c, i) => <WhiteboardCard key={c.label} {...c} index={i} />)
+                  : cards.map((c, i) => {
+                      const qa = quickActions[i];
+                      return (
+                        <div key={c.label} style={{ display: "flex", flexDirection: "column" }}>
+                          <WhiteboardCard {...c} index={i} />
+                          {qa && (
+                            <Link
+                              to={qa.to}
+                              style={{
+                                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
+                                textDecoration: "none",
+                                background: "rgba(255,255,255,0.07)",
+                                border: "1px solid rgba(255,255,255,0.11)",
+                                padding: "10px 12px", borderRadius: 6,
+                                transition: "all 0.15s ease",
+                                textAlign: "center",
+                                marginTop: 8,
+                              }}
+                              onMouseEnter={e => {
+                                const el = e.currentTarget as HTMLElement;
+                                el.style.background = "rgba(255,255,255,0.12)";
+                                el.style.borderColor = "rgba(255,255,255,0.20)";
+                              }}
+                              onMouseLeave={e => {
+                                const el = e.currentTarget as HTMLElement;
+                                el.style.background = "rgba(255,255,255,0.07)";
+                                el.style.borderColor = "rgba(255,255,255,0.11)";
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2 }}>
+                                <span style={{ color: qa.color }}>{qa.icon}</span>
+                                <span style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.75)", letterSpacing: "0.01em" }}>{qa.label}</span>
+                                <ChevronRight size={9} style={{ color: "rgba(255,255,255,0.25)" }} />
+                              </div>
+                              <span style={{ fontSize: 8.5, color: "rgba(255,255,255,0.28)", fontWeight: 500, lineHeight: 1.3 }}>{qa.desc}</span>
+                            </Link>
+                          )}
+                        </div>
+                      );
+                    })
                 }
               </div>
 
@@ -621,50 +665,6 @@ export default function Index() {
                     {text}
                   </div>
                 ))}
-              </div>
-
-              {/* ── GO DEEPER ── */}
-              <div style={{ marginTop: 16 }}>
-                <p style={{ fontSize: 7.5, fontWeight: 900, letterSpacing: "0.32em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)", marginBottom: 9, textAlign: "center" }}>
-                  Go Deeper
-                </p>
-                <div style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(4, 1fr)",
-                  gap: 10,
-                }}>
-                  {quickActions.map(({ to, icon, label, desc, color }) => (
-                    <Link
-                      key={label} to={to}
-                      style={{
-                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
-                        textDecoration: "none",
-                        background: "rgba(255,255,255,0.07)",
-                        border: "1px solid rgba(255,255,255,0.11)",
-                        padding: "10px 12px", borderRadius: 6,
-                        transition: "all 0.15s ease",
-                        textAlign: "center",
-                      }}
-                      onMouseEnter={e => {
-                        const el = e.currentTarget as HTMLElement;
-                        el.style.background = "rgba(255,255,255,0.12)";
-                        el.style.borderColor = "rgba(255,255,255,0.20)";
-                      }}
-                      onMouseLeave={e => {
-                        const el = e.currentTarget as HTMLElement;
-                        el.style.background = "rgba(255,255,255,0.07)";
-                        el.style.borderColor = "rgba(255,255,255,0.11)";
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2 }}>
-                        <span style={{ color }}>{icon}</span>
-                        <span style={{ fontSize: 11, fontWeight: 800, color: "rgba(255,255,255,0.75)", letterSpacing: "0.01em" }}>{label}</span>
-                        <ChevronRight size={9} style={{ color: "rgba(255,255,255,0.25)" }} />
-                      </div>
-                      <span style={{ fontSize: 8.5, color: "rgba(255,255,255,0.28)", fontWeight: 500, lineHeight: 1.3 }}>{desc}</span>
-                    </Link>
-                  ))}
-                </div>
               </div>
             </div>
 
@@ -685,9 +685,6 @@ export default function Index() {
             }}>
               Dominate Your AFL Fantasy This Round
             </h2>
-            <p style={{ fontSize: 14, color: "rgba(255,255,255,0.38)", maxWidth: 500, margin: "0 auto", lineHeight: 1.65 }}>
-              Weekly must buys, traps, targets and captains — powered by AFL data. Updated before every lockout.
-            </p>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, marginBottom: 72 }}>
