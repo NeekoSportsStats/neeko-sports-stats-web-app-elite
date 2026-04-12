@@ -345,98 +345,80 @@ export default function Index() {
           </div>
         </section>
       ) : (
-        /* ── DESKTOP: full-bleed background-image approach.
-             Image: 1536 × 1024px landscape (3:2 ratio).
-             background-size: cover fills 100% width at any viewport.
-             background-position: center 18% → shows:
-               top 0–18% = wood rail (slight reveal at very top)
-               18–50%    = chalkboard (dark tactical board) ← HEADLINE
-               50–75%    = whiteboard (clean white surface) ← CARDS
-               75–100%   = tray + football + bottom wood   ← FULLY VISIBLE
-             Hero height: 94vh (min 860px, max 980px) ensures the full
-             image scene is always visible without excess dead space. ── */
+        /* ── DESKTOP: full-bleed hero — physically grounded in the board ── */
         <section style={{
           position: "relative",
-          width: "100vw",
-          marginLeft: "calc(-50vw + 50%)",
-          height: "clamp(860px, 94vh, 980px)",
+          width: "100%",
+          height: "clamp(860px, 96vh, 1020px)",
           overflow: "hidden",
-          background: "#2a1e0e",
+          background: "#1a1008",
         }}>
-          {/* ── BACKGROUND IMAGE: full bleed, sharp, no img tag ── */}
+          {/* BACKGROUND: image fills from top, board zones align to content */}
           <div style={{
             position: "absolute",
             inset: 0,
             backgroundImage: "url('/hero/image.png')",
             backgroundSize: "cover",
             backgroundRepeat: "no-repeat",
-            backgroundPosition: "center 0%",
+            backgroundPosition: "center 38%",
             zIndex: 0,
           }} />
 
-          {/* ── TOP edge fade: darkens wood rail at very top ── */}
-          <div style={{
-            position: "absolute", top: 0, left: 0, right: 0, height: 64,
-            background: "linear-gradient(to bottom, rgba(0,0,0,0.50) 0%, rgba(0,0,0,0) 100%)",
-            zIndex: 2, pointerEvents: "none",
-          }} />
-
-          {/* ── BOTTOM fade: only bottom 12% — tray + football stay clear ── */}
-          <div style={{
-            position: "absolute", bottom: 0, left: 0, right: 0, height: "12%",
-            background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(8,6,4,0.60) 40%, rgba(10,8,4,0.94) 80%, #0a0a0a 100%)",
-            zIndex: 2, pointerEvents: "none",
-          }} />
-
-          {/* ── LEFT/RIGHT side fades — softens the image edges ── */}
+          {/* VIGNETTE: depth, makes content feel grounded */}
           <div style={{
             position: "absolute", inset: 0,
-            background: "linear-gradient(to right, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0) 12%, rgba(0,0,0,0) 88%, rgba(0,0,0,0.18) 100%)",
+            background: "radial-gradient(ellipse at center, transparent 45%, rgba(0,0,0,0.52) 100%)",
+            zIndex: 1, pointerEvents: "none",
+          }} />
+
+          {/* BOTTOM fade into page */}
+          <div style={{
+            position: "absolute", bottom: 0, left: 0, right: 0, height: "14%",
+            background: "linear-gradient(to bottom, transparent 0%, rgba(10,8,4,0.85) 60%, #0a0a0a 100%)",
             zIndex: 2, pointerEvents: "none",
           }} />
 
-          {/* ══════════════════════════════════════════════
-              HEADLINE BLOCK
-              Sits on chalkboard zone: ~18–45% of image height.
-              At hero height 920px, 18% = 166px, 45% = 414px.
-              Centre of chalkboard ≈ 290px from top.
-              Position text block at top: 140px (headline centred ~220px). ══ */}
+          {/* ── HEADLINE BLOCK: locked to chalkboard zone ── */}
           <div style={{
             position: "absolute",
-            top: 150,
+            top: 110,
             left: "50%",
             transform: "translateX(-50%)",
             textAlign: "center",
-            width: "min(700px, 78vw)",
+            width: "min(820px, 82vw)",
             zIndex: 10,
           }}>
             <h1 style={{
-              fontSize: "clamp(2rem, 3.4vw, 2.9rem)",
-              fontWeight: 900, lineHeight: 1.05, letterSpacing: "-0.028em",
-              color: "#ffffff",
-              textShadow: "0 2px 36px rgba(0,0,0,0.98), 0 0 80px rgba(0,0,0,0.7)",
-              marginBottom: 14,
+              fontSize: "clamp(2.4rem, 3.8vw, 3.2rem)",
+              fontWeight: 800,
+              lineHeight: 1.1,
+              letterSpacing: "-0.02em",
+              color: "#f5f5f5",
+              textShadow: "0 2px 6px rgba(0,0,0,0.6), 0 1px 2px rgba(0,0,0,0.4)",
+              marginBottom: 0,
             }}>
-              Win Your <span style={{ color: "#F5C451" }}>AFL Fantasy</span>
+              Win Your <span style={{ color: "#facc15" }}>AFL Fantasy</span>
               <br />Week in 30 Seconds
             </h1>
 
             <p style={{
-              fontSize: 15,
-              color: "rgba(255,255,255,0.75)",
-              marginBottom: 24, lineHeight: 1.65,
-              textShadow: "0 1px 12px rgba(0,0,0,0.90)",
+              marginTop: 14,
+              fontSize: 18,
+              color: "rgba(255,255,255,0.85)",
+              lineHeight: 1.6,
+              textShadow: "0 1px 3px rgba(0,0,0,0.5)",
             }}>
               Trades, targets, captains, and traps — powered by data, just like an AFL coach.
             </p>
 
-            <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 14 }}>
+            <div style={{ display: "flex", gap: 14, justifyContent: "center", marginTop: 22 }}>
               <Link to="/auth" style={{
                 display: "flex", alignItems: "center", gap: 8,
-                background: "#F5C451", color: "#1a0e00",
-                fontWeight: 800, fontSize: 14,
-                padding: "12px 30px", borderRadius: 7, textDecoration: "none",
-                boxShadow: "0 4px 24px rgba(245,196,81,0.50), inset 0 1px 0 rgba(255,255,255,0.30)",
+                background: "linear-gradient(to bottom, #facc15, #eab308)",
+                color: "#111",
+                fontWeight: 700, fontSize: 14,
+                padding: "14px 28px", borderRadius: 10, textDecoration: "none",
+                boxShadow: "0 4px 10px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.4)",
                 letterSpacing: "0.02em",
               }}>
                 Get Started Free <ArrowRight size={14} />
@@ -444,38 +426,37 @@ export default function Index() {
               {!isPremium && (
                 <Link to="/neeko-plus" style={{
                   display: "flex", alignItems: "center", gap: 8,
-                  background: "rgba(245,196,81,0.12)", color: "#F5C451",
-                  fontWeight: 800, fontSize: 14,
-                  padding: "12px 30px", borderRadius: 7, textDecoration: "none",
-                  border: "1.5px solid rgba(245,196,81,0.44)", letterSpacing: "0.02em",
+                  background: "rgba(255,255,255,0.08)",
+                  backdropFilter: "blur(6px)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  color: "#ffffff",
+                  fontWeight: 700, fontSize: 14,
+                  padding: "14px 28px", borderRadius: 10, textDecoration: "none",
+                  letterSpacing: "0.02em",
                 }}>
                   <Crown size={14} /> Unlock Full Access
                 </Link>
               )}
             </div>
 
-            <p style={{ fontSize: 10.5, color: "rgba(255,255,255,0.26)", letterSpacing: "0.03em" }}>
-              Updated before every AFL Fantasy round lockout · 630+ players analysed weekly
+            <p style={{ marginTop: 10, fontSize: 11, color: "rgba(255,255,255,0.32)", letterSpacing: "0.03em" }}>
+              Updated before every AFL Fantasy round lockout · 630+ players fully analysed weekly
             </p>
           </div>
 
-          {/* ══════════════════════════════════════════════
-              WHITEBOARD LABEL + CARDS
-              Whiteboard zone: 45–75% of image height.
-              At 920px hero: 45% = 414px, 75% = 690px.
-              Cards sit from ~430px to ~680px = clean on white surface. ══ */}
+          {/* ── CARDS: sit on whiteboard zone ── */}
           <div style={{
             position: "absolute",
-            top: 340,
+            top: 370,
             left: "50%",
             transform: "translateX(-50%)",
             zIndex: 10,
             textAlign: "center",
-            width: "min(1160px, 92vw)",
+            width: "min(1140px, 90vw)",
           }}>
             <p style={{
-              fontSize: 8.5, fontWeight: 900, letterSpacing: "0.40em",
-              textTransform: "uppercase", color: "rgba(80,60,20,0.38)",
+              fontSize: 8.5, fontWeight: 900, letterSpacing: "0.42em",
+              textTransform: "uppercase", color: "rgba(80,58,18,0.40)",
               marginBottom: 10,
             }}>
               Coach's Whiteboard
@@ -484,7 +465,7 @@ export default function Index() {
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 14,
+              gap: 13,
             }}>
               {loading
                 ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
@@ -493,20 +474,17 @@ export default function Index() {
             </div>
           </div>
 
-          {/* ══════════════════════════════════════════════
-              QUICK ACTIONS ROW
-              Sits below cards, still on whiteboard, above tray.
-              At 920px hero: whiteboard ends ~690px, actions at ~700px. ══ */}
+          {/* ── QUICK ACTIONS: above tray ── */}
           <div style={{
             position: "absolute",
-            top: 620,
+            top: 650,
             left: "50%",
             transform: "translateX(-50%)",
             display: "flex",
             justifyContent: "center",
-            gap: 14,
+            gap: 12,
             zIndex: 10,
-            width: "min(1160px, 92vw)",
+            width: "min(1140px, 90vw)",
             flexWrap: "wrap",
           }}>
             {quickActions.map(({ to, icon, label, color }) => (
@@ -514,23 +492,23 @@ export default function Index() {
                 key={label} to={to}
                 style={{
                   display: "flex", alignItems: "center", gap: 6,
-                  fontSize: 12, fontWeight: 700, color: "rgba(35,22,6,0.70)",
+                  fontSize: 12, fontWeight: 700, color: "rgba(30,20,5,0.72)",
                   textDecoration: "none",
-                  background: "rgba(252,246,230,0.72)",
-                  border: "1px solid rgba(165,130,60,0.25)",
+                  background: "rgba(252,246,228,0.75)",
+                  border: "1px solid rgba(160,125,55,0.22)",
                   padding: "7px 18px", borderRadius: 24,
                   backdropFilter: "blur(6px)",
                   transition: "all 0.15s ease",
                 }}
                 onMouseEnter={e => {
                   const el = e.currentTarget as HTMLElement;
-                  el.style.background = "rgba(255,252,240,0.95)";
+                  el.style.background = "rgba(255,252,238,0.96)";
                   el.style.color = "#1a1208";
                 }}
                 onMouseLeave={e => {
                   const el = e.currentTarget as HTMLElement;
-                  el.style.background = "rgba(252,246,230,0.72)";
-                  el.style.color = "rgba(35,22,6,0.70)";
+                  el.style.background = "rgba(252,246,228,0.75)";
+                  el.style.color = "rgba(30,20,5,0.72)";
                 }}
               >
                 <span style={{ color }}>{icon}</span>{label}

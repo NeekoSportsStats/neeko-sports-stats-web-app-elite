@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { track } from "@/lib/analytics";
 import { useCanonical } from "@/hooks/useCanonical";
 import { Layout } from "@/components/Layout";
+import { LandingLayout } from "@/components/LandingLayout";
 import { RequireAuth } from "@/components/RequireAuth";
 import { RequireAdmin } from "@/components/RequireAdmin";
 import {
@@ -99,8 +100,11 @@ function App() {
       <Route path="/forgot-password" element={<S fallback={Generic}><ForgotPassword /></S>} />
       <Route path="/reset-password" element={<S fallback={Generic}><ResetPassword /></S>} />
 
-      <Route element={<Layout />}>
+      <Route element={<LandingLayout />}>
         <Route path="/" element={<Index />} />
+      </Route>
+
+      <Route element={<Layout />}>
         <Route path="/about" element={<S fallback={Generic}><About /></S>} />
         <Route path="/faq" element={<S fallback={Generic}><FAQ /></S>} />
         <Route path="/contact" element={<S fallback={Generic}><Contact /></S>} />
