@@ -369,18 +369,18 @@ export default function Index() {
       color: "#1a6028",
     },
     {
-      to: "/sports/afl/rankings",
-      icon: <Bookmark size={13} />,
-      label: "Watchlist",
-      desc: "Track your trade targets",
-      color: "#7a4800",
-    },
-    {
       to: "/sports/afl/current-round",
       icon: <AlertTriangle size={13} />,
       label: "Trap Alerts",
       desc: "Avoid costly mistakes",
       color: "#881818",
+    },
+    {
+      to: "/sports/afl/rankings",
+      icon: <Bookmark size={13} />,
+      label: "Watchlist",
+      desc: "Track your trade targets",
+      color: "#7a4800",
     },
     {
       to: "/sports/afl/rankings",
