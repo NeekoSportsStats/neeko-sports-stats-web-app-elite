@@ -491,7 +491,7 @@ export default function Index() {
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "30%", background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(10,10,10,0.92) 70%, #0a0a0a 100%)", zIndex: 2 }} />
 
           <div style={{ position: "relative", zIndex: 10, padding: "50px 20px 24px", textAlign: "center" }}>
-            <h1 style={{ fontSize: "1.75rem", fontWeight: 900, lineHeight: 1.1, letterSpacing: "-0.025em", color: "#ffffff", textShadow: "0 2px 20px rgba(0,0,0,0.9)", marginBottom: 10 }}>
+            <h1 style={{ fontSize: "1.75rem", fontWeight: 900, lineHeight: 1.1, letterSpacing: "-0.025em", color: "#ffffff", textShadow: "0 2px 20px rgba(0,0,0,0.9)", marginBottom: 8 }}>
               Stop Guessing.<br />
               <span style={{ color: C.gold }}>Start Winning</span> Your<br />
               AFL Fantasy Week.
