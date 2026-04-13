@@ -546,21 +546,29 @@ export default function Index() {
           backgroundSize: "cover",
           backgroundPosition: "center 30%",
           backgroundRepeat: "no-repeat",
+          filter: "brightness(0.92) contrast(1.05)",
           zIndex: 0,
         }} />
 
-        {/* Layer 2 — dark overlay to keep text readable */}
+        {/* Layer 2 — light directional overlay, NOT a full darken */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "linear-gradient(to bottom, rgba(5,5,5,0.72) 0%, rgba(0,0,0,0.82) 60%, #0B0F14 100%)",
+          background: "linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.25) 40%, rgba(0,0,0,0.45) 75%, #0B0F14 100%)",
           zIndex: 1,
         }} />
 
-        {/* Layer 3 — gold radial glow */}
+        {/* Layer 3 — localized text-area shadow (centered, soft) */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "radial-gradient(ellipse at 50% 40%, rgba(255,190,0,0.10), transparent 65%)",
+          background: "radial-gradient(ellipse 65% 55% at 50% 48%, rgba(0,0,0,0.30) 0%, transparent 100%)",
           zIndex: 2, pointerEvents: "none",
+        }} />
+
+        {/* Layer 4 — faint gold brand glow */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "radial-gradient(ellipse 60% 45% at 50% 42%, rgba(255,200,0,0.08), transparent 70%)",
+          zIndex: 3, pointerEvents: "none",
         }} />
 
         {/* Hero content block */}
@@ -590,7 +598,7 @@ export default function Index() {
             lineHeight: 1.07,
             letterSpacing: "-0.03em",
             color: "#f5f5f5",
-            textShadow: "0 3px 20px rgba(0,0,0,0.75), 0 1px 2px rgba(0,0,0,0.8)",
+            textShadow: "0 2px 12px rgba(0,0,0,0.55), 0 1px 2px rgba(0,0,0,0.5)",
           }}>
             Stop Guessing.{" "}
             <span style={{ color: "#FFD03A", textShadow: "0 0 32px rgba(255,184,0,0.45), 0 2px 8px rgba(0,0,0,0.6)" }}>Start Winning</span>
@@ -601,10 +609,10 @@ export default function Index() {
           <p className="hero-sub" style={{
             margin: "0 auto 36px",
             fontSize: "clamp(14px, 1.10vw, 18px)",
-            color: "rgba(255,255,255,0.78)",
+            color: "rgba(255,255,255,0.88)",
             lineHeight: 1.6,
             fontWeight: 500,
-            textShadow: "0 2px 10px rgba(0,0,0,0.6)",
+            textShadow: "0 2px 8px rgba(0,0,0,0.40)",
             maxWidth: 500,
           }}>
             Know who to trade, captain, and avoid — before lockout. Powered by 600+ player projections updated every round.
@@ -616,10 +624,10 @@ export default function Index() {
               display: "inline-flex", gap: 12, flexWrap: "wrap", justifyContent: "center",
               padding: "14px 18px",
               borderRadius: 16,
-              background: "rgba(255,255,255,0.04)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06) inset",
+              background: "rgba(0,0,0,0.22)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.30), 0 0 0 1px rgba(255,255,255,0.08) inset",
             }}>
               <HeroPrimaryBtn />
               <HeroSecondaryBtn />
@@ -636,7 +644,7 @@ export default function Index() {
               <div key={text} style={{
                 display: "flex", alignItems: "center", gap: 7,
                 fontSize: "clamp(11px, 0.78vw, 13px)",
-                color: "rgba(255,255,255,0.55)",
+                color: "rgba(255,255,255,0.72)",
                 fontWeight: 600,
                 whiteSpace: "nowrap",
               }}>
