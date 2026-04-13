@@ -508,7 +508,7 @@ export default function Index() {
                 Stop Guessing. <span style={{ color: C.gold }}>Start Winning</span>
                 <br />Your AFL Fantasy Week.
               </h1>
-              <p style={{ marginTop: "1%", marginBottom: 0, fontSize: "1.1vw", color: "rgba(255,255,255,0.90)", lineHeight: 1.6, textShadow: "0 1px 6px rgba(0,0,0,0.90)" }}>
+              <p style={{ marginTop: "1%", marginBottom: 0, fontSize: "1.1vw", color: "#ffffff", lineHeight: 1.6, textShadow: "0 1px 8px rgba(0,0,0,0.95)", fontWeight: 600 }}>
                 Trades, captains, and traps — powered by 600+ player projections updated every round.
               </p>
             </div>
