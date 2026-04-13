@@ -379,92 +379,93 @@ export default function Index() {
       <section style={{
         width: "100%",
         position: "relative",
-        paddingTop: "72%",
+        paddingTop: "66.667%",
         backgroundImage: "url('/hero/image.png')",
-        backgroundSize: "100% 125%",
+        backgroundSize: "100% 130%",
         backgroundPosition: "0% 28%",
         backgroundRepeat: "no-repeat",
-        overflow: "visible",
+        overflow: "hidden",
       }}>
         {/* Depth overlays */}
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.20) 0%, rgba(0,0,0,0.60) 100%)", zIndex: 1, pointerEvents: "none" }} />
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.25) 100%)", zIndex: 2, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.55) 100%)", zIndex: 1, pointerEvents: "none" }} />
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.22) 100%)", zIndex: 2, pointerEvents: "none" }} />
 
-        {/* Bottom fade — starts well below cards, only catches the very bottom edge */}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "4%", background: "linear-gradient(to bottom, transparent, rgba(0,0,0,0.85))", zIndex: 3, pointerEvents: "none" }} />
+        {/* Bottom fade — only the very bottom tray, well below the card shelf */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "14%", background: "linear-gradient(to bottom, transparent 0%, rgba(11,10,9,0.65) 70%, rgba(11,10,9,0.92) 100%)", zIndex: 3, pointerEvents: "none" }} />
 
-        {/* Content layer — absolutely fills the section. All sizing in vw so it scales 1:1 with the hero image at every viewport width. */}
+        {/* ── ZONE A: Headline + CTA — sits in the upper-mid board writing area ── */}
         <div style={{
           position: "absolute",
-          inset: 0,
+          top: 0, left: 0, right: 0,
           zIndex: 10,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          justifyContent: "flex-start",
-          paddingTop: "9%",
-          paddingBottom: "0%",
+          paddingTop: "8%",
           paddingLeft: "3vw",
           paddingRight: "3vw",
-          overflow: "visible",
         }}>
-          <div style={{
-            width: "100%",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-          }}>
+          {/* Eyebrow */}
+          <p style={{ fontSize: "0.6vw", fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(245,196,81,0.70)", marginBottom: "1%", textAlign: "center", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+            AFL Fantasy Intelligence
+          </p>
 
-            {/* Eyebrow */}
-            <p style={{ fontSize: "0.6vw", fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(245,196,81,0.70)", marginBottom: "1%", textAlign: "center", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
-              AFL Fantasy Intelligence
+          {/* Headline block */}
+          <div style={{ width: "58%", textAlign: "center" }}>
+            <h1 style={{ margin: 0, fontSize: "3.5vw", fontWeight: 900, lineHeight: 1.08, letterSpacing: "-0.025em", color: "#f5f5f5", textShadow: "0 2px 4px rgba(0,0,0,0.70), 0 8px 22px rgba(0,0,0,0.50)" }}>
+              Stop Guessing. <span style={{ color: C.gold }}>Start Winning</span>
+              <br />Your AFL Fantasy Week.
+            </h1>
+            <p style={{ marginTop: "1%", marginBottom: 0, fontSize: "1.1vw", color: "#ffffff", lineHeight: 1.6, textShadow: "0 1px 8px rgba(0,0,0,0.95)", fontWeight: 600 }}>
+              Trades, captains, and traps — powered by 600+ player projections updated every round.
             </p>
+          </div>
 
-            {/* Headline block */}
-            <div style={{ width: "58%", textAlign: "center" }}>
-              <h1 style={{ margin: 0, fontSize: "3.5vw", fontWeight: 900, lineHeight: 1.08, letterSpacing: "-0.025em", color: "#f5f5f5", textShadow: "0 2px 4px rgba(0,0,0,0.70), 0 8px 22px rgba(0,0,0,0.50)" }}>
-                Stop Guessing. <span style={{ color: C.gold }}>Start Winning</span>
-                <br />Your AFL Fantasy Week.
-              </h1>
-              <p style={{ marginTop: "1%", marginBottom: 0, fontSize: "1.1vw", color: "#ffffff", lineHeight: 1.6, textShadow: "0 1px 8px rgba(0,0,0,0.95)", fontWeight: 600 }}>
-                Trades, captains, and traps — powered by 600+ player projections updated every round.
-              </p>
-            </div>
+          {/* CTA buttons */}
+          <div style={{ display: "flex", gap: "1%", justifyContent: "center", marginTop: "1.8%", marginBottom: "0.8%", flexWrap: "nowrap" }}>
+            <Link to="/auth" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "linear-gradient(to bottom, #fad52a, #d09800)", color: "#1a1000", fontWeight: 800, fontSize: "1vw", padding: "0.8vw 2vw", borderRadius: 7, textDecoration: "none", border: "1px solid rgba(0,0,0,0.20)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 20px rgba(0,0,0,0.35)", letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
+              Get This Week's Game Plan <ArrowRight size="1.1vw" />
+            </Link>
+            <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "rgba(255,255,255,0.08)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.80)", fontWeight: 600, fontSize: "1vw", padding: "0.8vw 2vw", borderRadius: 7, textDecoration: "none", letterSpacing: "0.01em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 4px 12px rgba(0,0,0,0.25)", whiteSpace: "nowrap" }}>
+              View Free Picks
+            </Link>
+          </div>
 
-            {/* CTA buttons */}
-            <div style={{ display: "flex", gap: "1%", justifyContent: "center", marginTop: "1.8%", marginBottom: "0.8%", flexWrap: "nowrap" }}>
-              <Link to="/auth" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "linear-gradient(to bottom, #fad52a, #d09800)", color: "#1a1000", fontWeight: 800, fontSize: "1vw", padding: "0.8vw 2vw", borderRadius: 7, textDecoration: "none", border: "1px solid rgba(0,0,0,0.20)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 20px rgba(0,0,0,0.35)", letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
-                Get This Week's Game Plan <ArrowRight size="1.1vw" />
-              </Link>
-              <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "rgba(255,255,255,0.08)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.80)", fontWeight: 600, fontSize: "1vw", padding: "0.8vw 2vw", borderRadius: 7, textDecoration: "none", letterSpacing: "0.01em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 4px 12px rgba(0,0,0,0.25)", whiteSpace: "nowrap" }}>
-                View Free Picks
-              </Link>
-            </div>
+          {/* Trust strip */}
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "2vw", flexWrap: "nowrap" }}>
+            {trustBar.map(({ icon, text }) => (
+              <div key={text} style={{ display: "flex", alignItems: "center", gap: "0.4vw", fontSize: "0.85vw", color: "rgba(255,255,255,0.70)", fontWeight: 600, whiteSpace: "nowrap" }}>
+                <span style={{ color: "rgba(244,197,66,0.90)" }}>{icon}</span>{text}
+              </div>
+            ))}
+          </div>
+        </div>
 
-            {/* Trust strip */}
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "2vw", flexWrap: "nowrap" }}>
-              {trustBar.map(({ icon, text }) => (
-                <div key={text} style={{ display: "flex", alignItems: "center", gap: "0.4vw", fontSize: "0.85vw", color: "rgba(255,255,255,0.70)", fontWeight: 600, whiteSpace: "nowrap" }}>
-                  <span style={{ color: "rgba(244,197,66,0.90)" }}>{icon}</span>{text}
-                </div>
-              ))}
-            </div>
+        {/* ── ZONE B: Round label + cards — anchored to the lower board shelf ── */}
+        <div style={{
+          position: "absolute",
+          bottom: "10%",
+          left: 0, right: 0,
+          zIndex: 10,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          paddingLeft: "3vw",
+          paddingRight: "3vw",
+        }}>
+          {/* Round label */}
+          <div style={{ marginBottom: "1.1%", width: "65vw", display: "flex", alignItems: "center", gap: "1vw" }}>
+            <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.28))" }} />
+            <span style={{ fontSize: "0.78vw", fontWeight: 900, letterSpacing: "0.32em", textTransform: "uppercase", color: C.gold, whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,0.65)" }}>Round 6</span>
+            <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.28))" }} />
+          </div>
 
-            {/* Round label */}
-            <div style={{ marginTop: "2.5%", marginBottom: "0.9%", width: "65vw", display: "flex", alignItems: "center", gap: "1vw" }}>
-              <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.30))" }} />
-              <span style={{ fontSize: "0.8vw", fontWeight: 900, letterSpacing: "0.32em", textTransform: "uppercase", color: C.gold, whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,0.60)" }}>Round 6</span>
-              <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.30))" }} />
-            </div>
-
-            {/* Cards row */}
-            <div style={{ width: "65vw", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "2.2vw" }}>
-              {showSkeleton
-                ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
-                : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
-              }
-            </div>
-
+          {/* Cards row */}
+          <div style={{ width: "65vw", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "2.2vw" }}>
+            {showSkeleton
+              ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
+              : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
+            }
           </div>
         </div>
       </section>
@@ -472,10 +473,7 @@ export default function Index() {
       {/* ══════════════════════════════════════════════════════
           GOLD TRANSITION BAND — hero → content bridge
       ══════════════════════════════════════════════════════ */}
-      <div style={{ width: "100%", height: 3, background: "linear-gradient(to right, transparent 0%, rgba(224,174,45,0.18) 15%, rgba(224,174,45,0.55) 40%, rgba(224,174,45,0.55) 60%, rgba(224,174,45,0.18) 85%, transparent 100%)", marginTop: 0 }} />
-      <div style={{ width: "100%", height: 32, background: "linear-gradient(to bottom, #1A1411 0%, #0d0b09 100%)", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 0%, rgba(224,174,45,0.07) 0%, transparent 70%)" }} />
-      </div>
+      <div style={{ width: "100%", height: 2, background: "linear-gradient(to right, transparent 0%, rgba(224,174,45,0.15) 15%, rgba(224,174,45,0.45) 40%, rgba(224,174,45,0.45) 60%, rgba(224,174,45,0.15) 85%, transparent 100%)" }} />
 
       <LandingWorkflowSection />
       <LandingTopRankings loading={loading} rows={topRows} freePreview={FREE_PREVIEW} />
