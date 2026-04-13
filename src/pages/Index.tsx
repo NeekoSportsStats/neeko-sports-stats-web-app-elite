@@ -28,7 +28,6 @@ const NAV_PILLS = [
 function HeroNavPills({ style }: { style?: React.CSSProperties }) {
   return (
     <div style={{
-      width: "100%",
       overflowX: "auto",
       scrollbarWidth: "none",
       msOverflowStyle: "none",
@@ -39,7 +38,7 @@ function HeroNavPills({ style }: { style?: React.CSSProperties }) {
         display: "flex",
         gap: 10,
         justifyContent: "center",
-        padding: "2px 16px",
+        padding: "2px 0",
         minWidth: "max-content",
         margin: "0 auto",
       }}>
@@ -476,62 +475,70 @@ export default function Index() {
         {/* Bottom fade into next section */}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 120, background: "linear-gradient(to bottom, transparent, rgba(0,0,0,0.90))", zIndex: 3, pointerEvents: "none" }} />
 
-        {/* Inner content container */}
-        <div style={{ position: "relative", zIndex: 10, maxWidth: 1400, margin: "0 auto", paddingLeft: 24, paddingRight: 24 }}>
+        {/* Outer gutter — prevents edge-to-edge bleed on ultra-wide */}
+        <div style={{ paddingLeft: 24, paddingRight: 24 }}>
+          {/* Inner fixed canvas — locked to 1200px on desktop */}
+          <div style={{
+            position: "relative",
+            zIndex: 10,
+            width: 1200,
+            margin: "0 auto",
+          }}>
 
-          {/* Eyebrow */}
-          <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(245,196,81,0.70)", marginBottom: 10, textAlign: "center", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
-            AFL Fantasy Intelligence
-          </p>
-
-          {/* Headline block */}
-          <div style={{ maxWidth: 780, margin: "0 auto", textAlign: "center" }}>
-            <h1 style={{ margin: 0, fontSize: "clamp(2rem, 3.5vw, 3rem)", fontWeight: 900, lineHeight: 1.08, letterSpacing: "-0.025em", color: "#f5f5f5", textShadow: "0 2px 4px rgba(0,0,0,0.70), 0 8px 22px rgba(0,0,0,0.50)" }}>
-              Stop Guessing. <span style={{ color: C.gold }}>Start Winning</span>
-              <br />Your AFL Fantasy Week.
-            </h1>
-            <p style={{ marginTop: 12, marginBottom: 0, fontSize: 15, color: "rgba(255,255,255,0.90)", lineHeight: 1.6, textShadow: "0 1px 6px rgba(0,0,0,0.90)" }}>
-              Trades, captains, and traps — powered by 600+ player projections updated every round.
+            {/* Eyebrow */}
+            <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(245,196,81,0.70)", marginBottom: 10, textAlign: "center", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+              AFL Fantasy Intelligence
             </p>
-          </div>
 
-          {/* CTA buttons */}
-          <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 24, marginBottom: 16, flexWrap: "wrap" }}>
-            <Link to="/auth" style={{ display: "flex", alignItems: "center", gap: 7, background: "linear-gradient(to bottom, #fad52a, #d09800)", color: "#1a1000", fontWeight: 800, fontSize: 14, padding: "13px 26px", minHeight: 48, borderRadius: 7, textDecoration: "none", border: "1px solid rgba(0,0,0,0.20)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 20px rgba(0,0,0,0.35)", letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
-              Unlock This Week's Game Plan <ArrowRight size={14} />
-            </Link>
-            <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(255,255,255,0.11)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.22)", color: "#ffffff", fontWeight: 700, fontSize: 14, padding: "13px 26px", minHeight: 48, borderRadius: 7, textDecoration: "none", letterSpacing: "0.01em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14), 0 4px 12px rgba(0,0,0,0.30)", whiteSpace: "nowrap" }}>
-              View Free Picks
-            </Link>
-          </div>
+            {/* Headline block — fixed 720px, never fluid */}
+            <div style={{ width: 720, margin: "0 auto", textAlign: "center" }}>
+              <h1 style={{ margin: 0, fontSize: "3rem", fontWeight: 900, lineHeight: 1.08, letterSpacing: "-0.025em", color: "#f5f5f5", textShadow: "0 2px 4px rgba(0,0,0,0.70), 0 8px 22px rgba(0,0,0,0.50)" }}>
+                Stop Guessing. <span style={{ color: C.gold }}>Start Winning</span>
+                <br />Your AFL Fantasy Week.
+              </h1>
+              <p style={{ marginTop: 12, marginBottom: 0, fontSize: 15, color: "rgba(255,255,255,0.90)", lineHeight: 1.6, textShadow: "0 1px 6px rgba(0,0,0,0.90)" }}>
+                Trades, captains, and traps — powered by 600+ player projections updated every round.
+              </p>
+            </div>
 
-          {/* Trust strip */}
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 20, flexWrap: "wrap", marginBottom: 0 }}>
-            {trustBar.map(({ icon, text }) => (
-              <div key={text} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "rgba(255,255,255,0.70)", fontWeight: 600, whiteSpace: "nowrap" }}>
-                <span style={{ color: "rgba(244,197,66,0.90)" }}>{icon}</span>{text}
-              </div>
-            ))}
-          </div>
+            {/* CTA buttons — fixed spacing 24px below subtext */}
+            <div style={{ display: "flex", gap: 16, justifyContent: "center", marginTop: 24, marginBottom: 16, flexWrap: "nowrap" }}>
+              <Link to="/auth" style={{ display: "flex", alignItems: "center", gap: 7, background: "linear-gradient(to bottom, #fad52a, #d09800)", color: "#1a1000", fontWeight: 800, fontSize: 14, padding: "13px 26px", minHeight: 48, borderRadius: 7, textDecoration: "none", border: "1px solid rgba(0,0,0,0.20)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 20px rgba(0,0,0,0.35)", letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
+                Unlock This Week's Game Plan <ArrowRight size={14} />
+              </Link>
+              <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(255,255,255,0.11)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.22)", color: "#ffffff", fontWeight: 700, fontSize: 14, padding: "13px 26px", minHeight: 48, borderRadius: 7, textDecoration: "none", letterSpacing: "0.01em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14), 0 4px 12px rgba(0,0,0,0.30)", whiteSpace: "nowrap" }}>
+                View Free Picks
+              </Link>
+            </div>
 
-          {/* Current Week heading */}
-          <div style={{ maxWidth: 1100, margin: "48px auto 0", display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.35))" }} />
-            <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: "0.30em", textTransform: "uppercase", color: "#000000", whiteSpace: "nowrap", textShadow: "0 1px 3px rgba(255,255,255,0.25)" }}>Current Week</span>
-            <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.35))" }} />
-          </div>
+            {/* Trust strip — fixed 16px below CTA */}
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 20, flexWrap: "nowrap" }}>
+              {trustBar.map(({ icon, text }) => (
+                <div key={text} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "rgba(255,255,255,0.70)", fontWeight: 600, whiteSpace: "nowrap" }}>
+                  <span style={{ color: "rgba(244,197,66,0.90)" }}>{icon}</span>{text}
+                </div>
+              ))}
+            </div>
 
-          {/* Cards row */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, maxWidth: 1100, margin: "16px auto 0" }}>
-            {showSkeleton
-              ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
-              : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
-            }
-          </div>
+            {/* Current Week heading — fixed 48px below trust strip */}
+            <div style={{ marginTop: 48, display: "flex", alignItems: "center", gap: 16 }}>
+              <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.35))" }} />
+              <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: "0.30em", textTransform: "uppercase", color: "#000000", whiteSpace: "nowrap", textShadow: "0 1px 3px rgba(255,255,255,0.25)" }}>Current Week</span>
+              <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.35))" }} />
+            </div>
 
-          {/* Nav pills */}
-          <div style={{ marginTop: 20 }}>
-            <HeroNavPills />
+            {/* Cards row — fixed 1000px grid, 4 equal columns, never percentage */}
+            <div style={{ width: 1000, margin: "16px auto 0", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
+              {showSkeleton
+                ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
+                : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
+              }
+            </div>
+
+            {/* Nav pills — fit-content, fixed 20px below cards */}
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 20 }}>
+              <HeroNavPills style={{ width: "fit-content" }} />
+            </div>
           </div>
         </div>
       </section>
