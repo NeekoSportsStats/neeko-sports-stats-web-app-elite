@@ -461,12 +461,12 @@ export default function Index() {
         width: "100%",
         position: "relative",
         overflow: "hidden",
-        minHeight: 700,
+        minHeight: 900,
         paddingTop: 120,
-        paddingBottom: 140,
+        paddingBottom: 200,
         backgroundImage: "url('/hero/image.png')",
         backgroundSize: "cover",
-        backgroundPosition: "center 40%",
+        backgroundPosition: "center 15%",
         backgroundRepeat: "no-repeat",
       }}>
         {/* Depth overlays */}
