@@ -69,14 +69,14 @@ function EdgeCard(p: CardProps) {
             : `linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.40) 100%), rgba(18,23,32,0.88)`,
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
-          border: `1px solid ${hovered ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.07)"}`,
+          border: `1px solid ${hovered ? "rgba(255,255,255,0.13)" : "rgba(255,255,255,0.07)"}`,
           borderRadius: 14,
           overflow: "hidden",
           boxShadow: hovered
-            ? `0 0 0 1px rgba(255,255,255,0.05), 0 10px 30px rgba(0,0,0,0.60), 0 0 0 1px ${accent.dim}40`
-            : "0 2px 14px rgba(0,0,0,0.35)",
-          transform: hovered ? "translateY(-4px)" : "translateY(0)",
-          transition: "all 0.20s ease",
+            ? `0 0 0 1px ${accent.dim}30, 0 14px 36px rgba(0,0,0,0.65), 0 4px 12px rgba(0,0,0,0.35)`
+            : "0 2px 18px rgba(0,0,0,0.42), 0 1px 3px rgba(0,0,0,0.25)",
+          transform: hovered ? "translateY(-5px)" : "translateY(0)",
+          transition: "all 0.18s ease",
         }}
       >
         {/* Top accent bar */}
@@ -227,15 +227,15 @@ function EdgeCard(p: CardProps) {
             height: 32,
             display: "flex", alignItems: "center", justifyContent: "center",
             gap: 5,
-            background: `${accent.dim}45`,
-            border: `1px solid ${accent.color}28`,
-            color: accent.label,
+            background: hovered ? `${accent.dim}60` : `${accent.dim}42`,
+            border: `1px solid ${hovered ? accent.color + "45" : accent.color + "25"}`,
+            color: hovered ? accent.color : accent.label,
             fontSize: "clamp(8px, 0.50vw, 10px)",
             fontWeight: 800,
             letterSpacing: "0.10em",
             textTransform: "uppercase",
             borderRadius: 7,
-            transition: "all 0.20s ease",
+            transition: "all 0.18s ease",
           }}>
             {p.ctaLabel} <ChevronRight size={10} strokeWidth={2.5} />
           </div>
@@ -524,7 +524,7 @@ export default function Index() {
       ═══════════════════════════════════════════════════ */}
       <section style={{
         position: "relative",
-        minHeight: "80vh",
+        minHeight: "74vh",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -568,15 +568,15 @@ export default function Index() {
           position: "relative", zIndex: 10,
           width: "100%", maxWidth: 760,
           textAlign: "center",
-          padding: "clamp(64px, 9vw, 116px) 24px 0",
+          padding: "clamp(56px, 7.5vw, 100px) 24px 0",
         }}>
           {/* Eyebrow */}
           <p style={{
-            fontSize: 11, fontWeight: 800,
+            fontSize: 10, fontWeight: 800,
             letterSpacing: "0.40em",
             textTransform: "uppercase",
             color: GOLD,
-            marginBottom: 18,
+            marginBottom: 12,
             textShadow: "0 0 24px rgba(244,197,66,0.35)",
           }}>
             AFL Fantasy Intelligence
@@ -584,8 +584,8 @@ export default function Index() {
 
           {/* H1 */}
           <h1 style={{
-            margin: "0 0 20px",
-            fontSize: "clamp(32px, 4.0vw, 60px)",
+            margin: "0 0 14px",
+            fontSize: "clamp(30px, 3.8vw, 58px)",
             fontWeight: 800,
             lineHeight: 1.08,
             letterSpacing: "-0.02em",
@@ -599,21 +599,19 @@ export default function Index() {
 
           {/* Sub */}
           <p style={{
-            margin: "0 0 30px",
-            fontSize: "clamp(14px, 1.10vw, 18px)",
-            color: "rgba(255,255,255,0.92)",
+            margin: "0 auto 22px",
+            fontSize: "clamp(13px, 1.05vw, 17px)",
+            color: "rgba(255,255,255,0.88)",
             lineHeight: 1.5,
             fontWeight: 500,
             textShadow: "0 2px 10px rgba(0,0,0,0.6)",
-            maxWidth: 560,
-            marginLeft: "auto",
-            marginRight: "auto",
+            maxWidth: 520,
           }}>
             Projections, value signals, and matchup intelligence —<br />updated every round.
           </p>
 
           {/* CTAs — wrapped in glass container */}
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 22 }}>
             <div style={{
               display: "inline-flex", gap: 12, flexWrap: "wrap", justifyContent: "center",
               padding: "12px 16px",
@@ -660,24 +658,41 @@ export default function Index() {
           width: "100%",
           maxWidth: 1150,
           padding: "0 clamp(16px, 3vw, 32px)",
-          marginTop: "clamp(24px, 2.8vw, 38px)",
+          marginTop: "clamp(18px, 2.2vw, 30px)",
           marginBottom: "-80px",
         }}>
           {/* Section header */}
-          <div style={{ marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-            <div>
-              <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 900, letterSpacing: "0.42em", textTransform: "uppercase", color: "rgba(244,197,66,0.80)" }}>
+          <div style={{ marginBottom: 18, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: "0 0 5px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(244,197,66,0.82)" }}>
                 This Week's Edge
               </p>
-              <h2 style={{ margin: "0 0 5px", fontSize: "clamp(16px, 1.5vw, 22px)", fontWeight: 900, color: "#f2f2f2", letterSpacing: "-0.025em", lineHeight: 1.15 }}>
+              <h2 style={{ margin: "0 0 4px", fontSize: "clamp(15px, 1.45vw, 21px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.025em", lineHeight: 1.15 }}>
                 Real picks. Live projections. No guesswork.
               </h2>
-              <p style={{ margin: 0, fontSize: "clamp(11px, 0.72vw, 12.5px)", color: "rgba(255,255,255,0.50)", fontWeight: 500, lineHeight: 1.4 }}>
-                Powered by this week's projections, value signals, and matchup context.
+              <p style={{ margin: 0, fontSize: "clamp(11px, 0.70vw, 12px)", color: "rgba(255,255,255,0.55)", fontWeight: 500, lineHeight: 1.4 }}>
+                Projections, value signals, and matchup context — updated every round.
               </p>
             </div>
-            <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: "rgba(244,197,66,0.75)", textDecoration: "none", whiteSpace: "nowrap", border: "1px solid rgba(244,197,66,0.22)", padding: "7px 14px", borderRadius: 7, background: "rgba(244,197,66,0.05)", flexShrink: 0, letterSpacing: "0.02em" }}>
-              View All <ChevronRight size={12} />
+            <Link
+              to="/sports/afl/current-round"
+              style={{
+                display: "flex", alignItems: "center", gap: 5,
+                fontSize: 11, fontWeight: 700,
+                color: "rgba(244,197,66,0.72)",
+                textDecoration: "none",
+                whiteSpace: "nowrap",
+                border: "1px solid rgba(244,197,66,0.20)",
+                padding: "6px 12px",
+                borderRadius: 7,
+                background: "rgba(244,197,66,0.05)",
+                flexShrink: 0,
+                letterSpacing: "0.03em",
+                marginTop: 3,
+                transition: "all 0.15s ease",
+              }}
+            >
+              View All <ChevronRight size={11} />
             </Link>
           </div>
 
@@ -685,7 +700,7 @@ export default function Index() {
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 16,
+            gap: 14,
             alignItems: "stretch",
           }}>
             {showSkeleton
@@ -712,7 +727,7 @@ export default function Index() {
       </section>
 
       {/* ── SPACER — lifts content below hero enough for card overlap ── */}
-      <div style={{ height: 84, background: DARK }} />
+      <div style={{ height: 72, background: DARK }} />
 
       {/* ── GOLD DIVIDER ────────────────────────────────────────────── */}
       <div style={{ width: "100%", height: 1, background: "linear-gradient(to right, transparent, rgba(244,197,66,0.20) 20%, rgba(244,197,66,0.45) 50%, rgba(244,197,66,0.20) 80%, transparent)" }} />
