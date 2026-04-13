@@ -186,14 +186,14 @@ function WhiteboardCard(p: CardProps) {
             {pts != null ? (
               <>
                 <span style={{
-                  fontSize: "3.1vw", fontWeight: 900, color: p.color, lineHeight: 0.95,
-                  fontVariantNumeric: "tabular-nums", letterSpacing: "-0.04em",
-                  textShadow: `0 2px 0 rgba(0,0,0,0.06), 0 0 18px ${theme.numberGlow}`,
-                  filter: `drop-shadow(0 1px 2px ${theme.numberGlow})`,
+                  fontSize: "3.6vw", fontWeight: 900, color: p.color, lineHeight: 0.92,
+                  fontVariantNumeric: "tabular-nums", letterSpacing: "-0.045em",
+                  textShadow: `0 2px 0 rgba(0,0,0,0.08), 0 0 22px ${theme.numberGlow}`,
+                  filter: `drop-shadow(0 1px 3px ${theme.numberGlow})`,
                 }}>{pts}</span>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.05vw", paddingBottom: "0.15vw" }}>
-                  <span style={{ fontSize: "0.58vw", color: "#8a6e58", fontWeight: 700, lineHeight: 1, textTransform: "uppercase", letterSpacing: "0.06em" }}>proj</span>
-                  <span style={{ fontSize: "0.58vw", color: "#8a6e58", fontWeight: 700, lineHeight: 1, textTransform: "uppercase", letterSpacing: "0.06em" }}>pts</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.05vw", paddingBottom: "0.2vw" }}>
+                  <span style={{ fontSize: "0.55vw", color: "#8a6e58", fontWeight: 700, lineHeight: 1, textTransform: "uppercase", letterSpacing: "0.06em" }}>proj</span>
+                  <span style={{ fontSize: "0.55vw", color: "#8a6e58", fontWeight: 700, lineHeight: 1, textTransform: "uppercase", letterSpacing: "0.06em" }}>pts</span>
                 </div>
               </>
             ) : (
@@ -205,8 +205,8 @@ function WhiteboardCard(p: CardProps) {
           <div style={{ margin: "0.3vw 0.95vw 0", height: 1, background: `linear-gradient(to right, ${p.color}30, transparent)` }} />
 
           {/* ZONE 4 — INSIGHT TEXT */}
-          <div style={{ padding: "0.42vw 0.95vw 0.6vw", flex: 1 }}>
-            <p style={{ fontSize: "0.56vw", color: "#4a3828", fontWeight: 600, lineHeight: 1.55, margin: 0, fontStyle: "italic", opacity: 0.88 }}>{p.reason}</p>
+          <div style={{ padding: "0.38vw 0.95vw 0.5vw", flex: 1 }}>
+            <p style={{ fontSize: "0.6vw", color: "#3a2a1e", fontWeight: 700, lineHeight: 1.45, margin: 0, fontStyle: "normal", opacity: 0.90, letterSpacing: "0.005em" }}>{p.reason}</p>
           </div>
 
           {/* ZONE 5 — CTA FOOTER */}
@@ -345,35 +345,46 @@ export default function Index() {
     return { mustBuyP, trapP, captainP, breakoutP, topRows, mwBuys: buys, mwHolds: holds, mwSells: sells };
   }, [players]);
 
-  // ── Hero card reason derivation — one clean sentence per card ────────────
+  // ── Hero card reason derivation — short, punchy, scannable ───────────────
   function mustBuyReason(): string {
     if (!mustBuyP) return "";
-    if (mustBuyP.why) return mustBuyP.why;
-    if (mustBuyP.season_avg != null && mustBuyP.projection != null && mustBuyP.projection > mustBuyP.season_avg) {
-      return `Projecting ${Math.round(mustBuyP.projection - mustBuyP.season_avg)}pts above season average this round.`;
+    const be = mustBuyP.breakeven;
+    const proj = mustBuyP.projection;
+    if (be != null && proj != null && proj > be) {
+      const gap = Math.round(proj - be);
+      return `+${gap} above breakeven — strong buy.`;
     }
-    return "Strong upward signal — positive edge this week.";
+    if (mustBuyP.season_avg != null && proj != null && proj > mustBuyP.season_avg) {
+      return `+${Math.round(proj - mustBuyP.season_avg)} on season avg — buy now.`;
+    }
+    return "Strong upside signal — buy this week.";
   }
 
   function trapReason(): string {
-    if (!trapP) return "";
-    if (trapP.why) return trapP.why;
-    if (trapP.breakeven != null && trapP.projection != null && trapP.projection < trapP.breakeven) {
-      return "Scoring below breakeven — price drop risk this round.";
+    if (!trapFallback) return "";
+    const be = trapFallback.breakeven;
+    const proj = trapFallback.projection;
+    if (be != null && proj != null && proj < be) {
+      return "Scoring below breakeven — avoid this week.";
     }
-    return "Negative edge signal — risky play this week.";
+    return "Overpriced for output — avoid this week.";
   }
 
   function captainReason(): string {
     if (!captainP) return "";
-    if (captainP.why) return captainP.why;
-    return "Top captain projection this week.";
+    const pts = captainP.projection != null ? Math.round(captainP.projection) : null;
+    return pts != null ? `Top projected captain — ${pts}pts doubled = ${pts * 2}.` : "Top projected captain this week.";
   }
 
-  function breakoutReason(): string {
-    if (!breakoutP) return "";
-    if (breakoutP.why) return breakoutP.why;
-    return "Trending up with strong breakout potential this round.";
+  function bestValueReason(): string {
+    if (!breakoutFallback) return "";
+    const price = breakoutFallback.price;
+    const proj = breakoutFallback.projection;
+    if (price != null && price > 0 && proj != null) {
+      const pricePer = (price / 1000).toFixed(0);
+      return `$${pricePer}k — undervalued for projected output.`;
+    }
+    return "Undervalued price — strong upside this round.";
   }
 
   const FREE_PREVIEW = 5;
@@ -415,12 +426,12 @@ export default function Index() {
       ctaLabel: "View Captains", ctaTo: "/sports/afl/captains", index: 2,
     },
     {
-      label: "Breakout Pick", icon: <ZapIcon size={9} />,
+      label: "Best Value", icon: <ZapIcon size={9} />,
       color: "#0d4278",
       playerName: breakoutFallback!.player_name, team: breakoutFallback!.team ?? "", position: breakoutFallback!.position,
       projection: breakoutFallback!.projection,
-      reason: breakoutReason(),
-      ctaLabel: "Explore Rankings", ctaTo: "/sports/afl/rankings", index: 3,
+      reason: bestValueReason(),
+      ctaLabel: "Open Market Watch", ctaTo: "/sports/afl/market-watch", index: 3,
     },
   ] : [];
 
@@ -530,7 +541,7 @@ export default function Index() {
           {/* CTA buttons */}
           <div style={{ display: "flex", gap: "1%", justifyContent: "center", marginTop: "1.8%", marginBottom: "2%", flexWrap: "nowrap" }}>
             <Link to="/neeko-plus" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "linear-gradient(to bottom, #fad52a, #d09800)", color: "#1a1000", fontWeight: 800, fontSize: "1vw", padding: "0.8vw 2vw", borderRadius: 7, textDecoration: "none", border: "1px solid rgba(0,0,0,0.20)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 20px rgba(0,0,0,0.35)", letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
-              Start Winning With Neeko+ <ArrowRight size="1.1vw" />
+              Unlock This Week's Game Plan <ArrowRight size="1.1vw" />
             </Link>
             <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "rgba(255,255,255,0.08)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.80)", fontWeight: 600, fontSize: "1vw", padding: "0.8vw 2vw", borderRadius: 7, textDecoration: "none", letterSpacing: "0.01em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 4px 12px rgba(0,0,0,0.25)", whiteSpace: "nowrap" }}>
               View Free Picks
