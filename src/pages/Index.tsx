@@ -462,7 +462,7 @@ export default function Index() {
         position: "relative",
         overflow: "hidden",
         minHeight: 900,
-        paddingTop: 120,
+        paddingTop: 220,
         paddingBottom: 280,
         backgroundImage: "url('/hero/image.png')",
         backgroundSize: "cover",
