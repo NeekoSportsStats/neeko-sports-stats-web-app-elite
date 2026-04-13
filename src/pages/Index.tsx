@@ -289,9 +289,9 @@ function HeroPrimaryBtn() {
         letterSpacing: "0.01em",
         whiteSpace: "nowrap",
         boxShadow: hovered
-          ? "0 14px 40px rgba(255,184,0,0.40), 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.32)"
-          : "0 12px 35px rgba(255,184,0,0.35), 0 2px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.32)",
-        transform: hovered ? "translateY(-1px)" : "translateY(0)",
+          ? "0 14px 40px rgba(255,184,0,0.40), 0 4px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.32)"
+          : "0 14px 40px rgba(255,184,0,0.35), 0 4px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.32)",
+        transform: hovered ? "translateY(-2px)" : "translateY(-1px)",
         transition: "all 0.25s ease",
       }}
     >
@@ -532,7 +532,7 @@ export default function Index() {
           backgroundSize: "cover",
           backgroundPosition: "center center",
           backgroundRepeat: "no-repeat",
-          filter: "brightness(1.1) contrast(1.08)",
+          filter: "brightness(1.05) contrast(1.08)",
           zIndex: 0,
         }} />
 
@@ -560,7 +560,7 @@ export default function Index() {
         {/* Layer 5 — center light boost behind content */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "radial-gradient(circle at center, rgba(255,184,0,0.10) 0%, rgba(0,0,0,0.0) 60%)",
+          background: "radial-gradient(circle at center, rgba(255,184,0,0.05) 0%, rgba(0,0,0,0.0) 60%)",
           zIndex: 4, pointerEvents: "none",
         }} />
 
@@ -591,7 +591,7 @@ export default function Index() {
             lineHeight: 1.08,
             letterSpacing: "-0.02em",
             color: "#f5f5f5",
-            textShadow: "0 4px 40px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.8)",
+            textShadow: "0 3px 20px rgba(0,0,0,0.75), 0 1px 2px rgba(0,0,0,0.8)",
           }}>
             Stop Guessing.{" "}
             <span style={{ color: "#FFD03A", textShadow: "0 0 32px rgba(255,184,0,0.45), 0 2px 8px rgba(0,0,0,0.6)" }}>Start Winning</span>
@@ -600,18 +600,22 @@ export default function Index() {
 
           {/* Sub */}
           <p style={{
-            margin: "0 0 32px",
+            margin: "0 0 40px",
             fontSize: "clamp(14px, 1.15vw, 19px)",
-            color: "rgba(255,255,255,0.9)",
+            color: "rgba(255,255,255,0.95)",
             lineHeight: 1.5,
             fontWeight: 500,
-            textShadow: "0 2px 10px rgba(0,0,0,0.5)",
+            textShadow: "0 2px 10px rgba(0,0,0,0.6)",
+            opacity: 0.95,
+            maxWidth: 600,
+            marginLeft: "auto",
+            marginRight: "auto",
           }}>
             Projections, value signals, and matchup intelligence —<br />updated every round.
           </p>
 
           {/* CTAs */}
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 28 }}>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 36 }}>
             <HeroPrimaryBtn />
             <HeroSecondaryBtn />
           </div>
@@ -619,9 +623,9 @@ export default function Index() {
           {/* Trust row */}
           <div style={{
             display: "flex", justifyContent: "center", alignItems: "center",
-            gap: "clamp(16px, 2.5vw, 20px)",
+            gap: "clamp(18px, 2.5vw, 22px)",
             flexWrap: "nowrap",
-            opacity: 0.85,
+            opacity: 0.82,
           }}>
             {trustItems.map(({ icon, text }) => (
               <div key={text} style={{
@@ -633,7 +637,7 @@ export default function Index() {
               }}>
                 <span style={{
                   color: "rgba(244,197,66,0.85)",
-                  filter: "drop-shadow(0 0 6px rgba(255,184,0,0.25))",
+                  filter: "drop-shadow(0 0 6px rgba(255,184,0,0.20))",
                   display: "flex",
                 }}>{icon}</span>
                 {text}
