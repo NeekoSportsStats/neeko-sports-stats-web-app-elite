@@ -379,18 +379,19 @@ export default function Index() {
       <section style={{
         width: "100%",
         position: "relative",
-        paddingTop: "66.667%",
+        paddingTop: "72%",
         backgroundImage: "url('/hero/image.png')",
-        backgroundSize: "100% 130%",
-        backgroundPosition: "0% 30%",
+        backgroundSize: "100% 125%",
+        backgroundPosition: "0% 28%",
         backgroundRepeat: "no-repeat",
+        overflow: "visible",
       }}>
         {/* Depth overlays */}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.20) 0%, rgba(0,0,0,0.60) 100%)", zIndex: 1, pointerEvents: "none" }} />
         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 30%, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.25) 100%)", zIndex: 2, pointerEvents: "none" }} />
 
-        {/* Bottom fade into next section */}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "8%", background: "linear-gradient(to bottom, transparent, rgba(0,0,0,0.90))", zIndex: 3, pointerEvents: "none" }} />
+        {/* Bottom fade — starts well below cards, only catches the very bottom edge */}
+        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "4%", background: "linear-gradient(to bottom, transparent, rgba(0,0,0,0.85))", zIndex: 3, pointerEvents: "none" }} />
 
         {/* Content layer — absolutely fills the section. All sizing in vw so it scales 1:1 with the hero image at every viewport width. */}
         <div style={{
@@ -400,11 +401,12 @@ export default function Index() {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          justifyContent: "center",
-          paddingTop: "2%",
+          justifyContent: "flex-start",
+          paddingTop: "9%",
           paddingBottom: "0%",
           paddingLeft: "3vw",
           paddingRight: "3vw",
+          overflow: "visible",
         }}>
           <div style={{
             width: "100%",
@@ -430,7 +432,7 @@ export default function Index() {
             </div>
 
             {/* CTA buttons */}
-            <div style={{ display: "flex", gap: "1%", justifyContent: "center", marginTop: "2%", marginBottom: "1%", flexWrap: "nowrap" }}>
+            <div style={{ display: "flex", gap: "1%", justifyContent: "center", marginTop: "1.8%", marginBottom: "0.8%", flexWrap: "nowrap" }}>
               <Link to="/auth" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "linear-gradient(to bottom, #fad52a, #d09800)", color: "#1a1000", fontWeight: 800, fontSize: "1vw", padding: "0.8vw 2vw", borderRadius: 7, textDecoration: "none", border: "1px solid rgba(0,0,0,0.20)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 20px rgba(0,0,0,0.35)", letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
                 Get This Week's Game Plan <ArrowRight size="1.1vw" />
               </Link>
@@ -448,15 +450,15 @@ export default function Index() {
               ))}
             </div>
 
-            {/* Current Week heading */}
-            <div style={{ marginTop: "5.5%", width: "65vw", display: "flex", alignItems: "center", gap: "1vw" }}>
-              <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.35))" }} />
-              <span style={{ fontSize: "0.9vw", fontWeight: 900, letterSpacing: "0.30em", textTransform: "uppercase", color: C.gold, whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,0.60)" }}>Round 6</span>
-              <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.35))" }} />
+            {/* Round label */}
+            <div style={{ marginTop: "2.5%", marginBottom: "0.9%", width: "65vw", display: "flex", alignItems: "center", gap: "1vw" }}>
+              <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.30))" }} />
+              <span style={{ fontSize: "0.8vw", fontWeight: 900, letterSpacing: "0.32em", textTransform: "uppercase", color: C.gold, whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,0.60)" }}>Round 6</span>
+              <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.30))" }} />
             </div>
 
             {/* Cards row */}
-            <div style={{ width: "65vw", margin: "1.2% auto 0", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "2.4vw" }}>
+            <div style={{ width: "65vw", margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "2.2vw" }}>
               {showSkeleton
                 ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
                 : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
@@ -470,8 +472,8 @@ export default function Index() {
       {/* ══════════════════════════════════════════════════════
           GOLD TRANSITION BAND — hero → content bridge
       ══════════════════════════════════════════════════════ */}
-      <div style={{ width: "100%", height: 3, background: "linear-gradient(to right, transparent 0%, rgba(224,174,45,0.18) 15%, rgba(224,174,45,0.55) 40%, rgba(224,174,45,0.55) 60%, rgba(224,174,45,0.18) 85%, transparent 100%)" }} />
-      <div style={{ width: "100%", height: 56, background: "linear-gradient(to bottom, #1A1411 0%, #0d0b09 100%)", position: "relative", overflow: "hidden" }}>
+      <div style={{ width: "100%", height: 3, background: "linear-gradient(to right, transparent 0%, rgba(224,174,45,0.18) 15%, rgba(224,174,45,0.55) 40%, rgba(224,174,45,0.55) 60%, rgba(224,174,45,0.18) 85%, transparent 100%)", marginTop: 0 }} />
+      <div style={{ width: "100%", height: 32, background: "linear-gradient(to bottom, #1A1411 0%, #0d0b09 100%)", position: "relative", overflow: "hidden" }}>
         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 0%, rgba(224,174,45,0.07) 0%, transparent 70%)" }} />
       </div>
 
