@@ -300,7 +300,7 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading }
       padding: "clamp(64px, 6vw, 88px) clamp(20px, 5vw, 40px)",
     }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <div style={{ textAlign: "left", marginBottom: 40 }}>
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
           <p style={{
             fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em",
             textTransform: "uppercase",
@@ -322,6 +322,7 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading }
             color: "rgba(255,255,255,0.38)",
             maxWidth: 520,
             lineHeight: 1.5,
+            margin: "0 auto",
           }}>
             Everything you need to make the right calls this week.
           </p>

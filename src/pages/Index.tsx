@@ -686,22 +686,20 @@ export default function Index() {
       }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           {/* Section header */}
-          <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
-            <div style={{ flex: 1 }}>
-              <p style={{ margin: "0 0 6px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(244,197,66,0.82)" }}>
-                This Week's Edge
-              </p>
-              <h2 style={{ margin: "0 0 5px", fontSize: "clamp(16px, 1.5vw, 22px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.025em", lineHeight: 1.15 }}>
-                The exact plays to win your week — backed by real projections.
-              </h2>
-              <p style={{ margin: 0, fontSize: "clamp(11px, 0.72vw, 13px)", color: "rgba(255,255,255,0.45)", fontWeight: 500, lineHeight: 1.4 }}>
-                Every pick is based on this week's data, pricing, and matchups.
-              </p>
-            </div>
+          <div style={{ marginBottom: 32, textAlign: "center" }}>
+            <p style={{ margin: "0 0 6px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(244,197,66,0.82)" }}>
+              This Week's Edge
+            </p>
+            <h2 style={{ margin: "0 0 8px", fontSize: "clamp(16px, 1.5vw, 22px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.025em", lineHeight: 1.15 }}>
+              The exact plays to win your week — backed by real projections.
+            </h2>
+            <p style={{ margin: "0 0 16px", fontSize: "clamp(11px, 0.72vw, 13px)", color: "rgba(255,255,255,0.45)", fontWeight: 500, lineHeight: 1.4 }}>
+              Every pick is based on this week's data, pricing, and matchups.
+            </p>
             <Link
               to="/sports/afl/current-round"
               style={{
-                display: "flex", alignItems: "center", gap: 5,
+                display: "inline-flex", alignItems: "center", gap: 5,
                 fontSize: 11, fontWeight: 700,
                 color: "rgba(244,197,66,0.72)",
                 textDecoration: "none",
@@ -710,9 +708,7 @@ export default function Index() {
                 padding: "7px 14px",
                 borderRadius: 8,
                 background: "rgba(244,197,66,0.05)",
-                flexShrink: 0,
                 letterSpacing: "0.03em",
-                marginTop: 4,
                 transition: "all 0.15s ease",
               }}
             >
