@@ -477,11 +477,12 @@ export default function Index() {
 
         {/* Outer gutter — prevents edge-to-edge bleed on ultra-wide */}
         <div style={{ paddingLeft: 24, paddingRight: 24 }}>
-          {/* Inner fixed canvas — locked to 1200px on desktop */}
+          {/* Inner canvas — max 1200px, shrinks with viewport */}
           <div style={{
             position: "relative",
             zIndex: 10,
-            width: 1200,
+            maxWidth: 1200,
+            width: "100%",
             margin: "0 auto",
           }}>
 
@@ -490,8 +491,8 @@ export default function Index() {
               AFL Fantasy Intelligence
             </p>
 
-            {/* Headline block — fixed 720px, never fluid */}
-            <div style={{ width: 720, margin: "0 auto", textAlign: "center" }}>
+            {/* Headline block — max 720px, fluid below that */}
+            <div style={{ maxWidth: 720, width: "100%", margin: "0 auto", textAlign: "center" }}>
               <h1 style={{ margin: 0, fontSize: "3rem", fontWeight: 900, lineHeight: 1.08, letterSpacing: "-0.025em", color: "#f5f5f5", textShadow: "0 2px 4px rgba(0,0,0,0.70), 0 8px 22px rgba(0,0,0,0.50)" }}>
                 Stop Guessing. <span style={{ color: C.gold }}>Start Winning</span>
                 <br />Your AFL Fantasy Week.
@@ -527,8 +528,8 @@ export default function Index() {
               <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.35))" }} />
             </div>
 
-            {/* Cards row — fixed 1000px grid, 4 equal columns, never percentage */}
-            <div style={{ width: 1000, margin: "16px auto 0", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
+            {/* Cards row — max 1000px, 4 equal columns, fluid with viewport */}
+            <div style={{ maxWidth: 1000, width: "100%", margin: "16px auto 0", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
               {showSkeleton
                 ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
                 : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
