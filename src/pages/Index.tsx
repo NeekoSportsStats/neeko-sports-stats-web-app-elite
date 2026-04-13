@@ -518,8 +518,8 @@ export default function Index() {
             </div>
             <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 7, alignItems: "center" }}>
               {trustBar.map(({ icon, text }) => (
-                <div key={text} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "rgba(255,255,255,0.40)", fontWeight: 600 }}>
-                  <span style={{ color: "rgba(245,196,81,0.60)" }}>{icon}</span>{text}
+                <div key={text} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>
+                  <span style={{ color: "rgba(245,196,81,0.90)" }}>{icon}</span>{text}
                 </div>
               ))}
             </div>
@@ -562,8 +562,8 @@ export default function Index() {
 
             <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 28, marginTop: 12 }}>
               {trustBar.map(({ icon, text }) => (
-                <div key={text} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: "rgba(255,255,255,0.36)", fontWeight: 600 }}>
-                  <span style={{ color: "rgba(244,197,66,0.55)" }}>{icon}</span>{text}
+                <div key={text} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>
+                  <span style={{ color: "rgba(244,197,66,0.90)" }}>{icon}</span>{text}
                 </div>
               ))}
             </div>
