@@ -54,7 +54,7 @@ export function LandingLayout() {
               letterSpacing: "0.01em",
               boxShadow: "0 4px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.35)",
             }}>
-              <Crown size={13} /> Get Started Free
+              <Crown size={13} /> Neeko+
             </Link>
           )}
 
