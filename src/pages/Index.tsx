@@ -516,18 +516,18 @@ export default function Index() {
               <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(245,196,81,0.6)", marginBottom: 3 }}>This Week's Game Plan</p>
               <p style={{ fontSize: 9, color: "rgba(255,255,255,0.30)", fontWeight: 600, letterSpacing: "0.04em" }}>Updated Today · Data from 600+ players</p>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
-              {showSkeleton
-                ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
-                : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
-              }
-            </div>
-            <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 7, alignItems: "center" }}>
+            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 7, alignItems: "center" }}>
               {trustBar.map(({ icon, text }) => (
                 <div key={text} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "rgba(255,255,255,0.40)", fontWeight: 600 }}>
                   <span style={{ color: "rgba(245,196,81,0.60)" }}>{icon}</span>{text}
                 </div>
               ))}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12, marginTop: 16 }}>
+              {showSkeleton
+                ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
+                : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
+              }
             </div>
 
             <HeroNavPills style={{ marginTop: 22 }} />
@@ -560,6 +560,14 @@ export default function Index() {
               </Link>
             </div>
 
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 28, marginTop: 12 }}>
+              {trustBar.map(({ icon, text }) => (
+                <div key={text} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: "rgba(255,255,255,0.36)", fontWeight: 600 }}>
+                  <span style={{ color: "rgba(244,197,66,0.55)" }}>{icon}</span>{text}
+                </div>
+              ))}
+            </div>
+
             {/* Cards grid */}
             <div style={{ marginTop: 24, maxWidth: 1020, marginLeft: "auto", marginRight: "auto" }}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, width: "100%", alignItems: "end" }}>
@@ -571,14 +579,6 @@ export default function Index() {
                     </div>
                   ))
                 }
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 28, marginTop: 14 }}>
-                {trustBar.map(({ icon, text }) => (
-                  <div key={text} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: "rgba(255,255,255,0.36)", fontWeight: 600 }}>
-                    <span style={{ color: "rgba(244,197,66,0.55)" }}>{icon}</span>{text}
-                  </div>
-                ))}
               </div>
 
               <HeroNavPills style={{ marginTop: 24 }} />
