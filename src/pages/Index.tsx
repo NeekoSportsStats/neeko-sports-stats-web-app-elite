@@ -752,7 +752,7 @@ export default function Index() {
       <div style={{ width: "100%", height: 1, background: "linear-gradient(to right, transparent, rgba(244,197,66,0.20) 20%, rgba(244,197,66,0.45) 50%, rgba(244,197,66,0.20) 80%, transparent)" }} />
 
       <div className="scroll-reveal" data-reveal-delay="0"><LandingWorkflowSection /></div>
-      <div className="scroll-reveal" data-reveal-delay="50"><LandingProductProof /></div>
+      <div className="scroll-reveal" data-reveal-delay="50"><LandingProductProof rankingsPlayers={players} rankingsLoading={loading} /></div>
       <div className="scroll-reveal" data-reveal-delay="0"><LandingSecondaryCTA /></div>
       <div className="scroll-reveal" data-reveal-delay="0"><LandingTopRankings loading={loading} rows={topRows} freePreview={FREE_PREVIEW} /></div>
       <div className="scroll-reveal" data-reveal-delay="0"><LandingToolsGrid /></div>
