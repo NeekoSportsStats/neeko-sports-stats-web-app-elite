@@ -75,8 +75,9 @@ function EdgeCard(p: CardProps) {
           boxShadow: hovered
             ? `0 0 0 1px ${accent.dim}30, 0 14px 36px rgba(0,0,0,0.65), 0 4px 12px rgba(0,0,0,0.35)`
             : "0 2px 18px rgba(0,0,0,0.42), 0 1px 3px rgba(0,0,0,0.25)",
-          transform: hovered ? "translateY(-5px)" : "translateY(0)",
-          transition: "all 0.18s ease",
+          transform: hovered ? "translateY(-4px) translateZ(0)" : "translateY(0) translateZ(0)",
+          transition: "all 0.20s ease",
+          willChange: "transform",
         }}
       >
         {/* Top accent bar */}
@@ -134,7 +135,7 @@ function EdgeCard(p: CardProps) {
         </div>
 
         {/* Player name */}
-        <div style={{ padding: "18px 16px 4px" }}>
+        <div style={{ padding: "14px 16px 4px" }}>
           <p style={{
             margin: 0,
             fontSize: "clamp(14px, 1.10vw, 20px)",
@@ -164,12 +165,12 @@ function EdgeCard(p: CardProps) {
         </div>
 
         {/* Big projection number */}
-        <div style={{ padding: "10px 16px 0", flexShrink: 0 }}>
+        <div style={{ padding: "8px 16px 0", flexShrink: 0 }}>
           {pts != null ? (
             <>
               <span style={{
                 display: "block",
-                fontSize: "clamp(42px, 4.0vw, 72px)",
+                fontSize: "clamp(38px, 3.6vw, 64px)",
                 fontWeight: 900,
                 color: accent.color,
                 lineHeight: 0.88,
@@ -222,7 +223,7 @@ function EdgeCard(p: CardProps) {
         </div>
 
         {/* CTA */}
-        <div style={{ padding: "0 14px 18px", flexShrink: 0 }}>
+        <div style={{ padding: "0 14px 16px", flexShrink: 0 }}>
           <div style={{
             height: 32,
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -808,12 +809,12 @@ export default function Index() {
           to   { opacity: 1; transform: translateY(0); }
         }
         .edge-card-enter {
-          animation: fadeUp 0.45s ease forwards;
+          animation: fadeUp 0.32s ease forwards;
         }
-        .edge-card-enter:nth-child(1) { animation-delay: 0.05s; }
-        .edge-card-enter:nth-child(2) { animation-delay: 0.12s; }
-        .edge-card-enter:nth-child(3) { animation-delay: 0.19s; }
-        .edge-card-enter:nth-child(4) { animation-delay: 0.26s; }
+        .edge-card-enter:nth-child(1) { animation-delay: 0.04s; }
+        .edge-card-enter:nth-child(2) { animation-delay: 0.10s; }
+        .edge-card-enter:nth-child(3) { animation-delay: 0.16s; }
+        .edge-card-enter:nth-child(4) { animation-delay: 0.22s; }
 
         .hero-eyebrow {
           opacity: 0;
@@ -838,8 +839,9 @@ export default function Index() {
 
         .scroll-reveal {
           opacity: 0;
-          transform: translateY(28px);
-          transition: opacity 0.40s cubic-bezier(0.22,1,0.36,1), transform 0.40s cubic-bezier(0.22,1,0.36,1);
+          transform: translateY(10px);
+          transition: opacity 0.30s cubic-bezier(0.22,1,0.36,1), transform 0.30s cubic-bezier(0.22,1,0.36,1);
+          will-change: transform;
         }
         .scroll-reveal.revealed {
           opacity: 1;

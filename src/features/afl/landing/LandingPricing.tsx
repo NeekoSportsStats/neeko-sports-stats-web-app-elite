@@ -23,24 +23,24 @@ export default function LandingPricing() {
   return (
     <section style={{
       background: "linear-gradient(180deg, #0a0909 0%, #0d0c0a 100%)",
-      padding: "80px clamp(16px, 5vw, 40px)",
+      padding: "64px clamp(16px, 5vw, 40px)",
     }}>
       <div style={{ maxWidth: 1000, margin: "0 auto" }}>
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 52 }}>
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
           <p style={{
             fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em",
             textTransform: "uppercase",
             color: "rgba(224,174,45,0.65)",
-            margin: "0 0 12px",
+            margin: "0 0 6px",
           }}>
             Pricing
           </p>
           <h2 style={{
             fontSize: "clamp(1.5rem, 2.6vw, 2.2rem)",
             fontWeight: 900, letterSpacing: "-0.03em",
-            color: "#F5F5F5", lineHeight: 1.1,
-            margin: "0 0 14px",
+            color: "#F5F5F5", lineHeight: 1.2,
+            margin: "0 0 8px",
           }}>
             Go Beyond Free Rankings
           </h2>
@@ -202,7 +202,7 @@ export default function LandingPricing() {
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>AUD</span>
               </div>
               <p style={{ fontSize: 12, color: "rgba(255,255,255,0.30)", marginTop: 6 }}>
-                Full season. One payment. Or $5.99/wk if you prefer.
+                Full season access. One payment.
               </p>
             </div>
 
@@ -230,14 +230,14 @@ export default function LandingPricing() {
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 marginTop: 28,
-                padding: "14px 20px",
+                padding: "16px 20px",
                 borderRadius: 10,
                 background: "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
                 color: "#130c00",
-                fontSize: 14, fontWeight: 900,
+                fontSize: 14, fontWeight: 700,
                 textDecoration: "none",
                 letterSpacing: "0.01em",
-                boxShadow: "0 6px 28px rgba(224,174,45,0.28)",
+                boxShadow: "0 6px 28px rgba(224,174,45,0.28), 0 0 40px rgba(255,200,0,0.08)",
                 position: "relative",
                 transition: "all 0.18s ease",
               }}

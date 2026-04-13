@@ -7,8 +7,8 @@ const GOLD = "#E0AE2D";
 const STEPS = [
   {
     num: "01",
-    icon: <BarChart2 size={24} />,
-    title: "Scan Rankings",
+    icon: <BarChart2 size={22} />,
+    title: "Find the Best Picks Fast",
     sub: "See who's actually scoring this week.",
     color: GOLD,
     to: "/sports/afl/rankings",
@@ -16,8 +16,8 @@ const STEPS = [
   },
   {
     num: "02",
-    icon: <TrendingUp size={24} />,
-    title: "Spot Value & Traps",
+    icon: <TrendingUp size={22} />,
+    title: "See Who's Underpriced or Overpriced",
     sub: "Find the players to target — and the ones to avoid.",
     color: "#34d170",
     to: "/sports/afl/market-watch",
@@ -25,9 +25,9 @@ const STEPS = [
   },
   {
     num: "03",
-    icon: <CheckCircle size={24} />,
-    title: "Lock In Your Team",
-    sub: "Make confident trades, captains, and start/sit calls.",
+    icon: <CheckCircle size={22} />,
+    title: "Make Confident Trades & Captain Calls",
+    sub: "Lock in your team with certainty before lockout.",
     color: "#60A5FA",
     to: "/sports/afl/current-round",
     cta: "View This Round",
@@ -46,21 +46,22 @@ function StepCard(step: Step) {
         onMouseLeave={() => setHovered(false)}
         style={{
           flex: 1,
-          background: hovered ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.03)",
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
-          border: `1px solid ${hovered ? color + "45" : "rgba(255,255,255,0.07)"}`,
-          borderRadius: 16,
-          padding: "28px 26px 24px",
+          background: hovered ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.02)",
+          backdropFilter: "blur(6px)",
+          WebkitBackdropFilter: "blur(6px)",
+          border: `1px solid ${hovered ? color + "50" : "rgba(255,255,255,0.07)"}`,
+          borderRadius: 14,
+          padding: "20px 22px 18px",
           position: "relative",
           overflow: "hidden",
           boxShadow: hovered
-            ? `0 20px 48px rgba(0,0,0,0.60), 0 0 0 1px ${color}18 inset, 0 0 28px ${color}0f`
+            ? `0 16px 40px rgba(0,0,0,0.55), 0 0 0 1px ${color}18 inset`
             : "none",
-          transform: hovered ? "translateY(-6px) scale(1.012)" : "translateY(0) scale(1)",
-          transition: "all 0.22s cubic-bezier(0.22,1,0.36,1)",
+          transform: hovered ? "translateY(-4px)" : "translateY(0)",
+          transition: "all 0.20s cubic-bezier(0.22,1,0.36,1)",
           display: "flex",
           flexDirection: "column",
+          willChange: "transform",
         }}
       >
         <div style={{
@@ -68,21 +69,20 @@ function StepCard(step: Step) {
           background: `linear-gradient(to right, transparent, ${color}55, transparent)`,
         }} />
 
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
           <div style={{
-            width: 48, height: 48, borderRadius: 13,
-            background: hovered ? `${color}20` : `${color}14`,
-            border: `1.5px solid ${hovered ? color + "45" : color + "28"}`,
+            width: 36, height: 36, borderRadius: 10,
+            background: hovered ? `${color}22` : `${color}14`,
+            border: `1.5px solid ${hovered ? color + "50" : color + "28"}`,
             display: "flex", alignItems: "center", justifyContent: "center",
             color, flexShrink: 0,
-            transform: hovered ? "scale(1.06)" : "scale(1)",
-            transition: "transform 0.18s ease, background 0.18s ease, border-color 0.18s ease",
+            transition: "background 0.18s ease, border-color 0.18s ease",
           }}>
             {icon}
           </div>
           <span style={{
-            fontSize: 34, fontWeight: 900,
-            color: "rgba(255,255,255,0.045)",
+            fontSize: 30, fontWeight: 900,
+            color: "rgba(255,255,255,0.04)",
             letterSpacing: "-0.04em",
             fontVariantNumeric: "tabular-nums",
             lineHeight: 1,
@@ -92,17 +92,17 @@ function StepCard(step: Step) {
         </div>
 
         <h3 style={{
-          fontSize: 18, fontWeight: 800,
+          fontSize: 20, fontWeight: 700,
           color: "#F5F5F5", lineHeight: 1.2,
-          margin: "0 0 9px", letterSpacing: "-0.02em",
+          margin: "0 0 8px", letterSpacing: "-0.02em",
         }}>
           {title}
         </h3>
 
         <p style={{
-          fontSize: 13, color: "rgba(255,255,255,0.50)",
-          fontWeight: 500, margin: "0 0 20px",
-          lineHeight: 1.6, flex: 1,
+          fontSize: 13, color: "rgba(255,255,255,0.48)",
+          fontWeight: 500, margin: "0 0 16px",
+          lineHeight: 1.55, flex: 1,
         }}>
           {sub}
         </p>
@@ -110,7 +110,7 @@ function StepCard(step: Step) {
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 5,
           fontSize: 12, fontWeight: 700,
-          color: hovered ? color : `${color}aa`,
+          color: hovered ? color : `${color}99`,
           letterSpacing: "0.02em",
           transition: "color 0.18s",
         }}>
@@ -125,23 +125,23 @@ export default function LandingWorkflowSection() {
   return (
     <section style={{
       background: "linear-gradient(180deg, #0B0F14 0%, #0d0c0a 100%)",
-      padding: "80px clamp(16px, 5vw, 40px)",
+      padding: "68px clamp(16px, 5vw, 40px)",
     }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 44 }}>
+        <div style={{ textAlign: "center", marginBottom: 36 }}>
           <p style={{
             fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em",
             textTransform: "uppercase",
             color: "rgba(224,174,45,0.65)",
-            margin: "0 0 12px",
+            margin: "0 0 6px",
           }}>
             Your Weekly Workflow
           </p>
           <h2 style={{
             fontSize: "clamp(1.5rem, 2.6vw, 2.2rem)",
             fontWeight: 900, letterSpacing: "-0.03em",
-            color: "#F5F5F5", lineHeight: 1.1,
-            margin: "0 0 12px",
+            color: "#F5F5F5", lineHeight: 1.2,
+            margin: "0 0 8px",
           }}>
             How You Win Your Week in 30 Seconds
           </h2>
@@ -149,7 +149,7 @@ export default function LandingWorkflowSection() {
             fontSize: "clamp(12px, 0.85vw, 14px)",
             color: "rgba(255,255,255,0.38)",
             maxWidth: 360, margin: "0 auto",
-            lineHeight: 1.55,
+            lineHeight: 1.5,
           }}>
             Your weekly decisions — simplified.
           </p>
@@ -158,7 +158,7 @@ export default function LandingWorkflowSection() {
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: 16,
+          gap: 14,
           alignItems: "stretch",
         }}>
           {STEPS.map(step => <StepCard key={step.num} {...step} />)}

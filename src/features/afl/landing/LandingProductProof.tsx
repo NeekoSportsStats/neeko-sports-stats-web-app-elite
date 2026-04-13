@@ -131,24 +131,24 @@ export default function LandingProductProof() {
   return (
     <section style={{
       background: "linear-gradient(180deg, #0d0c0a 0%, #0a0909 100%)",
-      padding: "80px clamp(16px, 5vw, 40px)",
+      padding: "64px clamp(16px, 5vw, 40px)",
     }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
+        <div style={{ textAlign: "center", marginBottom: 36 }}>
           <p style={{
             fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em",
             textTransform: "uppercase",
             color: "rgba(224,174,45,0.65)",
-            margin: "0 0 12px",
+            margin: "0 0 6px",
           }}>
             Product Preview
           </p>
           <h2 style={{
             fontSize: "clamp(1.5rem, 2.6vw, 2.2rem)",
             fontWeight: 900, letterSpacing: "-0.03em",
-            color: "#F5F5F5", lineHeight: 1.1,
-            margin: "0 0 12px",
+            color: "#F5F5F5", lineHeight: 1.2,
+            margin: "0 0 8px",
           }}>
             Inside Neeko+
           </h2>
@@ -156,7 +156,7 @@ export default function LandingProductProof() {
             fontSize: "clamp(12px, 0.85vw, 14px)",
             color: "rgba(255,255,255,0.38)",
             maxWidth: 400, margin: "0 auto",
-            lineHeight: 1.55,
+            lineHeight: 1.5,
           }}>
             Everything you need to make the right calls this week.
           </p>
@@ -177,12 +177,24 @@ export default function LandingProductProof() {
                 <button
                   key={tab.id}
                   onClick={() => handleTabClick(tab.id)}
+                  onMouseEnter={e => {
+                    if (!isActive) {
+                      (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
+                      (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.72)";
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!isActive) {
+                      (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.025)";
+                      (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.48)";
+                    }
+                  }}
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
-                    padding: "12px 16px",
+                    padding: "10px 14px",
                     borderRadius: 10,
-                    border: `1px solid ${isActive ? tab.accentColor + "35" : "rgba(255,255,255,0.06)"}`,
-                    background: isActive ? `${tab.accentColor}12` : "rgba(255,255,255,0.025)",
+                    border: `1px solid ${isActive ? tab.accentColor + "45" : "rgba(255,255,255,0.06)"}`,
+                    background: isActive ? `${tab.accentColor}18` : "rgba(255,255,255,0.025)",
                     color: isActive ? tab.accentColor : "rgba(255,255,255,0.48)",
                     fontSize: 13, fontWeight: isActive ? 700 : 500,
                     letterSpacing: "-0.01em",
@@ -190,6 +202,7 @@ export default function LandingProductProof() {
                     textAlign: "left",
                     transition: "all 0.16s ease",
                     outline: "none",
+                    boxShadow: isActive ? `0 0 0 1px ${tab.accentColor}20 inset` : "none",
                   }}
                 >
                   <span style={{ display: "flex", flexShrink: 0 }}>{tab.icon}</span>

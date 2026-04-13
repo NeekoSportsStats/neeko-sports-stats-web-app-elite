@@ -40,23 +40,23 @@ const STATS = [
 
 export default function LandingTrust() {
   return (
-    <section style={{ background: "#0a0909", padding: "80px clamp(16px, 5vw, 40px)" }}>
+    <section style={{ background: "#0a0909", padding: "64px clamp(16px, 5vw, 40px)" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
+        <div style={{ textAlign: "center", marginBottom: 36 }}>
           <p style={{
             fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em",
             textTransform: "uppercase",
             color: "rgba(224,174,45,0.65)",
-            margin: "0 0 12px",
+            margin: "0 0 6px",
           }}>
             Under The Hood
           </p>
           <h2 style={{
             fontSize: "clamp(1.5rem, 2.6vw, 2.2rem)",
             fontWeight: 900, letterSpacing: "-0.03em",
-            color: "#F5F5F5", lineHeight: 1.1,
-            margin: "0 0 12px",
+            color: "#F5F5F5", lineHeight: 1.2,
+            margin: "0 0 8px",
           }}>
             Built for Weekly AFL Fantasy Decisions
           </h2>
@@ -64,7 +64,7 @@ export default function LandingTrust() {
             fontSize: "clamp(12px, 0.85vw, 14px)",
             color: "rgba(255,255,255,0.38)",
             maxWidth: 400, margin: "0 auto",
-            lineHeight: 1.55,
+            lineHeight: 1.5,
           }}>
             Updated before every lockout using real player data and pricing.
           </p>
