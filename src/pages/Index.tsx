@@ -401,7 +401,7 @@ export default function Index() {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          paddingTop: "8%",
+          paddingTop: "13%",
           paddingLeft: "3vw",
           paddingRight: "3vw",
         }}>
