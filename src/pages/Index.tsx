@@ -432,7 +432,7 @@ export default function Index() {
           paddingRight: "3vw",
         }}>
           {/* Eyebrow */}
-          <p style={{ fontSize: "0.6vw", fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(245,196,81,0.70)", marginBottom: "1%", textAlign: "center", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+          <p style={{ fontSize: "0.6vw", fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "#F4C542", marginBottom: "1%", textAlign: "center", textShadow: "0 1px 8px rgba(0,0,0,0.90), 0 0 20px rgba(244,197,66,0.30)" }}>
             AFL Fantasy Intelligence
           </p>
 
@@ -449,8 +449,8 @@ export default function Index() {
 
           {/* CTA buttons */}
           <div style={{ display: "flex", gap: "1%", justifyContent: "center", marginTop: "1.8%", marginBottom: "0.8%", flexWrap: "nowrap" }}>
-            <Link to="/auth" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "linear-gradient(to bottom, #fad52a, #d09800)", color: "#1a1000", fontWeight: 800, fontSize: "1vw", padding: "0.8vw 2vw", borderRadius: 7, textDecoration: "none", border: "1px solid rgba(0,0,0,0.20)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 20px rgba(0,0,0,0.35)", letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
-              Get This Week's Game Plan <ArrowRight size="1.1vw" />
+            <Link to="/neeko-plus" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "linear-gradient(to bottom, #fad52a, #d09800)", color: "#1a1000", fontWeight: 800, fontSize: "1vw", padding: "0.8vw 2vw", borderRadius: 7, textDecoration: "none", border: "1px solid rgba(0,0,0,0.20)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 20px rgba(0,0,0,0.35)", letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
+              Start Winning With Neeko+ <ArrowRight size="1.1vw" />
             </Link>
             <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "rgba(255,255,255,0.08)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.80)", fontWeight: 600, fontSize: "1vw", padding: "0.8vw 2vw", borderRadius: 7, textDecoration: "none", letterSpacing: "0.01em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 4px 12px rgba(0,0,0,0.25)", whiteSpace: "nowrap" }}>
               View Free Picks
