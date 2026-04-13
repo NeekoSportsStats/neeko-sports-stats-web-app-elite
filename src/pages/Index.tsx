@@ -448,7 +448,7 @@ export default function Index() {
           </div>
 
           {/* CTA buttons */}
-          <div style={{ display: "flex", gap: "1%", justifyContent: "center", marginTop: "1.8%", marginBottom: "0.8%", flexWrap: "nowrap" }}>
+          <div style={{ display: "flex", gap: "1%", justifyContent: "center", marginTop: "1.8%", marginBottom: "2%", flexWrap: "nowrap" }}>
             <Link to="/neeko-plus" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "linear-gradient(to bottom, #fad52a, #d09800)", color: "#1a1000", fontWeight: 800, fontSize: "1vw", padding: "0.8vw 2vw", borderRadius: 7, textDecoration: "none", border: "1px solid rgba(0,0,0,0.20)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 20px rgba(0,0,0,0.35)", letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
               Start Winning With Neeko+ <ArrowRight size="1.1vw" />
             </Link>
@@ -470,7 +470,7 @@ export default function Index() {
         {/* ── ZONE B: Round label + cards — anchored to the lower board shelf ── */}
         <div style={{
           position: "absolute",
-          bottom: "10%",
+          bottom: "15%",
           left: 0, right: 0,
           zIndex: 10,
           display: "flex",
@@ -480,14 +480,14 @@ export default function Index() {
           paddingRight: "3vw",
         }}>
           {/* Round label */}
-          <div style={{ marginBottom: "1.1%", width: "65vw", display: "flex", alignItems: "center", gap: "1vw" }}>
+          <div style={{ marginBottom: "1.1%", width: "68vw", display: "flex", alignItems: "center", gap: "1vw" }}>
             <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.28))" }} />
             <span style={{ fontSize: "0.78vw", fontWeight: 900, letterSpacing: "0.32em", textTransform: "uppercase", color: C.gold, whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,0.65)" }}>Round 6</span>
             <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.28))" }} />
           </div>
 
           {/* Cards row */}
-          <div style={{ width: "65vw", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "2.2vw" }}>
+          <div style={{ width: "68vw", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "2.2vw" }}>
             {showSkeleton
               ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
               : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
