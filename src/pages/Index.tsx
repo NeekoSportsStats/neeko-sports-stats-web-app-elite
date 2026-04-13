@@ -463,9 +463,9 @@ export default function Index() {
       <section style={{
         position: "relative",
         minHeight: "88vh",
-        backgroundImage: "url('/hero/image.png')",
+        backgroundImage: "url('/images/Fantasy_sports_war_room_setup.png')",
         backgroundSize: "cover",
-        backgroundPosition: "center 30%",
+        backgroundPosition: "center center",
         backgroundRepeat: "no-repeat",
         display: "flex",
         flexDirection: "column",
@@ -475,7 +475,7 @@ export default function Index() {
         {/* Dark overlay — strong, premium */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "linear-gradient(to bottom, rgba(0,0,0,0.76) 0%, rgba(0,0,0,0.82) 60%, rgba(0,0,0,0.93) 100%)",
+          background: "linear-gradient(to bottom, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.82) 55%, rgba(0,0,0,0.90) 100%)",
           zIndex: 1, pointerEvents: "none",
         }} />
 
