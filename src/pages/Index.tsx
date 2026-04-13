@@ -485,7 +485,7 @@ export default function Index() {
           backgroundPosition: "center 20%",
           backgroundRepeat: "no-repeat",
           paddingBottom: 48,
-          minHeight: 600,
+          minHeight: 450,
         }}>
           <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 1 }} />
           <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "30%", background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(10,10,10,0.92) 70%, #0a0a0a 100%)", zIndex: 2 }} />
