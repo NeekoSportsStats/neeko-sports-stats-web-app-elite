@@ -530,36 +530,36 @@ export default function Index() {
         alignItems: "center",
         justifyContent: "flex-start",
       }}>
-        {/* Layer 1 — background image, blurred and slightly dimmed */}
+        {/* Layer 1 — background image, softened but readable */}
         <div style={{
           position: "absolute", inset: 0,
           backgroundImage: "url('/images/Fantasy_sports_war_room_setup.png')",
           backgroundSize: "cover",
           backgroundPosition: "center center",
           backgroundRepeat: "no-repeat",
-          filter: "brightness(0.72) blur(5px)",
-          transform: "scale(1.06)",
+          filter: "brightness(0.80) saturate(1.05) blur(3px)",
+          transform: "scale(1.04)",
           zIndex: 0,
         }} />
 
-        {/* Layer 2 — strong top-to-bottom darkening gradient */}
+        {/* Layer 2 — gradient overlay: lighter in midzone so image reads through */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.20) 40%, rgba(0,0,0,0.85) 100%)",
+          background: "linear-gradient(to bottom, rgba(0,0,0,0.48) 0%, rgba(0,0,0,0.10) 35%, rgba(0,0,0,0.60) 75%, rgba(0,0,0,0.92) 100%)",
           zIndex: 1, pointerEvents: "none",
         }} />
 
-        {/* Layer 3 — warm radial FOCUS LIGHT behind headline (not dark — light) */}
+        {/* Layer 3 — warm radial clarity zone behind headline — subtle midtone lift */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "radial-gradient(circle at 50% 38%, rgba(255,200,80,0.18) 0%, rgba(255,200,80,0.07) 28%, rgba(0,0,0,0.0) 62%)",
+          background: "radial-gradient(ellipse 72% 55% at 50% 36%, rgba(255,210,90,0.13) 0%, rgba(220,180,60,0.06) 45%, transparent 72%)",
           zIndex: 2, pointerEvents: "none",
         }} />
 
-        {/* Layer 4 — edge vignette to push focus to center */}
+        {/* Layer 4 — edge vignette: moderate, keeps corners cinematic */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.55) 100%)",
+          background: "radial-gradient(ellipse at 50% 50%, transparent 35%, rgba(0,0,0,0.42) 100%)",
           zIndex: 3, pointerEvents: "none",
         }} />
 
