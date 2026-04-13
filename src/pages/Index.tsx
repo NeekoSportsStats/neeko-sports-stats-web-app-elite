@@ -196,10 +196,17 @@ export default function Index() {
 
   useEffect(() => {
     (async () => {
+      console.log("HERO CARDS COMPONENT MOUNTED — fetching rankings");
       const { data, error } = await supabase.rpc("get_rankings_safe", {
         p_user_id: null, p_is_bot: false, p_limit: 200,
       });
-      if (!error && data) setPlayers((data as Record<string, unknown>[]).map(mapRankingRow));
+      if (error) {
+        console.error("Hero cards fetch error:", error);
+      }
+      if (data) {
+        console.log("Hero cards raw data length:", (data as unknown[]).length);
+        setPlayers((data as Record<string, unknown>[]).map(mapRankingRow));
+      }
       setLoading(false);
     })();
   }, []);
@@ -209,29 +216,45 @@ export default function Index() {
     const mwInput: MWPlayerRow[] = players.map(toMWRow);
     const { buys, holds, sells } = classifyPlayers(mwInput);
 
-    // Signal-tag based selections
+    // Pool: active players with a projection
     const allWithProjection = players.filter(p => p.projection != null && !p.is_injured && !p.is_bye);
+    const byProjectionDesc = [...allWithProjection].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0));
 
-    // Must Buy: signal_tag STRONG_UP or UP, highest projection
-    const mustBuyP = allWithProjection
-      .filter(p => ["STRONG_UP", "UP"].includes(p.signal_tag ?? ""))
-      .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))[0] ?? null;
+    // Must Buy: prefer STRONG_UP/UP signal + highest projection, fallback to highest positive value_score
+    const mustBuyP =
+      allWithProjection.filter(p => ["STRONG_UP", "UP"].includes(p.signal_tag ?? "")).sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))[0]
+      ?? allWithProjection.filter(p => (p.value_score ?? 0) > 0).sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))[0]
+      ?? byProjectionDesc[0]
+      ?? null;
 
-    // Trap Alert: signal_tag DOWN or STRONG_DOWN, lowest projection
-    const trapP = allWithProjection
-      .filter(p => ["DOWN", "STRONG_DOWN"].includes(p.signal_tag ?? ""))
-      .sort((a, b) => (a.projection ?? 0) - (b.projection ?? 0))[0] ?? null;
+    // Trap Alert: prefer DOWN/STRONG_DOWN signal, fallback to lowest value_score
+    const trapP =
+      allWithProjection.filter(p => ["DOWN", "STRONG_DOWN"].includes(p.signal_tag ?? "")).sort((a, b) => (a.projection ?? 0) - (b.projection ?? 0))[0]
+      ?? allWithProjection.filter(p => p.player_id !== mustBuyP?.player_id).sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))[0]
+      ?? byProjectionDesc[byProjectionDesc.length - 1]
+      ?? null;
 
-    // Captain Pick: highest projection among non-mustBuy players
-    const captainP = allWithProjection
-      .filter(p => p.player_id !== mustBuyP?.player_id)
-      .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))[0] ?? null;
+    // Captain Pick: highest projection among players not already used
+    const usedIds1 = new Set([mustBuyP?.player_id, trapP?.player_id].filter(Boolean));
+    const captainP =
+      byProjectionDesc.filter(p => !usedIds1.has(p.player_id))[0]
+      ?? byProjectionDesc[0]
+      ?? null;
 
-    // Breakout Pick: positive trend_score, highest trend_score, different from above
-    const usedIds = new Set([mustBuyP?.player_id, trapP?.player_id, captainP?.player_id].filter(Boolean));
-    const breakoutP = allWithProjection
-      .filter(p => !usedIds.has(p.player_id) && (p.trend_score ?? 0) > 0)
-      .sort((a, b) => (b.trend_score ?? 0) - (a.trend_score ?? 0))[0] ?? null;
+    // Breakout Pick: prefer positive trend_score, fallback to next highest projection
+    const usedIds2 = new Set([mustBuyP?.player_id, trapP?.player_id, captainP?.player_id].filter(Boolean));
+    const breakoutP =
+      allWithProjection.filter(p => !usedIds2.has(p.player_id) && (p.trend_score ?? 0) > 0).sort((a, b) => (b.trend_score ?? 0) - (a.trend_score ?? 0))[0]
+      ?? byProjectionDesc.filter(p => !usedIds2.has(p.player_id))[0]
+      ?? byProjectionDesc[3]
+      ?? null;
+
+    console.log("Hero cards selected:", {
+      mustBuy: mustBuyP?.player_name,
+      trap: trapP?.player_name,
+      captain: captainP?.player_name,
+      breakout: breakoutP?.player_name,
+    });
 
     // Rankings preview — top 12 sorted by neeko_rating
     const topRows = players
@@ -281,44 +304,47 @@ export default function Index() {
     { icon: <Clock size={11} />,    text: "Takes 30 seconds to plan your week" },
   ];
 
-  const allHeroReady = mustBuyP && trapP && captainP && breakoutP;
+  const allHeroReady = !loading && players.length > 0 && mustBuyP && captainP;
 
-  const cards: CardProps[] = !loading && allHeroReady ? [
+  const trapFallback = trapP ?? captainP;
+  const breakoutFallback = breakoutP ?? captainP;
+
+  const cards: CardProps[] = allHeroReady ? [
     {
       label: "Must Buy", icon: <TrendingUp size={9} />,
       color: "#1a6028",
-      playerName: mustBuyP.player_name, team: mustBuyP.team ?? "", position: mustBuyP.position,
-      projection: mustBuyP.projection,
+      playerName: mustBuyP!.player_name, team: mustBuyP!.team ?? "", position: mustBuyP!.position,
+      projection: mustBuyP!.projection,
       reason: mustBuyReason(),
       ctaLabel: "View Must Buys", ctaTo: "/sports/afl/current-round", index: 0,
     },
     {
       label: "Trap Alert", icon: <AlertTriangle size={9} />,
       color: "#881818",
-      playerName: trapP.player_name, team: trapP.team ?? "", position: trapP.position,
-      projection: trapP.projection,
+      playerName: trapFallback!.player_name, team: trapFallback!.team ?? "", position: trapFallback!.position,
+      projection: trapFallback!.projection,
       reason: trapReason(),
       ctaLabel: "See Trap Alerts", ctaTo: "/sports/afl/current-round", index: 1,
     },
     {
       label: "Captain Pick", icon: <Star size={9} />, badge: "C",
       color: "#7a4800",
-      playerName: captainP.player_name, team: captainP.team ?? "", position: captainP.position,
-      projection: captainP.projection,
+      playerName: captainP!.player_name, team: captainP!.team ?? "", position: captainP!.position,
+      projection: captainP!.projection,
       reason: captainReason(),
       ctaLabel: "View Captains", ctaTo: "/sports/afl/captains", index: 2,
     },
     {
       label: "Breakout Pick", icon: <ZapIcon size={9} />,
       color: "#0d4278",
-      playerName: breakoutP.player_name, team: breakoutP.team ?? "", position: breakoutP.position,
-      projection: breakoutP.projection,
+      playerName: breakoutFallback!.player_name, team: breakoutFallback!.team ?? "", position: breakoutFallback!.position,
+      projection: breakoutFallback!.projection,
       reason: breakoutReason(),
       ctaLabel: "Explore Rankings", ctaTo: "/sports/afl/rankings", index: 3,
     },
   ] : [];
 
-  const showSkeleton = loading || (!loading && !allHeroReady);
+  const showSkeleton = loading || cards.length === 0;
 
   // ── Mobile hero cards mapped to MobileLanding's HeroCard shape ──────────────
   const mobileCards = cards.map(c => ({
