@@ -28,13 +28,13 @@ export default function LandingTopRankings({ loading, rows, freePreview }: Props
 
   return (
     <section style={{ background: "#0a0908", padding: "96px clamp(16px, 5vw, 40px)" }}>
-      <div style={{ maxWidth: 860, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 48 }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ textAlign: "left", marginBottom: 48 }}>
           <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(224,174,45,0.60)", marginBottom: 14 }}>Live Data</p>
           <h2 style={{ fontSize: "clamp(1.6rem, 3vw, 2.4rem)", fontWeight: 900, letterSpacing: "-0.03em", color: "#F5F5F5", lineHeight: 1.1, marginBottom: 14 }}>
             Full Weekly Rankings — Updated Before Lockout
           </h2>
-          <p style={{ fontSize: 14, color: "#606060", maxWidth: 440, margin: "0 auto", lineHeight: 1.65 }}>
+          <p style={{ fontSize: 14, color: "#606060", maxWidth: 520, lineHeight: 1.65 }}>
             See every ranked player — not just the highlights.
           </p>
         </div>
