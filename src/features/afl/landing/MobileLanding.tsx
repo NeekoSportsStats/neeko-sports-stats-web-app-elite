@@ -142,8 +142,8 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
       </div>
 
       {/* ─── SECTION 1 — HERO ─── */}
-      <section style={{ position: "relative", backgroundImage: "url('/hero/image.png')", backgroundSize: "cover", backgroundPosition: "center 20%", backgroundRepeat: "no-repeat", minHeight: "70vh", display: "flex", flexDirection: "column", justifyContent: "flex-start" }}>
-        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.50) 0%, rgba(0,0,0,0.25) 30%, rgba(0,0,0,0.65) 70%, #0a0908 100%)", zIndex: 1 }} />
+      <section style={{ position: "relative", background: "radial-gradient(circle at 50% 28%, rgba(255,200,0,0.08), transparent 60%), linear-gradient(to bottom, #050505, #000000)", minHeight: "70vh", display: "flex", flexDirection: "column", justifyContent: "flex-start" }}>
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 30%, rgba(255,200,0,0.05), transparent 70%)", zIndex: 1, pointerEvents: "none" }} />
 
         <div style={{ position: "relative", zIndex: 10, padding: "36px 16px 20px", textAlign: "center" }}>
           <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(224,174,45,0.70)", marginBottom: 12 }}>AFL Fantasy Intelligence</p>
