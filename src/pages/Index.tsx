@@ -270,6 +270,63 @@ function toMWRow(r: RankingRow): MWPlayerRow {
   };
 }
 
+// ── Hero CTA buttons with hover state ──────────────────────────────────────────
+function HeroPrimaryBtn() {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <Link
+      to="/neeko-plus"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 8,
+        background: "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
+        color: "#130c00",
+        fontWeight: 800, fontSize: "clamp(13px, 0.95vw, 16px)",
+        padding: "13px 28px",
+        borderRadius: 9,
+        textDecoration: "none",
+        letterSpacing: "0.01em",
+        whiteSpace: "nowrap",
+        boxShadow: hovered
+          ? "0 14px 40px rgba(255,184,0,0.35), 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.32)"
+          : "0 10px 30px rgba(255,184,0,0.25), 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.32)",
+        transform: hovered ? "translateY(-1px)" : "translateY(0)",
+        transition: "all 0.25s ease",
+      }}
+    >
+      Start Winning With Neeko+ <ArrowRight size={15} />
+    </Link>
+  );
+}
+
+function HeroSecondaryBtn() {
+  const [hovered, setHovered] = useState(false);
+  return (
+    <Link
+      to="/sports/afl/rankings"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 8,
+        background: hovered ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.08)",
+        backdropFilter: "blur(8px)",
+        WebkitBackdropFilter: "blur(8px)",
+        border: "1px solid rgba(255,255,255,0.15)",
+        color: "rgba(255,255,255,0.82)",
+        fontWeight: 600, fontSize: "clamp(13px, 0.95vw, 16px)",
+        padding: "13px 28px",
+        borderRadius: 9,
+        textDecoration: "none",
+        whiteSpace: "nowrap",
+        transition: "all 0.25s ease",
+      }}
+    >
+      View Free Rankings
+    </Link>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function Index() {
   const { isPremium } = useAuth();
@@ -479,23 +536,30 @@ export default function Index() {
           zIndex: 0,
         }} />
 
-        {/* Layer 2 — linear gradient overlay (lightened to let image breathe) */}
+        {/* Layer 2 — linear gradient overlay */}
         <div style={{
           position: "absolute", inset: 0,
           background: "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.65) 100%)",
           zIndex: 1, pointerEvents: "none",
         }} />
 
-        {/* Layer 3 — radial spotlight behind text only */}
+        {/* Layer 3 — radial spotlight behind text */}
         <div style={{
           position: "absolute", inset: 0,
           background: "radial-gradient(circle at 50% 42%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.0) 70%)",
           zIndex: 2, pointerEvents: "none",
         }} />
 
+        {/* Layer 4 — ambient gold glow (very subtle, off-centre) */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "radial-gradient(circle at 70% 60%, rgba(255,184,0,0.08) 0%, transparent 60%)",
+          zIndex: 3, pointerEvents: "none",
+        }} />
+
         {/* Headline + CTA */}
         <div style={{
-          position: "relative", zIndex: 3,
+          position: "relative", zIndex: 4,
           width: "100%", maxWidth: 760,
           textAlign: "center",
           padding: "clamp(80px, 11vw, 140px) 24px 0",
@@ -516,14 +580,14 @@ export default function Index() {
           <h1 style={{
             margin: "0 0 20px",
             fontSize: "clamp(32px, 4.0vw, 60px)",
-            fontWeight: 900,
+            fontWeight: 800,
             lineHeight: 1.08,
-            letterSpacing: "-0.028em",
+            letterSpacing: "-0.02em",
             color: "#f5f5f5",
-            textShadow: "0 2px 20px rgba(0,0,0,0.6), 0 1px 4px rgba(0,0,0,0.8)",
+            textShadow: "0 4px 30px rgba(0,0,0,0.7), 0 1px 2px rgba(0,0,0,0.8)",
           }}>
             Stop Guessing.{" "}
-            <span style={{ color: GOLD }}>Start Winning</span>
+            <span style={{ color: "#FFD03A", textShadow: "0 0 32px rgba(255,184,0,0.45), 0 2px 8px rgba(0,0,0,0.6)" }}>Start Winning</span>
             <br />AFL Fantasy.
           </h1>
 
@@ -531,61 +595,40 @@ export default function Index() {
           <p style={{
             margin: "0 0 32px",
             fontSize: "clamp(14px, 1.15vw, 19px)",
-            color: "rgba(255,255,255,0.72)",
-            lineHeight: 1.65,
+            color: "rgba(255,255,255,0.9)",
+            lineHeight: 1.5,
             fontWeight: 500,
+            textShadow: "0 2px 10px rgba(0,0,0,0.5)",
           }}>
             Projections, value signals, and matchup intelligence —<br />updated every round.
           </p>
 
           {/* CTAs */}
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 28 }}>
-            <Link to="/neeko-plus" style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              background: "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
-              color: "#130c00",
-              fontWeight: 800, fontSize: "clamp(13px, 0.95vw, 16px)",
-              padding: "13px 28px",
-              borderRadius: 9,
-              textDecoration: "none",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.40), inset 0 1px 0 rgba(255,255,255,0.32)",
-              letterSpacing: "0.01em",
-              whiteSpace: "nowrap",
-            }}>
-              Start Winning With Neeko+ <ArrowRight size={15} />
-            </Link>
-            <Link to="/sports/afl/rankings" style={{
-              display: "inline-flex", alignItems: "center", gap: 8,
-              background: "rgba(255,255,255,0.08)",
-              backdropFilter: "blur(8px)",
-              WebkitBackdropFilter: "blur(8px)",
-              border: "1px solid rgba(255,255,255,0.18)",
-              color: "rgba(255,255,255,0.82)",
-              fontWeight: 600, fontSize: "clamp(13px, 0.95vw, 16px)",
-              padding: "13px 28px",
-              borderRadius: 9,
-              textDecoration: "none",
-              whiteSpace: "nowrap",
-            }}>
-              View Free Rankings
-            </Link>
+            <HeroPrimaryBtn />
+            <HeroSecondaryBtn />
           </div>
 
           {/* Trust row */}
           <div style={{
             display: "flex", justifyContent: "center", alignItems: "center",
-            gap: "clamp(16px, 3vw, 36px)",
+            gap: "clamp(16px, 2.5vw, 20px)",
             flexWrap: "nowrap",
+            opacity: 0.85,
           }}>
             {trustItems.map(({ icon, text }) => (
               <div key={text} style={{
                 display: "flex", alignItems: "center", gap: 7,
                 fontSize: "clamp(11px, 0.78vw, 13px)",
-                color: "rgba(255,255,255,0.52)",
+                color: "rgba(255,255,255,0.72)",
                 fontWeight: 600,
                 whiteSpace: "nowrap",
               }}>
-                <span style={{ color: "rgba(244,197,66,0.75)" }}>{icon}</span>
+                <span style={{
+                  color: "rgba(244,197,66,0.85)",
+                  filter: "drop-shadow(0 0 6px rgba(255,184,0,0.25))",
+                  display: "flex",
+                }}>{icon}</span>
                 {text}
               </div>
             ))}
@@ -594,7 +637,7 @@ export default function Index() {
 
         {/* ── THIS WEEK'S EDGE — cards pulled up into hero ── */}
         <div style={{
-          position: "relative", zIndex: 3,
+          position: "relative", zIndex: 4,
           width: "100%",
           maxWidth: 1120,
           padding: "0 clamp(16px, 3vw, 32px)",
