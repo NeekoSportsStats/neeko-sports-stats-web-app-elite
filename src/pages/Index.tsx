@@ -124,23 +124,24 @@ function PlayerAvatar({ name, color }: { name: string; color: string }) {
   const initials = name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
   return (
     <div style={{
-      width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
+      width: "2.6vw", height: "2.6vw", minWidth: 22, minHeight: 22,
+      borderRadius: "50%", flexShrink: 0,
       background: `${color}1a`, border: `1.5px solid ${color}38`,
       display: "flex", alignItems: "center", justifyContent: "center",
       overflow: "hidden", position: "relative",
     }}>
-      <div style={{ position: "absolute", bottom: -2, left: "50%", transform: "translateX(-50%)", width: 22, height: 26, background: `${color}28`, borderRadius: "50% 50% 0 0" }} />
-      <div style={{ position: "absolute", top: 6, left: "50%", transform: "translateX(-50%)", width: 14, height: 14, borderRadius: "50%", background: `${color}44` }} />
-      <span style={{ position: "relative", zIndex: 1, fontSize: 9, fontWeight: 900, color, letterSpacing: "-0.02em", marginTop: 9 }}>{initials}</span>
+      <div style={{ position: "absolute", bottom: -2, left: "50%", transform: "translateX(-50%)", width: "55%", height: "65%", background: `${color}28`, borderRadius: "50% 50% 0 0" }} />
+      <div style={{ position: "absolute", top: "15%", left: "50%", transform: "translateX(-50%)", width: "36%", height: "36%", borderRadius: "50%", background: `${color}44` }} />
+      <span style={{ position: "relative", zIndex: 1, fontSize: "0.55vw", fontWeight: 900, color, letterSpacing: "-0.02em", marginTop: "25%" }}>{initials}</span>
     </div>
   );
 }
 
 function StickyPin({ color }: { color: string }) {
   return (
-    <div style={{ position: "absolute", top: -10, left: "50%", transform: "translateX(-50%)", zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))" }}>
-      <div style={{ width: 13, height: 13, borderRadius: "50%", background: `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.6) 0%, ${color} 50%, rgba(0,0,0,0.25) 100%)`, border: "1px solid rgba(0,0,0,0.22)" }} />
-      <div style={{ width: 2, height: 7, background: "linear-gradient(to bottom, rgba(110,90,70,0.9), rgba(50,40,30,0.55))", marginTop: -1 }} />
+    <div style={{ position: "absolute", top: "-0.7vw", left: "50%", transform: "translateX(-50%)", zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))" }}>
+      <div style={{ width: "0.9vw", height: "0.9vw", minWidth: 8, minHeight: 8, borderRadius: "50%", background: `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.6) 0%, ${color} 50%, rgba(0,0,0,0.25) 100%)`, border: "1px solid rgba(0,0,0,0.22)" }} />
+      <div style={{ width: 2, height: "0.5vw", minHeight: 4, background: "linear-gradient(to bottom, rgba(110,90,70,0.9), rgba(50,40,30,0.55))", marginTop: -1 }} />
     </div>
   );
 }
@@ -154,7 +155,7 @@ function WhiteboardCard(p: CardProps) {
   const paper    = STICKY_PAPERS[p.index ?? 0] ?? STICKY_PAPERS[0];
 
   return (
-    <Link to={p.ctaTo} style={{ textDecoration: "none", display: "block", paddingTop: 14 }}>
+    <Link to={p.ctaTo} style={{ textDecoration: "none", display: "block", paddingTop: "1vw" }}>
       <div style={{ position: "relative" }}>
         <StickyPin color={p.color} />
         <div
@@ -162,70 +163,70 @@ function WhiteboardCard(p: CardProps) {
           onMouseLeave={() => setHovered(false)}
           style={{
             background: paper.bg,
-            backgroundImage: `repeating-linear-gradient(transparent, transparent 17px, ${paper.lines} 17px, ${paper.lines} 18px)`,
+            backgroundImage: `repeating-linear-gradient(transparent, transparent 1.1vw, ${paper.lines} 1.1vw, ${paper.lines} calc(1.1vw + 1px))`,
             borderRadius: 2, border: "1px solid rgba(0,0,0,0.10)",
             boxShadow: hovered
               ? "0 2px 4px rgba(0,0,0,0.22), 0 10px 24px rgba(0,0,0,0.26), 0 20px 44px rgba(0,0,0,0.18)"
               : "0 1px 3px rgba(0,0,0,0.16), 0 5px 14px rgba(0,0,0,0.20), 0 12px 28px rgba(0,0,0,0.16)",
-            transform: hovered ? `rotate(${rotation}deg) translateY(-7px) scale(1.025)` : `rotate(${rotation}deg) translateY(0)`,
+            transform: hovered ? `rotate(${rotation}deg) translateY(-0.5vw) scale(1.025)` : `rotate(${rotation}deg) translateY(0)`,
             transition: "all 0.22s ease", overflow: "visible", position: "relative",
           }}
         >
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1.5, background: "linear-gradient(to bottom, rgba(255,255,255,0.55), transparent)", borderRadius: "2px 2px 0 0", pointerEvents: "none" }} />
 
           {/* Header */}
-          <div style={{ borderBottom: `1px solid ${paper.headerBorder}`, padding: "10px 14px 8px", display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ borderBottom: `1px solid ${paper.headerBorder}`, padding: "0.7vw 1vw 0.5vw", display: "flex", alignItems: "center", gap: "0.4vw" }}>
             <span style={{ color: p.color, display: "flex", alignItems: "center", flexShrink: 0 }}>{p.icon}</span>
-            <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.24em", textTransform: "uppercase", color: p.color, flex: 1 }}>{p.label}</span>
+            <span style={{ fontSize: "0.55vw", fontWeight: 900, letterSpacing: "0.24em", textTransform: "uppercase", color: p.color, flex: 1 }}>{p.label}</span>
             {p.position && (
-              <span style={{ fontSize: 8, fontWeight: 800, textTransform: "uppercase", background: `${p.color}16`, color: p.color, padding: "2px 5px", borderRadius: 3, border: `1px solid ${p.color}25` }}>{p.position}</span>
+              <span style={{ fontSize: "0.5vw", fontWeight: 800, textTransform: "uppercase", background: `${p.color}16`, color: p.color, padding: "0.15vw 0.35vw", borderRadius: 3, border: `1px solid ${p.color}25` }}>{p.position}</span>
             )}
             {p.badge && (
-              <span style={{ fontSize: 8, fontWeight: 900, textTransform: "uppercase", background: p.color, color: "#fff", padding: "2px 6px", borderRadius: 3 }}>{p.badge}</span>
+              <span style={{ fontSize: "0.5vw", fontWeight: 900, textTransform: "uppercase", background: p.color, color: "#fff", padding: "0.15vw 0.4vw", borderRadius: 3 }}>{p.badge}</span>
             )}
           </div>
 
           {/* Player */}
-          <div style={{ padding: "10px 14px 4px", display: "flex", alignItems: "center", gap: 9 }}>
+          <div style={{ padding: "0.7vw 1vw 0.3vw", display: "flex", alignItems: "center", gap: "0.6vw" }}>
             <PlayerAvatar name={p.playerName} color={p.color} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 14, fontWeight: 800, color: "#1c1208", lineHeight: 1.2, letterSpacing: "-0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.playerName}</p>
-              <p style={{ fontSize: 10, color: "#857060", marginTop: 2, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.team}</p>
+              <p style={{ fontSize: "0.9vw", fontWeight: 800, color: "#1c1208", lineHeight: 1.2, letterSpacing: "-0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.playerName}</p>
+              <p style={{ fontSize: "0.65vw", color: "#857060", marginTop: "0.15vw", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.team}</p>
             </div>
           </div>
 
           {/* Score */}
-          <div style={{ padding: "2px 14px 6px", display: "flex", alignItems: "baseline", gap: 5 }}>
+          <div style={{ padding: "0.15vw 1vw 0.4vw", display: "flex", alignItems: "baseline", gap: "0.35vw" }}>
             {pts != null ? (
               <>
-                <span style={{ fontSize: 32, fontWeight: 900, color: p.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{pts}</span>
-                <span style={{ fontSize: 10, color: "#a08060", fontWeight: 700 }}>pts</span>
+                <span style={{ fontSize: "2.2vw", fontWeight: 900, color: p.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{pts}</span>
+                <span style={{ fontSize: "0.65vw", color: "#a08060", fontWeight: 700 }}>pts</span>
                 {priceStr && (
-                  <span style={{ fontSize: 9, fontWeight: 800, color: up ? "#1a5e22" : "#7a1818", background: up ? "#d8eed8" : "#f2dada", padding: "2px 5px", borderRadius: 3, marginLeft: 2, border: up ? "1px solid #b4d8b4" : "1px solid #e0b8b8" }}>
+                  <span style={{ fontSize: "0.55vw", fontWeight: 800, color: up ? "#1a5e22" : "#7a1818", background: up ? "#d8eed8" : "#f2dada", padding: "0.15vw 0.35vw", borderRadius: 3, marginLeft: "0.15vw", border: up ? "1px solid #b4d8b4" : "1px solid #e0b8b8" }}>
                     {up ? "▲" : "▼"}{priceStr}
                   </span>
                 )}
               </>
             ) : (
-              <span style={{ fontSize: 16, color: "#bbb", fontWeight: 700 }}>—</span>
+              <span style={{ fontSize: "1.1vw", color: "#bbb", fontWeight: 700 }}>—</span>
             )}
           </div>
 
           {/* Bullets */}
           {p.bullets.length > 0 && (
-            <div style={{ padding: "4px 14px 10px", display: "flex", flexDirection: "column", gap: 5 }}>
+            <div style={{ padding: "0.3vw 1vw 0.7vw", display: "flex", flexDirection: "column", gap: "0.35vw" }}>
               {p.bullets.map((b, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
-                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: `${p.color}50`, flexShrink: 0, marginTop: 4, border: `1px solid ${p.color}30` }} />
-                  <span style={{ fontSize: 9, color: "#4a3828", fontWeight: 600, lineHeight: 1.45 }}>{b}</span>
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.4vw" }}>
+                  <div style={{ width: "0.35vw", height: "0.35vw", borderRadius: "50%", background: `${p.color}50`, flexShrink: 0, marginTop: "0.3vw", border: `1px solid ${p.color}30` }} />
+                  <span style={{ fontSize: "0.55vw", color: "#4a3828", fontWeight: 600, lineHeight: 1.45 }}>{b}</span>
                 </div>
               ))}
             </div>
           )}
 
           {/* CTA */}
-          <div style={{ padding: "0 12px 14px" }}>
-            <div style={{ background: `linear-gradient(to bottom, ${p.color}ee, ${p.color})`, color: "#fff", fontSize: 9, fontWeight: 800, textAlign: "center", padding: "8px 10px", borderRadius: 4, letterSpacing: "0.07em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 6px rgba(0,0,0,0.28)", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+          <div style={{ padding: "0 0.8vw 1vw" }}>
+            <div style={{ background: `linear-gradient(to bottom, ${p.color}ee, ${p.color})`, color: "#fff", fontSize: "0.55vw", fontWeight: 800, textAlign: "center", padding: "0.55vw 0.7vw", borderRadius: 4, letterSpacing: "0.07em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 6px rgba(0,0,0,0.28)", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3vw" }}>
               {p.ctaLabel} <ChevronRight size={9} />
             </div>
           </div>
@@ -238,7 +239,7 @@ function WhiteboardCard(p: CardProps) {
 }
 
 function SkeletonCard() {
-  return <div style={{ height: 280, borderRadius: 4, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.08)" }} />;
+  return <div style={{ paddingBottom: "130%", borderRadius: 4, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.08)" }} />;
 }
 
 // ── Helpers — all classification delegated to canonical engine ─────────────────
