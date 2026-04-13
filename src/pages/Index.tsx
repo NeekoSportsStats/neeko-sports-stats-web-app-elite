@@ -529,36 +529,36 @@ export default function Index() {
       {helmet}
 
       {/* ═══════════════════════════════════════════════════
-          HERO — full-viewport dark with image bg
+          HERO — true full-viewport first screen
       ═══════════════════════════════════════════════════ */}
       <section style={{
         position: "relative",
-        minHeight: "74vh",
+        minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "flex-start",
+        justifyContent: "center",
       }}>
         {/* Layer 1 — base dark gradient */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "radial-gradient(circle at 50% 30%, rgba(255,200,0,0.08), transparent 60%), linear-gradient(to bottom, #050505, #000000)",
+          background: "radial-gradient(circle at 50% 35%, rgba(255,200,0,0.09), transparent 62%), linear-gradient(to bottom, #050505, #000000 80%, #0B0F14 100%)",
           zIndex: 0,
         }} />
 
         {/* Layer 2 — subtle gold glow */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "radial-gradient(circle at 50% 32%, rgba(255,200,0,0.05), transparent 70%)",
+          background: "radial-gradient(circle at 50% 38%, rgba(255,200,0,0.05), transparent 70%)",
           zIndex: 1, pointerEvents: "none",
         }} />
 
-        {/* Headline + CTA */}
+        {/* Hero content block */}
         <div style={{
           position: "relative", zIndex: 10,
-          width: "100%", maxWidth: 760,
+          width: "100%", maxWidth: 780,
           textAlign: "center",
-          padding: "clamp(56px, 7.5vw, 100px) 24px 0",
+          padding: "0 clamp(20px, 5vw, 40px)",
         }}>
           {/* Eyebrow */}
           <p className="hero-eyebrow" style={{
@@ -566,7 +566,7 @@ export default function Index() {
             letterSpacing: "0.40em",
             textTransform: "uppercase",
             color: GOLD,
-            marginBottom: 12,
+            marginBottom: 20,
             textShadow: "0 0 24px rgba(244,197,66,0.35)",
           }}>
             AFL Fantasy Intelligence
@@ -574,11 +574,11 @@ export default function Index() {
 
           {/* H1 */}
           <h1 className="hero-h1" style={{
-            margin: "0 0 14px",
-            fontSize: "clamp(30px, 3.8vw, 58px)",
-            fontWeight: 800,
-            lineHeight: 1.08,
-            letterSpacing: "-0.02em",
+            margin: "0 0 24px",
+            fontSize: "clamp(34px, 4.2vw, 64px)",
+            fontWeight: 900,
+            lineHeight: 1.07,
+            letterSpacing: "-0.03em",
             color: "#f5f5f5",
             textShadow: "0 3px 20px rgba(0,0,0,0.75), 0 1px 2px rgba(0,0,0,0.8)",
           }}>
@@ -589,23 +589,23 @@ export default function Index() {
 
           {/* Sub */}
           <p className="hero-sub" style={{
-            margin: "0 auto 22px",
-            fontSize: "clamp(13px, 1.05vw, 17px)",
-            color: "rgba(255,255,255,0.88)",
-            lineHeight: 1.5,
+            margin: "0 auto 36px",
+            fontSize: "clamp(14px, 1.10vw, 18px)",
+            color: "rgba(255,255,255,0.78)",
+            lineHeight: 1.6,
             fontWeight: 500,
             textShadow: "0 2px 10px rgba(0,0,0,0.6)",
-            maxWidth: 520,
+            maxWidth: 500,
           }}>
-            Know who to trade, captain, and avoid — before lockout.
+            Know who to trade, captain, and avoid — before lockout. Powered by 600+ player projections updated every round.
           </p>
 
-          {/* CTAs — wrapped in glass container */}
-          <div className="hero-ctas" style={{ display: "flex", justifyContent: "center", marginBottom: 22 }}>
+          {/* CTAs */}
+          <div className="hero-ctas" style={{ display: "flex", justifyContent: "center", marginBottom: 36 }}>
             <div style={{
               display: "inline-flex", gap: 12, flexWrap: "wrap", justifyContent: "center",
-              padding: "12px 16px",
-              borderRadius: 14,
+              padding: "14px 18px",
+              borderRadius: 16,
               background: "rgba(255,255,255,0.04)",
               backdropFilter: "blur(12px)",
               WebkitBackdropFilter: "blur(12px)",
@@ -616,33 +616,22 @@ export default function Index() {
             </div>
           </div>
 
-          {/* Micro-proof line */}
-          <p style={{
-            fontSize: 11, fontWeight: 600,
-            color: "rgba(255,255,255,0.28)",
-            letterSpacing: "0.03em",
-            margin: "0 0 18px",
-          }}>
-            Used by serious AFL Fantasy coaches every week.
-          </p>
-
           {/* Trust row */}
           <div className="hero-trust" style={{
             display: "flex", justifyContent: "center", alignItems: "center",
-            gap: "clamp(18px, 2.5vw, 22px)",
-            flexWrap: "nowrap",
-            opacity: 0.82,
+            gap: "clamp(16px, 2.5vw, 28px)",
+            flexWrap: "wrap",
           }}>
             {trustItems.map(({ icon, text }) => (
               <div key={text} style={{
                 display: "flex", alignItems: "center", gap: 7,
                 fontSize: "clamp(11px, 0.78vw, 13px)",
-                color: "rgba(255,255,255,0.72)",
+                color: "rgba(255,255,255,0.55)",
                 fontWeight: 600,
                 whiteSpace: "nowrap",
               }}>
                 <span style={{
-                  color: "rgba(244,197,66,0.85)",
+                  color: "rgba(244,197,66,0.80)",
                   filter: "drop-shadow(0 0 6px rgba(255,184,0,0.20))",
                   display: "flex",
                 }}>{icon}</span>
@@ -652,25 +641,42 @@ export default function Index() {
           </div>
         </div>
 
-        {/* ── THIS WEEK'S EDGE — cards pulled up into hero ── */}
+        {/* Hero bottom fade — blends into next section */}
         <div style={{
-          position: "relative", zIndex: 10,
-          width: "100%",
-          maxWidth: 1280,
-          padding: "0 clamp(20px, 4vw, 48px)",
-          marginTop: "clamp(24px, 2.8vw, 40px)",
-          marginBottom: "-80px",
+          position: "absolute", bottom: 0, left: 0, right: 0,
+          height: 160,
+          background: "linear-gradient(to bottom, transparent 0%, #0B0F14 100%)",
+          zIndex: 5, pointerEvents: "none",
+        }} />
+
+        {/* Scroll hint */}
+        <div style={{
+          position: "absolute", bottom: 32, left: "50%", transform: "translateX(-50%)",
+          zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+          opacity: 0.35,
         }}>
+          <div style={{ width: 1, height: 32, background: "linear-gradient(to bottom, rgba(244,197,66,0.8), transparent)" }} />
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════
+          THIS WEEK'S EDGE — own section below the fold
+      ═══════════════════════════════════════════════════ */}
+      <section style={{
+        background: DARK,
+        padding: "clamp(48px, 6vw, 80px) clamp(20px, 4vw, 48px) clamp(56px, 6vw, 88px)",
+      }}>
+        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
           {/* Section header */}
-          <div style={{ marginBottom: 18, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
+          <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
             <div style={{ flex: 1 }}>
-              <p style={{ margin: "0 0 5px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(244,197,66,0.82)" }}>
+              <p style={{ margin: "0 0 6px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(244,197,66,0.82)" }}>
                 This Week's Edge
               </p>
-              <h2 style={{ margin: "0 0 4px", fontSize: "clamp(15px, 1.45vw, 21px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.025em", lineHeight: 1.15 }}>
+              <h2 style={{ margin: "0 0 5px", fontSize: "clamp(16px, 1.5vw, 22px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.025em", lineHeight: 1.15 }}>
                 The exact plays to win your week — backed by real projections.
               </h2>
-              <p style={{ margin: 0, fontSize: "clamp(11px, 0.70vw, 12px)", color: "rgba(255,255,255,0.55)", fontWeight: 500, lineHeight: 1.4 }}>
+              <p style={{ margin: 0, fontSize: "clamp(11px, 0.72vw, 13px)", color: "rgba(255,255,255,0.45)", fontWeight: 500, lineHeight: 1.4 }}>
                 Every pick is based on this week's data, pricing, and matchups.
               </p>
             </div>
@@ -683,12 +689,12 @@ export default function Index() {
                 textDecoration: "none",
                 whiteSpace: "nowrap",
                 border: "1px solid rgba(244,197,66,0.20)",
-                padding: "6px 12px",
-                borderRadius: 7,
+                padding: "7px 14px",
+                borderRadius: 8,
                 background: "rgba(244,197,66,0.05)",
                 flexShrink: 0,
                 letterSpacing: "0.03em",
-                marginTop: 3,
+                marginTop: 4,
                 transition: "all 0.15s ease",
               }}
             >
@@ -702,7 +708,6 @@ export default function Index() {
             gridTemplateColumns: "repeat(4, 1fr)",
             gap: 24,
             alignItems: "stretch",
-            marginTop: 8,
           }}>
             {showSkeleton
               ? [0,1,2,3].map(i => (
@@ -718,17 +723,7 @@ export default function Index() {
             }
           </div>
         </div>
-        {/* Hero bottom fade — blends into page background */}
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0,
-          height: 200,
-          background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(11,15,20,0.88) 78%, #0B0F14 100%)",
-          zIndex: 5, pointerEvents: "none",
-        }} />
       </section>
-
-      {/* ── SPACER — lifts content below hero enough for card overlap ── */}
-      <div style={{ height: 72, background: DARK }} />
 
       {/* ── GOLD DIVIDER ────────────────────────────────────────────── */}
       <div style={{ width: "100%", height: 1, background: "linear-gradient(to right, transparent, rgba(244,197,66,0.20) 20%, rgba(244,197,66,0.45) 50%, rgba(244,197,66,0.20) 80%, transparent)" }} />
