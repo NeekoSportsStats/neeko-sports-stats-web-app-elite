@@ -289,8 +289,8 @@ function HeroPrimaryBtn() {
         letterSpacing: "0.01em",
         whiteSpace: "nowrap",
         boxShadow: hovered
-          ? "0 14px 40px rgba(255,184,0,0.35), 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.32)"
-          : "0 10px 30px rgba(255,184,0,0.25), 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.32)",
+          ? "0 14px 40px rgba(255,184,0,0.40), 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.32)"
+          : "0 12px 35px rgba(255,184,0,0.35), 0 2px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.32)",
         transform: hovered ? "translateY(-1px)" : "translateY(0)",
         transition: "all 0.25s ease",
       }}
@@ -532,14 +532,14 @@ export default function Index() {
           backgroundSize: "cover",
           backgroundPosition: "center center",
           backgroundRepeat: "no-repeat",
-          filter: "brightness(1.05) contrast(1.05)",
+          filter: "brightness(1.1) contrast(1.08)",
           zIndex: 0,
         }} />
 
         {/* Layer 2 — linear gradient overlay */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.65) 100%)",
+          background: "linear-gradient(to bottom, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0.48) 55%, rgba(0,0,0,0.58) 100%)",
           zIndex: 1, pointerEvents: "none",
         }} />
 
@@ -557,9 +557,16 @@ export default function Index() {
           zIndex: 3, pointerEvents: "none",
         }} />
 
+        {/* Layer 5 — center light boost behind content */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "radial-gradient(circle at center, rgba(255,184,0,0.10) 0%, rgba(0,0,0,0.0) 60%)",
+          zIndex: 4, pointerEvents: "none",
+        }} />
+
         {/* Headline + CTA */}
         <div style={{
-          position: "relative", zIndex: 4,
+          position: "relative", zIndex: 5,
           width: "100%", maxWidth: 760,
           textAlign: "center",
           padding: "clamp(80px, 11vw, 140px) 24px 0",
@@ -584,7 +591,7 @@ export default function Index() {
             lineHeight: 1.08,
             letterSpacing: "-0.02em",
             color: "#f5f5f5",
-            textShadow: "0 4px 30px rgba(0,0,0,0.7), 0 1px 2px rgba(0,0,0,0.8)",
+            textShadow: "0 4px 40px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.8)",
           }}>
             Stop Guessing.{" "}
             <span style={{ color: "#FFD03A", textShadow: "0 0 32px rgba(255,184,0,0.45), 0 2px 8px rgba(0,0,0,0.6)" }}>Start Winning</span>
@@ -637,7 +644,7 @@ export default function Index() {
 
         {/* ── THIS WEEK'S EDGE — cards pulled up into hero ── */}
         <div style={{
-          position: "relative", zIndex: 4,
+          position: "relative", zIndex: 5,
           width: "100%",
           maxWidth: 1120,
           padding: "0 clamp(16px, 3vw, 32px)",
