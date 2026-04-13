@@ -297,10 +297,10 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading }
   return (
     <section style={{
       background: "linear-gradient(180deg, #0d0c0a 0%, #0a0909 100%)",
-      padding: "64px clamp(16px, 5vw, 40px)",
+      padding: "clamp(64px, 6vw, 88px) clamp(20px, 5vw, 40px)",
     }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <div style={{ textAlign: "left", marginBottom: 36 }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <div style={{ textAlign: "left", marginBottom: 40 }}>
           <p style={{
             fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em",
             textTransform: "uppercase",

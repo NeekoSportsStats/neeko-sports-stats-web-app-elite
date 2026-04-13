@@ -23,11 +23,11 @@ export default function LandingPricing() {
   return (
     <section style={{
       background: "linear-gradient(180deg, #0a0909 0%, #0d0c0a 100%)",
-      padding: "64px clamp(16px, 5vw, 40px)",
+      padding: "clamp(80px, 7vw, 104px) clamp(20px, 5vw, 40px)",
     }}>
-      <div style={{ maxWidth: 1000, margin: "0 auto" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
+        <div style={{ textAlign: "center", marginBottom: 44 }}>
           <p style={{
             fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em",
             textTransform: "uppercase",

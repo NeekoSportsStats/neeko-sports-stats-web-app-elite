@@ -682,9 +682,9 @@ export default function Index() {
       ═══════════════════════════════════════════════════ */}
       <section style={{
         background: DARK,
-        padding: "clamp(48px, 6vw, 80px) clamp(20px, 4vw, 48px) clamp(56px, 6vw, 88px)",
+        padding: "clamp(48px, 5vw, 72px) clamp(20px, 5vw, 40px) clamp(64px, 6vw, 88px)",
       }}>
-        <div style={{ maxWidth: 1280, margin: "0 auto" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           {/* Section header */}
           <div style={{ marginBottom: 28, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 20 }}>
             <div style={{ flex: 1 }}>

@@ -48,9 +48,9 @@ const TOOLS = [
 
 export default function LandingToolsGrid() {
   return (
-    <section style={{ background: "linear-gradient(180deg, #0d0b09 0%, #111009 100%)", padding: "96px clamp(16px, 5vw, 40px)" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 60 }}>
+    <section style={{ background: "linear-gradient(180deg, #0d0b09 0%, #111009 100%)", padding: "clamp(80px, 7vw, 104px) clamp(20px, 5vw, 40px)" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 52 }}>
           <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(224,174,45,0.60)", marginBottom: 14 }}>Neeko+</p>
           <h2 style={{ fontSize: "clamp(1.75rem, 3vw, 2.5rem)", fontWeight: 900, letterSpacing: "-0.03em", color: "#F5F5F5", lineHeight: 1.1, marginBottom: 14 }}>
             Everything in One System

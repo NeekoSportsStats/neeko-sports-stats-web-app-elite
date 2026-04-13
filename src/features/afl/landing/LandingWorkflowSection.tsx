@@ -125,10 +125,10 @@ export default function LandingWorkflowSection() {
   return (
     <section style={{
       background: "linear-gradient(180deg, #0B0F14 0%, #0d0c0a 100%)",
-      padding: "68px clamp(16px, 5vw, 40px)",
+      padding: "clamp(64px, 6vw, 88px) clamp(20px, 5vw, 40px)",
     }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
           <p style={{
             fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em",
             textTransform: "uppercase",
