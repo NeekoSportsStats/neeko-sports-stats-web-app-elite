@@ -533,54 +533,60 @@ export default function Index() {
           </div>
         </section>
       ) : (
-        <section style={{ position: "relative", width: "100%", height: 800, overflow: "hidden", background: "#1a1008" }}>
+        <section style={{ position: "relative", width: "100%", background: "#1a1008", paddingTop: 72, paddingBottom: 52 }}>
+          {/* Background — scales independently from content */}
           <div style={{ position: "absolute", inset: 0, backgroundImage: "url('/hero/image.png')", backgroundSize: "cover", backgroundRepeat: "no-repeat", backgroundPosition: "center 38%", zIndex: 0 }} />
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.50) 0%, rgba(0,0,0,0.30) 32%, rgba(0,0,0,0.10) 55%, rgba(0,0,0,0.68) 100%)", zIndex: 1, pointerEvents: "none" }} />
-          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.32) 100%)", zIndex: 2, pointerEvents: "none" }} />
+          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.28) 35%, rgba(0,0,0,0.12) 58%, rgba(0,0,0,0.72) 100%)", zIndex: 1, pointerEvents: "none" }} />
+          <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.04) 0%, rgba(0,0,0,0.30) 100%)", zIndex: 2, pointerEvents: "none" }} />
 
-          <div style={{ position: "relative", zIndex: 20, width: "100%", maxWidth: 900, margin: "0 auto", textAlign: "center", paddingTop: 128 }}>
-            <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(245,196,81,0.70)", marginBottom: 10, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
-              AFL Fantasy Intelligence
-            </p>
-            <h1 style={{ margin: 0, fontSize: "clamp(1.98rem, 3.24vw, 2.79rem)", fontWeight: 900, lineHeight: 1.08, letterSpacing: "-0.025em", color: "#f5f5f5", textShadow: "0 2px 4px rgba(0,0,0,0.70), 0 8px 22px rgba(0,0,0,0.50)" }}>
-              Stop Guessing. <span style={{ color: C.gold }}>Start Winning</span>
-              <br />Your AFL Fantasy Week.
-            </h1>
-            <p style={{ marginTop: 9, fontSize: 14.4, color: "rgba(255,255,255,0.90)", lineHeight: 1.6, textShadow: "0 1px 6px rgba(0,0,0,0.90)", maxWidth: 504, margin: "9px auto 0" }}>
-              Trades, captains, and traps — powered by 600+ player projections updated every round.
-            </p>
+          {/* Anchored content shell — max-width locked, never stretches */}
+          <div style={{ position: "relative", zIndex: 20, width: "100%", maxWidth: 1200, margin: "0 auto", padding: "0 32px", boxSizing: "border-box" }}>
 
-            <div style={{ display: "flex", gap: 10.8, justifyContent: "center", marginTop: 12.6 }}>
-              <Link to="/auth" style={{ display: "flex", alignItems: "center", gap: 7.2, background: "linear-gradient(to bottom, #fad52a, #d09800)", color: "#1a1000", fontWeight: 800, fontSize: 12.6, padding: "11.7px 23.4px", borderRadius: 6.3, textDecoration: "none", border: "1px solid rgba(0,0,0,0.20)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 16px rgba(0,0,0,0.30)", letterSpacing: "0.01em" }}>
-                Unlock This Week's Game Plan <ArrowRight size={12.6} />
-              </Link>
-              <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: 7.2, background: "rgba(255,255,255,0.12)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.24)", color: "#ffffff", fontWeight: 700, fontSize: 12.6, padding: "11.7px 23.4px", borderRadius: 6.3, textDecoration: "none", letterSpacing: "0.01em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 12px rgba(0,0,0,0.30)" }}>
-                View Free Picks
-              </Link>
+            {/* Headline block — constrained width, centered */}
+            <div style={{ maxWidth: 780, margin: "0 auto", textAlign: "center" }}>
+              <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(245,196,81,0.70)", marginBottom: 10, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+                AFL Fantasy Intelligence
+              </p>
+              <h1 style={{ margin: 0, fontSize: "clamp(2.1rem, 3.2vw, 2.75rem)", fontWeight: 900, lineHeight: 1.08, letterSpacing: "-0.025em", color: "#f5f5f5", textShadow: "0 2px 4px rgba(0,0,0,0.70), 0 8px 22px rgba(0,0,0,0.50)" }}>
+                Stop Guessing. <span style={{ color: C.gold }}>Start Winning</span>
+                <br />Your AFL Fantasy Week.
+              </h1>
+              <p style={{ marginTop: 14, fontSize: 14.5, color: "rgba(255,255,255,0.90)", lineHeight: 1.6, textShadow: "0 1px 6px rgba(0,0,0,0.90)", maxWidth: 500, margin: "14px auto 0" }}>
+                Trades, captains, and traps — powered by 600+ player projections updated every round.
+              </p>
+
+              {/* CTA row — centered, fixed gap */}
+              <div style={{ display: "flex", gap: 11, justifyContent: "center", marginTop: 24 }}>
+                <Link to="/auth" style={{ display: "flex", alignItems: "center", gap: 7, background: "linear-gradient(to bottom, #fad52a, #d09800)", color: "#1a1000", fontWeight: 800, fontSize: 13, padding: "12px 24px", borderRadius: 7, textDecoration: "none", border: "1px solid rgba(0,0,0,0.20)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 16px rgba(0,0,0,0.30)", letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
+                  Unlock This Week's Game Plan <ArrowRight size={13} />
+                </Link>
+                <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(255,255,255,0.12)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.24)", color: "#ffffff", fontWeight: 700, fontSize: 13, padding: "12px 24px", borderRadius: 7, textDecoration: "none", letterSpacing: "0.01em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 12px rgba(0,0,0,0.30)", whiteSpace: "nowrap" }}>
+                  View Free Picks
+                </Link>
+              </div>
+
+              {/* Trust strip — centered, compact */}
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", flexWrap: "wrap", gap: "8px 24px", marginTop: 16 }}>
+                {trustBar.map(({ icon, text }) => (
+                  <div key={text} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>
+                    <span style={{ color: "rgba(244,197,66,0.90)" }}>{icon}</span>{text}
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 28, marginTop: 12 }}>
-              {trustBar.map(({ icon, text }) => (
-                <div key={text} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 10.5, color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>
-                  <span style={{ color: "rgba(244,197,66,0.90)" }}>{icon}</span>{text}
-                </div>
-              ))}
-            </div>
-
-            {/* Cards grid */}
-            <div style={{ marginTop: 24, maxWidth: 1020, marginLeft: "auto", marginRight: "auto" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, width: "100%", alignItems: "end" }}>
+            {/* Cards grid — max-width capped, centered as a block */}
+            <div style={{ maxWidth: 980, margin: "32px auto 0", padding: "0 4px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 22, alignItems: "end" }}>
                 {showSkeleton
                   ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
                   : cards.map((c) => (
-                    <div key={c.label} style={{ display: "flex", flexDirection: "column" }}>
-                      <WhiteboardCard {...c} />
-                    </div>
+                    <WhiteboardCard key={c.label} {...c} />
                   ))
                 }
               </div>
 
-              <HeroNavPills style={{ marginTop: 24 }} />
+              <HeroNavPills style={{ marginTop: 28 }} />
             </div>
           </div>
         </section>
