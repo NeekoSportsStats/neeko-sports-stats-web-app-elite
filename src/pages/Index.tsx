@@ -463,25 +463,39 @@ export default function Index() {
       <section style={{
         position: "relative",
         minHeight: "88vh",
-        backgroundImage: "url('/images/Fantasy_sports_war_room_setup.png')",
-        backgroundSize: "cover",
-        backgroundPosition: "center center",
-        backgroundRepeat: "no-repeat",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "flex-start",
       }}>
-        {/* Dark overlay — strong, premium */}
+        {/* Layer 1 — background image with subtle brightness boost */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "linear-gradient(to bottom, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.82) 55%, rgba(0,0,0,0.90) 100%)",
+          backgroundImage: "url('/images/Fantasy_sports_war_room_setup.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center center",
+          backgroundRepeat: "no-repeat",
+          filter: "brightness(1.05) contrast(1.05)",
+          zIndex: 0,
+        }} />
+
+        {/* Layer 2 — linear gradient overlay (lightened to let image breathe) */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.55) 55%, rgba(0,0,0,0.65) 100%)",
           zIndex: 1, pointerEvents: "none",
+        }} />
+
+        {/* Layer 3 — radial spotlight behind text only */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "radial-gradient(circle at 50% 42%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.0) 70%)",
+          zIndex: 2, pointerEvents: "none",
         }} />
 
         {/* Headline + CTA */}
         <div style={{
-          position: "relative", zIndex: 2,
+          position: "relative", zIndex: 3,
           width: "100%", maxWidth: 760,
           textAlign: "center",
           padding: "clamp(80px, 11vw, 140px) 24px 0",
@@ -506,7 +520,7 @@ export default function Index() {
             lineHeight: 1.08,
             letterSpacing: "-0.028em",
             color: "#f5f5f5",
-            textShadow: "0 2px 6px rgba(0,0,0,0.60)",
+            textShadow: "0 2px 20px rgba(0,0,0,0.6), 0 1px 4px rgba(0,0,0,0.8)",
           }}>
             Stop Guessing.{" "}
             <span style={{ color: GOLD }}>Start Winning</span>
@@ -580,7 +594,7 @@ export default function Index() {
 
         {/* ── THIS WEEK'S EDGE — cards pulled up into hero ── */}
         <div style={{
-          position: "relative", zIndex: 2,
+          position: "relative", zIndex: 3,
           width: "100%",
           maxWidth: 1120,
           padding: "0 clamp(16px, 3vw, 32px)",
