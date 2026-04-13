@@ -3,7 +3,7 @@ import Stripe from 'npm:stripe@17.7.0';
 import { createClient } from 'npm:@supabase/supabase-js@2.49.1';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
-  appInfo: { name: 'NeekoSports', version: '1.0.0' },
+  appInfo: { name: 'NeekoSports', version: '2.0.0' },
 });
 
 const supabase = createClient(
@@ -12,6 +12,9 @@ const supabase = createClient(
 );
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
+
+// Season pass duration: 23 rounds × 7 days = ~161 days
+const SEASON_ACCESS_DAYS = 161;
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -42,7 +45,6 @@ Deno.serve(async (req: Request) => {
 
     console.log(`stripe-webhook: received event ${event.type} [${event.id}]`);
 
-    // Idempotency check — query by event_id
     const { data: existing, error: existingErr } = await supabase
       .from('stripe_webhook_events')
       .select('id')
@@ -61,7 +63,6 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Log the event — explicitly set event_id so idempotency works
     const { error: logError } = await supabase.from('stripe_webhook_events').insert({
       event_id: event.id,
       event_type: event.type,
@@ -101,6 +102,12 @@ async function handleEvent(event: Stripe.Event) {
 
         if (session.mode === 'subscription' && session.customer && session.subscription) {
           await syncSubscriptionFromStripe(session.subscription as string);
+        } else if (session.mode === 'payment' && session.customer) {
+          // Season one-time payment
+          const plan = session.metadata?.plan ?? 'season';
+          if (plan === 'season') {
+            await grantSeasonAccess(session.customer as string, session);
+          }
         }
         break;
       }
@@ -148,7 +155,6 @@ async function handleEvent(event: Stripe.Event) {
         console.log(`stripe-webhook: unhandled event type: ${event.type}`);
     }
 
-    // Mark event processed
     await supabase
       .from('stripe_webhook_events')
       .update({ processed_at: new Date().toISOString() })
@@ -161,7 +167,6 @@ async function handleEvent(event: Stripe.Event) {
 }
 
 async function resolveUserId(customerId: string): Promise<string | null> {
-  // Primary: stripe_customers table
   const { data, error } = await supabase
     .from('stripe_customers')
     .select('user_id')
@@ -176,7 +181,6 @@ async function resolveUserId(customerId: string): Promise<string | null> {
     return data.user_id;
   }
 
-  // Fallback: profiles.stripe_customer_id
   const { data: profileData, error: profileError } = await supabase
     .from('profiles')
     .select('id')
@@ -205,6 +209,49 @@ async function isManualPremium(userId: string): Promise<boolean> {
   if (!data?.is_manual_premium) return false;
   if (!data.manual_premium_expires_at) return true;
   return new Date(data.manual_premium_expires_at) > new Date();
+}
+
+async function grantSeasonAccess(customerId: string, session: Stripe.Checkout.Session) {
+  console.log(`stripe-webhook: grantSeasonAccess — customer=${customerId}`);
+
+  const userId = await resolveUserId(customerId);
+  if (!userId) {
+    console.warn('stripe-webhook: grantSeasonAccess — no user found for customer');
+    return;
+  }
+
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + SEASON_ACCESS_DAYS * 24 * 60 * 60 * 1000);
+
+  const { error: upsertError } = await supabase
+    .from('subscriptions')
+    .upsert({
+      user_id: userId,
+      profile_id: userId,
+      stripe_subscription_id: `season_${session.id}`,
+      stripe_customer_id: customerId,
+      status: 'active',
+      current_period_start: now.toISOString(),
+      current_period_end: expiresAt.toISOString(),
+      cancel_at_period_end: false,
+      updated_at: now.toISOString(),
+    }, { onConflict: 'stripe_subscription_id' });
+
+  if (upsertError) {
+    console.error('stripe-webhook: grantSeasonAccess upsert error:', upsertError.message);
+  } else {
+    console.log(`stripe-webhook: season access granted to user=${userId}, expires=${expiresAt.toISOString()}`);
+  }
+
+  // Also set premium_expires_at on profile for fast access checks
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .update({ premium_expires_at: expiresAt.toISOString() })
+    .eq('id', userId);
+
+  if (profileError) {
+    console.warn('stripe-webhook: grantSeasonAccess profile update error (non-fatal):', profileError.message);
+  }
 }
 
 async function syncSubscriptionFromStripe(subscriptionId: string) {
@@ -241,8 +288,6 @@ async function syncSubscriptionFromStripe(subscriptionId: string) {
 
     const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
 
-    // Write to stripe_subscriptions (raw Stripe mirror, unix timestamps)
-    // The DB trigger on this table auto-syncs into public.subscriptions
     const { error: syncError } = await supabase
       .from('stripe_subscriptions')
       .upsert({
@@ -261,8 +306,6 @@ async function syncSubscriptionFromStripe(subscriptionId: string) {
       console.log(`stripe-webhook: upserted stripe_subscriptions — status=${subscription.status}`);
     }
 
-    // Also write directly to public.subscriptions (access control table)
-    // This is the direct path that makes is_premium_user() return true immediately
     const periodStart = subscription.current_period_start
       ? new Date(subscription.current_period_start * 1000).toISOString()
       : null;

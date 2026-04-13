@@ -1,18 +1,19 @@
 export const NEEKO_PRICING = {
-  monthly: {
-    price: 9.99,
-    cents: 999,
-    stripePlan: "monthly" as const,
-    label: "Neeko+ Monthly",
-    billingNote: "Billed monthly. Cancel anytime.",
+  weekly: {
+    price: 5.99,
+    cents: 599,
+    stripePlan: "weekly" as const,
+    label: "Neeko+ Weekly",
+    billingNote: "Billed weekly. Cancel anytime.",
   },
-  yearly: {
-    price: 89,
-    cents: 8900,
-    stripePlan: "yearly" as const,
-    label: "Neeko+ Yearly",
-    billingNote: "Billed once per year.",
-    monthlyEquivalent: 7.42,
+  season: {
+    price: 59,
+    cents: 5900,
+    stripePlan: "season" as const,
+    label: "Neeko+ Season",
+    billingNote: "One-time payment. Full season access.",
+    totalRounds: 23,
   },
-  savingsPercent: 26,
 } as const;
+
+export type NeekoPlan = keyof typeof NEEKO_PRICING;

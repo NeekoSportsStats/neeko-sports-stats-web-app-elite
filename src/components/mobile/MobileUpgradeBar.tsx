@@ -22,7 +22,7 @@ export default function MobileUpgradeBar() {
           to="/neeko-plus"
           className="flex items-center gap-1.5 bg-[#F5C84C] text-black font-bold text-sm px-5 py-2.5 rounded-xl hover:brightness-110 active:scale-95 transition-all shrink-0 min-h-[44px]"
         >
-          $9.99/mo
+          $5.99/wk
         </Link>
       </div>
     </div>

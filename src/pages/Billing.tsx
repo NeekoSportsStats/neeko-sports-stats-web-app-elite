@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader as Loader2, CreditCard, Calendar, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { NEEKO_PRICING } from "@/config/neekoPricing";
+
 
 interface Subscription {
   id: string;
@@ -186,7 +186,7 @@ const Billing = () => {
                   </span>
                   <span className="text-sm">
                     ${(subscription.amount / 100).toFixed(2)}
-                    {subscription.amount === NEEKO_PRICING.yearly.cents ? "/year" : "/month"}
+                    {subscription.amount === 5900 ? " (season)" : "/wk"}
                   </span>
                 </div>
               )}

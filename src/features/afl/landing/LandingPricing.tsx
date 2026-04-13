@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { Check, X, ArrowRight } from "lucide-react";
-import { NEEKO_PRICING } from "@/config/neekoPricing";
 
 const FREE_FEATURES = [
   { text: "Basic rankings only", included: true },
@@ -52,7 +51,7 @@ export default function LandingPricing() {
             lineHeight: 1.5,
           }}>
             Free shows you players.{" "}
-            <span style={{ color: "rgba(224,174,45,0.75)", fontWeight: 600 }}>Neeko+ tells you what to do.</span>
+            <span style={{ color: "rgba(224,174,45,0.75)", fontWeight: 600 }}>Neeko+ tells you exactly what to do.</span>
           </p>
         </div>
 
@@ -198,12 +197,12 @@ export default function LandingPricing() {
                   letterSpacing: "-0.04em",
                   fontVariantNumeric: "tabular-nums",
                 }}>
-                  ${NEEKO_PRICING.yearly.monthlyEquivalent}
+                  $59
                 </span>
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>/mo</span>
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>AUD</span>
               </div>
               <p style={{ fontSize: 12, color: "rgba(255,255,255,0.30)", marginTop: 6 }}>
-                Billed ${NEEKO_PRICING.yearly.price}/year — save {NEEKO_PRICING.savingsPercent}%. Cancel anytime.
+                Full season. One payment. Or $5.99/wk if you prefer.
               </p>
             </div>
 

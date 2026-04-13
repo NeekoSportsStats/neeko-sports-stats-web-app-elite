@@ -9,7 +9,7 @@ const supabase = createClient(
 
 const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY') ?? '';
 const stripe = new Stripe(stripeSecret, {
-  appInfo: { name: 'Neeko Sports Stats', version: '1.0.0' },
+  appInfo: { name: 'Neeko Sports Stats', version: '2.0.0' },
 });
 
 const ALLOWED_ORIGINS = new Set([
@@ -45,30 +45,33 @@ function isAllowedRedirectUrl(url: string): boolean {
   }
 }
 
-async function resolvePriceId(plan: string): Promise<string | null> {
-  if (plan === 'monthly') {
-    const envPrice = Deno.env.get('STRIPE_PRICE_MONTHLY');
-    if (envPrice) return envPrice;
-  } else if (plan === 'yearly') {
-    const envPrice = Deno.env.get('STRIPE_PRICE_YEARLY');
-    if (envPrice) return envPrice;
+interface PlanConfig {
+  price_id: string;
+  interval: string;
+}
+
+async function resolvePlanConfig(plan: string): Promise<PlanConfig | null> {
+  if (plan === 'weekly') {
+    const envPrice = Deno.env.get('STRIPE_PRICE_WEEKLY');
+    if (envPrice) return { price_id: envPrice, interval: 'week' };
+  } else if (plan === 'season') {
+    const envPrice = Deno.env.get('STRIPE_PRICE_SEASON');
+    if (envPrice) return { price_id: envPrice, interval: 'one_time' };
   }
 
-  if (plan === 'monthly' || plan === 'yearly') {
-    const { data: planRow, error: planErr } = await supabase
-      .from('stripe_products_config')
-      .select('price_id')
-      .eq('plan_key', plan)
-      .maybeSingle();
+  const { data: planRow, error: planErr } = await supabase
+    .from('stripe_products_config')
+    .select('price_id, interval')
+    .eq('plan_key', plan)
+    .maybeSingle();
 
-    if (planErr) {
-      console.error('stripe-checkout: failed to load plan config', planErr);
-    }
+  if (planErr) {
+    console.error('stripe-checkout: failed to load plan config', planErr);
+  }
 
-    if (planRow?.price_id) {
-      console.log(`stripe-checkout: resolved ${plan} price from DB`);
-      return planRow.price_id;
-    }
+  if (planRow?.price_id) {
+    console.log(`stripe-checkout: resolved ${plan} price from DB`);
+    return { price_id: planRow.price_id, interval: planRow.interval };
   }
 
   return null;
@@ -108,8 +111,8 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { plan, success_url, cancel_url } = body;
 
-    if (!plan || (plan !== 'monthly' && plan !== 'yearly')) {
-      return err('Invalid plan — must be "monthly" or "yearly"');
+    if (!plan || (plan !== 'weekly' && plan !== 'season')) {
+      return err('Invalid plan — must be "weekly" or "season"');
     }
 
     if (!success_url || typeof success_url !== 'string') {
@@ -128,14 +131,17 @@ Deno.serve(async (req) => {
       return err('Invalid cancel_url domain', 400);
     }
 
-    const price_id = await resolvePriceId(plan);
+    const planConfig = await resolvePlanConfig(plan);
 
-    if (!price_id) {
+    if (!planConfig) {
       console.error(`stripe-checkout: could not resolve price_id for plan "${plan}"`);
       return err(`No price configured for plan: ${plan}`, 500);
     }
 
-    console.log(`stripe-checkout: processing checkout for plan=${plan}`);
+    const { price_id, interval } = planConfig;
+    const isOneTime = interval === 'one_time';
+
+    console.log(`stripe-checkout: processing checkout for plan=${plan}, mode=${isOneTime ? 'payment' : 'subscription'}`);
 
     const authHeader = req.headers.get('Authorization') ?? '';
     const token = authHeader.replace('Bearer ', '');
@@ -189,22 +195,27 @@ Deno.serve(async (req) => {
       customerId = customer.customer_id;
     }
 
-    console.log(`stripe-checkout: creating session for plan=${plan}`);
+    console.log(`stripe-checkout: creating ${isOneTime ? 'payment' : 'subscription'} session for plan=${plan}`);
 
-    const session = await stripe.checkout.sessions.create({
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
-      mode: 'subscription',
+      mode: isOneTime ? 'payment' : 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: price_id, quantity: 1 }],
       success_url: `${success_url}?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url,
-      payment_method_collection: 'always',
       metadata: {
         supabase_user_id: user.id,
-        email: user.email,
+        email: user.email ?? '',
         plan: plan,
       },
-    });
+    };
+
+    if (!isOneTime) {
+      sessionParams.payment_method_collection = 'always';
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionParams);
 
     console.log(`stripe-checkout: session created ${session.id}`);
 

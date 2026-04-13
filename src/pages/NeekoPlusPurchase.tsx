@@ -4,53 +4,44 @@ import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Check, Crown, Sparkles, Loader as Loader2, ArrowLeft, TrendingUp, Target, Zap, Users } from "lucide-react";
+import { Check, Crown, Loader as Loader2, ArrowLeft, TrendingUp, Target, Zap, Users, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { NEEKO_PRICING } from "@/config/neekoPricing";
-type Plan = "monthly" | "yearly";
+import { NEEKO_PRICING, NeekoPlan } from "@/config/neekoPricing";
 
 const features = [
-  "Full Rankings table — all players",
+  "Full rankings + projections for every player",
+  "Market Watch — value gaps and trade targets",
+  "Captain picks before lockout",
+  "Breakout alerts and trap warnings",
   "Full AI player breakdowns",
-  "Captain Edge board",
-  "Breakout alerts",
-  "Trap warnings",
-  "Player vs Player comparison",
-  "Advanced projections and value metrics",
+  "Weekly start/sit decision tools",
 ];
 
 const trustFeatures = [
   {
     icon: TrendingUp,
-    title: "Data-driven edge",
-    description:
-      "Advanced AFL trend modelling designed to surface momentum shifts before they appear in fantasy scores.",
+    title: "Real projections every round",
+    description: "Updated before each lockout using live AFL data — not guesswork.",
   },
   {
     icon: Target,
     title: "Fantasy-first analysis",
-    description:
-      "Every metric is tuned for fantasy relevance, including hit-rate thresholds, volatility bands, and ceiling projections.",
+    description: "Every metric tuned for fantasy relevance — value tiers, ceiling projections, and trap alerts.",
   },
   {
     icon: Zap,
-    title: "Built weekly, not retrospectively",
-    description:
-      "Neeko+ is designed around upcoming matchups — not post-game summaries.",
+    title: "Decisions in 30 seconds",
+    description: "Know who to trade, captain, and avoid before your mates even open the app.",
   },
   {
     icon: Users,
-    title: "Trusted by growing community",
-    description:
-      "Used weekly by a growing base of fantasy-focused users preparing lineups, trades, and match decisions.",
+    title: "Used every week",
+    description: "A growing base of serious AFL Fantasy coaches rely on Neeko+ every round.",
   },
 ];
 
 const NeekoPlusPurchase = () => {
-  const [selectedPlan, setSelectedPlan] = useState<Plan>("yearly");
+  const [selectedPlan, setSelectedPlan] = useState<NeekoPlan>("season");
   const [loading, setLoading] = useState(false);
   const { user, isPremium } = useAuth();
   const navigate = useNavigate();
@@ -60,8 +51,7 @@ const NeekoPlusPurchase = () => {
     track("view_pricing_page", { source: "neeko_plus" });
   }, []);
 
-
-  const handleSubscribe = async (plan: Plan) => {
+  const handleSubscribe = async (plan: NeekoPlan) => {
     if (isPremium) {
       toast({
         title: "Already subscribed",
@@ -101,7 +91,7 @@ const NeekoPlusPurchase = () => {
           body: JSON.stringify({
             plan,
             success_url: `${origin}/success`,
-            cancel_url:  `${origin}/neeko-plus`,
+            cancel_url: `${origin}/neeko-plus`,
           }),
         }
       );
@@ -129,37 +119,28 @@ const NeekoPlusPurchase = () => {
     "@context": "https://schema.org",
     "@type": "Product",
     "name": "Neeko+",
-    "description": "Premium AFL Fantasy analytics subscription. Unlock full player rankings, AI player breakdowns, captain edge board, breakout alerts, trap warnings and advanced projections.",
+    "description": "Premium AFL Fantasy analytics. Unlock full player rankings, AI player breakdowns, captain signals, breakout alerts and trade targets.",
     "url": "https://neekostats.com.au/neeko-plus",
-    "brand": {
-      "@type": "Brand",
-      "name": "Neeko Sports Stats",
-    },
+    "brand": { "@type": "Brand", "name": "Neeko Sports Stats" },
     "offers": [
       {
         "@type": "Offer",
-        "name": "Neeko+ Monthly",
-        "price": NEEKO_PRICING.monthly.price,
+        "name": "Neeko+ Season",
+        "price": NEEKO_PRICING.season.price,
         "priceCurrency": "AUD",
-        "priceSpecification": {
-          "@type": "UnitPriceSpecification",
-          "price": NEEKO_PRICING.monthly.price,
-          "priceCurrency": "AUD",
-          "billingDuration": "P1M",
-        },
         "url": "https://neekostats.com.au/neeko-plus",
         "availability": "https://schema.org/InStock",
       },
       {
         "@type": "Offer",
-        "name": "Neeko+ Yearly",
-        "price": NEEKO_PRICING.yearly.price,
+        "name": "Neeko+ Weekly",
+        "price": NEEKO_PRICING.weekly.price,
         "priceCurrency": "AUD",
         "priceSpecification": {
           "@type": "UnitPriceSpecification",
-          "price": NEEKO_PRICING.yearly.price,
+          "price": NEEKO_PRICING.weekly.price,
           "priceCurrency": "AUD",
-          "billingDuration": "P1Y",
+          "billingDuration": "P1W",
         },
         "url": "https://neekostats.com.au/neeko-plus",
         "availability": "https://schema.org/InStock",
@@ -168,205 +149,307 @@ const NeekoPlusPurchase = () => {
   };
 
   return (
-    <div className="container max-w-4xl py-8 md:py-12 px-4">
+    <div style={{ minHeight: "100vh", background: "#0a0909" }}>
       <Helmet>
-        <title>Neeko+ — Premium AFL Fantasy Analytics Subscription | Neeko Sports Stats</title>
-        <meta name="description" content={`Upgrade to Neeko+ for full AFL Fantasy rankings, AI player analysis, captain signals, breakout alerts and trade targets. From $${NEEKO_PRICING.monthly.price} AUD/month.`} />
+        <title>Neeko+ — AFL Fantasy Analytics | Neeko Sports Stats</title>
+        <meta name="description" content={`Upgrade to Neeko+ for full AFL Fantasy rankings, AI player analysis, captain signals, breakout alerts and trade targets. From $${NEEKO_PRICING.weekly.price} AUD/week.`} />
         <link rel="canonical" href="https://neekostats.com.au/neeko-plus" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://neekostats.com.au/neeko-plus" />
-        <meta property="og:title" content="Neeko+ — Premium AFL Fantasy Analytics Subscription" />
-        <meta property="og:description" content={`Upgrade to Neeko+ for full AFL Fantasy rankings, AI player analysis, captain signals, breakout alerts and trade targets. From $${NEEKO_PRICING.monthly.price} AUD/month.`} />
+        <meta property="og:title" content="Neeko+ — AFL Fantasy Analytics" />
+        <meta property="og:description" content={`Upgrade to Neeko+ for full AFL Fantasy rankings, AI player analysis, captain signals, breakout alerts and trade targets. From $${NEEKO_PRICING.weekly.price} AUD/week.`} />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Neeko+ — Premium AFL Fantasy Analytics Subscription" />
-        <meta name="twitter:description" content={`Upgrade to Neeko+ for full AFL Fantasy rankings, AI player analysis, captain signals, breakout alerts and trade targets. From $${NEEKO_PRICING.monthly.price} AUD/month.`} />
+        <meta name="twitter:title" content="Neeko+ — AFL Fantasy Analytics" />
+        <meta name="twitter:description" content={`AFL Fantasy edge. Trade smarter, captain better, avoid traps. From $${NEEKO_PRICING.weekly.price}/week.`} />
         <script type="application/ld+json">{JSON.stringify(productSchema)}</script>
       </Helmet>
-      <Button
-        variant="ghost"
-        className="mb-6 flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
-        onClick={() => navigate(-1)}
-      >
-        <ArrowLeft className="h-5 w-5" />
-        Back
-      </Button>
 
-      <div className="text-center mb-12">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <Crown className="h-10 w-10 text-primary" />
-          <h1 className="text-5xl font-extrabold">Neeko+</h1>
-        </div>
-        <p className="text-xl text-muted-foreground">
-          Unlock premium sports analytics and AI insights
-        </p>
-      </div>
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px clamp(16px, 5vw, 32px) 80px" }}>
+        {/* Back button */}
+        <button
+          onClick={() => navigate(-1)}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 6,
+            background: "transparent", border: "none", cursor: "pointer",
+            color: "rgba(255,255,255,0.35)", fontSize: 13, fontWeight: 600,
+            padding: "4px 0", marginBottom: 32,
+          }}
+        >
+          <ArrowLeft size={14} />
+          Back
+        </button>
 
-      <div className="relative mb-10 md:mb-16">
-        <div className="absolute inset-0 -z-10 blur-[140px] opacity-70 bg-[radial-gradient(circle_at_center,rgba(255,200,60,0.55),rgba(255,170,30,0.35),rgba(255,140,0,0.15),transparent)]" />
-
-        <div className="grid md:grid-cols-2 gap-5 mb-6">
-          <PlanCard
-            plan="monthly"
-            selected={selectedPlan === "monthly"}
-            onSelect={() => setSelectedPlan("monthly")}
-            isPremium={isPremium}
-            loading={loading}
-            onSubscribe={handleSubscribe}
-          />
-          <PlanCard
-            plan="yearly"
-            selected={selectedPlan === "yearly"}
-            onSelect={() => setSelectedPlan("yearly")}
-            isPremium={isPremium}
-            loading={loading}
-            onSubscribe={handleSubscribe}
-          />
-        </div>
-
-        <Card className="border-primary/20 bg-black/30 backdrop-blur-sm rounded-2xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Sparkles className="h-4 w-4 text-primary" />
-              Everything included in Neeko+
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid sm:grid-cols-2 gap-y-3 gap-x-6">
-              {features.map((feature, idx) => (
-                <div key={idx} className="flex items-center gap-3">
-                  <Check className="h-4 w-4 text-primary shrink-0" />
-                  <span className="text-sm">{feature}</span>
-                </div>
-              ))}
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 14 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: "50%",
+              background: "rgba(224,174,45,0.15)",
+              border: "1px solid rgba(224,174,45,0.30)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <Crown size={20} style={{ color: "#E0AE2D" }} />
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="mt-20">
-        <h2 className="text-3xl font-bold mb-2 text-center">
-          Why serious fantasy players use Neeko+
-        </h2>
-        <p className="text-muted-foreground text-center mb-10">
-          Built for decision-makers who want clarity, not noise.
-        </p>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {trustFeatures.map((feature, idx) => {
-            const Icon = feature.icon;
-            return (
-              <Card
-                key={idx}
-                className="p-6 bg-black/40 border-primary/20 hover:border-primary/40 transition-all"
-              >
-                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-4">
-                  <Icon className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2 text-white">{feature.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  {feature.description}
-                </p>
-              </Card>
-            );
-          })}
+            <h1 style={{ fontSize: "clamp(1.8rem, 4vw, 2.8rem)", fontWeight: 900, color: "#F5F5F5", letterSpacing: "-0.04em", margin: 0 }}>
+              Neeko+
+            </h1>
+          </div>
+          <p style={{ fontSize: "clamp(13px, 1vw, 16px)", color: "rgba(255,255,255,0.45)", margin: 0, lineHeight: 1.5 }}>
+            Make better AFL Fantasy calls every week — trades, captains, start/sit.
+          </p>
         </div>
 
-        <p className="text-center mt-8 text-xs text-muted-foreground">
-          No hype. No betting tips. Just structured insight.
+        {/* Plan Cards */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+          {/* Season card — PRIMARY */}
+          <div
+            onClick={() => setSelectedPlan("season")}
+            style={{
+              position: "relative",
+              background: selectedPlan === "season"
+                ? "linear-gradient(160deg, #1c1507 0%, #110e04 100%)"
+                : "rgba(255,255,255,0.03)",
+              border: `2px solid ${selectedPlan === "season" ? "rgba(224,174,45,0.50)" : "rgba(255,255,255,0.08)"}`,
+              borderRadius: 18,
+              padding: "28px 24px",
+              cursor: "pointer",
+              transition: "all 0.18s ease",
+              boxShadow: selectedPlan === "season" ? "0 0 40px rgba(224,174,45,0.12), 0 8px 32px rgba(0,0,0,0.50)" : "none",
+              display: "flex", flexDirection: "column",
+            }}
+          >
+            {/* Top gold line on selected */}
+            {selectedPlan === "season" && (
+              <div style={{
+                position: "absolute", top: 0, left: 0, right: 0, height: 2,
+                background: "linear-gradient(to right, transparent, rgba(224,174,45,0.75), transparent)",
+                borderRadius: "18px 18px 0 0",
+              }} />
+            )}
+
+            {/* Best value badge */}
+            <div style={{
+              position: "absolute", top: -11, left: "50%", transform: "translateX(-50%)",
+              background: "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
+              borderRadius: 999,
+              padding: "3px 12px",
+              fontSize: 9, fontWeight: 900,
+              color: "#130c00",
+              letterSpacing: "0.10em",
+              textTransform: "uppercase",
+              whiteSpace: "nowrap",
+            }}>
+              Best Value
+            </div>
+
+            <p style={{
+              fontSize: 8.5, fontWeight: 900, letterSpacing: "0.40em",
+              textTransform: "uppercase",
+              color: "rgba(224,174,45,0.60)",
+              margin: "0 0 10px",
+            }}>
+              Season Pass
+            </p>
+
+            <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
+              <span style={{ fontSize: 36, fontWeight: 900, color: "#E0AE2D", letterSpacing: "-0.04em" }}>
+                ${NEEKO_PRICING.season.price}
+              </span>
+              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>AUD</span>
+            </div>
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.30)", margin: "0 0 20px", lineHeight: 1.4 }}>
+              One-time payment. Full season access.
+            </p>
+
+            <div style={{
+              width: 20, height: 20, borderRadius: "50%",
+              background: selectedPlan === "season" ? "#E0AE2D" : "transparent",
+              border: `2px solid ${selectedPlan === "season" ? "#E0AE2D" : "rgba(255,255,255,0.20)"}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              marginTop: "auto",
+              transition: "all 0.15s",
+            }}>
+              {selectedPlan === "season" && (
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#130c00" }} />
+              )}
+            </div>
+          </div>
+
+          {/* Weekly card — SECONDARY */}
+          <div
+            onClick={() => setSelectedPlan("weekly")}
+            style={{
+              background: selectedPlan === "weekly"
+                ? "rgba(255,255,255,0.06)"
+                : "rgba(255,255,255,0.025)",
+              border: `2px solid ${selectedPlan === "weekly" ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.07)"}`,
+              borderRadius: 18,
+              padding: "28px 24px",
+              cursor: "pointer",
+              transition: "all 0.18s ease",
+              display: "flex", flexDirection: "column",
+            }}
+          >
+            <p style={{
+              fontSize: 8.5, fontWeight: 900, letterSpacing: "0.40em",
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.35)",
+              margin: "0 0 10px",
+            }}>
+              Weekly
+            </p>
+
+            <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
+              <span style={{ fontSize: 36, fontWeight: 900, color: "rgba(255,255,255,0.75)", letterSpacing: "-0.04em" }}>
+                ${NEEKO_PRICING.weekly.price}
+              </span>
+              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.30)" }}>AUD</span>
+            </div>
+            <p style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", margin: "0 0 20px", lineHeight: 1.4 }}>
+              Per week. Cancel anytime.
+            </p>
+
+            <div style={{
+              width: 20, height: 20, borderRadius: "50%",
+              background: selectedPlan === "weekly" ? "rgba(255,255,255,0.80)" : "transparent",
+              border: `2px solid ${selectedPlan === "weekly" ? "rgba(255,255,255,0.80)" : "rgba(255,255,255,0.20)"}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              marginTop: "auto",
+              transition: "all 0.15s",
+            }}>
+              {selectedPlan === "weekly" && (
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#0a0909" }} />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* CTA button */}
+        {isPremium ? (
+          <button
+            disabled
+            style={{
+              width: "100%", padding: "16px", borderRadius: 12,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              color: "rgba(255,255,255,0.35)",
+              fontSize: 15, fontWeight: 700, cursor: "not-allowed",
+            }}
+          >
+            You already have Neeko+
+          </button>
+        ) : (
+          <button
+            onClick={() => handleSubscribe(selectedPlan)}
+            disabled={loading}
+            style={{
+              width: "100%", padding: "16px",
+              borderRadius: 12,
+              background: selectedPlan === "season"
+                ? "linear-gradient(160deg, #fad52a 0%, #e09600 100%)"
+                : "rgba(255,255,255,0.10)",
+              border: selectedPlan === "season"
+                ? "none"
+                : "1px solid rgba(255,255,255,0.15)",
+              color: selectedPlan === "season" ? "#130c00" : "#fff",
+              fontSize: 15, fontWeight: 900,
+              cursor: loading ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              transition: "all 0.18s ease",
+              boxShadow: selectedPlan === "season" ? "0 8px 32px rgba(224,174,45,0.30)" : "none",
+              opacity: loading ? 0.7 : 1,
+            }}
+          >
+            {loading ? (
+              <>
+                <Loader2 size={16} style={{ animation: "spin 1s linear infinite" }} />
+                Processing…
+              </>
+            ) : (
+              <>
+                {selectedPlan === "season"
+                  ? `Get Full Season Access — $${NEEKO_PRICING.season.price} AUD`
+                  : `Unlock This Week — $${NEEKO_PRICING.weekly.price} AUD/wk`}
+                <ArrowRight size={15} />
+              </>
+            )}
+          </button>
+        )}
+
+        <p style={{ textAlign: "center", fontSize: 11, color: "rgba(255,255,255,0.22)", margin: "12px 0 0", letterSpacing: "0.02em" }}>
+          {selectedPlan === "season"
+            ? "One-time payment. No subscription. Access until end of 2026 AFL season."
+            : "Billed weekly via Stripe. Cancel anytime from your account."}
         </p>
+
+        {/* Features list */}
+        <div style={{
+          marginTop: 40,
+          background: "rgba(255,255,255,0.025)",
+          border: "1px solid rgba(255,255,255,0.07)",
+          borderRadius: 16,
+          padding: "24px 24px",
+        }}>
+          <p style={{ fontSize: 11, fontWeight: 900, letterSpacing: "0.36em", textTransform: "uppercase", color: "rgba(224,174,45,0.55)", margin: "0 0 16px" }}>
+            Everything in Neeko+
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 20px" }}>
+            {features.map((f) => (
+              <div key={f} style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                <div style={{
+                  width: 17, height: 17, borderRadius: "50%", flexShrink: 0,
+                  background: "rgba(34,197,94,0.12)",
+                  border: "1px solid rgba(34,197,94,0.28)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <Check size={9} style={{ color: "#22c55e" }} />
+                </div>
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.70)", lineHeight: 1.35 }}>{f}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Trust grid */}
+        <div style={{ marginTop: 56 }}>
+          <h2 style={{ fontSize: "clamp(1.2rem, 2.2vw, 1.6rem)", fontWeight: 900, color: "#F5F5F5", letterSpacing: "-0.03em", textAlign: "center", margin: "0 0 8px" }}>
+            Why serious coaches use Neeko+
+          </h2>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.30)", textAlign: "center", margin: "0 0 32px" }}>
+            Built for decision-makers, not spectators.
+          </p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            {trustFeatures.map(({ icon: Icon, title, description }) => (
+              <div key={title} style={{
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.06)",
+                borderRadius: 14,
+                padding: "20px 18px",
+              }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: "50%",
+                  background: "rgba(224,174,45,0.10)",
+                  border: "1px solid rgba(224,174,45,0.20)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  marginBottom: 12,
+                }}>
+                  <Icon size={16} style={{ color: "#E0AE2D" }} />
+                </div>
+                <h3 style={{ fontSize: 13.5, fontWeight: 700, color: "#F5F5F5", margin: "0 0 6px" }}>{title}</h3>
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", lineHeight: 1.5, margin: 0 }}>{description}</p>
+              </div>
+            ))}
+          </div>
+
+          <p style={{ textAlign: "center", marginTop: 28, fontSize: 11, color: "rgba(255,255,255,0.22)", letterSpacing: "0.02em" }}>
+            No hype. No betting tips. Just structured AFL Fantasy intelligence.
+          </p>
+        </div>
       </div>
     </div>
   );
 };
-
-interface PlanCardProps {
-  plan: Plan;
-  selected: boolean;
-  onSelect: () => void;
-  isPremium: boolean;
-  loading: boolean;
-  onSubscribe: (plan: Plan) => void;
-}
-
-function PlanCard({ plan, selected, onSelect, isPremium, loading, onSubscribe }: PlanCardProps) {
-  const handleSelect = () => {
-    track("plan_selected", { plan });
-    onSelect();
-  };
-  const isYearly = plan === "yearly";
-
-  return (
-    <Card
-      onClick={handleSelect}
-      className={`relative cursor-pointer border-2 rounded-2xl bg-black/40 backdrop-blur-sm transition-all hover:-translate-y-0.5 ${
-        selected ? "border-primary shadow-[0_0_30px_rgba(245,200,76,0.25)]" : "border-primary/20 hover:border-primary/40"
-      }`}
-    >
-      {isYearly && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-          <Badge className="bg-primary text-black font-bold px-3 py-0.5 text-xs">
-            Best Value — Save {NEEKO_PRICING.savingsPercent}%
-          </Badge>
-        </div>
-      )}
-
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Sparkles className="h-4 w-4 text-primary" />
-          {isYearly ? NEEKO_PRICING.yearly.label : NEEKO_PRICING.monthly.label}
-        </CardTitle>
-        <CardDescription>
-          {isYearly ? NEEKO_PRICING.yearly.billingNote : NEEKO_PRICING.monthly.billingNote}
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent>
-        <div className="flex items-end gap-1.5 mb-1">
-          <span className="text-4xl font-extrabold text-white">
-            ${isYearly ? NEEKO_PRICING.yearly.price : NEEKO_PRICING.monthly.price}
-          </span>
-          <span className="text-muted-foreground mb-1 text-sm">
-            AUD / {isYearly ? "year" : "month"}
-          </span>
-        </div>
-        {isYearly && (
-          <p className="text-xs text-primary/80 font-medium">
-            Equivalent to ${NEEKO_PRICING.yearly.monthlyEquivalent}/month
-          </p>
-        )}
-      </CardContent>
-
-      <CardFooter>
-        {isPremium ? (
-          <Button variant="outline" className="w-full" disabled>
-            Current Plan
-          </Button>
-        ) : (
-          <Button
-            onClick={(e) => {
-              e.stopPropagation();
-              onSubscribe(plan);
-            }}
-            disabled={loading}
-            className={`w-full font-bold transition-all hover:-translate-y-0.5 ${
-              selected ? "bg-primary text-black hover:bg-primary/90" : ""
-            }`}
-            variant={selected ? "default" : "outline"}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Processing…
-              </>
-            ) : (
-              `Start ${isYearly ? "Yearly" : "Monthly"}`
-            )}
-          </Button>
-        )}
-      </CardFooter>
-    </Card>
-  );
-}
 
 export default NeekoPlusPurchase;
