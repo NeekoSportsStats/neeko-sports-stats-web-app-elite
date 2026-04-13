@@ -18,6 +18,8 @@ import LandingToolsGrid from "@/features/afl/landing/LandingToolsGrid";
 import LandingTrust from "@/features/afl/landing/LandingTrust";
 import LandingPricing from "@/features/afl/landing/LandingPricing";
 import LandingFinalCTA from "@/features/afl/landing/LandingFinalCTA";
+import LandingProductProof from "@/features/afl/landing/LandingProductProof";
+import LandingSecondaryCTA from "@/features/afl/landing/LandingSecondaryCTA";
 import MobileLanding from "@/features/afl/landing/MobileLanding";
 
 // ── Design tokens ───────────────────────────────────────────────────────────────
@@ -62,15 +64,17 @@ function EdgeCard(p: CardProps) {
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          background: hovered ? "rgba(22,28,38,0.95)" : "rgba(18,23,32,0.88)",
+          background: hovered
+            ? `linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.42) 100%), rgba(22,28,38,0.95)`
+            : `linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.40) 100%), rgba(18,23,32,0.88)`,
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
-          border: `1px solid ${hovered ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.08)"}`,
+          border: `1px solid ${hovered ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.07)"}`,
           borderRadius: 14,
           overflow: "hidden",
           boxShadow: hovered
-            ? `0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px ${accent.dim}50`
-            : "0 2px 12px rgba(0,0,0,0.30)",
+            ? `0 0 0 1px rgba(255,255,255,0.05), 0 10px 30px rgba(0,0,0,0.60), 0 0 0 1px ${accent.dim}40`
+            : "0 2px 14px rgba(0,0,0,0.35)",
           transform: hovered ? "translateY(-4px)" : "translateY(0)",
           transition: "all 0.20s ease",
         }}
@@ -130,7 +134,7 @@ function EdgeCard(p: CardProps) {
         </div>
 
         {/* Player name */}
-        <div style={{ padding: "14px 16px 4px" }}>
+        <div style={{ padding: "18px 16px 4px" }}>
           <p style={{
             margin: 0,
             fontSize: "clamp(14px, 1.10vw, 20px)",
@@ -160,7 +164,7 @@ function EdgeCard(p: CardProps) {
         </div>
 
         {/* Big projection number */}
-        <div style={{ padding: "8px 16px 0", flexShrink: 0 }}>
+        <div style={{ padding: "10px 16px 0", flexShrink: 0 }}>
           {pts != null ? (
             <>
               <span style={{
@@ -171,6 +175,7 @@ function EdgeCard(p: CardProps) {
                 lineHeight: 0.88,
                 letterSpacing: "-0.050em",
                 fontVariantNumeric: "tabular-nums",
+                textShadow: `0 0 12px ${accent.color}40`,
               }}>
                 {pts}
               </span>
@@ -217,20 +222,20 @@ function EdgeCard(p: CardProps) {
         </div>
 
         {/* CTA */}
-        <div style={{ padding: "0 14px 14px", flexShrink: 0 }}>
+        <div style={{ padding: "0 14px 18px", flexShrink: 0 }}>
           <div style={{
             height: 32,
             display: "flex", alignItems: "center", justifyContent: "center",
             gap: 5,
-            background: `${accent.dim}50`,
-            border: `1px solid ${accent.color}35`,
+            background: `${accent.dim}45`,
+            border: `1px solid ${accent.color}28`,
             color: accent.label,
             fontSize: "clamp(8px, 0.50vw, 10px)",
             fontWeight: 800,
             letterSpacing: "0.10em",
             textTransform: "uppercase",
             borderRadius: 7,
-            transition: "background 0.15s ease",
+            transition: "all 0.20s ease",
           }}>
             {p.ctaLabel} <ChevronRight size={10} strokeWidth={2.5} />
           </div>
@@ -652,18 +657,21 @@ export default function Index() {
           width: "100%",
           maxWidth: 1120,
           padding: "0 clamp(16px, 3vw, 32px)",
-          marginTop: "clamp(48px, 6vw, 80px)",
+          marginTop: "clamp(36px, 4vw, 56px)",
           marginBottom: "-80px",
         }}>
           {/* Section header */}
-          <div style={{ marginBottom: 20, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+          <div style={{ marginBottom: 24, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
             <div>
-              <p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.35em", textTransform: "uppercase", color: "rgba(244,197,66,0.70)", marginBottom: 6 }}>
+              <p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(244,197,66,0.70)", marginBottom: 8, opacity: 0.85 }}>
                 This Week's Edge
               </p>
-              <h2 style={{ margin: 0, fontSize: "clamp(16px, 1.5vw, 22px)", fontWeight: 800, color: "#f0f0f0", letterSpacing: "-0.02em" }}>
+              <h2 style={{ margin: 0, fontSize: "clamp(17px, 1.6vw, 24px)", fontWeight: 900, color: "#f0f0f0", letterSpacing: "-0.025em", lineHeight: 1.15 }}>
                 Real picks powered by live projections and value signals.
               </h2>
+              <p style={{ margin: "6px 0 0", fontSize: "clamp(11px, 0.75vw, 13px)", color: "rgba(255,255,255,0.40)", fontWeight: 500, lineHeight: 1.4 }}>
+                Built from this week's projections — not guesswork.
+              </p>
             </div>
           </div>
 
@@ -686,15 +694,24 @@ export default function Index() {
             }
           </div>
         </div>
+        {/* Hero bottom fade — blends into page background */}
+        <div style={{
+          position: "absolute", bottom: 0, left: 0, right: 0,
+          height: 160,
+          background: "linear-gradient(to bottom, transparent 0%, rgba(11,15,20,0.92) 100%)",
+          zIndex: 4, pointerEvents: "none",
+        }} />
       </section>
 
       {/* ── SPACER — lifts content below hero enough for card overlap ── */}
-      <div style={{ height: 104, background: DARK }} />
+      <div style={{ height: 84, background: DARK }} />
 
       {/* ── GOLD DIVIDER ────────────────────────────────────────────── */}
       <div style={{ width: "100%", height: 1, background: "linear-gradient(to right, transparent, rgba(244,197,66,0.20) 20%, rgba(244,197,66,0.45) 50%, rgba(244,197,66,0.20) 80%, transparent)" }} />
 
       <LandingWorkflowSection />
+      <LandingProductProof />
+      <LandingSecondaryCTA />
       <LandingTopRankings loading={loading} rows={topRows} freePreview={FREE_PREVIEW} />
       <LandingToolsGrid />
       <LandingTrust />

@@ -26,7 +26,7 @@ export default function LandingTrust() {
                 <span style={{ fontSize: 26, fontWeight: 900, color: "#E0AE2D", letterSpacing: "-0.03em", fontVariantNumeric: "tabular-nums" }}>{num}</span>
               </div>
               <p style={{ fontSize: 14, fontWeight: 700, color: "#EAEAEA", marginBottom: 6, letterSpacing: "-0.01em" }}>{label}</p>
-              <p style={{ fontSize: 12.5, color: "#555", lineHeight: 1.6 }}>{sub}</p>
+              <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.36)", lineHeight: 1.6 }}>{sub}</p>
             </div>
           ))}
         </div>
