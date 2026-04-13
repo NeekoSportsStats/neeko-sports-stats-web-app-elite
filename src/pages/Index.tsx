@@ -466,7 +466,7 @@ export default function Index() {
         paddingBottom: 140,
         backgroundImage: "url('/hero/image.png')",
         backgroundSize: "cover",
-        backgroundPosition: "center 38%",
+        backgroundPosition: "center 15%",
         backgroundRepeat: "no-repeat",
       }}>
         {/* Depth overlays */}
