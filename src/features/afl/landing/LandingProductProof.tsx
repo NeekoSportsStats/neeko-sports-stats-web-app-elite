@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ChartBar as BarChart3, TrendingUp, Star, User, Zap, ArrowRight } from "lucide-react";
 
@@ -106,6 +106,26 @@ const TABS: Tab[] = [
 
 export default function LandingProductProof() {
   const [activeId, setActiveId] = useState("rankings");
+  const [panelVisible, setPanelVisible] = useState(true);
+  const pendingId = useRef<string | null>(null);
+
+  function handleTabClick(id: string) {
+    if (id === activeId) return;
+    pendingId.current = id;
+    setPanelVisible(false);
+  }
+
+  useEffect(() => {
+    if (!panelVisible && pendingId.current) {
+      const timer = setTimeout(() => {
+        setActiveId(pendingId.current!);
+        pendingId.current = null;
+        setPanelVisible(true);
+      }, 110);
+      return () => clearTimeout(timer);
+    }
+  }, [panelVisible]);
+
   const active = TABS.find(t => t.id === activeId) ?? TABS[0];
 
   return (
@@ -156,7 +176,7 @@ export default function LandingProductProof() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveId(tab.id)}
+                  onClick={() => handleTabClick(tab.id)}
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
                     padding: "12px 16px",
@@ -196,7 +216,9 @@ export default function LandingProductProof() {
             borderRadius: 18,
             overflow: "hidden",
             boxShadow: `0 24px 64px rgba(0,0,0,0.55), 0 0 0 1px ${active.accentColor}10 inset`,
-            transition: "border-color 0.22s ease",
+            transition: "border-color 0.22s ease, opacity 0.14s ease, transform 0.14s ease",
+            opacity: panelVisible ? 1 : 0,
+            transform: panelVisible ? "translateX(0)" : "translateX(6px)",
           }}>
             {/* Panel top bar */}
             <div style={{

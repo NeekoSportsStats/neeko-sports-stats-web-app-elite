@@ -49,14 +49,16 @@ function StepCard(step: Step) {
           background: hovered ? "rgba(255,255,255,0.055)" : "rgba(255,255,255,0.03)",
           backdropFilter: "blur(10px)",
           WebkitBackdropFilter: "blur(10px)",
-          border: `1px solid ${hovered ? color + "38" : "rgba(255,255,255,0.07)"}`,
+          border: `1px solid ${hovered ? color + "45" : "rgba(255,255,255,0.07)"}`,
           borderRadius: 16,
           padding: "28px 26px 24px",
           position: "relative",
           overflow: "hidden",
-          boxShadow: hovered ? `0 16px 40px rgba(0,0,0,0.52)` : "none",
-          transform: hovered ? "translateY(-5px)" : "none",
-          transition: "all 0.20s ease",
+          boxShadow: hovered
+            ? `0 20px 48px rgba(0,0,0,0.60), 0 0 0 1px ${color}18 inset, 0 0 28px ${color}0f`
+            : "none",
+          transform: hovered ? "translateY(-6px) scale(1.012)" : "translateY(0) scale(1)",
+          transition: "all 0.22s cubic-bezier(0.22,1,0.36,1)",
           display: "flex",
           flexDirection: "column",
         }}
@@ -69,10 +71,12 @@ function StepCard(step: Step) {
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
           <div style={{
             width: 48, height: 48, borderRadius: 13,
-            background: `${color}14`,
-            border: `1.5px solid ${color}28`,
+            background: hovered ? `${color}20` : `${color}14`,
+            border: `1.5px solid ${hovered ? color + "45" : color + "28"}`,
             display: "flex", alignItems: "center", justifyContent: "center",
             color, flexShrink: 0,
+            transform: hovered ? "scale(1.06)" : "scale(1)",
+            transition: "transform 0.18s ease, background 0.18s ease, border-color 0.18s ease",
           }}>
             {icon}
           </div>

@@ -4,7 +4,9 @@ import { ArrowRight } from "lucide-react";
 
 export default function LandingFinalCTA() {
   const [primaryHovered, setPrimaryHovered] = useState(false);
+  const [primaryActive, setPrimaryActive] = useState(false);
   const [secondaryHovered, setSecondaryHovered] = useState(false);
+  const [secondaryActive, setSecondaryActive] = useState(false);
 
   return (
     <section style={{
@@ -60,7 +62,9 @@ export default function LandingFinalCTA() {
           <Link
             to="/neeko-plus"
             onMouseEnter={() => setPrimaryHovered(true)}
-            onMouseLeave={() => setPrimaryHovered(false)}
+            onMouseLeave={() => { setPrimaryHovered(false); setPrimaryActive(false); }}
+            onMouseDown={() => setPrimaryActive(true)}
+            onMouseUp={() => setPrimaryActive(false)}
             style={{
               display: "inline-flex", alignItems: "center", gap: 10,
               background: "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
@@ -70,11 +74,13 @@ export default function LandingFinalCTA() {
               borderRadius: 12,
               textDecoration: "none",
               letterSpacing: "0.01em",
-              boxShadow: primaryHovered
-                ? "0 14px 48px rgba(224,174,45,0.40), 0 4px 12px rgba(0,0,0,0.60)"
-                : "0 8px 36px rgba(224,174,45,0.28), 0 4px 12px rgba(0,0,0,0.55)",
-              transform: primaryHovered ? "translateY(-2px)" : "none",
-              transition: "all 0.22s ease",
+              boxShadow: primaryActive
+                ? "0 4px 16px rgba(224,174,45,0.22), 0 2px 6px rgba(0,0,0,0.60)"
+                : primaryHovered
+                  ? "0 14px 48px rgba(224,174,45,0.40), 0 4px 12px rgba(0,0,0,0.60)"
+                  : "0 8px 36px rgba(224,174,45,0.28), 0 4px 12px rgba(0,0,0,0.55)",
+              transform: primaryActive ? "translateY(0) scale(0.985)" : primaryHovered ? "translateY(-2px) scale(1.01)" : "translateY(0) scale(1)",
+              transition: "all 0.18s cubic-bezier(0.22,1,0.36,1)",
             }}
           >
             Start Winning With Neeko+ <ArrowRight size={15} />
@@ -83,7 +89,9 @@ export default function LandingFinalCTA() {
           <Link
             to="/sports/afl/rankings"
             onMouseEnter={() => setSecondaryHovered(true)}
-            onMouseLeave={() => setSecondaryHovered(false)}
+            onMouseLeave={() => { setSecondaryHovered(false); setSecondaryActive(false); }}
+            onMouseDown={() => setSecondaryActive(true)}
+            onMouseUp={() => setSecondaryActive(false)}
             style={{
               display: "inline-flex", alignItems: "center", gap: 8,
               background: secondaryHovered ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.04)",
@@ -96,6 +104,7 @@ export default function LandingFinalCTA() {
               borderRadius: 10,
               textDecoration: "none",
               whiteSpace: "nowrap",
+              transform: secondaryActive ? "scale(0.985)" : "scale(1)",
               transition: "all 0.20s ease",
             }}
           >

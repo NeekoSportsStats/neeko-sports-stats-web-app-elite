@@ -248,13 +248,14 @@ function EdgeCard(p: CardProps) {
 // ── Skeleton card ──────────────────────────────────────────────────────────────
 function SkeletonCard() {
   return (
-    <div style={{
-      height: "100%", minHeight: 240,
-      borderRadius: 14,
-      background: "rgba(255,255,255,0.04)",
-      border: "1px solid rgba(255,255,255,0.06)",
-      animation: "pulse 1.8s ease-in-out infinite",
-    }} />
+    <div
+      className="skeleton-shimmer"
+      style={{
+        height: "100%", minHeight: 240,
+        borderRadius: 14,
+        border: "1px solid rgba(255,255,255,0.06)",
+      }}
+    />
   );
 }
 
@@ -345,6 +346,26 @@ export default function Index() {
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+
+  useEffect(() => {
+    const els = document.querySelectorAll<HTMLElement>(".scroll-reveal");
+    if (!els.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const el = entry.target as HTMLElement;
+            const delay = el.dataset.revealDelay ?? "0";
+            setTimeout(() => el.classList.add("revealed"), Number(delay));
+            observer.unobserve(el);
+          }
+        });
+      },
+      { threshold: 0.10, rootMargin: "0px 0px -40px 0px" }
+    );
+    els.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [loading]);
 
   useEffect(() => {
     (async () => {
@@ -571,7 +592,7 @@ export default function Index() {
           padding: "clamp(56px, 7.5vw, 100px) 24px 0",
         }}>
           {/* Eyebrow */}
-          <p style={{
+          <p className="hero-eyebrow" style={{
             fontSize: 10, fontWeight: 800,
             letterSpacing: "0.40em",
             textTransform: "uppercase",
@@ -583,7 +604,7 @@ export default function Index() {
           </p>
 
           {/* H1 */}
-          <h1 style={{
+          <h1 className="hero-h1" style={{
             margin: "0 0 14px",
             fontSize: "clamp(30px, 3.8vw, 58px)",
             fontWeight: 800,
@@ -598,7 +619,7 @@ export default function Index() {
           </h1>
 
           {/* Sub */}
-          <p style={{
+          <p className="hero-sub" style={{
             margin: "0 auto 22px",
             fontSize: "clamp(13px, 1.05vw, 17px)",
             color: "rgba(255,255,255,0.88)",
@@ -611,7 +632,7 @@ export default function Index() {
           </p>
 
           {/* CTAs — wrapped in glass container */}
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 22 }}>
+          <div className="hero-ctas" style={{ display: "flex", justifyContent: "center", marginBottom: 22 }}>
             <div style={{
               display: "inline-flex", gap: 12, flexWrap: "wrap", justifyContent: "center",
               padding: "12px 16px",
@@ -627,7 +648,7 @@ export default function Index() {
           </div>
 
           {/* Trust row */}
-          <div style={{
+          <div className="hero-trust" style={{
             display: "flex", justifyContent: "center", alignItems: "center",
             gap: "clamp(18px, 2.5vw, 22px)",
             flexWrap: "nowrap",
@@ -732,14 +753,14 @@ export default function Index() {
       {/* ── GOLD DIVIDER ────────────────────────────────────────────── */}
       <div style={{ width: "100%", height: 1, background: "linear-gradient(to right, transparent, rgba(244,197,66,0.20) 20%, rgba(244,197,66,0.45) 50%, rgba(244,197,66,0.20) 80%, transparent)" }} />
 
-      <LandingWorkflowSection />
-      <LandingProductProof />
-      <LandingSecondaryCTA />
-      <LandingTopRankings loading={loading} rows={topRows} freePreview={FREE_PREVIEW} />
-      <LandingToolsGrid />
-      <LandingTrust />
-      <LandingPricing />
-      <LandingFinalCTA />
+      <div className="scroll-reveal" data-reveal-delay="0"><LandingWorkflowSection /></div>
+      <div className="scroll-reveal" data-reveal-delay="50"><LandingProductProof /></div>
+      <div className="scroll-reveal" data-reveal-delay="0"><LandingSecondaryCTA /></div>
+      <div className="scroll-reveal" data-reveal-delay="0"><LandingTopRankings loading={loading} rows={topRows} freePreview={FREE_PREVIEW} /></div>
+      <div className="scroll-reveal" data-reveal-delay="0"><LandingToolsGrid /></div>
+      <div className="scroll-reveal" data-reveal-delay="0"><LandingTrust /></div>
+      <div className="scroll-reveal" data-reveal-delay="0"><LandingPricing /></div>
+      <div className="scroll-reveal" data-reveal-delay="0"><LandingFinalCTA /></div>
 
       {/* ── FOOTER ──────────────────────────────────────────────────── */}
       <footer style={{ background: "#060708", borderTop: "1px solid rgba(255,255,255,0.05)", padding: "22px clamp(16px, 4vw, 32px)" }}>
@@ -773,8 +794,20 @@ export default function Index() {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.45; }
         }
+        @keyframes shimmer {
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
+        }
         @keyframes fadeUp {
           from { opacity: 0; transform: translateY(18px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes heroFadeUp {
+          from { opacity: 0; transform: translateY(22px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes scrollReveal {
+          from { opacity: 0; transform: translateY(28px); }
           to   { opacity: 1; transform: translateY(0); }
         }
         .edge-card-enter {
@@ -784,6 +817,43 @@ export default function Index() {
         .edge-card-enter:nth-child(2) { animation-delay: 0.12s; }
         .edge-card-enter:nth-child(3) { animation-delay: 0.19s; }
         .edge-card-enter:nth-child(4) { animation-delay: 0.26s; }
+
+        .hero-eyebrow {
+          opacity: 0;
+          animation: heroFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.10s forwards;
+        }
+        .hero-h1 {
+          opacity: 0;
+          animation: heroFadeUp 0.60s cubic-bezier(0.22,1,0.36,1) 0.22s forwards;
+        }
+        .hero-sub {
+          opacity: 0;
+          animation: heroFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.34s forwards;
+        }
+        .hero-ctas {
+          opacity: 0;
+          animation: heroFadeUp 0.50s cubic-bezier(0.22,1,0.36,1) 0.46s forwards;
+        }
+        .hero-trust {
+          opacity: 0;
+          animation: heroFadeUp 0.45s cubic-bezier(0.22,1,0.36,1) 0.56s forwards;
+        }
+
+        .scroll-reveal {
+          opacity: 0;
+          transform: translateY(28px);
+          transition: opacity 0.40s cubic-bezier(0.22,1,0.36,1), transform 0.40s cubic-bezier(0.22,1,0.36,1);
+        }
+        .scroll-reveal.revealed {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        .skeleton-shimmer {
+          background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
+          background-size: 200% 100%;
+          animation: shimmer 1.2s ease-in-out infinite;
+        }
       `}</style>
     </div>
   );
