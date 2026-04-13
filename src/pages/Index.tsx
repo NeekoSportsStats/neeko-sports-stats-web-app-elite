@@ -35,7 +35,6 @@ const C = {
 const CARD_ROTATIONS = [-1.8, 1.4, -1.2, 1.6];
 
 const CARD_THEMES: Record<number, {
-  bg: string;
   bgGrad: string;
   lines: string;
   headerBg: string;
@@ -44,50 +43,55 @@ const CARD_THEMES: Record<number, {
   numberGlow: string;
   shadowColor: string;
   pinColor: string;
+  warmOverlay: string;
 }> = {
+  // MUST BUY — warm sage-green parchment
   0: {
-    bg: "#f0f7ee",
-    bgGrad: "linear-gradient(162deg, #f3f9f1 0%, #e9f4e7 60%, #e4f0e2 100%)",
-    lines: "rgba(22,88,36,0.045)",
-    headerBg: "linear-gradient(to right, rgba(22,86,36,0.12), rgba(22,86,36,0.03))",
-    headerBorder: "rgba(22,86,36,0.18)",
-    accentBorder: "rgba(22,86,36,0.20)",
-    numberGlow: "rgba(22,86,36,0.22)",
-    shadowColor: "rgba(22,86,36,0.14)",
-    pinColor: "#2d7a3a",
+    bgGrad: "linear-gradient(162deg, #f4f9f2 0%, #eaf4e8 55%, #e2eedf 100%)",
+    lines: "rgba(30,80,38,0.038)",
+    headerBg: "linear-gradient(to right, rgba(24,80,34,0.11), rgba(24,80,34,0.02))",
+    headerBorder: "rgba(24,80,34,0.15)",
+    accentBorder: "rgba(24,80,34,0.18)",
+    numberGlow: "rgba(24,80,34,0.20)",
+    shadowColor: "rgba(20,70,28,0.18)",
+    pinColor: "#2a7236",
+    warmOverlay: "rgba(252,248,240,0.22)",
   },
+  // TRAP ALERT — warm dusty-rose parchment
   1: {
-    bg: "#f9eeed",
-    bgGrad: "linear-gradient(162deg, #fbf3f2 0%, #f5e6e5 60%, #f0dedd 100%)",
-    lines: "rgba(120,20,20,0.045)",
-    headerBg: "linear-gradient(to right, rgba(118,20,20,0.12), rgba(118,20,20,0.03))",
-    headerBorder: "rgba(118,20,20,0.18)",
-    accentBorder: "rgba(118,20,20,0.20)",
-    numberGlow: "rgba(118,20,20,0.22)",
-    shadowColor: "rgba(118,20,20,0.12)",
-    pinColor: "#922020",
+    bgGrad: "linear-gradient(162deg, #faf3f2 0%, #f4e6e5 55%, #eddcdb 100%)",
+    lines: "rgba(110,18,18,0.038)",
+    headerBg: "linear-gradient(to right, rgba(110,18,18,0.11), rgba(110,18,18,0.02))",
+    headerBorder: "rgba(110,18,18,0.15)",
+    accentBorder: "rgba(110,18,18,0.18)",
+    numberGlow: "rgba(110,18,18,0.20)",
+    shadowColor: "rgba(100,14,14,0.16)",
+    pinColor: "#8c1c1c",
+    warmOverlay: "rgba(252,248,240,0.24)",
   },
+  // CAPTAIN PICK — warm amber parchment
   2: {
-    bg: "#f9f4e2",
-    bgGrad: "linear-gradient(162deg, #fbf7e9 0%, #f4ecd5 60%, #eee5c8 100%)",
-    lines: "rgba(110,64,0,0.045)",
-    headerBg: "linear-gradient(to right, rgba(108,64,0,0.12), rgba(108,64,0,0.03))",
-    headerBorder: "rgba(108,64,0,0.18)",
-    accentBorder: "rgba(108,64,0,0.20)",
-    numberGlow: "rgba(108,64,0,0.22)",
-    shadowColor: "rgba(108,64,0,0.12)",
-    pinColor: "#8a5200",
+    bgGrad: "linear-gradient(162deg, #fbf8ea 0%, #f5eed8 55%, #ede3c4 100%)",
+    lines: "rgba(100,58,0,0.038)",
+    headerBg: "linear-gradient(to right, rgba(98,56,0,0.11), rgba(98,56,0,0.02))",
+    headerBorder: "rgba(98,56,0,0.15)",
+    accentBorder: "rgba(98,56,0,0.18)",
+    numberGlow: "rgba(98,56,0,0.20)",
+    shadowColor: "rgba(88,48,0,0.16)",
+    pinColor: "#844800",
+    warmOverlay: "rgba(255,250,235,0.20)",
   },
+  // TRADE TARGET — cool slate-blue parchment with warm tint
   3: {
-    bg: "#ebf1f9",
-    bgGrad: "linear-gradient(162deg, #eef4fb 0%, #e3edf8 60%, #d9e6f4 100%)",
-    lines: "rgba(10,58,108,0.045)",
-    headerBg: "linear-gradient(to right, rgba(10,58,108,0.12), rgba(10,58,108,0.03))",
-    headerBorder: "rgba(10,58,108,0.18)",
-    accentBorder: "rgba(10,58,108,0.20)",
-    numberGlow: "rgba(10,58,108,0.22)",
-    shadowColor: "rgba(10,58,108,0.12)",
-    pinColor: "#0d4278",
+    bgGrad: "linear-gradient(162deg, #eef4fb 0%, #e2edf8 55%, #d6e5f3 100%)",
+    lines: "rgba(10,52,100,0.038)",
+    headerBg: "linear-gradient(to right, rgba(10,52,100,0.11), rgba(10,52,100,0.02))",
+    headerBorder: "rgba(10,52,100,0.15)",
+    accentBorder: "rgba(10,52,100,0.18)",
+    numberGlow: "rgba(10,52,100,0.20)",
+    shadowColor: "rgba(8,44,88,0.16)",
+    pinColor: "#0c3e72",
+    warmOverlay: "rgba(250,248,244,0.18)",
   },
 };
 
@@ -141,19 +145,19 @@ function WhiteboardCard(p: CardProps) {
   const theme = CARD_THEMES[p.index ?? 0] ?? CARD_THEMES[0];
 
   return (
-    <Link to={p.ctaTo} style={{ textDecoration: "none", display: "block", paddingTop: "1.25vw" }}>
+    <Link to={p.ctaTo} style={{ textDecoration: "none", display: "block", paddingTop: "1.30vw" }}>
       <div style={{ position: "relative" }}>
         <StickyPin color={p.color} pinColor={theme.pinColor} />
 
-        {/* Lift shadow underneath — adds physical depth */}
+        {/* Lift contact shadow beneath card */}
         <div style={{
           position: "absolute",
-          bottom: "-0.5vw", left: "6%", right: "6%",
-          height: "1vw",
-          background: `radial-gradient(ellipse at center, ${theme.shadowColor} 0%, transparent 70%)`,
-          filter: "blur(6px)",
-          transform: hovered ? "scaleX(1.08) translateY(0.3vw)" : "scaleX(1)",
-          transition: "all 0.24s ease",
+          bottom: "-0.55vw", left: "5%", right: "5%",
+          height: "1.1vw",
+          background: `radial-gradient(ellipse at 50% 100%, ${theme.shadowColor} 0%, transparent 72%)`,
+          filter: "blur(7px)",
+          transform: hovered ? "scaleX(1.10) translateY(0.35vw)" : "scaleX(1.02)",
+          transition: "transform 0.24s ease",
           pointerEvents: "none",
           zIndex: 0,
         }} />
@@ -164,96 +168,225 @@ function WhiteboardCard(p: CardProps) {
           style={{
             position: "relative",
             zIndex: 1,
-            /* Base paper: gradient + ruled lines + subtle noise via svg data-uri */
-            background: theme.bgGrad,
+            /*
+             * Paper surface stack (back to front):
+             *   1. Base gradient (parchment tone)
+             *   2. Warm cream overlay for paper warmth
+             *   3. Faint ruled lines (notebook feel)
+             *   4. SVG fractal noise (grain)
+             */
             backgroundImage: [
               theme.bgGrad,
-              `repeating-linear-gradient(transparent, transparent 1.35vw, ${theme.lines} 1.35vw, ${theme.lines} calc(1.35vw + 1px))`,
-              `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.028'/%3E%3C/svg%3E")`,
+              `linear-gradient(rgba(255,252,245,0.18), rgba(255,252,245,0.18))`,
+              `repeating-linear-gradient(transparent, transparent 1.42vw, ${theme.lines} 1.42vw, ${theme.lines} calc(1.42vw + 1px))`,
+              `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.68' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23g)' opacity='0.032'/%3E%3C/svg%3E")`,
             ].join(", "),
             borderRadius: 6,
+            /* Outer border: very subtle warm neutral */
             border: `1px solid ${theme.accentBorder}`,
             boxShadow: hovered
-              ? `0 4px 10px rgba(0,0,0,0.22), 0 14px 32px rgba(0,0,0,0.26), 0 28px 56px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.82), inset 0 0 0 1px rgba(255,255,255,0.18)`
-              : `0 2px 5px rgba(0,0,0,0.14), 0 7px 20px rgba(0,0,0,0.18), 0 16px 36px rgba(0,0,0,0.13), inset 0 1px 0 rgba(255,255,255,0.75), inset 0 0 0 1px rgba(255,255,255,0.14)`,
+              ? [
+                  "0 3px 8px rgba(0,0,0,0.20)",
+                  "0 12px 28px rgba(0,0,0,0.24)",
+                  "0 26px 52px rgba(0,0,0,0.15)",
+                  /* Inner top sheen */
+                  "inset 0 1px 0 rgba(255,255,255,0.88)",
+                  /* Inner perimeter glow — subtle */
+                  "inset 0 0 0 1px rgba(255,255,255,0.20)",
+                ].join(", ")
+              : [
+                  "0 1px 4px rgba(0,0,0,0.12)",
+                  "0 6px 18px rgba(0,0,0,0.16)",
+                  "0 14px 32px rgba(0,0,0,0.11)",
+                  "inset 0 1px 0 rgba(255,255,255,0.80)",
+                  "inset 0 0 0 1px rgba(255,255,255,0.16)",
+                ].join(", "),
             transform: hovered
-              ? `rotate(${rotation}deg) translateY(-0.8vw) scale(1.032)`
+              ? `rotate(${rotation}deg) translateY(-0.75vw) scale(1.028)`
               : `rotate(${rotation}deg) translateY(0)`,
-            transition: "transform 0.22s cubic-bezier(0.34,1.42,0.64,1), box-shadow 0.22s ease",
-            display: "flex", flexDirection: "column",
+            transition: "transform 0.22s cubic-bezier(0.34,1.44,0.64,1), box-shadow 0.20s ease",
+            display: "flex",
+            flexDirection: "column",
             overflow: "hidden",
           }}
         >
-          {/* Top edge sheen */}
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: "linear-gradient(to bottom, rgba(255,255,255,0.78), transparent)", borderRadius: "6px 6px 0 0", pointerEvents: "none", zIndex: 2 }} />
-          {/* Right edge sheen */}
-          <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 2, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.30))", borderRadius: "0 6px 6px 0", pointerEvents: "none", zIndex: 2 }} />
+          {/* Top-edge highlight: paper edge catching light */}
+          <div style={{
+            position: "absolute", top: 0, left: 0, right: 0, height: 4,
+            background: "linear-gradient(to bottom, rgba(255,255,255,0.82), rgba(255,255,255,0.0))",
+            borderRadius: "6px 6px 0 0",
+            pointerEvents: "none", zIndex: 5,
+          }} />
+          {/* Right-edge sheen */}
+          <div style={{
+            position: "absolute", top: 0, right: 0, bottom: 0, width: 2,
+            background: "linear-gradient(to right, transparent, rgba(255,255,255,0.28))",
+            borderRadius: "0 6px 6px 0",
+            pointerEvents: "none", zIndex: 5,
+          }} />
 
-          {/* ── ZONE 1: CATEGORY LABEL STRIP ── */}
+          {/* ── ZONE 1: CATEGORY STRIP ─────────────────────────── */}
           <div style={{
             background: theme.headerBg,
             borderBottom: `1px solid ${theme.headerBorder}`,
-            padding: "0.70vw 0.90vw 0.56vw",
-            display: "flex", alignItems: "center", gap: "0.42vw",
+            /* Fixed pixel padding so all cards have identical header height */
+            padding: "10px 13px 8px",
+            display: "flex", alignItems: "center", gap: 5,
           }}>
-            <span style={{ color: p.color, display: "flex", alignItems: "center", flexShrink: 0 }}>{p.icon}</span>
-            <span style={{ fontSize: "0.56vw", fontWeight: 900, letterSpacing: "0.30em", textTransform: "uppercase", color: p.color, flex: 1, textShadow: "0 1px 0 rgba(255,255,255,0.55)" }}>{p.label}</span>
+            <span style={{
+              color: p.color,
+              display: "flex", alignItems: "center", flexShrink: 0,
+              opacity: 0.90,
+            }}>
+              {p.icon}
+            </span>
+            <span style={{
+              fontSize: "0.56vw", fontWeight: 900,
+              letterSpacing: "0.32em",
+              textTransform: "uppercase",
+              color: p.color,
+              flex: 1,
+              /* Subtle pressed-ink text shadow */
+              textShadow: "0 1px 0 rgba(255,255,255,0.60)",
+            }}>
+              {p.label}
+            </span>
             {p.position && (
-              <span style={{ fontSize: "0.46vw", fontWeight: 800, textTransform: "uppercase", background: `${p.color}1a`, color: p.color, padding: "0.13vw 0.32vw", borderRadius: 3, border: `1px solid ${p.color}26`, letterSpacing: "0.08em" }}>{p.position}</span>
+              <span style={{
+                fontSize: "0.44vw", fontWeight: 800, textTransform: "uppercase",
+                background: `${p.color}16`, color: p.color,
+                padding: "2px 5px", borderRadius: 3,
+                border: `1px solid ${p.color}22`,
+                letterSpacing: "0.10em",
+              }}>
+                {p.position}
+              </span>
             )}
             {p.badge && (
-              <span style={{ fontSize: "0.52vw", fontWeight: 900, background: `linear-gradient(to bottom, ${p.color}ee, ${p.color}cc)`, color: "#fff", padding: "0.14vw 0.4vw", borderRadius: 3, boxShadow: "0 1px 3px rgba(0,0,0,0.20)", letterSpacing: "0.04em" }}>{p.badge}</span>
+              <span style={{
+                fontSize: "0.50vw", fontWeight: 900,
+                background: `linear-gradient(160deg, ${p.color}ee 0%, ${p.color}bb 100%)`,
+                color: "#fff",
+                padding: "2px 6px", borderRadius: 3,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.22)",
+                letterSpacing: "0.05em",
+              }}>
+                {p.badge}
+              </span>
             )}
           </div>
 
-          {/* ── ZONE 2: PLAYER NAME ── */}
-          <div style={{ padding: "0.80vw 0.90vw 0.18vw" }}>
-            <p style={{ fontSize: "1.0vw", fontWeight: 900, color: "#17100a", lineHeight: 1.10, letterSpacing: "-0.030em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textShadow: "0 1px 0 rgba(255,255,255,0.60)", margin: 0 }}>{p.playerName}</p>
-            <p style={{ fontSize: "0.52vw", color: "#6a5040", marginTop: "0.18vw", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "0.04em", margin: 0 }}>{p.team}</p>
+          {/* ── ZONE 2: PLAYER NAME ────────────────────────────── */}
+          <div style={{ padding: "13px 13px 4px" }}>
+            <p style={{
+              fontSize: "clamp(13px, 1.04vw, 20px)",
+              fontWeight: 900,
+              color: "#140e08",
+              lineHeight: 1.08,
+              letterSpacing: "-0.032em",
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              textShadow: "0 1px 0 rgba(255,255,255,0.65)",
+              margin: 0,
+            }}>
+              {p.playerName}
+            </p>
+            <p style={{
+              fontSize: "clamp(8px, 0.50vw, 11px)",
+              color: "#6a5240",
+              marginTop: 3, fontWeight: 700,
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              letterSpacing: "0.05em",
+              textTransform: "uppercase",
+              opacity: 0.78,
+            }}>
+              {p.team}
+            </p>
           </div>
 
-          {/* ── ZONE 3: PROJECTION NUMBER (dominant focal point) ── */}
-          <div style={{ padding: "0.28vw 0.90vw 0", display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+          {/* ── ZONE 3: BIG PROJECTION NUMBER ─────────────────── */}
+          <div style={{ padding: "5px 13px 0", display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
             {pts != null ? (
               <>
                 <span style={{
-                  fontSize: "3.8vw", fontWeight: 900, color: p.color,
-                  lineHeight: 0.90, letterSpacing: "-0.048em",
+                  fontSize: "clamp(36px, 3.9vw, 72px)",
+                  fontWeight: 900,
+                  color: p.color,
+                  lineHeight: 0.88,
+                  letterSpacing: "-0.050em",
                   fontVariantNumeric: "tabular-nums",
-                  textShadow: `0 2px 0 rgba(0,0,0,0.07), 0 0 24px ${theme.numberGlow}`,
-                  filter: `drop-shadow(0 2px 4px ${theme.numberGlow})`,
-                }}>{pts}</span>
-                <span style={{ fontSize: "0.50vw", color: "#7a6050", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", marginTop: "0.10vw", lineHeight: 1 }}>Projected pts</span>
+                  textShadow: `0 2px 0 rgba(0,0,0,0.06), 0 0 28px ${theme.numberGlow}`,
+                  filter: `drop-shadow(0 2px 5px ${theme.numberGlow})`,
+                }}>
+                  {pts}
+                </span>
+                <span style={{
+                  fontSize: "clamp(7px, 0.48vw, 10px)",
+                  color: "#6e5a48",
+                  fontWeight: 700,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  marginTop: 4,
+                  lineHeight: 1,
+                  opacity: 0.82,
+                }}>
+                  Projected pts
+                </span>
               </>
             ) : (
-              <span style={{ fontSize: "1.6vw", color: "#bbb", fontWeight: 700, lineHeight: 1 }}>—</span>
+              <span style={{ fontSize: "clamp(18px, 1.6vw, 30px)", color: "#c0b0a0", fontWeight: 700, lineHeight: 1 }}>—</span>
             )}
           </div>
 
-          {/* Hairline divider */}
-          <div style={{ margin: "0.42vw 0.90vw 0", height: 1, background: `linear-gradient(to right, ${p.color}38, transparent 85%)` }} />
+          {/* Hairline accent rule under number */}
+          <div style={{
+            margin: "9px 13px 0",
+            height: 1,
+            background: `linear-gradient(to right, ${p.color}40, ${p.color}10 70%, transparent)`,
+          }} />
 
-          {/* ── ZONE 4: VERDICT LINE (single punchy line) ── */}
-          <div style={{ padding: "0.38vw 0.90vw 0.44vw", flex: 1 }}>
-            <p style={{ fontSize: "0.58vw", color: "#2e1e14", fontWeight: 700, lineHeight: 1.4, margin: 0, letterSpacing: "0.008em", opacity: 0.88 }}>{p.reason}</p>
+          {/* ── ZONE 4: VERDICT — one scannable line ──────────── */}
+          <div style={{ padding: "7px 13px 8px", flex: 1, display: "flex", alignItems: "center" }}>
+            <p style={{
+              fontSize: "clamp(8px, 0.58vw, 12px)",
+              color: "#2a1a10",
+              fontWeight: 700,
+              lineHeight: 1,
+              margin: 0,
+              letterSpacing: "0.010em",
+              opacity: 0.86,
+              /* Hard clamp to single line */
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              maxWidth: "100%",
+            }}>
+              {p.reason}
+            </p>
           </div>
 
-          {/* ── ZONE 5: CTA BUTTON ── */}
-          <div style={{ padding: "0 0.80vw 0.90vw" }}>
+          {/* ── ZONE 5: CTA ────────────────────────────────────── */}
+          <div style={{ padding: "0 11px 12px" }}>
             <div style={{
-              background: `linear-gradient(165deg, ${p.color}f0 0%, ${p.color}d8 100%)`,
+              /* Slightly desaturated version of accent color */
+              background: `linear-gradient(162deg, ${p.color}ee 0%, ${p.color}cc 100%)`,
               color: "#fff",
-              fontSize: "0.52vw", fontWeight: 800,
-              textAlign: "center",
-              padding: "0.58vw 0.6vw",
-              borderRadius: 4,
-              letterSpacing: "0.09em",
+              /* Fixed 28px height so all CTAs align across cards */
+              height: 28,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              gap: 4,
+              fontSize: "clamp(7px, 0.50vw, 10px)",
+              fontWeight: 800,
+              letterSpacing: "0.10em",
               textTransform: "uppercase",
-              boxShadow: `inset 0 1px 0 rgba(255,255,255,0.24), 0 2px 8px rgba(0,0,0,0.26), 0 0 0 1px ${p.color}38`,
-              display: "flex", alignItems: "center", justifyContent: "center", gap: "0.28vw",
+              borderRadius: 4,
+              boxShadow: [
+                `inset 0 1px 0 rgba(255,255,255,0.22)`,
+                `0 2px 8px rgba(0,0,0,0.24)`,
+                `0 0 0 1px ${p.color}30`,
+              ].join(", "),
               textShadow: "0 1px 2px rgba(0,0,0,0.28)",
             }}>
-              {p.ctaLabel} <ChevronRight size={8} />
+              {p.ctaLabel} <ChevronRight size={7} strokeWidth={2.5} />
             </div>
           </div>
         </div>
