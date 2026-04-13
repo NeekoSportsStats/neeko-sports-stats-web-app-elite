@@ -485,7 +485,7 @@ export default function Index() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          paddingTop: "5%",
+          paddingTop: "2%",
           paddingBottom: "0%",
           paddingLeft: "3vw",
           paddingRight: "3vw",
