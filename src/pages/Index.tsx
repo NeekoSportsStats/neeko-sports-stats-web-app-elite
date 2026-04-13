@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { Crown, ArrowRight, Check, TrendingUp, TriangleAlert as AlertTriangle, Star, ChartBar as BarChart3, ChevronRight, Zap, Database, Clock, Target, ShieldAlert, Users, ListOrdered, Swords, GitCompare, CalendarDays, SquareSplitHorizontal as SplitSquareHorizontal } from "lucide-react";
+import { Crown, ArrowRight, Check, TrendingUp, TriangleAlert as AlertTriangle, Star, ChartBar as BarChart3, ChevronRight, Zap, Database, Clock, Target, ShieldAlert, Users, ListOrdered, Swords, GitCompare, CalendarDays } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
@@ -17,7 +17,6 @@ const NAV_PILLS = [
   { label: "Market Watch", icon: <TrendingUp size={14} />,   to: "/sports/afl/market-watch" },
   { label: "Captains",     icon: <Star size={14} />,          to: "/sports/afl/captains" },
   { label: "Rankings",     icon: <BarChart3 size={14} />,     to: "/sports/afl/rankings" },
-  { label: "Compare",      icon: <SplitSquareHorizontal size={14} />, to: "/sports/afl/compare" },
 ] as const;
 
 function HeroNavPills({ style }: { style?: React.CSSProperties }) {
