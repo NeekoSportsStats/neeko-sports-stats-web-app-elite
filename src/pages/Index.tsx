@@ -175,59 +175,59 @@ function WhiteboardCard(p: CardProps) {
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1.5, background: "linear-gradient(to bottom, rgba(255,255,255,0.55), transparent)", borderRadius: "2px 2px 0 0", pointerEvents: "none" }} />
 
           {/* Header */}
-          <div style={{ borderBottom: `1px solid ${paper.headerBorder}`, padding: "7px 10px 6px", display: "flex", alignItems: "center", gap: 5 }}>
+          <div style={{ borderBottom: `1px solid ${paper.headerBorder}`, padding: "10px 14px 8px", display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ color: p.color, display: "flex", alignItems: "center", flexShrink: 0 }}>{p.icon}</span>
-            <span style={{ fontSize: 7.5, fontWeight: 900, letterSpacing: "0.24em", textTransform: "uppercase", color: p.color, flex: 1 }}>{p.label}</span>
+            <span style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.24em", textTransform: "uppercase", color: p.color, flex: 1 }}>{p.label}</span>
             {p.position && (
-              <span style={{ fontSize: 7, fontWeight: 800, textTransform: "uppercase", background: `${p.color}16`, color: p.color, padding: "1px 4px", borderRadius: 3, border: `1px solid ${p.color}25` }}>{p.position}</span>
+              <span style={{ fontSize: 8, fontWeight: 800, textTransform: "uppercase", background: `${p.color}16`, color: p.color, padding: "2px 5px", borderRadius: 3, border: `1px solid ${p.color}25` }}>{p.position}</span>
             )}
             {p.badge && (
-              <span style={{ fontSize: 7, fontWeight: 900, textTransform: "uppercase", background: p.color, color: "#fff", padding: "1px 5px", borderRadius: 3 }}>{p.badge}</span>
+              <span style={{ fontSize: 8, fontWeight: 900, textTransform: "uppercase", background: p.color, color: "#fff", padding: "2px 6px", borderRadius: 3 }}>{p.badge}</span>
             )}
           </div>
 
           {/* Player */}
-          <div style={{ padding: "8px 10px 2px", display: "flex", alignItems: "center", gap: 7 }}>
+          <div style={{ padding: "10px 14px 4px", display: "flex", alignItems: "center", gap: 9 }}>
             <PlayerAvatar name={p.playerName} color={p.color} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: 11.5, fontWeight: 800, color: "#1c1208", lineHeight: 1.2, letterSpacing: "-0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.playerName}</p>
-              <p style={{ fontSize: 8, color: "#857060", marginTop: 1, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.team}</p>
+              <p style={{ fontSize: 14, fontWeight: 800, color: "#1c1208", lineHeight: 1.2, letterSpacing: "-0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.playerName}</p>
+              <p style={{ fontSize: 10, color: "#857060", marginTop: 2, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.team}</p>
             </div>
           </div>
 
           {/* Score */}
-          <div style={{ padding: "1px 10px 4px", display: "flex", alignItems: "baseline", gap: 4 }}>
+          <div style={{ padding: "2px 14px 6px", display: "flex", alignItems: "baseline", gap: 5 }}>
             {pts != null ? (
               <>
-                <span style={{ fontSize: 26, fontWeight: 900, color: p.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{pts}</span>
-                <span style={{ fontSize: 8.5, color: "#a08060", fontWeight: 700 }}>pts</span>
+                <span style={{ fontSize: 32, fontWeight: 900, color: p.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{pts}</span>
+                <span style={{ fontSize: 10, color: "#a08060", fontWeight: 700 }}>pts</span>
                 {priceStr && (
-                  <span style={{ fontSize: 7.5, fontWeight: 800, color: up ? "#1a5e22" : "#7a1818", background: up ? "#d8eed8" : "#f2dada", padding: "1px 4px", borderRadius: 3, marginLeft: 2, border: up ? "1px solid #b4d8b4" : "1px solid #e0b8b8" }}>
+                  <span style={{ fontSize: 9, fontWeight: 800, color: up ? "#1a5e22" : "#7a1818", background: up ? "#d8eed8" : "#f2dada", padding: "2px 5px", borderRadius: 3, marginLeft: 2, border: up ? "1px solid #b4d8b4" : "1px solid #e0b8b8" }}>
                     {up ? "▲" : "▼"}{priceStr}
                   </span>
                 )}
               </>
             ) : (
-              <span style={{ fontSize: 13, color: "#bbb", fontWeight: 700 }}>—</span>
+              <span style={{ fontSize: 16, color: "#bbb", fontWeight: 700 }}>—</span>
             )}
           </div>
 
           {/* Bullets */}
           {p.bullets.length > 0 && (
-            <div style={{ padding: "2px 10px 7px", display: "flex", flexDirection: "column", gap: 3.5 }}>
+            <div style={{ padding: "4px 14px 10px", display: "flex", flexDirection: "column", gap: 5 }}>
               {p.bullets.map((b, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 5 }}>
-                  <div style={{ width: 4, height: 4, borderRadius: "50%", background: `${p.color}50`, flexShrink: 0, marginTop: 4, border: `1px solid ${p.color}30` }} />
-                  <span style={{ fontSize: 7.5, color: "#4a3828", fontWeight: 600, lineHeight: 1.45 }}>{b}</span>
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: `${p.color}50`, flexShrink: 0, marginTop: 4, border: `1px solid ${p.color}30` }} />
+                  <span style={{ fontSize: 9, color: "#4a3828", fontWeight: 600, lineHeight: 1.45 }}>{b}</span>
                 </div>
               ))}
             </div>
           )}
 
           {/* CTA */}
-          <div style={{ padding: "0 9px 10px" }}>
-            <div style={{ background: `linear-gradient(to bottom, ${p.color}ee, ${p.color})`, color: "#fff", fontSize: 7.5, fontWeight: 800, textAlign: "center", padding: "6px 8px", borderRadius: 4, letterSpacing: "0.07em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 6px rgba(0,0,0,0.28)", display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}>
-              {p.ctaLabel} <ChevronRight size={7} />
+          <div style={{ padding: "0 12px 14px" }}>
+            <div style={{ background: `linear-gradient(to bottom, ${p.color}ee, ${p.color})`, color: "#fff", fontSize: 9, fontWeight: 800, textAlign: "center", padding: "8px 10px", borderRadius: 4, letterSpacing: "0.07em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 6px rgba(0,0,0,0.28)", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+              {p.ctaLabel} <ChevronRight size={9} />
             </div>
           </div>
 
@@ -239,7 +239,7 @@ function WhiteboardCard(p: CardProps) {
 }
 
 function SkeletonCard() {
-  return <div style={{ height: 220, borderRadius: 4, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.08)" }} />;
+  return <div style={{ height: 280, borderRadius: 4, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.08)" }} />;
 }
 
 // ── Helpers — all classification delegated to canonical engine ─────────────────
@@ -463,7 +463,7 @@ export default function Index() {
         overflow: "hidden",
         minHeight: 900,
         paddingTop: 220,
-        paddingBottom: 280,
+        paddingBottom: 340,
         backgroundImage: "url('/hero/image.png')",
         backgroundSize: "cover",
         backgroundPosition: "center 15%",
@@ -515,7 +515,7 @@ export default function Index() {
           </div>
 
           {/* Cards row */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, maxWidth: 1100, margin: "40px auto 0", transform: "translateY(-10px)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, maxWidth: 1100, margin: "60px auto 0" }}>
             {showSkeleton
               ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
               : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
