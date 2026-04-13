@@ -476,7 +476,7 @@ export default function Index() {
         {/* Bottom fade into next section */}
         <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "8%", background: "linear-gradient(to bottom, transparent, rgba(0,0,0,0.90))", zIndex: 3, pointerEvents: "none" }} />
 
-        {/* Content layer — absolutely fills the section, uses % positioning to track image zones */}
+        {/* Content layer — absolutely fills the section. All sizing in vw so it scales 1:1 with the hero image at every viewport width. */}
         <div style={{
           position: "absolute",
           inset: 0,
@@ -487,61 +487,60 @@ export default function Index() {
           justifyContent: "center",
           paddingTop: "8%",
           paddingBottom: "10%",
-          paddingLeft: "clamp(12px, 2vw, 24px)",
-          paddingRight: "clamp(12px, 2vw, 24px)",
+          paddingLeft: "3vw",
+          paddingRight: "3vw",
         }}>
           <div style={{
             width: "100%",
-            maxWidth: 1200,
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
           }}>
 
             {/* Eyebrow */}
-            <p style={{ fontSize: "clamp(7px, 0.6vw, 9px)", fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(245,196,81,0.70)", marginBottom: "1%", textAlign: "center", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
+            <p style={{ fontSize: "0.6vw", fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(245,196,81,0.70)", marginBottom: "1%", textAlign: "center", textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
               AFL Fantasy Intelligence
             </p>
 
             {/* Headline block */}
-            <div style={{ maxWidth: "60%", width: "100%", textAlign: "center" }}>
-              <h1 style={{ margin: 0, fontSize: "clamp(1.4rem, 3.5vw, 3.2rem)", fontWeight: 900, lineHeight: 1.08, letterSpacing: "-0.025em", color: "#f5f5f5", textShadow: "0 2px 4px rgba(0,0,0,0.70), 0 8px 22px rgba(0,0,0,0.50)" }}>
+            <div style={{ width: "58%", textAlign: "center" }}>
+              <h1 style={{ margin: 0, fontSize: "3.5vw", fontWeight: 900, lineHeight: 1.08, letterSpacing: "-0.025em", color: "#f5f5f5", textShadow: "0 2px 4px rgba(0,0,0,0.70), 0 8px 22px rgba(0,0,0,0.50)" }}>
                 Stop Guessing. <span style={{ color: C.gold }}>Start Winning</span>
                 <br />Your AFL Fantasy Week.
               </h1>
-              <p style={{ marginTop: "1%", marginBottom: 0, fontSize: "clamp(11px, 1.1vw, 15px)", color: "rgba(255,255,255,0.90)", lineHeight: 1.6, textShadow: "0 1px 6px rgba(0,0,0,0.90)" }}>
+              <p style={{ marginTop: "1%", marginBottom: 0, fontSize: "1.1vw", color: "rgba(255,255,255,0.90)", lineHeight: 1.6, textShadow: "0 1px 6px rgba(0,0,0,0.90)" }}>
                 Trades, captains, and traps — powered by 600+ player projections updated every round.
               </p>
             </div>
 
             {/* CTA buttons */}
             <div style={{ display: "flex", gap: "1%", justifyContent: "center", marginTop: "2%", marginBottom: "1%", flexWrap: "nowrap" }}>
-              <Link to="/auth" style={{ display: "flex", alignItems: "center", gap: 7, background: "linear-gradient(to bottom, #fad52a, #d09800)", color: "#1a1000", fontWeight: 800, fontSize: "clamp(11px, 1vw, 14px)", padding: "clamp(9px, 1vw, 13px) clamp(14px, 1.8vw, 26px)", minHeight: "clamp(36px, 4vw, 48px)", borderRadius: 7, textDecoration: "none", border: "1px solid rgba(0,0,0,0.20)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 20px rgba(0,0,0,0.35)", letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
-                Unlock This Week's Game Plan <ArrowRight size={14} />
+              <Link to="/auth" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "linear-gradient(to bottom, #fad52a, #d09800)", color: "#1a1000", fontWeight: 800, fontSize: "1vw", padding: "0.8vw 1.8vw", borderRadius: 7, textDecoration: "none", border: "1px solid rgba(0,0,0,0.20)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 20px rgba(0,0,0,0.35)", letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
+                Unlock This Week's Game Plan <ArrowRight size="1.1vw" />
               </Link>
-              <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(255,255,255,0.11)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.22)", color: "#ffffff", fontWeight: 700, fontSize: "clamp(11px, 1vw, 14px)", padding: "clamp(9px, 1vw, 13px) clamp(14px, 1.8vw, 26px)", minHeight: "clamp(36px, 4vw, 48px)", borderRadius: 7, textDecoration: "none", letterSpacing: "0.01em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14), 0 4px 12px rgba(0,0,0,0.30)", whiteSpace: "nowrap" }}>
+              <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "rgba(255,255,255,0.11)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.22)", color: "#ffffff", fontWeight: 700, fontSize: "1vw", padding: "0.8vw 1.8vw", borderRadius: 7, textDecoration: "none", letterSpacing: "0.01em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14), 0 4px 12px rgba(0,0,0,0.30)", whiteSpace: "nowrap" }}>
                 View Free Picks
               </Link>
             </div>
 
             {/* Trust strip */}
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "1.5%", flexWrap: "nowrap" }}>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "2vw", flexWrap: "nowrap" }}>
               {trustBar.map(({ icon, text }) => (
-                <div key={text} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "clamp(9px, 0.85vw, 12px)", color: "rgba(255,255,255,0.70)", fontWeight: 600, whiteSpace: "nowrap" }}>
+                <div key={text} style={{ display: "flex", alignItems: "center", gap: "0.4vw", fontSize: "0.85vw", color: "rgba(255,255,255,0.70)", fontWeight: 600, whiteSpace: "nowrap" }}>
                   <span style={{ color: "rgba(244,197,66,0.90)" }}>{icon}</span>{text}
                 </div>
               ))}
             </div>
 
             {/* Current Week heading */}
-            <div style={{ marginTop: "3.5%", width: "100%", maxWidth: 900, display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ marginTop: "3.5%", width: "62vw", display: "flex", alignItems: "center", gap: "1vw" }}>
               <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.35))" }} />
-              <span style={{ fontSize: "clamp(9px, 0.9vw, 14px)", fontWeight: 900, letterSpacing: "0.30em", textTransform: "uppercase", color: C.gold, whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,0.60)" }}>Current Week</span>
+              <span style={{ fontSize: "0.9vw", fontWeight: 900, letterSpacing: "0.30em", textTransform: "uppercase", color: C.gold, whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,0.60)" }}>Current Week</span>
               <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.35))" }} />
             </div>
 
             {/* Cards row */}
-            <div style={{ width: "100%", maxWidth: 900, margin: "1.2% auto 0", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "clamp(8px, 1.2vw, 20px)" }}>
+            <div style={{ width: "62vw", margin: "1.2% auto 0", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1.2vw" }}>
               {showSkeleton
                 ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
                 : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
