@@ -19,8 +19,8 @@ function signalFromRow(row: RankingRow): { label: string; color: string; bg: str
   return { label: "HOLD", color: "#E0AE2D", bg: "rgba(224,174,45,0.10)" };
 }
 
-const CLEAR_ROWS = 3;
-const BLUR_ROWS = 3;
+const CLEAR_ROWS = 5;
+const BLUR_ROWS = 2;
 
 export default function LandingTopRankings({ loading, rows, freePreview }: Props) {
   const displayRows = rows.slice(0, CLEAR_ROWS + BLUR_ROWS);
@@ -49,10 +49,15 @@ export default function LandingTopRankings({ loading, rows, freePreview }: Props
             <span style={{ width: 20, flexShrink: 0 }} />
           </div>
 
-          <div style={{ padding: "0 24px" }}>
+          {/* Rows with fade-out mask */}
+          <div style={{
+            padding: "0 24px",
+            maskImage: "linear-gradient(to bottom, black 70%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 70%, transparent 100%)",
+          }}>
             {loading ? (
               Array.from({ length: CLEAR_ROWS + BLUR_ROWS }).map((_, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", opacity: i >= CLEAR_ROWS ? 0.45 : 1 }}>
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 0", borderBottom: "1px solid rgba(255,255,255,0.04)", opacity: i >= CLEAR_ROWS ? 0.35 : 1 }}>
                   <div style={{ width: 28, height: 12, background: "rgba(255,255,255,0.05)", borderRadius: 3 }} />
                   <div style={{ flex: 1 }}>
                     <div style={{ height: 13, background: "rgba(255,255,255,0.07)", borderRadius: 3, width: "50%", marginBottom: 5 }} />
@@ -81,11 +86,10 @@ export default function LandingTopRankings({ loading, rows, freePreview }: Props
                         gap: 12,
                         padding: "14px 0",
                         borderBottom: "1px solid rgba(255,255,255,0.04)",
-                        filter: "blur(2px)",
-                        opacity: 0.6,
+                        filter: "blur(3px)",
+                        opacity: 0.5,
                         userSelect: "none",
                         pointerEvents: "none",
-                        transition: "opacity 0.2s ease",
                       }}
                     >
                       <span style={{ width: 28, fontSize: 12, fontWeight: 700, color: "#505050", textAlign: "right", flexShrink: 0 }}>#{i + 1}</span>
@@ -102,7 +106,7 @@ export default function LandingTopRankings({ loading, rows, freePreview }: Props
                         {proj ?? "—"}
                         <span style={{ fontSize: 9.5, color: "#444", fontWeight: 500 }}> pts</span>
                       </span>
-                      <div style={{ width: 20, flexShrink: 0, display: "flex", justifyContent: "center" }}>
+                      <div style={{ width: 20, flexShrink: 0, display: "flex", alignItems: "center", gap: 4 }}>
                         <Lock size={11} color="rgba(224,174,45,0.55)" strokeWidth={2.5} />
                       </div>
                     </div>
@@ -132,56 +136,29 @@ export default function LandingTopRankings({ loading, rows, freePreview }: Props
             )}
           </div>
 
-          {/* Mid-table CTA — sits right after blurred rows */}
-          {!loading && rows.length > freePreview && (
+          {/* Lock row */}
+          {!loading && rows.length > 0 && (
             <div style={{
-              margin: "0 24px 2px",
-              padding: "16px 20px",
-              borderRadius: 10,
-              background: "linear-gradient(135deg, rgba(224,174,45,0.07) 0%, rgba(224,174,45,0.03) 100%)",
-              border: "1px solid rgba(224,174,45,0.18)",
+              margin: "0 24px",
+              padding: "12px 16px",
+              borderRadius: 8,
+              background: "rgba(224,174,45,0.05)",
+              border: "1px solid rgba(224,174,45,0.14)",
               display: "flex",
               alignItems: "center",
-              justifyContent: "space-between",
-              gap: 16,
-              flexWrap: "wrap",
+              gap: 8,
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Lock size={14} color="rgba(224,174,45,0.80)" strokeWidth={2.5} />
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.60)", fontWeight: 600, margin: 0, lineHeight: 1.3 }}>
-                  <span style={{ color: "#E0AE2D", fontWeight: 800 }}>{totalCount}+ players</span> ranked this week
-                </p>
-              </div>
-              <Link
-                to="/sports/afl/rankings"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  background: "rgba(224,174,45,0.12)",
-                  color: "#E0AE2D",
-                  fontWeight: 800,
-                  fontSize: 12,
-                  padding: "8px 18px",
-                  borderRadius: 7,
-                  textDecoration: "none",
-                  border: "1px solid rgba(224,174,45,0.28)",
-                  letterSpacing: "0.04em",
-                  whiteSpace: "nowrap",
-                  transition: "all 0.15s ease",
-                }}
-              >
-                Unlock Full Rankings <ArrowRight size={12} />
-              </Link>
+              <Lock size={12} color="rgba(224,174,45,0.70)" strokeWidth={2.5} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(224,174,45,0.70)", letterSpacing: "0.04em" }}>Locked</span>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.25)", marginLeft: 4 }}>
+                {totalCount}+ players ranked this week
+              </span>
             </div>
           )}
 
           {/* Bottom CTA */}
           {!loading && rows.length > freePreview && (
-            <div style={{ padding: "20px 24px 24px", borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, background: "rgba(224,174,45,0.025)" }}>
-              <p style={{ fontSize: 12, color: "#3A3A3A", textAlign: "center", margin: 0 }}>
-                Showing {CLEAR_ROWS} of {totalCount}+ players
-              </p>
+            <div style={{ padding: "20px 24px 24px", borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, background: "rgba(224,174,45,0.025)", marginTop: 16 }}>
               <Link
                 to="/sports/afl/rankings"
                 style={{
@@ -199,7 +176,7 @@ export default function LandingTopRankings({ loading, rows, freePreview }: Props
                   letterSpacing: "0.02em",
                 }}
               >
-                Unlock 630+ Players <ArrowRight size={13} />
+                See Where You Rank This Week <ArrowRight size={13} />
               </Link>
             </div>
           )}
