@@ -33,11 +33,52 @@ const C = {
 
 // ── Whiteboard card (hero) ─────────────────────────────────────────────────────
 const CARD_ROTATIONS = [-1.8, 1.4, -1.2, 1.6];
-const STICKY_PAPERS: Record<number, { bg: string; lines: string; headerBorder: string }> = {
-  0: { bg: "#edf5eb", lines: "rgba(30,100,44,0.06)",   headerBorder: "rgba(30,100,44,0.18)" },
-  1: { bg: "#f7eded", lines: "rgba(130,30,30,0.06)",   headerBorder: "rgba(130,30,30,0.18)" },
-  2: { bg: "#f7f3e4", lines: "rgba(140,110,0,0.06)",   headerBorder: "rgba(140,110,0,0.18)" },
-  3: { bg: "#eaeff8", lines: "rgba(20,70,148,0.06)",   headerBorder: "rgba(20,70,148,0.18)" },
+
+const CARD_THEMES: Record<number, {
+  bg: string;
+  bgGrad: string;
+  lines: string;
+  headerBg: string;
+  headerBorder: string;
+  accentBorder: string;
+  numberGlow: string;
+}> = {
+  0: {
+    bg: "#eef6ec",
+    bgGrad: "linear-gradient(160deg, #f2f9f0 0%, #e8f4e6 100%)",
+    lines: "rgba(30,100,44,0.055)",
+    headerBg: "linear-gradient(to right, rgba(26,96,40,0.10), rgba(26,96,40,0.04))",
+    headerBorder: "rgba(26,96,40,0.16)",
+    accentBorder: "rgba(26,96,40,0.22)",
+    numberGlow: "rgba(26,96,40,0.18)",
+  },
+  1: {
+    bg: "#f8edec",
+    bgGrad: "linear-gradient(160deg, #faf2f1 0%, #f3e5e4 100%)",
+    lines: "rgba(136,24,24,0.055)",
+    headerBg: "linear-gradient(to right, rgba(136,24,24,0.10), rgba(136,24,24,0.04))",
+    headerBorder: "rgba(136,24,24,0.16)",
+    accentBorder: "rgba(136,24,24,0.22)",
+    numberGlow: "rgba(136,24,24,0.18)",
+  },
+  2: {
+    bg: "#f8f3e3",
+    bgGrad: "linear-gradient(160deg, #faf6e8 0%, #f2ead4 100%)",
+    lines: "rgba(122,72,0,0.055)",
+    headerBg: "linear-gradient(to right, rgba(122,72,0,0.10), rgba(122,72,0,0.04))",
+    headerBorder: "rgba(122,72,0,0.16)",
+    accentBorder: "rgba(122,72,0,0.22)",
+    numberGlow: "rgba(122,72,0,0.18)",
+  },
+  3: {
+    bg: "#eaf0f9",
+    bgGrad: "linear-gradient(160deg, #eef3fb 0%, #e2ecf6 100%)",
+    lines: "rgba(13,66,120,0.055)",
+    headerBg: "linear-gradient(to right, rgba(13,66,120,0.10), rgba(13,66,120,0.04))",
+    headerBorder: "rgba(13,66,120,0.16)",
+    accentBorder: "rgba(13,66,120,0.22)",
+    numberGlow: "rgba(13,66,120,0.18)",
+  },
 };
 
 type CardProps = {
@@ -59,24 +100,26 @@ function PlayerAvatar({ name, color }: { name: string; color: string }) {
   const initials = name.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
   return (
     <div style={{
-      width: "2.6vw", height: "2.6vw", minWidth: 22, minHeight: 22,
+      width: "2.8vw", height: "2.8vw", minWidth: 26, minHeight: 26,
       borderRadius: "50%", flexShrink: 0,
-      background: `${color}1a`, border: `1.5px solid ${color}38`,
+      background: `linear-gradient(135deg, ${color}22 0%, ${color}10 100%)`,
+      border: `1.5px solid ${color}40`,
+      boxShadow: `inset 0 1px 0 rgba(255,255,255,0.6), 0 2px 6px ${color}18`,
       display: "flex", alignItems: "center", justifyContent: "center",
-      overflow: "hidden", position: "relative",
+      position: "relative",
     }}>
-      <div style={{ position: "absolute", bottom: -2, left: "50%", transform: "translateX(-50%)", width: "55%", height: "65%", background: `${color}28`, borderRadius: "50% 50% 0 0" }} />
-      <div style={{ position: "absolute", top: "15%", left: "50%", transform: "translateX(-50%)", width: "36%", height: "36%", borderRadius: "50%", background: `${color}44` }} />
-      <span style={{ position: "relative", zIndex: 1, fontSize: "0.55vw", fontWeight: 900, color, letterSpacing: "-0.02em", marginTop: "25%" }}>{initials}</span>
+      <div style={{ position: "absolute", bottom: -1, left: "50%", transform: "translateX(-50%)", width: "60%", height: "62%", background: `${color}20`, borderRadius: "50% 50% 0 0" }} />
+      <div style={{ position: "absolute", top: "14%", left: "50%", transform: "translateX(-50%)", width: "38%", height: "38%", borderRadius: "50%", background: `${color}35` }} />
+      <span style={{ position: "relative", zIndex: 1, fontSize: "0.58vw", fontWeight: 900, color, letterSpacing: "-0.01em", marginTop: "22%" }}>{initials}</span>
     </div>
   );
 }
 
 function StickyPin({ color }: { color: string }) {
   return (
-    <div style={{ position: "absolute", top: "-0.7vw", left: "50%", transform: "translateX(-50%)", zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.5))" }}>
-      <div style={{ width: "0.9vw", height: "0.9vw", minWidth: 8, minHeight: 8, borderRadius: "50%", background: `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.6) 0%, ${color} 50%, rgba(0,0,0,0.25) 100%)`, border: "1px solid rgba(0,0,0,0.22)" }} />
-      <div style={{ width: 2, height: "0.5vw", minHeight: 4, background: "linear-gradient(to bottom, rgba(110,90,70,0.9), rgba(50,40,30,0.55))", marginTop: -1 }} />
+    <div style={{ position: "absolute", top: "-0.85vw", left: "50%", transform: "translateX(-50%)", zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", filter: "drop-shadow(0 3px 5px rgba(0,0,0,0.55))" }}>
+      <div style={{ width: "1.0vw", height: "1.0vw", minWidth: 9, minHeight: 9, borderRadius: "50%", background: `radial-gradient(circle at 32% 28%, rgba(255,255,255,0.72) 0%, ${color} 48%, rgba(0,0,0,0.28) 100%)`, border: "1px solid rgba(0,0,0,0.24)", boxShadow: `0 1px 3px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.4)` }} />
+      <div style={{ width: 2, height: "0.55vw", minHeight: 5, background: "linear-gradient(to bottom, rgba(100,80,60,0.95), rgba(50,38,28,0.50))", marginTop: -1 }} />
     </div>
   );
 }
@@ -85,74 +128,107 @@ function WhiteboardCard(p: CardProps) {
   const [hovered, setHovered] = useState(false);
   const pts = p.projection != null ? Math.round(p.projection) : null;
   const rotation = CARD_ROTATIONS[p.index ?? 0] ?? -1.8;
-  const paper    = STICKY_PAPERS[p.index ?? 0] ?? STICKY_PAPERS[0];
+  const theme = CARD_THEMES[p.index ?? 0] ?? CARD_THEMES[0];
 
   return (
-    <Link to={p.ctaTo} style={{ textDecoration: "none", display: "block", paddingTop: "1vw" }}>
+    <Link to={p.ctaTo} style={{ textDecoration: "none", display: "block", paddingTop: "1.1vw" }}>
       <div style={{ position: "relative" }}>
         <StickyPin color={p.color} />
         <div
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
           style={{
-            background: paper.bg,
-            backgroundImage: `repeating-linear-gradient(transparent, transparent 1.1vw, ${paper.lines} 1.1vw, ${paper.lines} calc(1.1vw + 1px))`,
-            borderRadius: 2, border: "1px solid rgba(0,0,0,0.10)",
+            background: theme.bgGrad,
+            backgroundImage: `${theme.bgGrad}, repeating-linear-gradient(transparent, transparent 1.15vw, ${theme.lines} 1.15vw, ${theme.lines} calc(1.15vw + 1px))`,
+            borderRadius: 5,
+            border: `1px solid ${theme.accentBorder}`,
             boxShadow: hovered
-              ? "0 4px 8px rgba(0,0,0,0.28), 0 12px 28px rgba(0,0,0,0.30), 0 24px 50px rgba(0,0,0,0.20)"
-              : "0 2px 5px rgba(0,0,0,0.18), 0 6px 18px rgba(0,0,0,0.22), 0 14px 32px rgba(0,0,0,0.18)",
-            transform: hovered ? `rotate(${rotation}deg) translateY(-0.6vw) scale(1.03)` : `rotate(${rotation}deg) translateY(0)`,
-            transition: "all 0.22s ease", overflow: "visible", position: "relative",
+              ? `0 6px 12px rgba(0,0,0,0.26), 0 16px 36px rgba(0,0,0,0.28), 0 30px 60px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.70)`
+              : `0 2px 6px rgba(0,0,0,0.16), 0 8px 22px rgba(0,0,0,0.20), 0 18px 40px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.60)`,
+            transform: hovered ? `rotate(${rotation}deg) translateY(-0.7vw) scale(1.035)` : `rotate(${rotation}deg) translateY(0)`,
+            transition: "all 0.24s cubic-bezier(0.34,1.42,0.64,1)",
+            overflow: "visible", position: "relative",
+            display: "flex", flexDirection: "column",
           }}
         >
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1.5, background: "linear-gradient(to bottom, rgba(255,255,255,0.55), transparent)", borderRadius: "2px 2px 0 0", pointerEvents: "none" }} />
+          {/* Top sheen */}
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(to bottom, rgba(255,255,255,0.70), transparent)", borderRadius: "5px 5px 0 0", pointerEvents: "none" }} />
 
-          {/* Category label */}
-          <div style={{ borderBottom: `1px solid ${paper.headerBorder}`, padding: "0.65vw 0.9vw 0.5vw", display: "flex", alignItems: "center", gap: "0.4vw" }}>
-            <span style={{ color: p.color, display: "flex", alignItems: "center", flexShrink: 0 }}>{p.icon}</span>
-            <span style={{ fontSize: "0.52vw", fontWeight: 900, letterSpacing: "0.26em", textTransform: "uppercase", color: p.color, flex: 1 }}>{p.label}</span>
+          {/* ZONE 1 — HEADER STRIP */}
+          <div style={{
+            background: theme.headerBg,
+            borderBottom: `1px solid ${theme.headerBorder}`,
+            padding: "0.62vw 0.95vw 0.52vw",
+            display: "flex", alignItems: "center", gap: "0.4vw",
+            borderRadius: "5px 5px 0 0",
+          }}>
+            <span style={{ color: p.color, display: "flex", alignItems: "center", flexShrink: 0, filter: `drop-shadow(0 0 3px ${theme.numberGlow})` }}>{p.icon}</span>
+            <span style={{ fontSize: "0.54vw", fontWeight: 900, letterSpacing: "0.28em", textTransform: "uppercase", color: p.color, flex: 1, textShadow: "0 1px 0 rgba(255,255,255,0.5)" }}>{p.label}</span>
             {p.position && (
-              <span style={{ fontSize: "0.48vw", fontWeight: 800, textTransform: "uppercase", background: `${p.color}16`, color: p.color, padding: "0.12vw 0.32vw", borderRadius: 3, border: `1px solid ${p.color}25` }}>{p.position}</span>
+              <span style={{ fontSize: "0.48vw", fontWeight: 800, textTransform: "uppercase", background: `${p.color}18`, color: p.color, padding: "0.14vw 0.34vw", borderRadius: 3, border: `1px solid ${p.color}28` }}>{p.position}</span>
             )}
             {p.badge && (
-              <span style={{ fontSize: "0.48vw", fontWeight: 900, textTransform: "uppercase", background: p.color, color: "#fff", padding: "0.12vw 0.38vw", borderRadius: 3 }}>{p.badge}</span>
+              <span style={{ fontSize: "0.5vw", fontWeight: 900, textTransform: "uppercase", background: `linear-gradient(to bottom, ${p.color}ee, ${p.color})`, color: "#fff", padding: "0.14vw 0.4vw", borderRadius: 3, boxShadow: "0 1px 3px rgba(0,0,0,0.22)" }}>{p.badge}</span>
             )}
           </div>
 
-          {/* Player name + team */}
-          <div style={{ padding: "0.75vw 0.9vw 0.2vw", display: "flex", alignItems: "center", gap: "0.55vw" }}>
+          {/* ZONE 2 — PLAYER ROW */}
+          <div style={{ padding: "0.85vw 0.95vw 0.3vw", display: "flex", alignItems: "center", gap: "0.6vw" }}>
             <PlayerAvatar name={p.playerName} color={p.color} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: "1.0vw", fontWeight: 900, color: "#1c1208", lineHeight: 1.15, letterSpacing: "-0.025em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.playerName}</p>
-              <p style={{ fontSize: "0.6vw", color: "#7a6050", marginTop: "0.1vw", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.team}</p>
+              <p style={{ fontSize: "1.05vw", fontWeight: 900, color: "#1a110a", lineHeight: 1.12, letterSpacing: "-0.028em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textShadow: "0 1px 0 rgba(255,255,255,0.5)" }}>{p.playerName}</p>
+              <p style={{ fontSize: "0.58vw", color: "#6e5542", marginTop: "0.12vw", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", letterSpacing: "0.02em" }}>{p.team}</p>
             </div>
           </div>
 
-          {/* Main stat */}
-          <div style={{ padding: "0.1vw 0.9vw 0.3vw", display: "flex", alignItems: "baseline", gap: "0.3vw" }}>
+          {/* ZONE 3 — SCORE BLOCK (focal point) */}
+          <div style={{ padding: "0.2vw 0.95vw 0.1vw", display: "flex", alignItems: "baseline", gap: "0.35vw" }}>
             {pts != null ? (
               <>
-                <span style={{ fontSize: "2.5vw", fontWeight: 900, color: p.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{pts}</span>
-                <span style={{ fontSize: "0.62vw", color: "#a08060", fontWeight: 700 }}>proj pts</span>
+                <span style={{
+                  fontSize: "3.1vw", fontWeight: 900, color: p.color, lineHeight: 0.95,
+                  fontVariantNumeric: "tabular-nums", letterSpacing: "-0.04em",
+                  textShadow: `0 2px 0 rgba(0,0,0,0.06), 0 0 18px ${theme.numberGlow}`,
+                  filter: `drop-shadow(0 1px 2px ${theme.numberGlow})`,
+                }}>{pts}</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.05vw", paddingBottom: "0.15vw" }}>
+                  <span style={{ fontSize: "0.58vw", color: "#8a6e58", fontWeight: 700, lineHeight: 1, textTransform: "uppercase", letterSpacing: "0.06em" }}>proj</span>
+                  <span style={{ fontSize: "0.58vw", color: "#8a6e58", fontWeight: 700, lineHeight: 1, textTransform: "uppercase", letterSpacing: "0.06em" }}>pts</span>
+                </div>
               </>
             ) : (
-              <span style={{ fontSize: "1.1vw", color: "#bbb", fontWeight: 700 }}>—</span>
+              <span style={{ fontSize: "1.4vw", color: "#bbb", fontWeight: 700 }}>—</span>
             )}
           </div>
 
-          {/* Reason line */}
-          <div style={{ padding: "0.25vw 0.9vw 0.75vw" }}>
-            <p style={{ fontSize: "0.55vw", color: "#4a3828", fontWeight: 600, lineHeight: 1.5, margin: 0, fontStyle: "italic" }}>{p.reason}</p>
+          {/* Divider under score */}
+          <div style={{ margin: "0.3vw 0.95vw 0", height: 1, background: `linear-gradient(to right, ${p.color}30, transparent)` }} />
+
+          {/* ZONE 4 — INSIGHT TEXT */}
+          <div style={{ padding: "0.42vw 0.95vw 0.6vw", flex: 1 }}>
+            <p style={{ fontSize: "0.56vw", color: "#4a3828", fontWeight: 600, lineHeight: 1.55, margin: 0, fontStyle: "italic", opacity: 0.88 }}>{p.reason}</p>
           </div>
 
-          {/* CTA */}
-          <div style={{ padding: "0 0.8vw 0.9vw" }}>
-            <div style={{ background: `linear-gradient(to bottom, ${p.color}ee, ${p.color})`, color: "#fff", fontSize: "0.52vw", fontWeight: 800, textAlign: "center", padding: "0.55vw 0.7vw", borderRadius: 4, letterSpacing: "0.07em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 6px rgba(0,0,0,0.28)", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3vw" }}>
+          {/* ZONE 5 — CTA FOOTER */}
+          <div style={{ padding: "0 0.85vw 0.95vw" }}>
+            <div style={{
+              background: `linear-gradient(to bottom, ${p.color}f2, ${p.color}dd)`,
+              color: "#fff",
+              fontSize: "0.54vw", fontWeight: 800,
+              textAlign: "center",
+              padding: "0.6vw 0.7vw",
+              borderRadius: 4,
+              letterSpacing: "0.08em",
+              boxShadow: `inset 0 1px 0 rgba(255,255,255,0.22), 0 2px 8px rgba(0,0,0,0.28), 0 0 0 1px ${p.color}40`,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3vw",
+              textShadow: "0 1px 2px rgba(0,0,0,0.25)",
+            }}>
               {p.ctaLabel} <ChevronRight size={9} />
             </div>
           </div>
 
-          <div style={{ position: "absolute", bottom: -2, right: 6, width: "38%", height: 5, boxShadow: "4px 5px 9px rgba(0,0,0,0.20)", borderRadius: "0 0 50% 50%", transform: "rotate(1.5deg)", pointerEvents: "none" }} />
+          {/* Bottom edge shadow for depth */}
+          <div style={{ position: "absolute", bottom: -3, left: "8%", right: "8%", height: 6, background: "rgba(0,0,0,0.12)", borderRadius: "0 0 50% 50%", filter: "blur(4px)", pointerEvents: "none" }} />
         </div>
       </div>
     </Link>
@@ -160,7 +236,11 @@ function WhiteboardCard(p: CardProps) {
 }
 
 function SkeletonCard() {
-  return <div style={{ paddingBottom: "130%", borderRadius: 4, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.08)" }} />;
+  return (
+    <div style={{ paddingTop: "1.1vw" }}>
+      <div style={{ paddingBottom: "148%", borderRadius: 5, background: "rgba(255,255,255,0.11)", border: "1px solid rgba(255,255,255,0.07)", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }} />
+    </div>
+  );
 }
 
 // ── Helpers — all classification delegated to canonical engine ─────────────────
