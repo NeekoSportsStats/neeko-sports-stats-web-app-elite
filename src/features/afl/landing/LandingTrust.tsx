@@ -4,36 +4,36 @@ const STATS = [
   {
     icon: <Database size={20} />,
     num: "600+",
-    label: "Players Tracked",
-    sub: "Every relevant AFL Fantasy player analysed weekly.",
+    label: "Players Ranked",
+    sub: "Every relevant AFL Fantasy player covered, every round.",
     color: "#E0AE2D",
   },
   {
     icon: <RefreshCw size={20} />,
     num: "Weekly",
-    label: "Projection Updates",
-    sub: "Updated before every round lockout.",
+    label: "Data Updates",
+    sub: "Fresh projections and pricing before every lockout.",
     color: "#34d170",
   },
   {
     icon: <TrendingUp size={20} />,
     num: "Live",
-    label: "Value Signals",
-    sub: "Instantly spot underpriced players and traps.",
+    label: "Value Gaps",
+    sub: "See who's underpriced and who's a trap — right now.",
     color: "#60a5fa",
   },
   {
     icon: <Target size={20} />,
     num: "Built In",
     label: "Matchup Context",
-    sub: "Opponent strength and game context built in.",
+    sub: "Opponent concession and venue data in every projection.",
     color: "#f87171",
   },
   {
     icon: <Zap size={20} />,
-    num: "Decisive",
-    label: "Decision-Focused",
-    sub: "Built for weekly winning decisions — not generic stats.",
+    num: "30 sec",
+    label: "Decision Time",
+    sub: "Know what to do before your mates even open the app.",
     color: "#a78bfa",
   },
 ];
@@ -56,10 +56,18 @@ export default function LandingTrust() {
             fontSize: "clamp(1.5rem, 2.6vw, 2.2rem)",
             fontWeight: 900, letterSpacing: "-0.03em",
             color: "#F5F5F5", lineHeight: 1.1,
-            margin: 0,
+            margin: "0 0 12px",
           }}>
-            Built From Real AFL Data, Updated Every Round
+            Built for Weekly AFL Fantasy Decisions
           </h2>
+          <p style={{
+            fontSize: "clamp(12px, 0.85vw, 14px)",
+            color: "rgba(255,255,255,0.38)",
+            maxWidth: 400, margin: "0 auto",
+            lineHeight: 1.55,
+          }}>
+            Updated before every lockout using real player data and pricing.
+          </p>
         </div>
 
         {/* Stat blocks */}

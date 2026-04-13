@@ -42,17 +42,27 @@ export default function LandingFinalCTA() {
           color: "#F5F5F5", lineHeight: 1.05,
           margin: "0 0 16px",
         }}>
-          Stop Guessing.<br />
-          <span style={{ color: "#E0AE2D" }}>Start Winning</span> Your AFL Fantasy Week.
+          Make Better AFL Fantasy<br />
+          <span style={{ color: "#E0AE2D" }}>Calls This Week.</span>
         </h2>
 
         <p style={{
           fontSize: "clamp(13px, 0.95vw, 15px)",
           color: "rgba(255,255,255,0.38)",
           lineHeight: 1.6, maxWidth: 480,
-          margin: "0 auto 44px",
+          margin: "0 auto 16px",
         }}>
-          Use real projections, value signals, and matchup context to make better weekly decisions.
+          Use real projections and pricing data to trade smarter, pick better captains, and avoid traps.
+        </p>
+
+        <p style={{
+          fontSize: 12, fontWeight: 700,
+          color: "rgba(224,174,45,0.55)",
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          margin: "0 auto 36px",
+        }}>
+          Be ready before lockout.
         </p>
 
         <div style={{

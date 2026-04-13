@@ -22,7 +22,7 @@ const TABS: Tab[] = [
     label: "Rankings",
     icon: <BarChart3 size={14} />,
     heading: "Full Player Rankings",
-    desc: "Complete player rankings with projections, form, trend signals, and value scores — every position, every round.",
+    desc: "See who to pick — based on real projections, value scores, and trend signals.",
     to: "/sports/afl/rankings",
     ctaLabel: "Explore Rankings",
     accentColor: GOLD,
@@ -39,7 +39,7 @@ const TABS: Tab[] = [
     label: "Market Watch",
     icon: <TrendingUp size={14} />,
     heading: "Market Watch",
-    desc: "Identify undervalued players and avoid traps instantly. Price-vs-projection gaps, breakeven tracking, and trade signals all in one view.",
+    desc: "Find undervalued players and avoid traps instantly.",
     to: "/sports/afl/market-watch",
     ctaLabel: "Open Market Watch",
     accentColor: "#34d170",
@@ -56,7 +56,7 @@ const TABS: Tab[] = [
     label: "Captains",
     icon: <Star size={14} />,
     heading: "Captain Picks",
-    desc: "Top projected captains ranked by matchup context, form, and confidence score — so you know exactly who to double.",
+    desc: "Know the best captain picks before lockout.",
     to: "/sports/afl/captains",
     ctaLabel: "View Captain Picks",
     accentColor: "#fbbf24",
@@ -73,7 +73,7 @@ const TABS: Tab[] = [
     label: "Players",
     icon: <User size={14} />,
     heading: "Player Profiles",
-    desc: "Deep player insights — projections, historical form, matchup context, price movement, and AI analysis all in one place.",
+    desc: "Understand form, value, and projections for every player.",
     to: "/sports/afl/rankings",
     ctaLabel: "View Player Pages",
     accentColor: "#60a5fa",
@@ -90,7 +90,7 @@ const TABS: Tab[] = [
     label: "Current Week",
     icon: <Zap size={14} />,
     heading: "Weekly Edge Board",
-    desc: "Start/sit decisions, must-have targets, and trap alerts — everything you need to finalise your team before lockout.",
+    desc: "Your full weekly decision hub — trades, captains, and start/sit all in one place.",
     to: "/sports/afl/current-round",
     ctaLabel: "View Edge Board",
     accentColor: "#60a5fa",
@@ -158,7 +158,7 @@ export default function LandingProductProof() {
             maxWidth: 400, margin: "0 auto",
             lineHeight: 1.55,
           }}>
-            The tools serious AFL Fantasy coaches use each week.
+            Everything you need to make the right calls this week.
           </p>
         </div>
 

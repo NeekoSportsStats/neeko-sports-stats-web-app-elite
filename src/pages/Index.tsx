@@ -425,35 +425,22 @@ export default function Index() {
 
   function mustBuyReason(): string {
     if (!mustBuyP) return "";
-    const be = mustBuyP.breakeven;
-    const proj = mustBuyP.projection;
-    if (be != null && proj != null && proj > be) return `+${Math.round(proj - be)} above breakeven — strong buy.`;
-    if (mustBuyP.season_avg != null && proj != null && proj > mustBuyP.season_avg) return `+${Math.round(proj - mustBuyP.season_avg)} on season avg — buy now.`;
-    return "Strong upside signal — buy this week.";
+    return "Projected well above price — one of the best value plays this week.";
   }
 
   function trapReason(): string {
     if (!trapFallback) return "";
-    const be = trapFallback.breakeven;
-    const proj = trapFallback.projection;
-    if (be != null && proj != null && proj < be) return "Scoring below breakeven — avoid this week.";
-    return "Overpriced for output — avoid this week.";
+    return "Overpriced for this week — high risk of underperforming.";
   }
 
   function captainReason(): string {
     if (!captainP) return "";
-    const pts = captainP.projection != null ? Math.round(captainP.projection) : null;
-    return pts != null ? `Top projected captain — ${pts}pts doubled = ${pts * 2}.` : "Top projected captain this week.";
+    return "Top projected scorer this round — safest captain option.";
   }
 
   function tradeTargetReason(): string {
     if (!breakoutFallback) return "";
-    const price = breakoutFallback.price;
-    const proj = breakoutFallback.projection;
-    const be = breakoutFallback.breakeven;
-    if (price != null && price > 0 && proj != null && be != null && proj > be) return `+${Math.round(proj - be)} above breakeven — strong trade target.`;
-    if (price != null && price > 0 && proj != null) return `Undervalued at $${(price / 1000).toFixed(0)}k — strong upside.`;
-    return "Undervalued for projected output — trade now.";
+    return "Underpriced for current form — strong trade-in this week.";
   }
 
   const FREE_PREVIEW = 5;
@@ -628,7 +615,7 @@ export default function Index() {
             textShadow: "0 2px 10px rgba(0,0,0,0.6)",
             maxWidth: 520,
           }}>
-            Projections, value signals, and matchup intelligence —<br />updated every round.
+            Know who to trade, captain, and avoid — before lockout.
           </p>
 
           {/* CTAs — wrapped in glass container */}
@@ -646,6 +633,16 @@ export default function Index() {
               <HeroSecondaryBtn />
             </div>
           </div>
+
+          {/* Micro-proof line */}
+          <p style={{
+            fontSize: 11, fontWeight: 600,
+            color: "rgba(255,255,255,0.28)",
+            letterSpacing: "0.03em",
+            margin: "0 0 18px",
+          }}>
+            Used by serious AFL Fantasy coaches every week.
+          </p>
 
           {/* Trust row */}
           <div className="hero-trust" style={{
@@ -689,10 +686,10 @@ export default function Index() {
                 This Week's Edge
               </p>
               <h2 style={{ margin: "0 0 4px", fontSize: "clamp(15px, 1.45vw, 21px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.025em", lineHeight: 1.15 }}>
-                Real picks. Live projections. No guesswork.
+                The exact plays to win your week — backed by real projections.
               </h2>
               <p style={{ margin: 0, fontSize: "clamp(11px, 0.70vw, 12px)", color: "rgba(255,255,255,0.55)", fontWeight: 500, lineHeight: 1.4 }}>
-                Projections, value signals, and matchup context — updated every round.
+                Every pick is based on this week's data, pricing, and matchups.
               </p>
             </div>
             <Link

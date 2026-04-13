@@ -5,19 +5,19 @@ const POINTS = [
   {
     icon: <Clock size={20} />,
     title: "Faster Decisions",
-    desc: "Know what to do before lockout.",
+    desc: "Know what to do in minutes, not hours.",
     color: "#E0AE2D",
   },
   {
     icon: <Target size={20} />,
-    title: "Clearer Strategy",
-    desc: "Remove guesswork from trades and captain picks.",
+    title: "Clearer Calls",
+    desc: "Remove guesswork from trades and captains.",
     color: "#34d170",
   },
   {
     icon: <Layers size={20} />,
-    title: "All-In-One Tool",
-    desc: "Rankings, value, and insights in one place.",
+    title: "One Place",
+    desc: "Everything you need — no jumping between tools.",
     color: "#60a5fa",
   },
 ];

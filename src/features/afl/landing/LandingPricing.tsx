@@ -3,20 +3,20 @@ import { Check, X, ArrowRight } from "lucide-react";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
 
 const FREE_FEATURES = [
-  { text: "Limited rankings access", included: true },
-  { text: "Basic player data", included: true },
-  { text: "No weekly edge insights", included: false },
+  { text: "Basic rankings only", included: true },
+  { text: "Limited player data", included: true },
+  { text: "No weekly decision tools", included: false },
   { text: "No Market Watch", included: false },
   { text: "No captain picks", included: false },
   { text: "No trade targets", included: false },
 ];
 
 const PREMIUM_FEATURES = [
-  "Full rankings access — 600+ players",
+  "Full rankings + projections",
   "Market Watch — value gaps and traps",
-  "Captain picks with matchup context",
+  "Captain picks before lockout",
   "Trade targets and breakout alerts",
-  "Full player profile pages",
+  "Full player breakdowns",
   "Weekly decision tools — start/sit",
 ];
 
@@ -41,10 +41,19 @@ export default function LandingPricing() {
             fontSize: "clamp(1.5rem, 2.6vw, 2.2rem)",
             fontWeight: 900, letterSpacing: "-0.03em",
             color: "#F5F5F5", lineHeight: 1.1,
-            margin: 0,
+            margin: "0 0 14px",
           }}>
             Go Beyond Free Rankings
           </h2>
+          <p style={{
+            fontSize: "clamp(12px, 0.90vw, 15px)",
+            color: "rgba(255,255,255,0.38)",
+            margin: 0,
+            lineHeight: 1.5,
+          }}>
+            Free shows you players.{" "}
+            <span style={{ color: "rgba(224,174,45,0.75)", fontWeight: 600 }}>Neeko+ tells you what to do.</span>
+          </p>
         </div>
 
         {/* Two-column comparison */}

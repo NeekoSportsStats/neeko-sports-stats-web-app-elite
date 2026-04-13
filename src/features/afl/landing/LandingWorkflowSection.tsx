@@ -9,7 +9,7 @@ const STEPS = [
     num: "01",
     icon: <BarChart2 size={24} />,
     title: "Scan Rankings",
-    sub: "See the top projected players instantly.",
+    sub: "See who's actually scoring this week.",
     color: GOLD,
     to: "/sports/afl/rankings",
     cta: "View Rankings",
@@ -18,7 +18,7 @@ const STEPS = [
     num: "02",
     icon: <TrendingUp size={24} />,
     title: "Spot Value & Traps",
-    sub: "Identify underpriced targets and avoid score traps.",
+    sub: "Find the players to target — and the ones to avoid.",
     color: "#34d170",
     to: "/sports/afl/market-watch",
     cta: "Open Market Watch",
@@ -27,7 +27,7 @@ const STEPS = [
     num: "03",
     icon: <CheckCircle size={24} />,
     title: "Lock In Your Team",
-    sub: "Make confident trades, captain picks, and start/sit decisions.",
+    sub: "Make confident trades, captains, and start/sit calls.",
     color: "#60A5FA",
     to: "/sports/afl/current-round",
     cta: "View This Round",
@@ -151,7 +151,7 @@ export default function LandingWorkflowSection() {
             maxWidth: 360, margin: "0 auto",
             lineHeight: 1.55,
           }}>
-            Three steps. Real data. No guesswork.
+            Your weekly decisions — simplified.
           </p>
         </div>
 
