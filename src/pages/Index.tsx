@@ -463,7 +463,7 @@ export default function Index() {
         overflow: "hidden",
         minHeight: 900,
         paddingTop: 220,
-        paddingBottom: 340,
+        paddingBottom: 170,
         backgroundImage: "url('/hero/image.png')",
         backgroundSize: "cover",
         backgroundPosition: "center 15%",
@@ -514,8 +514,15 @@ export default function Index() {
             ))}
           </div>
 
+          {/* Current Week heading */}
+          <div style={{ maxWidth: 1100, margin: "48px auto 0", display: "flex", alignItems: "center", gap: 16 }}>
+            <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.35))" }} />
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.30em", textTransform: "uppercase", color: "rgba(255,255,255,0.75)", whiteSpace: "nowrap", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>Current Week</span>
+            <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.35))" }} />
+          </div>
+
           {/* Cards row */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, maxWidth: 1100, margin: "60px auto 0" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20, maxWidth: 1100, margin: "16px auto 0" }}>
             {showSkeleton
               ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
               : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
