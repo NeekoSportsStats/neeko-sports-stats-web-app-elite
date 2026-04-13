@@ -294,9 +294,9 @@ function HeroPrimaryBtn() {
         letterSpacing: "0.01em",
         whiteSpace: "nowrap",
         boxShadow: hovered
-          ? "0 14px 40px rgba(255,184,0,0.40), 0 4px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.32)"
-          : "0 14px 40px rgba(255,184,0,0.35), 0 4px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.32)",
-        transform: hovered ? "translateY(-2px)" : "translateY(-1px)",
+          ? "0 12px 32px rgba(255,180,50,0.52), 0 4px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.32)"
+          : "0 8px 26px rgba(255,180,50,0.36), 0 4px 12px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.28)",
+        transform: hovered ? "translateY(-2px) scale(1.01)" : "translateY(0)",
         transition: "all 0.25s ease",
       }}
     >
@@ -530,48 +530,42 @@ export default function Index() {
         alignItems: "center",
         justifyContent: "flex-start",
       }}>
-        {/* Layer 1 — background image with subtle brightness boost */}
+        {/* Layer 1 — background image, blurred and slightly dimmed */}
         <div style={{
           position: "absolute", inset: 0,
           backgroundImage: "url('/images/Fantasy_sports_war_room_setup.png')",
           backgroundSize: "cover",
           backgroundPosition: "center center",
           backgroundRepeat: "no-repeat",
-          filter: "brightness(1.05) contrast(1.08)",
+          filter: "brightness(0.72) blur(5px)",
+          transform: "scale(1.06)",
           zIndex: 0,
         }} />
 
-        {/* Layer 2 — linear gradient overlay */}
+        {/* Layer 2 — strong top-to-bottom darkening gradient */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "linear-gradient(to bottom, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0.48) 55%, rgba(0,0,0,0.58) 100%)",
+          background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.20) 40%, rgba(0,0,0,0.85) 100%)",
           zIndex: 1, pointerEvents: "none",
         }} />
 
-        {/* Layer 3 — radial spotlight behind text */}
+        {/* Layer 3 — warm radial FOCUS LIGHT behind headline (not dark — light) */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "radial-gradient(circle at 50% 42%, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.0) 70%)",
+          background: "radial-gradient(circle at 50% 38%, rgba(255,200,80,0.18) 0%, rgba(255,200,80,0.07) 28%, rgba(0,0,0,0.0) 62%)",
           zIndex: 2, pointerEvents: "none",
         }} />
 
-        {/* Layer 4 — ambient gold glow (very subtle, off-centre) */}
+        {/* Layer 4 — edge vignette to push focus to center */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "radial-gradient(circle at 70% 60%, rgba(255,184,0,0.08) 0%, transparent 60%)",
+          background: "radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(0,0,0,0.55) 100%)",
           zIndex: 3, pointerEvents: "none",
-        }} />
-
-        {/* Layer 5 — center light boost behind content */}
-        <div style={{
-          position: "absolute", inset: 0,
-          background: "radial-gradient(circle at center, rgba(255,184,0,0.05) 0%, rgba(0,0,0,0.0) 60%)",
-          zIndex: 4, pointerEvents: "none",
         }} />
 
         {/* Headline + CTA */}
         <div style={{
-          position: "relative", zIndex: 5,
+          position: "relative", zIndex: 10,
           width: "100%", maxWidth: 760,
           textAlign: "center",
           padding: "clamp(80px, 11vw, 140px) 24px 0",
@@ -619,10 +613,20 @@ export default function Index() {
             Projections, value signals, and matchup intelligence —<br />updated every round.
           </p>
 
-          {/* CTAs */}
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap", marginBottom: 36 }}>
-            <HeroPrimaryBtn />
-            <HeroSecondaryBtn />
+          {/* CTAs — wrapped in glass container */}
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 36 }}>
+            <div style={{
+              display: "inline-flex", gap: 12, flexWrap: "wrap", justifyContent: "center",
+              padding: "12px 16px",
+              borderRadius: 14,
+              background: "rgba(255,255,255,0.04)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.06) inset",
+            }}>
+              <HeroPrimaryBtn />
+              <HeroSecondaryBtn />
+            </div>
           </div>
 
           {/* Trust row */}
@@ -653,11 +657,11 @@ export default function Index() {
 
         {/* ── THIS WEEK'S EDGE — cards pulled up into hero ── */}
         <div style={{
-          position: "relative", zIndex: 5,
+          position: "relative", zIndex: 10,
           width: "100%",
           maxWidth: 1120,
           padding: "0 clamp(16px, 3vw, 32px)",
-          marginTop: "clamp(36px, 4vw, 56px)",
+          marginTop: "clamp(32px, 3.5vw, 48px)",
           marginBottom: "-80px",
         }}>
           {/* Section header */}
@@ -689,7 +693,9 @@ export default function Index() {
                   </div>
                 ))
               : cards.map(c => (
-                  <EdgeCard key={c.label} {...c} />
+                  <div key={c.label} className="edge-card-enter" style={{ opacity: 0 }}>
+                    <EdgeCard {...c} />
+                  </div>
                 ))
             }
           </div>
@@ -697,9 +703,9 @@ export default function Index() {
         {/* Hero bottom fade — blends into page background */}
         <div style={{
           position: "absolute", bottom: 0, left: 0, right: 0,
-          height: 160,
-          background: "linear-gradient(to bottom, transparent 0%, rgba(11,15,20,0.92) 100%)",
-          zIndex: 4, pointerEvents: "none",
+          height: 200,
+          background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(11,15,20,0.88) 78%, #0B0F14 100%)",
+          zIndex: 5, pointerEvents: "none",
         }} />
       </section>
 
@@ -750,6 +756,17 @@ export default function Index() {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.45; }
         }
+        @keyframes fadeUp {
+          from { opacity: 0; transform: translateY(18px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .edge-card-enter {
+          animation: fadeUp 0.45s ease forwards;
+        }
+        .edge-card-enter:nth-child(1) { animation-delay: 0.05s; }
+        .edge-card-enter:nth-child(2) { animation-delay: 0.12s; }
+        .edge-card-enter:nth-child(3) { animation-delay: 0.19s; }
+        .edge-card-enter:nth-child(4) { animation-delay: 0.26s; }
       `}</style>
     </div>
   );
