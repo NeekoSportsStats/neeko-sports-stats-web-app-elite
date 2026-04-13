@@ -633,53 +633,90 @@ export default function Index() {
       )}
 
       {/* ══════════════════════════════════════════════════════
-          SECTION 1 — HOW NEEKO HELPS YOU WIN (light bg)
+          GOLD TRANSITION BAND — hero → content bridge
       ══════════════════════════════════════════════════════ */}
-      <section style={{ background: C.bgLight, padding: "80px clamp(16px, 5vw, 40px)" }}>
+      <div style={{ width: "100%", height: 3, background: "linear-gradient(to right, transparent 0%, rgba(224,174,45,0.18) 15%, rgba(224,174,45,0.55) 40%, rgba(224,174,45,0.55) 60%, rgba(224,174,45,0.18) 85%, transparent 100%)" }} />
+      <div style={{ width: "100%", height: 72, background: "linear-gradient(to bottom, #1A1411 0%, #0d0b09 100%)", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 0%, rgba(224,174,45,0.07) 0%, transparent 70%)" }} />
+      </div>
+
+      {/* ══════════════════════════════════════════════════════
+          SECTION 1 — DOMINATE SECTION
+      ══════════════════════════════════════════════════════ */}
+      <section style={{ background: "linear-gradient(180deg, #0d0b09 0%, #110e0b 60%, #1A1411 100%)", padding: "0 clamp(16px, 5vw, 40px) 96px" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 52 }}>
-            <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.30em", textTransform: "uppercase", color: "#6B7280", marginBottom: 12 }}>Your Weekly Workflow</p>
-            <h2 style={{ fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 900, letterSpacing: "-0.025em", color: C.textDark, lineHeight: 1.15, marginBottom: 0 }}>
-              How Neeko Helps You Win This Week
+          {/* Section header */}
+          <div style={{ textAlign: "center", marginBottom: 56 }}>
+            <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.42em", textTransform: "uppercase", color: "rgba(224,174,45,0.65)", marginBottom: 14 }}>Your Weekly Game Plan</p>
+            <h2 style={{ fontSize: "clamp(1.8rem, 3.2vw, 2.6rem)", fontWeight: 900, letterSpacing: "-0.03em", color: "#F5F5F5", lineHeight: 1.1, marginBottom: 16 }}>
+              Dominate Your AFL Fantasy<br />
+              <span style={{ color: "#E0AE2D" }}>This Round</span>
             </h2>
+            <p style={{ fontSize: 15, color: "#A0A0A0", maxWidth: 520, margin: "0 auto", lineHeight: 1.65 }}>
+              Every tool you need — trades, captains, traps, and rankings — built from 630+ player projections and updated before every lockout.
+            </p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
+          {/* Nav pills row */}
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap", marginBottom: 60 }}>
+            {[
+              { label: "Rankings", icon: <BarChart3 size={15} />, to: "/sports/afl/rankings", color: "#1a6028" },
+              { label: "Market Watch", icon: <TrendingUp size={15} />, to: "/sports/afl/market-watch", color: "#0d4278" },
+              { label: "Trap Alerts", icon: <AlertTriangle size={15} />, to: "/sports/afl/current-round", color: "#881818" },
+              { label: "Captains", icon: <Star size={15} />, to: "/sports/afl/captains", color: "#7a4800" },
+            ].map(({ label, icon, to, color }) => (
+              <Link key={to} to={to} style={{ textDecoration: "none" }}>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 999, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(224,174,45,0.18)", color: "#E0AE2D", fontSize: 13, fontWeight: 700, letterSpacing: "0.01em", boxShadow: "0 0 0 0 rgba(224,174,45,0)", transition: "all 0.18s ease", whiteSpace: "nowrap" }}
+                  onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(224,174,45,0.10)"; el.style.borderColor = "rgba(224,174,45,0.40)"; el.style.boxShadow = "0 0 16px rgba(224,174,45,0.12)"; }}
+                  onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.04)"; el.style.borderColor = "rgba(224,174,45,0.18)"; el.style.boxShadow = "none"; }}
+                >
+                  <span style={{ color }}>{icon}</span>
+                  {label}
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* 3 feature cards */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 20 }}>
             {[
               {
-                icon: <Target size={22} />,
-                title: "Find the right plays",
-                desc: "See top projections, captain options, and must-buy players before lockout. No guessing — every pick backed by the data.",
-                color: "#1a6028",
+                num: "01",
+                title: "Find Your Must-Buy Targets",
+                desc: "See which players are projecting above their price point — value engine signals updated every round before lockout.",
+                cta: "View Rankings",
                 to: "/sports/afl/rankings",
+                color: "#E0AE2D",
               },
               {
-                icon: <TrendingUp size={22} />,
-                title: "Trade with confidence",
-                desc: "Spot undervalued players early and avoid overpriced traps. Our value engine tracks price momentum every round.",
-                color: "#0d4278",
+                num: "02",
+                title: "Spot Traps Before Lockout",
+                desc: "Players flagged as overpriced or underperforming — avoid costly mistakes with data-driven trap alerts each week.",
+                cta: "Open Market Watch",
                 to: "/sports/afl/market-watch",
+                color: "#EF4444",
               },
               {
-                icon: <ListOrdered size={22} />,
-                title: "Make faster decisions",
-                desc: "Rankings, market watch, and player tools in one weekly workflow. Less time researching, more time winning.",
-                color: "#7a4800",
-                to: "/sports/afl/current-round",
+                num: "03",
+                title: "Lock In Your Captain Pick",
+                desc: "Confidence-scored captain recommendations backed by projection data, matchup difficulty, and recent form.",
+                cta: "View Captains",
+                to: "/sports/afl/captains",
+                color: "#22C55E",
               },
-            ].map(({ icon, title, desc, color, to }) => (
-              <Link key={title} to={to} style={{ textDecoration: "none" }}>
-                <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "28px 24px", border: "1px solid rgba(0,0,0,0.05)", boxShadow: "0 1px 4px rgba(0,0,0,0.04)", transition: "all 0.2s ease", cursor: "pointer" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.boxShadow = `0 8px 32px rgba(0,0,0,0.10)`; (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.boxShadow = "0 1px 4px rgba(0,0,0,0.04)"; (e.currentTarget as HTMLElement).style.transform = "none"; }}
+            ].map(({ num, title, desc, cta, to, color }) => (
+              <Link key={num} to={to} style={{ textDecoration: "none" }}>
+                <div style={{ background: "rgba(255,255,255,0.028)", backdropFilter: "blur(8px)", border: `1px solid rgba(224,174,45,0.14)`, borderRadius: 14, padding: "28px 26px 24px", position: "relative", overflow: "hidden", transition: "all 0.22s ease", cursor: "pointer", height: "100%", boxSizing: "border-box" }}
+                  onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.05)"; el.style.borderColor = "rgba(224,174,45,0.32)"; el.style.boxShadow = "0 8px 40px rgba(0,0,0,0.40), 0 0 0 1px rgba(224,174,45,0.12) inset"; el.style.transform = "translateY(-3px)"; }}
+                  onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.028)"; el.style.borderColor = "rgba(224,174,45,0.14)"; el.style.boxShadow = "none"; el.style.transform = "none"; }}
                 >
-                  <div style={{ width: 46, height: 46, borderRadius: 10, background: `${color}12`, border: `1px solid ${color}20`, display: "flex", alignItems: "center", justifyContent: "center", color, marginBottom: 18 }}>
-                    {icon}
-                  </div>
-                  <h3 style={{ fontSize: 16.5, fontWeight: 800, color: C.textDark, marginBottom: 10, letterSpacing: "-0.015em" }}>{title}</h3>
-                  <p style={{ fontSize: 13.5, color: "#4B5563", lineHeight: 1.65 }}>{desc}</p>
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 16, color, fontWeight: 700, fontSize: 12.5 }}>
-                    Explore <ChevronRight size={13} />
+                  <div style={{ position: "absolute", top: -30, right: -20, fontSize: 72, fontWeight: 900, color: "rgba(224,174,45,0.045)", lineHeight: 1, letterSpacing: "-0.04em", userSelect: "none", pointerEvents: "none" }}>{num}</div>
+                  <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(to right, transparent, ${color}60, transparent)`, borderRadius: "14px 14px 0 0" }} />
+                  <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.30em", textTransform: "uppercase", color: "rgba(224,174,45,0.55)", marginBottom: 14 }}>{num}</div>
+                  <h3 style={{ fontSize: 17, fontWeight: 800, color: "#F5F5F5", lineHeight: 1.25, marginBottom: 12, letterSpacing: "-0.02em" }}>{title}</h3>
+                  <p style={{ fontSize: 13.5, color: "#808080", lineHeight: 1.65, marginBottom: 22 }}>{desc}</p>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 700, color: "#E0AE2D" }}>
+                    {cta} <ChevronRight size={13} />
                   </div>
                 </div>
               </Link>
@@ -689,45 +726,43 @@ export default function Index() {
       </section>
 
       {/* ══════════════════════════════════════════════════════
-          SECTION 2 — RANKINGS PREVIEW (dark bg, real data)
+          SECTION 2 — RANKINGS PREVIEW (dark, real data)
       ══════════════════════════════════════════════════════ */}
-      <section style={{ background: C.bgSection, padding: "80px clamp(16px, 5vw, 40px)" }}>
-        <div style={{ maxWidth: 780, margin: "0 auto" }}>
+      <section style={{ background: "#0d0b09", padding: "88px clamp(16px, 5vw, 40px)" }}>
+        <div style={{ maxWidth: 820, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 44 }}>
-            <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.30em", textTransform: "uppercase", color: C.gold, marginBottom: 12, opacity: 0.8 }}>Live Data</p>
-            <h2 style={{ fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 900, letterSpacing: "-0.025em", color: C.textPrim, lineHeight: 1.15, marginBottom: 12 }}>
+            <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.42em", textTransform: "uppercase", color: "rgba(224,174,45,0.65)", marginBottom: 14 }}>Live Data</p>
+            <h2 style={{ fontSize: "clamp(1.6rem, 3vw, 2.3rem)", fontWeight: 900, letterSpacing: "-0.025em", color: "#F5F5F5", lineHeight: 1.12, marginBottom: 14 }}>
               This Week's Top Rankings
             </h2>
-            <p style={{ fontSize: 14, color: C.textSec, maxWidth: 480, margin: "0 auto" }}>
-              Ranked by the same canonical engine used by every Neeko subscriber — updated before every round lockout.
+            <p style={{ fontSize: 14, color: "#6A6A6A", maxWidth: 480, margin: "0 auto" }}>
+              Ranked by the same canonical engine — updated before every round lockout.
             </p>
           </div>
 
-          {/* Table */}
-          <div style={{ background: "#0B0F14", borderRadius: 12, border: `1px solid ${C.border}`, overflow: "hidden" }}>
-            {/* Header */}
-            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", borderBottom: `1px solid ${C.border}`, background: "rgba(255,255,255,0.03)" }}>
-              <span style={{ width: 28, fontSize: 10, fontWeight: 700, color: C.textSec, textAlign: "right", flexShrink: 0, letterSpacing: "0.06em", textTransform: "uppercase" }}>#</span>
-              <span style={{ flex: 1, fontSize: 10, fontWeight: 700, color: C.textSec, letterSpacing: "0.06em", textTransform: "uppercase" }}>Player</span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: C.textSec, letterSpacing: "0.06em", textTransform: "uppercase" }}>Signal</span>
-              <span style={{ fontSize: 10, fontWeight: 700, color: C.textSec, letterSpacing: "0.06em", textTransform: "uppercase", minWidth: 38, textAlign: "right" }}>Proj</span>
+          <div style={{ background: "rgba(255,255,255,0.025)", borderRadius: 14, border: "1px solid rgba(224,174,45,0.12)", overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,0.50)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 22px", borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(224,174,45,0.04)" }}>
+              <span style={{ width: 28, fontSize: 9.5, fontWeight: 800, color: "#525252", textAlign: "right", flexShrink: 0, letterSpacing: "0.08em", textTransform: "uppercase" }}>#</span>
+              <span style={{ flex: 1, fontSize: 9.5, fontWeight: 800, color: "#525252", letterSpacing: "0.08em", textTransform: "uppercase" }}>Player</span>
+              <span style={{ fontSize: 9.5, fontWeight: 800, color: "#525252", letterSpacing: "0.08em", textTransform: "uppercase" }}>Signal</span>
+              <span style={{ fontSize: 9.5, fontWeight: 800, color: "#525252", letterSpacing: "0.08em", textTransform: "uppercase", minWidth: 42, textAlign: "right" }}>Proj</span>
             </div>
 
-            <div style={{ padding: "0 20px" }}>
+            <div style={{ padding: "0 22px" }}>
               {loading ? (
-                Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: `1px solid ${C.border}` }}>
-                    <div style={{ width: 28, height: 13, background: "rgba(255,255,255,0.06)", borderRadius: 3 }} />
+                Array.from({ length: 7 }).map((_, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 0", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                    <div style={{ width: 28, height: 12, background: "rgba(255,255,255,0.05)", borderRadius: 3 }} />
                     <div style={{ flex: 1 }}>
-                      <div style={{ height: 13, background: "rgba(255,255,255,0.08)", borderRadius: 3, width: "55%" }} />
-                      <div style={{ height: 10, background: "rgba(255,255,255,0.04)", borderRadius: 3, width: "35%", marginTop: 5 }} />
+                      <div style={{ height: 13, background: "rgba(255,255,255,0.07)", borderRadius: 3, width: "52%" }} />
+                      <div style={{ height: 10, background: "rgba(255,255,255,0.04)", borderRadius: 3, width: "32%", marginTop: 5 }} />
                     </div>
-                    <div style={{ width: 50, height: 20, background: "rgba(255,255,255,0.06)", borderRadius: 12 }} />
-                    <div style={{ width: 36, height: 13, background: "rgba(255,255,255,0.06)", borderRadius: 3 }} />
+                    <div style={{ width: 52, height: 20, background: "rgba(255,255,255,0.05)", borderRadius: 12 }} />
+                    <div style={{ width: 38, height: 13, background: "rgba(255,255,255,0.05)", borderRadius: 3 }} />
                   </div>
                 ))
               ) : topRows.length === 0 ? (
-                <p style={{ padding: "32px 0", textAlign: "center", color: C.textSec, fontSize: 13 }}>Rankings data unavailable.</p>
+                <p style={{ padding: "32px 0", textAlign: "center", color: "#525252", fontSize: 13 }}>Rankings data unavailable.</p>
               ) : (
                 topRows.map((player, i) => (
                   <RankRow key={player.player_id ?? i} rank={i + 1} player={player} locked={i >= FREE_PREVIEW} />
@@ -735,13 +770,12 @@ export default function Index() {
               )}
             </div>
 
-            {/* Locked row overlay CTA */}
             {!loading && topRows.length > FREE_PREVIEW && (
-              <div style={{ padding: "18px 20px", background: "linear-gradient(to bottom, rgba(11,15,20,0) 0%, #0B0F14 60%)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-                <p style={{ fontSize: 12.5, color: C.textSec, textAlign: "center" }}>
+              <div style={{ padding: "20px 22px", borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, background: "rgba(224,174,45,0.03)" }}>
+                <p style={{ fontSize: 12.5, color: "#525252", textAlign: "center" }}>
                   Showing {FREE_PREVIEW} of {topRows[0].total_count ?? topRows.length}+ players
                 </p>
-                <Link to="/sports/afl/rankings" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: C.gold, color: "#1a1000", fontWeight: 800, fontSize: 13, padding: "10px 22px", borderRadius: 6, textDecoration: "none", letterSpacing: "0.02em" }}>
+                <Link to="/sports/afl/rankings" style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "#E0AE2D", color: "#1a0e00", fontWeight: 800, fontSize: 13, padding: "10px 24px", borderRadius: 7, textDecoration: "none", boxShadow: "0 4px 18px rgba(224,174,45,0.28)" }}>
                   Unlock Full Rankings <ArrowRight size={13} />
                 </Link>
               </div>
@@ -751,313 +785,179 @@ export default function Index() {
       </section>
 
       {/* ══════════════════════════════════════════════════════
-          SECTION 3 — MARKET WATCH / TRADE VALUE (light bg, real data)
+          SECTION 3 — MARKET WATCH (dark, real data)
       ══════════════════════════════════════════════════════ */}
-      <section style={{ background: C.bgLight, padding: "80px clamp(16px, 5vw, 40px)" }}>
+      <section style={{ background: "linear-gradient(180deg, #0d0b09 0%, #1A1411 100%)", padding: "88px clamp(16px, 5vw, 40px)" }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 44 }}>
-            <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.30em", textTransform: "uppercase", color: "#6B7280", marginBottom: 12 }}>Trade Intelligence</p>
-            <h2 style={{ fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 900, letterSpacing: "-0.025em", color: C.textDark, lineHeight: 1.15, marginBottom: 12 }}>
+          <div style={{ textAlign: "center", marginBottom: 52 }}>
+            <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.42em", textTransform: "uppercase", color: "rgba(224,174,45,0.65)", marginBottom: 14 }}>Trade Intelligence</p>
+            <h2 style={{ fontSize: "clamp(1.6rem, 3vw, 2.3rem)", fontWeight: 900, letterSpacing: "-0.025em", color: "#F5F5F5", lineHeight: 1.12, marginBottom: 14 }}>
               Market Watch
             </h2>
-            <p style={{ fontSize: 14, color: "#4B5563", maxWidth: 480, margin: "0 auto" }}>
-              Real-time trade signals from the same value engine powering Market Watch — classified into three clear categories.
+            <p style={{ fontSize: 14, color: "#6A6A6A", maxWidth: 480, margin: "0 auto" }}>
+              Real-time trade signals — classified into three categories before every round.
             </p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 18 }}>
             {/* Target Buys */}
-            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px", border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#16a34a" }} />
-                <h3 style={{ fontSize: 14, fontWeight: 800, color: C.textDark, letterSpacing: "0.01em" }}>Target Buys</h3>
-                <span style={{ marginLeft: "auto", fontSize: 11, color: "#6B7280" }}>{loading ? "—" : `${mwBuys.length} players`}</span>
-              </div>
-              {loading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, padding: "12px 0", borderBottom: "1px solid rgba(0,0,0,0.06)", alignItems: "center" }}>
-                    <div style={{ flex: 1 }}><div style={{ height: 13, background: "#f3f4f6", borderRadius: 3, width: "60%", marginBottom: 5 }} /><div style={{ height: 10, background: "#f3f4f6", borderRadius: 3, width: "40%" }} /></div>
-                    <div style={{ width: 36, height: 13, background: "#f3f4f6", borderRadius: 3 }} />
-                  </div>
-                ))
-              ) : mwBuys.length === 0 ? (
-                <p style={{ fontSize: 13, color: "#9CA3AF", padding: "16px 0", textAlign: "center" }}>No targets this round</p>
-              ) : (
-                mwBuys.slice(0, 4).map((p) => <MWCard key={p.player_id} player={p as unknown as RankingRow} categoryColor="#16a34a" />)
-              )}
-              <Link to="/sports/afl/market-watch" style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 16, color: "#16a34a", fontWeight: 700, fontSize: 12.5, textDecoration: "none" }}>
-                View All Targets <ChevronRight size={13} />
-              </Link>
-            </div>
-
-            {/* Watch List — from engine holds bucket */}
-            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px", border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#d97706" }} />
-                <h3 style={{ fontSize: 14, fontWeight: 800, color: C.textDark, letterSpacing: "0.01em" }}>Watch List</h3>
-                <span style={{ marginLeft: "auto", fontSize: 11, color: "#6B7280" }}>{loading ? "—" : `${mwHolds.length} players`}</span>
-              </div>
-              {loading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, padding: "12px 0", borderBottom: "1px solid rgba(0,0,0,0.06)", alignItems: "center" }}>
-                    <div style={{ flex: 1 }}><div style={{ height: 13, background: "#f3f4f6", borderRadius: 3, width: "60%", marginBottom: 5 }} /><div style={{ height: 10, background: "#f3f4f6", borderRadius: 3, width: "40%" }} /></div>
-                    <div style={{ width: 36, height: 13, background: "#f3f4f6", borderRadius: 3 }} />
-                  </div>
-                ))
-              ) : mwHolds.length === 0 ? (
-                <p style={{ fontSize: 13, color: "#9CA3AF", padding: "16px 0", textAlign: "center" }}>No watch list data</p>
-              ) : (
-                mwHolds
-                  .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
-                  .slice(0, 4)
-                  .map((p) => <MWCard key={p.player_id} player={p as unknown as RankingRow} categoryColor="#d97706" />)
-              )}
-              <Link to="/sports/afl/market-watch" style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 16, color: "#d97706", fontWeight: 700, fontSize: 12.5, textDecoration: "none" }}>
-                View Watch List <ChevronRight size={13} />
-              </Link>
-            </div>
-
-            {/* Traps */}
-            <div style={{ background: "#FFFFFF", borderRadius: 12, padding: "24px", border: "1px solid rgba(0,0,0,0.06)", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.red }} />
-                <h3 style={{ fontSize: 14, fontWeight: 800, color: C.textDark, letterSpacing: "0.01em" }}>Traps</h3>
-                <span style={{ marginLeft: "auto", fontSize: 11, color: "#6B7280" }}>{loading ? "—" : `${mwSells.length} players`}</span>
-              </div>
-              {loading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, padding: "12px 0", borderBottom: "1px solid rgba(0,0,0,0.06)", alignItems: "center" }}>
-                    <div style={{ flex: 1 }}><div style={{ height: 13, background: "#f3f4f6", borderRadius: 3, width: "60%", marginBottom: 5 }} /><div style={{ height: 10, background: "#f3f4f6", borderRadius: 3, width: "40%" }} /></div>
-                    <div style={{ width: 36, height: 13, background: "#f3f4f6", borderRadius: 3 }} />
-                  </div>
-                ))
-              ) : mwSells.length === 0 ? (
-                <p style={{ fontSize: 13, color: "#9CA3AF", padding: "16px 0", textAlign: "center" }}>No traps flagged this round</p>
-              ) : (
-                mwSells.slice(0, 4).map((p) => <MWCard key={p.player_id} player={p as unknown as RankingRow} categoryColor={C.red} />)
-              )}
-              <Link to="/sports/afl/market-watch" style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 16, color: C.red, fontWeight: 700, fontSize: 12.5, textDecoration: "none" }}>
-                View All Traps <ChevronRight size={13} />
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-          SECTION 4 — EVERYTHING IN NEEKO+ (dark bg)
-      ══════════════════════════════════════════════════════ */}
-      <section style={{ background: C.bgSection, padding: "80px clamp(16px, 5vw, 40px)" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 44 }}>
-            <p style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.30em", textTransform: "uppercase", color: C.gold, marginBottom: 12, opacity: 0.8 }}>Neeko+</p>
-            <h2 style={{ fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 900, letterSpacing: "-0.025em", color: C.textPrim, lineHeight: 1.15, marginBottom: 12 }}>
-              Everything Included in Neeko+
-            </h2>
-            <p style={{ fontSize: 14, color: C.textSec, maxWidth: 480, margin: "0 auto" }}>
-              One subscription. Every tool you need to win your AFL Fantasy league.
-            </p>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
             {[
-              { icon: <ListOrdered size={20} />, title: "Full Rankings", desc: "600+ players ranked weekly by projection, value, and form. Every position, every round.", to: "/sports/afl/rankings", color: "#1a6028" },
-              { icon: <TrendingUp size={20} />, title: "Market Watch", desc: "Trade signals, price changes, and breakeven tracking — all in one clean view.", to: "/sports/afl/market-watch", color: "#0d4278" },
-              { icon: <Zap size={20} />, title: "Edge Board", desc: "Must-have, breakout, and avoid lists generated from the ranking engine each round.", to: "/sports/afl/current-round", color: "#7a4800" },
-              { icon: <GitCompare size={20} />, title: "Start / Sit", desc: "Head-to-head AI decisions for your toughest selection dilemmas.", to: "/sports/afl/start-sit", color: "#881818" },
-              { icon: <Star size={20} />, title: "Captain Picks", desc: "Data-backed captain recommendations with confidence scores and matchup context.", to: "/sports/afl/captains", color: "#0d4278" },
-              { icon: <Users size={20} />, title: "Player Profiles", desc: "Deep dive on any player — projection history, scores, matchups, and AI summary.", to: "/sports/afl/rankings", color: "#1a6028" },
-            ].map(({ icon, title, desc, to, color }) => (
-              <Link key={title} to={to} style={{ textDecoration: "none" }}>
-                <div style={{ background: C.bgDark, borderRadius: 10, padding: "22px 20px", border: `1px solid ${C.border}`, display: "flex", gap: 14, alignItems: "flex-start", transition: "all 0.18s ease" }}
-                  onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = `${color}35`; el.style.background = "#0f141a"; }}
-                  onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor = C.border; el.style.background = C.bgDark; }}
-                >
-                  <div style={{ width: 38, height: 38, borderRadius: 8, background: `${color}18`, border: `1px solid ${color}25`, display: "flex", alignItems: "center", justifyContent: "center", color, flexShrink: 0 }}>
-                    {icon}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                      <h3 style={{ fontSize: 14.5, fontWeight: 800, color: C.textPrim }}>{title}</h3>
-                      <ChevronRight size={14} style={{ color: C.textSec, flexShrink: 0 }} />
-                    </div>
-                    <p style={{ fontSize: 12.5, color: C.textSec, lineHeight: 1.6 }}>{desc}</p>
-                  </div>
+              { key: "buys", label: "Target Buys", color: "#22C55E", borderColor: "rgba(34,197,94,0.22)", count: mwBuys.length, players: mwBuys.slice(0, 4), emptyMsg: "No targets this round", cta: "View All Targets", dotColor: "#22C55E" },
+              { key: "holds", label: "Watch List", color: "#E0AE2D", borderColor: "rgba(224,174,45,0.22)", count: mwHolds.length, players: [...mwHolds].sort((a,b) => (b.projection??0)-(a.projection??0)).slice(0,4), emptyMsg: "No watch list data", cta: "View Watch List", dotColor: "#E0AE2D" },
+              { key: "sells", label: "Trap Alerts", color: "#EF4444", borderColor: "rgba(239,68,68,0.22)", count: mwSells.length, players: mwSells.slice(0, 4), emptyMsg: "No traps flagged", cta: "View All Traps", dotColor: "#EF4444" },
+            ].map(({ key, label, color, borderColor, count, players, emptyMsg, cta, dotColor }) => (
+              <div key={key} style={{ background: "rgba(255,255,255,0.025)", border: `1px solid ${borderColor}`, borderRadius: 14, padding: "24px", overflow: "hidden", position: "relative" }}>
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(to right, transparent, ${color}55, transparent)` }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 22 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, boxShadow: `0 0 8px ${dotColor}60`, flexShrink: 0 }} />
+                  <h3 style={{ fontSize: 14, fontWeight: 800, color: "#F5F5F5", letterSpacing: "0.01em" }}>{label}</h3>
+                  <span style={{ marginLeft: "auto", fontSize: 11, color: "#525252", fontWeight: 600 }}>{loading ? "—" : `${count} players`}</span>
                 </div>
-              </Link>
+                {loading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} style={{ display: "flex", gap: 8, padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", alignItems: "center" }}>
+                      <div style={{ flex: 1 }}><div style={{ height: 13, background: "rgba(255,255,255,0.07)", borderRadius: 3, width: "60%", marginBottom: 5 }} /><div style={{ height: 10, background: "rgba(255,255,255,0.04)", borderRadius: 3, width: "40%" }} /></div>
+                      <div style={{ width: 36, height: 13, background: "rgba(255,255,255,0.05)", borderRadius: 3 }} />
+                    </div>
+                  ))
+                ) : players.length === 0 ? (
+                  <p style={{ fontSize: 13, color: "#525252", padding: "16px 0", textAlign: "center" }}>{emptyMsg}</p>
+                ) : (
+                  players.map((p) => {
+                    const priceK = p.price != null ? `$${Math.round(p.price / 1000)}k` : null;
+                    const chgK = p.price_change != null ? `${p.price_change > 0 ? "+" : ""}${Math.round(p.price_change / 1000)}k` : null;
+                    const up2 = (p.price_change ?? 0) > 0;
+                    return (
+                      <div key={p.player_id} style={{ padding: "11px 0", borderBottom: "1px solid rgba(255,255,255,0.05)", display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13.5, fontWeight: 700, color: "#EAEAEA", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.player_name}</p>
+                          <p style={{ fontSize: 11, color: "#525252", marginTop: 2 }}>{p.position ?? ""}{p.position ? " · " : ""}{p.team}</p>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          {priceK && <p style={{ fontSize: 12, fontWeight: 700, color: "#A0A0A0" }}>{priceK}</p>}
+                          {chgK && <p style={{ fontSize: 11, fontWeight: 700, color: up2 ? "#22C55E" : "#EF4444", marginTop: 1 }}>{chgK}</p>}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                <Link to="/sports/afl/market-watch" style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 16, color, fontWeight: 700, fontSize: 12.5, textDecoration: "none", opacity: 0.9 }}>
+                  {cta} <ChevronRight size={13} />
+                </Link>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
       {/* ══════════════════════════════════════════════════════
-          SECTION 5 — WHY NEEKO WINS (light bg, editorial)
+          SECTION 4 — VALUE + PRICING (dark, embedded)
       ══════════════════════════════════════════════════════ */}
-      <section style={{ background: C.bgLight, padding: "80px clamp(16px, 5vw, 40px)" }}>
-        <div style={{ maxWidth: 860, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 44 }}>
-            <h2 style={{ fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 900, letterSpacing: "-0.025em", color: C.textDark, lineHeight: 1.15, marginBottom: 12 }}>
-              Why Neeko Coaches Win
-            </h2>
-            <p style={{ fontSize: 14, color: "#4B5563", maxWidth: 400, margin: "0 auto" }}>
-              The difference between guessing and knowing — every round.
-            </p>
-          </div>
+      <section style={{ background: "#0d0b09", padding: "96px clamp(16px, 5vw, 40px) 96px", position: "relative", overflow: "hidden" }}>
+        {/* Ambient glow */}
+        <div style={{ position: "absolute", top: "30%", left: "50%", transform: "translate(-50%, -50%)", width: 700, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse, rgba(224,174,45,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-            {/* Typical Coaches */}
-            <div style={{ background: "#fff5f5", borderRadius: 12, padding: "28px 24px", border: "1px solid rgba(239,68,68,0.12)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 22 }}>
-                <ShieldAlert size={16} style={{ color: C.red }} />
-                <h3 style={{ fontSize: 14, fontWeight: 800, color: "#b91c1c" }}>Typical Coaches</h3>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", position: "relative" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
+
+            {/* Left — value bullets */}
+            <div>
+              <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.42em", textTransform: "uppercase", color: "rgba(224,174,45,0.65)", marginBottom: 18 }}>Why Neeko+</p>
+              <h2 style={{ fontSize: "clamp(1.7rem, 2.8vw, 2.4rem)", fontWeight: 900, letterSpacing: "-0.03em", color: "#F5F5F5", lineHeight: 1.15, marginBottom: 32 }}>
+                Everything You Need to<br />
+                <span style={{ color: "#E0AE2D" }}>Win Every Round</span>
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                 {[
-                  "Chase last week's top score",
-                  "Trade on hype and Reddit threads",
-                  "Pick captains by gut feel",
-                  "Ignore matchup difficulty",
-                  "Discover traps after lockout",
-                ].map(t => (
-                  <div key={t} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(239,68,68,0.40)", flexShrink: 0, marginTop: 5 }} />
-                    <span style={{ fontSize: 13.5, color: "#6B7280", lineHeight: 1.5 }}>{t}</span>
+                  { icon: <Database size={16} />, title: "630+ Player Projections", desc: "Full AFL roster coverage — updated before every round lockout." },
+                  { icon: <TrendingUp size={16} />, title: "Live Price Intelligence", desc: "Track breakevens, spot price rises early, and avoid costly traps." },
+                  { icon: <Star size={16} />, title: "Captain & Start/Sit Decisions", desc: "Confidence-scored picks backed by matchup data and form trends." },
+                  { icon: <Zap size={16} />, title: "30-Second Weekly Workflow", desc: "Rankings, edge board, and market signals — all in one clean system." },
+                ].map(({ icon, title, desc }) => (
+                  <div key={title} style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: "rgba(224,174,45,0.10)", border: "1px solid rgba(224,174,45,0.20)", display: "flex", alignItems: "center", justifyContent: "center", color: "#E0AE2D", flexShrink: 0, marginTop: 1 }}>
+                      {icon}
+                    </div>
+                    <div>
+                      <p style={{ fontSize: 14.5, fontWeight: 800, color: "#F5F5F5", marginBottom: 4, letterSpacing: "-0.01em" }}>{title}</p>
+                      <p style={{ fontSize: 13, color: "#6A6A6A", lineHeight: 1.6 }}>{desc}</p>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Neeko Coaches */}
-            <div style={{ background: "#f0fdf4", borderRadius: 12, padding: "28px 24px", border: "1px solid rgba(34,197,94,0.15)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 22 }}>
-                <Star size={16} style={{ color: "#16a34a" }} />
-                <h3 style={{ fontSize: 14, fontWeight: 800, color: "#15803d" }}>Neeko Coaches</h3>
+            {/* Right — pricing card embedded in dark bg */}
+            <div>
+              {/* Annual plan — premium highlighted */}
+              <div style={{ background: "linear-gradient(160deg, #1c1507 0%, #110e04 100%)", border: "1.5px solid rgba(224,174,45,0.35)", borderRadius: 16, padding: "36px 32px", boxShadow: "0 24px 72px rgba(0,0,0,0.60), 0 0 0 1px rgba(224,174,45,0.08) inset", position: "relative", overflow: "hidden", marginBottom: 16 }}>
+                <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(224,174,45,0.09) 0%, transparent 70%)", pointerEvents: "none" }} />
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(to right, transparent, rgba(224,174,45,0.70), transparent)" }} />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                  <p style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: "0.30em", textTransform: "uppercase", color: "#E0AE2D" }}>Neeko+</p>
+                  <span style={{ fontSize: 8.5, fontWeight: 900, background: "#E0AE2D", color: "#1a0900", padding: "4px 10px", borderRadius: 5, letterSpacing: "0.08em" }}>BEST VALUE</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
+                  <span style={{ fontSize: 44, fontWeight: 900, color: "#F5F5F5", lineHeight: 1 }}>${NEEKO_PRICING.yearly.monthlyEquivalent}</span>
+                  <span style={{ fontSize: 14, color: "#525252" }}>/month</span>
+                </div>
+                <p style={{ fontSize: 11, color: "rgba(255,255,255,0.22)", marginBottom: 28 }}>
+                  Billed ${NEEKO_PRICING.yearly.price}/year · Save {NEEKO_PRICING.savingsPercent}% vs monthly
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 30 }}>
+                  {[
+                    "Full rankings — 630+ players",
+                    "Must Buys & Trap Alerts",
+                    "Captain picks with confidence scores",
+                    "Market Watch & price tracking",
+                    "Start/Sit AI decisions",
+                    "Updated every round, before lockout",
+                  ].map(f => (
+                    <div key={f} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <Check size={13} style={{ color: "#E0AE2D", flexShrink: 0 }} />
+                      <span style={{ fontSize: 13.5, color: "rgba(255,255,255,0.65)" }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link to="/neeko-plus" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "linear-gradient(to bottom, #f0c030, #c8960a)", color: "#1a0900", fontWeight: 900, fontSize: 15, padding: "14px 20px", borderRadius: 8, textDecoration: "none", boxShadow: "0 6px 24px rgba(224,174,45,0.38), inset 0 1px 0 rgba(255,255,255,0.28)", letterSpacing: "0.02em" }}>
+                  <Crown size={15} /> Unlock Full Access
+                </Link>
               </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+              {/* Monthly + Free — compact row */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 {[
-                  "Projection-based decisions, every round",
-                  "Value-driven trades before price rises",
-                  "Data-backed captains with confidence scores",
-                  "Matchup-aware picks from the engine",
-                  "Trap alerts before lockout, every week",
-                ].map(t => (
-                  <div key={t} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <Check size={14} style={{ color: "#16a34a", flexShrink: 0, marginTop: 2 }} />
-                    <span style={{ fontSize: 13.5, color: "#374151", lineHeight: 1.5, fontWeight: 500 }}>{t}</span>
+                  { label: "Monthly", price: NEEKO_PRICING.monthly.price, sub: "per month · cancel anytime", cta: "Start Monthly", to: "/neeko-plus" },
+                  { label: "Free Plan", price: 0, sub: "preview access · no card needed", cta: "Get Started Free", to: "/auth" },
+                ].map(({ label, price, sub, cta, to }) => (
+                  <div key={label} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "20px 18px" }}>
+                    <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.24em", textTransform: "uppercase", color: "#525252", marginBottom: 10 }}>{label}</p>
+                    <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 4 }}>
+                      <span style={{ fontSize: 28, fontWeight: 900, color: "#F5F5F5" }}>${price}</span>
+                      <span style={{ fontSize: 11, color: "#525252" }}>/mo</span>
+                    </div>
+                    <p style={{ fontSize: 10, color: "#404040", marginBottom: 16, lineHeight: 1.5 }}>{sub}</p>
+                    <Link to={to} style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.45)", fontWeight: 700, fontSize: 12, padding: "9px 12px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.08)", textDecoration: "none", letterSpacing: "0.03em" }}>
+                      {cta}
+                    </Link>
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════
-          SECTION 6 — FINAL CTA / PRICING (dark bg)
-      ══════════════════════════════════════════════════════ */}
-      <section style={{ background: C.bgDark, padding: "80px clamp(16px, 5vw, 40px) 64px" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 52 }}>
-            <h2 style={{ fontSize: "clamp(1.6rem, 3vw, 2.2rem)", fontWeight: 900, letterSpacing: "-0.025em", color: C.textPrim, lineHeight: 1.15, marginBottom: 14 }}>
-              Start Winning With Neeko+
-            </h2>
-            <p style={{ fontSize: 14, color: C.textSec, maxWidth: 440, margin: "0 auto" }}>
-              Join AFL Fantasy coaches who plan every round with data, not guesswork.
-            </p>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20, alignItems: "start", maxWidth: 860, margin: "0 auto" }}>
-            {/* Free */}
-            <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 12, padding: "28px 24px" }}>
-              <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.26em", textTransform: "uppercase", color: C.textSec, marginBottom: 14 }}>Free Plan</p>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 22 }}>
-                <span style={{ fontSize: 38, fontWeight: 900, color: C.textPrim }}>$0</span>
-                <span style={{ fontSize: 13, color: C.textSec }}>/month</span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 11, marginBottom: 24 }}>
-                {["Top player rankings preview", "Must Buy snapshot each round", "Round summary overview"].map(f => (
-                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Check size={12} style={{ color: C.green, flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>{f}</span>
-                  </div>
-                ))}
-              </div>
-              <Link to="/auth" style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)", fontWeight: 700, fontSize: 13, padding: "10px 16px", borderRadius: 6, border: `1px solid ${C.border}`, textDecoration: "none", letterSpacing: "0.03em" }}>
-                Get Started Free
-              </Link>
-            </div>
-
-            {/* Premium — highlighted */}
-            <div style={{ background: "linear-gradient(160deg, #1a1206 0%, #120d04 100%)", border: "1.5px solid rgba(244,197,66,0.30)", borderRadius: 12, padding: "28px 24px", boxShadow: "0 10px 44px rgba(244,197,66,0.08)", position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", top: -40, right: -40, width: 140, height: 140, borderRadius: "50%", background: "radial-gradient(circle, rgba(244,197,66,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.26em", textTransform: "uppercase", color: C.gold }}>Neeko+</p>
-                <span style={{ fontSize: 8.5, fontWeight: 800, background: C.gold, color: "#1a0e00", padding: "3px 8px", borderRadius: 4, letterSpacing: "0.08em" }}>BEST VALUE</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
-                <span style={{ fontSize: 38, fontWeight: 900, color: C.textPrim }}>${NEEKO_PRICING.yearly.monthlyEquivalent}</span>
-                <span style={{ fontSize: 13, color: C.textSec }}>/month</span>
-              </div>
-              <p style={{ fontSize: 10.5, color: "rgba(255,255,255,0.25)", marginBottom: 22 }}>
-                Billed ${NEEKO_PRICING.yearly.price}/year · Save {NEEKO_PRICING.savingsPercent}% vs monthly
-              </p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 11, marginBottom: 24 }}>
-                {[
-                  "Full rankings — 600+ players",
-                  "Must Buys & Trap Alerts",
-                  "Captain picks with confidence scores",
-                  "Market Watch & price change tracking",
-                  "Start/Sit AI decisions",
-                  "Updated before every round lockout",
-                ].map(f => (
-                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Check size={12} style={{ color: C.gold, flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.60)" }}>{f}</span>
-                  </div>
-                ))}
-              </div>
-              <Link to="/neeko-plus" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, background: C.gold, color: "#1a0e00", fontWeight: 800, fontSize: 14, padding: "12px 16px", borderRadius: 6, textDecoration: "none", boxShadow: "0 4px 18px rgba(244,197,66,0.30), inset 0 1px 0 rgba(255,255,255,0.26)", letterSpacing: "0.03em" }}>
-                <Crown size={13} /> Unlock Full Access
-              </Link>
-            </div>
-
-            {/* Monthly option */}
-            <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 12, padding: "28px 24px" }}>
-              <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.26em", textTransform: "uppercase", color: C.textSec, marginBottom: 14 }}>Monthly Plan</p>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 22 }}>
-                <span style={{ fontSize: 38, fontWeight: 900, color: C.textPrim }}>${NEEKO_PRICING.monthly.price}</span>
-                <span style={{ fontSize: 13, color: C.textSec }}>/month</span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 11, marginBottom: 24 }}>
-                {[
-                  "Everything in Neeko+",
-                  "Cancel anytime",
-                  "No annual commitment",
-                ].map(f => (
-                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Check size={12} style={{ color: C.green, flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, color: "rgba(255,255,255,0.45)" }}>{f}</span>
-                  </div>
-                ))}
-              </div>
-              <Link to="/neeko-plus" style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.55)", fontWeight: 700, fontSize: 13, padding: "10px 16px", borderRadius: 6, border: `1px solid ${C.border}`, textDecoration: "none", letterSpacing: "0.03em" }}>
-                Start Monthly
-              </Link>
             </div>
           </div>
         </div>
       </section>
 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
-      <footer style={{ background: "#07090d", borderTop: `1px solid ${C.border}`, padding: "20px clamp(16px, 4vw, 32px)" }}>
+      <footer style={{ background: "#080604", borderTop: "1px solid rgba(255,255,255,0.05)", padding: "22px clamp(16px, 4vw, 32px)" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.14)" }}>© {new Date().getFullYear()} Neeko Sports Stats</p>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.12)" }}>© {new Date().getFullYear()} Neeko Sports Stats</p>
           <div style={{ display: "flex", gap: 22, flexWrap: "wrap" }}>
             {[{ l: "Policies", t: "/policies" }, { l: "Contact", t: "/contact" }, { l: "About", t: "/about" }, { l: "FAQ", t: "/faq" }].map(x => (
               <Link key={x.t} to={x.t}
-                style={{ fontSize: 11, color: "rgba(255,255,255,0.16)", textDecoration: "none", transition: "color 0.15s" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.48)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.16)"; }}
+                style={{ fontSize: 11, color: "rgba(255,255,255,0.14)", textDecoration: "none", transition: "color 0.15s" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.14)"; }}
               >{x.l}</Link>
             ))}
           </div>
