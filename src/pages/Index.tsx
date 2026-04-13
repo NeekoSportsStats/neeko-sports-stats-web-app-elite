@@ -533,14 +533,14 @@ export default function Index() {
             </div>
 
             {/* Current Week heading */}
-            <div style={{ marginTop: "3.5%", width: "62vw", display: "flex", alignItems: "center", gap: "1vw" }}>
+            <div style={{ marginTop: "5.5%", width: "65vw", display: "flex", alignItems: "center", gap: "1vw" }}>
               <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.35))" }} />
               <span style={{ fontSize: "0.9vw", fontWeight: 900, letterSpacing: "0.30em", textTransform: "uppercase", color: C.gold, whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,0.60)" }}>Current Week</span>
               <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.35))" }} />
             </div>
 
             {/* Cards row */}
-            <div style={{ width: "62vw", margin: "1.2% auto 0", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "1.2vw" }}>
+            <div style={{ width: "65vw", margin: "1.2% auto 0", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "2.4vw" }}>
               {showSkeleton
                 ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
                 : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
