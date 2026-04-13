@@ -523,7 +523,7 @@ export default function Index() {
             {/* Current Week heading — fixed 48px below trust strip */}
             <div style={{ marginTop: 48, display: "flex", alignItems: "center", gap: 16 }}>
               <div style={{ flex: 1, height: 1, background: "linear-gradient(to right, transparent, rgba(255,255,255,0.35))" }} />
-              <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: "0.30em", textTransform: "uppercase", color: "#000000", whiteSpace: "nowrap", textShadow: "0 1px 3px rgba(255,255,255,0.25)" }}>Current Week</span>
+              <span style={{ fontSize: 14, fontWeight: 900, letterSpacing: "0.30em", textTransform: "uppercase", color: C.gold, whiteSpace: "nowrap", textShadow: "0 1px 6px rgba(0,0,0,0.60)" }}>Current Week</span>
               <div style={{ flex: 1, height: 1, background: "linear-gradient(to left, transparent, rgba(255,255,255,0.35))" }} />
             </div>
 
