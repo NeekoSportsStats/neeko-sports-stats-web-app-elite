@@ -45,7 +45,7 @@ const NAV_ITEMS = [
   { label: "Market Watch", to: "/sports/afl/market-watch" },
   { label: "Captains", to: "/sports/afl/captains" },
   { label: "Rankings", to: "/sports/afl/rankings" },
-  { label: "Compare", to: "/sports/afl/start-sit" },
+  { label: "Players", to: "/sports/afl/players" },
 ] as const;
 
 const TOOLS = [
@@ -54,7 +54,7 @@ const TOOLS = [
   { icon: <Zap size={18} />, title: "Edge Board", to: "/sports/afl/current-round", color: "#60A5FA" },
   { icon: <GitCompare size={18} />, title: "Start / Sit", to: "/sports/afl/start-sit", color: "#F87171" },
   { icon: <Star size={18} />, title: "Captains", to: "/sports/afl/captains", color: "#E0AE2D" },
-  { icon: <Users size={18} />, title: "Player Profiles", to: "/sports/afl/rankings", color: "#A78BFA" },
+  { icon: <Users size={18} />, title: "Player Profiles", to: "/sports/afl/players", color: "#60A5FA" },
 ] as const;
 
 const WORKFLOW = [

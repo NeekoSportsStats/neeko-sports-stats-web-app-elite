@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { Crown, Menu, X, TrendingUp, ChartBar as BarChart2, Star, Award } from "lucide-react";
+import { Crown, Menu, X, TrendingUp, ChartBar as BarChart2, Star, Award, Users } from "lucide-react";
 
 const NAV_LINKS = [
   { label: "Current Week", to: "/sports/afl/current-round", icon: <TrendingUp size={14} /> },
   { label: "Market Watch", to: "/sports/afl/market-watch", icon: <BarChart2 size={14} /> },
   { label: "Captains", to: "/sports/afl/captains", icon: <Star size={14} /> },
   { label: "Rankings", to: "/sports/afl/rankings", icon: <Award size={14} /> },
+  { label: "Players", to: "/sports/afl/players", icon: <Users size={14} /> },
 ];
 
 export function LandingLayout() {
@@ -53,11 +54,11 @@ export function LandingLayout() {
                 key={link.to}
                 to={link.to}
                 style={{
-                  display: "flex", alignItems: "center", gap: 6,
-                  fontSize: 13, fontWeight: active ? 700 : 500,
+                  display: "flex", alignItems: "center", gap: 5,
+                  fontSize: 12.5, fontWeight: active ? 700 : 500,
                   color: active ? "#fff" : "rgba(255,255,255,0.58)",
                   textDecoration: "none",
-                  padding: "6px 14px",
+                  padding: "6px 11px",
                   borderRadius: 7,
                   background: active ? "rgba(255,255,255,0.08)" : "transparent",
                   border: active ? "1px solid rgba(255,255,255,0.10)" : "1px solid transparent",

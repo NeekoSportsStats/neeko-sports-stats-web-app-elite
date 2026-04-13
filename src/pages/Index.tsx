@@ -524,7 +524,7 @@ export default function Index() {
       ═══════════════════════════════════════════════════ */}
       <section style={{
         position: "relative",
-        minHeight: "88vh",
+        minHeight: "80vh",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -568,7 +568,7 @@ export default function Index() {
           position: "relative", zIndex: 10,
           width: "100%", maxWidth: 760,
           textAlign: "center",
-          padding: "clamp(80px, 11vw, 140px) 24px 0",
+          padding: "clamp(64px, 9vw, 116px) 24px 0",
         }}>
           {/* Eyebrow */}
           <p style={{
@@ -599,14 +599,13 @@ export default function Index() {
 
           {/* Sub */}
           <p style={{
-            margin: "0 0 40px",
-            fontSize: "clamp(14px, 1.15vw, 19px)",
-            color: "rgba(255,255,255,0.95)",
+            margin: "0 0 30px",
+            fontSize: "clamp(14px, 1.10vw, 18px)",
+            color: "rgba(255,255,255,0.92)",
             lineHeight: 1.5,
             fontWeight: 500,
             textShadow: "0 2px 10px rgba(0,0,0,0.6)",
-            opacity: 0.95,
-            maxWidth: 600,
+            maxWidth: 560,
             marginLeft: "auto",
             marginRight: "auto",
           }}>
@@ -614,7 +613,7 @@ export default function Index() {
           </p>
 
           {/* CTAs — wrapped in glass container */}
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 36 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
             <div style={{
               display: "inline-flex", gap: 12, flexWrap: "wrap", justifyContent: "center",
               padding: "12px 16px",
@@ -659,24 +658,27 @@ export default function Index() {
         <div style={{
           position: "relative", zIndex: 10,
           width: "100%",
-          maxWidth: 1120,
+          maxWidth: 1150,
           padding: "0 clamp(16px, 3vw, 32px)",
-          marginTop: "clamp(32px, 3.5vw, 48px)",
+          marginTop: "clamp(24px, 2.8vw, 38px)",
           marginBottom: "-80px",
         }}>
           {/* Section header */}
-          <div style={{ marginBottom: 24, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+          <div style={{ marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
             <div>
-              <p style={{ margin: 0, fontSize: 10, fontWeight: 800, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(244,197,66,0.70)", marginBottom: 8, opacity: 0.85 }}>
+              <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 900, letterSpacing: "0.42em", textTransform: "uppercase", color: "rgba(244,197,66,0.80)" }}>
                 This Week's Edge
               </p>
-              <h2 style={{ margin: 0, fontSize: "clamp(17px, 1.6vw, 24px)", fontWeight: 900, color: "#f0f0f0", letterSpacing: "-0.025em", lineHeight: 1.15 }}>
-                Real picks powered by live projections and value signals.
+              <h2 style={{ margin: "0 0 5px", fontSize: "clamp(16px, 1.5vw, 22px)", fontWeight: 900, color: "#f2f2f2", letterSpacing: "-0.025em", lineHeight: 1.15 }}>
+                Real picks. Live projections. No guesswork.
               </h2>
-              <p style={{ margin: "6px 0 0", fontSize: "clamp(11px, 0.75vw, 13px)", color: "rgba(255,255,255,0.40)", fontWeight: 500, lineHeight: 1.4 }}>
-                Built from this week's projections — not guesswork.
+              <p style={{ margin: 0, fontSize: "clamp(11px, 0.72vw, 12.5px)", color: "rgba(255,255,255,0.50)", fontWeight: 500, lineHeight: 1.4 }}>
+                Powered by this week's projections, value signals, and matchup context.
               </p>
             </div>
+            <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: "rgba(244,197,66,0.75)", textDecoration: "none", whiteSpace: "nowrap", border: "1px solid rgba(244,197,66,0.22)", padding: "7px 14px", borderRadius: 7, background: "rgba(244,197,66,0.05)", flexShrink: 0, letterSpacing: "0.02em" }}>
+              View All <ChevronRight size={12} />
+            </Link>
           </div>
 
           {/* 4-column card grid */}
