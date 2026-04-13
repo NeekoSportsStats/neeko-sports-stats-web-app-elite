@@ -15,6 +15,7 @@ import LandingToolsGrid from "@/features/afl/landing/LandingToolsGrid";
 import LandingTrust from "@/features/afl/landing/LandingTrust";
 import LandingPricing from "@/features/afl/landing/LandingPricing";
 import LandingFinalCTA from "@/features/afl/landing/LandingFinalCTA";
+import MobileLanding from "@/features/afl/landing/MobileLanding";
 
 // ── Hero nav pills ─────────────────────────────────────────────────────────────
 const NAV_PILLS = [
@@ -402,84 +403,62 @@ export default function Index() {
 
   const showSkeleton = loading || (!loading && !allHeroReady);
 
+  // ── Mobile hero cards mapped to MobileLanding's HeroCard shape ──────────────
+  const mobileCards = cards.map(c => ({
+    label: c.label,
+    color: c.color,
+    playerName: c.playerName,
+    team: c.team,
+    position: c.position,
+    projection: c.projection,
+    priceChange: c.priceChange,
+    bullets: c.bullets,
+    ctaLabel: c.ctaLabel,
+    ctaTo: c.ctaTo,
+  }));
+
   // ── Render ─────────────────────────────────────────────────────────────────
+  const helmet = (
+    <Helmet>
+      <title>Neeko Sports Stats — AFL Fantasy Coach's Desk</title>
+      <meta name="description" content="Stop guessing. Win your AFL Fantasy week in 30 seconds. Trade targets, trap warnings, and captain picks powered by 600+ player projections — updated before every lockout." />
+      <link rel="canonical" href="https://neekostats.com.au/" />
+      <meta property="og:title" content="Neeko Sports Stats — AFL Fantasy Coach's Desk" />
+      <meta property="og:description" content="Stop guessing. Win your AFL Fantasy week with trade targets, captain picks, and trap alerts powered by real AFL data." />
+      <meta property="og:type" content="website" />
+      <meta property="og:url" content="https://neekostats.com.au/" />
+      <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="robots" content="index, follow" />
+    </Helmet>
+  );
+
+  if (isMobile) {
+    return (
+      <div style={{ background: "#0a0908", overflowX: "hidden" }}>
+        {helmet}
+        <MobileLanding
+          loading={loading}
+          topRows={topRows}
+          mwBuys={mwBuys}
+          mwSells={mwSells}
+          cards={mobileCards}
+          showSkeleton={showSkeleton}
+          isPremium={isPremium}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={{ background: C.bgDark, overflowX: "hidden" }}>
-      <Helmet>
-        <title>Neeko Sports Stats — AFL Fantasy Coach's Desk</title>
-        <meta name="description" content="Stop guessing. Win your AFL Fantasy week in 30 seconds. Trade targets, trap warnings, and captain picks powered by 600+ player projections — updated before every lockout." />
-        <link rel="canonical" href="https://neekostats.com.au/" />
-        <meta property="og:title" content="Neeko Sports Stats — AFL Fantasy Coach's Desk" />
-        <meta property="og:description" content="Stop guessing. Win your AFL Fantasy week with trade targets, captain picks, and trap alerts powered by real AFL data." />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://neekostats.com.au/" />
-        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="robots" content="index, follow" />
-      </Helmet>
+      {helmet}
 
       {/* ══════════════════════════════════════════════════════
-          SECTION 0 — HERO
+          SECTION 0 — HERO (desktop)
       ══════════════════════════════════════════════════════ */}
-      {isMobile ? (
-        <section style={{
-          position: "relative",
-          backgroundImage: "url('/hero/image.png')",
-          backgroundSize: "cover",
-          backgroundPosition: "center 20%",
-          backgroundRepeat: "no-repeat",
-          paddingBottom: 48,
-          minHeight: 450,
-        }}>
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 1 }} />
-          <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: "30%", background: "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(10,10,10,0.92) 70%, #0a0a0a 100%)", zIndex: 2 }} />
-
-          <div style={{ position: "relative", zIndex: 10, padding: "12px 20px 24px", textAlign: "center" }}>
-            <h1 style={{ fontSize: "1.75rem", fontWeight: 900, lineHeight: 1.1, letterSpacing: "-0.025em", color: "#ffffff", textShadow: "0 2px 20px rgba(0,0,0,0.9)", marginBottom: 8 }}>
-              Stop Guessing.<br />
-              <span style={{ color: C.gold }}>Start Winning</span> Your<br />
-              AFL Fantasy Week.
-            </h1>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.90)", marginBottom: 20, lineHeight: 1.6, maxWidth: 320, margin: "0 auto 20px", textShadow: "0 1px 6px rgba(0,0,0,0.90)" }}>
-              Trades, captains, and traps — powered by 600+ player projections updated every round.
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 9, alignItems: "center", marginBottom: 28 }}>
-              <Link to="/auth" style={{ display: "flex", alignItems: "center", gap: 7, background: C.gold, color: "#1a0e00", fontWeight: 800, fontSize: 14, padding: "12px 28px", borderRadius: 6, textDecoration: "none", letterSpacing: "0.02em", boxShadow: "0 4px 18px rgba(245,196,81,0.38)" }}>
-                Unlock This Week's Game Plan <ArrowRight size={14} />
-              </Link>
-              {!isPremium && (
-                <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.75)", fontWeight: 700, fontSize: 13, padding: "11px 24px", borderRadius: 6, textDecoration: "none", border: "1px solid rgba(255,255,255,0.20)", letterSpacing: "0.02em" }}>
-                  View Free Picks
-                </Link>
-              )}
-            </div>
-          </div>
-
-          <div style={{ position: "relative", zIndex: 10, padding: "0 16px 0" }}>
-            <div style={{ textAlign: "center", marginBottom: 12 }}>
-              <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(245,196,81,0.6)", marginBottom: 3 }}>This Week's Game Plan</p>
-              <p style={{ fontSize: 9, color: "rgba(255,255,255,0.30)", fontWeight: 600, letterSpacing: "0.04em" }}>Updated Today · Data from 600+ players</p>
-            </div>
-            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 7, alignItems: "center" }}>
-              {trustBar.map(({ icon, text }) => (
-                <div key={text} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "rgba(255,255,255,0.75)", fontWeight: 600 }}>
-                  <span style={{ color: "rgba(245,196,81,0.90)" }}>{icon}</span>{text}
-                </div>
-              ))}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12, marginTop: 16 }}>
-              {showSkeleton
-                ? [0,1,2,3].map(i => <SkeletonCard key={i} />)
-                : cards.map(c => <WhiteboardCard key={c.label} {...c} />)
-              }
-            </div>
-
-            <HeroNavPills style={{ marginTop: 22 }} />
-          </div>
-        </section>
-      ) : (
-        <>
-          <style>{`
+      <>
+        <style>{`
             .hero-outer {
               width: 100%;
               display: flex;
@@ -575,7 +554,6 @@ export default function Index() {
             </div>
           </section>
         </>
-      )}
 
       {/* ══════════════════════════════════════════════════════
           GOLD TRANSITION BAND — hero → content bridge
