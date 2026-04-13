@@ -460,13 +460,12 @@ export default function Index() {
         width: "100%",
         position: "relative",
         overflow: "hidden",
-        minHeight: 900,
-        paddingTop: 220,
-        paddingBottom: 170,
         backgroundImage: "url('/hero/image.png')",
-        backgroundSize: "cover",
-        backgroundPosition: "center 15%",
+        backgroundSize: "100% auto",
+        backgroundPosition: "top center",
         backgroundRepeat: "no-repeat",
+        paddingTop: "18vw",
+        paddingBottom: "14vw",
       }}>
         {/* Depth overlays */}
         <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.20) 0%, rgba(0,0,0,0.60) 100%)", zIndex: 1, pointerEvents: "none" }} />
