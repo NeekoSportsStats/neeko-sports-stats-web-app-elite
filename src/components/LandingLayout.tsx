@@ -40,12 +40,14 @@ export function LandingLayout() {
           <img src="/logo.png" alt="Neeko" style={{ height: 80, width: "auto" }} />
         </Link>
 
-        {/* CENTER — Nav links (desktop) */}
+        {/* CENTER — Nav links (desktop) — absolutely centered on the full header width */}
         <nav style={{
           display: "flex",
           alignItems: "center",
           gap: 4,
-          margin: "0 auto",
+          position: "absolute",
+          left: "calc(50% - 6px)",
+          transform: "translateX(-50%)",
         }}>
           {NAV_LINKS.map(link => {
             const active = location.pathname === link.to;
@@ -87,7 +89,7 @@ export function LandingLayout() {
         </nav>
 
         {/* RIGHT — Auth buttons */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: "auto" }}>
           {!user && (
             <Link to="/auth" style={{
               fontSize: 13, fontWeight: 600,
