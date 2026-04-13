@@ -539,7 +539,7 @@ export default function Index() {
           <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, rgba(0,0,0,0.50) 0%, rgba(0,0,0,0.30) 32%, rgba(0,0,0,0.10) 55%, rgba(0,0,0,0.68) 100%)", zIndex: 1, pointerEvents: "none" }} />
           <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 40%, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.32) 100%)", zIndex: 2, pointerEvents: "none" }} />
 
-          <div style={{ position: "relative", zIndex: 20, width: "100%", maxWidth: 900, margin: "0 auto", textAlign: "center", paddingTop: 80 }}>
+          <div style={{ position: "relative", zIndex: 20, width: "100%", maxWidth: 900, margin: "0 auto", textAlign: "center", paddingTop: 200 }}>
             <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(245,196,81,0.70)", marginBottom: 10, textShadow: "0 1px 3px rgba(0,0,0,0.6)" }}>
               AFL Fantasy Intelligence
             </p>
