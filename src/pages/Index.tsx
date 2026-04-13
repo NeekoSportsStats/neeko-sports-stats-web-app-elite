@@ -539,23 +539,33 @@ export default function Index() {
         alignItems: "center",
         justifyContent: "center",
       }}>
-        {/* Layer 1 — base dark gradient */}
+        {/* Layer 1 — background image */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "radial-gradient(circle at 50% 35%, rgba(255,200,0,0.09), transparent 62%), linear-gradient(to bottom, #050505, #000000 80%, #0B0F14 100%)",
+          backgroundImage: "url('/images/Fantasy_sports_war_room_setup.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center 30%",
+          backgroundRepeat: "no-repeat",
           zIndex: 0,
         }} />
 
-        {/* Layer 2 — subtle gold glow */}
+        {/* Layer 2 — dark overlay to keep text readable */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "radial-gradient(circle at 50% 38%, rgba(255,200,0,0.05), transparent 70%)",
-          zIndex: 1, pointerEvents: "none",
+          background: "linear-gradient(to bottom, rgba(5,5,5,0.72) 0%, rgba(0,0,0,0.82) 60%, #0B0F14 100%)",
+          zIndex: 1,
+        }} />
+
+        {/* Layer 3 — gold radial glow */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "radial-gradient(ellipse at 50% 40%, rgba(255,190,0,0.10), transparent 65%)",
+          zIndex: 2, pointerEvents: "none",
         }} />
 
         {/* Hero content block */}
         <div style={{
-          position: "relative", zIndex: 10,
+          position: "relative", zIndex: 20,
           width: "100%", maxWidth: 780,
           textAlign: "center",
           padding: "0 clamp(20px, 5vw, 40px)",
@@ -644,15 +654,15 @@ export default function Index() {
         {/* Hero bottom fade — blends into next section */}
         <div style={{
           position: "absolute", bottom: 0, left: 0, right: 0,
-          height: 160,
+          height: 200,
           background: "linear-gradient(to bottom, transparent 0%, #0B0F14 100%)",
-          zIndex: 5, pointerEvents: "none",
+          zIndex: 15, pointerEvents: "none",
         }} />
 
         {/* Scroll hint */}
         <div style={{
           position: "absolute", bottom: 32, left: "50%", transform: "translateX(-50%)",
-          zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
+          zIndex: 20, display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
           opacity: 0.35,
         }}>
           <div style={{ width: 1, height: 32, background: "linear-gradient(to bottom, rgba(244,197,66,0.8), transparent)" }} />
