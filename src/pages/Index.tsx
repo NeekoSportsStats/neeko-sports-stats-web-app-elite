@@ -49,7 +49,7 @@ type CardProps = {
   badge?: string;
 };
 
-// ── Edge Card — clean dark glass ──────────────────────────────────────────────
+// ── Edge Card — fixed-height locked layout ─────────────────────────────────────
 function EdgeCard(p: CardProps) {
   const [hovered, setHovered] = useState(false);
   const accent = CARD_ACCENTS[p.accentIdx] ?? CARD_ACCENTS[0];
@@ -80,27 +80,28 @@ function EdgeCard(p: CardProps) {
           willChange: "transform",
         }}
       >
-        {/* Top accent bar */}
+        {/* 1 — Top accent bar */}
         <div style={{
           height: 3,
           background: `linear-gradient(to right, ${accent.color}, ${accent.dim})`,
           flexShrink: 0,
         }} />
 
-        {/* Category label strip */}
+        {/* 2 — Label row */}
         <div style={{
-          padding: "11px 20px 9px",
-          display: "flex", alignItems: "center", gap: 7,
+          padding: "10px 18px 8px",
+          display: "flex", alignItems: "center", gap: 6,
           borderBottom: "1px solid rgba(255,255,255,0.06)",
           background: `linear-gradient(to right, ${accent.dim}28, transparent)`,
           flexShrink: 0,
+          minHeight: 36,
         }}>
-          <span style={{ color: accent.label, display: "flex", alignItems: "center" }}>
+          <span style={{ color: accent.label, display: "flex", alignItems: "center", flexShrink: 0 }}>
             {p.icon}
           </span>
           <span style={{
-            fontSize: 10, fontWeight: 800,
-            letterSpacing: "0.30em",
+            fontSize: 9.5, fontWeight: 800,
+            letterSpacing: "0.28em",
             textTransform: "uppercase",
             color: accent.label,
             flex: 1,
@@ -109,39 +110,41 @@ function EdgeCard(p: CardProps) {
           </span>
           {p.position && (
             <span style={{
-              fontSize: 9, fontWeight: 700,
+              fontSize: 8.5, fontWeight: 700,
               textTransform: "uppercase",
-              color: "rgba(255,255,255,0.40)",
+              color: "rgba(255,255,255,0.38)",
               background: "rgba(255,255,255,0.07)",
               padding: "2px 6px",
               borderRadius: 4,
-              letterSpacing: "0.08em",
+              letterSpacing: "0.07em",
+              flexShrink: 0,
             }}>
               {p.position}
             </span>
           )}
           {p.badge && (
             <span style={{
-              fontSize: 10, fontWeight: 900,
-              background: `${accent.color}`,
+              fontSize: 9.5, fontWeight: 900,
+              background: accent.color,
               color: "#000",
-              padding: "2px 7px",
+              padding: "2px 6px",
               borderRadius: 4,
               letterSpacing: "0.04em",
+              flexShrink: 0,
             }}>
               {p.badge}
             </span>
           )}
         </div>
 
-        {/* Player name */}
-        <div style={{ padding: "16px 20px 4px" }}>
+        {/* 3 — Player name + team */}
+        <div style={{ padding: "14px 18px 0", flexShrink: 0 }}>
           <p style={{
             margin: 0,
-            fontSize: "clamp(14px, 1.10vw, 20px)",
+            fontSize: "clamp(13px, 1.05vw, 18px)",
             fontWeight: 800,
             color: "#f0f0f0",
-            lineHeight: 1.10,
+            lineHeight: 1.12,
             letterSpacing: "-0.025em",
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -150,9 +153,9 @@ function EdgeCard(p: CardProps) {
             {p.playerName}
           </p>
           <p style={{
-            margin: "4px 0 0",
-            fontSize: "clamp(9px, 0.52vw, 11px)",
-            color: "rgba(255,255,255,0.38)",
+            margin: "3px 0 0",
+            fontSize: "clamp(9px, 0.50vw, 10.5px)",
+            color: "rgba(255,255,255,0.36)",
             fontWeight: 600,
             textTransform: "uppercase",
             letterSpacing: "0.07em",
@@ -164,74 +167,74 @@ function EdgeCard(p: CardProps) {
           </p>
         </div>
 
-        {/* Big projection number */}
-        <div style={{ padding: "8px 20px 0", flexShrink: 0 }}>
+        {/* 4 — Projection number + sublabel */}
+        <div style={{ padding: "10px 18px 0", flexShrink: 0 }}>
           {pts != null ? (
             <>
               <span style={{
                 display: "block",
-                fontSize: "clamp(38px, 3.6vw, 64px)",
+                fontSize: "clamp(40px, 3.8vw, 58px)",
                 fontWeight: 900,
                 color: accent.color,
-                lineHeight: 0.88,
-                letterSpacing: "-0.050em",
+                lineHeight: 0.90,
+                letterSpacing: "-0.045em",
                 fontVariantNumeric: "tabular-nums",
-                textShadow: `0 0 12px ${accent.color}40`,
+                textShadow: `0 0 18px ${accent.color}38`,
               }}>
                 {pts}
               </span>
               <span style={{
                 display: "block",
-                fontSize: "clamp(8px, 0.46vw, 10px)",
-                color: "rgba(255,255,255,0.30)",
+                fontSize: 9,
+                color: "rgba(255,255,255,0.28)",
                 fontWeight: 700,
                 letterSpacing: "0.14em",
                 textTransform: "uppercase",
-                marginTop: 5,
+                marginTop: 4,
               }}>
                 Projected pts
               </span>
             </>
           ) : (
-            <span style={{ fontSize: 28, color: "rgba(255,255,255,0.20)", fontWeight: 700 }}>—</span>
+            <span style={{ fontSize: 26, color: "rgba(255,255,255,0.20)", fontWeight: 700 }}>—</span>
           )}
         </div>
 
-        {/* Hairline divider */}
+        {/* 5 — Hairline */}
         <div style={{
-          margin: "14px 20px 0",
+          margin: "12px 18px 0",
           height: 1,
-          background: `linear-gradient(to right, ${accent.color}30, transparent 80%)`,
+          background: `linear-gradient(to right, ${accent.color}28, transparent 80%)`,
           flexShrink: 0,
         }} />
 
-        {/* Reason line */}
-        <div style={{ padding: "10px 20px 12px", flex: 1, display: "flex", alignItems: "center" }}>
+        {/* 6 — Insight copy — grows to fill remaining space */}
+        <div style={{ padding: "9px 18px 0", flex: 1, display: "flex", alignItems: "center" }}>
           <p style={{
             margin: 0,
-            fontSize: "clamp(9px, 0.60vw, 12px)",
-            color: "rgba(255,255,255,0.55)",
-            fontWeight: 600,
-            lineHeight: 1,
-            whiteSpace: "nowrap",
+            fontSize: "clamp(10px, 0.62vw, 12px)",
+            color: "rgba(255,255,255,0.52)",
+            fontWeight: 500,
+            lineHeight: 1.45,
             overflow: "hidden",
-            textOverflow: "ellipsis",
-            maxWidth: "100%",
-          }}>
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+          } as React.CSSProperties}>
             {p.reason}
           </p>
         </div>
 
-        {/* CTA */}
-        <div style={{ padding: "0 20px 20px", flexShrink: 0 }}>
+        {/* 7 — CTA — always pinned to bottom */}
+        <div style={{ padding: "10px 18px 18px", flexShrink: 0 }}>
           <div style={{
-            height: 32,
+            height: 34,
             display: "flex", alignItems: "center", justifyContent: "center",
             gap: 5,
-            background: hovered ? `${accent.dim}60` : `${accent.dim}42`,
-            border: `1px solid ${hovered ? accent.color + "45" : accent.color + "25"}`,
+            background: hovered ? `${accent.dim}60` : `${accent.dim}40`,
+            border: `1px solid ${hovered ? accent.color + "50" : accent.color + "22"}`,
             color: hovered ? accent.color : accent.label,
-            fontSize: "clamp(8px, 0.50vw, 10px)",
+            fontSize: 9.5,
             fontWeight: 800,
             letterSpacing: "0.10em",
             textTransform: "uppercase",
@@ -720,17 +723,18 @@ export default function Index() {
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 24,
+            gap: 20,
             alignItems: "stretch",
+            gridAutoRows: "1fr",
           }}>
             {showSkeleton
               ? [0,1,2,3].map(i => (
-                  <div key={i} style={{ minHeight: 260, width: "100%" }}>
+                  <div key={i} style={{ minHeight: 300 }}>
                     <SkeletonCard />
                   </div>
                 ))
               : cards.map(c => (
-                  <div key={c.label} className="edge-card-enter" style={{ opacity: 0, minHeight: 260, width: "100%" }}>
+                  <div key={c.label} className="edge-card-enter" style={{ opacity: 0, display: "flex", flexDirection: "column" }}>
                     <EdgeCard {...c} />
                   </div>
                 ))
