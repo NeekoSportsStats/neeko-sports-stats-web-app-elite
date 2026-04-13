@@ -89,7 +89,7 @@ function EdgeCard(p: CardProps) {
 
         {/* Category label strip */}
         <div style={{
-          padding: "10px 16px 8px",
+          padding: "11px 20px 9px",
           display: "flex", alignItems: "center", gap: 7,
           borderBottom: "1px solid rgba(255,255,255,0.06)",
           background: `linear-gradient(to right, ${accent.dim}28, transparent)`,
@@ -135,7 +135,7 @@ function EdgeCard(p: CardProps) {
         </div>
 
         {/* Player name */}
-        <div style={{ padding: "14px 16px 4px" }}>
+        <div style={{ padding: "16px 20px 4px" }}>
           <p style={{
             margin: 0,
             fontSize: "clamp(14px, 1.10vw, 20px)",
@@ -165,7 +165,7 @@ function EdgeCard(p: CardProps) {
         </div>
 
         {/* Big projection number */}
-        <div style={{ padding: "8px 16px 0", flexShrink: 0 }}>
+        <div style={{ padding: "8px 20px 0", flexShrink: 0 }}>
           {pts != null ? (
             <>
               <span style={{
@@ -199,14 +199,14 @@ function EdgeCard(p: CardProps) {
 
         {/* Hairline divider */}
         <div style={{
-          margin: "12px 16px 0",
+          margin: "14px 20px 0",
           height: 1,
           background: `linear-gradient(to right, ${accent.color}30, transparent 80%)`,
           flexShrink: 0,
         }} />
 
         {/* Reason line */}
-        <div style={{ padding: "8px 16px 10px", flex: 1, display: "flex", alignItems: "center" }}>
+        <div style={{ padding: "10px 20px 12px", flex: 1, display: "flex", alignItems: "center" }}>
           <p style={{
             margin: 0,
             fontSize: "clamp(9px, 0.60vw, 12px)",
@@ -223,7 +223,7 @@ function EdgeCard(p: CardProps) {
         </div>
 
         {/* CTA */}
-        <div style={{ padding: "0 14px 16px", flexShrink: 0 }}>
+        <div style={{ padding: "0 20px 20px", flexShrink: 0 }}>
           <div style={{
             height: 32,
             display: "flex", alignItems: "center", justifyContent: "center",
@@ -656,9 +656,9 @@ export default function Index() {
         <div style={{
           position: "relative", zIndex: 10,
           width: "100%",
-          maxWidth: 1150,
-          padding: "0 clamp(16px, 3vw, 32px)",
-          marginTop: "clamp(18px, 2.2vw, 30px)",
+          maxWidth: 1280,
+          padding: "0 clamp(20px, 4vw, 48px)",
+          marginTop: "clamp(24px, 2.8vw, 40px)",
           marginBottom: "-80px",
         }}>
           {/* Section header */}
@@ -700,17 +700,18 @@ export default function Index() {
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 14,
+            gap: 24,
             alignItems: "stretch",
+            marginTop: 8,
           }}>
             {showSkeleton
               ? [0,1,2,3].map(i => (
-                  <div key={i} style={{ minHeight: 260 }}>
+                  <div key={i} style={{ minHeight: 260, width: "100%" }}>
                     <SkeletonCard />
                   </div>
                 ))
               : cards.map(c => (
-                  <div key={c.label} className="edge-card-enter" style={{ opacity: 0 }}>
+                  <div key={c.label} className="edge-card-enter" style={{ opacity: 0, minHeight: 260, width: "100%" }}>
                     <EdgeCard {...c} />
                   </div>
                 ))
