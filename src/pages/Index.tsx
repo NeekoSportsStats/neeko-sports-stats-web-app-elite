@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { ArrowRight, TrendingUp, TriangleAlert as AlertTriangle, Star, ChartBar as BarChart3, ChevronRight, Zap, Database, Clock, CalendarDays } from "lucide-react";
+import { ArrowRight, TrendingUp, TriangleAlert as AlertTriangle, Star, Zap as ZapIcon, ChevronRight, Zap, Database, Clock } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import MobileUpgradeBar from "@/components/mobile/MobileUpgradeBar";
@@ -16,70 +16,6 @@ import LandingTrust from "@/features/afl/landing/LandingTrust";
 import LandingPricing from "@/features/afl/landing/LandingPricing";
 import LandingFinalCTA from "@/features/afl/landing/LandingFinalCTA";
 import MobileLanding from "@/features/afl/landing/MobileLanding";
-
-// ── Hero nav pills ─────────────────────────────────────────────────────────────
-const NAV_PILLS = [
-  { label: "Current Week", icon: <CalendarDays size={14} />, to: "/sports/afl/current-round", primary: true },
-  { label: "Market Watch", icon: <TrendingUp size={14} />,   to: "/sports/afl/market-watch" },
-  { label: "Captains",     icon: <Star size={14} />,          to: "/sports/afl/captains" },
-  { label: "Rankings",     icon: <BarChart3 size={14} />,     to: "/sports/afl/rankings" },
-] as const;
-
-function HeroNavPills({ style }: { style?: React.CSSProperties }) {
-  return (
-    <div style={{
-      overflowX: "auto",
-      scrollbarWidth: "none",
-      msOverflowStyle: "none",
-      WebkitOverflowScrolling: "touch",
-      ...style,
-    }}>
-      <div style={{
-        display: "flex",
-        gap: 10,
-        justifyContent: "center",
-        padding: "2px 0",
-        minWidth: "max-content",
-        margin: "0 auto",
-      }}>
-        {NAV_PILLS.map(({ label, icon, to, primary }) => (
-          <Link
-            key={to}
-            to={to}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "9px 16px",
-              borderRadius: 999,
-              fontSize: 13,
-              fontWeight: 500,
-              textDecoration: "none",
-              whiteSpace: "nowrap",
-              transition: "background 0.15s, border-color 0.15s",
-              background: primary ? "rgba(244,197,66,0.14)" : "rgba(255,255,255,0.06)",
-              border: `1px solid ${primary ? "rgba(244,197,66,0.32)" : "rgba(255,255,255,0.08)"}`,
-              color: primary ? "#F4C542" : "#EAEAEA",
-            }}
-            onMouseEnter={e => {
-              const el = e.currentTarget as HTMLAnchorElement;
-              el.style.background = primary ? "rgba(244,197,66,0.22)" : "rgba(255,255,255,0.12)";
-              el.style.borderColor = primary ? "rgba(244,197,66,0.45)" : "rgba(255,255,255,0.15)";
-            }}
-            onMouseLeave={e => {
-              const el = e.currentTarget as HTMLAnchorElement;
-              el.style.background = primary ? "rgba(244,197,66,0.14)" : "rgba(255,255,255,0.06)";
-              el.style.borderColor = primary ? "rgba(244,197,66,0.32)" : "rgba(255,255,255,0.08)";
-            }}
-          >
-            <span style={{ opacity: 0.7, display: "flex", alignItems: "center" }}>{icon}</span>
-            {label}
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 // ── Design tokens ──────────────────────────────────────────────────────────────
 const C = {
@@ -112,8 +48,7 @@ type CardProps = {
   team: string;
   position?: string | null;
   projection?: number | null;
-  priceChange?: number | null;
-  bullets: string[];
+  reason: string;
   ctaLabel: string;
   ctaTo: string;
   badge?: string;
@@ -149,8 +84,6 @@ function StickyPin({ color }: { color: string }) {
 function WhiteboardCard(p: CardProps) {
   const [hovered, setHovered] = useState(false);
   const pts = p.projection != null ? Math.round(p.projection) : null;
-  const up  = (p.priceChange ?? 0) > 0;
-  const priceStr = p.priceChange != null ? `${up ? "+" : ""}${Math.round(p.priceChange / 1000)}k` : null;
   const rotation = CARD_ROTATIONS[p.index ?? 0] ?? -1.8;
   const paper    = STICKY_PAPERS[p.index ?? 0] ?? STICKY_PAPERS[0];
 
@@ -166,67 +99,55 @@ function WhiteboardCard(p: CardProps) {
             backgroundImage: `repeating-linear-gradient(transparent, transparent 1.1vw, ${paper.lines} 1.1vw, ${paper.lines} calc(1.1vw + 1px))`,
             borderRadius: 2, border: "1px solid rgba(0,0,0,0.10)",
             boxShadow: hovered
-              ? "0 2px 4px rgba(0,0,0,0.22), 0 10px 24px rgba(0,0,0,0.26), 0 20px 44px rgba(0,0,0,0.18)"
-              : "0 1px 3px rgba(0,0,0,0.16), 0 5px 14px rgba(0,0,0,0.20), 0 12px 28px rgba(0,0,0,0.16)",
-            transform: hovered ? `rotate(${rotation}deg) translateY(-0.5vw) scale(1.025)` : `rotate(${rotation}deg) translateY(0)`,
+              ? "0 4px 8px rgba(0,0,0,0.28), 0 12px 28px rgba(0,0,0,0.30), 0 24px 50px rgba(0,0,0,0.20)"
+              : "0 2px 5px rgba(0,0,0,0.18), 0 6px 18px rgba(0,0,0,0.22), 0 14px 32px rgba(0,0,0,0.18)",
+            transform: hovered ? `rotate(${rotation}deg) translateY(-0.6vw) scale(1.03)` : `rotate(${rotation}deg) translateY(0)`,
             transition: "all 0.22s ease", overflow: "visible", position: "relative",
           }}
         >
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1.5, background: "linear-gradient(to bottom, rgba(255,255,255,0.55), transparent)", borderRadius: "2px 2px 0 0", pointerEvents: "none" }} />
 
-          {/* Header */}
-          <div style={{ borderBottom: `1px solid ${paper.headerBorder}`, padding: "0.7vw 1vw 0.5vw", display: "flex", alignItems: "center", gap: "0.4vw" }}>
+          {/* Category label */}
+          <div style={{ borderBottom: `1px solid ${paper.headerBorder}`, padding: "0.65vw 0.9vw 0.5vw", display: "flex", alignItems: "center", gap: "0.4vw" }}>
             <span style={{ color: p.color, display: "flex", alignItems: "center", flexShrink: 0 }}>{p.icon}</span>
-            <span style={{ fontSize: "0.55vw", fontWeight: 900, letterSpacing: "0.24em", textTransform: "uppercase", color: p.color, flex: 1 }}>{p.label}</span>
+            <span style={{ fontSize: "0.52vw", fontWeight: 900, letterSpacing: "0.26em", textTransform: "uppercase", color: p.color, flex: 1 }}>{p.label}</span>
             {p.position && (
-              <span style={{ fontSize: "0.5vw", fontWeight: 800, textTransform: "uppercase", background: `${p.color}16`, color: p.color, padding: "0.15vw 0.35vw", borderRadius: 3, border: `1px solid ${p.color}25` }}>{p.position}</span>
+              <span style={{ fontSize: "0.48vw", fontWeight: 800, textTransform: "uppercase", background: `${p.color}16`, color: p.color, padding: "0.12vw 0.32vw", borderRadius: 3, border: `1px solid ${p.color}25` }}>{p.position}</span>
             )}
             {p.badge && (
-              <span style={{ fontSize: "0.5vw", fontWeight: 900, textTransform: "uppercase", background: p.color, color: "#fff", padding: "0.15vw 0.4vw", borderRadius: 3 }}>{p.badge}</span>
+              <span style={{ fontSize: "0.48vw", fontWeight: 900, textTransform: "uppercase", background: p.color, color: "#fff", padding: "0.12vw 0.38vw", borderRadius: 3 }}>{p.badge}</span>
             )}
           </div>
 
-          {/* Player */}
-          <div style={{ padding: "0.7vw 1vw 0.3vw", display: "flex", alignItems: "center", gap: "0.6vw" }}>
+          {/* Player name + team */}
+          <div style={{ padding: "0.75vw 0.9vw 0.2vw", display: "flex", alignItems: "center", gap: "0.55vw" }}>
             <PlayerAvatar name={p.playerName} color={p.color} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ fontSize: "0.9vw", fontWeight: 800, color: "#1c1208", lineHeight: 1.2, letterSpacing: "-0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.playerName}</p>
-              <p style={{ fontSize: "0.65vw", color: "#857060", marginTop: "0.15vw", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.team}</p>
+              <p style={{ fontSize: "1.0vw", fontWeight: 900, color: "#1c1208", lineHeight: 1.15, letterSpacing: "-0.025em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.playerName}</p>
+              <p style={{ fontSize: "0.6vw", color: "#7a6050", marginTop: "0.1vw", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.team}</p>
             </div>
           </div>
 
-          {/* Score */}
-          <div style={{ padding: "0.15vw 1vw 0.4vw", display: "flex", alignItems: "baseline", gap: "0.35vw" }}>
+          {/* Main stat */}
+          <div style={{ padding: "0.1vw 0.9vw 0.3vw", display: "flex", alignItems: "baseline", gap: "0.3vw" }}>
             {pts != null ? (
               <>
-                <span style={{ fontSize: "2.2vw", fontWeight: 900, color: p.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{pts}</span>
-                <span style={{ fontSize: "0.65vw", color: "#a08060", fontWeight: 700 }}>pts</span>
-                {priceStr && (
-                  <span style={{ fontSize: "0.55vw", fontWeight: 800, color: up ? "#1a5e22" : "#7a1818", background: up ? "#d8eed8" : "#f2dada", padding: "0.15vw 0.35vw", borderRadius: 3, marginLeft: "0.15vw", border: up ? "1px solid #b4d8b4" : "1px solid #e0b8b8" }}>
-                    {up ? "▲" : "▼"}{priceStr}
-                  </span>
-                )}
+                <span style={{ fontSize: "2.5vw", fontWeight: 900, color: p.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{pts}</span>
+                <span style={{ fontSize: "0.62vw", color: "#a08060", fontWeight: 700 }}>proj pts</span>
               </>
             ) : (
               <span style={{ fontSize: "1.1vw", color: "#bbb", fontWeight: 700 }}>—</span>
             )}
           </div>
 
-          {/* Bullets */}
-          {p.bullets.length > 0 && (
-            <div style={{ padding: "0.3vw 1vw 0.7vw", display: "flex", flexDirection: "column", gap: "0.35vw" }}>
-              {p.bullets.map((b, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.4vw" }}>
-                  <div style={{ width: "0.35vw", height: "0.35vw", borderRadius: "50%", background: `${p.color}50`, flexShrink: 0, marginTop: "0.3vw", border: `1px solid ${p.color}30` }} />
-                  <span style={{ fontSize: "0.55vw", color: "#4a3828", fontWeight: 600, lineHeight: 1.45 }}>{b}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* Reason line */}
+          <div style={{ padding: "0.25vw 0.9vw 0.75vw" }}>
+            <p style={{ fontSize: "0.55vw", color: "#4a3828", fontWeight: 600, lineHeight: 1.5, margin: 0, fontStyle: "italic" }}>{p.reason}</p>
+          </div>
 
           {/* CTA */}
-          <div style={{ padding: "0 0.8vw 1vw" }}>
-            <div style={{ background: `linear-gradient(to bottom, ${p.color}ee, ${p.color})`, color: "#fff", fontSize: "0.55vw", fontWeight: 800, textAlign: "center", padding: "0.55vw 0.7vw", borderRadius: 4, letterSpacing: "0.07em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 6px rgba(0,0,0,0.28)", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3vw" }}>
+          <div style={{ padding: "0 0.8vw 0.9vw" }}>
+            <div style={{ background: `linear-gradient(to bottom, ${p.color}ee, ${p.color})`, color: "#fff", fontSize: "0.52vw", fontWeight: 800, textAlign: "center", padding: "0.55vw 0.7vw", borderRadius: 4, letterSpacing: "0.07em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 6px rgba(0,0,0,0.28)", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.3vw" }}>
               {p.ctaLabel} <ChevronRight size={9} />
             </div>
           </div>
@@ -284,22 +205,33 @@ export default function Index() {
   }, []);
 
   // ── All classification via canonical engine ────────────────────────────────
-  const { mustBuyP, trapP, captainP, valueP, topRows, mwBuys, mwHolds, mwSells } = useMemo(() => {
+  const { mustBuyP, trapP, captainP, breakoutP, topRows, mwBuys, mwHolds, mwSells } = useMemo(() => {
     const mwInput: MWPlayerRow[] = players.map(toMWRow);
     const { buys, holds, sells } = classifyPlayers(mwInput);
 
-    // Players eligible for hero selection: in engine buy or hold buckets, with a projection
-    const playable = [...buys, ...holds].filter(p => p.projection != null);
+    // Signal-tag based selections
+    const allWithProjection = players.filter(p => p.projection != null && !p.is_injured && !p.is_bye);
 
-    // Hero card selections
-    const buysSorted = buys.filter(p => p.projection != null).sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0));
-    const sellsSorted = sells.filter(p => p.projection != null).sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0));
-    const byCap = [...playable].sort((a, b) => (b.captain_score ?? b.projection ?? 0) - (a.captain_score ?? a.projection ?? 0));
+    // Must Buy: signal_tag STRONG_UP or UP, highest projection
+    const mustBuyP = allWithProjection
+      .filter(p => ["STRONG_UP", "UP"].includes(p.signal_tag ?? ""))
+      .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))[0] ?? null;
 
-    const mustBuyP = buysSorted[0] ?? null;
-    const trapP    = sellsSorted[0] ?? null;
-    const captainP = byCap.find(p => p.player_id !== mustBuyP?.player_id) ?? null;
-    const valueP   = buysSorted.find(p => p.player_id !== mustBuyP?.player_id) ?? null;
+    // Trap Alert: signal_tag DOWN or STRONG_DOWN, lowest projection
+    const trapP = allWithProjection
+      .filter(p => ["DOWN", "STRONG_DOWN"].includes(p.signal_tag ?? ""))
+      .sort((a, b) => (a.projection ?? 0) - (b.projection ?? 0))[0] ?? null;
+
+    // Captain Pick: highest projection among non-mustBuy players
+    const captainP = allWithProjection
+      .filter(p => p.player_id !== mustBuyP?.player_id)
+      .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))[0] ?? null;
+
+    // Breakout Pick: positive trend_score, highest trend_score, different from above
+    const usedIds = new Set([mustBuyP?.player_id, trapP?.player_id, captainP?.player_id].filter(Boolean));
+    const breakoutP = allWithProjection
+      .filter(p => !usedIds.has(p.player_id) && (p.trend_score ?? 0) > 0)
+      .sort((a, b) => (b.trend_score ?? 0) - (a.trend_score ?? 0))[0] ?? null;
 
     // Rankings preview — top 12 sorted by neeko_rating
     const topRows = players
@@ -307,53 +239,38 @@ export default function Index() {
       .sort((a, b) => (b.neeko_rating ?? b.projection ?? 0) - (a.neeko_rating ?? a.projection ?? 0))
       .slice(0, 12);
 
-    return { mustBuyP, trapP, captainP, valueP, topRows, mwBuys: buys, mwHolds: holds, mwSells: sells };
+    return { mustBuyP, trapP, captainP, breakoutP, topRows, mwBuys: buys, mwHolds: holds, mwSells: sells };
   }, [players]);
 
-  // ── Hero card bullet derivation — only from real fields ───────────────────
-  function mustBuyBullets(): string[] {
-    if (!mustBuyP) return [];
-    const bullets: string[] = [];
-    if (mustBuyP.price_change != null && mustBuyP.price_change > 0) {
-      bullets.push(`+${Math.round(mustBuyP.price_change / 1000)}k above breakeven — price rise likely`);
-    } else if (mustBuyP.season_avg != null && mustBuyP.projection != null && mustBuyP.projection > mustBuyP.season_avg) {
-      bullets.push(`${Math.round(mustBuyP.projection - mustBuyP.season_avg)}pts above season avg — in form`);
+  // ── Hero card reason derivation — one clean sentence per card ────────────
+  function mustBuyReason(): string {
+    if (!mustBuyP) return "";
+    if (mustBuyP.why) return mustBuyP.why;
+    if (mustBuyP.season_avg != null && mustBuyP.projection != null && mustBuyP.projection > mustBuyP.season_avg) {
+      return `Projecting ${Math.round(mustBuyP.projection - mustBuyP.season_avg)}pts above season average this round.`;
     }
-    const also = mwBuys.find(p => p.player_id !== mustBuyP.player_id);
-    if (also) bullets.push(`Also consider: ${also.player_name}`);
-    return bullets;
+    return "Strong upward signal — positive edge this week.";
   }
 
-  function trapBullets(): string[] {
-    if (!trapP) return [];
-    const bullets: string[] = [];
+  function trapReason(): string {
+    if (!trapP) return "";
+    if (trapP.why) return trapP.why;
     if (trapP.breakeven != null && trapP.projection != null && trapP.projection < trapP.breakeven) {
-      bullets.push(`Scoring below breakeven — price drop risk`);
+      return "Scoring below breakeven — price drop risk this round.";
     }
-    const also = mwSells.find(p => p.player_id !== trapP.player_id);
-    if (also) bullets.push(`Also flagged: ${also.player_name}`);
-    return bullets;
+    return "Negative edge signal — risky play this week.";
   }
 
-  function captainBullets(): string[] {
-    if (!captainP) return [];
-    const bullets: string[] = [];
-    if (captainP.captain_rating) bullets.push(`${captainP.captain_rating} — top ranked captain`);
-    const also = mwBuys.find(p => p.player_id !== captainP.player_id && p.player_id !== mustBuyP?.player_id);
-    if (also) bullets.push(`Alt: ${also.player_name}`);
-    return bullets;
+  function captainReason(): string {
+    if (!captainP) return "";
+    if (captainP.why) return captainP.why;
+    return "Top captain projection this week.";
   }
 
-  function valueBullets(): string[] {
-    if (!valueP) return [];
-    const bullets: string[] = [];
-    if (valueP.price != null && valueP.price > 0) {
-      bullets.push(`Priced at $${Math.round(valueP.price / 1000)}k — strong value for projection`);
-    }
-    if (valueP.value_score != null && valueP.value_score > 0) {
-      bullets.push(`Value score: ${valueP.value_score.toFixed(1)} — above-market edge`);
-    }
-    return bullets;
+  function breakoutReason(): string {
+    if (!breakoutP) return "";
+    if (breakoutP.why) return breakoutP.why;
+    return "Trending up with strong breakout potential this round.";
   }
 
   const FREE_PREVIEW = 5;
@@ -364,40 +281,40 @@ export default function Index() {
     { icon: <Clock size={11} />,    text: "Takes 30 seconds to plan your week" },
   ];
 
-  const allHeroReady = mustBuyP && trapP && captainP && valueP;
+  const allHeroReady = mustBuyP && trapP && captainP && breakoutP;
 
   const cards: CardProps[] = !loading && allHeroReady ? [
     {
       label: "Must Buy", icon: <TrendingUp size={9} />,
       color: "#1a6028",
       playerName: mustBuyP.player_name, team: mustBuyP.team ?? "", position: mustBuyP.position,
-      projection: mustBuyP.projection, priceChange: mustBuyP.price_change,
-      bullets: mustBuyBullets(),
+      projection: mustBuyP.projection,
+      reason: mustBuyReason(),
       ctaLabel: "View Must Buys", ctaTo: "/sports/afl/current-round", index: 0,
     },
     {
       label: "Trap Alert", icon: <AlertTriangle size={9} />,
       color: "#881818",
       playerName: trapP.player_name, team: trapP.team ?? "", position: trapP.position,
-      projection: trapP.projection, priceChange: trapP.price_change,
-      bullets: trapBullets(),
-      ctaLabel: "View Trap Alerts", ctaTo: "/sports/afl/current-round", index: 1,
+      projection: trapP.projection,
+      reason: trapReason(),
+      ctaLabel: "See Trap Alerts", ctaTo: "/sports/afl/current-round", index: 1,
     },
     {
       label: "Captain Pick", icon: <Star size={9} />, badge: "C",
       color: "#7a4800",
       playerName: captainP.player_name, team: captainP.team ?? "", position: captainP.position,
-      projection: captainP.projection, priceChange: captainP.price_change,
-      bullets: captainBullets(),
+      projection: captainP.projection,
+      reason: captainReason(),
       ctaLabel: "View Captains", ctaTo: "/sports/afl/captains", index: 2,
     },
     {
-      label: "Best Value", icon: <BarChart3 size={9} />,
+      label: "Breakout Pick", icon: <ZapIcon size={9} />,
       color: "#0d4278",
-      playerName: valueP.player_name, team: valueP.team ?? "", position: valueP.position,
-      projection: valueP.projection, priceChange: valueP.price_change,
-      bullets: valueBullets(),
-      ctaLabel: "Open Market Watch", ctaTo: "/sports/afl/market-watch", index: 3,
+      playerName: breakoutP.player_name, team: breakoutP.team ?? "", position: breakoutP.position,
+      projection: breakoutP.projection,
+      reason: breakoutReason(),
+      ctaLabel: "Explore Rankings", ctaTo: "/sports/afl/rankings", index: 3,
     },
   ] : [];
 
@@ -411,8 +328,7 @@ export default function Index() {
     team: c.team,
     position: c.position,
     projection: c.projection,
-    priceChange: c.priceChange,
-    bullets: c.bullets,
+    reason: c.reason,
     ctaLabel: c.ctaLabel,
     ctaTo: c.ctaTo,
   }));
@@ -515,10 +431,10 @@ export default function Index() {
 
             {/* CTA buttons */}
             <div style={{ display: "flex", gap: "1%", justifyContent: "center", marginTop: "2%", marginBottom: "1%", flexWrap: "nowrap" }}>
-              <Link to="/auth" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "linear-gradient(to bottom, #fad52a, #d09800)", color: "#1a1000", fontWeight: 800, fontSize: "1vw", padding: "0.8vw 1.8vw", borderRadius: 7, textDecoration: "none", border: "1px solid rgba(0,0,0,0.20)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 20px rgba(0,0,0,0.35)", letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
-                Unlock This Week's Game Plan <ArrowRight size="1.1vw" />
+              <Link to="/auth" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "linear-gradient(to bottom, #fad52a, #d09800)", color: "#1a1000", fontWeight: 800, fontSize: "1vw", padding: "0.8vw 2vw", borderRadius: 7, textDecoration: "none", border: "1px solid rgba(0,0,0,0.20)", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.42), 0 2px 0 rgba(0,0,0,0.32), 0 6px 20px rgba(0,0,0,0.35)", letterSpacing: "0.01em", whiteSpace: "nowrap" }}>
+                Get This Week's Game Plan <ArrowRight size="1.1vw" />
               </Link>
-              <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "rgba(255,255,255,0.11)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.22)", color: "#ffffff", fontWeight: 700, fontSize: "1vw", padding: "0.8vw 1.8vw", borderRadius: 7, textDecoration: "none", letterSpacing: "0.01em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.14), 0 4px 12px rgba(0,0,0,0.30)", whiteSpace: "nowrap" }}>
+              <Link to="/sports/afl/current-round" style={{ display: "flex", alignItems: "center", gap: "0.5vw", background: "rgba(255,255,255,0.08)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)", border: "1px solid rgba(255,255,255,0.18)", color: "rgba(255,255,255,0.80)", fontWeight: 600, fontSize: "1vw", padding: "0.8vw 2vw", borderRadius: 7, textDecoration: "none", letterSpacing: "0.01em", boxShadow: "inset 0 1px 0 rgba(255,255,255,0.10), 0 4px 12px rgba(0,0,0,0.25)", whiteSpace: "nowrap" }}>
                 View Free Picks
               </Link>
             </div>
@@ -547,10 +463,6 @@ export default function Index() {
               }
             </div>
 
-            {/* Nav pills */}
-            <div style={{ display: "flex", justifyContent: "center", marginTop: "1.5%" }}>
-              <HeroNavPills style={{ width: "fit-content" }} />
-            </div>
           </div>
         </div>
       </section>

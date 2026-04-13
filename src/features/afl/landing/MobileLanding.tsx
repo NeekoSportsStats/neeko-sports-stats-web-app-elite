@@ -33,8 +33,7 @@ interface HeroCard {
   team: string;
   position?: string | null;
   projection?: number | null;
-  priceChange?: number | null;
-  bullets: string[];
+  reason: string;
   ctaLabel: string;
   ctaTo: string;
 }
@@ -75,8 +74,6 @@ function signalFromRow(row: RankingRow): { label: string; color: string } {
 
 function MobileHeroCard({ card }: { card: HeroCard }) {
   const pts = card.projection != null ? Math.round(card.projection) : null;
-  const up = (card.priceChange ?? 0) > 0;
-  const priceStr = card.priceChange != null ? `${up ? "+" : ""}${Math.round(card.priceChange / 1000)}k` : null;
 
   return (
     <Link to={card.ctaTo} style={{ textDecoration: "none", display: "block", width: 260, flexShrink: 0 }}>
@@ -96,20 +93,13 @@ function MobileHeroCard({ card }: { card: HeroCard }) {
         {pts != null && (
           <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 10 }}>
             <span style={{ fontSize: 28, fontWeight: 900, color: card.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{pts}</span>
-            <span style={{ fontSize: 9, color: "#555", fontWeight: 600 }}>pts proj</span>
-            {priceStr && (
-              <span style={{ fontSize: 9, fontWeight: 800, color: up ? "#22C55E" : "#EF4444", background: up ? "rgba(34,197,94,0.12)" : "rgba(239,68,68,0.12)", padding: "2px 5px", borderRadius: 4, marginLeft: 4 }}>
-                {up ? "▲" : "▼"}{priceStr}
-              </span>
-            )}
+            <span style={{ fontSize: 9, color: "#555", fontWeight: 600 }}>proj pts</span>
           </div>
         )}
 
-        {card.bullets.length > 0 && (
+        {card.reason && (
           <div style={{ marginBottom: 14 }}>
-            {card.bullets.slice(0, 1).map((b, i) => (
-              <p key={i} style={{ fontSize: 11, color: "#606060", lineHeight: 1.5 }}>{b}</p>
-            ))}
+            <p style={{ fontSize: 11, color: "#606060", lineHeight: 1.5, fontStyle: "italic" }}>{card.reason}</p>
           </div>
         )}
 
