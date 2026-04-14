@@ -236,24 +236,59 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 14 }}>
-            <Link to="/auth" style={{
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              background: "linear-gradient(160deg, #fad52a, #e09600)",
-              color: "#1a0900", fontWeight: 900, fontSize: 15,
-              padding: "14px 20px", borderRadius: 10, textDecoration: "none",
-              boxShadow: "0 4px 24px rgba(224,174,45,0.32)",
-              minHeight: 50, letterSpacing: "0.01em",
-            }}>
-              Unlock This Week's Game Plan <ArrowRight size={15} />
-            </Link>
-            <Link to="/sports/afl/market-watch" style={{
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)",
-              color: "rgba(255,255,255,0.78)", fontWeight: 700, fontSize: 14,
-              padding: "12px 20px", borderRadius: 10, textDecoration: "none", minHeight: 44,
-            }}>
-              Open Market Watch
-            </Link>
+            {isPremium ? (
+              <>
+                <Link to="/sports/afl/market-watch" style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  background: "linear-gradient(160deg, #fad52a, #e09600)",
+                  color: "#1a0900", fontWeight: 900, fontSize: 15,
+                  padding: "14px 20px", borderRadius: 10, textDecoration: "none",
+                  boxShadow: "0 4px 24px rgba(224,174,45,0.32)",
+                  minHeight: 50, letterSpacing: "0.01em",
+                }}>
+                  Open Market Watch <ArrowRight size={15} />
+                </Link>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Link to="/sports/afl/current-round" style={{
+                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)",
+                    color: "rgba(255,255,255,0.78)", fontWeight: 700, fontSize: 13,
+                    padding: "12px 10px", borderRadius: 10, textDecoration: "none", minHeight: 44,
+                  }}>
+                    Current Week
+                  </Link>
+                  <Link to="/sports/afl/rankings" style={{
+                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)",
+                    color: "rgba(255,255,255,0.78)", fontWeight: 700, fontSize: 13,
+                    padding: "12px 10px", borderRadius: 10, textDecoration: "none", minHeight: 44,
+                  }}>
+                    Rankings
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <Link to="/auth" style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  background: "linear-gradient(160deg, #fad52a, #e09600)",
+                  color: "#1a0900", fontWeight: 900, fontSize: 15,
+                  padding: "14px 20px", borderRadius: 10, textDecoration: "none",
+                  boxShadow: "0 4px 24px rgba(224,174,45,0.32)",
+                  minHeight: 50, letterSpacing: "0.01em",
+                }}>
+                  Unlock This Week's Game Plan <ArrowRight size={15} />
+                </Link>
+                <Link to="/sports/afl/market-watch" style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)",
+                  color: "rgba(255,255,255,0.78)", fontWeight: 700, fontSize: 14,
+                  padding: "12px 20px", borderRadius: 10, textDecoration: "none", minHeight: 44,
+                }}>
+                  Open Market Watch
+                </Link>
+              </>
+            )}
           </div>
 
           <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap", paddingBottom: 16 }}>
@@ -646,37 +681,39 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
       </section>
 
       {/* ─── FINAL CTA ─── */}
-      <section style={{
-        background: "linear-gradient(180deg, #100e08 0%, #070503 100%)",
-        padding: "36px 16px 48px",
-      }}>
-        <div style={{ textAlign: "center" }}>
-          <h2 style={{ fontSize: "1.75rem", fontWeight: 900, letterSpacing: "-0.03em", color: "#F5F5F5", lineHeight: 1.08, marginBottom: 10 }}>
-            Start Winning<br />This Week
-          </h2>
-          <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.35)", lineHeight: 1.6, marginBottom: 24, maxWidth: 280, margin: "0 auto 24px" }}>
-            Every tool you need to dominate your AFL Fantasy league.
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <Link to="/neeko-plus" style={{
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              background: "linear-gradient(160deg, #fad52a, #e09600)",
-              color: "#1a0900", fontWeight: 900, fontSize: 16,
-              padding: "17px 20px", borderRadius: 12, textDecoration: "none",
-              boxShadow: "0 6px 36px rgba(224,174,45,0.32)", minHeight: 56,
-            }}>
-              Unlock Full Access <ArrowRight size={16} />
-            </Link>
-            <Link to="/sports/afl/market-watch" style={{
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 13, color: "rgba(255,255,255,0.30)", textDecoration: "none",
-              padding: "12px", minHeight: 44,
-            }}>
-              Open Market Watch first
-            </Link>
+      {!isPremium && (
+        <section style={{
+          background: "linear-gradient(180deg, #100e08 0%, #070503 100%)",
+          padding: "36px 16px 48px",
+        }}>
+          <div style={{ textAlign: "center" }}>
+            <h2 style={{ fontSize: "1.75rem", fontWeight: 900, letterSpacing: "-0.03em", color: "#F5F5F5", lineHeight: 1.08, marginBottom: 10 }}>
+              Start Winning<br />This Week
+            </h2>
+            <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.35)", lineHeight: 1.6, marginBottom: 24, maxWidth: 280, margin: "0 auto 24px" }}>
+              Every tool you need to dominate your AFL Fantasy league.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <Link to="/neeko-plus" style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                background: "linear-gradient(160deg, #fad52a, #e09600)",
+                color: "#1a0900", fontWeight: 900, fontSize: 16,
+                padding: "17px 20px", borderRadius: 12, textDecoration: "none",
+                boxShadow: "0 6px 36px rgba(224,174,45,0.32)", minHeight: 56,
+              }}>
+                Unlock Full Access <ArrowRight size={16} />
+              </Link>
+              <Link to="/sports/afl/market-watch" style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 13, color: "rgba(255,255,255,0.30)", textDecoration: "none",
+                padding: "12px", minHeight: 44,
+              }}>
+                Open Market Watch first
+              </Link>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ─── STICKY BOTTOM BAR ─── */}
       {!isPremium && (
