@@ -347,7 +347,7 @@ function MobileCTABlock() {
       >
         <div className="flex items-center gap-2 mb-1">
           <Crown size={14} className="shrink-0" />
-          <span className="text-sm font-bold">Neeko+ — $9.99/month</span>
+          <span className="text-sm font-bold">Neeko+ — from $5.99/wk</span>
         </div>
         <p className="text-xs text-black/60 mb-3 leading-snug">
           Unlock 600+ players, full projections, edge scores &amp; trade insights

@@ -87,7 +87,7 @@ export default function LandingFinalCTA() {
           </Link>
 
           <Link
-            to="/sports/afl/rankings"
+            to="/sports/afl/current-round"
             onMouseEnter={() => setSecondaryHovered(true)}
             onMouseLeave={() => { setSecondaryHovered(false); setSecondaryActive(false); }}
             onMouseDown={() => setSecondaryActive(true)}
@@ -108,7 +108,7 @@ export default function LandingFinalCTA() {
               transition: "all 0.20s ease",
             }}
           >
-            View Free Rankings
+            This Week's Picks
           </Link>
         </div>
       </div>

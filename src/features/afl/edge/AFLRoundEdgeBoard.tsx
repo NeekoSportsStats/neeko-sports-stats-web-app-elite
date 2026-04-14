@@ -662,7 +662,7 @@ function FreePaywall({ onUnlock }: { onUnlock: () => void }) {
         </a>
       </div>
       <div className="flex items-center justify-between mt-1 pt-3 border-t border-white/[0.05]">
-        <span className="text-[10px] text-white/25">From $9.99/mo</span>
+        <span className="text-[10px] text-white/25">From $5.99/wk</span>
         <button onClick={onUnlock} className="text-[11px] text-[#F5C84C]/50 hover:text-[#F5C84C]/80 transition-colors underline underline-offset-2">
           See what's included
         </button>

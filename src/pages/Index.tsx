@@ -311,11 +311,13 @@ function SkeletonCard() {
 }
 
 // ── Hero CTA buttons with hover state ──────────────────────────────────────────
-function HeroPrimaryBtn() {
+function HeroPrimaryBtn({ isPremium }: { isPremium: boolean }) {
   const [hovered, setHovered] = useState(false);
+  const to = isPremium ? "/sports/afl/current-round" : "/neeko-plus";
+  const label = isPremium ? "Open Current Week" : "Start Winning With Neeko+";
   return (
     <Link
-      to="/neeko-plus"
+      to={to}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -335,16 +337,18 @@ function HeroPrimaryBtn() {
         transition: "all 0.25s ease",
       }}
     >
-      Start Winning With Neeko+ <ArrowRight size={15} />
+      {label} <ArrowRight size={15} />
     </Link>
   );
 }
 
-function HeroSecondaryBtn() {
+function HeroSecondaryBtn({ isPremium }: { isPremium: boolean }) {
   const [hovered, setHovered] = useState(false);
+  const to = isPremium ? "/sports/afl/market-watch" : "/sports/afl/current-round";
+  const label = isPremium ? "Open Market Watch" : "This Week's Picks";
   return (
     <Link
-      to="/sports/afl/rankings"
+      to={to}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -362,7 +366,7 @@ function HeroSecondaryBtn() {
         transition: "all 0.25s ease",
       }}
     >
-      View Free Rankings
+      {label}
     </Link>
   );
 }
@@ -698,8 +702,8 @@ export default function Index() {
               WebkitBackdropFilter: "blur(8px)",
               boxShadow: "0 8px 32px rgba(0,0,0,0.30), 0 0 0 1px rgba(255,255,255,0.08) inset",
             }}>
-              <HeroPrimaryBtn />
-              <HeroSecondaryBtn />
+              <HeroPrimaryBtn isPremium={isPremium} />
+              <HeroSecondaryBtn isPremium={isPremium} />
             </div>
           </div>
 

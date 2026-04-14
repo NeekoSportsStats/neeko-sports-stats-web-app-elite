@@ -355,7 +355,7 @@ export function ConversionWallRow({ onUpgrade, colSpan = TOTAL_COLS }: { onUpgra
             <Crown size={13} />
             Unlock Full Rankings
           </button>
-          <span className="text-xs text-white/25">$10/month · Cancel anytime</span>
+          <span className="text-xs text-white/25">From $5.99/wk · Cancel anytime</span>
         </div>
       </td>
     </tr>

@@ -579,7 +579,7 @@ export function MobileConversionWall({ onUpgrade }: { onUpgrade: () => void }) {
           <Crown size={13} />
           Unlock Full Rankings
         </button>
-        <span className="text-[11px] text-white/30">$10/month · Cancel anytime</span>
+        <span className="text-[11px] text-white/30">From $5.99/wk · Cancel anytime</span>
       </div>
     </div>
   );
