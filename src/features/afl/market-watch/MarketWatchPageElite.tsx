@@ -17,6 +17,7 @@ import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
 import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
+import { DataFreshnessIndicator } from "@/components/ui/DataFreshnessIndicator";
 import { fmt, fmtPrice, getCanonicalConfidenceStyles, formatCanonicalConfidenceLabel } from "@/features/afl/rankings/components/helpers";
 import { PlayerDetailModal, UpgradeModal } from "@/features/afl/rankings/components/RankingsModals";
 import type { RowTier } from "@/features/afl/rankings/components/types";
@@ -349,6 +350,7 @@ export default function MarketWatchPageElite() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPlayer, setSelectedPlayer] = useState<{ row: RankingRow; rank: number; tier: RowTier } | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<string | null>(null);
 
   const fetchData = useCallback(
     async (force = false) => {
@@ -383,6 +385,8 @@ export default function MarketWatchPageElite() {
         if (data) {
           const rows = (data as Record<string, unknown>[]).map(mapRankingRow).map(rankingToMW);
           const filtered = rows.filter((p) => !p.is_bye && !p.is_injured);
+          const firstCachedAt = (data as Record<string, unknown>[])[0]?.cached_at as string | undefined;
+          if (firstCachedAt) setDataUpdatedAt(firstCachedAt);
           _mwCache.data = filtered;
           _mwCache.ts = Date.now();
           _mwCache.userId = userId;
@@ -559,7 +563,17 @@ export default function MarketWatchPageElite() {
                 <span className="h-px w-6 bg-white/[0.06]" />
                 <span className="text-[10px] uppercase tracking-wider text-[#F5C84C] font-semibold">Market Watch</span>
               </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight">Market Watch</h1>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight">Market Watch</h1>
+                {dataUpdatedAt && (
+                  <DataFreshnessIndicator
+                    timestamp={dataUpdatedAt}
+                    label="Data"
+                    variant="compact"
+                    className="text-white/40"
+                  />
+                )}
+              </div>
               <p className="text-sm text-white/40 mt-1">Value-sorted trade signals — who to buy, hold and move on from this round</p>
             </div>
             <button
