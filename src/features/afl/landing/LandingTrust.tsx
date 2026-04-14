@@ -20,7 +20,7 @@ const STATS = [
     num: "Built In",
     label: "Matchup Context",
     sub: "Opponent concession rates and venue splits baked into every projection.",
-    color: "#60a5fa",
+    color: "#E8855A",
   },
   {
     icon: <RefreshCw size={20} />,

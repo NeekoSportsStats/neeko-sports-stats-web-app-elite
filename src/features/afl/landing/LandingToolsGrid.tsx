@@ -21,7 +21,7 @@ const TOOLS = [
     title: "Edge Board",
     desc: "Must-start, breakout, and avoid picks — distilled from the full ranking engine.",
     to: "/sports/afl/current-round",
-    color: "#60A5FA",
+    color: "#E8855A",
   },
   {
     icon: <GitCompare size={20} />,
@@ -42,7 +42,7 @@ const TOOLS = [
     title: "Player Profiles",
     desc: "Score history, form trend, value rating, and AI breakdown for any player.",
     to: "/sports/afl/rankings",
-    color: "#60a5fa",
+    color: "#E8855A",
   },
 ] as const;
 

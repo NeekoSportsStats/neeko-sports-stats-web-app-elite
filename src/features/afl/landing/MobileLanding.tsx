@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
+import { useRef, useState, useEffect, useCallback } from "react";
 import {
   ArrowRight,
   ChevronRight,
   TrendingUp,
   Zap,
-  Star,
   Target,
   Check,
   Crown,
@@ -39,19 +39,17 @@ interface HeroCard {
 
 const FREE_PREVIEW = 3;
 
-const NAV_ITEMS = [
-  { label: "This Week", to: "/sports/afl/current-round" },
-  { label: "Market", to: "/sports/afl/market-watch" },
-  { label: "Captains", to: "/sports/afl/captains" },
-  { label: "Rankings", to: "/sports/afl/rankings" },
-  { label: "Players", to: "/sports/afl/players" },
+const NAV_SECTIONS = [
+  { label: "This Week", id: "section-edge" },
+  { label: "Workflow", id: "section-workflow" },
+  { label: "Why It Works", id: "section-trust" },
+  { label: "Pricing", id: "section-pricing" },
 ] as const;
-
 
 const WORKFLOW = [
   { num: "1", icon: <Target size={15} />, title: "Find the Right Plays", desc: "Top projected scorers + must buys before lockout.", color: "#E0AE2D", to: "/sports/afl/rankings" },
   { num: "2", icon: <TrendingUp size={15} />, title: "Trade With Confidence", desc: "Spot undervalued players. Avoid overpriced traps.", color: "#22C55E", to: "/sports/afl/market-watch" },
-  { num: "3", icon: <Zap size={15} />, title: "Make Faster Decisions", desc: "Rankings, signals, edge board — one clear workflow.", color: "#60A5FA", to: "/sports/afl/current-round" },
+  { num: "3", icon: <Zap size={15} />, title: "Make Faster Decisions", desc: "Rankings, signals, edge board — one clear workflow.", color: "#E8855A", to: "/sports/afl/current-round" },
 ] as const;
 
 function signalFromRow(row: RankingRow): { label: string; color: string } {
@@ -63,7 +61,29 @@ function signalFromRow(row: RankingRow): { label: string; color: string } {
   return { label: "HOLD", color: "#E0AE2D" };
 }
 
-function MobileHeroCard({ card }: { card: HeroCard }) {
+function SectionDivider({ from, to }: { from: string; to: string }) {
+  return (
+    <div style={{
+      position: "relative",
+      height: 56,
+      background: `linear-gradient(to bottom, ${from}, ${to})`,
+      pointerEvents: "none",
+      overflow: "hidden",
+    }}>
+      <div style={{
+        position: "absolute",
+        left: "50%",
+        top: "50%",
+        transform: "translate(-50%, -50%)",
+        width: 120,
+        height: 1,
+        background: "linear-gradient(to right, transparent, rgba(224,174,45,0.22), transparent)",
+      }} />
+    </div>
+  );
+}
+
+function MobileHeroCard({ card, isActive }: { card: HeroCard; isActive: boolean }) {
   const pts = card.projection != null ? Math.round(card.projection) : null;
   const avg = card.seasonAvg != null ? Math.round(card.seasonAvg) : null;
   const vsAvgDiff = pts != null && avg != null ? pts - avg : null;
@@ -74,14 +94,17 @@ function MobileHeroCard({ card }: { card: HeroCard }) {
   return (
     <Link to={card.ctaTo} style={{ textDecoration: "none", display: "block", width: "82vw", maxWidth: 300, flexShrink: 0 }}>
       <div style={{
-        background: "rgba(255,255,255,0.055)",
-        border: `1px solid ${card.color}22`,
+        background: isActive ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.045)",
+        border: `1px solid ${isActive ? card.color + "40" : card.color + "18"}`,
         borderRadius: 14,
         padding: "14px 14px 14px",
         position: "relative",
         overflow: "hidden",
+        transform: isActive ? "scale(1.025)" : "scale(0.97)",
+        transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease",
+        boxShadow: isActive ? `0 8px 32px rgba(0,0,0,0.50), 0 0 0 1px ${card.color}18 inset` : "none",
       }}>
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: card.color, opacity: 0.65 }} />
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: isActive ? 2.5 : 1.5, background: card.color, opacity: isActive ? 0.85 : 0.5, transition: "height 0.2s ease, opacity 0.2s ease" }} />
 
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 9 }}>
           <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.26em", textTransform: "uppercase", color: `${card.color}BB`, flex: 1 }}>{card.label}</span>
@@ -150,6 +173,38 @@ function SkeletonHeroCard() {
 }
 
 export default function MobileLanding({ loading, topRows, cards, showSkeleton, isPremium }: Props) {
+  const [activeCard, setActiveCard] = useState(0);
+  const [activeSection, setActiveSection] = useState<string>("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleCardScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const cardWidth = el.scrollWidth / Math.max(cards.length, 1);
+    const idx = Math.round(el.scrollLeft / cardWidth);
+    setActiveCard(Math.min(idx, cards.length - 1));
+  }, [cards.length]);
+
+  useEffect(() => {
+    const sectionIds = NAV_SECTIONS.map(s => s.id);
+    const observers: IntersectionObserver[] = [];
+
+    sectionIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const obs = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) setActiveSection(id);
+        },
+        { rootMargin: "-40% 0px -55% 0px", threshold: 0 }
+      );
+      obs.observe(el);
+      observers.push(obs);
+    });
+
+    return () => observers.forEach(o => o.disconnect());
+  }, []);
+
   return (
     <div style={{ background: "#0a0908", overflowX: "hidden", paddingBottom: isPremium ? 0 : 68 }}>
 
@@ -160,7 +215,6 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
         padding: "32px 16px 0",
         overflow: "hidden",
       }}>
-        {/* Ambient gold glow */}
         <div style={{ position: "absolute", top: -60, left: "50%", transform: "translateX(-50%)", width: 320, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,200,0,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
 
         <div style={{ position: "relative", zIndex: 2, textAlign: "center" }}>
@@ -180,7 +234,6 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
             Trades, captains &amp; traps — powered by 600+ player projections updated every round.
           </p>
 
-          {/* CTAs — stacked full-width */}
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 8 }}>
             <Link to="/auth" style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
@@ -202,7 +255,6 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
             </Link>
           </div>
 
-          {/* Trust micro-row */}
           <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap", padding: "14px 0 20px" }}>
             {["Updated weekly", "Real AFL data", "30-sec picks"].map(t => (
               <span key={t} style={{ fontSize: 11, color: "rgba(255,255,255,0.40)", display: "flex", alignItems: "center", gap: 4 }}>
@@ -214,63 +266,108 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
 
         {/* Hero card carousel */}
         <div style={{ position: "relative", zIndex: 2, marginBottom: 0 }}>
-          <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.30em", textTransform: "uppercase", color: "rgba(224,174,45,0.50)", textAlign: "center", marginBottom: 12 }}>
-            This Week's Game Plan
-          </p>
-          <div style={{
-            overflowX: "auto", scrollSnapType: "x mandatory",
-            WebkitOverflowScrolling: "touch",
-            display: "flex", gap: 12,
-            paddingLeft: 16, paddingRight: 16, paddingBottom: 12,
-            scrollbarWidth: "none",
-          }}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}>
+            <span className="live-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", display: "inline-block", flexShrink: 0 }} />
+            <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.30em", textTransform: "uppercase", color: "rgba(224,174,45,0.60)", margin: 0 }}>
+              Live Picks
+            </p>
+          </div>
+          <div
+            ref={scrollRef}
+            onScroll={handleCardScroll}
+            style={{
+              overflowX: "auto",
+              scrollSnapType: "x mandatory",
+              WebkitOverflowScrolling: "touch",
+              display: "flex", gap: 12,
+              paddingLeft: 16, paddingRight: 16, paddingBottom: 12,
+              scrollbarWidth: "none",
+            }}
             className="mobile-card-scroll"
           >
             {showSkeleton
               ? [0, 1, 2, 3].map(i => <SkeletonHeroCard key={i} />)
-              : cards.map(c => (
-                <div key={c.label} style={{ scrollSnapAlign: "start", flexShrink: 0 }}>
-                  <MobileHeroCard card={c} />
+              : cards.map((c, i) => (
+                <div key={c.label} style={{ scrollSnapAlign: "center", flexShrink: 0 }}>
+                  <MobileHeroCard card={c} isActive={i === activeCard} />
                 </div>
               ))
             }
             <div style={{ width: 4, flexShrink: 0 }} />
           </div>
-          <p style={{ textAlign: "center", fontSize: 10, color: "rgba(255,255,255,0.18)", letterSpacing: "0.10em", marginBottom: 0, paddingBottom: 24 }}>← swipe →</p>
+
+          {/* Dot indicators */}
+          {!showSkeleton && cards.length > 1 && (
+            <div style={{ display: "flex", justifyContent: "center", gap: 6, paddingBottom: 20, marginTop: 4 }}>
+              {cards.map((_, i) => (
+                <div key={i} style={{
+                  width: i === activeCard ? 18 : 5,
+                  height: 5, borderRadius: 999,
+                  background: i === activeCard ? "#E0AE2D" : "rgba(255,255,255,0.15)",
+                  transition: "width 0.25s ease, background 0.2s ease",
+                }} />
+              ))}
+            </div>
+          )}
+          {showSkeleton && <div style={{ height: 24 }} />}
         </div>
       </section>
 
-      {/* ─── QUICK NAV STRIP ─── */}
+      {/* ─── SECTION BREAK: hero → nav ─── */}
+      <SectionDivider from="#070503" to="#0c0b09" />
+
+      {/* ─── STICKY SECTION NAV ─── */}
       <div style={{
-        background: "#0d0b09",
+        background: "#0c0b09",
         borderBottom: "1px solid rgba(255,255,255,0.05)",
         overflowX: "auto", scrollbarWidth: "none",
         WebkitOverflowScrolling: "touch",
+        position: "sticky", top: 0, zIndex: 90,
       }}>
-        <div style={{ display: "flex", gap: 8, padding: "10px 16px", minWidth: "max-content" }}>
-          {NAV_ITEMS.map(({ label, to }) => (
-            <Link key={to} to={to} style={{
-              display: "inline-flex", alignItems: "center",
-              padding: "8px 14px", borderRadius: 999,
-              fontSize: 12.5, fontWeight: 700, textDecoration: "none", whiteSpace: "nowrap",
-              minHeight: 36,
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.07)",
-              color: "rgba(255,255,255,0.55)",
-            }}>
-              {label}
-            </Link>
-          ))}
+        <div style={{ display: "flex", gap: 6, padding: "10px 16px", minWidth: "max-content" }}>
+          {NAV_SECTIONS.map(({ label, id }) => {
+            const isActive = activeSection === id;
+            return (
+              <button
+                key={id}
+                onClick={() => {
+                  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                style={{
+                  display: "inline-flex", alignItems: "center",
+                  padding: "7px 13px", borderRadius: 999,
+                  fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
+                  minHeight: 34,
+                  background: isActive ? "rgba(224,174,45,0.12)" : "rgba(255,255,255,0.04)",
+                  border: isActive ? "1px solid rgba(224,174,45,0.30)" : "1px solid rgba(255,255,255,0.07)",
+                  color: isActive ? "#E0AE2D" : "rgba(255,255,255,0.45)",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  outline: "none",
+                }}>
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
+      {/* ─── SECTION BREAK: nav → edge ─── */}
+      <SectionDivider from="#0c0b09" to="#0a0908" />
+
       {/* ─── THIS WEEK'S EDGE ─── */}
-      <section style={{ background: "#0a0908", padding: "56px 16px" }}>
+      <section id="section-edge" style={{ background: "#0a0908", padding: "40px 16px 56px" }}>
         <div style={{ marginBottom: 24, textAlign: "center" }}>
-          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(224,174,45,0.55)", marginBottom: 8 }}>Live Data</p>
-          <h2 style={{ fontSize: "1.45rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+            <span className="live-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
+            <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "#22c55e", margin: 0, opacity: 0.75 }}>This Week Only</p>
+          </div>
+          <h2 style={{ fontSize: "1.45rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15, margin: 0 }}>
             This Week's Edge
           </h2>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.28)", marginTop: 6, lineHeight: 1.5 }}>
+            Live projections updated before lockout
+          </p>
         </div>
 
         <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 14, border: "1px solid rgba(224,174,45,0.10)", overflow: "hidden" }}>
@@ -317,7 +414,6 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
             })
           )}
 
-          {/* Gate + CTA */}
           <div style={{ padding: "16px 14px", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", flexDirection: "column", alignItems: "stretch", gap: 10 }}>
             {!loading && (
               <p style={{ fontSize: 11, color: "rgba(255,255,255,0.22)", textAlign: "center" }}>
@@ -337,13 +433,19 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
         </div>
       </section>
 
+      {/* ─── SECTION BREAK: edge → workflow ─── */}
+      <SectionDivider from="#0a0908" to="#0f0e0c" />
+
       {/* ─── YOUR WEEKLY WORKFLOW ─── */}
-      <section style={{ background: "#0f0e0c", padding: "56px 16px" }}>
+      <section id="section-workflow" style={{ background: "#0f0e0c", padding: "40px 16px 56px" }}>
         <div style={{ marginBottom: 28, textAlign: "center" }}>
-          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(224,174,45,0.55)", marginBottom: 8 }}>Your Weekly Workflow</p>
+          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(224,174,45,0.55)", marginBottom: 8 }}>Your Edge</p>
           <h2 style={{ fontSize: "1.45rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15 }}>
             Win Your Week in 3 Steps
           </h2>
+          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.28)", marginTop: 6, lineHeight: 1.5 }}>
+            The exact workflow to make better decisions every round
+          </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {WORKFLOW.map(({ num, icon, title, desc, color, to }) => (
@@ -377,11 +479,17 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
         </div>
       </section>
 
+      {/* ─── SECTION BREAK: workflow → trust ─── */}
+      <SectionDivider from="#0f0e0c" to="#0a0908" />
+
       {/* ─── TRUST BLOCK ─── */}
-      <section style={{ background: "#0a0908", padding: "48px 16px" }}>
-        <h2 style={{ fontSize: "1.3rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.2, marginBottom: 18, textAlign: "center" }}>
-          Built for Serious Fantasy Players
-        </h2>
+      <section id="section-trust" style={{ background: "#0a0908", padding: "40px 16px 48px" }}>
+        <div style={{ marginBottom: 18, textAlign: "center" }}>
+          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(34,197,94,0.55)", marginBottom: 8 }}>Why It Works</p>
+          <h2 style={{ fontSize: "1.3rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.2 }}>
+            Built for Serious Fantasy Players
+          </h2>
+        </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {[
             "630+ players analysed every round",
@@ -407,8 +515,11 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
         </div>
       </section>
 
+      {/* ─── SECTION BREAK: trust → pricing ─── */}
+      <SectionDivider from="#0a0908" to="#0d0b09" />
+
       {/* ─── PRICING ─── */}
-      <section style={{ background: "linear-gradient(180deg, #0d0b09 0%, #100e08 100%)", padding: "56px 16px" }}>
+      <section id="section-pricing" style={{ background: "linear-gradient(180deg, #0d0b09 0%, #100e08 100%)", padding: "40px 16px 56px" }}>
         <div style={{ marginBottom: 24, textAlign: "center" }}>
           <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(224,174,45,0.55)", marginBottom: 8 }}>Pricing</p>
           <h2 style={{ fontSize: "1.45rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15 }}>
@@ -419,7 +530,6 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
           </p>
         </div>
 
-        {/* Free tier — compact */}
         <div style={{
           background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)",
           borderRadius: 14, padding: "18px 16px", marginBottom: 12,
@@ -441,7 +551,6 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
           </Link>
         </div>
 
-        {/* Neeko+ — primary */}
         <div style={{
           background: "linear-gradient(160deg, #1c1507 0%, #110e04 100%)",
           border: "1px solid rgba(224,174,45,0.28)",
@@ -556,6 +665,7 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
 
       <style>{`
         .mobile-card-scroll::-webkit-scrollbar { display: none; }
+        .mobile-nav-scroll::-webkit-scrollbar { display: none; }
         @keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
         .live-dot { animation: livePulse 1.8s ease-in-out infinite; }
       `}</style>

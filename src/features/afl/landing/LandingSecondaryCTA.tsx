@@ -18,7 +18,7 @@ const POINTS = [
     icon: <Layers size={20} />,
     title: "Stop second-guessing your captain",
     desc: "Confidence-scored picks with matchup context — lock in your captain before your competition does.",
-    color: "#60a5fa",
+    color: "#E8855A",
   },
 ];
 

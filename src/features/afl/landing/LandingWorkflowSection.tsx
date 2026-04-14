@@ -28,7 +28,7 @@ const STEPS = [
     icon: <CheckCircle size={22} />,
     title: "Make Confident Trades & Captain Calls",
     sub: "Lock in your team with certainty before lockout.",
-    color: "#60A5FA",
+    color: "#E8855A",
     to: "/sports/afl/current-round",
     cta: "View This Round",
   },

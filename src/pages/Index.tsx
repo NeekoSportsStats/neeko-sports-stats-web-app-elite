@@ -29,7 +29,7 @@ const CARD_ACCENTS = [
   { color: "#22c55e", dim: "#14532d", label: "#4ade80" },   // Must Buy — green
   { color: "#f87171", dim: "#7f1d1d", label: "#fca5a5" },   // Trap Alert — red
   { color: "#E0AE2D", dim: "#78480f", label: "#fcd34d" },   // Captain — gold
-  { color: "#60a5fa", dim: "#1e3a8a", label: "#93c5fd" },   // Trade Target — blue
+  { color: "#E8855A", dim: "#7a3318", label: "#f4a87a" },   // Trade Target — amber
 ];
 
 // ── Card type ──────────────────────────────────────────────────────────────────
