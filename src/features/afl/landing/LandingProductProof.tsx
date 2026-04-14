@@ -6,9 +6,95 @@ import { fmtPrice } from "@/features/afl/market-watch/helpers";
 
 const GOLD = "#E0AE2D";
 
-// ── Signal helpers ─────────────────────────────────────────────────────────────
+// ── View types ────────────────────────────────────────────────────────────────
 
-function resolveSignal(row: RankingRow): { label: string; color: string } {
+type TabId = "rankings" | "market-watch" | "captains" | "players" | "current-round";
+
+// ── Sorting / filtering for each view ────────────────────────────────────────
+
+function buildRankingsRows(players: RankingRow[]): RankingRow[] {
+  return players
+    .filter(p => !p.is_injured && !p.is_bye && (p.games_played ?? 0) >= 1 && (p.projection ?? 0) > 50)
+    .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
+    .slice(0, 8);
+}
+
+function buildMarketRows(players: RankingRow[]): RankingRow[] {
+  const base = players.filter(
+    p => !p.is_injured && !p.is_bye && (p.price ?? 0) > 0 && (p.games_played ?? 3) >= 3
+  );
+  if (base.length === 0) {
+    return players
+      .filter(p => (p.price ?? 0) > 0 && (p.games_played ?? 0) >= 1)
+      .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
+      .slice(0, 8);
+  }
+  return base
+    .sort((a, b) => Math.abs(b.value_score ?? 0) - Math.abs(a.value_score ?? 0))
+    .slice(0, 8);
+}
+
+function buildCaptainsRows(players: RankingRow[]): RankingRow[] {
+  return players
+    .filter(p => !p.is_injured && !p.is_bye && (p.projection ?? 0) > 0)
+    .sort((a, b) =>
+      (b.ceiling_estimate ?? b.captain_score ?? b.projection ?? 0) -
+      (a.ceiling_estimate ?? a.captain_score ?? a.projection ?? 0)
+    )
+    .slice(0, 8);
+}
+
+function buildPlayersRows(players: RankingRow[]): RankingRow[] {
+  return players
+    .filter(p => (p.games_played ?? 0) >= 2 && (p.last_3_avg ?? p.season_avg ?? 0) > 0)
+    .map(p => ({
+      ...p,
+      _form_delta: (p.last_3_avg ?? p.season_avg ?? 0) - (p.season_avg ?? p.last_3_avg ?? 0),
+    } as RankingRow & { _form_delta: number }))
+    .sort((a: any, b: any) => b._form_delta - a._form_delta)
+    .slice(0, 8);
+}
+
+function buildStartSitRows(players: RankingRow[]): RankingRow[] {
+  const eligible = players.filter(
+    p => !p.is_injured && !p.is_bye && (p.projection ?? 0) > 0
+  );
+  if (eligible.length === 0) return [];
+  const maxTrend = Math.max(...eligible.map(p => p.trend_score ?? 0));
+  const hasTrend = maxTrend > 0;
+  if (hasTrend) {
+    return eligible
+      .sort((a, b) => (b.trend_score ?? 0) - (a.trend_score ?? 0))
+      .slice(0, 8);
+  }
+  return eligible
+    .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
+    .slice(0, 8);
+}
+
+// ── Deduplication across all 5 views ─────────────────────────────────────────
+
+function dedupeAcrossViews(views: Record<TabId, RankingRow[]>): Record<TabId, RankingRow[]> {
+  const used = new Set<string | null>();
+  const order: TabId[] = ["rankings", "market-watch", "captains", "players", "current-round"];
+  const result = {} as Record<TabId, RankingRow[]>;
+
+  for (const key of order) {
+    const deduped = views[key].filter(p => {
+      if (!p.player_id) return true;
+      if (used.has(p.player_id)) return false;
+      used.add(p.player_id);
+      return true;
+    });
+    result[key] = deduped.slice(0, 5);
+  }
+
+  return result;
+}
+
+// ── Tag resolvers — one per view ──────────────────────────────────────────────
+
+function rankingsTag(row: RankingRow): { label: string; color: string } {
   const raw = (row.action ?? row.signal_tag ?? row.signal ?? "").toUpperCase();
   if (raw === "STRONG_START" || raw === "START" || raw === "STRONG_UP" || raw === "UP" || raw === "BUY") {
     return { label: "BUY", color: "#22c55e" };
@@ -19,124 +105,66 @@ function resolveSignal(row: RankingRow): { label: string; color: string } {
   return { label: "HOLD", color: GOLD };
 }
 
-function resolveMWCategory(row: RankingRow): { label: string; color: string } {
-  const cat = (row.category ?? row.signal ?? "").toUpperCase();
-  if (cat.includes("BREAK") || cat.includes("UP") || cat.includes("BUY") || cat.includes("START")) {
-    return { label: "BREAKOUT", color: "#22c55e" };
-  }
-  if (cat.includes("TRAP") || cat.includes("DOWN") || cat.includes("SELL") || cat.includes("SIT")) {
-    return { label: "TRAP", color: "#f87171" };
-  }
-  return { label: "WATCH", color: GOLD };
+function marketTag(row: RankingRow): { label: string; color: string } {
+  const vs = row.value_score ?? 0;
+  if (vs > 40) return { label: "STEAL", color: "#22c55e" };
+  if (vs > 15) return { label: "VALUE", color: "#4ade80" };
+  if (vs > -10) return { label: "FAIR", color: GOLD };
+  if (vs < -25) return { label: "AVOID", color: "#f87171" };
+  return { label: "TRAP", color: "#fb923c" };
 }
 
-function resolveCaptainRating(row: RankingRow): { label: string; color: string } {
-  const score = row.captain_score ?? 0;
+function captainsTag(row: RankingRow): { label: string; color: string } {
+  const ceiling = row.ceiling_estimate ?? 0;
+  const proj = row.projection ?? 0;
   const conf = row.projection_confidence ?? 0;
-  if (score >= 80 || (score >= 70 && conf >= 70)) return { label: "LOCK", color: "#E0AE2D" };
-  if (score >= 60) return { label: "SAFE", color: GOLD };
-  if (score >= 40) return { label: "POD", color: "rgba(255,255,255,0.45)" };
+  const upside = row.upside_pct ?? 0;
+  const cscore = row.captain_score ?? 0;
+  if ((cscore >= 80 || ceiling >= 150) && conf >= 65) return { label: "LOCK", color: GOLD };
+  if ((cscore >= 65 || ceiling >= 130) && upside >= 20) return { label: "HIGH CEIL", color: "#facc15" };
+  if (conf >= 70 && proj >= 100) return { label: "SAFE", color: "#86efac" };
+  if (upside >= 30) return { label: "POD", color: "#fb923c" };
   return { label: "RISKY", color: "#f87171" };
 }
 
-function resolveEdgeTag(row: RankingRow): { label: string; color: string } {
-  const sig = (row.action ?? row.signal ?? "").toUpperCase();
+function formTag(row: RankingRow & { _form_delta?: number }): { label: string; color: string } {
+  const delta = row._form_delta ?? ((row.last_3_avg ?? row.season_avg ?? 0) - (row.season_avg ?? row.last_3_avg ?? 0));
+  if (delta > 20) return { label: "HOT", color: "#f97316" };
+  if (delta > 10) return { label: "RISING", color: "#fb923c" };
+  if (delta > 3) return { label: "TRENDING", color: "#fbbf24" };
+  if (delta < -15) return { label: "COLD", color: "#93c5fd" };
+  if (delta < -5) return { label: "FADING", color: "#60a5fa" };
+  return { label: "STABLE", color: "rgba(255,255,255,0.38)" };
+}
+
+function startSitTag(row: RankingRow): { label: string; color: string } {
+  const sig = (row.action ?? row.signal ?? row.signal_tag ?? "").toUpperCase();
   const trend = row.trend_score ?? 0;
-  if (sig === "STRONG_START" || sig === "BUY") return { label: "MUST START", color: "#22c55e" };
-  if (sig === "START") return { label: "START", color: "#4ade80" };
-  if (trend > 10) return { label: "BREAKOUT", color: "#4ade80" };
-  if (trend > 3) return { label: "WATCH", color: GOLD };
-  if (sig === "SIT" || sig === "STRONG_SIT" || sig === "SELL") return { label: "SIT", color: "#f87171" };
+  if (sig === "STRONG_START" || sig === "STRONG_UP") return { label: "MUST START", color: "#22c55e" };
+  if (sig === "START" || sig === "UP" || sig === "BUY") return { label: "START", color: "#4ade80" };
+  if (trend > 12) return { label: "MUST START", color: "#22c55e" };
+  if (trend > 5) return { label: "START", color: "#4ade80" };
+  if (sig === "STRONG_SIT" || sig === "STRONG_DOWN") return { label: "BENCH", color: "#f87171" };
+  if (sig === "SIT" || sig === "DOWN" || sig === "SELL") return { label: "SIT", color: "#fb923c" };
+  if (trend < -5) return { label: "SIT", color: "#fb923c" };
   return { label: "HOLD", color: GOLD };
 }
 
-// ── Derived data builders — no static fallback ────────────────────────────────
-
-function buildRankingsRows(players: RankingRow[]): RankingRow[] {
-  return players
-    .filter(p => !p.is_injured && !p.is_bye && (p.games_played ?? 0) >= 1 && (p.projection ?? 0) > 0)
-    .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
-    .slice(0, 5);
-}
-
-function buildMarketWatchRows(players: RankingRow[]): RankingRow[] {
-  const candidates = players.filter(
-    p => !p.is_injured && !p.is_bye && (p.price ?? 0) > 0 && (p.games_played ?? 0) >= 1
-  );
-  const breakouts = candidates
-    .filter(p => {
-      const cat = (p.category ?? p.signal ?? "").toUpperCase();
-      return cat.includes("BREAK") || cat.includes("UP") || cat.includes("BUY") || cat.includes("START");
-    })
-    .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
-    .slice(0, 3);
-  const traps = candidates
-    .filter(p => {
-      const cat = (p.category ?? p.signal ?? "").toUpperCase();
-      return cat.includes("TRAP") || cat.includes("DOWN") || cat.includes("SELL") || cat.includes("SIT");
-    })
-    .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))
-    .slice(0, 2);
-  const result = [...breakouts, ...traps].slice(0, 5);
-  if (result.length < 2) {
-    return candidates.sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)).slice(0, 5);
-  }
-  return result;
-}
-
-function buildCaptainsRows(players: RankingRow[]): RankingRow[] {
-  return players
-    .filter(p => !p.is_injured && !p.is_bye && (p.projection ?? 0) > 0)
-    .sort((a, b) => (b.captain_score ?? b.projection ?? 0) - (a.captain_score ?? a.projection ?? 0))
-    .slice(0, 5);
-}
-
-function buildPlayersRows(players: RankingRow[]): RankingRow[] {
-  return players
-    .filter(p => (p.games_played ?? 0) >= 1 && ((p.last_5_avg ?? 0) > 0 || (p.neeko_rating ?? 0) > 0))
-    .sort((a, b) => (b.neeko_rating ?? b.projection ?? 0) - (a.neeko_rating ?? a.projection ?? 0))
-    .slice(0, 5);
-}
-
-function buildEdgeRows(players: RankingRow[]): RankingRow[] {
-  const eligible = players.filter(
-    p => !p.is_injured && !p.is_bye && (p.projection ?? 0) > 0
-  );
-  const mustStart = eligible
-    .filter(p => {
-      const sig = (p.action ?? p.signal ?? "").toUpperCase();
-      return sig === "START" || sig === "STRONG_START" || sig === "BUY";
-    })
-    .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
-    .slice(0, 3);
-  const breakouts = eligible
-    .filter(p => !mustStart.includes(p) && (p.trend_score ?? 0) > 5)
-    .sort((a, b) => (b.trend_score ?? 0) - (a.trend_score ?? 0))
-    .slice(0, 2);
-  const result = [...mustStart, ...breakouts].slice(0, 5);
-  if (result.length < 2) {
-    return eligible.sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0)).slice(0, 5);
-  }
-  return result;
-}
-
 // ── Tab config ────────────────────────────────────────────────────────────────
-
-type TabId = "rankings" | "market-watch" | "captains" | "players" | "current-round";
 
 type TabConfig = {
   id: TabId;
   label: string;
   icon: React.ReactNode;
   heading: string;
-  focusLabel: string;
-  focusSublabel: string;
+  lensLabel: string;
+  lensSubLabel: string;
   desc: string;
   to: string;
   ctaLabel: string;
   accentColor: string;
-  primaryStatLabel: string;
-  actionPillContext: string;
+  colStatLabel: string;
+  colTagLabel: string;
 };
 
 const TABS: TabConfig[] = [
@@ -145,70 +173,70 @@ const TABS: TabConfig[] = [
     label: "Rankings",
     icon: <BarChart3 size={14} />,
     heading: "Full Player Rankings",
-    focusLabel: "Lens: Projection",
-    focusSublabel: "Who scores the most points this round",
-    desc: "See who to pick — based on real projections, value scores, and trend signals.",
+    lensLabel: "LENS: PROJECTION",
+    lensSubLabel: "Who scores the most points this round",
+    desc: "Top-rated players sorted by projected fantasy score — the baseline view.",
     to: "/sports/afl/rankings",
     ctaLabel: "Explore Rankings",
     accentColor: GOLD,
-    primaryStatLabel: "Projected",
-    actionPillContext: "Trade action",
+    colStatLabel: "Projected",
+    colTagLabel: "Trade signal",
   },
   {
     id: "market-watch",
     label: "Market Watch",
     icon: <TrendingUp size={14} />,
     heading: "Market Watch",
-    focusLabel: "Lens: Value Gap",
-    focusSublabel: "Undervalued vs overpriced before trade deadline",
-    desc: "Find undervalued players and avoid traps before every trade deadline.",
+    lensLabel: "LENS: VALUE GAP",
+    lensSubLabel: "Who is mispriced — steals and traps before trade deadline",
+    desc: "Sorted by value gap: biggest upside vs price. Spot steals and avoid traps.",
     to: "/sports/afl/market-watch",
     ctaLabel: "Open Market Watch",
     accentColor: "#22c55e",
-    primaryStatLabel: "Price",
-    actionPillContext: "Market signal",
+    colStatLabel: "Price",
+    colTagLabel: "Market signal",
   },
   {
     id: "captains",
     label: "Captains",
     icon: <Star size={14} />,
     heading: "Captain Picks",
-    focusLabel: "Lens: Ceiling + Safety",
-    focusSublabel: "Best captain based on upside and confidence",
-    desc: "Know the best captain picks before lockout — ranked by confidence.",
+    lensLabel: "LENS: CEILING",
+    lensSubLabel: "Best captain based on ceiling score and confidence",
+    desc: "Sorted by ceiling estimate — who has the highest upside to double-score.",
     to: "/sports/afl/captains",
     ctaLabel: "View Captain Picks",
-    accentColor: "#E0AE2D",
-    primaryStatLabel: "Projected",
-    actionPillContext: "Captain rating",
+    accentColor: "#facc15",
+    colStatLabel: "Ceiling",
+    colTagLabel: "Captain rating",
   },
   {
     id: "players",
     label: "Players",
     icon: <User size={14} />,
-    heading: "Player Profiles",
-    focusLabel: "Lens: Form",
-    focusSublabel: "Recent form trend and consistency rating",
-    desc: "Understand form, value, and projections for every AFL fantasy player.",
+    heading: "Player Form",
+    lensLabel: "LENS: MOMENTUM",
+    lensSubLabel: "Who is trending up right now vs season baseline",
+    desc: "Sorted by form delta: last 3 average minus season average — pure momentum.",
     to: "/sports/afl/rankings",
     ctaLabel: "View Player Pages",
-    accentColor: "#E8855A",
-    primaryStatLabel: "L5 Avg",
-    actionPillContext: "Form signal",
+    accentColor: "#f97316",
+    colStatLabel: "L3 Avg",
+    colTagLabel: "Form signal",
   },
   {
     id: "current-round",
     label: "Current Week",
     icon: <Zap size={14} />,
     heading: "Weekly Edge Board",
-    focusLabel: "Lens: Matchup",
-    focusSublabel: "Start/sit decisions based on this week's opponent",
-    desc: "Your full weekly decision hub — trades, captains, and start/sit in one place.",
+    lensLabel: "LENS: START/SIT",
+    lensSubLabel: "Actionable start and sit decisions for this round",
+    desc: "Sorted by trend score — who to start, hold, or bench before lockout.",
     to: "/sports/afl/current-round",
     ctaLabel: "View Edge Board",
-    accentColor: "#E8855A",
-    primaryStatLabel: "Projected",
-    actionPillContext: "Start/sit",
+    accentColor: "#38bdf8",
+    colStatLabel: "Projected",
+    colTagLabel: "Decision",
   },
 ];
 
@@ -218,36 +246,45 @@ type RowProps = { row: RankingRow; index: number; tabId: TabId; accentColor: str
 
 function DataRow({ row, index, tabId, accentColor }: RowProps) {
   let primaryStat: string;
-  let subLabel: string;
+  let subStat: string;
   let tag: { label: string; color: string };
 
   if (tabId === "rankings") {
     const proj = row.projection != null ? Math.round(row.projection) : null;
     primaryStat = proj != null ? `${proj} pts` : "—";
-    subLabel = row.matchup_label ?? "—";
-    tag = resolveSignal(row);
+    subStat = row.matchup_label ?? (row.season_avg != null ? `${Math.round(row.season_avg)} avg` : "—");
+    tag = rankingsTag(row);
+
   } else if (tabId === "market-watch") {
     primaryStat = fmtPrice(row.price);
-    const vs = row.value_score != null ? (row.value_score > 0 ? `+${row.value_score.toFixed(1)}` : row.value_score.toFixed(1)) : "—";
-    subLabel = `Value ${vs}`;
-    tag = resolveMWCategory(row);
+    const vs = row.value_score != null
+      ? (row.value_score > 0 ? `+${row.value_score.toFixed(1)}` : row.value_score.toFixed(1))
+      : "—";
+    subStat = `Value ${vs}`;
+    tag = marketTag(row);
+
   } else if (tabId === "captains") {
+    const ceil = row.ceiling_estimate != null ? Math.round(row.ceiling_estimate) : null;
     const proj = row.projection != null ? Math.round(row.projection) : null;
-    primaryStat = proj != null ? `${proj} pts` : "—";
+    primaryStat = ceil != null ? `${ceil} ceil` : (proj != null ? `${proj} pts` : "—");
     const conf = row.projection_confidence != null ? `${Math.round(row.projection_confidence)}% conf` : "—";
-    subLabel = conf;
-    tag = resolveCaptainRating(row);
+    subStat = conf;
+    tag = captainsTag(row);
+
   } else if (tabId === "players") {
-    const avg5 = row.last_5_avg != null ? `${Math.round(row.last_5_avg)} avg` : "—";
-    primaryStat = avg5;
-    const nr = row.neeko_rating != null ? `NR ${Math.round(row.neeko_rating)}` : "—";
-    subLabel = nr;
-    tag = resolveSignal(row);
+    const l3 = row.last_3_avg != null ? Math.round(row.last_3_avg) : null;
+    const avg = row.season_avg != null ? Math.round(row.season_avg) : null;
+    primaryStat = l3 != null ? `${l3} avg` : (avg != null ? `${avg} avg` : "—");
+    const delta = (row.last_3_avg ?? row.season_avg ?? 0) - (row.season_avg ?? row.last_3_avg ?? 0);
+    const sign = delta >= 0 ? "+" : "";
+    subStat = avg != null ? `${sign}${Math.round(delta)} vs season` : "—";
+    tag = formTag(row as any);
+
   } else {
     const proj = row.projection != null ? Math.round(row.projection) : null;
-    primaryStat = proj != null ? `${proj} proj` : "—";
-    subLabel = row.matchup_label ?? "—";
-    tag = resolveEdgeTag(row);
+    primaryStat = proj != null ? `${proj} pts` : "—";
+    subStat = row.matchup_label ?? (row.trend_score != null ? `Trend ${row.trend_score > 0 ? "+" : ""}${row.trend_score}` : "—");
+    tag = startSitTag(row);
   }
 
   const subtitle = [row.position, row.team].filter(Boolean).join(" · ");
@@ -294,14 +331,14 @@ function DataRow({ row, index, tabId, accentColor }: RowProps) {
             {primaryStat}
           </p>
           <p style={{ margin: "2px 0 0", fontSize: 10, color: "rgba(255,255,255,0.26)", whiteSpace: "nowrap" }}>
-            {subLabel}
+            {subStat}
           </p>
         </div>
         <span style={{
           fontSize: 10, fontWeight: 700,
           color: tag.color,
-          background: `${tag.color}16`,
-          border: `1px solid ${tag.color}28`,
+          background: `${tag.color}18`,
+          border: `1px solid ${tag.color}30`,
           padding: "3px 9px",
           borderRadius: 999,
           letterSpacing: "0.05em",
@@ -398,10 +435,7 @@ function SkeletonRows() {
 
 function EmptyState({ accentColor }: { accentColor: string }) {
   return (
-    <div style={{
-      padding: "32px 22px",
-      textAlign: "center",
-    }}>
+    <div style={{ padding: "32px 22px", textAlign: "center" }}>
       <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.28)", lineHeight: 1.5 }}>
         Data updates before every round lockout.
       </p>
@@ -449,23 +483,32 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
     }
   }, [panelVisible]);
 
-  const active = TABS.find(t => t.id === activeId) ?? TABS[0];
-
-  const derivedRows: RankingRow[] = useMemo(() => {
-    if (rankingsLoading || rankingsPlayers.length === 0) return [];
-    switch (activeId) {
-      case "rankings":      return buildRankingsRows(rankingsPlayers);
-      case "market-watch":  return buildMarketWatchRows(rankingsPlayers);
-      case "captains":      return buildCaptainsRows(rankingsPlayers);
-      case "players":       return buildPlayersRows(rankingsPlayers);
-      case "current-round": return buildEdgeRows(rankingsPlayers);
+  // Build all 5 views and deduplicate players across them
+  const allViews = useMemo<Record<TabId, RankingRow[]>>(() => {
+    if (rankingsLoading || rankingsPlayers.length === 0) {
+      return {
+        rankings: [],
+        "market-watch": [],
+        captains: [],
+        players: [],
+        "current-round": [],
+      };
     }
-  }, [activeId, rankingsPlayers, rankingsLoading]);
+    const raw: Record<TabId, RankingRow[]> = {
+      rankings: buildRankingsRows(rankingsPlayers),
+      "market-watch": buildMarketRows(rankingsPlayers),
+      captains: buildCaptainsRows(rankingsPlayers),
+      players: buildPlayersRows(rankingsPlayers),
+      "current-round": buildStartSitRows(rankingsPlayers),
+    };
+    return dedupeAcrossViews(raw);
+  }, [rankingsPlayers, rankingsLoading]);
 
+  const active = TABS.find(t => t.id === activeId) ?? TABS[0];
+  const derivedRows = allViews[activeId] ?? [];
   const visibleRows = derivedRows.slice(0, visibleCount);
   const isLive = !rankingsLoading && rankingsPlayers.length > 0;
   const isEmpty = !rankingsLoading && derivedRows.length === 0;
-
   const playerCount = rankingsLoading ? "..." : (rankingsPlayers.length > 0 ? `${rankingsPlayers.length}+` : "630+");
 
   function renderRows() {
@@ -524,7 +567,6 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
             One model. Five lenses. Every decision covered before lockout.
           </p>
 
-          {/* Shared context row */}
           <div style={{
             display: "inline-flex",
             alignItems: "center",
@@ -541,7 +583,7 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
             <span style={{ margin: "0 10px", color: "rgba(255,255,255,0.14)" }}>·</span>
             <span>{isLive ? "Live · Updated before lockout" : "Data ready before lockout"}</span>
             <span style={{ margin: "0 10px", color: "rgba(255,255,255,0.14)" }}>·</span>
-            <span style={{ color: "rgba(224,174,45,0.55)", fontWeight: 600 }}>Same model · Different views</span>
+            <span style={{ color: "rgba(224,174,45,0.55)", fontWeight: 600 }}>5 unique views</span>
           </div>
         </div>
 
@@ -589,18 +631,13 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
                   <span style={{ display: "flex", flexShrink: 0 }}>{tab.icon}</span>
                   <span style={{ flex: 1 }}>{tab.label}</span>
                   {isActive && (
-                    <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
-                      <div style={{
-                        width: 6, height: 6, borderRadius: "50%",
-                        background: "#22c55e",
-                      }} />
-                    </div>
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", flexShrink: 0 }} />
                   )}
                 </button>
               );
             })}
 
-            {/* Engine label below nav */}
+            {/* Engine note */}
             <div style={{
               marginTop: 12,
               padding: "10px 14px",
@@ -612,7 +649,7 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
                 Neeko Engine
               </p>
               <p style={{ margin: "4px 0 0", fontSize: 11, color: "rgba(255,255,255,0.28)", lineHeight: 1.5 }}>
-                One model powers all views. Data updates before every round.
+                Each tab sorts by a different signal. Different players, different decisions.
               </p>
             </div>
           </div>
@@ -626,7 +663,6 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
             borderRadius: 14,
             overflow: "hidden",
             boxShadow: "0 20px 56px rgba(0,0,0,0.50)",
-            transition: "border-color 0.22s ease",
             opacity: panelVisible ? 1 : 0,
             transform: panelVisible ? "translateY(0)" : "translateY(4px)",
             transitionProperty: "opacity, transform, border-color",
@@ -668,7 +704,7 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
                     letterSpacing: "0.06em", textTransform: "uppercase" as const,
                     flexShrink: 0,
                   }}>
-                    {active.focusLabel}
+                    {active.lensLabel}
                   </span>
                   {isLive ? (
                     <span style={{
@@ -700,20 +736,19 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
                   margin: "3px 0 0", fontSize: 11, color: "rgba(255,255,255,0.34)",
                   fontWeight: 400, lineHeight: 1.4,
                 }}>
-                  {active.focusSublabel}
+                  {active.lensSubLabel}
                 </p>
               </div>
 
-              {/* Column labels */}
               <div style={{
                 display: "flex", alignItems: "center", gap: 16,
                 flexShrink: 0, paddingTop: 8,
               }}>
                 <span style={{ fontSize: 9.5, fontWeight: 600, color: "rgba(255,255,255,0.20)", letterSpacing: "0.06em", textTransform: "uppercase" as const, minWidth: 44, textAlign: "right" as const }}>
-                  {active.primaryStatLabel}
+                  {active.colStatLabel}
                 </span>
                 <span style={{ fontSize: 9.5, fontWeight: 600, color: "rgba(255,255,255,0.20)", letterSpacing: "0.06em", textTransform: "uppercase" as const, minWidth: 52, textAlign: "center" as const }}>
-                  {active.actionPillContext}
+                  {active.colTagLabel}
                 </span>
               </div>
             </div>
@@ -723,7 +758,7 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
               {renderRows()}
             </div>
 
-            {/* Gating message + footer */}
+            {/* Gating strip */}
             {!isPremium && !rankingsLoading && !isEmpty && (
               <div style={{
                 margin: "0 22px 0",
@@ -755,6 +790,7 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
               </div>
             )}
 
+            {/* Footer */}
             <div style={{
               padding: "14px 22px",
               borderTop: "1px solid rgba(255,255,255,0.04)",
