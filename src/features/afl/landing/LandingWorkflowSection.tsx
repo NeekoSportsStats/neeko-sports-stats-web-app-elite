@@ -155,12 +155,15 @@ export default function LandingWorkflowSection() {
           </p>
         </div>
 
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-          gap: 14,
-          alignItems: "stretch",
-        }}>
+        <div
+          className="workflow-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 14,
+            alignItems: "stretch",
+          }}
+        >
           {STEPS.map(step => <StepCard key={step.num} {...step} />)}
         </div>
       </div>

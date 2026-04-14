@@ -56,12 +56,15 @@ export default function LandingPricing() {
         </div>
 
         {/* Two-column comparison */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 20,
-          alignItems: "stretch",
-        }}>
+        <div
+          className="pricing-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 20,
+            alignItems: "stretch",
+          }}
+        >
           {/* Free column */}
           <div style={{
             background: "rgba(255,255,255,0.025)",

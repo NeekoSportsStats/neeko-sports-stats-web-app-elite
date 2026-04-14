@@ -719,13 +719,16 @@ export default function Index() {
           </div>
 
           {/* 4-column card grid */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 16,
-            alignItems: "stretch",
-            gridAutoRows: "1fr",
-          }}>
+          <div
+            className="edge-cards-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: 16,
+              alignItems: "stretch",
+              gridAutoRows: "1fr",
+            }}
+          >
             {showSkeleton
               ? [0,1,2,3].map(i => (
                   <div key={i} style={{ minHeight: 320 }}>
@@ -818,6 +821,28 @@ export default function Index() {
           background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%);
           background-size: 200% 100%;
           animation: shimmer 1.2s ease-in-out infinite;
+        }
+
+        /* ── Tablet responsive (768–900px) ── */
+        @media (max-width: 900px) {
+          .hero-ctas > div {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            width: 100% !important;
+            max-width: 380px;
+          }
+          .hero-ctas a {
+            justify-content: center;
+          }
+          .edge-cards-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+          .workflow-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .pricing-grid {
+            grid-template-columns: 1fr !important;
+          }
         }
       `}</style>
     </div>
