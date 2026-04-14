@@ -751,31 +751,6 @@ export default function Index() {
       <div className="scroll-reveal" data-reveal-delay="0"><LandingPricing /></div>
       <div className="scroll-reveal" data-reveal-delay="0"><LandingFinalCTA /></div>
 
-      {/* ── FOOTER ──────────────────────────────────────────────────── */}
-      <footer style={{ background: "#060708", borderTop: "1px solid rgba(255,255,255,0.05)", padding: "22px clamp(16px, 4vw, 32px)" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.12)" }}>
-            © {new Date().getFullYear()} Neeko Sports Stats
-          </p>
-          <div style={{ display: "flex", gap: 22, flexWrap: "wrap" }}>
-            {[
-              { l: "Policies", t: "/policies" },
-              { l: "Contact",  t: "/contact"  },
-              { l: "About",    t: "/about"    },
-              { l: "FAQ",      t: "/faq"      },
-            ].map(x => (
-              <Link key={x.t} to={x.t}
-                style={{ fontSize: 11, color: "rgba(255,255,255,0.14)", textDecoration: "none", transition: "color 0.15s" }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.45)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.14)"; }}
-              >
-                {x.l}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </footer>
-
       {!isPremium && <MobileUpgradeBar />}
 
       <style>{`

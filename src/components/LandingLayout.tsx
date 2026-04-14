@@ -245,20 +245,81 @@ export function LandingLayout() {
         <Outlet />
       </div>
 
+      {/* ── FOOTER ─────────────────────────────────────────────────────── */}
+      <footer style={{
+        background: "#060708",
+        borderTop: "1px solid rgba(255,255,255,0.05)",
+        padding: "22px clamp(16px, 4vw, 32px)",
+      }}>
+        <div style={{
+          maxWidth: 1200,
+          margin: "0 auto",
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+        }}>
+          <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.18)" }}>
+            © {new Date().getFullYear()} Neeko Sports Stats
+          </p>
+          <nav style={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 20,
+            alignItems: "center",
+          }}>
+            {[
+              { label: "Policies",  to: "/policies" },
+              { label: "Contact",   to: "/contact"  },
+              { label: "About",     to: "/about"    },
+              { label: "FAQ",       to: "/faq"      },
+            ].map(link => (
+              <Link
+                key={link.to}
+                to={link.to}
+                style={{
+                  fontSize: 11,
+                  color: "rgba(255,255,255,0.32)",
+                  textDecoration: "none",
+                  transition: "color 0.15s ease",
+                  whiteSpace: "nowrap",
+                  letterSpacing: "0.02em",
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.80)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.32)"; }}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      </footer>
+
       {/* ── RESPONSIVE STYLES ──────────────────────────────────────────── */}
       <style>{`
         @media (max-width: 900px) {
-          nav { display: none !important; }
+          header nav { display: none !important; }
           .hamburger-btn { display: flex !important; }
           .mobile-drawer { display: block !important; }
         }
         @media (min-width: 901px) {
           .sign-in-btn { display: flex !important; }
           .logout-btn { display: block !important; }
-          nav { display: flex !important; }
+          header nav { display: flex !important; }
         }
         @media (max-width: 680px) {
           .nav-label { display: none; }
+        }
+        @media (max-width: 600px) {
+          footer > div {
+            flex-direction: column !important;
+            align-items: center !important;
+            text-align: center !important;
+          }
+          footer nav {
+            justify-content: center !important;
+          }
         }
       `}</style>
     </div>
