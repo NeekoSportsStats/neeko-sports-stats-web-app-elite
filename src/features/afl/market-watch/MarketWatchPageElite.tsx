@@ -229,19 +229,18 @@ function PlayerTableRow({
         </div>
       </div>
 
-      <div className="hidden md:flex items-center gap-4 shrink-0 text-right">
+      <div className="flex items-center gap-3 shrink-0 text-right">
         {valueDisplay != null && (
-          <div>
+          <div className="hidden sm:block">
             <div className={`text-xs font-bold tabular-nums ${valueColor}`}>{valueDisplay}</div>
             <div className="text-[9px] text-white/25">value</div>
           </div>
         )}
         {confLabel != null && (
-          <div>
-            <span className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-semibold ${getCanonicalConfidenceStyles(confLabel)}`}>
-              {formatCanonicalConfidenceLabel(confLabel)}
-            </span>
-          </div>
+          <span className={`inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-[9px] font-semibold whitespace-nowrap ${getCanonicalConfidenceStyles(confLabel)}`}>
+            <span className="w-1 h-1 rounded-full shrink-0" style={{ background: "currentColor" }} />
+            {formatCanonicalConfidenceLabel(confLabel)}
+          </span>
         )}
       </div>
 
@@ -513,6 +512,14 @@ export default function MarketWatchPageElite() {
       total_count: null,
       ai_updated_at: null,
       position_group: null,
+      confidence_label: p.confidence_label ?? null,
+      confidence_score_100: p.confidence_score_100 ?? null,
+      decision_score: p.decision_score ?? null,
+      value_band: p.value_band ?? null,
+      action_display: p.action_display ?? null,
+      action_canonical: p.action_canonical ?? null,
+      action_reason_1: p.action_reason_1 ?? null,
+      action_reason_2: p.action_reason_2 ?? null,
     };
     setSelectedPlayer({ row, rank, tier: isPremium ? "premium" : "full" });
     track("market_watch_player_click", { player_name: p.player_name });

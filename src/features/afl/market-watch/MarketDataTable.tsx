@@ -517,12 +517,27 @@ function getSignalStrength(player: DerivedPlayer) {
 function ConfidencePill({ label }: { label: string }) {
   const up = label.toUpperCase();
   if (up === "HIGH") {
-    return <span className="inline-block text-[9px] font-bold text-green-400 bg-green-500/10 border border-green-500/25 rounded px-1.5 py-0.5 leading-none">HI</span>;
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 rounded px-1.5 py-0.5 leading-none whitespace-nowrap">
+        <span className="w-1 h-1 rounded-full bg-emerald-400 shrink-0" />
+        High conf
+      </span>
+    );
   }
   if (up === "MEDIUM") {
-    return <span className="inline-block text-[9px] font-bold text-[#F5C84C] bg-[#F5C84C]/10 border border-[#F5C84C]/25 rounded px-1.5 py-0.5 leading-none">MED</span>;
+    return (
+      <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-[#F5C84C] bg-[#F5C84C]/10 border border-[#F5C84C]/25 rounded px-1.5 py-0.5 leading-none whitespace-nowrap">
+        <span className="w-1 h-1 rounded-full bg-[#F5C84C] shrink-0" />
+        Med conf
+      </span>
+    );
   }
-  return <span className="inline-block text-[9px] font-bold text-white/35 bg-white/[0.04] border border-white/10 rounded px-1.5 py-0.5 leading-none">LOW</span>;
+  return (
+    <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-white/35 bg-white/[0.04] border border-white/10 rounded px-1.5 py-0.5 leading-none whitespace-nowrap">
+      <span className="w-1 h-1 rounded-full bg-white/25 shrink-0" />
+      Low conf
+    </span>
+  );
 }
 
 function ValueBandCell({ player, compact = false }: { player: DerivedPlayer; compact?: boolean }) {
