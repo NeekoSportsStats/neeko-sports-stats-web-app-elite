@@ -605,3 +605,17 @@ export function getActionStyles(action: string | null): string {
   return getEdgeSignalStyles(action);
 }
 
+export function fmtEdge(edge: number | null | undefined): string {
+  if (edge == null) return "—";
+  return edge > 0 ? `+${edge.toFixed(1)}` : edge.toFixed(1);
+}
+
+export function getEdgeColor(edge: number | null | undefined): string {
+  if (edge == null) return "text-white/40";
+  if (edge >= 15) return "text-emerald-400";
+  if (edge >= 5) return "text-emerald-300/80";
+  if (edge > -5) return "text-white/55";
+  if (edge > -15) return "text-orange-300/80";
+  return "text-red-400";
+}
+

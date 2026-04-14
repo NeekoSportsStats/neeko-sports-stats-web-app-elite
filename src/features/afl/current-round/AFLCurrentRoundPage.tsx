@@ -15,7 +15,6 @@ import {
   fmt,
   fmtPrice,
   fmtUpdatedAt,
-  getConfidenceLabel,
   getConfidenceColor,
 } from "@/features/afl/rankings/components/helpers";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
@@ -45,7 +44,7 @@ function normalisePosition(pos: string | null | undefined): string | null {
 }
 
 function getRiskTag(row: CurrentRoundPlayer): string {
-  const edge = row.edge ?? 0;
+  const edge = row.edge_canonical ?? 0;
   const price = row.price ?? 0;
   const proj = row.projection ?? 0;
   const breakeven = row.breakeven ?? 0;
@@ -56,7 +55,7 @@ function getRiskTag(row: CurrentRoundPlayer): string {
 }
 
 function getCaptainTier(p: CurrentRoundPlayer): { label: "Lock" | "Safe" | "POD"; color: string; desc: string } {
-  const edge = p.edge ?? 0;
+  const edge = p.edge_canonical ?? 0;
   const proj = p.projection ?? 0;
   if (edge >= 15 || proj >= 115) return { label: "Lock",  color: "#F5C84C", desc: "Highest confidence double" };
   if (edge >= 8  || proj >= 100) return { label: "Safe",  color: "#4ade80", desc: "Reliable doubling option"  };
@@ -429,19 +428,19 @@ function MustBuysSection({
   const hidden  = isPremiumUser ? [] : mustBuys.slice(MUST_BUY_FREE, Math.min(PREMIUM_LIMIT, mustBuys.length));
   const totalHidden = isPremiumUser ? 0 : Math.max(0, mustBuys.length - MUST_BUY_FREE);
 
-  const strong = visible.filter((p) => (p.signal ?? "").toUpperCase() === "STRONG_START");
-  const start  = visible.filter((p) => (p.signal ?? "").toUpperCase() === "START");
+  const strong = visible.filter((p) => (p.action_canonical ?? "").toUpperCase() === "START");
+  const start  = visible.filter((p) => (p.action_canonical ?? "").toUpperCase() === "START");
 
   const renderRow = (row: CurrentRoundPlayer, globalIdx: number) => {
-    const isStrong = (row.signal ?? "").toUpperCase() === "STRONG_START";
+    const isStrong = (row.action_canonical ?? "").toUpperCase() === "START";
     return (
       <PlayerRow
         key={row.player_id ?? globalIdx}
         row={row}
         rank={globalIdx + 1}
         badge={isStrong ? <BuyBadge /> : <ValueBadge />}
-        metric={row.edge != null ? <EdgeMetric edge={row.edge} positive /> : undefined}
-        subtext={row.value_score != null ? `${(row.value_score).toFixed(1)} val` : null}
+        metric={row.edge_canonical != null ? <EdgeMetric edge={row.edge_canonical} positive /> : undefined}
+        subtext={row.edge_canonical != null ? `${row.edge_canonical >= 0 ? "+" : ""}${row.edge_canonical.toFixed(1)} edge` : null}
         onClick={() => onOpenRow(row)}
       />
     );
@@ -464,14 +463,14 @@ function MustBuysSection({
           <>
             {strong.length > 0 && (
               <>
-                <TierDivider label="Strong Signal — Lock In" color="#4ade80" />
+                <TierDivider label="Start Signal — High Value" color="#4ade80" />
                 {strong.map((row, idx) => renderRow(row, idx))}
               </>
             )}
-            {start.length > 0 && (
+            {start.length === 0 && visible.length > 0 && (
               <>
-                <TierDivider label="Start Signal — High Value" color="#34d399" />
-                {start.map((row, idx) => renderRow(row, strong.length + idx))}
+                <TierDivider label="Trade Targets" color="#34d399" />
+                {visible.map((row, idx) => renderRow(row, idx))}
               </>
             )}
           </>
@@ -703,16 +702,14 @@ function ComparePlayersModal({ players, onClose, onOpenPlayer }: ComparePlayersM
 
     const projA  = playerA.projection ?? 0;
     const projB  = playerB.projection ?? 0;
-    const edgeA  = playerA.edge ?? 0;
-    const edgeB  = playerB.edge ?? 0;
+    const edgeA  = playerA.edge_canonical ?? 0;
+    const edgeB  = playerB.edge_canonical ?? 0;
     const confA  = playerA.projection_confidence ?? 50;
     const confB  = playerB.projection_confidence ?? 50;
     const ceilA  = playerA.ceiling_estimate ?? projA;
     const ceilB  = playerB.ceiling_estimate ?? projB;
     const floorA = playerA.floor_estimate ?? projA;
     const floorB = playerB.floor_estimate ?? projB;
-    const valA   = playerA.value_score ?? 0;
-    const valB   = playerB.value_score ?? 0;
     const formA  = playerA.form_score ?? 0;
     const formB  = playerB.form_score ?? 0;
 
@@ -766,7 +763,6 @@ function ComparePlayersModal({ players, onClose, onOpenPlayer }: ComparePlayersM
         { label: "Ceiling",     a: fmt(ceilA, 0),  b: fmt(ceilB, 0),  winner: compare(ceilA, ceilB)  },
         { label: "Floor",       a: fmt(floorA, 0), b: fmt(floorB, 0), winner: compare(floorA, floorB) },
         { label: "Edge",        a: (edgeA >= 0 ? "+" : "") + fmt(edgeA, 0), b: (edgeB >= 0 ? "+" : "") + fmt(edgeB, 0), winner: compare(edgeA, edgeB) },
-        { label: "Value Score", a: fmt(valA, 1),   b: fmt(valB, 1),   winner: compare(valA, valB)    },
         { label: "Form",        a: fmt(formA, 0),  b: fmt(formB, 0),  winner: compare(formA, formB)   },
         { label: "Confidence",  a: fmt(confA, 0) + "%", b: fmt(confB, 0) + "%", winner: compare(confA, confB) },
       ],
@@ -1262,7 +1258,7 @@ export default function AFLCurrentRoundPage() {
               icon={<TrendingUp className="w-3.5 h-3.5" />}
               accentColor="#4ade80"
               playerName={bestBuy?.player_name ?? null}
-              stat={bestBuy?.edge != null ? `+${fmt(bestBuy.edge, 0)}` : "—"}
+              stat={bestBuy?.edge_canonical != null ? `+${fmt(bestBuy.edge_canonical, 0)}` : "—"}
               statLabel="edge score"
               subStat={bestBuy?.projection != null ? fmt(bestBuy.projection, 0) : undefined}
               subStatLabel="pts proj"
@@ -1275,7 +1271,7 @@ export default function AFLCurrentRoundPage() {
               icon={<TrendingDown className="w-3.5 h-3.5" />}
               accentColor="#f87171"
               playerName={bestTrap?.player_name ?? null}
-              stat={bestTrap?.edge != null ? fmt(bestTrap.edge, 0) : "—"}
+              stat={bestTrap?.edge_canonical != null ? fmt(bestTrap.edge_canonical, 0) : "—"}
               statLabel="edge score"
               subStat={bestTrap?.projection != null ? fmt(bestTrap.projection, 0) : undefined}
               subStatLabel="pts proj"
@@ -1350,12 +1346,10 @@ export default function AFLCurrentRoundPage() {
             blurBadgeText={`+${Math.max(0, riskPicks.length - RISK_FREE)} more risks hidden`}
             footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
             renderBadge={() => <AvoidBadge />}
-            renderMetric={(row) => row.edge != null ? <EdgeMetric edge={row.edge} positive={false} /> : undefined}
+            renderMetric={(row) => row.edge_canonical != null ? <EdgeMetric edge={row.edge_canonical} positive={false} /> : undefined}
             renderSubtext={(row) => {
               const tag = getRiskTag(row);
-              const conf = row.projection_confidence;
-              const confLabel = conf != null ? getConfidenceLabel(conf) : null;
-              return [tag, confLabel].filter(Boolean).join(" · ") || null;
+              return tag || null;
             }}
           />
 

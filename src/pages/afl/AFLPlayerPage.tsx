@@ -11,10 +11,9 @@ import { getPlayerDetailSafe, getSimilarPlayersSafe } from '@/lib/playerAccess';
 import { useAuth } from '@/lib/auth';
 import { useAccessState } from '@/hooks/useAccessState';
 import { PlayerStatusPill } from '@/features/afl/rankings/components/PlayerStatusPill';
-import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from '@/utils/aflEdgeSignal';
 import {
   getFormStyles, fmtPrice as fmtPriceHelper,
-  getValueScoreColor, fmtValueScore,
+  fmtEdge, getEdgeColor,
 } from '@/features/afl/rankings/components/helpers';
 
 const ScoreHistoryChart = lazy(() => import('@/features/afl/rankings/components/ScoreHistoryChart'));
@@ -28,10 +27,8 @@ interface PlayerData {
   price: number | null;
   projection: number | null;
   breakeven: number | null;
-  value_score: number | null;
-  signal: string | null;
-  signal_tag: string | null;
-  signal_display: string | null;
+  edge_canonical: number | null;
+  action_canonical: string | null;
   status: string | null;
   manual_status: string | null;
   is_bye: boolean | null;
@@ -44,8 +41,6 @@ interface PlayerData {
   why: string | null;
   why_long: string | null;
   neeko_rating: number | null;
-  edge: number | null;
-  action: string | null;
   is_locked: boolean | null;
 }
 
@@ -56,9 +51,8 @@ interface SimilarPlayer {
   player_position: string | null;
   price: number | null;
   projection: number | null;
-  value_score: number | null;
-  signal: string | null;
-  signal_tag: string | null;
+  edge_canonical: number | null;
+  action_canonical: string | null;
   is_locked: boolean | null;
 }
 
@@ -108,20 +102,6 @@ function ActionBadge({ action }: { action: string | null }) {
   );
 }
 
-function SignalBadge({ signal }: { signal: string | null }) {
-  const sig = signalFromField(signal);
-  const color = getEdgeSignalColor(sig);
-  const label = formatEdgeSignalLabel(sig);
-  return (
-    <span
-      className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wide shrink-0"
-      style={{ background: `${color}18`, color, border: `1px solid ${color}40` }}
-    >
-      {label}
-    </span>
-  );
-}
-
 function MetricPill({
   label, value, color = 'text-white/80', sub,
 }: {
@@ -157,18 +137,21 @@ function FormChip({ avg3, seasonAvg }: { avg3: number | null; seasonAvg: number 
 
 function SimilarPlayerRow({ player }: { player: SimilarPlayer }) {
   const slug = nameToSlug(player.player_name);
-  const sig = signalFromField(player.signal_tag ?? player.signal);
-  const color = getEdgeSignalColor(sig);
+  const ac = (player.action_canonical ?? 'HOLD').toUpperCase();
+  const badgeCls =
+    ac === 'START' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+    ac === 'SIT'   ? 'bg-orange-500/10 text-orange-400 border-orange-500/25' :
+                     'bg-white/5 text-white/40 border-white/10';
   return (
     <Link
       to={`/sports/afl/players/${slug}`}
       className="flex items-center justify-between rounded-xl bg-[#111] border border-white/[0.06] hover:bg-white/[0.04] hover:border-white/[0.12] transition-all px-4 py-3 group"
     >
       <div className="flex items-center gap-3 flex-1 min-w-0">
-        {sig === 'STRONG_BUY' || sig === 'BUY'
+        {ac === 'START'
           ? <TrendingUp size={13} className="text-emerald-400 shrink-0" />
-          : sig === 'STRONG_SELL' || sig === 'SELL'
-          ? <TrendingDown size={13} className="text-red-400 shrink-0" />
+          : ac === 'SIT'
+          ? <TrendingDown size={13} className="text-orange-400 shrink-0" />
           : <Minus size={13} className="text-white/25 shrink-0" />
         }
         <div className="flex-1 min-w-0">
@@ -185,11 +168,8 @@ function SimilarPlayerRow({ player }: { player: SimilarPlayer }) {
           <p className="text-sm font-bold text-white/80 tabular-nums">{fmtProj(player.projection)}</p>
           <p className="text-[9px] text-white/25 uppercase">proj</p>
         </div>
-        <span
-          className="text-[10px] font-bold px-2 py-0.5 rounded"
-          style={{ background: `${color}18`, color, border: `1px solid ${color}40` }}
-        >
-          {formatEdgeSignalLabel(sig)}
+        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${badgeCls}`}>
+          {ac}
         </span>
         <ChevronRight size={13} className="text-white/20 group-hover:text-white/40 transition-colors" />
       </div>
@@ -266,8 +246,7 @@ function PlayerSEOBlock({ player }: { player: PlayerData }) {
   const posName = getPositionName(player.player_position);
   const team = player.team ?? 'their AFL club';
   const proj = player.projection != null ? Math.round(player.projection) : null;
-  const sig = signalFromField(player.signal_tag ?? player.signal);
-  const sigLabel = formatEdgeSignalLabel(sig);
+  const acLabel = (player.action_canonical ?? 'HOLD').toUpperCase();
 
   return (
     <section className="border-t border-white/[0.05] pt-8 pb-2">
@@ -282,7 +261,7 @@ function PlayerSEOBlock({ player }: { player: PlayerData }) {
           <p>
             {player.player_name} is a {posName.replace(/s$/, '')} for the {team} in the 2026 AFL season.
             {proj != null && ` Their current projected score is ${proj} fantasy points.`}
-            {` Current signal: ${sigLabel}.`}
+            {` Current action: ${acLabel}.`}
           </p>
         </div>
         <div>
@@ -300,7 +279,7 @@ function PlayerSEOBlock({ player }: { player: PlayerData }) {
       </div>
       <p className="sr-only">
         {player.player_name} AFL Fantasy 2026 — {posName}, {team}.
-        Projection: {proj ?? 'TBC'} pts. Signal: {sigLabel}.
+        Projection: {proj ?? 'TBC'} pts. Action: {acLabel}.
         Price: {fmtPriceHelper(player.price)}. Breakeven: {player.breakeven != null ? Math.round(player.breakeven) : 'TBC'}.
         Updated weekly by Neeko Sports fantasy analytics.
       </p>
@@ -339,10 +318,8 @@ export default function AFLPlayerPage() {
           price: raw.price != null ? Number(raw.price) : null,
           projection: raw.projection != null ? Number(raw.projection) : null,
           breakeven: raw.breakeven != null ? Number(raw.breakeven) : null,
-          value_score: raw.value_score != null ? Number(raw.value_score) : null,
-          signal: raw.signal ?? null,
-          signal_tag: raw.signal_tag ?? null,
-          signal_display: raw.signal_display ?? null,
+          edge_canonical: raw.edge_canonical != null ? Number(raw.edge_canonical) : (raw.edge != null ? Number(raw.edge) : null),
+          action_canonical: raw.action_canonical != null ? (raw.action_canonical as string).toUpperCase() : (raw.action != null ? (raw.action as string).toUpperCase() : null),
           status: raw.status ?? null,
           manual_status: raw.manual_status ?? null,
           is_bye: raw.is_bye != null ? Boolean(raw.is_bye) : null,
@@ -355,8 +332,6 @@ export default function AFLPlayerPage() {
           why: raw.why ?? null,
           why_long: raw.why_long ?? null,
           neeko_rating: raw.neeko_rating != null ? Number(raw.neeko_rating) : null,
-          edge: raw.edge != null ? Number(raw.edge) : null,
-          action: raw.action != null ? (raw.action as string).toUpperCase() : null,
           is_locked: raw.is_locked != null ? Boolean(raw.is_locked) : null,
         };
 
@@ -380,9 +355,8 @@ export default function AFLPlayerPage() {
             player_position: s.player_position ?? null,
             price: s.price != null ? Number(s.price) : null,
             projection: s.projection != null ? Number(s.projection) : null,
-            value_score: s.value_score != null ? Number(s.value_score) : null,
-            signal: s.signal ?? null,
-            signal_tag: s.signal_tag ?? null,
+            edge_canonical: s.edge_canonical != null ? Number(s.edge_canonical) : (s.edge != null ? Number(s.edge) : null),
+            action_canonical: s.action_canonical != null ? (s.action_canonical as string).toUpperCase() : (s.action != null ? (s.action as string).toUpperCase() : null),
             is_locked: s.is_locked != null ? Boolean(s.is_locked) : null,
           }));
           setSimilar(mappedSimilar);
@@ -397,11 +371,7 @@ export default function AFLPlayerPage() {
 
   const posSlug = player ? getPositionSlug(player.player_position) : null;
   const posName = player ? getPositionName(player.player_position) : '';
-  const sig = player ? signalFromField(player.signal_tag ?? player.signal) : 'HOLD';
-  const sigColor = getEdgeSignalColor(sig);
-  const sigLabel = formatEdgeSignalLabel(sig);
-
-  const action = player?.action ?? 'HOLD';
+  const action = player?.action_canonical ?? 'HOLD';
   const actionColor = getActionColor(action);
 
   if (loading) {
@@ -440,7 +410,7 @@ export default function AFLPlayerPage() {
   }
 
   const pageTitle = `${player.player_name}${player.team ? ` (${player.team})` : ''} AFL Fantasy 2026 | ${posName} Rankings & Projection | Neeko`;
-  const pageDescription = `${player.player_name} AFL Fantasy stats for 2026. Projected score: ${fmtProj(player.projection)} pts. Price: ${fmtPriceHelper(player.price)}. Signal: ${sigLabel}. Updated weekly by Neeko.`;
+  const pageDescription = `${player.player_name} AFL Fantasy stats for 2026. Projected score: ${fmtProj(player.projection)} pts. Price: ${fmtPriceHelper(player.price)}. Action: ${action}. Updated weekly by Neeko.`;
   const pageUrl = `https://neekostats.com.au/sports/afl/players/${slug}`;
   const teamSlug = Object.entries(TEAM_SLUG_TO_NAME).find(([, name]) => name === player.team)?.[0];
 
@@ -452,7 +422,7 @@ export default function AFLPlayerPage() {
       <Helmet>
         <title>{pageTitle}</title>
         <meta name="description" content={pageDescription} />
-        <meta name="keywords" content={`${player.player_name}, AFL Fantasy, AFL Fantasy 2026, ${player.team ?? ''}, ${posName}, fantasy projections, buy sell hold, ${player.player_name} price, ${player.player_name} projection`} />
+        <meta name="keywords" content={`${player.player_name}, AFL Fantasy, AFL Fantasy 2026, ${player.team ?? ''}, ${posName}, fantasy projections, ${player.player_name} price, ${player.player_name} projection`} />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDescription} />
         <meta property="og:type" content="website" />
@@ -485,7 +455,6 @@ export default function AFLPlayerPage() {
       <div className="min-h-screen bg-[#0e0e0e]">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
-          {/* ── BACK ── */}
           <button
             onClick={() => navigate(-1)}
             className="flex items-center gap-2 text-white/40 hover:text-white/70 transition-colors text-[12px]"
@@ -494,17 +463,15 @@ export default function AFLPlayerPage() {
             Back
           </button>
 
-          {/* ── HEADER ── */}
           <div
             className="rounded-2xl border border-white/[0.07] p-5 relative overflow-hidden"
-            style={{ background: `linear-gradient(135deg, ${sigColor}12 0%, #111 65%)` }}
+            style={{ background: `linear-gradient(135deg, ${actionColor}12 0%, #111 65%)` }}
           >
             <div
               className="absolute inset-0 pointer-events-none"
-              style={{ background: `radial-gradient(ellipse at top left, ${sigColor}14 0%, transparent 60%)` }}
+              style={{ background: `radial-gradient(ellipse at top left, ${actionColor}14 0%, transparent 60%)` }}
             />
             <div className="relative space-y-4">
-              {/* Name + Status */}
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -526,21 +493,19 @@ export default function AFLPlayerPage() {
                     {player.player_name}
                   </h1>
                 </div>
-                {/* Action indicator */}
                 {action && (
                   <div
                     className="flex flex-col items-center justify-center w-14 h-14 rounded-xl shrink-0 border"
                     style={{ background: `${actionColor}15`, borderColor: `${actionColor}30` }}
                   >
-                    <span className="text-[9px] uppercase tracking-widest" style={{ color: `${actionColor}90` }}>Signal</span>
+                    <span className="text-[9px] uppercase tracking-widest" style={{ color: `${actionColor}90` }}>Action</span>
                     <span className="text-[13px] font-black uppercase tracking-wider" style={{ color: actionColor }}>{action}</span>
                   </div>
                 )}
               </div>
 
-              {/* Signal badge + Rating */}
               <div className="flex items-center gap-2 flex-wrap">
-                <SignalBadge signal={player.signal_tag ?? player.signal} />
+                <ActionBadge action={player.action_canonical} />
                 {player.neeko_rating != null && (
                   <span className="text-[11px] font-bold text-[#F5C84C] tabular-nums">
                     {Number(player.neeko_rating).toFixed(1)} Rating
@@ -548,7 +513,6 @@ export default function AFLPlayerPage() {
                 )}
               </div>
 
-              {/* Key metrics strip */}
               <div className="flex items-center gap-4 flex-wrap pt-1">
                 <MetricPill
                   label="Proj"
@@ -580,7 +544,6 @@ export default function AFLPlayerPage() {
                 <FormChip avg3={player.avg_last_3} seasonAvg={player.season_avg} />
               </div>
 
-              {/* Compare Player button */}
               <div className="pt-1">
                 <button
                   onClick={() => navigate('/sports/afl/start-sit', { state: { playerA: player.player_name } })}
@@ -593,26 +556,14 @@ export default function AFLPlayerPage() {
             </div>
           </div>
 
-          {/* ── VALUE SCORE (premium only) ── */}
-          {isPremium && player.value_score != null && (
+          {isPremium && player.edge_canonical != null && (
             <div className="rounded-xl border border-white/[0.07] bg-[#111] px-4 py-3 flex items-center justify-between gap-4">
               <div>
-                <p className="text-[10px] uppercase tracking-wider text-white/30 mb-0.5">Value Score</p>
-                <p className={`text-xl font-bold tabular-nums ${getValueScoreColor(player.value_score)}`}>
-                  {fmtValueScore(player.value_score)}
+                <p className="text-[10px] uppercase tracking-wider text-white/30 mb-0.5">Edge vs Breakeven</p>
+                <p className={`text-xl font-bold tabular-nums ${getEdgeColor(player.edge_canonical)}`}>
+                  {fmtEdge(player.edge_canonical)}
                 </p>
               </div>
-              {player.edge != null && (
-                <>
-                  <div className="w-px h-8 bg-white/[0.07] shrink-0" />
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-white/30 mb-0.5">Edge vs BE</p>
-                    <p className={`text-xl font-bold tabular-nums ${player.edge > 0 ? 'text-emerald-400' : player.edge < 0 ? 'text-red-400' : 'text-white/50'}`}>
-                      {player.edge > 0 ? '+' : ''}{Math.round(player.edge)}
-                    </p>
-                  </div>
-                </>
-              )}
               <div className="ml-auto text-right">
                 <p className="text-[10px] uppercase tracking-wider text-white/30 mb-0.5">Season Avg</p>
                 <p className="text-xl font-bold tabular-nums text-white/70">
@@ -622,7 +573,6 @@ export default function AFLPlayerPage() {
             </div>
           )}
 
-          {/* ── SCORE HISTORY CHART ── */}
           <div className="rounded-xl border border-white/[0.07] bg-[#111] overflow-hidden">
             <div className="px-4 pt-3 pb-1">
               <p className="text-[10px] uppercase tracking-wider text-white/30">Last 10 Games</p>
@@ -639,7 +589,6 @@ export default function AFLPlayerPage() {
             </Suspense>
           </div>
 
-          {/* ── AI EXPLANATION ── */}
           {hasAI && (
             <div className="rounded-xl border border-white/[0.07] bg-[#111] p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -672,7 +621,6 @@ export default function AFLPlayerPage() {
             </div>
           )}
 
-          {/* ── PREMIUM CTA (free + no AI) ── */}
           {!isPremium && (
             <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.06] to-[#111] p-6 text-center">
               <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 mx-auto mb-3">
@@ -682,7 +630,7 @@ export default function AFLPlayerPage() {
                 Unlock full {player.player_name} analysis
               </h3>
               <p className="text-[12px] text-white/45 mb-4">
-                AI recommendations, value scores, breakeven analysis, price projections and more
+                AI recommendations, edge analysis, breakeven, price projections and more
               </p>
               <div className="flex flex-col sm:flex-row gap-2 justify-center">
                 <Link
@@ -702,7 +650,6 @@ export default function AFLPlayerPage() {
             </div>
           )}
 
-          {/* ── SIMILAR PLAYERS ── */}
           {similar.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-3">
@@ -727,7 +674,6 @@ export default function AFLPlayerPage() {
             </div>
           )}
 
-          {/* ── QUICK LINKS ── */}
           <div className="grid grid-cols-2 gap-3">
             {teamSlug && (
               <Link
@@ -767,10 +713,8 @@ export default function AFLPlayerPage() {
             )}
           </div>
 
-          {/* ── INTERNAL LINKS ── */}
           <InternalLinks position={player.player_position} team={player.team} />
 
-          {/* ── SEO BLOCK ── */}
           <PlayerSEOBlock player={player} />
 
         </div>

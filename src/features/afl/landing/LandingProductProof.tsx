@@ -26,11 +26,11 @@ function buildMarketRows(players: RankingRow[]): RankingRow[] {
   if (base.length === 0) {
     return players
       .filter(p => (p.price ?? 0) > 0 && (p.games_played ?? 0) >= 1)
-      .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
+      .sort((a, b) => Math.abs(b.edge_canonical ?? 0) - Math.abs(a.edge_canonical ?? 0))
       .slice(0, 8);
   }
   return base
-    .sort((a, b) => Math.abs(b.value_score ?? 0) - Math.abs(a.value_score ?? 0))
+    .sort((a, b) => Math.abs(b.edge_canonical ?? 0) - Math.abs(a.edge_canonical ?? 0))
     .slice(0, 8);
 }
 
@@ -95,22 +95,18 @@ function dedupeAcrossViews(views: Record<TabId, RankingRow[]>): Record<TabId, Ra
 // ── Tag resolvers — one per view ──────────────────────────────────────────────
 
 function rankingsTag(row: RankingRow): { label: string; color: string } {
-  const raw = (row.action ?? row.signal_tag ?? row.signal ?? "").toUpperCase();
-  if (raw === "STRONG_START" || raw === "START" || raw === "STRONG_UP" || raw === "UP" || raw === "BUY") {
-    return { label: "BUY", color: "#22c55e" };
-  }
-  if (raw === "STRONG_SIT" || raw === "SIT" || raw === "STRONG_DOWN" || raw === "DOWN" || raw === "SELL") {
-    return { label: "SELL", color: "#f87171" };
-  }
+  const raw = (row.action_canonical ?? "").toUpperCase();
+  if (raw === "START") return { label: "BUY", color: "#22c55e" };
+  if (raw === "SIT") return { label: "SELL", color: "#f87171" };
   return { label: "HOLD", color: GOLD };
 }
 
 function marketTag(row: RankingRow): { label: string; color: string } {
-  const vs = row.value_score ?? 0;
-  if (vs > 40) return { label: "STEAL", color: "#22c55e" };
-  if (vs > 15) return { label: "VALUE", color: "#4ade80" };
-  if (vs > -10) return { label: "FAIR", color: GOLD };
-  if (vs < -25) return { label: "AVOID", color: "#f87171" };
+  const edge = row.edge_canonical ?? 0;
+  if (edge > 30) return { label: "STEAL", color: "#22c55e" };
+  if (edge > 10) return { label: "VALUE", color: "#4ade80" };
+  if (edge > -10) return { label: "FAIR", color: GOLD };
+  if (edge < -25) return { label: "AVOID", color: "#f87171" };
   return { label: "TRAP", color: "#fb923c" };
 }
 
@@ -138,14 +134,13 @@ function formTag(row: RankingRow & { _form_delta?: number }): { label: string; c
 }
 
 function startSitTag(row: RankingRow): { label: string; color: string } {
-  const sig = (row.action ?? row.signal ?? row.signal_tag ?? "").toUpperCase();
+  const ac = (row.action_canonical ?? "").toUpperCase();
   const trend = row.trend_score ?? 0;
-  if (sig === "STRONG_START" || sig === "STRONG_UP") return { label: "MUST START", color: "#22c55e" };
-  if (sig === "START" || sig === "UP" || sig === "BUY") return { label: "START", color: "#4ade80" };
+  if (ac === "START" && trend > 12) return { label: "MUST START", color: "#22c55e" };
+  if (ac === "START") return { label: "START", color: "#4ade80" };
   if (trend > 12) return { label: "MUST START", color: "#22c55e" };
   if (trend > 5) return { label: "START", color: "#4ade80" };
-  if (sig === "STRONG_SIT" || sig === "STRONG_DOWN") return { label: "BENCH", color: "#f87171" };
-  if (sig === "SIT" || sig === "DOWN" || sig === "SELL") return { label: "SIT", color: "#fb923c" };
+  if (ac === "SIT") return { label: "SIT", color: "#fb923c" };
   if (trend < -5) return { label: "SIT", color: "#fb923c" };
   return { label: "HOLD", color: GOLD };
 }
@@ -257,10 +252,11 @@ function DataRow({ row, index, tabId, accentColor }: RowProps) {
 
   } else if (tabId === "market-watch") {
     primaryStat = fmtPrice(row.price);
-    const vs = row.value_score != null
-      ? (row.value_score > 0 ? `+${row.value_score.toFixed(1)}` : row.value_score.toFixed(1))
+    const edge = row.edge_canonical;
+    const edgeStr = edge != null
+      ? (edge > 0 ? `+${edge.toFixed(1)}` : edge.toFixed(1))
       : "—";
-    subStat = `Value ${vs}`;
+    subStat = `Edge ${edgeStr}`;
     tag = marketTag(row);
 
   } else if (tabId === "captains") {

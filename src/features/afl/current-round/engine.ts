@@ -31,13 +31,13 @@ function isEligible(p: RankingRow): boolean {
 }
 
 function hasPositiveSignal(p: RankingRow): boolean {
-  const sig = (p.signal ?? p.signal_tag ?? "").toUpperCase();
-  return sig === "STRONG_START" || sig === "START";
+  const ac = (p.action_canonical ?? "").toUpperCase();
+  return ac === "START";
 }
 
 function hasNegativeSignal(p: RankingRow): boolean {
-  const sig = (p.signal ?? p.signal_tag ?? "").toUpperCase();
-  return sig === "STRONG_SIT" || sig === "SIT";
+  const ac = (p.action_canonical ?? "").toUpperCase();
+  return ac === "SIT";
 }
 
 export function buildCurrentRoundPlayers(
@@ -63,8 +63,8 @@ export function buildCurrentRoundPlayers(
   const enriched = eligible.map(enrich);
 
   const byProjDesc  = [...enriched].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0));
-  const byEdgeDesc  = [...enriched].sort((a, b) => (b.edge ?? 0) - (a.edge ?? 0));
-  const byEdgeAsc   = [...enriched].sort((a, b) => (a.edge ?? 0) - (b.edge ?? 0));
+  const byEdgeDesc  = [...enriched].sort((a, b) => (b.edge_canonical ?? 0) - (a.edge_canonical ?? 0));
+  const byEdgeAsc   = [...enriched].sort((a, b) => (a.edge_canonical ?? 0) - (b.edge_canonical ?? 0));
 
   // ── CAPTAIN PICKS ─────────────────────────────────────────────────────────
   // Best projection players with non-negative signal (not SIT/STRONG_SIT)
@@ -80,7 +80,7 @@ export function buildCurrentRoundPlayers(
     .filter((p) =>
       !captainIds.has(p.player_id) &&
       hasPositiveSignal(p) &&
-      (p.edge ?? 0) > 0
+      (p.edge_canonical ?? 0) > 0
     )
     .slice(0, MUST_BUY_LIMIT);
   const mustBuyIds = new Set(mustBuys.map((p) => p.player_id));

@@ -25,7 +25,7 @@ interface PlayerOption {
   team: string | null;
   position: string | null;
   projection: number | null;
-  signal: string | null;
+  action_canonical: string | null;
 }
 
 interface CompareResult {
@@ -191,7 +191,7 @@ export default function StartSitPage() {
             team: r.team ?? null,
             position: r.player_position ?? r.position ?? null,
             projection: r.projection != null ? Number(r.projection) : null,
-            signal: r.signal ?? null,
+            action_canonical: r.action_canonical ?? null,
           })));
         }
       });
@@ -224,7 +224,7 @@ export default function StartSitPage() {
           team: r.team ?? null,
           position: r.player_position ?? r.position ?? null,
           projection: r.projection != null ? Number(r.projection) : null,
-          signal: r.signal ?? null,
+          action_canonical: r.action_canonical ?? null,
         }));
       const [found1, found2] = matched as PlayerOption[];
       if (found1) setPlayerA(found1);

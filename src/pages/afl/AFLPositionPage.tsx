@@ -3,11 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { Helmet } from 'react-helmet-async';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ChevronRight, TrendingUp, Shield, Zap, Target } from 'lucide-react';
+import { ArrowLeft, ChevronRight, TrendingUp, Shield, Zap } from 'lucide-react';
 import { nameToSlug, POSITION_NAMES, POSITION_SLUG_TO_CODE } from '@/lib/slugs';
 import { useAuth } from '@/lib/auth';
 import { getPositionPlayersSafe } from '@/lib/playerAccess';
-import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from '@/utils/aflEdgeSignal';
+import { fmtEdge, getEdgeColor } from '@/features/afl/rankings/components/helpers';
 
 interface PositionPlayer {
   player_id?: number;
@@ -16,9 +16,9 @@ interface PositionPlayer {
   neeko_rating: number;
   projection: number;
   projection_confidence: number | null;
-  value_score: number | null;
+  edge_canonical: number | null;
+  action_canonical: string | null;
   price: number;
-  signal: string | null;
   upside_pct: number | null;
   is_locked?: boolean;
 }
@@ -64,8 +64,8 @@ export default function AFLPositionPage() {
   }
 
   const bestValue = [...players]
-    .filter(p => p.value_score && p.value_score > 0)
-    .sort((a, b) => (b.value_score || 0) - (a.value_score || 0))
+    .filter(p => p.edge_canonical != null && p.edge_canonical > 0)
+    .sort((a, b) => (b.edge_canonical ?? 0) - (a.edge_canonical ?? 0))
     .slice(0, 5);
 
   const safestPicks = [...players]
@@ -82,7 +82,7 @@ export default function AFLPositionPage() {
   const premiumCount = players.filter(p => p.neeko_rating >= 100).length;
 
   const pageTitle = `Best AFL Fantasy ${positionName} 2026 Rankings & Projections | Neeko`;
-  const pageDescription = `Top ${positionName} for AFL Fantasy 2026. ${players.length} ${positionName.toLowerCase()} ranked with projections, value scores, and AI recommendations. Find the best picks for your team.`;
+  const pageDescription = `Top ${positionName} for AFL Fantasy 2026. ${players.length} ${positionName.toLowerCase()} ranked with projections, edge scores, and AI recommendations. Find the best picks for your team.`;
   const pageUrl = `https://neekostats.com.au/sports/afl/positions/${position}`;
 
   const formatPrice = (price: number) => {
@@ -128,7 +128,6 @@ export default function AFLPositionPage() {
 
       <div className="min-h-screen bg-[#0e0e0e]">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-          {/* Back Button */}
           <button
             onClick={() => navigate('/sports/afl/rankings')}
             className="mb-4 flex items-center gap-2 text-white/50 hover:text-white/80 transition-colors text-sm"
@@ -137,13 +136,11 @@ export default function AFLPositionPage() {
             Back to Rankings
           </button>
 
-          {/* Position Header */}
           <div className="mb-6 pb-4 border-b border-white/5">
             <h1 className="text-2xl font-semibold text-white mb-2">AFL Fantasy {positionName} 2026</h1>
             <p className="text-base text-white/50">Complete rankings for {positionName.toLowerCase()}</p>
           </div>
 
-          {/* Position Stats */}
           <div className="grid grid-cols-3 gap-3 mb-6">
             <div className="rounded-2xl bg-[#111] border border-white/10 px-4 py-4 shadow-sm">
               <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">Total Players</p>
@@ -159,13 +156,11 @@ export default function AFLPositionPage() {
             </div>
           </div>
 
-          {/* Highlight Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-            {/* Best Value */}
             <div className="rounded-2xl bg-[#111] border border-white/10 px-4 py-4 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp size={15} className="text-emerald-400" />
-                <h3 className="text-xs font-bold text-white/80 uppercase tracking-wider">Best Value</h3>
+                <h3 className="text-xs font-bold text-white/80 uppercase tracking-wider">Best Edge</h3>
               </div>
               <div className="space-y-2">
                 {bestValue.slice(0, 3).map((player) => (
@@ -178,13 +173,12 @@ export default function AFLPositionPage() {
                       <p className="text-xs font-semibold text-white truncate">{player.player_name}</p>
                       <p className="text-[10px] text-white/40">{player.team}</p>
                     </div>
-                    <p className="text-sm font-bold text-emerald-400 ml-2">{(player.value_score || 0).toFixed(2)}</p>
+                    <p className={`text-sm font-bold ml-2 ${getEdgeColor(player.edge_canonical)}`}>{fmtEdge(player.edge_canonical)}</p>
                   </Link>
                 ))}
               </div>
             </div>
 
-            {/* Safest Picks */}
             <div className="rounded-2xl bg-[#111] border border-white/10 px-4 py-4 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
                 <Shield size={15} className="text-blue-400" />
@@ -207,7 +201,6 @@ export default function AFLPositionPage() {
               </div>
             </div>
 
-            {/* High Upside */}
             <div className="rounded-2xl bg-[#111] border border-white/10 px-4 py-4 shadow-sm">
               <div className="flex items-center gap-2 mb-3">
                 <Zap size={15} className="text-orange-400" />
@@ -231,14 +224,15 @@ export default function AFLPositionPage() {
             </div>
           </div>
 
-          {/* Full Rankings List */}
           <div className="mb-6">
             <h2 className="text-base font-semibold text-white mb-4">Top 50 {positionName}</h2>
             <div className="space-y-2">
               {players.map((player, idx) => {
-                const sig = signalFromField(player.signal);
-                const recColor = getEdgeSignalColor(sig);
-                const recLabel = formatEdgeSignalLabel(sig);
+                const ac = (player.action_canonical ?? "HOLD").toUpperCase();
+                const badgeCls =
+                  ac === "START" ? "bg-green-500/15 text-green-400 border-green-500/30" :
+                  ac === "SIT"   ? "bg-orange-400/10 text-orange-300 border-orange-400/20" :
+                                  "bg-yellow-400/10 text-yellow-300 border-yellow-400/20";
                 return (
                   <Link
                     key={player.player_name}
@@ -259,22 +253,15 @@ export default function AFLPositionPage() {
                         <p className="text-base font-bold text-emerald-400 mb-0.5">{Math.round(player.projection)}</p>
                         <p className="text-[10px] text-white/40">{formatPrice(player.price)}</p>
                       </div>
-                      {player.value_score != null && (
+                      {player.edge_canonical != null && (
                         <div className="text-right hidden sm:block">
-                          <p className="text-[10px] text-white/40 mb-0.5">Value</p>
-                          <p className="text-sm font-semibold text-emerald-400">{(player.value_score ?? 0).toFixed(2)}</p>
+                          <p className="text-[10px] text-white/40 mb-0.5">Edge</p>
+                          <p className={`text-sm font-semibold ${getEdgeColor(player.edge_canonical)}`}>{fmtEdge(player.edge_canonical)}</p>
                         </div>
                       )}
                       {!player.is_locked && (
-                        <div
-                          className="hidden md:flex items-center justify-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide"
-                          style={{
-                            background: `${recColor}18`,
-                            color: recColor,
-                            border: `1px solid ${recColor}40`
-                          }}
-                        >
-                          {recLabel}
+                        <div className={`hidden md:flex items-center justify-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide border ${badgeCls}`}>
+                          {ac}
                         </div>
                       )}
                       <ChevronRight size={18} className="text-white/30" />
@@ -285,7 +272,6 @@ export default function AFLPositionPage() {
             </div>
           </div>
 
-          {/* Bottom CTA */}
           <div className="pt-6 mt-4 border-t border-white/10">
             <Link
               to="/sports/afl/rankings"

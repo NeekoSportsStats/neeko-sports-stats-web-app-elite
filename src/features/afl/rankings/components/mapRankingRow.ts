@@ -39,6 +39,10 @@ export function mapRankingRow(r: Record<string, unknown>): RankingRow {
     games_played:            r.games_played != null ? Number(r.games_played) : null,
 
     breakeven:               r.breakeven != null ? Number(r.breakeven) : null,
+    edge_canonical:          r.edge_canonical != null ? Number(r.edge_canonical) : (r.edge != null ? Number(r.edge) : null),
+    action_canonical:        (r.action_canonical as string) ?? (r.action as string) ?? (r.signal_tag as string) ?? (r.signal as string) ?? null,
+    category_canonical:      (r.category_canonical as string) ?? (r.category as string) ?? null,
+    confidence_label:        (r.confidence_label as string) ?? null,
     edge:                    r.edge != null ? Number(r.edge) : null,
     value_score:             r.value_score != null ? Number(r.value_score) : null,
     signal:                  (r.signal as string) ?? null,

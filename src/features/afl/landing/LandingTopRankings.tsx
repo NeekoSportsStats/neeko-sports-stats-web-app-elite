@@ -9,13 +9,9 @@ interface Props {
 }
 
 function signalFromRow(row: RankingRow): { label: string; color: string; bg: string } {
-  const raw = (row.signal_tag ?? row.action ?? row.signal ?? "").toUpperCase();
-  if (raw === "STRONG_START" || raw === "START" || raw === "UP" || raw === "STRONG_UP" || raw === "BUY") {
-    return { label: "BUY", color: "#22C55E", bg: "rgba(34,197,94,0.10)" };
-  }
-  if (raw === "STRONG_SIT" || raw === "SIT" || raw === "DOWN" || raw === "STRONG_DOWN" || raw === "SELL") {
-    return { label: "AVOID", color: "#EF4444", bg: "rgba(239,68,68,0.10)" };
-  }
+  const raw = (row.action_canonical ?? "").toUpperCase();
+  if (raw === "START") return { label: "BUY", color: "#22C55E", bg: "rgba(34,197,94,0.10)" };
+  if (raw === "SIT") return { label: "AVOID", color: "#EF4444", bg: "rgba(239,68,68,0.10)" };
   return { label: "HOLD", color: "#E0AE2D", bg: "rgba(224,174,45,0.10)" };
 }
 

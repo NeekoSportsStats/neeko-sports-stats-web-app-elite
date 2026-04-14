@@ -33,12 +33,16 @@ export interface RankingRow {
   games_played: number | null;
 
   breakeven: number | null;
+  edge_canonical: number | null;
+  action_canonical: string | null;
+  category_canonical: string | null;
+  confidence_label: string | null;
   edge?: number | null;
-  value_score: number | null;
-  signal: string | null;
-  signal_display: string | null;
-  category: string | null;
-  action: string | null;
+  value_score?: number | null;
+  signal?: string | null;
+  signal_display?: string | null;
+  category?: string | null;
+  action?: string | null;
 
   why: string | null;
   why_long: string | null;
