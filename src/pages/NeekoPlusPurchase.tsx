@@ -639,13 +639,17 @@ const NeekoPlusPurchase = () => {
                 </>
               ) : (
                 <>
-                  Get Neeko+ — Season Pass
+                  {selectedPlan === "season"
+                    ? `Get Neeko+ — Season Pass`
+                    : `Get Neeko+ — Weekly Access`}
                   <ArrowRight size={14} />
                 </>
               )}
             </button>
             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", margin: "8px 0 0" }}>
-              ${NEEKO_PRICING.season.price} AUD · ${seasonPerRound}/round · Full 2026 season
+              {selectedPlan === "season"
+                ? `$${NEEKO_PRICING.season.price} AUD · $${seasonPerRound}/round · Full 2026 season`
+                : `$${NEEKO_PRICING.weekly.price} AUD/wk · Cancel anytime`}
             </p>
           </div>
         )}
