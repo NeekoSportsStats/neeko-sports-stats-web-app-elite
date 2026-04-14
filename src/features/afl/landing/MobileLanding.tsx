@@ -65,7 +65,7 @@ function SectionDivider({ from, to }: { from: string; to: string }) {
   return (
     <div style={{
       position: "relative",
-      height: 56,
+      height: 32,
       background: `linear-gradient(to bottom, ${from}, ${to})`,
       pointerEvents: "none",
       overflow: "hidden",
@@ -212,36 +212,37 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
       <section style={{
         position: "relative",
         background: "linear-gradient(160deg, #0d0b08 0%, #070503 100%)",
-        padding: "32px 16px 0",
+        padding: "20px 16px 0",
         overflow: "hidden",
       }}>
         <div style={{ position: "absolute", top: -60, left: "50%", transform: "translateX(-50%)", width: 320, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,200,0,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
 
+        {/* Above-fold content: eyebrow + headline + subtext + CTAs */}
         <div style={{ position: "relative", zIndex: 2, textAlign: "center" }}>
-          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(224,174,45,0.65)", marginBottom: 10 }}>
+          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(224,174,45,0.65)", marginBottom: 8 }}>
             AFL Fantasy Intelligence
           </p>
           <h1 style={{
-            fontSize: "clamp(1.75rem, 8vw, 2.1rem)",
+            fontSize: "clamp(1.65rem, 7.5vw, 2rem)",
             fontWeight: 900, lineHeight: 1.08, letterSpacing: "-0.028em",
-            color: "#ffffff", marginBottom: 12,
+            color: "#ffffff", marginBottom: 10,
           }}>
             Stop Guessing.<br />
             <span style={{ color: "#E0AE2D" }}>Start Winning</span><br />
             AFL Fantasy.
           </h1>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.72)", marginBottom: 22, lineHeight: 1.55, maxWidth: 300, margin: "0 auto 22px" }}>
-            Trades, captains &amp; traps — powered by 600+ player projections updated every round.
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", lineHeight: 1.5, maxWidth: 300, margin: "0 auto 16px" }}>
+            Trades, captains &amp; traps — 600+ player projections updated every round.
           </p>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 14 }}>
             <Link to="/auth" style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               background: "linear-gradient(160deg, #fad52a, #e09600)",
               color: "#1a0900", fontWeight: 900, fontSize: 15,
-              padding: "15px 20px", borderRadius: 10, textDecoration: "none",
+              padding: "14px 20px", borderRadius: 10, textDecoration: "none",
               boxShadow: "0 4px 24px rgba(224,174,45,0.32)",
-              minHeight: 52, letterSpacing: "0.01em",
+              minHeight: 50, letterSpacing: "0.01em",
             }}>
               Unlock This Week's Game Plan <ArrowRight size={15} />
             </Link>
@@ -249,24 +250,24 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)",
               color: "rgba(255,255,255,0.78)", fontWeight: 700, fontSize: 14,
-              padding: "13px 20px", borderRadius: 10, textDecoration: "none", minHeight: 48,
+              padding: "12px 20px", borderRadius: 10, textDecoration: "none", minHeight: 44,
             }}>
               View Free Picks
             </Link>
           </div>
 
-          <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap", padding: "14px 0 20px" }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap", paddingBottom: 16 }}>
             {["Updated weekly", "Real AFL data", "30-sec picks"].map(t => (
-              <span key={t} style={{ fontSize: 11, color: "rgba(255,255,255,0.40)", display: "flex", alignItems: "center", gap: 4 }}>
+              <span key={t} style={{ fontSize: 10.5, color: "rgba(255,255,255,0.38)", display: "flex", alignItems: "center", gap: 4 }}>
                 <span style={{ color: "rgba(224,174,45,0.55)", fontSize: 8 }}>•</span> {t}
               </span>
             ))}
           </div>
         </div>
 
-        {/* Hero card carousel */}
+        {/* Hero card carousel — below fold scroll reward */}
         <div style={{ position: "relative", zIndex: 2, marginBottom: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 }}>
             <span className="live-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", display: "inline-block", flexShrink: 0 }} />
             <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.30em", textTransform: "uppercase", color: "rgba(224,174,45,0.60)", margin: 0 }}>
               Live Picks
@@ -298,7 +299,7 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
 
           {/* Dot indicators */}
           {!showSkeleton && cards.length > 1 && (
-            <div style={{ display: "flex", justifyContent: "center", gap: 6, paddingBottom: 20, marginTop: 4 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 6, paddingBottom: 16, marginTop: 2 }}>
               {cards.map((_, i) => (
                 <div key={i} style={{
                   width: i === activeCard ? 18 : 5,
@@ -309,7 +310,7 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
               ))}
             </div>
           )}
-          {showSkeleton && <div style={{ height: 24 }} />}
+          {showSkeleton && <div style={{ height: 16 }} />}
         </div>
       </section>
 
@@ -356,7 +357,7 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
       <SectionDivider from="#0c0b09" to="#0a0908" />
 
       {/* ─── THIS WEEK'S EDGE ─── */}
-      <section id="section-edge" style={{ background: "#0a0908", padding: "40px 16px 56px" }}>
+      <section id="section-edge" style={{ background: "#0a0908", padding: "28px 16px 40px" }}>
         <div style={{ marginBottom: 24, textAlign: "center" }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
             <span className="live-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
@@ -435,7 +436,7 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
 
       {/* ─── MARKET WATCH PREVIEW ─── */}
       {(mwBuys.length > 0 || mwSells.length > 0) && (
-        <section style={{ background: "#0a0908", padding: "0 16px 40px" }}>
+        <section style={{ background: "#0a0908", padding: "0 16px 28px" }}>
           <div style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
               <h3 style={{ fontSize: 14, fontWeight: 800, color: "#E8E8E8", margin: 0, letterSpacing: "-0.01em" }}>Market Watch</h3>
@@ -478,7 +479,7 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
       <SectionDivider from="#0a0908" to="#0f0e0c" />
 
       {/* ─── YOUR WEEKLY WORKFLOW ─── */}
-      <section id="section-workflow" style={{ background: "#0f0e0c", padding: "40px 16px 56px" }}>
+      <section id="section-workflow" style={{ background: "#0f0e0c", padding: "28px 16px 40px" }}>
         <div style={{ marginBottom: 28, textAlign: "center" }}>
           <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(224,174,45,0.55)", marginBottom: 8 }}>Your Edge</p>
           <h2 style={{ fontSize: "1.45rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15 }}>
@@ -524,7 +525,7 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
       <SectionDivider from="#0f0e0c" to="#0a0908" />
 
       {/* ─── TRUST BLOCK ─── */}
-      <section id="section-trust" style={{ background: "#0a0908", padding: "40px 16px 48px" }}>
+      <section id="section-trust" style={{ background: "#0a0908", padding: "28px 16px 36px" }}>
         <div style={{ marginBottom: 18, textAlign: "center" }}>
           <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(34,197,94,0.55)", marginBottom: 8 }}>Why It Works</p>
           <h2 style={{ fontSize: "1.3rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.2 }}>
@@ -560,7 +561,7 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
       <SectionDivider from="#0a0908" to="#0d0b09" />
 
       {/* ─── PRICING ─── */}
-      <section id="section-pricing" style={{ background: "linear-gradient(180deg, #0d0b09 0%, #100e08 100%)", padding: "40px 16px 56px" }}>
+      <section id="section-pricing" style={{ background: "linear-gradient(180deg, #0d0b09 0%, #100e08 100%)", padding: "28px 16px 40px" }}>
         <div style={{ marginBottom: 24, textAlign: "center" }}>
           <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(224,174,45,0.55)", marginBottom: 8 }}>Pricing</p>
           <h2 style={{ fontSize: "1.45rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15 }}>
@@ -647,7 +648,7 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
       {/* ─── FINAL CTA ─── */}
       <section style={{
         background: "linear-gradient(180deg, #100e08 0%, #070503 100%)",
-        padding: "56px 16px 64px",
+        padding: "36px 16px 48px",
       }}>
         <div style={{ textAlign: "center" }}>
           <h2 style={{ fontSize: "1.75rem", fontWeight: 900, letterSpacing: "-0.03em", color: "#F5F5F5", lineHeight: 1.08, marginBottom: 10 }}>
