@@ -685,7 +685,7 @@ export default function Index() {
       ═══════════════════════════════════════════════════ */}
       <section style={{
         background: DARK,
-        padding: "clamp(48px, 5vw, 72px) clamp(20px, 5vw, 40px) clamp(64px, 6vw, 88px)",
+        padding: "clamp(24px, 2.5vw, 36px) clamp(20px, 5vw, 40px) clamp(64px, 6vw, 88px)",
       }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           {/* Section header */}
