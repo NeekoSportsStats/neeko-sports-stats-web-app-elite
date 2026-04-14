@@ -41,17 +41,11 @@ function ActionBadge({ row, locked, onUpgrade }: { row: RankingRow; locked?: boo
 
 // ─── Confidence cell ───────────────────────────────────────────────────────────
 
-function deriveConfidenceLabel(pct: number): string {
-  if (pct >= 68) return "HIGH";
-  if (pct >= 50) return "MEDIUM";
-  return "LOW";
-}
-
 function ConfidenceCell({ row }: { row: RankingRow }) {
   const rawLabel = row.confidence_label;
   const pct = row.projection_confidence != null ? Math.max(0, Math.min(100, row.projection_confidence)) : null;
 
-  const label = rawLabel ?? (pct != null ? deriveConfidenceLabel(pct) : null);
+  const label = rawLabel ?? null;
   if (!label) return <span className="text-sm text-white/20">—</span>;
 
   const cls = getCanonicalConfidenceStyles(label);

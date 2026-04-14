@@ -168,17 +168,11 @@ function ActionBadge({ row, isPremium, onUpgrade }: { row: RankingRow; isPremium
 
 // ─── Confidence bar ────────────────────────────────────────────────────────────
 
-function deriveConfidenceLabel(pct: number): string {
-  if (pct >= 68) return "HIGH";
-  if (pct >= 50) return "MEDIUM";
-  return "LOW";
-}
-
 function ConfidenceBar({ row }: { row: RankingRow }) {
   const rawLabel = row.confidence_label;
   const pct = row.projection_confidence != null ? Math.max(0, Math.min(100, row.projection_confidence)) : null;
 
-  const label = rawLabel ?? (pct != null ? deriveConfidenceLabel(pct) : null);
+  const label = rawLabel ?? null;
   if (!label) return <span className="text-xs text-white/20">—</span>;
 
   const cls = getCanonicalConfidenceStyles(label);
@@ -261,7 +255,7 @@ function ExpandedSection({ row }: { row: RankingRow }) {
   const proj = row.projection != null ? Math.round(row.projection) : null;
   const be = row.breakeven != null ? Math.round(row.breakeven) : null;
   const confPct = row.projection_confidence != null ? Math.round(row.projection_confidence) : null;
-  const confLabel = row.confidence_label ?? (confPct != null ? deriveConfidenceLabel(confPct) : null);
+  const confLabel = row.confidence_label ?? null;
   const price = row.price != null ? fmtPrice(row.price) : null;
   const aiText = row.why_long ?? row.why ?? null;
 

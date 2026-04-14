@@ -12,7 +12,7 @@ import {
 } from "./components/types";
 import {
   FREE_FULL_ROWS, PREMIUM_INITIAL_ROWS,
-  getFreeTier, fmt, fmtValueScore,
+  getFreeTier, fmt, fmtValueScore, applyRelativeConfidenceLabels,
 } from "./components/helpers";
 import { mapRankingRow } from "./components/mapRankingRow";
 import {
@@ -315,7 +315,7 @@ export default function AFLRankingsPage() {
       setLoading(false);
       return;
     }
-    const normalized = ((data as any[]) ?? []).map(mapRankingRow);
+    const normalized = applyRelativeConfidenceLabels(((data as any[]) ?? []).map(mapRankingRow));
     _rankingsCache.data = normalized;
     _rankingsCache.ts = Date.now();
     _rankingsCache.userId = userId;

@@ -702,6 +702,31 @@ export function formatCanonicalConfidenceLabel(label: string | null): string {
   return label;
 }
 
+// ─── Relative confidence label assignment ─────────────────────────────────────
+// Uses percentile rank across the dataset so labels are always meaningful.
+// TOP 20% → HIGH, NEXT 40% → MEDIUM, BOTTOM 40% → LOW
+// Falls back to null (hidden) when confidence_score_100 is missing.
+
+export function applyRelativeConfidenceLabels<T extends { confidence_score_100?: number | null; confidence_label?: string | null }>(rows: T[]): T[] {
+  const scores = rows.map((r) => r.confidence_score_100 ?? null);
+  const validScores = scores.filter((s): s is number => s != null);
+
+  if (validScores.length === 0) return rows;
+
+  const sorted = [...validScores].sort((a, b) => b - a);
+
+  return rows.map((row) => {
+    const score = row.confidence_score_100 ?? null;
+    if (score == null) return { ...row, confidence_label: null };
+
+    const index = sorted.indexOf(score);
+    const percentile = index / sorted.length;
+
+    const label = percentile <= 0.2 ? "HIGH" : percentile <= 0.6 ? "MEDIUM" : "LOW";
+    return { ...row, confidence_label: label };
+  });
+}
+
 // ─── Decision score display helper ───────────────────────────────────────────
 
 export function fmtDecisionScore(v: number | null | undefined): string {
