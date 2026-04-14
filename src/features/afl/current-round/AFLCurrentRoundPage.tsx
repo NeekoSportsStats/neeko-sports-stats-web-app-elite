@@ -447,8 +447,8 @@ function MustBuysSection({
         row={row}
         rank={globalIdx + 1}
         badge={isStrong ? <BuyBadge /> : <ValueBadge />}
-        metric={row.edge_canonical != null ? <EdgeMetric edge={row.edge_canonical} positive /> : undefined}
-        subtext={row.edge_canonical != null ? `${row.edge_canonical >= 0 ? "+" : ""}${row.edge_canonical.toFixed(1)} edge` : null}
+        metric={(row.edge_canonical ?? row.decision_score) != null ? <EdgeMetric edge={row.edge_canonical ?? row.decision_score ?? 0} positive /> : undefined}
+        subtext={(row.edge_canonical ?? row.decision_score) != null ? `${(row.edge_canonical ?? row.decision_score ?? 0) >= 0 ? "+" : ""}${(row.edge_canonical ?? row.decision_score ?? 0).toFixed(1)} edge` : null}
         onClick={() => onOpenRow(row)}
       />
     );
@@ -1276,8 +1276,8 @@ export default function AFLCurrentRoundPage() {
               icon={<TrendingUp className="w-3.5 h-3.5" />}
               accentColor="#4ade80"
               playerName={bestBuy?.player_name ?? null}
-              stat={bestBuy?.edge_canonical != null ? `+${fmt(bestBuy.edge_canonical, 0)}` : "—"}
-              statLabel="edge score"
+              stat={bestBuy != null ? `+${fmt(bestBuy.decision_score ?? bestBuy.edge_canonical ?? 0, 0)}` : "—"}
+              statLabel="decision score"
               subStat={bestBuy?.projection != null ? fmt(bestBuy.projection, 0) : undefined}
               subStatLabel="pts proj"
               context={bestBuy?.why ?? null}
@@ -1289,8 +1289,8 @@ export default function AFLCurrentRoundPage() {
               icon={<TrendingDown className="w-3.5 h-3.5" />}
               accentColor="#f87171"
               playerName={bestTrap?.player_name ?? null}
-              stat={bestTrap?.edge_canonical != null ? fmt(bestTrap.edge_canonical, 0) : "—"}
-              statLabel="edge score"
+              stat={bestTrap != null ? fmt(bestTrap.decision_score ?? bestTrap.edge_canonical ?? 0, 0) : "—"}
+              statLabel="decision score"
               subStat={bestTrap?.projection != null ? fmt(bestTrap.projection, 0) : undefined}
               subStatLabel="pts proj"
               context={bestTrap?.why ?? null}
@@ -1364,7 +1364,7 @@ export default function AFLCurrentRoundPage() {
             blurBadgeText={`+${Math.max(0, riskPicks.length - RISK_FREE)} more risks hidden`}
             footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
             renderBadge={() => <AvoidBadge />}
-            renderMetric={(row) => row.edge_canonical != null ? <EdgeMetric edge={row.edge_canonical} positive={false} /> : undefined}
+            renderMetric={(row) => (row.edge_canonical ?? row.decision_score) != null ? <EdgeMetric edge={row.edge_canonical ?? row.decision_score ?? 0} positive={false} /> : undefined}
             renderSubtext={(row) => {
               const tag = getRiskTag(row);
               return tag || null;

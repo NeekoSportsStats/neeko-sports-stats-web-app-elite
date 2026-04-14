@@ -62,35 +62,33 @@ export function buildCurrentRoundPlayers(
 
   const enriched = eligible.map(enrich);
 
-  const byProjDesc  = [...enriched].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0));
-  const byEdgeDesc  = [...enriched].sort((a, b) => (b.edge_canonical ?? 0) - (a.edge_canonical ?? 0));
-  const byEdgeAsc   = [...enriched].sort((a, b) => (a.edge_canonical ?? 0) - (b.edge_canonical ?? 0));
+  const byProjDesc        = [...enriched].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0));
+  const byDecisionDesc    = [...enriched].sort((a, b) => (b.decision_score ?? b.edge_canonical ?? 0) - (a.decision_score ?? a.edge_canonical ?? 0));
+  const byDecisionAsc     = [...enriched].sort((a, b) => (a.decision_score ?? a.edge_canonical ?? 0) - (b.decision_score ?? b.edge_canonical ?? 0));
 
   // ── CAPTAIN PICKS ─────────────────────────────────────────────────────────
-  // Best projection players with non-negative signal (not SIT/STRONG_SIT)
+  // Best projection players with non-negative signal (not SIT/HARD_SIT)
   const captains = byProjDesc
     .filter((p) => !hasNegativeSignal(p))
     .slice(0, CAPTAIN_LIMIT);
   const captainIds = new Set(captains.map((p) => p.player_id));
 
   // ── MUST BUYS ──────────────────────────────────────────────────────────────
-  // Positive canonical signal (START or STRONG_START) + positive edge
-  // Sorted by edge desc so strongest value trade targets come first
-  const mustBuys = byEdgeDesc
+  // action_canonical IN ('SMASH_START','STRONG_START','START')
+  // Sorted by decision_score DESC (falls back to edge_canonical)
+  const mustBuys = byDecisionDesc
     .filter((p) =>
       !captainIds.has(p.player_id) &&
-      hasPositiveSignal(p) &&
-      (p.edge_canonical ?? 0) > 0
+      hasPositiveSignal(p)
     )
     .slice(0, MUST_BUY_LIMIT);
   const mustBuyIds = new Set(mustBuys.map((p) => p.player_id));
 
   // ── BUDGET UPSIDE ──────────────────────────────────────────────────────────
-  // True budget players only: price < $350k, games_played >= 1 (already enforced by eligible)
-  // NOT already in mustBuys or captains
-  // Require at least START signal (positive signal only — no random cheap players)
+  // Under $350k, positive signal, not already used
+  // Sorted by decision_score DESC
   const usedIds = new Set([...captainIds, ...mustBuyIds]);
-  const budgetPicks = byEdgeDesc
+  const budgetPicks = byDecisionDesc
     .filter((p) =>
       !usedIds.has(p.player_id) &&
       (p.price ?? 0) > 0 &&
@@ -101,11 +99,10 @@ export function buildCurrentRoundPlayers(
   const budgetIds = new Set(budgetPicks.map((p) => p.player_id));
 
   // ── RISK / OVERPRICED ─────────────────────────────────────────────────────
-  // Canonical negative signal (SIT or STRONG_SIT) players
-  // NOT already shown elsewhere
-  // Sorted by edge ascending (most negative first)
+  // action_canonical IN ('SIT','HARD_SIT'), not shown elsewhere
+  // Sorted by decision_score ASC (worst first)
   const allUsedIds = new Set([...usedIds, ...budgetIds]);
-  const riskPicks = byEdgeAsc
+  const riskPicks = byDecisionAsc
     .filter((p) =>
       !allUsedIds.has(p.player_id) &&
       hasNegativeSignal(p)
