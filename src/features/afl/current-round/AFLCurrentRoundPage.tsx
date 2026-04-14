@@ -1175,7 +1175,7 @@ export default function AFLCurrentRoundPage() {
     return ids instanceof Set ? ids : new Set<string>();
   }, []);
 
-  const { captains, mustBuys, budgetPicks, riskPicks } = useMemo(
+  const { captains, mustBuys, budgetPicks, riskPicks, traps } = useMemo(
     () => buildCurrentRoundPlayers(players, edgeBoardIds),
     [players, edgeBoardIds]
   );
@@ -1311,7 +1311,7 @@ export default function AFLCurrentRoundPage() {
             />
             <RoundSnapshotCard
               mustBuyCount={mustBuys.length}
-              trapCount={riskPicks.length}
+              trapCount={traps.length > 0 ? traps.length : riskPicks.length}
               captainLockCount={captainLockCount}
               budgetCount={budgetPicks.length}
             />
@@ -1371,7 +1371,28 @@ export default function AFLCurrentRoundPage() {
             }}
           />
 
-          {/* ── SECTION 4: CAPTAIN PICKS ────────────────────────────── */}
+          {/* ── SECTION 4: TRAPS ───────────────────────────────────── */}
+          {traps.length > 0 && (
+            <SectionCard
+              title="Traps"
+              description="Which players are a hard avoid this round?"
+              icon={<AlertTriangle className="w-3.5 h-3.5" />}
+              accentColor="#ef4444"
+              players={traps}
+              freeLimit={RISK_FREE}
+              isPremiumUser={isPremium}
+              onOpenRow={openRow}
+              onUpgrade={() => setShowUpgradeModal(true)}
+              blurCtaLabel="Reveal all traps"
+              blurBadgeText={`+${Math.max(0, traps.length - RISK_FREE)} more traps hidden`}
+              footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
+              renderBadge={() => <AvoidBadge />}
+              renderMetric={(row) => (row.decision_score != null) ? <EdgeMetric edge={row.decision_score} positive={false} /> : undefined}
+              renderSubtext={(row) => getRiskTag(row) || null}
+            />
+          )}
+
+          {/* ── SECTION 5: CAPTAIN PICKS ────────────────────────────── */}
           <CaptainSection
             captains={captains}
             isPremiumUser={isPremium}
