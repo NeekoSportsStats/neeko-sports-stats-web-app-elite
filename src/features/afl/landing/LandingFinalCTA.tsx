@@ -10,8 +10,8 @@ export default function LandingFinalCTA() {
 
   return (
     <section style={{
-      background: "linear-gradient(180deg, #0a0909 0%, #060504 100%)",
-      padding: "clamp(80px, 7vw, 104px) clamp(20px, 5vw, 40px)",
+      background: "#05070A",
+      padding: "clamp(80px, 7vw, 140px) clamp(20px, 5vw, 40px)",
       position: "relative",
       overflow: "hidden",
     }}>

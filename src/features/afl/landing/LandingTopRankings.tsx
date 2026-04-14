@@ -27,7 +27,7 @@ export default function LandingTopRankings({ loading, rows }: Props) {
   const gatedRows = rows.slice(CLEAR_ROWS, CLEAR_ROWS + GATED_ROWS);
 
   return (
-    <section style={{ background: "#0a0908", padding: "clamp(80px, 7vw, 104px) clamp(20px, 5vw, 40px)" }}>
+    <section style={{ background: "#05070A", padding: "clamp(80px, 7vw, 120px) clamp(20px, 5vw, 40px)" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         <div style={{ marginBottom: 32 }}>
           <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(224,174,45,0.60)", marginBottom: 10 }}>Live Data</p>

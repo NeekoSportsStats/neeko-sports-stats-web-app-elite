@@ -40,7 +40,7 @@ const STATS = [
 
 export default function LandingTrust() {
   return (
-    <section style={{ background: "#0a0909", padding: "clamp(80px, 7vw, 104px) clamp(20px, 5vw, 40px)" }}>
+    <section style={{ background: "#05070A", padding: "clamp(80px, 7vw, 120px) clamp(20px, 5vw, 40px)" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 44 }}>

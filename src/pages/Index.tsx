@@ -23,7 +23,7 @@ import LandingSecondaryCTA from "@/features/afl/landing/LandingSecondaryCTA";
 import MobileLanding from "@/features/afl/landing/MobileLanding";
 
 // ── Design tokens ───────────────────────────────────────────────────────────────
-const DARK = "#0B0F14";
+const DARK = "#05070A";
 const GOLD = "#F4C542";
 
 // ── Card accent colors (dark, desaturated — readable on dark bg) ───────────────
@@ -666,7 +666,7 @@ export default function Index() {
         <div style={{
           position: "absolute", bottom: 0, left: 0, right: 0,
           height: 200,
-          background: "linear-gradient(to bottom, transparent 0%, #0B0F14 100%)",
+          background: "linear-gradient(to bottom, transparent 0%, #05070A 100%)",
           zIndex: 15, pointerEvents: "none",
         }} />
 
@@ -684,8 +684,9 @@ export default function Index() {
           THIS WEEK'S EDGE — own section below the fold
       ═══════════════════════════════════════════════════ */}
       <section style={{
-        background: DARK,
-        padding: "clamp(24px, 2.5vw, 36px) clamp(20px, 5vw, 40px) clamp(64px, 6vw, 88px)",
+        background: "#05070A",
+        backgroundImage: "radial-gradient(circle at 50% 0%, rgba(255,180,50,0.06), transparent 60%)",
+        padding: "clamp(36px, 3vw, 48px) clamp(20px, 5vw, 40px) clamp(80px, 7vw, 120px)",
       }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           {/* Section header */}
@@ -742,9 +743,6 @@ export default function Index() {
           </div>
         </div>
       </section>
-
-      {/* ── GOLD DIVIDER ────────────────────────────────────────────── */}
-      <div style={{ width: "100%", height: 1, background: "linear-gradient(to right, transparent, rgba(244,197,66,0.20) 20%, rgba(244,197,66,0.45) 50%, rgba(244,197,66,0.20) 80%, transparent)" }} />
 
       <div className="scroll-reveal" data-reveal-delay="0"><LandingWorkflowSection /></div>
       <div className="scroll-reveal" data-reveal-delay="50"><LandingProductProof rankingsPlayers={players} rankingsLoading={loading} isPremium={isPremium} /></div>

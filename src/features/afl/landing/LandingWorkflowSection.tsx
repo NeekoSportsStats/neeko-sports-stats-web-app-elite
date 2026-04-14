@@ -124,8 +124,8 @@ function StepCard(step: Step) {
 export default function LandingWorkflowSection() {
   return (
     <section style={{
-      background: "linear-gradient(180deg, #0B0F14 0%, #0d0c0a 100%)",
-      padding: "clamp(64px, 6vw, 88px) clamp(20px, 5vw, 40px)",
+      background: "#06080C",
+      padding: "clamp(80px, 7vw, 120px) clamp(20px, 5vw, 40px)",
     }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 40 }}>
