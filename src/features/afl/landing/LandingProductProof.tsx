@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ChartBar as BarChart3, TrendingUp, Star, User, Zap, ArrowRight, Lock } from "lucide-react";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
@@ -6,7 +6,7 @@ import { fmtPrice } from "@/features/afl/market-watch/helpers";
 
 const GOLD = "#E0AE2D";
 
-// ── Static fallback data (used when live data is empty) ───────────────────────
+// ── Static fallback data ──────────────────────────────────────────────────────
 
 const STATIC_FALLBACK: RankingRow[] = [
   {
@@ -178,10 +178,14 @@ type TabConfig = {
   label: string;
   icon: React.ReactNode;
   heading: string;
+  focusLabel: string;
+  focusSublabel: string;
   desc: string;
   to: string;
   ctaLabel: string;
   accentColor: string;
+  primaryStatLabel: string;
+  actionPillContext: string;
 };
 
 const TABS: TabConfig[] = [
@@ -190,81 +194,108 @@ const TABS: TabConfig[] = [
     label: "Rankings",
     icon: <BarChart3 size={14} />,
     heading: "Full Player Rankings",
+    focusLabel: "Lens: Projection",
+    focusSublabel: "Who scores the most points this round",
     desc: "See who to pick — based on real projections, value scores, and trend signals.",
     to: "/sports/afl/rankings",
     ctaLabel: "Explore Rankings",
     accentColor: GOLD,
+    primaryStatLabel: "Projected",
+    actionPillContext: "Trade action",
   },
   {
     id: "market-watch",
     label: "Market Watch",
     icon: <TrendingUp size={14} />,
     heading: "Market Watch",
+    focusLabel: "Lens: Value Gap",
+    focusSublabel: "Undervalued vs overpriced before trade deadline",
     desc: "Find undervalued players and avoid traps before every trade deadline.",
     to: "/sports/afl/market-watch",
     ctaLabel: "Open Market Watch",
     accentColor: "#22c55e",
+    primaryStatLabel: "Price",
+    actionPillContext: "Market signal",
   },
   {
     id: "captains",
     label: "Captains",
     icon: <Star size={14} />,
     heading: "Captain Picks",
+    focusLabel: "Lens: Ceiling + Safety",
+    focusSublabel: "Best captain based on upside and confidence",
     desc: "Know the best captain picks before lockout — ranked by confidence.",
     to: "/sports/afl/captains",
     ctaLabel: "View Captain Picks",
     accentColor: "#E0AE2D",
+    primaryStatLabel: "Projected",
+    actionPillContext: "Captain rating",
   },
   {
     id: "players",
     label: "Players",
     icon: <User size={14} />,
     heading: "Player Profiles",
+    focusLabel: "Lens: Form",
+    focusSublabel: "Recent form trend and consistency rating",
     desc: "Understand form, value, and projections for every AFL fantasy player.",
     to: "/sports/afl/rankings",
     ctaLabel: "View Player Pages",
     accentColor: "#60a5fa",
+    primaryStatLabel: "L5 Avg",
+    actionPillContext: "Form signal",
   },
   {
     id: "current-round",
     label: "Current Week",
     icon: <Zap size={14} />,
     heading: "Weekly Edge Board",
+    focusLabel: "Lens: Matchup",
+    focusSublabel: "Start/sit decisions based on this week's opponent",
     desc: "Your full weekly decision hub — trades, captains, and start/sit in one place.",
     to: "/sports/afl/current-round",
     ctaLabel: "View Edge Board",
     accentColor: "#60a5fa",
+    primaryStatLabel: "Projected",
+    actionPillContext: "Start/sit",
   },
 ];
 
 // ── Row renderers ─────────────────────────────────────────────────────────────
 
-type RowProps = { row: RankingRow; index: number; tabId: TabId };
+type RowProps = { row: RankingRow; index: number; tabId: TabId; accentColor: string };
 
-function DataRow({ row, index, tabId }: RowProps) {
-  const accent = TABS.find(t => t.id === tabId)?.accentColor ?? GOLD;
-
+function DataRow({ row, index, tabId, accentColor }: RowProps) {
   let primaryStat: string;
+  let subLabel: string;
   let tag: { label: string; color: string };
 
   if (tabId === "rankings") {
     const proj = row.projection != null ? Math.round(row.projection) : null;
     primaryStat = proj != null ? `${proj} pts` : "—";
+    subLabel = row.matchup_label ?? "—";
     tag = resolveSignal(row);
   } else if (tabId === "market-watch") {
     primaryStat = fmtPrice(row.price);
+    const vs = row.value_score != null ? (row.value_score > 0 ? `+${row.value_score.toFixed(1)}` : row.value_score.toFixed(1)) : "—";
+    subLabel = `Value ${vs}`;
     tag = resolveMWCategory(row);
   } else if (tabId === "captains") {
     const proj = row.projection != null ? Math.round(row.projection) : null;
     primaryStat = proj != null ? `${proj} pts` : "—";
+    const conf = row.projection_confidence != null ? `${Math.round(row.projection_confidence)}% conf` : "—";
+    subLabel = conf;
     tag = resolveCaptainRating(row);
   } else if (tabId === "players") {
     const avg5 = row.last_5_avg != null ? `${Math.round(row.last_5_avg)} avg` : "—";
     primaryStat = avg5;
+    const nr = row.neeko_rating != null ? `NR ${Math.round(row.neeko_rating)}` : "—";
+    subLabel = nr;
     tag = resolveSignal(row);
   } else {
     const proj = row.projection != null ? Math.round(row.projection) : null;
     primaryStat = proj != null ? `${proj} proj` : "—";
+    subLabel = row.matchup_label ?? "—";
     tag = resolveEdgeTag(row);
   }
 
@@ -275,10 +306,10 @@ function DataRow({ row, index, tabId }: RowProps) {
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
-      padding: "12px 22px",
+      padding: "11px 22px",
       borderBottom: "1px solid rgba(255,255,255,0.04)",
     }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
         <div style={{
           width: 28, height: 28, borderRadius: 8,
           background: "rgba(255,255,255,0.05)",
@@ -289,26 +320,32 @@ function DataRow({ row, index, tabId }: RowProps) {
         }}>
           {index + 1}
         </div>
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <p style={{
-            margin: 0, fontSize: 13.5, fontWeight: 600, color: "#EAEAEA",
+            margin: 0, fontSize: 13, fontWeight: 600, color: "#EAEAEA",
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
           }}>
             {row.player_name}
           </p>
-          <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "rgba(255,255,255,0.30)" }}>
+          <p style={{ margin: "2px 0 0", fontSize: 10, color: "rgba(255,255,255,0.28)" }}>
             {subtitle}
           </p>
         </div>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-        <span style={{
-          fontSize: 13, fontWeight: 700,
-          color: accent,
-          fontVariantNumeric: "tabular-nums",
-        }}>
-          {primaryStat}
-        </span>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
+        <div style={{ textAlign: "right" }}>
+          <p style={{
+            margin: 0, fontSize: 13, fontWeight: 700,
+            color: accentColor,
+            fontVariantNumeric: "tabular-nums",
+          }}>
+            {primaryStat}
+          </p>
+          <p style={{ margin: "2px 0 0", fontSize: 10, color: "rgba(255,255,255,0.26)", whiteSpace: "nowrap" }}>
+            {subLabel}
+          </p>
+        </div>
         <span style={{
           fontSize: 10, fontWeight: 700,
           color: tag.color,
@@ -318,6 +355,8 @@ function DataRow({ row, index, tabId }: RowProps) {
           borderRadius: 999,
           letterSpacing: "0.05em",
           whiteSpace: "nowrap",
+          minWidth: 52,
+          textAlign: "center" as const,
         }}>
           {tag.label}
         </span>
@@ -332,7 +371,7 @@ function LockedRow({ index }: { index: number }) {
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
-      padding: "12px 22px",
+      padding: "11px 22px",
       borderBottom: "1px solid rgba(255,255,255,0.03)",
       position: "relative",
     }}>
@@ -364,10 +403,13 @@ function LockedRow({ index }: { index: number }) {
         </div>
       </div>
       <div style={{
-        display: "flex", alignItems: "center", gap: 10,
+        display: "flex", alignItems: "center", gap: 16,
         filter: "blur(4px)", opacity: 0.25, userSelect: "none",
       }}>
-        <div style={{ width: 44, height: 11, background: "rgba(255,255,255,0.05)", borderRadius: 3 }} />
+        <div>
+          <div style={{ width: 44, height: 11, background: "rgba(255,255,255,0.05)", borderRadius: 3, marginBottom: 4 }} />
+          <div style={{ width: 32, height: 9, background: "rgba(255,255,255,0.04)", borderRadius: 3 }} />
+        </div>
         <div style={{ width: 52, height: 20, background: "rgba(255,255,255,0.05)", borderRadius: 999 }} />
       </div>
     </div>
@@ -380,7 +422,7 @@ function SkeletonRows() {
       {Array.from({ length: 5 }).map((_, i) => (
         <div key={i} style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "12px 22px",
+          padding: "11px 22px",
           borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.04)" : "none",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -390,8 +432,11 @@ function SkeletonRows() {
               <div style={{ width: 80, height: 9, background: "rgba(255,255,255,0.04)", borderRadius: 3, marginTop: 5 }} />
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 50, height: 11, background: "rgba(255,255,255,0.04)", borderRadius: 3 }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div>
+              <div style={{ width: 50, height: 11, background: "rgba(255,255,255,0.04)", borderRadius: 3, marginBottom: 4 }} />
+              <div style={{ width: 36, height: 9, background: "rgba(255,255,255,0.04)", borderRadius: 3 }} />
+            </div>
             <div style={{ width: 44, height: 20, background: "rgba(255,255,255,0.05)", borderRadius: 999 }} />
           </div>
         </div>
@@ -428,14 +473,14 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
         setActiveId(pendingId.current!);
         pendingId.current = null;
         setPanelVisible(true);
-      }, 110);
+      }, 150);
       return () => clearTimeout(timer);
     }
   }, [panelVisible]);
 
   const active = TABS.find(t => t.id === activeId) ?? TABS[0];
 
-  const derivedRows: RankingRow[] = (() => {
+  const derivedRows: RankingRow[] = useMemo(() => {
     if (rankingsLoading) return [];
     const pool = rankingsPlayers.length > 0 ? rankingsPlayers : STATIC_FALLBACK;
     switch (activeId) {
@@ -445,17 +490,26 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
       case "players":       return buildPlayersRows(pool);
       case "current-round": return buildEdgeRows(pool);
     }
-  })();
+  }, [activeId, rankingsPlayers, rankingsLoading]);
 
   const visibleRows = derivedRows.slice(0, VISIBLE_ROWS);
   const isFallback = rankingsPlayers.length === 0 && !rankingsLoading;
+
+  const playerCount = rankingsLoading ? "..." : (rankingsPlayers.length > 0 ? rankingsPlayers.length : "630+");
+  const lastUpdated = isFallback ? "Sample data" : "Live · Before lockout";
 
   function renderRows() {
     if (rankingsLoading) return <SkeletonRows />;
     return (
       <>
         {visibleRows.map((row, i) => (
-          <DataRow key={row.player_id ?? i} row={row} index={i} tabId={activeId} />
+          <DataRow
+            key={row.player_id ?? i}
+            row={row}
+            index={i}
+            tabId={activeId}
+            accentColor={active.accentColor}
+          />
         ))}
         {!isPremium && Array.from({ length: LOCKED_ROWS }).map((_, i) => (
           <LockedRow key={`locked-${i}`} index={visibleRows.length + i} />
@@ -470,6 +524,8 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
       padding: "clamp(80px, 7vw, 120px) clamp(20px, 5vw, 40px)",
     }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+
+        {/* Section header */}
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <p style={{
             fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em",
@@ -492,10 +548,30 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
             color: "rgba(255,255,255,0.38)",
             maxWidth: 520,
             lineHeight: 1.5,
-            margin: "0 auto",
+            margin: "0 auto 20px",
           }}>
-            Everything you need to make the right calls this week.
+            One model. Five lenses. Every decision covered before lockout.
           </p>
+
+          {/* Shared context row */}
+          <div style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 0,
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 999,
+            padding: "6px 16px",
+            fontSize: 11,
+            color: "rgba(255,255,255,0.35)",
+            fontWeight: 500,
+          }}>
+            <span style={{ fontVariantNumeric: "tabular-nums" }}>{playerCount} players</span>
+            <span style={{ margin: "0 10px", color: "rgba(255,255,255,0.14)" }}>·</span>
+            <span>{lastUpdated}</span>
+            <span style={{ margin: "0 10px", color: "rgba(255,255,255,0.14)" }}>·</span>
+            <span style={{ color: "rgba(224,174,45,0.55)", fontWeight: 600 }}>Same model · Different views</span>
+          </div>
         </div>
 
         <div style={{
@@ -540,9 +616,9 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
                   }}
                 >
                   <span style={{ display: "flex", flexShrink: 0 }}>{tab.icon}</span>
-                  {tab.label}
+                  <span style={{ flex: 1 }}>{tab.label}</span>
                   {isActive && (
-                    <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", flexShrink: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
                       <div style={{
                         width: 6, height: 6, borderRadius: "50%",
                         background: "#22c55e",
@@ -552,6 +628,22 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
                 </button>
               );
             })}
+
+            {/* Engine label below nav */}
+            <div style={{
+              marginTop: 12,
+              padding: "10px 14px",
+              background: "rgba(224,174,45,0.05)",
+              border: "1px solid rgba(224,174,45,0.12)",
+              borderRadius: 10,
+            }}>
+              <p style={{ margin: 0, fontSize: 10, fontWeight: 700, color: "rgba(224,174,45,0.55)", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                Neeko Engine
+              </p>
+              <p style={{ margin: "4px 0 0", fontSize: 11, color: "rgba(255,255,255,0.28)", lineHeight: 1.5 }}>
+                One model powers all views. Data updates before every round.
+              </p>
+            </div>
           </div>
 
           {/* Panel */}
@@ -563,34 +655,50 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
             borderRadius: 14,
             overflow: "hidden",
             boxShadow: "0 20px 56px rgba(0,0,0,0.50)",
-            transition: "border-color 0.22s ease, opacity 0.14s ease, transform 0.14s ease",
+            transition: "border-color 0.22s ease",
             opacity: panelVisible ? 1 : 0,
-            transform: panelVisible ? "translateX(0)" : "translateX(5px)",
+            transform: panelVisible ? "translateY(0)" : "translateY(4px)",
+            transitionProperty: "opacity, transform, border-color",
+            transitionDuration: "150ms, 150ms, 220ms",
+            transitionTimingFunction: "ease, ease, ease",
           }}>
+
             {/* Panel header */}
             <div style={{
-              padding: "16px 22px",
+              padding: "14px 22px",
               borderBottom: "1px solid rgba(255,255,255,0.05)",
-              display: "flex", alignItems: "center", gap: 10,
+              display: "flex", alignItems: "flex-start", gap: 12,
             }}>
               <div style={{
-                width: 32, height: 32, borderRadius: 9,
+                width: 34, height: 34, borderRadius: 10,
                 background: `${active.accentColor}14`,
                 border: `1px solid ${active.accentColor}28`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 color: active.accentColor,
                 flexShrink: 0,
+                marginTop: 1,
               }}>
                 {active.icon}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   <p style={{
-                    margin: 0, fontSize: 13, fontWeight: 700,
+                    margin: 0, fontSize: 13.5, fontWeight: 700,
                     color: "#F0F0F0", letterSpacing: "-0.01em",
                   }}>
                     {active.heading}
                   </p>
+                  <span style={{
+                    fontSize: 9.5, fontWeight: 700,
+                    color: active.accentColor,
+                    background: `${active.accentColor}14`,
+                    border: `1px solid ${active.accentColor}28`,
+                    padding: "2px 8px", borderRadius: 999,
+                    letterSpacing: "0.06em", textTransform: "uppercase" as const,
+                    flexShrink: 0,
+                  }}>
+                    {active.focusLabel}
+                  </span>
                   {isFallback ? (
                     <span style={{
                       fontSize: 9, fontWeight: 700,
@@ -618,11 +726,24 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
                   )}
                 </div>
                 <p style={{
-                  margin: "2px 0 0", fontSize: 11, color: "rgba(255,255,255,0.34)",
+                  margin: "3px 0 0", fontSize: 11, color: "rgba(255,255,255,0.34)",
                   fontWeight: 400, lineHeight: 1.4,
                 }}>
-                  {active.desc}
+                  {active.focusSublabel}
                 </p>
+              </div>
+
+              {/* Column labels */}
+              <div style={{
+                display: "flex", alignItems: "center", gap: 16,
+                flexShrink: 0, paddingTop: 8,
+              }}>
+                <span style={{ fontSize: 9.5, fontWeight: 600, color: "rgba(255,255,255,0.20)", letterSpacing: "0.06em", textTransform: "uppercase" as const, minWidth: 44, textAlign: "right" as const }}>
+                  {active.primaryStatLabel}
+                </span>
+                <span style={{ fontSize: 9.5, fontWeight: 600, color: "rgba(255,255,255,0.20)", letterSpacing: "0.06em", textTransform: "uppercase" as const, minWidth: 52, textAlign: "center" as const }}>
+                  {active.actionPillContext}
+                </span>
               </div>
             </div>
 
@@ -631,7 +752,38 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
               {renderRows()}
             </div>
 
-            {/* Footer */}
+            {/* Gating message + footer */}
+            {!isPremium && (
+              <div style={{
+                margin: "0 22px 0",
+                padding: "10px 16px",
+                background: "rgba(224,174,45,0.05)",
+                border: "1px solid rgba(224,174,45,0.12)",
+                borderRadius: 8,
+                display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+              }}>
+                <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.40)", lineHeight: 1.4 }}>
+                  See full model across all <strong style={{ color: "rgba(224,174,45,0.70)", fontWeight: 700 }}>630+ players</strong> — every lens, every round.
+                </p>
+                <Link
+                  to="/neeko-plus"
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 5,
+                    fontSize: 11, fontWeight: 700,
+                    color: "#130c00",
+                    background: "linear-gradient(160deg, #fad52a, #e09600)",
+                    padding: "7px 14px",
+                    borderRadius: 7,
+                    textDecoration: "none",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                  }}
+                >
+                  Unlock All <ArrowRight size={11} />
+                </Link>
+              </div>
+            )}
+
             <div style={{
               padding: "14px 22px",
               borderTop: "1px solid rgba(255,255,255,0.04)",
@@ -642,7 +794,7 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
               <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.20)", flexShrink: 0 }}>
                 {isPremium
                   ? "Live data — updated before every round lockout"
-                  : "Showing top 3 — unlock all 5 with Neeko+"}
+                  : "Showing top 3 free — unlock all 5 with Neeko+"}
               </p>
               <Link
                 to={active.to}
