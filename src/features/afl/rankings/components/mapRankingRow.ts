@@ -9,7 +9,7 @@ export function mapRankingRow(r: Record<string, unknown>): RankingRow {
     player_name:             (r.player_name as string) ?? "",
     team:                    (r.team as string) ?? "",
     team_name:               (r.team_name as string) ?? null,
-    position:                normalisePosition((r.player_position) as string | null),
+    position:                normalisePosition((r.position ?? r.player_position) as string | null),
     position_group:          (r.position_group as string) ?? null,
 
     projection,

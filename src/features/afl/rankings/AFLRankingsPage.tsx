@@ -408,7 +408,7 @@ export default function AFLRankingsPage() {
 
     if (isPremium && premiumFilter !== "ALL") {
       if (premiumFilter === "TOP50") {
-        filtered = filtered.filter((r) => (r.games_played ?? 0) >= 3);
+        filtered = filtered.slice(0, 50);
       } else if (premiumFilter === "TOP100") {
         filtered = filtered.slice(0, 100);
       } else if (premiumFilter === "ELITE") {
