@@ -429,14 +429,11 @@ function SkeletonRows() {
   );
 }
 
-function EmptyState({ accentColor }: { accentColor: string }) {
+function EmptyState({ accentColor: _accentColor }: { accentColor: string }) {
   return (
     <div style={{ padding: "32px 22px", textAlign: "center" }}>
       <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.28)", lineHeight: 1.5 }}>
         Data updates before every round lockout.
-      </p>
-      <p style={{ margin: "4px 0 0", fontSize: 11, color: accentColor, opacity: 0.6 }}>
-        Check back closer to game time.
       </p>
     </div>
   );
