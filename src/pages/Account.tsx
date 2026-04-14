@@ -243,9 +243,13 @@ export default function Account() {
                 <p>
                   <span className="text-sm text-muted-foreground">Plan</span><br />
                   <strong>
-                    {subRecord?.plan_interval === "year" || subRecord?.interval === "year"
-                      ? "Neeko+ Yearly"
-                      : "Neeko+ Monthly"}
+                    {profile?.premium_expires_at && !subRecord
+                      ? "Neeko+ Season Pass"
+                      : subRecord?.plan_interval === "week" || subRecord?.interval === "week"
+                        ? "Neeko+ Weekly"
+                        : subRecord
+                          ? "Neeko+ Season Pass"
+                          : "Neeko+"}
                   </strong>
                 </p>
 
