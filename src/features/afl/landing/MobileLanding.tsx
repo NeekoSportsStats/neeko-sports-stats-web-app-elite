@@ -33,6 +33,8 @@ interface HeroCard {
   team: string;
   position?: string | null;
   projection?: number | null;
+  seasonAvg?: number | null;
+  confidenceLabel?: string | null;
   reason: string;
   ctaLabel: string;
   ctaTo: string;
@@ -74,6 +76,11 @@ function signalFromRow(row: RankingRow): { label: string; color: string } {
 
 function MobileHeroCard({ card }: { card: HeroCard }) {
   const pts = card.projection != null ? Math.round(card.projection) : null;
+  const avg = card.seasonAvg != null ? Math.round(card.seasonAvg) : null;
+  const vsAvgDiff = pts != null && avg != null ? pts - avg : null;
+  const vsAvgStr = vsAvgDiff != null
+    ? (vsAvgDiff >= 0 ? `+${vsAvgDiff}` : `${vsAvgDiff}`) + " vs avg"
+    : null;
 
   return (
     <Link to={card.ctaTo} style={{ textDecoration: "none", display: "block", width: "82vw", maxWidth: 300, flexShrink: 0 }}>
@@ -81,30 +88,57 @@ function MobileHeroCard({ card }: { card: HeroCard }) {
         background: "rgba(255,255,255,0.055)",
         border: `1px solid ${card.color}22`,
         borderRadius: 14,
-        padding: "16px 14px",
+        padding: "14px 14px 14px",
         position: "relative",
         overflow: "hidden",
       }}>
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: card.color, opacity: 0.55 }} />
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: card.color, opacity: 0.65 }} />
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-          <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.26em", textTransform: "uppercase", color: `${card.color}BB` }}>{card.label}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 9 }}>
+          <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.26em", textTransform: "uppercase", color: `${card.color}BB`, flex: 1 }}>{card.label}</span>
           {card.position && (
-            <span style={{ fontSize: 8, fontWeight: 800, color: card.color, background: `${card.color}15`, border: `1px solid ${card.color}25`, padding: "2px 6px", borderRadius: 4, textTransform: "uppercase" }}>{card.position}</span>
+            <span style={{ fontSize: 8, fontWeight: 800, color: card.color, background: `${card.color}15`, border: `1px solid ${card.color}25`, padding: "2px 6px", borderRadius: 4, textTransform: "uppercase", flexShrink: 0 }}>{card.position}</span>
           )}
+          <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 7.5, fontWeight: 700, letterSpacing: "0.12em", color: "#22c55e", flexShrink: 0 }}>
+            <span className="live-dot" style={{ width: 4, height: 4, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
+            LIVE
+          </span>
         </div>
 
-        <p style={{ fontSize: 16, fontWeight: 800, color: "#F0F0F0", marginBottom: 2, letterSpacing: "-0.02em", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{card.playerName}</p>
-        <p style={{ fontSize: 10, color: "rgba(255,255,255,0.30)", marginBottom: 10, fontWeight: 500 }}>{card.team}</p>
+        <p style={{ fontSize: 15, fontWeight: 800, color: "#F0F0F0", marginBottom: 2, letterSpacing: "-0.02em", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{card.playerName}</p>
+        <p style={{ fontSize: 10, color: "rgba(255,255,255,0.30)", marginBottom: 9, fontWeight: 500 }}>{card.team}</p>
 
         {pts != null && (
-          <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 10 }}>
-            <span style={{ fontSize: 34, fontWeight: 900, color: card.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{pts}</span>
-            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.28)", fontWeight: 600, letterSpacing: "0.08em" }}>proj pts</span>
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 3 }}>
+              <span style={{ fontSize: 34, fontWeight: 900, color: card.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{pts}</span>
+              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.28)", fontWeight: 600, letterSpacing: "0.08em" }}>proj pts</span>
+              {vsAvgStr != null && (
+                <span style={{
+                  fontSize: 8.5, fontWeight: 700,
+                  color: vsAvgDiff! >= 0 ? "#4ade80" : "#f87171",
+                  background: vsAvgDiff! >= 0 ? "rgba(74,222,128,0.10)" : "rgba(248,113,113,0.10)",
+                  padding: "1px 5px", borderRadius: 4, letterSpacing: "0.04em", flexShrink: 0,
+                }}>
+                  {vsAvgStr}
+                </span>
+              )}
+            </div>
+            {card.confidenceLabel && (
+              <span style={{
+                fontSize: 8, fontWeight: 700,
+                color: card.confidenceLabel === "High" ? "#22c55e" : card.confidenceLabel === "Medium" ? "#E0AE2D" : "rgba(255,255,255,0.40)",
+                background: card.confidenceLabel === "High" ? "rgba(34,197,94,0.10)" : card.confidenceLabel === "Medium" ? "rgba(224,174,45,0.10)" : "rgba(255,255,255,0.05)",
+                border: `1px solid ${card.confidenceLabel === "High" ? "rgba(34,197,94,0.20)" : card.confidenceLabel === "Medium" ? "rgba(224,174,45,0.20)" : "rgba(255,255,255,0.08)"}`,
+                padding: "2px 7px", borderRadius: 999, letterSpacing: "0.08em", textTransform: "uppercase" as const,
+              }}>
+                {card.confidenceLabel} Confidence
+              </span>
+            )}
           </div>
         )}
 
-        <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.40)", lineHeight: 1.5, marginBottom: 12 }}>{card.reason}</p>
+        <p style={{ fontSize: 11, color: "rgba(255,255,255,0.40)", lineHeight: 1.5, marginBottom: 11 }}>{card.reason}</p>
 
         <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: card.color }}>
           {card.ctaLabel} <ChevronRight size={10} />
@@ -564,7 +598,11 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
         </div>
       )}
 
-      <style>{`.mobile-card-scroll::-webkit-scrollbar { display: none; }`}</style>
+      <style>{`
+        .mobile-card-scroll::-webkit-scrollbar { display: none; }
+        @keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+        .live-dot { animation: livePulse 1.8s ease-in-out infinite; }
+      `}</style>
     </div>
   );
 }

@@ -43,6 +43,8 @@ type CardProps = {
   team: string;
   position?: string | null;
   projection?: number | null;
+  seasonAvg?: number | null;
+  confidenceLabel?: string | null;
   reason: string;
   ctaLabel: string;
   ctaTo: string;
@@ -54,6 +56,11 @@ function EdgeCard(p: CardProps) {
   const [hovered, setHovered] = useState(false);
   const accent = CARD_ACCENTS[p.accentIdx] ?? CARD_ACCENTS[0];
   const pts = p.projection != null ? Math.round(p.projection) : null;
+  const avg = p.seasonAvg != null ? Math.round(p.seasonAvg) : null;
+  const vsAvgDiff = pts != null && avg != null ? pts - avg : null;
+  const vsAvgStr = vsAvgDiff != null
+    ? (vsAvgDiff >= 0 ? `+${vsAvgDiff}` : `${vsAvgDiff}`) + " vs avg"
+    : null;
 
   return (
     <Link to={p.ctaTo} style={{ textDecoration: "none", display: "flex", flexDirection: "column", height: "100%" }}>
@@ -67,14 +74,14 @@ function EdgeCard(p: CardProps) {
           background: "rgba(10, 12, 16, 0.85)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
-          border: `1px solid ${hovered ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.06)"}`,
+          border: `1px solid ${hovered ? accent.color + "38" : "rgba(255,255,255,0.06)"}`,
           borderRadius: 12,
           overflow: "hidden",
           boxShadow: hovered
-            ? `0 16px 40px rgba(0,0,0,0.60), 0 0 0 1px ${accent.color}18`
+            ? `0 20px 48px rgba(0,0,0,0.65), 0 0 0 1px ${accent.color}28, 0 0 28px ${accent.color}10`
             : "0 4px 20px rgba(0,0,0,0.40)",
-          transform: hovered ? "translateY(-3px) translateZ(0)" : "translateY(0) translateZ(0)",
-          transition: "transform 0.20s ease, box-shadow 0.20s ease, border-color 0.20s ease",
+          transform: hovered ? "translateY(-4px) translateZ(0)" : "translateY(0) translateZ(0)",
+          transition: "transform 0.20s ease, box-shadow 0.20s ease, border-color 0.18s ease",
           willChange: "transform",
         }}
       >
@@ -82,13 +89,14 @@ function EdgeCard(p: CardProps) {
         <div style={{
           height: 2,
           background: accent.color,
-          opacity: 0.7,
+          opacity: hovered ? 0.9 : 0.7,
           flexShrink: 0,
+          transition: "opacity 0.18s ease",
         }} />
 
         {/* 2 — Label row */}
         <div style={{
-          padding: "12px 20px 10px",
+          padding: "10px 18px 9px",
           display: "flex", alignItems: "center", gap: 7,
           borderBottom: "1px solid rgba(255,255,255,0.05)",
           flexShrink: 0,
@@ -134,10 +142,25 @@ function EdgeCard(p: CardProps) {
               {p.badge}
             </span>
           )}
+          {/* Live indicator */}
+          <span style={{
+            display: "flex", alignItems: "center", gap: 4,
+            fontSize: 8, fontWeight: 700, letterSpacing: "0.12em",
+            color: "#22c55e",
+            flexShrink: 0,
+          }}>
+            <span className="live-dot" style={{
+              width: 5, height: 5, borderRadius: "50%",
+              background: "#22c55e",
+              display: "inline-block",
+              flexShrink: 0,
+            }} />
+            LIVE
+          </span>
         </div>
 
         {/* 3 — Player name + team */}
-        <div style={{ padding: "16px 20px 0", flexShrink: 0 }}>
+        <div style={{ padding: "13px 18px 0", flexShrink: 0 }}>
           <p style={{
             margin: 0,
             fontSize: 17,
@@ -152,7 +175,7 @@ function EdgeCard(p: CardProps) {
             {p.playerName}
           </p>
           <p style={{
-            margin: "4px 0 0",
+            margin: "3px 0 0",
             fontSize: 10,
             color: "rgba(255,255,255,0.32)",
             fontWeight: 600,
@@ -166,13 +189,13 @@ function EdgeCard(p: CardProps) {
           </p>
         </div>
 
-        {/* 4 — Projection number */}
-        <div style={{ padding: "14px 20px 0", flexShrink: 0 }}>
+        {/* 4 — Projection number + vs avg */}
+        <div style={{ padding: "11px 18px 0", flexShrink: 0 }}>
           {pts != null ? (
             <>
               <span style={{
                 display: "block",
-                fontSize: 52,
+                fontSize: 50,
                 fontWeight: 800,
                 color: accent.color,
                 lineHeight: 0.90,
@@ -181,33 +204,63 @@ function EdgeCard(p: CardProps) {
               }}>
                 {pts}
               </span>
-              <span style={{
-                display: "block",
-                fontSize: 8.5,
-                color: "rgba(255,255,255,0.25)",
-                fontWeight: 700,
-                letterSpacing: "0.16em",
-                textTransform: "uppercase",
-                marginTop: 6,
-              }}>
-                Projected pts
-              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 5 }}>
+                <span style={{
+                  fontSize: 8.5,
+                  color: "rgba(255,255,255,0.25)",
+                  fontWeight: 700,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                }}>
+                  Projected pts
+                </span>
+                {vsAvgStr != null && (
+                  <span style={{
+                    fontSize: 9, fontWeight: 700,
+                    color: vsAvgDiff! >= 0 ? "#4ade80" : "#f87171",
+                    background: vsAvgDiff! >= 0 ? "rgba(74,222,128,0.10)" : "rgba(248,113,113,0.10)",
+                    padding: "1px 6px",
+                    borderRadius: 4,
+                    letterSpacing: "0.04em",
+                  }}>
+                    {vsAvgStr}
+                  </span>
+                )}
+              </div>
             </>
           ) : (
             <span style={{ fontSize: 28, color: "rgba(255,255,255,0.18)", fontWeight: 700 }}>—</span>
           )}
         </div>
 
+        {/* 4b — Confidence signal */}
+        {p.confidenceLabel && (
+          <div style={{ padding: "6px 18px 0", flexShrink: 0 }}>
+            <span style={{
+              fontSize: 9, fontWeight: 700,
+              color: p.confidenceLabel === "High" ? "#22c55e" : p.confidenceLabel === "Medium" ? GOLD : "rgba(255,255,255,0.40)",
+              background: p.confidenceLabel === "High" ? "rgba(34,197,94,0.10)" : p.confidenceLabel === "Medium" ? "rgba(244,197,66,0.10)" : "rgba(255,255,255,0.05)",
+              border: `1px solid ${p.confidenceLabel === "High" ? "rgba(34,197,94,0.22)" : p.confidenceLabel === "Medium" ? "rgba(244,197,66,0.22)" : "rgba(255,255,255,0.08)"}`,
+              padding: "2px 9px",
+              borderRadius: 999,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase" as const,
+            }}>
+              {p.confidenceLabel} Confidence
+            </span>
+          </div>
+        )}
+
         {/* 5 — Hairline */}
         <div style={{
-          margin: "14px 20px 0",
+          margin: "11px 18px 0",
           height: 1,
           background: "rgba(255,255,255,0.05)",
           flexShrink: 0,
         }} />
 
         {/* 6 — Insight copy — grows to fill remaining space */}
-        <div style={{ padding: "10px 20px 0", flex: 1, display: "flex", alignItems: "flex-start" }}>
+        <div style={{ padding: "9px 18px 0", flex: 1, display: "flex", alignItems: "flex-start" }}>
           <p style={{
             margin: 0,
             fontSize: 12,
@@ -224,9 +277,9 @@ function EdgeCard(p: CardProps) {
         </div>
 
         {/* 7 — CTA — always pinned to bottom */}
-        <div style={{ padding: "14px 20px 20px", flexShrink: 0 }}>
+        <div style={{ padding: "12px 18px 18px", flexShrink: 0 }}>
           <div style={{
-            height: 36,
+            height: 34,
             display: "flex", alignItems: "center", justifyContent: "center",
             gap: 5,
             background: hovered ? `${accent.color}18` : "rgba(255,255,255,0.04)",
@@ -341,6 +394,7 @@ export default function Index() {
   const [players, setPlayers] = useState<RankingRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [currentRound, setCurrentRound] = useState<number | null>(null);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -371,11 +425,13 @@ export default function Index() {
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase.rpc("get_rankings_safe", {
-        p_user_id: null, p_is_bot: false, p_limit: 200,
-      });
-      if (error) console.error("Hero cards fetch error:", error);
-      if (data) setPlayers((data as Record<string, unknown>[]).map(mapRankingRow));
+      const [rankingsRes, roundRes] = await Promise.all([
+        supabase.rpc("get_rankings_safe", { p_user_id: null, p_is_bot: false, p_limit: 200 }),
+        supabase.rpc("get_latest_completed_round"),
+      ]);
+      if (rankingsRes.error) console.error("Hero cards fetch error:", rankingsRes.error);
+      if (rankingsRes.data) setPlayers((rankingsRes.data as Record<string, unknown>[]).map(mapRankingRow));
+      if (roundRes.data != null) setCurrentRound(roundRes.data as number);
       setLoading(false);
     })();
   }, []);
@@ -421,6 +477,16 @@ export default function Index() {
     return { mustBuyP, trapP, captainP, breakoutP, topRows, mwBuys: buys, mwHolds: holds, mwSells: sells };
   }, [players]);
 
+  // ── Confidence label helper ─────────────────────────────────────────────────
+  function confidenceOf(p: RankingRow | null): string | null {
+    if (!p) return null;
+    const conf = p.projection_confidence ?? null;
+    if (conf == null) return null;
+    if (conf >= 70) return "High";
+    if (conf >= 45) return "Medium";
+    return "Low";
+  }
+
   // ── Reason helpers ─────────────────────────────────────────────────────────
   const trapFallback = trapP ?? captainP;
   const breakoutFallback = breakoutP ?? captainP;
@@ -454,6 +520,8 @@ export default function Index() {
       label: "Must Buy", icon: <TrendingUp size={11} />, accentIdx: 0,
       playerName: mustBuyP!.player_name, team: mustBuyP!.team ?? "", position: mustBuyP!.position,
       projection: mustBuyP!.projection,
+      seasonAvg: mustBuyP!.last_5_avg ?? mustBuyP!.season_avg ?? null,
+      confidenceLabel: confidenceOf(mustBuyP),
       reason: mustBuyReason(),
       ctaLabel: "View Must Buys", ctaTo: "/sports/afl/current-round",
     },
@@ -461,6 +529,8 @@ export default function Index() {
       label: "Trap Alert", icon: <AlertTriangle size={11} />, accentIdx: 1,
       playerName: trapFallback!.player_name, team: trapFallback!.team ?? "", position: trapFallback!.position,
       projection: trapFallback!.projection,
+      seasonAvg: trapFallback!.last_5_avg ?? trapFallback!.season_avg ?? null,
+      confidenceLabel: confidenceOf(trapFallback),
       reason: trapReason(),
       ctaLabel: "See Trap Alerts", ctaTo: "/sports/afl/current-round",
     },
@@ -468,6 +538,8 @@ export default function Index() {
       label: "Captain Pick", icon: <Star size={11} />, badge: "C", accentIdx: 2,
       playerName: captainP!.player_name, team: captainP!.team ?? "", position: captainP!.position,
       projection: captainP!.projection,
+      seasonAvg: captainP!.last_5_avg ?? captainP!.season_avg ?? null,
+      confidenceLabel: confidenceOf(captainP),
       reason: captainReason(),
       ctaLabel: "View Captains", ctaTo: "/sports/afl/captains",
     },
@@ -475,6 +547,8 @@ export default function Index() {
       label: "Trade Target", icon: <ZapIcon size={11} />, accentIdx: 3,
       playerName: breakoutFallback!.player_name, team: breakoutFallback!.team ?? "", position: breakoutFallback!.position,
       projection: breakoutFallback!.projection,
+      seasonAvg: breakoutFallback!.last_5_avg ?? breakoutFallback!.season_avg ?? null,
+      confidenceLabel: confidenceOf(breakoutFallback),
       reason: tradeTargetReason(),
       ctaLabel: "Open Market Watch", ctaTo: "/sports/afl/market-watch",
     },
@@ -483,7 +557,10 @@ export default function Index() {
   const mobileCards = cards.map(c => ({
     label: c.label, color: CARD_ACCENTS[c.accentIdx].color,
     playerName: c.playerName, team: c.team, position: c.position,
-    projection: c.projection, reason: c.reason,
+    projection: c.projection,
+    seasonAvg: c.seasonAvg ?? null,
+    confidenceLabel: c.confidenceLabel ?? null,
+    reason: c.reason,
     ctaLabel: c.ctaLabel, ctaTo: c.ctaTo,
   }));
 
@@ -690,7 +767,7 @@ export default function Index() {
           {/* Section header */}
           <div style={{ marginBottom: 32, textAlign: "center" }}>
             <p style={{ margin: "0 0 6px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(244,197,66,0.82)" }}>
-              This Week's Edge
+              This Week's Edge{currentRound != null ? ` — Round ${currentRound + 1} Picks` : ""}
             </p>
             <h2 style={{ margin: "0 0 8px", fontSize: "clamp(16px, 1.5vw, 22px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.025em", lineHeight: 1.15 }}>
               The exact plays to win your week — backed by real projections.
@@ -757,6 +834,13 @@ export default function Index() {
       {!isPremium && <MobileUpgradeBar />}
 
       <style>{`
+        @keyframes livePulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.25; }
+        }
+        .live-dot {
+          animation: livePulse 1.8s ease-in-out infinite;
+        }
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.45; }
