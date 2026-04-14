@@ -1,28 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import {
-  TrendingUp,
-  TriangleAlert as AlertTriangle,
-  Crown,
-  Zap,
-  Lock,
-  Star,
-  Clock,
-  ChartBar as BarChart2,
-  ArrowRight,
-  RefreshCw,
-  ChevronDown,
-  ChevronRight,
-  Flame,
-  DollarSign,
-  Sprout,
-  X,
-  Search,
-  ChevronUp,
-  ShieldAlert,
-  Target,
-} from "lucide-react";
+import { TrendingUp, TriangleAlert as AlertTriangle, Crown, Zap, Lock, Star, Clock, ChartBar as BarChart2, ArrowRight, RefreshCw, ChevronDown, ChevronRight, Flame, DollarSign, Sprout, X, Search, ChevronUp, ShieldAlert, Target, TrendingDown, CircleCheck as CheckCircle2, CircleAlert as AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
@@ -40,47 +19,14 @@ import { PlayerStatusPill } from "@/features/afl/rankings/components/PlayerStatu
 import type { RowTier } from "@/features/afl/rankings/components/types";
 import { buildCurrentRoundPlayers, type CurrentRoundPlayer } from "@/features/afl/current-round/engine";
 
-// ─── LIMITS ──────────────────────────────────────────────────────────────────
-const MUST_BUY_FREE    = 2;
-const TRAP_FREE        = 2;
-const CAPTAIN_FREE     = 1;
-const BUDGET_PRICE_CAP = 350_000;
-const BUDGET_GAMES_CAP = 10;
-const PREMIUM_LIMIT    = 8;
+// ─── FREE TIER LIMITS ────────────────────────────────────────────────────────
+const MUST_BUY_FREE  = 2;
+const BUDGET_FREE    = 2;
+const RISK_FREE      = 2;
+const CAPTAIN_FREE   = 1;
+const PREMIUM_LIMIT  = 8;
 
-// ─── PRICE HELPERS ────────────────────────────────────────────────────────────
-function isBudgetPlayer(p: RankingRow): boolean {
-  const price = p.price ?? 0;
-  const games = p.games_played ?? 999;
-  return price < BUDGET_PRICE_CAP || games <= BUDGET_GAMES_CAP;
-}
-
-function getRiskTag(row: CurrentRoundPlayer): string {
-  const signal = (row.action ?? row.signal_tag ?? row.signal ?? "").toUpperCase();
-  if (signal.includes("VOLATILE")) return "Volatile";
-  if (signal.includes("ROLE")) return "Role Risk";
-  const edge = row.edge ?? 0;
-  const price = row.price ?? 0;
-  const proj = row.projection ?? 0;
-  const breakeven = row.breakeven ?? 0;
-  if (breakeven > 0 && proj < breakeven * 0.75) return "Overpriced";
-  if (price > 700_000 && edge < -10) return "Premium Trap";
-  if (edge < -20) return "Strong Fade";
-  if (edge < -10) return "Overpriced";
-  return "Watch";
-}
-
-function getCaptainTier(rank: number, row: CurrentRoundPlayer): { label: string; color: string; desc: string } {
-  const captScore = row.captain_score ?? 0;
-  const proj = row.projection ?? 0;
-  if (rank === 1 || captScore >= 80 || proj >= 120) {
-    return { label: "Lock", color: "#F5C84C", desc: "Highest confidence double" };
-  }
-  if (rank <= 3 || captScore >= 65 || proj >= 100) {
-    return { label: "Safe", color: "#4ade80", desc: "Reliable doubling option" };
-  }
-  return { label: "POD", color: "#60a5fa", desc: "Point of difference pick" };
-}
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
 
 function normalisePosition(pos: string | null | undefined): string | null {
   if (!pos) return null;
@@ -92,13 +38,31 @@ function normalisePosition(pos: string | null | undefined): string | null {
   return p;
 }
 
-// ─── BADGE COMPONENTS ────────────────────────────────────────────────────────
+function getRiskTag(row: CurrentRoundPlayer): string {
+  const edge = row.edge ?? 0;
+  const price = row.price ?? 0;
+  const proj = row.projection ?? 0;
+  const breakeven = row.breakeven ?? 0;
+  if (breakeven > 0 && proj < breakeven * 0.80) return "Overpriced";
+  if (price > 700_000 && edge < -10) return "Premium Trap";
+  if (edge <= -15) return "Strong Fade";
+  return "Overpriced";
+}
+
+function getCaptainTier(p: CurrentRoundPlayer): { label: "Lock" | "Safe" | "POD"; color: string; desc: string } {
+  const edge = p.edge ?? 0;
+  const proj = p.projection ?? 0;
+  if (edge >= 15 || proj >= 115) return { label: "Lock",  color: "#F5C84C", desc: "Highest confidence double" };
+  if (edge >= 8  || proj >= 100) return { label: "Safe",  color: "#4ade80", desc: "Reliable doubling option" };
+  return                          { label: "POD",   color: "#60a5fa", desc: "Point of difference pick" };
+}
+
+// ─── BADGES ──────────────────────────────────────────────────────────────────
 
 function BuyBadge() {
   return (
     <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-px rounded border border-green-500/40 bg-green-500/15 text-green-400 shrink-0 leading-none">
-      <TrendingUp className="w-2.5 h-2.5" />
-      BUY
+      <TrendingUp className="w-2.5 h-2.5" /> BUY
     </span>
   );
 }
@@ -106,8 +70,7 @@ function BuyBadge() {
 function StrongValueBadge() {
   return (
     <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-px rounded border border-emerald-400/40 bg-emerald-400/10 text-emerald-400 shrink-0 leading-none">
-      <Star className="w-2.5 h-2.5" />
-      VALUE
+      <Star className="w-2.5 h-2.5" /> VALUE
     </span>
   );
 }
@@ -115,21 +78,19 @@ function StrongValueBadge() {
 function AvoidBadge() {
   return (
     <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-px rounded border border-red-500/40 bg-red-500/15 text-red-400 shrink-0 leading-none">
-      <AlertTriangle className="w-2.5 h-2.5" />
-      AVOID
+      <AlertTriangle className="w-2.5 h-2.5" /> AVOID
     </span>
   );
 }
 
-function CaptainBadge({ tier }: { tier?: string }) {
+function CaptainBadge({ tier }: { tier?: "Lock" | "Safe" | "POD" }) {
   const color =
     tier === "Lock" ? "border-yellow-400/40 bg-yellow-400/15 text-yellow-400" :
     tier === "Safe" ? "border-green-400/30 bg-green-400/10 text-green-400" :
     "border-blue-400/30 bg-blue-400/10 text-blue-400";
   return (
     <span className={`inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-px rounded border shrink-0 leading-none ${color}`}>
-      <Crown className="w-2.5 h-2.5" />
-      {tier ?? "CAPTAIN"}
+      <Crown className="w-2.5 h-2.5" /> {tier ?? "C"}
     </span>
   );
 }
@@ -137,8 +98,7 @@ function CaptainBadge({ tier }: { tier?: string }) {
 function BudgetBadge() {
   return (
     <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-px rounded border border-teal-400/40 bg-teal-400/10 text-teal-400 shrink-0 leading-none">
-      <Sprout className="w-2.5 h-2.5" />
-      BUDGET
+      <Sprout className="w-2.5 h-2.5" /> BUDGET
     </span>
   );
 }
@@ -146,8 +106,7 @@ function BudgetBadge() {
 function FeaturedBadge() {
   return (
     <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-px rounded border border-orange-400/40 bg-orange-400/10 text-orange-400 shrink-0 leading-none">
-      <Flame className="w-2.5 h-2.5" />
-      Edge Pick
+      <Flame className="w-2.5 h-2.5" /> Edge Pick
     </span>
   );
 }
@@ -169,10 +128,7 @@ function SummaryCard({ label, icon, accentColor, playerName, stat, statLabel, re
   return (
     <div
       className="rounded-2xl p-4 flex flex-col gap-2 transition-all duration-200"
-      style={{
-        background: `linear-gradient(135deg, ${accentColor}09 0%, transparent 70%)`,
-        border: `1px solid ${accentColor}30`,
-      }}
+      style={{ background: `linear-gradient(135deg, ${accentColor}09 0%, transparent 70%)`, border: `1px solid ${accentColor}30` }}
     >
       <div className="flex items-center gap-1.5">
         <span style={{ color: accentColor }}>{icon}</span>
@@ -183,9 +139,7 @@ function SummaryCard({ label, icon, accentColor, playerName, stat, statLabel, re
           <span className="text-base font-bold text-white leading-tight truncate">{playerName ?? "—"}</span>
           {badge}
         </div>
-        {reason && (
-          <p className="text-[11px] text-white/35 mt-1 leading-relaxed line-clamp-2">{reason}</p>
-        )}
+        {reason && <p className="text-[11px] text-white/35 mt-1 leading-relaxed line-clamp-2">{reason}</p>}
       </div>
       <div className="flex items-baseline gap-1 mt-auto">
         <span className="text-2xl font-bold tabular-nums" style={{ color: accentColor }}>{stat}</span>
@@ -238,7 +192,7 @@ function PlayerRow({ row, rank, badge, metric, subtext, onClick }: PlayerRowProp
   );
 }
 
-// ─── LOCKED ROW ──────────────────────────────────────────────────────────────
+// ─── BLURRED ROW ─────────────────────────────────────────────────────────────
 
 function BlurredRow({ rank }: { rank: number }) {
   return (
@@ -303,7 +257,7 @@ function LockStripCTA({
   );
 }
 
-// ─── SECTION CARD ────────────────────────────────────────────────────────────
+// ─── GENERIC SECTION CARD ────────────────────────────────────────────────────
 
 interface SectionCardProps {
   title: string;
@@ -313,7 +267,7 @@ interface SectionCardProps {
   players: CurrentRoundPlayer[];
   freeLimit: number;
   isPremiumUser: boolean;
-  onOpenRow: (row: CurrentRoundPlayer, rank: number) => void;
+  onOpenRow: (row: CurrentRoundPlayer) => void;
   onUpgrade: () => void;
   blurCtaLabel?: string;
   blurBadgeText?: string;
@@ -321,29 +275,18 @@ interface SectionCardProps {
   renderBadge?: (row: CurrentRoundPlayer, idx: number) => React.ReactNode;
   renderMetric?: (row: CurrentRoundPlayer) => React.ReactNode;
   renderSubtext?: (row: CurrentRoundPlayer) => string | null;
+  premiumContent?: React.ReactNode;
 }
 
 function SectionCard({
-  title,
-  description,
-  icon,
-  accentColor,
-  players,
-  freeLimit,
-  isPremiumUser,
-  onOpenRow,
-  onUpgrade,
-  blurCtaLabel,
-  blurBadgeText,
-  footerLink,
-  renderBadge,
-  renderMetric,
-  renderSubtext,
+  title, description, icon, accentColor, players, freeLimit, isPremiumUser,
+  onOpenRow, onUpgrade, blurCtaLabel, blurBadgeText, footerLink,
+  renderBadge, renderMetric, renderSubtext, premiumContent,
 }: SectionCardProps) {
   const [hovered, setHovered] = useState(false);
-  const limit = isPremiumUser ? PREMIUM_LIMIT : freeLimit;
-  const visible = players.slice(0, limit);
-  const hidden = isPremiumUser ? [] : players.slice(freeLimit, Math.min(PREMIUM_LIMIT, players.length));
+  const visibleCount = isPremiumUser ? PREMIUM_LIMIT : freeLimit;
+  const visible = players.slice(0, visibleCount);
+  const hidden  = isPremiumUser ? [] : players.slice(freeLimit, Math.min(PREMIUM_LIMIT, players.length));
   const totalHidden = isPremiumUser ? 0 : Math.max(0, players.length - freeLimit);
 
   return (
@@ -369,17 +312,19 @@ function SectionCard({
       </div>
 
       <div className="flex-1 py-1">
-        {visible.map((row, idx) => (
-          <PlayerRow
-            key={row.player_id ?? idx}
-            row={row}
-            rank={idx + 1}
-            badge={renderBadge ? renderBadge(row, idx) : undefined}
-            metric={renderMetric ? renderMetric(row) : undefined}
-            subtext={renderSubtext ? renderSubtext(row) : null}
-            onClick={() => onOpenRow(row, idx + 1)}
-          />
-        ))}
+        {isPremiumUser && premiumContent ? premiumContent : (
+          visible.map((row, idx) => (
+            <PlayerRow
+              key={row.player_id ?? idx}
+              row={row}
+              rank={idx + 1}
+              badge={renderBadge ? renderBadge(row, idx) : undefined}
+              metric={renderMetric ? renderMetric(row) : undefined}
+              subtext={renderSubtext ? renderSubtext(row) : null}
+              onClick={() => onOpenRow(row)}
+            />
+          ))
+        )}
 
         {hidden.length > 0 && (
           <div className="relative pb-12">
@@ -415,31 +360,158 @@ function SectionCard({
   );
 }
 
-// ─── CAPTAIN SECTION (tiered) ─────────────────────────────────────────────────
+// ─── MUST BUYS SECTION ────────────────────────────────────────────────────────
 
-interface CaptainSectionProps {
-  captains: CurrentRoundPlayer[];
-  freeLimit: number;
+function MustBuysSection({
+  mustBuys, isPremiumUser, onOpenRow, onUpgrade,
+}: {
+  mustBuys: CurrentRoundPlayer[];
   isPremiumUser: boolean;
-  onOpenRow: (row: CurrentRoundPlayer, rank: number) => void;
+  onOpenRow: (row: CurrentRoundPlayer) => void;
   onUpgrade: () => void;
+}) {
+  const accentColor = "#4ade80";
+  const [hovered, setHovered] = useState(false);
+  const visible = mustBuys.slice(0, isPremiumUser ? PREMIUM_LIMIT : MUST_BUY_FREE);
+  const hidden  = isPremiumUser ? [] : mustBuys.slice(MUST_BUY_FREE, Math.min(PREMIUM_LIMIT, mustBuys.length));
+  const totalHidden = isPremiumUser ? 0 : Math.max(0, mustBuys.length - MUST_BUY_FREE);
+
+  const strongSignal = visible.filter((p) => (p.signal ?? "").toUpperCase() === "STRONG_START");
+  const startSignal  = visible.filter((p) => (p.signal ?? "").toUpperCase() === "START");
+
+  const renderRow = (row: CurrentRoundPlayer, globalIdx: number) => {
+    const isStrong = (row.signal ?? "").toUpperCase() === "STRONG_START";
+    return (
+      <PlayerRow
+        key={row.player_id ?? globalIdx}
+        row={row}
+        rank={globalIdx + 1}
+        badge={isStrong ? <BuyBadge /> : <StrongValueBadge />}
+        metric={
+          row.edge != null ? (
+            <div className="text-right hidden sm:block">
+              <div className={`text-xs font-bold tabular-nums ${(row.edge ?? 0) >= 15 ? "text-green-400" : "text-emerald-400"}`}>
+                +{fmt(row.edge, 0)}
+              </div>
+              <div className="text-[9px] text-white/25">edge</div>
+            </div>
+          ) : undefined
+        }
+        subtext={row.value_score != null ? `${(row.value_score ?? 0).toFixed(1)} value score` : null}
+        onClick={() => onOpenRow(row)}
+      />
+    );
+  };
+
+  const premiumContent = (
+    <>
+      {strongSignal.length > 0 && (
+        <>
+          <div className="flex items-center gap-2 px-4 pt-2.5 pb-1">
+            <div className="h-px flex-1 bg-green-500/15" />
+            <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full text-green-400 bg-green-400/10 border border-green-400/20">
+              Strong Signal — Must Buy
+            </span>
+            <div className="h-px flex-1 bg-green-500/15" />
+          </div>
+          {strongSignal.map((row, idx) => renderRow(row, idx))}
+        </>
+      )}
+      {startSignal.length > 0 && (
+        <>
+          <div className="flex items-center gap-2 px-4 pt-2.5 pb-1">
+            <div className="h-px flex-1 bg-emerald-400/12" />
+            <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full text-emerald-400 bg-emerald-400/08 border border-emerald-400/18">
+              Start Signal — Strong Value
+            </span>
+            <div className="h-px flex-1 bg-emerald-400/12" />
+          </div>
+          {startSignal.map((row, idx) => renderRow(row, strongSignal.length + idx))}
+        </>
+      )}
+    </>
+  );
+
+  return (
+    <div
+      className="rounded-2xl overflow-hidden flex flex-col transition-all duration-200"
+      style={{
+        border: `1px solid ${hovered ? `${accentColor}60` : `${accentColor}30`}`,
+        background: `linear-gradient(135deg, ${accentColor}06 0%, transparent 60%)`,
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div className="px-4 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${accentColor}18` }}>
+        <div className="flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
+          <span style={{ color: accentColor }}><TrendingUp className="w-4 h-4" /></span>
+          <h2 className="text-sm font-bold text-white flex-1">Must Buys</h2>
+          {!isPremiumUser && totalHidden > 0 && (
+            <span className="text-[10px] text-white/25">{MUST_BUY_FREE} of {mustBuys.length}</span>
+          )}
+        </div>
+        <p className="text-[11px] text-white/35 mt-1 ml-4 leading-relaxed">
+          Strongest trade-in targets this round — ranked by edge score, filtered to START and STRONG_START signals only.
+        </p>
+      </div>
+
+      <div className="flex-1 py-1">
+        {isPremiumUser ? premiumContent : visible.map((row, idx) => renderRow(row, idx))}
+
+        {hidden.length > 0 && (
+          <div className="relative pb-12">
+            {hidden.map((row, idx) => (
+              <BlurredRow key={row.player_id ?? idx} rank={MUST_BUY_FREE + idx + 1} />
+            ))}
+            <LockStripCTA
+              hiddenCount={totalHidden}
+              accentColor={accentColor}
+              onUpgrade={onUpgrade}
+              ctaLabel="Unlock all trade targets →"
+              badgeText={`+${totalHidden} picks hidden`}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${accentColor}12` }}>
+        <Link
+          to="/sports/afl/market-watch"
+          className="flex items-center gap-1 text-[11px] transition-colors"
+          style={{ color: `${accentColor}60` }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = `${accentColor}99`)}
+          onMouseLeave={(e) => (e.currentTarget.style.color = `${accentColor}60`)}
+        >
+          Market Watch
+          <ChevronRight className="w-3 h-3" />
+        </Link>
+      </div>
+    </div>
+  );
 }
 
-function CaptainSection({ captains, freeLimit, isPremiumUser, onOpenRow, onUpgrade }: CaptainSectionProps) {
+// ─── CAPTAIN SECTION (tiered) ─────────────────────────────────────────────────
+
+function CaptainSection({
+  captains, isPremiumUser, onOpenRow, onUpgrade,
+}: {
+  captains: CurrentRoundPlayer[];
+  isPremiumUser: boolean;
+  onOpenRow: (row: CurrentRoundPlayer) => void;
+  onUpgrade: () => void;
+}) {
   const [hovered, setHovered] = useState(false);
   const accentColor = "#F5C84C";
-  const limit = isPremiumUser ? PREMIUM_LIMIT : freeLimit;
-  const visible = captains.slice(0, limit);
-  const hidden = isPremiumUser ? [] : captains.slice(freeLimit, Math.min(PREMIUM_LIMIT, captains.length));
-  const totalHidden = isPremiumUser ? 0 : Math.max(0, captains.length - freeLimit);
+  const visible = captains.slice(0, isPremiumUser ? PREMIUM_LIMIT : CAPTAIN_FREE);
+  const hidden  = isPremiumUser ? [] : captains.slice(CAPTAIN_FREE, Math.min(PREMIUM_LIMIT, captains.length));
+  const totalHidden = isPremiumUser ? 0 : Math.max(0, captains.length - CAPTAIN_FREE);
 
-  const tiers = isPremiumUser
-    ? [
-        { key: "Lock",  color: "#F5C84C", desc: "Highest confidence double",    players: captains.filter((_, i) => getCaptainTier(i + 1, _).label === "Lock")  },
-        { key: "Safe",  color: "#4ade80", desc: "Reliable doubling option",     players: captains.filter((_, i) => getCaptainTier(i + 1, _).label === "Safe")  },
-        { key: "POD",   color: "#60a5fa", desc: "Point of difference pick",     players: captains.filter((_, i) => getCaptainTier(i + 1, _).label === "POD")   },
-      ].filter((t) => t.players.length > 0)
-    : null;
+  const tiers: { key: "Lock" | "Safe" | "POD"; color: string; desc: string; players: CurrentRoundPlayer[] }[] = isPremiumUser ? [
+    { key: "Lock", color: "#F5C84C", desc: "Highest confidence double",  players: captains.slice(0, PREMIUM_LIMIT).filter((p) => getCaptainTier(p).label === "Lock")  },
+    { key: "Safe", color: "#4ade80", desc: "Reliable doubling option",   players: captains.slice(0, PREMIUM_LIMIT).filter((p) => getCaptainTier(p).label === "Safe")  },
+    { key: "POD",  color: "#60a5fa", desc: "Point of difference pick",   players: captains.slice(0, PREMIUM_LIMIT).filter((p) => getCaptainTier(p).label === "POD")   },
+  ].filter((t) => t.players.length > 0) : [];
 
   return (
     <div
@@ -457,18 +529,18 @@ function CaptainSection({ captains, freeLimit, isPremiumUser, onOpenRow, onUpgra
           <span style={{ color: accentColor }}><Crown className="w-4 h-4" /></span>
           <h2 className="text-sm font-bold text-white flex-1">Captain Picks</h2>
           {!isPremiumUser && totalHidden > 0 && (
-            <span className="text-[10px] text-white/25">{freeLimit} of {captains.length}</span>
+            <span className="text-[10px] text-white/25">{CAPTAIN_FREE} of {captains.length}</span>
           )}
         </div>
         <p className="text-[11px] text-white/35 mt-1 ml-4 leading-relaxed">
           {isPremiumUser
-            ? "Tiered by confidence — Lock for the sure things, Safe for reliability, POD for differential upside."
-            : "Best doubling options ranked by projection, consistency and matchup advantage."}
+            ? "Tiered by edge score and projection — Lock, Safe and POD options sorted by confidence."
+            : "Best doubling options ranked by projection and edge score. No SIT/STRONG_SIT players included."}
         </p>
       </div>
 
       <div className="flex-1 py-1">
-        {isPremiumUser && tiers ? (
+        {isPremiumUser ? (
           tiers.map((tier) => (
             <div key={tier.key}>
               <div className="flex items-center gap-2 px-4 pt-2.5 pb-1">
@@ -490,17 +562,17 @@ function CaptainSection({ captains, freeLimit, isPremiumUser, onOpenRow, onUpgra
                     rank={globalIdx + 1}
                     badge={<CaptainBadge tier={tier.key} />}
                     metric={
-                      row.captain_score != null ? (
+                      row.projection_confidence != null ? (
                         <div className="text-right hidden sm:block">
-                          <div className="text-xs font-bold tabular-nums" style={{ color: tier.color }}>
-                            {fmt(row.captain_score, 0)}
+                          <div className={`text-xs font-bold tabular-nums ${getConfidenceColor(row.projection_confidence)}`}>
+                            {fmt(row.projection_confidence, 0)}%
                           </div>
-                          <div className="text-[9px] text-white/25">cap score</div>
+                          <div className="text-[9px] text-white/25">conf</div>
                         </div>
                       ) : undefined
                     }
-                    subtext={row.captain_rating ?? null}
-                    onClick={() => onOpenRow(row, globalIdx + 1)}
+                    subtext={tier.desc}
+                    onClick={() => onOpenRow(row)}
                   />
                 );
               })}
@@ -508,7 +580,7 @@ function CaptainSection({ captains, freeLimit, isPremiumUser, onOpenRow, onUpgra
           ))
         ) : (
           visible.map((row, idx) => {
-            const tier = getCaptainTier(idx + 1, row);
+            const tier = getCaptainTier(row);
             return (
               <PlayerRow
                 key={row.player_id ?? idx}
@@ -516,17 +588,17 @@ function CaptainSection({ captains, freeLimit, isPremiumUser, onOpenRow, onUpgra
                 rank={idx + 1}
                 badge={<CaptainBadge tier={tier.label} />}
                 metric={
-                  row.captain_score != null ? (
+                  row.projection_confidence != null ? (
                     <div className="text-right hidden sm:block">
-                      <div className="text-xs font-bold tabular-nums text-[#F5C84C]">
-                        {fmt(row.captain_score, 0)}
+                      <div className={`text-xs font-bold tabular-nums ${getConfidenceColor(row.projection_confidence)}`}>
+                        {fmt(row.projection_confidence, 0)}%
                       </div>
-                      <div className="text-[9px] text-white/25">cap score</div>
+                      <div className="text-[9px] text-white/25">conf</div>
                     </div>
                   ) : undefined
                 }
                 subtext={tier.desc}
-                onClick={() => onOpenRow(row, idx + 1)}
+                onClick={() => onOpenRow(row)}
               />
             );
           })
@@ -535,7 +607,7 @@ function CaptainSection({ captains, freeLimit, isPremiumUser, onOpenRow, onUpgra
         {hidden.length > 0 && (
           <div className="relative pb-12">
             {hidden.map((row, idx) => (
-              <BlurredRow key={row.player_id ?? idx} rank={freeLimit + idx + 1} />
+              <BlurredRow key={row.player_id ?? idx} rank={CAPTAIN_FREE + idx + 1} />
             ))}
             <LockStripCTA
               hiddenCount={totalHidden}
@@ -564,187 +636,30 @@ function CaptainSection({ captains, freeLimit, isPremiumUser, onOpenRow, onUpgra
   );
 }
 
-// ─── MUST BUY SECTION (split into tiers for premium) ─────────────────────────
+// ─── COMPARE PLAYERS MODAL ────────────────────────────────────────────────────
 
-interface MustBuysSectionProps {
-  mustBuys: CurrentRoundPlayer[];
-  freeLimit: number;
-  isPremiumUser: boolean;
-  onOpenRow: (row: CurrentRoundPlayer, rank: number) => void;
-  onUpgrade: () => void;
-}
-
-function MustBuysSection({ mustBuys, freeLimit, isPremiumUser, onOpenRow, onUpgrade }: MustBuysSectionProps) {
-  const [hovered, setHovered] = useState(false);
-  const accentColor = "#4ade80";
-  const limit = isPremiumUser ? mustBuys.length : freeLimit;
-  const visible = mustBuys.slice(0, limit);
-  const hidden = isPremiumUser ? [] : mustBuys.slice(freeLimit, Math.min(PREMIUM_LIMIT, mustBuys.length));
-  const totalHidden = isPremiumUser ? 0 : Math.max(0, mustBuys.length - freeLimit);
-
-  const mustBuyPlayers = isPremiumUser
-    ? visible.filter((p) => (p.value_score ?? 0) >= 1.1 || (p.edge ?? 0) >= 15)
-    : visible;
-  const strongValuePlayers = isPremiumUser
-    ? visible.filter((p) => !mustBuyPlayers.includes(p))
-    : [];
-
-  return (
-    <div
-      className="rounded-2xl overflow-hidden flex flex-col transition-all duration-200"
-      style={{
-        border: `1px solid ${hovered ? `${accentColor}60` : `${accentColor}30`}`,
-        background: `linear-gradient(135deg, ${accentColor}06 0%, transparent 60%)`,
-      }}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-    >
-      <div className="px-4 pt-3.5 pb-2.5" style={{ borderBottom: `1px solid ${accentColor}18` }}>
-        <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: accentColor }} />
-          <span style={{ color: accentColor }}><TrendingUp className="w-4 h-4" /></span>
-          <h2 className="text-sm font-bold text-white flex-1">Must Buys</h2>
-          {!isPremiumUser && totalHidden > 0 && (
-            <span className="text-[10px] text-white/25">{freeLimit} of {mustBuys.length}</span>
-          )}
-        </div>
-        <p className="text-[11px] text-white/35 mt-1 ml-4 leading-relaxed">
-          {isPremiumUser
-            ? "Clearest trade-in targets this round — sorted by value edge, not just projection."
-            : "Highest value score this round — strongest trade-in targets sorted by value, not popularity."}
-        </p>
-      </div>
-
-      <div className="flex-1 py-1">
-        {isPremiumUser ? (
-          <>
-            {mustBuyPlayers.length > 0 && (
-              <>
-                <div className="flex items-center gap-2 px-4 pt-2.5 pb-1">
-                  <div className="h-px flex-1 bg-green-500/15" />
-                  <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full text-green-400 bg-green-400/10 border border-green-400/20">
-                    Must Buy — Strongest Signal
-                  </span>
-                  <div className="h-px flex-1 bg-green-500/15" />
-                </div>
-                {mustBuyPlayers.map((row, idx) => (
-                  <PlayerRow
-                    key={row.player_id ?? idx}
-                    row={row}
-                    rank={idx + 1}
-                    badge={<BuyBadge />}
-                    metric={
-                      row.value_score != null ? (
-                        <div className="text-right hidden sm:block">
-                          <div className={`text-xs font-bold tabular-nums ${(row.value_score ?? 0) >= 1.05 ? "text-green-400" : "text-white/40"}`}>
-                            {(row.value_score ?? 0).toFixed(2)}
-                          </div>
-                          <div className="text-[9px] text-white/25">value</div>
-                        </div>
-                      ) : undefined
-                    }
-                    subtext={row.edge != null ? `+${fmt(row.edge, 0)} edge` : null}
-                    onClick={() => onOpenRow(row, idx + 1)}
-                  />
-                ))}
-              </>
-            )}
-            {strongValuePlayers.length > 0 && (
-              <>
-                <div className="flex items-center gap-2 px-4 pt-2.5 pb-1">
-                  <div className="h-px flex-1 bg-emerald-400/12" />
-                  <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full text-emerald-400 bg-emerald-400/08 border border-emerald-400/18">
-                    Strong Value — Worth Considering
-                  </span>
-                  <div className="h-px flex-1 bg-emerald-400/12" />
-                </div>
-                {strongValuePlayers.map((row, idx) => (
-                  <PlayerRow
-                    key={row.player_id ?? idx}
-                    row={row}
-                    rank={mustBuyPlayers.length + idx + 1}
-                    badge={<StrongValueBadge />}
-                    metric={
-                      row.value_score != null ? (
-                        <div className="text-right hidden sm:block">
-                          <div className="text-xs font-bold tabular-nums text-emerald-400">
-                            {(row.value_score ?? 0).toFixed(2)}
-                          </div>
-                          <div className="text-[9px] text-white/25">value</div>
-                        </div>
-                      ) : undefined
-                    }
-                    subtext={row.edge != null ? `+${fmt(row.edge, 0)} edge` : null}
-                    onClick={() => onOpenRow(row, mustBuyPlayers.length + idx + 1)}
-                  />
-                ))}
-              </>
-            )}
-          </>
-        ) : (
-          visible.map((row, idx) => (
-            <PlayerRow
-              key={row.player_id ?? idx}
-              row={row}
-              rank={idx + 1}
-              badge={<BuyBadge />}
-              metric={
-                row.value_score != null ? (
-                  <div className="text-right hidden sm:block">
-                    <div className={`text-xs font-bold tabular-nums ${(row.value_score ?? 0) >= 1.05 ? "text-green-400" : "text-white/40"}`}>
-                      {(row.value_score ?? 0).toFixed(2)}
-                    </div>
-                    <div className="text-[9px] text-white/25">value</div>
-                  </div>
-                ) : undefined
-              }
-              subtext={row.edge != null ? `+${fmt(row.edge, 0)} edge` : null}
-              onClick={() => onOpenRow(row, idx + 1)}
-            />
-          ))
-        )}
-
-        {hidden.length > 0 && (
-          <div className="relative pb-12">
-            {hidden.map((row, idx) => (
-              <BlurredRow key={row.player_id ?? idx} rank={freeLimit + idx + 1} />
-            ))}
-            <LockStripCTA
-              hiddenCount={totalHidden}
-              accentColor={accentColor}
-              onUpgrade={onUpgrade}
-              ctaLabel="Unlock all trade targets →"
-              badgeText={`+${Math.max(0, mustBuys.length - freeLimit)} picks hidden`}
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="px-4 py-2.5" style={{ borderTop: `1px solid ${accentColor}12` }}>
-        <Link
-          to="/sports/afl/market-watch"
-          className="flex items-center gap-1 text-[11px] transition-colors"
-          style={{ color: `${accentColor}60` }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = `${accentColor}99`)}
-          onMouseLeave={(e) => (e.currentTarget.style.color = `${accentColor}60`)}
-        >
-          Market Watch
-          <ChevronRight className="w-3 h-3" />
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-// ─── START/SIT MODAL ─────────────────────────────────────────────────────────
-
-interface StartSitModalProps {
+interface ComparePlayersModalProps {
   players: RankingRow[];
   onClose: () => void;
   onOpenPlayer: (row: RankingRow) => void;
 }
 
-function StartSitModal({ players, onClose, onOpenPlayer }: StartSitModalProps) {
+type VerdictType = "Better Start" | "Better Captain" | "Better Value" | "Safer Pick";
+
+interface CompareResult {
+  winner: RankingRow;
+  loser: RankingRow;
+  verdicts: VerdictType[];
+  reason: string;
+  stats: {
+    label: string;
+    a: string;
+    b: string;
+    winner: "a" | "b" | "tie";
+  }[];
+}
+
+function ComparePlayersModal({ players, onClose, onOpenPlayer }: ComparePlayersModalProps) {
   const [searchA, setSearchA] = useState("");
   const [searchB, setSearchB] = useState("");
   const [playerA, setPlayerA] = useState<RankingRow | null>(null);
@@ -766,52 +681,89 @@ function StartSitModal({ players, onClose, onOpenPlayer }: StartSitModalProps) {
   const optionsA = filterOptions(searchA, playerB);
   const optionsB = filterOptions(searchB, playerA);
 
-  const result = useMemo(() => {
+  const result = useMemo<CompareResult | null>(() => {
     if (!playerA || !playerB) return null;
-    const projA = playerA.projection ?? 0;
-    const projB = playerB.projection ?? 0;
-    const edgeA = playerA.edge ?? 0;
-    const edgeB = playerB.edge ?? 0;
-    const confA = playerA.projection_confidence ?? 50;
-    const confB = playerB.projection_confidence ?? 50;
 
-    const scoreA = projA * 0.55 + edgeA * 0.25 + confA * 0.2;
-    const scoreB = projB * 0.55 + edgeB * 0.25 + confB * 0.2;
+    const projA  = playerA.projection ?? 0;
+    const projB  = playerB.projection ?? 0;
+    const edgeA  = playerA.edge ?? 0;
+    const edgeB  = playerB.edge ?? 0;
+    const confA  = playerA.projection_confidence ?? 50;
+    const confB  = playerB.projection_confidence ?? 50;
+    const ceilA  = playerA.ceiling_estimate ?? projA;
+    const ceilB  = playerB.ceiling_estimate ?? projB;
+    const floorA = playerA.floor_estimate ?? projA;
+    const floorB = playerB.floor_estimate ?? projB;
+    const valA   = playerA.value_score ?? 0;
+    const valB   = playerB.value_score ?? 0;
+    const formA  = playerA.form_score ?? 0;
+    const formB  = playerB.form_score ?? 0;
+
+    const compositeA = projA * 0.45 + edgeA * 0.30 + confA * 0.15 + formA * 0.10;
+    const compositeB = projB * 0.45 + edgeB * 0.30 + confB * 0.15 + formB * 0.10;
+
+    const pA = compositeA >= compositeB ? playerA : playerB;
+    const pB = compositeA >= compositeB ? playerB : playerA;
+
+    const [projW, projL] = compositeA >= compositeB ? [projA, projB] : [projB, projA];
+    const [edgeW]        = compositeA >= compositeB ? [edgeA] : [edgeB];
+    const [confW]        = compositeA >= compositeB ? [confA] : [confB];
+
+    const verdicts: VerdictType[] = [];
+    if (projW >= projL * 1.05) verdicts.push("Better Start");
+    if (edgeW > 8 && edgeW > (compositeA >= compositeB ? edgeB : edgeA) + 5) verdicts.push("Better Value");
+    if (confW > (compositeA >= compositeB ? confB : confA) + 10) verdicts.push("Safer Pick");
+    if ((compositeA >= compositeB ? ceilA : ceilB) > (compositeA >= compositeB ? ceilB : ceilA) + 10) verdicts.push("Better Captain");
+    if (verdicts.length === 0) verdicts.push("Better Start");
+
     const diff = Math.abs(projA - projB);
-
-    const winner = scoreA >= scoreB ? playerA : playerB;
-    const loser  = scoreA >= scoreB ? playerB : playerA;
-
     let reason = "";
     if (diff <= 5) {
-      reason = `Both players project similarly. ${winner.player_name} edges ahead on confidence and edge score — narrow call.`;
+      reason = `Tight call. ${pA.player_name} edges ahead on edge score (+${fmt(edgeW, 0)}) and confidence (${fmt(confW, 0)}%).`;
     } else {
-      const projWinner = winner.projection ?? 0;
-      const edgeWinner = winner.edge ?? 0;
-      reason = `${winner.player_name} projects ${fmt(projWinner, 0)} pts`;
-      if (edgeWinner > 5) reason += ` with a +${fmt(edgeWinner, 0)} edge above breakeven`;
-      else if (edgeWinner < -5) reason += ` — note negative edge`;
-      reason += `. ${loser.player_name} projects ${fmt(loser.projection, 0)} pts`;
-      if ((loser.projection_confidence ?? 0) < 55) reason += " with moderate confidence.";
+      reason = `${pA.player_name} projects ${fmt(projW, 0)} pts`;
+      if (edgeW > 8) reason += ` with a strong +${fmt(edgeW, 0)} edge above breakeven`;
+      else if (edgeW < -5) reason += ` — but note negative edge`;
+      reason += `. ${pB.player_name} projects ${fmt(projL, 0)} pts`;
+      if ((compositeA >= compositeB ? confB : confA) < 50) reason += " with moderate confidence.";
       else reason += ".";
     }
 
-    return { winner, loser, reason };
+    const compare = (vA: number, vB: number): "a" | "b" | "tie" => {
+      if (Math.abs(vA - vB) < 0.5) return "tie";
+      return vA > vB ? "a" : "b";
+    };
+
+    const stats: CompareResult["stats"] = [
+      { label: "Projection",  a: fmt(projA, 0),  b: fmt(projB, 0),  winner: compare(projA, projB)  },
+      { label: "Ceiling",     a: fmt(ceilA, 0),  b: fmt(ceilB, 0),  winner: compare(ceilA, ceilB)  },
+      { label: "Floor",       a: fmt(floorA, 0), b: fmt(floorB, 0), winner: compare(floorA, floorB) },
+      { label: "Edge",        a: (edgeA >= 0 ? "+" : "") + fmt(edgeA, 0), b: (edgeB >= 0 ? "+" : "") + fmt(edgeB, 0), winner: compare(edgeA, edgeB) },
+      { label: "Value Score", a: fmt(valA, 1),   b: fmt(valB, 1),   winner: compare(valA, valB)    },
+      { label: "Form",        a: fmt(formA, 0),  b: fmt(formB, 0),  winner: compare(formA, formB)   },
+      { label: "Confidence",  a: fmt(confA, 0) + "%", b: fmt(confB, 0) + "%", winner: compare(confA, confB) },
+    ];
+
+    return { winner: pA, loser: pB, verdicts, reason, stats };
   }, [playerA, playerB]);
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(6px)" }}
+      style={{ background: "rgba(0,0,0,0.80)", backdropFilter: "blur(8px)" }}
     >
       <div
         className="relative w-full max-w-lg rounded-2xl overflow-hidden flex flex-col"
-        style={{ background: "#0e0e0e", border: "1px solid rgba(255,255,255,0.10)", maxHeight: "90vh" }}
+        style={{ background: "#0e0e0e", border: "1px solid rgba(255,255,255,0.10)", maxHeight: "92vh" }}
       >
+        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
           <div className="flex items-center gap-2">
             <Zap className="w-4 h-4 text-[#F5C84C]" />
             <h2 className="text-sm font-bold text-white">Compare Players</h2>
+            <span className="text-[9px] px-1.5 py-px rounded-full bg-[#F5C84C]/15 text-[#F5C84C] font-semibold uppercase tracking-wider border border-[#F5C84C]/20">
+              Head to Head
+            </span>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg hover:bg-white/[0.08] text-white/40 hover:text-white/70 transition-colors">
             <X className="w-4 h-4" />
@@ -819,81 +771,99 @@ function StartSitModal({ players, onClose, onOpenPlayer }: StartSitModalProps) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-          <PlayerSearchSlot
-            label="Player A"
-            accentColor="#3b82f6"
-            query={searchA}
-            onQueryChange={setSearchA}
-            selected={playerA}
-            onSelect={(p) => { setPlayerA(p); setSearchA(""); }}
-            onClear={() => setPlayerA(null)}
-            options={optionsA}
-            onOpenPlayer={onOpenPlayer}
-          />
-
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-white/[0.06]" />
-            <span className="text-[10px] uppercase tracking-wider text-white/25 font-semibold">vs</span>
-            <div className="flex-1 h-px bg-white/[0.06]" />
+          {/* Player selectors */}
+          <div className="grid grid-cols-2 gap-3">
+            <PlayerSearchSlot
+              label="Player A"
+              accentColor="#3b82f6"
+              query={searchA}
+              onQueryChange={setSearchA}
+              selected={playerA}
+              onSelect={(p) => { setPlayerA(p); setSearchA(""); }}
+              onClear={() => setPlayerA(null)}
+              options={optionsA}
+              onOpenPlayer={onOpenPlayer}
+            />
+            <PlayerSearchSlot
+              label="Player B"
+              accentColor="#f87171"
+              query={searchB}
+              onQueryChange={setSearchB}
+              selected={playerB}
+              onSelect={(p) => { setPlayerB(p); setSearchB(""); }}
+              onClear={() => setPlayerB(null)}
+              options={optionsB}
+              onOpenPlayer={onOpenPlayer}
+            />
           </div>
 
-          <PlayerSearchSlot
-            label="Player B"
-            accentColor="#f87171"
-            query={searchB}
-            onQueryChange={setSearchB}
-            selected={playerB}
-            onSelect={(p) => { setPlayerB(p); setSearchB(""); }}
-            onClear={() => setPlayerB(null)}
-            options={optionsB}
-            onOpenPlayer={onOpenPlayer}
-          />
-
+          {/* Stats comparison table */}
           {result && (
-            <div
-              className="rounded-xl p-4 space-y-2"
-              style={{ background: "rgba(245,200,76,0.05)", border: "1px solid rgba(245,200,76,0.20)" }}
-            >
-              <div className="flex items-center gap-2">
-                <Crown className="w-3.5 h-3.5 text-[#F5C84C]" />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#F5C84C]">Start This Week</span>
-              </div>
-              <p className="text-lg font-bold text-white">{result.winner.player_name}</p>
-              <p className="text-[12px] text-white/45 leading-relaxed">{result.reason}</p>
-              <div className="flex items-center gap-4 pt-1">
-                <div className="text-center">
-                  <div className="text-base font-bold text-[#F5C84C] tabular-nums">{fmt(result.winner.projection, 0)}</div>
-                  <div className="text-[9px] text-white/25">proj pts</div>
+            <>
+              <div className="rounded-xl overflow-hidden border border-white/[0.07]" style={{ background: "rgba(255,255,255,0.02)" }}>
+                <div className="grid grid-cols-3 px-3 py-1.5 border-b border-white/[0.05]">
+                  <span className="text-[10px] font-semibold text-blue-400 truncate">{result.winner === playerA ? playerA?.player_name : playerB?.player_name}</span>
+                  <span className="text-[10px] text-white/25 text-center uppercase tracking-wider font-semibold">vs</span>
+                  <span className="text-[10px] font-semibold text-red-400 text-right truncate">{result.winner === playerA ? playerB?.player_name : playerA?.player_name}</span>
                 </div>
-                {result.winner.edge != null && (
-                  <div className="text-center">
-                    <div className={`text-base font-bold tabular-nums ${(result.winner.edge ?? 0) >= 0 ? "text-green-400" : "text-red-400"}`}>
-                      {(result.winner.edge ?? 0) >= 0 ? "+" : ""}{fmt(result.winner.edge, 0)}
+                {result.stats.map((stat) => {
+                  const aIsWinner = result.winner === playerA ? stat.winner === "a" : stat.winner === "b";
+                  const bIsWinner = result.winner === playerA ? stat.winner === "b" : stat.winner === "a";
+                  return (
+                    <div key={stat.label} className="grid grid-cols-3 px-3 py-2 border-b border-white/[0.04] last:border-0">
+                      <span className={`text-[12px] font-bold tabular-nums ${aIsWinner ? "text-white" : bIsWinner ? "text-white/35" : "text-white/55"}`}>
+                        {result.winner === playerA ? stat.a : stat.b}
+                        {aIsWinner && <CheckCircle2 className="w-2.5 h-2.5 inline ml-1 text-green-400 mb-px" />}
+                      </span>
+                      <span className="text-[10px] text-white/25 text-center self-center">{stat.label}</span>
+                      <span className={`text-[12px] font-bold tabular-nums text-right ${bIsWinner ? "text-white" : aIsWinner ? "text-white/35" : "text-white/55"}`}>
+                        {result.winner === playerA ? stat.b : stat.a}
+                        {bIsWinner && <CheckCircle2 className="w-2.5 h-2.5 inline ml-1 text-green-400 mb-px" />}
+                      </span>
                     </div>
-                    <div className="text-[9px] text-white/25">edge</div>
-                  </div>
-                )}
-                {result.winner.projection_confidence != null && (
-                  <div className="text-center">
-                    <div className={`text-base font-bold tabular-nums ${getConfidenceColor(result.winner.projection_confidence)}`}>
-                      {fmt(result.winner.projection_confidence, 0)}%
-                    </div>
-                    <div className="text-[9px] text-white/25">confidence</div>
-                  </div>
-                )}
+                  );
+                })}
               </div>
-              <div className="pt-1 border-t border-white/[0.06]">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] text-white/25 font-semibold uppercase tracking-wider">Sit:</span>
-                  <span className="text-[12px] text-white/35">{result.loser.player_name} — {fmt(result.loser.projection, 0)} pts projected</span>
+
+              {/* Verdict */}
+              <div
+                className="rounded-xl p-4 space-y-2.5"
+                style={{ background: "rgba(245,200,76,0.05)", border: "1px solid rgba(245,200,76,0.20)" }}
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Crown className="w-3.5 h-3.5 text-[#F5C84C] shrink-0" />
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#F5C84C]">Start This Week</span>
+                  <div className="flex gap-1 flex-wrap ml-auto">
+                    {result.verdicts.map((v) => (
+                      <span
+                        key={v}
+                        className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-px rounded-full"
+                        style={{ background: "rgba(245,200,76,0.15)", color: "#F5C84C", border: "1px solid rgba(245,200,76,0.25)" }}
+                      >
+                        {v}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xl font-bold text-white">{result.winner.player_name}</p>
+                <p className="text-[12px] text-white/45 leading-relaxed">{result.reason}</p>
+                <div className="pt-1 border-t border-white/[0.06]">
+                  <div className="flex items-center gap-1.5">
+                    <AlertCircle className="w-3 h-3 text-white/20 shrink-0" />
+                    <span className="text-[11px] text-white/30">
+                      Sit: {result.loser.player_name} — {fmt(result.loser.projection, 0)} pts projected
+                    </span>
+                  </div>
                 </div>
               </div>
-            </div>
+            </>
           )}
 
-          {playerA && playerB && !result && (
-            <div className="rounded-xl p-4 text-center" style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}>
-              <p className="text-[12px] text-white/30">Processing comparison...</p>
+          {!playerA && !playerB && (
+            <div className="rounded-xl p-5 text-center space-y-1.5" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              <Search className="w-5 h-5 text-white/20 mx-auto" />
+              <p className="text-[13px] text-white/30">Search two players to compare</p>
+              <p className="text-[11px] text-white/20">Uses canonical projection, edge, confidence and form</p>
             </div>
           )}
         </div>
@@ -920,29 +890,28 @@ function PlayerSearchSlot({ label, accentColor, query, onQueryChange, selected, 
   if (selected) {
     return (
       <div
-        className="rounded-xl p-3 flex items-center gap-3"
+        className="rounded-xl p-3 flex flex-col gap-1.5"
         style={{ background: `${accentColor}10`, border: `1px solid ${accentColor}30` }}
       >
-        <div className="flex-1 min-w-0">
-          <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: accentColor }}>{label}</div>
-          <div className="text-sm font-bold text-white mt-0.5 truncate">{selected.player_name}</div>
-          <div className="text-[10px] text-white/30 mt-px">
-            {normalisePosition(selected.position)} · {selected.team} · {fmt(selected.projection, 0)} pts proj
-          </div>
+        <div className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: accentColor }}>{label}</div>
+        <div className="text-sm font-bold text-white leading-tight truncate">{selected.player_name}</div>
+        <div className="text-[10px] text-white/30">
+          {normalisePosition(selected.position)} · {selected.team}
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="text-[11px] font-bold text-white/60 tabular-nums">{fmt(selected.projection, 0)} pts</div>
+        <div className="flex items-center gap-1.5 mt-0.5">
           <button
             onClick={() => onOpenPlayer(selected)}
             className="text-[10px] font-semibold transition-colors"
-            style={{ color: `${accentColor}70` }}
+            style={{ color: `${accentColor}80` }}
           >
             Details
           </button>
           <button
             onClick={onClear}
-            className="p-1 rounded hover:bg-white/[0.08] text-white/25 hover:text-white/50 transition-colors"
+            className="ml-auto p-0.5 rounded hover:bg-white/[0.08] text-white/25 hover:text-white/50 transition-colors"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-3 h-3" />
           </button>
         </div>
       </div>
@@ -952,16 +921,16 @@ function PlayerSearchSlot({ label, accentColor, query, onQueryChange, selected, 
   return (
     <div className="relative">
       <div
-        className="rounded-xl flex items-center gap-2 px-3 py-2.5"
+        className="rounded-xl flex flex-col gap-1 px-3 py-2.5"
         style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${accentColor}25` }}
       >
-        <Search className="w-3.5 h-3.5 shrink-0" style={{ color: `${accentColor}60` }} />
-        <div className="flex-1">
-          <div className="text-[9px] font-semibold uppercase tracking-wider mb-0.5" style={{ color: `${accentColor}70` }}>{label}</div>
+        <div className="text-[9px] font-semibold uppercase tracking-wider" style={{ color: `${accentColor}70` }}>{label}</div>
+        <div className="flex items-center gap-1.5">
+          <Search className="w-3 h-3 shrink-0" style={{ color: `${accentColor}50` }} />
           <input
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Search player name..."
+            placeholder="Search player..."
             className="w-full bg-transparent text-sm text-white placeholder-white/20 outline-none leading-tight"
           />
         </div>
@@ -1005,11 +974,7 @@ function CollapsibleSEO({ roundLabel, roundNum }: { roundLabel: string; roundNum
         aria-expanded={open}
       >
         <span className="text-[12px] text-white/40 font-medium">About these picks — {roundLabel}</span>
-        {open ? (
-          <ChevronUp className="w-3.5 h-3.5 text-white/25" />
-        ) : (
-          <ChevronDown className="w-3.5 h-3.5 text-white/25" />
-        )}
+        {open ? <ChevronUp className="w-3.5 h-3.5 text-white/25" /> : <ChevronDown className="w-3.5 h-3.5 text-white/25" />}
       </button>
       <div
         className="border-t border-white/[0.05] overflow-hidden transition-all duration-200"
@@ -1017,15 +982,15 @@ function CollapsibleSEO({ roundLabel, roundNum }: { roundLabel: string; roundNum
       >
         <div className="px-4 pb-5 pt-3 space-y-4">
           <p className="text-[12px] text-white/40 leading-relaxed">
-            This page surfaces the highest-conviction AFL Fantasy decisions for {roundLabel} — must-buy targets, budget value plays, traps to avoid, and captain picks — powered by Neeko's AI projection model and trend engine.
+            This page surfaces the highest-conviction AFL Fantasy decisions for {roundLabel}. Every section is powered by the same canonical backend as Rankings and Market Watch — same signals, same formulas, same edge scores.
           </p>
           <div className="space-y-2.5">
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/30">How Each Section Works</h3>
             <ul className="space-y-2.5 text-[12px] text-white/35 leading-relaxed">
-              <li><strong className="text-white/55">Must Buys</strong> — Players with strong upside projecting well above their breakeven. Best trade-in targets for {roundLabel}.</li>
-              <li><strong className="text-white/55">Budget Upside</strong> — Affordable options with genuine scoring potential. Identified by price relative to projected output.</li>
-              <li><strong className="text-white/55">Traps / Avoids</strong> — Players trending down or with negative edge scores. Consider replacing before {roundLabel} locks.</li>
-              <li><strong className="text-white/55">Captain Picks</strong> — Best doubling options ranked by composite captain score: projection, consistency, and matchup advantage.</li>
+              <li><strong className="text-white/55">Must Buys</strong> — Players with START or STRONG_START canonical signal and positive edge. Ranked by edge score, not projection. Only players with games_played &gt;= 1 appear.</li>
+              <li><strong className="text-white/55">Budget Upside</strong> — Priced under $350k with positive signal. No zero-game or retired players.</li>
+              <li><strong className="text-white/55">Overpriced / Risk</strong> — Players with canonical SIT or STRONG_SIT signal only. Ranked by edge ascending (most negative first).</li>
+              <li><strong className="text-white/55">Captain Picks</strong> — Highest projection players with non-negative signal. No SIT/STRONG_SIT players can appear here.</li>
             </ul>
           </div>
           {roundNum && (
@@ -1054,7 +1019,7 @@ export default function AFLCurrentRoundPage() {
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [selectedRow, setSelectedRow] = useState<{ row: RankingRow; rank: number; tier: RowTier; isUnlocked: boolean } | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [showStartSit, setShowStartSit] = useState(false);
+  const [showCompare, setShowCompare] = useState(false);
 
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -1088,64 +1053,27 @@ export default function AFLCurrentRoundPage() {
     track("current_round_page_view");
   }, [fetchData]);
 
-  // ── ENGINE ────────────────────────────────────────────────────────────────
   const edgeBoardIds = useMemo<Set<string>>(() => {
     const ids = (window as any).__neekoEdgeBoardIds;
     return ids instanceof Set ? ids : new Set<string>();
   }, []);
 
-  const { captains, topPicks, valuePicks, riskPicks } = useMemo(
+  const { captains, mustBuys, budgetPicks, riskPicks } = useMemo(
     () => buildCurrentRoundPlayers(players, edgeBoardIds),
     [players, edgeBoardIds]
   );
 
-  // ── MUST BUYS — merge top picks + value picks, de-duped ───────────────────
-  const mustBuys = useMemo<CurrentRoundPlayer[]>(() => {
-    const seen = new Set<string | null>();
-    const combined: CurrentRoundPlayer[] = [];
-    for (const p of [...valuePicks, ...topPicks]) {
-      if (!seen.has(p.player_id)) {
-        seen.add(p.player_id);
-        combined.push(p);
-      }
-    }
-    return combined.sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)).slice(0, PREMIUM_LIMIT + 3);
-  }, [valuePicks, topPicks]);
-
-  // ── BUDGET UPSIDE — strictly priced under $350k OR low games, not in mustBuys
-  const budgetPicks = useMemo<CurrentRoundPlayer[]>(() => {
-    const usedIds = new Set(mustBuys.map((p) => p.player_id));
-    const available = players.filter(
-      (p) => !p.is_injured && !p.is_bye && p.projection != null && p.projection > 0
-    );
-    return available
-      .filter((p) => isBudgetPlayer(p) && !usedIds.has(p.player_id))
-      .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
-      .slice(0, PREMIUM_LIMIT)
-      .map((p) => {
-        const id = p.player_id ?? "";
-        return { ...p, overallRank: 999, isFeaturedPick: edgeBoardIds.has(id) };
-      });
-  }, [players, mustBuys, edgeBoardIds]);
-
-  // ── TRAPS — riskPicks ─────────────────────────────────────────────────────
-  const traps = useMemo(() => riskPicks.slice(0, PREMIUM_LIMIT + 3), [riskPicks]);
-
-  // ── SUMMARY STRIP data ────────────────────────────────────────────────────
   const bestBuy  = mustBuys[0] ?? null;
-  const bestTrap = traps[0] ?? null;
+  const bestTrap = riskPicks[0] ?? null;
   const bestCap  = captains[0] ?? null;
 
-  const buyPoolCount  = mustBuys.length;
-  const trapCount     = traps.length;
-  const captainLocks  = captains.filter((_, i) => getCaptainTier(i + 1, _).label === "Lock").length;
-
+  const captainLocks = captains.filter((p) => getCaptainTier(p).label === "Lock").length;
   const roundNum = roundLabel.replace(/[^0-9]/g, "");
   const pageTitle = `AFL Fantasy ${roundLabel} Tips, Captain Picks & Value Players | Neeko Sports`;
 
-  function openRow(row: RankingRow, rank: number) {
+  function openRow(row: RankingRow) {
     const tier: RowTier = isPremium ? "premium" : "full";
-    setSelectedRow({ row, rank, tier, isUnlocked: true });
+    setSelectedRow({ row, rank: 0, tier, isUnlocked: true });
     track("current_round_player_click", { player_name: row.player_name, player_id: row.player_id });
   }
 
@@ -1195,7 +1123,7 @@ export default function AFLCurrentRoundPage() {
       <div className="min-h-screen bg-[#070707] text-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
 
-          {/* ── PAGE HEADER ──────────────────────────────────────────────── */}
+          {/* ── PAGE HEADER ──────────────────────────────────────────── */}
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1.5">
@@ -1224,21 +1152,21 @@ export default function AFLCurrentRoundPage() {
             </div>
           </div>
 
-          {/* ── SUMMARY STRIP ────────────────────────────────────────────── */}
+          {/* ── SUMMARY STRIP ─────────────────────────────────────────── */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <SummaryCard
               label="Must Buy"
               icon={<TrendingUp className="w-3.5 h-3.5" />}
               accentColor="#4ade80"
               playerName={bestBuy?.player_name ?? null}
-              stat={fmt(bestBuy?.projection, 0)}
-              statLabel="pts proj"
+              stat={bestBuy?.edge != null ? `+${fmt(bestBuy.edge, 0)}` : fmt(bestBuy?.projection, 0)}
+              statLabel={bestBuy?.edge != null ? "edge" : "pts proj"}
               reason={bestBuy?.why ?? null}
               badge={<BuyBadge />}
             />
             <SummaryCard
               label="Biggest Trap"
-              icon={<AlertTriangle className="w-3.5 h-3.5" />}
+              icon={<TrendingDown className="w-3.5 h-3.5" />}
               accentColor="#f87171"
               playerName={bestTrap?.player_name ?? null}
               stat={fmt(bestTrap?.edge, 0)}
@@ -1254,9 +1182,8 @@ export default function AFLCurrentRoundPage() {
               stat={fmt(bestCap?.projection, 0)}
               statLabel="pts proj"
               reason={bestCap?.why ?? null}
-              badge={<CaptainBadge tier="Lock" />}
+              badge={<CaptainBadge tier={bestCap ? getCaptainTier(bestCap).label : undefined} />}
             />
-            {/* Round Snapshot — user-facing decision stats */}
             <div
               className="rounded-2xl p-4 flex flex-col gap-2"
               style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.08)" }}
@@ -1267,12 +1194,12 @@ export default function AFLCurrentRoundPage() {
               </div>
               <div className="space-y-1.5 flex-1">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-white/35">Best Buy Pool</span>
-                  <span className="text-[11px] font-bold text-green-400 tabular-nums">{buyPoolCount}</span>
+                  <span className="text-[10px] text-white/35">Buy Targets</span>
+                  <span className="text-[11px] font-bold text-green-400 tabular-nums">{mustBuys.length}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-white/35">Trap Alerts</span>
-                  <span className="text-[11px] font-bold text-red-400 tabular-nums">{trapCount}</span>
+                  <span className="text-[11px] font-bold text-red-400 tabular-nums">{riskPicks.length}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] text-white/35">Captain Locks</span>
@@ -1286,32 +1213,31 @@ export default function AFLCurrentRoundPage() {
             </div>
           </div>
 
-          {/* ── SEO COLLAPSIBLE ──────────────────────────────────────────── */}
+          {/* ── SEO COLLAPSIBLE ───────────────────────────────────────── */}
           <CollapsibleSEO roundLabel={roundLabel} roundNum={roundNum} />
 
-          {/* ── SECTION 1: MUST BUYS ─────────────────────────────────────── */}
+          {/* ── SECTION 1: MUST BUYS ──────────────────────────────────── */}
           <MustBuysSection
             mustBuys={mustBuys}
-            freeLimit={MUST_BUY_FREE}
             isPremiumUser={isPremium}
             onOpenRow={openRow}
             onUpgrade={() => setShowUpgradeModal(true)}
           />
 
-          {/* ── SECTION 2: BUDGET UPSIDE ─────────────────────────────────── */}
+          {/* ── SECTION 2: BUDGET UPSIDE ──────────────────────────────── */}
           {budgetPicks.length > 0 && (
             <SectionCard
               title="Budget Upside"
-              description="Affordable options with genuine scoring potential — priced under $350k or early in their pricing cycle."
+              description="Affordable players priced under $350k with START or STRONG_START signal — genuine upside, not just cheap filler."
               icon={<Sprout className="w-4 h-4" />}
               accentColor="#2dd4bf"
               players={budgetPicks}
-              freeLimit={isPremium ? PREMIUM_LIMIT : 3}
+              freeLimit={BUDGET_FREE}
               isPremiumUser={isPremium}
               onOpenRow={openRow}
               onUpgrade={() => setShowUpgradeModal(true)}
               blurCtaLabel="Unlock all budget plays →"
-              blurBadgeText={`+${Math.max(0, budgetPicks.length - 3)} hidden`}
+              blurBadgeText={`+${Math.max(0, budgetPicks.length - BUDGET_FREE)} hidden`}
               footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
               renderBadge={() => <BudgetBadge />}
               renderMetric={(row) =>
@@ -1323,24 +1249,24 @@ export default function AFLCurrentRoundPage() {
                 ) : undefined
               }
               renderSubtext={(row) =>
-                row.games_played != null ? `${row.games_played} games` : null
+                row.games_played != null ? `${row.games_played} gm` : null
               }
             />
           )}
 
-          {/* ── SECTION 3: TRAPS / AVOIDS ────────────────────────────────── */}
+          {/* ── SECTION 3: OVERPRICED / RISK ─────────────────────────── */}
           <SectionCard
             title="Overpriced / Risk"
-            description="Players whose price exceeds their projected value — ranked by edge score ascending. Consider trading out before lockout."
+            description="Players with canonical SIT or STRONG_SIT signal — projecting below their breakeven. Ranked by edge score ascending."
             icon={<ShieldAlert className="w-4 h-4" />}
             accentColor="#f87171"
-            players={traps}
-            freeLimit={TRAP_FREE}
+            players={riskPicks}
+            freeLimit={RISK_FREE}
             isPremiumUser={isPremium}
             onOpenRow={openRow}
             onUpgrade={() => setShowUpgradeModal(true)}
             blurCtaLabel="Reveal all trap alerts →"
-            blurBadgeText={`+${Math.max(0, traps.length - TRAP_FREE)} risks hidden`}
+            blurBadgeText={`+${Math.max(0, riskPicks.length - RISK_FREE)} risks hidden`}
             footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
             renderBadge={() => <AvoidBadge />}
             renderMetric={(row) =>
@@ -1355,21 +1281,19 @@ export default function AFLCurrentRoundPage() {
               const tag = getRiskTag(row);
               const conf = row.projection_confidence;
               const confLabel = conf != null ? getConfidenceLabel(conf) : null;
-              const parts = [tag, confLabel].filter(Boolean);
-              return parts.length > 0 ? parts.join(" · ") : null;
+              return [tag, confLabel].filter(Boolean).join(" · ") || null;
             }}
           />
 
-          {/* ── SECTION 4: CAPTAINS (tiered) ─────────────────────────────── */}
+          {/* ── SECTION 4: CAPTAIN PICKS ──────────────────────────────── */}
           <CaptainSection
             captains={captains}
-            freeLimit={CAPTAIN_FREE}
             isPremiumUser={isPremium}
             onOpenRow={openRow}
             onUpgrade={() => setShowUpgradeModal(true)}
           />
 
-          {/* ── SECTION 5: COMPARE PLAYERS CTA ──────────────────────────── */}
+          {/* ── COMPARE PLAYERS CTA ───────────────────────────────────── */}
           <div
             className="rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 px-5 py-5"
             style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}
@@ -1384,12 +1308,12 @@ export default function AFLCurrentRoundPage() {
               <div>
                 <h3 className="text-sm font-bold text-white">Torn between two players?</h3>
                 <p className="text-[12px] text-white/35 mt-0.5 leading-relaxed">
-                  Projection, edge, confidence — one clear start/sit answer. Compare any two players instantly.
+                  Projection, ceiling, floor, edge, value, form and confidence — one clear start/sit verdict.
                 </p>
               </div>
             </div>
             <button
-              onClick={() => { setShowStartSit(true); track("start_sit_tool_open"); }}
+              onClick={() => { setShowCompare(true); track("compare_players_open"); }}
               className="shrink-0 flex items-center gap-1.5 text-[13px] font-bold text-[#F5C84C] border border-[#F5C84C]/30 hover:border-[#F5C84C]/60 hover:bg-[#F5C84C]/[0.08] px-4 py-2.5 rounded-xl transition-all"
             >
               Compare Players
@@ -1397,7 +1321,7 @@ export default function AFLCurrentRoundPage() {
             </button>
           </div>
 
-          {/* ── NAV LINKS ────────────────────────────────────────────────── */}
+          {/* ── NAV LINKS ──────────────────────────────────────────────── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <Link
               to="/sports/afl/rankings"
@@ -1444,13 +1368,13 @@ export default function AFLCurrentRoundPage() {
       {showUpgradeModal && (
         <UpgradeModal onClose={() => setShowUpgradeModal(false)} />
       )}
-      {showStartSit && (
-        <StartSitModal
+      {showCompare && (
+        <ComparePlayersModal
           players={players}
-          onClose={() => setShowStartSit(false)}
+          onClose={() => setShowCompare(false)}
           onOpenPlayer={(row) => {
-            setShowStartSit(false);
-            openRow(row, 0);
+            setShowCompare(false);
+            openRow(row);
           }}
         />
       )}

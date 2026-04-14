@@ -7,136 +7,110 @@ export interface CurrentRoundPlayer extends RankingRow {
 
 export interface CurrentRoundResult {
   captains: CurrentRoundPlayer[];
-  topPicks: CurrentRoundPlayer[];
-  valuePicks: CurrentRoundPlayer[];
-  safePicks: CurrentRoundPlayer[];
+  mustBuys: CurrentRoundPlayer[];
+  budgetPicks: CurrentRoundPlayer[];
   riskPicks: CurrentRoundPlayer[];
 }
 
-const CAPTAIN_LIMIT   = 5;
-const TOP_PICKS_LIMIT = 10;
-const OTHER_LIMIT     = 10;
+const CAPTAIN_LIMIT  = 8;
+const MUST_BUY_LIMIT = 12;
+const BUDGET_LIMIT   = 10;
+const RISK_LIMIT     = 11;
+
+const BUDGET_PRICE_CAP = 350_000;
+
+function isEligible(p: RankingRow): boolean {
+  if (!p.player_id) return false;
+  if (p.is_injured) return false;
+  if (p.is_bye) return false;
+  if ((p.games_played ?? 0) < 1) return false;
+  const status = (p.manual_status ?? p.status ?? "").toLowerCase();
+  if (["delisted", "retired", "inactive"].includes(status)) return false;
+  if (p.projection == null || p.projection <= 0) return false;
+  return true;
+}
+
+function hasPositiveSignal(p: RankingRow): boolean {
+  const sig = (p.signal ?? p.signal_tag ?? "").toUpperCase();
+  return sig === "STRONG_START" || sig === "START";
+}
+
+function hasNegativeSignal(p: RankingRow): boolean {
+  const sig = (p.signal ?? p.signal_tag ?? "").toUpperCase();
+  return sig === "STRONG_SIT" || sig === "SIT";
+}
 
 export function buildCurrentRoundPlayers(
   players: RankingRow[],
   edgeBoardIds: Set<string> = new Set()
 ): CurrentRoundResult {
   if (players.length === 0) {
-    return { captains: [], topPicks: [], valuePicks: [], safePicks: [], riskPicks: [] };
+    return { captains: [], mustBuys: [], budgetPicks: [], riskPicks: [] };
   }
 
-  const available = players.filter(
-    (p) => !p.is_injured && !p.is_bye
-  );
+  const eligible = players.filter(isEligible);
 
-
-  const rankedAll = [...players].sort(
-    (a, b) => (b.projection ?? 0) - (a.projection ?? 0)
-  );
   const rankMap = new Map<string, number>();
-  rankedAll.forEach((p, i) => {
-    if (p.player_id) rankMap.set(p.player_id, i + 1);
-  });
+  [...players]
+    .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
+    .forEach((p, i) => { if (p.player_id) rankMap.set(p.player_id, i + 1); });
 
   function enrich(p: RankingRow): CurrentRoundPlayer {
     const id = p.player_id ?? "";
-    return {
-      ...p,
-      overallRank: rankMap.get(id) ?? 999,
-      isFeaturedPick: edgeBoardIds.has(id),
-    };
+    return { ...p, overallRank: rankMap.get(id) ?? 999, isFeaturedPick: edgeBoardIds.has(id) };
   }
 
-  const enriched = available.map(enrich);
+  const enriched = eligible.map(enrich);
 
-  const byProjDesc = [...enriched].sort(
-    (a, b) => (b.projection ?? 0) - (a.projection ?? 0)
-  );
-  const byEdgeDesc = [...enriched].sort(
-    (a, b) => (b.edge ?? 0) - (a.edge ?? 0)
-  );
-  const byEdgeAsc = [...enriched].sort(
-    (a, b) => (a.edge ?? 0) - (b.edge ?? 0)
-  );
+  const byProjDesc  = [...enriched].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0));
+  const byEdgeDesc  = [...enriched].sort((a, b) => (b.edge ?? 0) - (a.edge ?? 0));
+  const byEdgeAsc   = [...enriched].sort((a, b) => (a.edge ?? 0) - (b.edge ?? 0));
 
-  // CAPTAINS: top projection players
-  const captains = byProjDesc.slice(0, CAPTAIN_LIMIT);
+  // ── CAPTAIN PICKS ─────────────────────────────────────────────────────────
+  // Best projection players with non-negative signal (not SIT/STRONG_SIT)
+  const captains = byProjDesc
+    .filter((p) => !hasNegativeSignal(p))
+    .slice(0, CAPTAIN_LIMIT);
   const captainIds = new Set(captains.map((p) => p.player_id));
 
-
-  // TOP PICKS: next best projection (not captain)
-  const topPicks = byProjDesc
-    .filter((p) => !captainIds.has(p.player_id))
-    .slice(0, TOP_PICKS_LIMIT);
-
-  const topIds = new Set([...captainIds, ...topPicks.map((p) => p.player_id)]);
-
-
-  // VALUE PICKS: highest edge players not already used
-  // Primary: edge > 8, fallback: any positive edge, second fallback: top remaining by projection
-  const valuePool = byEdgeDesc.filter((p) => !topIds.has(p.player_id));
-  const valuePrimary = valuePool.filter((p) => (p.edge ?? 0) > 8).slice(0, OTHER_LIMIT);
-
-  let valuePicks = valuePrimary;
-  if (valuePicks.length < 3) {
-    const extra = valuePool
-      .filter((p) => (p.edge ?? 0) > 0 && !valuePrimary.some((v) => v.player_id === p.player_id))
-      .slice(0, OTHER_LIMIT - valuePicks.length);
-    valuePicks = [...valuePicks, ...extra];
-  }
-  if (valuePicks.length < 3) {
-    const extra = valuePool
-      .filter((p) => !valuePicks.some((v) => v.player_id === p.player_id))
-      .slice(0, OTHER_LIMIT - valuePicks.length);
-    valuePicks = [...valuePicks, ...extra];
-  }
-
-  const valueIds = new Set([...topIds, ...valuePicks.map((p) => p.player_id)]);
-
-
-  // SAFE PICKS: good projection, no strong negative signal, not already used
-  // Primary: projection >= 80 and edge >= -15, fallback: any not used, by projection desc
-  const safePool = byProjDesc.filter((p) => !valueIds.has(p.player_id));
-  const safePrimary = safePool
-    .filter(
-      (p) =>
-        (p.projection ?? 0) >= 80 &&
-        (p.edge ?? 0) >= -15 &&
-        p.signal !== "STRONG_DOWN" &&
-        p.signal !== "DOWN"
+  // ── MUST BUYS ──────────────────────────────────────────────────────────────
+  // Positive canonical signal (START or STRONG_START) + positive edge
+  // Sorted by edge desc so strongest value trade targets come first
+  const mustBuys = byEdgeDesc
+    .filter((p) =>
+      !captainIds.has(p.player_id) &&
+      hasPositiveSignal(p) &&
+      (p.edge ?? 0) > 0
     )
-    .slice(0, OTHER_LIMIT);
+    .slice(0, MUST_BUY_LIMIT);
+  const mustBuyIds = new Set(mustBuys.map((p) => p.player_id));
 
-  let safePicks = safePrimary;
-  if (safePicks.length < 3) {
-    const extra = safePool
-      .filter((p) => !safePrimary.some((s) => s.player_id === p.player_id) && (p.edge ?? 0) >= -20)
-      .slice(0, OTHER_LIMIT - safePicks.length);
-    safePicks = [...safePicks, ...extra];
-  }
-  if (safePicks.length < 3) {
-    const extra = safePool
-      .filter((p) => !safePicks.some((s) => s.player_id === p.player_id))
-      .slice(0, OTHER_LIMIT - safePicks.length);
-    safePicks = [...safePicks, ...extra];
-  }
+  // ── BUDGET UPSIDE ──────────────────────────────────────────────────────────
+  // True budget players only: price < $350k, games_played >= 1 (already enforced by eligible)
+  // NOT already in mustBuys or captains
+  // Require at least START signal (positive signal only — no random cheap players)
+  const usedIds = new Set([...captainIds, ...mustBuyIds]);
+  const budgetPicks = byEdgeDesc
+    .filter((p) =>
+      !usedIds.has(p.player_id) &&
+      (p.price ?? 0) > 0 &&
+      (p.price ?? 999_999) < BUDGET_PRICE_CAP &&
+      hasPositiveSignal(p)
+    )
+    .slice(0, BUDGET_LIMIT);
+  const budgetIds = new Set(budgetPicks.map((p) => p.player_id));
 
-  const safeIds = new Set([...valueIds, ...safePicks.map((p) => p.player_id)]);
+  // ── RISK / OVERPRICED ─────────────────────────────────────────────────────
+  // Canonical negative signal (SIT or STRONG_SIT) players
+  // NOT already shown elsewhere
+  // Sorted by edge ascending (most negative first)
+  const allUsedIds = new Set([...usedIds, ...budgetIds]);
+  const riskPicks = byEdgeAsc
+    .filter((p) =>
+      !allUsedIds.has(p.player_id) &&
+      hasNegativeSignal(p)
+    )
+    .slice(0, RISK_LIMIT);
 
-
-  // RISK PICKS: lowest edge players not already used (derived from edge_canonical)
-  // Primary: edge < -5, fallback: most negative edge available
-  const riskPool = byEdgeAsc.filter((p) => !safeIds.has(p.player_id));
-  const riskPrimary = riskPool.filter((p) => (p.edge ?? 0) < -5).slice(0, OTHER_LIMIT);
-
-  let riskPicks = riskPrimary;
-  if (riskPicks.length < 3) {
-    const extra = riskPool
-      .filter((p) => !riskPrimary.some((r) => r.player_id === p.player_id))
-      .slice(0, OTHER_LIMIT - riskPicks.length);
-    riskPicks = [...riskPicks, ...extra];
-  }
-
-
-  return { captains, topPicks, valuePicks, safePicks, riskPicks };
+  return { captains, mustBuys, budgetPicks, riskPicks };
 }
