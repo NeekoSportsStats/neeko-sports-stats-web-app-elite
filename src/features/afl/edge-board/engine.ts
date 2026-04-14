@@ -35,9 +35,20 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
   });
 
   function effectiveValue(p: RankingRow): number {
+    if (p.decision_score != null) return p.decision_score;
     if (p.value_score != null) return p.value_score;
     if (p.projection != null && p.breakeven != null) return p.projection - p.breakeven;
     return 0;
+  }
+
+  function isSmashOrStrongStart(p: RankingRow): boolean {
+    const c = (p.action_canonical ?? "").toUpperCase();
+    return c === "SMASH_START" || c === "STRONG_START" || c === "START";
+  }
+
+  function isHardOrSit(p: RankingRow): boolean {
+    const c = (p.action_canonical ?? "").toUpperCase();
+    return c === "HARD_SIT" || c === "SIT";
   }
 
   const byValueDesc = [...available].sort(
@@ -63,11 +74,18 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
     return result;
   }
 
-  const mustHave = pickNext(byValueDesc, PLAYERS_PER_SECTION, "must_have");
-  const breakout = pickNext(byValueDesc, PLAYERS_PER_SECTION, "breakout");
+  // must_have: SMASH_START/STRONG_START/START players first (by decision_score), then fallback
+  const mustHavePool = byValueDesc.filter(isSmashOrStrongStart);
+  const mustHave = pickNext(mustHavePool.length >= PLAYERS_PER_SECTION ? mustHavePool : byValueDesc, PLAYERS_PER_SECTION, "must_have");
 
+  // breakout: next best START players or next by value
+  const breakoutPool = byValueDesc.filter(isSmashOrStrongStart);
+  const breakout = pickNext(breakoutPool.length > 0 ? breakoutPool : byValueDesc, PLAYERS_PER_SECTION, "breakout");
+
+  // avoid: HARD_SIT/SIT players first, then worst by value
+  const avoidPool = [...available].sort((a, b) => effectiveValue(a) - effectiveValue(b)).filter(isHardOrSit);
   const byValueAsc = [...byValueDesc].reverse();
-  const avoid = pickNext(byValueAsc, PLAYERS_PER_SECTION, "avoid");
+  const avoid = pickNext(avoidPool.length >= PLAYERS_PER_SECTION ? avoidPool : byValueAsc, PLAYERS_PER_SECTION, "avoid");
 
   const allEdgeIds = new Set<string>();
   [...mustHave, ...breakout, ...avoid].forEach((p) => {

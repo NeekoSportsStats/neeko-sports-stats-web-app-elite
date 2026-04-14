@@ -1,9 +1,11 @@
 import { useState, useMemo, memo } from "react";
+import React from "react";
 import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
 import { ChevronDown, ChevronUp, Lock } from "lucide-react";
 import { cleanAiText } from "@/utils/cleanAiText";
 import { generateSmartWhy } from "./helpers";
+import { getActionDisplayStyles, getValueBandStyles } from "@/features/afl/rankings/components/helpers";
 
 type SortField = "signal" | "value" | "projection" | "player" | "price";
 type SortDirection = "asc" | "desc";
@@ -46,7 +48,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
 
   const sortedPlayers = useMemo(() => {
     const bucketOrder: Record<string, number> = {
-      STRONG_START: 0, START: 1, HOLD: 2, SIT: 3, STRONG_SIT: 4,
+      SMASH_START: 0, STRONG_START: 1, START: 2, HOLD: 3, SIT: 4, HARD_SIT: 5,
     };
 
     return [...players].sort((a, b) => {
@@ -55,16 +57,16 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
 
       switch (sortField) {
         case "signal": {
-          const aSignal = (a.signal_tag ?? "HOLD").toUpperCase();
-          const bSignal = (b.signal_tag ?? "HOLD").toUpperCase();
-          aVal = bucketOrder[aSignal] ?? 2;
-          bVal = bucketOrder[bSignal] ?? 2;
+          const aSignal = (a.action_canonical ?? a.signal_tag ?? "HOLD").toUpperCase();
+          const bSignal = (b.action_canonical ?? b.signal_tag ?? "HOLD").toUpperCase();
+          aVal = bucketOrder[aSignal] ?? 3;
+          bVal = bucketOrder[bSignal] ?? 3;
           if (aVal !== bVal) return (aVal as number) - (bVal as number);
-          return (b.value_score ?? 0) - (a.value_score ?? 0);
+          return (b.decision_score ?? b.value_score ?? 0) - (a.decision_score ?? a.value_score ?? 0);
         }
         case "value":
-          aVal = a.value_score ?? -999;
-          bVal = b.value_score ?? -999;
+          aVal = a.decision_score ?? a.value_score ?? -999;
+          bVal = b.decision_score ?? b.value_score ?? -999;
           break;
         case "projection":
           aVal = a.projection || 0;
@@ -359,7 +361,7 @@ interface PlayerRowProps {
 }
 
 const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred = false, isPremium }: PlayerRowProps) {
-  const signalStrength = useMemo(() => getSignalStrength(player), [player.signal_tag, player.value_score]);
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.action_canonical, player.action_display, player.signal_tag]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
     player.why,
@@ -404,7 +406,7 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
         {formatPrice(player.price || 0)}
       </td>
       <td className="px-5 py-3">
-        <ValueScoreCell value={player.value_score} />
+        <ValueBandCell player={player} />
       </td>
       <td className="px-5 py-3">
         <div className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold border rounded-md ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
@@ -424,7 +426,7 @@ interface MobilePlayerCardProps {
 }
 
 const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlurred = false, isPremium }: MobilePlayerCardProps) {
-  const signalStrength = useMemo(() => getSignalStrength(player), [player.signal_tag, player.value_score]);
+  const signalStrength = useMemo(() => getSignalStrength(player), [player.action_canonical, player.action_display, player.signal_tag]);
 
   const smartWhy = useMemo(() => generateSmartWhy(player), [
     player.why,
@@ -474,7 +476,7 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
         </div>
         <div>
           <div className="text-white/35 text-[10px] mb-0.5">Value</div>
-          <ValueScoreCell value={player.value_score} compact />
+          <ValueBandCell player={player} compact />
         </div>
       </div>
     </div>
@@ -482,41 +484,43 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
 });
 
 function getSignalStrength(player: DerivedPlayer) {
-  const rawSignal = (player.signal_tag ?? "HOLD").toUpperCase();
+  const rawSignal = (player.action_canonical ?? player.signal_tag ?? "HOLD").toUpperCase();
+  const displayLabel = player.action_display;
 
   switch (rawSignal) {
+    case "SMASH_START":
+      return { icon: "🔥", label: displayLabel ?? "Smash Start", bg: "bg-emerald-500/20", text: "text-emerald-300", border: "border-emerald-500/40" };
     case "STRONG_START":
-      return { icon: "🔥", label: "Strong Start", bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/40" };
+      return { icon: "🔥", label: displayLabel ?? "Strong Start", bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/40" };
     case "START":
-      return { icon: "✅", label: "Start", bg: "bg-green-500/[0.12]", text: "text-green-400", border: "border-green-500/25" };
-    case "STRONG_SIT":
-      return { icon: "🚫", label: "Strong Sit", bg: "bg-red-500/[0.15]", text: "text-red-400", border: "border-red-500/35" };
+      return { icon: "✅", label: displayLabel ?? "Start", bg: "bg-green-500/[0.12]", text: "text-green-400", border: "border-green-500/25" };
+    case "HARD_SIT":
+      return { icon: "🚫", label: displayLabel ?? "Hard Sit", bg: "bg-red-500/[0.15]", text: "text-red-400", border: "border-red-500/35" };
     case "SIT":
-      return { icon: "⚠️", label: "Sit", bg: "bg-orange-500/[0.10]", text: "text-orange-400", border: "border-orange-500/25" };
+      return { icon: "⚠️", label: displayLabel ?? "Sit", bg: "bg-orange-500/[0.10]", text: "text-orange-400", border: "border-orange-500/25" };
     default:
-      return { icon: "👁", label: "Hold", bg: "bg-[#F5C84C]/[0.08]", text: "text-[#F5C84C]", border: "border-[#F5C84C]/25" };
+      return { icon: "👁", label: displayLabel ?? "Hold", bg: "bg-[#F5C84C]/[0.08]", text: "text-[#F5C84C]", border: "border-[#F5C84C]/25" };
   }
 }
 
-function getValueScoreColor(v: number | null | undefined): string {
-  if (v == null) return "text-white/30";
-  if (v >= 15)  return "text-green-400";
-  if (v >= 5)   return "text-[#F5C84C]";
-  if (v >= -5)  return "text-white/50";
-  return "text-red-400";
-}
-
-function ValueScoreCell({ value, compact = false }: { value: number | null | undefined; compact?: boolean }) {
-  if (value == null) {
-    return <span className="text-white/25 text-xs">—</span>;
+function ValueBandCell({ player, compact = false }: { player: DerivedPlayer; compact?: boolean }) {
+  const band = player.value_band;
+  if (band) {
+    const cls = getValueBandStyles(band);
+    return (
+      <span className={`inline-block rounded border px-1.5 py-0.5 ${compact ? "text-[10px]" : "text-[11px]"} font-semibold ${cls}`}>
+        {band}
+      </span>
+    );
   }
-  const n = Number(value);
+  const v = player.decision_score ?? player.value_score;
+  if (v == null) return <span className="text-white/25 text-xs">—</span>;
+  const n = Number(v);
   const sign = n > 0 ? "+" : "";
-  const formatted = `${sign}${n.toFixed(1)}`;
-  const color = getValueScoreColor(n);
+  const color = n >= 0.5 ? "text-green-400" : n >= 0 ? "text-[#F5C84C]" : n >= -0.5 ? "text-white/50" : "text-red-400";
   return (
     <span className={`${compact ? "text-[11px]" : "text-xs"} font-semibold tabular-nums ${color}`}>
-      {formatted}
+      {sign}{n.toFixed(2)}
     </span>
   );
 }

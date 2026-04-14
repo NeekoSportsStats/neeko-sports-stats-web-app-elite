@@ -149,10 +149,12 @@ function RatingPill({ rating }: { rating: string | null }) {
   );
 }
 
-function ConfidenceBar({ value }: { value: number | null }) {
-  if (value == null) return null;
-  const pct = Math.max(0, Math.min(100, value));
-  const color = pct >= 75 ? "#4ade80" : pct >= 55 ? "#F5C84C" : "#fb923c";
+function ConfidenceBar({ label }: { label: string | null | undefined }) {
+  if (!label) return null;
+  const up = label.toUpperCase();
+  const pct = up === "HIGH" ? 85 : up === "MEDIUM" ? 55 : 30;
+  const color = up === "HIGH" ? "#4ade80" : up === "MEDIUM" ? "#F5C84C" : "#fb923c";
+  const displayLabel = up === "HIGH" ? "High" : up === "MEDIUM" ? "Medium" : "Low";
   return (
     <div className="flex items-center gap-1.5">
       <div className="flex-1 h-1 rounded-full bg-white/[0.07] overflow-hidden">
@@ -162,7 +164,7 @@ function ConfidenceBar({ value }: { value: number | null }) {
         />
       </div>
       <span className="text-[10px] font-semibold tabular-nums" style={{ color }}>
-        {Math.round(pct)}%
+        {displayLabel}
       </span>
     </div>
   );
@@ -182,7 +184,7 @@ function CaptainCard({
   onOpen: () => void;
 }) {
   const pos = normPos(player.position);
-  const conf = player.projection_confidence;
+  const conf = player.confidence_label;
   const rating = player.captain_rating ?? null;
   const why = player.why ?? null;
   const matchup = player.matchup_label ?? null;
@@ -240,7 +242,7 @@ function CaptainCard({
           </div>
 
           {/* Confidence bar */}
-          <ConfidenceBar value={conf} />
+          <ConfidenceBar label={conf} />
 
           {/* Short reason */}
           {why && (

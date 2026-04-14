@@ -289,10 +289,14 @@ function PriceMetric({ price }: { price: number }) {
   );
 }
 
-function ConfidenceMetric({ conf }: { conf: number }) {
+function ConfidenceMetric({ label }: { label: string | null | undefined }) {
+  if (!label) return null;
+  const up = label.toUpperCase();
+  const color = up === "HIGH" ? "text-green-400" : up === "MEDIUM" ? "text-yellow-400" : "text-orange-400";
+  const short = up === "HIGH" ? "Hi" : up === "MEDIUM" ? "Med" : "Low";
   return (
     <div className="text-right hidden sm:block w-10">
-      <div className={`text-[13px] font-bold tabular-nums ${getConfidenceColor(conf)}`}>{fmt(conf, 0)}%</div>
+      <div className={`text-[13px] font-bold tabular-nums ${color}`}>{short}</div>
       <div className="text-[9px] text-white/20 uppercase tracking-wide">conf</div>
     </div>
   );
@@ -528,7 +532,7 @@ function CaptainSection({
         row={row}
         rank={rankNum + 1}
         badge={<CaptainBadge tier={tier.label} />}
-        metric={row.projection_confidence != null ? <ConfidenceMetric conf={row.projection_confidence} /> : undefined}
+        metric={row.confidence_label != null ? <ConfidenceMetric label={row.confidence_label} /> : undefined}
         subtext={tier.desc}
         onClick={() => onOpenRow(row)}
       />
@@ -704,14 +708,18 @@ function ComparePlayersModal({ players, onClose, onOpenPlayer }: ComparePlayersM
     const projB  = playerB.projection ?? 0;
     const edgeA  = playerA.edge_canonical ?? 0;
     const edgeB  = playerB.edge_canonical ?? 0;
-    const confA  = playerA.projection_confidence ?? 50;
-    const confB  = playerB.projection_confidence ?? 50;
+    const confLabelA = (playerA.confidence_label ?? "").toUpperCase();
+    const confLabelB = (playerB.confidence_label ?? "").toUpperCase();
+    const confA  = confLabelA === "HIGH" ? 85 : confLabelA === "MEDIUM" ? 55 : 30;
+    const confB  = confLabelB === "HIGH" ? 85 : confLabelB === "MEDIUM" ? 55 : 30;
     const ceilA  = playerA.ceiling_estimate ?? projA;
     const ceilB  = playerB.ceiling_estimate ?? projB;
     const floorA = playerA.floor_estimate ?? projA;
     const floorB = playerB.floor_estimate ?? projB;
-    const formA  = playerA.form_score ?? 0;
-    const formB  = playerB.form_score ?? 0;
+    const formDeltaA = (playerA as any).form_delta as number | null | undefined;
+    const formDeltaB = (playerB as any).form_delta as number | null | undefined;
+    const formA  = formDeltaA ?? 0;
+    const formB  = formDeltaB ?? 0;
 
     const compositeA = projA * 0.45 + edgeA * 0.30 + confA * 0.15 + formA * 0.10;
     const compositeB = projB * 0.45 + edgeB * 0.30 + confB * 0.15 + formB * 0.10;
@@ -1286,7 +1294,7 @@ export default function AFLCurrentRoundPage() {
               playerName={bestCap?.player_name ?? null}
               stat={bestCap?.projection != null ? fmt(bestCap.projection, 0) : "—"}
               statLabel="pts projected"
-              subStat={bestCap?.projection_confidence != null ? fmt(bestCap.projection_confidence, 0) + "%" : undefined}
+              subStat={bestCap?.confidence_label ?? undefined}
               subStatLabel="confidence"
               context={bestCap?.why ?? null}
               badge={<CaptainBadge tier={bestCap ? getCaptainTier(bestCap).label : undefined} />}

@@ -140,8 +140,11 @@ function getSectionLabel(section: Section): { emoji: string; label: string; acce
 function getPrimaryMetric(row: RankingRow, section: Section): { label: string; value: string; color: string } {
   switch (section) {
     case "must_have": {
-      const vs = row.value_score ?? (row.projection != null && row.breakeven != null ? row.projection - row.breakeven : null);
-      return { label: "Value Score", value: fmtValueScore(vs), color: getValueScoreColor(vs) };
+      const band = (row as any).value_band;
+      if (band) return { label: "Value", value: band, color: "text-emerald-400" };
+      const ds = (row as any).decision_score;
+      const vs = ds ?? row.value_score ?? (row.projection != null && row.breakeven != null ? row.projection - row.breakeven : null);
+      return { label: "Edge Score", value: fmtValueScore(vs), color: getValueScoreColor(vs) };
     }
     case "breakout":     return { label: "Projection",   value: fmtInt(row.projection),    color: "text-sky-400" };
     case "do_not_start": return { label: "Projection",   value: fmtInt(row.projection),    color: "text-red-400" };
@@ -150,12 +153,19 @@ function getPrimaryMetric(row: RankingRow, section: Section): { label: string; v
 
 function buildConfidenceReasons(row: RankingRow, section: Section): string[] {
   const reasons: string[] = [];
-  if (section === "must_have" && row.value_score != null) {
-    if (row.value_score >= 15)  reasons.push("Elite value — projecting well above breakeven");
-    else if (row.value_score >= 5) reasons.push("Strong value — projecting above breakeven");
-    else reasons.push("Fair value — projecting at or above breakeven");
+  const valueBand = (row as any).value_band as string | null | undefined;
+  const decisionScore = (row as any).decision_score as number | null | undefined;
+  if (section === "must_have") {
+    if (valueBand) {
+      reasons.push(`${valueBand} — projecting above breakeven this round`);
+    } else if (decisionScore != null) {
+      if (decisionScore >= 1.5) reasons.push("Elite value — projecting well above breakeven");
+      else if (decisionScore >= 0.5) reasons.push("Strong value — projecting above breakeven");
+      else reasons.push("Fair value — projecting at or above breakeven");
+    }
   }
-  if (section === "breakout" && row.signal_tag === "HIGH") {
+  const confidenceLabel = (row as any).confidence_label as string | null | undefined;
+  if (section === "breakout" && confidenceLabel === "HIGH") {
     reasons.push("High confidence signal — strong breakout candidate this round");
   }
   if (section === "do_not_start") {
@@ -180,8 +190,11 @@ async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 function buildShareText(row: RankingRow, section: Section): string {
+  const valueBand = (row as any).value_band as string | null | undefined;
+  const decisionScore = (row as any).decision_score as number | null | undefined;
+  const valueLabel = valueBand ?? (decisionScore != null ? fmtValueScore(decisionScore) : null);
   switch (section) {
-    case "must_have":    return `🟢 AFL Fantasy Must Have (Neeko)\n${row.player_name} (${row.team}) — Value Score ${fmtValueScore(row.value_score)}\n\nneekosports.com.au #AFLFantasy`;
+    case "must_have":    return `🟢 AFL Fantasy Must Have (Neeko)\n${row.player_name} (${row.team})${valueLabel ? ` — ${valueLabel}` : ""}\n\nneekosports.com.au #AFLFantasy`;
     case "breakout":     return `⚡ AFL Fantasy Breakout Watch (Neeko)\n${row.player_name} (${row.team}) — ${fmtInt(row.projection)} pts projected\n\nneekosports.com.au #AFLFantasy`;
     case "do_not_start": return `🚨 AFL Fantasy Fade Alert (Neeko)\n${row.player_name} (${row.team}) — ${fmtInt(row.projection)} pts projected (negative edge)\n\nneekosports.com.au #AFLFantasy`;
   }
@@ -189,7 +202,12 @@ function buildShareText(row: RankingRow, section: Section): string {
 
 function buildRoundSummaryText(mustHave: EdgeBoardPlayer | null, breakout: EdgeBoardPlayer | null, avoid: EdgeBoardPlayer | null): string {
   const lines: string[] = ["⚡ My AFL Fantasy Edge Picks (Neeko)\n"];
-  if (mustHave) lines.push(`Must Have: ${mustHave.player_name} — Value Score ${mustHave.value_score != null ? fmtValueScore(mustHave.value_score) : fmtInt(mustHave.projection) + " pts projected"}`);
+  if (mustHave) {
+    const band = (mustHave as any).value_band as string | null | undefined;
+    const ds = (mustHave as any).decision_score as number | null | undefined;
+    const label = band ?? (ds != null ? fmtValueScore(ds) : null);
+    lines.push(`Must Have: ${mustHave.player_name}${label ? ` — ${label}` : ` — ${fmtInt(mustHave.projection)} pts projected`}`);
+  }
   if (breakout) lines.push(`Breakout Watch: ${breakout.player_name} — ${fmtInt(breakout.projection)} pts projected`);
   if (avoid) lines.push(`Avoid: ${avoid.player_name} — ${fmtInt(avoid.projection)} pts projected`);
   lines.push("\nneekosports.com.au #AFLFantasy #NeekoEdge");
@@ -332,7 +350,10 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
   if (row.price != null) keyFactors.push(`Price: ${fmtPrice(row.price)}`);
   const beDisplay = row.breakeven;
   if (beDisplay != null) keyFactors.push(`Breakeven: ${fmtInt(beDisplay)} pts`);
-  if (row.value_score != null) keyFactors.push(`Value Score: ${fmtValueScore(row.value_score)}`);
+  const valueBandKF = (row as any).value_band as string | null | undefined;
+  const decisionScoreKF = (row as any).decision_score as number | null | undefined;
+  if (valueBandKF) keyFactors.push(`Value: ${valueBandKF}`);
+  else if (decisionScoreKF != null) keyFactors.push(`Edge Score: ${fmtValueScore(decisionScoreKF)}`);
 
   const aiText: string | null = null;
 
@@ -376,12 +397,20 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
               <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">{metric.label}</p>
               <p className={`text-3xl font-extrabold tabular-nums leading-none ${metric.color}`}>{metric.value}</p>
             </div>
-            {row.signal_tag != null && (
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/10 bg-black/30 self-end">
-                <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${row.signal_tag === "HIGH" ? "bg-green-400" : row.signal_tag === "MEDIUM" ? "bg-yellow-400" : "bg-orange-400"}`} />
-                <span className={`text-[11px] font-bold ${row.signal_tag === "HIGH" ? "text-green-400" : row.signal_tag === "MEDIUM" ? "text-yellow-400" : "text-orange-400"}`}>{row.signal_tag}</span>
-              </div>
-            )}
+            {(() => {
+              const cl = (row as any).confidence_label as string | null | undefined;
+              if (!cl) return null;
+              const clUp = cl.toUpperCase();
+              const dotColor = clUp === "HIGH" ? "bg-green-400" : clUp === "MEDIUM" ? "bg-yellow-400" : "bg-orange-400";
+              const textColor = clUp === "HIGH" ? "text-green-400" : clUp === "MEDIUM" ? "text-yellow-400" : "text-orange-400";
+              const displayLabel = clUp === "HIGH" ? "High Confidence" : clUp === "MEDIUM" ? "Medium Confidence" : "Low Confidence";
+              return (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/10 bg-black/30 self-end">
+                  <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />
+                  <span className={`text-[11px] font-bold ${textColor}`}>{displayLabel}</span>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -553,7 +582,7 @@ function HeroPickCard({ player, section, isPremium, onOpen }: HeroPickCardProps)
           <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">{metric.label}</p>
           <p className={`text-3xl font-extrabold tabular-nums leading-none ${metric.color}`}>{metric.value}</p>
         </div>
-        {/* Secondary metric: Projection for must_have (avoids duplicating Value Score), Value Score for others */}
+        {/* Secondary metric: Projection for must_have (avoids duplicating Value), Edge for others */}
         {section === "must_have" ? (
           player.projection != null && (
             <div className="shrink-0">
@@ -563,16 +592,20 @@ function HeroPickCard({ player, section, isPremium, onOpen }: HeroPickCardProps)
               </p>
             </div>
           )
-        ) : (
-          player.value_score != null && (
+        ) : (() => {
+          const ds = (player as any).decision_score as number | null | undefined;
+          const vs = (player as any).value_score as number | null | undefined;
+          const edgeVal = ds ?? vs ?? null;
+          if (edgeVal == null) return null;
+          return (
             <div className="shrink-0">
-              <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Value Score</p>
-              <p className={`text-lg font-extrabold tabular-nums leading-none ${getValueScoreColor(player.value_score)}`}>
-                {fmtValueScore(player.value_score)}
+              <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Edge</p>
+              <p className={`text-lg font-extrabold tabular-nums leading-none ${getValueScoreColor(edgeVal)}`}>
+                {fmtValueScore(edgeVal)}
               </p>
             </div>
-          )
-        )}
+          );
+        })()}
         {player.price != null && (
           <div className="ml-auto text-right shrink-0">
             <p className="text-[9px] text-white/30 uppercase tracking-widest mb-0.5">Price</p>
@@ -671,7 +704,7 @@ function RoundSummaryShare({ mustHave, breakout, avoid }: { mustHave: EdgeBoardP
         {mustHave && (
           <div className="flex items-center gap-2">
             <span className="text-[10px]">🟢</span>
-            <span className="text-[12px] text-white/60">Must Have: <span className="text-white font-semibold">{mustHave.player_name}</span> — Value Score {mustHave.value_score != null ? fmtValueScore(mustHave.value_score) : fmtInt(mustHave.projection) + " pts"}</span>
+            <span className="text-[12px] text-white/60">Must Have: <span className="text-white font-semibold">{mustHave.player_name}</span>{(() => { const b = (mustHave as any).value_band; const d = (mustHave as any).decision_score; const label = b ?? (d != null ? fmtValueScore(d) : null); return label ? ` — ${label}` : ` — ${fmtInt(mustHave.projection)} pts`; })()}</span>
           </div>
         )}
         {breakout && (
@@ -1008,7 +1041,9 @@ export default function AFLRoundEdgeBoard() {
                       <div className="border-t border-white/[0.06] divide-y divide-white/[0.04]">
                         {secondaryPicks.map((player) => {
                           const metric = getPrimaryMetric(player, section);
-                          const vsCanonical = player.value_score != null ? Number(player.value_score) : null;
+                          const _ds = (player as any).decision_score as number | null | undefined;
+                          const _vs = (player as any).value_score as number | null | undefined;
+                          const vsCanonical = _ds != null ? Number(_ds) : _vs != null ? Number(_vs) : null;
                           return (
                             <button
                               key={player.player_id}
