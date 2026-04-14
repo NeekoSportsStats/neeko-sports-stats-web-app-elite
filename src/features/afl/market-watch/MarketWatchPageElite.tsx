@@ -781,8 +781,8 @@ export default function MarketWatchPageElite() {
                   </div>
                 )}
 
-                {/* Risk / Avoid — premium only in grouped view */}
-                {isPremium && sells.length > 0 && (
+                {/* Risk / Avoid — always shown, rows locked for free users */}
+                {sells.length > 0 && (
                   <div>
                     <GroupHeader
                       label="Overpriced / Avoid"
@@ -790,23 +790,40 @@ export default function MarketWatchPageElite() {
                       accentColor="#f87171"
                       icon={<AlertTriangle className="w-3 h-3" />}
                     />
-                    {sells.map((p, i) => (
-                      <PlayerTableRow key={p.player_id} player={p} rank={i + 1} onClick={() => openPlayer(p, i + 1)} />
-                    ))}
+                    {isPremium ? (
+                      sells.map((p, i) => (
+                        <PlayerTableRow key={p.player_id} player={p} rank={i + 1} onClick={() => openPlayer(p, i + 1)} />
+                      ))
+                    ) : (
+                      <div className="relative">
+                        {Array.from({ length: Math.min(3, sells.length) }).map((_, i) => (
+                          <LockedRow key={i} rank={i + 1} />
+                        ))}
+                        <LockCTA onUpgrade={() => setShowUpgradeModal(true)} hiddenCount={sells.length} />
+                      </div>
+                    )}
                   </div>
                 )}
               </>
             ) : (
               /* Flat filtered view */
               <>
-                {visiblePlayers.length === 0 ? (
+                {visiblePlayers.length === 0 && (isPremium || activeTab !== "AVOID") ? (
                   <div className="py-12 text-center text-white/30 text-sm">No players match these filters.</div>
                 ) : (
                   visiblePlayers.map((p, i) => (
                     <PlayerTableRow key={p.player_id} player={p} rank={i + 1} onClick={() => openPlayer(p, i + 1)} />
                   ))
                 )}
-                {!isPremium && hiddenCount > 0 && (
+                {!isPremium && activeTab === "AVOID" && allPlayers.length > 0 && (
+                  <div className="relative">
+                    {Array.from({ length: Math.min(3, allPlayers.length) }).map((_, i) => (
+                      <LockedRow key={i} rank={i + 1} />
+                    ))}
+                    <LockCTA onUpgrade={() => setShowUpgradeModal(true)} hiddenCount={allPlayers.length} />
+                  </div>
+                )}
+                {!isPremium && activeTab !== "AVOID" && hiddenCount > 0 && (
                   <div className="relative">
                     {Array.from({ length: Math.min(3, hiddenCount) }).map((_, i) => (
                       <LockedRow key={i} rank={FREE_LIMIT + i + 1} />
