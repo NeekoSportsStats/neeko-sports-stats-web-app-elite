@@ -19,6 +19,7 @@ import LandingProductProof from "@/features/afl/landing/LandingProductProof";
 import MobileLanding from "@/features/afl/landing/MobileLanding";
 import { classifyPlayers } from "@/features/afl/market-watch/engine";
 import type { MWPlayerRow } from "@/features/afl/market-watch/types";
+import { LandingMarketWatchSample } from "@/components/landing/LandingMarketWatchSample";
 
 // ── Design tokens ───────────────────────────────────────────────────────────────
 const DARK = "#05070A";
@@ -530,9 +531,13 @@ export default function Index() {
   }, [players]);
 
   const mwData = useMemo(() => {
-    if (!players.length) return { buys: [], sells: [] };
+    if (!players.length) return { buys: [], holds: [], sells: [] };
     const classified = classifyPlayers(players.map(rankingToMW));
-    return { buys: classified.buys.slice(0, 5), sells: classified.sells.slice(0, 5) };
+    return {
+      buys: classified.buys.slice(0, 5),
+      holds: classified.holds.slice(0, 5),
+      sells: classified.sells.slice(0, 5),
+    };
   }, [players]);
 
   // ── Confidence label helper ─────────────────────────────────────────────────
@@ -883,6 +888,7 @@ export default function Index() {
 
       <div className="scroll-reveal" data-reveal-delay="0"><LandingProductProof rankingsPlayers={players} rankingsLoading={loading} isPremium={isPremium} /></div>
       <div className="scroll-reveal" data-reveal-delay="50"><LandingTopRankings loading={loading} rows={topRows} freePreview={FREE_PREVIEW} /></div>
+      <div className="scroll-reveal" data-reveal-delay="0"><LandingMarketWatchSample buys={mwData.buys} holds={mwData.holds} sells={mwData.sells} loading={loading} /></div>
       <div className="scroll-reveal" data-reveal-delay="0"><LandingWorkflowSection /></div>
       <div className="scroll-reveal" data-reveal-delay="0"><LandingTrust /></div>
       <div className="scroll-reveal" data-reveal-delay="0"><LandingPricing /></div>
