@@ -6,46 +6,6 @@ import { fmtPrice } from "@/features/afl/market-watch/helpers";
 
 const GOLD = "#E0AE2D";
 
-// ── Static fallback data ──────────────────────────────────────────────────────
-
-const STATIC_FALLBACK: RankingRow[] = [
-  {
-    player_id: 1, player_name: "Patrick Cripps", team: "Carlton", position: "MID",
-    projection: 118, captain_score: 88, last_5_avg: 112, value_score: 7.2,
-    neeko_rating: 85, price: 975000, games_played: 8, is_injured: false, is_bye: false,
-    action: "BUY", signal_tag: "BUY", signal: "BUY", category: "BREAKOUT",
-    trend_score: 12, projection_confidence: 82, matchup_label: "Favourable",
-  } as unknown as RankingRow,
-  {
-    player_id: 2, player_name: "Caleb Serong", team: "Fremantle", position: "MID",
-    projection: 109, captain_score: 79, last_5_avg: 104, value_score: 6.8,
-    neeko_rating: 81, price: 870000, games_played: 8, is_injured: false, is_bye: false,
-    action: "BUY", signal_tag: "BUY", signal: "BUY", category: "START",
-    trend_score: 8, projection_confidence: 76, matchup_label: "Favourable",
-  } as unknown as RankingRow,
-  {
-    player_id: 3, player_name: "Marcus Bontempelli", team: "WB Dogs", position: "MID",
-    projection: 104, captain_score: 74, last_5_avg: 101, value_score: 5.9,
-    neeko_rating: 78, price: 910000, games_played: 8, is_injured: false, is_bye: false,
-    action: "HOLD", signal_tag: "HOLD", signal: "HOLD", category: "WATCH",
-    trend_score: 4, projection_confidence: 70, matchup_label: "Neutral",
-  } as unknown as RankingRow,
-  {
-    player_id: 4, player_name: "Clayton Oliver", team: "Melbourne", position: "MID",
-    projection: 98, captain_score: 65, last_5_avg: 96, value_score: 4.2,
-    neeko_rating: 72, price: 840000, games_played: 7, is_injured: false, is_bye: false,
-    action: "HOLD", signal_tag: "HOLD", signal: "HOLD", category: "WATCH",
-    trend_score: 2, projection_confidence: 65, matchup_label: "Neutral",
-  } as unknown as RankingRow,
-  {
-    player_id: 5, player_name: "Tom Green", team: "GWS Giants", position: "MID",
-    projection: 96, captain_score: 62, last_5_avg: 93, value_score: 6.5,
-    neeko_rating: 74, price: 790000, games_played: 7, is_injured: false, is_bye: false,
-    action: "BUY", signal_tag: "BUY", signal: "BUY", category: "BREAKOUT",
-    trend_score: 9, projection_confidence: 68, matchup_label: "Favourable",
-  } as unknown as RankingRow,
-];
-
 // ── Signal helpers ─────────────────────────────────────────────────────────────
 
 function resolveSignal(row: RankingRow): { label: string; color: string } {
@@ -90,28 +50,26 @@ function resolveEdgeTag(row: RankingRow): { label: string; color: string } {
   return { label: "HOLD", color: GOLD };
 }
 
-// ── Derived data builders ─────────────────────────────────────────────────────
+// ── Derived data builders — no static fallback ────────────────────────────────
 
 function buildRankingsRows(players: RankingRow[]): RankingRow[] {
-  const live = players
-    .filter(p => !p.is_injured && !p.is_bye && (p.games_played ?? 0) >= 3 && (p.projection ?? 0) > 50)
+  return players
+    .filter(p => !p.is_injured && !p.is_bye && (p.games_played ?? 0) >= 1 && (p.projection ?? 0) > 0)
     .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
     .slice(0, 5);
-  return live.length >= 3 ? live : STATIC_FALLBACK;
 }
 
 function buildMarketWatchRows(players: RankingRow[]): RankingRow[] {
   const candidates = players.filter(
-    p => !p.is_injured && !p.is_bye && (p.price ?? 0) > 0 && (p.games_played ?? 0) >= 2
+    p => !p.is_injured && !p.is_bye && (p.price ?? 0) > 0 && (p.games_played ?? 0) >= 1
   );
-  if (candidates.length < 3) return STATIC_FALLBACK;
   const breakouts = candidates
     .filter(p => {
       const cat = (p.category ?? p.signal ?? "").toUpperCase();
       return cat.includes("BREAK") || cat.includes("UP") || cat.includes("BUY") || cat.includes("START");
     })
     .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
-    .slice(0, 2);
+    .slice(0, 3);
   const traps = candidates
     .filter(p => {
       const cat = (p.category ?? p.signal ?? "").toUpperCase();
@@ -119,54 +77,47 @@ function buildMarketWatchRows(players: RankingRow[]): RankingRow[] {
     })
     .sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))
     .slice(0, 2);
-  const watches = candidates
-    .filter(p => !breakouts.includes(p) && !traps.includes(p))
-    .sort((a, b) => Math.abs(b.value_score ?? 0) - Math.abs(a.value_score ?? 0))
-    .slice(0, 1);
-  return [...breakouts, ...watches, ...traps].slice(0, 5);
+  const result = [...breakouts, ...traps].slice(0, 5);
+  if (result.length < 2) {
+    return candidates.sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)).slice(0, 5);
+  }
+  return result;
 }
 
 function buildCaptainsRows(players: RankingRow[]): RankingRow[] {
-  const live = players
-    .filter(p => !p.is_injured && !p.is_bye && (p.captain_score ?? 0) > 0 && (p.projection ?? 0) > 50)
-    .sort((a, b) => (b.captain_score ?? 0) - (a.captain_score ?? 0))
+  return players
+    .filter(p => !p.is_injured && !p.is_bye && (p.projection ?? 0) > 0)
+    .sort((a, b) => (b.captain_score ?? b.projection ?? 0) - (a.captain_score ?? a.projection ?? 0))
     .slice(0, 5);
-  return live.length >= 3 ? live : STATIC_FALLBACK;
 }
 
 function buildPlayersRows(players: RankingRow[]): RankingRow[] {
-  const live = players
-    .filter(p => (p.games_played ?? 0) >= 3 && (p.last_5_avg ?? 0) > 0)
-    .sort((a, b) => (b.neeko_rating ?? 0) - (a.neeko_rating ?? 0))
+  return players
+    .filter(p => (p.games_played ?? 0) >= 1 && ((p.last_5_avg ?? 0) > 0 || (p.neeko_rating ?? 0) > 0))
+    .sort((a, b) => (b.neeko_rating ?? b.projection ?? 0) - (a.neeko_rating ?? a.projection ?? 0))
     .slice(0, 5);
-  return live.length >= 3 ? live : STATIC_FALLBACK;
 }
 
 function buildEdgeRows(players: RankingRow[]): RankingRow[] {
   const eligible = players.filter(
     p => !p.is_injured && !p.is_bye && (p.projection ?? 0) > 0
   );
-  if (eligible.length < 3) return STATIC_FALLBACK;
   const mustStart = eligible
     .filter(p => {
       const sig = (p.action ?? p.signal ?? "").toUpperCase();
       return sig === "START" || sig === "STRONG_START" || sig === "BUY";
     })
     .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
-    .slice(0, 2);
+    .slice(0, 3);
   const breakouts = eligible
     .filter(p => !mustStart.includes(p) && (p.trend_score ?? 0) > 5)
     .sort((a, b) => (b.trend_score ?? 0) - (a.trend_score ?? 0))
     .slice(0, 2);
-  const sits = eligible
-    .filter(p => {
-      const sig = (p.action ?? p.signal ?? "").toUpperCase();
-      return sig === "SIT" || sig === "STRONG_SIT" || sig === "SELL";
-    })
-    .sort((a, b) => (a.projection ?? 0) - (b.projection ?? 0))
-    .slice(0, 1);
-  const result = [...mustStart, ...breakouts, ...sits].slice(0, 5);
-  return result.length >= 3 ? result : STATIC_FALLBACK;
+  const result = [...mustStart, ...breakouts].slice(0, 5);
+  if (result.length < 2) {
+    return eligible.sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0)).slice(0, 5);
+  }
+  return result;
 }
 
 // ── Tab config ────────────────────────────────────────────────────────────────
@@ -445,6 +396,22 @@ function SkeletonRows() {
   );
 }
 
+function EmptyState({ accentColor }: { accentColor: string }) {
+  return (
+    <div style={{
+      padding: "32px 22px",
+      textAlign: "center",
+    }}>
+      <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.28)", lineHeight: 1.5 }}>
+        Data updates before every round lockout.
+      </p>
+      <p style={{ margin: "4px 0 0", fontSize: 11, color: accentColor, opacity: 0.6 }}>
+        Check back closer to game time.
+      </p>
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -458,8 +425,12 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
   const [panelVisible, setPanelVisible] = useState(true);
   const pendingId = useRef<TabId | null>(null);
 
-  const VISIBLE_ROWS = 3;
-  const LOCKED_ROWS = isPremium ? 0 : 2;
+  const FREE_VISIBLE = 2;
+  const PREMIUM_VISIBLE = 5;
+  const TOTAL_ROWS = 5;
+
+  const visibleCount = isPremium ? PREMIUM_VISIBLE : FREE_VISIBLE;
+  const lockedCount = isPremium ? 0 : TOTAL_ROWS - FREE_VISIBLE;
 
   function handleTabClick(id: TabId) {
     if (id === activeId) return;
@@ -481,25 +452,25 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
   const active = TABS.find(t => t.id === activeId) ?? TABS[0];
 
   const derivedRows: RankingRow[] = useMemo(() => {
-    if (rankingsLoading) return [];
-    const pool = rankingsPlayers.length > 0 ? rankingsPlayers : STATIC_FALLBACK;
+    if (rankingsLoading || rankingsPlayers.length === 0) return [];
     switch (activeId) {
-      case "rankings":      return buildRankingsRows(pool);
-      case "market-watch":  return buildMarketWatchRows(pool);
-      case "captains":      return buildCaptainsRows(pool);
-      case "players":       return buildPlayersRows(pool);
-      case "current-round": return buildEdgeRows(pool);
+      case "rankings":      return buildRankingsRows(rankingsPlayers);
+      case "market-watch":  return buildMarketWatchRows(rankingsPlayers);
+      case "captains":      return buildCaptainsRows(rankingsPlayers);
+      case "players":       return buildPlayersRows(rankingsPlayers);
+      case "current-round": return buildEdgeRows(rankingsPlayers);
     }
   }, [activeId, rankingsPlayers, rankingsLoading]);
 
-  const visibleRows = derivedRows.slice(0, VISIBLE_ROWS);
-  const isFallback = rankingsPlayers.length === 0 && !rankingsLoading;
+  const visibleRows = derivedRows.slice(0, visibleCount);
+  const isLive = !rankingsLoading && rankingsPlayers.length > 0;
+  const isEmpty = !rankingsLoading && derivedRows.length === 0;
 
-  const playerCount = rankingsLoading ? "..." : (rankingsPlayers.length > 0 ? rankingsPlayers.length : "630+");
-  const lastUpdated = isFallback ? "Sample data" : "Live · Before lockout";
+  const playerCount = rankingsLoading ? "..." : (rankingsPlayers.length > 0 ? `${rankingsPlayers.length}+` : "630+");
 
   function renderRows() {
     if (rankingsLoading) return <SkeletonRows />;
+    if (isEmpty) return <EmptyState accentColor={active.accentColor} />;
     return (
       <>
         {visibleRows.map((row, i) => (
@@ -511,7 +482,7 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
             accentColor={active.accentColor}
           />
         ))}
-        {!isPremium && Array.from({ length: LOCKED_ROWS }).map((_, i) => (
+        {!isPremium && Array.from({ length: lockedCount }).map((_, i) => (
           <LockedRow key={`locked-${i}`} index={visibleRows.length + i} />
         ))}
       </>
@@ -568,7 +539,7 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
           }}>
             <span style={{ fontVariantNumeric: "tabular-nums" }}>{playerCount} players</span>
             <span style={{ margin: "0 10px", color: "rgba(255,255,255,0.14)" }}>·</span>
-            <span>{lastUpdated}</span>
+            <span>{isLive ? "Live · Updated before lockout" : "Data ready before lockout"}</span>
             <span style={{ margin: "0 10px", color: "rgba(255,255,255,0.14)" }}>·</span>
             <span style={{ color: "rgba(224,174,45,0.55)", fontWeight: 600 }}>Same model · Different views</span>
           </div>
@@ -699,19 +670,7 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
                   }}>
                     {active.focusLabel}
                   </span>
-                  {isFallback ? (
-                    <span style={{
-                      fontSize: 9, fontWeight: 700,
-                      color: "rgba(255,255,255,0.35)",
-                      background: "rgba(255,255,255,0.06)",
-                      border: "1px solid rgba(255,255,255,0.10)",
-                      padding: "2px 7px", borderRadius: 999,
-                      letterSpacing: "0.08em", textTransform: "uppercase" as const,
-                      flexShrink: 0,
-                    }}>
-                      SAMPLE
-                    </span>
-                  ) : (
+                  {isLive ? (
                     <span style={{
                       fontSize: 9, fontWeight: 700,
                       color: "#22c55e",
@@ -722,6 +681,18 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
                       flexShrink: 0,
                     }}>
                       LIVE
+                    </span>
+                  ) : rankingsLoading ? null : (
+                    <span style={{
+                      fontSize: 9, fontWeight: 700,
+                      color: "rgba(255,255,255,0.35)",
+                      background: "rgba(255,255,255,0.06)",
+                      border: "1px solid rgba(255,255,255,0.10)",
+                      padding: "2px 7px", borderRadius: 999,
+                      letterSpacing: "0.08em", textTransform: "uppercase" as const,
+                      flexShrink: 0,
+                    }}>
+                      LOADING
                     </span>
                   )}
                 </div>
@@ -753,7 +724,7 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
             </div>
 
             {/* Gating message + footer */}
-            {!isPremium && (
+            {!isPremium && !rankingsLoading && !isEmpty && (
               <div style={{
                 margin: "0 22px 0",
                 padding: "10px 16px",
@@ -763,7 +734,7 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
                 display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
               }}>
                 <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.40)", lineHeight: 1.4 }}>
-                  See full model across all <strong style={{ color: "rgba(224,174,45,0.70)", fontWeight: 700 }}>630+ players</strong> — every lens, every round.
+                  Showing <strong style={{ color: "rgba(255,255,255,0.65)" }}>{FREE_VISIBLE} of {playerCount}</strong> players — unlock the full view with Neeko+.
                 </p>
                 <Link
                   to="/neeko-plus"
@@ -794,7 +765,7 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
               <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.20)", flexShrink: 0 }}>
                 {isPremium
                   ? "Live data — updated before every round lockout"
-                  : "Showing top 3 free — unlock all 5 with Neeko+"}
+                  : `Showing top ${FREE_VISIBLE} — unlock all ${TOTAL_ROWS} with Neeko+`}
               </p>
               <Link
                 to={active.to}
