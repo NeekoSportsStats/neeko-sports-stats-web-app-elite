@@ -1,6 +1,6 @@
 export type MWSignal = "START" | "HOLD" | "SIT";
 
-export type MWSortKey = "value_score" | "projection" | "breakeven" | "price";
+export type MWSortKey = "decision_score" | "projection" | "breakeven" | "price";
 
 export interface MWPlayerRow {
   player_id: number;
@@ -28,6 +28,15 @@ export interface MWPlayerRow {
   signal_display: string | null;
   category: string | null;
   action: string | null;
+
+  // Canonical elite signal fields
+  action_canonical: string | null;
+  action_display: string | null;
+  confidence_label: string | null;
+  value_band: string | null;
+  decision_score: number | null;
+  action_reason_1: string | null;
+  action_reason_2: string | null;
 
   why: string | null;
   why_long: string | null;

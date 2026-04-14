@@ -29,6 +29,12 @@ interface PlayerData {
   breakeven: number | null;
   edge_canonical: number | null;
   action_canonical: string | null;
+  action_display: string | null;
+  confidence_label: string | null;
+  value_band: string | null;
+  decision_score: number | null;
+  action_reason_1: string | null;
+  action_reason_2: string | null;
   status: string | null;
   manual_status: string | null;
   is_bye: boolean | null;
@@ -83,18 +89,21 @@ function deriveFormLabel(avg3: number | null, seasonAvg: number | null): string 
 
 function getActionColor(action: string | null): string {
   if (!action) return '#94a3b8';
-  if (action === 'START') return '#10b981';
-  if (action === 'HOLD')  return '#94a3b8';
-  if (action === 'SIT')   return '#f59e0b';
+  const a = action.toUpperCase();
+  if (a === 'SMASH_START' || a === 'STRONG_START' || a === 'START') return '#10b981';
+  if (a === 'HARD_SIT' || a === 'SIT') return '#f59e0b';
   return '#94a3b8';
 }
 
-function ActionBadge({ action }: { action: string | null }) {
-  const label = (action ?? "HOLD").toUpperCase();
+function ActionBadge({ action, actionDisplay }: { action: string | null; actionDisplay?: string | null }) {
+  const canonical = (action ?? "HOLD").toUpperCase();
+  const label = actionDisplay ?? canonical;
+  const isStart = canonical === "SMASH_START" || canonical === "STRONG_START" || canonical === "START";
+  const isSit = canonical === "HARD_SIT" || canonical === "SIT";
   const cls =
-    label === "START" ? "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" :
-    label === "SIT"   ? "text-orange-400 border-orange-500/25 bg-orange-500/10" :
-                        "text-white/55 border-white/15 bg-white/5";
+    isStart ? "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" :
+    isSit   ? "text-orange-400 border-orange-500/25 bg-orange-500/10" :
+              "text-white/55 border-white/15 bg-white/5";
   return (
     <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest border ${cls}`}>
       {label}
@@ -246,7 +255,7 @@ function PlayerSEOBlock({ player }: { player: PlayerData }) {
   const posName = getPositionName(player.player_position);
   const team = player.team ?? 'their AFL club';
   const proj = player.projection != null ? Math.round(player.projection) : null;
-  const acLabel = (player.action_canonical ?? 'HOLD').toUpperCase();
+  const acLabel = player.action_display ?? (player.action_canonical ?? 'HOLD');
 
   return (
     <section className="border-t border-white/[0.05] pt-8 pb-2">
@@ -320,6 +329,12 @@ export default function AFLPlayerPage() {
           breakeven: raw.breakeven != null ? Number(raw.breakeven) : null,
           edge_canonical: raw.edge_canonical != null ? Number(raw.edge_canonical) : (raw.edge != null ? Number(raw.edge) : null),
           action_canonical: raw.action_canonical != null ? (raw.action_canonical as string).toUpperCase() : (raw.action != null ? (raw.action as string).toUpperCase() : null),
+          action_display: raw.action_display ?? null,
+          confidence_label: raw.confidence_label ?? null,
+          value_band: raw.value_band ?? null,
+          decision_score: raw.decision_score != null ? Number(raw.decision_score) : null,
+          action_reason_1: raw.action_reason_1 ?? null,
+          action_reason_2: raw.action_reason_2 ?? null,
           status: raw.status ?? null,
           manual_status: raw.manual_status ?? null,
           is_bye: raw.is_bye != null ? Boolean(raw.is_bye) : null,
@@ -505,7 +520,17 @@ export default function AFLPlayerPage() {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                <ActionBadge action={player.action_canonical} />
+                <ActionBadge action={player.action_canonical} actionDisplay={player.action_display} />
+                {player.confidence_label && (
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${player.confidence_label.toUpperCase() === 'HIGH' ? 'text-green-300 border-green-500/30 bg-green-500/10' : player.confidence_label.toUpperCase() === 'MEDIUM' ? 'text-yellow-300 border-yellow-500/25 bg-yellow-500/8' : 'text-white/40 border-white/10 bg-white/5'}`}>
+                    {player.confidence_label.charAt(0).toUpperCase() + player.confidence_label.slice(1).toLowerCase()} Confidence
+                  </span>
+                )}
+                {player.value_band && (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border text-emerald-300 border-emerald-500/25 bg-emerald-500/8">
+                    {player.value_band}
+                  </span>
+                )}
                 {player.neeko_rating != null && (
                   <span className="text-[11px] font-bold text-[#F5C84C] tabular-nums">
                     {Number(player.neeko_rating).toFixed(1)} Rating
@@ -610,6 +635,22 @@ export default function AFLPlayerPage() {
                 <p className="text-[14px] font-medium text-white/85 leading-relaxed">
                   {player.why}
                 </p>
+              )}
+              {(player.action_reason_1 || player.action_reason_2) && (
+                <div className="space-y-1.5 pt-1">
+                  {player.action_reason_1 && (
+                    <div className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-400/60 shrink-0 mt-1.5" />
+                      <span className="text-[12px] text-white/55 leading-snug">{player.action_reason_1}</span>
+                    </div>
+                  )}
+                  {player.action_reason_2 && (
+                    <div className="flex items-start gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-white/20 shrink-0 mt-1.5" />
+                      <span className="text-[12px] text-white/40 leading-snug">{player.action_reason_2}</span>
+                    </div>
+                  )}
+                </div>
               )}
               {showFullAnalysis && player.why_long && (
                 <div className="border-t border-white/[0.06] pt-3">

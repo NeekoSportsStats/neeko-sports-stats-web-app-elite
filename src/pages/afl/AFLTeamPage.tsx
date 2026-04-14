@@ -26,6 +26,7 @@ interface TeamPlayer {
   breakeven: number | null;
   edge_canonical: number | null;
   action_canonical: string | null;
+  action_display: string | null;
   status: string | null;
   is_bye: boolean | null;
   games_played: number | null;
@@ -41,12 +42,15 @@ function fmtProj(p: number | null | undefined) {
   return Math.round(Number(p)).toString();
 }
 
-function ActionBadge({ action }: { action: string | null }) {
-  const label = (action ?? 'HOLD').toUpperCase();
+function ActionBadge({ action, actionDisplay }: { action: string | null; actionDisplay?: string | null }) {
+  const canonical = (action ?? 'HOLD').toUpperCase();
+  const isStart = canonical === 'SMASH_START' || canonical === 'STRONG_START' || canonical === 'START';
+  const isSit = canonical === 'HARD_SIT' || canonical === 'SIT';
   const cls =
-    label === 'START' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
-    label === 'SIT'   ? 'bg-orange-500/10 text-orange-400 border-orange-500/25' :
-                        'bg-white/5 text-white/40 border-white/10';
+    isStart ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+    isSit   ? 'bg-orange-500/10 text-orange-400 border-orange-500/25' :
+              'bg-white/5 text-white/40 border-white/10';
+  const label = actionDisplay ?? canonical;
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide shrink-0 border ${cls}`}>
       {label}
@@ -181,7 +185,7 @@ function RosterRow({ player, rank, isPremium }: { player: TeamPlayer; rank: numb
           <p className="text-sm font-bold text-white/80 tabular-nums">{fmtProj(proj)}</p>
           <p className="text-[9px] text-white/25 uppercase tracking-wide">proj</p>
         </div>
-        <ActionBadge action={player.action_canonical} />
+        <ActionBadge action={player.action_canonical} actionDisplay={player.action_display} />
         <ChevronRight size={14} className="text-white/20 group-hover:text-white/40 transition-colors" />
       </div>
     </Link>
@@ -382,6 +386,7 @@ export default function AFLTeamPage() {
           breakeven: r.breakeven != null ? Number(r.breakeven) : null,
           edge_canonical: r.edge_canonical != null ? Number(r.edge_canonical) : (r.edge != null ? Number(r.edge) : null),
           action_canonical: r.action_canonical != null ? String(r.action_canonical).toUpperCase() : (r.action != null ? String(r.action).toUpperCase() : null),
+          action_display: r.action_display ?? null,
           status: r.status ?? null,
           is_bye: r.is_bye != null ? Boolean(r.is_bye) : null,
           games_played: r.games_played != null ? Number(r.games_played) : null,

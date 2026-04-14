@@ -10,8 +10,6 @@ import { useAuth } from "@/lib/auth";
 import MobileUpgradeBar from "@/components/mobile/MobileUpgradeBar";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
 import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
-import { classifyPlayers } from "@/features/afl/market-watch/engine";
-import type { MWPlayerRow } from "@/features/afl/market-watch/types";
 import LandingWorkflowSection from "@/features/afl/landing/LandingWorkflowSection";
 import LandingTopRankings from "@/features/afl/landing/LandingTopRankings";
 import LandingTrust from "@/features/afl/landing/LandingTrust";
@@ -312,23 +310,6 @@ function SkeletonCard() {
   );
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-function toMWRow(r: RankingRow): MWPlayerRow {
-  const rawSignal = r.action ?? r.signal_tag ?? r.signal ?? null;
-  return {
-    ...r,
-    player_id:      Number(r.player_id) || 0,
-    is_bye:         r.is_bye ?? false,
-    is_injured:     r.is_injured ?? false,
-    display_signal: (rawSignal as MWPlayerRow["display_signal"]) ?? "WATCH",
-    access_tier:    r.access_tier ?? "locked",
-    team_name:      r.team_name ?? r.team ?? "",
-    games_played:   r.games_played ?? null,
-    cached_at:      r.cached_at ?? null,
-    price:          r.price ?? 0,
-  };
-}
-
 // ── Hero CTA buttons with hover state ──────────────────────────────────────────
 function HeroPrimaryBtn() {
   const [hovered, setHovered] = useState(false);
@@ -435,22 +416,31 @@ export default function Index() {
   }, []);
 
   // ── Classification ─────────────────────────────────────────────────────────
-  const { mustBuyP, trapP, captainP, breakoutP, topRows, mwBuys, mwHolds, mwSells } = useMemo(() => {
-    const mwInput: MWPlayerRow[] = players.map(toMWRow);
-    const { buys, holds, sells } = classifyPlayers(mwInput);
-
+  const { mustBuyP, trapP, captainP, breakoutP, topRows } = useMemo(() => {
     const allWithProjection = players.filter(p => p.projection != null && !p.is_injured && !p.is_bye);
     const byProjectionDesc = [...allWithProjection].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0));
 
     const mustBuyP =
-      allWithProjection.filter(p => ["STRONG_UP", "UP"].includes(p.signal_tag ?? "")).sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))[0]
-      ?? allWithProjection.filter(p => (p.value_score ?? 0) > 0).sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))[0]
+      allWithProjection
+        .filter(p => {
+          const ac = (p.action_canonical ?? "").toUpperCase();
+          return ac === "SMASH_START" || ac === "STRONG_START";
+        })
+        .sort((a, b) => ((b as any).decision_score ?? 0) - ((a as any).decision_score ?? 0))[0]
+      ?? allWithProjection
+        .filter(p => (p.action_canonical ?? "").toUpperCase() === "START")
+        .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))[0]
       ?? byProjectionDesc[0]
       ?? null;
 
     const trapP =
-      allWithProjection.filter(p => ["DOWN", "STRONG_DOWN"].includes(p.signal_tag ?? "")).sort((a, b) => (a.projection ?? 0) - (b.projection ?? 0))[0]
-      ?? allWithProjection.filter(p => p.player_id !== mustBuyP?.player_id).sort((a, b) => (a.value_score ?? 0) - (b.value_score ?? 0))[0]
+      allWithProjection
+        .filter(p => {
+          const ac = (p.action_canonical ?? "").toUpperCase();
+          return ac === "HARD_SIT" || ac === "SIT";
+        })
+        .filter(p => p.player_id !== mustBuyP?.player_id)
+        .sort((a, b) => (a.projection ?? 0) - (b.projection ?? 0))[0]
       ?? byProjectionDesc[byProjectionDesc.length - 1]
       ?? null;
 
@@ -462,7 +452,9 @@ export default function Index() {
 
     const usedIds2 = new Set([mustBuyP?.player_id, trapP?.player_id, captainP?.player_id].filter(Boolean));
     const breakoutP =
-      allWithProjection.filter(p => !usedIds2.has(p.player_id) && (p.trend_score ?? 0) > 0).sort((a, b) => (b.trend_score ?? 0) - (a.trend_score ?? 0))[0]
+      allWithProjection
+        .filter(p => !usedIds2.has(p.player_id) && (p.category_canonical ?? "").toUpperCase() === "TARGET")
+        .sort((a, b) => ((b as any).decision_score ?? 0) - ((a as any).decision_score ?? 0))[0]
       ?? byProjectionDesc.filter(p => !usedIds2.has(p.player_id))[0]
       ?? byProjectionDesc[3]
       ?? null;
@@ -472,16 +464,17 @@ export default function Index() {
       .sort((a, b) => (b.neeko_rating ?? b.projection ?? 0) - (a.neeko_rating ?? a.projection ?? 0))
       .slice(0, 12);
 
-    return { mustBuyP, trapP, captainP, breakoutP, topRows, mwBuys: buys, mwHolds: holds, mwSells: sells };
+    return { mustBuyP, trapP, captainP, breakoutP, topRows };
   }, [players]);
 
   // ── Confidence label helper ─────────────────────────────────────────────────
   function confidenceOf(p: RankingRow | null): string | null {
     if (!p) return null;
-    const conf = p.projection_confidence ?? null;
-    if (conf == null) return null;
-    if (conf >= 70) return "High";
-    if (conf >= 45) return "Medium";
+    const cl = p.confidence_label ?? null;
+    if (!cl) return null;
+    const up = cl.toUpperCase();
+    if (up === "HIGH") return "High";
+    if (up === "MEDIUM") return "Medium";
     return "Low";
   }
 
@@ -590,8 +583,8 @@ export default function Index() {
         <MobileLanding
           loading={loading}
           topRows={topRows}
-          mwBuys={mwBuys}
-          mwSells={mwSells}
+          mwBuys={[]}
+          mwSells={[]}
           cards={mobileCards}
           showSkeleton={showSkeleton}
           isPremium={isPremium}

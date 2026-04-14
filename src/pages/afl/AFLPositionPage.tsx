@@ -16,6 +16,7 @@ interface PositionPlayer {
   neeko_rating: number;
   projection: number;
   projection_confidence: number | null;
+  confidence_label: string | null;
   edge_canonical: number | null;
   action_canonical: string | null;
   price: number;
@@ -69,8 +70,13 @@ export default function AFLPositionPage() {
     .slice(0, 5);
 
   const safestPicks = [...players]
-    .filter(p => p.projection_confidence && p.projection_confidence >= 65)
-    .sort((a, b) => (b.projection_confidence || 0) - (a.projection_confidence || 0))
+    .filter(p => p.confidence_label?.toUpperCase() === 'HIGH' || (p.projection_confidence != null && p.projection_confidence >= 65))
+    .sort((a, b) => {
+      const aHigh = a.confidence_label?.toUpperCase() === 'HIGH' ? 1 : 0;
+      const bHigh = b.confidence_label?.toUpperCase() === 'HIGH' ? 1 : 0;
+      if (bHigh !== aHigh) return bHigh - aHigh;
+      return (b.projection_confidence || 0) - (a.projection_confidence || 0);
+    })
     .slice(0, 5);
 
   const highUpside = [...players]
@@ -195,7 +201,7 @@ export default function AFLPositionPage() {
                       <p className="text-xs font-semibold text-white truncate">{player.player_name}</p>
                       <p className="text-[10px] text-white/40">{player.team}</p>
                     </div>
-                    <p className="text-sm font-bold text-blue-400 ml-2">{Math.round(player.projection_confidence || 0)}%</p>
+                    <p className="text-sm font-bold text-blue-400 ml-2">{player.confidence_label ?? (player.projection_confidence != null ? Math.round(player.projection_confidence) + '%' : '—')}</p>
                   </Link>
                 ))}
               </div>
