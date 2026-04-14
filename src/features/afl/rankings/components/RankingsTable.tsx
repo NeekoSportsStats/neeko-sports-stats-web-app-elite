@@ -5,9 +5,6 @@ import {
   fmt,
   fmtPrice,
   fmtValueScore,
-  getDisplayTrend,
-  getTrendAction,
-  getTrendActionStyles,
   getTrendWhyText,
   getConfidenceColor,
   getValueScoreColor,
@@ -29,13 +26,15 @@ const TH =
 function ActionBadge({ row, locked, onUpgrade }: { row: RankingRow; locked?: boolean; onUpgrade: () => void }) {
   if (locked) return <LockedCell onClick={onUpgrade} />;
 
-  const trend = getDisplayTrend(row);
-  const action = getTrendAction(trend) ?? "—";
-  const cls = getTrendActionStyles(trend);
+  const label = (row.action ?? "HOLD").toUpperCase();
+  const cls =
+    label === "START" ? "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" :
+    label === "SIT"   ? "text-orange-400 border-orange-500/25 bg-orange-500/10" :
+                        "text-white/55 border-white/15 bg-white/5";
 
   return (
     <span className={`inline-block rounded-md border px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap ${cls}`}>
-      {action}
+      {label}
     </span>
   );
 }

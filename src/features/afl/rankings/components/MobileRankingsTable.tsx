@@ -13,9 +13,6 @@ import { RankingRow } from "./types";
 import {
   fmt,
   fmtPrice,
-  getDisplayTrend,
-  getTrendAction,
-  getTrendActionStyles,
   getTrendWhyText,
   getConfidenceColor,
   getValueScoreColor,
@@ -157,14 +154,14 @@ function ActionBadge({ row, isPremium, onUpgrade }: { row: RankingRow; isPremium
     );
   }
 
-  const trend = getDisplayTrend(row);
-  const action = getTrendAction(trend);
-  if (!action) return <span className="text-xs text-white/20">—</span>;
-
-  const cls = getTrendActionStyles(trend);
+  const label = (row.action ?? "HOLD").toUpperCase();
+  const cls =
+    label === "START" ? "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" :
+    label === "SIT"   ? "text-orange-400 border-orange-500/25 bg-orange-500/10" :
+                        "text-white/55 border-white/15 bg-white/5";
   return (
     <span className={`inline-block rounded-md border px-2 py-1 text-[11px] font-bold whitespace-nowrap ${cls}`}>
-      {action}
+      {label}
     </span>
   );
 }
@@ -342,7 +339,6 @@ function PlayerCard({ row, idx, isPremium, onTap, onUpgrade }: PlayerCardProps) 
   const valueScore = !row.is_bye && row.value_score != null ? row.value_score : null;
   const whyText = row.why ?? getTrendWhyText(row);
 
-  const trend = getDisplayTrend(row);
   const trendScore = row.trend_score;
   const trendDisplay =
     trendScore == null ? null :

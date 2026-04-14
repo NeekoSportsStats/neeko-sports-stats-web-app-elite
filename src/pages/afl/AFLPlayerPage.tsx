@@ -13,7 +13,6 @@ import { useAccessState } from '@/hooks/useAccessState';
 import { PlayerStatusPill } from '@/features/afl/rankings/components/PlayerStatusPill';
 import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from '@/utils/aflEdgeSignal';
 import {
-  getTrendAction, getTrendActionStyles,
   getFormStyles, fmtPrice as fmtPriceHelper,
   getValueScoreColor, fmtValueScore,
 } from '@/features/afl/rankings/components/helpers';
@@ -46,6 +45,7 @@ interface PlayerData {
   why_long: string | null;
   neeko_rating: number | null;
   edge: number | null;
+  action: string | null;
   is_locked: boolean | null;
 }
 
@@ -95,18 +95,15 @@ function getActionColor(action: string | null): string {
   return '#94a3b8';
 }
 
-function ActionBadge({ signal }: { signal: string | null }) {
-  const sig = signalFromField(signal);
-  const trendMap: Record<string, string> = {
-    STRONG_BUY: 'STRONG_UP', BUY: 'UP', HOLD: 'STABLE', SELL: 'DOWN', STRONG_SELL: 'STRONG_DOWN',
-  };
-  const trend = trendMap[sig] ?? 'STABLE';
-  const action = getTrendAction(trend);
-  const actionStyles = getTrendActionStyles(trend);
-  if (!action) return null;
+function ActionBadge({ action }: { action: string | null }) {
+  const label = (action ?? "HOLD").toUpperCase();
+  const cls =
+    label === "START" ? "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" :
+    label === "SIT"   ? "text-orange-400 border-orange-500/25 bg-orange-500/10" :
+                        "text-white/55 border-white/15 bg-white/5";
   return (
-    <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest border ${actionStyles}`}>
-      {action}
+    <span className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest border ${cls}`}>
+      {label}
     </span>
   );
 }
@@ -359,6 +356,7 @@ export default function AFLPlayerPage() {
           why_long: raw.why_long ?? null,
           neeko_rating: raw.neeko_rating != null ? Number(raw.neeko_rating) : null,
           edge: raw.edge != null ? Number(raw.edge) : null,
+          action: raw.action != null ? (raw.action as string).toUpperCase() : null,
           is_locked: raw.is_locked != null ? Boolean(raw.is_locked) : null,
         };
 
@@ -403,11 +401,7 @@ export default function AFLPlayerPage() {
   const sigColor = getEdgeSignalColor(sig);
   const sigLabel = formatEdgeSignalLabel(sig);
 
-  const trendMap: Record<string, string> = {
-    STRONG_BUY: 'STRONG_UP', BUY: 'UP', HOLD: 'STABLE', SELL: 'DOWN', STRONG_SELL: 'STRONG_DOWN',
-  };
-  const trend = player ? (trendMap[sig] ?? 'STABLE') : 'STABLE';
-  const action = getTrendAction(trend);
+  const action = player?.action ?? 'HOLD';
   const actionColor = getActionColor(action);
 
   if (loading) {
