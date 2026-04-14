@@ -14,12 +14,10 @@ import { classifyPlayers } from "@/features/afl/market-watch/engine";
 import type { MWPlayerRow } from "@/features/afl/market-watch/types";
 import LandingWorkflowSection from "@/features/afl/landing/LandingWorkflowSection";
 import LandingTopRankings from "@/features/afl/landing/LandingTopRankings";
-import LandingToolsGrid from "@/features/afl/landing/LandingToolsGrid";
 import LandingTrust from "@/features/afl/landing/LandingTrust";
 import LandingPricing from "@/features/afl/landing/LandingPricing";
 import LandingFinalCTA from "@/features/afl/landing/LandingFinalCTA";
 import LandingProductProof from "@/features/afl/landing/LandingProductProof";
-import LandingSecondaryCTA from "@/features/afl/landing/LandingSecondaryCTA";
 import MobileLanding from "@/features/afl/landing/MobileLanding";
 
 // ── Design tokens ───────────────────────────────────────────────────────────────
@@ -822,11 +820,9 @@ export default function Index() {
         </div>
       </section>
 
+      <div className="scroll-reveal" data-reveal-delay="0"><LandingProductProof rankingsPlayers={players} rankingsLoading={loading} isPremium={isPremium} /></div>
+      <div className="scroll-reveal" data-reveal-delay="50"><LandingTopRankings loading={loading} rows={topRows} freePreview={FREE_PREVIEW} /></div>
       <div className="scroll-reveal" data-reveal-delay="0"><LandingWorkflowSection /></div>
-      <div className="scroll-reveal" data-reveal-delay="50"><LandingProductProof rankingsPlayers={players} rankingsLoading={loading} isPremium={isPremium} /></div>
-      <div className="scroll-reveal" data-reveal-delay="0"><LandingSecondaryCTA /></div>
-      <div className="scroll-reveal" data-reveal-delay="0"><LandingTopRankings loading={loading} rows={topRows} freePreview={FREE_PREVIEW} /></div>
-      <div className="scroll-reveal" data-reveal-delay="0"><LandingToolsGrid /></div>
       <div className="scroll-reveal" data-reveal-delay="0"><LandingTrust /></div>
       <div className="scroll-reveal" data-reveal-delay="0"><LandingPricing /></div>
       <div className="scroll-reveal" data-reveal-delay="0"><LandingFinalCTA /></div>

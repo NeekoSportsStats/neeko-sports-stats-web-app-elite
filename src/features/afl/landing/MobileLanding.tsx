@@ -5,9 +5,6 @@ import {
   TrendingUp,
   Zap,
   Star,
-  ChartBar as BarChart3,
-  GitCompare,
-  Users,
   Target,
   Check,
   Crown,
@@ -50,14 +47,6 @@ const NAV_ITEMS = [
   { label: "Players", to: "/sports/afl/players" },
 ] as const;
 
-const TOOLS = [
-  { icon: <BarChart3 size={16} />, title: "Rankings", to: "/sports/afl/rankings", color: "#E0AE2D" },
-  { icon: <TrendingUp size={16} />, title: "Market Watch", to: "/sports/afl/market-watch", color: "#22C55E" },
-  { icon: <Zap size={16} />, title: "Edge Board", to: "/sports/afl/current-round", color: "#60A5FA" },
-  { icon: <GitCompare size={16} />, title: "Start / Sit", to: "/sports/afl/start-sit", color: "#F87171" },
-  { icon: <Star size={16} />, title: "Captains", to: "/sports/afl/captains", color: "#E0AE2D" },
-  { icon: <Users size={16} />, title: "Players", to: "/sports/afl/players", color: "#60A5FA" },
-] as const;
 
 const WORKFLOW = [
   { num: "1", icon: <Target size={15} />, title: "Find the Right Plays", desc: "Top projected scorers + must buys before lockout.", color: "#E0AE2D", to: "/sports/afl/rankings" },
@@ -275,46 +264,6 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
         </div>
       </div>
 
-      {/* ─── YOUR WEEKLY WORKFLOW ─── */}
-      <section style={{ background: "#0f0e0c", padding: "56px 16px" }}>
-        <div style={{ marginBottom: 28, textAlign: "center" }}>
-          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(224,174,45,0.55)", marginBottom: 8 }}>Your Weekly Workflow</p>
-          <h2 style={{ fontSize: "1.45rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15 }}>
-            Win Your Week in 3 Steps
-          </h2>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {WORKFLOW.map(({ num, icon, title, desc, color, to }) => (
-            <Link key={num} to={to} style={{ textDecoration: "none" }}>
-              <div style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.06)",
-                borderRadius: 14, padding: "16px 14px",
-                display: "flex", gap: 14, alignItems: "flex-start",
-                position: "relative", overflow: "hidden",
-              }}>
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1.5, background: `linear-gradient(to right, transparent, ${color}38, transparent)` }} />
-                <div style={{
-                  width: 36, height: 36, borderRadius: "50%",
-                  background: `${color}12`, border: `1.5px solid ${color}28`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color, flexShrink: 0,
-                }}>
-                  {icon}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                    <h3 style={{ fontSize: 14, fontWeight: 800, color: "#E8E8E8", letterSpacing: "-0.01em" }}>{title}</h3>
-                    <span style={{ fontSize: 18, fontWeight: 900, color: `${color}18`, letterSpacing: "-0.04em", lineHeight: 1, flexShrink: 0 }}>{num}</span>
-                  </div>
-                  <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>{desc}</p>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
       {/* ─── THIS WEEK'S EDGE ─── */}
       <section style={{ background: "#0a0908", padding: "56px 16px" }}>
         <div style={{ marginBottom: 24, textAlign: "center" }}>
@@ -388,33 +337,40 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
         </div>
       </section>
 
-      {/* ─── EVERYTHING IN ONE SYSTEM ─── */}
-      <section style={{ background: "#0d0b09", padding: "56px 16px" }}>
-        <div style={{ marginBottom: 24, textAlign: "center" }}>
-          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(224,174,45,0.55)", marginBottom: 8 }}>Neeko+</p>
+      {/* ─── YOUR WEEKLY WORKFLOW ─── */}
+      <section style={{ background: "#0f0e0c", padding: "56px 16px" }}>
+        <div style={{ marginBottom: 28, textAlign: "center" }}>
+          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(224,174,45,0.55)", marginBottom: 8 }}>Your Weekly Workflow</p>
           <h2 style={{ fontSize: "1.45rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15 }}>
-            Everything in One System
+            Win Your Week in 3 Steps
           </h2>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {TOOLS.map(({ icon, title, to, color }) => (
-            <Link key={title} to={to} style={{ textDecoration: "none" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {WORKFLOW.map(({ num, icon, title, desc, color, to }) => (
+            <Link key={num} to={to} style={{ textDecoration: "none" }}>
               <div style={{
                 background: "rgba(255,255,255,0.03)",
                 border: "1px solid rgba(255,255,255,0.06)",
-                borderRadius: 12, padding: "14px 12px",
-                display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10,
-                minHeight: 76,
+                borderRadius: 14, padding: "16px 14px",
+                display: "flex", gap: 14, alignItems: "flex-start",
+                position: "relative", overflow: "hidden",
               }}>
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1.5, background: `linear-gradient(to right, transparent, ${color}38, transparent)` }} />
                 <div style={{
-                  width: 32, height: 32, borderRadius: 9,
-                  background: `${color}12`, border: `1px solid ${color}22`,
+                  width: 36, height: 36, borderRadius: "50%",
+                  background: `${color}12`, border: `1.5px solid ${color}28`,
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  color,
+                  color, flexShrink: 0,
                 }}>
                   {icon}
                 </div>
-                <span style={{ fontSize: 12.5, fontWeight: 800, color: "#E0E0E0", letterSpacing: "-0.01em" }}>{title}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 800, color: "#E8E8E8", letterSpacing: "-0.01em" }}>{title}</h3>
+                    <span style={{ fontSize: 18, fontWeight: 900, color: `${color}18`, letterSpacing: "-0.04em", lineHeight: 1, flexShrink: 0 }}>{num}</span>
+                  </div>
+                  <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>{desc}</p>
+                </div>
               </div>
             </Link>
           ))}
