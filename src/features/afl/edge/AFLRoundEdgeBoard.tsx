@@ -1032,7 +1032,7 @@ export default function AFLRoundEdgeBoard() {
                       />
                     ) : (
                       <div className="px-5 py-8 text-center">
-                        <p className="text-sm text-white/25">Loading picks...</p>
+                        <p className="text-sm text-white/25">No picks available this round.</p>
                       </div>
                     )}
 

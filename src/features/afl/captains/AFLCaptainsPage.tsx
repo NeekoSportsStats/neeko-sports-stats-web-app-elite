@@ -535,7 +535,7 @@ export default function AFLCaptainsPage() {
             accentColor="#F5C84C"
           >
             {locksToShow.length === 0 ? (
-              <div className="text-center text-white/25 text-sm py-8">Loading picks...</div>
+              <div className="text-center text-white/25 text-sm py-8">No captain picks available for this round.</div>
             ) : (
               locksToShow.map((p, i) => (
                 <CaptainCard
