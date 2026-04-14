@@ -1,37 +1,3 @@
-export const nameToSlug = (name: string): string => {
-  return name.toLowerCase().replace(/\s+/g, '-');
-};
-
-export const playerToSlug = (name: string, team?: string): string => {
-  const baseSlug = nameToSlug(name);
-  if (!team) return baseSlug;
-
-  const teamSlug = TEAM_SLUGS[team] || nameToSlug(team);
-  const teamSuffix = teamSlug.replace(/^(.*?)-.*/, '$1');
-
-  return `${baseSlug}-${teamSuffix}`;
-};
-
-export const slugToName = (slug: string): string => {
-  return slug
-    .split('-')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
-
-const TEAM_SUFFIXES = new Set(
-  Object.values(TEAM_SLUGS).map(s => s.replace(/^(.*?)-.*/, '$1'))
-);
-
-export const slugToPlayerName = (slug: string): string => {
-  const parts = slug.split('-');
-  const lastPart = parts[parts.length - 1];
-  const stripped = TEAM_SUFFIXES.has(lastPart) ? parts.slice(0, -1) : parts;
-  return stripped
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-};
-
 export const TEAM_SLUGS: Record<string, string> = {
   'Adelaide Crows': 'adelaide-crows',
   'Brisbane Lions': 'brisbane-lions',
@@ -93,4 +59,38 @@ export const POSITION_SLUG_TO_CODE: Record<string, string> = {
   'mid': 'MID',
   'fwd': 'FWD',
   'ruck': 'RUC',
+};
+
+const TEAM_SUFFIXES = new Set(
+  Object.values(TEAM_SLUGS).map(s => s.replace(/^(.*?)-.*/, '$1'))
+);
+
+export const nameToSlug = (name: string): string => {
+  return name.toLowerCase().replace(/\s+/g, '-');
+};
+
+export const playerToSlug = (name: string, team?: string): string => {
+  const baseSlug = nameToSlug(name);
+  if (!team) return baseSlug;
+
+  const teamSlug = TEAM_SLUGS[team] || nameToSlug(team);
+  const teamSuffix = teamSlug.replace(/^(.*?)-.*/, '$1');
+
+  return `${baseSlug}-${teamSuffix}`;
+};
+
+export const slugToName = (slug: string): string => {
+  return slug
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
+export const slugToPlayerName = (slug: string): string => {
+  const parts = slug.split('-');
+  const lastPart = parts[parts.length - 1];
+  const stripped = TEAM_SUFFIXES.has(lastPart) ? parts.slice(0, -1) : parts;
+  return stripped
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 };
