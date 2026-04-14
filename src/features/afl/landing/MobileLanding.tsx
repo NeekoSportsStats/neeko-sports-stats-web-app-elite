@@ -53,10 +53,10 @@ const WORKFLOW = [
 ] as const;
 
 function signalFromRow(row: RankingRow): { label: string; color: string } {
-  const raw = (row.signal_tag ?? row.action ?? row.signal ?? "").toUpperCase();
-  if (raw === "STRONG_START" || raw === "START" || raw === "UP" || raw === "STRONG_UP")
+  const raw = (row.action_canonical ?? row.action_display ?? row.signal_tag ?? row.action ?? "").toUpperCase();
+  if (raw === "SMASH_START" || raw === "STRONG_START" || raw === "START")
     return { label: "BUY", color: "#22C55E" };
-  if (raw === "STRONG_SIT" || raw === "SIT" || raw === "DOWN" || raw === "STRONG_DOWN")
+  if (raw === "HARD_SIT" || raw === "SIT")
     return { label: "AVOID", color: "#EF4444" };
   return { label: "HOLD", color: "#E0AE2D" };
 }
@@ -172,7 +172,7 @@ function SkeletonHeroCard() {
   );
 }
 
-export default function MobileLanding({ loading, topRows, cards, showSkeleton, isPremium }: Props) {
+export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards, showSkeleton, isPremium }: Props) {
   const [activeCard, setActiveCard] = useState(0);
   const [activeSection, setActiveSection] = useState<string>("");
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -432,6 +432,47 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
           </div>
         </div>
       </section>
+
+      {/* ─── MARKET WATCH PREVIEW ─── */}
+      {(mwBuys.length > 0 || mwSells.length > 0) && (
+        <section style={{ background: "#0a0908", padding: "0 16px 40px" }}>
+          <div style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <h3 style={{ fontSize: 14, fontWeight: 800, color: "#E8E8E8", margin: 0, letterSpacing: "-0.01em" }}>Market Watch</h3>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", marginTop: 2 }}>Buys &amp; avoids this round</p>
+            </div>
+            <Link to="/sports/afl/market-watch" style={{ fontSize: 11, fontWeight: 700, color: "rgba(224,174,45,0.75)", textDecoration: "none", display: "flex", alignItems: "center", gap: 3 }}>
+              View all <ChevronRight size={10} />
+            </Link>
+          </div>
+          {mwBuys.slice(0, 3).map(p => (
+            <div key={p.player_id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 12px", borderRadius: 10, background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.10)", marginBottom: 6 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: "#E8E8E8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", margin: 0 }}>{p.player_name}</p>
+                <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", margin: "2px 0 0" }}>{p.team} · {p.position}</p>
+              </div>
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <p style={{ fontSize: 14, fontWeight: 900, color: "#22C55E", margin: 0 }}>{p.projection != null ? Math.round(p.projection) : "—"}</p>
+                <p style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", margin: "1px 0 0", letterSpacing: "0.05em" }}>proj pts</p>
+              </div>
+              <span style={{ fontSize: 9, fontWeight: 800, color: "#22C55E", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.22)", padding: "3px 7px", borderRadius: 999, letterSpacing: "0.06em", flexShrink: 0 }}>BUY</span>
+            </div>
+          ))}
+          {mwSells.slice(0, 2).map(p => (
+            <div key={p.player_id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 12px", borderRadius: 10, background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.10)", marginBottom: 6 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: "#E8E8E8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", margin: 0 }}>{p.player_name}</p>
+                <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", margin: "2px 0 0" }}>{p.team} · {p.position}</p>
+              </div>
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <p style={{ fontSize: 14, fontWeight: 900, color: "#EF4444", margin: 0 }}>{p.projection != null ? Math.round(p.projection) : "—"}</p>
+                <p style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", margin: "1px 0 0", letterSpacing: "0.05em" }}>proj pts</p>
+              </div>
+              <span style={{ fontSize: 9, fontWeight: 800, color: "#EF4444", background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.22)", padding: "3px 7px", borderRadius: 999, letterSpacing: "0.06em", flexShrink: 0 }}>AVOID</span>
+            </div>
+          ))}
+        </section>
+      )}
 
       {/* ─── SECTION BREAK: edge → workflow ─── */}
       <SectionDivider from="#0a0908" to="#0f0e0c" />

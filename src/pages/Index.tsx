@@ -17,6 +17,8 @@ import LandingPricing from "@/features/afl/landing/LandingPricing";
 import LandingFinalCTA from "@/features/afl/landing/LandingFinalCTA";
 import LandingProductProof from "@/features/afl/landing/LandingProductProof";
 import MobileLanding from "@/features/afl/landing/MobileLanding";
+import { classifyPlayers } from "@/features/afl/market-watch/engine";
+import type { MWPlayerRow } from "@/features/afl/market-watch/types";
 
 // ── Design tokens ───────────────────────────────────────────────────────────────
 const DARK = "#05070A";
@@ -371,6 +373,62 @@ function HeroSecondaryBtn({ isPremium }: { isPremium: boolean }) {
   );
 }
 
+// ── RankingRow → MWPlayerRow conversion (for Market Watch preview) ─────────────
+function rankingToMW(r: RankingRow): MWPlayerRow {
+  const acRaw = (r.action_canonical ?? "").toLowerCase();
+  const displaySignal: "TARGET" | "WATCH" | "AVOID" =
+    acRaw === "start" || acRaw === "smash_start" || acRaw === "strong_start"
+      ? "TARGET"
+      : acRaw === "sit" || acRaw === "hard_sit"
+      ? "AVOID"
+      : "WATCH";
+  return {
+    player_id: Number(r.player_id ?? 0),
+    player_name: r.player_name,
+    team: r.team ?? "",
+    team_name: r.team_name ?? r.team ?? "",
+    position: r.position ?? "",
+    price: r.price ?? 0,
+    prev_price: r.prev_price ?? null,
+    price_change: r.price_change ?? null,
+    price_change_pct: r.price_change_pct ?? null,
+    projection: r.projection ?? null,
+    season_avg: r.season_avg ?? null,
+    last_3_avg: r.last_3_avg ?? null,
+    last_5_avg: null,
+    games_played: r.games_played ?? null,
+    breakeven: r.breakeven ?? null,
+    edge: r.edge ?? r.edge_canonical ?? null,
+    value_score: r.value_score ?? null,
+    signal: r.signal ?? null,
+    signal_tag: r.signal_tag ?? null,
+    signal_display: r.signal_display ?? null,
+    category: r.category ?? null,
+    action: r.action ?? r.action_canonical ?? null,
+    action_canonical: r.action_canonical ?? null,
+    action_display: r.action_display ?? null,
+    confidence_label: r.confidence_label ?? null,
+    value_band: r.value_band ?? null,
+    decision_score: r.decision_score ?? null,
+    action_reason_1: r.action_reason_1 ?? null,
+    action_reason_2: r.action_reason_2 ?? null,
+    why: r.why ?? null,
+    why_long: r.why_long ?? null,
+    matchup_label: r.matchup_label ?? null,
+    matchup_rating: null,
+    matchup_multiplier: r.matchup_multiplier ?? null,
+    consistency: r.consistency ?? null,
+    neeko_rating: r.neeko_rating ?? null,
+    status: r.status ?? null,
+    manual_status: r.manual_status ?? null,
+    is_bye: r.is_bye ?? false,
+    is_injured: r.is_injured ?? false,
+    cached_at: r.cached_at ?? null,
+    display_signal: displaySignal,
+    access_tier: r.access_tier ?? "locked",
+  };
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 export default function Index() {
   const { isPremium } = useAuth();
@@ -469,6 +527,12 @@ export default function Index() {
       .slice(0, 12);
 
     return { mustBuyP, trapP, captainP, breakoutP, topRows };
+  }, [players]);
+
+  const mwData = useMemo(() => {
+    if (!players.length) return { buys: [], sells: [] };
+    const classified = classifyPlayers(players.map(rankingToMW));
+    return { buys: classified.buys.slice(0, 5), sells: classified.sells.slice(0, 5) };
   }, [players]);
 
   // ── Confidence label helper ─────────────────────────────────────────────────
@@ -587,8 +651,8 @@ export default function Index() {
         <MobileLanding
           loading={loading}
           topRows={topRows}
-          mwBuys={[]}
-          mwSells={[]}
+          mwBuys={mwData.buys}
+          mwSells={mwData.sells}
           cards={mobileCards}
           showSkeleton={showSkeleton}
           isPremium={isPremium}

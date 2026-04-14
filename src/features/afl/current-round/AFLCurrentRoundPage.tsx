@@ -432,11 +432,15 @@ function MustBuysSection({
   const hidden  = isPremiumUser ? [] : mustBuys.slice(MUST_BUY_FREE, Math.min(PREMIUM_LIMIT, mustBuys.length));
   const totalHidden = isPremiumUser ? 0 : Math.max(0, mustBuys.length - MUST_BUY_FREE);
 
-  const strong = visible.filter((p) => (p.action_canonical ?? "").toUpperCase() === "START");
-  const start  = visible.filter((p) => (p.action_canonical ?? "").toUpperCase() === "START");
+  const strong = visible.filter((p) => {
+    const ac = (p.action_canonical ?? "").toUpperCase();
+    return ac === "SMASH_START" || ac === "STRONG_START";
+  });
+  const start = visible.filter((p) => (p.action_canonical ?? "").toUpperCase() === "START");
 
   const renderRow = (row: CurrentRoundPlayer, globalIdx: number) => {
-    const isStrong = (row.action_canonical ?? "").toUpperCase() === "START";
+    const ac = (row.action_canonical ?? "").toUpperCase();
+    const isStrong = ac === "SMASH_START" || ac === "STRONG_START";
     return (
       <PlayerRow
         key={row.player_id ?? globalIdx}
@@ -471,7 +475,13 @@ function MustBuysSection({
                 {strong.map((row, idx) => renderRow(row, idx))}
               </>
             )}
-            {start.length === 0 && visible.length > 0 && (
+            {start.length > 0 && (
+              <>
+                <TierDivider label="Trade Targets" color="#34d399" />
+                {start.map((row, idx) => renderRow(row, strong.length + idx))}
+              </>
+            )}
+            {strong.length === 0 && start.length === 0 && visible.length > 0 && (
               <>
                 <TierDivider label="Trade Targets" color="#34d399" />
                 {visible.map((row, idx) => renderRow(row, idx))}

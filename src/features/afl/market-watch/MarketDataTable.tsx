@@ -409,9 +409,14 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
         <ValueBandCell player={player} />
       </td>
       <td className="px-5 py-3">
-        <div className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold border rounded-md ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
-          <span>{signalStrength.icon}</span>
-          <span>{signalStrength.label}</span>
+        <div className="flex flex-col gap-1">
+          <div className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold border rounded-md ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
+            <span>{signalStrength.icon}</span>
+            <span>{signalStrength.label}</span>
+          </div>
+          {player.confidence_label && (
+            <ConfidencePill label={player.confidence_label} />
+          )}
         </div>
       </td>
     </tr>
@@ -465,7 +470,7 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
         {formatWhyText(truncatedWhy)}
       </div>
 
-      <div className="grid grid-cols-3 gap-3 text-xs">
+      <div className="grid grid-cols-4 gap-2 text-xs">
         <div>
           <div className="text-white/35 text-[10px] mb-0.5">Proj</div>
           <div className="font-bold text-white/80">{Math.round(player.projection || 0)}</div>
@@ -477,6 +482,12 @@ const MobilePlayerCard = memo(function MobilePlayerCard({ player, onClick, isBlu
         <div>
           <div className="text-white/35 text-[10px] mb-0.5">Value</div>
           <ValueBandCell player={player} compact />
+        </div>
+        <div>
+          <div className="text-white/35 text-[10px] mb-0.5">Conf</div>
+          {player.confidence_label
+            ? <ConfidencePill label={player.confidence_label} />
+            : <span className="text-white/25 text-[10px]">—</span>}
         </div>
       </div>
     </div>
@@ -501,6 +512,17 @@ function getSignalStrength(player: DerivedPlayer) {
     default:
       return { icon: "👁", label: displayLabel ?? "Hold", bg: "bg-[#F5C84C]/[0.08]", text: "text-[#F5C84C]", border: "border-[#F5C84C]/25" };
   }
+}
+
+function ConfidencePill({ label }: { label: string }) {
+  const up = label.toUpperCase();
+  if (up === "HIGH") {
+    return <span className="inline-block text-[9px] font-bold text-green-400 bg-green-500/10 border border-green-500/25 rounded px-1.5 py-0.5 leading-none">HI</span>;
+  }
+  if (up === "MEDIUM") {
+    return <span className="inline-block text-[9px] font-bold text-[#F5C84C] bg-[#F5C84C]/10 border border-[#F5C84C]/25 rounded px-1.5 py-0.5 leading-none">MED</span>;
+  }
+  return <span className="inline-block text-[9px] font-bold text-white/35 bg-white/[0.04] border border-white/10 rounded px-1.5 py-0.5 leading-none">LOW</span>;
 }
 
 function ValueBandCell({ player, compact = false }: { player: DerivedPlayer; compact?: boolean }) {

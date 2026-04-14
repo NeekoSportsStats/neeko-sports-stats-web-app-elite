@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp } from "lucide-react";
 
 export function CollapsibleSEO() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isExploreOpen, setIsExploreOpen] = useState(false);
 
   return (
     <div className="w-full max-w-[1200px] mx-auto px-4 pb-12">
@@ -70,10 +71,19 @@ export function CollapsibleSEO() {
           </div>
         )}
 
-        {/* Always-visible internal link grid — crawlable regardless of collapsed state */}
-        <div className="mt-5 pt-4 border-t border-white/[0.06] space-y-6">
-          <h3 className="text-base font-semibold text-white/70">Explore Rankings</h3>
+        {/* Collapsible explore grid — crawlable, default collapsed */}
+        <div className="mt-5 pt-4 border-t border-white/[0.06]">
+          <button
+            onClick={() => setIsExploreOpen(v => !v)}
+            className="inline-flex items-center gap-2 text-sm font-medium text-white/40 hover:text-white/70 transition-colors"
+            aria-expanded={isExploreOpen}
+          >
+            {isExploreOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            {isExploreOpen ? "Hide explore" : "Explore Rankings"}
+          </button>
 
+        {isExploreOpen && (
+        <div className="mt-4 space-y-6">
           <div className="space-y-2">
             <p className="text-xs text-white/35 uppercase tracking-wider font-medium">By Position</p>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -149,6 +159,9 @@ export function CollapsibleSEO() {
               ))}
             </div>
           </div>
+        </div>
+        )}
+
         </div>
 
       </div>
