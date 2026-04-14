@@ -12,9 +12,10 @@ import {
 } from "./components/types";
 import {
   FREE_FULL_ROWS, PREMIUM_INITIAL_ROWS,
-  getFreeTier, fmt, fmtValueScore, applyRelativeConfidenceLabels,
+  getFreeTier, fmt, fmtValueScore,
 } from "./components/helpers";
 import { mapRankingRow } from "./components/mapRankingRow";
+import { applyDecisionFields } from "@/lib/decisionEngine";
 import {
   NeekoRatingInfoModal, UpgradeModal, PlayerDetailModal,
 } from "./components/RankingsModals";
@@ -315,7 +316,7 @@ export default function AFLRankingsPage() {
       setLoading(false);
       return;
     }
-    const normalized = applyRelativeConfidenceLabels(((data as any[]) ?? []).map(mapRankingRow));
+    const normalized = applyDecisionFields(((data as any[]) ?? []).map(mapRankingRow));
     _rankingsCache.data = normalized;
     _rankingsCache.ts = Date.now();
     _rankingsCache.userId = userId;

@@ -18,7 +18,8 @@ import { track } from "@/lib/analytics";
 import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
 import { DataFreshnessIndicator } from "@/components/ui/DataFreshnessIndicator";
-import { fmt, fmtPrice, getCanonicalConfidenceStyles, formatCanonicalConfidenceLabel, applyRelativeConfidenceLabels } from "@/features/afl/rankings/components/helpers";
+import { fmt, fmtPrice, getCanonicalConfidenceStyles, formatCanonicalConfidenceLabel } from "@/features/afl/rankings/components/helpers";
+import { applyDecisionFields } from "@/lib/decisionEngine";
 import { PlayerDetailModal, UpgradeModal } from "@/features/afl/rankings/components/RankingsModals";
 import type { RowTier } from "@/features/afl/rankings/components/types";
 import { classifyPlayers, type DerivedPlayer } from "./engine";
@@ -383,7 +384,7 @@ export default function MarketWatchPageElite() {
         });
         if (error) throw error;
         if (data) {
-          const rows = applyRelativeConfidenceLabels((data as Record<string, unknown>[]).map(mapRankingRow)).map(rankingToMW);
+          const rows = applyDecisionFields((data as Record<string, unknown>[]).map(mapRankingRow)).map(rankingToMW);
           const filtered = rows.filter((p) => !p.is_bye && !p.is_injured);
           const firstCachedAt = (data as Record<string, unknown>[])[0]?.cached_at as string | undefined;
           if (firstCachedAt) setDataUpdatedAt(firstCachedAt);

@@ -32,17 +32,16 @@ function isEligible(p: RankingRow): boolean {
 
 function isEligiblePositive(p: RankingRow): boolean {
   if (!isEligible(p)) return false;
-  if ((p.games_played ?? 0) < 1) return false;
   if (p.projection == null || p.projection <= 0) return false;
   return true;
 }
 
-function hasPositiveSignal(p: RankingRow): boolean {
+function hasPositiveAction(p: RankingRow): boolean {
   const ac = (p.action_canonical ?? "").toUpperCase();
-  return ac === "START" || ac === "SMASH_START" || ac === "STRONG_START";
+  return ac === "START" || ac === "SMASH_START";
 }
 
-function hasNegativeSignal(p: RankingRow): boolean {
+function hasNegativeAction(p: RankingRow): boolean {
   const ac = (p.action_canonical ?? "").toUpperCase();
   return ac === "SIT" || ac === "HARD_SIT";
 }
@@ -77,50 +76,68 @@ export function buildCurrentRoundPlayers(
 
   const byProjDesc     = [...enrichedPositive].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0));
   const byDecisionDesc = [...enrichedPositive].sort((a, b) => (b.decision_score ?? 0) - (a.decision_score ?? 0));
-
   const byDecisionAscAll = [...enrichedAll].sort((a, b) => (a.decision_score ?? 0) - (b.decision_score ?? 0));
 
   // ── CAPTAIN PICKS ─────────────────────────────────────────────────────────
   const captains = byProjDesc
-    .filter((p) => !hasNegativeSignal(p))
+    .filter(p => !hasNegativeAction(p))
     .slice(0, CAPTAIN_LIMIT);
-  const captainIds = new Set(captains.map((p) => p.player_id));
+  const captainIds = new Set(captains.map(p => p.player_id));
 
-  // ── MUST BUYS ──────────────────────────────────────────────────────────────
+  // ── MUST BUYS — START or SMASH_START, sorted by decision_score desc ────────
   const mustBuys = byDecisionDesc
-    .filter((p) =>
-      !captainIds.has(p.player_id) &&
-      hasPositiveSignal(p)
-    )
+    .filter(p => !captainIds.has(p.player_id) && hasPositiveAction(p))
     .slice(0, MUST_BUY_LIMIT);
-  const mustBuyIds = new Set(mustBuys.map((p) => p.player_id));
+
+  // Fallback: if no positively-actioned players, take top by projection
+  const mustBuysFinal = mustBuys.length >= 3
+    ? mustBuys
+    : byDecisionDesc.filter(p => !captainIds.has(p.player_id)).slice(0, MUST_BUY_LIMIT);
+
+  const mustBuyIds = new Set(mustBuysFinal.map(p => p.player_id));
 
   // ── BUDGET UPSIDE ──────────────────────────────────────────────────────────
   const usedIds = new Set([...captainIds, ...mustBuyIds]);
-  const budgetPicks = byDecisionDesc
-    .filter((p) =>
+  const budgetBase = byDecisionDesc
+    .filter(p =>
       !usedIds.has(p.player_id) &&
       (p.price ?? 0) > 0 &&
       (p.price ?? 999_999) < BUDGET_PRICE_CAP &&
-      hasPositiveSignal(p)
+      hasPositiveAction(p)
     )
     .slice(0, BUDGET_LIMIT);
-  const budgetIds = new Set(budgetPicks.map((p) => p.player_id));
 
-  // ── RISK / OVERPRICED ─────────────────────────────────────────────────────
-  // SIT or HARD_SIT, sorted worst decision_score first
-  const allUsedIds = new Set([...usedIds, ...budgetIds]);
+  const budgetPicks = budgetBase.length >= 3
+    ? budgetBase
+    : byDecisionDesc
+        .filter(p => !usedIds.has(p.player_id) && (p.price ?? 0) > 0 && (p.price ?? 999_999) < BUDGET_PRICE_CAP)
+        .slice(0, BUDGET_LIMIT);
+
+  // ── RISK / OVERPRICED — SIT or HARD_SIT, worst decision_score first ────────
   const riskPicks = byDecisionAscAll
-    .filter((p) => hasNegativeSignal(p))
+    .filter(p => hasNegativeAction(p))
     .slice(0, RISK_LIMIT);
 
-  // ── TRAPS ─────────────────────────────────────────────────────────────────
-  // HARD_SIT only, sorted worst decision_score first
+  // Fallback: just worst decision_score if no negative-action players
+  const riskFinal = riskPicks.length >= 3
+    ? riskPicks
+    : byDecisionAscAll.slice(0, RISK_LIMIT);
+
+  // ── TRAPS — HARD_SIT only, worst decision_score first ─────────────────────
   const traps = byDecisionAscAll
-    .filter((p) => isHardSit(p))
+    .filter(p => isHardSit(p))
     .slice(0, TRAP_LIMIT);
 
-  void allUsedIds;
+  // Fallback: SIT + HARD_SIT combined if not enough HARD_SIT
+  const trapsFinal = traps.length >= 2
+    ? traps
+    : byDecisionAscAll.filter(p => hasNegativeAction(p)).slice(0, TRAP_LIMIT);
 
-  return { captains, mustBuys, budgetPicks, riskPicks, traps };
+  return {
+    captains,
+    mustBuys: mustBuysFinal,
+    budgetPicks,
+    riskPicks: riskFinal,
+    traps: trapsFinal,
+  };
 }

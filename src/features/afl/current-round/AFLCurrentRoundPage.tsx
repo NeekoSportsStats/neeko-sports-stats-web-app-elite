@@ -15,8 +15,8 @@ import {
   fmt,
   fmtPrice,
   fmtUpdatedAt,
-  getConfidenceColor,
 } from "@/features/afl/rankings/components/helpers";
+import { applyDecisionFields } from "@/lib/decisionEngine";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
 import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
 import { PlayerDetailModal, UpgradeModal } from "@/features/afl/rankings/components/RankingsModals";
@@ -1150,7 +1150,7 @@ export default function AFLCurrentRoundPage() {
       if (error) {
         console.error("Current Round fetch error:", error);
       } else if (data) {
-        setPlayers((data as Record<string, unknown>[]).map(mapRankingRow));
+        setPlayers(applyDecisionFields((data as Record<string, unknown>[]).map(mapRankingRow)));
       }
       try {
         const { data: metaData } = await supabase.rpc("get_rankings_updated_at");

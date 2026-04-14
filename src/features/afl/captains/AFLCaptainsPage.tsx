@@ -1,24 +1,15 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
-import {
-  Crown,
-  Shield,
-  Zap,
-  RefreshCw,
-  Lock,
-  ChevronDown,
-  ChevronRight,
-  Star,
-} from "lucide-react";
+import { Crown, Shield, Zap, RefreshCw, Lock, ChevronDown, ChevronRight, Star, TriangleAlert as AlertTriangle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
 import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
-import { fmt, fmtPrice, getConfidenceColor } from "@/features/afl/rankings/components/helpers";
+import { fmt, fmtPrice } from "@/features/afl/rankings/components/helpers";
 import { PlayerDetailModal, UpgradeModal } from "@/features/afl/rankings/components/RankingsModals";
 import type { RowTier } from "@/features/afl/rankings/components/types";
-import { buildCurrentRoundPlayers, type CurrentRoundPlayer } from "@/features/afl/current-round/engine";
+import { applyDecisionFields } from "@/lib/decisionEngine";
 
 // ─── CACHE ───────────────────────────────────────────────────────────────────
 
@@ -149,24 +140,20 @@ function RatingPill({ rating }: { rating: string | null }) {
   );
 }
 
-function ConfidenceBar({ label }: { label: string | null | undefined }) {
+function ConfidenceBadge({ label }: { label: string | null | undefined }) {
   if (!label) return null;
   const up = label.toUpperCase();
-  const pct = up === "HIGH" ? 85 : up === "MEDIUM" ? 55 : 30;
   const color = up === "HIGH" ? "#4ade80" : up === "MEDIUM" ? "#F5C84C" : "#fb923c";
-  const displayLabel = up === "HIGH" ? "High" : up === "MEDIUM" ? "Medium" : "Low";
+  const borderColor = up === "HIGH" ? "rgba(74,222,128,0.25)" : up === "MEDIUM" ? "rgba(245,200,76,0.25)" : "rgba(251,146,60,0.25)";
+  const bgColor = up === "HIGH" ? "rgba(74,222,128,0.08)" : up === "MEDIUM" ? "rgba(245,200,76,0.08)" : "rgba(251,146,60,0.08)";
+  const displayLabel = up === "HIGH" ? "High Conf" : up === "MEDIUM" ? "Med Conf" : "Low Conf";
   return (
-    <div className="flex items-center gap-1.5">
-      <div className="flex-1 h-1 rounded-full bg-white/[0.07] overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${pct}%`, backgroundColor: color, opacity: 0.8 }}
-        />
-      </div>
-      <span className="text-[10px] font-semibold tabular-nums" style={{ color }}>
-        {displayLabel}
-      </span>
-    </div>
+    <span
+      className="inline-flex text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border leading-none"
+      style={{ color, borderColor, background: bgColor }}
+    >
+      {displayLabel}
+    </span>
   );
 }
 
@@ -178,7 +165,7 @@ function CaptainCard({
   locked,
   onOpen,
 }: {
-  player: CurrentRoundPlayer | RankingRow;
+  player: RankingRow;
   rank: number;
   locked?: boolean;
   onOpen: () => void;
@@ -241,8 +228,8 @@ function CaptainCard({
             ) : null}
           </div>
 
-          {/* Confidence bar */}
-          <ConfidenceBar label={conf} />
+          {/* Confidence badge */}
+          {conf && <ConfidenceBadge label={conf} />}
 
           {/* Short reason */}
           {why && (
@@ -397,7 +384,7 @@ export default function AFLCaptainsPage() {
         });
         if (error) throw error;
         if (data) {
-          const rows = (data as Record<string, unknown>[]).map(mapRankingRow);
+          const rows = applyDecisionFields((data as Record<string, unknown>[]).map(mapRankingRow));
           _cache.data = rows;
           _cache.ts = Date.now();
           _cache.userId = userId;
@@ -425,39 +412,40 @@ export default function AFLCaptainsPage() {
   }, []);
 
   // ── BUILD CAPTAIN TIERS ────────────────────────────────────────────────────
-  const { locks, safes, pods } = useMemo(() => {
-    if (players.length === 0) return { locks: [], safes: [], pods: [] };
+  const { locks, safes, pods, riskyCaptains } = useMemo(() => {
+    if (players.length === 0) return { locks: [], safes: [], pods: [], riskyCaptains: [] };
 
-    const { captains } = buildCurrentRoundPlayers(players);
-
-    // Sort captains by captain_score desc, fallback to projection
-    const sorted = [...captains].sort(
-      (a, b) =>
-        (b.captain_score ?? b.projection ?? 0) - (a.captain_score ?? a.projection ?? 0)
+    const eligible = players.filter(
+      p => !p.is_injured && !p.is_bye && (p.projection ?? 0) > 0 && p.player_id
     );
 
-    // LOCK: top 1–2 (Elite Captain tier or top by score)
-    const locks: CurrentRoundPlayer[] = [];
-    const safes: CurrentRoundPlayer[] = [];
-    const pods: CurrentRoundPlayer[] = [];
+    // Sort by decision_score desc as primary signal
+    const byDecision = [...eligible].sort(
+      (a, b) => (b.decision_score ?? 0) - (a.decision_score ?? 0)
+    );
 
-    sorted.forEach((p, i) => {
-      const rating = p.captain_rating ?? "";
-      if (locks.length < 2 && (rating === "Elite Captain" || (locks.length === 0 && i === 0))) {
-        locks.push(p);
-      } else if (safes.length < 3 && (rating === "Strong Captain" || rating === "Elite Captain" || i < 4)) {
-        safes.push(p);
-      } else if (pods.length < 3) {
-        pods.push(p);
-      }
-    });
+    // LOCK: top 1 by decision_score
+    const locks = byDecision.slice(0, 1);
 
-    // Ensure at least 1 lock
-    if (locks.length === 0 && sorted.length > 0) {
-      locks.push(sorted[0]);
-    }
+    // SAFE: next 3 by decision_score
+    const safes = byDecision.slice(1, 4);
 
-    return { locks, safes, pods };
+    // POD: next 3 by ceiling_estimate (differential upside) falling back to decision_score
+    const usedIds = new Set([...locks, ...safes].map(p => p.player_id));
+    const pods = [...eligible]
+      .filter(p => !usedIds.has(p.player_id))
+      .sort((a, b) => (b.ceiling_estimate ?? b.decision_score ?? 0) - (a.ceiling_estimate ?? a.decision_score ?? 0))
+      .slice(0, 3);
+
+    // RISKY CAPTAIN: high projection but low confidence
+    const allUsed = new Set([...locks, ...safes, ...pods].map(p => p.player_id));
+    const riskyCaptains = eligible
+      .filter(p => !allUsed.has(p.player_id))
+      .filter(p => (p.projection ?? 0) >= 90 && p.confidence_label === "LOW")
+      .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
+      .slice(0, 2);
+
+    return { locks, safes, pods, riskyCaptains };
   }, [players]);
 
   function openPlayer(p: RankingRow, rank: number) {
@@ -551,7 +539,7 @@ export default function AFLCaptainsPage() {
                 {Array.from({ length: lockedLockCount }).map((_, i) => (
                   <CaptainCard
                     key={`locked-lock-${i}`}
-                    player={makePlaceholderRow(freeLockCount + i + 1) as unknown as CurrentRoundPlayer}
+                    player={makePlaceholderRow(freeLockCount + i + 1)}
                     rank={freeLockCount + i + 1}
                     locked
                     onOpen={() => {}}
@@ -590,7 +578,7 @@ export default function AFLCaptainsPage() {
               {Array.from({ length: 2 }).map((_, i) => (
                 <CaptainCard
                   key={`locked-safe-${i}`}
-                  player={makePlaceholderRow(i + 1) as unknown as CurrentRoundPlayer}
+                  player={makePlaceholderRow(i + 1)}
                   rank={i + 1}
                   locked
                   onOpen={() => {}}
@@ -609,6 +597,25 @@ export default function AFLCaptainsPage() {
               accentColor="#a78bfa"
             >
               {pods.map((p, i) => (
+                <CaptainCard
+                  key={p.player_id}
+                  player={p}
+                  rank={i + 1}
+                  onOpen={() => openPlayer(p, i + 1)}
+                />
+              ))}
+            </Section>
+          )}
+
+          {/* ── RISKY CAPTAIN ─────────────────────────────────────────────── */}
+          {isPremium && riskyCaptains.length > 0 && (
+            <Section
+              icon={<AlertTriangle className="w-4 h-4" />}
+              label="Risky Captain"
+              sublabel="High projection but low confidence — proceed with caution."
+              accentColor="#fb923c"
+            >
+              {riskyCaptains.map((p, i) => (
                 <CaptainCard
                   key={p.player_id}
                   player={p}

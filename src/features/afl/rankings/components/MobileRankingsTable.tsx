@@ -169,31 +169,14 @@ function ActionBadge({ row, isPremium, onUpgrade }: { row: RankingRow; isPremium
 // ─── Confidence bar ────────────────────────────────────────────────────────────
 
 function ConfidenceBar({ row }: { row: RankingRow }) {
-  const rawLabel = row.confidence_label;
-  const pct = row.projection_confidence != null ? Math.max(0, Math.min(100, row.projection_confidence)) : null;
-
-  const label = rawLabel ?? null;
+  const label = row.confidence_label ?? null;
   if (!label) return <span className="text-xs text-white/20">—</span>;
 
   const cls = getCanonicalConfidenceStyles(label);
   return (
-    <div className="flex flex-col gap-0.5" title={pct != null ? `${Math.round(pct)}%` : undefined}>
-      <span className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-semibold ${cls}`}>
-        {formatCanonicalConfidenceLabel(label)}
-      </span>
-      {pct != null && (
-        <div className="w-8 h-0.5 rounded-full bg-white/[0.07] overflow-hidden">
-          <div
-            className="h-full rounded-full"
-            style={{
-              width: `${pct}%`,
-              backgroundColor: pct >= 68 ? "#4ade80" : pct >= 50 ? "#F5C84C" : "#fb923c",
-              opacity: 0.4,
-            }}
-          />
-        </div>
-      )}
-    </div>
+    <span className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-semibold ${cls}`}>
+      {formatCanonicalConfidenceLabel(label)}
+    </span>
   );
 }
 
@@ -422,7 +405,7 @@ function PlayerCard({ row, idx, isPremium, onTap, onUpgrade }: PlayerCardProps) 
           </span>
         </div>
 
-        {(row.confidence_label != null || row.projection_confidence != null) && (
+        {row.confidence_label != null && (
           <>
             <span className="text-white/15 text-sm px-1.5">|</span>
             <div className="flex flex-col items-start px-2">
