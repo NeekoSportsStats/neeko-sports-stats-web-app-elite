@@ -26,12 +26,12 @@ import MobileLanding from "@/features/afl/landing/MobileLanding";
 const DARK = "#05070A";
 const GOLD = "#F4C542";
 
-// ── Card accent colors (dark, desaturated — readable on dark bg) ───────────────
+// ── Card accent colors ──────────────────────────────────────────────────────────
 const CARD_ACCENTS = [
-  { color: "#34d170", dim: "#1a7040", label: "#22c966" },   // Must Buy — green
-  { color: "#f87171", dim: "#7c2222", label: "#ef5050" },   // Trap Alert — red
-  { color: "#fbbf24", dim: "#8a5a00", label: "#f59e0b" },   // Captain — amber
-  { color: "#60a5fa", dim: "#1d4490", label: "#3b8ef5" },   // Trade Target — blue
+  { color: "#22c55e", dim: "#14532d", label: "#4ade80" },   // Must Buy — green
+  { color: "#f87171", dim: "#7f1d1d", label: "#fca5a5" },   // Trap Alert — red
+  { color: "#E0AE2D", dim: "#78480f", label: "#fcd34d" },   // Captain — gold
+  { color: "#60a5fa", dim: "#1e3a8a", label: "#93c5fd" },   // Trade Target — blue
 ];
 
 // ── Card type ──────────────────────────────────────────────────────────────────
@@ -49,7 +49,7 @@ type CardProps = {
   badge?: string;
 };
 
-// ── Edge Card — fixed-height locked layout ─────────────────────────────────────
+// ── Edge Card — unified premium layout ─────────────────────────────────────────
 function EdgeCard(p: CardProps) {
   const [hovered, setHovered] = useState(false);
   const accent = CARD_ACCENTS[p.accentIdx] ?? CARD_ACCENTS[0];
@@ -64,59 +64,57 @@ function EdgeCard(p: CardProps) {
           flex: 1,
           display: "flex",
           flexDirection: "column",
-          background: hovered
-            ? `linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.42) 100%), rgba(22,28,38,0.95)`
-            : `linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.40) 100%), rgba(18,23,32,0.88)`,
+          background: "rgba(10, 12, 16, 0.85)",
           backdropFilter: "blur(12px)",
           WebkitBackdropFilter: "blur(12px)",
-          border: `1px solid ${hovered ? "rgba(255,255,255,0.13)" : "rgba(255,255,255,0.07)"}`,
-          borderRadius: 14,
+          border: `1px solid ${hovered ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.06)"}`,
+          borderRadius: 12,
           overflow: "hidden",
           boxShadow: hovered
-            ? `0 0 0 1px ${accent.dim}30, 0 14px 36px rgba(0,0,0,0.65), 0 4px 12px rgba(0,0,0,0.35)`
-            : "0 2px 18px rgba(0,0,0,0.42), 0 1px 3px rgba(0,0,0,0.25)",
-          transform: hovered ? "translateY(-4px) translateZ(0)" : "translateY(0) translateZ(0)",
-          transition: "all 0.20s ease",
+            ? `0 16px 40px rgba(0,0,0,0.60), 0 0 0 1px ${accent.color}18`
+            : "0 4px 20px rgba(0,0,0,0.40)",
+          transform: hovered ? "translateY(-3px) translateZ(0)" : "translateY(0) translateZ(0)",
+          transition: "transform 0.20s ease, box-shadow 0.20s ease, border-color 0.20s ease",
           willChange: "transform",
         }}
       >
         {/* 1 — Top accent bar */}
         <div style={{
-          height: 3,
-          background: `linear-gradient(to right, ${accent.color}, ${accent.dim})`,
+          height: 2,
+          background: accent.color,
+          opacity: 0.7,
           flexShrink: 0,
         }} />
 
         {/* 2 — Label row */}
         <div style={{
-          padding: "10px 18px 8px",
-          display: "flex", alignItems: "center", gap: 6,
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-          background: `linear-gradient(to right, ${accent.dim}28, transparent)`,
+          padding: "12px 20px 10px",
+          display: "flex", alignItems: "center", gap: 7,
+          borderBottom: "1px solid rgba(255,255,255,0.05)",
           flexShrink: 0,
-          minHeight: 36,
         }}>
-          <span style={{ color: accent.label, display: "flex", alignItems: "center", flexShrink: 0 }}>
+          <span style={{ color: accent.label, display: "flex", alignItems: "center", flexShrink: 0, opacity: 0.9 }}>
             {p.icon}
           </span>
           <span style={{
-            fontSize: 9.5, fontWeight: 800,
-            letterSpacing: "0.28em",
+            fontSize: 9, fontWeight: 800,
+            letterSpacing: "0.24em",
             textTransform: "uppercase",
             color: accent.label,
+            opacity: 0.85,
             flex: 1,
           }}>
             {p.label}
           </span>
           {p.position && (
             <span style={{
-              fontSize: 8.5, fontWeight: 700,
+              fontSize: 8, fontWeight: 700,
               textTransform: "uppercase",
-              color: "rgba(255,255,255,0.38)",
-              background: "rgba(255,255,255,0.07)",
-              padding: "2px 6px",
+              color: "rgba(255,255,255,0.35)",
+              background: "rgba(255,255,255,0.06)",
+              padding: "2px 7px",
               borderRadius: 4,
-              letterSpacing: "0.07em",
+              letterSpacing: "0.06em",
               flexShrink: 0,
             }}>
               {p.position}
@@ -124,13 +122,14 @@ function EdgeCard(p: CardProps) {
           )}
           {p.badge && (
             <span style={{
-              fontSize: 9.5, fontWeight: 900,
+              fontSize: 9, fontWeight: 900,
               background: accent.color,
               color: "#000",
-              padding: "2px 6px",
+              padding: "2px 7px",
               borderRadius: 4,
               letterSpacing: "0.04em",
               flexShrink: 0,
+              opacity: 0.9,
             }}>
               {p.badge}
             </span>
@@ -138,14 +137,14 @@ function EdgeCard(p: CardProps) {
         </div>
 
         {/* 3 — Player name + team */}
-        <div style={{ padding: "14px 18px 0", flexShrink: 0 }}>
+        <div style={{ padding: "16px 20px 0", flexShrink: 0 }}>
           <p style={{
             margin: 0,
-            fontSize: "clamp(13px, 1.05vw, 18px)",
-            fontWeight: 800,
-            color: "#f0f0f0",
-            lineHeight: 1.12,
-            letterSpacing: "-0.025em",
+            fontSize: 17,
+            fontWeight: 700,
+            color: "#ededed",
+            lineHeight: 1.15,
+            letterSpacing: "-0.02em",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -153,12 +152,12 @@ function EdgeCard(p: CardProps) {
             {p.playerName}
           </p>
           <p style={{
-            margin: "3px 0 0",
-            fontSize: "clamp(9px, 0.50vw, 10.5px)",
-            color: "rgba(255,255,255,0.36)",
+            margin: "4px 0 0",
+            fontSize: 10,
+            color: "rgba(255,255,255,0.32)",
             fontWeight: 600,
             textTransform: "uppercase",
-            letterSpacing: "0.07em",
+            letterSpacing: "0.08em",
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -167,58 +166,57 @@ function EdgeCard(p: CardProps) {
           </p>
         </div>
 
-        {/* 4 — Projection number + sublabel */}
-        <div style={{ padding: "10px 18px 0", flexShrink: 0 }}>
+        {/* 4 — Projection number */}
+        <div style={{ padding: "14px 20px 0", flexShrink: 0 }}>
           {pts != null ? (
             <>
               <span style={{
                 display: "block",
-                fontSize: "clamp(40px, 3.8vw, 58px)",
-                fontWeight: 900,
+                fontSize: 52,
+                fontWeight: 800,
                 color: accent.color,
                 lineHeight: 0.90,
-                letterSpacing: "-0.045em",
+                letterSpacing: "-0.04em",
                 fontVariantNumeric: "tabular-nums",
-                textShadow: `0 0 18px ${accent.color}38`,
               }}>
                 {pts}
               </span>
               <span style={{
                 display: "block",
-                fontSize: 9,
-                color: "rgba(255,255,255,0.28)",
+                fontSize: 8.5,
+                color: "rgba(255,255,255,0.25)",
                 fontWeight: 700,
-                letterSpacing: "0.14em",
+                letterSpacing: "0.16em",
                 textTransform: "uppercase",
-                marginTop: 4,
+                marginTop: 6,
               }}>
                 Projected pts
               </span>
             </>
           ) : (
-            <span style={{ fontSize: 26, color: "rgba(255,255,255,0.20)", fontWeight: 700 }}>—</span>
+            <span style={{ fontSize: 28, color: "rgba(255,255,255,0.18)", fontWeight: 700 }}>—</span>
           )}
         </div>
 
         {/* 5 — Hairline */}
         <div style={{
-          margin: "12px 18px 0",
+          margin: "14px 20px 0",
           height: 1,
-          background: `linear-gradient(to right, ${accent.color}28, transparent 80%)`,
+          background: "rgba(255,255,255,0.05)",
           flexShrink: 0,
         }} />
 
         {/* 6 — Insight copy — grows to fill remaining space */}
-        <div style={{ padding: "9px 18px 0", flex: 1, display: "flex", alignItems: "center" }}>
+        <div style={{ padding: "10px 20px 0", flex: 1, display: "flex", alignItems: "flex-start" }}>
           <p style={{
             margin: 0,
-            fontSize: "clamp(10px, 0.62vw, 12px)",
-            color: "rgba(255,255,255,0.52)",
-            fontWeight: 500,
-            lineHeight: 1.45,
+            fontSize: 12,
+            color: "rgba(255,255,255,0.45)",
+            fontWeight: 400,
+            lineHeight: 1.55,
             overflow: "hidden",
             display: "-webkit-box",
-            WebkitLineClamp: 2,
+            WebkitLineClamp: 3,
             WebkitBoxOrient: "vertical",
           } as React.CSSProperties}>
             {p.reason}
@@ -226,19 +224,19 @@ function EdgeCard(p: CardProps) {
         </div>
 
         {/* 7 — CTA — always pinned to bottom */}
-        <div style={{ padding: "10px 18px 18px", flexShrink: 0 }}>
+        <div style={{ padding: "14px 20px 20px", flexShrink: 0 }}>
           <div style={{
-            height: 34,
+            height: 36,
             display: "flex", alignItems: "center", justifyContent: "center",
             gap: 5,
-            background: hovered ? `${accent.dim}60` : `${accent.dim}40`,
-            border: `1px solid ${hovered ? accent.color + "50" : accent.color + "22"}`,
-            color: hovered ? accent.color : accent.label,
-            fontSize: 9.5,
-            fontWeight: 800,
+            background: hovered ? `${accent.color}18` : "rgba(255,255,255,0.04)",
+            border: `1px solid ${hovered ? accent.color + "40" : "rgba(255,255,255,0.08)"}`,
+            color: hovered ? accent.label : "rgba(255,255,255,0.55)",
+            fontSize: 10,
+            fontWeight: 700,
             letterSpacing: "0.10em",
             textTransform: "uppercase",
-            borderRadius: 7,
+            borderRadius: 8,
             transition: "all 0.18s ease",
           }}>
             {p.ctaLabel} <ChevronRight size={10} strokeWidth={2.5} />
@@ -255,7 +253,7 @@ function SkeletonCard() {
     <div
       className="skeleton-shimmer"
       style={{
-        height: "100%", minHeight: 240,
+        height: "100%", minHeight: 320,
         borderRadius: 14,
         border: "1px solid rgba(255,255,255,0.06)",
       }}
@@ -724,13 +722,13 @@ export default function Index() {
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 20,
+            gap: 16,
             alignItems: "stretch",
             gridAutoRows: "1fr",
           }}>
             {showSkeleton
               ? [0,1,2,3].map(i => (
-                  <div key={i} style={{ minHeight: 300 }}>
+                  <div key={i} style={{ minHeight: 320 }}>
                     <SkeletonCard />
                   </div>
                 ))
