@@ -248,7 +248,7 @@ export default function Account() {
                 {(subRecord?.current_period_end || profile.current_period_end || profile.billing_period_end || profile.premium_expires_at) && (
                   <p>
                     <span className="text-sm text-muted-foreground">
-                      {subRecord?.plan_type === "season"
+                      {(subRecord?.plan_type === "season" || (!subRecord && profile?.premium_expires_at))
                         ? "Season Access Until"
                         : isCancelling
                           ? "Access Until"
@@ -271,25 +271,33 @@ export default function Account() {
 
                 <Separator />
 
-                <Button
-                  type="button"
-                  onClick={handleManageSubscription}
-                  disabled={portalLoading}
-                  variant="outline"
-                  className="w-full"
-                >
-                  {portalLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Opening portal…
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="h-4 w-4 mr-2" />
-                      Manage Subscription
-                    </>
-                  )}
-                </Button>
+                {subRecord?.plan_type === "season" || (!subRecord && profile?.premium_expires_at) ? (
+                  <div className="text-sm text-muted-foreground text-center py-2">
+                    Season Pass is a one-time payment — no recurring billing to manage.
+                    <br />
+                    <span className="text-xs">Contact support if you need a refund.</span>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={handleManageSubscription}
+                    disabled={portalLoading}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {portalLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Opening portal…
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="h-4 w-4 mr-2" />
+                        Manage Subscription
+                      </>
+                    )}
+                  </Button>
+                )}
               </>
             ) : (
               <>

@@ -300,10 +300,10 @@ async function syncSubscriptionFromStripe(subscriptionId: string, planType: 'wee
         current_period_start: subscription.current_period_start ?? null,
         current_period_end: subscription.current_period_end ?? null,
         cancel_at_period_end: subscription.cancel_at_period_end ?? false,
-      }, { onConflict: 'customer_id' });
+      }, { onConflict: 'subscription_id' });
 
     if (syncError) {
-      console.error('stripe-webhook: stripe_subscriptions upsert error:', syncError.message);
+      console.warn('stripe-webhook: stripe_subscriptions upsert error (non-fatal):', syncError.message);
     }
 
     // Convert Unix timestamps to ISO for the subscriptions table
