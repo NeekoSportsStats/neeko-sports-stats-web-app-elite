@@ -17,7 +17,7 @@ import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
 import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
-import { fmt, fmtPrice, getConfidenceColor } from "@/features/afl/rankings/components/helpers";
+import { fmt, fmtPrice, getCanonicalConfidenceStyles, formatCanonicalConfidenceLabel } from "@/features/afl/rankings/components/helpers";
 import { PlayerDetailModal, UpgradeModal } from "@/features/afl/rankings/components/RankingsModals";
 import type { RowTier } from "@/features/afl/rankings/components/types";
 import { classifyPlayers, type DerivedPlayer } from "./engine";
@@ -205,7 +205,7 @@ function PlayerTableRow({
       ? (valueScore >= 0 ? "text-green-400" : "text-red-400")
       : "text-white/25";
 
-  const conf = player.projection_confidence ?? null;
+  const confLabel = player.confidence_label ?? null;
 
   const why = player.why ?? null;
 
@@ -236,10 +236,11 @@ function PlayerTableRow({
             <div className="text-[9px] text-white/25">value</div>
           </div>
         )}
-        {conf != null && (
+        {confLabel != null && (
           <div>
-            <div className={`text-xs font-bold tabular-nums ${getConfidenceColor(conf)}`}>{fmt(conf, 0)}%</div>
-            <div className="text-[9px] text-white/25">conf</div>
+            <span className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-semibold ${getCanonicalConfidenceStyles(confLabel)}`}>
+              {formatCanonicalConfidenceLabel(confLabel)}
+            </span>
           </div>
         )}
       </div>
@@ -419,7 +420,12 @@ export default function MarketWatchPageElite() {
 
     return byTab
       .filter((p) => {
-        if (selectedPosition && (p.position ?? "").toUpperCase().trim() !== selectedPosition) return false;
+        if (selectedPosition) {
+          const rawPos = (p.position ?? "").toUpperCase().trim();
+          const POS_MAP: Record<string, string> = { MIDFIELDER: "MID", FORWARD: "FWD", DEFENDER: "DEF", RUCK: "RUC" };
+          const normPos = POS_MAP[rawPos] ?? rawPos;
+          if (normPos !== selectedPosition) return false;
+        }
         if (priceMin != null && (p.price ?? 0) < priceMin * 1000) return false;
         if (priceMax != null && (p.price ?? 0) > priceMax * 1000) return false;
         if (searchQuery.length >= 2 && !p.player_name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
@@ -436,7 +442,7 @@ export default function MarketWatchPageElite() {
     return {
       targets: buys.slice(0, isPremium ? 999 : FREE_LIMIT),
       options: holds.slice(0, isPremium ? 999 : Math.max(0, FREE_LIMIT - buys.length)),
-      risks: sells.slice(0, 0),
+      risks: sells.slice(0, isPremium ? 999 : 0),
     };
   }, [activeTab, buys, holds, sells, isPremium, selectedPosition, priceMin, priceMax, searchQuery]);
 

@@ -32,12 +32,12 @@ function isEligible(p: RankingRow): boolean {
 
 function hasPositiveSignal(p: RankingRow): boolean {
   const ac = (p.action_canonical ?? "").toUpperCase();
-  return ac === "START";
+  return ac === "START" || ac === "SMASH_START" || ac === "STRONG_START";
 }
 
 function hasNegativeSignal(p: RankingRow): boolean {
   const ac = (p.action_canonical ?? "").toUpperCase();
-  return ac === "SIT";
+  return ac === "SIT" || ac === "HARD_SIT";
 }
 
 export function buildCurrentRoundPlayers(
