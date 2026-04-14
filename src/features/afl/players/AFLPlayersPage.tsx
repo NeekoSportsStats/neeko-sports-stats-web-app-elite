@@ -57,16 +57,17 @@ function fmt(val: number | null | undefined, decimals = 0): string {
 }
 
 function fmtPrice(val: number | null | undefined): string {
-  if (val == null) return "—";
-  return `$${(val / 1000).toFixed(0)}k`;
+  if (val == null || val === 0) return "—";
+  if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(3)}M`;
+  return `$${Math.floor(val / 1000)}K`;
 }
 
 function actionColor(action: string | null): string {
   if (!action) return "rgba(255,255,255,0.28)";
   const a = action.toLowerCase();
-  if (a.includes("buy") || a.includes("target") || a.includes("breakout")) return "#22c55e";
-  if (a.includes("sell") || a.includes("avoid") || a.includes("trap"))     return "#ef4444";
-  if (a.includes("hold") || a.includes("watch"))                            return "#F5C84C";
+  if (a.includes("strong start") || a.includes("start")) return "#10b981";
+  if (a.includes("sit") || a.includes("hard sit"))        return "#f59e0b";
+  if (a.includes("hold"))                                  return "rgba(255,255,255,0.50)";
   return "rgba(255,255,255,0.50)";
 }
 
@@ -123,31 +124,18 @@ function TeamCard({ team }: { team: TeamEntry }) {
   );
 }
 
-function LockedRow() {
+// ─── Blurred premium cell ───────────────────────────────────────────────────
+
+function BlurredCell({ children }: { children: React.ReactNode }) {
   return (
-    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-      <td style={{ padding: "10px 12px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Lock size={12} style={{ color: "rgba(245,200,76,0.40)", flexShrink: 0 }} />
-          <div style={{ width: 90, height: 10, borderRadius: 4, background: "rgba(255,255,255,0.06)" }} />
-        </div>
-      </td>
-      <td style={{ padding: "10px 12px" }}>
-        <div style={{ width: 60, height: 10, borderRadius: 4, background: "rgba(255,255,255,0.04)" }} />
-      </td>
-      <td style={{ padding: "10px 12px" }}>
-        <div style={{ width: 30, height: 10, borderRadius: 4, background: "rgba(255,255,255,0.04)" }} />
-      </td>
-      <td style={{ padding: "10px 12px" }}>
-        <div style={{ width: 44, height: 10, borderRadius: 4, background: "rgba(255,255,255,0.04)" }} />
-      </td>
-      <td style={{ padding: "10px 12px" }}>
-        <div style={{ width: 36, height: 10, borderRadius: 4, background: "rgba(255,255,255,0.04)" }} />
-      </td>
-      <td style={{ padding: "10px 12px" }}>
-        <div style={{ width: 50, height: 10, borderRadius: 4, background: "rgba(255,255,255,0.04)" }} />
-      </td>
-    </tr>
+    <span style={{
+      filter: "blur(5px)",
+      userSelect: "none",
+      pointerEvents: "none",
+      opacity: 0.5,
+    }}>
+      {children}
+    </span>
   );
 }
 
@@ -178,7 +166,7 @@ export default function AFLPlayersPage() {
       const { data, error: fetchErr } = await supabase.rpc("get_rankings_safe", {
         p_user_id: userId,
         p_is_bot: false,
-        p_limit: isPremium ? 700 : 100,
+        p_limit: 700,
       } as any);
 
       if (fetchErr) {
@@ -214,8 +202,8 @@ export default function AFLPlayersPage() {
     }
 
     out = [...out].sort((a, b) => {
-      let av: string | number | null = null;
-      let bv: string | number | null = null;
+      let av: string | number = "";
+      let bv: string | number = "";
 
       if (sortBy === "player_name") {
         av = a.player_name ?? "";
@@ -227,9 +215,6 @@ export default function AFLPlayersPage() {
         av = a.price ?? -Infinity;
         bv = b.price ?? -Infinity;
       }
-
-      if (av === null || av === undefined) av = "";
-      if (bv === null || bv === undefined) bv = "";
 
       let cmp = 0;
       if (typeof av === "string" && typeof bv === "string") {
@@ -254,13 +239,36 @@ export default function AFLPlayersPage() {
   }, [sortBy]);
 
   const totalCount = rows.length;
-  const freeCount  = rows.filter(r => r.access_tier !== "locked").length;
+
+  const pageUrl = "https://neekostats.com.au/sports/afl/players";
+  const pageTitle = "AFL Fantasy Players Directory 2026 | Neeko";
+  const pageDescription = "Browse every AFL Fantasy player for the 2026 season. Search by name, filter by team or position, and jump to player detail pages for projections, signals and AI analysis.";
+
+  const breadcrumbJsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
+      { "@type": "ListItem", "position": 2, "name": "AFL Fantasy Players", "item": pageUrl },
+    ],
+  });
 
   return (
     <>
       <Helmet>
-        <title>AFL Fantasy Players Directory 2026 | Neeko</title>
-        <meta name="description" content="Browse every AFL Fantasy player for the 2026 season. Search by name, filter by team or position, and jump to player detail pages." />
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDescription} />
+        <link rel="canonical" href={pageUrl} />
+        <meta name="robots" content="index, follow" />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDescription} />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={pageUrl} />
+        <meta property="og:site_name" content="Neeko Sports" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+        <script type="application/ld+json">{breadcrumbJsonLd}</script>
       </Helmet>
 
       <div style={{
@@ -469,11 +477,11 @@ export default function AFLPlayersPage() {
           }}>
             <Crown size={13} style={{ color: "#F5C84C", flexShrink: 0 }} />
             <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.50)", lineHeight: 1.4 }}>
-              Showing <strong style={{ color: "rgba(255,255,255,0.75)" }}>{freeCount} players</strong> with full data.{" "}
+              Projections and signals are blurred for non-subscribers.{" "}
               <Link to="/neeko-plus" style={{ color: "#F5C84C", textDecoration: "none", fontWeight: 700 }}>
                 Upgrade to Neeko+
               </Link>{" "}
-              to unlock all {totalCount}+ players with projections, action signals, and AI breakdowns.
+              to unlock full data for all {totalCount}+ players.
             </p>
           </div>
         )}
@@ -536,7 +544,12 @@ export default function AFLPlayersPage() {
                       dir={sortDir}
                       onClick={handleSort}
                     />
-                    <th style={thStyle}>Signal</th>
+                    <th style={thStyle}>
+                      Signal
+                      {!isPremium && (
+                        <Lock size={10} style={{ marginLeft: 4, color: "rgba(245,200,76,0.50)", verticalAlign: "middle" }} />
+                      )}
+                    </th>
                   </tr>
                 </thead>
 
@@ -550,14 +563,9 @@ export default function AFLPlayersPage() {
                   )}
 
                   {filtered.map((row, idx) => {
-                    const isLocked = row.access_tier === "locked";
-
-                    if (isLocked) {
-                      return <LockedRow key={row.player_id ?? `locked-${idx}`} />;
-                    }
-
-                    const slug   = playerToSlug(row.player_name, row.team_name ?? row.team);
-                    const action = row.action_display ?? row.action_canonical ?? null;
+                    const isLocked = !isPremium && row.access_tier === "locked";
+                    const slug     = playerToSlug(row.player_name, row.team_name ?? row.team);
+                    const action   = row.action_display ?? row.action_canonical ?? null;
                     const teamShort = AFL_TEAMS.find(t => t.name === (row.team_name ?? row.team))?.shortName
                                    ?? (row.team_name ?? row.team ?? "—");
 
@@ -572,7 +580,7 @@ export default function AFLPlayersPage() {
                         onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
                         onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                       >
-                        {/* Player name */}
+                        {/* Player name — always visible */}
                         <td style={{ padding: "10px 12px 10px 14px" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
                             <Link
@@ -596,14 +604,14 @@ export default function AFLPlayersPage() {
                           </div>
                         </td>
 
-                        {/* Team */}
+                        {/* Team — always visible */}
                         <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
                           <span style={{ fontSize: 12, color: "rgba(255,255,255,0.42)", fontWeight: 500 }}>
                             {teamShort}
                           </span>
                         </td>
 
-                        {/* Position */}
+                        {/* Position — always visible */}
                         <td style={{ padding: "10px 12px" }}>
                           <span style={{
                             fontSize: 11,
@@ -615,27 +623,39 @@ export default function AFLPlayersPage() {
                           </span>
                         </td>
 
-                        {/* Price */}
+                        {/* Price — always visible */}
                         <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
                           <span style={{ fontSize: 12.5, fontWeight: 600, color: "rgba(255,255,255,0.65)" }}>
                             {fmtPrice(row.price)}
                           </span>
                         </td>
 
-                        {/* Projection */}
+                        {/* Projection — blurred for locked free rows */}
                         <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
-                          <span style={{
-                            fontSize: 13,
-                            fontWeight: 700,
-                            color: row.projection != null ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.25)",
-                          }}>
-                            {fmt(row.projection)}
-                          </span>
+                          {isLocked ? (
+                            <BlurredCell>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.88)" }}>
+                                {fmt(row.projection ?? 80)}
+                              </span>
+                            </BlurredCell>
+                          ) : (
+                            <span style={{
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: row.projection != null ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.25)",
+                            }}>
+                              {fmt(row.projection)}
+                            </span>
+                          )}
                         </td>
 
-                        {/* Action signal */}
+                        {/* Signal — blurred for locked free rows */}
                         <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
-                          {action ? (
+                          {isLocked ? (
+                            <BlurredCell>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: "#10b981" }}>Start</span>
+                            </BlurredCell>
+                          ) : action ? (
                             <span style={{
                               fontSize: 11,
                               fontWeight: 700,
@@ -652,8 +672,8 @@ export default function AFLPlayersPage() {
                     );
                   })}
 
-                  {/* Locked upgrade row at bottom for free users */}
-                  {!isPremium && rows.some(r => r.access_tier === "locked") && (
+                  {/* Upgrade CTA row for free users */}
+                  {!isPremium && (
                     <tr style={{ background: "rgba(245,200,76,0.03)" }}>
                       <td colSpan={6} style={{ padding: "16px 14px", textAlign: "center" }}>
                         <Link
@@ -672,7 +692,7 @@ export default function AFLPlayersPage() {
                             border: "1px solid rgba(245,200,76,0.22)",
                           }}
                         >
-                          <Crown size={13} /> Unlock all players with Neeko+
+                          <Crown size={13} /> Unlock full projections and signals with Neeko+
                         </Link>
                       </td>
                     </tr>

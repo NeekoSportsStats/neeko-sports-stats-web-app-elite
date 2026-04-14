@@ -19,6 +19,19 @@ export const slugToName = (slug: string): string => {
     .join(' ');
 };
 
+const TEAM_SUFFIXES = new Set(
+  Object.values(TEAM_SLUGS).map(s => s.replace(/^(.*?)-.*/, '$1'))
+);
+
+export const slugToPlayerName = (slug: string): string => {
+  const parts = slug.split('-');
+  const lastPart = parts[parts.length - 1];
+  const stripped = TEAM_SUFFIXES.has(lastPart) ? parts.slice(0, -1) : parts;
+  return stripped
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 export const TEAM_SLUGS: Record<string, string> = {
   'Adelaide Crows': 'adelaide-crows',
   'Brisbane Lions': 'brisbane-lions',

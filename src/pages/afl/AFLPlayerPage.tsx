@@ -6,7 +6,7 @@ import {
   Zap, ChartBar as BarChart2, Star, CircleAlert as AlertCircle,
   Lock, Users, GitCompare, ChevronDown, ChevronUp,
 } from 'lucide-react';
-import { slugToName, nameToSlug, POSITION_SLUGS, POSITION_NAMES, TEAM_SLUG_TO_NAME } from '@/lib/slugs';
+import { slugToPlayerName, playerToSlug, POSITION_SLUGS, POSITION_NAMES, TEAM_SLUG_TO_NAME } from '@/lib/slugs';
 import { getPlayerDetailSafe, getSimilarPlayersSafe } from '@/lib/playerAccess';
 import { useAuth } from '@/lib/auth';
 import { useAccessState } from '@/hooks/useAccessState';
@@ -145,7 +145,7 @@ function FormChip({ avg3, seasonAvg }: { avg3: number | null; seasonAvg: number 
 }
 
 function SimilarPlayerRow({ player }: { player: SimilarPlayer }) {
-  const slug = nameToSlug(player.player_name);
+  const slug = playerToSlug(player.player_name, player.team ?? undefined);
   const ac = (player.action_canonical ?? 'HOLD').toUpperCase();
   const badgeCls =
     ac === 'START' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
@@ -302,7 +302,7 @@ export default function AFLPlayerPage() {
   const { user } = useAuth();
   const { isPremium } = useAccessState();
 
-  const playerName = useMemo(() => (slug ? slugToName(slug) : ''), [slug]);
+  const playerName = useMemo(() => (slug ? slugToPlayerName(slug) : ''), [slug]);
 
   const [player, setPlayer] = useState<PlayerData | null>(null);
   const [similar, setSimilar] = useState<SimilarPlayer[]>([]);
