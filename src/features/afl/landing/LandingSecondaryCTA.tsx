@@ -94,14 +94,14 @@ export default function LandingSecondaryCTA() {
             fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em",
             textTransform: "uppercase",
             color: "rgba(224,174,45,0.65)",
-            margin: "0 0 12px",
+            margin: "0 0 8px",
           }}>
             Why People Stay
           </p>
           <h2 style={{
             fontSize: "clamp(1.5rem, 2.6vw, 2.2rem)",
             fontWeight: 900, letterSpacing: "-0.03em",
-            color: "#F5F5F5", lineHeight: 1.1,
+            color: "#F5F5F5", lineHeight: 1.2,
             margin: 0,
           }}>
             Why Serious Coaches Keep Coming Back

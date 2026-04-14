@@ -48,21 +48,11 @@ export default function LandingFinalCTA() {
 
         <p style={{
           fontSize: "clamp(13px, 0.95vw, 15px)",
-          color: "rgba(255,255,255,0.38)",
-          lineHeight: 1.6, maxWidth: 480,
-          margin: "0 auto 16px",
-        }}>
-          Real projections, live price data, and AI breakdowns — everything you need before lockout, in one place.
-        </p>
-
-        <p style={{
-          fontSize: 12, fontWeight: 700,
-          color: "rgba(224,174,45,0.55)",
-          letterSpacing: "0.06em",
-          textTransform: "uppercase",
+          color: "rgba(255,255,255,0.40)",
+          lineHeight: 1.6, maxWidth: 420,
           margin: "0 auto 36px",
         }}>
-          Your edge starts this round.
+          Projections, prices, trade signals, and captain picks — all in one place, before lockout.
         </p>
 
         <div style={{
@@ -79,21 +69,21 @@ export default function LandingFinalCTA() {
               display: "inline-flex", alignItems: "center", gap: 10,
               background: "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
               color: "#130c00",
-              fontWeight: 900, fontSize: "clamp(13px, 1vw, 15px)",
-              padding: "15px 36px",
-              borderRadius: 12,
+              fontWeight: 900, fontSize: "clamp(14px, 1vw, 16px)",
+              padding: "16px 40px",
+              borderRadius: 10,
               textDecoration: "none",
               letterSpacing: "0.01em",
               boxShadow: primaryActive
                 ? "0 4px 16px rgba(224,174,45,0.22), 0 2px 6px rgba(0,0,0,0.60)"
                 : primaryHovered
-                  ? "0 14px 48px rgba(224,174,45,0.40), 0 4px 12px rgba(0,0,0,0.60)"
-                  : "0 8px 36px rgba(224,174,45,0.28), 0 4px 12px rgba(0,0,0,0.55)",
-              transform: primaryActive ? "translateY(0) scale(0.985)" : primaryHovered ? "translateY(-2px) scale(1.01)" : "translateY(0) scale(1)",
+                  ? "0 16px 52px rgba(224,174,45,0.45), 0 4px 12px rgba(0,0,0,0.60)"
+                  : "0 10px 40px rgba(224,174,45,0.32), 0 4px 12px rgba(0,0,0,0.55)",
+              transform: primaryActive ? "translateY(0) scale(0.985)" : primaryHovered ? "translateY(-3px) scale(1.01)" : "translateY(0) scale(1)",
               transition: "all 0.18s cubic-bezier(0.22,1,0.36,1)",
             }}
           >
-            Start Winning With Neeko+ <ArrowRight size={15} />
+            Start Winning With Neeko+ <ArrowRight size={16} />
           </Link>
 
           <Link
@@ -109,7 +99,7 @@ export default function LandingFinalCTA() {
               WebkitBackdropFilter: "blur(8px)",
               border: `1px solid ${secondaryHovered ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.10)"}`,
               color: secondaryHovered ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.55)",
-              fontWeight: 600, fontSize: "clamp(12px, 0.88vw, 14px)",
+              fontWeight: 700, fontSize: "clamp(12px, 0.88vw, 14px)",
               padding: "13px 28px",
               borderRadius: 10,
               textDecoration: "none",

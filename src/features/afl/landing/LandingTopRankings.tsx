@@ -29,12 +29,12 @@ export default function LandingTopRankings({ loading, rows }: Props) {
   return (
     <section style={{ background: "#05070A", padding: "clamp(80px, 7vw, 120px) clamp(20px, 5vw, 40px)" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <div style={{ marginBottom: 32 }}>
-          <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(224,174,45,0.60)", marginBottom: 10 }}>Rankings Depth</p>
-          <h2 style={{ fontSize: "clamp(1.6rem, 3vw, 2.4rem)", fontWeight: 900, letterSpacing: "-0.03em", color: "#F5F5F5", lineHeight: 1.1, marginBottom: 10 }}>
+        <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <p style={{ fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(224,174,45,0.60)", margin: "0 0 8px" }}>Rankings Depth</p>
+          <h2 style={{ fontSize: "clamp(1.5rem, 2.6vw, 2.2rem)", fontWeight: 900, letterSpacing: "-0.03em", color: "#F5F5F5", lineHeight: 1.2, margin: "0 0 8px" }}>
             630+ Players Ranked. Every Position. Every Round.
           </h2>
-          <p style={{ fontSize: 14, color: "#606060", maxWidth: 520, lineHeight: 1.65 }}>
+          <p style={{ fontSize: "clamp(12px, 0.90vw, 14px)", color: "rgba(255,255,255,0.38)", maxWidth: 520, margin: "0 auto", lineHeight: 1.55 }}>
             Not just the top 50. Every relevant player — ranked by projection, value, and form signal.
           </p>
         </div>
@@ -165,21 +165,21 @@ export default function LandingTopRankings({ loading, rows }: Props) {
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 7,
-                  background: "#E0AE2D",
-                  color: "#1a0900",
+                  gap: 8,
+                  background: "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
+                  color: "#130c00",
                   fontWeight: 800,
                   fontSize: 13,
-                  padding: "11px 22px",
-                  borderRadius: 8,
+                  padding: "13px 24px",
+                  borderRadius: 10,
                   textDecoration: "none",
-                  boxShadow: "0 4px 20px rgba(224,174,45,0.30)",
+                  boxShadow: "0 6px 24px rgba(224,174,45,0.28)",
                   letterSpacing: "0.02em",
                   whiteSpace: "nowrap",
                   flexShrink: 0,
                 }}
               >
-                Unlock Full Weekly Rankings <ArrowRight size={13} />
+                Unlock Full Rankings <ArrowRight size={13} />
               </Link>
             </div>
           )}
