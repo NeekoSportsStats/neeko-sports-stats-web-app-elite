@@ -22,12 +22,12 @@ const SECTIONS = [
         </p>
         <div className="space-y-3">
           <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
-            <p className="text-sm font-bold text-white mb-1">Monthly — ${NEEKO_PRICING.monthly.price} / month</p>
-            <p className="text-sm text-white/40">Billed monthly. Automatically renews unless cancelled before the next billing date.</p>
+            <p className="text-sm font-bold text-white mb-1">Season Pass — ${NEEKO_PRICING.season.price} AUD</p>
+            <p className="text-sm text-white/40">One-time payment. Full access for the entire 2026 AFL season. No recurring charges.</p>
           </div>
           <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
-            <p className="text-sm font-bold text-white mb-1">Yearly — ${NEEKO_PRICING.yearly.price} / year</p>
-            <p className="text-sm text-white/40">Billed annually. Automatically renews unless cancelled before the next billing date.</p>
+            <p className="text-sm font-bold text-white mb-1">Weekly — ${NEEKO_PRICING.weekly.price} AUD / week</p>
+            <p className="text-sm text-white/40">Billed weekly via Stripe. Automatically renews unless cancelled before the next billing date.</p>
           </div>
         </div>
         <p className="text-white/30 text-sm mt-4">
@@ -63,12 +63,12 @@ const SECTIONS = [
         </p>
         <div className="space-y-3 mb-4">
           <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
-            <p className="text-sm font-bold text-white mb-1">Monthly plan — 7-day refund window</p>
-            <p className="text-sm text-white/40">Requests submitted within 7 days of the charge are eligible for review. After 7 days, the subscription remains active until renewal with no refund.</p>
+            <p className="text-sm font-bold text-white mb-1">Season Pass — 14-day refund window</p>
+            <p className="text-sm text-white/40">Requests submitted within 14 days of purchase are eligible for review. After 14 days, access remains active until end of season with no refund.</p>
           </div>
           <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
-            <p className="text-sm font-bold text-white mb-1">Yearly plan — 14-day refund window</p>
-            <p className="text-sm text-white/40">Requests submitted within 14 days of the annual charge are eligible for review. After 14 days, the subscription remains active until renewal with no refund.</p>
+            <p className="text-sm font-bold text-white mb-1">Weekly plan — 7-day refund window</p>
+            <p className="text-sm text-white/40">Requests submitted within 7 days of the charge are eligible for review. After 7 days, the subscription remains active until renewal with no refund.</p>
           </div>
         </div>
         <p className="text-white/40 text-sm leading-relaxed mb-3">Outside the refund window, refund requests may still be reviewed for:</p>

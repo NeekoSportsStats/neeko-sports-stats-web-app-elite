@@ -20,7 +20,7 @@ const FAQ_SCHEMA_ITEMS = [
   { q: "Are projections guaranteed?", a: "No. Projections are model outputs based on historical and current data. They represent likely ranges, not certainties. AFL is inherently variable." },
   { q: "Why don't all players have AI analysis?", a: "AI analysis requires a minimum data threshold. Players with limited game history may not have enough data for the model to generate a reliable output." },
   { q: "What does Neeko+ include?", a: "Neeko+ unlocks the full player pool across all rankings, captain recommendations, breakout and trap boards, AI-generated player analysis, and detailed projection data. Free access covers a limited subset of players." },
-  { q: "How much does Neeko+ cost?", a: `Neeko+ is available in two subscription options: Monthly at $${NEEKO_PRICING.monthly.price} AUD per month, or Yearly at $${NEEKO_PRICING.yearly.price} AUD per year (save ${NEEKO_PRICING.savingsPercent}% compared to monthly). Your subscription includes full access to all premium features. Subscriptions renew automatically and can be cancelled anytime.` },
+  { q: "How much does Neeko+ cost?", a: `Neeko+ is available in two options: Season Pass at $${NEEKO_PRICING.season.price} AUD (one-time payment, full season access), or Weekly at $${NEEKO_PRICING.weekly.price} AUD per week (cancel anytime). Both options include full access to all premium features.` },
   { q: "Can I cancel anytime?", a: "Yes. Cancel from your account settings at any time. Access continues until the end of the current billing period." },
   { q: "Can I use Neeko+ across multiple devices?", a: "Yes. Your subscription is tied to your account. Log in from any device to access it." },
   { q: "Are refunds available?", a: "Refund requests are reviewed on a case-by-case basis. Refer to the Refund Policy for full details." },
@@ -33,19 +33,19 @@ const FAQ_SCHEMA_ITEMS = [
 
 const PRICING_ANSWER = (
   <div className="space-y-4">
-    <p>Neeko+ is available in two subscription options:</p>
+    <p>Neeko+ is available in two options:</p>
     <div className="space-y-2">
       <div>
-        <p className="font-semibold text-white/70">Monthly</p>
-        <p>${NEEKO_PRICING.monthly.price} AUD per month</p>
+        <p className="font-semibold text-white/70">Season Pass — ${NEEKO_PRICING.season.price} AUD</p>
+        <p>One-time payment. Full access for the entire 2026 AFL season.</p>
       </div>
       <div>
-        <p className="font-semibold text-white/70">Yearly</p>
-        <p>${NEEKO_PRICING.yearly.price} AUD per year <span className="text-[#F5C84C]">(Save {NEEKO_PRICING.savingsPercent}% compared to monthly)</span></p>
+        <p className="font-semibold text-white/70">Weekly — ${NEEKO_PRICING.weekly.price} AUD/week</p>
+        <p>Recurring weekly subscription. Cancel anytime from your account.</p>
       </div>
     </div>
     <div>
-      <p className="mb-2">Your subscription includes full access to:</p>
+      <p className="mb-2">Both options include full access to:</p>
       <ul className="space-y-1 list-none">
         {[
           "Complete rankings table",
@@ -62,7 +62,6 @@ const PRICING_ANSWER = (
         ))}
       </ul>
     </div>
-    <p>Subscriptions renew automatically and can be cancelled anytime.</p>
   </div>
 );
 

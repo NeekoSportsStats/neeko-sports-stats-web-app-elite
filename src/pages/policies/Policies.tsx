@@ -22,7 +22,7 @@ const POLICIES = [
   },
   {
     title: "Refund Policy",
-    description: "Monthly and yearly plan refund windows and billing terms",
+    description: "Season Pass and Weekly plan refund windows and billing terms",
     icon: DollarSign,
     url: "/refund-policy",
   },

@@ -564,10 +564,10 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
             <div>
               <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.32em", textTransform: "uppercase", color: "#E0AE2D", marginBottom: 6 }}>Neeko+</p>
               <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                <span style={{ fontSize: 36, fontWeight: 900, color: "#E0AE2D", letterSpacing: "-0.04em" }}>${NEEKO_PRICING.yearly.monthlyEquivalent}</span>
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.30)" }}>/mo</span>
+                <span style={{ fontSize: 36, fontWeight: 900, color: "#E0AE2D", letterSpacing: "-0.04em" }}>${NEEKO_PRICING.season.price}</span>
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.30)" }}> one-time</span>
               </div>
-              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginTop: 3 }}>Billed ${NEEKO_PRICING.yearly.price}/yr · Save {NEEKO_PRICING.savingsPercent}%</p>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginTop: 3 }}>Full season access · No recurring charges</p>
             </div>
             <span style={{ fontSize: 8, fontWeight: 900, background: "#E0AE2D", color: "#1a0900", padding: "3px 8px", borderRadius: 5, letterSpacing: "0.08em", whiteSpace: "nowrap" }}>BEST VALUE</span>
           </div>
@@ -598,7 +598,7 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
           </Link>
 
           <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", textAlign: "center", marginTop: 10 }}>
-            Monthly ${NEEKO_PRICING.monthly.price}/mo · Cancel anytime
+            Or Weekly ${NEEKO_PRICING.weekly.price}/wk · Cancel anytime
           </p>
         </div>
       </section>
@@ -649,7 +649,7 @@ export default function MobileLanding({ loading, topRows, cards, showSkeleton, i
         }}>
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: 12, fontWeight: 800, color: "#E0AE2D", marginBottom: 1 }}>Start Winning With Neeko+</p>
-            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)" }}>From ${NEEKO_PRICING.yearly.monthlyEquivalent}/mo</p>
+            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)" }}>From ${NEEKO_PRICING.weekly.price}/wk</p>
           </div>
           <Link to="/neeko-plus" style={{
             display: "flex", alignItems: "center", gap: 6,
