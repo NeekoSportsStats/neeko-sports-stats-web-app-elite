@@ -4,20 +4,20 @@ import { Clock, Target, Layers } from "lucide-react";
 const POINTS = [
   {
     icon: <Clock size={20} />,
-    title: "Faster Decisions",
-    desc: "Know what to do in minutes, not hours.",
+    title: "Decide in seconds, not hours",
+    desc: "Rankings, market signals, and captain picks load instantly — your whole week sorted before kickoff.",
     color: "#E0AE2D",
   },
   {
     icon: <Target size={20} />,
-    title: "Clearer Calls",
-    desc: "Remove guesswork from trades and captains.",
-    color: "#34d170",
+    title: "Win more trades than you lose",
+    desc: "Value gaps and breakeven data tell you exactly who to target and who to avoid every single round.",
+    color: "#22c55e",
   },
   {
     icon: <Layers size={20} />,
-    title: "One Place",
-    desc: "Everything you need — no jumping between tools.",
+    title: "Stop second-guessing your captain",
+    desc: "Confidence-scored picks with matchup context — lock in your captain before your competition does.",
     color: "#60a5fa",
   },
 ];
@@ -104,7 +104,7 @@ export default function LandingSecondaryCTA() {
             color: "#F5F5F5", lineHeight: 1.1,
             margin: 0,
           }}>
-            Why Coaches Come Back Every Week
+            Why Serious Coaches Keep Coming Back
           </h2>
         </div>
 

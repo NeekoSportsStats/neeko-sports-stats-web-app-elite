@@ -5,36 +5,36 @@ const STATS = [
     icon: <Database size={20} />,
     num: "600+",
     label: "Players Ranked",
-    sub: "Every relevant AFL Fantasy player covered, every round.",
+    sub: "Every relevant AFL Fantasy player — not just the top tier.",
     color: "#E0AE2D",
-  },
-  {
-    icon: <RefreshCw size={20} />,
-    num: "Weekly",
-    label: "Data Updates",
-    sub: "Fresh projections and pricing before every lockout.",
-    color: "#34d170",
   },
   {
     icon: <TrendingUp size={20} />,
     num: "Live",
     label: "Value Gaps",
-    sub: "See who's underpriced and who's a trap — right now.",
-    color: "#60a5fa",
+    sub: "Underpriced players and trap alerts generated from real pricing data.",
+    color: "#22c55e",
   },
   {
     icon: <Target size={20} />,
     num: "Built In",
     label: "Matchup Context",
-    sub: "Opponent concession and venue data in every projection.",
+    sub: "Opponent concession rates and venue splits baked into every projection.",
+    color: "#60a5fa",
+  },
+  {
+    icon: <RefreshCw size={20} />,
+    num: "±3 pts",
+    label: "Projection Accuracy",
+    sub: "Projections calibrated against real scores each round — not guesswork.",
     color: "#f87171",
   },
   {
     icon: <Zap size={20} />,
-    num: "30 sec",
-    label: "Decision Time",
-    sub: "Know what to do before your mates even open the app.",
-    color: "#a78bfa",
+    num: "6 Tools",
+    label: "One Subscription",
+    sub: "Rankings, Market Watch, Captains, Edge Board, Start/Sit, Player Pages.",
+    color: "#E0AE2D",
   },
 ];
 
@@ -58,15 +58,15 @@ export default function LandingTrust() {
             color: "#F5F5F5", lineHeight: 1.2,
             margin: "0 0 8px",
           }}>
-            Built for Weekly AFL Fantasy Decisions
+            What's Actually Under the Hood
           </h2>
           <p style={{
             fontSize: "clamp(12px, 0.85vw, 14px)",
             color: "rgba(255,255,255,0.38)",
-            maxWidth: 400, margin: "0 auto",
+            maxWidth: 420, margin: "0 auto",
             lineHeight: 1.5,
           }}>
-            Updated before every lockout using real player data and pricing.
+            Real data, real projections, real pricing — not recycled stats from a spreadsheet.
           </p>
         </div>
 

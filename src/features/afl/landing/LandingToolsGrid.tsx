@@ -5,44 +5,44 @@ const TOOLS = [
   {
     icon: <BarChart3 size={20} />,
     title: "Rankings",
-    desc: "630+ players ranked by projection, value, and form — every position, every round.",
+    desc: "630+ players ranked by projection, value, and form. Every position, every round.",
     to: "/sports/afl/rankings",
     color: "#E0AE2D",
   },
   {
     icon: <TrendingUp size={20} />,
     title: "Market Watch",
-    desc: "Trade signals, price changes, and breakeven tracking in one clean view.",
+    desc: "Trade signals, price gaps, and breakeven data in one view. Know who to move on.",
     to: "/sports/afl/market-watch",
     color: "#22C55E",
   },
   {
     icon: <Zap size={20} />,
     title: "Edge Board",
-    desc: "Must-have, breakout, and avoid lists from the ranking engine each round.",
+    desc: "Must-start, breakout, and avoid picks — distilled from the full ranking engine.",
     to: "/sports/afl/current-round",
     color: "#60A5FA",
   },
   {
     icon: <GitCompare size={20} />,
     title: "Start / Sit",
-    desc: "Head-to-head AI decisions for your toughest selection dilemmas.",
+    desc: "Two players. One answer. Head-to-head decisions before every lockout.",
     to: "/sports/afl/start-sit",
     color: "#F87171",
   },
   {
     icon: <Star size={20} />,
     title: "Captain Picks",
-    desc: "Confidence-scored recommendations with matchup context, every round.",
+    desc: "Confidence-ranked captain options with matchup context. Lock in your double.",
     to: "/sports/afl/captains",
     color: "#E0AE2D",
   },
   {
     icon: <Users size={20} />,
     title: "Player Profiles",
-    desc: "Deep dive on any player — scores, matchups, projections, and AI summary.",
+    desc: "Score history, form trend, value rating, and AI breakdown for any player.",
     to: "/sports/afl/rankings",
-    color: "#A78BFA",
+    color: "#60a5fa",
   },
 ] as const;
 
@@ -53,10 +53,10 @@ export default function LandingToolsGrid() {
         <div style={{ textAlign: "center", marginBottom: 52 }}>
           <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.40em", textTransform: "uppercase", color: "rgba(224,174,45,0.60)", marginBottom: 14 }}>Neeko+</p>
           <h2 style={{ fontSize: "clamp(1.75rem, 3vw, 2.5rem)", fontWeight: 900, letterSpacing: "-0.03em", color: "#F5F5F5", lineHeight: 1.1, marginBottom: 14 }}>
-            Everything in One System
+            Every Tool. One Place.
           </h2>
           <p style={{ fontSize: 14, color: "#606060", maxWidth: 440, margin: "0 auto" }}>
-            One subscription. Every tool you need to win your AFL Fantasy league.
+            Six tools built for the same goal — giving you an edge before lockout.
           </p>
         </div>
 
@@ -88,7 +88,7 @@ export default function LandingToolsGrid() {
                     <h3 style={{ fontSize: 14.5, fontWeight: 800, color: "#EAEAEA", letterSpacing: "-0.01em" }}>{title}</h3>
                     <ChevronRight size={14} style={{ color: "#333", flexShrink: 0 }} />
                   </div>
-                  <p style={{ fontSize: 13, color: "#555", lineHeight: 1.6 }}>{desc}</p>
+                  <p style={{ fontSize: 13, color: "rgba(255,255,255,0.38)", lineHeight: 1.6 }}>{desc}</p>
                 </div>
               </div>
             </Link>

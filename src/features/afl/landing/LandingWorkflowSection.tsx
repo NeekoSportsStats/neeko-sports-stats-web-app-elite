@@ -151,7 +151,7 @@ export default function LandingWorkflowSection() {
             maxWidth: 360, margin: "0 auto",
             lineHeight: 1.5,
           }}>
-            Your weekly decisions — simplified.
+            Three tools. Three minutes. Done before anyone else locks in.
           </p>
         </div>
 
