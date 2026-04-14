@@ -15,7 +15,7 @@ export function Layout() {
 
         <div className="w-full flex flex-col">
           {/* HEADER */}
-          <header className="absolute top-3.5 left-0 right-0 z-40 w-full border-b border-transparent bg-transparent">
+          <header className="fixed top-0 left-0 right-0 z-40 w-full border-b border-transparent bg-background/80 backdrop-blur-sm">
             <div className="container flex h-14 items-center px-4">
               <SidebarTrigger className="mr-2 lg:mr-4" />
 
