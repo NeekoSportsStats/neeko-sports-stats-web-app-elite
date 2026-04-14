@@ -53,8 +53,10 @@ function ValueStrip({ rows }: { rows: RankingRow[] }) {
   }, null);
 
   const bestValue = top8.reduce<RankingRow | null>((best, r) => {
-    if (r.value_score == null) return best;
-    if (!best || r.value_score > (best.value_score ?? 0)) return r;
+    const score = (r as any).decision_score ?? r.value_score;
+    if (score == null) return best;
+    const bestScore = (best as any)?.decision_score ?? best?.value_score;
+    if (!best || score > (bestScore ?? 0)) return r;
     return best;
   }, null);
 
@@ -246,7 +248,7 @@ export default function AFLRankingsPage() {
   const [selected, setSelected] = useState<{ row: RankingRow; rank: number; tier: RowTier; isUnlocked: boolean } | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [ratingInfoOpen, setRatingInfoOpen] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey>("value_score");
+  const [sortKey, setSortKey] = useState<SortKey>("projection");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [updatedAt, setUpdatedAt] = useState<{ ts: string; round: string } | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -484,7 +486,7 @@ export default function AFLRankingsPage() {
             <div>
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">Player Rankings</h1>
               <p className="text-sm text-white/45 mt-1.5 max-w-lg leading-relaxed">
-                Reference tool — sorted by value score. Use alongside Market Watch and Current Round for trade decisions.
+                Full player rankings sorted by projected score. Use alongside Market Watch and Current Round for trade decisions.
               </p>
             </div>
             <div className="flex items-center gap-2 mt-1 shrink-0">

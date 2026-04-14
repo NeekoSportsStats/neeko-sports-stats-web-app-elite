@@ -26,9 +26,13 @@ import type { MWPlayerRow } from "./types";
 // ─── CONVERSION ──────────────────────────────────────────────────────────────
 
 function rankingToMW(r: RankingRow): MWPlayerRow {
-  const catRaw = (r.category ?? "").toLowerCase();
+  const acRaw = (r.action_canonical ?? r.category ?? "").toLowerCase();
   const displaySignal: "TARGET" | "WATCH" | "AVOID" =
-    catRaw === "target" ? "TARGET" : catRaw === "avoid" ? "AVOID" : "WATCH";
+    acRaw === "start" || acRaw === "smash_start" || acRaw === "strong_start" || acRaw === "target"
+      ? "TARGET"
+      : acRaw === "sit" || acRaw === "hard_sit" || acRaw === "avoid"
+      ? "AVOID"
+      : "WATCH";
   return {
     player_id: Number(r.player_id ?? 0),
     player_name: r.player_name,
@@ -45,13 +49,13 @@ function rankingToMW(r: RankingRow): MWPlayerRow {
     last_5_avg: null,
     games_played: r.games_played ?? null,
     breakeven: r.breakeven ?? null,
-    edge: r.edge ?? null,
+    edge: r.edge ?? r.edge_canonical ?? null,
     value_score: r.value_score ?? null,
     signal: r.signal ?? null,
     signal_tag: r.signal_tag ?? null,
     signal_display: r.signal_display ?? null,
     category: r.category ?? null,
-    action: r.action ?? null,
+    action: r.action ?? r.action_canonical ?? null,
     why: r.why ?? null,
     why_long: r.why_long ?? null,
     matchup_label: r.matchup_label ?? null,
@@ -66,6 +70,13 @@ function rankingToMW(r: RankingRow): MWPlayerRow {
     cached_at: r.cached_at ?? null,
     display_signal: displaySignal,
     access_tier: r.access_tier ?? "locked",
+    action_canonical: r.action_canonical ?? null,
+    action_display: r.action_display ?? null,
+    confidence_label: r.confidence_label ?? null,
+    value_band: r.value_band ?? null,
+    decision_score: r.decision_score ?? null,
+    action_reason_1: r.action_reason_1 ?? null,
+    action_reason_2: r.action_reason_2 ?? null,
   };
 }
 
@@ -179,15 +190,20 @@ function PlayerTableRow({
   const pos = (player.position ?? "").toUpperCase().trim();
   const normPos = pos === "MIDFIELDER" ? "MID" : pos === "FORWARD" ? "FWD" : pos === "DEFENDER" ? "DEF" : pos === "RUCK" ? "RUC" : pos;
 
-  const valuePct = player.value_score ?? null;
+  const valueBand = (player as any).value_band as string | null | undefined;
+  const valueScore = (player as any).decision_score ?? player.value_score ?? null;
+  const valuePct = valueScore;
+  const valueDisplay = valueBand ?? (valueScore != null ? valueScore.toFixed(2) : null);
   const valueColor =
-    valuePct == null
-      ? "text-white/25"
-      : valuePct >= 1.1
+    valueBand === "BUY" || valueBand === "STRONG_BUY"
       ? "text-green-400"
-      : valuePct >= 1.0
+      : valueBand === "SELL" || valueBand === "STRONG_SELL"
+      ? "text-red-400"
+      : valueBand === "HOLD"
       ? "text-white/60"
-      : "text-red-400";
+      : valueScore != null
+      ? (valueScore >= 0 ? "text-green-400" : "text-red-400")
+      : "text-white/25";
 
   const conf = player.projection_confidence ?? null;
 
@@ -214,9 +230,9 @@ function PlayerTableRow({
       </div>
 
       <div className="hidden md:flex items-center gap-4 shrink-0 text-right">
-        {valuePct != null && (
+        {valueDisplay != null && (
           <div>
-            <div className={`text-xs font-bold tabular-nums ${valueColor}`}>{valuePct.toFixed(2)}</div>
+            <div className={`text-xs font-bold tabular-nums ${valueColor}`}>{valueDisplay}</div>
             <div className="text-[9px] text-white/25">value</div>
           </div>
         )}
@@ -409,7 +425,7 @@ export default function MarketWatchPageElite() {
         if (searchQuery.length >= 2 && !p.player_name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
         return true;
       })
-      .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0));
+      .sort((a, b) => ((b as any).decision_score ?? b.value_score ?? 0) - ((a as any).decision_score ?? a.value_score ?? 0));
   }, [buys, holds, sells, activeTab, selectedPosition, priceMin, priceMax, searchQuery]);
 
   // ── GROUPED VIEW (ALL tab) ──────────────────────────────────────────────────
