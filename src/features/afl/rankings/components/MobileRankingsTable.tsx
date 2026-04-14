@@ -14,7 +14,6 @@ import {
   fmt,
   fmtPrice,
   getTrendWhyText,
-  getConfidenceColor,
   getValueScoreColor,
   fmtValueScore,
   getActionDisplayStyles,
@@ -169,32 +168,37 @@ function ActionBadge({ row, isPremium, onUpgrade }: { row: RankingRow; isPremium
 
 // ─── Confidence bar ────────────────────────────────────────────────────────────
 
+function deriveConfidenceLabel(pct: number): string {
+  if (pct >= 68) return "HIGH";
+  if (pct >= 50) return "MEDIUM";
+  return "LOW";
+}
+
 function ConfidenceBar({ row }: { row: RankingRow }) {
-  if (row.confidence_label) {
-    const cls = getCanonicalConfidenceStyles(row.confidence_label);
-    return (
-      <span className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-semibold ${cls}`}>
-        {formatCanonicalConfidenceLabel(row.confidence_label)}
-      </span>
-    );
-  }
-  const value = row.projection_confidence;
-  if (value == null) return <span className="text-xs text-white/20">—</span>;
-  const pct = Math.max(0, Math.min(100, value));
-  const color = getConfidenceColor(pct);
+  const rawLabel = row.confidence_label;
+  const pct = row.projection_confidence != null ? Math.max(0, Math.min(100, row.projection_confidence)) : null;
+
+  const label = rawLabel ?? (pct != null ? deriveConfidenceLabel(pct) : null);
+  if (!label) return <span className="text-xs text-white/20">—</span>;
+
+  const cls = getCanonicalConfidenceStyles(label);
   return (
-    <div className="flex items-center gap-1.5">
-      <span className={`text-[13px] font-semibold tabular-nums ${color}`}>{Math.round(pct)}%</span>
-      <div className="w-8 h-0.5 rounded-full bg-white/[0.07] overflow-hidden">
-        <div
-          className="h-full rounded-full"
-          style={{
-            width: `${pct}%`,
-            backgroundColor: pct >= 75 ? "#4ade80" : pct >= 55 ? "#F5C84C" : "#fb923c",
-            opacity: 0.7,
-          }}
-        />
-      </div>
+    <div className="flex flex-col gap-0.5" title={pct != null ? `${Math.round(pct)}%` : undefined}>
+      <span className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-semibold ${cls}`}>
+        {formatCanonicalConfidenceLabel(label)}
+      </span>
+      {pct != null && (
+        <div className="w-8 h-0.5 rounded-full bg-white/[0.07] overflow-hidden">
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${pct}%`,
+              backgroundColor: pct >= 68 ? "#4ade80" : pct >= 50 ? "#F5C84C" : "#fb923c",
+              opacity: 0.4,
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -256,9 +260,9 @@ function ExpandedSection({ row }: { row: RankingRow }) {
   const valueScore = !row.is_bye && row.value_score != null ? row.value_score : null;
   const proj = row.projection != null ? Math.round(row.projection) : null;
   const be = row.breakeven != null ? Math.round(row.breakeven) : null;
-  const conf = row.projection_confidence != null ? Math.round(row.projection_confidence) : null;
+  const confPct = row.projection_confidence != null ? Math.round(row.projection_confidence) : null;
+  const confLabel = row.confidence_label ?? (confPct != null ? deriveConfidenceLabel(confPct) : null);
   const price = row.price != null ? fmtPrice(row.price) : null;
-  const confColor = getConfidenceColor(conf);
   const aiText = row.why_long ?? row.why ?? null;
 
   return (
@@ -293,10 +297,12 @@ function ExpandedSection({ row }: { row: RankingRow }) {
 
       {/* Metrics grid */}
       <div className="grid grid-cols-3 gap-2 border-t border-white/[0.05] pt-3">
-        {conf != null && (
+        {confLabel != null && (
           <div className="flex flex-col gap-0.5">
             <span className="text-[10px] text-white/30">Confidence</span>
-            <span className={`text-[13px] font-bold tabular-nums ${confColor}`}>{conf}%</span>
+            <span className={`text-[12px] font-bold ${getCanonicalConfidenceStyles(confLabel).split(" ")[0]}`}>
+              {formatCanonicalConfidenceLabel(confLabel)}
+            </span>
           </div>
         )}
         {proj != null && !row.is_bye && (

@@ -6,7 +6,6 @@ import {
   fmtPrice,
   fmtValueScore,
   getTrendWhyText,
-  getConfidenceColor,
   getValueScoreColor,
   getActionDisplayStyles,
   getCanonicalConfidenceStyles,
@@ -42,34 +41,37 @@ function ActionBadge({ row, locked, onUpgrade }: { row: RankingRow; locked?: boo
 
 // ─── Confidence cell ───────────────────────────────────────────────────────────
 
+function deriveConfidenceLabel(pct: number): string {
+  if (pct >= 68) return "HIGH";
+  if (pct >= 50) return "MEDIUM";
+  return "LOW";
+}
+
 function ConfidenceCell({ row }: { row: RankingRow }) {
-  const label = row.confidence_label;
-  if (label) {
-    const cls = getCanonicalConfidenceStyles(label);
-    return (
+  const rawLabel = row.confidence_label;
+  const pct = row.projection_confidence != null ? Math.max(0, Math.min(100, row.projection_confidence)) : null;
+
+  const label = rawLabel ?? (pct != null ? deriveConfidenceLabel(pct) : null);
+  if (!label) return <span className="text-sm text-white/20">—</span>;
+
+  const cls = getCanonicalConfidenceStyles(label);
+  return (
+    <div className="flex flex-col items-center gap-1" title={pct != null ? `${Math.round(pct)}%` : undefined}>
       <span className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-semibold ${cls}`}>
         {formatCanonicalConfidenceLabel(label)}
       </span>
-    );
-  }
-
-  const value = row.projection_confidence;
-  if (value == null) return <span className="text-sm text-white/20">—</span>;
-  const pct = Math.max(0, Math.min(100, value));
-  const color = getConfidenceColor(pct);
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className={`text-sm font-semibold tabular-nums ${color}`}>{Math.round(pct)}%</span>
-      <div className="w-10 h-0.5 rounded-full bg-white/[0.07] overflow-hidden">
-        <div
-          className="h-full rounded-full"
-          style={{
-            width: `${pct}%`,
-            backgroundColor: pct >= 75 ? "#4ade80" : pct >= 55 ? "#F5C84C" : "#fb923c",
-            opacity: 0.7,
-          }}
-        />
-      </div>
+      {pct != null && (
+        <div className="w-10 h-0.5 rounded-full bg-white/[0.07] overflow-hidden">
+          <div
+            className="h-full rounded-full"
+            style={{
+              width: `${pct}%`,
+              backgroundColor: pct >= 68 ? "#4ade80" : pct >= 50 ? "#F5C84C" : "#fb923c",
+              opacity: 0.45,
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
