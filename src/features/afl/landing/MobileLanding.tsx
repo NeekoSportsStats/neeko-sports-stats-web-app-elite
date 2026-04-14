@@ -246,13 +246,13 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
             }}>
               Unlock This Week's Game Plan <ArrowRight size={15} />
             </Link>
-            <Link to="/sports/afl/current-round" style={{
+            <Link to="/sports/afl/market-watch" style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)",
               color: "rgba(255,255,255,0.78)", fontWeight: 700, fontSize: 14,
               padding: "12px 20px", borderRadius: 10, textDecoration: "none", minHeight: 44,
             }}>
-              View Free Picks
+              Open Market Watch
             </Link>
           </div>
 
@@ -667,12 +667,12 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
             }}>
               Unlock Full Access <ArrowRight size={16} />
             </Link>
-            <Link to="/sports/afl/rankings" style={{
+            <Link to="/sports/afl/market-watch" style={{
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 13, color: "rgba(255,255,255,0.30)", textDecoration: "none",
               padding: "12px", minHeight: 44,
             }}>
-              View free picks first
+              Open Market Watch first
             </Link>
           </div>
         </div>
