@@ -34,26 +34,11 @@ const Billing = () => {
 
   const loadSubscription = async () => {
     try {
-      // Resolve the stripe customer for this user
-      const { data: customer } = await supabase
-        .from("stripe_customers")
-        .select("customer_id")
-        .eq("user_id", user?.id)
-        .maybeSingle();
-
-      const customerId = customer?.customer_id;
-
-      if (!customerId) {
-        setSubscription(null);
-        setLoading(false);
-        return;
-      }
-
       const { data, error } = await supabase
-        .from("stripe_subscriptions")
+        .from("subscriptions")
         .select("*")
-        .eq("customer_id", customerId)
-        .order("created_at", { ascending: false })
+        .or(`profile_id.eq.${user?.id},user_id.eq.${user?.id}`)
+        .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
@@ -63,10 +48,10 @@ const Billing = () => {
         setSubscription({
           id: data.id,
           status: data.status,
-          current_period_end: data.current_period_end
-            ? new Date(data.current_period_end * 1000).toISOString()
-            : "",
+          current_period_end: data.current_period_end ?? "",
           cancel_at_period_end: data.cancel_at_period_end ?? false,
+          plan_name: data.plan_type === "weekly" ? "Neeko+ Weekly" : "Neeko+ Season Pass",
+          amount: data.plan_type === "weekly" ? 599 : 5900,
         });
       } else {
         setSubscription(null);

@@ -45,18 +45,30 @@ function isAllowedRedirectUrl(url: string): boolean {
   }
 }
 
+function isPlaceholderId(id: string): boolean {
+  if (!id) return true;
+  if (id.includes('placeholder')) return true;
+  if (!id.startsWith('price_') && !id.startsWith('prod_')) return true;
+  return false;
+}
+
 interface PlanConfig {
   price_id: string;
   interval: string;
+  plan_type: 'season' | 'weekly';
 }
 
 async function resolvePlanConfig(plan: string): Promise<PlanConfig | null> {
   if (plan === 'weekly') {
     const envPrice = Deno.env.get('STRIPE_PRICE_WEEKLY');
-    if (envPrice) return { price_id: envPrice, interval: 'week' };
+    if (envPrice && !isPlaceholderId(envPrice)) {
+      return { price_id: envPrice, interval: 'week', plan_type: 'weekly' };
+    }
   } else if (plan === 'season') {
     const envPrice = Deno.env.get('STRIPE_PRICE_SEASON');
-    if (envPrice) return { price_id: envPrice, interval: 'one_time' };
+    if (envPrice && !isPlaceholderId(envPrice)) {
+      return { price_id: envPrice, interval: 'one_time', plan_type: 'season' };
+    }
   }
 
   const { data: planRow, error: planErr } = await supabase
@@ -66,14 +78,21 @@ async function resolvePlanConfig(plan: string): Promise<PlanConfig | null> {
     .maybeSingle();
 
   if (planErr) {
-    console.error('stripe-checkout: failed to load plan config', planErr);
+    console.error('stripe-checkout: failed to load plan config from DB', planErr);
   }
 
-  if (planRow?.price_id) {
-    console.log(`stripe-checkout: resolved ${plan} price from DB`);
-    return { price_id: planRow.price_id, interval: planRow.interval };
+  if (planRow?.price_id && !isPlaceholderId(planRow.price_id)) {
+    const interval = planRow.interval ?? (plan === 'season' ? 'one_time' : 'week');
+    console.log(`stripe-checkout: resolved ${plan} price from DB: ${planRow.price_id}`);
+    return { price_id: planRow.price_id, interval, plan_type: plan as 'season' | 'weekly' };
   }
 
+  const envKey = plan === 'season' ? 'STRIPE_PRICE_SEASON' : 'STRIPE_PRICE_WEEKLY';
+  console.error(
+    `stripe-checkout: price_id for plan "${plan}" is a placeholder or missing. ` +
+    `Set ${envKey} in Supabase Edge Function secrets, ` +
+    `or update stripe_products_config with a real Stripe price ID.`
+  );
   return null;
 }
 
@@ -131,18 +150,6 @@ Deno.serve(async (req) => {
       return err('Invalid cancel_url domain', 400);
     }
 
-    const planConfig = await resolvePlanConfig(plan);
-
-    if (!planConfig) {
-      console.error(`stripe-checkout: could not resolve price_id for plan "${plan}"`);
-      return err(`No price configured for plan: ${plan}`, 500);
-    }
-
-    const { price_id, interval } = planConfig;
-    const isOneTime = interval === 'one_time';
-
-    console.log(`stripe-checkout: processing checkout for plan=${plan}, mode=${isOneTime ? 'payment' : 'subscription'}`);
-
     const authHeader = req.headers.get('Authorization') ?? '';
     const token = authHeader.replace('Bearer ', '');
 
@@ -156,6 +163,21 @@ Deno.serve(async (req) => {
       console.error('stripe-checkout: auth failed', getUserError?.message);
       return err('Failed to authenticate user', 401);
     }
+
+    const planConfig = await resolvePlanConfig(plan);
+
+    if (!planConfig) {
+      return err(
+        `Checkout unavailable for plan "${plan}" — Stripe price IDs have not been configured. ` +
+        `Contact support or try again later.`,
+        503
+      );
+    }
+
+    const { price_id, interval, plan_type } = planConfig;
+    const isOneTime = interval === 'one_time';
+
+    console.log(`stripe-checkout: plan=${plan_type}, mode=${isOneTime ? 'payment' : 'subscription'}, price=${price_id}, user=${user.id}`);
 
     const { data: customer, error: getCustomerError } = await supabase
       .from('stripe_customers')
@@ -176,7 +198,7 @@ Deno.serve(async (req) => {
         metadata: { userId: user.id },
       });
 
-      console.log('stripe-checkout: created new Stripe customer');
+      console.log('stripe-checkout: created new Stripe customer', newCustomer.id);
 
       const { error: createCustomerError } = await supabase
         .from('stripe_customers')
@@ -184,9 +206,7 @@ Deno.serve(async (req) => {
 
       if (createCustomerError) {
         console.error('stripe-checkout: failed to save customer', createCustomerError);
-        try {
-          await stripe.customers.del(newCustomer.id);
-        } catch (_) { /* ignore cleanup errors */ }
+        try { await stripe.customers.del(newCustomer.id); } catch (_) {}
         return err('Failed to create customer record', 500);
       }
 
@@ -194,8 +214,6 @@ Deno.serve(async (req) => {
     } else {
       customerId = customer.customer_id;
     }
-
-    console.log(`stripe-checkout: creating ${isOneTime ? 'payment' : 'subscription'} session for plan=${plan}`);
 
     const sessionParams: Stripe.Checkout.SessionCreateParams = {
       customer: customerId,
@@ -207,7 +225,8 @@ Deno.serve(async (req) => {
       metadata: {
         supabase_user_id: user.id,
         email: user.email ?? '',
-        plan: plan,
+        plan: plan_type,
+        plan_type: plan_type,
       },
     };
 
@@ -217,7 +236,7 @@ Deno.serve(async (req) => {
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
-    console.log(`stripe-checkout: session created ${session.id}`);
+    console.log(`stripe-checkout: session created ${session.id} for user ${user.id}`);
 
     return ok({ sessionId: session.id, url: session.url });
   } catch (e: any) {

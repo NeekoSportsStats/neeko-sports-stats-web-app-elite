@@ -72,8 +72,8 @@ export function Layout() {
             </div>
           </header>
 
-          {/* BODY */}
-          <main className="flex-1 overflow-auto">
+          {/* BODY — pt-14 offsets the fixed header (h-14 = 56px) */}
+          <main className="flex-1 overflow-auto pt-14">
             <Outlet />
           </main>
         </div>

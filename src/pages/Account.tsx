@@ -61,23 +61,15 @@ export default function Account() {
         setProfile(data);
       }
 
-      const { data: customer } = await supabase
-        .from("stripe_customers")
-        .select("customer_id")
+      const { data: sub } = await supabase
+        .from("subscriptions")
+        .select("*")
         .or(`profile_id.eq.${user.id},user_id.eq.${user.id}`)
+        .order("updated_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
 
-      if (customer?.customer_id) {
-        const { data: sub } = await supabase
-          .from("stripe_subscriptions")
-          .select("*")
-          .eq("customer_id", customer.customer_id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        setSubRecord(sub ?? null);
-      }
+      setSubRecord(sub ?? null);
 
       setLoadingProfile(false);
     };
@@ -243,11 +235,11 @@ export default function Account() {
                 <p>
                   <span className="text-sm text-muted-foreground">Plan</span><br />
                   <strong>
-                    {profile?.premium_expires_at && !subRecord
-                      ? "Neeko+ Season Pass"
-                      : subRecord?.plan_interval === "week" || subRecord?.interval === "week"
-                        ? "Neeko+ Weekly"
-                        : subRecord
+                    {subRecord?.plan_type === "weekly"
+                      ? "Neeko+ Weekly"
+                      : subRecord?.plan_type === "season"
+                        ? "Neeko+ Season Pass"
+                        : profile?.premium_expires_at
                           ? "Neeko+ Season Pass"
                           : "Neeko+"}
                   </strong>
@@ -256,19 +248,18 @@ export default function Account() {
                 {(subRecord?.current_period_end || profile.current_period_end || profile.billing_period_end || profile.premium_expires_at) && (
                   <p>
                     <span className="text-sm text-muted-foreground">
-                      {isCancelling ? "Access Until" : "Next Billing Date"}
+                      {subRecord?.plan_type === "season"
+                        ? "Season Access Until"
+                        : isCancelling
+                          ? "Access Until"
+                          : "Next Renewal"}
                     </span><br />
-                    {subRecord?.current_period_end
-                      ? new Date(
-                          typeof subRecord.current_period_end === "number"
-                            ? subRecord.current_period_end * 1000
-                            : subRecord.current_period_end
-                        ).toLocaleDateString()
-                      : new Date(
-                          profile.current_period_end ??
-                          profile.billing_period_end ??
-                          profile.premium_expires_at
-                        ).toLocaleDateString()}
+                    {new Date(
+                      subRecord?.current_period_end ??
+                      profile.current_period_end ??
+                      profile.billing_period_end ??
+                      profile.premium_expires_at
+                    ).toLocaleDateString()}
                   </p>
                 )}
 

@@ -13,7 +13,7 @@ const supabase = createClient(
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
-// Season pass duration: 23 rounds × 7 days = ~161 days
+// Season pass duration: 23 rounds x 7 days = ~161 days
 const SEASON_ACCESS_DAYS = 161;
 
 Deno.serve(async (req: Request) => {
@@ -45,6 +45,7 @@ Deno.serve(async (req: Request) => {
 
     console.log(`stripe-webhook: received event ${event.type} [${event.id}]`);
 
+    // Idempotency check
     const { data: existing, error: existingErr } = await supabase
       .from('stripe_webhook_events')
       .select('id')
@@ -72,8 +73,6 @@ Deno.serve(async (req: Request) => {
 
     if (logError) {
       console.warn('stripe-webhook: failed to log event (non-fatal):', logError.message);
-    } else {
-      console.log(`stripe-webhook: event logged to DB: ${event.id}`);
     }
 
     EdgeRuntime.waitUntil(handleEvent(event));
@@ -98,16 +97,13 @@ async function handleEvent(event: Stripe.Event) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        console.log(`stripe-webhook: checkout.session.completed — mode=${session.mode}`);
+        const planType = (session.metadata?.plan_type ?? session.metadata?.plan ?? 'unknown') as string;
+        console.log(`stripe-webhook: checkout.session.completed — mode=${session.mode}, plan_type=${planType}`);
 
         if (session.mode === 'subscription' && session.customer && session.subscription) {
-          await syncSubscriptionFromStripe(session.subscription as string);
+          await syncSubscriptionFromStripe(session.subscription as string, 'weekly');
         } else if (session.mode === 'payment' && session.customer) {
-          // Season one-time payment
-          const plan = session.metadata?.plan ?? 'season';
-          if (plan === 'season') {
-            await grantSeasonAccess(session.customer as string, session);
-          }
+          await grantSeasonAccess(session.customer as string, session);
         }
         break;
       }
@@ -115,21 +111,21 @@ async function handleEvent(event: Stripe.Event) {
       case 'customer.subscription.created': {
         const sub = event.data.object as Stripe.Subscription;
         console.log(`stripe-webhook: subscription.created — sub=${sub.id}, status=${sub.status}`);
-        await syncSubscriptionFromStripe(sub.id);
+        await syncSubscriptionFromStripe(sub.id, 'weekly');
         break;
       }
 
       case 'customer.subscription.updated': {
         const sub = event.data.object as Stripe.Subscription;
         console.log(`stripe-webhook: subscription.updated — sub=${sub.id}, status=${sub.status}, cancel_at_period_end=${sub.cancel_at_period_end}`);
-        await syncSubscriptionFromStripe(sub.id);
+        await syncSubscriptionFromStripe(sub.id, 'weekly');
         break;
       }
 
       case 'customer.subscription.deleted': {
         const sub = event.data.object as Stripe.Subscription;
         console.log(`stripe-webhook: subscription.deleted — sub=${sub.id}`);
-        await syncSubscriptionFromStripe(sub.id);
+        await syncSubscriptionFromStripe(sub.id, 'weekly');
         break;
       }
 
@@ -137,7 +133,7 @@ async function handleEvent(event: Stripe.Event) {
         const invoice = event.data.object as Stripe.Invoice;
         console.log(`stripe-webhook: invoice.paid — invoice=${invoice.id}`);
         if (invoice.subscription) {
-          await syncSubscriptionFromStripe(invoice.subscription as string);
+          await syncSubscriptionFromStripe(invoice.subscription as string, 'weekly');
         }
         break;
       }
@@ -146,7 +142,7 @@ async function handleEvent(event: Stripe.Event) {
         const invoice = event.data.object as Stripe.Invoice;
         console.log(`stripe-webhook: invoice.payment_failed — invoice=${invoice.id}`);
         if (invoice.subscription) {
-          await syncSubscriptionFromStripe(invoice.subscription as string);
+          await syncSubscriptionFromStripe(invoice.subscription as string, 'weekly');
         }
         break;
       }
@@ -216,13 +212,14 @@ async function grantSeasonAccess(customerId: string, session: Stripe.Checkout.Se
 
   const userId = await resolveUserId(customerId);
   if (!userId) {
-    console.warn('stripe-webhook: grantSeasonAccess — no user found for customer');
+    console.warn('stripe-webhook: grantSeasonAccess — no user found for customer', customerId);
     return;
   }
 
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SEASON_ACCESS_DAYS * 24 * 60 * 60 * 1000);
 
+  // Write to subscriptions (source of truth for is_premium_user)
   const { error: upsertError } = await supabase
     .from('subscriptions')
     .upsert({
@@ -234,19 +231,23 @@ async function grantSeasonAccess(customerId: string, session: Stripe.Checkout.Se
       current_period_start: now.toISOString(),
       current_period_end: expiresAt.toISOString(),
       cancel_at_period_end: false,
+      plan_type: 'season',
       updated_at: now.toISOString(),
     }, { onConflict: 'stripe_subscription_id' });
 
   if (upsertError) {
-    console.error('stripe-webhook: grantSeasonAccess upsert error:', upsertError.message);
+    console.error('stripe-webhook: grantSeasonAccess subscriptions upsert error:', upsertError.message);
   } else {
     console.log(`stripe-webhook: season access granted to user=${userId}, expires=${expiresAt.toISOString()}`);
   }
 
-  // Also set premium_expires_at on profile for fast access checks
+  // Mirror to profiles for fast access checks
   const { error: profileError } = await supabase
     .from('profiles')
-    .update({ premium_expires_at: expiresAt.toISOString() })
+    .update({
+      premium_expires_at: expiresAt.toISOString(),
+      subscription_status: 'active',
+    })
     .eq('id', userId);
 
   if (profileError) {
@@ -254,7 +255,7 @@ async function grantSeasonAccess(customerId: string, session: Stripe.Checkout.Se
   }
 }
 
-async function syncSubscriptionFromStripe(subscriptionId: string) {
+async function syncSubscriptionFromStripe(subscriptionId: string, planType: 'weekly' | 'season' = 'weekly') {
   console.log(`stripe-webhook: syncSubscriptionFromStripe — subscription=${subscriptionId}`);
 
   try {
@@ -288,6 +289,7 @@ async function syncSubscriptionFromStripe(subscriptionId: string) {
 
     const priceId = subscription.items?.data?.[0]?.price?.id ?? null;
 
+    // Write to stripe_subscriptions (raw Stripe mirror, bigint timestamps)
     const { error: syncError } = await supabase
       .from('stripe_subscriptions')
       .upsert({
@@ -302,10 +304,9 @@ async function syncSubscriptionFromStripe(subscriptionId: string) {
 
     if (syncError) {
       console.error('stripe-webhook: stripe_subscriptions upsert error:', syncError.message);
-    } else {
-      console.log(`stripe-webhook: upserted stripe_subscriptions — status=${subscription.status}`);
     }
 
+    // Convert Unix timestamps to ISO for the subscriptions table
     const periodStart = subscription.current_period_start
       ? new Date(subscription.current_period_start * 1000).toISOString()
       : null;
@@ -313,6 +314,7 @@ async function syncSubscriptionFromStripe(subscriptionId: string) {
       ? new Date(subscription.current_period_end * 1000).toISOString()
       : null;
 
+    // Write to subscriptions (source of truth for is_premium_user, timestamptz)
     const { error: subSyncError } = await supabase
       .from('subscriptions')
       .upsert({
@@ -324,13 +326,14 @@ async function syncSubscriptionFromStripe(subscriptionId: string) {
         current_period_start: periodStart,
         current_period_end: periodEnd,
         cancel_at_period_end: subscription.cancel_at_period_end ?? false,
+        plan_type: planType,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'stripe_subscription_id' });
 
     if (subSyncError) {
       console.error('stripe-webhook: subscriptions upsert error:', subSyncError.message);
     } else {
-      console.log(`stripe-webhook: upserted subscriptions — status=${subscription.status}, user=${userId}`);
+      console.log(`stripe-webhook: subscriptions synced — status=${subscription.status}, user=${userId}, plan_type=${planType}`);
     }
   } catch (err: any) {
     console.error(`stripe-webhook: error syncing subscription ${subscriptionId}:`, err?.message ?? err);

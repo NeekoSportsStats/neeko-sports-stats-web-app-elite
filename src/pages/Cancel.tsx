@@ -11,7 +11,7 @@ const Cancel = () => {
   useEffect(() => {
     track("checkout_cancelled");
     const timeout = setTimeout(() => {
-      window.location.href = "https://www.neekostats.com.au/neeko-plus";
+      navigate("/neeko-plus", { replace: true });
     }, 10000); // Increased to 10 seconds
 
     return () => clearTimeout(timeout);
@@ -60,7 +60,7 @@ const Cancel = () => {
           </div>
         </CardContent>
         <CardFooter className="flex gap-4 justify-center">
-          <Button onClick={() => { window.location.href = "https://www.neekostats.com.au/neeko-plus"; }} variant="default">
+          <Button onClick={() => { navigate("/neeko-plus", { replace: true }); }} variant="default">
             View Subscription Plans
           </Button>
           <Button onClick={() => navigate("/")} variant="outline">
