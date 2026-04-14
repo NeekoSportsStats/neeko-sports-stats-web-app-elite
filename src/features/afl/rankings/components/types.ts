@@ -70,6 +70,17 @@ export interface RankingRow {
 
   access_tier?: "premium" | "free" | "locked";
   signal_tag?: string | null;
+
+  // Elite signal fields (Phase 7 redesign)
+  action_display?: string | null;
+  decision_score?: number | null;
+  confidence_score_100?: number | null;
+  confidence_percentile?: number | null;
+  value_band?: string | null;
+  action_reason_1?: string | null;
+  action_reason_2?: string | null;
+  confidence_reason_1?: string | null;
+  confidence_reason_2?: string | null;
 }
 
 export interface ScoreHistoryPoint {

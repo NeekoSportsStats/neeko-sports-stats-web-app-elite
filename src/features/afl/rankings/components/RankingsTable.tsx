@@ -8,6 +8,9 @@ import {
   getTrendWhyText,
   getConfidenceColor,
   getValueScoreColor,
+  getActionDisplayStyles,
+  getCanonicalConfidenceStyles,
+  formatCanonicalConfidenceLabel,
   FREE_FULL_ROWS,
 } from "./helpers";
 import { LockedCell } from "./RankingsModals";
@@ -26,11 +29,9 @@ const TH =
 function ActionBadge({ row, locked, onUpgrade }: { row: RankingRow; locked?: boolean; onUpgrade: () => void }) {
   if (locked) return <LockedCell onClick={onUpgrade} />;
 
-  const label = (row.action ?? "HOLD").toUpperCase();
-  const cls =
-    label === "START" ? "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" :
-    label === "SIT"   ? "text-orange-400 border-orange-500/25 bg-orange-500/10" :
-                        "text-white/55 border-white/15 bg-white/5";
+  const display = row.action_display ?? row.action ?? null;
+  const label = display ?? "Hold";
+  const cls = getActionDisplayStyles(label);
 
   return (
     <span className={`inline-block rounded-md border px-2.5 py-0.5 text-[11px] font-bold whitespace-nowrap ${cls}`}>
@@ -41,7 +42,18 @@ function ActionBadge({ row, locked, onUpgrade }: { row: RankingRow; locked?: boo
 
 // ─── Confidence cell ───────────────────────────────────────────────────────────
 
-function ConfidenceCell({ value }: { value: number | null }) {
+function ConfidenceCell({ row }: { row: RankingRow }) {
+  const label = row.confidence_label;
+  if (label) {
+    const cls = getCanonicalConfidenceStyles(label);
+    return (
+      <span className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-semibold ${cls}`}>
+        {formatCanonicalConfidenceLabel(label)}
+      </span>
+    );
+  }
+
+  const value = row.projection_confidence;
   if (value == null) return <span className="text-sm text-white/20">—</span>;
   const pct = Math.max(0, Math.min(100, value));
   const color = getConfidenceColor(pct);
@@ -268,7 +280,7 @@ export function TableRow({
           {isLocked ? (
             <LockedCell onClick={onUpgrade} />
           ) : (
-            <ConfidenceCell value={row.projection_confidence} />
+            <ConfidenceCell row={row} />
           )}
         </td>
 

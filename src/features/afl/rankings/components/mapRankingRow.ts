@@ -80,5 +80,15 @@ export function mapRankingRow(r: Record<string, unknown>): RankingRow {
 
     access_tier:             (r.access_tier as "premium" | "free" | "locked") ?? "locked",
     signal_tag:              (r.signal_tag as string) ?? null,
+
+    action_display:          (r.action_display as string) ?? null,
+    decision_score:          r.decision_score != null ? Number(r.decision_score) : null,
+    confidence_score_100:    r.confidence_score_100 != null ? Number(r.confidence_score_100) : null,
+    confidence_percentile:   r.confidence_percentile != null ? Number(r.confidence_percentile) : null,
+    value_band:              (r.value_band as string) ?? null,
+    action_reason_1:         (r.action_reason_1 as string) ?? null,
+    action_reason_2:         (r.action_reason_2 as string) ?? null,
+    confidence_reason_1:     (r.confidence_reason_1 as string) ?? null,
+    confidence_reason_2:     (r.confidence_reason_2 as string) ?? null,
   };
 }

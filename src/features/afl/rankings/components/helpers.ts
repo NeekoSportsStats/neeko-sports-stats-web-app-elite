@@ -619,3 +619,104 @@ export function getEdgeColor(edge: number | null | undefined): string {
   return "text-red-400";
 }
 
+// ─── Action display helpers (canonical Phase 7 redesign) ──────────────────────
+// Maps `action_display` text labels from the DB (Strong Start / Start / Hold / Sit / Hard Sit)
+// to Tailwind badge style strings.
+
+export function getActionDisplayStyles(actionDisplay: string | null): string {
+  if (!actionDisplay) return "text-white/30 border-white/10 bg-white/5";
+  const s = actionDisplay.toLowerCase();
+  if (s === "strong start") return "text-emerald-300 border-emerald-500/30 bg-emerald-500/10";
+  if (s === "start")        return "text-green-400 border-green-500/25 bg-green-500/8";
+  if (s === "hold")         return "text-white/55 border-white/15 bg-white/5";
+  if (s === "sit")          return "text-orange-400 border-orange-500/25 bg-orange-500/10";
+  if (s === "hard sit")     return "text-red-400 border-red-500/30 bg-red-500/10";
+  return "text-white/40 border-white/10 bg-white/5";
+}
+
+export function getActionDisplayColor(actionDisplay: string | null): string {
+  if (!actionDisplay) return "text-white/30";
+  const s = actionDisplay.toLowerCase();
+  if (s === "strong start") return "text-emerald-300";
+  if (s === "start")        return "text-green-400";
+  if (s === "hold")         return "text-white/55";
+  if (s === "sit")          return "text-orange-400";
+  if (s === "hard sit")     return "text-red-400";
+  return "text-white/40";
+}
+
+// ─── Value band helpers (canonical Phase 7 redesign) ─────────────────────────
+// Maps `value_band` text labels from the DB (Elite Value / Strong Value / Fair Value / Thin Value / Poor Value)
+// to Tailwind badge style strings.
+
+export function getValueBandStyles(valueBand: string | null): string {
+  if (!valueBand) return "text-white/30 border-white/10 bg-white/5";
+  const s = valueBand.toLowerCase();
+  if (s === "elite value")  return "text-emerald-300 border-emerald-500/30 bg-emerald-500/10";
+  if (s === "strong value") return "text-green-400 border-green-500/25 bg-green-500/8";
+  if (s === "fair value")   return "text-white/55 border-white/15 bg-white/5";
+  if (s === "thin value")   return "text-orange-400 border-orange-500/25 bg-orange-500/10";
+  if (s === "poor value")   return "text-red-400 border-red-500/30 bg-red-500/10";
+  return "text-white/40 border-white/10 bg-white/5";
+}
+
+export function getValueBandColor(valueBand: string | null): string {
+  if (!valueBand) return "text-white/30";
+  const s = valueBand.toLowerCase();
+  if (s === "elite value")  return "text-emerald-300";
+  if (s === "strong value") return "text-green-400";
+  if (s === "fair value")   return "text-white/55";
+  if (s === "thin value")   return "text-orange-400";
+  if (s === "poor value")   return "text-red-400";
+  return "text-white/40";
+}
+
+// ─── Canonical confidence label helpers (Phase 7 redesign) ───────────────────
+// Maps `confidence_label` string from the DB (HIGH / MEDIUM / LOW) to display styles.
+// Replaces the old numeric-based getConfidenceLabel() for canonical DB-driven label.
+
+export function getCanonicalConfidenceStyles(label: string | null): string {
+  if (!label) return "text-white/25 border-white/10 bg-white/5";
+  const s = label.toUpperCase();
+  if (s === "HIGH")   return "text-emerald-400 border-emerald-500/25 bg-emerald-500/8";
+  if (s === "MEDIUM") return "text-[#F5C84C] border-[#F5C84C]/25 bg-[#F5C84C]/8";
+  if (s === "LOW")    return "text-white/40 border-white/15 bg-white/5";
+  return "text-white/30 border-white/10 bg-white/5";
+}
+
+export function getCanonicalConfidenceColor(label: string | null): string {
+  if (!label) return "text-white/25";
+  const s = label.toUpperCase();
+  if (s === "HIGH")   return "text-emerald-400";
+  if (s === "MEDIUM") return "text-[#F5C84C]";
+  if (s === "LOW")    return "text-white/40";
+  return "text-white/30";
+}
+
+export function formatCanonicalConfidenceLabel(label: string | null): string {
+  if (!label) return "—";
+  const s = label.toUpperCase();
+  if (s === "HIGH")   return "High";
+  if (s === "MEDIUM") return "Medium";
+  if (s === "LOW")    return "Low";
+  return label;
+}
+
+// ─── Decision score display helper ───────────────────────────────────────────
+
+export function fmtDecisionScore(v: number | null | undefined): string {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (isNaN(n)) return "—";
+  return n > 0 ? `+${n.toFixed(2)}` : n.toFixed(2);
+}
+
+export function getDecisionScoreColor(v: number | null | undefined): string {
+  if (v == null) return "text-white/30";
+  if (v >= 0.80)  return "text-emerald-300";
+  if (v >= 0.38)  return "text-green-400";
+  if (v > -0.35)  return "text-white/55";
+  if (v > -0.90)  return "text-orange-400";
+  return "text-red-400";
+}
+

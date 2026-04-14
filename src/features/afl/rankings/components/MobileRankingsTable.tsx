@@ -17,6 +17,9 @@ import {
   getConfidenceColor,
   getValueScoreColor,
   fmtValueScore,
+  getActionDisplayStyles,
+  getCanonicalConfidenceStyles,
+  formatCanonicalConfidenceLabel,
   FREE_FULL_ROWS,
   PREMIUM_INITIAL_ROWS,
 } from "./helpers";
@@ -154,11 +157,9 @@ function ActionBadge({ row, isPremium, onUpgrade }: { row: RankingRow; isPremium
     );
   }
 
-  const label = (row.action ?? "HOLD").toUpperCase();
-  const cls =
-    label === "START" ? "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" :
-    label === "SIT"   ? "text-orange-400 border-orange-500/25 bg-orange-500/10" :
-                        "text-white/55 border-white/15 bg-white/5";
+  const display = row.action_display ?? row.action ?? null;
+  const label = display ?? "Hold";
+  const cls = getActionDisplayStyles(label);
   return (
     <span className={`inline-block rounded-md border px-2 py-1 text-[11px] font-bold whitespace-nowrap ${cls}`}>
       {label}
@@ -168,7 +169,16 @@ function ActionBadge({ row, isPremium, onUpgrade }: { row: RankingRow; isPremium
 
 // ─── Confidence bar ────────────────────────────────────────────────────────────
 
-function ConfidenceBar({ value }: { value: number | null }) {
+function ConfidenceBar({ row }: { row: RankingRow }) {
+  if (row.confidence_label) {
+    const cls = getCanonicalConfidenceStyles(row.confidence_label);
+    return (
+      <span className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-semibold ${cls}`}>
+        {formatCanonicalConfidenceLabel(row.confidence_label)}
+      </span>
+    );
+  }
+  const value = row.projection_confidence;
   if (value == null) return <span className="text-xs text-white/20">—</span>;
   const pct = Math.max(0, Math.min(100, value));
   const color = getConfidenceColor(pct);
@@ -412,12 +422,12 @@ function PlayerCard({ row, idx, isPremium, onTap, onUpgrade }: PlayerCardProps) 
           </span>
         </div>
 
-        {row.projection_confidence != null && (
+        {(row.confidence_label != null || row.projection_confidence != null) && (
           <>
             <span className="text-white/15 text-sm px-1.5">|</span>
             <div className="flex flex-col items-start px-2">
               <span className="text-[10px] text-white/35 leading-none mb-0.5">Conf</span>
-              <ConfidenceBar value={row.projection_confidence} />
+              <ConfidenceBar row={row} />
             </div>
           </>
         )}

@@ -12,7 +12,15 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { nameToSlug } from "@/lib/slugs";
 import { RankingRow } from "./types";
-import { fmtPrice, getConfidenceColor } from "./helpers";
+import {
+  fmtPrice,
+  getConfidenceColor,
+  getValueBandStyles,
+  getCanonicalConfidenceStyles,
+  formatCanonicalConfidenceLabel,
+  fmtDecisionScore,
+  getDecisionScoreColor,
+} from "./helpers";
 
 // ─── Custom tooltip ────────────────────────────────────────────────────────────
 
@@ -255,7 +263,7 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
     navigate(`/sports/afl/players/${nameToSlug(row.player_name)}`);
   }
 
-  const hasMetrics = confidence != null || price != null || rating != null;
+  const hasMetrics = confidence != null || price != null || rating != null || row.confidence_label != null || row.value_band != null || row.decision_score != null;
 
   return (
     <tr className="border-b border-white/[0.04] bg-[#0c0c0c]">
@@ -282,6 +290,22 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
               </p>
             )}
 
+            {/* 2b. Premium reason signals */}
+            {(row.action_reason_1 || row.action_reason_2) && (
+              <div className="flex flex-col gap-1">
+                {row.action_reason_1 && (
+                  <p className="text-[11px] text-white/35 leading-snug">
+                    <span className="text-white/20 mr-1">&#x25BA;</span>{row.action_reason_1}
+                  </p>
+                )}
+                {row.action_reason_2 && (
+                  <p className="text-[11px] text-white/35 leading-snug">
+                    <span className="text-white/20 mr-1">&#x25BA;</span>{row.action_reason_2}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* 3. Full-width sparkline */}
             {(historyLoading || scoreCount >= 3) && (
             <div className="w-full">
@@ -303,10 +327,33 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
 
             {/* 4. Metrics row + CTA */}
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/[0.05] pt-3">
-              {confidence != null && (
+              {row.confidence_label ? (
+                <div>
+                  <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Confidence</p>
+                  <span className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-semibold ${getCanonicalConfidenceStyles(row.confidence_label)}`}>
+                    {formatCanonicalConfidenceLabel(row.confidence_label)}
+                  </span>
+                </div>
+              ) : confidence != null ? (
                 <div>
                   <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Confidence</p>
                   <p className={`text-sm font-semibold tabular-nums ${confColor}`}>{confidence}%</p>
+                </div>
+              ) : null}
+              {row.value_band && (
+                <div>
+                  <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Value</p>
+                  <span className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-semibold ${getValueBandStyles(row.value_band)}`}>
+                    {row.value_band}
+                  </span>
+                </div>
+              )}
+              {row.decision_score != null && (
+                <div>
+                  <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Decision Score</p>
+                  <p className={`text-sm font-semibold tabular-nums ${getDecisionScoreColor(row.decision_score)}`}>
+                    {fmtDecisionScore(row.decision_score)}
+                  </p>
                 </div>
               )}
               {price != null && (
