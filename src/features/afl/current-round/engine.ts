@@ -28,13 +28,13 @@ function isEligible(p: RankingRow): boolean {
   if (p.is_bye) return false;
   const status = (p.manual_status ?? p.status ?? "").toLowerCase();
   if (["delisted", "retired", "inactive"].includes(status)) return false;
+  if ((p.games_played ?? 0) < 1) return false;
   return true;
 }
 
 function isEligiblePositive(p: RankingRow): boolean {
   if (!isEligible(p)) return false;
   if (p.projection == null || p.projection <= 0) return false;
-  if ((p.games_played ?? 0) < 1) return false;
   return true;
 }
 

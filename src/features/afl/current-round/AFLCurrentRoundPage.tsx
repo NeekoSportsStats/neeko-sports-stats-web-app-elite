@@ -40,6 +40,14 @@ function normalisePosition(pos: string | null | undefined): string | null {
   return p;
 }
 
+function isActive2026Player(row: RankingRow): boolean {
+  const games = row.games_played ?? 0;
+  if (typeof games !== "number" || games < 1) return false;
+  const status = (row.manual_status ?? row.status ?? "").toLowerCase();
+  if (["delisted", "retired", "inactive"].includes(status)) return false;
+  return true;
+}
+
 function computeEdge(row: { edge_canonical?: number | null; projection?: number | null; breakeven?: number | null; decision_score?: number | null }): number | null {
   const ec = row.edge_canonical;
   if (typeof ec === "number" && !Number.isNaN(ec) && Math.abs(ec) > 1) return ec;
@@ -1155,7 +1163,11 @@ export default function AFLCurrentRoundPage() {
       if (error) {
         console.error("Current Round fetch error:", error);
       } else if (data) {
-        setPlayers(applyDecisionFields((data as Record<string, unknown>[]).map(mapRankingRow)));
+        const mapped = (data as Record<string, unknown>[]).map(mapRankingRow);
+        const before = mapped.length;
+        const active = mapped.filter(isActive2026Player);
+        console.log("CURRENT ROUND FILTER", { before, after: active.length });
+        setPlayers(applyDecisionFields(active));
       }
       try {
         const { data: metaData } = await supabase.rpc("get_rankings_updated_at");
