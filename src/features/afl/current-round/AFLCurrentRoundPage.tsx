@@ -100,6 +100,16 @@ function getCaptainTier(p: CurrentRoundPlayer): { label: "Lock" | "Safe" | "POD"
   return                          { label: "POD",   color: "#60a5fa", desc: "Point of difference"       };
 }
 
+// ─── SHARED FORMATTERS ───────────────────────────────────────────────────────
+
+function formatEdgeScore(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(value)) return "—";
+  const rounded = Math.round(value);
+  if (rounded > 0) return `+${rounded}`;
+  if (rounded < 0) return `${rounded}`;
+  return "0";
+}
+
 // ─── BADGES ──────────────────────────────────────────────────────────────────
 
 function BuyBadge() {
@@ -1199,14 +1209,6 @@ export default function AFLCurrentRoundPage() {
 
   function getTrapScore(row: CurrentRoundPlayer): number | null {
     return computeEdge(row);
-  }
-
-  function formatEdgeScore(value: number | null): string {
-    if (value === null || Number.isNaN(value)) return "—";
-    const rounded = Math.round(Math.round(value * 10) / 10);
-    if (rounded > 0) return `+${rounded}`;
-    if (rounded < 0) return `${rounded}`;
-    return "0";
   }
 
   const formatTrapScore = formatEdgeScore;
