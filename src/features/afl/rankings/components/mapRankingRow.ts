@@ -3,6 +3,36 @@ import type { RankingRow } from "./types";
 
 export function mapRankingRow(r: Record<string, unknown>): RankingRow {
   const projection = r.projection != null ? Number(r.projection) : null;
+  const breakeven  = r.breakeven != null ? Number(r.breakeven) : null;
+  const season_avg = r.season_avg != null ? Number(r.season_avg) : null;
+  const last_5_avg = r.last_5_avg != null ? Number(r.last_5_avg) : null;
+  const last_3_avg = r.last_3_avg != null ? Number(r.last_3_avg) : null;
+
+  // value_score: use DB value; fall back to projection - breakeven if both present
+  const rawValueScore = r.value_score != null ? Number(r.value_score) : null;
+  const value_score =
+    rawValueScore !== null
+      ? rawValueScore
+      : projection !== null && breakeven !== null
+        ? projection - breakeven
+        : null;
+
+  // trend_score: use DB value; fall back to form_delta, then last_3 - season_avg
+  const rawTrendScore = r.trend_score != null ? Number(r.trend_score) : null;
+  const rawFormDelta  = r.form_delta != null ? Number(r.form_delta) : null;
+  const computedFormDelta =
+    rawFormDelta !== null
+      ? rawFormDelta
+      : last_3_avg !== null && season_avg !== null && season_avg !== 0
+        ? last_3_avg - season_avg
+        : last_3_avg !== null && last_5_avg !== null && last_5_avg !== 0
+          ? last_3_avg - last_5_avg
+          : null;
+  const trend_score = rawTrendScore !== null ? rawTrendScore : computedFormDelta;
+
+  if (process.env.NODE_ENV !== "production" && projection === null && r.player_name) {
+    console.warn("[mapRankingRow] MISSING PROJECTION", r.player_name, r);
+  }
 
   return {
     player_id:               (r.player_id as string) ?? null,
@@ -33,18 +63,18 @@ export function mapRankingRow(r: Record<string, unknown>): RankingRow {
     price_change:            r.price_change != null ? Number(r.price_change) : null,
     price_change_pct:        r.price_change_pct != null ? Number(r.price_change_pct) : null,
 
-    season_avg:              r.season_avg != null ? Number(r.season_avg) : null,
-    last_3_avg:              r.last_3_avg != null ? Number(r.last_3_avg) : null,
-    last_5_avg:              r.last_5_avg != null ? Number(r.last_5_avg) : null,
+    season_avg,
+    last_3_avg,
+    last_5_avg,
     games_played:            r.games_played != null ? Number(r.games_played) : null,
 
-    breakeven:               r.breakeven != null ? Number(r.breakeven) : null,
+    breakeven,
     edge_canonical:          r.edge_canonical != null ? Number(r.edge_canonical) : (r.edge != null ? Number(r.edge) : null),
     action_canonical:        (r.action_canonical as string) ?? (r.action as string) ?? (r.signal_tag as string) ?? (r.signal as string) ?? null,
     category_canonical:      (r.category_canonical as string) ?? (r.category as string) ?? null,
     confidence_label:        (r.confidence_label as string) ?? null,
     edge:                    r.edge != null ? Number(r.edge) : null,
-    value_score:             r.value_score != null ? Number(r.value_score) : null,
+    value_score,
     signal:                  (r.signal as string) ?? null,
     signal_display:          (r.signal_display as string) ?? null,
     category:                (r.category as string) ?? null,
@@ -54,8 +84,8 @@ export function mapRankingRow(r: Record<string, unknown>): RankingRow {
     why_long:                (r.why_long as string) ?? null,
 
     trend_signal:            (r.trend_signal as string) ?? null,
-    trend_score:             r.trend_score != null ? Number(r.trend_score) : null,
-    form_delta:              r.form_delta != null ? Number(r.form_delta) : null,
+    trend_score,
+    form_delta:              computedFormDelta,
     form_label:              (r.form_label as string) ?? null,
 
     status:                  (r.status as string) ?? null,
