@@ -1261,7 +1261,13 @@ export default function AFLCurrentRoundPage() {
               icon={<TrendingDown className="w-3.5 h-3.5" />}
               accentColor="#f87171"
               playerName={bestTrap?.player_name ?? null}
-              stat={bestTrap != null ? fmt(bestTrap.decision_score ?? bestTrap.edge_canonical ?? 0, 0) : "—"}
+              stat={(() => {
+                if (!bestTrap) return "—";
+                const score = bestTrap.decision_score ?? bestTrap.edge_canonical ?? null;
+                if (score === null) { console.warn("INVALID TRAP SCORE", bestTrap); return "—"; }
+                if (score === 0) { console.warn("INVALID TRAP SCORE zero", bestTrap); }
+                return (score > 0 ? "+" : "") + fmt(score, 0);
+              })()}
               statLabel="decision score"
               subStat={bestTrap?.projection != null ? fmt(bestTrap.projection, 0) : undefined}
               subStatLabel="pts proj"
@@ -1349,8 +1355,9 @@ export default function AFLCurrentRoundPage() {
               footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
               renderBadge={() => <AvoidBadge />}
               renderRight={(row) => {
-                const edge = row.edge_canonical ?? row.decision_score ?? 0;
-                return { label: fmt(edge, 0), sub: "edge", color: "#f87171" };
+                const edge = row.decision_score ?? row.edge_canonical ?? null;
+                const label = edge === null ? "—" : (edge > 0 ? "+" : "") + fmt(edge, 0);
+                return { label, sub: "edge", color: "#f87171" };
               }}
             />
 
@@ -1370,8 +1377,9 @@ export default function AFLCurrentRoundPage() {
                 footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
                 renderBadge={() => <AvoidBadge />}
                 renderRight={(row) => {
-                  const edge = row.decision_score ?? row.edge_canonical ?? 0;
-                  return { label: fmt(edge, 0), sub: "edge", color: "#ef4444" };
+                  const edge = row.decision_score ?? row.edge_canonical ?? null;
+                  const label = edge === null ? "—" : (edge > 0 ? "+" : "") + fmt(edge, 0);
+                  return { label, sub: "edge", color: "#ef4444" };
                 }}
               />
             )}

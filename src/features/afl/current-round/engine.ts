@@ -76,8 +76,8 @@ export function buildCurrentRoundPlayers(
   const enrichedAll = eligibleAll.map(enrich);
 
   const byProjDesc     = [...enrichedPositive].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0));
-  const byDecisionDesc = [...enrichedPositive].sort((a, b) => (b.decision_score ?? 0) - (a.decision_score ?? 0));
-  const byDecisionAscAll = [...enrichedAll].sort((a, b) => (a.decision_score ?? 0) - (b.decision_score ?? 0));
+  const byDecisionDesc = [...enrichedPositive].sort((a, b) => (b.decision_score ?? -999) - (a.decision_score ?? -999));
+  const byDecisionAscAll = [...enrichedAll].sort((a, b) => (a.decision_score ?? 999) - (b.decision_score ?? 999));
 
   // ── CAPTAIN PICKS ─────────────────────────────────────────────────────────
   const captains = byProjDesc
