@@ -20,9 +20,31 @@ export interface BestTrade {
 }
 
 function displaySignalFromCategory(p: MWPlayerRow): DisplaySignal {
-  const canonical = (p.action_canonical ?? p.category ?? "").toUpperCase();
-  if (canonical === "SMASH_START" || canonical === "STRONG_START" || canonical === "START" || canonical === "target") return "TARGET";
-  if (canonical === "HARD_SIT" || canonical === "SIT" || canonical === "avoid") return "AVOID";
+  const raw =
+    p.action_canonical ??
+    p.signal_tag ??
+    p.signal ??
+    p.category ??
+    null;
+  const canonical = (raw ?? "").toUpperCase();
+
+  if (
+    canonical === "SMASH_START" ||
+    canonical === "STRONG_START" ||
+    canonical === "START" ||
+    canonical === "TARGET" ||
+    canonical === "STRONG_UP" ||
+    canonical === "UP"
+  ) return "TARGET";
+
+  if (
+    canonical === "HARD_SIT" ||
+    canonical === "SIT" ||
+    canonical === "AVOID" ||
+    canonical === "DOWN" ||
+    canonical === "STRONG_DOWN"
+  ) return "AVOID";
+
   return "WATCH";
 }
 
@@ -33,12 +55,12 @@ function mwSignalFromDisplay(sig: DisplaySignal): MWSignal {
 }
 
 function tierFromSignal(p: MWPlayerRow): SignalTier {
-  const raw = (p.action_canonical ?? p.signal_tag ?? "HOLD").toUpperCase();
-  if (raw === "SMASH_START")  return "SMASH_START";
-  if (raw === "STRONG_START") return "STRONG_START";
-  if (raw === "START")        return "START";
-  if (raw === "HARD_SIT")     return "HARD_SIT";
-  if (raw === "SIT")          return "SIT";
+  const raw = (p.action_canonical ?? p.signal_tag ?? p.signal ?? "HOLD").toUpperCase();
+  if (raw === "SMASH_START" || raw === "STRONG_UP") return "SMASH_START";
+  if (raw === "STRONG_START")                       return "STRONG_START";
+  if (raw === "START" || raw === "UP")              return "START";
+  if (raw === "HARD_SIT" || raw === "STRONG_DOWN")  return "HARD_SIT";
+  if (raw === "SIT" || raw === "DOWN")              return "SIT";
   return "HOLD";
 }
 

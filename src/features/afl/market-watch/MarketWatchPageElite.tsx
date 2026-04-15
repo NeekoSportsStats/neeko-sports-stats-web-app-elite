@@ -661,17 +661,29 @@ export default function MarketWatchPageElite() {
               <div className="flex items-center gap-1">
                 {POSITIONS.map((pos) => {
                   const isActive = selectedPosition === pos;
+                  const locked = !isPremium;
                   return (
                     <button
                       key={pos}
-                      onClick={() => setSelectedPosition(isActive ? null : pos)}
-                      className="text-[10px] font-bold uppercase px-2 py-1 rounded-lg transition-all"
+                      disabled={locked}
+                      onClick={() => {
+                        if (locked) {
+                          setShowUpgradeModal(true);
+                          return;
+                        }
+                        setSelectedPosition(isActive ? null : pos);
+                      }}
+                      title={locked ? "Premium feature" : undefined}
+                      className="relative text-[10px] font-bold uppercase px-2 py-1 rounded-lg transition-all"
                       style={{
                         background: isActive ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.03)",
                         border: `1px solid ${isActive ? "rgba(255,255,255,0.20)" : "rgba(255,255,255,0.06)"}`,
-                        color: isActive ? "rgba(255,255,255,0.80)" : "rgba(255,255,255,0.30)",
+                        color: locked ? "rgba(255,255,255,0.18)" : isActive ? "rgba(255,255,255,0.80)" : "rgba(255,255,255,0.30)",
+                        opacity: locked ? 0.5 : 1,
+                        cursor: locked ? "not-allowed" : "pointer",
                       }}
                     >
+                      {locked && <Lock className="inline-block w-2 h-2 mr-0.5 -mt-px" />}
                       {pos}
                     </button>
                   );
@@ -702,17 +714,28 @@ export default function MarketWatchPageElite() {
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-white/25 pointer-events-none" />
                 <input
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search player..."
+                  readOnly={!isPremium}
+                  onChange={(e) => {
+                    if (!isPremium) return;
+                    setSearchQuery(e.target.value);
+                  }}
+                  onFocus={() => {
+                    if (!isPremium) setShowUpgradeModal(true);
+                  }}
+                  placeholder={isPremium ? "Search player..." : "Search (Neeko+)"}
                   className="w-36 sm:w-44 bg-white/[0.04] border border-white/[0.08] rounded-lg pl-7 pr-7 py-1.5 text-[11px] text-white/70 placeholder-white/25 outline-none focus:border-white/20 transition-colors"
+                  style={!isPremium ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
                 />
-                {searchQuery && (
+                {isPremium && searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
                   >
                     <X className="w-3 h-3" />
                   </button>
+                )}
+                {!isPremium && (
+                  <Lock className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-white/20 pointer-events-none" />
                 )}
               </div>
             </div>
