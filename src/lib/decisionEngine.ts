@@ -6,10 +6,10 @@ export type ConfidenceLabel = "HIGH" | "MEDIUM" | "LOW";
 
 export function getAction(score: number | null | undefined): ActionLabel {
   const s = score ?? 0;
-  if (s >= 8)  return "SMASH_START";
-  if (s >= 3)  return "START";
-  if (s >= -3) return "HOLD";
-  if (s >= -8) return "SIT";
+  if (s >= 0.80)  return "SMASH_START";
+  if (s >= 0.38)  return "START";
+  if (s > -0.35)  return "HOLD";
+  if (s > -0.90)  return "SIT";
   return "HARD_SIT";
 }
 
@@ -33,10 +33,15 @@ export function buildConfidenceMap(
 
   if (scores.length === 0) return () => null;
 
+  const rankMap = new Map<number, number>();
+  scores.forEach((s, i) => {
+    if (!rankMap.has(s)) rankMap.set(s, i);
+  });
+
   return (score: number | null | undefined): ConfidenceLabel | null => {
     if (score == null || isNaN(score)) return null;
-    const idx = scores.indexOf(score);
-    const pct = idx < 0 ? 1 : idx / scores.length;
+    const idx = rankMap.get(score) ?? scores.length;
+    const pct = idx / scores.length;
     if (pct <= 0.2) return "HIGH";
     if (pct <= 0.6) return "MEDIUM";
     return "LOW";

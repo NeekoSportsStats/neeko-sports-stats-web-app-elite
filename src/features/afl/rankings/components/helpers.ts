@@ -216,9 +216,9 @@ export function getValueScoreLabel(v: number | null | undefined): string {
   if (v == null) return "—";
   const n = Number(v);
   if (isNaN(n)) return "—";
-  if (n >= 1.2)  return "Elite Value";
-  if (n >= 1.05) return "Strong Value";
-  if (n >= 0.95) return "Fair Value";
+  if (n >= 15)  return "Elite Value";
+  if (n >= 8)   return "Strong Value";
+  if (n >= -5)  return "Fair Value";
   return "Poor Value";
 }
 
@@ -296,19 +296,19 @@ export function getConfidenceColor(v: number | null): string {
 
 export function getConfidenceLabel(v: number | null): string {
   if (v == null) return "—";
-  if (v >= 86) return "Elite Safety";
-  if (v >= 78) return "Strong";
-  if (v >= 70) return "Solid";
-  if (v >= 62) return "Moderate Risk";
+  if (v >= 76) return "Elite Safety";
+  if (v >= 68) return "Strong";
+  if (v >= 58) return "Solid";
+  if (v >= 48) return "Moderate Risk";
   return "Volatile";
 }
 
 export function getConfidenceLabelColor(v: number | null): string {
   if (v == null) return "text-white/25 border-white/10 bg-white/5";
-  if (v >= 86) return "text-green-400 border-green-500/30 bg-green-500/10";
-  if (v >= 78) return "text-emerald-400 border-emerald-500/25 bg-emerald-500/8";
-  if (v >= 70) return "text-yellow-400 border-yellow-500/25 bg-yellow-500/8";
-  if (v >= 62) return "text-orange-400 border-orange-500/25 bg-orange-500/8";
+  if (v >= 76) return "text-green-400 border-green-500/30 bg-green-500/10";
+  if (v >= 68) return "text-emerald-400 border-emerald-500/25 bg-emerald-500/8";
+  if (v >= 58) return "text-yellow-400 border-yellow-500/25 bg-yellow-500/8";
+  if (v >= 48) return "text-orange-400 border-orange-500/25 bg-orange-500/8";
   return "text-red-400 border-red-500/25 bg-red-500/8";
 }
 
@@ -708,18 +708,24 @@ export function formatCanonicalConfidenceLabel(label: string | null): string {
 // Falls back to null (hidden) when confidence_score_100 is missing.
 
 export function applyRelativeConfidenceLabels<T extends { confidence_score_100?: number | null; confidence_label?: string | null }>(rows: T[]): T[] {
-  const scores = rows.map((r) => r.confidence_score_100 ?? null);
-  const validScores = scores.filter((s): s is number => s != null);
+  const validScores = rows
+    .map((r) => r.confidence_score_100 ?? null)
+    .filter((s): s is number => s != null);
 
   if (validScores.length === 0) return rows;
 
   const sorted = [...validScores].sort((a, b) => b - a);
 
+  const rankMap = new Map<number, number>();
+  sorted.forEach((s, i) => {
+    if (!rankMap.has(s)) rankMap.set(s, i);
+  });
+
   return rows.map((row) => {
     const score = row.confidence_score_100 ?? null;
     if (score == null) return { ...row, confidence_label: null };
 
-    const index = sorted.indexOf(score);
+    const index = rankMap.get(score) ?? sorted.length;
     const percentile = index / sorted.length;
 
     const label = percentile <= 0.2 ? "HIGH" : percentile <= 0.6 ? "MEDIUM" : "LOW";
