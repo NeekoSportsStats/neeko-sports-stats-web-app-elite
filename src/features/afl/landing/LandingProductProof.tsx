@@ -20,18 +20,33 @@ function buildRankingsRows(players: RankingRow[]): RankingRow[] {
 }
 
 function buildMarketRows(players: RankingRow[]): RankingRow[] {
-  const base = players.filter(
-    p => !p.is_injured && !p.is_bye && (p.price ?? 0) > 0 && (p.games_played ?? 3) >= 3
+  const stOut = (p: RankingRow) => {
+    const s = (p.status ?? "").toUpperCase();
+    const m = (p.manual_status ?? "").toUpperCase();
+    return s === "OUT" || s === "INJURED" || s === "OMITTED" || m === "OUT" || m === "INJURED" || m === "OMITTED";
+  };
+  const eligible = players.filter(p =>
+    !p.is_injured &&
+    !p.is_bye &&
+    !stOut(p) &&
+    (p.price ?? 0) > 0 &&
+    (p.games_played ?? 0) >= 1 &&
+    (p.projection ?? 0) > 50
   );
-  if (base.length === 0) {
-    return players
-      .filter(p => (p.price ?? 0) > 0 && (p.games_played ?? 0) >= 1)
-      .sort((a, b) => Math.abs(b.edge_canonical ?? 0) - Math.abs(a.edge_canonical ?? 0))
+  if (eligible.length === 0) {
+    console.warn("[LandingMarketWatch] No eligible rows after full filter. players total:", players.length);
+    const fallback = players
+      .filter(p => !p.is_injured && !p.is_bye && (p.price ?? 0) > 0 && (p.games_played ?? 0) >= 1)
+      .sort((a, b) => (b.value_score ?? b.edge_canonical ?? 0) - (a.value_score ?? a.edge_canonical ?? 0))
       .slice(0, 8);
+    console.log("[LandingMarketWatch] fallback rows:", fallback.length);
+    return fallback;
   }
-  return base
-    .sort((a, b) => Math.abs(b.edge_canonical ?? 0) - Math.abs(a.edge_canonical ?? 0))
+  const rows = eligible
+    .sort((a, b) => (b.value_score ?? b.edge_canonical ?? 0) - (a.value_score ?? a.edge_canonical ?? 0))
     .slice(0, 8);
+  console.log("[LandingMarketWatch] eligible rows:", rows.length, "signal_tags:", rows.map(r => r.signal_tag));
+  return rows;
 }
 
 function buildCaptainsRows(players: RankingRow[]): RankingRow[] {
@@ -76,7 +91,7 @@ function buildStartSitRows(players: RankingRow[]): RankingRow[] {
 
 function dedupeAcrossViews(views: Record<TabId, RankingRow[]>): Record<TabId, RankingRow[]> {
   const used = new Set<string | null>();
-  const order: TabId[] = ["rankings", "market-watch", "captains", "players", "current-round"];
+  const order: TabId[] = ["market-watch", "rankings", "captains", "players", "current-round"];
   const result = {} as Record<TabId, RankingRow[]>;
 
   for (const key of order) {
@@ -102,12 +117,21 @@ function rankingsTag(row: RankingRow): { label: string; color: string } {
 }
 
 function marketTag(row: RankingRow): { label: string; color: string } {
-  const edge = row.edge_canonical ?? 0;
-  if (edge > 30) return { label: "STEAL", color: "#22c55e" };
-  if (edge > 10) return { label: "VALUE", color: "#4ade80" };
-  if (edge > -10) return { label: "FAIR", color: GOLD };
-  if (edge < -25) return { label: "AVOID", color: "#f87171" };
-  return { label: "TRAP", color: "#fb923c" };
+  const raw = (row.signal_tag ?? row.action_canonical ?? row.signal ?? "").toUpperCase().trim();
+  if (raw === "STRONG_UP" || raw === "SMASH_START" || raw === "STRONG_START")
+    return { label: "STRONG BUY", color: "#22c55e" };
+  if (raw === "UP" || raw === "START")
+    return { label: "BUY",        color: "#4ade80" };
+  if (raw === "STABLE" || raw === "HOLD" || raw === "WATCH")
+    return { label: "HOLD",       color: GOLD };
+  if (raw === "DOWN" || raw === "SIT")
+    return { label: "SELL",       color: "#fb923c" };
+  if (raw === "STRONG_DOWN" || raw === "HARD_SIT")
+    return { label: "STRONG SELL",color: "#f87171" };
+  const vs = row.value_score ?? row.edge_canonical ?? 0;
+  if (vs >= 15)  return { label: "BUY",  color: "#4ade80" };
+  if (vs >= -10) return { label: "HOLD", color: GOLD };
+  return               { label: "SELL", color: "#fb923c" };
 }
 
 function captainsTag(row: RankingRow): { label: string; color: string } {
@@ -183,13 +207,13 @@ const TABS: TabConfig[] = [
     icon: <TrendingUp size={14} />,
     heading: "Market Watch",
     lensLabel: "LENS: VALUE GAP",
-    lensSubLabel: "Who is mispriced — steals and traps before trade deadline",
-    desc: "Sorted by value gap: biggest upside vs price. Spot steals and avoid traps.",
+    lensSubLabel: "Who is mispriced vs their projected score — steals and traps before lockout",
+    desc: "Sorted by value score: biggest upside vs breakeven. Spot steals and avoid traps.",
     to: "/sports/afl/market-watch",
-    ctaLabel: "Open Market Watch",
+    ctaLabel: "Open Market Watch →",
     accentColor: "#22c55e",
-    colStatLabel: "Price",
-    colTagLabel: "Market signal",
+    colStatLabel: "Price / Value",
+    colTagLabel: "Signal",
   },
   {
     id: "captains",
@@ -252,12 +276,86 @@ function DataRow({ row, index, tabId, accentColor }: RowProps) {
 
   } else if (tabId === "market-watch") {
     primaryStat = fmtPrice(row.price);
-    const edge = row.edge_canonical;
-    const edgeStr = edge != null
-      ? (edge > 0 ? `+${edge.toFixed(1)}` : edge.toFixed(1))
-      : "—";
-    subStat = `Edge ${edgeStr}`;
+    const proj = row.projection ?? null;
+    const be   = row.breakeven  ?? null;
+    const vs   = row.value_score ?? null;
+    let valueNum: number | null = null;
+    if (proj != null && be != null) {
+      valueNum = Math.round(proj - be);
+    } else if (vs != null) {
+      valueNum = Math.round(vs);
+    }
+    const valueStr   = valueNum != null ? (valueNum >= 0 ? `+${valueNum}` : `${valueNum}`) : "—";
+    const valueColor = valueNum == null ? "rgba(255,255,255,0.26)" : valueNum >= 0 ? "#4ade80" : "#f87171";
+    subStat = valueStr;
     tag = marketTag(row);
+
+    const mwSubtitle = [row.position, row.team].filter(Boolean).join(" · ");
+    return (
+      <div
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "11px 22px",
+          borderBottom: "1px solid rgba(255,255,255,0.04)",
+          transition: "background 0.14s ease",
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(34,197,94,0.035)"; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
+          <div style={{
+            width: 28, height: 28, borderRadius: 8,
+            background: "rgba(255,255,255,0.05)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.22)", flexShrink: 0,
+          }}>
+            {index + 1}
+          </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <p style={{
+              margin: 0, fontSize: 13, fontWeight: 700, color: "#EAEAEA",
+              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+            }}>
+              {row.player_name}
+            </p>
+            <p style={{ margin: "2px 0 0", fontSize: 10, color: "rgba(255,255,255,0.28)" }}>
+              {mwSubtitle}
+            </p>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
+          <div style={{ textAlign: "right" }}>
+            <p style={{
+              margin: 0, fontSize: 13, fontWeight: 700, color: "#22c55e",
+              fontVariantNumeric: "tabular-nums",
+            }}>
+              {primaryStat}
+            </p>
+            <p style={{
+              margin: "2px 0 0", fontSize: 10, color: valueColor,
+              whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums",
+            }}>
+              {subStat} vs BE
+            </p>
+          </div>
+          <span style={{
+            fontSize: 10, fontWeight: 700,
+            color: tag.color,
+            background: `${tag.color}18`,
+            border: `1px solid ${tag.color}30`,
+            boxShadow: `0 0 10px ${tag.color}22`,
+            padding: "3px 9px",
+            borderRadius: 999,
+            letterSpacing: "0.04em",
+            whiteSpace: "nowrap",
+            minWidth: 68,
+            textAlign: "center" as const,
+          }}>
+            {tag.label}
+          </span>
+        </div>
+      </div>
+    );
 
   } else if (tabId === "captains") {
     const ceil = row.ceiling_estimate != null ? Math.round(row.ceiling_estimate) : null;
