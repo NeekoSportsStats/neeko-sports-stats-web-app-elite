@@ -48,14 +48,39 @@ function isActive2026Player(row: RankingRow): boolean {
   return true;
 }
 
-function computeEdge(row: { edge_canonical?: number | null; projection?: number | null; breakeven?: number | null; decision_score?: number | null }): number | null {
+function computeEdge(row: {
+  player_name?: string;
+  edge_canonical?: number | null;
+  projection?: number | null;
+  breakeven?: number | null;
+  season_avg?: number | null;
+  decision_score?: number | null;
+  value_score?: number | null;
+}): number | null {
   const ec = row.edge_canonical;
   if (typeof ec === "number" && !Number.isNaN(ec) && Math.abs(ec) > 1) return ec;
-  const proj = row.projection;
-  const be = row.breakeven;
-  if (typeof proj === "number" && typeof be === "number" && be > 0) return proj - be;
+
+  const proj = typeof row.projection === "number" && !Number.isNaN(row.projection) ? row.projection : null;
+  const be   = typeof row.breakeven === "number"  && !Number.isNaN(row.breakeven)  && row.breakeven > 0 ? row.breakeven : null;
+  const avg  = typeof row.season_avg === "number" && !Number.isNaN(row.season_avg) && row.season_avg > 0 ? row.season_avg : null;
+
+  if (proj !== null && be !== null) return proj - be;
+  if (proj !== null && avg !== null) return proj - avg;
+
+  if (typeof row.value_score === "number" && !Number.isNaN(row.value_score)) return row.value_score;
   if (typeof row.decision_score === "number" && !Number.isNaN(row.decision_score)) return row.decision_score;
   if (typeof ec === "number" && !Number.isNaN(ec)) return ec;
+
+  if (process.env.NODE_ENV !== "production") {
+    console.warn("[computeEdge] EDGE MISSING DATA", row.player_name, {
+      edge_canonical: row.edge_canonical,
+      projection: row.projection,
+      breakeven: row.breakeven,
+      season_avg: row.season_avg,
+      value_score: row.value_score,
+      decision_score: row.decision_score,
+    });
+  }
   return null;
 }
 
