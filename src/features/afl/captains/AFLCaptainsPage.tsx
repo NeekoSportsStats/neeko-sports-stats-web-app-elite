@@ -10,11 +10,12 @@ import { fmt, fmtPrice } from "@/features/afl/rankings/components/helpers";
 import { PlayerDetailModal, UpgradeModal } from "@/features/afl/rankings/components/RankingsModals";
 import type { RowTier } from "@/features/afl/rankings/components/types";
 import { applyDecisionFields } from "@/lib/decisionEngine";
+import { getCaptainScore, getCaptainConfidence, isCaptainEligible } from "@/features/afl/shared/data/captainScoring";
 
 // ─── CACHE ───────────────────────────────────────────────────────────────────
 
 const _STALE_MS = 60_000;
-const _CACHE_VERSION = "v1-captains";
+const _CACHE_VERSION = "v2-captains";
 const _cache: {
   data: RankingRow[] | null;
   ts: number;
@@ -22,6 +23,8 @@ const _cache: {
   tier: string | null;
   version: string;
 } = { data: null, ts: 0, userId: null, tier: null, version: "" };
+
+const FREE_CAPTAIN_LIMIT = 2;
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -33,68 +36,6 @@ function normPos(pos: string | null | undefined): string {
   if (p === "DEFENDER") return "DEF";
   if (p === "RUCK") return "RUC";
   return p;
-}
-
-function captainTierLabel(rating: string | null): string {
-  if (!rating) return "Captain Option";
-  return rating;
-}
-
-function makePlaceholderRow(rank: number): RankingRow {
-  return {
-    player_id: `locked-${rank}`,
-    player_name: "Locked",
-    team: "",
-    position: null,
-    projection: null,
-    ceiling_estimate: null,
-    floor_estimate: null,
-    form_score: null,
-    projection_confidence: null,
-    captain_score: null,
-    captain_rating: null,
-    neeko_rating: null,
-    neeko_rating_scaled: null,
-    upside_pct: null,
-    upside_rating: null,
-    risk_rating: null,
-    matchup_rating: null,
-    matchup_label: null,
-    matchup_multiplier: null,
-    price: null,
-    prev_price: null,
-    price_change: null,
-    price_change_pct: null,
-    season_avg: null,
-    last_3_avg: null,
-    last_5_avg: null,
-    games_played: null,
-    breakeven: null,
-    edge_canonical: null,
-    action_canonical: null,
-    category_canonical: null,
-    confidence_label: null,
-    why: null,
-    why_long: null,
-    trend_signal: null,
-    trend_score: null,
-    form_delta: null,
-    form_label: null,
-    status: null,
-    manual_status: null,
-    is_available: null,
-    bye_round: null,
-    is_bye: null,
-    bye_next_round: null,
-    is_injured: null,
-    consistency: null,
-    consistency_tier: null,
-    recommendation_color: null,
-    recommendation_strength: null,
-    total_count: null,
-    ai_updated_at: null,
-    access_tier: "locked",
-  };
 }
 
 // ─── SUB-COMPONENTS ──────────────────────────────────────────────────────────
@@ -162,12 +103,10 @@ function ConfidenceBadge({ label }: { label: string | null | undefined }) {
 function CaptainCard({
   player,
   rank,
-  locked,
   onOpen,
 }: {
   player: RankingRow;
   rank: number;
-  locked?: boolean;
   onOpen: () => void;
 }) {
   const pos = normPos(player.position);
@@ -176,26 +115,9 @@ function CaptainCard({
   const why = player.why ?? null;
   const matchup = player.matchup_label ?? null;
   const proj = player.projection;
-
-  if (locked) {
-    return (
-      <div className="rounded-xl border border-white/[0.07] p-4 select-none" style={{ background: "#0d0d0d" }}>
-        <div className="flex items-start gap-3">
-          <div className="w-8 h-8 rounded-full bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0">
-            <Lock className="w-3.5 h-3.5 text-white/20" />
-          </div>
-          <div className="flex-1 space-y-2">
-            <div className="h-3 w-28 rounded bg-white/[0.06]" />
-            <div className="h-2.5 w-20 rounded bg-white/[0.04]" />
-            <div className="h-2 w-36 rounded bg-white/[0.03]" />
-          </div>
-          <div className="text-right">
-            <div className="h-6 w-12 rounded bg-white/[0.05]" />
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const capScore = getCaptainScore(player);
+  const capConf = getCaptainConfidence(capScore);
+  const displayConf = conf ?? capConf;
 
   return (
     <button
@@ -204,7 +126,6 @@ function CaptainCard({
       style={{ background: "#0d0d0d", borderColor: "rgba(255,255,255,0.07)" }}
     >
       <div className="flex items-start gap-3">
-        {/* Rank bubble */}
         <div
           className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[11px] font-bold tabular-nums"
           style={{ background: "rgba(245,200,76,0.10)", color: "#F5C84C", border: "1px solid rgba(245,200,76,0.25)" }}
@@ -212,7 +133,6 @@ function CaptainCard({
           {rank}
         </div>
 
-        {/* Main info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap mb-1">
             <span className="text-sm font-bold text-white leading-tight">{player.player_name}</span>
@@ -228,16 +148,13 @@ function CaptainCard({
             ) : null}
           </div>
 
-          {/* Confidence badge */}
-          {conf && <ConfidenceBadge label={conf} />}
+          <ConfidenceBadge label={displayConf} />
 
-          {/* Short reason */}
           {why && (
             <p className="text-[11px] text-white/35 mt-2 leading-relaxed line-clamp-2">{why}</p>
           )}
         </div>
 
-        {/* Projection */}
         <div className="text-right shrink-0 pl-2">
           <div className="text-xl font-bold text-white tabular-nums leading-none">{fmt(proj, 0)}</div>
           <div className="text-[9px] text-white/25 mt-0.5">pts proj</div>
@@ -321,24 +238,33 @@ function CollapsibleSEO() {
   );
 }
 
-// ─── LOCK CTA ─────────────────────────────────────────────────────────────────
+// ─── FREE LOCK CTA ────────────────────────────────────────────────────────────
 
-function LockCTA({ onUpgrade, hiddenCount }: { onUpgrade: () => void; hiddenCount: number }) {
+function FreeLockCTA({ onUpgrade, hiddenCount }: { onUpgrade: () => void; hiddenCount: number }) {
   return (
-    <div className="flex flex-col items-center gap-3 py-4 px-4">
-      <button
-        onClick={onUpgrade}
-        className="flex items-center gap-2 text-[12px] font-bold border rounded-xl px-4 py-2.5 transition-all duration-200 hover:-translate-y-0.5"
-        style={{
-          color: "#F5C84C",
-          borderColor: "rgba(245,200,76,0.30)",
-          background: "rgba(245,200,76,0.06)",
-        }}
-      >
-        <Crown className="w-3.5 h-3.5" />
-        Unlock {hiddenCount} more picks — Neeko+
-      </button>
-      <p className="text-[10px] text-white/25">Full SAFE + POD picks, confidence scores &amp; AI insights</p>
+    <div
+      className="rounded-2xl border overflow-hidden"
+      style={{ borderColor: "rgba(245,200,76,0.15)", background: "rgba(245,200,76,0.03)" }}
+    >
+      <div className="px-5 py-5 flex flex-col items-center gap-3 text-center">
+        <div className="flex items-center gap-1.5 text-[11px] text-white/40 font-medium">
+          <Lock className="w-3 h-3 text-white/30" />
+          {hiddenCount} more captain options hidden
+        </div>
+        <button
+          onClick={onUpgrade}
+          className="flex items-center gap-2 text-[13px] font-bold border rounded-xl px-5 py-2.5 transition-all duration-200 hover:-translate-y-0.5"
+          style={{
+            color: "#F5C84C",
+            borderColor: "rgba(245,200,76,0.30)",
+            background: "rgba(245,200,76,0.08)",
+          }}
+        >
+          <Crown className="w-3.5 h-3.5" />
+          Unlock full captain strategy
+        </button>
+        <p className="text-[10px] text-white/25">Full SAFE + POD picks, confidence scores &amp; AI insights</p>
+      </div>
     </div>
   );
 }
@@ -412,32 +338,28 @@ export default function AFLCaptainsPage() {
   }, []);
 
   // ── BUILD CAPTAIN TIERS ────────────────────────────────────────────────────
-  const { locks, safes, pods, riskyCaptains } = useMemo(() => {
-    if (players.length === 0) return { locks: [], safes: [], pods: [], riskyCaptains: [] };
+  const { allCaptains, locks, safes, pods, riskyCaptains } = useMemo(() => {
+    if (players.length === 0) return { allCaptains: [], locks: [], safes: [], pods: [], riskyCaptains: [] };
 
-    const eligible = players.filter(
-      p => !p.is_injured && !p.is_bye && (p.projection ?? 0) > 0 && p.player_id
-    );
+    const eligible = players.filter(isCaptainEligible);
 
-    // Sort by decision_score desc as primary signal
-    const byDecision = [...eligible].sort(
-      (a, b) => (b.decision_score ?? 0) - (a.decision_score ?? 0)
-    );
+    // Sort ALL eligible players by shared getCaptainScore (same as landing page)
+    const byScore = [...eligible].sort((a, b) => getCaptainScore(b) - getCaptainScore(a));
 
-    // LOCK: top 1 by decision_score
-    const locks = byDecision.slice(0, 1);
+    // LOCK: top 1 by captain score
+    const locks = byScore.slice(0, 1);
 
-    // SAFE: next 3 by decision_score
-    const safes = byDecision.slice(1, 4);
+    // SAFE: next 3 by captain score
+    const safes = byScore.slice(1, 4);
 
-    // POD: next 3 by ceiling_estimate (differential upside) falling back to decision_score
+    // POD: high ceiling differential picks not already in locks/safes
     const usedIds = new Set([...locks, ...safes].map(p => p.player_id));
     const pods = [...eligible]
       .filter(p => !usedIds.has(p.player_id))
-      .sort((a, b) => (b.ceiling_estimate ?? b.decision_score ?? 0) - (a.ceiling_estimate ?? a.decision_score ?? 0))
+      .sort((a, b) => (b.ceiling_estimate ?? b.projection ?? 0) - (a.ceiling_estimate ?? a.projection ?? 0))
       .slice(0, 3);
 
-    // RISKY CAPTAIN: high projection but low confidence
+    // RISKY: high projection but low confidence
     const allUsed = new Set([...locks, ...safes, ...pods].map(p => p.player_id));
     const riskyCaptains = eligible
       .filter(p => !allUsed.has(p.player_id))
@@ -445,7 +367,10 @@ export default function AFLCaptainsPage() {
       .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
       .slice(0, 2);
 
-    return { locks, safes, pods, riskyCaptains };
+    // allCaptains: flat ranked list used for free tier (FILTER → SORT → SLICE)
+    const allCaptains = byScore;
+
+    return { allCaptains, locks, safes, pods, riskyCaptains };
   }, [players]);
 
   function openPlayer(p: RankingRow, rank: number) {
@@ -463,13 +388,9 @@ export default function AFLCaptainsPage() {
 
   const pageTitle = "AFL Fantasy Captain Picks — Lock, Safe & POD Options | Neeko Sports";
 
-  // Free shows: 1 lock only
-  const freeLockCount = 1;
-  const showSafe = isPremium;
-  const showPod = isPremium;
-  const locksToShow = isPremium ? locks : locks.slice(0, freeLockCount);
-  const lockedLockCount = isPremium ? 0 : Math.max(0, locks.length - freeLockCount);
-  const totalHidden = isPremium ? 0 : safes.length + pods.length + lockedLockCount;
+  // Free: show exactly 2 real captains, then locked CTA
+  const freeCaptains = allCaptains.slice(0, FREE_CAPTAIN_LIMIT);
+  const totalHidden = Math.max(0, allCaptains.length - FREE_CAPTAIN_LIMIT);
 
   return (
     <>
@@ -515,120 +436,116 @@ export default function AFLCaptainsPage() {
             </div>
           )}
 
-          {/* ── LOCK ──────────────────────────────────────────────────────── */}
-          <Section
-            icon={<Crown className="w-4 h-4" />}
-            label="LOCK"
-            sublabel="Start here. Highest projection, proven consistency."
-            accentColor="#F5C84C"
-          >
-            {locksToShow.length === 0 ? (
-              <div className="text-center text-white/25 text-sm py-8">No captain picks available for this round.</div>
-            ) : (
-              locksToShow.map((p, i) => (
-                <CaptainCard
-                  key={p.player_id}
-                  player={p}
-                  rank={i + 1}
-                  onOpen={() => openPlayer(p, i + 1)}
-                />
-              ))
-            )}
-            {!isPremium && lockedLockCount > 0 && (
-              <>
-                {Array.from({ length: lockedLockCount }).map((_, i) => (
+          {/* ── FREE TIER: exactly 2 captains + locked CTA ────────────────── */}
+          {!isPremium && (
+            <Section
+              icon={<Crown className="w-4 h-4" />}
+              label="Captain Picks"
+              sublabel="Top picks ranked by projection, ceiling, and consistency."
+              accentColor="#F5C84C"
+            >
+              {freeCaptains.length === 0 ? (
+                <div className="text-center text-white/25 text-sm py-8">No captain picks available for this round.</div>
+              ) : (
+                freeCaptains.map((p, i) => (
                   <CaptainCard
-                    key={`locked-lock-${i}`}
-                    player={makePlaceholderRow(freeLockCount + i + 1)}
-                    rank={freeLockCount + i + 1}
-                    locked
-                    onOpen={() => {}}
+                    key={p.player_id}
+                    player={p}
+                    rank={i + 1}
+                    onOpen={() => openPlayer(p, i + 1)}
                   />
-                ))}
-              </>
-            )}
-          </Section>
-
-          {/* ── SAFE / LOCK CTA ───────────────────────────────────────────── */}
-          {showSafe && safes.length > 0 ? (
-            <Section
-              icon={<Shield className="w-4 h-4" />}
-              label="SAFE"
-              sublabel="Reliable options if your lock is injured or benched."
-              accentColor="#60a5fa"
-            >
-              {safes.map((p, i) => (
-                <CaptainCard
-                  key={p.player_id}
-                  player={p}
-                  rank={i + 1}
-                  onOpen={() => openPlayer(p, i + 1)}
+                ))
+              )}
+              {totalHidden > 0 && (
+                <FreeLockCTA
+                  onUpgrade={() => setShowUpgradeModal(true)}
+                  hiddenCount={totalHidden}
                 />
-              ))}
-            </Section>
-          ) : !isPremium ? (
-            <div
-              className="rounded-2xl border overflow-hidden"
-              style={{ borderColor: "rgba(255,255,255,0.07)", background: "#0d0d0d" }}
-            >
-              <div className="px-4 py-3 border-b border-white/[0.06] flex items-center gap-2">
-                <Shield className="w-3.5 h-3.5 text-blue-400/60" />
-                <span className="text-[12px] font-bold uppercase tracking-wider text-white/40">SAFE</span>
-              </div>
-              {Array.from({ length: 2 }).map((_, i) => (
-                <CaptainCard
-                  key={`locked-safe-${i}`}
-                  player={makePlaceholderRow(i + 1)}
-                  rank={i + 1}
-                  locked
-                  onOpen={() => {}}
-                />
-              ))}
-              <LockCTA onUpgrade={() => setShowUpgradeModal(true)} hiddenCount={totalHidden} />
-            </div>
-          ) : null}
-
-          {/* ── POD ───────────────────────────────────────────────────────── */}
-          {showPod && pods.length > 0 && (
-            <Section
-              icon={<Zap className="w-4 h-4" />}
-              label="POD"
-              sublabel="Differential. Low ownership, high upside this round."
-              accentColor="#a78bfa"
-            >
-              {pods.map((p, i) => (
-                <CaptainCard
-                  key={p.player_id}
-                  player={p}
-                  rank={i + 1}
-                  onOpen={() => openPlayer(p, i + 1)}
-                />
-              ))}
+              )}
             </Section>
           )}
 
-          {/* ── RISKY CAPTAIN ─────────────────────────────────────────────── */}
-          {isPremium && riskyCaptains.length > 0 && (
-            <Section
-              icon={<AlertTriangle className="w-4 h-4" />}
-              label="Risky Captain"
-              sublabel="High projection but low confidence — proceed with caution."
-              accentColor="#fb923c"
-            >
-              {riskyCaptains.map((p, i) => (
-                <CaptainCard
-                  key={p.player_id}
-                  player={p}
-                  rank={i + 1}
-                  onOpen={() => openPlayer(p, i + 1)}
-                />
-              ))}
-            </Section>
-          )}
+          {/* ── PREMIUM TIER: full LOCK / SAFE / POD / RISKY layout ───────── */}
+          {isPremium && (
+            <>
+              {/* LOCK */}
+              <Section
+                icon={<Crown className="w-4 h-4" />}
+                label="LOCK"
+                sublabel="Start here. Highest projection, proven consistency."
+                accentColor="#F5C84C"
+              >
+                {locks.length === 0 ? (
+                  <div className="text-center text-white/25 text-sm py-8">No captain picks available for this round.</div>
+                ) : (
+                  locks.map((p, i) => (
+                    <CaptainCard
+                      key={p.player_id}
+                      player={p}
+                      rank={i + 1}
+                      onOpen={() => openPlayer(p, i + 1)}
+                    />
+                  ))
+                )}
+              </Section>
 
-          {/* ── LOCK CTA (if free and no safe/pod rendered) ───────────────── */}
-          {!isPremium && showSafe && (
-            <LockCTA onUpgrade={() => setShowUpgradeModal(true)} hiddenCount={totalHidden} />
+              {/* SAFE */}
+              {safes.length > 0 && (
+                <Section
+                  icon={<Shield className="w-4 h-4" />}
+                  label="SAFE"
+                  sublabel="Reliable options if your lock is injured or benched."
+                  accentColor="#60a5fa"
+                >
+                  {safes.map((p, i) => (
+                    <CaptainCard
+                      key={p.player_id}
+                      player={p}
+                      rank={i + 1}
+                      onOpen={() => openPlayer(p, i + 1)}
+                    />
+                  ))}
+                </Section>
+              )}
+
+              {/* POD */}
+              {pods.length > 0 && (
+                <Section
+                  icon={<Zap className="w-4 h-4" />}
+                  label="POD"
+                  sublabel="Differential. Low ownership, high upside this round."
+                  accentColor="#a78bfa"
+                >
+                  {pods.map((p, i) => (
+                    <CaptainCard
+                      key={p.player_id}
+                      player={p}
+                      rank={i + 1}
+                      onOpen={() => openPlayer(p, i + 1)}
+                    />
+                  ))}
+                </Section>
+              )}
+
+              {/* RISKY CAPTAIN */}
+              {riskyCaptains.length > 0 && (
+                <Section
+                  icon={<AlertTriangle className="w-4 h-4" />}
+                  label="Risky Captain"
+                  sublabel="High projection but low confidence — proceed with caution."
+                  accentColor="#fb923c"
+                >
+                  {riskyCaptains.map((p, i) => (
+                    <CaptainCard
+                      key={p.player_id}
+                      player={p}
+                      rank={i + 1}
+                      onOpen={() => openPlayer(p, i + 1)}
+                    />
+                  ))}
+                </Section>
+              )}
+            </>
           )}
 
           {/* ── SEO ───────────────────────────────────────────────────────── */}

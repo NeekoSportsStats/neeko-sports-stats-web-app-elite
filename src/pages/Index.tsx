@@ -19,6 +19,7 @@ import LandingProductProof from "@/features/afl/landing/LandingProductProof";
 import MobileLanding from "@/features/afl/landing/MobileLanding";
 import { classifyPlayers } from "@/features/afl/market-watch/engine";
 import type { MWPlayerRow } from "@/features/afl/market-watch/types";
+import { getCaptainScore, isCaptainEligible } from "@/features/afl/shared/data/captainScoring";
 
 // ── Design tokens ───────────────────────────────────────────────────────────────
 const DARK = "#05070A";
@@ -508,7 +509,10 @@ export default function Index() {
 
     const usedIds1 = new Set([mustBuyP?.player_id, trapP?.player_id].filter(Boolean));
     const captainP =
-      byProjectionDesc.filter(p => !usedIds1.has(p.player_id))[0]
+      allWithProjection
+        .filter(p => !usedIds1.has(p.player_id) && isCaptainEligible(p))
+        .sort((a, b) => getCaptainScore(b) - getCaptainScore(a))[0]
+      ?? byProjectionDesc.filter(p => !usedIds1.has(p.player_id))[0]
       ?? byProjectionDesc[0]
       ?? null;
 
