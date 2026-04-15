@@ -508,7 +508,7 @@ export default function AFLPlayerPage() {
                     {player.player_name}
                   </h1>
                 </div>
-                {action && (
+                {isPremium && action && (
                   <div
                     className="flex flex-col items-center justify-center w-14 h-14 rounded-xl shrink-0 border"
                     style={{ background: `${actionColor}15`, borderColor: `${actionColor}30` }}
@@ -517,26 +517,44 @@ export default function AFLPlayerPage() {
                     <span className="text-[13px] font-black uppercase tracking-wider" style={{ color: actionColor }}>{action}</span>
                   </div>
                 )}
+                {!isPremium && (
+                  <div className="flex flex-col items-center justify-center w-14 h-14 rounded-xl shrink-0 border border-amber-500/25 bg-amber-500/[0.06]">
+                    <Lock size={14} className="text-amber-400/70" />
+                    <span className="text-[8px] uppercase tracking-widest text-amber-400/60 mt-0.5">Action</span>
+                  </div>
+                )}
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                <ActionBadge action={player.action_canonical} actionDisplay={player.action_display} />
-                {player.confidence_label && (
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${player.confidence_label.toUpperCase() === 'HIGH' ? 'text-green-300 border-green-500/30 bg-green-500/10' : player.confidence_label.toUpperCase() === 'MEDIUM' ? 'text-yellow-300 border-yellow-500/25 bg-yellow-500/8' : 'text-white/40 border-white/10 bg-white/5'}`}>
-                    {player.confidence_label.charAt(0).toUpperCase() + player.confidence_label.slice(1).toLowerCase()} Confidence
+              {isPremium ? (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <ActionBadge action={player.action_canonical} actionDisplay={player.action_display} />
+                  {player.confidence_label && (
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${player.confidence_label.toUpperCase() === 'HIGH' ? 'text-green-300 border-green-500/30 bg-green-500/10' : player.confidence_label.toUpperCase() === 'MEDIUM' ? 'text-yellow-300 border-yellow-500/25 bg-yellow-500/8' : 'text-white/40 border-white/10 bg-white/5'}`}>
+                      {player.confidence_label.charAt(0).toUpperCase() + player.confidence_label.slice(1).toLowerCase()} Confidence
+                    </span>
+                  )}
+                  {player.value_band && (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border text-emerald-300 border-emerald-500/25 bg-emerald-500/8">
+                      {player.value_band}
+                    </span>
+                  )}
+                  {player.neeko_rating != null && (
+                    <span className="text-[11px] font-bold text-[#F5C84C] tabular-nums">
+                      {Number(player.neeko_rating).toFixed(1)} Rating
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border border-amber-500/25 bg-amber-500/[0.06] text-amber-400/70">
+                    <Lock size={10} />
+                    Action locked
                   </span>
-                )}
-                {player.value_band && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border text-emerald-300 border-emerald-500/25 bg-emerald-500/8">
-                    {player.value_band}
-                  </span>
-                )}
-                {player.neeko_rating != null && (
-                  <span className="text-[11px] font-bold text-[#F5C84C] tabular-nums">
-                    {Number(player.neeko_rating).toFixed(1)} Rating
-                  </span>
-                )}
-              </div>
+                  <Link to="/upgrade" className="text-[11px] text-amber-400 hover:text-amber-300 transition-colors font-semibold">
+                    Upgrade →
+                  </Link>
+                </div>
+              )}
 
               <div className="flex items-center gap-4 flex-wrap pt-1">
                 <MetricPill
@@ -614,7 +632,7 @@ export default function AFLPlayerPage() {
             </Suspense>
           </div>
 
-          {hasAI && (
+          {isPremium && hasAI && (
             <div className="rounded-xl border border-white/[0.07] bg-[#111] p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] uppercase tracking-wider text-white/30">AI Analysis</p>
@@ -671,7 +689,7 @@ export default function AFLPlayerPage() {
                 Unlock full {player.player_name} analysis
               </h3>
               <p className="text-[12px] text-white/45 mb-4">
-                AI recommendations, edge analysis, breakeven, price projections and more
+                AI recommendations, action signals, breakeven, edge analysis and more
               </p>
               <div className="flex flex-col sm:flex-row gap-2 justify-center">
                 <Link

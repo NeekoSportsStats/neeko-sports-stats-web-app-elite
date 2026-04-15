@@ -477,11 +477,11 @@ export default function AFLPlayersPage() {
           }}>
             <Crown size={13} style={{ color: "#F5C84C", flexShrink: 0 }} />
             <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.50)", lineHeight: 1.4 }}>
-              Projections and signals are blurred for non-subscribers.{" "}
+              Signals are hidden for non-subscribers.{" "}
               <Link to="/neeko-plus" style={{ color: "#F5C84C", textDecoration: "none", fontWeight: 700 }}>
                 Upgrade to Neeko+
               </Link>{" "}
-              to unlock full data for all {totalCount}+ players.
+              to unlock signals and AI analysis for all {totalCount}+ players.
             </p>
           </div>
         )}
@@ -630,23 +630,15 @@ export default function AFLPlayersPage() {
                           </span>
                         </td>
 
-                        {/* Projection — blurred for locked free rows */}
+                        {/* Projection — always visible for all users */}
                         <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
-                          {isLocked ? (
-                            <BlurredCell>
-                              <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.88)" }}>
-                                {fmt(row.projection ?? 80)}
-                              </span>
-                            </BlurredCell>
-                          ) : (
-                            <span style={{
-                              fontSize: 13,
-                              fontWeight: 700,
-                              color: row.projection != null ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.25)",
-                            }}>
-                              {fmt(row.projection)}
-                            </span>
-                          )}
+                          <span style={{
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: row.projection != null ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.25)",
+                          }}>
+                            {fmt(row.projection)}
+                          </span>
                         </td>
 
                         {/* Signal — blurred for locked free rows */}
@@ -692,7 +684,7 @@ export default function AFLPlayersPage() {
                             border: "1px solid rgba(245,200,76,0.22)",
                           }}
                         >
-                          <Crown size={13} /> Unlock full projections and signals with Neeko+
+                          <Crown size={13} /> Unlock signals and AI analysis with Neeko+
                         </Link>
                       </td>
                     </tr>
