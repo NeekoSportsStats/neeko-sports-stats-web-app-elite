@@ -19,7 +19,8 @@ const BUDGET_LIMIT   = 10;
 const RISK_LIMIT     = 11;
 const TRAP_LIMIT     = 8;
 
-const BUDGET_PRICE_CAP = 350_000;
+const BUDGET_BAND_A_MAX = 350_000;
+const BUDGET_BAND_B_MAX = 650_000;
 
 function isEligible(p: RankingRow): boolean {
   if (!p.player_id) return false;
@@ -99,20 +100,99 @@ export function buildCurrentRoundPlayers(
 
   // ── BUDGET UPSIDE ──────────────────────────────────────────────────────────
   const usedIds = new Set([...captainIds, ...mustBuyIds]);
-  const budgetBase = byDecisionDesc
-    .filter(p =>
-      !usedIds.has(p.player_id) &&
-      (p.price ?? 0) > 0 &&
-      (p.price ?? 999_999) < BUDGET_PRICE_CAP &&
-      hasPositiveAction(p)
-    )
-    .slice(0, BUDGET_LIMIT);
 
-  const budgetPicks = budgetBase.length >= 3
-    ? budgetBase
-    : byDecisionDesc
-        .filter(p => !usedIds.has(p.player_id) && (p.price ?? 0) > 0 && (p.price ?? 999_999) < BUDGET_PRICE_CAP)
-        .slice(0, BUDGET_LIMIT);
+  function getBudgetUpsideScore(p: RankingRow): number | null {
+    const projection = typeof p.projection === "number" ? p.projection : null;
+    const price = typeof p.price === "number" ? p.price : null;
+    const breakeven = typeof p.breakeven === "number" ? p.breakeven : null;
+    const valueScore = typeof p.value_score === "number" ? p.value_score : null;
+
+    if (projection === null || projection < 50) return null;
+    if (price === null || price <= 0) return null;
+
+    const value = valueScore !== null
+      ? valueScore
+      : (breakeven !== null ? projection - breakeven : null);
+
+    if (value === null) return null;
+
+    // Reward genuine value/upside with a soft price discount
+    return value - (price / 1_000_000) * 8;
+  }
+
+  function hasRealUpside(p: RankingRow): boolean {
+    const sig = (p.signal_tag ?? "").toUpperCase();
+    if (["UP", "STRONG_UP", "BUY", "VALUE"].includes(sig)) return true;
+    const breakeven = typeof p.breakeven === "number" ? p.breakeven : null;
+    const projection = typeof p.projection === "number" ? p.projection : null;
+    if (projection !== null && breakeven !== null && projection > breakeven) return true;
+    const valueScore = typeof p.value_score === "number" ? p.value_score : null;
+    if (valueScore !== null && valueScore > 0) return true;
+    return false;
+  }
+
+  const budgetEligible = enrichedPositive.filter(p =>
+    !usedIds.has(p.player_id) &&
+    (p.price ?? 0) > 0 &&
+    (p.price ?? 999_999) <= BUDGET_BAND_B_MAX &&
+    !hasNegativeAction(p)
+  );
+
+  // Band A: basement / rookie price range
+  const bandA = budgetEligible
+    .filter(p => (p.price ?? 999_999) <= BUDGET_BAND_A_MAX && hasRealUpside(p))
+    .map(p => ({ p, score: getBudgetUpsideScore(p) }))
+    .filter(({ score }) => score !== null)
+    .sort((a, b) => (b.score as number) - (a.score as number))
+    .map(({ p }) => p);
+
+  // Band B: playable mid-price value range
+  const bandB = budgetEligible
+    .filter(p => (p.price ?? 0) > BUDGET_BAND_A_MAX && (p.price ?? 999_999) <= BUDGET_BAND_B_MAX && hasRealUpside(p))
+    .map(p => ({ p, score: getBudgetUpsideScore(p) }))
+    .filter(({ score }) => score !== null)
+    .sort((a, b) => (b.score as number) - (a.score as number))
+    .map(({ p }) => p);
+
+  // Interleave bands for diversity: 1 from B, 1 from A, then fill from best remaining
+  const interleaved: CurrentRoundPlayer[] = [];
+  const usedInBudget = new Set<string>();
+
+  function addBudget(candidates: CurrentRoundPlayer[]) {
+    for (const c of candidates) {
+      if (!usedInBudget.has(c.player_id ?? "") && interleaved.length < BUDGET_LIMIT) {
+        interleaved.push(c);
+        usedInBudget.add(c.player_id ?? "");
+      }
+    }
+  }
+
+  // Lead with a mid-price value play if available, then rookie/cheap
+  if (bandB.length > 0) addBudget([bandB[0]]);
+  if (bandA.length > 0) addBudget([bandA[0]]);
+  addBudget(bandB.slice(1));
+  addBudget(bandA.slice(1));
+
+  // Fallback: any positive-action budget player scored by upside, no real-upside filter
+  if (interleaved.length < 3) {
+    const fallback = budgetEligible
+      .filter(p => !usedInBudget.has(p.player_id ?? "") && hasPositiveAction(p))
+      .map(p => ({ p, score: getBudgetUpsideScore(p) }))
+      .filter(({ score }) => score !== null)
+      .sort((a, b) => (b.score as number) - (a.score as number))
+      .map(({ p }) => p);
+    addBudget(fallback);
+  }
+
+  // Last resort: any budget player sorted by decision_score
+  if (interleaved.length < 3) {
+    const lastResort = budgetEligible
+      .filter(p => !usedInBudget.has(p.player_id ?? ""))
+      .sort((a, b) => (b.decision_score ?? -999) - (a.decision_score ?? -999));
+    addBudget(lastResort);
+  }
+
+  const budgetPicks = interleaved;
 
   // ── RISK / OVERPRICED — SIT or HARD_SIT, worst decision_score first ────────
   const riskPicks = byDecisionAscAll
