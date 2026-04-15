@@ -25,11 +25,8 @@ import type { RowTier } from "@/features/afl/rankings/components/types";
 import { buildCurrentRoundPlayers, type CurrentRoundPlayer } from "@/features/afl/current-round/engine";
 
 // ─── FREE TIER LIMITS ────────────────────────────────────────────────────────
-const MUST_BUY_FREE = 2;
-const BUDGET_FREE   = 2;
-const RISK_FREE     = 2;
-const CAPTAIN_FREE  = 2;
-const PREMIUM_LIMIT = 8;
+const FREE_LIMIT    = 2;
+const PREMIUM_LIMIT = 5;
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -141,7 +138,6 @@ function HeroCard({ label, question, icon, accentColor, playerName, stat, statLa
         border: `1px solid ${accentColor}28`,
       }}
     >
-      {/* Label + question */}
       <div className="flex items-center gap-2">
         <span className="w-5 h-5 rounded-md flex items-center justify-center shrink-0" style={{ background: `${accentColor}18` }}>
           <span style={{ color: accentColor }}>{icon}</span>
@@ -152,7 +148,6 @@ function HeroCard({ label, question, icon, accentColor, playerName, stat, statLa
         </div>
       </div>
 
-      {/* Player name + badge */}
       <div className="flex-1">
         <div className="flex items-start gap-1.5 flex-wrap">
           <span className="text-[15px] font-bold text-white leading-tight">{playerName ?? "—"}</span>
@@ -163,7 +158,6 @@ function HeroCard({ label, question, icon, accentColor, playerName, stat, statLa
         )}
       </div>
 
-      {/* Primary stat + optional secondary */}
       <div className="flex items-end gap-3 border-t pt-2.5" style={{ borderColor: `${accentColor}14` }}>
         <div>
           <div className="text-2xl font-bold tabular-nums leading-none" style={{ color: accentColor }}>{stat}</div>
@@ -224,18 +218,19 @@ function RoundSnapshotCard({
   );
 }
 
-// ─── PLAYER ROW ───────────────────────────────────────────────────────────────
+// ─── COMPACT PLAYER ROW (SHARED) ─────────────────────────────────────────────
 
-interface PlayerRowProps {
+interface CompactPlayerRowProps {
   row: CurrentRoundPlayer;
   rank: number;
-  badge?: React.ReactNode;
-  metric?: React.ReactNode;
-  subtext?: string | null;
+  badge: React.ReactNode;
+  rightLabel: string;
+  rightSub: string;
+  rightColor?: string;
   onClick: () => void;
 }
 
-function PlayerRow({ row, rank, badge, metric, subtext, onClick }: PlayerRowProps) {
+function CompactPlayerRow({ row, rank, badge, rightLabel, rightSub, rightColor = "#ffffff", onClick }: CompactPlayerRowProps) {
   return (
     <button
       onClick={onClick}
@@ -252,14 +247,12 @@ function PlayerRow({ row, rank, badge, metric, subtext, onClick }: PlayerRowProp
         <div className="text-[10px] text-white/25 mt-0.5">
           {normalisePosition(row.position) ?? "—"} · {row.team}
           {row.price ? ` · ${fmtPrice(row.price)}` : ""}
-          {subtext ? ` · ${subtext}` : ""}
         </div>
       </div>
-      <div className="flex items-center gap-2.5 shrink-0">
-        {metric}
+      <div className="flex items-center gap-2 shrink-0">
         <div className="text-right">
-          <div className="text-[13px] font-bold text-white tabular-nums">{fmt(row.projection, 0)}</div>
-          <div className="text-[9px] text-white/20 uppercase tracking-wide">proj</div>
+          <div className="text-[13px] font-bold tabular-nums" style={{ color: rightColor }}>{rightLabel}</div>
+          <div className="text-[9px] text-white/20 uppercase tracking-wide">{rightSub}</div>
         </div>
         <ChevronRight className="w-3.5 h-3.5 text-white/10 group-hover:text-white/35 transition-colors" />
       </div>
@@ -267,106 +260,21 @@ function PlayerRow({ row, rank, badge, metric, subtext, onClick }: PlayerRowProp
   );
 }
 
-// ─── SECTION METRIC HELPERS ──────────────────────────────────────────────────
-
-function EdgeMetric({ edge, positive }: { edge: number; positive: boolean }) {
-  const color = positive ? (edge >= 15 ? "#4ade80" : "#34d399") : "#f87171";
-  const prefix = positive && edge > 0 ? "+" : "";
-  return (
-    <div className="text-right hidden sm:block w-10">
-      <div className="text-[13px] font-bold tabular-nums" style={{ color }}>{prefix}{fmt(edge, 0)}</div>
-      <div className="text-[9px] text-white/20 uppercase tracking-wide">edge</div>
-    </div>
-  );
-}
-
-function PriceMetric({ price }: { price: number }) {
-  return (
-    <div className="text-right hidden sm:block w-14">
-      <div className="text-[13px] font-bold tabular-nums text-teal-400">{fmtPrice(price)}</div>
-      <div className="text-[9px] text-white/20 uppercase tracking-wide">price</div>
-    </div>
-  );
-}
-
-function ConfidenceMetric({ label }: { label: string | null | undefined }) {
-  if (!label) return null;
-  const up = label.toUpperCase();
-  const color = up === "HIGH" ? "text-green-400" : up === "MEDIUM" ? "text-yellow-400" : "text-orange-400";
-  const short = up === "HIGH" ? "Hi" : up === "MEDIUM" ? "Med" : "Low";
-  return (
-    <div className="text-right hidden sm:block w-10">
-      <div className={`text-[13px] font-bold tabular-nums ${color}`}>{short}</div>
-      <div className="text-[9px] text-white/20 uppercase tracking-wide">conf</div>
-    </div>
-  );
-}
-
-// ─── BLURRED / LOCKED ROW ────────────────────────────────────────────────────
-
-function BlurredRow({ rank }: { rank: number }) {
-  return (
-    <div className="flex items-center gap-3 px-4 py-2.5 select-none pointer-events-none">
-      <span className="text-[11px] text-white/10 w-4 text-right shrink-0 font-mono">{rank}</span>
-      <div className="flex-1 flex items-center gap-2">
-        <Lock className="w-3 h-3 text-white/10 shrink-0" />
-        <div className="h-2 w-32 rounded-full bg-white/[0.05]" />
-        <div className="h-2 w-14 rounded-full bg-white/[0.03]" />
-      </div>
-      <div className="h-2 w-10 rounded-full bg-white/[0.03]" />
-    </div>
-  );
-}
-
-// ─── PREMIUM LOCK OVERLAY ────────────────────────────────────────────────────
-
-function LockOverlay({
-  hiddenCount, accentColor, onUpgrade, ctaLabel, badgeText,
-}: {
-  hiddenCount: number; accentColor: string; onUpgrade: () => void; ctaLabel?: string; badgeText?: string;
-}) {
-  return (
-    <>
-      <div
-        className="absolute inset-0 rounded-b-2xl pointer-events-none"
-        style={{ background: "linear-gradient(to bottom, transparent 0%, #070707cc 50%, #070707f8 100%)" }}
-      />
-      <div className="absolute bottom-0 left-0 right-0 z-10 px-4 pb-3.5">
-        <button
-          onClick={onUpgrade}
-          className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
-          style={{ background: "rgba(255,255,255,0.03)", borderColor: `${accentColor}25` }}
-          onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.borderColor = `${accentColor}45`)}
-          onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = `${accentColor}25`)}
-        >
-          <span className="flex items-center gap-1.5 text-[11px] text-white/35">
-            <Lock className="w-3 h-3" style={{ color: `${accentColor}60` }} />
-            {badgeText ?? `+${hiddenCount} more picks`}
-          </span>
-          <span className="text-[12px] font-bold" style={{ color: accentColor }}>
-            {ctaLabel ?? "Unlock Neeko+"} →
-          </span>
-        </button>
-      </div>
-    </>
-  );
-}
-
 // ─── SECTION HEADER ──────────────────────────────────────────────────────────
 
-interface SectionHeaderProps {
+function SectionHeader({
+  title, subtitle, icon, accentColor, freeCount, totalCount, showCounts,
+}: {
   title: string;
-  description: string;
+  subtitle: string;
   icon: React.ReactNode;
   accentColor: string;
   freeCount?: number;
   totalCount?: number;
   showCounts: boolean;
-}
-
-function SectionHeader({ title, description, icon, accentColor, freeCount, totalCount, showCounts }: SectionHeaderProps) {
+}) {
   return (
-    <div className="px-4 pt-4 pb-3" style={{ borderBottom: `1px solid ${accentColor}14` }}>
+    <div className="px-4 pt-3.5 pb-3" style={{ borderBottom: `1px solid ${accentColor}14` }}>
       <div className="flex items-center gap-2">
         <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${accentColor}18` }}>
           <span style={{ color: accentColor }}>{icon}</span>
@@ -376,7 +284,39 @@ function SectionHeader({ title, description, icon, accentColor, freeCount, total
           <span className="text-[10px] text-white/20 tabular-nums">{freeCount} of {totalCount} shown</span>
         )}
       </div>
-      <p className="text-[11px] text-white/30 mt-1.5 ml-8 leading-relaxed">{description}</p>
+      <p className="text-[11px] text-white/30 mt-1 ml-8 leading-relaxed">{subtitle}</p>
+    </div>
+  );
+}
+
+// ─── LOCK BLOCK ──────────────────────────────────────────────────────────────
+
+function LockBlock({
+  hiddenCount, accentColor, onUpgrade, ctaLabel, badgeText,
+}: {
+  hiddenCount: number;
+  accentColor: string;
+  onUpgrade: () => void;
+  ctaLabel: string;
+  badgeText: string;
+}) {
+  return (
+    <div className="px-4 py-3">
+      <button
+        onClick={onUpgrade}
+        className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+        style={{ background: "rgba(255,255,255,0.02)", borderColor: `${accentColor}25` }}
+        onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.borderColor = `${accentColor}50`)}
+        onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = `${accentColor}25`)}
+      >
+        <span className="flex items-center gap-1.5 text-[11px] text-white/35">
+          <Lock className="w-3 h-3" style={{ color: `${accentColor}60` }} />
+          {badgeText}
+        </span>
+        <span className="text-[12px] font-bold" style={{ color: accentColor }}>
+          {ctaLabel} →
+        </span>
+      </button>
     </div>
   );
 }
@@ -404,7 +344,7 @@ function SectionFooter({ to, label, accentColor }: { to: string; label: string; 
 
 function TierDivider({ label, color }: { label: string; color: string }) {
   return (
-    <div className="flex items-center gap-2 px-4 pt-3 pb-1.5">
+    <div className="flex items-center gap-2 px-4 pt-2.5 pb-1">
       <div className="h-px flex-1" style={{ background: `${color}18` }} />
       <span
         className="text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full"
@@ -428,40 +368,29 @@ function MustBuysSection({
   onUpgrade: () => void;
 }) {
   const accentColor = "#4ade80";
-  const visible = mustBuys.slice(0, isPremiumUser ? PREMIUM_LIMIT : MUST_BUY_FREE);
-  const hidden  = isPremiumUser ? [] : mustBuys.slice(MUST_BUY_FREE, Math.min(PREMIUM_LIMIT, mustBuys.length));
-  const totalHidden = isPremiumUser ? 0 : Math.max(0, mustBuys.length - MUST_BUY_FREE);
+  const limit = isPremiumUser ? PREMIUM_LIMIT : FREE_LIMIT;
+  const visible = mustBuys.slice(0, limit);
+  const totalHidden = isPremiumUser ? 0 : Math.max(0, mustBuys.length - FREE_LIMIT);
 
-  const strong = visible.filter((p) => {
+  const premiumStrong = mustBuys.slice(0, PREMIUM_LIMIT).filter((p) => {
     const ac = (p.action_canonical ?? "").toUpperCase();
     return ac === "SMASH_START" || ac === "STRONG_START";
   });
-  const start = visible.filter((p) => (p.action_canonical ?? "").toUpperCase() === "START");
-
-  const renderRow = (row: CurrentRoundPlayer, globalIdx: number) => {
-    const ac = (row.action_canonical ?? "").toUpperCase();
-    const isStrong = ac === "SMASH_START" || ac === "STRONG_START";
-    return (
-      <PlayerRow
-        key={row.player_id ?? globalIdx}
-        row={row}
-        rank={globalIdx + 1}
-        badge={isStrong ? <BuyBadge /> : <ValueBadge />}
-        metric={(row.edge_canonical ?? row.decision_score) != null ? <EdgeMetric edge={row.edge_canonical ?? row.decision_score ?? 0} positive /> : undefined}
-        subtext={(row.edge_canonical ?? row.decision_score) != null ? `${(row.edge_canonical ?? row.decision_score ?? 0) >= 0 ? "+" : ""}${(row.edge_canonical ?? row.decision_score ?? 0).toFixed(1)} edge` : null}
-        onClick={() => onOpenRow(row)}
-      />
-    );
-  };
+  const premiumStart = mustBuys.slice(0, PREMIUM_LIMIT).filter((p) =>
+    (p.action_canonical ?? "").toUpperCase() === "START"
+  );
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${accentColor}28`, background: `linear-gradient(145deg, ${accentColor}05 0%, transparent 55%)` }}>
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{ border: `1px solid ${accentColor}28`, background: `linear-gradient(145deg, ${accentColor}05 0%, transparent 55%)` }}
+    >
       <SectionHeader
         title="Must Buys"
-        description="Who should I target this round?"
+        subtitle="Who to target this round"
         icon={<TrendingUp className="w-3.5 h-3.5" />}
         accentColor={accentColor}
-        freeCount={MUST_BUY_FREE}
+        freeCount={FREE_LIMIT}
         totalCount={mustBuys.length}
         showCounts={!isPremiumUser}
       />
@@ -469,42 +398,90 @@ function MustBuysSection({
       <div className="py-1">
         {isPremiumUser ? (
           <>
-            {strong.length > 0 && (
+            {premiumStrong.length > 0 && (
               <>
-                <TierDivider label="Start Signal — High Value" color="#4ade80" />
-                {strong.map((row, idx) => renderRow(row, idx))}
+                <TierDivider label="Strong Signal" color="#4ade80" />
+                {premiumStrong.map((row, idx) => {
+                  const edge = row.edge_canonical ?? row.decision_score ?? 0;
+                  return (
+                    <CompactPlayerRow
+                      key={row.player_id ?? idx}
+                      row={row}
+                      rank={idx + 1}
+                      badge={<BuyBadge />}
+                      rightLabel={`+${fmt(edge, 0)}`}
+                      rightSub="edge"
+                      rightColor="#4ade80"
+                      onClick={() => onOpenRow(row)}
+                    />
+                  );
+                })}
               </>
             )}
-            {start.length > 0 && (
+            {premiumStart.length > 0 && (
               <>
                 <TierDivider label="Trade Targets" color="#34d399" />
-                {start.map((row, idx) => renderRow(row, strong.length + idx))}
+                {premiumStart.map((row, idx) => {
+                  const edge = row.edge_canonical ?? row.decision_score ?? 0;
+                  return (
+                    <CompactPlayerRow
+                      key={row.player_id ?? idx}
+                      row={row}
+                      rank={premiumStrong.length + idx + 1}
+                      badge={<ValueBadge />}
+                      rightLabel={`+${fmt(edge, 0)}`}
+                      rightSub="edge"
+                      rightColor="#34d399"
+                      onClick={() => onOpenRow(row)}
+                    />
+                  );
+                })}
               </>
             )}
-            {strong.length === 0 && start.length === 0 && visible.length > 0 && (
-              <>
-                <TierDivider label="Trade Targets" color="#34d399" />
-                {visible.map((row, idx) => renderRow(row, idx))}
-              </>
-            )}
+            {premiumStrong.length === 0 && premiumStart.length === 0 && visible.map((row, idx) => {
+              const edge = row.edge_canonical ?? row.decision_score ?? 0;
+              return (
+                <CompactPlayerRow
+                  key={row.player_id ?? idx}
+                  row={row}
+                  rank={idx + 1}
+                  badge={<BuyBadge />}
+                  rightLabel={`+${fmt(edge, 0)}`}
+                  rightSub="edge"
+                  rightColor="#4ade80"
+                  onClick={() => onOpenRow(row)}
+                />
+              );
+            })}
           </>
         ) : (
-          visible.map((row, idx) => renderRow(row, idx))
+          visible.map((row, idx) => {
+            const ac = (row.action_canonical ?? "").toUpperCase();
+            const isStrong = ac === "SMASH_START" || ac === "STRONG_START";
+            const edge = row.edge_canonical ?? row.decision_score ?? 0;
+            return (
+              <CompactPlayerRow
+                key={row.player_id ?? idx}
+                row={row}
+                rank={idx + 1}
+                badge={isStrong ? <BuyBadge /> : <ValueBadge />}
+                rightLabel={`+${fmt(edge, 0)}`}
+                rightSub="edge"
+                rightColor="#4ade80"
+                onClick={() => onOpenRow(row)}
+              />
+            );
+          })
         )}
 
-        {hidden.length > 0 && (
-          <div className="relative pb-14 mt-1">
-            {hidden.map((row, idx) => (
-              <BlurredRow key={row.player_id ?? idx} rank={MUST_BUY_FREE + idx + 1} />
-            ))}
-            <LockOverlay
-              hiddenCount={totalHidden}
-              accentColor={accentColor}
-              onUpgrade={onUpgrade}
-              ctaLabel="Unlock all trade targets"
-              badgeText={`+${totalHidden} targets hidden`}
-            />
-          </div>
+        {totalHidden > 0 && (
+          <LockBlock
+            hiddenCount={totalHidden}
+            accentColor={accentColor}
+            onUpgrade={onUpgrade}
+            ctaLabel="Unlock all trade targets"
+            badgeText={`+${totalHidden} targets hidden`}
+          />
         )}
       </div>
 
@@ -524,10 +501,11 @@ function CaptainSection({
   onUpgrade: () => void;
 }) {
   const accentColor = "#F5C84C";
-  const visible = captains.slice(0, isPremiumUser ? PREMIUM_LIMIT : CAPTAIN_FREE);
-  const totalHidden = isPremiumUser ? 0 : Math.max(0, captains.length - CAPTAIN_FREE);
+  const limit = isPremiumUser ? PREMIUM_LIMIT : FREE_LIMIT;
+  const visible = captains.slice(0, limit);
+  const totalHidden = isPremiumUser ? 0 : Math.max(0, captains.length - FREE_LIMIT);
 
-  console.log("CAPTAINS RAW", captains.length, "visible", visible.length, "free limit", CAPTAIN_FREE, visible.map(p => p.player_name));
+  console.log("CAPTAINS RAW", captains.length, "visible", visible.length, "free limit", FREE_LIMIT, visible.map(p => p.player_name));
 
   const tiers: { key: "Lock" | "Safe" | "POD"; color: string; label: string; players: CurrentRoundPlayer[] }[] = [
     { key: "Lock", color: "#F5C84C", label: "Lock — Highest Confidence",  players: captains.slice(0, PREMIUM_LIMIT).filter((p) => getCaptainTier(p).label === "Lock") },
@@ -535,29 +513,17 @@ function CaptainSection({
     { key: "POD",  color: "#60a5fa", label: "POD — Point of Difference",  players: captains.slice(0, PREMIUM_LIMIT).filter((p) => getCaptainTier(p).label === "POD")  },
   ].filter((t) => t.players.length > 0);
 
-  const renderCaptainRow = (row: CurrentRoundPlayer, rankNum: number) => {
-    const tier = getCaptainTier(row);
-    return (
-      <PlayerRow
-        key={row.player_id ?? rankNum}
-        row={row}
-        rank={rankNum + 1}
-        badge={<CaptainBadge tier={tier.label} />}
-        metric={row.confidence_label != null ? <ConfidenceMetric label={row.confidence_label} /> : undefined}
-        subtext={tier.desc}
-        onClick={() => onOpenRow(row)}
-      />
-    );
-  };
-
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${accentColor}28`, background: `linear-gradient(145deg, ${accentColor}05 0%, transparent 55%)` }}>
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{ border: `1px solid ${accentColor}28`, background: `linear-gradient(145deg, ${accentColor}05 0%, transparent 55%)` }}
+    >
       <SectionHeader
         title="Captain Picks"
-        description="Who should I trust with the armband?"
+        subtitle="Who to trust with the armband"
         icon={<Crown className="w-3.5 h-3.5" />}
         accentColor={accentColor}
-        freeCount={CAPTAIN_FREE}
+        freeCount={FREE_LIMIT}
         totalCount={captains.length}
         showCounts={!isPremiumUser}
       />
@@ -567,31 +533,43 @@ function CaptainSection({
           tiers.map((tier) => (
             <div key={tier.key}>
               <TierDivider label={tier.label} color={tier.color} />
-              {tier.players.map((row) => renderCaptainRow(row, captains.indexOf(row)))}
+              {tier.players.map((row) => (
+                <CompactPlayerRow
+                  key={row.player_id}
+                  row={row}
+                  rank={captains.indexOf(row) + 1}
+                  badge={<CaptainBadge tier={getCaptainTier(row).label} />}
+                  rightLabel={fmt(row.projection, 0)}
+                  rightSub="proj"
+                  rightColor="#F5C84C"
+                  onClick={() => onOpenRow(row)}
+                />
+              ))}
             </div>
           ))
         ) : (
-          visible.map((row, idx) => renderCaptainRow(row, idx))
+          visible.map((row, idx) => (
+            <CompactPlayerRow
+              key={row.player_id ?? idx}
+              row={row}
+              rank={idx + 1}
+              badge={<CaptainBadge tier={getCaptainTier(row).label} />}
+              rightLabel={fmt(row.projection, 0)}
+              rightSub="proj"
+              rightColor="#F5C84C"
+              onClick={() => onOpenRow(row)}
+            />
+          ))
         )}
 
         {totalHidden > 0 && (
-          <div className="px-4 py-3">
-            <button
-              onClick={onUpgrade}
-              className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
-              style={{ background: "rgba(255,255,255,0.02)", borderColor: `${accentColor}25` }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.borderColor = `${accentColor}50`)}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = `${accentColor}25`)}
-            >
-              <span className="flex items-center gap-1.5 text-[11px] text-white/35">
-                <Lock className="w-3 h-3" style={{ color: `${accentColor}60` }} />
-                +{totalHidden} more captain options hidden
-              </span>
-              <span className="text-[12px] font-bold" style={{ color: accentColor }}>
-                Unlock full captain strategy →
-              </span>
-            </button>
-          </div>
+          <LockBlock
+            hiddenCount={totalHidden}
+            accentColor={accentColor}
+            onUpgrade={onUpgrade}
+            ctaLabel="Unlock full captain strategy"
+            badgeText={`+${totalHidden} more captain options hidden`}
+          />
         )}
       </div>
 
@@ -600,73 +578,73 @@ function CaptainSection({
   );
 }
 
-// ─── GENERIC SECTION CARD ────────────────────────────────────────────────────
+// ─── GENERIC COMPACT SECTION CARD ────────────────────────────────────────────
 
-interface SectionCardProps {
+interface CompactSectionCardProps {
   title: string;
-  description: string;
+  subtitle: string;
   icon: React.ReactNode;
   accentColor: string;
   players: CurrentRoundPlayer[];
-  freeLimit: number;
   isPremiumUser: boolean;
   onOpenRow: (row: CurrentRoundPlayer) => void;
   onUpgrade: () => void;
-  blurCtaLabel?: string;
-  blurBadgeText?: string;
+  lockCtaLabel: string;
+  lockBadgeText: (n: number) => string;
   footerLink?: { label: string; to: string };
-  renderBadge?: (row: CurrentRoundPlayer) => React.ReactNode;
-  renderMetric?: (row: CurrentRoundPlayer) => React.ReactNode;
-  renderSubtext?: (row: CurrentRoundPlayer) => string | null;
+  renderBadge: (row: CurrentRoundPlayer) => React.ReactNode;
+  renderRight: (row: CurrentRoundPlayer) => { label: string; sub: string; color?: string };
 }
 
-function SectionCard({
-  title, description, icon, accentColor, players, freeLimit, isPremiumUser,
-  onOpenRow, onUpgrade, blurCtaLabel, blurBadgeText, footerLink,
-  renderBadge, renderMetric, renderSubtext,
-}: SectionCardProps) {
-  const visible = players.slice(0, isPremiumUser ? PREMIUM_LIMIT : freeLimit);
-  const hidden  = isPremiumUser ? [] : players.slice(freeLimit, Math.min(PREMIUM_LIMIT, players.length));
-  const totalHidden = isPremiumUser ? 0 : Math.max(0, players.length - freeLimit);
+function CompactSectionCard({
+  title, subtitle, icon, accentColor, players, isPremiumUser,
+  onOpenRow, onUpgrade, lockCtaLabel, lockBadgeText,
+  footerLink, renderBadge, renderRight,
+}: CompactSectionCardProps) {
+  const limit = isPremiumUser ? PREMIUM_LIMIT : FREE_LIMIT;
+  const visible = players.slice(0, limit);
+  const totalHidden = isPremiumUser ? 0 : Math.max(0, players.length - FREE_LIMIT);
 
   return (
-    <div className="rounded-2xl overflow-hidden" style={{ border: `1px solid ${accentColor}28`, background: `linear-gradient(145deg, ${accentColor}05 0%, transparent 55%)` }}>
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{ border: `1px solid ${accentColor}28`, background: `linear-gradient(145deg, ${accentColor}05 0%, transparent 55%)` }}
+    >
       <SectionHeader
         title={title}
-        description={description}
+        subtitle={subtitle}
         icon={icon}
         accentColor={accentColor}
-        freeCount={freeLimit}
+        freeCount={FREE_LIMIT}
         totalCount={players.length}
         showCounts={!isPremiumUser}
       />
 
       <div className="py-1">
-        {visible.map((row, idx) => (
-          <PlayerRow
-            key={row.player_id ?? idx}
-            row={row}
-            rank={idx + 1}
-            badge={renderBadge ? renderBadge(row) : undefined}
-            metric={renderMetric ? renderMetric(row) : undefined}
-            subtext={renderSubtext ? renderSubtext(row) : null}
-            onClick={() => onOpenRow(row)}
-          />
-        ))}
-
-        {hidden.length > 0 && (
-          <div className="relative pb-14 mt-1">
-            {hidden.map((row, idx) => (
-              <BlurredRow key={row.player_id ?? idx} rank={freeLimit + idx + 1} />
-            ))}
-            <LockOverlay
-              hiddenCount={totalHidden}
-              accentColor={accentColor}
-              onUpgrade={onUpgrade}
-              ctaLabel={blurCtaLabel}
-              badgeText={blurBadgeText}
+        {visible.map((row, idx) => {
+          const right = renderRight(row);
+          return (
+            <CompactPlayerRow
+              key={row.player_id ?? idx}
+              row={row}
+              rank={idx + 1}
+              badge={renderBadge(row)}
+              rightLabel={right.label}
+              rightSub={right.sub}
+              rightColor={right.color}
+              onClick={() => onOpenRow(row)}
             />
-          </div>
+          );
+        })}
+
+        {totalHidden > 0 && (
+          <LockBlock
+            hiddenCount={totalHidden}
+            accentColor={accentColor}
+            onUpgrade={onUpgrade}
+            ctaLabel={lockCtaLabel}
+            badgeText={lockBadgeText(totalHidden)}
+          />
         )}
       </div>
 
@@ -806,7 +784,6 @@ function ComparePlayersModal({ players, onClose, onOpenPlayer }: ComparePlayersM
         className="relative w-full sm:max-w-xl rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col"
         style={{ background: "#0b0b0b", border: "1px solid rgba(255,255,255,0.09)", maxHeight: "92vh" }}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-xl flex items-center justify-center" style={{ background: "rgba(245,200,76,0.15)" }}>
@@ -826,7 +803,6 @@ function ComparePlayersModal({ players, onClose, onOpenPlayer }: ComparePlayersM
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {/* Player selectors */}
           <div className="grid grid-cols-2 gap-3 px-5 pt-4 pb-3">
             <PlayerSearchSlot
               label="Player A"
@@ -852,7 +828,6 @@ function ComparePlayersModal({ players, onClose, onOpenPlayer }: ComparePlayersM
             />
           </div>
 
-          {/* Empty state */}
           {isEmpty && (
             <div className="mx-5 mb-5 rounded-xl py-10 text-center" style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
               <div className="w-10 h-10 rounded-2xl bg-white/[0.04] border border-white/[0.06] flex items-center justify-center mx-auto mb-3">
@@ -865,19 +840,15 @@ function ComparePlayersModal({ players, onClose, onOpenPlayer }: ComparePlayersM
             </div>
           )}
 
-          {/* One selected — prompt for second */}
           {hasOne && !result && (
             <div className="mx-5 mb-5 rounded-xl py-6 text-center" style={{ background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.05)" }}>
               <p className="text-[12px] text-white/30">Now search for a second player to compare</p>
             </div>
           )}
 
-          {/* Comparison result */}
           {result && (
             <div className="px-5 pb-5 space-y-3">
-              {/* Stats table */}
               <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,255,255,0.07)", background: "rgba(255,255,255,0.02)" }}>
-                {/* Column headers */}
                 <div className="grid grid-cols-[1fr_60px_1fr] px-4 py-2.5 border-b border-white/[0.05]">
                   <span className="text-[11px] font-bold text-blue-400 truncate">{playerA?.player_name}</span>
                   <span className="text-[9px] text-white/20 text-center uppercase tracking-widest font-semibold self-center">vs</span>
@@ -906,12 +877,10 @@ function ComparePlayersModal({ players, onClose, onOpenPlayer }: ComparePlayersM
                 })}
               </div>
 
-              {/* Verdict panel */}
               <div
                 className="rounded-xl p-4 space-y-3"
                 style={{ background: "rgba(245,200,76,0.04)", border: "1px solid rgba(245,200,76,0.18)" }}
               >
-                {/* Verdict badges row */}
                 <div className="flex items-center gap-2 flex-wrap">
                   <Crown className="w-3.5 h-3.5 text-[#F5C84C] shrink-0" />
                   <span className="text-[10px] font-bold uppercase tracking-widest text-[#F5C84C]">Start This Week</span>
@@ -928,7 +897,6 @@ function ComparePlayersModal({ players, onClose, onOpenPlayer }: ComparePlayersM
                   </div>
                 </div>
 
-                {/* Winner name */}
                 <div>
                   <div className="text-[22px] font-bold text-white leading-tight">{result.winner.player_name}</div>
                   <div className="text-[11px] text-white/35 mt-0.5">
@@ -936,10 +904,8 @@ function ComparePlayersModal({ players, onClose, onOpenPlayer }: ComparePlayersM
                   </div>
                 </div>
 
-                {/* Reason */}
                 <p className="text-[12px] text-white/40 leading-relaxed border-t border-white/[0.06] pt-3">{result.reason}</p>
 
-                {/* Sit recommendation */}
                 <div className="flex items-center gap-1.5">
                   <AlertCircle className="w-3 h-3 text-white/15 shrink-0" />
                   <span className="text-[11px] text-white/25">
@@ -1243,7 +1209,7 @@ export default function AFLCurrentRoundPage() {
       </Helmet>
 
       <div className="min-h-screen bg-[#070707] text-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-5">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-4">
 
           {/* ── PAGE HEADER ────────────────────────────────────────── */}
           <div className="flex items-start justify-between gap-4">
@@ -1326,85 +1292,91 @@ export default function AFLCurrentRoundPage() {
           {/* ── SEO COLLAPSIBLE ──────────────────────────────────────── */}
           <CollapsibleSEO roundLabel={roundLabel} roundNum={roundNum} />
 
-          {/* ── SECTION 1: MUST BUYS ────────────────────────────────── */}
-          <MustBuysSection
-            mustBuys={mustBuys}
-            isPremiumUser={isPremium}
-            onOpenRow={openRow}
-            onUpgrade={() => setShowUpgradeModal(true)}
-          />
+          {/* ── 2-COLUMN SECTION GRID ───────────────────────────────── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-          {/* ── SECTION 2: BUDGET UPSIDE ────────────────────────────── */}
-          {budgetPicks.length > 0 && (
-            <SectionCard
-              title="Budget Upside"
-              description="Where is the cheap upside this round?"
-              icon={<Sprout className="w-3.5 h-3.5" />}
-              accentColor="#2dd4bf"
-              players={budgetPicks}
-              freeLimit={BUDGET_FREE}
+            {/* MUST BUYS */}
+            <MustBuysSection
+              mustBuys={mustBuys}
               isPremiumUser={isPremium}
               onOpenRow={openRow}
               onUpgrade={() => setShowUpgradeModal(true)}
-              blurCtaLabel="Unlock all budget plays"
-              blurBadgeText={`+${Math.max(0, budgetPicks.length - BUDGET_FREE)} more under $350k`}
-              footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
-              renderBadge={() => <BudgetBadge />}
-              renderMetric={(row) => row.price != null ? <PriceMetric price={row.price} /> : undefined}
-              renderSubtext={(row) => row.games_played != null ? `${row.games_played} gm played` : null}
             />
-          )}
 
-          {/* ── SECTION 3: OVERPRICED / RISK ───────────────────────── */}
-          <SectionCard
-            title="Overpriced / Risk"
-            description="Who should I move on from this week?"
-            icon={<ShieldAlert className="w-3.5 h-3.5" />}
-            accentColor="#f87171"
-            players={riskPicks}
-            freeLimit={RISK_FREE}
-            isPremiumUser={isPremium}
-            onOpenRow={openRow}
-            onUpgrade={() => setShowUpgradeModal(true)}
-            blurCtaLabel="Reveal all trap alerts"
-            blurBadgeText={`+${Math.max(0, riskPicks.length - RISK_FREE)} more risks hidden`}
-            footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
-            renderBadge={() => <AvoidBadge />}
-            renderMetric={(row) => (row.edge_canonical ?? row.decision_score) != null ? <EdgeMetric edge={row.edge_canonical ?? row.decision_score ?? 0} positive={false} /> : undefined}
-            renderSubtext={(row) => {
-              const tag = getRiskTag(row);
-              return tag || null;
-            }}
-          />
-
-          {/* ── SECTION 4: TRAPS ───────────────────────────────────── */}
-          {traps.length > 0 && (
-            <SectionCard
-              title="Traps"
-              description="Which players are a hard avoid this round?"
-              icon={<AlertTriangle className="w-3.5 h-3.5" />}
-              accentColor="#ef4444"
-              players={traps}
-              freeLimit={RISK_FREE}
+            {/* CAPTAIN PICKS */}
+            <CaptainSection
+              captains={captains}
               isPremiumUser={isPremium}
               onOpenRow={openRow}
               onUpgrade={() => setShowUpgradeModal(true)}
-              blurCtaLabel="Reveal all traps"
-              blurBadgeText={`+${Math.max(0, traps.length - RISK_FREE)} more traps hidden`}
+            />
+
+            {/* BUDGET UPSIDE */}
+            {budgetPicks.length > 0 && (
+              <CompactSectionCard
+                title="Budget Upside"
+                subtitle="Cheap plays with real upside"
+                icon={<Sprout className="w-3.5 h-3.5" />}
+                accentColor="#2dd4bf"
+                players={budgetPicks}
+                isPremiumUser={isPremium}
+                onOpenRow={openRow}
+                onUpgrade={() => setShowUpgradeModal(true)}
+                lockCtaLabel="Unlock all budget plays"
+                lockBadgeText={(n) => `+${n} more under $350k`}
+                footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
+                renderBadge={() => <BudgetBadge />}
+                renderRight={(row) => ({
+                  label: fmtPrice(row.price ?? 0),
+                  sub: "price",
+                  color: "#2dd4bf",
+                })}
+              />
+            )}
+
+            {/* OVERPRICED / RISK */}
+            <CompactSectionCard
+              title="Overpriced / Risk"
+              subtitle="Who to move on from this week"
+              icon={<ShieldAlert className="w-3.5 h-3.5" />}
+              accentColor="#f87171"
+              players={riskPicks}
+              isPremiumUser={isPremium}
+              onOpenRow={openRow}
+              onUpgrade={() => setShowUpgradeModal(true)}
+              lockCtaLabel="Reveal all trap alerts"
+              lockBadgeText={(n) => `+${n} more risks hidden`}
               footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
               renderBadge={() => <AvoidBadge />}
-              renderMetric={(row) => (row.decision_score != null) ? <EdgeMetric edge={row.decision_score} positive={false} /> : undefined}
-              renderSubtext={(row) => getRiskTag(row) || null}
+              renderRight={(row) => {
+                const edge = row.edge_canonical ?? row.decision_score ?? 0;
+                return { label: fmt(edge, 0), sub: "edge", color: "#f87171" };
+              }}
             />
-          )}
 
-          {/* ── SECTION 5: CAPTAIN PICKS ────────────────────────────── */}
-          <CaptainSection
-            captains={captains}
-            isPremiumUser={isPremium}
-            onOpenRow={openRow}
-            onUpgrade={() => setShowUpgradeModal(true)}
-          />
+            {/* TRAPS */}
+            {traps.length > 0 && (
+              <CompactSectionCard
+                title="Traps"
+                subtitle="Hard avoids this round"
+                icon={<AlertTriangle className="w-3.5 h-3.5" />}
+                accentColor="#ef4444"
+                players={traps}
+                isPremiumUser={isPremium}
+                onOpenRow={openRow}
+                onUpgrade={() => setShowUpgradeModal(true)}
+                lockCtaLabel="Reveal all traps"
+                lockBadgeText={(n) => `+${n} more traps hidden`}
+                footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
+                renderBadge={() => <AvoidBadge />}
+                renderRight={(row) => {
+                  const edge = row.decision_score ?? row.edge_canonical ?? 0;
+                  return { label: fmt(edge, 0), sub: "edge", color: "#ef4444" };
+                }}
+              />
+            )}
+
+          </div>
 
           {/* ── COMPARE PLAYERS ─────────────────────────────────────── */}
           <CompareCTA onOpen={() => { setShowCompare(true); track("compare_players_open"); }} />
