@@ -115,7 +115,7 @@ function CaptainCard({
   const why = player.why ?? null;
   const matchup = player.matchup_label ?? null;
   const proj = player.projection;
-  const capScore = getCaptainScore(player);
+  const capScore = player.captain_score ?? getCaptainScore(player);
   const capConf = getCaptainConfidence(capScore);
   const displayConf = conf ?? capConf;
 
@@ -343,8 +343,12 @@ export default function AFLCaptainsPage() {
 
     const eligible = players.filter(isCaptainEligible);
 
-    // Sort ALL eligible players by shared getCaptainScore (same as landing page)
-    const byScore = [...eligible].sort((a, b) => getCaptainScore(b) - getCaptainScore(a));
+    // Sort ALL eligible players by backend captain_score when available, fallback to computed
+    const byScore = [...eligible].sort((a, b) => {
+      const aScore = a.captain_score ?? getCaptainScore(a);
+      const bScore = b.captain_score ?? getCaptainScore(b);
+      return bScore - aScore;
+    });
 
     // LOCK: top 1 by captain score
     const locks = byScore.slice(0, 1);

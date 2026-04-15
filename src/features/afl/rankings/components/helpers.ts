@@ -331,9 +331,9 @@ export function normaliseConfidence(
 
 export function getValueScoreColor(v: number | null): string {
   if (v == null) return "text-white/30";
-  if (v >= 1.2)  return "text-green-400";
-  if (v >= 1.05) return "text-[#F5C84C]";
-  if (v >= 0.95) return "text-white/50";
+  if (v >= 15)  return "text-green-400";
+  if (v >= 5)   return "text-[#F5C84C]";
+  if (v >= -5)  return "text-white/50";
   return "text-red-400";
 }
 
@@ -550,7 +550,7 @@ export function computeKpiTiles(rows: RankingRow[]) {
     ? captainRows.reduce((s, r) => s + (r.projection ?? 0), 0) / captainRows.length
     : null;
 
-  const valueUpgrades = rows.filter((r) => (r.value_score ?? 0) >= 1.05).length;
+  const valueUpgrades = rows.filter((r) => (r.value_score ?? 0) >= 5).length;
   const trapAlerts = rows.filter((r) =>
     (r.risk_rating ?? 0) >= 65 ||
     (r.projection_confidence ?? 100) < 50
@@ -703,32 +703,16 @@ export function formatCanonicalConfidenceLabel(label: string | null): string {
 }
 
 // ─── Relative confidence label assignment ─────────────────────────────────────
-// Uses percentile rank across the dataset so labels are always meaningful.
-// TOP 20% → HIGH, NEXT 40% → MEDIUM, BOTTOM 40% → LOW
-// Falls back to null (hidden) when confidence_score_100 is missing.
+// Uses fixed thresholds matching the backend canonical system:
+// score >= 72 → HIGH, score >= 52 → MEDIUM, else → LOW
+// Prefers existing confidence_label from DB; only fills in if null.
 
 export function applyRelativeConfidenceLabels<T extends { confidence_score_100?: number | null; confidence_label?: string | null }>(rows: T[]): T[] {
-  const validScores = rows
-    .map((r) => r.confidence_score_100 ?? null)
-    .filter((s): s is number => s != null);
-
-  if (validScores.length === 0) return rows;
-
-  const sorted = [...validScores].sort((a, b) => b - a);
-
-  const rankMap = new Map<number, number>();
-  sorted.forEach((s, i) => {
-    if (!rankMap.has(s)) rankMap.set(s, i);
-  });
-
   return rows.map((row) => {
+    if (row.confidence_label != null) return row;
     const score = row.confidence_score_100 ?? null;
     if (score == null) return { ...row, confidence_label: null };
-
-    const index = rankMap.get(score) ?? sorted.length;
-    const percentile = index / sorted.length;
-
-    const label = percentile <= 0.2 ? "HIGH" : percentile <= 0.6 ? "MEDIUM" : "LOW";
+    const label = score >= 72 ? "HIGH" : score >= 52 ? "MEDIUM" : "LOW";
     return { ...row, confidence_label: label };
   });
 }

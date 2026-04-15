@@ -23,37 +23,18 @@ export function getSignal(action: ActionLabel): SignalLabel {
   }
 }
 
-export function buildConfidenceMap(
-  players: Array<{ confidence_score_100?: number | null }>
-): (score: number | null | undefined) => ConfidenceLabel | null {
-  const scores = players
-    .map(p => p.confidence_score_100)
-    .filter((s): s is number => s != null && !isNaN(s))
-    .sort((a, b) => b - a);
-
-  if (scores.length === 0) return () => null;
-
-  const rankMap = new Map<number, number>();
-  scores.forEach((s, i) => {
-    if (!rankMap.has(s)) rankMap.set(s, i);
-  });
-
-  return (score: number | null | undefined): ConfidenceLabel | null => {
-    if (score == null || isNaN(score)) return null;
-    const idx = rankMap.get(score) ?? scores.length;
-    const pct = idx / scores.length;
-    if (pct <= 0.2) return "HIGH";
-    if (pct <= 0.6) return "MEDIUM";
-    return "LOW";
-  };
+export function confidenceLabelFromScore(score: number | null | undefined): ConfidenceLabel | null {
+  if (score == null || isNaN(score)) return null;
+  if (score >= 72) return "HIGH";
+  if (score >= 52) return "MEDIUM";
+  return "LOW";
 }
 
 export function applyDecisionFields<T extends RankingRow>(rows: T[]): T[] {
-  const confMap = buildConfidenceMap(rows);
   return rows.map(row => {
-    const action = getAction(row.decision_score);
-    const signal = getSignal(action);
-    const confidence = confMap(row.confidence_score_100);
+    const confidence = row.confidence_label ?? confidenceLabelFromScore(row.confidence_score_100);
+    const action = (row.action_canonical ?? row.action ?? null) as ActionLabel | null;
+    const signal = (row.signal_tag ?? row.signal ?? null) as SignalLabel | null;
     return {
       ...row,
       action_canonical: action,
