@@ -1152,8 +1152,50 @@ export default function AFLCurrentRoundPage() {
     [players, edgeBoardIds]
   );
 
+  function getTrapScore(row: CurrentRoundPlayer): number | null {
+    if (typeof row.decision_score === "number" && !Number.isNaN(row.decision_score)) {
+      return row.decision_score;
+    }
+    if (typeof row.edge_canonical === "number" && !Number.isNaN(row.edge_canonical)) {
+      return row.edge_canonical;
+    }
+    return null;
+  }
+
+  function formatTrapScore(value: number | null): string {
+    if (value === null || Number.isNaN(value)) return "—";
+    const rounded = Math.round(value);
+    if (rounded > 0) return `+${rounded}`;
+    if (rounded < 0) return `${rounded}`;
+    return "0";
+  }
+
+  const bestTrap = useMemo<CurrentRoundPlayer | null>(() => {
+    const candidatePool = traps.length > 0 ? traps : riskPicks;
+    const negativeOnly = candidatePool
+      .map(p => ({ player: p, score: getTrapScore(p) }))
+      .filter(({ score }) => score !== null && score < 0)
+      .sort((a, b) => (a.score as number) - (b.score as number));
+
+    if (negativeOnly.length > 0) return negativeOnly[0].player;
+
+    const anyCandidate = candidatePool
+      .map(p => ({ player: p, score: getTrapScore(p) }))
+      .filter(({ score }) => score !== null)
+      .sort((a, b) => (a.score as number) - (b.score as number));
+
+    if (anyCandidate.length > 0) {
+      const pick = anyCandidate[0];
+      if ((pick.score as number) >= 0) {
+        console.warn("INVALID BIGGEST TRAP SELECTION — no negative candidate found", pick.player);
+      }
+      return pick.player;
+    }
+
+    return null;
+  }, [traps, riskPicks]);
+
   const bestBuy   = mustBuys[0] ?? null;
-  const bestTrap  = riskPicks[0] ?? null;
   const bestCap   = captains[0] ?? null;
   const captainLockCount = captains.filter((p) => getCaptainTier(p).label === "Lock").length;
   const roundNum = roundLabel.replace(/[^0-9]/g, "");
@@ -1260,19 +1302,26 @@ export default function AFLCurrentRoundPage() {
               question="Who should I avoid?"
               icon={<TrendingDown className="w-3.5 h-3.5" />}
               accentColor="#f87171"
-              playerName={bestTrap?.player_name ?? null}
+              playerName={(() => {
+                if (!bestTrap) return null;
+                const score = getTrapScore(bestTrap);
+                if (score !== null && score >= 0) {
+                  console.warn("INVALID BIGGEST TRAP SELECTION", bestTrap);
+                }
+                return bestTrap.player_name;
+              })()}
               stat={(() => {
                 if (!bestTrap) return "—";
-                const score = bestTrap.decision_score ?? bestTrap.edge_canonical ?? null;
-                if (score === null) { console.warn("INVALID TRAP SCORE", bestTrap); return "—"; }
-                if (score === 0) { console.warn("INVALID TRAP SCORE zero", bestTrap); }
-                return (score > 0 ? "+" : "") + fmt(score, 0);
+                const score = getTrapScore(bestTrap);
+                if (score === null) { console.warn("INVALID TRAP SCORE null", bestTrap); return "—"; }
+                if (score >= 0) console.warn("INVALID TRAP SCORE non-negative", bestTrap);
+                return formatTrapScore(score);
               })()}
-              statLabel="decision score"
+              statLabel="trap score"
               subStat={bestTrap?.projection != null ? fmt(bestTrap.projection, 0) : undefined}
               subStatLabel="pts proj"
               context={bestTrap?.why ?? null}
-              badge={<AvoidBadge />}
+              badge={bestTrap ? <AvoidBadge /> : undefined}
             />
             <HeroCard
               label="Captain Pick"
@@ -1355,9 +1404,8 @@ export default function AFLCurrentRoundPage() {
               footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
               renderBadge={() => <AvoidBadge />}
               renderRight={(row) => {
-                const edge = row.decision_score ?? row.edge_canonical ?? null;
-                const label = edge === null ? "—" : (edge > 0 ? "+" : "") + fmt(edge, 0);
-                return { label, sub: "edge", color: "#f87171" };
+                const score = getTrapScore(row as CurrentRoundPlayer);
+                return { label: formatTrapScore(score), sub: "trap score", color: "#f87171" };
               }}
             />
 
@@ -1377,9 +1425,8 @@ export default function AFLCurrentRoundPage() {
                 footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
                 renderBadge={() => <AvoidBadge />}
                 renderRight={(row) => {
-                  const edge = row.decision_score ?? row.edge_canonical ?? null;
-                  const label = edge === null ? "—" : (edge > 0 ? "+" : "") + fmt(edge, 0);
-                  return { label, sub: "edge", color: "#ef4444" };
+                  const score = getTrapScore(row as CurrentRoundPlayer);
+                  return { label: formatTrapScore(score), sub: "trap score", color: "#ef4444" };
                 }}
               />
             )}
