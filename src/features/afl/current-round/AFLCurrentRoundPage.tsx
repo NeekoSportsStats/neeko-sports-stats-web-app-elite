@@ -1179,18 +1179,12 @@ export default function AFLCurrentRoundPage() {
 
     if (negativeOnly.length > 0) return negativeOnly[0].player;
 
-    const anyCandidate = candidatePool
-      .map(p => ({ player: p, score: getTrapScore(p) }))
-      .filter(({ score }) => score !== null)
-      .sort((a, b) => (a.score as number) - (b.score as number));
-
-    if (anyCandidate.length > 0) {
-      const pick = anyCandidate[0];
-      if ((pick.score as number) >= 0) {
-        console.warn("INVALID BIGGEST TRAP SELECTION — no negative candidate found", pick.player);
-      }
-      return pick.player;
-    }
+    // Also accept signal-based traps even if score is missing
+    const signalTrap = candidatePool.find(p => {
+      const sig = (p.signal_tag ?? "").toUpperCase();
+      return ["DOWN", "STRONG_DOWN", "AVOID"].includes(sig);
+    });
+    if (signalTrap) return signalTrap;
 
     return null;
   }, [traps, riskPicks]);
@@ -1298,25 +1292,12 @@ export default function AFLCurrentRoundPage() {
               badge={<BuyBadge />}
             />
             <HeroCard
-              label="Biggest Trap"
-              question="Who should I avoid?"
+              label={bestTrap ? "Biggest Trap" : "No Clear Trap"}
+              question={bestTrap ? "Who should I avoid?" : "No strong negative signals this week"}
               icon={<TrendingDown className="w-3.5 h-3.5" />}
               accentColor="#f87171"
-              playerName={(() => {
-                if (!bestTrap) return null;
-                const score = getTrapScore(bestTrap);
-                if (score !== null && score >= 0) {
-                  console.warn("INVALID BIGGEST TRAP SELECTION", bestTrap);
-                }
-                return bestTrap.player_name;
-              })()}
-              stat={(() => {
-                if (!bestTrap) return "—";
-                const score = getTrapScore(bestTrap);
-                if (score === null) { console.warn("INVALID TRAP SCORE null", bestTrap); return "—"; }
-                if (score >= 0) console.warn("INVALID TRAP SCORE non-negative", bestTrap);
-                return formatTrapScore(score);
-              })()}
+              playerName={bestTrap?.player_name ?? null}
+              stat={bestTrap ? formatTrapScore(getTrapScore(bestTrap)) : "—"}
               statLabel="trap score"
               subStat={bestTrap?.projection != null ? fmt(bestTrap.projection, 0) : undefined}
               subStatLabel="pts proj"
