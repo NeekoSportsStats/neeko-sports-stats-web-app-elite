@@ -40,8 +40,41 @@ function normalisePosition(pos: string | null | undefined): string | null {
   return p;
 }
 
+function computeEdge(row: { edge_canonical?: number | null; projection?: number | null; breakeven?: number | null; decision_score?: number | null }): number | null {
+  const ec = row.edge_canonical;
+  if (typeof ec === "number" && !Number.isNaN(ec) && Math.abs(ec) > 1) return ec;
+  const proj = row.projection;
+  const be = row.breakeven;
+  if (typeof proj === "number" && typeof be === "number" && be > 0) return proj - be;
+  if (typeof row.decision_score === "number" && !Number.isNaN(row.decision_score)) return row.decision_score;
+  if (typeof ec === "number" && !Number.isNaN(ec)) return ec;
+  return null;
+}
+
+function computeRisk(row: { trend_score?: number | null; form_score?: number | null }): number {
+  const trend = row.trend_score ?? 0;
+  const form = row.form_score ?? 0;
+  let risk = 0;
+  if (trend < -10) risk += 40;
+  else if (trend < -5) risk += 25;
+  if (form < -10) risk += 40;
+  else if (form < -5) risk += 25;
+  return Math.min(90, risk);
+}
+
+function formatRisk(risk: number): string {
+  return `${risk}%`;
+}
+
+function getRiskColor(risk: number): string {
+  if (risk === 0) return "text-green-400";
+  if (risk <= 30) return "text-green-300";
+  if (risk <= 60) return "text-orange-400";
+  return "text-red-400";
+}
+
 function getRiskTag(row: CurrentRoundPlayer): string {
-  const edge = row.edge_canonical ?? 0;
+  const edge = computeEdge(row) ?? 0;
   const price = row.price ?? 0;
   const proj = row.projection ?? 0;
   const breakeven = row.breakeven ?? 0;
@@ -52,7 +85,7 @@ function getRiskTag(row: CurrentRoundPlayer): string {
 }
 
 function getCaptainTier(p: CurrentRoundPlayer): { label: "Lock" | "Safe" | "POD"; color: string; desc: string } {
-  const edge = p.edge_canonical ?? 0;
+  const edge = computeEdge(p) ?? 0;
   const proj = p.projection ?? 0;
   if (edge >= 15 || proj >= 115) return { label: "Lock",  color: "#F5C84C", desc: "Highest confidence double" };
   if (edge >= 8  || proj >= 100) return { label: "Safe",  color: "#4ade80", desc: "Reliable doubling option"  };
@@ -402,14 +435,14 @@ function MustBuysSection({
               <>
                 <TierDivider label="Strong Signal" color="#4ade80" />
                 {premiumStrong.map((row, idx) => {
-                  const edge = row.edge_canonical ?? row.decision_score ?? 0;
+                  const edge = computeEdge(row);
                   return (
                     <CompactPlayerRow
                       key={row.player_id ?? idx}
                       row={row}
                       rank={idx + 1}
                       badge={<BuyBadge />}
-                      rightLabel={`+${fmt(edge, 0)}`}
+                      rightLabel={formatEdgeScore(edge)}
                       rightSub="edge"
                       rightColor="#4ade80"
                       onClick={() => onOpenRow(row)}
@@ -422,14 +455,14 @@ function MustBuysSection({
               <>
                 <TierDivider label="Trade Targets" color="#34d399" />
                 {premiumStart.map((row, idx) => {
-                  const edge = row.edge_canonical ?? row.decision_score ?? 0;
+                  const edge = computeEdge(row);
                   return (
                     <CompactPlayerRow
                       key={row.player_id ?? idx}
                       row={row}
                       rank={premiumStrong.length + idx + 1}
                       badge={<ValueBadge />}
-                      rightLabel={`+${fmt(edge, 0)}`}
+                      rightLabel={formatEdgeScore(edge)}
                       rightSub="edge"
                       rightColor="#34d399"
                       onClick={() => onOpenRow(row)}
@@ -439,14 +472,14 @@ function MustBuysSection({
               </>
             )}
             {premiumStrong.length === 0 && premiumStart.length === 0 && visible.map((row, idx) => {
-              const edge = row.edge_canonical ?? row.decision_score ?? 0;
+              const edge = computeEdge(row);
               return (
                 <CompactPlayerRow
                   key={row.player_id ?? idx}
                   row={row}
                   rank={idx + 1}
                   badge={<BuyBadge />}
-                  rightLabel={`+${fmt(edge, 0)}`}
+                  rightLabel={formatEdgeScore(edge)}
                   rightSub="edge"
                   rightColor="#4ade80"
                   onClick={() => onOpenRow(row)}
@@ -458,14 +491,14 @@ function MustBuysSection({
           visible.map((row, idx) => {
             const ac = (row.action_canonical ?? "").toUpperCase();
             const isStrong = ac === "SMASH_START" || ac === "STRONG_START";
-            const edge = row.edge_canonical ?? row.decision_score ?? 0;
+            const edge = computeEdge(row);
             return (
               <CompactPlayerRow
                 key={row.player_id ?? idx}
                 row={row}
                 rank={idx + 1}
                 badge={isStrong ? <BuyBadge /> : <ValueBadge />}
-                rightLabel={`+${fmt(edge, 0)}`}
+                rightLabel={formatEdgeScore(edge)}
                 rightSub="edge"
                 rightColor="#4ade80"
                 onClick={() => onOpenRow(row)}
@@ -700,8 +733,8 @@ function ComparePlayersModal({ players, onClose, onOpenPlayer }: ComparePlayersM
 
     const projA  = playerA.projection ?? 0;
     const projB  = playerB.projection ?? 0;
-    const edgeA  = playerA.edge_canonical ?? 0;
-    const edgeB  = playerB.edge_canonical ?? 0;
+    const edgeA  = computeEdge(playerA) ?? 0;
+    const edgeB  = computeEdge(playerB) ?? 0;
     const confLabelA = (playerA.confidence_label ?? "").toUpperCase();
     const confLabelB = (playerB.confidence_label ?? "").toUpperCase();
     const confA  = confLabelA === "HIGH" ? 85 : confLabelA === "MEDIUM" ? 55 : 30;
@@ -1153,22 +1186,18 @@ export default function AFLCurrentRoundPage() {
   );
 
   function getTrapScore(row: CurrentRoundPlayer): number | null {
-    if (typeof row.decision_score === "number" && !Number.isNaN(row.decision_score)) {
-      return row.decision_score;
-    }
-    if (typeof row.edge_canonical === "number" && !Number.isNaN(row.edge_canonical)) {
-      return row.edge_canonical;
-    }
-    return null;
+    return computeEdge(row);
   }
 
-  function formatTrapScore(value: number | null): string {
+  function formatEdgeScore(value: number | null): string {
     if (value === null || Number.isNaN(value)) return "—";
-    const rounded = Math.round(value);
+    const rounded = Math.round(Math.round(value * 10) / 10);
     if (rounded > 0) return `+${rounded}`;
     if (rounded < 0) return `${rounded}`;
     return "0";
   }
+
+  const formatTrapScore = formatEdgeScore;
 
   const bestTrap = useMemo<CurrentRoundPlayer | null>(() => {
     const candidatePool = traps.length > 0 ? traps : riskPicks;
@@ -1284,7 +1313,7 @@ export default function AFLCurrentRoundPage() {
               icon={<TrendingUp className="w-3.5 h-3.5" />}
               accentColor="#4ade80"
               playerName={bestBuy?.player_name ?? null}
-              stat={bestBuy != null ? `+${fmt(bestBuy.decision_score ?? bestBuy.edge_canonical ?? 0, 0)}` : "—"}
+              stat={bestBuy != null ? formatEdgeScore(computeEdge(bestBuy)) : "—"}
               statLabel="decision score"
               subStat={bestBuy?.projection != null ? fmt(bestBuy.projection, 0) : undefined}
               subStatLabel="pts proj"
@@ -1385,8 +1414,13 @@ export default function AFLCurrentRoundPage() {
               footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
               renderBadge={() => <AvoidBadge />}
               renderRight={(row) => {
-                const score = getTrapScore(row as CurrentRoundPlayer);
-                return { label: formatTrapScore(score), sub: "trap score", color: "#f87171" };
+                const risk = computeRisk(row);
+                const edge = computeEdge(row);
+                const hasRisk = risk > 0;
+                if (hasRisk) {
+                  return { label: formatRisk(risk), sub: "risk", color: getRiskColor(risk) };
+                }
+                return { label: formatEdgeScore(edge), sub: "edge", color: "#f87171" };
               }}
             />
 
@@ -1406,8 +1440,8 @@ export default function AFLCurrentRoundPage() {
                 footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
                 renderBadge={() => <AvoidBadge />}
                 renderRight={(row) => {
-                  const score = getTrapScore(row as CurrentRoundPlayer);
-                  return { label: formatTrapScore(score), sub: "trap score", color: "#ef4444" };
+                  const edge = computeEdge(row);
+                  return { label: formatEdgeScore(edge), sub: "trap score", color: "#ef4444" };
                 }}
               />
             )}
