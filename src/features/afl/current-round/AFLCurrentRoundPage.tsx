@@ -28,7 +28,7 @@ import { buildCurrentRoundPlayers, type CurrentRoundPlayer } from "@/features/af
 const MUST_BUY_FREE = 2;
 const BUDGET_FREE   = 2;
 const RISK_FREE     = 2;
-const CAPTAIN_FREE  = 1;
+const CAPTAIN_FREE  = 2;
 const PREMIUM_LIMIT = 8;
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
@@ -525,8 +525,9 @@ function CaptainSection({
 }) {
   const accentColor = "#F5C84C";
   const visible = captains.slice(0, isPremiumUser ? PREMIUM_LIMIT : CAPTAIN_FREE);
-  const hidden  = isPremiumUser ? [] : captains.slice(CAPTAIN_FREE, Math.min(PREMIUM_LIMIT, captains.length));
   const totalHidden = isPremiumUser ? 0 : Math.max(0, captains.length - CAPTAIN_FREE);
+
+  console.log("CAPTAINS RAW", captains.length, "visible", visible.length, "free limit", CAPTAIN_FREE, visible.map(p => p.player_name));
 
   const tiers: { key: "Lock" | "Safe" | "POD"; color: string; label: string; players: CurrentRoundPlayer[] }[] = [
     { key: "Lock", color: "#F5C84C", label: "Lock — Highest Confidence",  players: captains.slice(0, PREMIUM_LIMIT).filter((p) => getCaptainTier(p).label === "Lock") },
@@ -573,18 +574,23 @@ function CaptainSection({
           visible.map((row, idx) => renderCaptainRow(row, idx))
         )}
 
-        {hidden.length > 0 && (
-          <div className="relative pb-14 mt-1">
-            {hidden.map((row, idx) => (
-              <BlurredRow key={row.player_id ?? idx} rank={CAPTAIN_FREE + idx + 1} />
-            ))}
-            <LockOverlay
-              hiddenCount={totalHidden}
-              accentColor={accentColor}
-              onUpgrade={onUpgrade}
-              ctaLabel="Unlock full captain strategy"
-              badgeText={`+${totalHidden} options hidden`}
-            />
+        {totalHidden > 0 && (
+          <div className="px-4 py-3">
+            <button
+              onClick={onUpgrade}
+              className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
+              style={{ background: "rgba(255,255,255,0.02)", borderColor: `${accentColor}25` }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.borderColor = `${accentColor}50`)}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.borderColor = `${accentColor}25`)}
+            >
+              <span className="flex items-center gap-1.5 text-[11px] text-white/35">
+                <Lock className="w-3 h-3" style={{ color: `${accentColor}60` }} />
+                +{totalHidden} more captain options hidden
+              </span>
+              <span className="text-[12px] font-bold" style={{ color: accentColor }}>
+                Unlock full captain strategy →
+              </span>
+            </button>
           </div>
         )}
       </div>
