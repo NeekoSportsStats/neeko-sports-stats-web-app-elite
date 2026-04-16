@@ -450,7 +450,7 @@ function MustBuysSection({
 
   const premiumStrong = mustBuys.slice(0, PREMIUM_LIMIT).filter((p) => {
     const ac = (p.action_canonical ?? "").toUpperCase();
-    return ac === "SMASH_START" || ac === "STRONG_START";
+    return ac === "SMASH_START";
   });
   const premiumStart = mustBuys.slice(0, PREMIUM_LIMIT).filter((p) =>
     (p.action_canonical ?? "").toUpperCase() === "START"

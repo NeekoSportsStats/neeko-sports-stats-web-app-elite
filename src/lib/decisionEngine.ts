@@ -23,10 +23,13 @@ export function getSignal(action: ActionLabel): SignalLabel {
   }
 }
 
+// Fallback thresholds — matches backend fn_populate_player_rankings_cache exactly.
+// HIGH >= 67 (top ~25%), MEDIUM >= 50 (middle ~50%), LOW < 50 (~bottom 20%)
+// These are ABSOLUTE thresholds. Never use percentile/dynamic logic here.
 export function confidenceLabelFromScore(score: number | null | undefined): ConfidenceLabel | null {
   if (score == null || isNaN(score)) return null;
-  if (score >= 72) return "HIGH";
-  if (score >= 52) return "MEDIUM";
+  if (score >= 67) return "HIGH";
+  if (score >= 50) return "MEDIUM";
   return "LOW";
 }
 

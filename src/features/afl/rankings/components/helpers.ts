@@ -702,20 +702,6 @@ export function formatCanonicalConfidenceLabel(label: string | null): string {
   return label;
 }
 
-// ─── Relative confidence label assignment ─────────────────────────────────────
-// Uses fixed thresholds matching the backend canonical system:
-// score >= 72 → HIGH, score >= 52 → MEDIUM, else → LOW
-// Prefers existing confidence_label from DB; only fills in if null.
-
-export function applyRelativeConfidenceLabels<T extends { confidence_score_100?: number | null; confidence_label?: string | null }>(rows: T[]): T[] {
-  return rows.map((row) => {
-    if (row.confidence_label != null) return row;
-    const score = row.confidence_score_100 ?? null;
-    if (score == null) return { ...row, confidence_label: null };
-    const label = score >= 72 ? "HIGH" : score >= 52 ? "MEDIUM" : "LOW";
-    return { ...row, confidence_label: label };
-  });
-}
 
 // ─── Decision score display helper ───────────────────────────────────────────
 

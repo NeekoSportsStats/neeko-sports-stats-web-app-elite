@@ -70,7 +70,7 @@ function PriceFullTable() {
     if (search) res = res.filter(r => r.player_name?.toLowerCase().includes(search.toLowerCase()) || r.team?.toLowerCase().includes(search.toLowerCase()));
     if (priceFilter === "risers")          res = res.filter(r => (r.price_change ?? 0) > 0);
     if (priceFilter === "fallers")         res = res.filter(r => (r.price_change ?? 0) < 0);
-    if (priceFilter === "value_high")      res = res.filter(r => (r.value_score ?? 0) >= 1.05);
+    if (priceFilter === "value_high")      res = res.filter(r => (r.value_score ?? 0) >= 5);
     if (priceFilter === "projection_high") res = res.filter(r => (r.projection_final ?? 0) > 90);
     if (priceFilter === "edited")          res = res.filter(r => editedIds.has(r.player_id));
     return [...res].sort((a, b) => {
