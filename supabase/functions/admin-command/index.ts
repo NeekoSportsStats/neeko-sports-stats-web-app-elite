@@ -54,21 +54,17 @@ Deno.serve(async (req: Request) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    let isAdmin = token === supabaseServiceKey;
-
-    if (!isAdmin) {
-      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-      if (userError || !user) {
-        return err("Unauthorized", 401);
-      }
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("is_admin")
-        .eq("id", user.id)
-        .maybeSingle();
-      isAdmin = profile?.is_admin === true;
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !user) {
+      return err("Unauthorized", 401);
     }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_admin")
+      .eq("id", user.id)
+      .maybeSingle();
+    const isAdmin = profile?.is_admin === true;
 
     if (!isAdmin) {
       return err("Forbidden: admin access required", 403);

@@ -821,7 +821,7 @@ Deno.serve(async (req: Request) => {
     const msg = err instanceof Error ? err.message : JSON.stringify(err);
     console.error("[generate-player-ai] fatal error:", msg);
     return new Response(
-      JSON.stringify({ error: "Internal server error", detail: msg }),
+      JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
