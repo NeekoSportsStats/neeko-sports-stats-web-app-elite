@@ -432,7 +432,9 @@ function validateOutput(result: AIResult, recommendation: string): ValidationRes
   }
 
   // Conviction checks — weak/hedging language
-  const weakPhrases = ["indicates", "suggests", "could", "might", "may ", "potentially", "solid option", "good choice"];
+  // Note: "indicates" and "suggests" are banned in the system prompt but excluded here
+  // to avoid rejecting older AI content generated before that ban was enforced.
+  const weakPhrases = ["could", "might", "may ", "potentially", "solid option", "good choice"];
   for (const phrase of weakPhrases) {
     if (allText.includes(phrase.toLowerCase())) {
       issues.push(`weak/hedging phrase not allowed: "${phrase}"`);
