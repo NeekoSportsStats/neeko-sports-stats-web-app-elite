@@ -48,7 +48,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
 
   const sortedPlayers = useMemo(() => {
     const bucketOrder: Record<string, number> = {
-      SMASH_START: 0, STRONG_START: 1, START: 2, HOLD: 3, SIT: 4, HARD_SIT: 5,
+      SMASH_START: 0, START: 1, HOLD: 2, SIT: 3, HARD_SIT: 4,
     };
 
     return [...players].sort((a, b) => {
@@ -501,8 +501,6 @@ function getSignalStrength(player: DerivedPlayer) {
   switch (rawSignal) {
     case "SMASH_START":
       return { icon: "🔥", label: displayLabel ?? "Smash Start", bg: "bg-emerald-500/20", text: "text-emerald-300", border: "border-emerald-500/40" };
-    case "STRONG_START":
-      return { icon: "🔥", label: displayLabel ?? "Strong Start", bg: "bg-green-500/20", text: "text-green-400", border: "border-green-500/40" };
     case "START":
       return { icon: "✅", label: displayLabel ?? "Start", bg: "bg-green-500/[0.12]", text: "text-green-400", border: "border-green-500/25" };
     case "HARD_SIT":

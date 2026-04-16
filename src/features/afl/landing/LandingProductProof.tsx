@@ -118,7 +118,7 @@ function rankingsTag(row: RankingRow): { label: string; color: string } {
 
 function marketTag(row: RankingRow): { label: string; color: string } {
   const raw = (row.signal_tag ?? row.action_canonical ?? row.signal ?? "").toUpperCase().trim();
-  if (raw === "STRONG_UP" || raw === "SMASH_START" || raw === "STRONG_START")
+  if (raw === "STRONG_UP" || raw === "SMASH_START")
     return { label: "STRONG BUY", color: "#22c55e" };
   if (raw === "UP" || raw === "START")
     return { label: "BUY",        color: "#4ade80" };
@@ -148,7 +148,7 @@ function captainsTag(row: RankingRow): { label: string; color: string } {
 }
 
 function formTag(row: RankingRow & { _form_delta?: number }): { label: string; color: string } {
-  const delta = row._form_delta ?? ((row.last_3_avg ?? row.season_avg ?? 0) - (row.season_avg ?? row.last_3_avg ?? 0));
+  const delta = row._form_delta ?? row.trend_score ?? 0;
   if (delta > 20) return { label: "HOT", color: "#f97316" };
   if (delta > 10) return { label: "RISING", color: "#fb923c" };
   if (delta > 3) return { label: "TRENDING", color: "#fbbf24" };

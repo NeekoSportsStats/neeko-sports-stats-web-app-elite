@@ -43,7 +43,7 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
 
   function isSmashOrStrongStart(p: RankingRow): boolean {
     const c = (p.action_canonical ?? "").toUpperCase();
-    return c === "SMASH_START" || c === "STRONG_START" || c === "START";
+    return c === "SMASH_START" || c === "START";
   }
 
   function isHardOrSit(p: RankingRow): boolean {
@@ -74,11 +74,11 @@ export function buildEdgeBoardPlayers(players: RankingRow[]): EdgeBoardResult {
     return result;
   }
 
-  // must_have: SMASH_START/STRONG_START/START players first (by decision_score), then fallback
+  // must_have: SMASH_START/START players first (by decision_score), then fallback
   const mustHavePool = byValueDesc.filter(isSmashOrStrongStart);
   const mustHave = pickNext(mustHavePool.length >= PLAYERS_PER_SECTION ? mustHavePool : byValueDesc, PLAYERS_PER_SECTION, "must_have");
 
-  // breakout: next best START players or next by value
+  // breakout: next best SMASH_START/START players or next by value
   const breakoutPool = byValueDesc.filter(isSmashOrStrongStart);
   const breakout = pickNext(breakoutPool.length > 0 ? breakoutPool : byValueDesc, PLAYERS_PER_SECTION, "breakout");
 

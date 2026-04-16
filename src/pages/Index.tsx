@@ -487,7 +487,7 @@ export default function Index() {
       allWithProjection
         .filter(p => {
           const ac = (p.action_canonical ?? "").toUpperCase();
-          return ac === "SMASH_START" || ac === "STRONG_START";
+          return ac === "SMASH_START";
         })
         .sort((a, b) => ((b as any).decision_score ?? 0) - ((a as any).decision_score ?? 0))[0]
       ?? allWithProjection
@@ -511,7 +511,7 @@ export default function Index() {
     const captainP =
       allWithProjection
         .filter(p => !usedIds1.has(p.player_id) && isCaptainEligible(p))
-        .sort((a, b) => getCaptainScore(b) - getCaptainScore(a))[0]
+        .sort((a, b) => (b.captain_score ?? getCaptainScore(b)) - (a.captain_score ?? getCaptainScore(a)))[0]
       ?? byProjectionDesc.filter(p => !usedIds1.has(p.player_id))[0]
       ?? byProjectionDesc[0]
       ?? null;

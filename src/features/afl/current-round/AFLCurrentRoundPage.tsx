@@ -533,7 +533,7 @@ function MustBuysSection({
         ) : (
           visible.map((row, idx) => {
             const ac = (row.action_canonical ?? "").toUpperCase();
-            const isStrong = ac === "SMASH_START" || ac === "STRONG_START";
+            const isStrong = ac === "SMASH_START";
             const edge = computeEdge(row);
             return (
               <CompactPlayerRow
@@ -1117,9 +1117,9 @@ function CollapsibleSEO({ roundLabel, roundNum }: { roundLabel: string; roundNum
           <div className="space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-white/20">How Each Section Works</p>
             <ul className="space-y-2 text-[11px] text-white/30 leading-relaxed">
-              <li><strong className="text-white/50">Must Buys</strong> — START or STRONG_START signal + positive edge. Only players with at least 1 game played.</li>
+              <li><strong className="text-white/50">Must Buys</strong> — SMASH_START or START signal + positive edge. Only players with at least 1 game played.</li>
               <li><strong className="text-white/50">Budget Upside</strong> — Under $350k with positive signal. Genuine upside, not just cheap filler.</li>
-              <li><strong className="text-white/50">Overpriced / Risk</strong> — SIT or STRONG_SIT signal only. Ranked by edge ascending (worst first).</li>
+              <li><strong className="text-white/50">Overpriced / Risk</strong> — SIT or HARD_SIT signal only. Ranked by edge ascending (worst first).</li>
               <li><strong className="text-white/50">Captain Picks</strong> — Highest projection players with non-negative signal. No SIT players here.</li>
             </ul>
           </div>

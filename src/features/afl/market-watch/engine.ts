@@ -1,6 +1,6 @@
 import { MWPlayerRow } from "./types";
 
-export type SignalTier = "SMASH_START" | "STRONG_START" | "START" | "HOLD" | "SIT" | "HARD_SIT";
+export type SignalTier = "SMASH_START" | "START" | "HOLD" | "SIT" | "HARD_SIT";
 export type DisplaySignal = "TARGET" | "WATCH" | "AVOID";
 export type MWSignal = "START" | "HOLD" | "SIT";
 
@@ -30,7 +30,6 @@ function displaySignalFromCategory(p: MWPlayerRow): DisplaySignal {
 
   if (
     canonical === "SMASH_START" ||
-    canonical === "STRONG_START" ||
     canonical === "START" ||
     canonical === "TARGET" ||
     canonical === "STRONG_UP" ||
@@ -57,7 +56,6 @@ function mwSignalFromDisplay(sig: DisplaySignal): MWSignal {
 function tierFromSignal(p: MWPlayerRow): SignalTier {
   const raw = (p.action_canonical ?? p.signal_tag ?? p.signal ?? "HOLD").toUpperCase();
   if (raw === "SMASH_START" || raw === "STRONG_UP") return "SMASH_START";
-  if (raw === "STRONG_START")                       return "STRONG_START";
   if (raw === "START" || raw === "UP")              return "START";
   if (raw === "HARD_SIT" || raw === "STRONG_DOWN")  return "HARD_SIT";
   if (raw === "SIT" || raw === "DOWN")              return "SIT";
@@ -112,11 +110,10 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
 
   const tierPriority: Record<SignalTier, number> = {
     SMASH_START: 0,
-    STRONG_START: 1,
-    START: 2,
-    HOLD: 3,
-    SIT: 4,
-    HARD_SIT: 5,
+    START: 1,
+    HOLD: 2,
+    SIT: 3,
+    HARD_SIT: 4,
   };
 
   function effectiveMWValue(p: DerivedPlayer): number {

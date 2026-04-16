@@ -54,7 +54,7 @@ const WORKFLOW = [
 
 function signalFromRow(row: RankingRow): { label: string; color: string } {
   const raw = (row.action_canonical ?? row.action_display ?? row.signal_tag ?? row.action ?? "").toUpperCase();
-  if (raw === "SMASH_START" || raw === "STRONG_START" || raw === "START")
+  if (raw === "SMASH_START" || raw === "START")
     return { label: "BUY", color: "#22C55E" };
   if (raw === "HARD_SIT" || raw === "SIT")
     return { label: "AVOID", color: "#EF4444" };

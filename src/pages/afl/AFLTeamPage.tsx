@@ -44,7 +44,7 @@ function fmtProj(p: number | null | undefined) {
 
 function ActionBadge({ action, actionDisplay }: { action: string | null; actionDisplay?: string | null }) {
   const canonical = (action ?? 'HOLD').toUpperCase();
-  const isStart = canonical === 'SMASH_START' || canonical === 'STRONG_START' || canonical === 'START';
+  const isStart = canonical === 'SMASH_START' || canonical === 'START';
   const isSit = canonical === 'HARD_SIT' || canonical === 'SIT';
   const cls =
     isStart ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :

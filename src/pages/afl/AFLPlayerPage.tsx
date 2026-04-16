@@ -90,7 +90,7 @@ function deriveFormLabel(avg3: number | null, seasonAvg: number | null): string 
 function getActionColor(action: string | null): string {
   if (!action) return '#94a3b8';
   const a = action.toUpperCase();
-  if (a === 'SMASH_START' || a === 'STRONG_START' || a === 'START') return '#10b981';
+  if (a === 'SMASH_START' || a === 'START') return '#10b981';
   if (a === 'HARD_SIT' || a === 'SIT') return '#f59e0b';
   return '#94a3b8';
 }
@@ -98,7 +98,7 @@ function getActionColor(action: string | null): string {
 function ActionBadge({ action, actionDisplay }: { action: string | null; actionDisplay?: string | null }) {
   const canonical = (action ?? "HOLD").toUpperCase();
   const label = actionDisplay ?? canonical;
-  const isStart = canonical === "SMASH_START" || canonical === "STRONG_START" || canonical === "START";
+  const isStart = canonical === "SMASH_START" || canonical === "START";
   const isSit = canonical === "HARD_SIT" || canonical === "SIT";
   const cls =
     isStart ? "text-emerald-300 border-emerald-500/30 bg-emerald-500/10" :

@@ -94,14 +94,14 @@ export function MarketSearchBar({ players, isPremium, onSelect, selectedPlayerId
 
   const categoryColor = (cat: string) => {
     const c = cat.toUpperCase();
-    if (c === "START" || c === "STRONG_START") return "text-green-400";
+    if (c === "START" || c === "SMASH_START") return "text-green-400";
     if (c === "SIT"   || c === "STRONG_SIT")   return "text-red-400";
     return "text-[#F5C84C]";
   };
 
   const categoryLabel = (cat: string) => {
     const c = cat.toUpperCase();
-    if (c === "STRONG_START") return "Strong Start";
+    if (c === "SMASH_START") return "Smash Start";
     if (c === "START") return "Start";
     if (c === "STRONG_SIT") return "Strong Sit";
     if (c === "SIT") return "Sit";

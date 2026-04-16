@@ -22,7 +22,7 @@ export function fmtNum(v: number | null | undefined, decimals = 0): string {
 
 export function signalColor(signal: string | null): string {
   const s = (signal ?? "").toUpperCase();
-  if (s === "START" || s === "STRONG_START") return "text-green-400 bg-green-400/10 border-green-400/25";
+  if (s === "START" || s === "SMASH_START") return "text-green-400 bg-green-400/10 border-green-400/25";
   if (s === "SIT" || s === "STRONG_SIT")     return "text-red-400 bg-red-400/10 border-red-400/25";
   return "text-white/40 bg-white/5 border-white/10";
 }
@@ -77,8 +77,8 @@ export function priceChangeColor(v: number | null): string {
 }
 
 export function confidenceBadge(v: number): string {
-  if (v >= 80) return "text-green-400 bg-green-400/10 border-green-400/25";
-  if (v >= 60) return "text-[#F5C84C] bg-[#F5C84C]/10 border-[#F5C84C]/25";
+  if (v >= 67) return "text-green-400 bg-green-400/10 border-green-400/25";
+  if (v >= 50) return "text-[#F5C84C] bg-[#F5C84C]/10 border-[#F5C84C]/25";
   return "text-orange-400 bg-orange-400/10 border-orange-400/25";
 }
 
@@ -157,7 +157,7 @@ const SELL_POSITIVE_PHRASES = [
 export function isSummaryAligned(summary: string, category: string): boolean {
   const lower = summary.toLowerCase();
   const cat = (category ?? '').toUpperCase();
-  if (cat === 'START' || cat === 'STRONG_START' || cat === 'TARGET') {
+  if (cat === 'START' || cat === 'SMASH_START' || cat === 'TARGET') {
     return !BUY_NEGATIVE_PHRASES.some(phrase => lower.includes(phrase));
   }
   if (cat === 'SIT' || cat === 'STRONG_SIT' || cat === 'AVOID') {
