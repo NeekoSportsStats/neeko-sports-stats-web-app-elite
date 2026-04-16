@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link, useNavigate } from "react-router-dom";
@@ -7,6 +8,11 @@ export default function TermsConditions() {
   const navigate = useNavigate();
 
   return (
+    <>
+      <Helmet>
+        <title>Terms &amp; Conditions — Neeko Sports Stats</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <Button
         variant="ghost"
@@ -225,5 +231,6 @@ export default function TermsConditions() {
         </Card>
       </div>
     </div>
+    </>
   );
 }

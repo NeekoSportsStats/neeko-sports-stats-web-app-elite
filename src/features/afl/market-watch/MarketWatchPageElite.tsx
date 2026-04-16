@@ -548,9 +548,15 @@ export default function MarketWatchPageElite() {
         <link rel="canonical" href="https://neekostats.com.au/sports/afl/market-watch" />
         <meta name="robots" content="index, follow" />
         <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content="AFL Fantasy Market Watch — AI-powered BUY, HOLD and AVOID signals sorted by value score. Find the best trade targets this round." />
         <meta property="og:url" content="https://neekostats.com.au/sports/afl/market-watch" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta property="og:site_name" content="Neeko Sports Stats" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content="AFL Fantasy Market Watch — AI-powered BUY, HOLD and AVOID signals sorted by value score. Find the best trade targets this round." />
+        <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
       </Helmet>
 
       <div className="min-h-screen bg-[#070707] text-white">

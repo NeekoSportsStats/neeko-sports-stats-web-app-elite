@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -64,6 +65,23 @@ export default function Contact() {
   };
 
   return (
+    <>
+      <Helmet>
+        <title>Contact Neeko Sports Stats — Get in Touch</title>
+        <meta name="description" content="Contact the Neeko Sports Stats team for support, feedback or enquiries about AFL Fantasy analytics." />
+        <link rel="canonical" href="https://neekostats.com.au/contact" />
+        <meta name="robots" content="index, follow" />
+        <meta property="og:title" content="Contact Neeko Sports Stats — Get in Touch" />
+        <meta property="og:description" content="Contact the Neeko Sports Stats team for support, feedback or enquiries about AFL Fantasy analytics." />
+        <meta property="og:url" content="https://neekostats.com.au/contact" />
+        <meta property="og:type" content="website" />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta property="og:site_name" content="Neeko Sports Stats" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Contact Neeko Sports Stats — Get in Touch" />
+        <meta name="twitter:description" content="Contact the Neeko Sports Stats team for support, feedback or enquiries about AFL Fantasy analytics." />
+        <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
+      </Helmet>
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <Button
         variant="ghost"
@@ -182,5 +200,6 @@ export default function Contact() {
         </div>
       </div>
     </div>
+    </>
   );
 }

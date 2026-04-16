@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
@@ -130,6 +131,11 @@ export default function UserConductPolicy() {
   const navigate = useNavigate();
 
   return (
+    <>
+      <Helmet>
+        <title>User Conduct Policy — Neeko Sports Stats</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
     <div className="min-h-screen bg-[#070707] text-white">
       <div className="max-w-3xl mx-auto px-4 py-16">
 
@@ -172,5 +178,6 @@ export default function UserConductPolicy() {
 
       </div>
     </div>
+    </>
   );
 }

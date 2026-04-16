@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
 import { FileText, Shield, Users, DollarSign, Lock, ArrowLeft, ChevronRight } from "lucide-react";
 
@@ -38,6 +39,11 @@ export default function Policies() {
   const navigate = useNavigate();
 
   return (
+    <>
+      <Helmet>
+        <title>Policies — Neeko Sports Stats</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
     <div className="min-h-screen bg-[#070707] text-white">
       <div className="max-w-3xl mx-auto px-4 py-16">
 
@@ -85,5 +91,6 @@ export default function Policies() {
 
       </div>
     </div>
+    </>
   );
 }

@@ -1,3 +1,4 @@
+import { Helmet } from "react-helmet-async";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Facebook, Instagram, Video, ArrowLeft } from "lucide-react";
@@ -30,6 +31,11 @@ const Socials = () => {
   ];
 
   return (
+    <>
+      <Helmet>
+        <title>Follow Neeko Sports Stats on Social Media</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto space-y-8">
         <Button
@@ -90,6 +96,7 @@ const Socials = () => {
         </Card>
       </div>
     </div>
+    </>
   );
 };
 

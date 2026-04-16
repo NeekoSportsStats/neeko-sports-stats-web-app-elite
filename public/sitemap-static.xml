@@ -45,6 +45,20 @@
   </url>
 
   <url>
+    <loc>https://neekostats.com.au/sports/afl/captains</loc>
+    <lastmod>2026-04-16</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <url>
+    <loc>https://neekostats.com.au/sports/afl/players</loc>
+    <lastmod>2026-04-16</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <url>
     <loc>https://neekostats.com.au/about</loc>
     <lastmod>2026-04-07</lastmod>
     <changefreq>monthly</changefreq>

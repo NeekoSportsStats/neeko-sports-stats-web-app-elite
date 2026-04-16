@@ -14,7 +14,6 @@ const NotFound = () => {
       <Helmet>
         <title>404 — Page Not Found | Neeko Sports Stats</title>
         <meta name="robots" content="noindex, nofollow" />
-        <link rel="canonical" href="https://neekostats.com.au/404" />
       </Helmet>
       <div className="min-h-screen flex items-center justify-center bg-neutral-950">
         <div className="text-center px-6">

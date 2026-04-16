@@ -4,11 +4,14 @@ export const config = {
     "/about",
     "/faq",
     "/neeko-plus",
+    "/contact",
     "/sports/afl/rankings",
     "/sports/afl/market-watch",
     "/sports/afl/edge-board",
     "/sports/afl/current-round",
     "/sports/afl/start-sit",
+    "/sports/afl/captains",
+    "/sports/afl/players",
     "/sports/afl/players/:slug*",
     "/sports/afl/teams/:team*",
     "/sports/afl/positions/:position*",
@@ -154,6 +157,33 @@ function getPageMeta(pathname) {
       description:
         "AI-powered AFL Fantasy Start/Sit recommendations. Enter your two players and get a data-driven verdict for this round.",
       canonical: `${DOMAIN}/sports/afl/start-sit`,
+    };
+  }
+
+  if (p === "/sports/afl/captains") {
+    return {
+      title: "AFL Fantasy Captain Picks — Lock, Safe & POD Options | Neeko",
+      description:
+        "AFL Fantasy captain picks this round — LOCK, SAFE and POD options ranked by Neeko's projection model, confidence, and matchup data.",
+      canonical: `${DOMAIN}/sports/afl/captains`,
+    };
+  }
+
+  if (p === "/sports/afl/players") {
+    return {
+      title: "AFL Fantasy Players 2026 — Full Player List & Stats | Neeko",
+      description:
+        "Browse all AFL Fantasy players for 2026. Stats, projections, prices and trade signals powered by Neeko AI.",
+      canonical: `${DOMAIN}/sports/afl/players`,
+    };
+  }
+
+  if (p === "/contact") {
+    return {
+      title: "Contact Neeko Sports Stats — Get in Touch",
+      description:
+        "Contact the Neeko Sports Stats team for support, feedback or enquiries about AFL Fantasy analytics.",
+      canonical: `${DOMAIN}/contact`,
     };
   }
 

@@ -18,6 +18,12 @@ Disallow: /billing
 Disallow: /checkout
 Disallow: /success
 Disallow: /cancel
+Disallow: /auth
+Disallow: /create-password
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /pipeline-history
+Disallow: /socials
 Disallow: /functions/
 Disallow: /products/
 Disallow: /nba/
