@@ -161,7 +161,15 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
 
       {/* Desktop Table */}
       <div className="hidden lg:block overflow-x-auto">
-        <table className="w-full">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col style={{ width: "34%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "16%" }} />
+          </colgroup>
           <thead>
             <tr className="border-b border-white/[0.12] bg-white/[0.01]">
               <SortableHeader
@@ -172,11 +180,11 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 onSort={handleColumnSort}
                 isPremium={isPremium}
               />
-              <th className="px-5 py-2.5 text-left text-[10px] font-bold text-white/35 uppercase tracking-wider">
+              <th className="px-4 py-2.5 text-left text-[10px] font-bold text-white/35 uppercase tracking-wider whitespace-nowrap">
                 Pos / Team
               </th>
               <SortableHeader
-                label="Projection"
+                label="Proj"
                 field="projection"
                 currentField={sortField}
                 direction={sortDirection}
@@ -193,7 +201,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
                 isPremium={isPremium}
               />
               <SortableHeader
-                label="Value Rating"
+                label="Value"
                 field="value"
                 currentField={sortField}
                 direction={sortDirection}
@@ -374,10 +382,10 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
       onClick={isBlurred ? undefined : onClick}
       className={`transition-all duration-150 hover:bg-white/[0.05] hover:-translate-y-px border-b border-white/[0.03] ${isEven ? "bg-white/[0.01]" : ""} ${isBlurred ? "blur-sm pointer-events-none cursor-default" : "cursor-pointer"}`}
     >
-      <td className="px-5 py-3">
+      <td className="px-4 py-3">
         <div>
           <div className="flex items-center gap-1.5 mb-0.5">
-            <div className="font-bold text-white text-sm leading-tight">{player.player_name}</div>
+            <div className="font-bold text-white text-sm leading-tight truncate">{player.player_name}</div>
             {(player.manual_status === "OUT" || (!player.manual_status && player.status === "OUT")) ? (
               <span className="rounded bg-red-500/10 px-1 py-0.5 text-[8px] font-bold text-red-400 uppercase tracking-wide border border-red-500/25">OUT</span>
             ) : (player.manual_status === "INJURED" || (!player.manual_status && player.status === "INJURED")) ? (
@@ -393,22 +401,22 @@ const PlayerRow = memo(function PlayerRow({ player, onClick, isEven, isBlurred =
           </div>
         </div>
       </td>
-      <td className="px-5 py-3">
+      <td className="px-4 py-3 whitespace-nowrap">
         <div className="text-xs font-medium text-white/55">{player.position}</div>
         <div className="text-[10px] text-white/30">{player.team}</div>
       </td>
-      <td className="px-5 py-3 text-center">
+      <td className="px-4 py-3 text-center">
         <span className="text-lg font-bold tabular-nums text-white/80">
           {Math.round(player.projection || 0)}
         </span>
       </td>
-      <td className="px-5 py-3 text-sm font-medium text-white/70 tabular-nums">
+      <td className="px-4 py-3 text-sm font-medium text-white/70 tabular-nums whitespace-nowrap">
         {formatPrice(player.price || 0)}
       </td>
-      <td className="px-5 py-3">
+      <td className="px-4 py-3">
         <ValueBandCell player={player} />
       </td>
-      <td className="px-5 py-3">
+      <td className="px-4 py-3">
         <div className="flex flex-col gap-1">
           <div className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] font-bold border rounded-md ${signalStrength.bg} ${signalStrength.text} ${signalStrength.border}`}>
             <span>{signalStrength.icon}</span>

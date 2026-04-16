@@ -568,15 +568,29 @@ export default function AFLPlayerPage() {
                   value={fmtPriceHelper(player.price)}
                 />
                 <div className="w-px h-7 bg-white/[0.07]" />
-                <MetricPill
-                  label="Breakeven"
-                  value={isPremium && player.breakeven != null ? Math.round(player.breakeven) : '—'}
-                  color={
-                    isPremium && player.breakeven != null && player.avg_last_3 != null
-                      ? player.avg_last_3 >= player.breakeven ? 'text-emerald-400' : 'text-red-400'
-                      : 'text-white/50'
-                  }
-                />
+                {isPremium ? (
+                  <MetricPill
+                    label="Breakeven"
+                    value={player.breakeven != null ? Math.round(player.breakeven) : '—'}
+                    color={
+                      player.breakeven != null && player.avg_last_3 != null
+                        ? player.avg_last_3 >= player.breakeven ? 'text-emerald-400' : 'text-red-400'
+                        : 'text-white/50'
+                    }
+                  />
+                ) : (
+                  <MetricPill
+                    label="Confidence"
+                    value={player.confidence_label ?? '—'}
+                    color={
+                      player.confidence_label === 'HIGH'
+                        ? 'text-emerald-400'
+                        : player.confidence_label === 'MEDIUM'
+                          ? 'text-[#F5C84C]'
+                          : 'text-white/50'
+                    }
+                  />
+                )}
                 <div className="w-px h-7 bg-white/[0.07]" />
                 <MetricPill
                   label="Games"
@@ -584,7 +598,17 @@ export default function AFLPlayerPage() {
                   color="text-white/60"
                 />
                 <div className="w-px h-7 bg-white/[0.07]" />
-                <FormChip avg3={player.avg_last_3} seasonAvg={player.season_avg} />
+                {isPremium ? (
+                  <FormChip avg3={player.avg_last_3} seasonAvg={player.season_avg} />
+                ) : (
+                  <button
+                    onClick={() => {/* handled by upgrade CTA below */}}
+                    className="inline-flex items-center gap-1 text-[11px] text-white/30 hover:text-white/50 transition-colors cursor-default"
+                  >
+                    <Lock size={10} className="text-white/20" />
+                    Form
+                  </button>
+                )}
               </div>
 
               <div className="pt-1">

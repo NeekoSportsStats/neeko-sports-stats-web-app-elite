@@ -581,8 +581,6 @@ function CaptainSection({
   const visible = captains.slice(0, limit);
   const totalHidden = isPremiumUser ? 0 : Math.max(0, captains.length - FREE_LIMIT);
 
-  console.log("CAPTAINS RAW", captains.length, "visible", visible.length, "free limit", FREE_LIMIT, visible.map(p => p.player_name));
-
   const tiers: { key: "Lock" | "Safe" | "POD"; color: string; label: string; players: CurrentRoundPlayer[] }[] = [
     { key: "Lock", color: "#F5C84C", label: "Lock — Highest Confidence",  players: captains.slice(0, PREMIUM_LIMIT).filter((p) => getCaptainTier(p).label === "Lock") },
     { key: "Safe", color: "#4ade80", label: "Safe — Reliable Option",     players: captains.slice(0, PREMIUM_LIMIT).filter((p) => getCaptainTier(p).label === "Safe") },
@@ -606,23 +604,38 @@ function CaptainSection({
 
       <div className="py-1">
         {isPremiumUser ? (
-          tiers.map((tier) => (
-            <div key={tier.key}>
-              <TierDivider label={tier.label} color={tier.color} />
-              {tier.players.map((row) => (
-                <CompactPlayerRow
-                  key={row.player_id}
-                  row={row}
-                  rank={captains.indexOf(row) + 1}
-                  badge={<CaptainBadge tier={getCaptainTier(row).label} />}
-                  rightLabel={fmt(row.projection, 0)}
-                  rightSub="proj"
-                  rightColor="#F5C84C"
-                  onClick={() => onOpenRow(row)}
-                />
-              ))}
-            </div>
-          ))
+          tiers.length > 0 ? (
+            tiers.map((tier) => (
+              <div key={tier.key}>
+                <TierDivider label={tier.label} color={tier.color} />
+                {tier.players.map((row) => (
+                  <CompactPlayerRow
+                    key={row.player_id}
+                    row={row}
+                    rank={captains.indexOf(row) + 1}
+                    badge={<CaptainBadge tier={getCaptainTier(row).label} />}
+                    rightLabel={fmt(row.projection, 0)}
+                    rightSub="proj"
+                    rightColor="#F5C84C"
+                    onClick={() => onOpenRow(row)}
+                  />
+                ))}
+              </div>
+            ))
+          ) : (
+            visible.map((row, idx) => (
+              <CompactPlayerRow
+                key={row.player_id ?? idx}
+                row={row}
+                rank={idx + 1}
+                badge={<CaptainBadge tier={getCaptainTier(row).label} />}
+                rightLabel={fmt(row.projection, 0)}
+                rightSub="proj"
+                rightColor="#F5C84C"
+                onClick={() => onOpenRow(row)}
+              />
+            ))
+          )
         ) : (
           visible.map((row, idx) => (
             <CompactPlayerRow

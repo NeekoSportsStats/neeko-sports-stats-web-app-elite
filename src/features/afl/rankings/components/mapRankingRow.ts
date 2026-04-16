@@ -72,7 +72,13 @@ export function mapRankingRow(r: Record<string, unknown>): RankingRow {
     edge_canonical:          r.edge_canonical != null ? Number(r.edge_canonical) : (r.edge != null ? Number(r.edge) : null),
     action_canonical:        (r.action_canonical as string) ?? (r.action as string) ?? (r.signal_tag as string) ?? (r.signal as string) ?? null,
     category_canonical:      (r.category_canonical as string) ?? (r.category as string) ?? null,
-    confidence_label:        (r.confidence_label as string) ?? null,
+    confidence_label:        (r.confidence_label as string) ?? (
+      r.confidence_score_100 != null
+        ? Number(r.confidence_score_100) >= 67 ? "HIGH"
+          : Number(r.confidence_score_100) >= 50 ? "MEDIUM"
+          : "LOW"
+        : null
+    ),
     edge:                    r.edge != null ? Number(r.edge) : null,
     value_score,
     signal:                  (r.signal as string) ?? null,

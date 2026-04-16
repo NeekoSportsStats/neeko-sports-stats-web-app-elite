@@ -64,7 +64,7 @@ function buildPlayersRows(players: RankingRow[]): RankingRow[] {
     .filter(p => (p.games_played ?? 0) >= 2 && (p.last_3_avg ?? p.season_avg ?? 0) > 0)
     .map(p => ({
       ...p,
-      _form_delta: (p.last_3_avg ?? p.season_avg ?? 0) - (p.season_avg ?? p.last_3_avg ?? 0),
+      _form_delta: p.trend_score ?? ((p.last_3_avg != null && p.season_avg != null) ? p.last_3_avg - p.season_avg : 0),
     } as RankingRow & { _form_delta: number }))
     .sort((a: any, b: any) => b._form_delta - a._form_delta)
     .slice(0, 8);
@@ -101,7 +101,7 @@ function dedupeAcrossViews(views: Record<TabId, RankingRow[]>): Record<TabId, Ra
       used.add(p.player_id);
       return true;
     });
-    result[key] = deduped.slice(0, 5);
+    result[key] = deduped.slice(0, 8);
   }
 
   return result;
@@ -369,9 +369,9 @@ function DataRow({ row, index, tabId, accentColor }: RowProps) {
     const l3 = row.last_3_avg != null ? Math.round(row.last_3_avg) : null;
     const avg = row.season_avg != null ? Math.round(row.season_avg) : null;
     primaryStat = l3 != null ? `${l3} avg` : (avg != null ? `${avg} avg` : "—");
-    const delta = (row.last_3_avg ?? row.season_avg ?? 0) - (row.season_avg ?? row.last_3_avg ?? 0);
+    const delta = row.trend_score ?? ((row.last_3_avg != null && row.season_avg != null) ? row.last_3_avg - row.season_avg : 0);
     const sign = delta >= 0 ? "+" : "";
-    subStat = avg != null ? `${sign}${Math.round(delta)} vs season` : "—";
+    subStat = `${sign}${Math.round(delta)} vs season`;
     tag = formTag(row as any);
 
   } else {
