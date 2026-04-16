@@ -834,7 +834,7 @@ export default function Index() {
           {/* Section header */}
           <div style={{ marginBottom: 32, textAlign: "center" }}>
             <p style={{ margin: "0 0 6px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(244,197,66,0.82)" }}>
-              This Week's Edge{currentRound != null ? ` — Round ${currentRound + 1} Picks` : ""}
+              This Week's Edge{currentRound != null ? ` — Round ${currentRound} Picks` : ""}
             </p>
             <h2 style={{ margin: "0 0 8px", fontSize: "clamp(16px, 1.5vw, 22px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.025em", lineHeight: 1.15 }}>
               The exact plays to win your week — backed by real projections.
