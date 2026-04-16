@@ -700,18 +700,42 @@ export default function MarketWatchPageElite() {
               <div className="flex items-center gap-1.5 ml-1">
                 <input
                   type="number"
-                  placeholder="Min $K"
+                  placeholder={!isPremium ? "Min $K (Neeko+)" : "Min $K"}
                   value={priceMin ?? ""}
-                  onChange={(e) => setPriceMin(e.target.value ? Number(e.target.value) : null)}
+                  readOnly={!isPremium}
+                  onChange={(e) => {
+                    if (!isPremium) {
+                      setShowUpgradeModal(true);
+                      return;
+                    }
+                    setPriceMin(e.target.value ? Number(e.target.value) : null);
+                  }}
+                  onFocus={() => {
+                    if (!isPremium) setShowUpgradeModal(true);
+                  }}
                   className="w-20 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1 text-[11px] text-white/60 placeholder-white/20 outline-none focus:border-white/20 transition-colors"
+                  style={!isPremium ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
                 />
+              
                 <span className="text-[10px] text-white/25">—</span>
+              
                 <input
                   type="number"
-                  placeholder="Max $K"
+                  placeholder={!isPremium ? "Max $K (Neeko+)" : "Max $K"}
                   value={priceMax ?? ""}
-                  onChange={(e) => setPriceMax(e.target.value ? Number(e.target.value) : null)}
+                  readOnly={!isPremium}
+                  onChange={(e) => {
+                    if (!isPremium) {
+                      setShowUpgradeModal(true);
+                      return;
+                    }
+                    setPriceMax(e.target.value ? Number(e.target.value) : null);
+                  }}
+                  onFocus={() => {
+                    if (!isPremium) setShowUpgradeModal(true);
+                  }}
                   className="w-20 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1 text-[11px] text-white/60 placeholder-white/20 outline-none focus:border-white/20 transition-colors"
+                  style={!isPremium ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
                 />
               </div>
 
