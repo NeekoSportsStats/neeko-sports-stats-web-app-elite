@@ -746,7 +746,10 @@ export default function MarketWatchPageElite() {
                   value={searchQuery}
                   readOnly={!isPremium}
                   onChange={(e) => {
-                    if (!isPremium) return;
+                    if (!isPremium) {
+                      setShowUpgradeModal(true);
+                      return;
+                    }
                     setSearchQuery(e.target.value);
                   }}
                   onFocus={() => {
