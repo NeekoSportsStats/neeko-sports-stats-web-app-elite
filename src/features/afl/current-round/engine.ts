@@ -40,18 +40,22 @@ function hasProjection(p: RankingRow): boolean {
   return p.projection != null && (p.projection as number) > 0;
 }
 
+function getAction(p: RankingRow): string {
+  return String(p.action_canonical ?? p.signal_tag ?? p.signal ?? "").trim().toUpperCase();
+}
+
 function hasNegativeAction(p: RankingRow): boolean {
-  const ac = (p.action_canonical ?? "").toUpperCase();
-  return ac === "SIT" || ac === "HARD_SIT";
+  const ac = getAction(p);
+  return ac === "SIT" || ac === "STRONG_SIT";
 }
 
 function isHardSit(p: RankingRow): boolean {
-  return (p.action_canonical ?? "").toUpperCase() === "HARD_SIT";
+  return getAction(p) === "STRONG_SIT";
 }
 
 function hasStrongPositiveAction(p: RankingRow): boolean {
-  const ac = (p.action_canonical ?? "").toUpperCase();
-  return ac === "SMASH_START" || ac === "START";
+  const ac = getAction(p);
+  return ac === "STRONG_START" || ac === "START";
 }
 
 // ── SCORING ───────────────────────────────────────────────────────────────────
@@ -169,7 +173,7 @@ export function buildCurrentRoundPlayers(
 
   if (mustBuys.length < MUST_BUY_TARGET) {
     const refillCandidates = byDecisionDesc.filter(p =>
-      !hasNegativeAction(p)
+      !assigned.has(p.player_id ?? "") && !hasNegativeAction(p)
     );
     mustBuys = refillFrom(mustBuys, refillCandidates, MUST_BUY_TARGET);
   }
