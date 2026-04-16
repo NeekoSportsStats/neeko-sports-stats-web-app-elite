@@ -19,10 +19,10 @@ export function Layout() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen w-full bg-background">
+      <div className="min-h-screen w-full bg-background flex">
         <AppSidebar />
 
-        <div className="w-full flex flex-col">
+        <div className="flex-1 flex flex-col">
           {/* HEADER */}
           <header className="fixed top-0 left-0 right-0 z-40 w-full border-b border-white/[0.07] bg-[rgba(8,10,14,0.82)] backdrop-blur-[12px]">
             <div className="flex h-[60px] items-center px-4 sm:px-6 gap-0">
