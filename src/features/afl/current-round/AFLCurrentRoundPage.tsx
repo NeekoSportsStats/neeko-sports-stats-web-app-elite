@@ -1465,36 +1465,18 @@ export default function AFLCurrentRoundPage() {
               renderBadge={() => <AvoidBadge />}
               renderRight={(row) => {
                 const risk = computeRisk(row);
-                const edge = computeEdge(row);
-                const hasRisk = risk > 0;
-                if (hasRisk) {
-                  return { label: formatRisk(risk), sub: "risk", color: getRiskColor(risk) };
+                if (risk > 0) {
+                  return { label: formatRisk(risk), sub: "form risk", color: getRiskColor(risk) };
                 }
-                return { label: formatEdgeScore(edge), sub: "edge", color: "#f87171" };
+                const edge = computeEdge(row);
+                const negEdge = edge != null ? Math.min(edge, 0) : null;
+                if (negEdge != null && negEdge < 0) {
+                  return { label: formatEdgeScore(negEdge), sub: "edge vs BE", color: "#f87171" };
+                }
+                return { label: "Avoid", sub: "signal", color: "#f87171" };
               }}
             />
 
-            {/* TRAPS */}
-            {traps.length > 0 && (
-              <CompactSectionCard
-                title="Traps"
-                subtitle="Hard avoids this round"
-                icon={<AlertTriangle className="w-3.5 h-3.5" />}
-                accentColor="#ef4444"
-                players={traps}
-                isPremiumUser={isPremium}
-                onOpenRow={openRow}
-                onUpgrade={() => setShowUpgradeModal(true)}
-                lockCtaLabel="Reveal all traps"
-                lockBadgeText={(n) => `+${n} more traps hidden`}
-                footerLink={{ label: "Full Rankings", to: "/sports/afl/rankings" }}
-                renderBadge={() => <AvoidBadge />}
-                renderRight={(row) => {
-                  const edge = computeEdge(row);
-                  return { label: formatEdgeScore(edge), sub: "trap score", color: "#ef4444" };
-                }}
-              />
-            )}
 
           </div>
 

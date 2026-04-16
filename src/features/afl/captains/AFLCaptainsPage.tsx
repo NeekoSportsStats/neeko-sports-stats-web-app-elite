@@ -350,11 +350,11 @@ export default function AFLCaptainsPage() {
       return bScore - aScore;
     });
 
-    // LOCK: top 1 by captain score
-    const locks = byScore.slice(0, 1);
+    // LOCK: top 2 by captain score
+    const locks = byScore.slice(0, 2);
 
     // SAFE: next 3 by captain score
-    const safes = byScore.slice(1, 4);
+    const safes = byScore.slice(2, 5);
 
     // POD: high ceiling differential picks not already in locks/safes
     const usedIds = new Set([...locks, ...safes].map(p => p.player_id));
@@ -363,11 +363,17 @@ export default function AFLCaptainsPage() {
       .sort((a, b) => (b.ceiling_estimate ?? b.projection ?? 0) - (a.ceiling_estimate ?? a.projection ?? 0))
       .slice(0, 3);
 
-    // RISKY: high projection but low confidence
+    // RISKY: captain-eligible but with explicit negative signal (SIT/HARD_SIT) or very low captain_score
     const allUsed = new Set([...locks, ...safes, ...pods].map(p => p.player_id));
     const riskyCaptains = eligible
       .filter(p => !allUsed.has(p.player_id))
-      .filter(p => (p.projection ?? 0) >= 90 && p.confidence_label === "LOW")
+      .filter(p => {
+        const ac = (p.action_canonical ?? "").toUpperCase();
+        const capScore = p.captain_score ?? getCaptainScore(p);
+        const isExplicitRisk = ac === "SIT" || ac === "HARD_SIT";
+        const isLowCapScore = capScore < 70;
+        return isExplicitRisk || isLowCapScore;
+      })
       .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
       .slice(0, 2);
 

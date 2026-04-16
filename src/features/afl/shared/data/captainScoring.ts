@@ -9,8 +9,8 @@ export function getCaptainScore(row: RankingRow): number {
 }
 
 export function getCaptainConfidence(score: number): "HIGH" | "MEDIUM" | "LOW" {
-  if (score >= 130) return "HIGH";
-  if (score >= 115) return "MEDIUM";
+  if (score >= 95) return "HIGH";
+  if (score >= 78) return "MEDIUM";
   return "LOW";
 }
 

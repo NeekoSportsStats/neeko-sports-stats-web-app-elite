@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ChartBar as BarChart3, TrendingUp, Star, User, Zap, ArrowRight, Lock } from "lucide-react";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
 import { fmtPrice } from "@/features/afl/market-watch/helpers";
+import { getCaptainScore, getCaptainConfidence, isCaptainEligible } from "@/features/afl/shared/data/captainScoring";
 
 const GOLD = "#E0AE2D";
 
@@ -46,11 +47,12 @@ function buildMarketRows(players: RankingRow[]): RankingRow[] {
 
 function buildCaptainsRows(players: RankingRow[]): RankingRow[] {
   return players
-    .filter(p => !p.is_injured && !p.is_bye && (p.projection ?? 0) > 0)
-    .sort((a, b) =>
-      (b.ceiling_estimate ?? b.captain_score ?? b.projection ?? 0) -
-      (a.ceiling_estimate ?? a.captain_score ?? a.projection ?? 0)
-    )
+    .filter(isCaptainEligible)
+    .sort((a, b) => {
+      const aScore = a.captain_score ?? getCaptainScore(a);
+      const bScore = b.captain_score ?? getCaptainScore(b);
+      return bScore - aScore;
+    })
     .slice(0, 8);
 }
 
@@ -85,21 +87,7 @@ function buildStartSitRows(players: RankingRow[]): RankingRow[] {
 // ── Deduplication across all 5 views ─────────────────────────────────────────
 
 function dedupeAcrossViews(views: Record<TabId, RankingRow[]>): Record<TabId, RankingRow[]> {
-  const used = new Set<string | null>();
-  const order: TabId[] = ["market-watch", "rankings", "captains", "players", "current-round"];
-  const result = {} as Record<TabId, RankingRow[]>;
-
-  for (const key of order) {
-    const deduped = views[key].filter(p => {
-      if (!p.player_id) return true;
-      if (used.has(p.player_id)) return false;
-      used.add(p.player_id);
-      return true;
-    });
-    result[key] = deduped.slice(0, 8);
-  }
-
-  return result;
+  return views;
 }
 
 // ── Tag resolvers — one per view ──────────────────────────────────────────────
@@ -130,16 +118,14 @@ function marketTag(row: RankingRow): { label: string; color: string } {
 }
 
 function captainsTag(row: RankingRow): { label: string; color: string } {
-  const ceiling = row.ceiling_estimate ?? 0;
-  const proj = row.projection ?? 0;
-  const conf = row.projection_confidence ?? 0;
+  const captainScore = row.captain_score ?? getCaptainScore(row);
+  const confLabel = row.confidence_label ?? getCaptainConfidence(captainScore);
   const upside = row.upside_pct ?? 0;
-  const cscore = row.captain_score ?? 0;
-  if ((cscore >= 80 || ceiling >= 150) && conf >= 65) return { label: "LOCK", color: GOLD };
-  if ((cscore >= 65 || ceiling >= 130) && upside >= 20) return { label: "HIGH CEIL", color: "#facc15" };
-  if (conf >= 70 && proj >= 100) return { label: "SAFE", color: "#86efac" };
-  if (upside >= 30) return { label: "POD", color: "#fb923c" };
-  return { label: "RISKY", color: "#f87171" };
+
+  if (confLabel === "HIGH") return { label: "LOCK", color: GOLD };
+  if (confLabel === "MEDIUM") return { label: "SAFE", color: "#86efac" };
+  if (upside >= 25) return { label: "POD", color: "#fb923c" };
+  return { label: "CAPTAIN", color: "rgba(255,255,255,0.45)" };
 }
 
 function formTag(row: RankingRow & { _form_delta?: number }): { label: string; color: string } {
