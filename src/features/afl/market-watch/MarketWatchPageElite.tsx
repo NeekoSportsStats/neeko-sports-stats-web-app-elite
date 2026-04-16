@@ -634,18 +634,44 @@ export default function MarketWatchPageElite() {
               {(["ALL", "BUY", "HOLD", "AVOID"] as TabFilter[]).map((tab) => {
                 const isActive = activeTab === tab;
                 const color =
-                  tab === "BUY" ? "#4ade80" : tab === "AVOID" ? "#f87171" : tab === "HOLD" ? "rgba(255,255,255,0.4)" : "#F5C84C";
+                  tab === "BUY"
+                    ? "#4ade80"
+                    : tab === "AVOID"
+                    ? "#f87171"
+                    : tab === "HOLD"
+                    ? "rgba(255,255,255,0.4)"
+                    : "#F5C84C";
+          
                 return (
                   <button
                     key={tab}
-                    onClick={() => { setActiveTab(tab); track("market_watch_tab_change", { tab }); }}
-                    className="text-[12px] font-semibold px-3 py-1.5 rounded-lg transition-all"
+                    onClick={() => {
+                      if (!isPremium) {
+                        setShowUpgradeModal(true);
+                        return;
+                      }
+                      setActiveTab(tab);
+                      track("market_watch_tab_change", { tab });
+                    }}
+                    disabled={!isPremium}
+                    className="relative text-[12px] font-semibold px-3 py-1.5 rounded-lg transition-all"
                     style={{
                       background: isActive ? `${color}15` : "rgba(255,255,255,0.03)",
-                      border: `1px solid ${isActive ? `${color}40` : "rgba(255,255,255,0.06)"}`,
-                      color: isActive ? color : "rgba(255,255,255,0.35)",
+                      border: `1px solid ${
+                        isActive ? `${color}40` : "rgba(255,255,255,0.06)"
+                      }`,
+                      color: !isPremium
+                        ? "rgba(255,255,255,0.25)"
+                        : isActive
+                        ? color
+                        : "rgba(255,255,255,0.35)",
+                      opacity: !isPremium ? 0.6 : 1,
+                      cursor: !isPremium ? "not-allowed" : "pointer",
                     }}
                   >
+                    {!isPremium && (
+                      <Lock className="inline-block w-2.5 h-2.5 mr-1 -mt-px opacity-40" />
+                    )}
                     {tab}
                     {tab === "BUY" && (
                       <span className="ml-1.5 text-[10px]">{buys.length}</span>
@@ -660,7 +686,6 @@ export default function MarketWatchPageElite() {
                 );
               })}
             </div>
-
             {/* Filters row */}
             <div className="flex items-center gap-2 flex-wrap">
               {/* Position filter */}
