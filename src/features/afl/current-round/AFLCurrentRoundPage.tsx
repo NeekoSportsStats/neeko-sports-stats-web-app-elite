@@ -448,13 +448,23 @@ function MustBuysSection({
   const visible = mustBuys.slice(0, limit);
   const totalHidden = isPremiumUser ? 0 : Math.max(0, mustBuys.length - FREE_LIMIT);
 
+  const getCurrentRoundAction = (row: CurrentRoundPlayer): string =>
+    String(row.action_canonical ?? row.signal_tag ?? row.signal ?? "").trim().toUpperCase();
+
   const premiumStrong = mustBuys.slice(0, PREMIUM_LIMIT).filter((p) => {
-    const ac = (p.action_canonical ?? "").toUpperCase();
-    return ac === "SMASH_START";
+    const ac = getCurrentRoundAction(p);
+    return ac === "STRONG_START";
   });
-  const premiumStart = mustBuys.slice(0, PREMIUM_LIMIT).filter((p) =>
-    (p.action_canonical ?? "").toUpperCase() === "START"
-  );
+
+  const premiumStart = mustBuys.slice(0, PREMIUM_LIMIT).filter((p) => {
+    const ac = getCurrentRoundAction(p);
+    return ac === "START";
+  });
+
+  const premiumOtherPositive = mustBuys.slice(0, PREMIUM_LIMIT).filter((p) => {
+    const ac = getCurrentRoundAction(p);
+    return ac !== "STRONG_START" && ac !== "START";
+  });
 
   return (
     <div
@@ -514,7 +524,27 @@ function MustBuysSection({
                 })}
               </>
             )}
-            {premiumStrong.length === 0 && premiumStart.length === 0 && visible.map((row, idx) => {
+            {premiumOtherPositive.length > 0 && (
+              <>
+                <TierDivider label="Trade Targets" color="#34d399" />
+                {premiumOtherPositive.map((row, idx) => {
+                  const edge = computeEdge(row);
+                  return (
+                    <CompactPlayerRow
+                      key={row.player_id ?? idx}
+                      row={row}
+                      rank={premiumStrong.length + premiumStart.length + idx + 1}
+                      badge={<ValueBadge />}
+                      rightLabel={formatEdgeScore(edge)}
+                      rightSub="edge"
+                      rightColor="#34d399"
+                      onClick={() => onOpenRow(row)}
+                    />
+                  );
+                })}
+              </>
+            )}
+            {premiumStrong.length === 0 && premiumStart.length === 0 && premiumOtherPositive.length === 0 && visible.map((row, idx) => {
               const edge = computeEdge(row);
               return (
                 <CompactPlayerRow
@@ -532,8 +562,8 @@ function MustBuysSection({
           </>
         ) : (
           visible.map((row, idx) => {
-            const ac = (row.action_canonical ?? "").toUpperCase();
-            const isStrong = ac === "SMASH_START";
+            const ac = getCurrentRoundAction(row);
+            const isStrong = ac === "STRONG_START";
             const edge = computeEdge(row);
             return (
               <CompactPlayerRow
