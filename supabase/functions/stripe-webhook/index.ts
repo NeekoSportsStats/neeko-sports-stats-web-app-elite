@@ -138,6 +138,15 @@ async function handleEvent(event: Stripe.Event) {
         break;
       }
 
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice;
+        console.log(`stripe-webhook: invoice.payment_succeeded — invoice=${invoice.id}`);
+        if (invoice.subscription) {
+          await syncSubscriptionFromStripe(invoice.subscription as string, 'weekly');
+        }
+        break;
+      }
+
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
         console.log(`stripe-webhook: invoice.payment_failed — invoice=${invoice.id}`);

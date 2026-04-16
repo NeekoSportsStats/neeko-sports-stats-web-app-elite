@@ -50,8 +50,8 @@ const Billing = () => {
           status: data.status,
           current_period_end: data.current_period_end ?? "",
           cancel_at_period_end: data.cancel_at_period_end ?? false,
-          plan_name: data.plan_type === "weekly" ? "Neeko+ Weekly" : "Neeko+ Season Pass",
-          amount: data.plan_type === "weekly" ? 599 : 5900,
+          plan_name: data.plan_type === "weekly" ? "Neeko+ Weekly" : data.plan_type === "season" ? "Neeko+ Season Pass" : "Neeko+",
+          amount: data.plan_type === "weekly" ? 599 : data.plan_type === "season" ? 5900 : undefined,
         });
       } else {
         setSubscription(null);
