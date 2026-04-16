@@ -28,7 +28,7 @@ export function Layout() {
             <div className="flex h-[60px] items-center px-4 sm:px-6 gap-0">
 
               {/* Sidebar trigger — mobile only */}
-              <SidebarTrigger className="mr-2 lg:hidden" />
+              <SidebarTrigger className="mr-2 />
 
               {/* LOGO */}
               <Link to="/" className="flex items-center hover:opacity-80 transition shrink-0">
