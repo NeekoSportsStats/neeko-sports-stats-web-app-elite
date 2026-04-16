@@ -18,7 +18,7 @@ export function Layout() {
   const location = useLocation();
 
   return (
-    <SidebarProvider defaultOpen>
+    <SidebarProvider defaultOpen={false}>
       <div className="min-h-screen w-full bg-background flex">
         <AppSidebar />
 
