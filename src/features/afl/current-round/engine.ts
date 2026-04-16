@@ -87,14 +87,16 @@ export function buildCurrentRoundPlayers(
   const captainIds = new Set(captains.map(p => p.player_id));
 
   // ── MUST BUYS — START or SMASH_START, sorted by decision_score desc ────────
-  const mustBuys = byDecisionDesc
+  // Fallback MUST preserve positive-action guard to prevent risk players bleeding in
+  const mustBuysPositive = byDecisionDesc
     .filter(p => !captainIds.has(p.player_id) && hasPositiveAction(p))
     .slice(0, MUST_BUY_LIMIT);
 
-  // Fallback: if no positively-actioned players, take top by projection
-  const mustBuysFinal = mustBuys.length >= 3
-    ? mustBuys
-    : byDecisionDesc.filter(p => !captainIds.has(p.player_id)).slice(0, MUST_BUY_LIMIT);
+  const mustBuysFinal = mustBuysPositive.length >= 3
+    ? mustBuysPositive
+    : byDecisionDesc
+        .filter(p => !captainIds.has(p.player_id) && !hasNegativeAction(p))
+        .slice(0, MUST_BUY_LIMIT);
 
   const mustBuyIds = new Set(mustBuysFinal.map(p => p.player_id));
 
@@ -116,7 +118,6 @@ export function buildCurrentRoundPlayers(
 
     if (value === null) return null;
 
-    // Reward genuine value/upside with a soft price discount
     return value - (price / 1_000_000) * 8;
   }
 
@@ -138,7 +139,6 @@ export function buildCurrentRoundPlayers(
     !hasNegativeAction(p)
   );
 
-  // Band A: basement / rookie price range
   const bandA = budgetEligible
     .filter(p => (p.price ?? 999_999) <= BUDGET_BAND_A_MAX && hasRealUpside(p))
     .map(p => ({ p, score: getBudgetUpsideScore(p) }))
@@ -146,7 +146,6 @@ export function buildCurrentRoundPlayers(
     .sort((a, b) => (b.score as number) - (a.score as number))
     .map(({ p }) => p);
 
-  // Band B: playable mid-price value range
   const bandB = budgetEligible
     .filter(p => (p.price ?? 0) > BUDGET_BAND_A_MAX && (p.price ?? 999_999) <= BUDGET_BAND_B_MAX && hasRealUpside(p))
     .map(p => ({ p, score: getBudgetUpsideScore(p) }))
@@ -154,7 +153,6 @@ export function buildCurrentRoundPlayers(
     .sort((a, b) => (b.score as number) - (a.score as number))
     .map(({ p }) => p);
 
-  // Interleave bands for diversity: 1 from B, 1 from A, then fill from best remaining
   const interleaved: CurrentRoundPlayer[] = [];
   const usedInBudget = new Set<string>();
 
@@ -167,13 +165,11 @@ export function buildCurrentRoundPlayers(
     }
   }
 
-  // Lead with a mid-price value play if available, then rookie/cheap
   if (bandB.length > 0) addBudget([bandB[0]]);
   if (bandA.length > 0) addBudget([bandA[0]]);
   addBudget(bandB.slice(1));
   addBudget(bandA.slice(1));
 
-  // Fallback: any positive-action budget player scored by upside, no real-upside filter
   if (interleaved.length < 3) {
     const fallback = budgetEligible
       .filter(p => !usedInBudget.has(p.player_id ?? "") && hasPositiveAction(p))
@@ -184,7 +180,6 @@ export function buildCurrentRoundPlayers(
     addBudget(fallback);
   }
 
-  // Last resort: any budget player sorted by decision_score
   if (interleaved.length < 3) {
     const lastResort = budgetEligible
       .filter(p => !usedInBudget.has(p.player_id ?? ""))
@@ -193,26 +188,33 @@ export function buildCurrentRoundPlayers(
   }
 
   const budgetPicks = interleaved;
+  const budgetIds = new Set(budgetPicks.map(p => p.player_id));
 
-  // ── RISK / OVERPRICED — SIT or HARD_SIT, worst decision_score first ────────
+  // ── PRECEDENCE: captains > mustBuys > budget — exclude ALL from risk/traps ─
+  const positiveIds = new Set([...captainIds, ...mustBuyIds, ...budgetIds]);
+
+  // ── RISK / OVERPRICED — SIT or HARD_SIT only; never a captain/mustBuy/budget ─
   const riskPicks = byDecisionAscAll
-    .filter(p => hasNegativeAction(p))
+    .filter(p => hasNegativeAction(p) && !positiveIds.has(p.player_id))
     .slice(0, RISK_LIMIT);
 
-  // Fallback: just worst decision_score if no negative-action players
+  // Fallback: worst decision_score players with negative action only
   const riskFinal = riskPicks.length >= 3
     ? riskPicks
-    : byDecisionAscAll.slice(0, RISK_LIMIT);
+    : byDecisionAscAll
+        .filter(p => hasNegativeAction(p) && !positiveIds.has(p.player_id))
+        .slice(0, RISK_LIMIT);
 
-  // ── TRAPS — HARD_SIT only, worst decision_score first ─────────────────────
+  // ── TRAPS — HARD_SIT only; never a captain/mustBuy/budget ─────────────────
   const traps = byDecisionAscAll
-    .filter(p => isHardSit(p))
+    .filter(p => isHardSit(p) && !positiveIds.has(p.player_id))
     .slice(0, TRAP_LIMIT);
 
-  // Fallback: SIT + HARD_SIT combined if not enough HARD_SIT
   const trapsFinal = traps.length >= 2
     ? traps
-    : byDecisionAscAll.filter(p => hasNegativeAction(p)).slice(0, TRAP_LIMIT);
+    : byDecisionAscAll
+        .filter(p => hasNegativeAction(p) && !positiveIds.has(p.player_id))
+        .slice(0, TRAP_LIMIT);
 
   return {
     captains,

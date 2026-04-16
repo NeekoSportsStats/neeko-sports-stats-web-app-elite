@@ -34,19 +34,14 @@ function buildMarketRows(players: RankingRow[]): RankingRow[] {
     (p.projection ?? 0) > 50
   );
   if (eligible.length === 0) {
-    console.warn("[LandingMarketWatch] No eligible rows after full filter. players total:", players.length);
-    const fallback = players
+    return players
       .filter(p => !p.is_injured && !p.is_bye && (p.price ?? 0) > 0 && (p.games_played ?? 0) >= 1)
       .sort((a, b) => (b.value_score ?? b.edge_canonical ?? 0) - (a.value_score ?? a.edge_canonical ?? 0))
       .slice(0, 8);
-    console.log("[LandingMarketWatch] fallback rows:", fallback.length);
-    return fallback;
   }
-  const rows = eligible
+  return eligible
     .sort((a, b) => (b.value_score ?? b.edge_canonical ?? 0) - (a.value_score ?? a.edge_canonical ?? 0))
     .slice(0, 8);
-  console.log("[LandingMarketWatch] eligible rows:", rows.length, "signal_tags:", rows.map(r => r.signal_tag));
-  return rows;
 }
 
 function buildCaptainsRows(players: RankingRow[]): RankingRow[] {

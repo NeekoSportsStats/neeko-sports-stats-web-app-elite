@@ -1212,9 +1212,7 @@ export default function AFLCurrentRoundPage() {
         console.error("Current Round fetch error:", error);
       } else if (data) {
         const mapped = (data as Record<string, unknown>[]).map(mapRankingRow);
-        const before = mapped.length;
         const active = mapped.filter(isActive2026Player);
-        console.log("CURRENT ROUND FILTER", { before, after: active.length });
         setPlayers(applyDecisionFields(active));
       }
       try {

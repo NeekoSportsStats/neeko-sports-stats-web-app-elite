@@ -338,7 +338,7 @@ function SortableHeader({ label, field, currentField, direction, onSort, centere
 
   return (
     <th
-      className={`px-5 py-2.5 ${centered ? "text-center" : "text-left"} text-[10px] font-bold uppercase tracking-wider select-none transition-colors ${
+      className={`px-4 py-2.5 ${centered ? "text-center" : "text-left"} text-[10px] font-bold uppercase tracking-wider select-none transition-colors ${
         isLocked
           ? "cursor-not-allowed opacity-40 text-white/25"
           : muted
