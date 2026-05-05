@@ -226,7 +226,7 @@ export function BoardRow({
               )}
             </div>
             <div>
-              <p className="text-[9px] text-white/30 uppercase tracking-wide mb-0.5">{threshold}+ hit</p>
+              <p className="text-[9px] text-white/30 uppercase tracking-wide mb-0.5">{threshold}+ Hit</p>
               {isPlayerLocked ? (
                 <span className="text-xs text-white/20 blur-[4px] select-none" aria-hidden>—</span>
               ) : (

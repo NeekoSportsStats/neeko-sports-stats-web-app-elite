@@ -375,7 +375,7 @@ function MultiThresholdChart({
       </svg>
       {/* Legend */}
       <p className="mt-1 text-[9.5px] text-white/22 text-right">
-        All threshold lines shown · {selectedThreshold}+ highlighted
+        All lines shown · {selectedThreshold}+ is default focus
       </p>
     </div>
   );

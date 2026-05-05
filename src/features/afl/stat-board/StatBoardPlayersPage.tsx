@@ -13,7 +13,7 @@ import type {
   StatLens,
   PositionFilter,
 } from "./types";
-import { defaultThreshold, thresholdsForLens } from "./types";
+import { defaultThreshold } from "./types";
 import { MatchSelector } from "./components/MatchSelector";
 import { BoardRow } from "./components/BoardRow";
 
@@ -37,7 +37,6 @@ const POSITION_OPTIONS: { key: PositionFilter; label: string }[] = [
   { key: "RUCK", label: "RUCK" },
 ];
 
-/** Returns true if the player has no usable recent stat data */
 function hasNoData(p: StatBoardPlayer): boolean {
   const values = p.last_10_values ?? [];
   return values.length === 0 && (p.projection == null || p.projection === 0) && p.last_10_avg == null;
@@ -45,7 +44,6 @@ function hasNoData(p: StatBoardPlayer): boolean {
 
 function sortPlayers(players: StatBoardPlayer[], sortKey: SortKey): StatBoardPlayer[] {
   return [...players].sort((a, b) => {
-    // No-data rows always last
     const aEmpty = hasNoData(a);
     const bEmpty = hasNoData(b);
     if (aEmpty !== bEmpty) return aEmpty ? 1 : -1;
@@ -71,16 +69,18 @@ function sortPlayers(players: StatBoardPlayer[], sortKey: SortKey): StatBoardPla
 export default function StatBoardPlayersPage() {
   const [selectedMatch, setSelectedMatch] = useState<StatBoardMatch | null>(null);
   const [lens, setLens] = useState<StatLens>("disposals");
-  const [threshold, setThreshold] = useState<number>(20);
   const [positionFilter, setPositionFilter] = useState<PositionFilter>("ALL");
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("projection");
   const [sortOpen, setSortOpen] = useState(false);
   const [expandedPlayerId, setExpandedPlayerId] = useState<number | null>(null);
 
+  // Default threshold per lens — used internally for the RPC and expanded detail emphasis.
+  // Not exposed as a user-facing control.
+  const threshold = defaultThreshold(lens);
+
   const { matches, loading: matchesLoading, error: matchesError } = useStatBoardMatches();
 
-  // Threshold only affects hit-rate column display — all players for the match are always loaded
   const { players, loading: playersLoading, error: playersError } = useStatBoardPlayers({
     matchId: selectedMatch?.match_id ?? null,
     lens,
@@ -98,7 +98,7 @@ export default function StatBoardPlayersPage() {
 
   function handleLensChange(newLens: StatLens) {
     setLens(newLens);
-    setThreshold(defaultThreshold(newLens));
+    setExpandedPlayerId(null);
     track("Stat Board Lens Change", { lens: newLens });
   }
 
@@ -126,11 +126,8 @@ export default function StatBoardPlayersPage() {
     track("Page View", { path: "/stat-board/players" });
   }, []);
 
-  const thresholds = thresholdsForLens(lens);
   const isLocked = selectedMatch?.is_locked ?? false;
   const lensLabel = lens === "disposals" ? "Disposals" : "Goals";
-  const currentSortOption = SORT_OPTIONS.find((o) => o.key === sortKey);
-  // Short label for the button
   const sortButtonLabel = (() => {
     switch (sortKey) {
       case "projection":  return "Projection ↓";
@@ -178,10 +175,10 @@ export default function StatBoardPlayersPage() {
             />
           )}
 
-          {/* ── Controls ─────────────────────────────────────────────────────── */}
+          {/* ── Controls ──────────────────────────────────────────────────────── */}
           <div className="mb-2 space-y-3">
 
-            {/* Row 1: Stat + Line focus + Position */}
+            {/* Row 1: Stat + Position */}
             <div className="flex flex-wrap items-start gap-5">
 
               {/* Stat */}
@@ -202,29 +199,6 @@ export default function StatBoardPlayersPage() {
                     </button>
                   ))}
                 </div>
-              </div>
-
-              {/* Line focus */}
-              <div>
-                <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">Line focus</p>
-                <div className="flex gap-1">
-                  {thresholds.map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setThreshold(t)}
-                      className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                        threshold === t
-                          ? "bg-[#F5C84C]/20 text-[#F5C84C] ring-1 ring-[#F5C84C]/35"
-                          : "bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/70"
-                      }`}
-                    >
-                      {t}+
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-1.5 text-[10px] text-white/32 leading-snug">
-                  Sets the main hit-rate column. Player list stays the same.
-                </p>
               </div>
 
               {/* Position */}
@@ -302,7 +276,6 @@ export default function StatBoardPlayersPage() {
               {[
                 selectedMatch.match_label,
                 lensLabel,
-                `${threshold}+ line`,
                 playerCount > 0 ? `${playerCount} players` : null,
               ]
                 .filter(Boolean)
@@ -451,6 +424,8 @@ function TeamBoard({
 }: TeamBoardProps) {
   if (players.length === 0) return null;
 
+  const defaultHitLabel = lens === "disposals" ? "20+ hit" : "2+ hit";
+
   return (
     <div>
       {/* Team header */}
@@ -465,7 +440,7 @@ function TeamBoard({
         <span className="text-center">Recent</span>
         <span className="text-right">Rec avg</span>
         <span className="text-right">Proj</span>
-        <span className="text-center">{threshold}+ hit</span>
+        <span className="text-center">{defaultHitLabel}</span>
         <span className="text-center">Consistency</span>
         <span />
       </div>
