@@ -1,11 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import {
-  ArrowRight, ChevronRight, BarChart2, Target, Zap,
-  TrendingUp, Star, Database, Clock,
-  AlertTriangle, ZapIcon,
-} from "lucide-react";
+import { ArrowRight, ChevronRight, ChartBar as BarChart2, Target, Zap, TrendingUp, Star, Database, Clock, TriangleAlert as AlertTriangle, Zap as ZapIcon } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import MobileUpgradeBar from "@/components/mobile/MobileUpgradeBar";
@@ -473,31 +469,31 @@ export default function Index() {
       projection: mustBuyP!.projection, seasonAvg: mustBuyP!.last_5_avg ?? mustBuyP!.season_avg ?? null,
       confidenceLabel: confidenceOf(mustBuyP),
       reason: "Projected well above price — one of the best value plays this week.",
-      ctaLabel: "View Must Buys", ctaTo: "/sports/afl/current-round",
+      ctaLabel: "View Must Buys", ctaTo: "/fantasy",
     },
     {
       label: "Trap Alert", icon: <AlertTriangle size={11} />, accentIdx: 1,
       playerName: trapFallback!.player_name, team: trapFallback!.team ?? "", position: trapFallback!.position,
       projection: trapFallback!.projection, seasonAvg: trapFallback!.last_5_avg ?? trapFallback!.season_avg ?? null,
       confidenceLabel: confidenceOf(trapFallback),
-      reason: "Overpriced for this week — high risk of underperforming.",
-      ctaLabel: "See Trap Alerts", ctaTo: "/sports/afl/current-round",
+      reason: "High risk of underperforming this week based on recent form and matchup.",
+      ctaLabel: "See Trap Alerts", ctaTo: "/fantasy",
     },
     {
       label: "Captain Pick", icon: <Star size={11} />, badge: "C", accentIdx: 2,
       playerName: captainP!.player_name, team: captainP!.team ?? "", position: captainP!.position,
       projection: captainP!.projection, seasonAvg: captainP!.last_5_avg ?? captainP!.season_avg ?? null,
       confidenceLabel: confidenceOf(captainP),
-      reason: "Top projected scorer this round — safest captain option.",
-      ctaLabel: "View Captains", ctaTo: "/sports/afl/captains",
+      reason: "Top projected scorer this round — strong captain consideration.",
+      ctaLabel: "View Captains", ctaTo: "/fantasy",
     },
     {
-      label: "Trade Target", icon: <ZapIcon size={11} />, accentIdx: 3,
+      label: "Value Pick", icon: <ZapIcon size={11} />, accentIdx: 3,
       playerName: breakoutFallback!.player_name, team: breakoutFallback!.team ?? "", position: breakoutFallback!.position,
       projection: breakoutFallback!.projection, seasonAvg: breakoutFallback!.last_5_avg ?? breakoutFallback!.season_avg ?? null,
       confidenceLabel: confidenceOf(breakoutFallback),
-      reason: "Underpriced for current form — strong trade-in this week.",
-      ctaLabel: "Open Market Watch", ctaTo: "/sports/afl/market-watch",
+      reason: "Projecting above recent averages — potential value pick this round.",
+      ctaLabel: "Open Fantasy Hub", ctaTo: "/fantasy",
     },
   ] : [];
 
@@ -617,7 +613,7 @@ export default function Index() {
                 Open Stat Board <ArrowRight size={15} />
               </Link>
               <Link
-                to="/sports/afl/current-round"
+                to="/fantasy"
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 8,
                   background: "rgba(255,255,255,0.08)", backdropFilter: "blur(8px)",
@@ -663,31 +659,31 @@ export default function Index() {
       {/* ════════════════════════════════════════════════════
           HOW IT WORKS
       ════════════════════════════════════════════════════ */}
-      <section className="scroll-reveal" style={{ background: "#05070A", padding: "clamp(48px, 5vw, 80px) clamp(20px, 5vw, 40px)" }}>
+      <section className="scroll-reveal" style={{ background: "#05070A", padding: "clamp(40px, 4.5vw, 64px) clamp(20px, 5vw, 40px)" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 40 }}>
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
             <p style={{ margin: "0 0 8px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(34,197,94,0.75)" }}>How it works</p>
             <h2 style={{ margin: 0, fontSize: "clamp(18px, 1.8vw, 26px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.02em" }}>
               Three steps to every player trend
             </h2>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }} className="how-grid">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }} className="how-grid">
             {[
               { num: "01", icon: <BarChart2 size={20} />, title: "Pick a match", copy: "Select any fixture from the current round to see all players in that game." },
               { num: "02", icon: <Target size={20} />, title: "Choose a stat", copy: "Switch between disposals and goals. Set your own threshold line." },
               { num: "03", icon: <Zap size={20} />, title: "View hit rates and projections", copy: "See how often each player has hit that line in the last 10 games, plus a projection for this week." },
             ].map(({ num, icon, title, copy }) => (
-              <div key={num} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "24px 22px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+              <div key={num} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "18px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                   <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(34,197,94,0.60)", letterSpacing: "0.14em" }}>{num}</span>
                   <span style={{ color: "#22c55e", opacity: 0.75 }}>{icon}</span>
                 </div>
-                <p style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#e8e8e8" }}>{title}</p>
+                <p style={{ margin: "0 0 6px", fontSize: 13.5, fontWeight: 700, color: "#e8e8e8" }}>{title}</p>
                 <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.42)", lineHeight: 1.6 }}>{copy}</p>
               </div>
             ))}
           </div>
-          <div style={{ textAlign: "center", marginTop: 28 }}>
+          <div style={{ textAlign: "center", marginTop: 22 }}>
             <Link
               to="/stat-board/players"
               style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "#22c55e", textDecoration: "none", border: "1px solid rgba(34,197,94,0.25)", padding: "9px 18px", borderRadius: 9, background: "rgba(34,197,94,0.07)", transition: "all 0.15s ease" }}
@@ -703,29 +699,33 @@ export default function Index() {
       {/* ════════════════════════════════════════════════════
           STAT LENSES
       ════════════════════════════════════════════════════ */}
-      <section className="scroll-reveal" style={{ background: "#060809", padding: "clamp(40px, 4vw, 64px) clamp(20px, 5vw, 40px)" }}>
+      <section className="scroll-reveal" style={{ background: "#060809", padding: "clamp(36px, 3.5vw, 56px) clamp(20px, 5vw, 40px)" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ textAlign: "center", marginBottom: 24 }}>
             <p style={{ margin: "0 0 8px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)" }}>Stat lenses</p>
             <h2 style={{ margin: 0, fontSize: "clamp(18px, 1.8vw, 26px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.02em" }}>
-              Two views. Same depth of data.
+              Start with the stats people check first.
             </h2>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             {[
-              { icon: <BarChart2 size={22} />, title: "Disposals", color: "#22c55e", copy: "Track how often a player gets 15, 20, 25 or 30+ disposals. See their last 10-game trend, rolling averages, and projection for this round.", available: true },
-              { icon: <Target size={22} />, title: "Goals", color: "#f59e0b", copy: "Track goal-kicking consistency with 1, 2, 3 or 4+ goal thresholds. Same hit rate and projection view.", available: true },
-            ].map(({ icon, title, color, copy, available }) => (
-              <div key={title} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${color}20`, borderRadius: 14, padding: "24px 22px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-                  <div style={{ width: 42, height: 42, borderRadius: 10, background: `${color}15`, border: `1px solid ${color}25`, display: "flex", alignItems: "center", justifyContent: "center", color, flexShrink: 0 }}>
+              {
+                icon: <BarChart2 size={22} />, title: "Disposals", color: "#22c55e",
+                copy: "Track 15+, 20+, 25+ and 30+ disposal trends using last 10 games, rolling averages and projections.",
+              },
+              {
+                icon: <Target size={22} />, title: "Goals", color: "#f59e0b",
+                copy: "Track 1+, 2+, 3+ and 4+ goal trends using recent scoring form, hit rates and projections.",
+              },
+            ].map(({ icon, title, color, copy }) => (
+              <div key={title} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${color}20`, borderRadius: 12, padding: "20px 18px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: `${color}15`, border: `1px solid ${color}25`, display: "flex", alignItems: "center", justifyContent: "center", color, flexShrink: 0 }}>
                     {icon}
                   </div>
                   <div>
-                    <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#e8e8e8" }}>{title}</p>
-                    {available && (
-                      <span style={{ fontSize: 9, fontWeight: 700, color: "#22c55e", background: "rgba(34,197,94,0.10)", padding: "1px 7px", borderRadius: 999, letterSpacing: "0.08em" }}>Available now</span>
-                    )}
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#e8e8e8" }}>{title}</p>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "#22c55e", background: "rgba(34,197,94,0.10)", padding: "1px 7px", borderRadius: 999, letterSpacing: "0.08em" }}>Available now</span>
                   </div>
                 </div>
                 <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>{copy}</p>
@@ -736,27 +736,26 @@ export default function Index() {
       </section>
 
       {/* ════════════════════════════════════════════════════
-          FANTASY HUB — kept lower
+          FANTASY HUB — secondary
       ════════════════════════════════════════════════════ */}
-      <section style={{
+      <section className="scroll-reveal" style={{
         background: "#05070A",
-        backgroundImage: "radial-gradient(circle at 50% 0%, rgba(255,180,50,0.05), transparent 60%)",
-        padding: "clamp(48px, 5vw, 80px) clamp(20px, 5vw, 40px)",
+        backgroundImage: "radial-gradient(circle at 50% 0%, rgba(255,180,50,0.04), transparent 60%)",
+        padding: "clamp(40px, 4.5vw, 64px) clamp(20px, 5vw, 40px)",
       }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          {/* Section header */}
-          <div style={{ marginBottom: 32, textAlign: "center" }}>
+          <div style={{ marginBottom: 28, textAlign: "center" }}>
             <p style={{ margin: "0 0 6px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(244,197,66,0.75)" }}>
               Fantasy Hub{currentRound != null ? ` — Round ${currentRound}` : ""}
             </p>
             <h2 style={{ margin: "0 0 8px", fontSize: "clamp(18px, 1.8vw, 26px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.02em" }}>
               Want fantasy-specific calls?
             </h2>
-            <p style={{ margin: "0 0 16px", fontSize: "clamp(11px, 0.78vw, 14px)", color: "rgba(255,255,255,0.50)", fontWeight: 500, lineHeight: 1.55, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
-              Fantasy Hub turns the deeper model into Must Buys, Trap Alerts, Captain Picks and Rankings.
+            <p style={{ margin: "0 0 14px", fontSize: "clamp(11px, 0.78vw, 14px)", color: "rgba(255,255,255,0.50)", fontWeight: 500, lineHeight: 1.55, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
+              Fantasy Hub turns the deeper fantasy model into Must Buys, Trap Alerts, Captain Picks and Rankings.
             </p>
             <Link
-              to="/sports/afl/current-round"
+              to="/fantasy"
               style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: "rgba(244,197,66,0.78)", textDecoration: "none", whiteSpace: "nowrap", border: "1px solid rgba(244,197,66,0.22)", padding: "8px 16px", borderRadius: 8, background: "rgba(244,197,66,0.06)", letterSpacing: "0.03em", transition: "all 0.15s ease" }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(244,197,66,0.10)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(244,197,66,0.06)"; }}
@@ -765,10 +764,9 @@ export default function Index() {
             </Link>
           </div>
 
-          {/* 4-column card grid */}
-          <div className="edge-cards-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, alignItems: "stretch", gridAutoRows: "1fr" }}>
+          <div className="edge-cards-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, alignItems: "stretch", gridAutoRows: "1fr" }}>
             {showSkeleton
-              ? [0,1,2,3].map(i => <div key={i} style={{ minHeight: 320 }}><SkeletonCard /></div>)
+              ? [0,1,2,3].map(i => <div key={i} style={{ minHeight: 300 }}><SkeletonCard /></div>)
               : fantasyCards.map(c => (
                   <div key={c.label} className="edge-card-enter" style={{ opacity: 0, display: "flex", flexDirection: "column" }}>
                     <EdgeCard {...c} />

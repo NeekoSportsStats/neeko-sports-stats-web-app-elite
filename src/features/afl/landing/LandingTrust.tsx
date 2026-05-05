@@ -1,56 +1,56 @@
-import { Database, RefreshCw, TrendingUp, Target, Zap } from "lucide-react";
+import { ChartBar as BarChart2, Target, List, TrendingUp, CircleCheck as CheckCircle, Star } from "lucide-react";
 
-const STATS = [
+const FEATURES = [
   {
-    icon: <Database size={20} />,
-    num: "600+",
-    label: "Players Ranked",
-    sub: "Every relevant AFL Fantasy player — not just the top tier.",
-    color: "#E0AE2D",
-  },
-  {
-    icon: <TrendingUp size={20} />,
-    num: "Live",
-    label: "Value Gaps",
-    sub: "Underpriced players and trap alerts generated from real pricing data.",
+    icon: <List size={20} />,
+    label: "Last 10 game trends",
+    sub: "See every player's recent stat history in the current lens — disposals or goals.",
     color: "#22c55e",
   },
   {
     icon: <Target size={20} />,
-    num: "Built In",
-    label: "Matchup Context",
-    sub: "Opponent concession rates and venue splits baked into every projection.",
-    color: "#E8855A",
+    label: "Hit-rate thresholds",
+    sub: "Know how often a player has cleared 15+, 20+, 25+ or 30+ disposals in their last 10 games.",
+    color: "#f59e0b",
   },
   {
-    icon: <RefreshCw size={20} />,
-    num: "±3 pts",
-    label: "Projection Accuracy",
-    sub: "Projections calibrated against real scores each round — not guesswork.",
-    color: "#f87171",
+    icon: <BarChart2 size={20} />,
+    label: "Match-based views",
+    sub: "Filter by fixture. See all players in a single match side by side.",
+    color: "#38bdf8",
   },
   {
-    icon: <Zap size={20} />,
-    num: "6 Tools",
-    label: "One Subscription",
-    sub: "Rankings, Market Watch, Captains, Edge Board, Start/Sit, Player Pages.",
+    icon: <TrendingUp size={20} />,
+    label: "Simple projections",
+    sub: "Each player gets a projection for the current round based on recent form and matchup context.",
     color: "#E0AE2D",
+  },
+  {
+    icon: <CheckCircle size={20} />,
+    label: "Consistency labels",
+    sub: "HIGH, MEDIUM, or LOW confidence — based on how reliably a player hits their projection range.",
+    color: "#a78bfa",
+  },
+  {
+    icon: <Star size={20} />,
+    label: "Fantasy Hub included",
+    sub: "Must Buys, Trap Alerts, Captain Picks and Rankings — all accessible from one subscription.",
+    color: "#E8855A",
   },
 ];
 
 export default function LandingTrust() {
   return (
-    <section style={{ background: "#05070A", padding: "clamp(80px, 7vw, 120px) clamp(20px, 5vw, 40px)" }}>
+    <section style={{ background: "#05070A", padding: "clamp(64px, 6vw, 96px) clamp(20px, 5vw, 40px)" }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 44 }}>
+        <div style={{ textAlign: "center", marginBottom: 36 }}>
           <p style={{
             fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em",
             textTransform: "uppercase",
-            color: "rgba(224,174,45,0.65)",
+            color: "rgba(34,197,94,0.65)",
             margin: "0 0 6px",
           }}>
-            Under The Hood
+            What you get
           </p>
           <h2 style={{
             fontSize: "clamp(1.5rem, 2.6vw, 2.2rem)",
@@ -58,7 +58,7 @@ export default function LandingTrust() {
             color: "#F5F5F5", lineHeight: 1.2,
             margin: "0 0 8px",
           }}>
-            What's Actually Under the Hood
+            Everything in one place.
           </h2>
           <p style={{
             fontSize: "clamp(12px, 0.85vw, 14px)",
@@ -66,17 +66,16 @@ export default function LandingTrust() {
             maxWidth: 420, margin: "0 auto",
             lineHeight: 1.5,
           }}>
-            Real data, real projections, real pricing — not recycled stats from a spreadsheet.
+            Real AFL data, updated before every round.
           </p>
         </div>
 
-        {/* Stat blocks */}
         <div style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
           gap: 14,
         }}>
-          {STATS.map(({ icon, num, label, sub, color }) => (
+          {FEATURES.map(({ icon, label, sub, color }) => (
             <div
               key={label}
               style={{
@@ -100,15 +99,6 @@ export default function LandingTrust() {
                 color, marginBottom: 14, flexShrink: 0,
               }}>
                 {icon}
-              </div>
-              <div style={{
-                fontSize: 22, fontWeight: 900,
-                color: "#E0AE2D",
-                letterSpacing: "-0.03em",
-                marginBottom: 5,
-                fontVariantNumeric: "tabular-nums",
-              }}>
-                {num}
               </div>
               <p style={{
                 fontSize: 13.5, fontWeight: 700,

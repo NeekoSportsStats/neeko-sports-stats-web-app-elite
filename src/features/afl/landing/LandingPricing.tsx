@@ -4,25 +4,25 @@ import { Check, X, ArrowRight, Zap } from "lucide-react";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
 
 const FREE_FEATURES = [
-  { text: "Basic rankings (limited)", included: true },
-  { text: "2 players preview per tab", included: true },
-  { text: "Market Watch access", included: false },
-  { text: "Captain picks before lockout", included: false },
-  { text: "Breakout & trap alerts", included: false },
-  { text: "AI player breakdowns", included: false },
-  { text: "Trade targets & value gaps", included: false },
-  { text: "Weekly start/sit tools", included: false },
+  { text: "First matches preview", included: true },
+  { text: "Disposals and goals", included: true },
+  { text: "Limited access", included: true },
+  { text: "No card required", included: true },
+  { text: "Full round access", included: false },
+  { text: "All matches", included: false },
+  { text: "Player trends and projections", included: false },
+  { text: "Fantasy Hub included", included: false },
 ];
 
 const PREMIUM_FEATURES = [
-  "Full rankings + projections",
-  "Market Watch — value gaps and traps",
-  "Captain picks before lockout",
-  "Breakout alerts and trap warnings",
-  "Full AI player breakdowns",
-  "Trade targets and value tiers",
-  "Weekly start/sit decision tools",
-  "Full player history and trends",
+  "Full round access",
+  "All matches",
+  "Full Stat Board",
+  "Player trends and projections",
+  "Consistency labels and hit rates",
+  "Fantasy Hub included",
+  "Must Buys, Trap Alerts, Captain Picks",
+  "Full player history",
 ];
 
 type Plan = "season" | "weekly";
@@ -35,11 +35,11 @@ export default function LandingPricing() {
   return (
     <section style={{
       background: "#06080C",
-      padding: "clamp(80px, 7vw, 120px) clamp(20px, 5vw, 40px)",
+      padding: "clamp(64px, 6vw, 96px) clamp(20px, 5vw, 40px)",
     }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 52 }}>
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
           <p style={{
             fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em",
             textTransform: "uppercase",
@@ -54,7 +54,7 @@ export default function LandingPricing() {
             color: "#F5F5F5", lineHeight: 1.2,
             margin: "0 0 10px",
           }}>
-            Stop Guessing. Start Winning.
+            Free lets you explore the first matches.
           </h2>
           <p style={{
             fontSize: "clamp(13px, 0.95vw, 15px)",
@@ -63,9 +63,8 @@ export default function LandingPricing() {
             lineHeight: 1.55,
             maxWidth: 440,
           }}>
-            Free shows you players.{" "}
             <span style={{ color: "rgba(224,174,45,0.75)", fontWeight: 600 }}>
-              Neeko+ tells you exactly who to trade, captain, and avoid.
+              Neeko+ unlocks the full round.
             </span>
           </p>
         </div>
@@ -108,7 +107,7 @@ export default function LandingPricing() {
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.22)" }}>/forever</span>
               </div>
               <p style={{ fontSize: 12, color: "rgba(255,255,255,0.20)", marginTop: 6 }}>
-                No card required. Limited access.
+                No card required.
               </p>
             </div>
 
@@ -139,7 +138,7 @@ export default function LandingPricing() {
             </div>
 
             <Link
-              to="/sports/afl/rankings"
+              to="/stat-board"
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center",
                 marginTop: 28,
@@ -153,7 +152,7 @@ export default function LandingPricing() {
                 letterSpacing: "0.01em",
               }}
             >
-              Browse Free Rankings
+              Open Stat Board
             </Link>
           </div>
 

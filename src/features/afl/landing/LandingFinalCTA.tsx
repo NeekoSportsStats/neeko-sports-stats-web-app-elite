@@ -15,10 +15,10 @@ export default function LandingFinalCTA() {
       position: "relative",
       overflow: "hidden",
     }}>
-      {/* Subtle gold glow behind CTA */}
+      {/* Subtle green glow */}
       <div style={{
         position: "absolute", inset: 0,
-        background: "radial-gradient(ellipse 60% 50% at 50% 65%, rgba(224,174,45,0.08) 0%, transparent 70%)",
+        background: "radial-gradient(ellipse 60% 50% at 50% 65%, rgba(34,197,94,0.06) 0%, transparent 70%)",
         pointerEvents: "none",
       }} />
 
@@ -30,7 +30,7 @@ export default function LandingFinalCTA() {
         <p style={{
           fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em",
           textTransform: "uppercase",
-          color: "rgba(224,174,45,0.65)",
+          color: "rgba(34,197,94,0.65)",
           margin: "0 0 18px",
         }}>
           Get Started
@@ -42,8 +42,8 @@ export default function LandingFinalCTA() {
           color: "#F5F5F5", lineHeight: 1.05,
           margin: "0 0 16px",
         }}>
-          Stop Guessing. Start<br />
-          <span style={{ color: "#E0AE2D" }}>Winning Rounds.</span>
+          Ready to explore this<br />
+          <span style={{ color: "#22c55e" }}>round's AFL stat trends?</span>
         </h2>
 
         <p style={{
@@ -52,7 +52,7 @@ export default function LandingFinalCTA() {
           lineHeight: 1.6, maxWidth: 420,
           margin: "0 auto 36px",
         }}>
-          Projections, prices, trade signals, and captain picks — all in one place, before lockout.
+          Open the Stat Board, pick a match, and start comparing player trends in seconds.
         </p>
 
         <div style={{
@@ -60,34 +60,34 @@ export default function LandingFinalCTA() {
           alignItems: "center", gap: 14,
         }}>
           <Link
-            to="/neeko-plus"
+            to="/stat-board/players"
             onMouseEnter={() => setPrimaryHovered(true)}
             onMouseLeave={() => { setPrimaryHovered(false); setPrimaryActive(false); }}
             onMouseDown={() => setPrimaryActive(true)}
             onMouseUp={() => setPrimaryActive(false)}
             style={{
               display: "inline-flex", alignItems: "center", gap: 10,
-              background: "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
-              color: "#130c00",
+              background: "linear-gradient(160deg, #22c55e 0%, #16a34a 100%)",
+              color: "#f0fff4",
               fontWeight: 900, fontSize: "clamp(14px, 1vw, 16px)",
               padding: "16px 40px",
               borderRadius: 10,
               textDecoration: "none",
               letterSpacing: "0.01em",
               boxShadow: primaryActive
-                ? "0 4px 16px rgba(224,174,45,0.22), 0 2px 6px rgba(0,0,0,0.60)"
+                ? "0 4px 16px rgba(34,197,94,0.22), 0 2px 6px rgba(0,0,0,0.60)"
                 : primaryHovered
-                  ? "0 16px 52px rgba(224,174,45,0.45), 0 4px 12px rgba(0,0,0,0.60)"
-                  : "0 10px 40px rgba(224,174,45,0.32), 0 4px 12px rgba(0,0,0,0.55)",
+                  ? "0 16px 52px rgba(34,197,94,0.45), 0 4px 12px rgba(0,0,0,0.60)"
+                  : "0 10px 40px rgba(34,197,94,0.28), 0 4px 12px rgba(0,0,0,0.55)",
               transform: primaryActive ? "translateY(0) scale(0.985)" : primaryHovered ? "translateY(-3px) scale(1.01)" : "translateY(0) scale(1)",
               transition: "all 0.18s cubic-bezier(0.22,1,0.36,1)",
             }}
           >
-            Start Winning With Neeko+ <ArrowRight size={16} />
+            Open Stat Board <ArrowRight size={16} />
           </Link>
 
           <Link
-            to="/sports/afl/current-round"
+            to="/fantasy"
             onMouseEnter={() => setSecondaryHovered(true)}
             onMouseLeave={() => { setSecondaryHovered(false); setSecondaryActive(false); }}
             onMouseDown={() => setSecondaryActive(true)}
@@ -108,7 +108,7 @@ export default function LandingFinalCTA() {
               transition: "all 0.20s ease",
             }}
           >
-            This Week's Picks
+            View Fantasy Hub
           </Link>
         </div>
       </div>
