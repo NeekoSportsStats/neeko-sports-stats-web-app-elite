@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Sparkles } from "lucide-react";
 import type { StatBoardPlayer, StatBoardHistoryRow, StatLens, TimelineSlot } from "../types";
 import type { StatBoardPlayerAiInsight } from "../useStatBoard";
@@ -408,10 +409,12 @@ interface ChartSlot {
   opponent: string;
 }
 
+// Tooltip data uses viewport (screen-space) coordinates so the portal can
+// place it with position:fixed — fully outside any overflow/clip context.
 interface TooltipData {
   slotIndex: number;
-  svgX: number;
-  svgY: number | null;
+  clientX: number;
+  clientY: number | null;
   slot: ChartSlot;
 }
 
@@ -490,14 +493,6 @@ function MultiThresholdChart({
   const gradId = `sbHeroGrad-${selectedThreshold}-${lens}`;
   const hitW = numSlots > 1 ? chartW / (numSlots - 1) : chartW;
 
-  function tooltipX(svgX: number): number {
-    const tooltipW = 150;
-    const margin = 8;
-    if (svgX + tooltipW / 2 + margin > W) return W - tooltipW - margin;
-    if (svgX - tooltipW / 2 < PAD.left + margin) return PAD.left + margin;
-    return svgX - tooltipW / 2;
-  }
-
   return (
     <div className="w-full relative" onMouseLeave={() => setHovered(null)}>
       <svg
@@ -560,6 +555,7 @@ function MultiThresholdChart({
           );
         })}
 
+        {/* Vertical crosshair at hovered slot */}
         {hovered && (
           <line
             x1={xOf(hovered.slotIndex).toFixed(1)} y1={PAD.top.toFixed(1)}
@@ -671,6 +667,7 @@ function MultiThresholdChart({
           );
         })}
 
+        {/* Invisible hit-zone rects — record screen-space coords on enter */}
         {slots.map((slot, i) => {
           const cx = xOf(i);
           const hw = Math.max(hitW * 0.55, 12);
@@ -681,106 +678,178 @@ function MultiThresholdChart({
               width={hw.toFixed(1)} height={chartH.toFixed(1)}
               fill="transparent"
               style={{ cursor: "crosshair" }}
-              onMouseEnter={() =>
+              onMouseEnter={(e) => {
                 setHovered({
                   slotIndex: i,
-                  svgX: cx,
-                  svgY: slot.value != null ? yOf(slot.value) : null,
+                  clientX: e.clientX,
+                  clientY: e.clientY,
                   slot,
-                })
-              }
+                });
+              }}
+              onMouseMove={(e) => {
+                // Keep clientX/Y fresh as the cursor moves within the zone
+                setHovered((prev) =>
+                  prev?.slotIndex === i
+                    ? { ...prev, clientX: e.clientX, clientY: e.clientY }
+                    : prev
+                );
+              }}
             />
           );
         })}
-
-        {hovered && (() => {
-          const slot = hovered.slot;
-          const tx = tooltipX(hovered.svgX);
-          const tw = 150;
-          const pointY = hovered.svgY ?? (PAD.top + chartH / 2);
-          const ty = pointY - 10 < PAD.top + 60 ? pointY + 14 : pointY - 60;
-
-          if (slot.rowType === "bye" || slot.rowType === "dnp") {
-            const label = slot.rowType === "bye" ? "BYE week" : "Did not play";
-            return (
-              <g>
-                <rect x={tx.toFixed(1)} y={ty.toFixed(1)} width={tw} height="36"
-                  rx="5" fill="#1a1a1a" stroke="rgba(255,255,255,0.14)" strokeWidth="1"
-                  filter="drop-shadow(0 2px 8px rgba(0,0,0,0.7))" />
-                <text x={(tx + 10).toFixed(1)} y={(ty + 13).toFixed(1)}
-                  fontSize="9" fill="rgba(255,255,255,0.40)" fontWeight="500">
-                  {slot.label}
-                </text>
-                <text x={(tx + 10).toFixed(1)} y={(ty + 26).toFixed(1)}
-                  fontSize="10" fill="rgba(255,255,255,0.60)" fontWeight="600">
-                  {label}
-                </text>
-              </g>
-            );
-          }
-
-          const val = slot.value!;
-          const thresholdChecks = allThresholds.map((t) => ({
-            t, hit: val >= t, isSelected: t === selectedThreshold,
-          }));
-          const hitCount = thresholdChecks.filter((c) => c.hit).length;
-          const tooltipH = 30 + 14 + allThresholds.length * 14 + 6;
-
-          return (
-            <g>
-              <rect x={(tx + 1).toFixed(1)} y={(ty + 1).toFixed(1)} width={tw} height={tooltipH}
-                rx="5" fill="rgba(0,0,0,0.60)" />
-              <rect x={tx.toFixed(1)} y={ty.toFixed(1)} width={tw} height={tooltipH}
-                rx="5" fill="#1c1c1c" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
-              <text x={(tx + 10).toFixed(1)} y={(ty + 13).toFixed(1)}
-                fontSize="9" fill="rgba(255,255,255,0.38)" fontWeight="400">
-                {slot.label}{slot.opponent && slot.opponent !== "—" ? `  vs ${slot.opponent}` : ""}
-              </text>
-              <text x={(tx + 10).toFixed(1)} y={(ty + 27).toFixed(1)}
-                fontSize="15" fontWeight="700"
-                fill={val >= selectedThreshold ? "#4ade80" : "rgba(255,255,255,0.88)"}>
-                {val}
-              </text>
-              <text x={(tx + 10 + 22).toFixed(1)} y={(ty + 27).toFixed(1)}
-                fontSize="9" fill="rgba(255,255,255,0.30)" dominantBaseline="auto">
-                {lens === "disposals" ? "disp" : "goals"}
-              </text>
-              <line x1={(tx + 10).toFixed(1)} y1={(ty + 32).toFixed(1)}
-                x2={(tx + tw - 10).toFixed(1)} y2={(ty + 32).toFixed(1)}
-                stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
-              {thresholdChecks.map(({ t, hit, isSelected }, ri) => {
-                const rowY = ty + 44 + ri * 14;
-                return (
-                  <g key={t}>
-                    <circle
-                      cx={(tx + 17).toFixed(1)} cy={(rowY - 4).toFixed(1)} r="3"
-                      fill={hit ? "#22c55e" : "rgba(255,255,255,0.10)"}
-                      stroke={hit ? (isSelected ? "#4ade80" : "rgba(34,197,94,0.50)") : "rgba(255,255,255,0.15)"}
-                      strokeWidth="1"
-                    />
-                    <text x={(tx + 25).toFixed(1)} y={rowY.toFixed(1)}
-                      fontSize="9" fontWeight={isSelected ? "600" : "400"}
-                      fill={hit
-                        ? (isSelected ? "#4ade80" : "rgba(34,197,94,0.75)")
-                        : "rgba(255,255,255,0.28)"}>
-                      {t}+{isSelected ? " ★" : ""}
-                    </text>
-                    <text x={(tx + tw - 10).toFixed(1)} y={rowY.toFixed(1)}
-                      fontSize="9" fontWeight="600" textAnchor="end"
-                      fill={hit ? (isSelected ? "#4ade80" : "rgba(34,197,94,0.70)") : "rgba(255,255,255,0.20)"}>
-                      {hit ? "HIT" : "miss"}
-                    </text>
-                  </g>
-                );
-              })}
-              <text x={(tx + 10).toFixed(1)} y={(ty + tooltipH - 4).toFixed(1)}
-                fontSize="8" fill="rgba(255,255,255,0.22)">
-                {hitCount}/{allThresholds.length} lines hit
-              </text>
-            </g>
-          );
-        })()}
       </svg>
+
+      {/* DOM tooltip — rendered via portal so it escapes all overflow:hidden ancestors */}
+      {hovered && createPortal(
+        <ChartTooltip
+          slot={hovered.slot}
+          clientX={hovered.clientX}
+          clientY={hovered.clientY}
+          selectedThreshold={selectedThreshold}
+          allThresholds={allThresholds}
+          lens={lens}
+        />,
+        document.body
+      )}
+    </div>
+  );
+}
+
+// ── Portal tooltip component ──────────────────────────────────────────────────
+
+const TOOLTIP_W = 172;
+const TOOLTIP_MARGIN = 12;
+
+function ChartTooltip({
+  slot,
+  clientX,
+  clientY,
+  selectedThreshold,
+  allThresholds,
+  lens,
+}: {
+  slot: ChartSlot;
+  clientX: number;
+  clientY: number | null;
+  selectedThreshold: number;
+  allThresholds: number[];
+  lens: StatLens;
+}) {
+  const cy = clientY ?? 0;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+
+  // Horizontal: prefer centred on cursor, clamp to viewport edges
+  let left = clientX - TOOLTIP_W / 2;
+  if (left + TOOLTIP_W + TOOLTIP_MARGIN > vw) left = vw - TOOLTIP_W - TOOLTIP_MARGIN;
+  if (left < TOOLTIP_MARGIN) left = TOOLTIP_MARGIN;
+
+  // BYE / DNP tooltip
+  if (slot.rowType === "bye" || slot.rowType === "dnp") {
+    const label = slot.rowType === "bye" ? "BYE week" : "Did not play";
+    const tipH = 52;
+    // Position above cursor; flip below if too close to top
+    const top = cy - tipH - 10 < TOOLTIP_MARGIN ? cy + 14 : cy - tipH - 10;
+
+    return (
+      <div
+        role="tooltip"
+        style={{
+          position: "fixed",
+          left,
+          top,
+          width: TOOLTIP_W,
+          zIndex: 9999,
+          pointerEvents: "none",
+        }}
+        className="rounded-lg border border-white/14 bg-[#1a1a1a] shadow-2xl shadow-black/80 px-3 py-2.5"
+      >
+        <p className="text-[10px] text-white/40 font-medium leading-none mb-1.5">{slot.label}</p>
+        <p className="text-[12px] text-white/65 font-semibold leading-none">{label}</p>
+      </div>
+    );
+  }
+
+  // Played value tooltip
+  const val = slot.value!;
+  const thresholdChecks = allThresholds.map((t) => ({
+    t, hit: val >= t, isSelected: t === selectedThreshold,
+  }));
+  const hitCount = thresholdChecks.filter((c) => c.hit).length;
+
+  // Height: header (48) + divider (1) + rows (allThresholds.length × 22) + footer (22) + padding (12)
+  const tipH = 48 + 1 + allThresholds.length * 22 + 22 + 12;
+  const top = cy - tipH - 10 < TOOLTIP_MARGIN ? cy + 14 : cy - tipH - 10;
+  // Extra guard: if flipped below puts it off-screen, clamp
+  const clampedTop = Math.min(top, vh - tipH - TOOLTIP_MARGIN);
+
+  const valHit = val >= selectedThreshold;
+
+  return (
+    <div
+      role="tooltip"
+      style={{
+        position: "fixed",
+        left,
+        top: clampedTop,
+        width: TOOLTIP_W,
+        zIndex: 9999,
+        pointerEvents: "none",
+      }}
+      className="rounded-xl border border-white/12 bg-[#1c1c1c] shadow-2xl shadow-black/80 overflow-hidden"
+    >
+      {/* Header */}
+      <div className="px-3 pt-2.5 pb-2">
+        <p className="text-[10px] text-white/38 leading-none mb-1.5">
+          {slot.label}
+          {slot.opponent && slot.opponent !== "—" && (
+            <span className="ml-1.5 text-white/25">vs {slot.opponent}</span>
+          )}
+        </p>
+        <div className="flex items-baseline gap-1.5">
+          <span className={`text-[22px] font-bold tabular-nums leading-none ${valHit ? "text-emerald-400" : "text-white/90"}`}>
+            {val}
+          </span>
+          <span className="text-[10px] text-white/30 leading-none">
+            {lens === "disposals" ? "disp" : "goals"}
+          </span>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="h-px bg-white/[0.08]" />
+
+      {/* Threshold rows */}
+      <div className="px-3 py-2 space-y-1.5">
+        {thresholdChecks.map(({ t, hit, isSelected }) => (
+          <div key={t} className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`h-2 w-2 rounded-full shrink-0 ${
+                  hit ? "bg-emerald-500" : "bg-white/12"
+                } ${isSelected ? "ring-1 ring-offset-1 ring-offset-[#1c1c1c] ring-emerald-400/60" : ""}`}
+              />
+              <span className={`text-[11px] font-medium ${isSelected ? "text-white/80" : "text-white/45"}`}>
+                {t}+{isSelected && <span className="ml-0.5 text-white/30 text-[9px]">★</span>}
+              </span>
+            </div>
+            <span className={`text-[11px] font-bold ${
+              hit
+                ? isSelected ? "text-emerald-400" : "text-emerald-500/75"
+                : "text-white/22"
+            }`}>
+              {hit ? "HIT" : "miss"}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="px-3 pb-2.5 pt-0.5">
+        <p className="text-[10px] text-white/25">
+          {hitCount}/{allThresholds.length} lines hit
+        </p>
+      </div>
     </div>
   );
 }
