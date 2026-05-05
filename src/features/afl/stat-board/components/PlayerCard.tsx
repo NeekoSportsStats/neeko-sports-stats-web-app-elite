@@ -280,6 +280,3 @@ function LockedBlur() {
     </span>
   );
 }
-
-
-export { PlayerCard }

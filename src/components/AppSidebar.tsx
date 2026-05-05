@@ -40,7 +40,7 @@ export function AppSidebar() {
     { title: "Captains",     url: "/sports/afl/captains",       icon: Star },
     { title: "Rankings",     url: "/sports/afl/rankings",       icon: BarChart2 },
     { title: "Players",      url: "/sports/afl/players",        icon: User },
-    { title: "Stat Board",   url: "/stat-board/players",        icon: TableProperties },
+    { title: "Stat Board",   url: "/stat-board",                icon: TableProperties },
   ];
 
   const infoNav = [
