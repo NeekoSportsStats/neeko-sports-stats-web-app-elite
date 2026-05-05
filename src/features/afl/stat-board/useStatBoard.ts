@@ -111,7 +111,7 @@ export function useStatBoardPlayerHistory(playerId: number | null) {
     const { data, error: err } = await supabase.rpc("get_stat_board_player_history", {
       p_player_id: id,
       p_season: SEASON,
-      p_limit: 10,
+      p_limit: 15,
     });
 
     if (err) {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Sparkles } from "lucide-react";
-import type { StatBoardPlayer, StatBoardHistoryRow, StatLens } from "../types";
+import type { StatBoardPlayer, StatBoardHistoryRow, StatLens, TimelineSlot } from "../types";
 import type { StatBoardPlayerAiInsight } from "../useStatBoard";
 
 interface Props {
@@ -77,7 +77,7 @@ export function ExpandedPlayerPanel({
     rowType: row.row_type,
   }));
 
-  const chartSlots: ChartSlot[] = gameLog.map((g) => ({
+  const historyChartSlots: ChartSlot[] = gameLog.map((g) => ({
     value: g.value,
     label: `R${g.week + 1}`,
     rowType: g.rowType,
@@ -88,6 +88,37 @@ export function ExpandedPlayerPanel({
   const playedSlots = gameLog.filter((g) => g.rowType === "played");
   const playedCount = playedSlots.length;
   const hasAnyData = playedCount > 0;
+
+  // Build chart slots — fall back to player row data if history window has no played values.
+  // The history RPC returns the N most-recent weeks (newest-first); if all are BYE/DNP
+  // the chart would otherwise be hidden even though the player has real recent data.
+  const historyHasPlayedValues = historyChartSlots.some((s) => s.value != null);
+
+  let chartSlots: ChartSlot[];
+  if (historyHasPlayedValues) {
+    chartSlots = historyChartSlots;
+  } else if (player.last_10_timeline && player.last_10_timeline.length > 0) {
+    // Fallback 1: use the timeline already on the player row (oldest→newest order)
+    chartSlots = (player.last_10_timeline as TimelineSlot[]).map((slot) => ({
+      value: slot.value,
+      label: `R${slot.week + 1}`,
+      rowType: slot.type,
+      week: slot.week,
+      opponent: "—",
+    }));
+  } else if (player.last_10_values && player.last_10_values.length > 0) {
+    // Fallback 2: plain numeric array (newest-first) — reverse to oldest-first for chart
+    const reversed = [...player.last_10_values].reverse();
+    chartSlots = reversed.map((v, i) => ({
+      value: n(v),
+      label: `G${i + 1}`,
+      rowType: "played",
+      week: i,
+      opponent: "—",
+    }));
+  } else {
+    chartSlots = historyChartSlots;
+  }
 
   const hitRates = player.all_threshold_hit_rates ?? {};
 
