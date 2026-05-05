@@ -45,17 +45,27 @@ export function ExpandedPlayerPanel({
   const lensKey = lens === "disposals" ? "disposals" : "goals";
   const allThresholds = lens === "disposals" ? DISPOSAL_THRESHOLDS : GOAL_THRESHOLDS;
 
-  const gameLog = [...history]
-    .sort((a, b) => a.week - b.week)
-    .map((row) => ({
-      week: row.week,
-      value: row[lensKey] as number,
-      opponent: abbreviateTeam(row.opponent_team_name ?? ""),
-      fantasy: row.fantasy_score,
-      marks: row.marks,
-    }));
+  // Separate played rows from bye/dnp for chart vs game log
+  const sortedHistory = [...history].sort((a, b) => a.week - b.week);
 
-  const gameCount = gameLog.length;
+  const gameLog = sortedHistory.map((row) => ({
+    week: row.week,
+    value: row.row_type === "played" ? (row[lensKey] as number | null) : null,
+    opponent: abbreviateTeam(row.opponent_team_name ?? ""),
+    fantasy: row.fantasy_score,
+    marks: row.marks,
+    rowType: row.row_type,
+  }));
+
+  // Chart uses structured timeline: include BYE/DNP as null points with labels
+  const chartSlots = gameLog.map((g) => ({
+    value: typeof g.value === "number" && !isNaN(g.value) ? g.value : null,
+    label: `R${g.week}`,
+    rowType: g.rowType,
+  }));
+
+  const playedCount = gameLog.filter((g) => g.rowType === "played").length;
+  const gameCount = playedCount;
 
   const summaryStats = [
     { label: "L3",      value: fmt1(player.last_3_avg) },
@@ -77,14 +87,13 @@ export function ExpandedPlayerPanel({
         {/* ── LEFT: chart + averages ── */}
         <div className="space-y-4">
 
-          {gameLog.length > 0 && (
+          {chartSlots.length > 0 && (
             <section aria-label="Recent form chart">
               <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2.5">
                 Recent form — last {gameCount} {gameCount === 1 ? "game" : "games"}
               </p>
               <MultiThresholdChart
-                values={gameLog.map((g) => g.value)}
-                labels={gameLog.map((g) => `R${g.week}`)}
+                slots={chartSlots}
                 selectedThreshold={threshold}
                 allThresholds={allThresholds}
               />
@@ -170,7 +179,7 @@ export function ExpandedPlayerPanel({
             </div>
           </section>
 
-          {history.length > 0 && (
+          {gameLog.length > 0 && (
             <section aria-label="Game-by-game log">
               <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2.5">Game log</p>
               <div className="rounded-xl border border-white/8 overflow-hidden">
@@ -189,21 +198,43 @@ export function ExpandedPlayerPanel({
                     </tr>
                   </thead>
                   <tbody>
-                    {[...history].sort((a, b) => b.week - a.week).map((row, idx) => {
-                      const val = lens === "disposals" ? row.disposals : row.goals;
-                      const safeVal = typeof val === "number" && !isNaN(val) ? val : null;
-                      const hit = safeVal != null && safeVal >= threshold;
+                    {[...gameLog].reverse().map((row, idx) => {
                       const isLatest = idx === 0;
-                      const fantScore = typeof row.fantasy_score === "number" && !isNaN(row.fantasy_score) ? row.fantasy_score : null;
+
+                      if (row.rowType === "bye") {
+                        return (
+                          <tr key={`bye-${row.week}`} className="border-b border-white/5 last:border-0 opacity-40">
+                            <td className="px-3 py-2.5 text-white/40 tabular-nums">{row.week}</td>
+                            <td colSpan={lens === "disposals" ? 4 : 3} className="px-3 py-2.5 text-white/30 italic text-center">
+                              BYE week — no game
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      if (row.rowType === "dnp") {
+                        return (
+                          <tr key={`dnp-${row.week}`} className="border-b border-white/5 last:border-0 opacity-50">
+                            <td className="px-3 py-2.5 text-white/40 tabular-nums">{row.week}</td>
+                            <td colSpan={lens === "disposals" ? 4 : 3} className="px-3 py-2.5 text-white/30 italic text-center">
+                              Did not play
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      const safeVal = typeof row.value === "number" && !isNaN(row.value) ? row.value : null;
+                      const hit = safeVal != null && safeVal >= threshold;
+                      const fantScore = typeof row.fantasy === "number" && !isNaN(row.fantasy) ? row.fantasy : null;
                       const marksVal = typeof row.marks === "number" && !isNaN(row.marks) ? row.marks : null;
                       return (
                         <tr
-                          key={row.game_id}
+                          key={`played-${row.week}`}
                           className={`border-b border-white/5 last:border-0 ${isLatest ? "bg-white/[0.015]" : ""}`}
                         >
-                          <td className="px-3 py-2.5 text-white/40 tabular-nums">{row.week ?? "—"}</td>
+                          <td className="px-3 py-2.5 text-white/40 tabular-nums">{row.week}</td>
                           <td className="px-3 py-2.5 text-white/55 max-w-[72px] truncate">
-                            {abbreviateTeam(row.opponent_team_name ?? "")}
+                            {row.opponent}
                           </td>
                           <td className={`px-3 py-2.5 text-right font-bold tabular-nums ${hit ? "text-emerald-400" : "text-white/55"}`}>
                             {safeVal ?? "—"}
@@ -232,14 +263,18 @@ export function ExpandedPlayerPanel({
 
 // ── Multi-threshold SVG line chart ────────────────────────────────────────────
 
+interface ChartSlot {
+  value: number | null;
+  label: string;
+  rowType: string;
+}
+
 function MultiThresholdChart({
-  values,
-  labels,
+  slots,
   selectedThreshold,
   allThresholds,
 }: {
-  values: number[];
-  labels: string[];
+  slots: ChartSlot[];
   selectedThreshold: number;
   allThresholds: number[];
 }) {
@@ -249,30 +284,41 @@ function MultiThresholdChart({
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
 
-  if (values.length === 0) return null;
+  if (slots.length === 0) return null;
 
-  const safeValues = values.map((v) => (typeof v === "number" && !isNaN(v) ? v : 0));
+  // Only played slots contribute to scale; null = BYE/DNP
+  const playedValues = slots
+    .filter((s) => s.value != null)
+    .map((s) => s.value as number);
+
+  if (playedValues.length === 0) return null;
 
   const maxThresh = Math.max(...allThresholds);
-  const maxVal = Math.max(...safeValues, maxThresh * 1.2, 1);
-  const minVal = Math.min(...safeValues, 0);
+  const maxVal = Math.max(...playedValues, maxThresh * 1.2, 1);
+  const minVal = Math.min(...playedValues, 0);
   const range = maxVal - minVal || 1;
 
-  const xStep = safeValues.length > 1 ? chartW / (safeValues.length - 1) : 0;
+  const n = slots.length;
+  const xStep = n > 1 ? chartW / (n - 1) : 0;
 
   function xOf(i: number) {
-    return PAD.left + (safeValues.length === 1 ? chartW / 2 : i * xStep);
+    return PAD.left + (n === 1 ? chartW / 2 : i * xStep);
   }
   function yOf(v: number) {
     return PAD.top + chartH - ((v - minVal) / range) * chartH;
   }
 
-  const points = safeValues.map((v, i) => `${xOf(i)},${yOf(v)}`);
-  const linePath = `M ${points.join(" L ")}`;
-  const areaPath =
-    `M ${xOf(0)},${PAD.top + chartH}` +
-    ` L ${points.join(" L ")}` +
-    ` L ${xOf(safeValues.length - 1)},${PAD.top + chartH} Z`;
+  // Build polyline segments — break the line at BYE/DNP slots
+  const segments: string[][] = [];
+  let current: string[] = [];
+  slots.forEach((slot, i) => {
+    if (slot.value != null) {
+      current.push(`${xOf(i)},${yOf(slot.value)}`);
+    } else {
+      if (current.length > 0) { segments.push(current); current = []; }
+    }
+  });
+  if (current.length > 0) segments.push(current);
 
   const thresholdLines = allThresholds
     .map((t) => ({ t, y: yOf(t), inRange: yOf(t) >= PAD.top && yOf(t) <= PAD.top + chartH }))
@@ -322,7 +368,6 @@ function MultiThresholdChart({
                 strokeDasharray={isSelected ? "5 3" : "3 5"}
                 opacity={isSelected ? 0.75 : 0.35}
               />
-              {/* Only label the selected threshold to avoid overlap */}
               {isSelected && (
                 <text
                   x={W - PAD.right + 3} y={y + 3.5}
@@ -337,45 +382,77 @@ function MultiThresholdChart({
           );
         })}
 
-        {/* Area fill */}
-        <path d={areaPath} fill="url(#sbPanelGrad)" />
+        {/* Line segments — broken at BYE/DNP slots */}
+        {segments.map((pts, si) => (
+          <path
+            key={si}
+            d={`M ${pts.join(" L ")}`}
+            fill="none"
+            stroke="#22c55e"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        ))}
 
-        {/* Data line */}
-        <path d={linePath} fill="none" stroke="#22c55e" strokeWidth="1.8"
-          strokeLinejoin="round" strokeLinecap="round" />
+        {/* Data dots + BYE/DNP markers */}
+        {slots.map((slot, i) => {
+          const isLatest = i === slots.length - 1;
 
-        {/* Dots */}
-        {safeValues.map((v, i) => {
-          const hit = v >= selectedThreshold;
-          const isLatest = i === safeValues.length - 1;
+          if (slot.value == null) {
+            // BYE or DNP — render a small muted diamond marker at mid-chart height
+            const cx = xOf(i);
+            const cy = PAD.top + chartH / 2;
+            const label = slot.rowType === "bye" ? "B" : "D";
+            return (
+              <g key={i} opacity="0.35" aria-label={`${slot.label}: ${slot.rowType.toUpperCase()}`}>
+                <rect
+                  x={cx - 4} y={cy - 4}
+                  width={8} height={8}
+                  rx="1"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.25)"
+                  strokeWidth="1"
+                  transform={`rotate(45 ${cx} ${cy})`}
+                />
+                <text x={cx} y={cy + 3.5} fontSize="5.5" fill="rgba(255,255,255,0.30)" textAnchor="middle">
+                  {label}
+                </text>
+              </g>
+            );
+          }
+
+          const hit = slot.value >= selectedThreshold;
           return (
             <circle
               key={i}
-              cx={xOf(i)} cy={yOf(v)}
+              cx={xOf(i)} cy={yOf(slot.value)}
               r={isLatest ? 3.5 : 2.5}
               fill={hit ? "#22c55e" : "#3f3f46"}
               stroke={isLatest ? "#22c55e" : hit ? "#22c55e" : "rgba(255,255,255,0.18)"}
               strokeWidth={isLatest ? 2 : 1}
-              aria-label={`${labels[i]}: ${v}`}
+              aria-label={`${slot.label}: ${slot.value}`}
             />
           );
         })}
 
         {/* X-axis labels */}
-        {labels.map((lbl, i) => {
-          if (safeValues.length > 6 && i % 2 !== 0) return null;
+        {slots.map((slot, i) => {
+          if (n > 6 && i % 2 !== 0) return null;
           return (
             <text key={i}
               x={xOf(i)} y={H - 4}
-              fontSize="7.5" fill="rgba(255,255,255,0.22)" textAnchor="middle">
-              {lbl}
+              fontSize="7.5"
+              fill={slot.value == null ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.22)"}
+              textAnchor="middle">
+              {slot.label}
             </text>
           );
         })}
       </svg>
       {/* Legend */}
       <p className="mt-1 text-[9.5px] text-white/22 text-right">
-        All lines shown · {selectedThreshold}+ is default focus
+        All lines shown · {selectedThreshold}+ is default focus · B=BYE D=DNP
       </p>
     </div>
   );

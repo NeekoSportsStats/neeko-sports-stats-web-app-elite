@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { ChevronDown, ChevronUp, Lock } from "lucide-react";
-import type { StatBoardPlayer, StatLens, ThresholdHitRate } from "../types";
+import type { StatBoardPlayer, StatLens, ThresholdHitRate, TimelineSlot } from "../types";
 import { useStatBoardPlayerHistory } from "../useStatBoard";
 import { ExpandedPlayerPanel } from "./ExpandedPlayerPanel";
 
@@ -36,6 +36,8 @@ export function BoardRow({
   const conf = confidence ? confStyles[confidence] ?? confStyles.LOW : null;
 
   const isPlayerLocked = isMatchLocked && !player.is_free_match;
+  // Prefer the structured timeline (includes BYE/DNP slots); fall back to plain values
+  const timeline: TimelineSlot[] | null = player.last_10_timeline ?? null;
   const last10 = (player.last_10_values ?? []).slice(-10);
 
   const last10Avg = player.last_10_avg != null ? Number(player.last_10_avg) : null;
@@ -85,7 +87,11 @@ export function BoardRow({
         {/* Mini chips */}
         <td className="px-2 py-2.5 min-w-[110px]">
           <div className="flex items-center justify-center gap-[2px]" role="list" aria-label="Recent values">
-            <MiniChips values={last10} defaultThreshold={defaultThreshold} isLocked={isPlayerLocked} />
+            {timeline != null ? (
+              <TimelineChips slots={timeline} defaultThreshold={defaultThreshold} isLocked={isPlayerLocked} />
+            ) : (
+              <MiniChips values={last10} defaultThreshold={defaultThreshold} isLocked={isPlayerLocked} />
+            )}
           </div>
         </td>
 
@@ -234,6 +240,99 @@ function MiniChips({
       {values.map((v, i) => {
         const isNewest = i === values.length - 1;
         const safeV = typeof v === "number" && !isNaN(v) ? v : null;
+        const hit = safeV != null && safeV >= defaultThreshold;
+
+        if (isLocked) {
+          return (
+            <span
+              key={i}
+              role="listitem"
+              className="h-5 min-w-[16px] px-0.5 rounded bg-white/5 text-[9px] font-medium text-white/18 flex items-center justify-center tabular-nums"
+            >
+              {safeV ?? "—"}
+            </span>
+          );
+        }
+
+        return (
+          <span
+            key={i}
+            role="listitem"
+            aria-label={safeV != null ? String(safeV) : "no data"}
+            className={`h-5 min-w-[16px] px-0.5 rounded text-[9px] font-bold flex items-center justify-center tabular-nums transition-colors ${
+              isNewest
+                ? hit
+                  ? "bg-emerald-500/30 text-emerald-300 ring-1 ring-emerald-400/40"
+                  : "bg-white/12 text-white/70 ring-1 ring-white/22"
+                : hit
+                ? "bg-emerald-500/15 text-emerald-400/80"
+                : "bg-white/5 text-white/32"
+            }`}
+          >
+            {safeV ?? "—"}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
+// ── Timeline chips (BYE/DNP-aware) ───────────────────────────────────────────
+
+function TimelineChips({
+  slots,
+  defaultThreshold,
+  isLocked,
+}: {
+  slots: TimelineSlot[];
+  defaultThreshold: number;
+  isLocked: boolean;
+}) {
+  if (slots.length === 0) {
+    return (
+      <>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <span key={i} className="h-5 w-[16px] rounded bg-white/5 flex items-center justify-center text-[9px] text-white/15">
+            —
+          </span>
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <>
+      {slots.map((slot, i) => {
+        const isNewest = i === slots.length - 1;
+
+        if (slot.type === "bye") {
+          return (
+            <span
+              key={i}
+              role="listitem"
+              aria-label={`Week ${slot.week}: BYE`}
+              className="h-5 min-w-[20px] px-0.5 rounded bg-white/4 text-[7px] font-bold text-white/25 flex items-center justify-center tracking-wide border border-white/8"
+            >
+              BYE
+            </span>
+          );
+        }
+
+        if (slot.type === "dnp") {
+          return (
+            <span
+              key={i}
+              role="listitem"
+              aria-label={`Week ${slot.week}: DNP`}
+              className="h-5 min-w-[20px] px-0.5 rounded bg-white/4 text-[7px] font-bold text-white/22 flex items-center justify-center tracking-wide border border-dashed border-white/12"
+            >
+              DNP
+            </span>
+          );
+        }
+
+        // played
+        const safeV = slot.value != null && !isNaN(slot.value) ? slot.value : null;
         const hit = safeV != null && safeV >= defaultThreshold;
 
         if (isLocked) {

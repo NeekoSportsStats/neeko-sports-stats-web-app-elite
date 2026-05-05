@@ -23,6 +23,14 @@ export interface ThresholdHitRate {
   rate: number;
 }
 
+export type TimelineSlotType = "played" | "bye" | "dnp";
+
+export interface TimelineSlot {
+  week: number;
+  value: number | null;
+  type: TimelineSlotType;
+}
+
 export interface StatBoardPlayer {
   player_id: number;
   player_name: string;
@@ -41,6 +49,7 @@ export interface StatBoardPlayer {
   position_group: string | null;
   stat_lens: string;
   last_10_values: number[] | null;
+  last_10_timeline: TimelineSlot[] | null;
   last_10_avg: number | null;
   last_5_avg: number | null;
   last_3_avg: number | null;
@@ -64,18 +73,19 @@ export interface StatBoardPlayer {
 export interface StatBoardHistoryRow {
   player_id: number;
   player_name: string;
-  game_id: number;
-  round: string;
+  game_id: number | null;
+  round: string | null;
   week: number;
-  game_date: string;
-  opponent_team_name: string;
-  venue: string;
-  is_home: boolean;
-  disposals: number;
-  goals: number;
-  marks: number;
-  tackles: number;
-  fantasy_score: number;
+  game_date: string | null;
+  opponent_team_name: string | null;
+  venue: string | null;
+  is_home: boolean | null;
+  disposals: number | null;
+  goals: number | null;
+  marks: number | null;
+  tackles: number | null;
+  fantasy_score: number | null;
+  row_type: TimelineSlotType;
 }
 
 export type StatLens = "disposals" | "goals";
