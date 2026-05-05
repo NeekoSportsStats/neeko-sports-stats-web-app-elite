@@ -225,7 +225,20 @@ export function ExpandedPlayerPanel({
                 — last {playedCount} {playedCount === 1 ? "game" : "games"}
               </span>
             </p>
-            <p className="text-[9px] text-white/18">Hover · B=BYE · D=DNP</p>
+            <div className="flex items-center gap-3" aria-hidden>
+              <span className="flex items-center gap-1.5">
+                <svg width="18" height="2" viewBox="0 0 18 2"><line x1="0" y1="1" x2="18" y2="1" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"/></svg>
+                <span className="text-[9px] text-white/28">Actual</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <svg width="18" height="2" viewBox="0 0 18 2"><line x1="0" y1="1" x2="18" y2="1" stroke="rgba(245,200,76,0.75)" strokeWidth="1.5" strokeDasharray="3 3" strokeLinecap="round"/></svg>
+                <span className="text-[9px] text-white/28">Thresholds</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" rx="1.5" fill="none" stroke="rgba(255,255,255,0.30)" strokeWidth="1.2" transform="rotate(45 5 5)"/></svg>
+                <span className="text-[9px] text-white/28">BYE/DNP</span>
+              </span>
+            </div>
           </div>
           <MultiThresholdChart
             slots={chartSlots}
@@ -550,16 +563,14 @@ function MultiThresholdChart({
           <g key={t}>
             <line
               x1={PAD.left} y1={y.toFixed(1)} x2={W - PAD.right} y2={y.toFixed(1)}
-              stroke="rgba(245,200,76,0.22)"
-              strokeWidth="0.8"
-              strokeDasharray="4 6"
-              opacity="0.50"
+              stroke="rgba(245,200,76,0.60)"
+              strokeWidth="1.3"
+              strokeDasharray="4 5"
             />
             <text
               x={W - PAD.right + 5} y={(y + 3.5).toFixed(1)}
               fontSize="9"
-              fill="rgba(245,200,76,0.35)"
-              opacity="0.65"
+              fill="rgba(245,200,76,0.60)"
               fontWeight="400"
             >
               {t}
@@ -587,7 +598,7 @@ function MultiThresholdChart({
             d={`M ${pts.join(" L ")}`}
             fill="none"
             stroke="#22c55e"
-            strokeWidth="2.2"
+            strokeWidth="2.8"
             strokeLinejoin="round"
             strokeLinecap="round"
           />
@@ -756,7 +767,7 @@ function ChartTooltip({
 
   // BYE / DNP tooltip
   if (slot.rowType === "bye" || slot.rowType === "dnp") {
-    const label = slot.rowType === "bye" ? "BYE week" : "Did not play";
+    const label = slot.rowType === "bye" ? "BYE" : "DNP";
     const tipH = 52;
     // Position above cursor; flip below if too close to top
     const top = cy - tipH - 10 < TOOLTIP_MARGIN ? cy + 14 : cy - tipH - 10;
@@ -913,13 +924,23 @@ function GameLog({
               <th className="text-left px-3 py-2 text-white/28 font-medium" scope="col">Opponent</th>
               <th className="text-left px-2 py-2 text-white/28 font-medium hidden md:table-cell" scope="col">Venue</th>
               <th className="text-center px-2 py-2 text-white/28 font-medium w-8" scope="col" title="Home / Away">H/A</th>
-              {/* Disposals lens: highlight Disp */}
-              <th className={`text-right px-2 py-2 font-medium ${lens === "disposals" ? "text-white/55" : "text-white/28"}`} scope="col">Disp</th>
-              <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">K</th>
-              <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">HB</th>
-              {/* Goals lens: highlight Gls */}
-              <th className={`text-right px-2 py-2 font-medium ${lens === "goals" ? "text-white/55" : "text-white/28"}`} scope="col">Gls</th>
-              <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">Beh</th>
+              {lens === "goals" ? (
+                <>
+                  <th className="text-right px-2 py-2 font-medium text-white/55" scope="col">Gls</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">Beh</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium" scope="col">Disp</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">K</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">HB</th>
+                </>
+              ) : (
+                <>
+                  <th className="text-right px-2 py-2 font-medium text-white/55" scope="col">Disp</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">K</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">HB</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium" scope="col">Gls</th>
+                  <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">Beh</th>
+                </>
+              )}
               <th className="text-right px-2 py-2 text-white/28 font-medium hidden md:table-cell" scope="col">Mks</th>
               <th className="text-right px-2 py-2 text-white/28 font-medium hidden md:table-cell" scope="col">Tkl</th>
               <th className="text-right px-2 py-2 text-white/28 font-medium hidden lg:table-cell" scope="col">HO</th>
@@ -978,26 +999,45 @@ function GameLog({
                       <span className="text-white/30">A</span>
                     ) : "—"}
                   </td>
-                  {/* Disp */}
-                  <td className={`px-2 py-2 text-right font-bold tabular-nums ${dispHit ? "text-emerald-400" : "text-white/55"}`}>
-                    {dispVal ?? "—"}
-                  </td>
-                  {/* K */}
-                  <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
-                    {row.kicks ?? "—"}
-                  </td>
-                  {/* HB */}
-                  <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
-                    {row.handballs ?? "—"}
-                  </td>
-                  {/* Gls */}
-                  <td className={`px-2 py-2 text-right font-bold tabular-nums ${glsHit ? "text-emerald-400" : "text-white/55"}`}>
-                    {glsVal ?? "—"}
-                  </td>
-                  {/* Beh */}
-                  <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
-                    {row.behinds ?? "—"}
-                  </td>
+                  {lens === "goals" ? (
+                    <>
+                      {/* Gls first */}
+                      <td className={`px-2 py-2 text-right font-bold tabular-nums ${glsHit ? "text-emerald-400" : "text-white/55"}`}>
+                        {glsVal ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {row.behinds ?? "—"}
+                      </td>
+                      <td className={`px-2 py-2 text-right tabular-nums ${dispHit ? "font-bold text-emerald-400" : "text-white/55"}`}>
+                        {dispVal ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {row.kicks ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {row.handballs ?? "—"}
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      {/* Disp first */}
+                      <td className={`px-2 py-2 text-right font-bold tabular-nums ${dispHit ? "text-emerald-400" : "text-white/55"}`}>
+                        {dispVal ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {row.kicks ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {row.handballs ?? "—"}
+                      </td>
+                      <td className={`px-2 py-2 text-right tabular-nums ${glsHit ? "font-bold text-emerald-400" : "text-white/55"}`}>
+                        {glsVal ?? "—"}
+                      </td>
+                      <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                        {row.behinds ?? "—"}
+                      </td>
+                    </>
+                  )}
                   {/* Mks */}
                   <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden md:table-cell">
                     {row.marks ?? "—"}
