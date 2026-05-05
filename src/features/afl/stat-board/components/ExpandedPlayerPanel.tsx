@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Sparkles, ExternalLink } from "lucide-react";
+import { Sparkles, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { playerToSlug } from "@/lib/slugs";
 import type { StatBoardPlayer, StatBoardHistoryRow, StatLens, TimelineSlot } from "../types";
@@ -453,6 +453,8 @@ function MultiThresholdChart({
   lens: StatLens;
 }) {
   const [hovered, setHovered] = useState<TooltipData | null>(null);
+  // Throttle ref: only update coords when the slot index changes or every ~60ms max.
+  const moveRafRef = useRef<number | null>(null);
 
   const W = 560;
   const H = 160;
@@ -521,7 +523,10 @@ function MultiThresholdChart({
   const hitW = numSlots > 1 ? chartW / (numSlots - 1) : chartW;
 
   return (
-    <div className="w-full relative" onMouseLeave={() => setHovered(null)}>
+    <div className="w-full relative" onMouseLeave={() => {
+      if (moveRafRef.current !== null) { cancelAnimationFrame(moveRafRef.current); moveRafRef.current = null; }
+      setHovered(null);
+    }}>
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="w-full h-auto block"
@@ -711,12 +716,18 @@ function MultiThresholdChart({
                 });
               }}
               onMouseMove={(e) => {
-                // Keep clientX/Y fresh as the cursor moves within the zone
-                setHovered((prev) =>
-                  prev?.slotIndex === i
-                    ? { ...prev, clientX: e.clientX, clientY: e.clientY }
-                    : prev
-                );
+                // Only update coords via rAF — prevents excessive setState on mouse moves
+                const x = e.clientX;
+                const y = e.clientY;
+                if (moveRafRef.current !== null) return;
+                moveRafRef.current = requestAnimationFrame(() => {
+                  moveRafRef.current = null;
+                  setHovered((prev) =>
+                    prev?.slotIndex === i
+                      ? { ...prev, clientX: x, clientY: y }
+                      : prev
+                  );
+                });
               }}
             />
           );
@@ -895,6 +906,10 @@ function GameLog({
   threshold: number;
   loading: boolean;
 }) {
+  // On mobile, game log is collapsed by default to reduce DOM and improve scroll performance.
+  // isMobile check uses a simple window.innerWidth threshold — avoids a media query hook.
+  const [open, setOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
+
   if (rows.length === 0) {
     if (loading) return null;
     return (
@@ -915,8 +930,28 @@ function GameLog({
 
   return (
     <section aria-label="Game-by-game log" className="px-5 pb-5">
-      <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider mb-2">Game log</p>
-      <div className="rounded-lg border border-white/8 overflow-x-auto">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1.5 mb-2 group"
+        aria-expanded={open}
+      >
+        <span className="text-[10px] font-semibold text-white/38 uppercase tracking-wider group-hover:text-white/55 transition-colors">
+          Game log
+        </span>
+        {open
+          ? <ChevronUp className="h-3 w-3 text-white/25 group-hover:text-white/45 transition-colors" aria-hidden />
+          : <ChevronDown className="h-3 w-3 text-white/25 group-hover:text-white/45 transition-colors" aria-hidden />
+        }
+      </button>
+      {!open && (
+        <p className="text-[11px] text-white/28 italic">
+          {rows.filter((r) => r.rowType === "played").length} game{rows.filter((r) => r.rowType === "played").length !== 1 ? "s" : ""} recorded —{" "}
+          <button onClick={() => setOpen(true)} className="underline underline-offset-2 hover:text-white/50 transition-colors">
+            show log
+          </button>
+        </p>
+      )}
+      {open && <div className="rounded-lg border border-white/8 overflow-x-auto">
         <table className="w-full text-[11px]" role="table" style={{ minWidth: "640px" }}>
           <thead>
             <tr className="border-b border-white/8 bg-white/[0.02]">
@@ -1063,7 +1098,7 @@ function GameLog({
             })}
           </tbody>
         </table>
-      </div>
+      </div>}
     </section>
   );
 }

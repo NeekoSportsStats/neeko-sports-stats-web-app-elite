@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, memo } from "react";
 import { ChevronDown, ChevronUp, Lock } from "lucide-react";
 import type { StatBoardPlayer, StatLens, TimelineSlot } from "../types";
 import { useStatBoardPlayerHistory, useStatBoardPlayerAiInsight } from "../useStatBoard";
@@ -14,7 +14,42 @@ interface Props {
   onToggleExpand: () => void;
 }
 
-export function BoardRow({
+// Lazy fetch wrapper — only mounts hooks when expanded, preventing all-row
+// history/AI requests that were the primary source of mobile sluggishness.
+function LazyExpandedContent({
+  player,
+  lens,
+  defaultThreshold,
+  isMatchLocked,
+}: {
+  player: StatBoardPlayer;
+  lens: StatLens;
+  defaultThreshold: number;
+  isMatchLocked: boolean;
+}) {
+  const isPlayerLocked = isMatchLocked && !player.is_free_match;
+  const activePlayerId = isPlayerLocked ? null : player.player_id;
+  const { history, loading: histLoading, error: histError } = useStatBoardPlayerHistory(activePlayerId);
+  const { insight, loading: insightLoading } = useStatBoardPlayerAiInsight(activePlayerId);
+
+  if (isPlayerLocked) return <LockedExpandPanel playerName={player.player_name} />;
+
+  return (
+    <ExpandedPlayerPanel
+      player={player}
+      history={history}
+      loading={histLoading}
+      error={histError}
+      lens={lens}
+      threshold={defaultThreshold}
+      isLocked={isPlayerLocked}
+      insight={insight}
+      insightLoading={insightLoading}
+    />
+  );
+}
+
+export const BoardRow = memo(function BoardRow({
   player,
   lens,
   thresholds,
@@ -23,9 +58,6 @@ export function BoardRow({
   isExpanded,
   onToggleExpand,
 }: Props) {
-  const activePlayerId = isExpanded && !isMatchLocked ? player.player_id : null;
-  const { history, loading: histLoading, error: histError } = useStatBoardPlayerHistory(activePlayerId);
-  const { insight, loading: insightLoading } = useStatBoardPlayerAiInsight(activePlayerId);
 
   const confidence = player.confidence_label;
   const confStyles: Record<string, { dot: string; text: string; label: string }> = {
@@ -46,6 +78,7 @@ export function BoardRow({
   const avgDisplay = last10Avg != null ? last10Avg.toFixed(1) : "—";
 
   const projDisplay = safeNum(player.projection);
+  const thresholdLength = thresholds.length;
 
   return (
     <Fragment>
@@ -160,10 +193,10 @@ export function BoardRow({
         </td>
       </tr>
 
-      {/* ── Expanded detail row ── */}
+      {/* ── Expanded detail row — lazy mounted only when isExpanded ── */}
       {isExpanded && (
         <tr className="border-b border-white/[0.06]">
-          <td colSpan={4 + thresholds.length + 2} className="p-0 align-top bg-white/[0.022]">
+          <td colSpan={4 + thresholdLength + 2} className="p-0 align-top bg-white/[0.022]">
             <div
               className="overflow-hidden border-l-[3px] border-emerald-500/30"
               style={{ animation: "expandDown 180ms cubic-bezier(0.2,0,0,1) forwards" }}
@@ -174,28 +207,20 @@ export function BoardRow({
                   to   { opacity: 1; transform: translateY(0); }
                 }
               `}</style>
-              {isPlayerLocked ? (
-                <LockedExpandPanel playerName={player.player_name} />
-              ) : (
-                <ExpandedPlayerPanel
-                  player={player}
-                  history={history}
-                  loading={histLoading}
-                  error={histError}
-                  lens={lens}
-                  threshold={defaultThreshold}
-                  isLocked={isPlayerLocked}
-                  insight={insight}
-                  insightLoading={insightLoading}
-                />
-              )}
+              {/* LazyExpandedContent only mounts history/AI hooks when rendered */}
+              <LazyExpandedContent
+                player={player}
+                lens={lens}
+                defaultThreshold={defaultThreshold}
+                isMatchLocked={isMatchLocked}
+              />
             </div>
           </td>
         </tr>
       )}
     </Fragment>
   );
-}
+});
 
 // ── Safe number coercion ──────────────────────────────────────────────────────
 

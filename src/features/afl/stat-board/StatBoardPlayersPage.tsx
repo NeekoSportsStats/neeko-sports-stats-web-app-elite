@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
 import { Helmet } from "react-helmet-async";
 import { Search, X, Lock, ChevronDown } from "lucide-react";
 import { track } from "@/lib/analytics";
@@ -157,6 +157,11 @@ export default function StatBoardPlayersPage() {
       awayPlayers: sortPlayers(away, sortKey),
     };
   }, [players, selectedMatch, sortKey]);
+
+  // Stable callback — prevents TeamBoard memo from busting on every render
+  const handleToggleExpand = useCallback((id: number | null) => {
+    setExpandedPlayerId(id);
+  }, []);
 
   useEffect(() => {
     track("Page View", { path: "/stat-board/players" });
@@ -375,7 +380,7 @@ export default function StatBoardPlayersPage() {
                 defaultThreshold={threshold}
                 isMatchLocked={isLocked}
                 expandedPlayerId={expandedPlayerId}
-                onToggleExpand={setExpandedPlayerId}
+                onToggleExpand={handleToggleExpand}
                 searchActive={search.trim().length > 0}
               />
               <TeamBoard
@@ -387,7 +392,7 @@ export default function StatBoardPlayersPage() {
                 defaultThreshold={threshold}
                 isMatchLocked={isLocked}
                 expandedPlayerId={expandedPlayerId}
-                onToggleExpand={setExpandedPlayerId}
+                onToggleExpand={handleToggleExpand}
                 searchActive={search.trim().length > 0}
               />
             </div>
@@ -696,7 +701,7 @@ interface TeamBoardProps {
   searchActive: boolean;
 }
 
-function TeamBoard({
+const TeamBoard = memo(function TeamBoard({
   teamName,
   opponentName,
   players,
@@ -710,13 +715,25 @@ function TeamBoard({
 }: TeamBoardProps) {
   const [showAll, setShowAll] = useState(false);
 
+  // Reset "show all" whenever the player list identity changes (new match/filter)
+  const prevPlayersRef = useRef(players);
+  if (prevPlayersRef.current !== players) {
+    prevPlayersRef.current = players;
+    // Reset inline — setState in render causes an extra render but is intentional here
+    // to avoid a stale "show all" state after match change. Safe because we bail early.
+    if (showAll) setShowAll(false);
+  }
+
   if (players.length === 0) return null;
 
   const isHome: boolean | null = players[0]?.is_home ?? null;
 
   const needsCap = !searchActive && players.length > TOP_N;
   const isCapped = needsCap && !showAll;
-  const visiblePlayers = isCapped ? players.slice(0, TOP_N) : players;
+  const visiblePlayers = useMemo(
+    () => (isCapped ? players.slice(0, TOP_N) : players),
+    [players, isCapped]
+  );
   const totalCount = players.length;
   const visibleCount = visiblePlayers.length;
 
@@ -831,7 +848,7 @@ function TeamBoard({
       </div>
     </div>
   );
-}
+});
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 
