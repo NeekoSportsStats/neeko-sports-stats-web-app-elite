@@ -108,7 +108,7 @@ export default function StatBoardPlayersPage() {
       </Helmet>
 
       <div className="min-h-screen bg-[#0a0a0a] text-white">
-        <div className="mx-auto max-w-2xl px-4 pt-6 pb-20">
+        <div className="mx-auto max-w-2xl md:max-w-5xl px-4 pt-6 pb-20">
 
           {/* ── Header ── */}
           <div className="mb-5">
@@ -231,7 +231,7 @@ export default function StatBoardPlayersPage() {
               No players found for this match and filter.
             </div>
           ) : (
-            <>
+            <div className="md:grid md:grid-cols-2 md:gap-6 md:items-start">
               <TeamSection
                 teamName={selectedMatch?.home_team_name ?? "Home"}
                 opponentName={selectedMatch?.away_team_name ?? "Away"}
@@ -242,9 +242,6 @@ export default function StatBoardPlayersPage() {
                 expandedPlayerId={expandedPlayerId}
                 onToggleExpand={setExpandedPlayerId}
               />
-              {homePlayers.length > 0 && awayPlayers.length > 0 && (
-                <div className="my-4 border-t border-white/8" />
-              )}
               <TeamSection
                 teamName={selectedMatch?.away_team_name ?? "Away"}
                 opponentName={selectedMatch?.home_team_name ?? "Home"}
@@ -255,7 +252,7 @@ export default function StatBoardPlayersPage() {
                 expandedPlayerId={expandedPlayerId}
                 onToggleExpand={setExpandedPlayerId}
               />
-            </>
+            </div>
           )}
 
           {!matchesLoading && matches.length === 0 && !matchesError && (
