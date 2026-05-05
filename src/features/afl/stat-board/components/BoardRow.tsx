@@ -39,7 +39,8 @@ export function BoardRow({
 
   // Prefer the structured timeline (includes BYE/DNP slots); fall back to plain values
   const timeline: TimelineSlot[] | null = player.last_10_timeline ?? null;
-  const last10 = (player.last_10_values ?? []).slice(-10);
+  // last_10_values is newest-first from the RPC; reverse so index 0 = oldest, last = newest
+  const last10 = [...(player.last_10_values ?? [])].reverse().slice(-10);
 
   const last10Avg = safeNum(player.last_10_avg);
   const avgDisplay = last10Avg != null ? last10Avg.toFixed(1) : "—";
