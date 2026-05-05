@@ -335,6 +335,7 @@ export default function StatBoardPlayersPage() {
                 isMatchLocked={isLocked}
                 expandedPlayerId={expandedPlayerId}
                 onToggleExpand={setExpandedPlayerId}
+                searchActive={search.trim().length > 0}
               />
               <TeamBoard
                 teamName={selectedMatch?.away_team_name ?? "Away"}
@@ -346,6 +347,7 @@ export default function StatBoardPlayersPage() {
                 isMatchLocked={isLocked}
                 expandedPlayerId={expandedPlayerId}
                 onToggleExpand={setExpandedPlayerId}
+                searchActive={search.trim().length > 0}
               />
             </div>
           )}
@@ -411,6 +413,8 @@ function SortDropdown({
 
 // ── Team board ────────────────────────────────────────────────────────────────
 
+const TOP_N = 8;
+
 interface TeamBoardProps {
   teamName: string;
   opponentName: string;
@@ -421,6 +425,7 @@ interface TeamBoardProps {
   isMatchLocked: boolean;
   expandedPlayerId: number | null;
   onToggleExpand: (id: number | null) => void;
+  searchActive: boolean;
 }
 
 function TeamBoard({
@@ -433,19 +438,37 @@ function TeamBoard({
   isMatchLocked,
   expandedPlayerId,
   onToggleExpand,
+  searchActive,
 }: TeamBoardProps) {
+  // Per-team expanded state: true = show all players, false = show top 8
+  const [showAll, setShowAll] = useState(false);
+
   if (players.length === 0) return null;
 
-  const thresholdHeaderLabel = (t: number) =>
-    lens === "disposals" ? `${t}+` : `${t}+`;
+  // When search is active, always show all matching players — no cap.
+  const isCapped = !searchActive && players.length > TOP_N && !showAll;
+  const visiblePlayers = isCapped ? players.slice(0, TOP_N) : players;
+  const hiddenCount = players.length - TOP_N;
+
+  const thresholdHeaderLabel = (t: number) => `${t}+`;
+
+  // Status indicator shown in header
+  const statusLabel = searchActive
+    ? `${players.length} found`
+    : showAll || players.length <= TOP_N
+    ? `${players.length} players`
+    : `Top ${TOP_N} of ${players.length}`;
 
   return (
     <div>
-      {/* Team section header — pill label separates the two teams clearly */}
-      <div className="mb-3 flex items-center gap-3">
+      {/* Team section header */}
+      <div className="mb-3 flex items-center gap-3 flex-wrap">
         <h2 className="text-[14px] font-bold text-white tracking-tight">{teamName}</h2>
         <span className="text-[10px] font-semibold text-white/35 bg-white/6 border border-white/8 rounded-full px-2.5 py-0.5 whitespace-nowrap">
           vs {opponentName}
+        </span>
+        <span className="text-[10px] font-medium text-white/28 whitespace-nowrap">
+          {statusLabel}
         </span>
       </div>
 
@@ -482,7 +505,7 @@ function TeamBoard({
           </thead>
           {/* Rows carry their own border-b — no tbody divide needed */}
           <tbody>
-            {players.map((player) => (
+            {visiblePlayers.map((player) => (
               <BoardRow
                 key={player.player_id}
                 player={player}
@@ -498,6 +521,26 @@ function TeamBoard({
             ))}
           </tbody>
         </table>
+
+        {/* ── Show more / fewer footer ── */}
+        {!searchActive && players.length > TOP_N && (
+          <button
+            onClick={() => setShowAll((v) => !v)}
+            className="w-full flex items-center justify-center gap-2 py-3 border-t border-white/[0.07] text-[12px] font-medium text-white/45 hover:text-white/70 hover:bg-white/[0.025] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
+          >
+            {showAll ? (
+              <>
+                <ChevronDown className="h-3.5 w-3.5 rotate-180" aria-hidden />
+                Show fewer players
+              </>
+            ) : (
+              <>
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+                Show remaining {hiddenCount} {hiddenCount === 1 ? "player" : "players"}
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );
