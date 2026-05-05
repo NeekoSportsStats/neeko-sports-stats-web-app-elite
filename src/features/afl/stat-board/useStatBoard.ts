@@ -138,8 +138,8 @@ export interface StatBoardPlayerAiInsight {
   player_id: number;
   summary_short: string | null;
   summary_long: string | null;
-  recommendation_short: string | null;
-  recommendation_color: string | null;
+  // recommendation_short and recommendation_color are fantasy-framing fields
+  // from the rankings cache — they are intentionally excluded from stat board.
 }
 
 export function useStatBoardPlayerAiInsight(playerId: number | null) {
