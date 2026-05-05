@@ -67,13 +67,14 @@ export function useStatBoardPlayers({
       p_season: SEASON,
       p_round: null,
       p_match_id: matchId,
-      p_lens: lens,
+      p_stat_lens: lens,
       p_threshold: threshold,
       p_limit: 200,
       p_offset: 0,
     };
     if (positionFilter !== "ALL") {
-      params.p_position_group = positionFilter === "RUCK" ? "RUCK" : positionFilter;
+      // RPC parameter is p_position; database stores "RUC" (not "RUCK")
+      params.p_position = positionFilter === "RUCK" ? "RUC" : positionFilter;
     }
     if (search.trim()) {
       params.p_search = search.trim();
