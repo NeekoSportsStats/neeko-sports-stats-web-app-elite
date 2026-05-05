@@ -6,7 +6,7 @@ import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 
 const NAV_LINKS = [
-  { label: "Stat Board",  to: "/stat-board",           icon: TableProperties },
+  { label: "Stat Board",  to: "/stat-board/players",   icon: TableProperties },
   { label: "Fantasy Hub", to: "/fantasy",              icon: Star      },
   { label: "Players",     to: "/sports/afl/players",   icon: Users     },
 ];
