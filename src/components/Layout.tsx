@@ -1,7 +1,7 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "@/components/ui/button";
-import { Crown, LogOut, TrendingUp, ChartBar as BarChart2, Star, Award, Users } from "lucide-react";
+import { Crown, LogOut, TrendingUp, ChartBar as BarChart2, Star, Award, Users, TableProperties } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 
@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { label: "Captains",     to: "/sports/afl/captains",      icon: Star       },
   { label: "Rankings",     to: "/sports/afl/rankings",      icon: Award      },
   { label: "Players",      to: "/sports/afl/players",       icon: Users      },
+  { label: "Stat Board",   to: "/stat-board",               icon: TableProperties },
 ];
 
 export function Layout() {
@@ -42,7 +43,7 @@ export function Layout() {
               {/* CENTER NAV — desktop only, hidden on mobile (sidebar handles it) */}
               <nav className="hidden lg:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
                 {NAV_LINKS.map(({ label, to, icon: Icon }) => {
-                  const active = location.pathname === to;
+                  const active = location.pathname === to || location.pathname.startsWith(to + "/");
                   return (
                     <Link
                       key={to}
