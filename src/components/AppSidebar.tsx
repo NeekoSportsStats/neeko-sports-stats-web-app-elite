@@ -9,7 +9,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-import { Chrome as Home, Star, ChartBar as BarChart2, User, Crown, Users, Share2, CircleHelp as HelpCircle, FileText, Mail, TableProperties } from "lucide-react";
+import { Chrome as Home, Star, User, Crown, Users, Share2, CircleHelp as HelpCircle, FileText, Mail, TableProperties } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -34,11 +34,10 @@ export function AppSidebar() {
   };
 
   const mainNav = [
-    { title: "Home",         url: "/",          icon: Home,            exact: true },
-    { title: "Fantasy Hub",  url: "/fantasy",   icon: Star },
-    { title: "Rankings",     url: "/sports/afl/rankings", icon: BarChart2 },
-    { title: "Players",      url: "/sports/afl/players",  icon: User },
-    { title: "Stat Board",   url: "/stat-board",           icon: TableProperties },
+    { title: "Home",        url: "/",           icon: Home,            exact: true },
+    { title: "Stat Board",  url: "/stat-board", icon: TableProperties },
+    { title: "Fantasy Hub", url: "/fantasy",    icon: Star },
+    { title: "Players",     url: "/sports/afl/players", icon: User },
   ];
 
   const infoNav = [

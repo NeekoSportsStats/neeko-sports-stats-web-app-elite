@@ -1,15 +1,14 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "@/components/ui/button";
-import { Crown, LogOut, ChartBar as BarChart2, Star, Users, TableProperties } from "lucide-react";
+import { Crown, LogOut, Star, Users, TableProperties } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 
 const NAV_LINKS = [
-  { label: "Fantasy Hub", to: "/fantasy",              icon: Star      },
-  { label: "Rankings",    to: "/sports/afl/rankings",  icon: BarChart2 },
-  { label: "Players",     to: "/sports/afl/players",   icon: Users     },
   { label: "Stat Board",  to: "/stat-board",           icon: TableProperties },
+  { label: "Fantasy Hub", to: "/fantasy",              icon: Star      },
+  { label: "Players",     to: "/sports/afl/players",   icon: Users     },
 ];
 
 export function Layout() {

@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { Crown, Menu, X, TrendingUp, ChartBar as BarChart2, Star, Award, Users } from "lucide-react";
+import { Crown, Menu, X, TableProperties, Star, Users } from "lucide-react";
 
 const NAV_LINKS = [
-  { label: "Current Week", to: "/sports/afl/current-round", icon: <TrendingUp size={14} /> },
-  { label: "Market Watch", to: "/sports/afl/market-watch", icon: <BarChart2 size={14} /> },
-  { label: "Captains", to: "/sports/afl/captains", icon: <Star size={14} /> },
-  { label: "Rankings", to: "/sports/afl/rankings", icon: <Award size={14} /> },
+  { label: "Stat Board", to: "/stat-board", icon: <TableProperties size={14} /> },
+  { label: "Fantasy Hub", to: "/fantasy", icon: <Star size={14} /> },
   { label: "Players", to: "/sports/afl/players", icon: <Users size={14} /> },
 ];
 
@@ -50,7 +48,7 @@ export function LandingLayout() {
           transform: "translateX(-50%)",
         }}>
           {NAV_LINKS.map(link => {
-            const active = location.pathname === link.to;
+            const active = location.pathname === link.to || location.pathname.startsWith(link.to + "/");
             return (
               <Link
                 key={link.to}
@@ -203,7 +201,9 @@ export function LandingLayout() {
       }}
         className="mobile-drawer"
       >
-        {NAV_LINKS.map(link => (
+        {NAV_LINKS.map(link => {
+          const mobileActive = location.pathname === link.to || location.pathname.startsWith(link.to + "/");
+          return (
           <Link
             key={link.to}
             to={link.to}
@@ -211,16 +211,17 @@ export function LandingLayout() {
             style={{
               display: "flex", alignItems: "center", gap: 10,
               fontSize: 14, fontWeight: 600,
-              color: location.pathname === link.to ? "#fff" : "rgba(255,255,255,0.65)",
+              color: mobileActive ? "#fff" : "rgba(255,255,255,0.65)",
               textDecoration: "none",
               padding: "11px 20px",
-              borderLeft: location.pathname === link.to ? "2px solid #facc15" : "2px solid transparent",
-              background: location.pathname === link.to ? "rgba(255,255,255,0.05)" : "transparent",
+              borderLeft: mobileActive ? "2px solid #facc15" : "2px solid transparent",
+              background: mobileActive ? "rgba(255,255,255,0.05)" : "transparent",
             }}
           >
             {link.icon} {link.label}
           </Link>
-        ))}
+          );
+        })}
         <div style={{ margin: "12px 16px 0", borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
           {!user && (
             <Link to="/auth" onClick={() => setMenuOpen(false)} style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.75)", textDecoration: "none", padding: "8px 12px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)", textAlign: "center" }}>
