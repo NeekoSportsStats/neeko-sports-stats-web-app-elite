@@ -93,17 +93,17 @@ export function BoardRow({
 
         {/* Avg (L10) */}
         <td className="px-2 py-3 text-right tabular-nums min-w-[56px]">
-          <span className={`text-[13px] font-semibold ${last10Avg != null ? "text-white/80" : "text-white/20"}`}>
+          <span className={`text-[12px] font-medium ${last10Avg != null ? "text-white/55" : "text-white/20"}`}>
             {avgDisplay}
           </span>
         </td>
 
         {/* Projection */}
-        <td className="px-2 py-3 text-right tabular-nums min-w-[48px]">
+        <td className="px-2 py-3 text-right tabular-nums min-w-[52px]">
           {isPlayerLocked ? (
             <span className="text-[13px] font-semibold text-white/20 blur-[4px] select-none" aria-hidden>••</span>
           ) : projDisplay != null ? (
-            <span className="text-[13px] font-bold text-white">{projDisplay}</span>
+            <span className="text-[15px] font-bold text-[#F5C84C] tabular-nums leading-none">{projDisplay}</span>
           ) : (
             <span className="text-[13px] text-white/22">—</span>
           )}
