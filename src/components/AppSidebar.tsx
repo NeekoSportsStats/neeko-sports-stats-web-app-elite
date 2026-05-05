@@ -9,7 +9,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-import { Chrome as Home, Trophy, TrendingUp, Star, ChartBar as BarChart2, User, Crown, Users, Share2, CircleHelp as HelpCircle, FileText, Mail } from "lucide-react";
+import { Chrome as Home, Trophy, TrendingUp, Star, ChartBar as BarChart2, User, Crown, Users, Share2, CircleHelp as HelpCircle, FileText, Mail, TableProperties } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -40,6 +40,7 @@ export function AppSidebar() {
     { title: "Captains",     url: "/sports/afl/captains",       icon: Star },
     { title: "Rankings",     url: "/sports/afl/rankings",       icon: BarChart2 },
     { title: "Players",      url: "/sports/afl/players",        icon: User },
+    { title: "Stat Board",   url: "/stat-board/players",        icon: TableProperties },
   ];
 
   const infoNav = [
