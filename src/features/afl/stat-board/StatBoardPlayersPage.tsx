@@ -19,13 +19,16 @@ import { BoardRow } from "./components/BoardRow";
 
 export type SortKey = "projection" | "hit_rate" | "recent_avg" | "name" | "consistency";
 
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: "projection",  label: "Projection — high to low" },
-  { key: "hit_rate",    label: "Hit rate — high to low" },
-  { key: "recent_avg",  label: "Avg (L10) — high to low" },
-  { key: "name",        label: "Name — A to Z" },
-  { key: "consistency", label: "Consistency — best first" },
-];
+function sortOptions(lens: StatLens): { key: SortKey; label: string }[] {
+  const stat = lens === "disposals" ? "Disposal" : "Goal";
+  return [
+    { key: "projection",  label: `${stat} projection — high to low` },
+    { key: "hit_rate",    label: `${stat} hit rate — high to low` },
+    { key: "recent_avg",  label: `${stat} avg (L10) — high to low` },
+    { key: "name",        label: "Name — A to Z" },
+    { key: "consistency", label: "Consistency — best first" },
+  ];
+}
 
 const CONSISTENCY_ORDER: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
 
@@ -106,6 +109,7 @@ export default function StatBoardPlayersPage() {
 
   function handleLensChange(newLens: StatLens) {
     setLens(newLens);
+    setSortKey("projection"); // reset to projection so new lens data drives order
     setExpandedPlayerId(null);
     track("Stat Board Lens Change", { lens: newLens });
   }
@@ -268,7 +272,7 @@ export default function StatBoardPlayersPage() {
                 {sortOpen && (
                   <SortDropdown
                     current={sortKey}
-                    options={SORT_OPTIONS}
+                    options={sortOptions(lens)}
                     onSelect={(k) => { setSortKey(k); setSortOpen(false); }}
                     onClose={() => setSortOpen(false)}
                   />
@@ -372,7 +376,7 @@ function SortDropdown({
   onClose,
 }: {
   current: SortKey;
-  options: typeof SORT_OPTIONS;
+  options: { key: SortKey; label: string }[];
   onSelect: (k: SortKey) => void;
   onClose: () => void;
 }) {
