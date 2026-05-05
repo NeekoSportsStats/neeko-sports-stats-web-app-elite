@@ -106,66 +106,69 @@ export function ExpandedPlayerPanel({
   return (
     <div className="border-t border-white/8 bg-[#0c0c0c]">
 
-      {/* ── Player summary header ──────────────────────────────────────────── */}
-      <div className="px-6 pt-5 pb-4 flex items-center justify-between gap-4 border-b border-white/[0.06]">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[15px] font-bold text-white leading-tight">{player.player_name}</span>
-            {player.position_group && (
-              <span className="text-[9px] font-bold text-white/35 bg-white/8 rounded px-1.5 py-0.5 tracking-wide uppercase shrink-0">
-                {player.position_group}
-              </span>
-            )}
-            {player.confidence_label && (
-              <ConfidencePill label={player.confidence_label} />
-            )}
-          </div>
-          <p className="text-[11px] text-white/38 mt-1">
-            {player.team_name || "—"}
-            {player.opponent_team_name ? (
-              <span className="text-white/22"> · vs {player.opponent_team_name}</span>
-            ) : null}
-            {player.is_home === true ? (
-              <span className="text-white/18"> · Home</span>
-            ) : player.is_home === false ? (
-              <span className="text-white/18"> · Away</span>
-            ) : null}
-          </p>
+      {/* ── 1. Compact context strip (no name duplication) ────────────────── */}
+      <div className="px-5 py-3 flex items-center gap-4 flex-wrap border-b border-white/[0.06] bg-white/[0.015]">
+        {/* Opponent + venue */}
+        <div className="flex items-center gap-2 min-w-0">
+          {player.opponent_team_name ? (
+            <span className="text-[11px] text-white/50">
+              vs <span className="text-white/70 font-medium">{player.opponent_team_name}</span>
+            </span>
+          ) : null}
+          {player.is_home === true && (
+            <span className="text-[10px] text-emerald-500/60 font-semibold bg-emerald-500/8 rounded px-1.5 py-0.5">Home</span>
+          )}
+          {player.is_home === false && (
+            <span className="text-[10px] text-white/32 bg-white/5 rounded px-1.5 py-0.5">Away</span>
+          )}
+          {player.position_group && (
+            <span className="text-[9px] font-bold text-white/28 bg-white/6 rounded px-1.5 py-0.5 tracking-wide uppercase">
+              {player.position_group}
+            </span>
+          )}
         </div>
 
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Key stats inline */}
         <div className="flex items-center gap-5 shrink-0">
-          <StatPill
-            label="Avg (L10)"
-            value={fmt1(player.last_10_avg)}
-            muted={fmt1(player.last_10_avg) === "—"}
-          />
-          <StatPill
-            label="Proj"
-            value={fmt1(player.projection)}
-            accent={fmt1(player.projection) !== "—"}
-            muted={fmt1(player.projection) === "—"}
-          />
+          <div className="text-center">
+            <p className="text-[9px] text-white/28 uppercase tracking-wide leading-none mb-1">Avg (L10)</p>
+            <p className={`text-[13px] font-semibold tabular-nums leading-none ${fmt1(player.last_10_avg) === "—" ? "text-white/22" : "text-white/65"}`}>
+              {fmt1(player.last_10_avg)}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-[9px] text-white/28 uppercase tracking-wide leading-none mb-1">Proj</p>
+            <p className={`text-[15px] font-bold tabular-nums leading-none ${fmt1(player.projection) === "—" ? "text-white/22" : "text-[#F5C84C]"}`}>
+              {fmt1(player.projection)}
+            </p>
+          </div>
+          {player.confidence_label && (
+            <ConfidencePill label={player.confidence_label} />
+          )}
         </div>
       </div>
 
-      {/* ── No-data state ─────────────────────────────────────────────────── */}
+      {/* ── 2. No-data state ──────────────────────────────────────────────── */}
       {!hasAnyData && (
-        <div className="px-6 py-6 text-center text-[12px] text-white/28 italic border-b border-white/[0.04]">
+        <div className="px-6 py-8 text-center text-[12px] text-white/28 italic">
           No recent game data available for this player.
         </div>
       )}
 
-      {/* ── Hero chart ────────────────────────────────────────────────────── */}
+      {/* ── 3. Full-width chart ───────────────────────────────────────────── */}
       {hasAnyData && chartSlots.some((s) => s.value != null) && (
-        <section aria-label="Recent form chart" className="px-6 pt-5 pb-4">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
+        <section aria-label="Recent form chart" className="px-5 pt-4 pb-3">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider">
               Form
               <span className="ml-1.5 text-white/22 font-normal normal-case tracking-normal">
                 — last {playedCount} {playedCount === 1 ? "game" : "games"}
               </span>
             </p>
-            <p className="text-[9px] text-white/18">Hover for detail · B=BYE · D=DNP</p>
+            <p className="text-[9px] text-white/18">Hover · B=BYE · D=DNP</p>
           </div>
           <MultiThresholdChart
             slots={chartSlots}
@@ -176,133 +179,128 @@ export function ExpandedPlayerPanel({
         </section>
       )}
 
-      {/* ── Averages + Hit-rate table ──────────────────────────────────────── */}
-      <div className="px-6 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* ── 4. Two-column summary row ─────────────────────────────────────── */}
+      {hasAnyData && (
+        <div className="px-5 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-        {/* Averages block */}
-        <section aria-label="Stat averages">
-          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2.5">Form averages</p>
-          <div className="grid grid-cols-4 gap-1.5">
-            {summaryStats.map(({ label, value, muted }) => (
-              <div key={label} className="rounded-lg bg-white/[0.035] border border-white/[0.07] px-2 py-3 text-center">
-                <p className="text-[8px] text-white/28 mb-1.5 uppercase tracking-wide leading-none">{label}</p>
-                <p className={`text-[13px] font-bold tabular-nums leading-none ${muted ? "text-white/22" : "text-white"}`}>
-                  {value}
-                </p>
+          {/* Averages block */}
+          <section aria-label="Stat averages">
+            <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider mb-2">Form averages</p>
+            <div className="grid grid-cols-4 gap-1.5">
+              {summaryStats.map(({ label, value, muted }) => (
+                <div key={label} className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-2 py-2.5 text-center">
+                  <p className="text-[8px] text-white/25 mb-1.5 uppercase tracking-wide leading-none">{label}</p>
+                  <p className={`text-[13px] font-bold tabular-nums leading-none ${muted ? "text-white/20" : "text-white/85"}`}>
+                    {value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Hit-rate table */}
+          <section aria-label="Hit rate by threshold">
+            <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider mb-2">
+              {lens === "disposals" ? "Disposal" : "Goal"} hit rates
+              <span className="ml-1.5 font-normal normal-case tracking-normal text-white/22">
+                — last {Math.min(playedCount, 10)} games
+              </span>
+            </p>
+            {playedCount === 0 ? (
+              <div className="rounded-lg border border-white/8 px-3 py-4 text-center text-[11px] text-white/22 italic">
+                No games to calculate hit rates.
               </div>
-            ))}
-          </div>
-        </section>
+            ) : (
+              <div className="rounded-lg border border-white/8 overflow-hidden">
+                <table className="w-full text-xs" role="table">
+                  <thead>
+                    <tr className="border-b border-white/8 bg-white/[0.02]">
+                      <th className="text-left px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">Line</th>
+                      <th className="text-center px-2 py-2 text-white/28 font-medium text-[10px]" scope="col">Hits</th>
+                      <th className="px-2 py-2 text-white/28 font-medium text-[10px]" scope="col">
+                        <span className="sr-only">Rate bar</span>
+                      </th>
+                      <th className="text-right px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allThresholds.map((t) => {
+                      const key = String(t);
+                      const data = hitRates[key];
+                      const hits  = n(data?.hits);
+                      const games = n(data?.games);
+                      const rate  = n(data?.rate);
+                      const hasLineData = hits !== null && games !== null && games > 0;
 
-        {/* Hit-rate table */}
-        <section aria-label="Hit rate by threshold">
-          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2.5">
-            {lens === "disposals" ? "Disposal" : "Goal"} hit rates
-            <span className="ml-1.5 font-normal normal-case tracking-normal text-white/22">
-              — last {Math.min(playedCount, 10)} games
-            </span>
-          </p>
-          {playedCount === 0 ? (
-            <div className="rounded-lg border border-white/8 px-3 py-4 text-center text-[11px] text-white/22 italic">
-              No games to calculate hit rates.
-            </div>
-          ) : (
-            <div className="rounded-lg border border-white/8 overflow-hidden">
-              <table className="w-full text-xs" role="table">
-                <thead>
-                  <tr className="border-b border-white/8 bg-white/[0.025]">
-                    <th className="text-left px-3 py-2 text-white/32 font-medium text-[10px]" scope="col">Line</th>
-                    <th className="text-center px-2 py-2 text-white/32 font-medium text-[10px]" scope="col">Hits</th>
-                    <th className="px-2 py-2 text-white/32 font-medium text-[10px]" scope="col">
-                      <span className="sr-only">Rate bar</span>
-                    </th>
-                    <th className="text-right px-3 py-2 text-white/32 font-medium text-[10px]" scope="col">%</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allThresholds.map((t) => {
-                    const key = String(t);
-                    const data = hitRates[key];
-                    const hits  = n(data?.hits);
-                    const games = n(data?.games);
-                    const rate  = n(data?.rate);
+                      return (
+                        <tr key={key} className="border-b border-white/5 last:border-0">
+                          <td className="px-3 py-2 font-semibold text-[11px] text-white/50">{t}+</td>
+                          <td className="px-2 py-2 text-center tabular-nums text-[11px] text-white/45">
+                            {hasLineData ? `${hits}/${games}` : "—"}
+                          </td>
+                          <td className="px-2 py-2 w-[60px]">
+                            <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+                              {hasLineData && rate != null && (
+                                <div
+                                  className={`h-full rounded-full ${rate >= 70 ? "bg-emerald-500/70" : rate >= 50 ? "bg-amber-500/60" : "bg-white/18"}`}
+                                  style={{ width: `${Math.min(100, Math.max(0, rate))}%` }}
+                                  role="presentation"
+                                />
+                              )}
+                            </div>
+                          </td>
+                          <td className={`px-3 py-2 text-right tabular-nums font-semibold text-[11px] ${
+                            !hasLineData ? "text-white/22"
+                            : rate != null && rate >= 70 ? "text-emerald-400"
+                            : rate != null && rate >= 50 ? "text-amber-400"
+                            : "text-white/30"
+                          }`}>
+                            {hasLineData && rate != null ? (rate > 0 ? `${rate}%` : "0%") : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
 
-                    // If we have no data at all for this line, still render a "—" row
-                    const hasLineData = hits !== null && games !== null && games > 0;
-
-                    return (
-                      <tr
-                        key={key}
-                        className="border-b border-white/5 last:border-0"
-                      >
-                        <td className="px-3 py-2 font-semibold text-[11px] text-white/55">
-                          {t}+
-                        </td>
-                        <td className="px-2 py-2 text-center tabular-nums text-[11px] text-white/50">
-                          {hasLineData ? `${hits}/${games}` : "—"}
-                        </td>
-                        <td className="px-2 py-2 w-[60px]">
-                          <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
-                            {hasLineData && rate != null && (
-                              <div
-                                className={`h-full rounded-full ${rate >= 70 ? "bg-emerald-500/70" : rate >= 50 ? "bg-amber-500/60" : "bg-white/18"}`}
-                                style={{ width: `${Math.min(100, Math.max(0, rate))}%` }}
-                                role="presentation"
-                              />
-                            )}
-                          </div>
-                        </td>
-                        <td className={`px-3 py-2 text-right tabular-nums font-semibold text-[11px] ${
-                          !hasLineData ? "text-white/22"
-                          : rate != null && rate >= 70 ? "text-emerald-400"
-                          : rate != null && rate >= 50 ? "text-amber-400"
-                          : "text-white/32"
-                        }`}>
-                          {hasLineData && rate != null ? (rate > 0 ? `${rate}%` : "0%") : "—"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-      </div>
-
-      {/* ── AI Insight ────────────────────────────────────────────────────── */}
+      {/* ── 5. AI Insight ─────────────────────────────────────────────────── */}
       <AiInsightBlock insight={insight} loading={insightLoading} />
 
-      {/* ── Game log ──────────────────────────────────────────────────────── */}
+      {/* ── 6. Full-width game log ────────────────────────────────────────── */}
       {gameLog.length > 0 ? (
-        <section aria-label="Game-by-game log" className="px-6 pb-6">
-          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2.5">Game log</p>
+        <section aria-label="Game-by-game log" className="px-5 pb-5">
+          <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider mb-2">Game log</p>
           <div className="rounded-lg border border-white/8 overflow-x-auto">
             <table className="w-full text-[11px]" role="table" style={{ minWidth: "520px" }}>
               <thead>
-                <tr className="border-b border-white/8 bg-white/[0.025]">
-                  <th className="text-left px-3 py-2 text-white/32 font-medium w-10" scope="col">Rnd</th>
-                  <th className="text-left px-3 py-2 text-white/32 font-medium" scope="col">Opponent</th>
-                  <th className="text-center px-2 py-2 text-white/32 font-medium w-8" scope="col" title="Home / Away">H/A</th>
+                <tr className="border-b border-white/8 bg-white/[0.02]">
+                  <th className="text-left px-3 py-2 text-white/28 font-medium w-10" scope="col">Rnd</th>
+                  <th className="text-left px-3 py-2 text-white/28 font-medium" scope="col">Opponent</th>
+                  <th className="text-center px-2 py-2 text-white/28 font-medium w-8" scope="col" title="Home / Away">H/A</th>
                   {lens === "disposals" ? (
                     <>
-                      <th className="text-right px-2 py-2 text-white/32 font-medium" scope="col">Disp</th>
-                      <th className="text-right px-2 py-2 text-white/32 font-medium hidden sm:table-cell" scope="col">K</th>
-                      <th className="text-right px-2 py-2 text-white/32 font-medium hidden sm:table-cell" scope="col">HB</th>
-                      <th className="text-right px-2 py-2 text-white/32 font-medium hidden md:table-cell" scope="col">Mks</th>
-                      <th className="text-right px-2 py-2 text-white/32 font-medium hidden md:table-cell" scope="col">Tkl</th>
-                      <th className="text-right px-2 py-2 text-white/32 font-medium hidden lg:table-cell" scope="col">Clr</th>
+                      <th className="text-right px-2 py-2 text-white/28 font-medium" scope="col">Disp</th>
+                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">K</th>
+                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">HB</th>
+                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden md:table-cell" scope="col">Mks</th>
+                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden md:table-cell" scope="col">Tkl</th>
+                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden lg:table-cell" scope="col">Clr</th>
                     </>
                   ) : (
                     <>
-                      <th className="text-right px-2 py-2 text-white/32 font-medium" scope="col">Gls</th>
-                      <th className="text-right px-2 py-2 text-white/32 font-medium hidden sm:table-cell" scope="col">Beh</th>
-                      <th className="text-right px-2 py-2 text-white/32 font-medium hidden sm:table-cell" scope="col">Disp</th>
-                      <th className="text-right px-2 py-2 text-white/32 font-medium hidden md:table-cell" scope="col">Mks</th>
-                      <th className="text-right px-2 py-2 text-white/32 font-medium hidden md:table-cell" scope="col">Tkl</th>
+                      <th className="text-right px-2 py-2 text-white/28 font-medium" scope="col">Gls</th>
+                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">Beh</th>
+                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">Disp</th>
+                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden md:table-cell" scope="col">Mks</th>
+                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden md:table-cell" scope="col">Tkl</th>
                     </>
                   )}
-                  <th className="text-right px-3 py-2 text-white/32 font-medium" scope="col">Fant</th>
+                  <th className="text-right px-3 py-2 text-white/28 font-medium" scope="col">Fant</th>
                 </tr>
               </thead>
               <tbody>
@@ -383,7 +381,7 @@ export function ExpandedPlayerPanel({
         </section>
       ) : (
         !loading && (
-          <div className="px-6 pb-6 text-[11px] text-white/22 italic">
+          <div className="px-5 pb-5 text-[11px] text-white/22 italic">
             No game log entries available.
           </div>
         )
@@ -470,29 +468,6 @@ function ConfidencePill({ label }: { label: string }) {
     <span className={`text-[9px] font-bold uppercase tracking-wide rounded-md px-1.5 py-0.5 shrink-0 ${styles[label] ?? styles.LOW}`}>
       {CONFIDENCE_DISPLAY[label] ?? label}
     </span>
-  );
-}
-
-function StatPill({
-  label,
-  value,
-  accent,
-  muted,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-  muted?: boolean;
-}) {
-  return (
-    <div className="text-center">
-      <p className="text-[9px] text-white/30 uppercase tracking-wide mb-0.5">{label}</p>
-      <p className={`text-[15px] font-bold tabular-nums leading-none ${
-        muted ? "text-white/22" : accent ? "text-white" : "text-white/80"
-      }`}>
-        {value}
-      </p>
-    </div>
   );
 }
 
