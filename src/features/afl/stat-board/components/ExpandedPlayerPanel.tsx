@@ -773,7 +773,7 @@ function ChartTooltip({
   // Played value tooltip
   const val = slot.value!;
   const thresholdChecks = allThresholds.map((t) => ({
-    t, hit: val >= t, isSelected: t === selectedThreshold,
+    t, hit: val >= t,
   }));
   const hitCount = thresholdChecks.filter((c) => c.hit).length;
 
@@ -821,24 +821,13 @@ function ChartTooltip({
 
       {/* Threshold rows */}
       <div className="px-3 py-2 space-y-1.5">
-        {thresholdChecks.map(({ t, hit, isSelected }) => (
+        {thresholdChecks.map(({ t, hit }) => (
           <div key={t} className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`h-2 w-2 rounded-full shrink-0 ${
-                  hit ? "bg-emerald-500" : "bg-white/12"
-                } ${isSelected ? "ring-1 ring-offset-1 ring-offset-[#1c1c1c] ring-emerald-400/60" : ""}`}
-              />
-              <span className={`text-[11px] font-medium ${isSelected ? "text-white/80" : "text-white/45"}`}>
-                {t}+{isSelected && <span className="ml-0.5 text-white/30 text-[9px]">★</span>}
-              </span>
-            </div>
-            <span className={`text-[11px] font-bold ${
-              hit
-                ? isSelected ? "text-emerald-400" : "text-emerald-500/75"
-                : "text-white/22"
-            }`}>
-              {hit ? "HIT" : "miss"}
+            <span className="text-[11px] text-white/50">
+              {t}+
+            </span>
+            <span className={`text-[11px] font-semibold ${hit ? "text-emerald-400" : "text-white/25"}`}>
+              {hit ? "Hit" : "Miss"}
             </span>
           </div>
         ))}
