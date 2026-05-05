@@ -83,6 +83,24 @@ export function Layout() {
 
               {/* RIGHT BUTTONS */}
               <div className="flex items-center gap-1.5 lg:gap-2 ml-auto shrink-0">
+                {/* Sign In — shown when logged out */}
+                {!user && (
+                  <Link to="/auth">
+                    <Button variant="outline" size="sm">
+                      Sign In
+                    </Button>
+                  </Link>
+                )}
+
+                {/* Logout — shown when logged in */}
+                {user && (
+                  <Button variant="ghost" size="sm" onClick={signOut} className="gap-2 hidden sm:flex">
+                    <LogOut className="h-4 w-4" />
+                    <span className="hidden sm:inline">Logout</span>
+                  </Button>
+                )}
+
+                {/* Account (premium) or Neeko+ upgrade */}
                 {isPremium ? (
                   <Link to="/account">
                     <Button variant="outline" size="sm" className="gap-2">
@@ -99,19 +117,6 @@ export function Layout() {
                     >
                       <Crown className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Neeko+</span>
-                    </Button>
-                  </Link>
-                )}
-
-                {user ? (
-                  <Button variant="ghost" size="sm" onClick={signOut} className="gap-2 hidden sm:flex">
-                    <LogOut className="h-4 w-4" />
-                    <span className="hidden sm:inline">Logout</span>
-                  </Button>
-                ) : (
-                  <Link to="/auth">
-                    <Button variant="default" size="sm">
-                      Sign In
                     </Button>
                   </Link>
                 )}

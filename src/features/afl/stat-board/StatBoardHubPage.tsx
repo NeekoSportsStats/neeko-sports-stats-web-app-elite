@@ -82,7 +82,7 @@ export default function StatBoardHubPage() {
             }}>
               Start with Player Stats to view disposals, goals, hit rates and projections by match.
             </p>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
               <Link
                 to="/stat-board/players"
                 onMouseEnter={() => setHeroHovered(true)}
@@ -92,21 +92,19 @@ export default function StatBoardHubPage() {
                   padding: "11px 20px",
                   borderRadius: 10,
                   background: heroHovered
-                    ? "linear-gradient(160deg, #fad52a 0%, #e09600 100%)"
-                    : "linear-gradient(160deg, #f0c81a 0%, #d08800 100%)",
-                  color: "#130c00",
-                  fontSize: 13, fontWeight: 900,
+                    ? "rgba(34,197,94,0.18)"
+                    : "rgba(34,197,94,0.12)",
+                  border: `1px solid ${heroHovered ? "rgba(34,197,94,0.45)" : "rgba(34,197,94,0.28)"}`,
+                  color: heroHovered ? "#4ade80" : "rgba(74,222,128,0.88)",
+                  fontSize: 13, fontWeight: 800,
                   textDecoration: "none",
                   letterSpacing: "0.01em",
-                  boxShadow: heroHovered
-                    ? "0 6px 28px rgba(224,174,45,0.38)"
-                    : "0 4px 18px rgba(224,174,45,0.18)",
                   transition: "all 0.15s ease",
                 }}
               >
                 Open Player Stats <ArrowRight size={13} />
               </Link>
-              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.30)", margin: 0 }}>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", margin: 0 }}>
                 Disposals and goals available now.
               </p>
             </div>
@@ -164,7 +162,7 @@ function ModeTile({ mode }: { mode: ModeCard }) {
         background: isAvailable
           ? (hovered ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.025)")
           : "rgba(255,255,255,0.015)",
-        opacity: isAvailable ? 1 : 0.58,
+        opacity: isAvailable ? 1 : 0.78,
         transition: "all 0.15s ease",
         cursor: isAvailable ? "pointer" : "default",
       }}
@@ -175,7 +173,7 @@ function ModeTile({ mode }: { mode: ModeCard }) {
         background: isAvailable ? "rgba(34,197,94,0.10)" : "rgba(255,255,255,0.05)",
         border: isAvailable ? "1px solid rgba(34,197,94,0.20)" : "1px solid rgba(255,255,255,0.08)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        color: isAvailable ? "#4ade80" : "rgba(255,255,255,0.25)",
+        color: isAvailable ? "#4ade80" : "rgba(255,255,255,0.35)",
       }}>
         {mode.icon}
       </div>
@@ -185,7 +183,7 @@ function ModeTile({ mode }: { mode: ModeCard }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
           <span style={{
             fontSize: 13.5, fontWeight: 700,
-            color: isAvailable ? "#ECECEC" : "rgba(255,255,255,0.45)",
+            color: isAvailable ? "#ECECEC" : "rgba(255,255,255,0.62)",
             letterSpacing: "-0.01em",
           }}>
             {mode.title}
@@ -204,9 +202,9 @@ function ModeTile({ mode }: { mode: ModeCard }) {
           ) : (
             <span style={{
               fontSize: 9.5, fontWeight: 600, letterSpacing: "0.04em",
-              color: "rgba(255,255,255,0.30)",
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.45)",
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.10)",
               borderRadius: 5, padding: "2px 7px",
               display: "inline-flex", alignItems: "center", gap: 4,
             }}>
@@ -216,7 +214,7 @@ function ModeTile({ mode }: { mode: ModeCard }) {
         </div>
         <p style={{
           margin: 0, fontSize: 12.5,
-          color: isAvailable ? "rgba(255,255,255,0.48)" : "rgba(255,255,255,0.30)",
+          color: isAvailable ? "rgba(255,255,255,0.48)" : "rgba(255,255,255,0.42)",
           lineHeight: 1.5,
         }}>
           {mode.copy}
