@@ -42,7 +42,7 @@ export function AppSidebar() {
 
   const mainNav = [
     { title: "Home",        url: "/",           icon: Home,            exact: true },
-    { title: "Stat Board",  url: "/stat-board/players", icon: TableProperties },
+    { title: "Stat Board",  url: "/stat-board",          icon: TableProperties },
     { title: "Fantasy Hub", url: "/fantasy",    icon: Star },
     { title: "Players",     url: "/sports/afl/players", icon: User },
   ];
