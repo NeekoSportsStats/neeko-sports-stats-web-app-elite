@@ -147,34 +147,40 @@ export function ExpandedPlayerPanel({
         </section>
       )}
 
-      {/* ── Averages strip ───────────────────────────────────────────────────── */}
-      <section aria-label="Stat averages" className="px-5 pb-4">
-        <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2.5">Averages</p>
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
-          {summaryStats.map(({ label, value }) => (
-            <div key={label} className="rounded-xl bg-white/[0.035] border border-white/7 px-2 py-2.5 text-center">
-              <p className="text-[8.5px] text-white/28 mb-1 uppercase tracking-wide leading-none">{label}</p>
-              <p className="text-[13px] font-bold text-white tabular-nums leading-none">{value}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {/* ── Row 2: Averages (left) + Hit-rate table (right) ─────────────────── */}
+      <div className="px-5 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
 
-      {/* ── Hit rates + game log ─────────────────────────────────────────────── */}
-      <div className="px-5 pb-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Averages block */}
+        <section aria-label="Stat averages">
+          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Averages</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {summaryStats.map(({ label, value }) => (
+              <div key={label} className="rounded-lg bg-white/[0.035] border border-white/7 px-2 py-2.5 text-center">
+                <p className="text-[8px] text-white/28 mb-1 uppercase tracking-wide leading-none">{label}</p>
+                <p className="text-[13px] font-bold text-white tabular-nums leading-none">{value}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
+        {/* Hit-rate table */}
         <section aria-label="Hit rate by threshold">
-          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2.5">
-            {lens === "disposals" ? "Disposal" : "Goal"} hit rates — last {Math.min(playedCount, 10)} games
+          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">
+            {lens === "disposals" ? "Disposal" : "Goal"} hit rates
+            <span className="ml-1.5 font-normal normal-case tracking-normal text-white/22">
+              — last {Math.min(playedCount, 10)} games
+            </span>
           </p>
-          <div className="rounded-xl border border-white/8 overflow-hidden">
+          <div className="rounded-lg border border-white/8 overflow-hidden">
             <table className="w-full text-xs" role="table">
               <thead>
                 <tr className="border-b border-white/8 bg-white/[0.025]">
-                  <th className="text-left px-3 py-2 text-white/35 font-medium" scope="col">Line</th>
-                  <th className="text-center px-3 py-2 text-white/35 font-medium" scope="col">Hits</th>
-                  <th className="text-left px-2 py-2 text-white/35 font-medium" scope="col">Rate</th>
-                  <th className="text-right px-3 py-2 text-white/35 font-medium" scope="col">%</th>
+                  <th className="text-left px-3 py-1.5 text-white/35 font-medium text-[10px]" scope="col">Line</th>
+                  <th className="text-center px-2 py-1.5 text-white/35 font-medium text-[10px]" scope="col">Hits</th>
+                  <th className="px-2 py-1.5 text-white/35 font-medium text-[10px]" scope="col">
+                    <span className="sr-only">Rate bar</span>
+                  </th>
+                  <th className="text-right px-3 py-1.5 text-white/35 font-medium text-[10px]" scope="col">%</th>
                 </tr>
               </thead>
               <tbody>
@@ -189,25 +195,25 @@ export function ExpandedPlayerPanel({
                   return (
                     <tr
                       key={key}
-                      className={`border-b border-white/5 last:border-0 transition-colors ${isSelected ? "bg-emerald-500/6" : ""}`}
+                      className={`border-b border-white/5 last:border-0 ${isSelected ? "bg-emerald-500/[0.05]" : ""}`}
                     >
-                      <td className={`px-3 py-2.5 font-semibold ${isSelected ? "text-emerald-400" : "text-white/60"}`}>
+                      <td className={`px-3 py-2 font-semibold text-[11px] ${isSelected ? "text-emerald-400" : "text-white/55"}`}>
                         {t}+
-                        {isSelected && <span className="ml-1.5 text-[9px] text-emerald-500/60 font-normal">focus</span>}
+                        {isSelected && <span className="ml-1 text-[8px] text-emerald-500/50 font-normal">focus</span>}
                       </td>
-                      <td className={`px-3 py-2.5 text-center tabular-nums ${isSelected ? "text-white" : "text-white/55"}`}>
+                      <td className={`px-2 py-2 text-center tabular-nums text-[11px] ${isSelected ? "text-white/90" : "text-white/50"}`}>
                         {hits != null && games != null && games > 0 ? `${hits}/${games}` : "—"}
                       </td>
-                      <td className="px-2 py-2.5">
+                      <td className="px-2 py-2 w-[60px]">
                         <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all ${rate >= 70 ? "bg-emerald-500/70" : rate >= 50 ? "bg-amber-500/60" : "bg-white/20"}`}
+                            className={`h-full rounded-full ${rate >= 70 ? "bg-emerald-500/70" : rate >= 50 ? "bg-amber-500/60" : "bg-white/18"}`}
                             style={{ width: `${rate}%` }}
                             role="presentation"
                           />
                         </div>
                       </td>
-                      <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${rate >= 70 ? "text-emerald-400" : rate >= 50 ? "text-amber-400" : "text-white/38"}`}>
+                      <td className={`px-3 py-2 text-right tabular-nums font-semibold text-[11px] ${rate >= 70 ? "text-emerald-400" : rate >= 50 ? "text-amber-400" : "text-white/32"}`}>
                         {rate > 0 ? `${rate}%` : "—"}
                       </td>
                     </tr>
@@ -217,68 +223,69 @@ export function ExpandedPlayerPanel({
             </table>
           </div>
         </section>
+      </div>
 
-        {gameLog.length > 0 && (
-          <section aria-label="Game-by-game log">
-            <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2.5">Game log</p>
-            <div className="rounded-xl border border-white/8 overflow-hidden">
-              <table className="w-full text-xs" role="table">
-                <thead>
-                  <tr className="border-b border-white/8 bg-white/[0.025]">
-                    <th className="text-left px-3 py-2 text-white/35 font-medium w-10" scope="col">Rnd</th>
-                    <th className="text-left px-3 py-2 text-white/35 font-medium" scope="col">vs</th>
-                    <th className="text-right px-3 py-2 text-white/35 font-medium" scope="col">
-                      {lens === "disposals" ? "Disp" : "Goals"}
-                    </th>
-                    {lens === "disposals" && (
-                      <th className="text-right px-3 py-2 text-white/35 font-medium hidden sm:table-cell" scope="col">Mks</th>
-                    )}
-                    <th className="text-right px-3 py-2 text-white/35 font-medium" scope="col">Fant</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...gameLog].reverse().map((row, idx) => {
-                    const isLatest = idx === 0;
-                    if (row.rowType === "bye") {
-                      return (
-                        <tr key={`bye-${row.week}`} className="border-b border-white/5 last:border-0 opacity-40">
-                          <td className="px-3 py-2 text-white/40 tabular-nums">{row.week}</td>
-                          <td colSpan={lens === "disposals" ? 4 : 3} className="px-3 py-2 text-white/30 italic">BYE week</td>
-                        </tr>
-                      );
-                    }
-                    if (row.rowType === "dnp") {
-                      return (
-                        <tr key={`dnp-${row.week}`} className="border-b border-white/5 last:border-0 opacity-50">
-                          <td className="px-3 py-2 text-white/40 tabular-nums">{row.week}</td>
-                          <td colSpan={lens === "disposals" ? 4 : 3} className="px-3 py-2 text-white/30 italic">Did not play</td>
-                        </tr>
-                      );
-                    }
-                    const safeVal = typeof row.value === "number" && !isNaN(row.value) ? row.value : null;
-                    const hit = safeVal != null && safeVal >= threshold;
-                    const fantScore = typeof row.fantasy === "number" && !isNaN(row.fantasy) ? row.fantasy : null;
-                    const marksVal = typeof row.marks === "number" && !isNaN(row.marks) ? row.marks : null;
+      {/* ── Row 4: Full-width game log ───────────────────────────────────────── */}
+      {gameLog.length > 0 && (
+        <section aria-label="Game-by-game log" className="px-5 pb-5">
+          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Game log</p>
+          <div className="rounded-lg border border-white/8 overflow-hidden">
+            <table className="w-full text-xs" role="table">
+              <thead>
+                <tr className="border-b border-white/8 bg-white/[0.025]">
+                  <th className="text-left px-3 py-1.5 text-white/35 font-medium text-[10px] w-10" scope="col">Rnd</th>
+                  <th className="text-left px-3 py-1.5 text-white/35 font-medium text-[10px]" scope="col">vs</th>
+                  <th className="text-right px-3 py-1.5 text-white/35 font-medium text-[10px]" scope="col">
+                    {lens === "disposals" ? "Disp" : "Goals"}
+                  </th>
+                  {lens === "disposals" && (
+                    <th className="text-right px-3 py-1.5 text-white/35 font-medium text-[10px] hidden sm:table-cell" scope="col">Mks</th>
+                  )}
+                  <th className="text-right px-3 py-1.5 text-white/35 font-medium text-[10px]" scope="col">Fant</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...gameLog].reverse().map((row, idx) => {
+                  const isLatest = idx === 0;
+                  if (row.rowType === "bye") {
                     return (
-                      <tr key={`played-${row.week}`} className={`border-b border-white/5 last:border-0 ${isLatest ? "bg-white/[0.015]" : ""}`}>
-                        <td className="px-3 py-2 text-white/40 tabular-nums">{row.week}</td>
-                        <td className="px-3 py-2 text-white/55 max-w-[72px] truncate">{row.opponent}</td>
-                        <td className={`px-3 py-2 text-right font-bold tabular-nums ${hit ? "text-emerald-400" : "text-white/55"}`}>
-                          {safeVal ?? "—"}
-                        </td>
-                        {lens === "disposals" && (
-                          <td className="px-3 py-2 text-right text-white/30 tabular-nums hidden sm:table-cell">{marksVal ?? "—"}</td>
-                        )}
-                        <td className="px-3 py-2 text-right text-white/30 tabular-nums">{fantScore ?? "—"}</td>
+                      <tr key={`bye-${row.week}`} className="border-b border-white/5 last:border-0 opacity-40">
+                        <td className="px-3 py-1.5 text-white/40 tabular-nums text-[11px]">{row.week}</td>
+                        <td colSpan={lens === "disposals" ? 4 : 3} className="px-3 py-1.5 text-white/28 italic text-[11px]">BYE week</td>
                       </tr>
                     );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
-      </div>
+                  }
+                  if (row.rowType === "dnp") {
+                    return (
+                      <tr key={`dnp-${row.week}`} className="border-b border-white/5 last:border-0 opacity-50">
+                        <td className="px-3 py-1.5 text-white/40 tabular-nums text-[11px]">{row.week}</td>
+                        <td colSpan={lens === "disposals" ? 4 : 3} className="px-3 py-1.5 text-white/28 italic text-[11px]">Did not play</td>
+                      </tr>
+                    );
+                  }
+                  const safeVal = typeof row.value === "number" && !isNaN(row.value) ? row.value : null;
+                  const hit = safeVal != null && safeVal >= threshold;
+                  const fantScore = typeof row.fantasy === "number" && !isNaN(row.fantasy) ? row.fantasy : null;
+                  const marksVal = typeof row.marks === "number" && !isNaN(row.marks) ? row.marks : null;
+                  return (
+                    <tr key={`played-${row.week}`} className={`border-b border-white/5 last:border-0 ${isLatest ? "bg-white/[0.015]" : ""}`}>
+                      <td className="px-3 py-1.5 text-white/38 tabular-nums text-[11px]">{row.week}</td>
+                      <td className="px-3 py-1.5 text-white/50 truncate text-[11px] max-w-[100px]">{row.opponent}</td>
+                      <td className={`px-3 py-1.5 text-right font-bold tabular-nums text-[11px] ${hit ? "text-emerald-400" : "text-white/55"}`}>
+                        {safeVal ?? "—"}
+                      </td>
+                      {lens === "disposals" && (
+                        <td className="px-3 py-1.5 text-right text-white/28 tabular-nums text-[11px] hidden sm:table-cell">{marksVal ?? "—"}</td>
+                      )}
+                      <td className="px-3 py-1.5 text-right text-white/28 tabular-nums text-[11px]">{fantScore ?? "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
