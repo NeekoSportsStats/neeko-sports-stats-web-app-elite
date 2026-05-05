@@ -324,7 +324,17 @@ export function ExpandedPlayerPanel({
   );
 }
 
-// ── AI Insight block ──────────────────────────────────────────────────────────
+// ── AI Performance Summary block ─────────────────────────────────────────────
+// Uses summary text only — never shows fantasy trade labels (BUY/SELL/AVOID/
+// CAPTAIN/TRADE). recommendation_short and recommendation_color are
+// intentionally ignored here.
+
+const FANTASY_LABEL_RE =
+  /\b(buy|sell|avoid|captain|trade|upgrade|downgrade|hold|start|sit|must[- ]have|must[- ]sell)\b/gi;
+
+function hasFantasyLanguage(text: string): boolean {
+  return FANTASY_LABEL_RE.test(text);
+}
 
 function AiInsightBlock({
   insight,
@@ -333,41 +343,24 @@ function AiInsightBlock({
   insight: StatBoardPlayerAiInsight | null;
   loading: boolean;
 }) {
-  const colorBorder: Record<string, string> = {
-    green: "border-emerald-500/20",
-    amber: "border-amber-500/20",
-    red:   "border-red-500/20",
-  };
-  const colorAccent: Record<string, string> = {
-    green: "text-emerald-400",
-    amber: "text-amber-400",
-    red:   "text-red-400",
-  };
-
-  const borderClass = insight?.recommendation_color
-    ? (colorBorder[insight.recommendation_color] ?? "border-white/8")
-    : "border-white/8";
-  const text = insight?.summary_long ?? insight?.summary_short ?? null;
-  const recShort = insight?.recommendation_short ?? null;
-  const accentClass = insight?.recommendation_color
-    ? (colorAccent[insight.recommendation_color] ?? "text-white/40")
-    : "text-white/40";
+  // Prefer summary_long; fall back to summary_short.
+  // If the text contains fantasy decision language, treat it as unavailable
+  // (the rankings-cache AI was generated with a different prompt).
+  const rawText = insight?.summary_long ?? insight?.summary_short ?? null;
+  const text = rawText && !hasFantasyLanguage(rawText) ? rawText : null;
 
   return (
-    <section aria-label="AI insight" className="px-6 pb-5">
-      <div className={`rounded-lg border ${borderClass} bg-white/[0.022] px-4 py-4`}>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-1.5">
-            <Sparkles className="h-3 w-3 text-white/30" aria-hidden />
-            <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">AI Insight</p>
-          </div>
-          {recShort && !loading && (
-            <span className={`text-[10px] font-semibold ${accentClass}`}>{recShort}</span>
-          )}
+    <section aria-label="AI performance summary" className="px-5 pb-5">
+      <div className="rounded-lg border border-white/8 bg-white/[0.022] px-4 py-4">
+        <div className="flex items-center gap-1.5 mb-3">
+          <Sparkles className="h-3 w-3 text-white/30" aria-hidden />
+          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
+            AI Performance Summary
+          </p>
         </div>
 
         {loading ? (
-          <div className="space-y-2" aria-busy aria-label="Loading AI insight">
+          <div className="space-y-2" aria-busy aria-label="Loading AI performance summary">
             <div className="h-2.5 w-full rounded bg-white/5 animate-pulse" />
             <div className="h-2.5 w-[90%] rounded bg-white/5 animate-pulse" />
             <div className="h-2.5 w-[72%] rounded bg-white/5 animate-pulse" />
@@ -376,7 +369,7 @@ function AiInsightBlock({
           <p className="text-[12px] text-white/60 leading-relaxed">{text}</p>
         ) : (
           <p className="text-[11px] text-white/28 italic leading-relaxed">
-            AI analysis will appear here once generated.
+            AI performance summary will appear here once generated.
           </p>
         )}
       </div>
