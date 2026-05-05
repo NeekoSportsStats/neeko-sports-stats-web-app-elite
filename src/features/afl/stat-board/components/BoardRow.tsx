@@ -62,8 +62,8 @@ export function BoardRow({
           focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60
           border-b border-white/[0.06] last:border-b-0
           ${isExpanded
-            ? "bg-white/[0.055] border-b-transparent"
-            : "hover:bg-white/[0.04] active:bg-white/[0.055]"}
+            ? "bg-white/[0.065] border-b-transparent"
+            : "hover:bg-white/[0.06] active:bg-white/[0.075]"}
         `}
       >
         {/* Left accent stripe — visible only when expanded */}

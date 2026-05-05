@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ExternalLink } from "lucide-react";
+import { Link } from "react-router-dom";
+import { playerToSlug } from "@/lib/slugs";
 import type { StatBoardPlayer, StatBoardHistoryRow, StatLens, TimelineSlot } from "../types";
 import type { StatBoardPlayerAiInsight } from "../useStatBoard";
 
@@ -156,7 +158,7 @@ export function ExpandedPlayerPanel({
       {/* ── 1. Compact context strip (no name duplication) ────────────────── */}
       <div className="px-5 py-3 flex items-center gap-4 flex-wrap border-b border-white/[0.06] bg-white/[0.015]">
         {/* Opponent + venue */}
-        <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center gap-2 min-w-0 flex-wrap">
           {player.opponent_team_name ? (
             <span className="text-[11px] text-white/50">
               vs <span className="text-white/70 font-medium">{player.opponent_team_name}</span>
@@ -178,7 +180,7 @@ export function ExpandedPlayerPanel({
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Key stats inline */}
+        {/* Key stats + player page link */}
         <div className="flex items-center gap-5 shrink-0">
           <div className="text-center">
             <p className="text-[9px] text-white/28 uppercase tracking-wide leading-none mb-1">Recent Avg</p>
@@ -195,6 +197,14 @@ export function ExpandedPlayerPanel({
           {player.confidence_label && (
             <ConfidencePill label={player.confidence_label} />
           )}
+          <Link
+            to={`/sports/afl/players/${playerToSlug(player.player_name, player.team_name)}`}
+            className="flex items-center gap-1 text-[10px] font-medium text-white/35 hover:text-white/70 transition-colors whitespace-nowrap"
+            title={`View full profile for ${player.player_name}`}
+          >
+            <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
+            Player profile
+          </Link>
         </div>
       </div>
 

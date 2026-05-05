@@ -532,57 +532,69 @@ function TeamBoard({
   onToggleExpand,
   searchActive,
 }: TeamBoardProps) {
-  // Per-team expanded state: true = show all players, false = show top 8
   const [showAll, setShowAll] = useState(false);
 
   if (players.length === 0) return null;
 
-  // When search is active, always show all matching players — no cap.
-  const isCapped = !searchActive && players.length > TOP_N && !showAll;
+  // Derive home/away from first player in this team section
+  const isHome: boolean | null = players[0]?.is_home ?? null;
+
+  // When search is active show all; otherwise cap at TOP_N unless expanded
+  const needsCap = !searchActive && players.length > TOP_N;
+  const isCapped = needsCap && !showAll;
   const visiblePlayers = isCapped ? players.slice(0, TOP_N) : players;
-  const hiddenCount = players.length - TOP_N;
-
-  const thresholdHeaderLabel = (t: number) => `${t}+`;
-
-  const visibleCount = visiblePlayers.length;
   const totalCount = players.length;
-  const countLabel = searchActive
+  const visibleCount = visiblePlayers.length;
+
+  const headerCount = searchActive
     ? `${totalCount} ${totalCount === 1 ? "player" : "players"} found`
     : isCapped
-    ? `${visibleCount} of ${totalCount} players shown`
+    ? `${visibleCount} of ${totalCount} shown`
     : `${totalCount} ${totalCount === 1 ? "player" : "players"}`;
 
   return (
     <div>
-      {/* Team section header */}
-      <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
-        {/* Left: team name + count */}
-        <div className="flex items-baseline gap-2.5 min-w-0">
-          <h2 className="text-[14px] font-bold text-white tracking-tight leading-none shrink-0">
-            {teamName}
-          </h2>
-          <span className="text-[11px] text-white/32 font-medium whitespace-nowrap leading-none">
-            · {countLabel}
-          </span>
+      {/* ── Team section header ── */}
+      <div className="mb-3 flex items-start justify-between gap-3 flex-wrap">
+        {/* Left: team name + count + home/away */}
+        <div className="min-w-0">
+          <div className="flex items-baseline gap-2 flex-wrap">
+            <h2 className="text-[14px] font-bold text-white tracking-tight leading-none shrink-0">
+              {teamName}
+            </h2>
+            <span className="text-[11px] text-white/32 font-medium whitespace-nowrap leading-none">
+              · {headerCount}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            <span className="text-[10px] font-semibold text-white/38 bg-white/6 border border-white/8 rounded-full px-2.5 py-0.5 whitespace-nowrap">
+              vs {opponentName}
+            </span>
+            {isHome === true && (
+              <span className="text-[10px] font-semibold text-emerald-500/70 bg-emerald-500/8 border border-emerald-500/15 rounded-full px-2.5 py-0.5 whitespace-nowrap">
+                Home
+              </span>
+            )}
+            {isHome === false && (
+              <span className="text-[10px] font-semibold text-white/32 bg-white/5 border border-white/8 rounded-full px-2.5 py-0.5 whitespace-nowrap">
+                Away
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Right: opponent pill + show-all toggle */}
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-[10px] font-semibold text-white/35 bg-white/6 border border-white/8 rounded-full px-2.5 py-0.5 whitespace-nowrap">
-            vs {opponentName}
-          </span>
-          {!searchActive && players.length > TOP_N && (
-            <button
-              onClick={() => setShowAll((v) => !v)}
-              className="text-[10px] font-medium text-white/38 hover:text-white/65 transition-colors whitespace-nowrap"
-            >
-              {showAll ? "Show fewer" : `Show all ${totalCount}`}
-            </button>
-          )}
-        </div>
+        {/* Right: single expand/collapse control */}
+        {needsCap && (
+          <button
+            onClick={() => setShowAll((v) => !v)}
+            className="shrink-0 text-[11px] font-medium text-white/40 hover:text-white/70 transition-colors whitespace-nowrap mt-0.5"
+          >
+            {showAll ? "Show fewer" : `Show all ${totalCount}`}
+          </button>
+        )}
       </div>
 
-      {/* Horizontally scrollable table */}
+      {/* ── Horizontally scrollable table ── */}
       <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#0d0d0d]">
         <table className="w-full border-collapse text-left" style={{ minWidth: "640px" }}>
           <thead>
@@ -604,7 +616,7 @@ function TeamBoard({
                   key={t}
                   className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-center whitespace-nowrap"
                 >
-                  {thresholdHeaderLabel(t)} Hit
+                  {t}+ Hit
                 </th>
               ))}
               <th className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-center whitespace-nowrap">
@@ -613,7 +625,6 @@ function TeamBoard({
               <th className="pr-3 pl-1 py-2.5 w-10" />
             </tr>
           </thead>
-          {/* Rows carry their own border-b — no tbody divide needed */}
           <tbody>
             {visiblePlayers.map((player) => (
               <BoardRow
@@ -631,26 +642,6 @@ function TeamBoard({
             ))}
           </tbody>
         </table>
-
-        {/* ── Show more / fewer footer ── */}
-        {!searchActive && players.length > TOP_N && (
-          <button
-            onClick={() => setShowAll((v) => !v)}
-            className="w-full flex items-center justify-center gap-2 py-3 border-t border-white/[0.07] text-[12px] font-medium text-white/45 hover:text-white/70 hover:bg-white/[0.025] transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
-          >
-            {showAll ? (
-              <>
-                <ChevronDown className="h-3.5 w-3.5 rotate-180" aria-hidden />
-                Show fewer players
-              </>
-            ) : (
-              <>
-                <ChevronDown className="h-3.5 w-3.5" aria-hidden />
-                Show remaining {hiddenCount} {hiddenCount === 1 ? "player" : "players"}
-              </>
-            )}
-          </button>
-        )}
       </div>
     </div>
   );
