@@ -226,7 +226,6 @@ export function ExpandedPlayerPanel({
                     const hits  = n(data?.hits);
                     const games = n(data?.games);
                     const rate  = n(data?.rate);
-                    const isSelected = threshold === t;
 
                     // If we have no data at all for this line, still render a "—" row
                     const hasLineData = hits !== null && games !== null && games > 0;
@@ -234,13 +233,12 @@ export function ExpandedPlayerPanel({
                     return (
                       <tr
                         key={key}
-                        className={`border-b border-white/5 last:border-0 ${isSelected ? "bg-emerald-500/[0.05]" : ""}`}
+                        className="border-b border-white/5 last:border-0"
                       >
-                        <td className={`px-3 py-2 font-semibold text-[11px] ${isSelected ? "text-emerald-400" : "text-white/55"}`}>
+                        <td className="px-3 py-2 font-semibold text-[11px] text-white/55">
                           {t}+
-                          {isSelected && <span className="ml-1 text-[8px] text-emerald-500/50 font-normal">focus</span>}
                         </td>
-                        <td className={`px-2 py-2 text-center tabular-nums text-[11px] ${isSelected ? "text-white/90" : "text-white/50"}`}>
+                        <td className="px-2 py-2 text-center tabular-nums text-[11px] text-white/50">
                           {hasLineData ? `${hits}/${games}` : "—"}
                         </td>
                         <td className="px-2 py-2 w-[60px]">
