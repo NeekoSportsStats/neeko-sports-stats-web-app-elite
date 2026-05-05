@@ -13,7 +13,7 @@ import type {
   StatLens,
   PositionFilter,
 } from "./types";
-import { defaultThreshold } from "./types";
+import { defaultThreshold, thresholdsForLens } from "./types";
 import { MatchSelector } from "./components/MatchSelector";
 import { BoardRow } from "./components/BoardRow";
 
@@ -75,9 +75,9 @@ export default function StatBoardPlayersPage() {
   const [sortOpen, setSortOpen] = useState(false);
   const [expandedPlayerId, setExpandedPlayerId] = useState<number | null>(null);
 
-  // Default threshold per lens — used internally for the RPC and expanded detail emphasis.
-  // Not exposed as a user-facing control.
+  // Fixed default threshold per lens — used for RPC and expanded detail emphasis only.
   const threshold = defaultThreshold(lens);
+  const thresholds = thresholdsForLens(lens);
 
   const { matches, loading: matchesLoading, error: matchesError } = useStatBoardMatches();
 
@@ -310,7 +310,7 @@ export default function StatBoardPlayersPage() {
 
           {/* Player board */}
           {playersLoading ? (
-            <BoardSkeleton />
+            <BoardSkeleton thresholdCount={thresholds.length} />
           ) : players.length === 0 && selectedMatch ? (
             <div className="rounded-xl border border-white/8 bg-white/3 px-4 py-10 text-center text-sm text-white/45">
               No players found for this match and filter.
@@ -322,7 +322,8 @@ export default function StatBoardPlayersPage() {
                 opponentName={selectedMatch?.away_team_name ?? "Away"}
                 players={homePlayers}
                 lens={lens}
-                threshold={threshold}
+                thresholds={thresholds}
+                defaultThreshold={threshold}
                 isMatchLocked={isLocked}
                 expandedPlayerId={expandedPlayerId}
                 onToggleExpand={setExpandedPlayerId}
@@ -332,7 +333,8 @@ export default function StatBoardPlayersPage() {
                 opponentName={selectedMatch?.home_team_name ?? "Home"}
                 players={awayPlayers}
                 lens={lens}
-                threshold={threshold}
+                thresholds={thresholds}
+                defaultThreshold={threshold}
                 isMatchLocked={isLocked}
                 expandedPlayerId={expandedPlayerId}
                 onToggleExpand={setExpandedPlayerId}
@@ -406,7 +408,8 @@ interface TeamBoardProps {
   opponentName: string;
   players: StatBoardPlayer[];
   lens: StatLens;
-  threshold: number;
+  thresholds: readonly number[];
+  defaultThreshold: number;
   isMatchLocked: boolean;
   expandedPlayerId: number | null;
   onToggleExpand: (id: number | null) => void;
@@ -417,14 +420,16 @@ function TeamBoard({
   opponentName,
   players,
   lens,
-  threshold,
+  thresholds,
+  defaultThreshold,
   isMatchLocked,
   expandedPlayerId,
   onToggleExpand,
 }: TeamBoardProps) {
   if (players.length === 0) return null;
 
-  const defaultHitLabel = lens === "disposals" ? "20+ hit" : "2+ hit";
+  const thresholdHeaderLabel = (t: number) =>
+    lens === "disposals" ? `${t}+` : `${t}+`;
 
   return (
     <div>
@@ -434,32 +439,54 @@ function TeamBoard({
         <span className="text-xs text-white/42">vs {opponentName}</span>
       </div>
 
-      {/* Column headers — desktop only, sticky */}
-      <div className="hidden md:grid md:grid-cols-[1fr_130px_60px_60px_96px_84px_32px] gap-x-3 items-center px-3 pb-1.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider sticky top-0 bg-[#0a0a0a] z-10 pt-1">
-        <span>Player</span>
-        <span className="text-center">Recent</span>
-        <span className="text-right">Rec avg</span>
-        <span className="text-right">Proj</span>
-        <span className="text-center">{defaultHitLabel}</span>
-        <span className="text-center">Consistency</span>
-        <span />
-      </div>
-
-      {/* Rows */}
-      <div className="rounded-2xl border border-white/10 overflow-hidden divide-y divide-white/[0.06]">
-        {players.map((player) => (
-          <BoardRow
-            key={player.player_id}
-            player={player}
-            lens={lens}
-            threshold={threshold}
-            isMatchLocked={isMatchLocked}
-            isExpanded={expandedPlayerId === player.player_id}
-            onToggleExpand={() =>
-              onToggleExpand(expandedPlayerId === player.player_id ? null : player.player_id)
-            }
-          />
-        ))}
+      {/* Horizontally scrollable table */}
+      <div className="overflow-x-auto rounded-2xl border border-white/10">
+        <table className="w-full border-collapse text-left" style={{ minWidth: "640px" }}>
+          <thead>
+            <tr className="border-b border-white/8 bg-[#0f0f0f]">
+              <th className="pl-3 pr-2 py-2 text-[10px] font-semibold text-white/38 uppercase tracking-wider whitespace-nowrap">
+                Player
+              </th>
+              <th className="px-2 py-2 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">
+                Recent
+              </th>
+              <th className="px-2 py-2 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-right whitespace-nowrap">
+                Rec avg
+              </th>
+              <th className="px-2 py-2 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-right whitespace-nowrap">
+                Proj
+              </th>
+              {thresholds.map((t) => (
+                <th
+                  key={t}
+                  className="px-2 py-2 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap"
+                >
+                  {thresholdHeaderLabel(t)} Hit
+                </th>
+              ))}
+              <th className="px-2 py-2 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">
+                Consistency
+              </th>
+              <th className="pr-3 pl-1 py-2 w-8" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/[0.06]">
+            {players.map((player) => (
+              <BoardRow
+                key={player.player_id}
+                player={player}
+                lens={lens}
+                thresholds={thresholds}
+                defaultThreshold={defaultThreshold}
+                isMatchLocked={isMatchLocked}
+                isExpanded={expandedPlayerId === player.player_id}
+                onToggleExpand={() =>
+                  onToggleExpand(expandedPlayerId === player.player_id ? null : player.player_id)
+                }
+              />
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -467,27 +494,47 @@ function TeamBoard({
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 
-function BoardSkeleton() {
+function BoardSkeleton({ thresholdCount }: { thresholdCount: number }) {
+  const colCount = 4 + thresholdCount + 2;
   return (
     <div className="space-y-6">
       {[0, 1].map((g) => (
         <div key={g}>
           <div className="h-4 w-32 rounded-lg bg-white/6 mb-3 animate-pulse" />
-          <div className="rounded-2xl border border-white/10 overflow-hidden divide-y divide-white/[0.06]">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-12 px-3 flex items-center gap-3 animate-pulse">
-                <div className="h-3 w-28 rounded-lg bg-white/6" />
-                <div className="flex-1 flex gap-0.5">
-                  {Array.from({ length: 8 }).map((_, j) => (
-                    <div key={j} className="h-4 w-5 rounded bg-white/4" />
+          <div className="overflow-x-auto rounded-2xl border border-white/10">
+            <table className="w-full border-collapse" style={{ minWidth: "640px" }}>
+              <thead>
+                <tr className="border-b border-white/8 bg-[#0f0f0f]">
+                  {Array.from({ length: colCount }).map((_, i) => (
+                    <th key={i} className="px-3 py-2">
+                      <div className="h-2.5 w-10 rounded bg-white/8 animate-pulse" />
+                    </th>
                   ))}
-                </div>
-                <div className="h-3 w-8 rounded-lg bg-white/5" />
-                <div className="h-3 w-8 rounded-lg bg-white/5" />
-                <div className="h-3 w-14 rounded-lg bg-white/5" />
-                <div className="h-3 w-14 rounded-lg bg-white/5" />
-              </div>
-            ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/[0.06]">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}>
+                    <td className="pl-3 pr-2 py-3">
+                      <div className="h-3 w-28 rounded bg-white/6 animate-pulse mb-1" />
+                      <div className="h-2 w-16 rounded bg-white/4 animate-pulse" />
+                    </td>
+                    <td className="px-2 py-3">
+                      <div className="flex gap-0.5 justify-center">
+                        {Array.from({ length: 6 }).map((_, j) => (
+                          <div key={j} className="h-5 w-4 rounded bg-white/4 animate-pulse" />
+                        ))}
+                      </div>
+                    </td>
+                    {Array.from({ length: colCount - 2 }).map((_, j) => (
+                      <td key={j} className="px-2 py-3">
+                        <div className="h-3 w-10 rounded bg-white/5 animate-pulse mx-auto" />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       ))}

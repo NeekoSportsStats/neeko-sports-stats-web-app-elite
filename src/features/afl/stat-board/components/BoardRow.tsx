@@ -1,12 +1,14 @@
+import { Fragment } from "react";
 import { ChevronDown, ChevronUp, Lock } from "lucide-react";
-import type { StatBoardPlayer, StatLens } from "../types";
+import type { StatBoardPlayer, StatLens, ThresholdHitRate } from "../types";
 import { useStatBoardPlayerHistory } from "../useStatBoard";
 import { ExpandedPlayerPanel } from "./ExpandedPlayerPanel";
 
 interface Props {
   player: StatBoardPlayer;
   lens: StatLens;
-  threshold: number;
+  thresholds: readonly number[];
+  defaultThreshold: number;
   isMatchLocked: boolean;
   isExpanded: boolean;
   onToggleExpand: () => void;
@@ -15,7 +17,8 @@ interface Props {
 export function BoardRow({
   player,
   lens,
-  threshold,
+  thresholds,
+  defaultThreshold,
   isMatchLocked,
   isExpanded,
   onToggleExpand,
@@ -23,29 +26,6 @@ export function BoardRow({
   const { history, loading: histLoading, error: histError } = useStatBoardPlayerHistory(
     isExpanded && !isMatchLocked ? player.player_id : null
   );
-
-  const thresholdKey = String(threshold);
-  const hitData = player.all_threshold_hit_rates?.[thresholdKey];
-
-  // Guard: only show fraction if both parts are valid non-null numbers
-  const hitHits = hitData?.hits;
-  const hitGames = hitData?.games;
-  const hitRatePct =
-    typeof hitData?.rate === "number" ? hitData.rate
-    : typeof player.hit_rate_last_10 === "number" ? Math.round(player.hit_rate_last_10 * 100)
-    : null;
-
-  const hitFraction = (() => {
-    if (typeof hitHits === "number" && typeof hitGames === "number" && hitGames > 0) {
-      return `${hitHits}/${hitGames}`;
-    }
-    const cnt = player.hit_count_last_10;
-    const gp = player.games_played;
-    if (typeof cnt === "number" && typeof gp === "number" && gp > 0) {
-      return `${cnt}/${Math.min(gp, 10)}`;
-    }
-    return null;
-  })();
 
   const confidence = player.confidence_label;
   const confStyles: Record<string, { dot: string; text: string }> = {
@@ -68,210 +48,159 @@ export function BoardRow({
     return n;
   })();
 
+  const rowBg = isExpanded ? "bg-white/[0.03]" : "";
+
   return (
-    <div
-      className={`transition-colors duration-100 ${
-        isExpanded
-          ? "bg-white/[0.03]"
-          : "hover:bg-white/[0.04] active:bg-white/[0.05]"
-      }`}
-    >
-      {/* ── Main row ── */}
-      <button
-        className="w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60 rounded-none"
+    <Fragment>
+      {/* ── Main data row ── */}
+      <tr
         onClick={onToggleExpand}
+        role="button"
+        tabIndex={0}
         aria-expanded={isExpanded}
         aria-label={`${player.player_name} — ${isExpanded ? "collapse" : "expand"} detail`}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggleExpand(); } }}
+        className={`cursor-pointer transition-colors duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60 ${
+          isExpanded ? "bg-white/[0.03]" : "hover:bg-white/[0.04] active:bg-white/[0.05]"
+        } ${rowBg}`}
       >
-        {/* Desktop */}
-        <div className="hidden md:grid md:grid-cols-[1fr_130px_60px_60px_96px_84px_32px] gap-x-3 items-center px-3 py-2.5">
+        {/* Player name + position */}
+        <td className="pl-3 pr-2 py-2.5 min-w-[140px] max-w-[200px]">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[13px] font-semibold text-white/90 truncate leading-tight">
+              {player.player_name}
+            </span>
+            {player.position_group && (
+              <span className="shrink-0 text-[9px] font-bold text-white/35 bg-white/8 rounded px-1 py-0.5 tracking-wide">
+                {player.position_group}
+              </span>
+            )}
+          </div>
+          <p className="text-[10px] text-white/35 truncate mt-0.5">
+            {player.team_name}
+            {player.is_home === false && <span className="ml-0.5 text-white/20">(A)</span>}
+          </p>
+        </td>
 
-          {/* Player name + position */}
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[13px] font-semibold text-white/90 truncate leading-tight">
-                  {player.player_name}
-                </span>
-                {player.position_group && (
-                  <span className="shrink-0 text-[9px] font-bold text-white/35 bg-white/8 rounded px-1 py-0.5 tracking-wide">
-                    {player.position_group}
-                  </span>
-                )}
-              </div>
-              <p className="text-[10px] text-white/35 truncate mt-0.5">
-                {player.team_name}
-                {player.is_home === false && <span className="ml-0.5 text-white/20">(A)</span>}
-              </p>
+        {/* Mini chips */}
+        <td className="px-2 py-2.5 min-w-[110px]">
+          <div className="flex items-center justify-center gap-[2px]" role="list" aria-label="Recent values">
+            <MiniChips values={last10} defaultThreshold={defaultThreshold} isLocked={isPlayerLocked} />
+          </div>
+        </td>
+
+        {/* Rec avg */}
+        <td className="px-2 py-2.5 text-right tabular-nums min-w-[52px]">
+          <span className="text-[13px] font-semibold text-white/80">{avgDisplay}</span>
+        </td>
+
+        {/* Projection */}
+        <td className="px-2 py-2.5 text-right tabular-nums min-w-[44px]">
+          {isPlayerLocked ? (
+            <span className="text-[13px] font-semibold text-white/20 blur-[4px] select-none" aria-hidden>••</span>
+          ) : projDisplay != null ? (
+            <span className="text-[13px] font-bold text-white">{projDisplay}</span>
+          ) : (
+            <span className="text-[13px] text-white/25">—</span>
+          )}
+        </td>
+
+        {/* Hit-rate columns — one per threshold */}
+        {thresholds.map((t) => {
+          const cell = hitRateCell(player, t, isPlayerLocked);
+          return (
+            <td key={t} className="px-2 py-2 text-center tabular-nums min-w-[56px]">
+              {cell}
+            </td>
+          );
+        })}
+
+        {/* Consistency */}
+        <td className="px-2 py-2.5 text-center min-w-[80px]">
+          {!isPlayerLocked && conf && confidence ? (
+            <div className="flex items-center justify-center gap-1.5">
+              <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${conf.dot}`} aria-hidden />
+              <span className={`text-[11px] font-semibold ${conf.text}`}>{confidence}</span>
             </div>
-          </div>
+          ) : (
+            <span className="text-white/15 text-[10px]">—</span>
+          )}
+        </td>
 
-          {/* Mini chips */}
-          <div className="flex items-center justify-center gap-0.5" role="list" aria-label="Recent values">
-            <MiniChips values={last10} threshold={threshold} isLocked={isPlayerLocked} />
-          </div>
+        {/* Expand chevron */}
+        <td className="pr-3 pl-1 py-2.5 text-center w-8">
+          {isPlayerLocked ? (
+            <Lock className="h-3.5 w-3.5 text-[#F5C84C]/40 mx-auto" aria-hidden />
+          ) : isExpanded ? (
+            <ChevronUp className="h-3.5 w-3.5 text-white/60 mx-auto" aria-hidden />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5 text-white/35 mx-auto" aria-hidden />
+          )}
+        </td>
+      </tr>
 
-          {/* Rec avg */}
-          <div className="text-right tabular-nums">
-            <span className="text-[13px] font-semibold text-white/80">{avgDisplay}</span>
-          </div>
-
-          {/* Projection */}
-          <div className="text-right tabular-nums">
+      {/* ── Expanded detail row ── */}
+      {isExpanded && (
+        <tr>
+          {/* colspan spans all columns: player + recent + avg + proj + thresholds + consistency + expand */}
+          <td colSpan={4 + thresholds.length + 2} className="p-0">
             {isPlayerLocked ? (
-              <span className="text-[13px] font-semibold text-white/20 blur-[4px] select-none" aria-hidden>••</span>
-            ) : projDisplay != null ? (
-              <span className="text-[13px] font-bold text-white">{projDisplay}</span>
+              <LockedExpandPanel playerName={player.player_name} />
             ) : (
-              <span className="text-[13px] text-white/25">—</span>
+              <ExpandedPlayerPanel
+                player={player}
+                history={history}
+                loading={histLoading}
+                error={histError}
+                lens={lens}
+                threshold={defaultThreshold}
+                isLocked={isPlayerLocked}
+              />
             )}
-          </div>
-
-          {/* Hit rate */}
-          <div className="flex flex-col items-center gap-0.5 tabular-nums">
-            {isPlayerLocked ? (
-              <span className="text-xs text-white/20 blur-[4px] select-none" aria-hidden>—</span>
-            ) : (
-              <>
-                <span className="text-[12px] font-semibold text-white/85">
-                  {hitFraction ?? "—"}
-                </span>
-                {hitRatePct != null && hitFraction != null && (
-                  <span className={`text-[10px] font-semibold ${
-                    hitRatePct >= 70 ? "text-emerald-400" : hitRatePct >= 50 ? "text-amber-400" : "text-white/35"
-                  }`}>
-                    {hitRatePct}%
-                  </span>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* Consistency */}
-          <div className="flex items-center justify-center">
-            {!isPlayerLocked && conf && confidence ? (
-              <div className="flex items-center gap-1.5">
-                <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${conf.dot}`} aria-hidden />
-                <span className={`text-[11px] font-semibold ${conf.text}`}>{confidence}</span>
-              </div>
-            ) : (
-              <span className="text-white/15 text-[10px]">—</span>
-            )}
-          </div>
-
-          {/* Expand */}
-          <div className="flex items-center justify-center">
-            {isPlayerLocked ? (
-              <Lock className="h-3.5 w-3.5 text-[#F5C84C]/40" aria-hidden />
-            ) : isExpanded ? (
-              <ChevronUp className="h-3.5 w-3.5 text-white/60" aria-hidden />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5 text-white/35 group-hover:text-white/55" aria-hidden />
-            )}
-          </div>
-        </div>
-
-        {/* Mobile */}
-        <div className="md:hidden px-3 py-3">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[14px] font-semibold text-white/90 leading-tight">
-                  {player.player_name}
-                </span>
-                {player.position_group && (
-                  <span className="text-[9px] font-bold text-white/35 bg-white/8 rounded px-1 py-0.5 tracking-wide">
-                    {player.position_group}
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-white/35 mt-0.5">
-                {player.team_name}
-                <span className="mx-1 text-white/18">vs</span>
-                {player.opponent_team_name}
-                {player.is_home === false && <span className="ml-1 text-white/22">(A)</span>}
-              </p>
-            </div>
-
-            <div className="shrink-0 mt-0.5">
-              {isPlayerLocked ? (
-                <Lock className="h-4 w-4 text-[#F5C84C]/40" aria-hidden />
-              ) : isExpanded ? (
-                <ChevronUp className="h-4 w-4 text-white/60" aria-hidden />
-              ) : (
-                <ChevronDown className="h-4 w-4 text-white/35" aria-hidden />
-              )}
-            </div>
-          </div>
-
-          {/* Chips */}
-          <div className="mb-2.5 flex gap-0.5 flex-wrap" role="list" aria-label="Recent values">
-            <MiniChips values={last10} threshold={threshold} isLocked={isPlayerLocked} />
-          </div>
-
-          {/* Stats */}
-          <div className="flex items-end gap-4 flex-wrap">
-            <div>
-              <p className="text-[9px] text-white/30 uppercase tracking-wide mb-0.5">Rec avg</p>
-              <span className="text-[13px] font-semibold text-white/80 tabular-nums">{avgDisplay}</span>
-            </div>
-            <div>
-              <p className="text-[9px] text-white/30 uppercase tracking-wide mb-0.5">Proj</p>
-              {isPlayerLocked ? (
-                <span className="text-[13px] font-bold text-white/20 blur-[4px] select-none" aria-hidden>••</span>
-              ) : projDisplay != null ? (
-                <span className="text-[13px] font-bold text-white tabular-nums">{projDisplay}</span>
-              ) : (
-                <span className="text-[13px] text-white/25">—</span>
-              )}
-            </div>
-            <div>
-              <p className="text-[9px] text-white/30 uppercase tracking-wide mb-0.5">{threshold}+ Hit</p>
-              {isPlayerLocked ? (
-                <span className="text-xs text-white/20 blur-[4px] select-none" aria-hidden>—</span>
-              ) : (
-                <div className="flex items-baseline gap-1">
-                  <span className="text-[13px] font-semibold text-white/85 tabular-nums">
-                    {hitFraction ?? "—"}
-                  </span>
-                  {hitRatePct != null && hitFraction != null && (
-                    <span className={`text-[10px] tabular-nums font-semibold ${
-                      hitRatePct >= 70 ? "text-emerald-400" : hitRatePct >= 50 ? "text-amber-400" : "text-white/35"
-                    }`}>
-                      {hitRatePct}%
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-            {!isPlayerLocked && conf && confidence && (
-              <div>
-                <p className="text-[9px] text-white/30 uppercase tracking-wide mb-0.5">Consistency</p>
-                <div className="flex items-center gap-1">
-                  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${conf.dot}`} aria-hidden />
-                  <span className={`text-[10px] font-semibold ${conf.text}`}>{confidence}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </button>
-
-      {/* ── Expanded detail ── */}
-      {isExpanded && !isPlayerLocked && (
-        <ExpandedPlayerPanel
-          player={player}
-          history={history}
-          loading={histLoading}
-          error={histError}
-          lens={lens}
-          threshold={threshold}
-          isLocked={isPlayerLocked}
-        />
+          </td>
+        </tr>
       )}
+    </Fragment>
+  );
+}
 
-      {isExpanded && isPlayerLocked && (
-        <LockedExpandPanel playerName={player.player_name} />
+// ── Hit-rate cell renderer ────────────────────────────────────────────────────
+
+function hitRateCell(
+  player: StatBoardPlayer,
+  threshold: number,
+  isPlayerLocked: boolean
+): React.ReactNode {
+  if (isPlayerLocked) {
+    return (
+      <span className="text-[11px] text-white/20 blur-[4px] select-none" aria-hidden>—</span>
+    );
+  }
+
+  const data: ThresholdHitRate | undefined = player.all_threshold_hit_rates?.[String(threshold)];
+
+  const hits = typeof data?.hits === "number" ? data.hits : null;
+  const games = typeof data?.games === "number" && data.games > 0 ? data.games : null;
+  const rate = typeof data?.rate === "number" ? data.rate : null;
+
+  if (hits === null || games === null) {
+    return <span className="text-[11px] text-white/25">—</span>;
+  }
+
+  const rateColor =
+    rate != null && rate >= 70 ? "text-emerald-400"
+    : rate != null && rate >= 50 ? "text-amber-400"
+    : "text-white/35";
+
+  return (
+    <div className="flex flex-col items-center leading-tight gap-[1px]">
+      <span className="text-[11px] font-semibold text-white/80 tabular-nums">
+        {hits}/{games}
+      </span>
+      {rate != null && (
+        <span className={`text-[10px] font-semibold tabular-nums ${rateColor}`}>
+          {rate}%
+        </span>
       )}
     </div>
   );
@@ -281,18 +210,18 @@ export function BoardRow({
 
 function MiniChips({
   values,
-  threshold,
+  defaultThreshold,
   isLocked,
 }: {
   values: number[];
-  threshold: number;
+  defaultThreshold: number;
   isLocked: boolean;
 }) {
   if (values.length === 0) {
     return (
       <>
         {Array.from({ length: 5 }).map((_, i) => (
-          <span key={i} className="h-5 w-[18px] rounded bg-white/5 flex items-center justify-center text-[9px] text-white/15">
+          <span key={i} className="h-5 w-[16px] rounded bg-white/5 flex items-center justify-center text-[9px] text-white/15">
             —
           </span>
         ))}
@@ -305,14 +234,14 @@ function MiniChips({
       {values.map((v, i) => {
         const isNewest = i === values.length - 1;
         const safeV = typeof v === "number" && !isNaN(v) ? v : null;
-        const hit = safeV != null && safeV >= threshold;
+        const hit = safeV != null && safeV >= defaultThreshold;
 
         if (isLocked) {
           return (
             <span
               key={i}
               role="listitem"
-              className="h-5 min-w-[18px] px-0.5 rounded bg-white/5 text-[9px] font-medium text-white/18 flex items-center justify-center tabular-nums"
+              className="h-5 min-w-[16px] px-0.5 rounded bg-white/5 text-[9px] font-medium text-white/18 flex items-center justify-center tabular-nums"
             >
               {safeV ?? "—"}
             </span>
@@ -324,7 +253,7 @@ function MiniChips({
             key={i}
             role="listitem"
             aria-label={safeV != null ? String(safeV) : "no data"}
-            className={`h-5 min-w-[18px] px-0.5 rounded text-[9px] font-bold flex items-center justify-center tabular-nums transition-colors ${
+            className={`h-5 min-w-[16px] px-0.5 rounded text-[9px] font-bold flex items-center justify-center tabular-nums transition-colors ${
               isNewest
                 ? hit
                   ? "bg-emerald-500/30 text-emerald-300 ring-1 ring-emerald-400/40"
