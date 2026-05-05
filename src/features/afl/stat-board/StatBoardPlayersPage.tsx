@@ -324,9 +324,14 @@ export default function StatBoardPlayersPage() {
           {playersLoading ? (
             <BoardSkeleton thresholdCount={thresholds.length} />
           ) : players.length === 0 && selectedMatch ? (
-            <div className="rounded-xl border border-white/8 bg-white/3 px-4 py-10 text-center text-sm text-white/45">
-              No players found for this match and filter.
-            </div>
+            <NoPlayersState
+              positionFilter={positionFilter}
+              search={search}
+              lens={lens}
+              onResetPosition={() => setPositionFilter("ALL")}
+              onResetSearch={() => setSearch("")}
+              onResetAll={() => { setPositionFilter("ALL"); setSearch(""); }}
+            />
           ) : (
             <div className="space-y-10">
               <TeamBoard
@@ -364,6 +369,89 @@ export default function StatBoardPlayersPage() {
         </div>
       </div>
     </>
+  );
+}
+
+// ── No-players empty state ────────────────────────────────────────────────────
+
+const POSITION_LABELS: Record<string, string> = {
+  MID: "midfielder",
+  DEF: "defender",
+  FWD: "forward",
+  RUCK: "ruck",
+};
+
+function NoPlayersState({
+  positionFilter,
+  search,
+  lens,
+  onResetPosition,
+  onResetSearch,
+  onResetAll,
+}: {
+  positionFilter: PositionFilter;
+  search: string;
+  lens: StatLens;
+  onResetPosition: () => void;
+  onResetSearch: () => void;
+  onResetAll: () => void;
+}) {
+  const hasPosition = positionFilter !== "ALL";
+  const hasSearch = search.trim().length > 0;
+  const statLabel = lens === "disposals" ? "disposal" : "goal";
+  const posLabel = POSITION_LABELS[positionFilter] ?? positionFilter.toLowerCase();
+
+  let heading: string;
+  let sub: string;
+
+  if (hasPosition && hasSearch) {
+    heading = `No ${posLabel} players matching "${search.trim()}"`;
+    sub = `Try broadening your search or clearing the position filter.`;
+  } else if (hasPosition) {
+    heading = `No ${posLabel} players found for this match`;
+    sub = `This match may not have any ${posLabel}s with ${statLabel} data yet.`;
+  } else if (hasSearch) {
+    heading = `No players matching "${search.trim()}"`;
+    sub = `Check the spelling or try a shorter name.`;
+  } else {
+    heading = "No players found for this match";
+    sub = "Data may not be available yet for the selected match.";
+  }
+
+  return (
+    <div className="rounded-2xl border border-white/8 bg-white/[0.025] px-6 py-10 text-center">
+      <p className="text-[15px] font-semibold text-white/75 mb-1.5">{heading}</p>
+      <p className="text-[13px] text-white/38 mb-6 max-w-xs mx-auto leading-relaxed">{sub}</p>
+
+      {(hasPosition || hasSearch) && (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          {hasPosition && (
+            <button
+              onClick={onResetPosition}
+              className="rounded-lg border border-white/12 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-white/60 hover:bg-white/10 hover:text-white/85 transition-colors"
+            >
+              Reset position
+            </button>
+          )}
+          {hasSearch && (
+            <button
+              onClick={onResetSearch}
+              className="rounded-lg border border-white/12 bg-white/5 px-3.5 py-1.5 text-xs font-medium text-white/60 hover:bg-white/10 hover:text-white/85 transition-colors"
+            >
+              Clear search
+            </button>
+          )}
+          {hasPosition && hasSearch && (
+            <button
+              onClick={onResetAll}
+              className="rounded-lg border border-white/18 bg-white/8 px-3.5 py-1.5 text-xs font-semibold text-white/75 hover:bg-white/14 hover:text-white transition-colors"
+            >
+              Reset all filters
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
