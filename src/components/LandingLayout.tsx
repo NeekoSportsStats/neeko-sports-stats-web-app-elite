@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth";
 import { Crown, Menu, X, TableProperties, Star, Users } from "lucide-react";
 
 const NAV_LINKS = [
-  { label: "Stat Board", to: "/stat-board", icon: <TableProperties size={14} /> },
+  { label: "Stat Board", to: "/stat-board/players", icon: <TableProperties size={14} /> },
   { label: "Fantasy Hub", to: "/fantasy", icon: <Star size={14} /> },
   { label: "Players", to: "/sports/afl/players", icon: <Users size={14} /> },
 ];

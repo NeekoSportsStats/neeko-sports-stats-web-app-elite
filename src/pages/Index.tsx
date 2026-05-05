@@ -148,7 +148,7 @@ function StatBoardPreview() {
   if (players.length === 0) return null;
 
   return (
-    <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.10)", overflow: "hidden", background: "rgba(10,12,16,0.80)", backdropFilter: "blur(10px)" }}>
+    <div style={{ borderRadius: 12, border: "1px solid rgba(224,174,45,0.22)", overflow: "hidden", background: "rgba(10,12,16,0.80)", backdropFilter: "blur(10px)", boxShadow: "0 0 0 1px rgba(224,174,45,0.06) inset, 0 8px 40px rgba(0,0,0,0.55), 0 0 28px rgba(224,174,45,0.07)" }}>
       {/* Table header */}
       <div style={{
         display: "grid",
