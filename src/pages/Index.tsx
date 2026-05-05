@@ -29,28 +29,28 @@ function StatBoardPreviewRow({ player }: { player: StatBoardPlayer }) {
   const proj = player.projection;
 
   const confColor =
-    player.confidence_label === "HIGH" ? "#22c55e"
-    : player.confidence_label === "MEDIUM" ? GOLD
-    : "rgba(255,255,255,0.30)";
+    player.confidence_label === "HIGH" ? "#4ade80"
+    : player.confidence_label === "MEDIUM" ? "#fcd34d"
+    : "rgba(255,255,255,0.42)";
 
   return (
     <div style={{
       display: "grid",
-      gridTemplateColumns: "1fr 80px 80px 72px",
+      gridTemplateColumns: "1fr 72px 72px 64px",
       gap: 8,
       alignItems: "center",
-      padding: "10px 16px",
-      borderBottom: "1px solid rgba(255,255,255,0.05)",
+      padding: "9px 14px",
+      borderBottom: "1px solid rgba(255,255,255,0.06)",
     }}>
       {/* Player name + team */}
       <div style={{ minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#e8e8e8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#f0f0f0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {player.player_name}
         </p>
-        <p style={{ margin: "2px 0 0", fontSize: 10, color: "rgba(255,255,255,0.30)", fontWeight: 500, letterSpacing: "0.04em" }}>
+        <p style={{ margin: "2px 0 0", fontSize: 10, color: "rgba(255,255,255,0.48)", fontWeight: 500, letterSpacing: "0.03em" }}>
           {player.team_name}
           {player.position_group && (
-            <span style={{ marginLeft: 6, background: "rgba(255,255,255,0.07)", padding: "1px 5px", borderRadius: 3 }}>
+            <span style={{ marginLeft: 6, background: "rgba(255,255,255,0.09)", padding: "1px 5px", borderRadius: 3, color: "rgba(255,255,255,0.55)" }}>
               {player.position_group}
             </span>
           )}
@@ -59,27 +59,27 @@ function StatBoardPreviewRow({ player }: { player: StatBoardPlayer }) {
 
       {/* Projection */}
       <div style={{ textAlign: "right" }}>
-        <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#ededed", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+        <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#f5f5f5", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
           {proj != null ? proj : "—"}
         </p>
-        <p style={{ margin: "2px 0 0", fontSize: 9, color: "rgba(255,255,255,0.25)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Proj disp</p>
+        <p style={{ margin: "2px 0 0", fontSize: 9, color: "rgba(255,255,255,0.38)", letterSpacing: "0.05em", textTransform: "uppercase" }}>Proj</p>
       </div>
 
       {/* Hit rate */}
       <div style={{ textAlign: "right" }}>
         {hitFrac ? (
           <>
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#ededed", fontVariantNumeric: "tabular-nums" }}>{hitFrac}</p>
+            <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#f0f0f0", fontVariantNumeric: "tabular-nums" }}>{hitFrac}</p>
             {hitPct != null && (
-              <p style={{ margin: "2px 0 0", fontSize: 10, color: hitPct >= 70 ? "#22c55e" : hitPct >= 50 ? GOLD : "rgba(255,255,255,0.30)", fontWeight: 600 }}>
+              <p style={{ margin: "2px 0 0", fontSize: 10, color: hitPct >= 70 ? "#4ade80" : hitPct >= 50 ? "#fcd34d" : "rgba(255,255,255,0.42)", fontWeight: 600 }}>
                 {hitPct}%
               </p>
             )}
           </>
         ) : (
-          <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.22)" }}>—</p>
+          <p style={{ margin: 0, fontSize: 13, color: "rgba(255,255,255,0.30)" }}>—</p>
         )}
-        <p style={{ margin: "2px 0 0", fontSize: 9, color: "rgba(255,255,255,0.25)", letterSpacing: "0.06em", textTransform: "uppercase" }}>20+ disp</p>
+        <p style={{ margin: "2px 0 0", fontSize: 9, color: "rgba(255,255,255,0.38)", letterSpacing: "0.05em", textTransform: "uppercase" }}>20+</p>
       </div>
 
       {/* Consistency */}
@@ -90,16 +90,16 @@ function StatBoardPreviewRow({ player }: { player: StatBoardPlayer }) {
             fontSize: 9, fontWeight: 700,
             color: confColor,
             background: `${confColor}18`,
-            border: `1px solid ${confColor}30`,
-            padding: "2px 7px",
+            border: `1px solid ${confColor}35`,
+            padding: "2px 6px",
             borderRadius: 999,
-            letterSpacing: "0.06em",
+            letterSpacing: "0.05em",
             textTransform: "uppercase",
           }}>
             {player.confidence_label}
           </span>
         ) : (
-          <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 11 }}>—</span>
+          <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 11 }}>—</span>
         )}
       </div>
     </div>
@@ -148,22 +148,22 @@ function StatBoardPreview() {
   if (players.length === 0) return null;
 
   return (
-    <div style={{ borderRadius: 12, border: "1px solid rgba(224,174,45,0.22)", overflow: "hidden", background: "rgba(10,12,16,0.80)", backdropFilter: "blur(10px)", boxShadow: "0 0 0 1px rgba(224,174,45,0.06) inset, 0 8px 40px rgba(0,0,0,0.55), 0 0 28px rgba(224,174,45,0.07)" }}>
+    <div style={{ borderRadius: 12, border: "1px solid rgba(224,174,45,0.22)", overflow: "hidden", background: "rgba(6,8,12,0.92)", backdropFilter: "blur(12px)", boxShadow: "0 0 0 1px rgba(224,174,45,0.06) inset, 0 12px 48px rgba(0,0,0,0.65), 0 0 32px rgba(224,174,45,0.06)" }}>
       {/* Table header */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "1fr 80px 80px 72px",
+        gridTemplateColumns: "1fr 72px 72px 64px",
         gap: 8,
-        padding: "8px 16px",
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
-        background: "rgba(255,255,255,0.03)",
+        padding: "8px 14px",
+        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        background: "rgba(255,255,255,0.04)",
       }}>
-        <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.30)", textTransform: "uppercase", letterSpacing: "0.12em" }}>
+        <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.10em" }}>
           {match?.match_label ?? "Player"}
         </span>
-        <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.30)", textTransform: "uppercase", letterSpacing: "0.12em", textAlign: "right" }}>Proj</span>
-        <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.30)", textTransform: "uppercase", letterSpacing: "0.12em", textAlign: "right" }}>Hit rate</span>
-        <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.30)", textTransform: "uppercase", letterSpacing: "0.12em", textAlign: "right" }}>Form</span>
+        <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.10em", textAlign: "right" }}>Proj</span>
+        <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.10em", textAlign: "right" }}>Hit rate</span>
+        <span style={{ fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.45)", textTransform: "uppercase", letterSpacing: "0.10em", textAlign: "right" }}>Form</span>
       </div>
       {players.map(p => (
         <StatBoardPreviewRow key={p.player_id} player={p} />
@@ -173,19 +173,19 @@ function StatBoardPreview() {
         to="/stat-board/players"
         style={{
           display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-          padding: "11px 16px",
+          padding: "10px 14px",
           fontSize: 12, fontWeight: 700,
-          color: "rgba(255,255,255,0.50)",
+          color: "rgba(255,255,255,0.62)",
           textDecoration: "none",
-          background: "rgba(255,255,255,0.03)",
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-          transition: "color 0.15s ease",
+          background: "rgba(255,255,255,0.04)",
+          borderTop: "1px solid rgba(255,255,255,0.07)",
+          transition: "color 0.15s ease, background 0.15s ease",
           letterSpacing: "0.04em",
         }}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.80)"; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.50)"; }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "#f0f0f0"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)"; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.62)"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
       >
-        View all players <ChevronRight size={12} />
+        Open full Stat Board <ChevronRight size={12} />
       </Link>
     </div>
   );
@@ -214,6 +214,7 @@ type CardProps = {
   ctaLabel: string;
   ctaTo: string;
   badge?: string;
+  compact?: boolean;
 };
 
 function EdgeCard(p: CardProps) {
@@ -225,6 +226,8 @@ function EdgeCard(p: CardProps) {
   const vsAvgStr = vsAvgDiff != null
     ? (vsAvgDiff >= 0 ? `+${vsAvgDiff}` : `${vsAvgDiff}`) + " vs avg"
     : null;
+  const pad = p.compact ? "14px" : "18px";
+  const projSize = p.compact ? 38 : 50;
 
   return (
     <Link to={p.ctaTo} style={{ textDecoration: "none", display: "flex", flexDirection: "column", height: "100%" }}>
@@ -238,19 +241,19 @@ function EdgeCard(p: CardProps) {
           border: `1px solid ${hovered ? accent.color + "38" : "rgba(255,255,255,0.06)"}`,
           borderRadius: 12, overflow: "hidden",
           boxShadow: hovered
-            ? `0 20px 48px rgba(0,0,0,0.65), 0 0 0 1px ${accent.color}28, 0 0 28px ${accent.color}10`
-            : "0 4px 20px rgba(0,0,0,0.40)",
-          transform: hovered ? "translateY(-4px) translateZ(0)" : "translateY(0) translateZ(0)",
+            ? `0 16px 40px rgba(0,0,0,0.60), 0 0 0 1px ${accent.color}28, 0 0 24px ${accent.color}10`
+            : "0 4px 16px rgba(0,0,0,0.35)",
+          transform: hovered ? "translateY(-3px) translateZ(0)" : "translateY(0) translateZ(0)",
           transition: "transform 0.20s ease, box-shadow 0.20s ease, border-color 0.18s ease",
           willChange: "transform",
         }}
       >
-        <div style={{ height: 2, background: accent.color, opacity: hovered ? 0.9 : 0.7, flexShrink: 0, transition: "opacity 0.18s ease" }} />
-        <div style={{ padding: "10px 18px 9px", display: "flex", alignItems: "center", gap: 7, borderBottom: "1px solid rgba(255,255,255,0.05)", flexShrink: 0 }}>
+        <div style={{ height: 2, background: accent.color, opacity: hovered ? 0.9 : 0.65, flexShrink: 0, transition: "opacity 0.18s ease" }} />
+        <div style={{ padding: `8px ${pad} 7px`, display: "flex", alignItems: "center", gap: 7, borderBottom: "1px solid rgba(255,255,255,0.05)", flexShrink: 0 }}>
           <span style={{ color: accent.label, display: "flex", alignItems: "center", flexShrink: 0, opacity: 0.9 }}>{p.icon}</span>
           <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.24em", textTransform: "uppercase", color: accent.label, opacity: 0.85, flex: 1 }}>{p.label}</span>
           {p.position && (
-            <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase", color: "rgba(255,255,255,0.35)", background: "rgba(255,255,255,0.06)", padding: "2px 7px", borderRadius: 4, letterSpacing: "0.06em", flexShrink: 0 }}>
+            <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase", color: "rgba(255,255,255,0.45)", background: "rgba(255,255,255,0.07)", padding: "2px 6px", borderRadius: 4, letterSpacing: "0.06em", flexShrink: 0 }}>
               {p.position}
             </span>
           )}
@@ -259,21 +262,21 @@ function EdgeCard(p: CardProps) {
               {p.badge}
             </span>
           )}
-          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 8, fontWeight: 700, letterSpacing: "0.12em", color: "#22c55e", flexShrink: 0 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 8, fontWeight: 700, letterSpacing: "0.12em", color: "#4ade80", flexShrink: 0 }}>
             <span className="live-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
             LIVE
           </span>
         </div>
-        <div style={{ padding: "13px 18px 0", flexShrink: 0 }}>
-          <p style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#ededed", lineHeight: 1.15, letterSpacing: "-0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.playerName}</p>
-          <p style={{ margin: "3px 0 0", fontSize: 10, color: "rgba(255,255,255,0.32)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.team}</p>
+        <div style={{ padding: `10px ${pad} 0`, flexShrink: 0 }}>
+          <p style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#ececec", lineHeight: 1.15, letterSpacing: "-0.02em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.playerName}</p>
+          <p style={{ margin: "3px 0 0", fontSize: 10, color: "rgba(255,255,255,0.42)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.team}</p>
         </div>
-        <div style={{ padding: "11px 18px 0", flexShrink: 0 }}>
+        <div style={{ padding: `8px ${pad} 0`, flexShrink: 0 }}>
           {pts != null ? (
             <>
-              <span style={{ display: "block", fontSize: 50, fontWeight: 800, color: accent.color, lineHeight: 0.90, letterSpacing: "-0.04em", fontVariantNumeric: "tabular-nums" }}>{pts}</span>
+              <span style={{ display: "block", fontSize: projSize, fontWeight: 800, color: accent.color, lineHeight: 0.90, letterSpacing: "-0.04em", fontVariantNumeric: "tabular-nums" }}>{pts}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 5 }}>
-                <span style={{ fontSize: 8.5, color: "rgba(255,255,255,0.25)", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase" }}>Projected pts</span>
+                <span style={{ fontSize: 8.5, color: "rgba(255,255,255,0.35)", fontWeight: 700, letterSpacing: "0.16em", textTransform: "uppercase" }}>Projected pts</span>
                 {vsAvgStr != null && (
                   <span style={{ fontSize: 9, fontWeight: 700, color: vsAvgDiff! >= 0 ? "#4ade80" : "#f87171", background: vsAvgDiff! >= 0 ? "rgba(74,222,128,0.10)" : "rgba(248,113,113,0.10)", padding: "1px 6px", borderRadius: 4, letterSpacing: "0.04em" }}>
                     {vsAvgStr}
@@ -286,26 +289,26 @@ function EdgeCard(p: CardProps) {
           )}
         </div>
         {p.confidenceLabel && (
-          <div style={{ padding: "6px 18px 0", flexShrink: 0 }}>
+          <div style={{ padding: `5px ${pad} 0`, flexShrink: 0 }}>
             <span style={{
               fontSize: 9, fontWeight: 700,
-              color: p.confidenceLabel === "High" ? "#22c55e" : p.confidenceLabel === "Medium" ? GOLD : "rgba(255,255,255,0.40)",
+              color: p.confidenceLabel === "High" ? "#4ade80" : p.confidenceLabel === "Medium" ? "#fcd34d" : "rgba(255,255,255,0.50)",
               background: p.confidenceLabel === "High" ? "rgba(34,197,94,0.10)" : p.confidenceLabel === "Medium" ? "rgba(244,197,66,0.10)" : "rgba(255,255,255,0.05)",
-              border: `1px solid ${p.confidenceLabel === "High" ? "rgba(34,197,94,0.22)" : p.confidenceLabel === "Medium" ? "rgba(244,197,66,0.22)" : "rgba(255,255,255,0.08)"}`,
+              border: `1px solid ${p.confidenceLabel === "High" ? "rgba(34,197,94,0.24)" : p.confidenceLabel === "Medium" ? "rgba(244,197,66,0.24)" : "rgba(255,255,255,0.10)"}`,
               padding: "2px 9px", borderRadius: 999, letterSpacing: "0.08em", textTransform: "uppercase" as const,
             }}>
               {p.confidenceLabel} Confidence
             </span>
           </div>
         )}
-        <div style={{ margin: "11px 18px 0", height: 1, background: "rgba(255,255,255,0.05)", flexShrink: 0 }} />
-        <div style={{ padding: "9px 18px 0", flex: 1, display: "flex", alignItems: "flex-start" }}>
-          <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.45)", fontWeight: 400, lineHeight: 1.55, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" } as React.CSSProperties}>
+        <div style={{ margin: `8px ${pad} 0`, height: 1, background: "rgba(255,255,255,0.05)", flexShrink: 0 }} />
+        <div style={{ padding: `7px ${pad} 0`, flex: 1, display: "flex", alignItems: "flex-start" }}>
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.50)", fontWeight: 400, lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: p.compact ? 2 : 3, WebkitBoxOrient: "vertical" } as React.CSSProperties}>
             {p.reason}
           </p>
         </div>
-        <div style={{ padding: "12px 18px 18px", flexShrink: 0 }}>
-          <div style={{ height: 34, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: hovered ? `${accent.color}18` : "rgba(255,255,255,0.04)", border: `1px solid ${hovered ? accent.color + "40" : "rgba(255,255,255,0.08)"}`, color: hovered ? accent.label : "rgba(255,255,255,0.55)", fontSize: 10, fontWeight: 700, letterSpacing: "0.10em", textTransform: "uppercase", borderRadius: 8, transition: "all 0.18s ease" }}>
+        <div style={{ padding: `10px ${pad} ${p.compact ? "12px" : "16px"}`, flexShrink: 0 }}>
+          <div style={{ height: 32, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: hovered ? `${accent.color}18` : "rgba(255,255,255,0.04)", border: `1px solid ${hovered ? accent.color + "40" : "rgba(255,255,255,0.09)"}`, color: hovered ? accent.label : "rgba(255,255,255,0.60)", fontSize: 10, fontWeight: 700, letterSpacing: "0.10em", textTransform: "uppercase", borderRadius: 8, transition: "all 0.18s ease" }}>
             {p.ctaLabel} <ChevronRight size={10} strokeWidth={2.5} />
           </div>
         </div>
@@ -643,9 +646,14 @@ export default function Index() {
 
           {/* Right: live preview */}
           <div className="hero-preview">
-            <p style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.30em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 10 }}>
-              Live preview — disposals · 20+ threshold
-            </p>
+            <div style={{ textAlign: "center", marginBottom: 10 }}>
+              <p style={{ margin: "0 0 3px", fontSize: 10, fontWeight: 800, letterSpacing: "0.28em", textTransform: "uppercase", color: "rgba(224,174,45,0.75)" }}>
+                Live Stat Board Preview
+              </p>
+              <p style={{ margin: 0, fontSize: 9.5, fontWeight: 500, letterSpacing: "0.12em", color: "rgba(255,255,255,0.38)", textTransform: "uppercase" }}>
+                Disposals · 20+ threshold · current round
+              </p>
+            </div>
             <StatBoardPreview />
           </div>
         </div>
@@ -659,35 +667,35 @@ export default function Index() {
       {/* ════════════════════════════════════════════════════
           HOW IT WORKS
       ════════════════════════════════════════════════════ */}
-      <section className="scroll-reveal" style={{ background: "#05070A", padding: "clamp(40px, 4.5vw, 64px) clamp(20px, 5vw, 40px)" }}>
+      <section className="scroll-reveal" style={{ background: "#05070A", padding: "clamp(28px, 3.5vw, 48px) clamp(20px, 5vw, 40px)" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 28 }}>
-            <p style={{ margin: "0 0 8px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(34,197,94,0.75)" }}>How it works</p>
+          <div style={{ textAlign: "center", marginBottom: 22 }}>
+            <p style={{ margin: "0 0 6px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(34,197,94,0.75)" }}>How it works</p>
             <h2 style={{ margin: 0, fontSize: "clamp(18px, 1.8vw, 26px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.02em" }}>
               Three steps to every player trend
             </h2>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }} className="how-grid">
             {[
-              { num: "01", icon: <BarChart2 size={20} />, title: "Pick a match", copy: "Select any fixture from the current round to see all players in that game." },
-              { num: "02", icon: <Target size={20} />, title: "Choose a stat", copy: "Switch between disposals and goals. Set your own threshold line." },
-              { num: "03", icon: <Zap size={20} />, title: "View hit rates and projections", copy: "See how often each player has hit that line in the last 10 games, plus a projection for this week." },
+              { num: "01", icon: <BarChart2 size={20} />, title: "Pick a match", copy: "Choose any fixture from the current round." },
+              { num: "02", icon: <Target size={20} />, title: "Choose a stat", copy: "Start with disposals or goals, then set your threshold." },
+              { num: "03", icon: <Zap size={20} />, title: "See the trend", copy: "View last 10, hit rate, projection and consistency." },
             ].map(({ num, icon, title, copy }) => (
-              <div key={num} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "18px 16px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <div key={num} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "16px 15px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                   <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(34,197,94,0.60)", letterSpacing: "0.14em" }}>{num}</span>
                   <span style={{ color: "#22c55e", opacity: 0.75 }}>{icon}</span>
                 </div>
-                <p style={{ margin: "0 0 6px", fontSize: 13.5, fontWeight: 700, color: "#e8e8e8" }}>{title}</p>
-                <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.42)", lineHeight: 1.6 }}>{copy}</p>
+                <p style={{ margin: "0 0 5px", fontSize: 13.5, fontWeight: 700, color: "#e8e8e8" }}>{title}</p>
+                <p style={{ margin: 0, fontSize: 12.5, color: "rgba(255,255,255,0.52)", lineHeight: 1.55 }}>{copy}</p>
               </div>
             ))}
           </div>
-          <div style={{ textAlign: "center", marginTop: 22 }}>
+          <div style={{ textAlign: "center", marginTop: 18 }}>
             <Link
               to="/stat-board/players"
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "#22c55e", textDecoration: "none", border: "1px solid rgba(34,197,94,0.25)", padding: "9px 18px", borderRadius: 9, background: "rgba(34,197,94,0.07)", transition: "all 0.15s ease" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(34,197,94,0.12)"; }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "#4ade80", textDecoration: "none", border: "1px solid rgba(34,197,94,0.28)", padding: "9px 18px", borderRadius: 9, background: "rgba(34,197,94,0.07)", transition: "all 0.15s ease" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(34,197,94,0.13)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(34,197,94,0.07)"; }}
             >
               Open Stat Board <ArrowRight size={14} />
@@ -699,10 +707,10 @@ export default function Index() {
       {/* ════════════════════════════════════════════════════
           STAT LENSES
       ════════════════════════════════════════════════════ */}
-      <section className="scroll-reveal" style={{ background: "#060809", padding: "clamp(36px, 3.5vw, 56px) clamp(20px, 5vw, 40px)" }}>
+      <section className="scroll-reveal" style={{ background: "#060809", padding: "clamp(24px, 3vw, 40px) clamp(20px, 5vw, 40px)" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: 24 }}>
-            <p style={{ margin: "0 0 8px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)" }}>Stat lenses</p>
+          <div style={{ textAlign: "center", marginBottom: 20 }}>
+            <p style={{ margin: "0 0 6px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(255,255,255,0.38)" }}>Stat lenses</p>
             <h2 style={{ margin: 0, fontSize: "clamp(18px, 1.8vw, 26px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.02em" }}>
               Start with the stats people check first.
             </h2>
@@ -711,24 +719,38 @@ export default function Index() {
             {[
               {
                 icon: <BarChart2 size={22} />, title: "Disposals", color: "#22c55e",
-                copy: "Track 15+, 20+, 25+ and 30+ disposal trends using last 10 games, rolling averages and projections.",
+                copy: "Track disposal trends using last 10 games, rolling averages and projections.",
+                pills: ["15+", "20+", "25+", "30+"],
               },
               {
                 icon: <Target size={22} />, title: "Goals", color: "#f59e0b",
-                copy: "Track 1+, 2+, 3+ and 4+ goal trends using recent scoring form, hit rates and projections.",
+                copy: "Track goal-scoring trends using recent form, hit rates and projections.",
+                pills: ["1+", "2+", "3+", "4+"],
               },
-            ].map(({ icon, title, color, copy }) => (
-              <div key={title} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${color}20`, borderRadius: 12, padding: "20px 18px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: `${color}15`, border: `1px solid ${color}25`, display: "flex", alignItems: "center", justifyContent: "center", color, flexShrink: 0 }}>
+            ].map(({ icon, title, color, copy, pills }) => (
+              <div key={title} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${color}22`, borderRadius: 12, padding: "18px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 10, background: `${color}15`, border: `1px solid ${color}28`, display: "flex", alignItems: "center", justifyContent: "center", color, flexShrink: 0 }}>
                     {icon}
                   </div>
                   <div>
-                    <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#e8e8e8" }}>{title}</p>
-                    <span style={{ fontSize: 9, fontWeight: 700, color: "#22c55e", background: "rgba(34,197,94,0.10)", padding: "1px 7px", borderRadius: 999, letterSpacing: "0.08em" }}>Available now</span>
+                    <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#ececec" }}>{title}</p>
+                    <span style={{ fontSize: 9, fontWeight: 700, color: "#4ade80", background: "rgba(34,197,94,0.10)", padding: "1px 7px", borderRadius: 999, letterSpacing: "0.08em" }}>Available now</span>
                   </div>
                 </div>
-                <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.65 }}>{copy}</p>
+                <p style={{ margin: "0 0 10px", fontSize: 12.5, color: "rgba(255,255,255,0.52)", lineHeight: 1.6 }}>{copy}</p>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {pills.map(pill => (
+                    <span key={pill} style={{
+                      fontSize: 10, fontWeight: 700,
+                      color: color === "#22c55e" ? "rgba(74,222,128,0.82)" : "rgba(253,211,77,0.82)",
+                      background: color === "#22c55e" ? "rgba(34,197,94,0.09)" : "rgba(245,158,11,0.09)",
+                      border: `1px solid ${color === "#22c55e" ? "rgba(34,197,94,0.20)" : "rgba(245,158,11,0.20)"}`,
+                      padding: "2px 8px", borderRadius: 5,
+                      letterSpacing: "0.03em",
+                    }}>{pill}</span>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -740,36 +762,36 @@ export default function Index() {
       ════════════════════════════════════════════════════ */}
       <section className="scroll-reveal" style={{
         background: "#05070A",
-        backgroundImage: "radial-gradient(circle at 50% 0%, rgba(255,180,50,0.04), transparent 60%)",
-        padding: "clamp(40px, 4.5vw, 64px) clamp(20px, 5vw, 40px)",
+        backgroundImage: "radial-gradient(circle at 50% 0%, rgba(255,180,50,0.03), transparent 55%)",
+        padding: "clamp(28px, 3.5vw, 48px) clamp(20px, 5vw, 40px)",
       }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <div style={{ marginBottom: 28, textAlign: "center" }}>
-            <p style={{ margin: "0 0 6px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(244,197,66,0.75)" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+          <div style={{ marginBottom: 20, textAlign: "center" }}>
+            <p style={{ margin: "0 0 5px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(244,197,66,0.65)" }}>
               Fantasy Hub{currentRound != null ? ` — Round ${currentRound}` : ""}
             </p>
-            <h2 style={{ margin: "0 0 8px", fontSize: "clamp(18px, 1.8vw, 26px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.02em" }}>
+            <h2 style={{ margin: "0 0 7px", fontSize: "clamp(16px, 1.6vw, 22px)", fontWeight: 800, color: "#e8e8e8", letterSpacing: "-0.02em" }}>
               Want fantasy-specific calls?
             </h2>
-            <p style={{ margin: "0 0 14px", fontSize: "clamp(11px, 0.78vw, 14px)", color: "rgba(255,255,255,0.50)", fontWeight: 500, lineHeight: 1.55, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
-              Fantasy Hub turns the deeper fantasy model into Must Buys, Trap Alerts, Captain Picks and Rankings.
+            <p style={{ margin: "0 0 12px", fontSize: "clamp(11px, 0.78vw, 13px)", color: "rgba(255,255,255,0.45)", fontWeight: 500, lineHeight: 1.5, maxWidth: 440, marginLeft: "auto", marginRight: "auto" }}>
+              Must Buys, Trap Alerts, Captain Picks and Rankings — in the Fantasy Hub.
             </p>
             <Link
               to="/fantasy"
-              style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: "rgba(244,197,66,0.78)", textDecoration: "none", whiteSpace: "nowrap", border: "1px solid rgba(244,197,66,0.22)", padding: "8px 16px", borderRadius: 8, background: "rgba(244,197,66,0.06)", letterSpacing: "0.03em", transition: "all 0.15s ease" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(244,197,66,0.10)"; }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: "rgba(244,197,66,0.80)", textDecoration: "none", whiteSpace: "nowrap", border: "1px solid rgba(244,197,66,0.22)", padding: "7px 15px", borderRadius: 8, background: "rgba(244,197,66,0.06)", letterSpacing: "0.03em", transition: "all 0.15s ease" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(244,197,66,0.11)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(244,197,66,0.06)"; }}
             >
               Open Fantasy Hub <ChevronRight size={12} />
             </Link>
           </div>
 
-          <div className="edge-cards-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, alignItems: "stretch", gridAutoRows: "1fr" }}>
+          <div className="edge-cards-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, alignItems: "stretch" }}>
             {showSkeleton
-              ? [0,1,2,3].map(i => <div key={i} style={{ minHeight: 300 }}><SkeletonCard /></div>)
+              ? [0,1,2,3].map(i => <div key={i} style={{ minHeight: 240 }}><SkeletonCard /></div>)
               : fantasyCards.map(c => (
                   <div key={c.label} className="edge-card-enter" style={{ opacity: 0, display: "flex", flexDirection: "column" }}>
-                    <EdgeCard {...c} />
+                    <EdgeCard {...c} compact />
                   </div>
                 ))
             }
