@@ -95,7 +95,7 @@ export function BoardRow({
 
         {/* Mini chips */}
         <td className="px-2 py-3 min-w-[120px]">
-          <div className="flex items-center justify-center gap-[3px]" role="list" aria-label="Recent form">
+          <div className="flex items-center justify-center gap-[3px]" role="list" aria-label="Recent results">
             {timeline != null ? (
               <TimelineChips slots={timeline} defaultThreshold={defaultThreshold} isLocked={isPlayerLocked} />
             ) : (
@@ -104,7 +104,7 @@ export function BoardRow({
           </div>
         </td>
 
-        {/* Avg (L10) */}
+        {/* Recent Avg */}
         <td className="px-2 py-3 text-right tabular-nums min-w-[56px]">
           <span className={`text-[12px] font-medium ${last10Avg != null ? "text-white/55" : "text-white/20"}`}>
             {avgDisplay}

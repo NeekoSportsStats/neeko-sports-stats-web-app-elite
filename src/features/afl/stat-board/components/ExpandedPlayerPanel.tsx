@@ -181,7 +181,7 @@ export function ExpandedPlayerPanel({
         {/* Key stats inline */}
         <div className="flex items-center gap-5 shrink-0">
           <div className="text-center">
-            <p className="text-[9px] text-white/28 uppercase tracking-wide leading-none mb-1">Avg (L10)</p>
+            <p className="text-[9px] text-white/28 uppercase tracking-wide leading-none mb-1">Recent Avg</p>
             <p className={`text-[13px] font-semibold tabular-nums leading-none ${fmt1(player.last_10_avg) === "—" ? "text-white/22" : "text-white/65"}`}>
               {fmt1(player.last_10_avg)}
             </p>
@@ -207,10 +207,10 @@ export function ExpandedPlayerPanel({
 
       {/* ── 3. Full-width chart ───────────────────────────────────────────── */}
       {hasAnyData && chartSlots.some((s) => s.value != null) && (
-        <section aria-label="Recent form chart" className="px-5 pt-4 pb-3">
+        <section aria-label="Recent results chart" className="px-5 pt-4 pb-3">
           <div className="flex items-center justify-between mb-2">
             <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider">
-              Form
+              Recent
               <span className="ml-1.5 text-white/22 font-normal normal-case tracking-normal">
                 — last {playedCount} {playedCount === 1 ? "game" : "games"}
               </span>
