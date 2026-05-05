@@ -27,19 +27,25 @@ export function BoardRow({
   const thresholdKey = String(threshold);
   const hitData = player.all_threshold_hit_rates?.[thresholdKey];
 
+  // Guard: only show fraction if both parts are valid non-null numbers
+  const hitHits = hitData?.hits;
+  const hitGames = hitData?.games;
   const hitRatePct =
-    hitData != null
-      ? hitData.rate
-      : player.hit_rate_last_10 != null
-      ? Math.round(player.hit_rate_last_10 * 100)
-      : null;
+    typeof hitData?.rate === "number" ? hitData.rate
+    : typeof player.hit_rate_last_10 === "number" ? Math.round(player.hit_rate_last_10 * 100)
+    : null;
 
-  const hitFraction =
-    hitData != null
-      ? `${hitData.hits}/${hitData.games}`
-      : player.hit_count_last_10 != null
-      ? `${player.hit_count_last_10}/${Math.min(player.games_played ?? 0, 10)}`
-      : null;
+  const hitFraction = (() => {
+    if (typeof hitHits === "number" && typeof hitGames === "number" && hitGames > 0) {
+      return `${hitHits}/${hitGames}`;
+    }
+    const cnt = player.hit_count_last_10;
+    const gp = player.games_played;
+    if (typeof cnt === "number" && typeof gp === "number" && gp > 0) {
+      return `${cnt}/${Math.min(gp, 10)}`;
+    }
+    return null;
+  })();
 
   const confidence = player.confidence_label;
   const confStyles: Record<string, { dot: string; text: string }> = {
@@ -52,17 +58,27 @@ export function BoardRow({
   const isPlayerLocked = isMatchLocked && !player.is_free_match;
   const last10 = (player.last_10_values ?? []).slice(-10);
 
+  const last10Avg = player.last_10_avg != null ? Number(player.last_10_avg) : null;
+  const avgDisplay = last10Avg != null && !isNaN(last10Avg) ? last10Avg.toFixed(1) : "—";
+
+  const projDisplay = (() => {
+    if (player.projection == null) return null;
+    const n = Number(player.projection);
+    if (isNaN(n)) return null;
+    return n;
+  })();
+
   return (
     <div
       className={`transition-colors duration-100 ${
         isExpanded
           ? "bg-white/[0.03]"
-          : "hover:bg-white/[0.025]"
+          : "hover:bg-white/[0.04] active:bg-white/[0.05]"
       }`}
     >
       {/* ── Main row ── */}
       <button
-        className="w-full text-left focus:outline-none focus-visible:ring-inset focus-visible:ring-1 focus-visible:ring-emerald-500/50 rounded-none"
+        className="w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60 rounded-none"
         onClick={onToggleExpand}
         aria-expanded={isExpanded}
         aria-label={`${player.player_name} — ${isExpanded ? "collapse" : "expand"} detail`}
@@ -95,19 +111,17 @@ export function BoardRow({
             <MiniChips values={last10} threshold={threshold} isLocked={isPlayerLocked} />
           </div>
 
-          {/* L10 avg */}
+          {/* Rec avg */}
           <div className="text-right tabular-nums">
-            <span className="text-[13px] font-semibold text-white/80">
-              {player.last_10_avg != null ? Number(player.last_10_avg).toFixed(1) : "—"}
-            </span>
+            <span className="text-[13px] font-semibold text-white/80">{avgDisplay}</span>
           </div>
 
           {/* Projection */}
           <div className="text-right tabular-nums">
             {isPlayerLocked ? (
               <span className="text-[13px] font-semibold text-white/20 blur-[4px] select-none" aria-hidden>••</span>
-            ) : player.projection != null ? (
-              <span className="text-[13px] font-bold text-white">{player.projection}</span>
+            ) : projDisplay != null ? (
+              <span className="text-[13px] font-bold text-white">{projDisplay}</span>
             ) : (
               <span className="text-[13px] text-white/25">—</span>
             )}
@@ -116,13 +130,13 @@ export function BoardRow({
           {/* Hit rate */}
           <div className="flex flex-col items-center gap-0.5 tabular-nums">
             {isPlayerLocked ? (
-              <span className="text-xs text-white/20 blur-[4px] select-none" aria-hidden>•/•</span>
+              <span className="text-xs text-white/20 blur-[4px] select-none" aria-hidden>—</span>
             ) : (
               <>
                 <span className="text-[12px] font-semibold text-white/85">
                   {hitFraction ?? "—"}
                 </span>
-                {hitRatePct != null && (
+                {hitRatePct != null && hitFraction != null && (
                   <span className={`text-[10px] font-semibold ${
                     hitRatePct >= 70 ? "text-emerald-400" : hitRatePct >= 50 ? "text-amber-400" : "text-white/35"
                   }`}>
@@ -150,9 +164,9 @@ export function BoardRow({
             {isPlayerLocked ? (
               <Lock className="h-3.5 w-3.5 text-[#F5C84C]/40" aria-hidden />
             ) : isExpanded ? (
-              <ChevronUp className="h-3.5 w-3.5 text-white/50" aria-hidden />
+              <ChevronUp className="h-3.5 w-3.5 text-white/60" aria-hidden />
             ) : (
-              <ChevronDown className="h-3.5 w-3.5 text-white/30 group-hover:text-white/50" aria-hidden />
+              <ChevronDown className="h-3.5 w-3.5 text-white/35 group-hover:text-white/55" aria-hidden />
             )}
           </div>
         </div>
@@ -183,9 +197,9 @@ export function BoardRow({
               {isPlayerLocked ? (
                 <Lock className="h-4 w-4 text-[#F5C84C]/40" aria-hidden />
               ) : isExpanded ? (
-                <ChevronUp className="h-4 w-4 text-white/50" aria-hidden />
+                <ChevronUp className="h-4 w-4 text-white/60" aria-hidden />
               ) : (
-                <ChevronDown className="h-4 w-4 text-white/30" aria-hidden />
+                <ChevronDown className="h-4 w-4 text-white/35" aria-hidden />
               )}
             </div>
           </div>
@@ -198,17 +212,15 @@ export function BoardRow({
           {/* Stats */}
           <div className="flex items-end gap-4 flex-wrap">
             <div>
-              <p className="text-[9px] text-white/30 uppercase tracking-wide mb-0.5">L10 avg</p>
-              <span className="text-[13px] font-semibold text-white/80 tabular-nums">
-                {player.last_10_avg != null ? Number(player.last_10_avg).toFixed(1) : "—"}
-              </span>
+              <p className="text-[9px] text-white/30 uppercase tracking-wide mb-0.5">Rec avg</p>
+              <span className="text-[13px] font-semibold text-white/80 tabular-nums">{avgDisplay}</span>
             </div>
             <div>
               <p className="text-[9px] text-white/30 uppercase tracking-wide mb-0.5">Proj</p>
               {isPlayerLocked ? (
                 <span className="text-[13px] font-bold text-white/20 blur-[4px] select-none" aria-hidden>••</span>
-              ) : player.projection != null ? (
-                <span className="text-[13px] font-bold text-white tabular-nums">{player.projection}</span>
+              ) : projDisplay != null ? (
+                <span className="text-[13px] font-bold text-white tabular-nums">{projDisplay}</span>
               ) : (
                 <span className="text-[13px] text-white/25">—</span>
               )}
@@ -216,13 +228,13 @@ export function BoardRow({
             <div>
               <p className="text-[9px] text-white/30 uppercase tracking-wide mb-0.5">{threshold}+ hit</p>
               {isPlayerLocked ? (
-                <span className="text-xs text-white/20 blur-[4px] select-none" aria-hidden>•/•</span>
+                <span className="text-xs text-white/20 blur-[4px] select-none" aria-hidden>—</span>
               ) : (
                 <div className="flex items-baseline gap-1">
                   <span className="text-[13px] font-semibold text-white/85 tabular-nums">
                     {hitFraction ?? "—"}
                   </span>
-                  {hitRatePct != null && (
+                  {hitRatePct != null && hitFraction != null && (
                     <span className={`text-[10px] tabular-nums font-semibold ${
                       hitRatePct >= 70 ? "text-emerald-400" : hitRatePct >= 50 ? "text-amber-400" : "text-white/35"
                     }`}>
@@ -292,7 +304,8 @@ function MiniChips({
     <>
       {values.map((v, i) => {
         const isNewest = i === values.length - 1;
-        const hit = v >= threshold;
+        const safeV = typeof v === "number" && !isNaN(v) ? v : null;
+        const hit = safeV != null && safeV >= threshold;
 
         if (isLocked) {
           return (
@@ -301,7 +314,7 @@ function MiniChips({
               role="listitem"
               className="h-5 min-w-[18px] px-0.5 rounded bg-white/5 text-[9px] font-medium text-white/18 flex items-center justify-center tabular-nums"
             >
-              {v}
+              {safeV ?? "—"}
             </span>
           );
         }
@@ -310,7 +323,7 @@ function MiniChips({
           <span
             key={i}
             role="listitem"
-            aria-label={`${v}`}
+            aria-label={safeV != null ? String(safeV) : "no data"}
             className={`h-5 min-w-[18px] px-0.5 rounded text-[9px] font-bold flex items-center justify-center tabular-nums transition-colors ${
               isNewest
                 ? hit
@@ -321,7 +334,7 @@ function MiniChips({
                 : "bg-white/5 text-white/32"
             }`}
           >
-            {v}
+            {safeV ?? "—"}
           </span>
         );
       })}

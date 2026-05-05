@@ -20,11 +20,11 @@ import { BoardRow } from "./components/BoardRow";
 export type SortKey = "projection" | "hit_rate" | "recent_avg" | "name" | "consistency";
 
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: "projection",  label: "Projection" },
-  { key: "hit_rate",    label: "Hit rate" },
-  { key: "recent_avg",  label: "Recent average" },
-  { key: "name",        label: "Name" },
-  { key: "consistency", label: "Consistency" },
+  { key: "projection",  label: "Projection — high to low" },
+  { key: "hit_rate",    label: "Hit rate — high to low" },
+  { key: "recent_avg",  label: "Recent average — high to low" },
+  { key: "name",        label: "Name — A to Z" },
+  { key: "consistency", label: "Consistency — best first" },
 ];
 
 const CONSISTENCY_ORDER: Record<string, number> = { HIGH: 0, MEDIUM: 1, LOW: 2 };
@@ -37,8 +37,19 @@ const POSITION_OPTIONS: { key: PositionFilter; label: string }[] = [
   { key: "RUCK", label: "RUCK" },
 ];
 
+/** Returns true if the player has no usable recent stat data */
+function hasNoData(p: StatBoardPlayer): boolean {
+  const values = p.last_10_values ?? [];
+  return values.length === 0 && (p.projection == null || p.projection === 0) && p.last_10_avg == null;
+}
+
 function sortPlayers(players: StatBoardPlayer[], sortKey: SortKey): StatBoardPlayer[] {
   return [...players].sort((a, b) => {
+    // No-data rows always last
+    const aEmpty = hasNoData(a);
+    const bEmpty = hasNoData(b);
+    if (aEmpty !== bEmpty) return aEmpty ? 1 : -1;
+
     switch (sortKey) {
       case "projection":
         return (b.projection ?? 0) - (a.projection ?? 0);
@@ -69,7 +80,7 @@ export default function StatBoardPlayersPage() {
 
   const { matches, loading: matchesLoading, error: matchesError } = useStatBoardMatches();
 
-  // Always load ALL players for the match — threshold only affects hit-rate column display
+  // Threshold only affects hit-rate column display — all players for the match are always loaded
   const { players, loading: playersLoading, error: playersError } = useStatBoardPlayers({
     matchId: selectedMatch?.match_id ?? null,
     lens,
@@ -118,23 +129,27 @@ export default function StatBoardPlayersPage() {
   const thresholds = thresholdsForLens(lens);
   const isLocked = selectedMatch?.is_locked ?? false;
   const lensLabel = lens === "disposals" ? "Disposals" : "Goals";
-  const currentSortLabel = SORT_OPTIONS.find((o) => o.key === sortKey)?.label ?? "Projection";
+  const currentSortOption = SORT_OPTIONS.find((o) => o.key === sortKey);
+  // Short label for the button
+  const sortButtonLabel = (() => {
+    switch (sortKey) {
+      case "projection":  return "Projection ↓";
+      case "hit_rate":    return "Hit rate ↓";
+      case "recent_avg":  return "Rec avg ↓";
+      case "name":        return "Name A–Z";
+      case "consistency": return "Consistency ↓";
+    }
+  })();
 
-  // Context row
-  const contextParts = [
-    selectedMatch?.match_label,
-    lensLabel,
-    `${threshold}+ line focus`,
-    players.length > 0 ? `${players.length} players` : null,
-  ].filter(Boolean) as string[];
+  const playerCount = players.length;
 
   return (
     <>
       <Helmet>
-        <title>AFL Stat Board | Player Hit Rates &amp; Projections</title>
+        <title>AFL Player Stat Board | Hit Rates &amp; Projections</title>
         <meta
           name="description"
-          content="View AFL player stat trends, hit rates and projections by match. Filter by disposals and goals."
+          content="Compare every AFL player's recent trends, hit rates and projections by match. Filter by disposals and goals."
         />
       </Helmet>
 
@@ -143,9 +158,9 @@ export default function StatBoardPlayersPage() {
 
           {/* Page header */}
           <div className="mb-5">
-            <h1 className="text-xl font-bold tracking-tight text-white">AFL Stat Board</h1>
-            <p className="mt-0.5 text-sm text-white/40">
-              Pick a match, choose a stat, and see player hit rates, projections and trends.
+            <h1 className="text-xl font-bold tracking-tight text-white">AFL Player Stat Board</h1>
+            <p className="mt-1 text-sm text-white/50 max-w-xl leading-relaxed">
+              Pick a match, choose a stat, and compare every player's recent trends, hit rates and projections.
             </p>
           </div>
 
@@ -164,14 +179,14 @@ export default function StatBoardPlayersPage() {
           )}
 
           {/* ── Controls ─────────────────────────────────────────────────────── */}
-          <div className="mb-1 space-y-2">
+          <div className="mb-2 space-y-3">
 
-            {/* Row 1: Stat + Line focus */}
-            <div className="flex flex-wrap items-start gap-4">
+            {/* Row 1: Stat + Line focus + Position */}
+            <div className="flex flex-wrap items-start gap-5">
 
               {/* Stat */}
               <div>
-                <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-1.5">Stat</p>
+                <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">Stat</p>
                 <div className="flex gap-1.5 rounded-xl bg-white/5 border border-white/8 p-1">
                   {(["disposals", "goals"] as StatLens[]).map((l) => (
                     <button
@@ -180,7 +195,7 @@ export default function StatBoardPlayersPage() {
                       className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                         lens === l
                           ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30"
-                          : "text-white/50 hover:text-white/75"
+                          : "text-white/50 hover:text-white/80"
                       }`}
                     >
                       {l === "disposals" ? "Disposals" : "Goals"}
@@ -191,9 +206,7 @@ export default function StatBoardPlayersPage() {
 
               {/* Line focus */}
               <div>
-                <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-1.5">
-                  Line focus
-                </p>
+                <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">Line focus</p>
                 <div className="flex gap-1">
                   {thresholds.map((t) => (
                     <button
@@ -202,21 +215,21 @@ export default function StatBoardPlayersPage() {
                       className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
                         threshold === t
                           ? "bg-[#F5C84C]/20 text-[#F5C84C] ring-1 ring-[#F5C84C]/35"
-                          : "bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/65"
+                          : "bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/70"
                       }`}
                     >
                       {t}+
                     </button>
                   ))}
                 </div>
-                <p className="mt-1 text-[10px] text-white/25">
-                  Changes hit-rate column. All lines appear in trend detail.
+                <p className="mt-1.5 text-[10px] text-white/32 leading-snug">
+                  Sets the main hit-rate column. Player list stays the same.
                 </p>
               </div>
 
               {/* Position */}
               <div>
-                <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-1.5">Position</p>
+                <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">Position</p>
                 <div className="flex gap-1">
                   {POSITION_OPTIONS.map(({ key, label }) => (
                     <button
@@ -225,7 +238,7 @@ export default function StatBoardPlayersPage() {
                       className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
                         positionFilter === key
                           ? "bg-white/15 text-white ring-1 ring-white/25"
-                          : "bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/65"
+                          : "bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/70"
                       }`}
                     >
                       {label}
@@ -236,8 +249,7 @@ export default function StatBoardPlayersPage() {
             </div>
 
             {/* Row 2: Search + Sort */}
-            <div className="flex gap-2 items-center">
-              {/* Search */}
+            <div className="flex gap-2 items-center flex-wrap">
               <div className="relative flex-1 max-w-xs">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/25" />
                 <input
@@ -245,12 +257,12 @@ export default function StatBoardPlayersPage() {
                   placeholder="Search player..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-xl bg-white/5 border border-white/8 pl-8 pr-8 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/20 transition-colors"
+                  className="w-full rounded-xl bg-white/5 border border-white/8 pl-8 pr-8 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/22 transition-colors"
                 />
                 {search && (
                   <button
                     onClick={() => setSearch("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/50"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/55"
                     aria-label="Clear search"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -258,21 +270,23 @@ export default function StatBoardPlayersPage() {
                 )}
               </div>
 
-              {/* Sort dropdown */}
+              {/* Sort */}
               <div className="relative">
                 <button
                   onClick={() => setSortOpen((v) => !v)}
-                  className="flex items-center gap-1.5 rounded-xl bg-white/5 border border-white/8 px-3 py-2 text-xs font-medium text-white/55 hover:text-white/75 hover:bg-white/8 transition-colors focus:outline-none"
-                  aria-label="Sort options"
+                  className="flex items-center gap-1.5 rounded-xl bg-white/5 border border-white/8 px-3 py-2 text-xs font-medium text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
+                  aria-haspopup="listbox"
+                  aria-expanded={sortOpen}
                 >
-                  <span className="text-white/30 text-[10px]">Sort:</span>
-                  <span>{currentSortLabel}</span>
+                  <span className="text-white/32 text-[10px]">Sort:</span>
+                  <span className="text-white/72">{sortButtonLabel}</span>
                   <ChevronDown className={`h-3 w-3 text-white/30 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
                 </button>
 
                 {sortOpen && (
                   <SortDropdown
                     current={sortKey}
+                    options={SORT_OPTIONS}
                     onSelect={(k) => { setSortKey(k); setSortOpen(false); }}
                     onClose={() => setSortOpen(false)}
                   />
@@ -282,24 +296,32 @@ export default function StatBoardPlayersPage() {
           </div>
 
           {/* Context row */}
-          {contextParts.length > 0 && !playersLoading && (
-            <div className="mt-3 mb-4 flex items-center gap-1.5 flex-wrap text-[12px] text-white/50">
-              {contextParts.map((part, i) => (
-                <span key={i} className="flex items-center gap-1.5">
-                  {i > 0 && <span className="text-white/20">·</span>}
-                  <span>{part}</span>
-                </span>
-              ))}
+          {!playersLoading && selectedMatch && (
+            <div className="mt-1 mb-4 flex items-center gap-1.5 flex-wrap text-[12px] text-white/48">
+              <span className="text-white/30 text-[11px]">Viewing:</span>
+              {[
+                selectedMatch.match_label,
+                lensLabel,
+                `${threshold}+ line`,
+                playerCount > 0 ? `${playerCount} players` : null,
+              ]
+                .filter(Boolean)
+                .map((part, i) => (
+                  <span key={i} className="flex items-center gap-1.5">
+                    {i > 0 && <span className="text-white/20">·</span>}
+                    <span>{part}</span>
+                  </span>
+                ))}
             </div>
           )}
 
-          {/* Locked match banner */}
+          {/* Locked banner */}
           {isLocked && (
             <div className="mb-4 flex items-center gap-3 rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/5 px-4 py-3">
               <Lock className="h-4 w-4 shrink-0 text-[#F5C84C]" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[#F5C84C]">Unlock full round</p>
-                <p className="text-xs text-white/40 mt-0.5">
+                <p className="text-xs text-white/45 mt-0.5">
                   Upgrade to Neeko+ to see projections and hit rates for all matches.
                 </p>
               </div>
@@ -317,7 +339,7 @@ export default function StatBoardPlayersPage() {
           {playersLoading ? (
             <BoardSkeleton />
           ) : players.length === 0 && selectedMatch ? (
-            <div className="rounded-xl border border-white/8 bg-white/3 px-4 py-10 text-center text-sm text-white/40">
+            <div className="rounded-xl border border-white/8 bg-white/3 px-4 py-10 text-center text-sm text-white/45">
               No players found for this match and filter.
             </div>
           ) : (
@@ -346,7 +368,7 @@ export default function StatBoardPlayersPage() {
           )}
 
           {!matchesLoading && matches.length === 0 && !matchesError && (
-            <div className="rounded-xl border border-white/8 bg-white/3 px-4 py-10 text-center text-sm text-white/40">
+            <div className="rounded-xl border border-white/8 bg-white/3 px-4 py-10 text-center text-sm text-white/45">
               No matches available yet.
             </div>
           )}
@@ -360,10 +382,12 @@ export default function StatBoardPlayersPage() {
 
 function SortDropdown({
   current,
+  options,
   onSelect,
   onClose,
 }: {
   current: SortKey;
+  options: typeof SORT_OPTIONS;
   onSelect: (k: SortKey) => void;
   onClose: () => void;
 }) {
@@ -379,16 +403,20 @@ function SortDropdown({
   return (
     <div
       data-sort-dropdown
-      className="absolute right-0 top-full z-50 mt-1 w-44 rounded-xl border border-white/10 bg-[#141414] shadow-2xl overflow-hidden"
+      role="listbox"
+      aria-label="Sort options"
+      className="absolute right-0 top-full z-50 mt-1 w-52 rounded-xl border border-white/10 bg-[#141414] shadow-2xl overflow-hidden"
     >
-      {SORT_OPTIONS.map((opt) => (
+      {options.map((opt) => (
         <button
           key={opt.key}
+          role="option"
+          aria-selected={current === opt.key}
           onClick={() => onSelect(opt.key)}
           className={`w-full text-left px-4 py-2.5 text-xs transition-colors ${
             current === opt.key
               ? "bg-white/10 text-white font-semibold"
-              : "text-white/60 hover:bg-white/6 hover:text-white"
+              : "text-white/60 hover:bg-white/6 hover:text-white/90"
           }`}
         >
           {opt.label}
@@ -423,24 +451,19 @@ function TeamBoard({
 }: TeamBoardProps) {
   if (players.length === 0) return null;
 
-  const recentCount = players[0]
-    ? Math.min((players[0].last_10_values ?? []).length, 10)
-    : 10;
-  const recentLabel = recentCount < 10 ? `Last ${recentCount}` : "Recent";
-
   return (
     <div>
       {/* Team header */}
       <div className="mb-2 flex items-baseline gap-2">
-        <h2 className="text-sm font-bold text-white/85">{teamName}</h2>
-        <span className="text-xs text-white/40">vs {opponentName}</span>
+        <h2 className="text-sm font-bold text-white/90">{teamName}</h2>
+        <span className="text-xs text-white/42">vs {opponentName}</span>
       </div>
 
-      {/* Column headers — desktop */}
-      <div className="hidden md:grid md:grid-cols-[1fr_130px_60px_60px_96px_84px_32px] gap-x-3 items-center px-3 pb-1.5 text-[10px] font-semibold text-white/35 uppercase tracking-wider">
+      {/* Column headers — desktop only, sticky */}
+      <div className="hidden md:grid md:grid-cols-[1fr_130px_60px_60px_96px_84px_32px] gap-x-3 items-center px-3 pb-1.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider sticky top-0 bg-[#0a0a0a] z-10 pt-1">
         <span>Player</span>
-        <span className="text-center">{recentLabel}</span>
-        <span className="text-right">L10 avg</span>
+        <span className="text-center">Recent</span>
+        <span className="text-right">Rec avg</span>
         <span className="text-right">Proj</span>
         <span className="text-center">{threshold}+ hit</span>
         <span className="text-center">Consistency</span>
@@ -471,19 +494,26 @@ function TeamBoard({
 
 function BoardSkeleton() {
   return (
-    <div className="rounded-2xl border border-white/10 overflow-hidden divide-y divide-white/[0.06]">
-      {Array.from({ length: 10 }).map((_, i) => (
-        <div key={i} className="h-12 px-3 flex items-center gap-3 animate-pulse">
-          <div className="h-3 w-28 rounded-lg bg-white/6" />
-          <div className="flex-1 flex gap-0.5">
-            {Array.from({ length: 8 }).map((_, j) => (
-              <div key={j} className="h-4 w-5 rounded bg-white/4" />
+    <div className="space-y-6">
+      {[0, 1].map((g) => (
+        <div key={g}>
+          <div className="h-4 w-32 rounded-lg bg-white/6 mb-3 animate-pulse" />
+          <div className="rounded-2xl border border-white/10 overflow-hidden divide-y divide-white/[0.06]">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-12 px-3 flex items-center gap-3 animate-pulse">
+                <div className="h-3 w-28 rounded-lg bg-white/6" />
+                <div className="flex-1 flex gap-0.5">
+                  {Array.from({ length: 8 }).map((_, j) => (
+                    <div key={j} className="h-4 w-5 rounded bg-white/4" />
+                  ))}
+                </div>
+                <div className="h-3 w-8 rounded-lg bg-white/5" />
+                <div className="h-3 w-8 rounded-lg bg-white/5" />
+                <div className="h-3 w-14 rounded-lg bg-white/5" />
+                <div className="h-3 w-14 rounded-lg bg-white/5" />
+              </div>
             ))}
           </div>
-          <div className="h-3 w-8 rounded-lg bg-white/5" />
-          <div className="h-3 w-8 rounded-lg bg-white/5" />
-          <div className="h-3 w-12 rounded-lg bg-white/5" />
-          <div className="h-3 w-12 rounded-lg bg-white/5" />
         </div>
       ))}
     </div>

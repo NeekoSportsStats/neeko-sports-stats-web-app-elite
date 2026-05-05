@@ -10,7 +10,6 @@ interface Props {
   isLocked: boolean;
 }
 
-// All threshold sets per lens — used for multi-line chart
 const DISPOSAL_THRESHOLDS = [15, 20, 25, 30];
 const GOAL_THRESHOLDS = [1, 2, 3, 4];
 
@@ -46,13 +45,12 @@ export function ExpandedPlayerPanel({
   const lensKey = lens === "disposals" ? "disposals" : "goals";
   const allThresholds = lens === "disposals" ? DISPOSAL_THRESHOLDS : GOAL_THRESHOLDS;
 
-  // Build game log sorted oldest → newest for chart
   const gameLog = [...history]
     .sort((a, b) => a.week - b.week)
     .map((row) => ({
       week: row.week,
       value: row[lensKey] as number,
-      opponent: abbreviateTeam(row.opponent_team_name),
+      opponent: abbreviateTeam(row.opponent_team_name ?? ""),
       fantasy: row.fantasy_score,
       marks: row.marks,
     }));
@@ -74,13 +72,11 @@ export function ExpandedPlayerPanel({
 
   return (
     <div className="border-t border-white/8 px-4 py-5">
-      {/* Two-column on desktop, stacked on mobile */}
       <div className="md:grid md:grid-cols-2 md:gap-6 space-y-5 md:space-y-0">
 
         {/* ── LEFT: chart + averages ── */}
         <div className="space-y-4">
 
-          {/* Chart */}
           {gameLog.length > 0 && (
             <section aria-label="Recent form chart">
               <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2.5">
@@ -95,7 +91,6 @@ export function ExpandedPlayerPanel({
             </section>
           )}
 
-          {/* Averages */}
           <section aria-label="Stat averages">
             <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2.5">Averages</p>
             <div className="grid grid-cols-4 gap-1.5">
@@ -112,7 +107,6 @@ export function ExpandedPlayerPanel({
         {/* ── RIGHT: hit rate table + game log ── */}
         <div className="space-y-4">
 
-          {/* Threshold hit rates */}
           <section aria-label="Hit rate by threshold">
             <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2.5">
               {lens === "disposals" ? "Disposal" : "Goal"} hit rates — last {Math.min(gameCount, 10)} games
@@ -133,6 +127,8 @@ export function ExpandedPlayerPanel({
                     const data = hitRates[key];
                     if (!data) return null;
                     const rate = typeof data.rate === "number" ? data.rate : 0;
+                    const hits = typeof data.hits === "number" ? data.hits : null;
+                    const games = typeof data.games === "number" ? data.games : null;
                     const isSelected = threshold === t;
                     return (
                       <tr
@@ -148,7 +144,7 @@ export function ExpandedPlayerPanel({
                           )}
                         </td>
                         <td className={`px-3 py-2.5 text-center tabular-nums ${isSelected ? "text-white" : "text-white/55"}`}>
-                          {data.hits}/{data.games}
+                          {hits != null && games != null && games > 0 ? `${hits}/${games}` : "—"}
                         </td>
                         <td className="px-2 py-2.5">
                           <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
@@ -164,7 +160,7 @@ export function ExpandedPlayerPanel({
                         <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${
                           rate >= 70 ? "text-emerald-400" : rate >= 50 ? "text-amber-400" : "text-white/38"
                         }`}>
-                          {rate}%
+                          {rate > 0 ? `${rate}%` : "—"}
                         </td>
                       </tr>
                     );
@@ -174,7 +170,6 @@ export function ExpandedPlayerPanel({
             </div>
           </section>
 
-          {/* Game log */}
           {history.length > 0 && (
             <section aria-label="Game-by-game log">
               <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2.5">Game log</p>
@@ -196,24 +191,31 @@ export function ExpandedPlayerPanel({
                   <tbody>
                     {[...history].sort((a, b) => b.week - a.week).map((row, idx) => {
                       const val = lens === "disposals" ? row.disposals : row.goals;
-                      const hit = val >= threshold;
+                      const safeVal = typeof val === "number" && !isNaN(val) ? val : null;
+                      const hit = safeVal != null && safeVal >= threshold;
                       const isLatest = idx === 0;
+                      const fantScore = typeof row.fantasy_score === "number" && !isNaN(row.fantasy_score) ? row.fantasy_score : null;
+                      const marksVal = typeof row.marks === "number" && !isNaN(row.marks) ? row.marks : null;
                       return (
                         <tr
                           key={row.game_id}
                           className={`border-b border-white/5 last:border-0 ${isLatest ? "bg-white/[0.015]" : ""}`}
                         >
-                          <td className="px-3 py-2.5 text-white/40 tabular-nums">{row.week}</td>
+                          <td className="px-3 py-2.5 text-white/40 tabular-nums">{row.week ?? "—"}</td>
                           <td className="px-3 py-2.5 text-white/55 max-w-[72px] truncate">
-                            {abbreviateTeam(row.opponent_team_name)}
+                            {abbreviateTeam(row.opponent_team_name ?? "")}
                           </td>
                           <td className={`px-3 py-2.5 text-right font-bold tabular-nums ${hit ? "text-emerald-400" : "text-white/55"}`}>
-                            {val}
+                            {safeVal ?? "—"}
                           </td>
                           {lens === "disposals" && (
-                            <td className="px-3 py-2.5 text-right text-white/30 tabular-nums hidden sm:table-cell">{row.marks}</td>
+                            <td className="px-3 py-2.5 text-right text-white/30 tabular-nums hidden sm:table-cell">
+                              {marksVal ?? "—"}
+                            </td>
                           )}
-                          <td className="px-3 py-2.5 text-right text-white/30 tabular-nums">{row.fantasy_score}</td>
+                          <td className="px-3 py-2.5 text-right text-white/30 tabular-nums">
+                            {fantScore ?? "—"}
+                          </td>
                         </tr>
                       );
                     })}
@@ -249,28 +251,29 @@ function MultiThresholdChart({
 
   if (values.length === 0) return null;
 
+  const safeValues = values.map((v) => (typeof v === "number" && !isNaN(v) ? v : 0));
+
   const maxThresh = Math.max(...allThresholds);
-  const maxVal = Math.max(...values, maxThresh * 1.2, 1);
-  const minVal = Math.min(...values, 0);
+  const maxVal = Math.max(...safeValues, maxThresh * 1.2, 1);
+  const minVal = Math.min(...safeValues, 0);
   const range = maxVal - minVal || 1;
 
-  const xStep = values.length > 1 ? chartW / (values.length - 1) : 0;
+  const xStep = safeValues.length > 1 ? chartW / (safeValues.length - 1) : 0;
 
   function xOf(i: number) {
-    return PAD.left + (values.length === 1 ? chartW / 2 : i * xStep);
+    return PAD.left + (safeValues.length === 1 ? chartW / 2 : i * xStep);
   }
   function yOf(v: number) {
     return PAD.top + chartH - ((v - minVal) / range) * chartH;
   }
 
-  const points = values.map((v, i) => `${xOf(i)},${yOf(v)}`);
+  const points = safeValues.map((v, i) => `${xOf(i)},${yOf(v)}`);
   const linePath = `M ${points.join(" L ")}`;
   const areaPath =
     `M ${xOf(0)},${PAD.top + chartH}` +
     ` L ${points.join(" L ")}` +
-    ` L ${xOf(values.length - 1)},${PAD.top + chartH} Z`;
+    ` L ${xOf(safeValues.length - 1)},${PAD.top + chartH} Z`;
 
-  // Threshold lines — only render ones within chart range
   const thresholdLines = allThresholds
     .map((t) => ({ t, y: yOf(t), inRange: yOf(t) >= PAD.top && yOf(t) <= PAD.top + chartH }))
     .filter((d) => d.inRange);
@@ -306,7 +309,7 @@ function MultiThresholdChart({
           );
         })}
 
-        {/* All threshold reference lines */}
+        {/* Threshold reference lines — only label the selected one */}
         {thresholdLines.map(({ t, y }) => {
           const isSelected = t === selectedThreshold;
           return (
@@ -314,20 +317,22 @@ function MultiThresholdChart({
               <line
                 x1={PAD.left} y1={y}
                 x2={W - PAD.right} y2={y}
-                stroke={isSelected ? "#F5C84C" : "rgba(245,200,76,0.28)"}
-                strokeWidth={isSelected ? 1.2 : 0.8}
-                strokeDasharray={isSelected ? "5 3" : "3 4"}
-                opacity={isSelected ? 0.7 : 0.4}
+                stroke={isSelected ? "#F5C84C" : "rgba(245,200,76,0.22)"}
+                strokeWidth={isSelected ? 1.2 : 0.7}
+                strokeDasharray={isSelected ? "5 3" : "3 5"}
+                opacity={isSelected ? 0.75 : 0.35}
               />
-              {/* Label at right edge */}
-              <text
-                x={W - PAD.right + 3} y={y + 3.5}
-                fontSize={isSelected ? "8" : "7"}
-                fill={isSelected ? "#F5C84C" : "rgba(245,200,76,0.45)"}
-                opacity={isSelected ? 0.85 : 0.6}
-              >
-                {t}
-              </text>
+              {/* Only label the selected threshold to avoid overlap */}
+              {isSelected && (
+                <text
+                  x={W - PAD.right + 3} y={y + 3.5}
+                  fontSize="8"
+                  fill="#F5C84C"
+                  opacity="0.85"
+                >
+                  {t}
+                </text>
+              )}
             </g>
           );
         })}
@@ -340,9 +345,9 @@ function MultiThresholdChart({
           strokeLinejoin="round" strokeLinecap="round" />
 
         {/* Dots */}
-        {values.map((v, i) => {
+        {safeValues.map((v, i) => {
           const hit = v >= selectedThreshold;
-          const isLatest = i === values.length - 1;
+          const isLatest = i === safeValues.length - 1;
           return (
             <circle
               key={i}
@@ -358,7 +363,7 @@ function MultiThresholdChart({
 
         {/* X-axis labels */}
         {labels.map((lbl, i) => {
-          if (values.length > 6 && i % 2 !== 0) return null;
+          if (safeValues.length > 6 && i % 2 !== 0) return null;
           return (
             <text key={i}
               x={xOf(i)} y={H - 4}
@@ -368,9 +373,9 @@ function MultiThresholdChart({
           );
         })}
       </svg>
-      {/* Legend hint */}
+      {/* Legend */}
       <p className="mt-1 text-[9.5px] text-white/22 text-right">
-        Gold lines = all thresholds · bold = {selectedThreshold}+ line focus
+        All threshold lines shown · {selectedThreshold}+ highlighted
       </p>
     </div>
   );
@@ -379,10 +384,13 @@ function MultiThresholdChart({
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmt1(v: number | null | undefined): string {
-  return v != null ? Number(v).toFixed(1) : "—";
+  if (v == null) return "—";
+  const n = Number(v);
+  return isNaN(n) ? "—" : n.toFixed(1);
 }
 
 function abbreviateTeam(name: string): string {
+  if (!name) return "—";
   return name
     .replace(/ (Football Club|F\.?C\.?|AFL)$/i, "")
     .split(" ")
