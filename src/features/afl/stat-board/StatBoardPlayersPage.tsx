@@ -154,9 +154,9 @@ export default function StatBoardPlayersPage() {
         <div className="mx-auto max-w-5xl px-4 pt-6 pb-20">
 
           {/* Page header */}
-          <div className="mb-5">
+          <div className="mb-8">
             <h1 className="text-xl font-bold tracking-tight text-white">AFL Player Stat Board</h1>
-            <p className="mt-1 text-sm text-white/50 max-w-xl leading-relaxed">
+            <p className="mt-1.5 text-sm text-white/50 max-w-xl leading-relaxed">
               Pick a match, choose a stat, and compare every player's recent trends, hit rates and projections.
             </p>
           </div>
@@ -176,7 +176,7 @@ export default function StatBoardPlayersPage() {
           )}
 
           {/* ── Controls ──────────────────────────────────────────────────────── */}
-          <div className="mb-2 space-y-3">
+          <div className="mb-5 space-y-3">
 
             {/* Row 1: Stat + Position */}
             <div className="flex flex-wrap items-start gap-5">
@@ -271,7 +271,7 @@ export default function StatBoardPlayersPage() {
 
           {/* Context row */}
           {!playersLoading && selectedMatch && (
-            <div className="mt-1 mb-4 flex items-center gap-1.5 flex-wrap text-[12px] text-white/48">
+            <div className="mt-2 mb-6 flex items-center gap-1.5 flex-wrap text-[12px] text-white/48">
               <span className="text-white/30 text-[11px]">Viewing:</span>
               {[
                 selectedMatch.match_label,
@@ -316,7 +316,7 @@ export default function StatBoardPlayersPage() {
               No players found for this match and filter.
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-10">
               <TeamBoard
                 teamName={selectedMatch?.home_team_name ?? "Home"}
                 opponentName={selectedMatch?.away_team_name ?? "Away"}
@@ -434,9 +434,9 @@ function TeamBoard({
   return (
     <div>
       {/* Team header */}
-      <div className="mb-2 flex items-baseline gap-2">
-        <h2 className="text-sm font-bold text-white/90">{teamName}</h2>
-        <span className="text-xs text-white/42">vs {opponentName}</span>
+      <div className="mb-3 flex items-baseline gap-2.5">
+        <h2 className="text-[15px] font-bold text-white">{teamName}</h2>
+        <span className="text-xs text-white/40">vs {opponentName}</span>
       </div>
 
       {/* Horizontally scrollable table */}
@@ -500,7 +500,7 @@ function BoardSkeleton({ thresholdCount }: { thresholdCount: number }) {
     <div className="space-y-6">
       {[0, 1].map((g) => (
         <div key={g}>
-          <div className="h-4 w-32 rounded-lg bg-white/6 mb-3 animate-pulse" />
+          <div className="h-4 w-32 rounded-lg bg-white/6 mb-4 animate-pulse" />
           <div className="overflow-x-auto rounded-2xl border border-white/10">
             <table className="w-full border-collapse" style={{ minWidth: "640px" }}>
               <thead>
