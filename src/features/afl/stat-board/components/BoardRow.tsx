@@ -149,20 +149,33 @@ export function BoardRow({
       {isExpanded && (
         <tr>
           {/* colspan spans all columns: player + recent + avg + proj + thresholds + consistency + expand */}
-          <td colSpan={4 + thresholds.length + 2} className="p-0">
-            {isPlayerLocked ? (
-              <LockedExpandPanel playerName={player.player_name} />
-            ) : (
-              <ExpandedPlayerPanel
-                player={player}
-                history={history}
-                loading={histLoading}
-                error={histError}
-                lens={lens}
-                threshold={defaultThreshold}
-                isLocked={isPlayerLocked}
-              />
-            )}
+          <td colSpan={4 + thresholds.length + 2} className="p-0 align-top">
+            <div
+              className="overflow-hidden"
+              style={{
+                animation: "expandDown 180ms cubic-bezier(0.2,0,0,1) forwards",
+              }}
+            >
+              <style>{`
+                @keyframes expandDown {
+                  from { opacity: 0; transform: translateY(-4px); }
+                  to   { opacity: 1; transform: translateY(0); }
+                }
+              `}</style>
+              {isPlayerLocked ? (
+                <LockedExpandPanel playerName={player.player_name} />
+              ) : (
+                <ExpandedPlayerPanel
+                  player={player}
+                  history={history}
+                  loading={histLoading}
+                  error={histError}
+                  lens={lens}
+                  threshold={defaultThreshold}
+                  isLocked={isPlayerLocked}
+                />
+              )}
+            </div>
           </td>
         </tr>
       )}

@@ -26,17 +26,21 @@ export function ExpandedPlayerPanel({
 
   if (loading) {
     return (
-      <div className="border-t border-white/8 px-4 py-5 space-y-2" aria-busy aria-label="Loading player trend">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-3 rounded-lg bg-white/5 animate-pulse" style={{ width: `${80 - i * 8}%` }} />
-        ))}
+      <div className="border-t border-white/8 px-5 py-6 space-y-3" aria-busy aria-label="Loading player trend">
+        <div className="h-2.5 w-36 rounded bg-white/6 animate-pulse" />
+        <div className="h-[140px] w-full rounded-2xl bg-white/4 animate-pulse" />
+        <div className="grid grid-cols-4 gap-2 mt-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-12 rounded-xl bg-white/4 animate-pulse" />
+          ))}
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div role="alert" className="border-t border-white/8 px-4 py-4 text-xs text-red-400">
+      <div role="alert" className="border-t border-white/8 px-5 py-4 text-xs text-red-400">
         Could not load trend data. Try expanding again.
       </div>
     );
@@ -45,7 +49,6 @@ export function ExpandedPlayerPanel({
   const lensKey = lens === "disposals" ? "disposals" : "goals";
   const allThresholds = lens === "disposals" ? DISPOSAL_THRESHOLDS : GOAL_THRESHOLDS;
 
-  // Separate played rows from bye/dnp for chart vs game log
   const sortedHistory = [...history].sort((a, b) => a.week - b.week);
 
   const gameLog = sortedHistory.map((row) => ({
@@ -57,7 +60,6 @@ export function ExpandedPlayerPanel({
     rowType: row.row_type,
   }));
 
-  // Chart uses structured timeline: include BYE/DNP as null points with labels
   const chartSlots = gameLog.map((g) => ({
     value: typeof g.value === "number" && !isNaN(g.value) ? g.value : null,
     label: `R${g.week}`,
@@ -65,7 +67,7 @@ export function ExpandedPlayerPanel({
   }));
 
   const playedCount = gameLog.filter((g) => g.rowType === "played").length;
-  const gameCount = playedCount;
+  const hitRates = player.all_threshold_hit_rates ?? {};
 
   const summaryStats = [
     { label: "L3",      value: fmt1(player.last_3_avg) },
@@ -78,98 +80,212 @@ export function ExpandedPlayerPanel({
     { label: "Played",  value: player.games_played != null ? String(player.games_played) : "—" },
   ];
 
-  const hitRates = player.all_threshold_hit_rates ?? {};
-
   return (
-    <div className="border-t border-white/8 px-4 py-5">
-      <div className="md:grid md:grid-cols-2 md:gap-6 space-y-5 md:space-y-0">
+    <div className="border-t border-white/8 bg-[#0c0c0c]">
 
-        {/* ── LEFT: chart + averages ── */}
-        <div className="space-y-4">
-
-          {chartSlots.length > 0 && (
-            <section aria-label="Recent form chart">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2.5">
-                Recent form — last {gameCount} {gameCount === 1 ? "game" : "games"}
-              </p>
-              <MultiThresholdChart
-                slots={chartSlots}
-                selectedThreshold={threshold}
-                allThresholds={allThresholds}
-              />
-            </section>
-          )}
-
-          <section aria-label="Stat averages">
-            <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2.5">Averages</p>
-            <div className="grid grid-cols-4 gap-1.5">
-              {summaryStats.map(({ label, value }) => (
-                <div key={label} className="rounded-lg bg-white/4 border border-white/6 px-2 py-2.5 text-center">
-                  <p className="text-[9px] text-white/30 mb-0.5 uppercase tracking-wide leading-none">{label}</p>
-                  <p className="text-[13px] font-bold text-white tabular-nums">{value}</p>
-                </div>
-              ))}
+      {/* ── Player summary header ─────────────────────────────────────────── */}
+      <div className="px-5 pt-4 pb-3 flex items-start justify-between gap-4 border-b border-white/5">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[15px] font-bold text-white leading-tight">{player.player_name}</span>
+              {player.position_group && (
+                <span className="text-[9px] font-bold text-white/35 bg-white/8 rounded px-1.5 py-0.5 tracking-wide uppercase shrink-0">
+                  {player.position_group}
+                </span>
+              )}
+              {player.confidence_label && (
+                <ConfidencePill label={player.confidence_label} />
+              )}
             </div>
-          </section>
+            <p className="text-[11px] text-white/38 mt-0.5">
+              {player.team_name}
+              {player.opponent_team_name ? (
+                <span className="text-white/22"> vs {player.opponent_team_name}</span>
+              ) : null}
+            </p>
+          </div>
         </div>
 
-        {/* ── RIGHT: hit rate table + game log ── */}
-        <div className="space-y-4">
+        {/* Key stats summary */}
+        <div className="flex items-center gap-4 shrink-0">
+          <StatPill label="L10 avg" value={fmt1(player.last_10_avg)} />
+          {player.projection != null && (
+            <StatPill label="Proj" value={String(player.projection)} accent />
+          )}
+        </div>
+      </div>
 
-          <section aria-label="Hit rate by threshold">
-            <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2.5">
-              {lens === "disposals" ? "Disposal" : "Goal"} hit rates — last {Math.min(gameCount, 10)} games
+      {/* ── Hero chart ───────────────────────────────────────────────────────── */}
+      {chartSlots.length > 0 && chartSlots.some((s) => s.value != null) && (
+        <section aria-label="Recent form chart" className="px-5 pt-5 pb-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
+              Recent form
+              {playedCount > 0 && (
+                <span className="ml-1.5 text-white/25 font-normal normal-case tracking-normal">
+                  — {playedCount} {playedCount === 1 ? "game" : "games"}
+                </span>
+              )}
             </p>
+            <p className="text-[9px] text-white/20">
+              {threshold}+ line highlighted · B=BYE · D=DNP
+            </p>
+          </div>
+          <MultiThresholdChart
+            slots={chartSlots}
+            selectedThreshold={threshold}
+            allThresholds={allThresholds}
+          />
+        </section>
+      )}
+
+      {/* ── Averages strip ───────────────────────────────────────────────────── */}
+      <section aria-label="Stat averages" className="px-5 pb-4">
+        <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2.5">Averages</p>
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+          {summaryStats.map(({ label, value }) => (
+            <div key={label} className="rounded-xl bg-white/[0.035] border border-white/7 px-2 py-2.5 text-center">
+              <p className="text-[8.5px] text-white/28 mb-1 uppercase tracking-wide leading-none">{label}</p>
+              <p className="text-[13px] font-bold text-white tabular-nums leading-none">{value}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Hit rates + game log ─────────────────────────────────────────────── */}
+      <div className="px-5 pb-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        {/* Hit rate table */}
+        <section aria-label="Hit rate by threshold">
+          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2.5">
+            {lens === "disposals" ? "Disposal" : "Goal"} hit rates — last {Math.min(playedCount, 10)} games
+          </p>
+          <div className="rounded-xl border border-white/8 overflow-hidden">
+            <table className="w-full text-xs" role="table">
+              <thead>
+                <tr className="border-b border-white/8 bg-white/[0.025]">
+                  <th className="text-left px-3 py-2 text-white/35 font-medium" scope="col">Line</th>
+                  <th className="text-center px-3 py-2 text-white/35 font-medium" scope="col">Hits</th>
+                  <th className="text-left px-2 py-2 text-white/35 font-medium" scope="col">Rate</th>
+                  <th className="text-right px-3 py-2 text-white/35 font-medium" scope="col">%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allThresholds.map((t) => {
+                  const key = String(t);
+                  const data = hitRates[key];
+                  if (!data) return null;
+                  const rate = typeof data.rate === "number" ? data.rate : 0;
+                  const hits = typeof data.hits === "number" ? data.hits : null;
+                  const games = typeof data.games === "number" ? data.games : null;
+                  const isSelected = threshold === t;
+                  return (
+                    <tr
+                      key={key}
+                      className={`border-b border-white/5 last:border-0 transition-colors ${
+                        isSelected ? "bg-emerald-500/6" : ""
+                      }`}
+                    >
+                      <td className={`px-3 py-2.5 font-semibold ${isSelected ? "text-emerald-400" : "text-white/60"}`}>
+                        {t}+
+                        {isSelected && (
+                          <span className="ml-1.5 text-[9px] text-emerald-500/60 font-normal">focus</span>
+                        )}
+                      </td>
+                      <td className={`px-3 py-2.5 text-center tabular-nums ${isSelected ? "text-white" : "text-white/55"}`}>
+                        {hits != null && games != null && games > 0 ? `${hits}/${games}` : "—"}
+                      </td>
+                      <td className="px-2 py-2.5">
+                        <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              rate >= 70 ? "bg-emerald-500/70" : rate >= 50 ? "bg-amber-500/60" : "bg-white/20"
+                            }`}
+                            style={{ width: `${rate}%` }}
+                            role="presentation"
+                          />
+                        </div>
+                      </td>
+                      <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${
+                        rate >= 70 ? "text-emerald-400" : rate >= 50 ? "text-amber-400" : "text-white/38"
+                      }`}>
+                        {rate > 0 ? `${rate}%` : "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* Game log */}
+        {gameLog.length > 0 && (
+          <section aria-label="Game-by-game log">
+            <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2.5">Game log</p>
             <div className="rounded-xl border border-white/8 overflow-hidden">
               <table className="w-full text-xs" role="table">
                 <thead>
                   <tr className="border-b border-white/8 bg-white/[0.025]">
-                    <th className="text-left px-3 py-2 text-white/35 font-medium" scope="col">Line</th>
-                    <th className="text-center px-3 py-2 text-white/35 font-medium" scope="col">Hits</th>
-                    <th className="text-left px-2 py-2 text-white/35 font-medium" scope="col">Rate</th>
-                    <th className="text-right px-3 py-2 text-white/35 font-medium" scope="col">%</th>
+                    <th className="text-left px-3 py-2 text-white/35 font-medium w-10" scope="col">Rnd</th>
+                    <th className="text-left px-3 py-2 text-white/35 font-medium" scope="col">vs</th>
+                    <th className="text-right px-3 py-2 text-white/35 font-medium" scope="col">
+                      {lens === "disposals" ? "Disp" : "Goals"}
+                    </th>
+                    {lens === "disposals" && (
+                      <th className="text-right px-3 py-2 text-white/35 font-medium hidden sm:table-cell" scope="col">Mks</th>
+                    )}
+                    <th className="text-right px-3 py-2 text-white/35 font-medium" scope="col">Fant</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {allThresholds.map((t) => {
-                    const key = String(t);
-                    const data = hitRates[key];
-                    if (!data) return null;
-                    const rate = typeof data.rate === "number" ? data.rate : 0;
-                    const hits = typeof data.hits === "number" ? data.hits : null;
-                    const games = typeof data.games === "number" ? data.games : null;
-                    const isSelected = threshold === t;
+                  {[...gameLog].reverse().map((row, idx) => {
+                    const isLatest = idx === 0;
+
+                    if (row.rowType === "bye") {
+                      return (
+                        <tr key={`bye-${row.week}`} className="border-b border-white/5 last:border-0 opacity-40">
+                          <td className="px-3 py-2 text-white/40 tabular-nums">{row.week}</td>
+                          <td colSpan={lens === "disposals" ? 4 : 3} className="px-3 py-2 text-white/30 italic">
+                            BYE week
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    if (row.rowType === "dnp") {
+                      return (
+                        <tr key={`dnp-${row.week}`} className="border-b border-white/5 last:border-0 opacity-50">
+                          <td className="px-3 py-2 text-white/40 tabular-nums">{row.week}</td>
+                          <td colSpan={lens === "disposals" ? 4 : 3} className="px-3 py-2 text-white/30 italic">
+                            Did not play
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    const safeVal = typeof row.value === "number" && !isNaN(row.value) ? row.value : null;
+                    const hit = safeVal != null && safeVal >= threshold;
+                    const fantScore = typeof row.fantasy === "number" && !isNaN(row.fantasy) ? row.fantasy : null;
+                    const marksVal = typeof row.marks === "number" && !isNaN(row.marks) ? row.marks : null;
                     return (
                       <tr
-                        key={key}
-                        className={`border-b border-white/5 last:border-0 transition-colors ${
-                          isSelected ? "bg-emerald-500/6" : ""
-                        }`}
+                        key={`played-${row.week}`}
+                        className={`border-b border-white/5 last:border-0 ${isLatest ? "bg-white/[0.015]" : ""}`}
                       >
-                        <td className={`px-3 py-2.5 font-semibold ${isSelected ? "text-emerald-400" : "text-white/60"}`}>
-                          {t}+
-                          {isSelected && (
-                            <span className="ml-1.5 text-[9px] text-emerald-500/60 font-normal">focus</span>
-                          )}
+                        <td className="px-3 py-2 text-white/40 tabular-nums">{row.week}</td>
+                        <td className="px-3 py-2 text-white/55 max-w-[72px] truncate">{row.opponent}</td>
+                        <td className={`px-3 py-2 text-right font-bold tabular-nums ${hit ? "text-emerald-400" : "text-white/55"}`}>
+                          {safeVal ?? "—"}
                         </td>
-                        <td className={`px-3 py-2.5 text-center tabular-nums ${isSelected ? "text-white" : "text-white/55"}`}>
-                          {hits != null && games != null && games > 0 ? `${hits}/${games}` : "—"}
-                        </td>
-                        <td className="px-2 py-2.5">
-                          <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
-                            <div
-                              className={`h-full rounded-full transition-all ${
-                                rate >= 70 ? "bg-emerald-500/70" : rate >= 50 ? "bg-amber-500/60" : "bg-white/20"
-                              }`}
-                              style={{ width: `${rate}%` }}
-                              role="presentation"
-                            />
-                          </div>
-                        </td>
-                        <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${
-                          rate >= 70 ? "text-emerald-400" : rate >= 50 ? "text-amber-400" : "text-white/38"
-                        }`}>
-                          {rate > 0 ? `${rate}%` : "—"}
+                        {lens === "disposals" && (
+                          <td className="px-3 py-2 text-right text-white/30 tabular-nums hidden sm:table-cell">
+                            {marksVal ?? "—"}
+                          </td>
+                        )}
+                        <td className="px-3 py-2 text-right text-white/30 tabular-nums">
+                          {fantScore ?? "—"}
                         </td>
                       </tr>
                     );
@@ -178,90 +294,39 @@ export function ExpandedPlayerPanel({
               </table>
             </div>
           </section>
-
-          {gameLog.length > 0 && (
-            <section aria-label="Game-by-game log">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2.5">Game log</p>
-              <div className="rounded-xl border border-white/8 overflow-hidden">
-                <table className="w-full text-xs" role="table">
-                  <thead>
-                    <tr className="border-b border-white/8 bg-white/[0.025]">
-                      <th className="text-left px-3 py-2 text-white/35 font-medium w-10" scope="col">Rnd</th>
-                      <th className="text-left px-3 py-2 text-white/35 font-medium" scope="col">vs</th>
-                      <th className="text-right px-3 py-2 text-white/35 font-medium" scope="col">
-                        {lens === "disposals" ? "Disp" : "Goals"}
-                      </th>
-                      {lens === "disposals" && (
-                        <th className="text-right px-3 py-2 text-white/35 font-medium hidden sm:table-cell" scope="col">Mks</th>
-                      )}
-                      <th className="text-right px-3 py-2 text-white/35 font-medium" scope="col">Fant</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[...gameLog].reverse().map((row, idx) => {
-                      const isLatest = idx === 0;
-
-                      if (row.rowType === "bye") {
-                        return (
-                          <tr key={`bye-${row.week}`} className="border-b border-white/5 last:border-0 opacity-40">
-                            <td className="px-3 py-2.5 text-white/40 tabular-nums">{row.week}</td>
-                            <td colSpan={lens === "disposals" ? 4 : 3} className="px-3 py-2.5 text-white/30 italic text-center">
-                              BYE week — no game
-                            </td>
-                          </tr>
-                        );
-                      }
-
-                      if (row.rowType === "dnp") {
-                        return (
-                          <tr key={`dnp-${row.week}`} className="border-b border-white/5 last:border-0 opacity-50">
-                            <td className="px-3 py-2.5 text-white/40 tabular-nums">{row.week}</td>
-                            <td colSpan={lens === "disposals" ? 4 : 3} className="px-3 py-2.5 text-white/30 italic text-center">
-                              Did not play
-                            </td>
-                          </tr>
-                        );
-                      }
-
-                      const safeVal = typeof row.value === "number" && !isNaN(row.value) ? row.value : null;
-                      const hit = safeVal != null && safeVal >= threshold;
-                      const fantScore = typeof row.fantasy === "number" && !isNaN(row.fantasy) ? row.fantasy : null;
-                      const marksVal = typeof row.marks === "number" && !isNaN(row.marks) ? row.marks : null;
-                      return (
-                        <tr
-                          key={`played-${row.week}`}
-                          className={`border-b border-white/5 last:border-0 ${isLatest ? "bg-white/[0.015]" : ""}`}
-                        >
-                          <td className="px-3 py-2.5 text-white/40 tabular-nums">{row.week}</td>
-                          <td className="px-3 py-2.5 text-white/55 max-w-[72px] truncate">
-                            {row.opponent}
-                          </td>
-                          <td className={`px-3 py-2.5 text-right font-bold tabular-nums ${hit ? "text-emerald-400" : "text-white/55"}`}>
-                            {safeVal ?? "—"}
-                          </td>
-                          {lens === "disposals" && (
-                            <td className="px-3 py-2.5 text-right text-white/30 tabular-nums hidden sm:table-cell">
-                              {marksVal ?? "—"}
-                            </td>
-                          )}
-                          <td className="px-3 py-2.5 text-right text-white/30 tabular-nums">
-                            {fantScore ?? "—"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
 }
 
-// ── Multi-threshold SVG line chart ────────────────────────────────────────────
+// ── Small UI atoms ────────────────────────────────────────────────────────────
+
+function ConfidencePill({ label }: { label: string }) {
+  const styles: Record<string, string> = {
+    HIGH:   "text-emerald-400 bg-emerald-500/12 ring-1 ring-emerald-500/25",
+    MEDIUM: "text-amber-400 bg-amber-500/10 ring-1 ring-amber-500/22",
+    LOW:    "text-white/30 bg-white/5",
+  };
+  return (
+    <span className={`text-[9px] font-bold uppercase tracking-wide rounded-md px-1.5 py-0.5 shrink-0 ${styles[label] ?? styles.LOW}`}>
+      {label}
+    </span>
+  );
+}
+
+function StatPill({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="text-center">
+      <p className="text-[9px] text-white/30 uppercase tracking-wide mb-0.5">{label}</p>
+      <p className={`text-[15px] font-bold tabular-nums leading-none ${accent ? "text-white" : "text-white/80"}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
+// ── Multi-threshold SVG hero chart ────────────────────────────────────────────
 
 interface ChartSlot {
   value: number | null;
@@ -278,15 +343,13 @@ function MultiThresholdChart({
   selectedThreshold: number;
   allThresholds: number[];
 }) {
-  const W = 320;
-  const H = 96;
-  const PAD = { top: 10, right: 32, bottom: 20, left: 24 };
+  // Logical canvas dimensions — SVG scales to fill container
+  const W = 560;
+  const H = 160;
+  const PAD = { top: 14, right: 40, bottom: 28, left: 32 };
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
 
-  if (slots.length === 0) return null;
-
-  // Only played slots contribute to scale; null = BYE/DNP
   const playedValues = slots
     .filter((s) => s.value != null)
     .map((s) => s.value as number);
@@ -294,8 +357,10 @@ function MultiThresholdChart({
   if (playedValues.length === 0) return null;
 
   const maxThresh = Math.max(...allThresholds);
-  const maxVal = Math.max(...playedValues, maxThresh * 1.2, 1);
-  const minVal = Math.min(...playedValues, 0);
+  const maxVal = Math.max(...playedValues, maxThresh * 1.15, 1);
+  const rawMin = Math.min(...playedValues, 0);
+  // Give a small padding below the minimum so dots don't sit on the baseline
+  const minVal = Math.max(0, rawMin - (maxVal - rawMin) * 0.08);
   const range = maxVal - minVal || 1;
 
   const n = slots.length;
@@ -308,114 +373,167 @@ function MultiThresholdChart({
     return PAD.top + chartH - ((v - minVal) / range) * chartH;
   }
 
-  // Build polyline segments — break the line at BYE/DNP slots
+  // Grid lines at nice intervals
+  const gridCount = 4;
+  const gridLines = Array.from({ length: gridCount + 1 }, (_, i) => {
+    const frac = i / gridCount;
+    const val = minVal + (1 - frac) * range;
+    return { y: PAD.top + frac * chartH, val: Math.round(val) };
+  });
+
+  // Break line at BYE/DNP
   const segments: string[][] = [];
   let current: string[] = [];
   slots.forEach((slot, i) => {
     if (slot.value != null) {
-      current.push(`${xOf(i)},${yOf(slot.value)}`);
+      current.push(`${xOf(i).toFixed(1)},${yOf(slot.value).toFixed(1)}`);
     } else {
       if (current.length > 0) { segments.push(current); current = []; }
     }
   });
   if (current.length > 0) segments.push(current);
 
+  // Area path for the first (or only) segment
+  const areaSegment = segments[0];
+  let areaPath = "";
+  if (areaSegment && areaSegment.length > 0) {
+    const firstPt = areaSegment[0].split(",");
+    const lastPt = areaSegment[areaSegment.length - 1].split(",");
+    areaPath =
+      `M ${firstPt[0]},${(PAD.top + chartH).toFixed(1)}` +
+      ` L ${areaSegment.join(" L ")}` +
+      ` L ${lastPt[0]},${(PAD.top + chartH).toFixed(1)} Z`;
+  }
+
   const thresholdLines = allThresholds
     .map((t) => ({ t, y: yOf(t), inRange: yOf(t) >= PAD.top && yOf(t) <= PAD.top + chartH }))
     .filter((d) => d.inRange);
 
+  // Unique gradient ID per render (avoid collision when multiple charts on page)
+  const gradId = `sbHeroGrad-${selectedThreshold}`;
+
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="w-full">
       <svg
         viewBox={`0 0 ${W} ${H}`}
         className="w-full h-auto"
-        aria-label="Trend line chart with threshold lines"
+        aria-label="Player form trend chart"
         role="img"
+        style={{ display: "block" }}
       >
         <defs>
-          <linearGradient id="sbPanelGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#22c55e" stopOpacity="0.14" />
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#22c55e" stopOpacity="0.18" />
             <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
           </linearGradient>
+          {/* Subtle horizontal stripe texture */}
+          <pattern id="sbStripe" width="1" height="4" patternUnits="userSpaceOnUse">
+            <line x1="0" y1="0" x2="1" y2="0" stroke="rgba(255,255,255,0.018)" strokeWidth="1" />
+          </pattern>
         </defs>
 
-        {/* Grid lines */}
-        {[0, 0.5, 1].map((f) => {
-          const y = PAD.top + f * chartH;
-          const val = Math.round(maxVal - f * range);
-          return (
-            <g key={f}>
-              <line x1={PAD.left} y1={y} x2={W - PAD.right} y2={y}
-                stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-              <text x={PAD.left - 3} y={y + 3.5}
-                fontSize="7.5" fill="rgba(255,255,255,0.20)" textAnchor="end">
-                {val}
-              </text>
-            </g>
-          );
-        })}
+        {/* Chart area background */}
+        <rect
+          x={PAD.left} y={PAD.top}
+          width={chartW} height={chartH}
+          fill="url(#sbStripe)"
+          rx="2"
+        />
 
-        {/* Threshold reference lines — only label the selected one */}
+        {/* Grid lines */}
+        {gridLines.map(({ y, val }, i) => (
+          <g key={i}>
+            <line
+              x1={PAD.left} y1={y.toFixed(1)}
+              x2={W - PAD.right} y2={y.toFixed(1)}
+              stroke={i === gridLines.length - 1 ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.04)"}
+              strokeWidth="1"
+            />
+            <text
+              x={PAD.left - 5} y={(y + 3.5).toFixed(1)}
+              fontSize="9" fill="rgba(255,255,255,0.22)" textAnchor="end"
+            >
+              {val}
+            </text>
+          </g>
+        ))}
+
+        {/* Threshold reference lines */}
         {thresholdLines.map(({ t, y }) => {
           const isSelected = t === selectedThreshold;
           return (
             <g key={t}>
               <line
-                x1={PAD.left} y1={y}
-                x2={W - PAD.right} y2={y}
-                stroke={isSelected ? "#F5C84C" : "rgba(245,200,76,0.22)"}
-                strokeWidth={isSelected ? 1.2 : 0.7}
-                strokeDasharray={isSelected ? "5 3" : "3 5"}
-                opacity={isSelected ? 0.75 : 0.35}
+                x1={PAD.left} y1={y.toFixed(1)}
+                x2={W - PAD.right} y2={y.toFixed(1)}
+                stroke={isSelected ? "#F5C84C" : "rgba(245,200,76,0.25)"}
+                strokeWidth={isSelected ? 1.5 : 0.8}
+                strokeDasharray={isSelected ? "6 3" : "4 6"}
+                opacity={isSelected ? 0.80 : 0.40}
               />
-              {isSelected && (
-                <text
-                  x={W - PAD.right + 3} y={y + 3.5}
-                  fontSize="8"
-                  fill="#F5C84C"
-                  opacity="0.85"
-                >
-                  {t}
-                </text>
-              )}
+              <text
+                x={W - PAD.right + 5} y={(y + 3.5).toFixed(1)}
+                fontSize="9"
+                fill={isSelected ? "#F5C84C" : "rgba(245,200,76,0.40)"}
+                opacity={isSelected ? "0.90" : "0.60"}
+              >
+                {t}
+              </text>
             </g>
           );
         })}
 
-        {/* Line segments — broken at BYE/DNP slots */}
+        {/* Area fill — first continuous segment only */}
+        {areaPath && (
+          <path d={areaPath} fill={`url(#${gradId})`} />
+        )}
+
+        {/* Data line segments */}
         {segments.map((pts, si) => (
           <path
             key={si}
             d={`M ${pts.join(" L ")}`}
             fill="none"
             stroke="#22c55e"
-            strokeWidth="1.8"
+            strokeWidth="2.2"
             strokeLinejoin="round"
             strokeLinecap="round"
           />
         ))}
 
-        {/* Data dots + BYE/DNP markers */}
+        {/* Dots + BYE/DNP markers */}
         {slots.map((slot, i) => {
           const isLatest = i === slots.length - 1;
+          const cx = xOf(i);
 
           if (slot.value == null) {
-            // BYE or DNP — render a small muted diamond marker at mid-chart height
-            const cx = xOf(i);
             const cy = PAD.top + chartH / 2;
             const label = slot.rowType === "bye" ? "B" : "D";
             return (
-              <g key={i} opacity="0.35" aria-label={`${slot.label}: ${slot.rowType.toUpperCase()}`}>
-                <rect
-                  x={cx - 4} y={cy - 4}
-                  width={8} height={8}
-                  rx="1"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.25)"
+              <g key={i} aria-label={`${slot.label}: ${slot.rowType.toUpperCase()}`}>
+                {/* Vertical dashed divider */}
+                <line
+                  x1={cx.toFixed(1)} y1={PAD.top.toFixed(1)}
+                  x2={cx.toFixed(1)} y2={(PAD.top + chartH).toFixed(1)}
+                  stroke="rgba(255,255,255,0.07)"
                   strokeWidth="1"
-                  transform={`rotate(45 ${cx} ${cy})`}
+                  strokeDasharray="3 4"
                 />
-                <text x={cx} y={cy + 3.5} fontSize="5.5" fill="rgba(255,255,255,0.30)" textAnchor="middle">
+                {/* Diamond */}
+                <rect
+                  x={(cx - 5).toFixed(1)} y={(cy - 5).toFixed(1)}
+                  width="10" height="10"
+                  rx="1.5"
+                  fill="rgba(255,255,255,0.04)"
+                  stroke="rgba(255,255,255,0.18)"
+                  strokeWidth="1"
+                  transform={`rotate(45 ${cx.toFixed(1)} ${cy.toFixed(1)})`}
+                />
+                <text
+                  x={cx.toFixed(1)} y={(cy + 4).toFixed(1)}
+                  fontSize="7" fill="rgba(255,255,255,0.35)"
+                  textAnchor="middle" fontWeight="600"
+                >
                   {label}
                 </text>
               </g>
@@ -423,37 +541,56 @@ function MultiThresholdChart({
           }
 
           const hit = slot.value >= selectedThreshold;
+          const r = isLatest ? 5 : 3.5;
           return (
-            <circle
-              key={i}
-              cx={xOf(i)} cy={yOf(slot.value)}
-              r={isLatest ? 3.5 : 2.5}
-              fill={hit ? "#22c55e" : "#3f3f46"}
-              stroke={isLatest ? "#22c55e" : hit ? "#22c55e" : "rgba(255,255,255,0.18)"}
-              strokeWidth={isLatest ? 2 : 1}
-              aria-label={`${slot.label}: ${slot.value}`}
-            />
+            <g key={i} aria-label={`${slot.label}: ${slot.value}`}>
+              {/* Outer glow ring for latest dot */}
+              {isLatest && (
+                <circle
+                  cx={cx.toFixed(1)} cy={yOf(slot.value).toFixed(1)}
+                  r={r + 3}
+                  fill={hit ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.05)"}
+                />
+              )}
+              <circle
+                cx={cx.toFixed(1)} cy={yOf(slot.value).toFixed(1)}
+                r={r}
+                fill={hit ? "#22c55e" : isLatest ? "#52525b" : "#3f3f46"}
+                stroke={hit ? (isLatest ? "#4ade80" : "rgba(34,197,94,0.6)") : "rgba(255,255,255,0.22)"}
+                strokeWidth={isLatest ? 2 : 1.2}
+              />
+              {/* Value label above latest dot */}
+              {isLatest && (
+                <text
+                  x={cx.toFixed(1)} y={(yOf(slot.value) - r - 4).toFixed(1)}
+                  fontSize="10" fill={hit ? "#4ade80" : "rgba(255,255,255,0.55)"}
+                  textAnchor="middle" fontWeight="700"
+                >
+                  {slot.value}
+                </text>
+              )}
+            </g>
           );
         })}
 
         {/* X-axis labels */}
         {slots.map((slot, i) => {
-          if (n > 6 && i % 2 !== 0) return null;
+          // On dense charts skip alternate labels
+          if (n > 8 && i % 2 !== 0) return null;
+          const isBye = slot.value == null;
           return (
-            <text key={i}
-              x={xOf(i)} y={H - 4}
-              fontSize="7.5"
-              fill={slot.value == null ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.22)"}
-              textAnchor="middle">
+            <text
+              key={i}
+              x={xOf(i).toFixed(1)} y={(H - 6).toFixed(1)}
+              fontSize="8.5"
+              fill={isBye ? "rgba(255,255,255,0.14)" : "rgba(255,255,255,0.28)"}
+              textAnchor="middle"
+            >
               {slot.label}
             </text>
           );
         })}
       </svg>
-      {/* Legend */}
-      <p className="mt-1 text-[9.5px] text-white/22 text-right">
-        All lines shown · {selectedThreshold}+ is default focus · B=BYE D=DNP
-      </p>
     </div>
   );
 }
