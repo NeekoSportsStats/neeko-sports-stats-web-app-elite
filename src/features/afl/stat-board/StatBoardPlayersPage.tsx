@@ -22,7 +22,7 @@ export type SortKey = "projection" | "hit_rate" | "recent_avg" | "name" | "consi
 const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "projection",  label: "Projection — high to low" },
   { key: "hit_rate",    label: "Hit rate — high to low" },
-  { key: "recent_avg",  label: "Recent average — high to low" },
+  { key: "recent_avg",  label: "Avg (L10) — high to low" },
   { key: "name",        label: "Name — A to Z" },
   { key: "consistency", label: "Consistency — best first" },
 ];
@@ -132,7 +132,7 @@ export default function StatBoardPlayersPage() {
     switch (sortKey) {
       case "projection":  return "Projection ↓";
       case "hit_rate":    return "Hit rate ↓";
-      case "recent_avg":  return "Rec avg ↓";
+      case "recent_avg":  return "Avg (L10) ↓";
       case "name":        return "Name A–Z";
       case "consistency": return "Consistency ↓";
     }
@@ -448,10 +448,10 @@ function TeamBoard({
                 Player
               </th>
               <th className="px-2 py-2 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">
-                Recent
+                Form
               </th>
               <th className="px-2 py-2 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-right whitespace-nowrap">
-                Rec avg
+                Avg (L10)
               </th>
               <th className="px-2 py-2 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-right whitespace-nowrap">
                 Proj

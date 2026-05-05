@@ -28,10 +28,10 @@ export function BoardRow({
   const { insight, loading: insightLoading } = useStatBoardPlayerAiInsight(activePlayerId);
 
   const confidence = player.confidence_label;
-  const confStyles: Record<string, { dot: string; text: string }> = {
-    HIGH:   { dot: "bg-emerald-400",  text: "text-emerald-400" },
-    MEDIUM: { dot: "bg-amber-400",    text: "text-amber-400" },
-    LOW:    { dot: "bg-white/25",     text: "text-white/40" },
+  const confStyles: Record<string, { dot: string; text: string; label: string }> = {
+    HIGH:   { dot: "bg-emerald-400", text: "text-emerald-400", label: "High" },
+    MEDIUM: { dot: "bg-amber-400",   text: "text-amber-400",   label: "Medium" },
+    LOW:    { dot: "bg-white/25",    text: "text-white/40",    label: "Low" },
   };
   const conf = confidence ? confStyles[confidence] ?? confStyles.LOW : null;
 
@@ -74,13 +74,14 @@ export function BoardRow({
           </div>
           <p className="text-[10px] text-white/35 truncate mt-0.5">
             {player.team_name || "—"}
-            {player.is_home === false && <span className="ml-0.5 text-white/20">(A)</span>}
+            {player.is_home === true && <span className="ml-1 text-white/18">· H</span>}
+            {player.is_home === false && <span className="ml-1 text-white/18">· A</span>}
           </p>
         </td>
 
         {/* Mini chips */}
         <td className="px-2 py-3 min-w-[120px]">
-          <div className="flex items-center justify-center gap-[3px]" role="list" aria-label="Recent values">
+          <div className="flex items-center justify-center gap-[3px]" role="list" aria-label="Recent form">
             {timeline != null ? (
               <TimelineChips slots={timeline} defaultThreshold={defaultThreshold} isLocked={isPlayerLocked} />
             ) : (
@@ -89,7 +90,7 @@ export function BoardRow({
           </div>
         </td>
 
-        {/* Rec avg */}
+        {/* Avg (L10) */}
         <td className="px-2 py-3 text-right tabular-nums min-w-[56px]">
           <span className={`text-[13px] font-semibold ${last10Avg != null ? "text-white/80" : "text-white/20"}`}>
             {avgDisplay}
@@ -119,7 +120,7 @@ export function BoardRow({
           {!isPlayerLocked && conf && confidence ? (
             <div className="flex items-center justify-center gap-1.5">
               <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${conf.dot}`} aria-hidden />
-              <span className={`text-[11px] font-semibold ${conf.text}`}>{confidence}</span>
+              <span className={`text-[11px] font-semibold ${conf.text}`}>{conf.label}</span>
             </div>
           ) : (
             <span className="text-white/15 text-[10px]">—</span>

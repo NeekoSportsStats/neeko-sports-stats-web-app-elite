@@ -93,14 +93,14 @@ export function ExpandedPlayerPanel({
 
   // Summary stat tiles — always show "—" for missing/NaN
   const summaryStats: { label: string; value: string; muted?: boolean }[] = [
-    { label: "L3",      value: fmt1(player.last_3_avg) },
-    { label: "L5",      value: fmt1(player.last_5_avg) },
-    { label: "L10",     value: fmt1(player.last_10_avg) },
+    { label: "L3 avg",  value: fmt1(player.last_3_avg) },
+    { label: "L5 avg",  value: fmt1(player.last_5_avg) },
+    { label: "L10 avg", value: fmt1(player.last_10_avg) },
     { label: "Season",  value: fmt1(player.season_avg) },
-    { label: "Min",     value: n(player.min_last_10) != null ? String(player.min_last_10) : "—" },
-    { label: "Max",     value: n(player.max_last_10) != null ? String(player.max_last_10) : "—" },
+    { label: "Low",     value: n(player.min_last_10) != null ? String(player.min_last_10) : "—" },
+    { label: "High",    value: n(player.max_last_10) != null ? String(player.max_last_10) : "—" },
     { label: "Std dev", value: fmt1(player.stddev_last_10) },
-    { label: "Played",  value: n(player.games_played) != null ? String(player.games_played) : "—" },
+    { label: "Games",   value: n(player.games_played) != null ? String(player.games_played) : "—" },
   ].map((s) => ({ ...s, muted: s.value === "—" }));
 
   return (
@@ -123,14 +123,19 @@ export function ExpandedPlayerPanel({
           <p className="text-[11px] text-white/38 mt-1">
             {player.team_name || "—"}
             {player.opponent_team_name ? (
-              <span className="text-white/22"> vs {player.opponent_team_name}</span>
+              <span className="text-white/22"> · vs {player.opponent_team_name}</span>
+            ) : null}
+            {player.is_home === true ? (
+              <span className="text-white/18"> · Home</span>
+            ) : player.is_home === false ? (
+              <span className="text-white/18"> · Away</span>
             ) : null}
           </p>
         </div>
 
         <div className="flex items-center gap-5 shrink-0">
           <StatPill
-            label="L10 avg"
+            label="Avg (L10)"
             value={fmt1(player.last_10_avg)}
             muted={fmt1(player.last_10_avg) === "—"}
           />
@@ -155,12 +160,12 @@ export function ExpandedPlayerPanel({
         <section aria-label="Recent form chart" className="px-6 pt-5 pb-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
-              Recent form
+              Form
               <span className="ml-1.5 text-white/22 font-normal normal-case tracking-normal">
-                — {playedCount} {playedCount === 1 ? "game" : "games"}
+                — last {playedCount} {playedCount === 1 ? "game" : "games"}
               </span>
             </p>
-            <p className="text-[9px] text-white/18">Hover a point for detail · B=BYE · D=DNP</p>
+            <p className="text-[9px] text-white/18">Hover for detail · B=BYE · D=DNP</p>
           </div>
           <MultiThresholdChart
             slots={chartSlots}
@@ -176,7 +181,7 @@ export function ExpandedPlayerPanel({
 
         {/* Averages block */}
         <section aria-label="Stat averages">
-          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2.5">Averages</p>
+          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2.5">Form averages</p>
           <div className="grid grid-cols-4 gap-1.5">
             {summaryStats.map(({ label, value, muted }) => (
               <div key={label} className="rounded-lg bg-white/[0.035] border border-white/[0.07] px-2 py-3 text-center">
@@ -451,6 +456,12 @@ function AiInsightBlock({
 
 // ── Small UI atoms ────────────────────────────────────────────────────────────
 
+const CONFIDENCE_DISPLAY: Record<string, string> = {
+  HIGH:   "High",
+  MEDIUM: "Medium",
+  LOW:    "Low",
+};
+
 function ConfidencePill({ label }: { label: string }) {
   const styles: Record<string, string> = {
     HIGH:   "text-emerald-400 bg-emerald-500/12 ring-1 ring-emerald-500/25",
@@ -459,7 +470,7 @@ function ConfidencePill({ label }: { label: string }) {
   };
   return (
     <span className={`text-[9px] font-bold uppercase tracking-wide rounded-md px-1.5 py-0.5 shrink-0 ${styles[label] ?? styles.LOW}`}>
-      {label}
+      {CONFIDENCE_DISPLAY[label] ?? label}
     </span>
   );
 }
