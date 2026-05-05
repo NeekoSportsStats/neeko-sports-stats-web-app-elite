@@ -219,7 +219,6 @@ export function ExpandedPlayerPanel({
           </div>
           <MultiThresholdChart
             slots={chartSlots}
-            selectedThreshold={threshold}
             allThresholds={allThresholds}
             lens={lens}
           />
@@ -423,12 +422,10 @@ interface TooltipData {
 
 function MultiThresholdChart({
   slots,
-  selectedThreshold,
   allThresholds,
   lens,
 }: {
   slots: ChartSlot[];
-  selectedThreshold: number;
   allThresholds: number[];
   lens: StatLens;
 }) {
@@ -493,7 +490,11 @@ function MultiThresholdChart({
     .map((t) => ({ t, y: yOf(t), inRange: yOf(t) >= PAD.top && yOf(t) <= PAD.top + chartH }))
     .filter((d) => d.inRange);
 
-  const gradId = `sbHeroGrad-${selectedThreshold}-${lens}`;
+  // Median of played values — used for stat-relative dot coloring (no threshold bias).
+  const sortedPlayed = [...playedValues].sort((a, b) => a - b);
+  const median = sortedPlayed[Math.floor(sortedPlayed.length / 2)] ?? 0;
+
+  const gradId = `sbHeroGrad-${lens}`;
   const hitW = numSlots > 1 ? chartW / (numSlots - 1) : chartW;
 
   return (
@@ -534,29 +535,27 @@ function MultiThresholdChart({
           </g>
         ))}
 
-        {thresholdLines.map(({ t, y }) => {
-          const isSelected = t === selectedThreshold;
-          return (
-            <g key={t}>
-              <line
-                x1={PAD.left} y1={y.toFixed(1)} x2={W - PAD.right} y2={y.toFixed(1)}
-                stroke={isSelected ? "#F5C84C" : "rgba(245,200,76,0.25)"}
-                strokeWidth={isSelected ? 1.5 : 0.8}
-                strokeDasharray={isSelected ? "6 3" : "4 6"}
-                opacity={isSelected ? 0.82 : 0.42}
-              />
-              <text
-                x={W - PAD.right + 5} y={(y + 3.5).toFixed(1)}
-                fontSize="9"
-                fill={isSelected ? "#F5C84C" : "rgba(245,200,76,0.40)"}
-                opacity={isSelected ? "0.92" : "0.62"}
-                fontWeight={isSelected ? "600" : "400"}
-              >
-                {t}
-              </text>
-            </g>
-          );
-        })}
+        {/* All threshold guide lines are equal and faint — no single line is highlighted */}
+        {thresholdLines.map(({ t, y }) => (
+          <g key={t}>
+            <line
+              x1={PAD.left} y1={y.toFixed(1)} x2={W - PAD.right} y2={y.toFixed(1)}
+              stroke="rgba(245,200,76,0.22)"
+              strokeWidth="0.8"
+              strokeDasharray="4 6"
+              opacity="0.50"
+            />
+            <text
+              x={W - PAD.right + 5} y={(y + 3.5).toFixed(1)}
+              fontSize="9"
+              fill="rgba(245,200,76,0.35)"
+              opacity="0.65"
+              fontWeight="400"
+            >
+              {t}
+            </text>
+          </g>
+        ))}
 
         {/* Vertical crosshair at hovered slot */}
         {hovered && (
@@ -617,7 +616,8 @@ function MultiThresholdChart({
             );
           }
 
-          const hit = slot.value >= selectedThreshold;
+          // Dot color is stat-relative (above/below player's own median), not threshold-based.
+          const aboveMedian = slot.value > median;
           const isLatest = i === slots.length - 1;
           const r = isHov ? (isLatest ? 7 : 5.5) : (isLatest ? 5 : 3.5);
 
@@ -627,25 +627,25 @@ function MultiThresholdChart({
                 <circle
                   cx={cx.toFixed(1)} cy={yOf(slot.value).toFixed(1)}
                   r={r + (isHov ? 5 : 3)}
-                  fill={isHov
-                    ? hit ? "rgba(34,197,94,0.22)" : "rgba(255,255,255,0.10)"
-                    : hit ? "rgba(34,197,94,0.15)" : "rgba(255,255,255,0.05)"}
+                  fill={isHov ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)"}
                 />
               )}
               <circle
                 cx={cx.toFixed(1)} cy={yOf(slot.value).toFixed(1)}
                 r={r}
-                fill={hit ? "#22c55e" : isLatest ? "#52525b" : "#3f3f46"}
-                stroke={hit
-                  ? (isHov ? "#86efac" : isLatest ? "#4ade80" : "rgba(34,197,94,0.6)")
-                  : (isHov ? "rgba(255,255,255,0.60)" : "rgba(255,255,255,0.22)")}
+                fill={aboveMedian ? "#22c55e" : isLatest ? "#52525b" : "#3f3f46"}
+                stroke={isHov
+                  ? "rgba(255,255,255,0.65)"
+                  : aboveMedian
+                  ? (isLatest ? "#4ade80" : "rgba(34,197,94,0.55)")
+                  : "rgba(255,255,255,0.22)"}
                 strokeWidth={isHov || isLatest ? 2 : 1.2}
                 style={{ transition: "r 80ms ease, stroke 80ms ease" }}
               />
               {isLatest && !isHov && (
                 <text
                   x={cx.toFixed(1)} y={(yOf(slot.value) - r - 4).toFixed(1)}
-                  fontSize="10" fill={hit ? "#4ade80" : "rgba(255,255,255,0.55)"}
+                  fontSize="10" fill="rgba(255,255,255,0.75)"
                   textAnchor="middle" fontWeight="700">
                   {slot.value}
                 </text>
@@ -708,7 +708,6 @@ function MultiThresholdChart({
           slot={hovered.slot}
           clientX={hovered.clientX}
           clientY={hovered.clientY}
-          selectedThreshold={selectedThreshold}
           allThresholds={allThresholds}
           lens={lens}
         />,
@@ -727,14 +726,12 @@ function ChartTooltip({
   slot,
   clientX,
   clientY,
-  selectedThreshold,
   allThresholds,
   lens,
 }: {
   slot: ChartSlot;
   clientX: number;
   clientY: number | null;
-  selectedThreshold: number;
   allThresholds: number[];
   lens: StatLens;
 }) {
@@ -786,8 +783,6 @@ function ChartTooltip({
   // Extra guard: if flipped below puts it off-screen, clamp
   const clampedTop = Math.min(top, vh - tipH - TOOLTIP_MARGIN);
 
-  const valHit = val >= selectedThreshold;
-
   return (
     <div
       role="tooltip"
@@ -810,7 +805,7 @@ function ChartTooltip({
           )}
         </p>
         <div className="flex items-baseline gap-1.5">
-          <span className={`text-[22px] font-bold tabular-nums leading-none ${valHit ? "text-emerald-400" : "text-white/90"}`}>
+          <span className="text-[22px] font-bold tabular-nums leading-none text-white/90">
             {val}
           </span>
           <span className="text-[10px] text-white/30 leading-none">
