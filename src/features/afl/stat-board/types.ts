@@ -81,9 +81,14 @@ export interface StatBoardHistoryRow {
   venue: string | null;
   is_home: boolean | null;
   disposals: number | null;
-  goals: number | null;
+  kicks: number | null;
+  handballs: number | null;
   marks: number | null;
   tackles: number | null;
+  goals: number | null;
+  behinds: number | null;
+  hitouts: number | null;
+  clearances: number | null;
   fantasy_score: number | null;
   row_type: TimelineSlotType;
 }

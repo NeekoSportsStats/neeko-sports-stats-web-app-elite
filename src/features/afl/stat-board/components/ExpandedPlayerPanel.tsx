@@ -58,10 +58,21 @@ export function ExpandedPlayerPanel({
 
   const gameLog = sortedHistory.map((row) => ({
     week: row.week,
+    round: row.round,
     value: row.row_type === "played" ? (row[lensKey] as number | null) : null,
     opponent: abbreviateTeam(row.opponent_team_name ?? ""),
-    fantasy: row.fantasy_score,
+    venue: row.venue,
+    isHome: row.is_home,
+    disposals: row.disposals,
+    kicks: row.kicks,
+    handballs: row.handballs,
     marks: row.marks,
+    tackles: row.tackles,
+    goals: row.goals,
+    behinds: row.behinds,
+    hitouts: row.hitouts,
+    clearances: row.clearances,
+    fantasy: row.fantasy_score,
     rowType: row.row_type,
   }));
 
@@ -229,55 +240,105 @@ export function ExpandedPlayerPanel({
       {gameLog.length > 0 && (
         <section aria-label="Game-by-game log" className="px-5 pb-5">
           <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Game log</p>
-          <div className="rounded-lg border border-white/8 overflow-hidden">
-            <table className="w-full text-xs" role="table">
+          <div className="rounded-lg border border-white/8 overflow-x-auto">
+            <table className="w-full text-[11px]" role="table" style={{ minWidth: "520px" }}>
               <thead>
                 <tr className="border-b border-white/8 bg-white/[0.025]">
-                  <th className="text-left px-3 py-1.5 text-white/35 font-medium text-[10px] w-10" scope="col">Rnd</th>
-                  <th className="text-left px-3 py-1.5 text-white/35 font-medium text-[10px]" scope="col">vs</th>
-                  <th className="text-right px-3 py-1.5 text-white/35 font-medium text-[10px]" scope="col">
-                    {lens === "disposals" ? "Disp" : "Goals"}
-                  </th>
-                  {lens === "disposals" && (
-                    <th className="text-right px-3 py-1.5 text-white/35 font-medium text-[10px] hidden sm:table-cell" scope="col">Mks</th>
+                  <th className="text-left px-3 py-1.5 text-white/35 font-medium w-10" scope="col">Rnd</th>
+                  <th className="text-left px-3 py-1.5 text-white/35 font-medium" scope="col">Opponent</th>
+                  <th className="text-center px-2 py-1.5 text-white/35 font-medium w-8" scope="col" title="Home / Away">H/A</th>
+                  {lens === "disposals" ? (
+                    <>
+                      <th className="text-right px-2 py-1.5 text-white/35 font-medium" scope="col">Disp</th>
+                      <th className="text-right px-2 py-1.5 text-white/35 font-medium hidden sm:table-cell" scope="col">K</th>
+                      <th className="text-right px-2 py-1.5 text-white/35 font-medium hidden sm:table-cell" scope="col">HB</th>
+                      <th className="text-right px-2 py-1.5 text-white/35 font-medium hidden md:table-cell" scope="col">Mks</th>
+                      <th className="text-right px-2 py-1.5 text-white/35 font-medium hidden md:table-cell" scope="col">Tkl</th>
+                      <th className="text-right px-2 py-1.5 text-white/35 font-medium hidden lg:table-cell" scope="col">Clr</th>
+                    </>
+                  ) : (
+                    <>
+                      <th className="text-right px-2 py-1.5 text-white/35 font-medium" scope="col">Gls</th>
+                      <th className="text-right px-2 py-1.5 text-white/35 font-medium hidden sm:table-cell" scope="col">Beh</th>
+                      <th className="text-right px-2 py-1.5 text-white/35 font-medium hidden sm:table-cell" scope="col">Disp</th>
+                      <th className="text-right px-2 py-1.5 text-white/35 font-medium hidden md:table-cell" scope="col">Mks</th>
+                      <th className="text-right px-2 py-1.5 text-white/35 font-medium hidden md:table-cell" scope="col">Tkl</th>
+                    </>
                   )}
-                  <th className="text-right px-3 py-1.5 text-white/35 font-medium text-[10px]" scope="col">Fant</th>
+                  <th className="text-right px-3 py-1.5 text-white/35 font-medium" scope="col">Fant</th>
                 </tr>
               </thead>
               <tbody>
                 {[...gameLog].reverse().map((row, idx) => {
                   const isLatest = idx === 0;
-                  if (row.rowType === "bye") {
+
+                  if (row.rowType === "bye" || row.rowType === "dnp") {
+                    const isBye = row.rowType === "bye";
+                    const colCount = lens === "disposals" ? 9 : 8;
                     return (
-                      <tr key={`bye-${row.week}`} className="border-b border-white/5 last:border-0 opacity-40">
-                        <td className="px-3 py-1.5 text-white/40 tabular-nums text-[11px]">{row.week}</td>
-                        <td colSpan={lens === "disposals" ? 4 : 3} className="px-3 py-1.5 text-white/28 italic text-[11px]">BYE week</td>
+                      <tr
+                        key={`${row.rowType}-${row.week}`}
+                        className="border-b border-white/5 last:border-0 opacity-40"
+                      >
+                        <td className="px-3 py-1.5 text-white/40 tabular-nums">{row.round ?? row.week}</td>
+                        <td
+                          colSpan={colCount - 1}
+                          className="px-3 py-1.5 italic text-white/28"
+                        >
+                          <span className={`inline-flex items-center gap-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded ${isBye ? "bg-white/5 text-white/30" : "bg-white/4 text-white/25 border border-dashed border-white/12"}`}>
+                            {isBye ? "BYE" : "DNP"}
+                          </span>
+                          <span className="ml-2 text-white/20 text-[10px] font-normal">
+                            {isBye ? "No game this week" : "Did not play"}
+                          </span>
+                        </td>
                       </tr>
                     );
                   }
-                  if (row.rowType === "dnp") {
-                    return (
-                      <tr key={`dnp-${row.week}`} className="border-b border-white/5 last:border-0 opacity-50">
-                        <td className="px-3 py-1.5 text-white/40 tabular-nums text-[11px]">{row.week}</td>
-                        <td colSpan={lens === "disposals" ? 4 : 3} className="px-3 py-1.5 text-white/28 italic text-[11px]">Did not play</td>
-                      </tr>
-                    );
-                  }
-                  const safeVal = typeof row.value === "number" && !isNaN(row.value) ? row.value : null;
+
+                  const n = (v: number | null | undefined) =>
+                    typeof v === "number" && !isNaN(v) ? v : null;
+
+                  const safeVal = n(row.value);
                   const hit = safeVal != null && safeVal >= threshold;
-                  const fantScore = typeof row.fantasy === "number" && !isNaN(row.fantasy) ? row.fantasy : null;
-                  const marksVal = typeof row.marks === "number" && !isNaN(row.marks) ? row.marks : null;
+
                   return (
-                    <tr key={`played-${row.week}`} className={`border-b border-white/5 last:border-0 ${isLatest ? "bg-white/[0.015]" : ""}`}>
-                      <td className="px-3 py-1.5 text-white/38 tabular-nums text-[11px]">{row.week}</td>
-                      <td className="px-3 py-1.5 text-white/50 truncate text-[11px] max-w-[100px]">{row.opponent}</td>
-                      <td className={`px-3 py-1.5 text-right font-bold tabular-nums text-[11px] ${hit ? "text-emerald-400" : "text-white/55"}`}>
-                        {safeVal ?? "—"}
+                    <tr
+                      key={`played-${row.week}`}
+                      className={`border-b border-white/5 last:border-0 ${isLatest ? "bg-white/[0.015]" : ""}`}
+                    >
+                      <td className="px-3 py-1.5 text-white/38 tabular-nums">{row.round ?? row.week}</td>
+                      <td className="px-3 py-1.5 text-white/55 max-w-[110px] truncate">{row.opponent || "—"}</td>
+                      <td className="px-2 py-1.5 text-center tabular-nums text-white/28">
+                        {row.isHome === true ? (
+                          <span className="text-emerald-500/60 font-semibold">H</span>
+                        ) : row.isHome === false ? (
+                          <span className="text-white/30">A</span>
+                        ) : "—"}
                       </td>
-                      {lens === "disposals" && (
-                        <td className="px-3 py-1.5 text-right text-white/28 tabular-nums text-[11px] hidden sm:table-cell">{marksVal ?? "—"}</td>
+                      {lens === "disposals" ? (
+                        <>
+                          <td className={`px-2 py-1.5 text-right font-bold tabular-nums ${hit ? "text-emerald-400" : "text-white/60"}`}>
+                            {safeVal ?? "—"}
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-white/35 tabular-nums hidden sm:table-cell">{n(row.kicks) ?? "—"}</td>
+                          <td className="px-2 py-1.5 text-right text-white/35 tabular-nums hidden sm:table-cell">{n(row.handballs) ?? "—"}</td>
+                          <td className="px-2 py-1.5 text-right text-white/35 tabular-nums hidden md:table-cell">{n(row.marks) ?? "—"}</td>
+                          <td className="px-2 py-1.5 text-right text-white/35 tabular-nums hidden md:table-cell">{n(row.tackles) ?? "—"}</td>
+                          <td className="px-2 py-1.5 text-right text-white/28 tabular-nums hidden lg:table-cell">{n(row.clearances) ?? "—"}</td>
+                        </>
+                      ) : (
+                        <>
+                          <td className={`px-2 py-1.5 text-right font-bold tabular-nums ${hit ? "text-emerald-400" : "text-white/60"}`}>
+                            {n(row.goals) ?? "—"}
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-white/35 tabular-nums hidden sm:table-cell">{n(row.behinds) ?? "—"}</td>
+                          <td className="px-2 py-1.5 text-right text-white/35 tabular-nums hidden sm:table-cell">{n(row.disposals) ?? "—"}</td>
+                          <td className="px-2 py-1.5 text-right text-white/35 tabular-nums hidden md:table-cell">{n(row.marks) ?? "—"}</td>
+                          <td className="px-2 py-1.5 text-right text-white/35 tabular-nums hidden md:table-cell">{n(row.tackles) ?? "—"}</td>
+                        </>
                       )}
-                      <td className="px-3 py-1.5 text-right text-white/28 tabular-nums text-[11px]">{fantScore ?? "—"}</td>
+                      <td className="px-3 py-1.5 text-right text-white/30 tabular-nums">{n(row.fantasy) ?? "—"}</td>
                     </tr>
                   );
                 })}
