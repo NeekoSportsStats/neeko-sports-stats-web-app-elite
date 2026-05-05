@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { Sparkles } from "lucide-react";
 import type { StatBoardPlayer, StatBoardHistoryRow, StatLens } from "../types";
+import type { StatBoardPlayerAiInsight } from "../useStatBoard";
 
 interface Props {
   player: StatBoardPlayer;
@@ -9,6 +11,8 @@ interface Props {
   lens: StatLens;
   threshold: number;
   isLocked: boolean;
+  insight: StatBoardPlayerAiInsight | null;
+  insightLoading: boolean;
 }
 
 const DISPOSAL_THRESHOLDS = [15, 20, 25, 30];
@@ -22,6 +26,8 @@ export function ExpandedPlayerPanel({
   lens,
   threshold,
   isLocked,
+  insight,
+  insightLoading,
 }: Props) {
   if (isLocked) return null;
 
@@ -236,6 +242,9 @@ export function ExpandedPlayerPanel({
         </section>
       </div>
 
+      {/* ── Row 3: AI Insight ───────────────────────────────────────────────── */}
+      <AiInsightBlock insight={insight} loading={insightLoading} />
+
       {/* ── Row 4: Full-width game log ───────────────────────────────────────── */}
       {gameLog.length > 0 && (
         <section aria-label="Game-by-game log" className="px-5 pb-5">
@@ -348,6 +357,73 @@ export function ExpandedPlayerPanel({
         </section>
       )}
     </div>
+  );
+}
+
+// ── AI Insight block ──────────────────────────────────────────────────────────
+
+function AiInsightBlock({
+  insight,
+  loading,
+}: {
+  insight: StatBoardPlayerAiInsight | null;
+  loading: boolean;
+}) {
+  const colorBorder: Record<string, string> = {
+    green: "border-emerald-500/20",
+    amber: "border-amber-500/20",
+    red:   "border-red-500/20",
+  };
+  const colorAccent: Record<string, string> = {
+    green: "text-emerald-400",
+    amber: "text-amber-400",
+    red:   "text-red-400",
+  };
+
+  const borderClass = insight?.recommendation_color
+    ? (colorBorder[insight.recommendation_color] ?? "border-white/8")
+    : "border-white/8";
+
+  const text = insight?.summary_long ?? insight?.summary_short ?? null;
+  const recShort = insight?.recommendation_short ?? null;
+  const accentClass = insight?.recommendation_color
+    ? (colorAccent[insight.recommendation_color] ?? "text-white/40")
+    : "text-white/40";
+
+  return (
+    <section aria-label="AI insight" className="px-5 pb-4">
+      <div className={`rounded-lg border ${borderClass} bg-white/[0.022] px-4 py-3.5`}>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-2.5">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="h-3 w-3 text-white/30" aria-hidden />
+            <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
+              AI Insight
+            </p>
+          </div>
+          {recShort && !loading && (
+            <span className={`text-[10px] font-semibold ${accentClass}`}>
+              {recShort}
+            </span>
+          )}
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div className="space-y-2" aria-busy aria-label="Loading AI insight">
+            <div className="h-2.5 w-full rounded bg-white/5 animate-pulse" />
+            <div className="h-2.5 w-[90%] rounded bg-white/5 animate-pulse" />
+            <div className="h-2.5 w-[75%] rounded bg-white/5 animate-pulse" />
+          </div>
+        ) : text ? (
+          <p className="text-[12px] text-white/60 leading-relaxed">{text}</p>
+        ) : (
+          <p className="text-[11px] text-white/28 italic leading-relaxed">
+            AI analysis will appear here once generated.
+          </p>
+        )}
+      </div>
+    </section>
   );
 }
 

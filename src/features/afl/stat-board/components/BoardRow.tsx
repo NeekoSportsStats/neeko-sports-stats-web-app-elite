@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { ChevronDown, ChevronUp, Lock } from "lucide-react";
 import type { StatBoardPlayer, StatLens, ThresholdHitRate, TimelineSlot } from "../types";
-import { useStatBoardPlayerHistory } from "../useStatBoard";
+import { useStatBoardPlayerHistory, useStatBoardPlayerAiInsight } from "../useStatBoard";
 import { ExpandedPlayerPanel } from "./ExpandedPlayerPanel";
 
 interface Props {
@@ -23,9 +23,9 @@ export function BoardRow({
   isExpanded,
   onToggleExpand,
 }: Props) {
-  const { history, loading: histLoading, error: histError } = useStatBoardPlayerHistory(
-    isExpanded && !isMatchLocked ? player.player_id : null
-  );
+  const activePlayerId = isExpanded && !isMatchLocked ? player.player_id : null;
+  const { history, loading: histLoading, error: histError } = useStatBoardPlayerHistory(activePlayerId);
+  const { insight, loading: insightLoading } = useStatBoardPlayerAiInsight(activePlayerId);
 
   const confidence = player.confidence_label;
   const confStyles: Record<string, { dot: string; text: string }> = {
@@ -173,6 +173,8 @@ export function BoardRow({
                   lens={lens}
                   threshold={defaultThreshold}
                   isLocked={isPlayerLocked}
+                  insight={insight}
+                  insightLoading={insightLoading}
                 />
               )}
             </div>

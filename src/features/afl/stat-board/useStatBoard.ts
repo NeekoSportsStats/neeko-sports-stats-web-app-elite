@@ -132,5 +132,48 @@ export function useStatBoardPlayerHistory(playerId: number | null) {
   return { history, loading, error };
 }
 
+// ── Player AI Insight ─────────────────────────────────────────────────────────
+
+export interface StatBoardPlayerAiInsight {
+  player_id: number;
+  summary_short: string | null;
+  summary_long: string | null;
+  recommendation_short: string | null;
+  recommendation_color: string | null;
+}
+
+export function useStatBoardPlayerAiInsight(playerId: number | null) {
+  const [insight, setInsight] = useState<StatBoardPlayerAiInsight | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch = useCallback(async (id: number) => {
+    if (!supabase) return;
+    setLoading(true);
+    setError(null);
+
+    const { data, error: err } = await supabase.rpc("get_stat_board_player_ai_insight", {
+      p_player_id: id,
+    });
+
+    if (err) {
+      console.error("[StatBoard] get_stat_board_player_ai_insight error:", err);
+      setError(err.message);
+      setInsight(null);
+    } else {
+      const rows = data as StatBoardPlayerAiInsight[] | null;
+      setInsight(rows?.[0] ?? null);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (playerId !== null) fetch(playerId);
+    else { setInsight(null); setLoading(false); }
+  }, [playerId, fetch]);
+
+  return { insight, loading, error };
+}
+
 // Re-export for page use
 export { defaultThreshold };
