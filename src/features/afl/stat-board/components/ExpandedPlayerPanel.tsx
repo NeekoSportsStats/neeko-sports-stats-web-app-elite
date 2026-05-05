@@ -90,7 +90,7 @@ export function ExpandedPlayerPanel({
 
   const historyChartSlots: ChartSlot[] = gameLog.map((g) => ({
     value: g.value,
-    label: `R${g.week + 1}`,
+    label: g.week === 0 ? "OR" : `R${g.week}`,
     rowType: g.rowType,
     week: g.week,
     opponent: g.opponent,
@@ -112,7 +112,7 @@ export function ExpandedPlayerPanel({
     // Fallback 1: use the timeline already on the player row (oldest→newest order)
     chartSlots = (player.last_10_timeline as TimelineSlot[]).map((slot) => ({
       value: slot.value,
-      label: `R${slot.week + 1}`,
+      label: slot.week === 0 ? "OR" : `R${slot.week}`,
       rowType: slot.type,
       week: slot.week,
       opponent: "—",
@@ -899,7 +899,7 @@ function GameLog({
         <table className="w-full text-[11px]" role="table" style={{ minWidth: "640px" }}>
           <thead>
             <tr className="border-b border-white/8 bg-white/[0.02]">
-              <th className="text-left px-3 py-2 text-white/28 font-medium w-10 shrink-0" scope="col">Rnd</th>
+              <th className="text-left px-3 py-2 text-white/28 font-medium w-10 shrink-0" scope="col">Week</th>
               <th className="text-left px-3 py-2 text-white/28 font-medium" scope="col">Opponent</th>
               <th className="text-left px-2 py-2 text-white/28 font-medium hidden md:table-cell" scope="col">Venue</th>
               <th className="text-center px-2 py-2 text-white/28 font-medium w-8" scope="col" title="Home / Away">H/A</th>
@@ -1041,12 +1041,11 @@ function abbreviateTeam(name: string): string {
     .slice(-1)[0] ?? name;
 }
 
-/** Convert a round text like "Round 3" or "R3" to a short label "R3".
- *  Falls back to "R{week+1}" when round text is unavailable. */
-function abbreviateRound(round: string | null, week: number): string {
-  if (!round) return `R${week + 1}`;
-  const m = round.match(/\d+/);
-  return m ? `R${m[0]}` : round.slice(0, 4);
+/** Convert a round/week to a short label — OR for week 0, Rn otherwise.
+ *  The `round` field from the DB may be "Regular Season", "Opening Round", etc.
+ *  We derive the label from `week` directly to guarantee OR / R1 / R2 output. */
+function abbreviateRound(_round: string | null, week: number): string {
+  return week === 0 ? "OR" : `R${week}`;
 }
 
 /** Shorten a venue name to fit in a compact column. */

@@ -305,13 +305,13 @@ interface RoundGroup {
   matches:    StatBoardMatch[];
 }
 
-// week is 0-indexed from the DB (week 0 = Round 1)
+// week is 0-indexed from the DB (week 0 = Opening Round)
 function roundShort(week: number): string {
-  return `R${week + 1}`;
+  return week === 0 ? "OR" : `R${week}`;
 }
 
 function roundFull(week: number): string {
-  return `Round ${week + 1}`;
+  return week === 0 ? "Opening Round" : `Round ${week}`;
 }
 
 // Returns a phase label when the round field indicates something other than regular season.
