@@ -134,6 +134,11 @@ export function ExpandedPlayerPanel({
     { label: "Games",   value: n(player.games_played) != null ? String(player.games_played) : "—" },
   ].map((s) => ({ ...s, muted: s.value === "—" }));
 
+  // Show the two-column summary whenever we have any player-level stat data.
+  // This is independent of whether the history RPC returned played rows.
+  const hasPlayerStats = summaryStats.some((s) => !s.muted)
+    || Object.keys(hitRates).length > 0;
+
   return (
     <div className="border-t border-white/8 bg-[#0c0c0c]">
 
@@ -210,13 +215,13 @@ export function ExpandedPlayerPanel({
         </section>
       )}
 
-      {/* ── 4. Two-column summary row ─────────────────────────────────────── */}
-      {hasAnyData && (
-        <div className="px-5 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* ── 4. Two-column summary row (averages left, hit-rates right) ─────── */}
+      {hasPlayerStats && (
+        <div className="px-5 pt-1 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
 
-          {/* Averages block */}
+          {/* Left: Averages / stat summary */}
           <section aria-label="Stat averages">
-            <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider mb-2">Form averages</p>
+            <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider mb-2">Averages</p>
             <div className="grid grid-cols-4 gap-1.5">
               {summaryStats.map(({ label, value, muted }) => (
                 <div key={label} className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-2 py-2.5 text-center">
@@ -229,72 +234,68 @@ export function ExpandedPlayerPanel({
             </div>
           </section>
 
-          {/* Hit-rate table */}
+          {/* Right: Hit-rate table */}
           <section aria-label="Hit rate by threshold">
             <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider mb-2">
               {lens === "disposals" ? "Disposal" : "Goal"} hit rates
-              <span className="ml-1.5 font-normal normal-case tracking-normal text-white/22">
-                — last {Math.min(playedCount, 10)} games
-              </span>
+              {playedCount > 0 && (
+                <span className="ml-1.5 font-normal normal-case tracking-normal text-white/22">
+                  — last {Math.min(playedCount, 10)} games
+                </span>
+              )}
             </p>
-            {playedCount === 0 ? (
-              <div className="rounded-lg border border-white/8 px-3 py-4 text-center text-[11px] text-white/22 italic">
-                No games to calculate hit rates.
-              </div>
-            ) : (
-              <div className="rounded-lg border border-white/8 overflow-hidden">
-                <table className="w-full text-xs" role="table">
-                  <thead>
-                    <tr className="border-b border-white/8 bg-white/[0.02]">
-                      <th className="text-left px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">Line</th>
-                      <th className="text-center px-2 py-2 text-white/28 font-medium text-[10px]" scope="col">Hits</th>
-                      <th className="px-2 py-2 text-white/28 font-medium text-[10px]" scope="col">
-                        <span className="sr-only">Rate bar</span>
-                      </th>
-                      <th className="text-right px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">%</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {allThresholds.map((t) => {
-                      const key = String(t);
-                      const data = hitRates[key];
-                      const hits  = n(data?.hits);
-                      const games = n(data?.games);
-                      const rate  = n(data?.rate);
-                      const hasLineData = hits !== null && games !== null && games > 0;
+            <div className="rounded-lg border border-white/8 overflow-hidden">
+              <table className="w-full text-xs" role="table">
+                <thead>
+                  <tr className="border-b border-white/8 bg-white/[0.02]">
+                    <th className="text-left px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">Line</th>
+                    <th className="text-center px-2 py-2 text-white/28 font-medium text-[10px]" scope="col">Hits</th>
+                    <th className="px-2 py-2 text-white/28 font-medium text-[10px]" scope="col">
+                      <span className="sr-only">Rate bar</span>
+                    </th>
+                    <th className="text-right px-3 py-2 text-white/28 font-medium text-[10px]" scope="col">%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allThresholds.map((t) => {
+                    const key = String(t);
+                    const data = hitRates[key];
+                    const hits  = n(data?.hits);
+                    const games = n(data?.games);
+                    const rate  = n(data?.rate);
+                    const hasLineData = hits !== null && games !== null && games > 0;
 
-                      return (
-                        <tr key={key} className="border-b border-white/5 last:border-0">
-                          <td className="px-3 py-2 font-semibold text-[11px] text-white/50">{t}+</td>
-                          <td className="px-2 py-2 text-center tabular-nums text-[11px] text-white/45">
-                            {hasLineData ? `${hits}/${games}` : "—"}
-                          </td>
-                          <td className="px-2 py-2 w-[60px]">
-                            <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
-                              {hasLineData && rate != null && (
-                                <div
-                                  className={`h-full rounded-full ${rate >= 70 ? "bg-emerald-500/70" : rate >= 50 ? "bg-amber-500/60" : "bg-white/18"}`}
-                                  style={{ width: `${Math.min(100, Math.max(0, rate))}%` }}
-                                  role="presentation"
-                                />
-                              )}
-                            </div>
-                          </td>
-                          <td className={`px-3 py-2 text-right tabular-nums font-semibold text-[11px] ${
-                            !hasLineData ? "text-white/22"
-                            : rate != null && rate >= 70 ? "text-emerald-400"
-                            : rate != null && rate >= 50 ? "text-amber-400"
-                            : "text-white/30"
-                          }`}>
-                            {hasLineData && rate != null ? (rate > 0 ? `${rate}%` : "0%") : "—"}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    return (
+                      <tr key={key} className="border-b border-white/5 last:border-0">
+                        <td className="px-3 py-2 font-semibold text-[11px] text-white/55">{t}+</td>
+                        <td className="px-2 py-2 text-center tabular-nums text-[11px] text-white/45">
+                          {hasLineData ? `${hits}/${games}` : "—"}
+                        </td>
+                        <td className="px-2 py-2 w-[60px]">
+                          <div className="h-1.5 rounded-full bg-white/8 overflow-hidden">
+                            {hasLineData && rate != null && (
+                              <div
+                                className={`h-full rounded-full ${rate >= 70 ? "bg-emerald-500/70" : rate >= 50 ? "bg-amber-500/60" : "bg-white/18"}`}
+                                style={{ width: `${Math.min(100, Math.max(0, rate))}%` }}
+                                role="presentation"
+                              />
+                            )}
+                          </div>
+                        </td>
+                        <td className={`px-3 py-2 text-right tabular-nums font-semibold text-[11px] ${
+                          !hasLineData ? "text-white/22"
+                          : rate != null && rate >= 70 ? "text-emerald-400"
+                          : rate != null && rate >= 50 ? "text-amber-400"
+                          : "text-white/30"
+                        }`}>
+                          {hasLineData && rate != null ? (rate > 0 ? `${rate}%` : "0%") : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </section>
         </div>
       )}
