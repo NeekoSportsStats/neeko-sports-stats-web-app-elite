@@ -15,12 +15,10 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
   const listRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
-  // Dropdown direction: default down, flip up when too close to bottom
   const [dropUp, setDropUp] = useState(false);
 
   const close = useCallback(() => setOpen(false), []);
 
-  // Close on outside click or Escape
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) close();
@@ -36,7 +34,6 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
     };
   }, [close]);
 
-  // Determine flip direction before rendering
   function handleOpen() {
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
@@ -46,7 +43,6 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
     setOpen((v) => !v);
   }
 
-  // Scroll selected item into view when dropdown opens
   useEffect(() => {
     if (!open || !listRef.current || !selected) return;
     const el = listRef.current.querySelector("[data-selected='true']") as HTMLElement | null;
@@ -61,12 +57,16 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
 
   const groups = groupByRound(matches);
 
-  const triggerLabel = selected
-    ? formatTriggerLabel(selected)
-    : "Select a match";
-
   const selectedIsLocked = selected?.is_locked ?? false;
   const selectedIsFree   = selected ? !selectedIsLocked : false;
+
+  // Trigger: "R9 · Fremantle Dockers vs Hawthorn Hawks"
+  const triggerFixture = selected ? formatFixture(selected.match_label) : null;
+  const triggerRound   = selected != null ? roundShort(selected.week) : null;
+  const triggerLabel   = triggerFixture ?? "Select a match";
+
+  // Phase label (Finals, Preseason, etc.) — only when not regular season
+  const phaseLabel = selected ? competitionPhase(selected.round) : null;
 
   return (
     <div ref={containerRef} className="relative mb-6">
@@ -76,7 +76,7 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
         onClick={handleOpen}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={`Match: ${triggerLabel}`}
+        aria-label={`Match: ${triggerRound ? triggerRound + " · " : ""}${triggerLabel}`}
         className={`
           inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-left
           transition-all duration-100 focus:outline-none focus-visible:ring-2
@@ -86,7 +86,7 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
             : "bg-white/[0.045] border-white/10 text-white/80 hover:bg-white/7 hover:border-white/16 hover:text-white/95"}
         `}
       >
-        {/* Status dot */}
+        {/* Free / locked indicator */}
         <span className="shrink-0 flex items-center justify-center w-3.5">
           {selectedIsFree ? (
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/80" aria-hidden />
@@ -95,15 +95,27 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
           ) : null}
         </span>
 
-        {/* Label */}
-        <span className="text-[13px] font-medium leading-none truncate" style={{ maxWidth: "240px" }}>
+        {/* Round badge */}
+        {triggerRound && (
+          <span className="shrink-0 text-[11px] font-bold text-white/55 tabular-nums leading-none">
+            {triggerRound}
+          </span>
+        )}
+
+        {/* Separator dot between round and fixture */}
+        {triggerRound && triggerFixture && (
+          <span className="shrink-0 text-white/20 text-[10px]" aria-hidden>·</span>
+        )}
+
+        {/* Fixture label */}
+        <span className="text-[13px] font-medium leading-none truncate" style={{ maxWidth: "260px" }}>
           {triggerLabel}
         </span>
 
-        {/* Round badge */}
-        {selected?.round && (
-          <span className="shrink-0 text-[10px] font-semibold text-white/30 bg-white/6 rounded px-1.5 py-0.5 leading-none">
-            {selected.round}
+        {/* Non-regular-season phase pill */}
+        {phaseLabel && (
+          <span className="shrink-0 text-[9px] font-semibold text-white/30 bg-white/6 rounded px-1.5 py-0.5 leading-none uppercase tracking-wide whitespace-nowrap">
+            {phaseLabel}
           </span>
         )}
 
@@ -120,12 +132,11 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
           aria-label="Select a match"
           style={{
             animation: "matchDropIn 120ms cubic-bezier(0.2,0,0,1) forwards",
-            // Flip up if not enough space below
             ...(dropUp
               ? { bottom: "calc(100% + 6px)", top: "auto" }
               : { top: "calc(100% + 6px)", bottom: "auto" }),
           }}
-          className="absolute left-0 z-50 w-[340px] max-w-[calc(100vw-2rem)] rounded-2xl border border-white/12 bg-[#111111] shadow-2xl shadow-black/70 overflow-hidden"
+          className="absolute left-0 z-50 w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border border-white/12 bg-[#111111] shadow-2xl shadow-black/70 overflow-hidden"
         >
           <style>{`
             @keyframes matchDropIn {
@@ -134,7 +145,6 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
             }
           `}</style>
 
-          {/* Scrollable list — max ~5 rounds visible before scroll */}
           <div
             ref={listRef}
             className="overflow-y-auto overscroll-contain py-1.5"
@@ -147,10 +157,14 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
                   <span className="text-[10px] font-bold text-white/28 uppercase tracking-widest shrink-0">
                     {group.roundLabel}
                   </span>
+                  {group.phaseLabel && (
+                    <span className="text-[9px] font-semibold text-white/20 bg-white/5 rounded px-1.5 py-0.5 leading-none uppercase tracking-wide shrink-0">
+                      {group.phaseLabel}
+                    </span>
+                  )}
                   <div className="flex-1 h-px bg-white/[0.07]" />
                 </div>
 
-                {/* Match rows */}
                 {group.matches.map((match) => {
                   const isSelected = selected?.match_id === match.match_id;
                   return (
@@ -225,7 +239,7 @@ function MatchOption({
           : "hover:bg-white/[0.055]"}
       `}
     >
-      {/* Left icon — fixed width keeps team names aligned across all rows */}
+      {/* Left icon */}
       <span className="shrink-0 w-5 h-5 flex items-center justify-center rounded-md">
         {isSelected ? (
           <Check className="h-3.5 w-3.5 text-emerald-400" aria-hidden />
@@ -236,7 +250,7 @@ function MatchOption({
         )}
       </span>
 
-      {/* Team matchup + date */}
+      {/* Team matchup + round + date */}
       <div className="flex-1 min-w-0">
         {teams ? (
           <p className={`text-[12.5px] font-semibold leading-tight truncate ${
@@ -253,19 +267,26 @@ function MatchOption({
             {match.match_label}
           </p>
         )}
-        {dateStr && (
-          <p className="text-[10px] text-white/28 mt-0.5 leading-none">{dateStr}</p>
-        )}
+        {/* Round + date sub-line */}
+        <p className="text-[10px] text-white/28 mt-0.5 leading-none flex items-center gap-1">
+          <span className="font-semibold text-white/35">{roundShort(match.week)}</span>
+          {dateStr && (
+            <>
+              <span className="text-white/15">·</span>
+              <span>{dateStr}</span>
+            </>
+          )}
+        </p>
       </div>
 
-      {/* Venue — shown on sm+ screens */}
+      {/* Venue */}
       {match.venue && (
         <span className="shrink-0 text-[10px] text-white/22 hidden sm:block max-w-[80px] truncate text-right leading-tight">
           {abbreviateVenue(match.venue)}
         </span>
       )}
 
-      {/* FREE badge for free unlocked matches */}
+      {/* FREE badge */}
       {match.is_free_match && !isSelected && (
         <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide text-emerald-500/70 bg-emerald-500/8 rounded px-1.5 py-0.5 leading-none">
           Free
@@ -280,7 +301,26 @@ function MatchOption({
 interface RoundGroup {
   roundKey:   string;
   roundLabel: string;
+  phaseLabel: string | null;
   matches:    StatBoardMatch[];
+}
+
+// week is 0-indexed from the DB (week 0 = Round 1)
+function roundShort(week: number): string {
+  return `R${week + 1}`;
+}
+
+function roundFull(week: number): string {
+  return `Round ${week + 1}`;
+}
+
+// Returns a phase label when the round field indicates something other than regular season.
+// "Regular Season" → null (no badge needed)
+// "Finals" / "Grand Final" / "Preseason" / etc. → returned as-is
+function competitionPhase(round: string | null | undefined): string | null {
+  if (!round) return null;
+  if (/regular.?season/i.test(round)) return null;
+  return round;
 }
 
 function groupByRound(matches: StatBoardMatch[]): RoundGroup[] {
@@ -292,20 +332,25 @@ function groupByRound(matches: StatBoardMatch[]): RoundGroup[] {
   }
   const groups: RoundGroup[] = [];
   for (const [key, ms] of map) {
-    const label = ms[0]?.round ?? `Round ${key}`;
-    groups.push({ roundKey: key, roundLabel: label, matches: ms });
+    const week = ms[0]?.week ?? parseInt(key, 10);
+    groups.push({
+      roundKey:   key,
+      roundLabel: roundFull(week),
+      phaseLabel: competitionPhase(ms[0]?.round ?? null),
+      matches:    ms,
+    });
   }
   return groups;
 }
 
-function formatTriggerLabel(match: StatBoardMatch): string {
-  const teams = parseTeams(match.match_label);
+// Formats fixture label without "Football Club" / "FC" suffixes.
+function formatFixture(matchLabel: string): string {
+  const teams = parseTeams(matchLabel);
   if (teams) return `${teams.home} vs ${teams.away}`;
-  return match.match_label;
+  return matchLabel;
 }
 
 function parseTeams(label: string): { home: string; away: string } | null {
-  // Handles both "X v Y" (RPC format) and "X vs Y"
   const m = label.match(/^(.+?)\s+v(?:s\.?)?\s+(.+)$/i);
   if (!m) return null;
   return {
