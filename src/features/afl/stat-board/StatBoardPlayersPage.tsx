@@ -90,10 +90,18 @@ export default function StatBoardPlayersPage() {
   });
 
   useEffect(() => {
-    if (matches.length > 0 && selectedMatch === null) {
-      const first = matches.find((m) => m.match_order === 1) ?? matches[0];
-      setSelectedMatch(first);
-    }
+    if (matches.length === 0 || selectedMatch !== null) return;
+    // Prefer the first free match (match_order <= 2) of the latest week.
+    // Falls back to match_order === 1 of the latest week, then the last match overall.
+    const maxWeek = Math.max(...matches.map((m) => m.week));
+    const latestRound = matches.filter((m) => m.week === maxWeek);
+    const defaultMatch =
+      latestRound.find((m) => m.is_free_match && m.match_order === 1) ??
+      latestRound.find((m) => m.is_free_match) ??
+      latestRound.find((m) => m.match_order === 1) ??
+      latestRound[0] ??
+      matches[matches.length - 1];
+    setSelectedMatch(defaultMatch);
   }, [matches, selectedMatch]);
 
   function handleLensChange(newLens: StatLens) {
