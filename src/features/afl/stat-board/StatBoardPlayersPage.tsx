@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { Search, X, Lock, ChevronDown } from "lucide-react";
 import { track } from "@/lib/analytics";
@@ -45,6 +45,8 @@ function hasNoData(p: StatBoardPlayer): boolean {
   return values.length === 0 && (p.projection == null || p.projection === 0) && p.last_10_avg == null;
 }
 
+// Sorting uses fields already computed per-lens by the RPC:
+// - projection, last_10_avg, hit_rate_last_10 all reflect the active stat lens.
 function sortPlayers(players: StatBoardPlayer[], sortKey: SortKey): StatBoardPlayer[] {
   return [...players].sort((a, b) => {
     const aEmpty = hasNoData(a);
@@ -69,6 +71,16 @@ function sortPlayers(players: StatBoardPlayer[], sortKey: SortKey): StatBoardPla
   });
 }
 
+function sortButtonLabel(sortKey: SortKey): string {
+  switch (sortKey) {
+    case "projection":  return "Projection ↓";
+    case "hit_rate":    return "Hit rate ↓";
+    case "recent_avg":  return "Recent avg ↓";
+    case "name":        return "Name A–Z";
+    case "consistency": return "Consistency ↓";
+  }
+}
+
 export default function StatBoardPlayersPage() {
   const [selectedMatch, setSelectedMatch] = useState<StatBoardMatch | null>(null);
   const [lens, setLens] = useState<StatLens>("disposals");
@@ -77,8 +89,9 @@ export default function StatBoardPlayersPage() {
   const [sortKey, setSortKey] = useState<SortKey>("projection");
   const [sortOpen, setSortOpen] = useState(false);
   const [expandedPlayerId, setExpandedPlayerId] = useState<number | null>(null);
+  const [stickyVisible, setStickyVisible] = useState(false);
+  const controlsRef = useRef<HTMLDivElement>(null);
 
-  // Fixed default threshold per lens — used for RPC and expanded detail emphasis only.
   const threshold = defaultThreshold(lens);
   const thresholds = thresholdsForLens(lens);
 
@@ -92,10 +105,9 @@ export default function StatBoardPlayersPage() {
     search,
   });
 
+  // Auto-select default match
   useEffect(() => {
     if (matches.length === 0 || selectedMatch !== null) return;
-    // Prefer the first free match (match_order <= 2) of the latest week.
-    // Falls back to match_order === 1 of the latest week, then the last match overall.
     const maxWeek = Math.max(...matches.map((m) => m.week));
     const latestRound = matches.filter((m) => m.week === maxWeek);
     const defaultMatch =
@@ -107,9 +119,21 @@ export default function StatBoardPlayersPage() {
     setSelectedMatch(defaultMatch);
   }, [matches, selectedMatch]);
 
+  // Sticky controls: show when controls div scrolls above viewport
+  useEffect(() => {
+    const el = controlsRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setStickyVisible(!entry.isIntersecting),
+      { rootMargin: "-1px 0px 0px 0px", threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   function handleLensChange(newLens: StatLens) {
     setLens(newLens);
-    setSortKey("projection"); // reset to projection so new lens data drives order
+    setSortKey("projection");
     setExpandedPlayerId(null);
     track("Stat Board Lens Change", { lens: newLens });
   }
@@ -139,18 +163,6 @@ export default function StatBoardPlayersPage() {
   }, []);
 
   const isLocked = selectedMatch?.is_locked ?? false;
-  const lensLabel = lens === "disposals" ? "Disposals" : "Goals";
-  const sortButtonLabel = (() => {
-    switch (sortKey) {
-      case "projection":  return "Projection ↓";
-      case "hit_rate":    return "Hit rate ↓";
-      case "recent_avg":  return "Recent avg ↓";
-      case "name":        return "Name A–Z";
-      case "consistency": return "Consistency ↓";
-    }
-  })();
-
-  const playerCount = players.length;
 
   return (
     <>
@@ -162,13 +174,33 @@ export default function StatBoardPlayersPage() {
         />
       </Helmet>
 
+      {/* Sticky controls bar — appears when inline controls scroll out of view */}
+      {stickyVisible && (
+        <StickyControlsBar
+          matches={matches}
+          selectedMatch={selectedMatch}
+          matchesLoading={matchesLoading}
+          lens={lens}
+          positionFilter={positionFilter}
+          search={search}
+          sortKey={sortKey}
+          sortOpen={sortOpen}
+          onMatchChange={handleMatchChange}
+          onLensChange={handleLensChange}
+          onPositionChange={setPositionFilter}
+          onSearchChange={setSearch}
+          onSortChange={setSortKey}
+          onSortOpenChange={setSortOpen}
+        />
+      )}
+
       <div className="min-h-screen bg-[#0a0a0a] text-white">
         <div className="mx-auto max-w-5xl px-4 pt-6 pb-20">
 
           {/* Page header */}
-          <div className="mb-8">
+          <div className="mb-6">
             <h1 className="text-xl font-bold tracking-tight text-white">AFL Player Stat Board</h1>
-            <p className="mt-1.5 text-sm text-white/50 max-w-xl leading-relaxed">
+            <p className="mt-1 text-sm text-white/50 max-w-xl leading-relaxed">
               Pick a match, choose a stat, and compare every player's recent trends, hit rates and projections.
             </p>
           </div>
@@ -187,16 +219,16 @@ export default function StatBoardPlayersPage() {
             />
           )}
 
-          {/* ── Controls ──────────────────────────────────────────────────────── */}
-          <div className="mb-5 space-y-3">
+          {/* ── Inline controls (observed for sticky trigger) ─────────────────── */}
+          <div ref={controlsRef} className="mb-4 space-y-3">
 
             {/* Row 1: Stat + Position */}
-            <div className="flex flex-wrap items-start gap-5">
+            <div className="flex flex-wrap items-start gap-4">
 
-              {/* Stat */}
+              {/* Stat toggle */}
               <div>
                 <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">Stat</p>
-                <div className="flex gap-1.5 rounded-xl bg-white/5 border border-white/8 p-1">
+                <div className="flex gap-1 rounded-xl bg-white/5 border border-white/8 p-1">
                   {(["disposals", "goals"] as StatLens[]).map((l) => (
                     <button
                       key={l}
@@ -213,10 +245,10 @@ export default function StatBoardPlayersPage() {
                 </div>
               </div>
 
-              {/* Position */}
+              {/* Position filter */}
               <div>
                 <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">Position</p>
-                <div className="flex gap-1">
+                <div className="flex gap-1 flex-wrap">
                   {POSITION_OPTIONS.map(({ key, label }) => (
                     <button
                       key={key}
@@ -236,8 +268,8 @@ export default function StatBoardPlayersPage() {
 
             {/* Row 2: Search + Sort */}
             <div className="flex gap-2 items-center flex-wrap">
-              <div className="relative flex-1 max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/25" />
+              <div className="relative flex-1 min-w-[160px] max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/25 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Search player..."
@@ -256,16 +288,16 @@ export default function StatBoardPlayersPage() {
                 )}
               </div>
 
-              {/* Sort */}
+              {/* Sort dropdown */}
               <div className="relative">
                 <button
                   onClick={() => setSortOpen((v) => !v)}
-                  className="flex items-center gap-1.5 rounded-xl bg-white/5 border border-white/8 px-3 py-2 text-xs font-medium text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
+                  className="flex items-center gap-1.5 rounded-xl bg-white/5 border border-white/8 px-3 py-2 text-xs font-medium text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 whitespace-nowrap"
                   aria-haspopup="listbox"
                   aria-expanded={sortOpen}
                 >
                   <span className="text-white/32 text-[10px]">Sort:</span>
-                  <span className="text-white/72">{sortButtonLabel}</span>
+                  <span className="text-white/72">{sortButtonLabel(sortKey)}</span>
                   <ChevronDown className={`h-3 w-3 text-white/30 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
                 </button>
 
@@ -283,12 +315,12 @@ export default function StatBoardPlayersPage() {
 
           {/* Context row */}
           {!playersLoading && selectedMatch && (
-            <div className="mt-2 mb-6 flex items-center gap-1.5 flex-wrap text-[12px] text-white/48">
+            <div className="mb-5 flex items-center gap-1.5 flex-wrap text-[12px] text-white/48">
               <span className="text-white/30 text-[11px]">Viewing:</span>
               {[
                 selectedMatch.match_label,
-                lensLabel,
-                playerCount > 0 ? `${playerCount} players` : null,
+                lens === "disposals" ? "Disposals" : "Goals",
+                players.length > 0 ? `${players.length} players` : null,
               ]
                 .filter(Boolean)
                 .map((part, i) => (
@@ -333,7 +365,7 @@ export default function StatBoardPlayersPage() {
               onResetAll={() => { setPositionFilter("ALL"); setSearch(""); }}
             />
           ) : (
-            <div className="space-y-10">
+            <div className="space-y-8">
               <TeamBoard
                 teamName={selectedMatch?.home_team_name ?? "Home"}
                 opponentName={selectedMatch?.away_team_name ?? "Away"}
@@ -372,14 +404,147 @@ export default function StatBoardPlayersPage() {
   );
 }
 
-// ── No-players empty state ────────────────────────────────────────────────────
+// ── Sticky controls bar ───────────────────────────────────────────────────────
 
-const POSITION_LABELS: Record<string, string> = {
-  MID: "midfielder",
-  DEF: "defender",
-  FWD: "forward",
-  RUCK: "ruck",
-};
+interface StickyControlsBarProps {
+  matches: StatBoardMatch[];
+  selectedMatch: StatBoardMatch | null;
+  matchesLoading: boolean;
+  lens: StatLens;
+  positionFilter: PositionFilter;
+  search: string;
+  sortKey: SortKey;
+  sortOpen: boolean;
+  onMatchChange: (m: StatBoardMatch) => void;
+  onLensChange: (l: StatLens) => void;
+  onPositionChange: (p: PositionFilter) => void;
+  onSearchChange: (s: string) => void;
+  onSortChange: (k: SortKey) => void;
+  onSortOpenChange: (v: boolean) => void;
+}
+
+function StickyControlsBar({
+  matches,
+  selectedMatch,
+  matchesLoading,
+  lens,
+  positionFilter,
+  search,
+  sortKey,
+  sortOpen,
+  onMatchChange,
+  onLensChange,
+  onPositionChange,
+  onSearchChange,
+  onSortChange,
+  onSortOpenChange,
+}: StickyControlsBarProps) {
+  return (
+    <div
+      className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#0a0a0a]/95 backdrop-blur-md"
+      style={{ animation: "stickySlideDown 150ms cubic-bezier(0.2,0,0,1) both" }}
+    >
+      <style>{`
+        @keyframes stickySlideDown {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+      <div className="mx-auto max-w-5xl px-4 py-2.5 flex flex-wrap items-center gap-2">
+
+        {/* Match selector (compact) */}
+        <div className="shrink-0">
+          <MatchSelector
+            matches={matches}
+            selected={selectedMatch}
+            loading={matchesLoading}
+            onChange={onMatchChange}
+          />
+        </div>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Stat toggle */}
+          <div className="flex gap-0.5 rounded-lg bg-white/5 border border-white/8 p-0.5">
+            {(["disposals", "goals"] as StatLens[]).map((l) => (
+              <button
+                key={l}
+                onClick={() => onLensChange(l)}
+                className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                  lens === l
+                    ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30"
+                    : "text-white/45 hover:text-white/75"
+                }`}
+              >
+                {l === "disposals" ? "Disp" : "Goals"}
+              </button>
+            ))}
+          </div>
+
+          {/* Position filter */}
+          <div className="flex gap-0.5">
+            {POSITION_OPTIONS.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => onPositionChange(key)}
+                className={`rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors ${
+                  positionFilter === key
+                    ? "bg-white/15 text-white ring-1 ring-white/25"
+                    : "bg-white/5 text-white/38 hover:bg-white/10 hover:text-white/65"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-white/22 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-32 sm:w-40 rounded-lg bg-white/5 border border-white/8 pl-7 pr-6 py-1.5 text-[11px] text-white placeholder:text-white/22 focus:outline-none focus:border-white/22 transition-colors"
+            />
+            {search && (
+              <button
+                onClick={() => onSearchChange("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-white/22 hover:text-white/50"
+                aria-label="Clear search"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+
+          {/* Sort */}
+          <div className="relative">
+            <button
+              onClick={() => onSortOpenChange(!sortOpen)}
+              className="flex items-center gap-1 rounded-lg bg-white/5 border border-white/8 px-2.5 py-1.5 text-[11px] font-medium text-white/55 hover:text-white/80 hover:bg-white/8 transition-colors whitespace-nowrap"
+              aria-haspopup="listbox"
+              aria-expanded={sortOpen}
+            >
+              {sortButtonLabel(sortKey)}
+              <ChevronDown className={`h-3 w-3 text-white/28 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
+            </button>
+            {sortOpen && (
+              <SortDropdown
+                current={sortKey}
+                options={sortOptions(lens)}
+                onSelect={(k) => { onSortChange(k); onSortOpenChange(false); }}
+                onClose={() => onSortOpenChange(false)}
+              />
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── No-players empty state ────────────────────────────────────────────────────
 
 function NoPlayersState({
   positionFilter,
@@ -399,23 +564,34 @@ function NoPlayersState({
   const hasPosition = positionFilter !== "ALL";
   const hasSearch = search.trim().length > 0;
   const statLabel = lens === "disposals" ? "disposal" : "goal";
-  const posLabel = POSITION_LABELS[positionFilter] ?? positionFilter.toLowerCase();
+
+  const posLabel: Record<PositionFilter, string> = {
+    ALL:  "player",
+    MID:  "midfielder",
+    DEF:  "defender",
+    FWD:  "forward",
+    RUCK: "ruck",
+  };
+  const pos = posLabel[positionFilter];
 
   let heading: string;
   let sub: string;
 
-  if (hasPosition && hasSearch) {
-    heading = `No ${posLabel} players matching "${search.trim()}"`;
-    sub = `Try broadening your search or clearing the position filter.`;
+  if (hasPosition && positionFilter === "RUCK" && !hasSearch) {
+    heading = "No ruck players found for this match";
+    sub = "Ruck players may not have enough data for this match yet.";
+  } else if (hasPosition && hasSearch) {
+    heading = `No ${pos} players matching "${search.trim()}"`;
+    sub = "Try broadening your search or clearing the position filter.";
   } else if (hasPosition) {
-    heading = `No ${posLabel} players found for this match`;
-    sub = `This match may not have any ${posLabel}s with ${statLabel} data yet.`;
+    heading = `No ${pos} players found for this match`;
+    sub = `This match may not have any ${pos}s with ${statLabel} data yet.`;
   } else if (hasSearch) {
-    heading = `No players matching "${search.trim()}"`;
-    sub = `Check the spelling or try a shorter name.`;
+    heading = `No players matched your search`;
+    sub = `No results for "${search.trim()}". Check the spelling or try a shorter name.`;
   } else {
     heading = "No players found for this match";
-    sub = "Data may not be available yet for the selected match.";
+    sub = "Data may not be available yet for this match.";
   }
 
   return (
@@ -482,7 +658,7 @@ function SortDropdown({
       data-sort-dropdown
       role="listbox"
       aria-label="Sort options"
-      className="absolute right-0 top-full z-50 mt-1 w-52 rounded-xl border border-white/10 bg-[#141414] shadow-2xl overflow-hidden"
+      className="absolute right-0 top-full z-50 mt-1 w-56 rounded-xl border border-white/10 bg-[#141414] shadow-2xl overflow-hidden"
     >
       {options.map((opt) => (
         <button
@@ -536,10 +712,8 @@ function TeamBoard({
 
   if (players.length === 0) return null;
 
-  // Derive home/away from first player in this team section
   const isHome: boolean | null = players[0]?.is_home ?? null;
 
-  // When search is active show all; otherwise cap at TOP_N unless expanded
   const needsCap = !searchActive && players.length > TOP_N;
   const isCapped = needsCap && !showAll;
   const visiblePlayers = isCapped ? players.slice(0, TOP_N) : players;
@@ -556,7 +730,6 @@ function TeamBoard({
     <div>
       {/* ── Team section header ── */}
       <div className="mb-3 flex items-start justify-between gap-3 flex-wrap">
-        {/* Left: team name + count + home/away */}
         <div className="min-w-0">
           <div className="flex items-baseline gap-2 flex-wrap">
             <h2 className="text-[14px] font-bold text-white tracking-tight leading-none shrink-0">
@@ -583,7 +756,7 @@ function TeamBoard({
           </div>
         </div>
 
-        {/* Right: single expand/collapse control */}
+        {/* Single expand/collapse control */}
         {needsCap && (
           <button
             onClick={() => setShowAll((v) => !v)}
@@ -602,8 +775,21 @@ function TeamBoard({
               <th className="pl-4 pr-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider whitespace-nowrap">
                 Player
               </th>
-              <th className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-center whitespace-nowrap">
-                Recent
+              <th className="px-2 py-2.5 text-center whitespace-nowrap">
+                {/* Recent header with BYE/DNP legend */}
+                <div className="flex flex-col items-center gap-1">
+                  <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Recent</span>
+                  <div className="flex items-center gap-2" aria-label="Legend">
+                    <span className="flex items-center gap-0.5 text-[8px] text-white/22">
+                      <span className="inline-block w-5 h-3.5 rounded-sm bg-white/4 border border-white/8 text-center leading-[14px] font-bold text-[7px]">BYE</span>
+                      <span>= bye</span>
+                    </span>
+                    <span className="flex items-center gap-0.5 text-[8px] text-white/22">
+                      <span className="inline-block w-5 h-3.5 rounded-sm bg-white/4 border border-dashed border-white/12 text-center leading-[14px] font-bold text-[7px]">DNP</span>
+                      <span>= did not play</span>
+                    </span>
+                  </div>
+                </div>
               </th>
               <th className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-right whitespace-nowrap">
                 Recent Avg
@@ -652,7 +838,7 @@ function TeamBoard({
 function BoardSkeleton({ thresholdCount }: { thresholdCount: number }) {
   const colCount = 4 + thresholdCount + 2;
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       {[0, 1].map((g) => (
         <div key={g}>
           <div className="h-4 w-32 rounded-lg bg-white/6 mb-3 animate-pulse" />
