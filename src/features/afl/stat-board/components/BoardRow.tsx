@@ -57,14 +57,27 @@ export function BoardRow({
         aria-expanded={isExpanded}
         aria-label={`${player.player_name} — ${isExpanded ? "collapse" : "expand"} detail`}
         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggleExpand(); } }}
-        className={`cursor-pointer select-none transition-colors duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60 ${
-          isExpanded ? "bg-white/[0.03]" : "hover:bg-white/[0.04] active:bg-white/[0.05]"
-        }`}
+        className={`
+          group cursor-pointer select-none transition-colors duration-100
+          focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60
+          border-b border-white/[0.06] last:border-b-0
+          ${isExpanded
+            ? "bg-white/[0.055] border-b-transparent"
+            : "hover:bg-white/[0.04] active:bg-white/[0.055]"}
+        `}
       >
-        {/* Player name + position */}
-        <td className="pl-4 pr-2 py-3 min-w-[150px] max-w-[210px]">
-          <div className="flex items-center gap-1.5">
-            <span className="text-[13px] font-semibold text-white/90 truncate leading-tight">
+        {/* Left accent stripe — visible only when expanded */}
+        <td className="relative pl-0 pr-2 py-3 min-w-[150px] max-w-[210px]">
+          {isExpanded && (
+            <span
+              className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full bg-emerald-500/50"
+              aria-hidden
+            />
+          )}
+          <div className="flex items-center gap-1.5 pl-4">
+            <span className={`text-[13px] font-semibold truncate leading-tight transition-colors ${
+              isExpanded ? "text-white" : "text-white/90"
+            }`}>
               {player.player_name}
             </span>
             {player.position_group && (
@@ -73,7 +86,7 @@ export function BoardRow({
               </span>
             )}
           </div>
-          <p className="text-[10px] text-white/35 truncate mt-0.5">
+          <p className="text-[10px] text-white/35 truncate mt-0.5 pl-4">
             {player.team_name || "—"}
             {player.is_home === true && <span className="ml-1 text-white/18">· H</span>}
             {player.is_home === false && <span className="ml-1 text-white/18">· A</span>}
@@ -111,7 +124,7 @@ export function BoardRow({
 
         {/* Hit-rate columns — one per threshold */}
         {thresholds.map((t) => (
-          <td key={t} className="px-2 py-2 text-center tabular-nums min-w-[60px]">
+          <td key={t} className="px-2 py-2.5 text-center tabular-nums min-w-[60px]">
             {hitRateCell(player, t, isPlayerLocked)}
           </td>
         ))}
@@ -128,29 +141,36 @@ export function BoardRow({
           )}
         </td>
 
-        {/* Expand chevron — full-height click target via row click */}
-        <td className="pr-4 pl-1 py-3 text-center w-9">
-          {isPlayerLocked ? (
-            <Lock className="h-3.5 w-3.5 text-[#F5C84C]/40 mx-auto" aria-hidden />
-          ) : isExpanded ? (
-            <ChevronUp className="h-4 w-4 text-white/50 mx-auto" aria-hidden />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-white/30 mx-auto" aria-hidden />
-          )}
+        {/* Expand chevron — larger touch target, brightens on hover */}
+        <td className="pr-3 pl-1 py-2 text-center w-10">
+          <span className={`
+            inline-flex items-center justify-center h-7 w-7 rounded-lg transition-colors
+            ${isExpanded
+              ? "bg-white/10 text-white/70"
+              : "text-white/28 group-hover:bg-white/6 group-hover:text-white/55"}
+          `}>
+            {isPlayerLocked ? (
+              <Lock className="h-3.5 w-3.5 text-[#F5C84C]/40" aria-hidden />
+            ) : isExpanded ? (
+              <ChevronUp className="h-4 w-4" aria-hidden />
+            ) : (
+              <ChevronDown className="h-4 w-4" aria-hidden />
+            )}
+          </span>
         </td>
       </tr>
 
       {/* ── Expanded detail row ── */}
       {isExpanded && (
-        <tr>
-          <td colSpan={4 + thresholds.length + 2} className="p-0 align-top">
+        <tr className="border-b border-white/[0.06]">
+          <td colSpan={4 + thresholds.length + 2} className="p-0 align-top bg-white/[0.022]">
             <div
-              className="overflow-hidden"
+              className="overflow-hidden border-l-[3px] border-emerald-500/30"
               style={{ animation: "expandDown 180ms cubic-bezier(0.2,0,0,1) forwards" }}
             >
               <style>{`
                 @keyframes expandDown {
-                  from { opacity: 0; transform: translateY(-4px); }
+                  from { opacity: 0; transform: translateY(-6px); }
                   to   { opacity: 1; transform: translateY(0); }
                 }
               `}</style>

@@ -433,44 +433,47 @@ function TeamBoard({
 
   return (
     <div>
-      {/* Team header */}
-      <div className="mb-3 flex items-baseline gap-2.5">
-        <h2 className="text-[15px] font-bold text-white">{teamName}</h2>
-        <span className="text-xs text-white/40">vs {opponentName}</span>
+      {/* Team section header — pill label separates the two teams clearly */}
+      <div className="mb-3 flex items-center gap-3">
+        <h2 className="text-[14px] font-bold text-white tracking-tight">{teamName}</h2>
+        <span className="text-[10px] font-semibold text-white/35 bg-white/6 border border-white/8 rounded-full px-2.5 py-0.5 whitespace-nowrap">
+          vs {opponentName}
+        </span>
       </div>
 
       {/* Horizontally scrollable table */}
-      <div className="overflow-x-auto rounded-2xl border border-white/10">
+      <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#0d0d0d]">
         <table className="w-full border-collapse text-left" style={{ minWidth: "640px" }}>
           <thead>
-            <tr className="border-b border-white/8 bg-[#0f0f0f]">
-              <th className="pl-3 pr-2 py-2 text-[10px] font-semibold text-white/38 uppercase tracking-wider whitespace-nowrap">
+            <tr className="border-b border-white/10 bg-[#0f0f0f]">
+              <th className="pl-4 pr-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider whitespace-nowrap">
                 Player
               </th>
-              <th className="px-2 py-2 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">
+              <th className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-center whitespace-nowrap">
                 Form
               </th>
-              <th className="px-2 py-2 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-right whitespace-nowrap">
+              <th className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-right whitespace-nowrap">
                 Avg (L10)
               </th>
-              <th className="px-2 py-2 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-right whitespace-nowrap">
+              <th className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-right whitespace-nowrap">
                 Proj
               </th>
               {thresholds.map((t) => (
                 <th
                   key={t}
-                  className="px-2 py-2 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap"
+                  className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-center whitespace-nowrap"
                 >
                   {thresholdHeaderLabel(t)} Hit
                 </th>
               ))}
-              <th className="px-2 py-2 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">
+              <th className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-center whitespace-nowrap">
                 Consistency
               </th>
-              <th className="pr-3 pl-1 py-2 w-8" />
+              <th className="pr-3 pl-1 py-2.5 w-10" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/[0.06]">
+          {/* Rows carry their own border-b — no tbody divide needed */}
+          <tbody>
             {players.map((player) => (
               <BoardRow
                 key={player.player_id}
@@ -497,25 +500,25 @@ function TeamBoard({
 function BoardSkeleton({ thresholdCount }: { thresholdCount: number }) {
   const colCount = 4 + thresholdCount + 2;
   return (
-    <div className="space-y-6">
+    <div className="space-y-10">
       {[0, 1].map((g) => (
         <div key={g}>
-          <div className="h-4 w-32 rounded-lg bg-white/6 mb-4 animate-pulse" />
-          <div className="overflow-x-auto rounded-2xl border border-white/10">
+          <div className="h-4 w-32 rounded-lg bg-white/6 mb-3 animate-pulse" />
+          <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#0d0d0d]">
             <table className="w-full border-collapse" style={{ minWidth: "640px" }}>
               <thead>
-                <tr className="border-b border-white/8 bg-[#0f0f0f]">
+                <tr className="border-b border-white/10 bg-[#0f0f0f]">
                   {Array.from({ length: colCount }).map((_, i) => (
-                    <th key={i} className="px-3 py-2">
+                    <th key={i} className="px-3 py-2.5">
                       <div className="h-2.5 w-10 rounded bg-white/8 animate-pulse" />
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.06]">
+              <tbody>
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i}>
-                    <td className="pl-3 pr-2 py-3">
+                  <tr key={i} className="border-b border-white/[0.06] last:border-b-0">
+                    <td className="pl-4 pr-2 py-3">
                       <div className="h-3 w-28 rounded bg-white/6 animate-pulse mb-1" />
                       <div className="h-2 w-16 rounded bg-white/4 animate-pulse" />
                     </td>
