@@ -56,13 +56,23 @@ export function ExpandedPlayerPanel({
   const lensKey = lens === "disposals" ? "disposals" : "goals";
   const allThresholds = lens === "disposals" ? DISPOSAL_THRESHOLDS : GOAL_THRESHOLDS;
 
+  // Sort history oldest→newest, then deduplicate by (week, row_type) to
+  // prevent any duplicate BYE/DNP rows that can arise from the UNION ALL CTEs.
   const sortedHistory = [...history].sort((a, b) => a.week - b.week);
+  const seenKeys = new Set<string>();
+  const dedupedHistory = sortedHistory.filter((row) => {
+    const key = `${row.week}-${row.row_type}`;
+    if (seenKeys.has(key)) return false;
+    seenKeys.add(key);
+    return true;
+  });
 
-  const gameLog = sortedHistory.map((row) => ({
+  const gameLog = dedupedHistory.map((row) => ({
     week: row.week,
     round: row.round,
     value: row.row_type === "played" ? n(row[lensKey] as number | null) : null,
     opponent: abbreviateTeam(row.opponent_team_name ?? ""),
+    venue: row.venue ?? null,
     isHome: row.is_home,
     disposals: n(row.disposals),
     kicks: n(row.kicks),
@@ -304,120 +314,12 @@ export function ExpandedPlayerPanel({
       <AiInsightBlock insight={insight} loading={insightLoading} />
 
       {/* ── 6. Full-width game log ────────────────────────────────────────── */}
-      {gameLog.length > 0 ? (
-        <section aria-label="Game-by-game log" className="px-5 pb-5">
-          <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider mb-2">Game log</p>
-          <div className="rounded-lg border border-white/8 overflow-x-auto">
-            <table className="w-full text-[11px]" role="table" style={{ minWidth: "520px" }}>
-              <thead>
-                <tr className="border-b border-white/8 bg-white/[0.02]">
-                  <th className="text-left px-3 py-2 text-white/28 font-medium w-10" scope="col">Rnd</th>
-                  <th className="text-left px-3 py-2 text-white/28 font-medium" scope="col">Opponent</th>
-                  <th className="text-center px-2 py-2 text-white/28 font-medium w-8" scope="col" title="Home / Away">H/A</th>
-                  {lens === "disposals" ? (
-                    <>
-                      <th className="text-right px-2 py-2 text-white/28 font-medium" scope="col">Disp</th>
-                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">K</th>
-                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">HB</th>
-                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden md:table-cell" scope="col">Mks</th>
-                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden md:table-cell" scope="col">Tkl</th>
-                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden lg:table-cell" scope="col">Clr</th>
-                    </>
-                  ) : (
-                    <>
-                      <th className="text-right px-2 py-2 text-white/28 font-medium" scope="col">Gls</th>
-                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">Beh</th>
-                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">Disp</th>
-                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden md:table-cell" scope="col">Mks</th>
-                      <th className="text-right px-2 py-2 text-white/28 font-medium hidden md:table-cell" scope="col">Tkl</th>
-                    </>
-                  )}
-                  <th className="text-right px-3 py-2 text-white/28 font-medium" scope="col">Fant</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...gameLog].reverse().map((row, idx) => {
-                  const isLatest = idx === 0;
-
-                  if (row.rowType === "bye" || row.rowType === "dnp") {
-                    const isBye = row.rowType === "bye";
-                    const colCount = lens === "disposals" ? 9 : 8;
-                    return (
-                      <tr
-                        key={`${row.rowType}-${row.week}`}
-                        className="border-b border-white/5 last:border-0 opacity-40"
-                      >
-                        <td className="px-3 py-2 text-white/38 tabular-nums">R{row.week + 1}</td>
-                        <td colSpan={colCount - 1} className="px-3 py-2">
-                          <span className={`inline-flex items-center gap-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                            isBye
-                              ? "bg-white/5 text-white/30"
-                              : "bg-white/4 text-white/25 border border-dashed border-white/12"
-                          }`}>
-                            {isBye ? "BYE" : "DNP"}
-                          </span>
-                          <span className="ml-2 text-white/20 text-[10px]">
-                            {isBye ? "No game this week" : "Did not play"}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  }
-
-                  const safeVal = row.value;
-                  const hit = safeVal != null && safeVal >= threshold;
-
-                  return (
-                    <tr
-                      key={`played-${row.week}`}
-                      className={`border-b border-white/5 last:border-0 ${isLatest ? "bg-white/[0.015]" : ""}`}
-                    >
-                      <td className="px-3 py-2 text-white/38 tabular-nums">R{row.week + 1}</td>
-                      <td className="px-3 py-2 text-white/55 max-w-[110px] truncate">{row.opponent || "—"}</td>
-                      <td className="px-2 py-2 text-center tabular-nums text-white/28">
-                        {row.isHome === true ? (
-                          <span className="text-emerald-500/60 font-semibold">H</span>
-                        ) : row.isHome === false ? (
-                          <span className="text-white/30">A</span>
-                        ) : "—"}
-                      </td>
-                      {lens === "disposals" ? (
-                        <>
-                          <td className={`px-2 py-2 text-right font-bold tabular-nums ${hit ? "text-emerald-400" : "text-white/60"}`}>
-                            {safeVal ?? "—"}
-                          </td>
-                          <td className="px-2 py-2 text-right text-white/35 tabular-nums hidden sm:table-cell">{row.kicks ?? "—"}</td>
-                          <td className="px-2 py-2 text-right text-white/35 tabular-nums hidden sm:table-cell">{row.handballs ?? "—"}</td>
-                          <td className="px-2 py-2 text-right text-white/35 tabular-nums hidden md:table-cell">{row.marks ?? "—"}</td>
-                          <td className="px-2 py-2 text-right text-white/35 tabular-nums hidden md:table-cell">{row.tackles ?? "—"}</td>
-                          <td className="px-2 py-2 text-right text-white/28 tabular-nums hidden lg:table-cell">{row.clearances ?? "—"}</td>
-                        </>
-                      ) : (
-                        <>
-                          <td className={`px-2 py-2 text-right font-bold tabular-nums ${hit ? "text-emerald-400" : "text-white/60"}`}>
-                            {row.goals ?? "—"}
-                          </td>
-                          <td className="px-2 py-2 text-right text-white/35 tabular-nums hidden sm:table-cell">{row.behinds ?? "—"}</td>
-                          <td className="px-2 py-2 text-right text-white/35 tabular-nums hidden sm:table-cell">{row.disposals ?? "—"}</td>
-                          <td className="px-2 py-2 text-right text-white/35 tabular-nums hidden md:table-cell">{row.marks ?? "—"}</td>
-                          <td className="px-2 py-2 text-right text-white/35 tabular-nums hidden md:table-cell">{row.tackles ?? "—"}</td>
-                        </>
-                      )}
-                      <td className="px-3 py-2 text-right text-white/30 tabular-nums">{row.fantasy ?? "—"}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      ) : (
-        !loading && (
-          <div className="px-5 pb-5 text-[11px] text-white/22 italic">
-            No game log entries available.
-          </div>
-        )
-      )}
+      <GameLog
+        rows={gameLog}
+        lens={lens}
+        threshold={threshold}
+        loading={loading}
+      />
     </div>
   );
 }
@@ -890,6 +792,183 @@ function MultiThresholdChart({
   );
 }
 
+// ── Game Log ──────────────────────────────────────────────────────────────────
+
+interface GameLogRow {
+  week: number;
+  round: string | null;
+  value: number | null;
+  opponent: string;
+  venue: string | null;
+  isHome: boolean | null;
+  disposals: number | null;
+  kicks: number | null;
+  handballs: number | null;
+  marks: number | null;
+  tackles: number | null;
+  goals: number | null;
+  behinds: number | null;
+  hitouts: number | null;
+  clearances: number | null;
+  fantasy: number | null;
+  rowType: string;
+}
+
+function GameLog({
+  rows,
+  lens,
+  threshold,
+  loading,
+}: {
+  rows: GameLogRow[];
+  lens: StatLens;
+  threshold: number;
+  loading: boolean;
+}) {
+  if (rows.length === 0) {
+    if (loading) return null;
+    return (
+      <div className="px-5 pb-5 text-[11px] text-white/22 italic">
+        No game log entries available.
+      </div>
+    );
+  }
+
+  // Column definitions — always same set regardless of lens, so BYE/DNP colspan is stable.
+  // Columns: Rnd | Opponent | Venue | H/A | primary stat | K | HB | Gls | Beh | Mks | Tkl | HO | Clr | Fant
+  // "primary stat" = Disp for disposals lens, Gls for goals lens (already in the full set).
+  // All stat columns are always present; values show "—" when null. This avoids header/cell mismatch.
+  const TOTAL_COLS = 14; // Rnd + Opp + Venue + H/A + Disp + K + HB + Gls + Beh + Mks + Tkl + HO + Clr + Fant
+
+  // Newest first for display
+  const displayRows = [...rows].reverse();
+
+  return (
+    <section aria-label="Game-by-game log" className="px-5 pb-5">
+      <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider mb-2">Game log</p>
+      <div className="rounded-lg border border-white/8 overflow-x-auto">
+        <table className="w-full text-[11px]" role="table" style={{ minWidth: "640px" }}>
+          <thead>
+            <tr className="border-b border-white/8 bg-white/[0.02]">
+              <th className="text-left px-3 py-2 text-white/28 font-medium w-10 shrink-0" scope="col">Rnd</th>
+              <th className="text-left px-3 py-2 text-white/28 font-medium" scope="col">Opponent</th>
+              <th className="text-left px-2 py-2 text-white/28 font-medium hidden md:table-cell" scope="col">Venue</th>
+              <th className="text-center px-2 py-2 text-white/28 font-medium w-8" scope="col" title="Home / Away">H/A</th>
+              {/* Disposals lens: highlight Disp */}
+              <th className={`text-right px-2 py-2 font-medium ${lens === "disposals" ? "text-white/55" : "text-white/28"}`} scope="col">Disp</th>
+              <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">K</th>
+              <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">HB</th>
+              {/* Goals lens: highlight Gls */}
+              <th className={`text-right px-2 py-2 font-medium ${lens === "goals" ? "text-white/55" : "text-white/28"}`} scope="col">Gls</th>
+              <th className="text-right px-2 py-2 text-white/28 font-medium hidden sm:table-cell" scope="col">Beh</th>
+              <th className="text-right px-2 py-2 text-white/28 font-medium hidden md:table-cell" scope="col">Mks</th>
+              <th className="text-right px-2 py-2 text-white/28 font-medium hidden md:table-cell" scope="col">Tkl</th>
+              <th className="text-right px-2 py-2 text-white/28 font-medium hidden lg:table-cell" scope="col">HO</th>
+              <th className="text-right px-2 py-2 text-white/28 font-medium hidden lg:table-cell" scope="col">Clr</th>
+              <th className="text-right px-3 py-2 text-white/28 font-medium" scope="col">Fant</th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayRows.map((row, idx) => {
+              const roundLabel = abbreviateRound(row.round, row.week);
+              const isLatest = idx === 0;
+
+              if (row.rowType === "bye" || row.rowType === "dnp") {
+                const isBye = row.rowType === "bye";
+                return (
+                  <tr
+                    key={`${row.rowType}-${row.week}`}
+                    className="border-b border-white/5 last:border-0 opacity-35"
+                  >
+                    <td className="px-3 py-2 text-white/38 tabular-nums">{roundLabel}</td>
+                    <td colSpan={TOTAL_COLS - 1} className="px-3 py-2">
+                      <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                        isBye
+                          ? "bg-white/5 text-white/35"
+                          : "bg-white/4 text-white/28 border border-dashed border-white/12"
+                      }`}>
+                        {isBye ? "BYE" : "DNP"}
+                      </span>
+                      {!isBye && row.opponent && row.opponent !== "—" && (
+                        <span className="ml-2 text-white/20 text-[10px]">vs {row.opponent}</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              }
+
+              const dispVal = row.disposals;
+              const glsVal  = row.goals;
+              const dispHit = dispVal != null && lens === "disposals" && dispVal >= threshold;
+              const glsHit  = glsVal  != null && lens === "goals"     && glsVal  >= threshold;
+
+              return (
+                <tr
+                  key={`played-${row.week}`}
+                  className={`border-b border-white/5 last:border-0 ${isLatest ? "bg-white/[0.015]" : ""}`}
+                >
+                  <td className="px-3 py-2 text-white/38 tabular-nums">{roundLabel}</td>
+                  <td className="px-3 py-2 text-white/55 max-w-[120px] truncate">{row.opponent || "—"}</td>
+                  <td className="px-2 py-2 text-white/30 max-w-[110px] truncate hidden md:table-cell text-[10px]">
+                    {row.venue ? abbreviateVenue(row.venue) : "—"}
+                  </td>
+                  <td className="px-2 py-2 text-center tabular-nums text-white/28">
+                    {row.isHome === true ? (
+                      <span className="text-emerald-500/60 font-semibold">H</span>
+                    ) : row.isHome === false ? (
+                      <span className="text-white/30">A</span>
+                    ) : "—"}
+                  </td>
+                  {/* Disp */}
+                  <td className={`px-2 py-2 text-right font-bold tabular-nums ${dispHit ? "text-emerald-400" : "text-white/55"}`}>
+                    {dispVal ?? "—"}
+                  </td>
+                  {/* K */}
+                  <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                    {row.kicks ?? "—"}
+                  </td>
+                  {/* HB */}
+                  <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                    {row.handballs ?? "—"}
+                  </td>
+                  {/* Gls */}
+                  <td className={`px-2 py-2 text-right font-bold tabular-nums ${glsHit ? "text-emerald-400" : "text-white/55"}`}>
+                    {glsVal ?? "—"}
+                  </td>
+                  {/* Beh */}
+                  <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden sm:table-cell">
+                    {row.behinds ?? "—"}
+                  </td>
+                  {/* Mks */}
+                  <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden md:table-cell">
+                    {row.marks ?? "—"}
+                  </td>
+                  {/* Tkl */}
+                  <td className="px-2 py-2 text-right text-white/32 tabular-nums hidden md:table-cell">
+                    {row.tackles ?? "—"}
+                  </td>
+                  {/* HO */}
+                  <td className="px-2 py-2 text-right text-white/28 tabular-nums hidden lg:table-cell">
+                    {row.hitouts ?? "—"}
+                  </td>
+                  {/* Clr */}
+                  <td className="px-2 py-2 text-right text-white/28 tabular-nums hidden lg:table-cell">
+                    {row.clearances ?? "—"}
+                  </td>
+                  {/* Fant */}
+                  <td className="px-3 py-2 text-right text-white/35 tabular-nums">
+                    {row.fantasy ?? "—"}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Safe numeric coercion — returns null for null/undefined/NaN */
@@ -911,4 +990,22 @@ function abbreviateTeam(name: string): string {
     .replace(/ (Football Club|F\.?C\.?|AFL)$/i, "")
     .split(" ")
     .slice(-1)[0] ?? name;
+}
+
+/** Convert a round text like "Round 3" or "R3" to a short label "R3".
+ *  Falls back to "R{week+1}" when round text is unavailable. */
+function abbreviateRound(round: string | null, week: number): string {
+  if (!round) return `R${week + 1}`;
+  const m = round.match(/\d+/);
+  return m ? `R${m[0]}` : round.slice(0, 4);
+}
+
+/** Shorten a venue name to fit in a compact column. */
+function abbreviateVenue(venue: string): string {
+  if (!venue) return "—";
+  return venue
+    .replace(/ (Stadium|Arena|Ground|Park|Oval|Centre|Center|Field|Dome)$/i, "")
+    .replace(/^(The |MC )/, "")
+    .trim()
+    .slice(0, 18);
 }
