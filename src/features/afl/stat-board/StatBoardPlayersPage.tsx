@@ -544,24 +544,42 @@ function TeamBoard({
 
   const thresholdHeaderLabel = (t: number) => `${t}+`;
 
-  // Status indicator shown in header
-  const statusLabel = searchActive
-    ? `${players.length} found`
-    : showAll || players.length <= TOP_N
-    ? `${players.length} players`
-    : `Top ${TOP_N} of ${players.length}`;
+  const visibleCount = visiblePlayers.length;
+  const totalCount = players.length;
+  const countLabel = searchActive
+    ? `${totalCount} ${totalCount === 1 ? "player" : "players"} found`
+    : isCapped
+    ? `${visibleCount} of ${totalCount} players shown`
+    : `${totalCount} ${totalCount === 1 ? "player" : "players"}`;
 
   return (
     <div>
       {/* Team section header */}
-      <div className="mb-3 flex items-center gap-3 flex-wrap">
-        <h2 className="text-[14px] font-bold text-white tracking-tight">{teamName}</h2>
-        <span className="text-[10px] font-semibold text-white/35 bg-white/6 border border-white/8 rounded-full px-2.5 py-0.5 whitespace-nowrap">
-          vs {opponentName}
-        </span>
-        <span className="text-[10px] font-medium text-white/28 whitespace-nowrap">
-          {statusLabel}
-        </span>
+      <div className="mb-3 flex items-center justify-between gap-3 flex-wrap">
+        {/* Left: team name + count */}
+        <div className="flex items-baseline gap-2.5 min-w-0">
+          <h2 className="text-[14px] font-bold text-white tracking-tight leading-none shrink-0">
+            {teamName}
+          </h2>
+          <span className="text-[11px] text-white/32 font-medium whitespace-nowrap leading-none">
+            · {countLabel}
+          </span>
+        </div>
+
+        {/* Right: opponent pill + show-all toggle */}
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-[10px] font-semibold text-white/35 bg-white/6 border border-white/8 rounded-full px-2.5 py-0.5 whitespace-nowrap">
+            vs {opponentName}
+          </span>
+          {!searchActive && players.length > TOP_N && (
+            <button
+              onClick={() => setShowAll((v) => !v)}
+              className="text-[10px] font-medium text-white/38 hover:text-white/65 transition-colors whitespace-nowrap"
+            >
+              {showAll ? "Show fewer" : `Show all ${totalCount}`}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Horizontally scrollable table */}
