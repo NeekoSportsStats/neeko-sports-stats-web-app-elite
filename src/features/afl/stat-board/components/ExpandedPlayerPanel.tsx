@@ -79,7 +79,7 @@ export function ExpandedPlayerPanel({
 
   const chartSlots: ChartSlot[] = gameLog.map((g) => ({
     value: g.value,
-    label: g.round ? `R${g.round.replace(/[^0-9]/g, "") || g.week}` : `R${g.week}`,
+    label: `R${g.week + 1}`,
     rowType: g.rowType,
     week: g.week,
     opponent: g.opponent,
@@ -319,7 +319,7 @@ export function ExpandedPlayerPanel({
                         key={`${row.rowType}-${row.week}`}
                         className="border-b border-white/5 last:border-0 opacity-40"
                       >
-                        <td className="px-3 py-2 text-white/38 tabular-nums">{row.round ?? row.week}</td>
+                        <td className="px-3 py-2 text-white/38 tabular-nums">R{row.week + 1}</td>
                         <td colSpan={colCount - 1} className="px-3 py-2">
                           <span className={`inline-flex items-center gap-1.5 text-[10px] font-medium px-1.5 py-0.5 rounded ${
                             isBye
@@ -344,7 +344,7 @@ export function ExpandedPlayerPanel({
                       key={`played-${row.week}`}
                       className={`border-b border-white/5 last:border-0 ${isLatest ? "bg-white/[0.015]" : ""}`}
                     >
-                      <td className="px-3 py-2 text-white/38 tabular-nums">{row.round ?? row.week}</td>
+                      <td className="px-3 py-2 text-white/38 tabular-nums">R{row.week + 1}</td>
                       <td className="px-3 py-2 text-white/55 max-w-[110px] truncate">{row.opponent || "—"}</td>
                       <td className="px-2 py-2 text-center tabular-nums text-white/28">
                         {row.isHome === true ? (
