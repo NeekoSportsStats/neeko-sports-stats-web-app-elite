@@ -1,17 +1,15 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { Button } from "@/components/ui/button";
-import { Crown, LogOut, TrendingUp, ChartBar as BarChart2, Star, Award, Users, TableProperties } from "lucide-react";
+import { Crown, LogOut, ChartBar as BarChart2, Star, Users, TableProperties } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 
 const NAV_LINKS = [
-  { label: "Current Week", to: "/sports/afl/current-round", icon: TrendingUp },
-  { label: "Market Watch", to: "/sports/afl/market-watch",  icon: BarChart2  },
-  { label: "Captains",     to: "/sports/afl/captains",      icon: Star       },
-  { label: "Rankings",     to: "/sports/afl/rankings",      icon: Award      },
-  { label: "Players",      to: "/sports/afl/players",       icon: Users      },
-  { label: "Stat Board",   to: "/stat-board",               icon: TableProperties },
+  { label: "Fantasy Hub", to: "/fantasy",              icon: Star      },
+  { label: "Rankings",    to: "/sports/afl/rankings",  icon: BarChart2 },
+  { label: "Players",     to: "/sports/afl/players",   icon: Users     },
+  { label: "Stat Board",  to: "/stat-board",           icon: TableProperties },
 ];
 
 export function Layout() {
