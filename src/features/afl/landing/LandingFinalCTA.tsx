@@ -52,7 +52,7 @@ export default function LandingFinalCTA() {
           lineHeight: 1.6, maxWidth: 420,
           margin: "0 auto 36px",
         }}>
-          Open the Stat Board, pick a match, and start comparing player trends in seconds.
+          Open the Stat Board, pick a round, and compare player hit rates or team scoring trends in seconds.
         </p>
 
         <div style={{
@@ -60,7 +60,7 @@ export default function LandingFinalCTA() {
           alignItems: "center", gap: 14,
         }}>
           <Link
-            to="/stat-board/players"
+            to="/stat-board"
             onMouseEnter={() => setPrimaryHovered(true)}
             onMouseLeave={() => { setPrimaryHovered(false); setPrimaryActive(false); }}
             onMouseDown={() => setPrimaryActive(true)}

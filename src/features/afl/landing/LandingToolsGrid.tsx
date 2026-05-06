@@ -40,7 +40,7 @@ const TOOLS = [
   {
     icon: <Users size={20} />,
     title: "Stat Board",
-    desc: "Player and team stat trends, hit rates and projections — by match, by stat.",
+    desc: "Player hit rates and team scoring trends — disposals, goals, score, projections by round.",
     to: "/stat-board",
     color: "#22C55E",
   },

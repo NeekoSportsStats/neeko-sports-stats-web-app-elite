@@ -16,14 +16,14 @@ const MODES: ModeCard[] = [
     icon: <Users size={18} />,
     title: "Player Stats",
     status: "available",
-    copy: "Filter by match, stat and threshold. View last 10 trends, hit rates, projections and consistency.",
+    copy: "Individual player hit rates, trend charts and projections. Filter by match, stat and threshold.",
     href: "/stat-board/players",
   },
   {
     icon: <BarChart2 size={18} />,
     title: "Team Stats",
     status: "available",
-    copy: "Team scoring trends, hit rates and projections by match.",
+    copy: "Team scoring trends and projections by match. Hit rates for score, goals, scoring shots and disposals.",
     href: "/stat-board/teams",
   },
   {
@@ -81,9 +81,9 @@ export default function StatBoardHubPage() {
               margin: "0 0 20px",
               maxWidth: 440,
             }}>
-              Start with Player Stats to view disposals, goals, hit rates and projections by match.
+              Use Player Stats for individual player hit rates, or Team Stats for team scoring trends and projections.
             </p>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
               <Link
                 to="/stat-board/players"
                 onMouseEnter={() => setHeroHovered(true)}
@@ -105,9 +105,31 @@ export default function StatBoardHubPage() {
               >
                 Open Player Stats <ArrowRight size={13} />
               </Link>
-              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", margin: 0 }}>
-                Disposals and goals available now.
-              </p>
+              <Link
+                to="/stat-board/teams"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 7,
+                  padding: "11px 20px",
+                  borderRadius: 10,
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  color: "rgba(255,255,255,0.55)",
+                  fontSize: 13, fontWeight: 700,
+                  textDecoration: "none",
+                  letterSpacing: "0.01em",
+                  transition: "all 0.15s ease",
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
+                  (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.80)";
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+                  (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.55)";
+                }}
+              >
+                Team Stats <ArrowRight size={13} />
+              </Link>
             </div>
           </div>
 
@@ -129,7 +151,7 @@ export default function StatBoardHubPage() {
             lineHeight: 1.4,
           }}>
             <span style={{ fontWeight: 700, color: "rgba(255,255,255,0.60)" }}>How it works:</span>
-            {["Pick a match", "Choose disposals or goals", "View hit rates and projections"].map((step, i, arr) => (
+            {["Pick a round", "Choose Player Stats or Team Stats", "Compare recent trends, hit rates and projections"].map((step, i, arr) => (
               <span key={step} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span>{step}</span>
                 {i < arr.length - 1 && <span style={{ color: "rgba(255,255,255,0.22)" }}>→</span>}
