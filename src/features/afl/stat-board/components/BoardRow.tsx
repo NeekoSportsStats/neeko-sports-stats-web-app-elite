@@ -82,16 +82,7 @@ export const BoardRow = memo(function BoardRow({
   const thresholdLength = thresholds.length;
 
   const expandedContent = isExpanded ? (
-    <div
-      className="overflow-hidden border-l-[3px] border-emerald-500/30"
-      style={{ animation: "expandDown 180ms cubic-bezier(0.2,0,0,1) forwards" }}
-    >
-      <style>{`
-        @keyframes expandDown {
-          from { opacity: 0; transform: translateY(-6px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+    <div className="overflow-hidden border-l-[3px] border-emerald-500/30">
       <LazyExpandedContent
         player={player}
         lens={lens}
@@ -266,11 +257,13 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
   const projDisplay = safeNum(player.projection);
 
   return (
-    <div className={`rounded-2xl border transition-colors duration-100 overflow-hidden ${
-      isExpanded
-        ? "border-emerald-500/25 bg-white/[0.045]"
-        : "border-white/10 bg-[#0d0d0d]"
-    }`}>
+    <div
+      className={`mobile-player-card rounded-2xl border overflow-hidden w-full min-w-0 ${
+        isExpanded
+          ? "border-emerald-500/25 bg-[#111]"
+          : "border-white/10 bg-[#0d0d0d]"
+      }`}
+    >
       {/* ── Card tap target ── */}
       <button
         onClick={onToggleExpand}
@@ -279,9 +272,9 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
         className="w-full text-left px-4 pt-3.5 pb-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60"
       >
         {/* ── Row 1: name + position + home/away badge + chevron ── */}
-        <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center justify-between gap-2 mb-2 min-w-0">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 min-w-0">
               <span className={`text-[14px] font-bold leading-tight truncate ${isExpanded ? "text-white" : "text-white/90"}`}>
                 {player.player_name}
               </span>
@@ -291,7 +284,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-1 mt-0.5">
+            <div className="flex items-center gap-1 mt-0.5 min-w-0">
               <span className="text-[11px] text-white/38 truncate">{player.team_name || "—"}</span>
               {player.is_home === true && (
                 <span className="text-[9px] text-emerald-500/65 font-semibold bg-emerald-500/8 rounded px-1.5 py-0.5 leading-none shrink-0">H</span>
@@ -307,7 +300,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
             <div className="text-right">
               <p className="text-[8px] text-white/28 uppercase tracking-wider leading-none mb-0.5">Proj</p>
               {isPlayerLocked ? (
-                <span className="text-[15px] font-bold text-white/20 blur-[4px] select-none" aria-hidden>••</span>
+                <span className="text-[15px] font-bold text-white/20 select-none" aria-hidden>••</span>
               ) : projDisplay != null ? (
                 <span className="text-[18px] font-bold text-[#F5C84C] tabular-nums leading-none">{projDisplay}</span>
               ) : (
@@ -315,10 +308,8 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
               )}
             </div>
             <span className={`
-              inline-flex items-center justify-center h-7 w-7 rounded-lg transition-all duration-100 shrink-0
-              ${isExpanded
-                ? "bg-white/12 text-white/80"
-                : "text-white/30"}
+              inline-flex items-center justify-center h-7 w-7 rounded-lg shrink-0
+              ${isExpanded ? "bg-white/12 text-white/80" : "text-white/30"}
             `}>
               {isPlayerLocked ? (
                 <Lock className="h-3.5 w-3.5 text-[#F5C84C]/40" aria-hidden />
@@ -331,8 +322,8 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
           </div>
         </div>
 
-        {/* ── Row 2: recent chips ── */}
-        <div className="flex items-center gap-[3px] mb-2.5 overflow-x-auto" role="list" aria-label="Recent results">
+        {/* ── Row 2: recent chips — wrap instead of overflow-x-auto ── */}
+        <div className="flex items-center gap-[3px] mb-2.5 flex-wrap" role="list" aria-label="Recent results">
           {timeline != null ? (
             <TimelineChips slots={timeline} defaultThreshold={defaultThreshold} isLocked={isPlayerLocked} />
           ) : (
@@ -341,7 +332,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
         </div>
 
         {/* ── Row 3: stats strip ── */}
-        <div className="flex items-stretch gap-0 border border-white/8 rounded-xl overflow-hidden">
+        <div className="flex items-stretch gap-0 border border-white/8 rounded-xl overflow-hidden w-full">
           {/* Recent avg */}
           <div className="flex-1 px-2 py-2 border-r border-white/8 min-w-0">
             <p className="text-[7.5px] text-white/28 uppercase tracking-wide leading-none mb-1">Avg</p>
@@ -369,7 +360,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
                 {isPlayerLocked ? (
                   <>
                     <p className="text-[7.5px] text-white/28 uppercase tracking-wide leading-none mb-1">{t}+</p>
-                    <p className="text-[10px] text-white/18 blur-[3px] select-none tabular-nums leading-none">—</p>
+                    <p className="text-[10px] text-white/18 select-none tabular-nums leading-none">—</p>
                   </>
                 ) : (
                   <>
@@ -402,18 +393,9 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
         </div>
       </button>
 
-      {/* ── Expanded detail — rendered outside the button ── */}
+      {/* ── Expanded detail — no animation, no transforms on mobile ── */}
       {isExpanded && !isPlayerLocked && (
-        <div
-          className="border-t border-white/[0.08] bg-white/[0.015] overflow-hidden border-l-[3px] border-l-emerald-500/30"
-          style={{ animation: "expandDown 180ms cubic-bezier(0.2,0,0,1) forwards" }}
-        >
-          <style>{`
-            @keyframes expandDown {
-              from { opacity: 0; transform: translateY(-6px); }
-              to   { opacity: 1; transform: translateY(0); }
-            }
-          `}</style>
+        <div className="mobile-expanded-panel border-t border-white/[0.08] bg-[#0c0c0c] border-l-[3px] border-l-emerald-500/30">
           <LazyExpandedContent
             player={player}
             lens={lens}

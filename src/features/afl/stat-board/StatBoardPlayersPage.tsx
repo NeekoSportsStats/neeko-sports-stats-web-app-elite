@@ -213,8 +213,8 @@ export default function StatBoardPlayersPage() {
         />
       )}
 
-      <div className="min-h-screen bg-[#0a0a0a] text-white">
-        <div className="mx-auto max-w-5xl px-4 pt-4 sm:pt-6 pb-20">
+      <div className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden" style={{ maxWidth: "100vw" }}>
+        <div className="stat-board-mobile-root mx-auto max-w-5xl px-4 pt-4 sm:pt-6 pb-20 min-w-0 overflow-x-hidden">
 
           {/* Page header */}
           <div className="mb-4 sm:mb-6">
@@ -465,15 +465,9 @@ function StickyControlsBar({
 }: StickyControlsBarProps) {
   return (
     <div
-      className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#0a0a0a]/95 backdrop-blur-md"
-      style={{ animation: "stickySlideDown 150ms cubic-bezier(0.2,0,0,1) both" }}
+      className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#0a0a0a]"
+      style={{ maxWidth: "100vw", overflowX: "hidden" }}
     >
-      <style>{`
-        @keyframes stickySlideDown {
-          from { opacity: 0; transform: translateY(-8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
       <div className="mx-auto max-w-5xl px-4 py-2.5 flex flex-wrap items-center gap-2">
 
         {/* Match selector (compact) */}
@@ -835,9 +829,9 @@ const TeamBoard = memo(function TeamBoard({
   // ── Mobile layout — stacked cards ──
   if (isMobile) {
     return (
-      <div>
+      <div className="w-full min-w-0 overflow-x-hidden">
         {teamHeader}
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 w-full min-w-0">
           {visiblePlayers.map((player) => (
             <MobilePlayerCard
               key={`${matchId ?? 0}-${player.player_id}`}

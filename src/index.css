@@ -12,6 +12,9 @@ body,
 #root {
   background: #0F0F0F;
   min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 @keyframes fadeIn {
@@ -244,5 +247,43 @@ body,
 @media (max-width: 768px) {
   .ledger-summary-column {
     display: none !important;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/*  MOBILE SCROLL STABILITY — stat board                                      */
+/* -------------------------------------------------------------------------- */
+
+@media (max-width: 767px) {
+  /* Prevent any child from causing horizontal overflow */
+  .stat-board-mobile-root,
+  .stat-board-mobile-root * {
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Kill compositor-busting effects on repeated card elements */
+  .mobile-player-card {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    will-change: auto !important;
+    transform: none !important;
+    /* Promote to own layer only once — avoids mid-list composite tears */
+    contain: layout style;
+  }
+
+  /* Expanded panel: no backdrop blur, no box-shadow, no transform */
+  .mobile-expanded-panel {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: none !important;
+    will-change: auto !important;
+    transform: none !important;
+  }
+
+  /* Remove entry animations on mobile to avoid layout jumps during scroll */
+  .mobile-expand-animate {
+    animation: none !important;
   }
 }
