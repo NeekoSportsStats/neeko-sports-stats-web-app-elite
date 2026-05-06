@@ -39,10 +39,10 @@ const TOOLS = [
   },
   {
     icon: <Users size={20} />,
-    title: "Player Profiles",
-    desc: "Score history, form trend, value rating, and AI breakdown for any player.",
-    to: "/sports/afl/rankings",
-    color: "#E8855A",
+    title: "Stat Board",
+    desc: "Player and team stat trends, hit rates and projections — by match, by stat.",
+    to: "/stat-board",
+    color: "#22C55E",
   },
 ] as const;
 
@@ -56,7 +56,7 @@ export default function LandingToolsGrid() {
             Every Tool. One Place.
           </h2>
           <p style={{ fontSize: 14, color: "#606060", maxWidth: 440, margin: "0 auto" }}>
-            Six tools built for the same goal — giving you an edge before lockout.
+            Built for one goal — giving you an edge before lockout.
           </p>
         </div>
 

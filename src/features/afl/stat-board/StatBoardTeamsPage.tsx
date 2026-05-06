@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, memo, useSyncExternalStore } from "react";
 import { Helmet } from "react-helmet-async";
-import { useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronUp, Lock } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ChevronDown, Lock } from "lucide-react";
 import { track } from "@/lib/analytics";
 
 import {
@@ -158,6 +158,13 @@ export default function StatBoardTeamsPage() {
       <div className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden" style={{ maxWidth: "100vw" }}>
         <div className="mx-auto max-w-5xl px-4 pt-4 sm:pt-6 pb-20 min-w-0 overflow-x-hidden">
 
+          {/* Breadcrumb */}
+          <div className="mb-3 flex items-center gap-1.5 text-[11px] text-white/30">
+            <Link to="/stat-board" className="hover:text-white/55 transition-colors">Stat Board</Link>
+            <span>/</span>
+            <span className="text-white/50">Team Stats</span>
+          </div>
+
           {/* Page header */}
           <div className="mb-4 sm:mb-5">
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white">AFL Team Stat Board</h1>
@@ -220,22 +227,6 @@ export default function StatBoardTeamsPage() {
               )}
             </div>
           </div>
-
-          {/* Context row */}
-          {!rowsLoading && selectedMatch && (
-            <div className="mb-3 sm:mb-5 flex items-center gap-1.5 flex-wrap text-[12px] text-white/48">
-              <span className="text-white/30 text-[11px]">Viewing:</span>
-              {[
-                selectedMatch.match_label,
-                teamLensLabel(lens),
-              ].map((part, i) => (
-                <span key={i} className="flex items-center gap-1.5">
-                  {i > 0 && <span className="text-white/20">·</span>}
-                  <span>{part}</span>
-                </span>
-              ))}
-            </div>
-          )}
 
           {/* Locked banner */}
           {isLocked && (
@@ -326,24 +317,21 @@ const MatchSection = memo(function MatchSection({
   const allRows = [...homeRows, ...awayRows];
   if (allRows.length === 0 || !match) return null;
 
-  const teamHeader = (rows: StatBoardTeamRow[], label: string, opponentLabel: string, isHome: boolean) => (
+  const teamHeader = (label: string, opponentLabel: string, isHome: boolean) => (
     <div className="mb-2 flex items-center gap-2 flex-wrap">
       <h2 className="text-[14px] font-bold text-white tracking-tight leading-none shrink-0">{label}</h2>
-      <div className="flex items-center gap-1 flex-wrap">
-        <span className="text-[9px] font-semibold text-white/32 bg-white/5 border border-white/8 rounded-full px-1.5 py-0.5 whitespace-nowrap">
-          vs {opponentLabel}
-        </span>
+      <div className="flex items-center gap-1.5">
         {isHome ? (
-          <span className="text-[9px] font-semibold text-emerald-500/65 bg-emerald-500/8 border border-emerald-500/12 rounded-full px-1.5 py-0.5 whitespace-nowrap">
+          <span className="text-[9px] font-bold text-emerald-400/70 bg-emerald-500/8 border border-emerald-500/15 rounded-full px-1.5 py-0.5 leading-none">
             Home
           </span>
         ) : (
-          <span className="text-[9px] font-semibold text-white/28 bg-white/5 border border-white/8 rounded-full px-1.5 py-0.5 whitespace-nowrap">
+          <span className="text-[9px] font-bold text-white/35 bg-white/5 border border-white/10 rounded-full px-1.5 py-0.5 leading-none">
             Away
           </span>
         )}
+        <span className="text-[10px] text-white/28 leading-none">vs {opponentLabel}</span>
       </div>
-      <span className="text-[10px] text-white/30 font-medium ml-1">{rows.length} team</span>
     </div>
   );
 
@@ -355,7 +343,7 @@ const MatchSection = memo(function MatchSection({
     if (isMobile) {
       return (
         <div className="w-full min-w-0">
-          {teamHeader(rows, teamName, oppName, isHome)}
+          {teamHeader(teamName, oppName, isHome)}
           <div className="flex flex-col gap-2 w-full min-w-0">
             {rows.map((row) => {
               const key = `${row.match_id}-${row.team_id}`;
@@ -378,25 +366,25 @@ const MatchSection = memo(function MatchSection({
 
     return (
       <div>
-        {teamHeader(rows, teamName, oppName, isHome)}
-        <div className="overflow-x-auto rounded-t-2xl border border-white/10 bg-[#0d0d0d]">
+        {teamHeader(teamName, oppName, isHome)}
+        <div className="overflow-x-auto rounded-xl border border-white/10 bg-[#0d0d0d]">
           <table className="w-full border-collapse text-left" style={{ minWidth: "640px" }}>
             <thead>
               <tr className="border-b border-white/10 bg-[#0f0f0f]">
-                <th className="pl-4 pr-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider whitespace-nowrap">Team</th>
-                <th className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-center whitespace-nowrap">Recent</th>
-                <th className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-right whitespace-nowrap">L5 Avg</th>
-                <th className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-right whitespace-nowrap">Proj</th>
+                <th className="pl-4 pr-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider whitespace-nowrap w-[180px]">Team</th>
+                <th className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">L5 Form</th>
+                <th className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-right whitespace-nowrap">L5 Avg</th>
+                <th className="px-2 py-2.5 text-[10px] font-semibold text-[#F5C84C]/55 uppercase tracking-wider text-right whitespace-nowrap">Proj</th>
                 {thresholds.map((t) => (
                   <th
                     key={t}
-                    className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-center whitespace-nowrap"
+                    className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap"
                   >
-                    {t}+ Hit
+                    {t}+
                   </th>
                 ))}
-                <th className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-center whitespace-nowrap">Consistency</th>
-                <th className="pr-3 pl-1 py-2.5 w-10" />
+                <th className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">Consistency</th>
+                <th className="pr-3 pl-1 py-2.5 w-8" />
               </tr>
             </thead>
             <tbody>

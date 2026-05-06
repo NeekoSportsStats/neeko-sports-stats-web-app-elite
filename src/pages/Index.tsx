@@ -616,21 +616,21 @@ export default function Index() {
                 Open Stat Board <ArrowRight size={15} />
               </Link>
               <Link
-                to="/fantasy"
+                to="/stat-board/teams"
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 8,
-                  background: "rgba(255,255,255,0.08)", backdropFilter: "blur(8px)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "rgba(255,255,255,0.80)", fontWeight: 600,
+                  background: "rgba(255,255,255,0.06)", backdropFilter: "blur(8px)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "rgba(255,255,255,0.72)", fontWeight: 600,
                   fontSize: "clamp(13px, 0.95vw, 15px)",
                   padding: "13px 26px", borderRadius: 9,
                   textDecoration: "none", whiteSpace: "nowrap",
                   transition: "all 0.2s ease",
                 }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.12)"; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.08)"; }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.10)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; }}
               >
-                View Fantasy Hub
+                Team Stats
               </Link>
             </div>
             {/* Trust row */}

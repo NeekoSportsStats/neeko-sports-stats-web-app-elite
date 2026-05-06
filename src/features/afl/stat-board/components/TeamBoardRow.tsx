@@ -1,11 +1,11 @@
-import { memo, Fragment } from "react";
+import { memo, Fragment, useState, useCallback } from "react";
 import { ChevronDown, ChevronUp, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import type { StatBoardTeamRow, TeamStatLens } from "../teamTypes";
-import { teamLensUnit } from "../teamTypes";
-import { useStatBoardTeamGameLog, useStatBoardTeamTopContributors } from "../useStatBoardTeams";
+import type { StatBoardTeamRow, StatBoardTeamGameLog, TeamStatLens } from "../teamTypes";
+import { teamLensUnit, teamThresholdsForLens } from "../teamTypes";
+import { useStatBoardTeamGameLog } from "../useStatBoardTeams";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Safe number helper ────────────────────────────────────────────────────────
 
 function safeNum(v: number | null | undefined): number | null {
   if (v == null) return null;
@@ -13,13 +13,524 @@ function safeNum(v: number | null | undefined): number | null {
   return isNaN(n) ? null : n;
 }
 
-function hitRateCell(
-  row: StatBoardTeamRow,
-  threshold: number,
-  isLocked: boolean
-): React.ReactNode {
+function fmt(v: number | null, decimals = 1): string {
+  if (v == null) return "—";
+  return v.toFixed(decimals);
+}
+
+// ── Consistency / confidence styles ──────────────────────────────────────────
+
+const CONF_STYLES: Record<string, { dot: string; text: string; label: string }> = {
+  "VERY HIGH": { dot: "bg-emerald-300", text: "text-emerald-300", label: "Very High" },
+  HIGH:        { dot: "bg-emerald-400", text: "text-emerald-400", label: "High" },
+  MEDIUM:      { dot: "bg-amber-400",   text: "text-amber-400",   label: "Med" },
+  LOW:         { dot: "bg-white/25",    text: "text-white/40",    label: "Low" },
+  UNKNOWN:     { dot: "bg-white/15",    text: "text-white/28",    label: "—" },
+};
+
+// ── Mini bar chips (recent form visual) ───────────────────────────────────────
+
+function MiniBarChips({ values, lens }: { values: number[] | null; lens: TeamStatLens }) {
+  const vals = (values ?? []).slice(-8);
+  if (vals.length === 0) {
+    return (
+      <div className="flex gap-[3px]">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <span key={i} className="h-[18px] w-[14px] rounded-sm bg-white/5 flex items-center justify-center text-[7px] text-white/18">—</span>
+        ))}
+      </div>
+    );
+  }
+  const max = Math.max(...vals, 1);
+  const unit = teamLensUnit(lens);
+  return (
+    <div className="flex items-end gap-[3px]" aria-label={`Recent ${unit} values`}>
+      {vals.map((v, i) => {
+        const isNewest = i === vals.length - 1;
+        const heightPct = Math.max(14, Math.round((v / max) * 34));
+        return (
+          <div
+            key={i}
+            title={`${v} ${unit}`}
+            style={{ height: heightPct }}
+            className={`w-[14px] rounded-sm flex items-end justify-center ${
+              isNewest ? "bg-emerald-500/45 ring-1 ring-emerald-400/30" : "bg-white/[0.12]"
+            }`}
+          >
+            <span className="text-[7px] font-bold text-white/50 tabular-nums leading-none mb-[1px]">{v}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Inline trend chart (SVG sparkline) ───────────────────────────────────────
+
+function TrendChart({
+  values,
+  thresholds,
+  lens,
+}: {
+  values: number[];
+  thresholds: readonly number[];
+  lens: TeamStatLens;
+}) {
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const unit = teamLensUnit(lens);
+
+  if (values.length < 2) {
+    return (
+      <div className="flex items-center justify-center h-[120px] text-[12px] text-white/28">
+        Not enough data to show trend.
+      </div>
+    );
+  }
+
+  const W = 600;
+  const H = 120;
+  const PAD = { top: 14, right: 24, bottom: 24, left: 38 };
+  const chartW = W - PAD.left - PAD.right;
+  const chartH = H - PAD.top - PAD.bottom;
+
+  const allVals = [...values, ...thresholds];
+  const minVal = Math.min(...allVals) * 0.88;
+  const maxVal = Math.max(...allVals) * 1.08;
+  const range = maxVal - minVal || 1;
+
+  function xPos(i: number): number {
+    return PAD.left + (i / (values.length - 1)) * chartW;
+  }
+  function yPos(v: number): number {
+    return PAD.top + chartH - ((v - minVal) / range) * chartH;
+  }
+
+  const linePath = values
+    .map((v, i) => `${i === 0 ? "M" : "L"} ${xPos(i).toFixed(1)},${yPos(v).toFixed(1)}`)
+    .join(" ");
+
+  const areaPath =
+    `${linePath} L ${xPos(values.length - 1).toFixed(1)},${(PAD.top + chartH).toFixed(1)} L ${xPos(0).toFixed(1)},${(PAD.top + chartH).toFixed(1)} Z`;
+
+  const thresholdColors: Record<number, string> = {};
+  const palette = ["rgba(251,191,36,0.5)", "rgba(74,222,128,0.45)", "rgba(248,113,113,0.45)", "rgba(147,197,253,0.45)", "rgba(216,180,254,0.4)"];
+  thresholds.forEach((t, i) => { thresholdColors[t] = palette[i % palette.length]; });
+
+  return (
+    <div className="relative w-full" style={{ aspectRatio: `${W}/${H}` }}>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full h-full overflow-visible"
+        preserveAspectRatio="none"
+        onMouseLeave={() => setHoveredIdx(null)}
+      >
+        <defs>
+          <linearGradient id="teamAreaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="rgba(74,222,128,0.18)" />
+            <stop offset="100%" stopColor="rgba(74,222,128,0.00)" />
+          </linearGradient>
+        </defs>
+
+        {/* Threshold lines */}
+        {thresholds.map((t) => {
+          const y = yPos(t);
+          if (y < PAD.top - 2 || y > PAD.top + chartH + 2) return null;
+          return (
+            <g key={t}>
+              <line
+                x1={PAD.left}
+                y1={y}
+                x2={PAD.left + chartW}
+                y2={y}
+                stroke={thresholdColors[t]}
+                strokeWidth="1"
+                strokeDasharray="4 3"
+              />
+              <text
+                x={PAD.left - 4}
+                y={y + 3.5}
+                textAnchor="end"
+                fill="rgba(255,255,255,0.28)"
+                fontSize="8"
+                fontFamily="monospace"
+              >
+                {t}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Area fill */}
+        <path d={areaPath} fill="url(#teamAreaGrad)" />
+
+        {/* Line */}
+        <path d={linePath} fill="none" stroke="rgba(74,222,128,0.65)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+
+        {/* Data points */}
+        {values.map((v, i) => {
+          const cx = xPos(i);
+          const cy = yPos(v);
+          const isHov = hoveredIdx === i;
+          const isLast = i === values.length - 1;
+          return (
+            <g key={i}>
+              <circle
+                cx={cx}
+                cy={cy}
+                r={isHov ? 5 : isLast ? 3.5 : 2.5}
+                fill={isHov ? "#4ade80" : isLast ? "rgba(74,222,128,0.8)" : "rgba(74,222,128,0.5)"}
+                stroke={isHov ? "rgba(255,255,255,0.4)" : "none"}
+                strokeWidth="1.5"
+                style={{ cursor: "pointer", transition: "r 80ms" }}
+              />
+              <rect
+                x={cx - 14}
+                y={PAD.top}
+                width={28}
+                height={chartH}
+                fill="transparent"
+                onMouseEnter={() => setHoveredIdx(i)}
+                onMouseLeave={() => setHoveredIdx(null)}
+                style={{ cursor: "crosshair" }}
+              />
+            </g>
+          );
+        })}
+
+        {/* Hover tooltip */}
+        {hoveredIdx !== null && (() => {
+          const v = values[hoveredIdx];
+          const cx = xPos(hoveredIdx);
+          const cy = yPos(v);
+          const ttW = 72;
+          const ttH = 28;
+          const rawX = cx - ttW / 2;
+          const ttX = Math.min(Math.max(rawX, PAD.left), PAD.left + chartW - ttW);
+          const ttY = cy - ttH - 8 < PAD.top ? cy + 8 : cy - ttH - 8;
+          return (
+            <g>
+              <rect x={ttX} y={ttY} width={ttW} height={ttH} rx="4" fill="rgba(20,20,20,0.92)" stroke="rgba(255,255,255,0.12)" strokeWidth="0.8" />
+              <text x={ttX + ttW / 2} y={ttY + 11} textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="9.5" fontWeight="700" fontFamily="ui-monospace,monospace">
+                {v} {unit}
+              </text>
+              <text x={ttX + ttW / 2} y={ttY + 22} textAnchor="middle" fill="rgba(255,255,255,0.38)" fontSize="8" fontFamily="system-ui,sans-serif">
+                game {hoveredIdx + 1} of {values.length}
+              </text>
+            </g>
+          );
+        })()}
+      </svg>
+    </div>
+  );
+}
+
+// ── Hit rate table row ────────────────────────────────────────────────────────
+
+function HitRateRow({
+  threshold,
+  data,
+  unit,
+}: {
+  threshold: number;
+  data: { hits: number; games: number; rate: number } | undefined;
+  unit: string;
+}) {
+  const hits = safeNum(data?.hits) ?? 0;
+  const games = safeNum(data?.games) ?? 0;
+  const rate = safeNum(data?.rate) ?? 0;
+  const hasData = games > 0;
+
+  const barColor = rate >= 70 ? "bg-emerald-500/60" : rate >= 50 ? "bg-amber-500/55" : "bg-white/18";
+  const textColor = rate >= 70 ? "text-emerald-400" : rate >= 50 ? "text-amber-400" : "text-white/40";
+
+  return (
+    <tr className="border-b border-white/[0.045] last:border-b-0">
+      <td className="py-1.5 pr-3 text-[11px] text-white/55 font-medium tabular-nums whitespace-nowrap">
+        {threshold}+ {unit}
+      </td>
+      <td className="py-1.5 pr-3 text-[11px] text-white/50 tabular-nums text-right whitespace-nowrap">
+        {hasData ? `${hits}/${games}` : "—"}
+      </td>
+      <td className="py-1.5 pr-3 w-28">
+        {hasData && (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 rounded-full bg-white/8 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${barColor}`}
+                style={{ width: `${Math.min(rate, 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
+      </td>
+      <td className={`py-1.5 text-[11px] font-semibold tabular-nums text-right whitespace-nowrap ${textColor}`}>
+        {hasData ? `${rate}%` : "—"}
+      </td>
+    </tr>
+  );
+}
+
+// ── Stat cell card ────────────────────────────────────────────────────────────
+
+function StatCell({ label, value, unit }: { label: string; value: number | null; unit?: string }) {
+  return (
+    <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] px-3 py-2">
+      <p className="text-[9px] font-semibold text-white/30 uppercase tracking-wider mb-0.5">{label}</p>
+      <p className="text-[14px] font-bold text-white/85 tabular-nums leading-tight">
+        {value != null ? (
+          <>
+            {value}
+            {unit && <span className="text-[9px] font-normal text-white/35 ml-0.5">{unit}</span>}
+          </>
+        ) : "—"}
+      </p>
+    </div>
+  );
+}
+
+// ── Game log ─────────────────────────────────────────────────────────────────
+
+function GameLogTable({ log, lens, loading }: { log: StatBoardTeamGameLog[]; lens: TeamStatLens; loading: boolean }) {
+  if (loading) {
+    return (
+      <div className="space-y-1.5">
+        {[0, 1, 2].map((i) => <div key={i} className="h-8 rounded-lg bg-white/4 animate-pulse" />)}
+      </div>
+    );
+  }
+  if (log.length === 0) {
+    return <p className="text-[12px] text-white/30">No game data available.</p>;
+  }
+
+  const lensHighlight = (g: StatBoardTeamGameLog): number | null => {
+    switch (lens) {
+      case "score":         return safeNum(g.team_score);
+      case "goals":         return safeNum(g.goals);
+      case "scoring_shots": return safeNum(g.scoring_shots);
+      case "disposals":     return safeNum(g.disposals);
+    }
+  };
+
+  return (
+    <div className="overflow-x-auto rounded-xl border border-white/[0.07] bg-[#0a0a0a]">
+      <table className="w-full text-left border-collapse" style={{ minWidth: 460 }}>
+        <thead>
+          <tr className="border-b border-white/[0.08] bg-[#0e0e0e]">
+            {["Week", "Opponent", "H/A", "Score", "Opp", "Result", "Goals", "Beh", "Shots", "Disp"].map((h, i) => (
+              <th
+                key={h}
+                className={`px-2.5 py-2 text-[9px] font-semibold uppercase tracking-wider whitespace-nowrap ${
+                  (i === 3 && lens === "score") || (i === 6 && lens === "goals") || (i === 8 && lens === "scoring_shots") || (i === 9 && lens === "disposals")
+                    ? "text-[#F5C84C]/70"
+                    : "text-white/28"
+                }`}
+              >
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {log.map((g) => {
+            const resultColor =
+              g.result === "W" ? "text-emerald-400" : g.result === "L" ? "text-red-400" : "text-white/45";
+            const highlight = lensHighlight(g);
+            const week = g.is_bye ? `${g.round_label} BYE` : g.round_label;
+
+            return (
+              <tr key={g.game_id} className="border-b border-white/[0.05] last:border-b-0 hover:bg-white/[0.025]">
+                <td className="px-2.5 py-2 text-[11px] text-white/42 whitespace-nowrap tabular-nums">{week}</td>
+                <td className="px-2.5 py-2 text-[11px] text-white/65 whitespace-nowrap max-w-[120px] truncate">{g.opponent_team_name}</td>
+                <td className="px-2.5 py-2 text-[10px] text-white/35 whitespace-nowrap">{g.home_away}</td>
+                <td className={`px-2.5 py-2 text-[11px] font-semibold tabular-nums whitespace-nowrap ${lens === "score" ? "text-[#F5C84C]" : "text-white/80"}`}>
+                  {safeNum(g.team_score) != null ? String(g.team_score) : "—"}
+                </td>
+                <td className="px-2.5 py-2 text-[11px] text-white/40 tabular-nums whitespace-nowrap">
+                  {safeNum(g.opponent_score) != null ? String(g.opponent_score) : "—"}
+                </td>
+                <td className={`px-2.5 py-2 text-[11px] font-bold whitespace-nowrap ${resultColor}`}>{g.result ?? "—"}</td>
+                <td className={`px-2.5 py-2 text-[11px] tabular-nums whitespace-nowrap ${lens === "goals" ? "text-[#F5C84C] font-semibold" : "text-white/50"}`}>
+                  {safeNum(g.goals) != null ? String(g.goals) : "—"}
+                </td>
+                <td className="px-2.5 py-2 text-[11px] text-white/40 tabular-nums whitespace-nowrap">
+                  {safeNum(g.behinds) != null ? String(g.behinds) : "—"}
+                </td>
+                <td className={`px-2.5 py-2 text-[11px] tabular-nums whitespace-nowrap ${lens === "scoring_shots" ? "text-[#F5C84C] font-semibold" : "text-white/50"}`}>
+                  {safeNum(g.scoring_shots) != null ? String(g.scoring_shots) : "—"}
+                </td>
+                <td className={`px-2.5 py-2 text-[11px] tabular-nums whitespace-nowrap ${lens === "disposals" ? "text-[#F5C84C] font-semibold" : "text-white/45"}`}>
+                  {safeNum(g.disposals) != null ? String(g.disposals) : "—"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Locked panel ──────────────────────────────────────────────────────────────
+
+function LockedTeamPanel({ teamName }: { teamName: string }) {
+  const navigate = useNavigate();
+  return (
+    <div className="border-t border-[#F5C84C]/10 px-4 py-6 text-center">
+      <div className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-[#F5C84C]/8 mb-3">
+        <Lock className="h-4 w-4 text-[#F5C84C]/50" aria-hidden />
+      </div>
+      <p className="text-sm font-semibold text-[#F5C84C]/70">Neeko+ match</p>
+      <p className="mt-1 text-xs text-white/35 max-w-[240px] mx-auto leading-relaxed">
+        Unlock full team breakdowns, projections, hit rates and game logs for {teamName}.
+      </p>
+      <button
+        onClick={() => navigate("/neeko-plus")}
+        className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#F5C84C]/12 border border-[#F5C84C]/25 px-4 py-2 text-[12px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/20 transition-colors"
+      >
+        <Lock className="h-3 w-3" aria-hidden />
+        Unlock Neeko+
+      </button>
+    </div>
+  );
+}
+
+// ── Expanded panel ────────────────────────────────────────────────────────────
+
+function ExpandedTeamPanel({
+  row,
+  lens,
+  isLocked,
+}: {
+  row: StatBoardTeamRow;
+  lens: TeamStatLens;
+  isLocked: boolean;
+}) {
+  const { log, loading: logLoading } = useStatBoardTeamGameLog(isLocked ? null : row.team_id);
+
+  if (isLocked) return <LockedTeamPanel teamName={row.team_name} />;
+
+  const unit = teamLensUnit(lens);
+  const thresholds = teamThresholdsForLens(lens);
+  const recentVals = (row.recent_values ?? []).map(Number).filter((n) => !isNaN(n));
+  const proj = safeNum(row.projection);
+  const conf = row.consistency_label ? CONF_STYLES[row.consistency_label] ?? CONF_STYLES.LOW : null;
+
+  return (
+    <div className="px-4 py-5 space-y-5">
+      {/* Header strip */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[13px] font-bold text-white/90">{row.team_name}</span>
+        <span className="text-[10px] text-white/28">vs</span>
+        <span className="text-[12px] text-white/55">{row.opponent_team_name}</span>
+        <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full border leading-none ${
+          row.is_home
+            ? "text-emerald-400/80 bg-emerald-500/8 border-emerald-500/15"
+            : "text-white/35 bg-white/4 border-white/8"
+        }`}>
+          {row.is_home ? "Home" : "Away"}
+        </span>
+        {conf && (
+          <span className={`flex items-center gap-1 text-[10px] ${conf.text}`}>
+            <span className={`h-[6px] w-[6px] rounded-full ${conf.dot}`} aria-hidden />
+            {conf.label} consistency
+          </span>
+        )}
+        {proj != null && (
+          <span className="ml-auto text-[11px] font-semibold text-white/30">
+            Proj: <span className="text-[#F5C84C] font-bold">{proj}</span>
+            <span className="text-[9px] font-normal text-white/25 ml-0.5">{unit}</span>
+          </span>
+        )}
+      </div>
+
+      {/* Trend chart */}
+      {recentVals.length >= 2 && (
+        <div>
+          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">
+            Recent Trend — {unit}
+          </p>
+          <TrendChart values={recentVals} thresholds={thresholds} lens={lens} />
+        </div>
+      )}
+
+      {/* Stats strip */}
+      <div>
+        <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">Averages</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <StatCell label="L3 Avg"     value={safeNum(row.recent_avg_l3)}  unit={unit} />
+          <StatCell label="L5 Avg"     value={safeNum(row.recent_avg_l5)}  unit={unit} />
+          <StatCell label="L8 Avg"     value={safeNum(row.recent_avg_l8)}  unit={unit} />
+          <StatCell label="Season Avg" value={safeNum(row.season_avg)}     unit={unit} />
+        </div>
+        <div className="grid grid-cols-3 gap-2 mt-2">
+          <StatCell label="Low"    value={safeNum(row.low_recent)}    unit={unit} />
+          <StatCell label="High"   value={safeNum(row.high_recent)}   unit={unit} />
+          <StatCell label="Std Dev" value={safeNum(row.stddev_recent)} unit={unit} />
+        </div>
+      </div>
+
+      {/* Score breakdown (score lens) */}
+      {lens === "score" && (row.recent_goals_avg != null || row.recent_scoring_shots_avg != null) && (
+        <div>
+          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">Scoring Breakdown (L8)</p>
+          <div className="grid grid-cols-3 gap-2">
+            <StatCell label="Goals Avg"   value={safeNum(row.recent_goals_avg)}         />
+            <StatCell label="Behinds Avg" value={safeNum(row.recent_behinds_avg)}        />
+            <StatCell label="Conversion"  value={safeNum(row.conversion_rate)} unit="%"  />
+          </div>
+        </div>
+      )}
+
+      {/* Opponent context */}
+      {(row.opponent_conceded_l5 != null || row.opponent_conceded_season != null) && (
+        <div>
+          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">
+            Opponent Context — {row.opponent_team_name}
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <StatCell label={`Conceded L5 (${unit})`}     value={safeNum(row.opponent_conceded_l5)}     />
+            <StatCell label={`Conceded Season (${unit})`} value={safeNum(row.opponent_conceded_season)} />
+          </div>
+        </div>
+      )}
+
+      {/* Hit rate table */}
+      {thresholds.length > 0 && (
+        <div>
+          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">
+            Hit Rates (Last 8 games)
+          </p>
+          <div className="rounded-xl border border-white/[0.07] bg-[#0a0a0a] px-3 py-1">
+            <table className="w-full">
+              <tbody>
+                {thresholds.map((t) => (
+                  <HitRateRow
+                    key={t}
+                    threshold={t}
+                    data={row.all_threshold_hit_rates?.[String(t)] as { hits: number; games: number; rate: number } | undefined}
+                    unit={unit}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Game log */}
+      <div>
+        <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">Game Log</p>
+        <GameLogTable log={log} lens={lens} loading={logLoading} />
+      </div>
+    </div>
+  );
+}
+
+// ── Hit rate cell for main table ──────────────────────────────────────────────
+
+function hitRateCell(row: StatBoardTeamRow, threshold: number, isLocked: boolean): React.ReactNode {
   if (isLocked) {
-    return <span className="text-[11px] text-white/20 blur-[4px] select-none" aria-hidden>—</span>;
+    return <span className="text-[11px] text-white/18 blur-[4px] select-none" aria-hidden>—</span>;
   }
   const data = row.all_threshold_hit_rates?.[String(threshold)];
   const hits = safeNum(data?.hits);
@@ -37,231 +548,10 @@ function hitRateCell(
 
   return (
     <div className="flex flex-col items-center leading-tight gap-[1px]">
-      <span className="text-[11px] font-semibold text-white/80 tabular-nums">{hits}/{games}</span>
-      {rate != null && rate > 0 ? (
-        <span className={`text-[10px] font-semibold tabular-nums ${rateColor}`}>{rate}%</span>
-      ) : (
-        <span className="text-[10px] text-white/22">0%</span>
-      )}
-    </div>
-  );
-}
-
-function MiniBarChips({ values, lens }: { values: number[] | null; lens: TeamStatLens }) {
-  const vals = (values ?? []).slice(-8);
-  if (vals.length === 0) {
-    return (
-      <div className="flex gap-[3px]">
-        {[0,1,2,3,4].map((i) => (
-          <span key={i} className="h-[18px] w-[18px] rounded bg-white/5 flex items-center justify-center text-[8px] text-white/18">—</span>
-        ))}
-      </div>
-    );
-  }
-  const max = Math.max(...vals, 1);
-  const unit = teamLensUnit(lens);
-  return (
-    <div className="flex items-end gap-[3px]" aria-label={`Recent ${unit} values`}>
-      {vals.map((v, i) => {
-        const isNewest = i === vals.length - 1;
-        const heightPct = Math.max(18, Math.round((v / max) * 36));
-        return (
-          <div
-            key={i}
-            title={`${v} ${unit}`}
-            role="listitem"
-            aria-label={`${v} ${unit}`}
-            style={{ height: heightPct }}
-            className={`w-[14px] rounded-sm flex items-end justify-center ${
-              isNewest
-                ? "bg-emerald-500/45 ring-1 ring-emerald-400/30"
-                : "bg-white/[0.12]"
-            }`}
-          >
-            <span className="text-[7px] font-bold text-white/50 tabular-nums leading-none mb-[1px]">{v}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Expanded panel ────────────────────────────────────────────────────────────
-
-function ExpandedTeamPanel({
-  row,
-  lens,
-  isLocked,
-}: {
-  row: StatBoardTeamRow;
-  lens: TeamStatLens;
-  isLocked: boolean;
-}) {
-  const { log, loading: logLoading } = useStatBoardTeamGameLog(isLocked ? null : row.team_id);
-  const { contributors, loading: contribLoading } = useStatBoardTeamTopContributors(
-    isLocked ? null : row.team_id,
-    lens
-  );
-
-  if (isLocked) {
-    return <LockedTeamPanel teamName={row.team_name} />;
-  }
-
-  const unit = teamLensUnit(lens);
-
-  return (
-    <div className="px-4 py-4 space-y-5">
-      {/* Stats strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCell label="L3 Avg" value={safeNum(row.recent_avg_l3)} unit={unit} />
-        <StatCell label="L5 Avg" value={safeNum(row.recent_avg_l5)} unit={unit} />
-        <StatCell label="L8 Avg" value={safeNum(row.recent_avg_l8)} unit={unit} />
-        <StatCell label="Season Avg" value={safeNum(row.season_avg)} unit={unit} />
-      </div>
-
-      {/* Score breakdown — only for score lens */}
-      {lens === "score" && (row.recent_goals_avg != null || row.recent_scoring_shots_avg != null) && (
-        <div className="grid grid-cols-3 gap-3">
-          <StatCell label="Goals Avg" value={safeNum(row.recent_goals_avg)} />
-          <StatCell label="Behinds Avg" value={safeNum(row.recent_behinds_avg)} />
-          <StatCell label="Conversion" value={safeNum(row.conversion_rate)} unit="%" />
-        </div>
-      )}
-
-      {/* Opponent context */}
-      {(row.opponent_conceded_l5 != null || row.opponent_conceded_season != null) && (
-        <div>
-          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">
-            Opponent — {row.opponent_team_name}
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <StatCell label="Conceded L5" value={safeNum(row.opponent_conceded_l5)} unit={unit} />
-            <StatCell label="Conceded Season" value={safeNum(row.opponent_conceded_season)} unit={unit} />
-          </div>
-        </div>
-      )}
-
-      {/* Game log */}
-      <div>
-        <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">
-          Recent Games
-        </p>
-        {logLoading ? (
-          <div className="space-y-1.5">
-            {[0,1,2].map((i) => (
-              <div key={i} className="h-8 rounded-lg bg-white/4 animate-pulse" />
-            ))}
-          </div>
-        ) : log.length === 0 ? (
-          <p className="text-[12px] text-white/30">No game data available.</p>
-        ) : (
-          <div className="space-y-1 overflow-x-auto">
-            <table className="w-full text-left border-collapse" style={{ minWidth: 420 }}>
-              <thead>
-                <tr className="border-b border-white/[0.08]">
-                  {["Rnd","Opponent","H/A","Score","Opp","Result","Goals","Shots","Conv"].map((h) => (
-                    <th key={h} className="px-2 py-1.5 text-[9px] font-semibold text-white/28 uppercase tracking-wider whitespace-nowrap">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {log.map((g) => {
-                  const resultColor =
-                    g.result === "W" ? "text-emerald-400"
-                    : g.result === "L" ? "text-red-400"
-                    : "text-white/45";
-                  return (
-                    <tr key={g.game_id} className="border-b border-white/[0.05] last:border-b-0 hover:bg-white/[0.03]">
-                      <td className="px-2 py-2 text-[11px] text-white/45 whitespace-nowrap">{g.round_label}</td>
-                      <td className="px-2 py-2 text-[11px] text-white/65 whitespace-nowrap">{g.opponent_team_name}</td>
-                      <td className="px-2 py-2 text-[10px] text-white/35 whitespace-nowrap">{g.home_away}</td>
-                      <td className="px-2 py-2 text-[11px] font-semibold text-white/80 tabular-nums whitespace-nowrap">{g.team_score ?? "—"}</td>
-                      <td className="px-2 py-2 text-[11px] text-white/40 tabular-nums whitespace-nowrap">{g.opponent_score ?? "—"}</td>
-                      <td className={`px-2 py-2 text-[11px] font-bold whitespace-nowrap ${resultColor}`}>{g.result ?? "—"}</td>
-                      <td className="px-2 py-2 text-[11px] text-white/50 tabular-nums whitespace-nowrap">{g.goals ?? "—"}</td>
-                      <td className="px-2 py-2 text-[11px] text-white/50 tabular-nums whitespace-nowrap">{g.scoring_shots ?? "—"}</td>
-                      <td className="px-2 py-2 text-[11px] text-white/45 tabular-nums whitespace-nowrap">
-                        {g.conversion_rate != null ? `${g.conversion_rate}%` : "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Top contributors */}
-      <div>
-        <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">
-          Key Players
-        </p>
-        {contribLoading ? (
-          <div className="flex gap-2 flex-wrap">
-            {[0,1,2,3].map((i) => (
-              <div key={i} className="h-8 w-28 rounded-lg bg-white/4 animate-pulse" />
-            ))}
-          </div>
-        ) : contributors.length === 0 ? (
-          <p className="text-[12px] text-white/30">No contributor data available.</p>
-        ) : (
-          <div className="flex gap-2 flex-wrap">
-            {contributors.map((c) => (
-              <div
-                key={c.player_id}
-                className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5"
-              >
-                <p className="text-[11px] font-semibold text-white/80 leading-tight">{c.player_name}</p>
-                <p className="text-[9px] text-white/35 mt-0.5">
-                  {c.projection != null ? `proj ${c.projection}` : c.recent_avg_l5 != null ? `avg ${c.recent_avg_l5}` : "—"} {unit}
-                  {c.position_group ? ` · ${c.position_group}` : ""}
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function StatCell({ label, value, unit }: { label: string; value: number | null; unit?: string }) {
-  return (
-    <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] px-3 py-2">
-      <p className="text-[9px] font-semibold text-white/30 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className="text-[15px] font-bold text-white/85 tabular-nums leading-tight">
-        {value != null ? (
-          <>
-            {value}
-            {unit && <span className="text-[10px] font-normal text-white/35 ml-0.5">{unit}</span>}
-          </>
-        ) : "—"}
-      </p>
-    </div>
-  );
-}
-
-function LockedTeamPanel({ teamName }: { teamName: string }) {
-  const navigate = useNavigate();
-  return (
-    <div className="border-t border-[#F5C84C]/10 px-4 py-6 text-center">
-      <div className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-[#F5C84C]/8 mb-3">
-        <Lock className="h-4 w-4 text-[#F5C84C]/50" aria-hidden />
-      </div>
-      <p className="text-sm font-semibold text-[#F5C84C]/70">Neeko+ match</p>
-      <p className="mt-1 text-xs text-white/35 max-w-[240px] mx-auto leading-relaxed">
-        Free users can explore the first matches. Neeko+ unlocks full team breakdowns for {teamName} and every other team.
-      </p>
-      <button
-        onClick={() => navigate("/neeko-plus")}
-        className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#F5C84C]/12 border border-[#F5C84C]/25 px-4 py-2 text-[12px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/20 transition-colors"
-      >
-        <Lock className="h-3 w-3" aria-hidden />
-        Unlock Neeko+
-      </button>
+      <span className="text-[11px] font-semibold text-white/75 tabular-nums">{hits}/{games}</span>
+      <span className={`text-[10px] font-semibold tabular-nums ${rateColor}`}>
+        {rate != null && rate > 0 ? `${rate}%` : "0%"}
+      </span>
     </div>
   );
 }
@@ -286,18 +576,9 @@ export const TeamBoardRow = memo(function TeamBoardRow({
   onToggleExpand,
 }: TeamBoardRowProps) {
   const isRowLocked = isMatchLocked && !row.is_free_match;
-
-  const confStyles: Record<string, { dot: string; text: string; label: string }> = {
-    "VERY HIGH": { dot: "bg-emerald-300", text: "text-emerald-300", label: "Very High" },
-    HIGH:        { dot: "bg-emerald-400", text: "text-emerald-400", label: "High" },
-    MEDIUM:      { dot: "bg-amber-400",   text: "text-amber-400",   label: "Medium" },
-    LOW:         { dot: "bg-white/25",    text: "text-white/40",    label: "Low" },
-    UNKNOWN:     { dot: "bg-white/15",    text: "text-white/28",    label: "—" },
-  };
-  const conf = row.consistency_label ? confStyles[row.consistency_label] ?? confStyles.LOW : null;
-
+  const conf = row.consistency_label ? CONF_STYLES[row.consistency_label] ?? CONF_STYLES.LOW : null;
   const proj = safeNum(row.projection);
-  const avg  = safeNum(row.recent_avg_l5);
+  const avg = safeNum(row.recent_avg_l5);
 
   return (
     <Fragment>
@@ -313,12 +594,12 @@ export const TeamBoardRow = memo(function TeamBoardRow({
           focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60
           border-b border-white/[0.06] last:border-b-0
           ${isExpanded
-            ? "bg-white/[0.065] border-b-transparent"
-            : "hover:bg-white/[0.055] active:bg-white/[0.085]"}
+            ? "bg-white/[0.06] border-b-transparent"
+            : "hover:bg-white/[0.05] active:bg-white/[0.08]"}
         `}
       >
         {/* Team name */}
-        <td className="relative pl-0 pr-2 py-3 min-w-[160px]">
+        <td className="relative pl-0 pr-2 py-3 min-w-[150px]">
           {isExpanded && (
             <span className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full bg-emerald-500/50" aria-hidden />
           )}
@@ -326,32 +607,31 @@ export const TeamBoardRow = memo(function TeamBoardRow({
             <span className={`text-[13px] font-semibold leading-tight ${isExpanded ? "text-white" : "text-white/90"}`}>
               {row.team_name}
             </span>
-            <p className="text-[10px] text-white/35 mt-0.5">
+            <p className="text-[10px] text-white/32 mt-0.5">
               vs {row.opponent_team_name}
               {row.is_home
-                ? <span className="ml-1 text-emerald-500/50"> · H</span>
-                : <span className="ml-1 text-white/18"> · A</span>
-              }
+                ? <span className="ml-1 text-emerald-500/55"> · H</span>
+                : <span className="ml-1 text-white/18"> · A</span>}
             </p>
           </div>
         </td>
 
         {/* Mini bar chart */}
-        <td className="px-2 py-3 min-w-[120px]">
+        <td className="px-2 py-3 min-w-[110px]">
           <MiniBarChips values={row.recent_values} lens={lens} />
         </td>
 
         {/* L5 Avg */}
-        <td className="px-2 py-3 text-right tabular-nums min-w-[56px]">
+        <td className="px-2 py-3 text-right tabular-nums min-w-[52px]">
           <span className={`text-[12px] font-medium ${avg != null ? "text-white/55" : "text-white/20"}`}>
-            {avg != null ? avg.toFixed(1) : "—"}
+            {avg != null ? fmt(avg) : "—"}
           </span>
         </td>
 
         {/* Projection */}
         <td className="px-2 py-3 text-right tabular-nums min-w-[52px]">
           {isRowLocked ? (
-            <span className="text-[13px] font-semibold text-white/20 blur-[4px] select-none" aria-hidden>••</span>
+            <span className="text-[13px] font-semibold text-white/18 blur-[4px] select-none" aria-hidden>••</span>
           ) : proj != null ? (
             <span className="text-[15px] font-bold text-[#F5C84C] tabular-nums leading-none">{proj}</span>
           ) : (
@@ -361,16 +641,16 @@ export const TeamBoardRow = memo(function TeamBoardRow({
 
         {/* Hit rate cols */}
         {thresholds.map((t) => (
-          <td key={t} className="px-2 py-2.5 text-center tabular-nums min-w-[60px]">
+          <td key={t} className="px-2 py-2.5 text-center tabular-nums min-w-[58px]">
             {hitRateCell(row, t, isRowLocked)}
           </td>
         ))}
 
         {/* Consistency */}
-        <td className="px-2 py-3 text-center min-w-[84px]">
+        <td className="px-2 py-3 text-center min-w-[78px]">
           {!isRowLocked && conf ? (
             <div className="inline-flex items-center gap-1.5">
-              <span className={`h-[7px] w-[7px] rounded-full shrink-0 ${conf.dot}`} aria-hidden />
+              <span className={`h-[6px] w-[6px] rounded-full shrink-0 ${conf.dot}`} aria-hidden />
               <span className={`text-[11px] font-semibold leading-none ${conf.text}`}>{conf.label}</span>
             </div>
           ) : (
@@ -384,7 +664,7 @@ export const TeamBoardRow = memo(function TeamBoardRow({
             inline-flex items-center justify-center h-7 w-7 rounded-lg transition-all duration-100
             ${isExpanded
               ? "bg-white/12 text-white/80"
-              : "text-white/30 group-hover:bg-white/8 group-hover:text-white/65 group-active:bg-white/12"}
+              : "text-white/28 group-hover:bg-white/8 group-hover:text-white/65"}
           `}>
             {isRowLocked ? (
               <Lock className="h-3.5 w-3.5 text-[#F5C84C]/40" aria-hidden />
@@ -400,7 +680,10 @@ export const TeamBoardRow = memo(function TeamBoardRow({
       {/* Expanded detail row */}
       {isExpanded && (
         <tr className="border-b border-white/[0.06]">
-          <td colSpan={4 + thresholds.length + 2} className="p-0 align-top bg-white/[0.022] border-l-[3px] border-l-emerald-500/30">
+          <td
+            colSpan={4 + thresholds.length + 2}
+            className="p-0 align-top bg-[#0c0c0c] border-l-[3px] border-l-emerald-500/30"
+          >
             <ExpandedTeamPanel row={row} lens={lens} isLocked={isRowLocked} />
           </td>
         </tr>
@@ -429,26 +712,19 @@ export const MobileTeamCard = memo(function MobileTeamCard({
   onToggleExpand,
 }: MobileTeamCardProps) {
   const isRowLocked = isMatchLocked && !row.is_free_match;
-
-  const confStyles: Record<string, { dot: string; text: string; label: string }> = {
-    "VERY HIGH": { dot: "bg-emerald-300", text: "text-emerald-300", label: "Very High" },
-    HIGH:        { dot: "bg-emerald-400", text: "text-emerald-400", label: "High" },
-    MEDIUM:      { dot: "bg-amber-400",   text: "text-amber-400",   label: "Medium" },
-    LOW:         { dot: "bg-white/25",    text: "text-white/40",    label: "Low" },
-    UNKNOWN:     { dot: "bg-white/15",    text: "text-white/28",    label: "—" },
-  };
-  const conf = row.consistency_label ? confStyles[row.consistency_label] ?? confStyles.LOW : null;
-
+  const conf = row.consistency_label ? CONF_STYLES[row.consistency_label] ?? CONF_STYLES.LOW : null;
   const proj = safeNum(row.projection);
-  const avg  = safeNum(row.recent_avg_l5);
+  const avg = safeNum(row.recent_avg_l5);
   const unit = teamLensUnit(lens);
+
+  const handleToggle = useCallback(() => onToggleExpand(), [onToggleExpand]);
 
   return (
     <div className={`rounded-2xl border overflow-hidden w-full min-w-0 ${
       isExpanded ? "border-emerald-500/25 bg-[#111]" : "border-white/10 bg-[#0d0d0d]"
     }`}>
       <button
-        onClick={onToggleExpand}
+        onClick={handleToggle}
         aria-expanded={isExpanded}
         aria-label={`${row.team_name} — ${isExpanded ? "collapse" : "expand"} detail`}
         className="w-full text-left px-3 pt-3 pb-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60"
@@ -463,8 +739,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
               <span className="text-[10px] text-white/35 truncate">vs {row.opponent_team_name}</span>
               {row.is_home
                 ? <span className="text-[8px] text-emerald-500/60 font-semibold bg-emerald-500/7 rounded px-1 py-0.5 leading-none shrink-0">H</span>
-                : <span className="text-[8px] text-white/28 bg-white/5 rounded px-1 py-0.5 leading-none shrink-0">A</span>
-              }
+                : <span className="text-[8px] text-white/28 bg-white/5 rounded px-1 py-0.5 leading-none shrink-0">A</span>}
             </div>
           </div>
 
@@ -472,24 +747,19 @@ export const MobileTeamCard = memo(function MobileTeamCard({
             <div className="text-right">
               <p className="text-[7px] text-white/25 uppercase tracking-wider leading-none mb-0.5">Proj</p>
               {isRowLocked ? (
-                <span className="text-[14px] font-bold text-white/20 select-none" aria-hidden>••</span>
+                <span className="text-[14px] font-bold text-white/18 select-none" aria-hidden>••</span>
               ) : proj != null ? (
                 <span className="text-[17px] font-bold text-[#F5C84C] tabular-nums leading-none">{proj}</span>
               ) : (
                 <span className="text-[12px] text-white/22">—</span>
               )}
             </div>
-            <span className={`
-              inline-flex items-center justify-center h-6 w-6 rounded-lg shrink-0
-              ${isExpanded ? "bg-white/10 text-white/75" : "text-white/28"}
-            `}>
-              {isRowLocked ? (
-                <Lock className="h-3 w-3 text-[#F5C84C]/40" aria-hidden />
-              ) : isExpanded ? (
-                <ChevronUp className="h-3.5 w-3.5" aria-hidden />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5" aria-hidden />
-              )}
+            <span className={`inline-flex items-center justify-center h-6 w-6 rounded-lg shrink-0 ${isExpanded ? "bg-white/10 text-white/75" : "text-white/28"}`}>
+              {isRowLocked
+                ? <Lock className="h-3 w-3 text-[#F5C84C]/40" aria-hidden />
+                : isExpanded
+                ? <ChevronUp className="h-3.5 w-3.5" aria-hidden />
+                : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
             </span>
           </div>
         </div>
@@ -504,7 +774,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
           <div className="flex-1 px-1.5 py-1.5 border-r border-white/8 min-w-0">
             <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">L5 {unit}</p>
             <p className={`text-[11px] font-semibold tabular-nums leading-none ${avg != null ? "text-white/68" : "text-white/22"}`}>
-              {avg != null ? avg.toFixed(1) : "—"}
+              {avg != null ? fmt(avg) : "—"}
             </p>
           </div>
 
@@ -515,30 +785,22 @@ export const MobileTeamCard = memo(function MobileTeamCard({
             const hits = safeNum(data?.hits);
             const games = safeNum(data?.games);
             const hasData = hits !== null && games !== null && games > 0;
-            const rateColor = rate != null && rate >= 70
-              ? "text-emerald-400"
-              : rate != null && rate >= 50
-              ? "text-amber-400"
+            const rateColor =
+              rate != null && rate >= 70 ? "text-emerald-400"
+              : rate != null && rate >= 50 ? "text-amber-400"
               : "text-white/32";
 
             return (
               <div key={t} className={`flex-1 px-1 py-1.5 text-center min-w-0 ${isLast ? "" : "border-r border-white/8"}`}>
+                <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">{t}+</p>
                 {isRowLocked ? (
-                  <>
-                    <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">{t}+</p>
-                    <p className="text-[9px] text-white/18 select-none tabular-nums leading-none">—</p>
-                  </>
+                  <p className="text-[9px] text-white/18 select-none leading-none">—</p>
+                ) : hasData && rate != null ? (
+                  <p className={`text-[10px] font-bold tabular-nums leading-none ${rateColor}`}>
+                    {rate > 0 ? `${rate}%` : "0%"}
+                  </p>
                 ) : (
-                  <>
-                    <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">{t}+</p>
-                    {hasData && rate != null ? (
-                      <p className={`text-[10px] font-bold tabular-nums leading-none ${rateColor}`}>
-                        {rate > 0 ? `${rate}%` : "0%"}
-                      </p>
-                    ) : (
-                      <p className="text-[9px] text-white/20 leading-none">—</p>
-                    )}
-                  </>
+                  <p className="text-[9px] text-white/20 leading-none">—</p>
                 )}
               </div>
             );
@@ -564,10 +826,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
           <ExpandedTeamPanel row={row} lens={lens} isLocked={false} />
         </div>
       )}
-
-      {isExpanded && isRowLocked && (
-        <LockedTeamPanel teamName={row.team_name} />
-      )}
+      {isExpanded && isRowLocked && <LockedTeamPanel teamName={row.team_name} />}
     </div>
   );
 });
