@@ -81,8 +81,8 @@ export function AppSidebar() {
                       </NavLink>
                     </SidebarMenuButton>
 
-                    {/* Stat Board contextual sub-items — only when sidebar is expanded and user is in /stat-board */}
-                    {isStatBoard && isExpanded && statBoardSectionActive && (
+                    {/* Stat Board contextual sub-items — when expanded (desktop) or on mobile overlay */}
+                    {isStatBoard && (isExpanded || isMobile) && statBoardSectionActive && (
                       <ul className="mt-0.5 mb-1 ml-7 space-y-0.5" role="group" aria-label="Stat Board sections">
                         {STAT_BOARD_SUB_ITEMS.map((sub) => {
                           const subActive = !sub.disabled && sub.url !== null && currentPath === sub.url;
