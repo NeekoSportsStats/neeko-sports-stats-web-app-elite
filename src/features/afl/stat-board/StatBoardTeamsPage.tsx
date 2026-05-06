@@ -14,7 +14,7 @@ import type {
   TeamStatLens,
 } from "./teamTypes";
 import { teamThresholdsForLens, teamLensLabel } from "./teamTypes";
-import { TeamBoardRow, MobileTeamCard } from "./components/TeamBoardRow";
+import { TeamBoardRow, MobileTeamCard, LockedFixtureBlock } from "./components/TeamBoardRow";
 
 // ── Mobile detection ──────────────────────────────────────────────────────────
 
@@ -438,8 +438,49 @@ const FixtureSection = memo(function FixtureSection({
         <div className="flex-1 h-px bg-white/[0.06] ml-1 hidden sm:block" />
       </div>
 
-      {/* Team rows */}
-      {isMobile ? (
+      {/* Team rows — locked fixtures render as a single unified block */}
+      {isLocked ? (
+        isMobile ? (
+          <LockedFixtureBlock
+            homeRow={homeRow}
+            awayRow={awayRow}
+            lens={lens}
+            thresholds={thresholds}
+            onUnlockClick={onUnlockClick}
+            isMobile={true}
+          />
+        ) : (
+          <div className="overflow-x-auto rounded-xl border border-[#F5C84C]/15 bg-[#0d0d0d]">
+            <table className="w-full border-collapse text-left" style={{ minWidth: "640px" }}>
+              <thead>
+                <tr className="border-b border-white/10 bg-[#0f0f0f]">
+                  <th className="pl-4 pr-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider whitespace-nowrap w-[180px]">Team</th>
+                  <th className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider whitespace-nowrap">Recent</th>
+                  <th className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-right whitespace-nowrap">Avg</th>
+                  <th className="px-2 py-2.5 text-[10px] font-semibold text-[#F5C84C]/55 uppercase tracking-wider text-right whitespace-nowrap">Proj</th>
+                  {thresholds.map((t) => (
+                    <th key={t} className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">
+                      {t}+
+                    </th>
+                  ))}
+                  <th className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">Consistency</th>
+                  <th className="pr-3 pl-1 py-2.5 w-8" />
+                </tr>
+              </thead>
+              <tbody>
+                <LockedFixtureBlock
+                  homeRow={homeRow}
+                  awayRow={awayRow}
+                  lens={lens}
+                  thresholds={thresholds}
+                  onUnlockClick={onUnlockClick}
+                  isMobile={false}
+                />
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : isMobile ? (
         <div className="flex flex-col gap-2 w-full min-w-0">
           {rows.map((row) => {
             const key = `${row.match_id}-${row.team_id}`;
@@ -449,7 +490,7 @@ const FixtureSection = memo(function FixtureSection({
                 row={row}
                 lens={lens}
                 thresholds={thresholds}
-                isMatchLocked={isLocked}
+                isMatchLocked={false}
                 isExpanded={expandedTeamKey === key}
                 onToggleExpand={() => onToggleExpand(expandedTeamKey === key ? null : key)}
                 onUnlockClick={onUnlockClick}
@@ -484,7 +525,7 @@ const FixtureSection = memo(function FixtureSection({
                     row={row}
                     lens={lens}
                     thresholds={thresholds}
-                    isMatchLocked={isLocked}
+                    isMatchLocked={false}
                     isExpanded={expandedTeamKey === key}
                     onToggleExpand={() => onToggleExpand(expandedTeamKey === key ? null : key)}
                     onUnlockClick={onUnlockClick}

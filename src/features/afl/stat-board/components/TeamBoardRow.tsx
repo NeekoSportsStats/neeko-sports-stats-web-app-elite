@@ -464,100 +464,150 @@ function LockedTeamPanel({ teamName }: { teamName: string }) {
   );
 }
 
-// ── Locked teaser — desktop table row ─────────────────────────────────────────
+// ── Locked fixture block (one per fixture, replaces two separate locked rows) ──
 
-interface LockedTeaserDesktopRowProps {
-  row: StatBoardTeamRow;
+export interface LockedFixtureBlockProps {
+  homeRow: StatBoardTeamRow | null;
+  awayRow: StatBoardTeamRow | null;
   lens: TeamStatLens;
   thresholds: readonly number[];
   onUnlockClick: () => void;
+  isMobile: boolean;
 }
 
-function LockedTeaserDesktopRow({ row, lens, thresholds, onUnlockClick }: LockedTeaserDesktopRowProps) {
+export const LockedFixtureBlock = memo(function LockedFixtureBlock({
+  homeRow,
+  awayRow,
+  lens,
+  thresholds,
+  onUnlockClick,
+  isMobile,
+}: LockedFixtureBlockProps) {
   const unit = teamLensUnit(lens);
-  const colSpanExtra = thresholds.length + 4; // recent + avg + proj + consistency
+  const teamRows = [homeRow, awayRow].filter(Boolean) as StatBoardTeamRow[];
 
-  return (
-    <tr className="border-b border-[#F5C84C]/12 last:border-b-0 bg-[#F5C84C]/[0.025]">
-      {/* Team name + opponent */}
-      <td className="relative pl-0 pr-2 py-3 min-w-[150px]">
-        <span className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full bg-[#F5C84C]/30" aria-hidden />
-        <div className="pl-4">
-          <span className="text-[13px] font-semibold text-white/80 leading-tight">{row.team_name}</span>
-          <p className="text-[10px] text-white/32 mt-0.5">
-            vs {row.opponent_team_name}
-            {row.is_home
-              ? <span className="ml-1 text-emerald-500/55"> · H</span>
-              : <span className="ml-1 text-white/18"> · A</span>}
-          </p>
-        </div>
-      </td>
-
-      {/* Stat lens label */}
-      <td className="px-2 py-3 min-w-[180px]">
-        <span className="text-[10px] text-[#F5C84C]/45 font-medium">{unit} · Neeko+ required</span>
-      </td>
-
-      {/* Locked message spanning remaining cols */}
-      <td colSpan={colSpanExtra} className="px-3 py-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Lock className="h-3 w-3 text-[#F5C84C]/40 shrink-0" aria-hidden />
-          <span className="text-[11px] text-white/28 leading-tight">
-            Upgrade to Neeko+ to view every team projection, hit rate and trend.
-          </span>
-          <button
-            onClick={onUnlockClick}
-            className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#F5C84C]/10 border border-[#F5C84C]/22 px-2.5 py-1 text-[10px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/18 transition-colors whitespace-nowrap"
+  if (isMobile) {
+    return (
+      <div className="rounded-2xl border border-[#F5C84C]/18 bg-[#F5C84C]/[0.025] overflow-hidden w-full min-w-0">
+        {/* Both teams stacked */}
+        {teamRows.map((row, idx) => (
+          <div
+            key={row.team_id}
+            className={`px-3 py-2.5 flex items-center gap-2 min-w-0 ${idx > 0 ? "border-t border-[#F5C84C]/10" : ""}`}
           >
-            Unlock Neeko+
-          </button>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
-// ── Locked teaser — mobile card ───────────────────────────────────────────────
-
-interface LockedTeaserMobileCardProps {
-  row: StatBoardTeamRow;
-  lens: TeamStatLens;
-  onUnlockClick: () => void;
-}
-
-function LockedTeaserMobileCard({ row, lens, onUnlockClick }: LockedTeaserMobileCardProps) {
-  const unit = teamLensUnit(lens);
-  return (
-    <div className="rounded-2xl border border-[#F5C84C]/20 bg-[#F5C84C]/[0.03] overflow-hidden w-full min-w-0">
-      <div className="px-3 py-3 flex items-center gap-2 min-w-0">
-        {/* Left: team + opponent */}
-        <div className="flex-1 min-w-0">
-          <span className="text-[13px] font-bold text-white/75 leading-tight block truncate">{row.team_name}</span>
-          <div className="flex items-center gap-1 mt-0.5 min-w-0">
-            <span className="text-[10px] text-white/32 truncate">vs {row.opponent_team_name}</span>
-            {row.is_home
-              ? <span className="text-[8px] text-emerald-500/60 font-semibold bg-emerald-500/7 rounded px-1 py-0.5 leading-none shrink-0">H</span>
-              : <span className="text-[8px] text-white/28 bg-white/5 rounded px-1 py-0.5 leading-none shrink-0">A</span>}
+            <div className="flex-1 min-w-0">
+              <span className="text-[13px] font-bold text-white/65 leading-tight block truncate">{row.team_name}</span>
+              <div className="flex items-center gap-1 mt-0.5 min-w-0">
+                <span className="text-[10px] text-white/28 truncate">vs {row.opponent_team_name}</span>
+                {row.is_home
+                  ? <span className="text-[8px] text-emerald-500/50 font-semibold bg-emerald-500/7 rounded px-1 py-0.5 leading-none shrink-0">H</span>
+                  : <span className="text-[8px] text-white/22 bg-white/5 rounded px-1 py-0.5 leading-none shrink-0">A</span>}
+              </div>
+            </div>
+            {/* Placeholder stat strip */}
+            <div className="flex items-center gap-1 shrink-0">
+              <span className="text-[9px] text-[#F5C84C]/35 font-medium">{unit}</span>
+              {[0, 1, 2].map((i) => (
+                <span key={i} className="rounded bg-[#F5C84C]/5 px-1.5 py-0.5 text-[10px] text-white/10 select-none blur-[3px]">00</span>
+              ))}
+            </div>
           </div>
-          <p className="text-[9px] text-[#F5C84C]/45 mt-1 leading-tight">{unit} · Neeko+ required</p>
-        </div>
+        ))}
 
-        {/* Right: lock + CTA */}
-        <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <div className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-[#F5C84C]/8">
-            <Lock className="h-3.5 w-3.5 text-[#F5C84C]/50" aria-hidden />
+        {/* Single CTA */}
+        <div className="px-3 py-3 border-t border-[#F5C84C]/10 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Lock className="h-3 w-3 text-[#F5C84C]/45 shrink-0" aria-hidden />
+            <span className="text-[10px] text-white/30 leading-tight truncate">Neeko+ required to view stats</span>
           </div>
           <button
             onClick={onUnlockClick}
-            className="inline-flex items-center gap-1 rounded-lg bg-[#F5C84C]/10 border border-[#F5C84C]/22 px-2 py-1 text-[9px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/18 transition-colors whitespace-nowrap"
+            className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#F5C84C]/12 border border-[#F5C84C]/25 px-2.5 py-1.5 text-[10px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/20 transition-colors whitespace-nowrap"
           >
             Unlock Neeko+
           </button>
         </div>
       </div>
-    </div>
+    );
+  }
+
+  // Desktop: two compact rows + single CTA row spanning all cols
+  const totalCols = 4 + thresholds.length + 2; // team + recent + avg + proj + thresholds + consistency + chevron
+
+  return (
+    <>
+      {teamRows.map((row) => (
+        <tr key={row.team_id} className="border-b border-[#F5C84C]/8 bg-[#F5C84C]/[0.018]">
+          {/* Team name + opponent */}
+          <td className="relative pl-0 pr-2 py-2.5 min-w-[150px]">
+            <span className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full bg-[#F5C84C]/25" aria-hidden />
+            <div className="pl-4">
+              <span className="text-[13px] font-semibold text-white/65 leading-tight">{row.team_name}</span>
+              <p className="text-[10px] text-white/28 mt-0.5">
+                vs {row.opponent_team_name}
+                {row.is_home
+                  ? <span className="ml-1 text-emerald-500/45"> · H</span>
+                  : <span className="ml-1 text-white/15"> · A</span>}
+              </p>
+            </div>
+          </td>
+
+          {/* Recent chips placeholder */}
+          <td className="px-2 py-2.5 min-w-[180px]">
+            <div className="flex flex-wrap gap-[3px]">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <span key={i} className="rounded bg-[#F5C84C]/5 px-1.5 py-0.5 text-[10px] text-white/10 blur-[3px] select-none">00</span>
+              ))}
+            </div>
+          </td>
+
+          {/* Avg placeholder */}
+          <td className="px-2 py-2.5 text-right min-w-[52px]">
+            <span className="text-[13px] text-white/12 blur-[3px] select-none tabular-nums">00</span>
+          </td>
+
+          {/* Proj placeholder */}
+          <td className="px-2 py-2.5 text-right min-w-[52px]">
+            <span className="text-[15px] text-[#F5C84C]/15 blur-[3px] select-none tabular-nums">00</span>
+          </td>
+
+          {/* Hit rate placeholders */}
+          {thresholds.map((t) => (
+            <td key={t} className="px-2 py-2.5 text-center min-w-[58px]">
+              <span className="text-[11px] text-white/10 blur-[3px] select-none tabular-nums">0%</span>
+            </td>
+          ))}
+
+          {/* Consistency placeholder */}
+          <td className="px-2 py-2.5 text-center min-w-[78px]">
+            <span className="text-[11px] text-white/10 blur-[3px] select-none">—</span>
+          </td>
+
+          {/* Chevron placeholder */}
+          <td className="pr-2 pl-1 py-2.5 w-10" />
+        </tr>
+      ))}
+
+      {/* Single CTA row */}
+      <tr className="border-b border-[#F5C84C]/10 bg-[#F5C84C]/[0.01]">
+        <td colSpan={totalCols} className="px-4 py-2.5">
+          <div className="flex items-center gap-3">
+            <Lock className="h-3 w-3 text-[#F5C84C]/45 shrink-0" aria-hidden />
+            <span className="text-[11px] text-white/30 leading-tight flex-1">
+              Neeko+ required — unlock projections, hit rates and trends for every team
+            </span>
+            <button
+              onClick={onUnlockClick}
+              className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-[#F5C84C]/12 border border-[#F5C84C]/25 px-3 py-1.5 text-[10px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/20 transition-colors whitespace-nowrap"
+            >
+              Unlock Neeko+
+            </button>
+          </div>
+        </td>
+      </tr>
+    </>
   );
-}
+});
 
 // ── Expanded panel ────────────────────────────────────────────────────────────
 
@@ -767,22 +817,10 @@ export const TeamBoardRow = memo(function TeamBoardRow({
   onToggleExpand,
   onUnlockClick,
 }: TeamBoardRowProps) {
-  const isRowLocked = isMatchLocked && !row.is_free_match;
   const conf = row.consistency_label ? CONF_STYLES[row.consistency_label] ?? CONF_STYLES.LOW : null;
   const proj = safeNum(row.projection);
   const avg = safeNum(row.recent_avg_l5);
-
-  // Locked rows get a dedicated premium teaser row
-  if (isRowLocked) {
-    return (
-      <LockedTeaserDesktopRow
-        row={row}
-        lens={lens}
-        thresholds={thresholds}
-        onUnlockClick={onUnlockClick}
-      />
-    );
-  }
+  void isMatchLocked; // handled at fixture level by LockedFixtureBlock
 
   return (
     <Fragment>
@@ -913,12 +951,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
   onToggleExpand,
   onUnlockClick,
 }: MobileTeamCardProps) {
-  const isRowLocked = isMatchLocked && !row.is_free_match;
-
-  // Locked rows get a dedicated premium teaser card
-  if (isRowLocked) {
-    return <LockedTeaserMobileCard row={row} lens={lens} onUnlockClick={onUnlockClick} />;
-  }
+  void isMatchLocked; // handled at fixture level by LockedFixtureBlock
   const conf = row.consistency_label ? CONF_STYLES[row.consistency_label] ?? CONF_STYLES.LOW : null;
   const proj = safeNum(row.projection);
   const avg = safeNum(row.recent_avg_l5);
