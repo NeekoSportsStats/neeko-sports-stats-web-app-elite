@@ -221,7 +221,7 @@ export function ExpandedPlayerPanel({
                 <span className="text-[9px] text-white/28">Actual</span>
               </span>
               <span className="flex items-center gap-1.5">
-                <svg width="18" height="2" viewBox="0 0 18 2"><line x1="0" y1="1" x2="18" y2="1" stroke="rgba(245,200,76,0.75)" strokeWidth="1.5" strokeDasharray="3 3" strokeLinecap="round"/></svg>
+                <svg width="18" height="2" viewBox="0 0 18 2"><line x1="0" y1="1" x2="18" y2="1" stroke="rgba(245,200,76,0.42)" strokeWidth="1" strokeDasharray="3 3" strokeLinecap="round"/></svg>
                 <span className="text-[9px] text-white/28">Thresholds</span>
               </span>
               <span className="flex items-center gap-1.5">
@@ -544,14 +544,14 @@ function MultiThresholdChart({
           <g key={t}>
             <line
               x1={PAD.left} y1={y.toFixed(1)} x2={W - PAD.right} y2={y.toFixed(1)}
-              stroke="rgba(245,200,76,0.60)"
-              strokeWidth="1.3"
+              stroke="rgba(245,200,76,0.32)"
+              strokeWidth="0.8"
               strokeDasharray="4 5"
             />
             <text
               x={W - PAD.right + 5} y={(y + 3.5).toFixed(1)}
               fontSize="9"
-              fill="rgba(245,200,76,0.60)"
+              fill="rgba(245,200,76,0.32)"
               fontWeight="400"
             >
               {t}
