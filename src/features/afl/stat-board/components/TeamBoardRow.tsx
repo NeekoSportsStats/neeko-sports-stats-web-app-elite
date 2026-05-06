@@ -1,4 +1,4 @@
-import { memo, Fragment, useState, useCallback } from "react";
+import { memo, Fragment, useState, useCallback, useRef } from "react";
 import { ChevronDown, ChevronUp, Lock, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { StatBoardTeamRow, StatBoardTeamGameLog, TeamStatLens } from "../teamTypes";
@@ -86,14 +86,23 @@ function TrendChart({
   thresholds,
   lens,
   gameContexts,
+  isMobile = false,
+  height,
 }: {
   values: number[];
   thresholds: readonly number[];
   lens: TeamStatLens;
   gameContexts?: TrendChartGameContext[];
+  isMobile?: boolean;
+  height?: number;
 }) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [pinnedIdx, setPinnedIdx] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
   const unit = teamLensUnit(lens);
+
+  // On mobile, tap toggles pin. On desktop, hover shows tooltip.
+  const activeIdx = isMobile ? pinnedIdx : hoveredIdx;
 
   if (values.length < 2) {
     return (
@@ -104,7 +113,7 @@ function TrendChart({
   }
 
   const W = 600;
-  const H = 88;
+  const H = height ?? 88;
   const PAD = { top: 10, right: 24, bottom: 18, left: 38 };
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
@@ -132,164 +141,200 @@ function TrendChart({
   const palette = ["rgba(251,191,36,0.38)", "rgba(74,222,128,0.32)", "rgba(248,113,113,0.32)", "rgba(147,197,253,0.32)", "rgba(255,200,120,0.30)"];
   thresholds.forEach((t, i) => { thresholdColors[t] = palette[i % palette.length]; });
 
+  const selectedPoint = activeIdx !== null ? {
+    v: values[activeIdx],
+    ctx: gameContexts?.[activeIdx],
+    threshLines: thresholds.map((t) => ({ t, hit: values[activeIdx] >= t })),
+  } : null;
+
   return (
-    <div className="relative w-full" style={{ aspectRatio: `${W}/${H}` }}>
-      <svg
-        viewBox={`0 0 ${W} ${H}`}
-        className="w-full h-full overflow-visible"
-        preserveAspectRatio="none"
-        onMouseLeave={() => setHoveredIdx(null)}
-      >
-        <defs>
-          <linearGradient id="teamAreaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(74,222,128,0.15)" />
-            <stop offset="100%" stopColor="rgba(74,222,128,0.00)" />
-          </linearGradient>
-        </defs>
+    <div className="w-full">
+      <div className="relative w-full" style={{ aspectRatio: `${W}/${H}` }}>
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${W} ${H}`}
+          className="w-full h-full overflow-visible"
+          preserveAspectRatio="none"
+          onMouseLeave={isMobile ? undefined : () => setHoveredIdx(null)}
+        >
+          <defs>
+            <linearGradient id="teamAreaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgba(74,222,128,0.15)" />
+              <stop offset="100%" stopColor="rgba(74,222,128,0.00)" />
+            </linearGradient>
+          </defs>
 
-        {/* Threshold lines */}
-        {thresholds.map((t) => {
-          const y = yPos(t);
-          if (y < PAD.top - 2 || y > PAD.top + chartH + 2) return null;
-          return (
-            <g key={t}>
-              <line
-                x1={PAD.left}
-                y1={y}
-                x2={PAD.left + chartW}
-                y2={y}
-                stroke={thresholdColors[t]}
-                strokeWidth="0.6"
-                strokeDasharray="4 4"
-              />
-              <text
-                x={PAD.left - 4}
-                y={y + 3.5}
-                textAnchor="end"
-                fill="rgba(255,255,255,0.22)"
-                fontSize="7.5"
-                fontFamily="monospace"
-              >
-                {t}
-              </text>
-            </g>
-          );
-        })}
+          {/* Threshold lines */}
+          {thresholds.map((t) => {
+            const y = yPos(t);
+            if (y < PAD.top - 2 || y > PAD.top + chartH + 2) return null;
+            return (
+              <g key={t}>
+                <line
+                  x1={PAD.left}
+                  y1={y}
+                  x2={PAD.left + chartW}
+                  y2={y}
+                  stroke={thresholdColors[t]}
+                  strokeWidth="0.6"
+                  strokeDasharray="4 4"
+                />
+                <text
+                  x={PAD.left - 4}
+                  y={y + 3.5}
+                  textAnchor="end"
+                  fill="rgba(255,255,255,0.22)"
+                  fontSize="7.5"
+                  fontFamily="monospace"
+                >
+                  {t}
+                </text>
+              </g>
+            );
+          })}
 
-        {/* Area fill */}
-        <path d={areaPath} fill="url(#teamAreaGrad)" />
+          {/* Area fill */}
+          <path d={areaPath} fill="url(#teamAreaGrad)" />
 
-        {/* Line */}
-        <path d={linePath} fill="none" stroke="rgba(74,222,128,0.65)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+          {/* Line */}
+          <path d={linePath} fill="none" stroke="rgba(74,222,128,0.65)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
 
-        {/* Data points */}
-        {values.map((v, i) => {
-          const cx = xPos(i);
-          const cy = yPos(v);
-          const isHov = hoveredIdx === i;
-          const isLast = i === values.length - 1;
-          return (
-            <g key={i}>
-              <circle
-                cx={cx}
-                cy={cy}
-                r={isHov ? 5 : isLast ? 3.5 : 2.5}
-                fill={isHov ? "#4ade80" : isLast ? "rgba(74,222,128,0.8)" : "rgba(74,222,128,0.5)"}
-                stroke={isHov ? "rgba(255,255,255,0.4)" : "none"}
-                strokeWidth="1.5"
-                style={{ cursor: "pointer", transition: "r 80ms" }}
-              />
-              <rect
-                x={cx - 14}
-                y={PAD.top}
-                width={28}
-                height={chartH}
-                fill="transparent"
-                onMouseEnter={() => setHoveredIdx(i)}
-                onMouseLeave={() => setHoveredIdx(null)}
-                style={{ cursor: "crosshair" }}
-              />
-            </g>
-          );
-        })}
+          {/* Data points */}
+          {values.map((v, i) => {
+            const cx = xPos(i);
+            const cy = yPos(v);
+            const isActive = activeIdx === i;
+            const isLast = i === values.length - 1;
+            return (
+              <g key={i}>
+                <circle
+                  cx={cx}
+                  cy={cy}
+                  r={isActive ? 5 : isLast ? 3.5 : 2.5}
+                  fill={isActive ? "#4ade80" : isLast ? "rgba(74,222,128,0.8)" : "rgba(74,222,128,0.5)"}
+                  stroke={isActive ? "rgba(255,255,255,0.4)" : "none"}
+                  strokeWidth="1.5"
+                  style={{ cursor: "pointer", transition: "r 80ms" }}
+                />
+                <rect
+                  x={cx - 14}
+                  y={PAD.top}
+                  width={28}
+                  height={chartH}
+                  fill="transparent"
+                  onMouseEnter={isMobile ? undefined : () => setHoveredIdx(i)}
+                  onMouseLeave={isMobile ? undefined : () => setHoveredIdx(null)}
+                  onClick={isMobile ? () => setPinnedIdx((p) => (p === i ? null : i)) : undefined}
+                  style={{ cursor: "crosshair" }}
+                />
+              </g>
+            );
+          })}
 
-        {/* Hover tooltip */}
-        {hoveredIdx !== null && (() => {
-          const v = values[hoveredIdx];
-          const cx = xPos(hoveredIdx);
-          const cy = yPos(v);
-          const ctx = gameContexts?.[hoveredIdx];
+          {/* Desktop hover tooltip (SVG overlay — not used on mobile) */}
+          {!isMobile && activeIdx !== null && (() => {
+            const v = values[activeIdx];
+            const cx = xPos(activeIdx);
+            const cy = yPos(v);
+            const ctx = gameContexts?.[activeIdx];
+            const threshLines = thresholds.map((t) => ({ t, hit: v >= t }));
 
-          // Build threshold hit/miss lines
-          const threshLines = thresholds.map((t) => ({
-            t,
-            hit: v >= t,
-          }));
+            const hasCtx = !!ctx;
+            const ttW = hasCtx ? 148 : 90;
+            const baseRows = hasCtx ? 3 : 1;
+            const ttH = (baseRows + threshLines.length) * 13 + 14;
 
-          // Tooltip dimensions — taller when showing context + thresholds
-          const hasCtx = !!ctx;
-          const ttW = hasCtx ? 148 : 90;
-          // rows: value, week+opp (if ctx), venue (if ctx), each threshold
-          const baseRows = hasCtx ? 3 : 1;
-          const ttH = (baseRows + threshLines.length) * 13 + 14;
+            const rawX = cx - ttW / 2;
+            const ttX = Math.min(Math.max(rawX, PAD.left), PAD.left + chartW - ttW);
+            const ttY = cy - ttH - 8 < PAD.top ? cy + 8 : cy - ttH - 8;
 
-          const rawX = cx - ttW / 2;
-          const ttX = Math.min(Math.max(rawX, PAD.left), PAD.left + chartW - ttW);
-          const ttY = cy - ttH - 8 < PAD.top ? cy + 8 : cy - ttH - 8;
+            let lineY = ttY + 13;
+            const rows: React.ReactNode[] = [];
 
-          let lineY = ttY + 13;
-          const rows: React.ReactNode[] = [];
-
-          // Value row
-          rows.push(
-            <text key="val" x={ttX + ttW / 2} y={lineY} textAnchor="middle" fill="rgba(255,255,255,0.92)" fontSize="10" fontWeight="700" fontFamily="ui-monospace,monospace">
-              {v} {unit}
-            </text>
-          );
-          lineY += 12;
-
-          if (hasCtx) {
-            // Week + opponent
             rows.push(
-              <text key="opp" x={ttX + 6} y={lineY} fill="rgba(255,255,255,0.55)" fontSize="8" fontFamily="system-ui,sans-serif">
-                {ctx.round_label} · {ctx.opponent_team_name}
+              <text key="val" x={ttX + ttW / 2} y={lineY} textAnchor="middle" fill="rgba(255,255,255,0.92)" fontSize="10" fontWeight="700" fontFamily="ui-monospace,monospace">
+                {v} {unit}
               </text>
             );
-            lineY += 11;
-            // Venue
-            if (ctx.venue) {
+            lineY += 12;
+
+            if (hasCtx && ctx) {
               rows.push(
-                <text key="venue" x={ttX + 6} y={lineY} fill="rgba(255,255,255,0.32)" fontSize="7.5" fontFamily="system-ui,sans-serif">
-                  {ctx.venue}
+                <text key="opp" x={ttX + 6} y={lineY} fill="rgba(255,255,255,0.55)" fontSize="8" fontFamily="system-ui,sans-serif">
+                  {ctx.round_label} · {ctx.opponent_team_name}
                 </text>
               );
               lineY += 11;
+              if (ctx.venue) {
+                rows.push(
+                  <text key="venue" x={ttX + 6} y={lineY} fill="rgba(255,255,255,0.32)" fontSize="7.5" fontFamily="system-ui,sans-serif">
+                    {ctx.venue}
+                  </text>
+                );
+                lineY += 11;
+              }
             }
-          }
 
-          // Separator line
-          rows.push(
-            <line key="sep" x1={ttX + 6} y1={lineY - 3} x2={ttX + ttW - 6} y2={lineY - 3} stroke="rgba(255,255,255,0.10)" strokeWidth="0.5" />
-          );
-
-          // Threshold rows
-          threshLines.forEach(({ t, hit }) => {
             rows.push(
-              <text key={`t${t}`} x={ttX + 6} y={lineY + 1} fill={hit ? "rgba(74,222,128,0.80)" : "rgba(255,100,100,0.55)"} fontSize="8" fontFamily="ui-monospace,monospace">
-                {hit ? "✓" : "✗"} {t}+ {unit}
-              </text>
+              <line key="sep" x1={ttX + 6} y1={lineY - 3} x2={ttX + ttW - 6} y2={lineY - 3} stroke="rgba(255,255,255,0.10)" strokeWidth="0.5" />
             );
-            lineY += 11;
-          });
 
-          return (
-            <g>
-              <rect x={ttX} y={ttY} width={ttW} height={ttH} rx="4" fill="rgba(14,14,14,0.95)" stroke="rgba(255,255,255,0.10)" strokeWidth="0.7" />
-              {rows}
-            </g>
-          );
-        })()}
-      </svg>
+            threshLines.forEach(({ t, hit }) => {
+              rows.push(
+                <text key={`t${t}`} x={ttX + 6} y={lineY + 1} fill={hit ? "rgba(74,222,128,0.80)" : "rgba(255,100,100,0.55)"} fontSize="8" fontFamily="ui-monospace,monospace">
+                  {hit ? "✓" : "✗"} {t}+ {unit}
+                </text>
+              );
+              lineY += 11;
+            });
+
+            return (
+              <g>
+                <rect x={ttX} y={ttY} width={ttW} height={ttH} rx="4" fill="rgba(14,14,14,0.95)" stroke="rgba(255,255,255,0.10)" strokeWidth="0.7" />
+                {rows}
+              </g>
+            );
+          })()}
+        </svg>
+      </div>
+
+      {/* Mobile tap-to-pin selected point summary — rendered as DOM below chart */}
+      {isMobile && selectedPoint && (
+        <div className="mt-2 rounded-lg border border-white/[0.08] bg-white/[0.028] px-3 py-2.5">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-[14px] font-bold text-white/90 tabular-nums leading-none">
+                {selectedPoint.v} <span className="text-[11px] font-normal text-white/35">{unit}</span>
+              </p>
+              {selectedPoint.ctx && (
+                <p className="text-[10px] text-white/45 mt-0.5">
+                  {selectedPoint.ctx.round_label}
+                  {selectedPoint.ctx.opponent_team_name ? ` · ${selectedPoint.ctx.opponent_team_name}` : ""}
+                </p>
+              )}
+              {selectedPoint.ctx?.venue && (
+                <p className="text-[9px] text-white/28 mt-0.5">{selectedPoint.ctx.venue}</p>
+              )}
+            </div>
+            <div className="flex flex-col gap-0.5">
+              {selectedPoint.threshLines.map(({ t, hit }) => (
+                <span
+                  key={t}
+                  className={`text-[9px] font-semibold tabular-nums ${hit ? "text-emerald-400" : "text-red-400/60"}`}
+                >
+                  {hit ? "✓" : "✗"} {t}+
+                </span>
+              ))}
+            </div>
+          </div>
+          <button
+            onClick={() => setPinnedIdx(null)}
+            className="mt-1.5 text-[9px] text-white/25 hover:text-white/50 transition-colors"
+          >
+            Tap chart to change · tap again to clear
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -700,6 +745,122 @@ function TeamAiSummary({
   );
 }
 
+// ── Mobile expanded panel ─────────────────────────────────────────────────────
+
+function MobileExpandedTeamPanel({
+  row,
+  lens,
+}: {
+  row: StatBoardTeamRow;
+  lens: TeamStatLens;
+}) {
+  const { log, loading: logLoading } = useStatBoardTeamGameLog(row.team_id);
+
+  const unit = teamLensUnit(lens);
+  const thresholds = teamThresholdsForLens(lens);
+  const recentVals = (row.recent_values ?? []).map(Number).filter((n) => !isNaN(n));
+  const proj = safeNum(row.projection);
+  const conf = row.consistency_label ? CONF_STYLES[row.consistency_label] ?? CONF_STYLES.LOW : null;
+
+  const sortedLog = [...log].reverse();
+  const gameContexts: TrendChartGameContext[] = recentVals.map((_, i) => {
+    const g = sortedLog[i];
+    if (!g) return { round_label: `G${i + 1}`, opponent_team_name: "", venue: "" };
+    return { round_label: g.round_label, opponent_team_name: g.opponent_team_name, venue: g.venue ?? "" };
+  });
+
+  return (
+    <div className="px-3 py-3 space-y-3">
+      {/* Header */}
+      <div className="flex flex-wrap items-center gap-1.5">
+        {conf && (
+          <span className={`flex items-center gap-1 text-[10px] ${conf.text}`}>
+            <span className={`h-[5px] w-[5px] rounded-full ${conf.dot}`} aria-hidden />
+            {conf.label} consistency
+          </span>
+        )}
+        {proj != null && (
+          <span className="ml-auto text-[11px] font-semibold text-white/30">
+            Proj: <span className="text-[#F5C84C] font-bold">{proj}</span>
+            <span className="text-[9px] font-normal text-white/25 ml-0.5">{unit}</span>
+          </span>
+        )}
+      </div>
+
+      {/* Trend chart — controlled height, tap-to-pin */}
+      {recentVals.length >= 2 && (
+        <div>
+          <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">
+            Recent Trend — {unit} <span className="normal-case font-normal text-white/20">(tap a point)</span>
+          </p>
+          <TrendChart
+            values={recentVals}
+            thresholds={thresholds}
+            lens={lens}
+            gameContexts={logLoading ? undefined : gameContexts}
+            isMobile={true}
+            height={100}
+          />
+        </div>
+      )}
+
+      {/* Key metrics — 2 cols on mobile */}
+      <div>
+        <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">Metrics</p>
+        <div className="grid grid-cols-2 gap-1.5">
+          <StatCell label="L3 Avg"     value={safeNum(row.recent_avg_l3)}  unit={unit} />
+          <StatCell label="L5 Avg"     value={safeNum(row.recent_avg_l5)}  unit={unit} />
+          <StatCell label="Season Avg" value={safeNum(row.season_avg)}     unit={unit} />
+          <StatCell label="Games"      value={safeNum(row.recent_games_count)} />
+        </div>
+      </div>
+
+      {/* Hit rates */}
+      {thresholds.length > 0 && (
+        <div>
+          <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">Hit Rates</p>
+          <div className="rounded-xl border border-white/[0.07] bg-[#0a0a0a] px-3 py-1">
+            <table className="w-full">
+              <tbody>
+                {thresholds.map((t) => (
+                  <HitRateRow
+                    key={t}
+                    threshold={t}
+                    data={row.all_threshold_hit_rates?.[String(t)] as { hits: number; games: number; rate: number } | undefined}
+                    unit={unit}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Opponent context */}
+      {(row.opponent_conceded_l5 != null || row.opponent_conceded_season != null) && (
+        <div>
+          <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">
+            Opponent — {row.opponent_team_name}
+          </p>
+          <div className="grid grid-cols-2 gap-1.5">
+            <StatCell label={`Conceded L5`}     value={safeNum(row.opponent_conceded_l5)}     unit={unit} />
+            <StatCell label={`Conceded Season`} value={safeNum(row.opponent_conceded_season)} unit={unit} />
+          </div>
+        </div>
+      )}
+
+      {/* AI summary */}
+      <TeamAiSummary row={row} lens={lens} thresholds={thresholds} />
+
+      {/* Game log — horizontally scrollable on mobile */}
+      <div>
+        <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">Game Log</p>
+        <GameLogTable log={log} lens={lens} loading={logLoading} />
+      </div>
+    </div>
+  );
+}
+
 // ── Expanded panel ────────────────────────────────────────────────────────────
 
 function ExpandedTeamPanel({
@@ -1091,7 +1252,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
           <RecentChips values={row.recent_values} lens={lens} />
         </div>
 
-        {/* Row 3: stats strip */}
+        {/* Row 3: stats strip — limit to 3 thresholds on mobile */}
         <div className="flex items-stretch gap-0 border border-white/8 rounded-lg overflow-hidden w-full">
           <div className="flex-1 px-1.5 py-1.5 border-r border-white/8 min-w-0">
             <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">Avg</p>
@@ -1100,8 +1261,8 @@ export const MobileTeamCard = memo(function MobileTeamCard({
             </p>
           </div>
 
-          {thresholds.map((t, idx) => {
-            const isLast = idx === thresholds.length - 1;
+          {thresholds.slice(0, 3).map((t, idx) => {
+            const isLast = idx === Math.min(thresholds.length, 3) - 1;
             const data = row.all_threshold_hit_rates?.[String(t)];
             const rate = safeNum(data?.rate);
             const hits = safeNum(data?.hits);
@@ -1140,10 +1301,10 @@ export const MobileTeamCard = memo(function MobileTeamCard({
         </div>
       </button>
 
-      {/* Expanded detail */}
+      {/* Expanded detail — use mobile-specific panel */}
       {isExpanded && (
         <div className="border-t border-white/[0.08] bg-[#0c0c0c] border-l-[3px] border-l-emerald-500/30">
-          <ExpandedTeamPanel row={row} lens={lens} isLocked={false} />
+          <MobileExpandedTeamPanel row={row} lens={lens} />
         </div>
       )}
     </div>
