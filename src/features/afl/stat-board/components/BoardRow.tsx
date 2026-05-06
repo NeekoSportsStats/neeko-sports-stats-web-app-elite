@@ -247,7 +247,6 @@ function hitRateCell(
   const games = safeNum(data?.games);
   const rate  = safeNum(data?.rate);
 
-  // Not enough data — show em-dash
   if (hits === null || games === null || games === 0) {
     return <span className="text-[11px] text-white/22">—</span>;
   }

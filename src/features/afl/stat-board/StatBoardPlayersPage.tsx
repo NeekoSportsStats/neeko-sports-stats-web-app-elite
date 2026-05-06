@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
 import { Helmet } from "react-helmet-async";
-import { Search, X, Lock, ChevronDown } from "lucide-react";
+import { Search, X, Lock, ChevronDown, ChevronUp } from "lucide-react";
 import { track } from "@/lib/analytics";
 
 import {
@@ -719,8 +719,6 @@ const TeamBoard = memo(function TeamBoard({
   const prevPlayersRef = useRef(players);
   if (prevPlayersRef.current !== players) {
     prevPlayersRef.current = players;
-    // Reset inline — setState in render causes an extra render but is intentional here
-    // to avoid a stale "show all" state after match change. Safe because we bail early.
     if (showAll) setShowAll(false);
   }
 
@@ -735,19 +733,19 @@ const TeamBoard = memo(function TeamBoard({
     [players, isCapped]
   );
   const totalCount = players.length;
-  const visibleCount = visiblePlayers.length;
+  const hiddenCount = totalCount - TOP_N;
 
   const headerCount = searchActive
     ? `${totalCount} ${totalCount === 1 ? "player" : "players"} found`
     : isCapped
-    ? `${visibleCount} of ${totalCount} shown`
+    ? `${TOP_N} of ${totalCount} shown`
     : `${totalCount} ${totalCount === 1 ? "player" : "players"}`;
 
   return (
     <div>
-      {/* ── Team section header ── */}
-      <div className="mb-3 flex items-start justify-between gap-3 flex-wrap">
-        <div className="min-w-0">
+      {/* ── Team section header — team name, count, pills only ── */}
+      <div className="mb-3 flex items-start gap-3 flex-wrap">
+        <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 flex-wrap">
             <h2 className="text-[14px] font-bold text-white tracking-tight leading-none shrink-0">
               {teamName}
@@ -772,20 +770,10 @@ const TeamBoard = memo(function TeamBoard({
             )}
           </div>
         </div>
-
-        {/* Single expand/collapse control */}
-        {needsCap && (
-          <button
-            onClick={() => setShowAll((v) => !v)}
-            className="shrink-0 text-[11px] font-medium text-white/40 hover:text-white/70 transition-colors whitespace-nowrap mt-0.5"
-          >
-            {showAll ? "Show fewer" : `Show all ${totalCount}`}
-          </button>
-        )}
       </div>
 
       {/* ── Horizontally scrollable table ── */}
-      <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#0d0d0d]">
+      <div className="overflow-x-auto rounded-t-2xl border border-white/10 bg-[#0d0d0d]">
         <table className="w-full border-collapse text-left" style={{ minWidth: "640px" }}>
           <thead>
             <tr className="border-b border-white/10 bg-[#0f0f0f]">
@@ -846,6 +834,40 @@ const TeamBoard = memo(function TeamBoard({
           </tbody>
         </table>
       </div>
+
+      {/* ── Bottom expand/collapse control — only when cap applies ── */}
+      {needsCap && (
+        <button
+          onClick={() => setShowAll((v) => !v)}
+          className={`
+            w-full flex items-center justify-center gap-2
+            rounded-b-2xl border-x border-b border-white/10
+            bg-[#0d0d0d] hover:bg-white/[0.04]
+            px-4 py-2.5
+            text-[11px] font-medium text-white/40 hover:text-white/65
+            transition-colors
+          `}
+          aria-expanded={showAll}
+          aria-label={showAll ? "Show fewer players" : `Show all ${totalCount} players`}
+        >
+          {showAll ? (
+            <>
+              <ChevronUp className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              Show fewer players
+            </>
+          ) : (
+            <>
+              <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              Show {hiddenCount} more {hiddenCount === 1 ? "player" : "players"}
+            </>
+          )}
+        </button>
+      )}
+
+      {/* When no cap, round bottom of table normally */}
+      {!needsCap && (
+        <div className="h-px" />
+      )}
     </div>
   );
 });
