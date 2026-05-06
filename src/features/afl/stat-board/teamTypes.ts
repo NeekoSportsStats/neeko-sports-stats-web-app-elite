@@ -114,10 +114,10 @@ export interface StatBoardTeamTopContributor {
 
 export type TeamStatLens = "score" | "goals" | "scoring_shots" | "disposals";
 
-export const TEAM_SCORE_THRESHOLDS = [60, 70, 80, 90, 100] as const;
-export const TEAM_GOALS_THRESHOLDS = [8, 10, 12, 14] as const;
-export const TEAM_SCORING_SHOTS_THRESHOLDS = [18, 22, 26, 30] as const;
-export const TEAM_DISPOSALS_THRESHOLDS = [320, 340, 360, 380] as const;
+export const TEAM_SCORE_THRESHOLDS = [70, 80, 90, 100, 110] as const;
+export const TEAM_GOALS_THRESHOLDS = [8, 10, 12, 14, 16] as const;
+export const TEAM_SCORING_SHOTS_THRESHOLDS = [18, 20, 22, 24, 26] as const;
+export const TEAM_DISPOSALS_THRESHOLDS = [300, 325, 350, 375, 400] as const;
 
 export function teamThresholdsForLens(lens: TeamStatLens): readonly number[] {
   switch (lens) {
