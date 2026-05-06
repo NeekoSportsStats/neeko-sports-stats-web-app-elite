@@ -75,29 +75,37 @@ function RecentChips({ values, lens }: { values: number[] | null; lens: TeamStat
 
 // ── Inline trend chart (SVG sparkline) ───────────────────────────────────────
 
+interface TrendChartGameContext {
+  round_label: string;
+  opponent_team_name: string;
+  venue: string;
+}
+
 function TrendChart({
   values,
   thresholds,
   lens,
+  gameContexts,
 }: {
   values: number[];
   thresholds: readonly number[];
   lens: TeamStatLens;
+  gameContexts?: TrendChartGameContext[];
 }) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const unit = teamLensUnit(lens);
 
   if (values.length < 2) {
     return (
-      <div className="flex items-center justify-center h-[120px] text-[12px] text-white/28">
+      <div className="flex items-center justify-center h-[88px] text-[12px] text-white/28">
         Not enough data to show trend.
       </div>
     );
   }
 
   const W = 600;
-  const H = 120;
-  const PAD = { top: 14, right: 24, bottom: 24, left: 38 };
+  const H = 88;
+  const PAD = { top: 10, right: 24, bottom: 18, left: 38 };
   const chartW = W - PAD.left - PAD.right;
   const chartH = H - PAD.top - PAD.bottom;
 
@@ -121,7 +129,7 @@ function TrendChart({
     `${linePath} L ${xPos(values.length - 1).toFixed(1)},${(PAD.top + chartH).toFixed(1)} L ${xPos(0).toFixed(1)},${(PAD.top + chartH).toFixed(1)} Z`;
 
   const thresholdColors: Record<number, string> = {};
-  const palette = ["rgba(251,191,36,0.5)", "rgba(74,222,128,0.45)", "rgba(248,113,113,0.45)", "rgba(147,197,253,0.45)", "rgba(216,180,254,0.4)"];
+  const palette = ["rgba(251,191,36,0.38)", "rgba(74,222,128,0.32)", "rgba(248,113,113,0.32)", "rgba(147,197,253,0.32)", "rgba(255,200,120,0.30)"];
   thresholds.forEach((t, i) => { thresholdColors[t] = palette[i % palette.length]; });
 
   return (
@@ -134,7 +142,7 @@ function TrendChart({
       >
         <defs>
           <linearGradient id="teamAreaGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(74,222,128,0.18)" />
+            <stop offset="0%" stopColor="rgba(74,222,128,0.15)" />
             <stop offset="100%" stopColor="rgba(74,222,128,0.00)" />
           </linearGradient>
         </defs>
@@ -151,15 +159,15 @@ function TrendChart({
                 x2={PAD.left + chartW}
                 y2={y}
                 stroke={thresholdColors[t]}
-                strokeWidth="1"
-                strokeDasharray="4 3"
+                strokeWidth="0.6"
+                strokeDasharray="4 4"
               />
               <text
                 x={PAD.left - 4}
                 y={y + 3.5}
                 textAnchor="end"
-                fill="rgba(255,255,255,0.28)"
-                fontSize="8"
+                fill="rgba(255,255,255,0.22)"
+                fontSize="7.5"
                 fontFamily="monospace"
               >
                 {t}
@@ -210,20 +218,74 @@ function TrendChart({
           const v = values[hoveredIdx];
           const cx = xPos(hoveredIdx);
           const cy = yPos(v);
-          const ttW = 72;
-          const ttH = 28;
+          const ctx = gameContexts?.[hoveredIdx];
+
+          // Build threshold hit/miss lines
+          const threshLines = thresholds.map((t) => ({
+            t,
+            hit: v >= t,
+          }));
+
+          // Tooltip dimensions — taller when showing context + thresholds
+          const hasCtx = !!ctx;
+          const ttW = hasCtx ? 148 : 90;
+          // rows: value, week+opp (if ctx), venue (if ctx), each threshold
+          const baseRows = hasCtx ? 3 : 1;
+          const ttH = (baseRows + threshLines.length) * 13 + 14;
+
           const rawX = cx - ttW / 2;
           const ttX = Math.min(Math.max(rawX, PAD.left), PAD.left + chartW - ttW);
           const ttY = cy - ttH - 8 < PAD.top ? cy + 8 : cy - ttH - 8;
+
+          let lineY = ttY + 13;
+          const rows: React.ReactNode[] = [];
+
+          // Value row
+          rows.push(
+            <text key="val" x={ttX + ttW / 2} y={lineY} textAnchor="middle" fill="rgba(255,255,255,0.92)" fontSize="10" fontWeight="700" fontFamily="ui-monospace,monospace">
+              {v} {unit}
+            </text>
+          );
+          lineY += 12;
+
+          if (hasCtx) {
+            // Week + opponent
+            rows.push(
+              <text key="opp" x={ttX + 6} y={lineY} fill="rgba(255,255,255,0.55)" fontSize="8" fontFamily="system-ui,sans-serif">
+                {ctx.round_label} · {ctx.opponent_team_name}
+              </text>
+            );
+            lineY += 11;
+            // Venue
+            if (ctx.venue) {
+              rows.push(
+                <text key="venue" x={ttX + 6} y={lineY} fill="rgba(255,255,255,0.32)" fontSize="7.5" fontFamily="system-ui,sans-serif">
+                  {ctx.venue}
+                </text>
+              );
+              lineY += 11;
+            }
+          }
+
+          // Separator line
+          rows.push(
+            <line key="sep" x1={ttX + 6} y1={lineY - 3} x2={ttX + ttW - 6} y2={lineY - 3} stroke="rgba(255,255,255,0.10)" strokeWidth="0.5" />
+          );
+
+          // Threshold rows
+          threshLines.forEach(({ t, hit }) => {
+            rows.push(
+              <text key={`t${t}`} x={ttX + 6} y={lineY + 1} fill={hit ? "rgba(74,222,128,0.80)" : "rgba(255,100,100,0.55)"} fontSize="8" fontFamily="ui-monospace,monospace">
+                {hit ? "✓" : "✗"} {t}+ {unit}
+              </text>
+            );
+            lineY += 11;
+          });
+
           return (
             <g>
-              <rect x={ttX} y={ttY} width={ttW} height={ttH} rx="4" fill="rgba(20,20,20,0.92)" stroke="rgba(255,255,255,0.12)" strokeWidth="0.8" />
-              <text x={ttX + ttW / 2} y={ttY + 11} textAnchor="middle" fill="rgba(255,255,255,0.9)" fontSize="9.5" fontWeight="700" fontFamily="ui-monospace,monospace">
-                {v} {unit}
-              </text>
-              <text x={ttX + ttW / 2} y={ttY + 22} textAnchor="middle" fill="rgba(255,255,255,0.38)" fontSize="8" fontFamily="system-ui,sans-serif">
-                game {hoveredIdx + 1} of {values.length}
-              </text>
+              <rect x={ttX} y={ttY} width={ttW} height={ttH} rx="4" fill="rgba(14,14,14,0.95)" stroke="rgba(255,255,255,0.10)" strokeWidth="0.7" />
+              {rows}
             </g>
           );
         })()}
@@ -423,8 +485,21 @@ function ExpandedTeamPanel({
   const proj = safeNum(row.projection);
   const conf = row.consistency_label ? CONF_STYLES[row.consistency_label] ?? CONF_STYLES.LOW : null;
 
+  // Build per-point game context for the chart tooltip (oldest-first, matching recent_values order)
+  // Game log is newest-first; recent_values is oldest-first, so reverse-map:
+  const sortedLog = [...log].reverse(); // oldest-first to match recent_values
+  const gameContexts: TrendChartGameContext[] = recentVals.map((_, i) => {
+    const g = sortedLog[i];
+    if (!g) return { round_label: `G${i + 1}`, opponent_team_name: "", venue: "" };
+    return {
+      round_label: g.round_label,
+      opponent_team_name: g.opponent_team_name,
+      venue: g.venue ?? "",
+    };
+  });
+
   return (
-    <div className="px-4 py-5 space-y-5">
+    <div className="px-4 py-4 space-y-3">
       {/* Header strip */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-[13px] font-bold text-white/90">{row.team_name}</span>
@@ -454,34 +529,38 @@ function ExpandedTeamPanel({
       {/* Trend chart */}
       {recentVals.length >= 2 && (
         <div>
-          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">
+          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5">
             Recent Trend — {unit}
           </p>
-          <TrendChart values={recentVals} thresholds={thresholds} lens={lens} />
+          <TrendChart
+            values={recentVals}
+            thresholds={thresholds}
+            lens={lens}
+            gameContexts={logLoading ? undefined : gameContexts}
+          />
         </div>
       )}
 
-      {/* Stats strip */}
+      {/* Stats grid — 4 cols × 2 rows: L3, L5, L8, Season / Low, High, StdDev, Games */}
       <div>
-        <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">Averages</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <StatCell label="L3 Avg"     value={safeNum(row.recent_avg_l3)}  unit={unit} />
-          <StatCell label="L5 Avg"     value={safeNum(row.recent_avg_l5)}  unit={unit} />
-          <StatCell label="L8 Avg"     value={safeNum(row.recent_avg_l8)}  unit={unit} />
-          <StatCell label="Season Avg" value={safeNum(row.season_avg)}     unit={unit} />
-        </div>
-        <div className="grid grid-cols-3 gap-2 mt-2">
-          <StatCell label="Low"    value={safeNum(row.low_recent)}    unit={unit} />
-          <StatCell label="High"   value={safeNum(row.high_recent)}   unit={unit} />
-          <StatCell label="Std Dev" value={safeNum(row.stddev_recent)} unit={unit} />
+        <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5">Metrics</p>
+        <div className="grid grid-cols-4 gap-1.5">
+          <StatCell label="L3 Avg"     value={safeNum(row.recent_avg_l3)}       unit={unit} />
+          <StatCell label="L5 Avg"     value={safeNum(row.recent_avg_l5)}       unit={unit} />
+          <StatCell label={recentVals.length >= 8 ? "L8 Avg" : "L10 Avg"} value={safeNum(row.recent_avg_l8)} unit={unit} />
+          <StatCell label="Season Avg" value={safeNum(row.season_avg)}          unit={unit} />
+          <StatCell label="Low"        value={safeNum(row.low_recent)}          unit={unit} />
+          <StatCell label="High"       value={safeNum(row.high_recent)}         unit={unit} />
+          <StatCell label="Std Dev"    value={safeNum(row.stddev_recent)}       unit={unit} />
+          <StatCell label="Games"      value={safeNum(row.recent_games_count)}  />
         </div>
       </div>
 
       {/* Score breakdown (score lens) */}
       {lens === "score" && (row.recent_goals_avg != null || row.recent_scoring_shots_avg != null) && (
         <div>
-          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">Scoring Breakdown (L8)</p>
-          <div className="grid grid-cols-3 gap-2">
+          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5">Scoring Breakdown (L8)</p>
+          <div className="grid grid-cols-3 gap-1.5">
             <StatCell label="Goals Avg"   value={safeNum(row.recent_goals_avg)}         />
             <StatCell label="Behinds Avg" value={safeNum(row.recent_behinds_avg)}        />
             <StatCell label="Conversion"  value={safeNum(row.conversion_rate)} unit="%"  />
@@ -492,10 +571,10 @@ function ExpandedTeamPanel({
       {/* Opponent context */}
       {(row.opponent_conceded_l5 != null || row.opponent_conceded_season != null) && (
         <div>
-          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">
+          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5">
             Opponent Context — {row.opponent_team_name}
           </p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             <StatCell label={`Conceded L5 (${unit})`}     value={safeNum(row.opponent_conceded_l5)}     />
             <StatCell label={`Conceded Season (${unit})`} value={safeNum(row.opponent_conceded_season)} />
           </div>
@@ -505,7 +584,7 @@ function ExpandedTeamPanel({
       {/* Hit rate table */}
       {thresholds.length > 0 && (
         <div>
-          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">
+          <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5">
             Hit Rates (Last 8 games)
           </p>
           <div className="rounded-xl border border-white/[0.07] bg-[#0a0a0a] px-3 py-1">
@@ -527,8 +606,16 @@ function ExpandedTeamPanel({
 
       {/* Game log */}
       <div>
-        <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-2">Game Log</p>
+        <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5">Game Log</p>
         <GameLogTable log={log} lens={lens} loading={logLoading} />
+      </div>
+
+      {/* AI summary */}
+      <div className="rounded-xl border border-white/[0.07] bg-white/[0.018] px-3 py-2.5">
+        <p className="text-[9px] font-semibold text-white/25 uppercase tracking-wider mb-1">AI Analysis</p>
+        <p className="text-[12px] text-white/38 leading-relaxed italic">
+          AI team summary not yet available for {row.team_name}.
+        </p>
       </div>
     </div>
   );
