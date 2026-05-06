@@ -80,6 +80,26 @@ export const BoardRow = memo(function BoardRow({
   const projDisplay = safeNum(player.projection);
   const thresholdLength = thresholds.length;
 
+  const expandedContent = isExpanded ? (
+    <div
+      className="overflow-hidden border-l-[3px] border-emerald-500/30"
+      style={{ animation: "expandDown 180ms cubic-bezier(0.2,0,0,1) forwards" }}
+    >
+      <style>{`
+        @keyframes expandDown {
+          from { opacity: 0; transform: translateY(-6px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+      <LazyExpandedContent
+        player={player}
+        lens={lens}
+        defaultThreshold={defaultThreshold}
+        isMatchLocked={isMatchLocked}
+      />
+    </div>
+  ) : null;
+
   return (
     <Fragment>
       {/* ── Main data row ── */}
@@ -197,28 +217,211 @@ export const BoardRow = memo(function BoardRow({
       {isExpanded && (
         <tr className="border-b border-white/[0.06]">
           <td colSpan={4 + thresholdLength + 2} className="p-0 align-top bg-white/[0.022]">
-            <div
-              className="overflow-hidden border-l-[3px] border-emerald-500/30"
-              style={{ animation: "expandDown 180ms cubic-bezier(0.2,0,0,1) forwards" }}
-            >
-              <style>{`
-                @keyframes expandDown {
-                  from { opacity: 0; transform: translateY(-6px); }
-                  to   { opacity: 1; transform: translateY(0); }
-                }
-              `}</style>
-              {/* LazyExpandedContent only mounts history/AI hooks when rendered */}
-              <LazyExpandedContent
-                player={player}
-                lens={lens}
-                defaultThreshold={defaultThreshold}
-                isMatchLocked={isMatchLocked}
-              />
-            </div>
+            {expandedContent}
           </td>
         </tr>
       )}
     </Fragment>
+  );
+});
+
+// ── Mobile player card — used at mobile breakpoints instead of the table row ──
+
+interface MobileCardProps {
+  player: StatBoardPlayer;
+  lens: StatLens;
+  thresholds: readonly number[];
+  defaultThreshold: number;
+  isMatchLocked: boolean;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  matchId: number | null;
+}
+
+export const MobilePlayerCard = memo(function MobilePlayerCard({
+  player,
+  lens,
+  thresholds,
+  defaultThreshold,
+  isMatchLocked,
+  isExpanded,
+  onToggleExpand,
+}: MobileCardProps) {
+  const confidence = player.confidence_label;
+  const confStyles: Record<string, { dot: string; text: string; label: string }> = {
+    HIGH:   { dot: "bg-emerald-400", text: "text-emerald-400", label: "High" },
+    MEDIUM: { dot: "bg-amber-400",   text: "text-amber-400",   label: "Medium" },
+    LOW:    { dot: "bg-white/25",    text: "text-white/40",    label: "Low" },
+  };
+  const conf = confidence ? confStyles[confidence] ?? confStyles.LOW : null;
+
+  const isPlayerLocked = isMatchLocked && !player.is_free_match;
+
+  const timeline: TimelineSlot[] | null = player.last_10_timeline ?? null;
+  const last10 = [...(player.last_10_values ?? [])].reverse().slice(-10);
+
+  const last10Avg = safeNum(player.last_10_avg);
+  const avgDisplay = last10Avg != null ? last10Avg.toFixed(1) : "—";
+  const projDisplay = safeNum(player.projection);
+
+  return (
+    <div className={`rounded-2xl border transition-colors duration-100 overflow-hidden ${
+      isExpanded
+        ? "border-emerald-500/25 bg-white/[0.045]"
+        : "border-white/10 bg-[#0d0d0d]"
+    }`}>
+      {/* ── Card tap target ── */}
+      <button
+        onClick={onToggleExpand}
+        aria-expanded={isExpanded}
+        aria-label={`${player.player_name} — ${isExpanded ? "collapse" : "expand"} detail`}
+        className="w-full text-left px-4 pt-3.5 pb-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60"
+      >
+        {/* ── Row 1: name + position + home/away badge + chevron ── */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className={`text-[14px] font-bold leading-tight ${isExpanded ? "text-white" : "text-white/90"}`}>
+                {player.player_name}
+              </span>
+              {player.position_group && (
+                <span className="text-[9px] font-bold text-white/35 bg-white/8 rounded px-1.5 py-0.5 tracking-wide shrink-0">
+                  {player.position_group}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-white/38 mt-0.5 flex items-center gap-1.5 flex-wrap">
+              <span>{player.team_name || "—"}</span>
+              {player.is_home === true && (
+                <span className="text-[9px] text-emerald-500/65 font-semibold bg-emerald-500/8 rounded px-1.5 py-0.5 leading-none">Home</span>
+              )}
+              {player.is_home === false && (
+                <span className="text-[9px] text-white/30 bg-white/5 rounded px-1.5 py-0.5 leading-none">Away</span>
+              )}
+            </p>
+          </div>
+
+          {/* Projection + expand */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="text-right">
+              <p className="text-[8.5px] text-white/28 uppercase tracking-wider leading-none mb-0.5">Proj</p>
+              {isPlayerLocked ? (
+                <span className="text-[15px] font-bold text-white/20 blur-[4px] select-none" aria-hidden>••</span>
+              ) : projDisplay != null ? (
+                <span className="text-[17px] font-bold text-[#F5C84C] tabular-nums leading-none">{projDisplay}</span>
+              ) : (
+                <span className="text-[13px] text-white/22">—</span>
+              )}
+            </div>
+            <span className={`
+              inline-flex items-center justify-center h-7 w-7 rounded-lg transition-all duration-100 shrink-0
+              ${isExpanded
+                ? "bg-white/12 text-white/80"
+                : "text-white/30"}
+            `}>
+              {isPlayerLocked ? (
+                <Lock className="h-3.5 w-3.5 text-[#F5C84C]/40" aria-hidden />
+              ) : isExpanded ? (
+                <ChevronUp className="h-4 w-4" aria-hidden />
+              ) : (
+                <ChevronDown className="h-4 w-4" aria-hidden />
+              )}
+            </span>
+          </div>
+        </div>
+
+        {/* ── Row 2: recent chips ── */}
+        <div className="flex items-center gap-[3px] mb-2.5" role="list" aria-label="Recent results">
+          {timeline != null ? (
+            <TimelineChips slots={timeline} defaultThreshold={defaultThreshold} isLocked={isPlayerLocked} />
+          ) : (
+            <MiniChips values={last10} defaultThreshold={defaultThreshold} isLocked={isPlayerLocked} />
+          )}
+        </div>
+
+        {/* ── Row 3: stats strip ── */}
+        <div className="flex items-center gap-0 border border-white/8 rounded-xl overflow-hidden">
+          {/* Recent avg */}
+          <div className="flex-1 px-2.5 py-2 border-r border-white/8">
+            <p className="text-[8px] text-white/28 uppercase tracking-wider leading-none mb-1">L10 Avg</p>
+            <p className={`text-[13px] font-semibold tabular-nums leading-none ${last10Avg != null ? "text-white/70" : "text-white/22"}`}>
+              {avgDisplay}
+            </p>
+          </div>
+
+          {/* Hit rates — all thresholds */}
+          {thresholds.map((t, idx) => {
+            const isLast = idx === thresholds.length - 1;
+            const data = player.all_threshold_hit_rates?.[String(t)];
+            const rate = safeNum(data?.rate);
+            const hits = safeNum(data?.hits);
+            const games = safeNum(data?.games);
+            const hasData = hits !== null && games !== null && games > 0;
+            const rateColor = rate != null && rate >= 70
+              ? "text-emerald-400"
+              : rate != null && rate >= 50
+              ? "text-amber-400"
+              : "text-white/35";
+
+            return (
+              <div key={t} className={`flex-1 px-2 py-2 text-center ${isLast ? "" : "border-r border-white/8"}`}>
+                {isPlayerLocked ? (
+                  <>
+                    <p className="text-[8px] text-white/28 uppercase tracking-wider leading-none mb-1">{t}+</p>
+                    <p className="text-[11px] text-white/18 blur-[3px] select-none tabular-nums leading-none">—</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[8px] text-white/28 uppercase tracking-wider leading-none mb-1">{t}+</p>
+                    {hasData && rate != null ? (
+                      <p className={`text-[12px] font-bold tabular-nums leading-none ${rateColor}`}>
+                        {rate > 0 ? `${rate}%` : "0%"}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-white/22 leading-none">—</p>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Consistency */}
+          <div className="flex-1 px-2.5 py-2 border-l border-white/8">
+            <p className="text-[8px] text-white/28 uppercase tracking-wider leading-none mb-1">Form</p>
+            {!isPlayerLocked && conf && confidence ? (
+              <div className="flex items-center gap-1 justify-start">
+                <span className={`h-[6px] w-[6px] rounded-full shrink-0 ${conf.dot}`} aria-hidden />
+                <span className={`text-[11px] font-semibold leading-none ${conf.text}`}>{conf.label}</span>
+              </div>
+            ) : (
+              <p className="text-[11px] text-white/22 leading-none">—</p>
+            )}
+          </div>
+        </div>
+      </button>
+
+      {/* ── Expanded detail — rendered outside the button ── */}
+      {isExpanded && (
+        <div
+          className="border-t border-white/[0.08] bg-white/[0.015] overflow-hidden border-l-[3px] border-l-emerald-500/30"
+          style={{ animation: "expandDown 180ms cubic-bezier(0.2,0,0,1) forwards" }}
+        >
+          <style>{`
+            @keyframes expandDown {
+              from { opacity: 0; transform: translateY(-6px); }
+              to   { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
+          <LazyExpandedContent
+            player={player}
+            lens={lens}
+            defaultThreshold={defaultThreshold}
+            isMatchLocked={isMatchLocked}
+          />
+        </div>
+      )}
+    </div>
   );
 });
 

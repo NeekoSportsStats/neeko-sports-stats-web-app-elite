@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, memo, useSyncExternalStore } from "react";
 import { Helmet } from "react-helmet-async";
 import { Search, X, Lock, ChevronDown, ChevronUp } from "lucide-react";
 import { track } from "@/lib/analytics";
@@ -15,7 +15,19 @@ import type {
 } from "./types";
 import { defaultThreshold, thresholdsForLens } from "./types";
 import { MatchSelector } from "./components/MatchSelector";
-import { BoardRow } from "./components/BoardRow";
+import { BoardRow, MobilePlayerCard } from "./components/BoardRow";
+
+// Subscribes to window width; returns true when viewport < 768px (md breakpoint).
+function subscribe(cb: () => void) {
+  const mq = window.matchMedia("(max-width: 767px)");
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+}
+function getSnapshot() { return window.matchMedia("(max-width: 767px)").matches; }
+function getServerSnapshot() { return false; }
+function useIsMobile() {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
 
 export type SortKey = "projection" | "hit_rate" | "recent_avg" | "name" | "consistency";
 
@@ -716,6 +728,7 @@ const TeamBoard = memo(function TeamBoard({
   searchActive,
 }: TeamBoardProps) {
   const [showAll, setShowAll] = useState(false);
+  const isMobile = useIsMobile();
 
   // Reset "show all" whenever the player list identity changes (new match/filter)
   const prevPlayersRef = useRef(players);
@@ -744,34 +757,108 @@ const TeamBoard = memo(function TeamBoard({
     ? `${TOP_N} of ${totalCount} shown`
     : `${totalCount} ${totalCount === 1 ? "player" : "players"}`;
 
+  const showMoreBtn = needsCap && (
+    <button
+      onClick={() => setShowAll((v) => !v)}
+      className={`
+        w-full flex items-center justify-center gap-2
+        ${isMobile ? "rounded-xl mt-2" : "rounded-b-2xl border-x border-b border-white/10"}
+        bg-[#0d0d0d] hover:bg-white/[0.04]
+        px-4 py-2.5
+        text-[11px] font-medium text-white/40 hover:text-white/65
+        transition-colors
+      `}
+      aria-expanded={showAll}
+      aria-label={showAll ? "Show fewer players" : `Show all ${totalCount} players`}
+    >
+      {showAll ? (
+        <>
+          <ChevronUp className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          Show fewer players
+        </>
+      ) : (
+        <>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          Show {hiddenCount} more {hiddenCount === 1 ? "player" : "players"}
+        </>
+      )}
+    </button>
+  );
+
+  const legend = (
+    <div className="flex items-center gap-3 px-1 pt-1.5 pb-0.5" aria-label="Legend">
+      <span className="flex items-center gap-1 text-[9px] text-white/22">
+        <span className="inline-flex items-center justify-center h-3.5 min-w-[22px] px-0.5 rounded bg-white/4 border border-white/8 font-bold text-[7px]">BYE</span>
+        bye week
+      </span>
+      <span className="flex items-center gap-1 text-[9px] text-white/22">
+        <span className="inline-flex items-center justify-center h-3.5 min-w-[22px] px-0.5 rounded bg-white/4 border border-dashed border-white/12 font-bold text-[7px]">DNP</span>
+        did not play
+      </span>
+    </div>
+  );
+
+  // ── Team section header — shared between mobile/desktop ──
+  const teamHeader = (
+    <div className="mb-2.5 flex items-center gap-2.5 flex-wrap">
+      <h2 className="text-[14px] font-bold text-white tracking-tight leading-none shrink-0">
+        {teamName}
+      </h2>
+      <span className="text-[11px] text-white/30 font-medium leading-none">
+        {headerCount}
+      </span>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[9px] font-semibold text-white/35 bg-white/6 border border-white/8 rounded-full px-2 py-0.5 whitespace-nowrap">
+          vs {opponentName}
+        </span>
+        {isHome === true && (
+          <span className="text-[9px] font-semibold text-emerald-500/65 bg-emerald-500/8 border border-emerald-500/12 rounded-full px-2 py-0.5 whitespace-nowrap">
+            Home
+          </span>
+        )}
+        {isHome === false && (
+          <span className="text-[9px] font-semibold text-white/28 bg-white/5 border border-white/8 rounded-full px-2 py-0.5 whitespace-nowrap">
+            Away
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
+  // ── Mobile layout — stacked cards ──
+  if (isMobile) {
+    return (
+      <div>
+        {teamHeader}
+        <div className="flex flex-col gap-2">
+          {visiblePlayers.map((player) => (
+            <MobilePlayerCard
+              key={`${matchId ?? 0}-${player.player_id}`}
+              player={player}
+              lens={lens}
+              thresholds={thresholds}
+              defaultThreshold={defaultThreshold}
+              isMatchLocked={isMatchLocked}
+              isExpanded={expandedPlayerId === player.player_id}
+              onToggleExpand={() =>
+                onToggleExpand(expandedPlayerId === player.player_id ? null : player.player_id)
+              }
+              matchId={matchId}
+            />
+          ))}
+        </div>
+        {showMoreBtn}
+        {legend}
+      </div>
+    );
+  }
+
+  // ── Desktop layout — horizontally scrollable table ──
   return (
     <div>
-      {/* ── Team section header — team name, count, pills only ── */}
-      <div className="mb-2.5 flex items-center gap-2.5 flex-wrap">
-        <h2 className="text-[14px] font-bold text-white tracking-tight leading-none shrink-0">
-          {teamName}
-        </h2>
-        <span className="text-[11px] text-white/30 font-medium leading-none">
-          {headerCount}
-        </span>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[9px] font-semibold text-white/35 bg-white/6 border border-white/8 rounded-full px-2 py-0.5 whitespace-nowrap">
-            vs {opponentName}
-          </span>
-          {isHome === true && (
-            <span className="text-[9px] font-semibold text-emerald-500/65 bg-emerald-500/8 border border-emerald-500/12 rounded-full px-2 py-0.5 whitespace-nowrap">
-              Home
-            </span>
-          )}
-          {isHome === false && (
-            <span className="text-[9px] font-semibold text-white/28 bg-white/5 border border-white/8 rounded-full px-2 py-0.5 whitespace-nowrap">
-              Away
-            </span>
-          )}
-        </div>
-      </div>
+      {teamHeader}
 
-      {/* ── Horizontally scrollable table ── */}
+      {/* Horizontally scrollable table */}
       <div className="overflow-x-auto rounded-t-2xl border border-white/10 bg-[#0d0d0d]">
         <table className="w-full border-collapse text-left" style={{ minWidth: "640px" }}>
           <thead>
@@ -821,51 +908,14 @@ const TeamBoard = memo(function TeamBoard({
         </table>
       </div>
 
-      {/* ── Bottom expand/collapse control — only when cap applies ── */}
-      {needsCap && (
-        <button
-          onClick={() => setShowAll((v) => !v)}
-          className={`
-            w-full flex items-center justify-center gap-2
-            rounded-b-2xl border-x border-b border-white/10
-            bg-[#0d0d0d] hover:bg-white/[0.04]
-            px-4 py-2.5
-            text-[11px] font-medium text-white/40 hover:text-white/65
-            transition-colors
-          `}
-          aria-expanded={showAll}
-          aria-label={showAll ? "Show fewer players" : `Show all ${totalCount} players`}
-        >
-          {showAll ? (
-            <>
-              <ChevronUp className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              Show fewer players
-            </>
-          ) : (
-            <>
-              <ChevronDown className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              Show {hiddenCount} more {hiddenCount === 1 ? "player" : "players"}
-            </>
-          )}
-        </button>
-      )}
+      {/* Bottom expand/collapse control — only when cap applies */}
+      {showMoreBtn}
 
       {/* When no cap, round bottom of table normally */}
-      {!needsCap && (
-        <div className="h-px" />
-      )}
+      {!needsCap && <div className="h-px" />}
 
-      {/* ── BYE/DNP legend — below show-more, quiet footnote ── */}
-      <div className="flex items-center gap-3 px-1 pt-1.5 pb-0.5" aria-label="Legend">
-        <span className="flex items-center gap-1 text-[9px] text-white/22">
-          <span className="inline-flex items-center justify-center h-3.5 min-w-[22px] px-0.5 rounded bg-white/4 border border-white/8 font-bold text-[7px]">BYE</span>
-          bye week
-        </span>
-        <span className="flex items-center gap-1 text-[9px] text-white/22">
-          <span className="inline-flex items-center justify-center h-3.5 min-w-[22px] px-0.5 rounded bg-white/4 border border-dashed border-white/12 font-bold text-[7px]">DNP</span>
-          did not play
-        </span>
-      </div>
+      {/* BYE/DNP legend — below show-more, quiet footnote */}
+      {legend}
     </div>
   );
 });

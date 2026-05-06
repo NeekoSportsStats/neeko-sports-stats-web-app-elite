@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Sparkles, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -20,6 +20,16 @@ interface Props {
 
 const DISPOSAL_THRESHOLDS = [15, 20, 25, 30];
 const GOAL_THRESHOLDS = [1, 2, 3, 4];
+
+function subscribeMq(cb: () => void) {
+  const mq = window.matchMedia("(max-width: 767px)");
+  mq.addEventListener("change", cb);
+  return () => mq.removeEventListener("change", cb);
+}
+function getMqSnapshot() { return window.matchMedia("(max-width: 767px)").matches; }
+function useIsMobile() {
+  return useSyncExternalStore(subscribeMq, getMqSnapshot, () => false);
+}
 
 export function ExpandedPlayerPanel({
   player,
@@ -456,6 +466,8 @@ function MultiThresholdChart({
   const [hovered, setHovered] = useState<TooltipData | null>(null);
   // Throttle ref: only update coords when the slot index changes or every ~60ms max.
   const moveRafRef = useRef<number | null>(null);
+  const isMobile = useIsMobile();
+  const svgRef = useRef<SVGSVGElement>(null);
 
   const W = 560;
   const H = 160;
@@ -524,15 +536,17 @@ function MultiThresholdChart({
 
   return (
     <div className="w-full relative" onMouseLeave={() => {
+      if (isMobile) return;
       if (moveRafRef.current !== null) { cancelAnimationFrame(moveRafRef.current); moveRafRef.current = null; }
       setHovered(null);
     }}>
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
         className="w-full h-auto block"
         aria-label="Player form trend chart"
         role="img"
-        style={{ cursor: "crosshair" }}
+        style={{ cursor: isMobile ? "default" : "crosshair" }}
       >
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
@@ -702,8 +716,8 @@ function MultiThresholdChart({
               x={(cx - hw / 2).toFixed(1)} y={PAD.top.toFixed(1)}
               width={hw.toFixed(1)} height={chartH.toFixed(1)}
               fill="transparent"
-              style={{ cursor: "crosshair" }}
-              onMouseEnter={(e) => {
+              style={{ cursor: isMobile ? "pointer" : "crosshair" }}
+              onMouseEnter={isMobile ? undefined : (e) => {
                 setHovered({
                   slotIndex: i,
                   clientX: e.clientX,
@@ -711,7 +725,7 @@ function MultiThresholdChart({
                   slot,
                 });
               }}
-              onMouseMove={(e) => {
+              onMouseMove={isMobile ? undefined : (e) => {
                 const x = e.clientX;
                 const y = e.clientY;
                 if (moveRafRef.current !== null) return;
@@ -724,12 +738,21 @@ function MultiThresholdChart({
                   );
                 });
               }}
+              onTouchStart={!isMobile ? undefined : (e) => {
+                e.preventDefault();
+                setHovered((prev) =>
+                  prev?.slotIndex === i
+                    ? null
+                    : { slotIndex: i, clientX: 0, clientY: null, slot }
+                );
+              }}
             />
           );
         })}
       </svg>
 
-      {hovered && createPortal(
+      {/* Desktop: portal tooltip that follows cursor */}
+      {hovered && !isMobile && createPortal(
         <ChartTooltip
           slot={hovered.slot}
           clientX={hovered.clientX}
@@ -739,6 +762,103 @@ function MultiThresholdChart({
         />,
         document.body
       )}
+
+      {/* Mobile: inline tooltip anchored inside the chart container */}
+      {hovered && isMobile && (
+        <MobileChartTooltip
+          slot={hovered.slot}
+          slotIndex={hovered.slotIndex}
+          totalSlots={slots.length}
+          allThresholds={allThresholds}
+          lens={lens}
+          onDismiss={() => setHovered(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── Mobile inline tooltip (stays inside chart container) ─────────────────────
+
+function MobileChartTooltip({
+  slot,
+  slotIndex,
+  totalSlots,
+  allThresholds,
+  lens,
+  onDismiss,
+}: {
+  slot: ChartSlot;
+  slotIndex: number;
+  totalSlots: number;
+  allThresholds: number[];
+  lens: StatLens;
+  onDismiss: () => void;
+}) {
+  // Pin to left or right side based on slot position to avoid overflow
+  const alignRight = slotIndex >= totalSlots / 2;
+
+  if (slot.rowType === "bye" || slot.rowType === "dnp") {
+    const label = slot.rowType === "bye" ? "BYE" : "DNP";
+    return (
+      <div
+        className={`absolute top-1 ${alignRight ? "right-1" : "left-1"} z-20 rounded-lg border border-white/14 bg-[#1a1a1a] shadow-xl px-3 py-2`}
+        role="tooltip"
+        style={{ pointerEvents: "auto" }}
+        onClick={onDismiss}
+      >
+        <p className="text-[10px] text-white/40 font-medium leading-none mb-1">{slot.label}</p>
+        <p className="text-[12px] text-white/65 font-semibold leading-none">{label}</p>
+        <p className="text-[9px] text-white/25 mt-1">tap to close</p>
+      </div>
+    );
+  }
+
+  const val = slot.value!;
+  const thresholdChecks = allThresholds.map((t) => ({ t, hit: val >= t }));
+  const hitCount = thresholdChecks.filter((c) => c.hit).length;
+
+  return (
+    <div
+      className={`absolute top-1 ${alignRight ? "right-1" : "left-1"} z-20 rounded-xl border border-white/12 bg-[#1c1c1c] shadow-xl overflow-hidden`}
+      role="tooltip"
+      style={{ minWidth: 140, pointerEvents: "auto" }}
+    >
+      <div className="px-3 pt-2.5 pb-2">
+        <p className="text-[10px] text-white/38 leading-none mb-1.5">
+          {slot.label}
+          {slot.opponent && slot.opponent !== "—" && (
+            <span className="ml-1.5 text-white/25">vs {slot.opponent}</span>
+          )}
+        </p>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-[20px] font-bold tabular-nums leading-none text-white/90">{val}</span>
+          <span className="text-[10px] text-white/30 leading-none">
+            {lens === "disposals" ? "disp" : "goals"}
+          </span>
+        </div>
+      </div>
+      <div className="h-px bg-white/[0.08]" />
+      <div className="px-3 py-1.5 space-y-1">
+        {thresholdChecks.map(({ t, hit }) => (
+          <div key={t} className="flex items-center justify-between gap-3">
+            <span className="text-[10px] text-white/50">{t}+</span>
+            <span className={`text-[10px] font-semibold ${hit ? "text-emerald-400" : "text-white/25"}`}>
+              {hit ? "Hit" : "Miss"}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="px-3 pb-2 pt-0.5 flex items-center justify-between">
+        <p className="text-[9px] text-white/25">{hitCount}/{allThresholds.length} hit</p>
+        <button
+          className="text-[9px] text-white/40 underline underline-offset-2"
+          onClick={onDismiss}
+          aria-label="Dismiss tooltip"
+        >
+          close
+        </button>
+      </div>
     </div>
   );
 }
