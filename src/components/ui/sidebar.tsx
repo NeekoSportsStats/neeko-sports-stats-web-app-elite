@@ -173,7 +173,7 @@ const Sidebar = React.forwardRef<
   return (
     <div
       ref={ref}
-      className="group peer hidden text-sidebar-foreground md:block"
+      className="group peer hidden text-sidebar-foreground md:block w-0 shrink-0"
       data-state={state}
       data-collapsible={state === "collapsed" ? collapsible : ""}
       data-variant={variant}
@@ -182,7 +182,7 @@ const Sidebar = React.forwardRef<
       {/* Desktop overlay - closes sidebar when clicked */}
       {state === "expanded" && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 transition-opacity duration-200"
+          className="fixed inset-0 z-[45] bg-black/40 transition-opacity duration-200"
           onClick={() => setOpen(false)}
           aria-label="Close sidebar"
           role="button"
@@ -197,7 +197,7 @@ const Sidebar = React.forwardRef<
       )}
       <div
         className={cn(
-          "fixed inset-y-0 z-50 h-svh w-[--sidebar-width] transition-[left,right,width] duration-200 ease-linear md:flex",
+          "fixed inset-y-0 z-[50] h-svh w-[--sidebar-width] transition-[left,right,width] duration-200 ease-linear md:flex",
           side === "left"
             ? state === "expanded" ? "left-0" : "left-[calc(var(--sidebar-width)*-1)]"
             : state === "expanded" ? "right-0" : "right-[calc(var(--sidebar-width)*-1)]",
