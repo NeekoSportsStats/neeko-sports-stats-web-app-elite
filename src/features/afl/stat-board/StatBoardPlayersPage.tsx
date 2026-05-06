@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback, memo, useSyncExternalStore } from "react";
 import { Helmet } from "react-helmet-async";
+import { useNavigate } from "react-router-dom";
 import { Search, X, Lock, ChevronDown, ChevronUp } from "lucide-react";
 import { track } from "@/lib/analytics";
 
@@ -180,6 +181,7 @@ export default function StatBoardPlayersPage() {
   }, []);
 
   const isLocked = selectedMatch?.is_locked ?? false;
+  const navigate = useNavigate();
 
   return (
     <>
@@ -348,13 +350,19 @@ export default function StatBoardPlayersPage() {
 
           {/* Locked banner */}
           {isLocked && (
-            <div className="mb-4 flex items-center gap-3 rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/5 px-4 py-3">
-              <Lock className="h-4 w-4 shrink-0 text-[#F5C84C]" />
+            <div className="mb-4 flex items-start gap-3 rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/5 px-4 py-3.5">
+              <Lock className="h-4 w-4 shrink-0 text-[#F5C84C] mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[#F5C84C]">Unlock full round</p>
-                <p className="text-xs text-white/45 mt-0.5">
-                  Upgrade to Neeko+ to see projections and hit rates for all matches.
+                <p className="text-sm font-semibold text-[#F5C84C] leading-snug">Neeko+ match</p>
+                <p className="text-xs text-white/45 mt-0.5 leading-relaxed">
+                  Free users can explore the first matches. Neeko+ unlocks every match, projection, hit rate and trend.
                 </p>
+                <button
+                  onClick={() => navigate("/neeko-plus")}
+                  className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[#F5C84C]/15 border border-[#F5C84C]/30 px-3.5 py-1.5 text-[11px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/25 transition-colors"
+                >
+                  Unlock Neeko+
+                </button>
               </div>
             </div>
           )}

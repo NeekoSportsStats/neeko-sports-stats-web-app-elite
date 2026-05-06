@@ -1,5 +1,6 @@
 import { Fragment, memo } from "react";
 import { ChevronDown, ChevronUp, Lock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import type { StatBoardPlayer, StatLens, TimelineSlot } from "../types";
 import { useStatBoardPlayerHistory, useStatBoardPlayerAiInsight } from "../useStatBoard";
 import { ExpandedPlayerPanel } from "./ExpandedPlayerPanel";
@@ -402,7 +403,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
       </button>
 
       {/* ── Expanded detail — rendered outside the button ── */}
-      {isExpanded && (
+      {isExpanded && !isPlayerLocked && (
         <div
           className="border-t border-white/[0.08] bg-white/[0.015] overflow-hidden border-l-[3px] border-l-emerald-500/30"
           style={{ animation: "expandDown 180ms cubic-bezier(0.2,0,0,1) forwards" }}
@@ -420,6 +421,11 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
             isMatchLocked={isMatchLocked}
           />
         </div>
+      )}
+
+      {/* ── Locked compact upgrade panel — no LazyExpandedContent hooks ── */}
+      {isExpanded && isPlayerLocked && (
+        <LockedExpandPanel playerName={player.player_name} />
       )}
     </div>
   );
@@ -637,15 +643,24 @@ function TimelineChips({
 // ── Locked expand ─────────────────────────────────────────────────────────────
 
 function LockedExpandPanel({ playerName }: { playerName: string }) {
+  const navigate = useNavigate();
   return (
     <div className="border-t border-[#F5C84C]/10 px-4 py-6 text-center" role="region" aria-label="Premium content locked">
       <div className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-[#F5C84C]/8 mb-3">
         <Lock className="h-4 w-4 text-[#F5C84C]/50" aria-hidden />
       </div>
-      <p className="text-sm font-semibold text-[#F5C84C]/70">Unlock full round</p>
-      <p className="mt-1 text-xs text-white/30 max-w-[220px] mx-auto leading-relaxed">
-        Upgrade to Neeko+ to see {playerName}'s full trend, projections and hit rates.
+      <p className="text-sm font-semibold text-[#F5C84C]/70">Neeko+ match</p>
+      <p className="mt-1 text-xs text-white/35 max-w-[240px] mx-auto leading-relaxed">
+        Free users can explore the first matches. Neeko+ unlocks every match, projection, hit rate and trend
+        {playerName ? ` for ${playerName}` : ""}.
       </p>
+      <button
+        onClick={() => navigate("/neeko-plus")}
+        className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#F5C84C]/12 border border-[#F5C84C]/25 px-4 py-2 text-[12px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/20 transition-colors"
+      >
+        <Lock className="h-3 w-3" aria-hidden />
+        Unlock Neeko+
+      </button>
     </div>
   );
 }
