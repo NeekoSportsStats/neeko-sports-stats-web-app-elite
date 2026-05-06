@@ -225,83 +225,81 @@ export default function StatBoardPlayersPage() {
           )}
 
           {/* ── Inline controls (observed for sticky trigger) ─────────────────── */}
-          <div ref={controlsRef} className="mb-4 space-y-3">
+          <div ref={controlsRef} className="mb-4">
 
-            {/* Row 1: Stat + Position */}
-            <div className="flex flex-wrap items-start gap-4">
+            {/* Single unified control row */}
+            <div className="flex items-center gap-2 flex-wrap">
 
               {/* Stat toggle */}
-              <div>
-                <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">Stat</p>
-                <div className="flex gap-1 rounded-xl bg-white/5 border border-white/8 p-1">
-                  {(["disposals", "goals"] as StatLens[]).map((l) => (
-                    <button
-                      key={l}
-                      onClick={() => handleLensChange(l)}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-                        lens === l
-                          ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30"
-                          : "text-white/50 hover:text-white/80"
-                      }`}
-                    >
-                      {l === "disposals" ? "Disposals" : "Goals"}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex gap-0.5 rounded-lg bg-white/5 border border-white/8 p-0.5 shrink-0">
+                {(["disposals", "goals"] as StatLens[]).map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => handleLensChange(l)}
+                    className={`rounded-md px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                      lens === l
+                        ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30"
+                        : "text-white/50 hover:text-white/80"
+                    }`}
+                  >
+                    {l === "disposals" ? "Disposals" : "Goals"}
+                  </button>
+                ))}
               </div>
+
+              {/* Divider */}
+              <div className="h-5 w-px bg-white/10 shrink-0 hidden sm:block" aria-hidden />
 
               {/* Position filter */}
-              <div>
-                <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-1.5">Position</p>
-                <div className="flex gap-1 flex-wrap">
-                  {POSITION_OPTIONS.map(({ key, label }) => (
-                    <button
-                      key={key}
-                      onClick={() => setPositionFilter(key)}
-                      className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                        positionFilter === key
-                          ? "bg-white/15 text-white ring-1 ring-white/25"
-                          : "bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/70"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
+              <div className="flex gap-0.5 shrink-0">
+                {POSITION_OPTIONS.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setPositionFilter(key)}
+                    className={`rounded-md px-2.5 py-1.5 text-[12px] font-semibold transition-colors ${
+                      positionFilter === key
+                        ? "bg-white/15 text-white ring-1 ring-white/25"
+                        : "bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/70"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
-            </div>
 
-            {/* Row 2: Search + Sort */}
-            <div className="flex gap-2 items-center flex-wrap">
-              <div className="relative flex-1 min-w-[160px] max-w-xs">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/25 pointer-events-none" />
+              {/* Divider */}
+              <div className="h-5 w-px bg-white/10 shrink-0 hidden sm:block" aria-hidden />
+
+              {/* Search */}
+              <div className="relative flex-1 min-w-[140px] max-w-[220px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-white/25 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Search player..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-xl bg-white/5 border border-white/8 pl-8 pr-8 py-2 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-white/22 transition-colors"
+                  className="w-full rounded-lg bg-white/5 border border-white/8 pl-7 pr-7 py-1.5 text-[12px] text-white placeholder:text-white/25 focus:outline-none focus:border-white/22 transition-colors"
                 />
                 {search && (
                   <button
                     onClick={() => setSearch("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/55"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/55"
                     aria-label="Clear search"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <X className="h-3 w-3" />
                   </button>
                 )}
               </div>
 
               {/* Sort dropdown */}
-              <div className="relative">
+              <div className="relative ml-auto shrink-0">
                 <button
                   onClick={() => setSortOpen((v) => !v)}
-                  className="flex items-center gap-1.5 rounded-xl bg-white/5 border border-white/8 px-3 py-2 text-xs font-medium text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 whitespace-nowrap"
+                  className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/8 px-2.5 py-1.5 text-[12px] font-medium text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 whitespace-nowrap"
                   aria-haspopup="listbox"
                   aria-expanded={sortOpen}
                 >
-                  <span className="text-white/32 text-[10px]">Sort:</span>
+                  <span className="text-white/32 text-[11px]">Sort:</span>
                   <span className="text-white/72">{sortButtonLabel(sortKey)}</span>
                   <ChevronDown className={`h-3 w-3 text-white/30 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
                 </button>
@@ -823,18 +821,6 @@ const TeamBoard = memo(function TeamBoard({
         </table>
       </div>
 
-      {/* ── BYE/DNP legend — sits below table, reads as supporting footnote ── */}
-      <div className="flex items-center gap-3 px-1 pt-1.5 pb-0.5" aria-label="Legend">
-        <span className="flex items-center gap-1 text-[9px] text-white/22">
-          <span className="inline-flex items-center justify-center h-3.5 min-w-[22px] px-0.5 rounded bg-white/4 border border-white/8 font-bold text-[7px]">BYE</span>
-          bye week
-        </span>
-        <span className="flex items-center gap-1 text-[9px] text-white/22">
-          <span className="inline-flex items-center justify-center h-3.5 min-w-[22px] px-0.5 rounded bg-white/4 border border-dashed border-white/12 font-bold text-[7px]">DNP</span>
-          did not play
-        </span>
-      </div>
-
       {/* ── Bottom expand/collapse control — only when cap applies ── */}
       {needsCap && (
         <button
@@ -868,6 +854,18 @@ const TeamBoard = memo(function TeamBoard({
       {!needsCap && (
         <div className="h-px" />
       )}
+
+      {/* ── BYE/DNP legend — below show-more, quiet footnote ── */}
+      <div className="flex items-center gap-3 px-1 pt-1.5 pb-0.5" aria-label="Legend">
+        <span className="flex items-center gap-1 text-[9px] text-white/22">
+          <span className="inline-flex items-center justify-center h-3.5 min-w-[22px] px-0.5 rounded bg-white/4 border border-white/8 font-bold text-[7px]">BYE</span>
+          bye week
+        </span>
+        <span className="flex items-center gap-1 text-[9px] text-white/22">
+          <span className="inline-flex items-center justify-center h-3.5 min-w-[22px] px-0.5 rounded bg-white/4 border border-dashed border-white/12 font-bold text-[7px]">DNP</span>
+          did not play
+        </span>
+      </div>
     </div>
   );
 });

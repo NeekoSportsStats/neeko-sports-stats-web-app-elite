@@ -36,7 +36,7 @@ export function ExpandedPlayerPanel({
 
   if (loading) {
     return (
-      <div className="border-t border-white/8 px-6 py-7 space-y-4" aria-busy aria-label="Loading player trend">
+      <div className="border-t border-white/8 px-6 py-5 space-y-4" aria-busy aria-label="Loading player trend">
         <div className="h-2.5 w-36 rounded bg-white/6 animate-pulse" />
         <div className="h-[140px] w-full rounded-2xl bg-white/4 animate-pulse" />
         <div className="grid grid-cols-4 gap-2">
@@ -601,7 +601,7 @@ function MultiThresholdChart({
             d={`M ${pts.join(" L ")}`}
             fill="none"
             stroke="#22c55e"
-            strokeWidth="2.8"
+            strokeWidth="2"
             strokeLinejoin="round"
             strokeLinecap="round"
           />
