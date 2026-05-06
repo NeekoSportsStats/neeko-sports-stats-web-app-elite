@@ -290,19 +290,19 @@ export default function StatBoardPlayersPage() {
             {/* Row 2: search + sort */}
             <div className="flex items-center gap-2">
               {/* Search — grows to fill available space */}
-              <div className="relative flex-1 min-w-0">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-white/25 pointer-events-none" />
+              <div className="flex items-center flex-1 min-w-0 rounded-lg bg-white/5 border border-white/8 pl-2.5 pr-2 focus-within:border-white/22 transition-colors">
+                <Search className="h-3 w-3 text-white/25 pointer-events-none shrink-0" />
                 <input
                   type="text"
                   placeholder="Search player..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full rounded-lg bg-white/5 border border-white/8 pl-7 pr-7 py-1.5 text-[12px] text-white placeholder:text-white/25 focus:outline-none focus:border-white/22 transition-colors"
+                  className="flex-1 min-w-0 bg-transparent pl-1.5 pr-1 py-1.5 text-[12px] text-white placeholder:text-white/25 focus:outline-none"
                 />
                 {search && (
                   <button
                     onClick={() => setSearch("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/55"
+                    className="text-white/25 hover:text-white/55 shrink-0"
                     aria-label="Clear search"
                   >
                     <X className="h-3 w-3" />
@@ -522,19 +522,19 @@ function StickyControlsBar({
           </div>
 
           {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-white/22 pointer-events-none" />
+          <div className="flex items-center w-32 sm:w-40 rounded-lg bg-white/5 border border-white/8 pl-2.5 pr-2 focus-within:border-white/22 transition-colors">
+            <Search className="h-3 w-3 text-white/22 pointer-events-none shrink-0" />
             <input
               type="text"
               placeholder="Search..."
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="w-32 sm:w-40 rounded-lg bg-white/5 border border-white/8 pl-7 pr-6 py-1.5 text-[11px] text-white placeholder:text-white/22 focus:outline-none focus:border-white/22 transition-colors"
+              className="flex-1 min-w-0 bg-transparent pl-1.5 pr-1 py-1.5 text-[11px] text-white placeholder:text-white/22 focus:outline-none"
             />
             {search && (
               <button
                 onClick={() => onSearchChange("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-white/22 hover:text-white/50"
+                className="text-white/22 hover:text-white/50 shrink-0"
                 aria-label="Clear search"
               >
                 <X className="h-3 w-3" />

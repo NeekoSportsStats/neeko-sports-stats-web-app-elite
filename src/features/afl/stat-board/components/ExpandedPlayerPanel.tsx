@@ -537,7 +537,6 @@ function MultiThresholdChart({
   return (
     <div
       className="w-full relative"
-      style={isMobile ? { isolation: "isolate" } : undefined}
       onMouseLeave={() => {
         if (isMobile) return;
         if (moveRafRef.current !== null) { cancelAnimationFrame(moveRafRef.current); moveRafRef.current = null; }
@@ -681,7 +680,7 @@ function MultiThresholdChart({
                   ? (isLatest ? "#4ade80" : "rgba(34,197,94,0.55)")
                   : "rgba(255,255,255,0.22)"}
                 strokeWidth={isHov || isLatest ? 2 : 1.2}
-                style={{ transition: "r 80ms ease, stroke 80ms ease" }}
+                style={isMobile ? undefined : { transition: "r 80ms ease, stroke 80ms ease" }}
               />
               {isLatest && !isHov && (
                 <text
