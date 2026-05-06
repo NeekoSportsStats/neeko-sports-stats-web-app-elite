@@ -535,11 +535,15 @@ function MultiThresholdChart({
   const hitW = numSlots > 1 ? chartW / (numSlots - 1) : chartW;
 
   return (
-    <div className="w-full relative" onMouseLeave={() => {
-      if (isMobile) return;
-      if (moveRafRef.current !== null) { cancelAnimationFrame(moveRafRef.current); moveRafRef.current = null; }
-      setHovered(null);
-    }}>
+    <div
+      className="w-full relative"
+      style={isMobile ? { isolation: "isolate" } : undefined}
+      onMouseLeave={() => {
+        if (isMobile) return;
+        if (moveRafRef.current !== null) { cancelAnimationFrame(moveRafRef.current); moveRafRef.current = null; }
+        setHovered(null);
+      }}
+    >
       <svg
         ref={svgRef}
         viewBox={`0 0 ${W} ${H}`}
@@ -581,14 +585,14 @@ function MultiThresholdChart({
           <g key={t}>
             <line
               x1={PAD.left} y1={y.toFixed(1)} x2={W - PAD.right} y2={y.toFixed(1)}
-              stroke="rgba(245,200,76,0.32)"
-              strokeWidth="0.8"
+              stroke="rgba(245,200,76,0.55)"
+              strokeWidth="0.7"
               strokeDasharray="4 5"
             />
             <text
               x={W - PAD.right + 5} y={(y + 3.5).toFixed(1)}
               fontSize="9"
-              fill="rgba(245,200,76,0.32)"
+              fill="rgba(245,200,76,0.55)"
               fontWeight="400"
             >
               {t}
@@ -615,7 +619,7 @@ function MultiThresholdChart({
             d={`M ${pts.join(" L ")}`}
             fill="none"
             stroke="#22c55e"
-            strokeWidth="2"
+            strokeWidth="1.5"
             strokeLinejoin="round"
             strokeLinecap="round"
           />
@@ -802,14 +806,14 @@ function MobileChartTooltip({
     const label = slot.rowType === "bye" ? "BYE" : "DNP";
     return (
       <div
-        className={`absolute top-1 ${alignRight ? "right-1" : "left-1"} z-20 rounded-lg border border-white/14 bg-[#1a1a1a] shadow-xl px-3 py-2`}
+        className={`absolute top-1 ${alignRight ? "right-1" : "left-1"} z-20 rounded-lg border border-white/14 bg-[#1a1a1a] shadow-xl px-3 py-2.5`}
         role="tooltip"
-        style={{ pointerEvents: "auto" }}
+        style={{ pointerEvents: "auto", minWidth: 120, maxWidth: 160 }}
         onClick={onDismiss}
       >
-        <p className="text-[10px] text-white/40 font-medium leading-none mb-1">{slot.label}</p>
-        <p className="text-[12px] text-white/65 font-semibold leading-none">{label}</p>
-        <p className="text-[9px] text-white/25 mt-1">tap to close</p>
+        <p className="text-[9px] text-white/30 font-medium uppercase tracking-wide leading-none mb-1">Week {slot.label}</p>
+        <p className="text-[13px] text-white/65 font-semibold leading-none">{label}</p>
+        <p className="text-[9px] text-white/25 mt-1.5">tap to close</p>
       </div>
     );
   }
@@ -822,16 +826,16 @@ function MobileChartTooltip({
     <div
       className={`absolute top-1 ${alignRight ? "right-1" : "left-1"} z-20 rounded-xl border border-white/12 bg-[#1c1c1c] shadow-xl overflow-hidden`}
       role="tooltip"
-      style={{ minWidth: 140, pointerEvents: "auto" }}
+      style={{ minWidth: 140, maxWidth: 170, pointerEvents: "auto" }}
     >
       <div className="px-3 pt-2.5 pb-2">
-        <p className="text-[10px] text-white/38 leading-none mb-1.5">
-          {slot.label}
-          {slot.opponent && slot.opponent !== "—" && (
-            <span className="ml-1.5 text-white/25">vs {slot.opponent}</span>
-          )}
+        <p className="text-[9px] text-white/30 font-medium uppercase tracking-wide leading-none mb-0.5">
+          Week {slot.label}
         </p>
-        <div className="flex items-baseline gap-1.5">
+        {slot.opponent && slot.opponent !== "—" && (
+          <p className="text-[10px] text-white/45 leading-none mb-1">vs {slot.opponent}</p>
+        )}
+        <div className="flex items-baseline gap-1.5 mt-1">
           <span className="text-[20px] font-bold tabular-nums leading-none text-white/90">{val}</span>
           <span className="text-[10px] text-white/30 leading-none">
             {lens === "disposals" ? "disp" : "goals"}
@@ -842,14 +846,14 @@ function MobileChartTooltip({
       <div className="px-3 py-1.5 space-y-1">
         {thresholdChecks.map(({ t, hit }) => (
           <div key={t} className="flex items-center justify-between gap-3">
-            <span className="text-[10px] text-white/50">{t}+</span>
+            <span className="text-[10px] text-white/45">{t}+</span>
             <span className={`text-[10px] font-semibold ${hit ? "text-emerald-400" : "text-white/25"}`}>
               {hit ? "Hit" : "Miss"}
             </span>
           </div>
         ))}
       </div>
-      <div className="px-3 pb-2 pt-0.5 flex items-center justify-between">
+      <div className="px-3 pb-2 pt-1 flex items-center justify-between border-t border-white/[0.06]">
         <p className="text-[9px] text-white/25">{hitCount}/{allThresholds.length} hit</p>
         <button
           className="text-[9px] text-white/40 underline underline-offset-2"
@@ -891,7 +895,7 @@ function ChartTooltip({
 
   if (slot.rowType === "bye" || slot.rowType === "dnp") {
     const label = slot.rowType === "bye" ? "BYE" : "DNP";
-    const tipH = 52;
+    const tipH = 56;
     const top = cy - tipH - 10 < TOOLTIP_MARGIN ? cy + 14 : cy - tipH - 10;
 
     return (
@@ -907,8 +911,8 @@ function ChartTooltip({
         }}
         className="rounded-lg border border-white/14 bg-[#1a1a1a] shadow-2xl shadow-black/80 px-3 py-2.5"
       >
-        <p className="text-[10px] text-white/40 font-medium leading-none mb-1.5">{slot.label}</p>
-        <p className="text-[12px] text-white/65 font-semibold leading-none">{label}</p>
+        <p className="text-[9px] text-white/30 font-medium uppercase tracking-wide leading-none mb-1">Week {slot.label}</p>
+        <p className="text-[13px] text-white/65 font-semibold leading-none">{label}</p>
       </div>
     );
   }
@@ -919,7 +923,7 @@ function ChartTooltip({
   }));
   const hitCount = thresholdChecks.filter((c) => c.hit).length;
 
-  const tipH = 48 + 1 + allThresholds.length * 22 + 22 + 12;
+  const tipH = 52 + 1 + allThresholds.length * 22 + 12;
   const top = cy - tipH - 10 < TOOLTIP_MARGIN ? cy + 14 : cy - tipH - 10;
   const clampedTop = Math.min(top, vh - tipH - TOOLTIP_MARGIN);
 
@@ -937,13 +941,11 @@ function ChartTooltip({
       className="rounded-xl border border-white/12 bg-[#1c1c1c] shadow-2xl shadow-black/80 overflow-hidden"
     >
       <div className="px-3 pt-2.5 pb-2">
-        <p className="text-[10px] text-white/38 leading-none mb-1.5">
-          {slot.label}
-          {slot.opponent && slot.opponent !== "—" && (
-            <span className="ml-1.5 text-white/25">vs {slot.opponent}</span>
-          )}
-        </p>
-        <div className="flex items-baseline gap-1.5">
+        <p className="text-[9px] text-white/30 font-medium uppercase tracking-wide leading-none mb-0.5">Week {slot.label}</p>
+        {slot.opponent && slot.opponent !== "—" && (
+          <p className="text-[10px] text-white/45 leading-none mb-1.5">vs {slot.opponent}</p>
+        )}
+        <div className="flex items-baseline gap-1.5 mt-1">
           <span className="text-[22px] font-bold tabular-nums leading-none text-white/90">
             {val}
           </span>
@@ -958,9 +960,7 @@ function ChartTooltip({
       <div className="px-3 py-2 space-y-1.5">
         {thresholdChecks.map(({ t, hit }) => (
           <div key={t} className="flex items-center justify-between">
-            <span className="text-[11px] text-white/50">
-              {t}+
-            </span>
+            <span className="text-[11px] text-white/45">{t}+</span>
             <span className={`text-[11px] font-semibold ${hit ? "text-emerald-400" : "text-white/25"}`}>
               {hit ? "Hit" : "Miss"}
             </span>
@@ -968,8 +968,8 @@ function ChartTooltip({
         ))}
       </div>
 
-      <div className="px-3 pb-2.5 pt-0.5">
-        <p className="text-[10px] text-white/25">
+      <div className="px-3 pb-2.5 pt-0 border-t border-white/[0.06]">
+        <p className="text-[10px] text-white/25 pt-1.5">
           {hitCount}/{allThresholds.length} lines hit
         </p>
       </div>
