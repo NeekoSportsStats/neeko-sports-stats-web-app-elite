@@ -164,9 +164,9 @@ export default function StatBoardTeamsPage() {
     : null;
 
   const viewingLabel = selectedMatchObj
-    ? `${selectedMatchObj.match_label} · ${teamLensLabel(lens)} · 2 teams`
+    ? `${formatMatchShort(selectedMatchObj.match_label)} · ${teamLensLabel(lens)} · 2 teams`
     : roundLabel
-    ? `${roundLabel === "OR" ? "Opening Round" : `Round ${roundLabel.replace("R", "")}`} · ${teamLensLabel(lens)} · ${totalTeams} teams`
+    ? `${roundLabel === "OR" ? "Opening Round" : `Round ${roundLabel.replace("R", "")}`} Team Board · ${teamLensLabel(lens)} · ${totalTeams} teams`
     : `${teamLensLabel(lens)} · ${totalTeams} teams`;
 
   // Group rows into fixtures, then apply sort within each fixture
@@ -190,7 +190,7 @@ export default function StatBoardTeamsPage() {
         <title>AFL Team Stat Board | Hit Rates &amp; Projections</title>
         <meta
           name="description"
-          content="Compare every AFL team's recent scoring trends, hit rates and projections for the round."
+          content="View every AFL team's scoring trends, hit rates and projections for the round. Full round team board with stat lens filtering."
         />
       </Helmet>
 
@@ -208,7 +208,7 @@ export default function StatBoardTeamsPage() {
           <div className="mb-4 sm:mb-5">
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white">AFL Team Stat Board</h1>
             <p className="mt-1 text-sm text-white/50 max-w-xl leading-relaxed hidden sm:block">
-              Compare every team's scoring trends, hit rates and projections for the round.
+              View every team's scoring trends, hit rates and projections for the round.
             </p>
           </div>
 
@@ -267,19 +267,25 @@ export default function StatBoardTeamsPage() {
             </div>
           </div>
 
-          {/* Viewing label */}
+          {/* Viewing label + trust text */}
           {!rowsLoading && rows.length > 0 && (
-            <div className="mb-4 flex items-center gap-1.5 text-[11.5px] text-white/38">
-              <span className="text-white/22 text-[10.5px]">Viewing:</span>
-              <span>{viewingLabel}</span>
-              {hasMatchFilter && (
-                <button
-                  onClick={() => handleMatchFilter(null)}
-                  className="ml-1 text-[10px] font-semibold text-white/35 bg-white/6 border border-white/10 rounded px-1.5 py-0.5 hover:text-white/60 hover:bg-white/10 transition-colors leading-none"
-                >
-                  Clear filter
-                </button>
-              )}
+            <div className="mb-4 space-y-1">
+              <div className="flex items-center gap-1.5 text-[11.5px] text-white/38">
+                <span className="text-white/22 text-[10.5px]">Viewing:</span>
+                <span>{viewingLabel}</span>
+                {hasMatchFilter && (
+                  <button
+                    onClick={() => handleMatchFilter(null)}
+                    className="ml-1 text-[10px] font-semibold text-white/35 bg-white/6 border border-white/10 rounded px-1.5 py-0.5 hover:text-white/60 hover:bg-white/10 transition-colors leading-none"
+                  >
+                    Clear filter
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/60 shrink-0" aria-hidden />
+                <span className="text-[10.5px] text-white/28">Updated before round lockout</span>
+              </div>
             </div>
           )}
 
@@ -446,6 +452,7 @@ const FixtureSection = memo(function FixtureSection({
                 isMatchLocked={isLocked}
                 isExpanded={expandedTeamKey === key}
                 onToggleExpand={() => onToggleExpand(expandedTeamKey === key ? null : key)}
+                onUnlockClick={onUnlockClick}
               />
             );
           })}
@@ -480,6 +487,7 @@ const FixtureSection = memo(function FixtureSection({
                     isMatchLocked={isLocked}
                     isExpanded={expandedTeamKey === key}
                     onToggleExpand={() => onToggleExpand(expandedTeamKey === key ? null : key)}
+                    onUnlockClick={onUnlockClick}
                   />
                 );
               })}

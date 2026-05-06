@@ -440,7 +440,7 @@ function GameLogTable({ log, lens, loading }: { log: StatBoardTeamGameLog[]; len
   );
 }
 
-// ── Locked panel ──────────────────────────────────────────────────────────────
+// ── Locked panel (expanded state) ─────────────────────────────────────────────
 
 function LockedTeamPanel({ teamName }: { teamName: string }) {
   const navigate = useNavigate();
@@ -449,9 +449,9 @@ function LockedTeamPanel({ teamName }: { teamName: string }) {
       <div className="inline-flex items-center justify-center h-9 w-9 rounded-full bg-[#F5C84C]/8 mb-3">
         <Lock className="h-4 w-4 text-[#F5C84C]/50" aria-hidden />
       </div>
-      <p className="text-sm font-semibold text-[#F5C84C]/70">Neeko+ match</p>
+      <p className="text-sm font-semibold text-[#F5C84C]/70">Unlock full round</p>
       <p className="mt-1 text-xs text-white/35 max-w-[240px] mx-auto leading-relaxed">
-        Unlock full team breakdowns, projections, hit rates and game logs for {teamName}.
+        Upgrade to Neeko+ to view every team projection, hit rate and trend.
       </p>
       <button
         onClick={() => navigate("/neeko-plus")}
@@ -460,6 +460,101 @@ function LockedTeamPanel({ teamName }: { teamName: string }) {
         <Lock className="h-3 w-3" aria-hidden />
         Unlock Neeko+
       </button>
+    </div>
+  );
+}
+
+// ── Locked teaser — desktop table row ─────────────────────────────────────────
+
+interface LockedTeaserDesktopRowProps {
+  row: StatBoardTeamRow;
+  lens: TeamStatLens;
+  thresholds: readonly number[];
+  onUnlockClick: () => void;
+}
+
+function LockedTeaserDesktopRow({ row, lens, thresholds, onUnlockClick }: LockedTeaserDesktopRowProps) {
+  const unit = teamLensUnit(lens);
+  const colSpanExtra = thresholds.length + 4; // recent + avg + proj + consistency
+
+  return (
+    <tr className="border-b border-[#F5C84C]/12 last:border-b-0 bg-[#F5C84C]/[0.025]">
+      {/* Team name + opponent */}
+      <td className="relative pl-0 pr-2 py-3 min-w-[150px]">
+        <span className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full bg-[#F5C84C]/30" aria-hidden />
+        <div className="pl-4">
+          <span className="text-[13px] font-semibold text-white/80 leading-tight">{row.team_name}</span>
+          <p className="text-[10px] text-white/32 mt-0.5">
+            vs {row.opponent_team_name}
+            {row.is_home
+              ? <span className="ml-1 text-emerald-500/55"> · H</span>
+              : <span className="ml-1 text-white/18"> · A</span>}
+          </p>
+        </div>
+      </td>
+
+      {/* Stat lens label */}
+      <td className="px-2 py-3 min-w-[180px]">
+        <span className="text-[10px] text-[#F5C84C]/45 font-medium">{unit} · Neeko+ required</span>
+      </td>
+
+      {/* Locked message spanning remaining cols */}
+      <td colSpan={colSpanExtra} className="px-3 py-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Lock className="h-3 w-3 text-[#F5C84C]/40 shrink-0" aria-hidden />
+          <span className="text-[11px] text-white/28 leading-tight">
+            Upgrade to Neeko+ to view every team projection, hit rate and trend.
+          </span>
+          <button
+            onClick={onUnlockClick}
+            className="ml-auto shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#F5C84C]/10 border border-[#F5C84C]/22 px-2.5 py-1 text-[10px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/18 transition-colors whitespace-nowrap"
+          >
+            Unlock Neeko+
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+// ── Locked teaser — mobile card ───────────────────────────────────────────────
+
+interface LockedTeaserMobileCardProps {
+  row: StatBoardTeamRow;
+  lens: TeamStatLens;
+  onUnlockClick: () => void;
+}
+
+function LockedTeaserMobileCard({ row, lens, onUnlockClick }: LockedTeaserMobileCardProps) {
+  const unit = teamLensUnit(lens);
+  return (
+    <div className="rounded-2xl border border-[#F5C84C]/20 bg-[#F5C84C]/[0.03] overflow-hidden w-full min-w-0">
+      <div className="px-3 py-3 flex items-center gap-2 min-w-0">
+        {/* Left: team + opponent */}
+        <div className="flex-1 min-w-0">
+          <span className="text-[13px] font-bold text-white/75 leading-tight block truncate">{row.team_name}</span>
+          <div className="flex items-center gap-1 mt-0.5 min-w-0">
+            <span className="text-[10px] text-white/32 truncate">vs {row.opponent_team_name}</span>
+            {row.is_home
+              ? <span className="text-[8px] text-emerald-500/60 font-semibold bg-emerald-500/7 rounded px-1 py-0.5 leading-none shrink-0">H</span>
+              : <span className="text-[8px] text-white/28 bg-white/5 rounded px-1 py-0.5 leading-none shrink-0">A</span>}
+          </div>
+          <p className="text-[9px] text-[#F5C84C]/45 mt-1 leading-tight">{unit} · Neeko+ required</p>
+        </div>
+
+        {/* Right: lock + CTA */}
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          <div className="inline-flex items-center justify-center h-7 w-7 rounded-full bg-[#F5C84C]/8">
+            <Lock className="h-3.5 w-3.5 text-[#F5C84C]/50" aria-hidden />
+          </div>
+          <button
+            onClick={onUnlockClick}
+            className="inline-flex items-center gap-1 rounded-lg bg-[#F5C84C]/10 border border-[#F5C84C]/22 px-2 py-1 text-[9px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/18 transition-colors whitespace-nowrap"
+          >
+            Unlock Neeko+
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -612,7 +707,7 @@ function ExpandedTeamPanel({
 
       {/* AI summary */}
       <div className="rounded-xl border border-white/[0.07] bg-white/[0.018] px-3 py-2.5">
-        <p className="text-[9px] font-semibold text-white/25 uppercase tracking-wider mb-1">AI Analysis</p>
+        <p className="text-[9px] font-semibold text-white/25 uppercase tracking-wider mb-1">AI Team Summary</p>
         <p className="text-[12px] text-white/38 leading-relaxed italic">
           AI team summary not yet available for {row.team_name}.
         </p>
@@ -660,6 +755,7 @@ interface TeamBoardRowProps {
   isMatchLocked: boolean;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  onUnlockClick: () => void;
 }
 
 export const TeamBoardRow = memo(function TeamBoardRow({
@@ -669,11 +765,24 @@ export const TeamBoardRow = memo(function TeamBoardRow({
   isMatchLocked,
   isExpanded,
   onToggleExpand,
+  onUnlockClick,
 }: TeamBoardRowProps) {
   const isRowLocked = isMatchLocked && !row.is_free_match;
   const conf = row.consistency_label ? CONF_STYLES[row.consistency_label] ?? CONF_STYLES.LOW : null;
   const proj = safeNum(row.projection);
   const avg = safeNum(row.recent_avg_l5);
+
+  // Locked rows get a dedicated premium teaser row
+  if (isRowLocked) {
+    return (
+      <LockedTeaserDesktopRow
+        row={row}
+        lens={lens}
+        thresholds={thresholds}
+        onUnlockClick={onUnlockClick}
+      />
+    );
+  }
 
   return (
     <Fragment>
@@ -725,9 +834,7 @@ export const TeamBoardRow = memo(function TeamBoardRow({
 
         {/* Projection */}
         <td className="px-2 py-3 text-right tabular-nums min-w-[52px]">
-          {isRowLocked ? (
-            <span className="text-[13px] font-semibold text-white/18 blur-[4px] select-none" aria-hidden>••</span>
-          ) : proj != null ? (
+          {proj != null ? (
             <span className="text-[15px] font-bold text-[#F5C84C] tabular-nums leading-none">{proj}</span>
           ) : (
             <span className="text-[13px] text-white/22">—</span>
@@ -737,13 +844,13 @@ export const TeamBoardRow = memo(function TeamBoardRow({
         {/* Hit rate cols */}
         {thresholds.map((t) => (
           <td key={t} className="px-2 py-2.5 text-center tabular-nums min-w-[58px]">
-            {hitRateCell(row, t, isRowLocked)}
+            {hitRateCell(row, t, false)}
           </td>
         ))}
 
         {/* Consistency */}
         <td className="px-2 py-3 text-center min-w-[78px]">
-          {!isRowLocked && conf ? (
+          {conf ? (
             <div className="inline-flex items-center gap-1.5">
               <span className={`h-[6px] w-[6px] rounded-full shrink-0 ${conf.dot}`} aria-hidden />
               <span className={`text-[11px] font-semibold leading-none ${conf.text}`}>{conf.label}</span>
@@ -761,9 +868,7 @@ export const TeamBoardRow = memo(function TeamBoardRow({
               ? "bg-white/12 text-white/80"
               : "text-white/28 group-hover:bg-white/8 group-hover:text-white/65"}
           `}>
-            {isRowLocked ? (
-              <Lock className="h-3.5 w-3.5 text-[#F5C84C]/40" aria-hidden />
-            ) : isExpanded ? (
+            {isExpanded ? (
               <ChevronUp className="h-4 w-4" aria-hidden />
             ) : (
               <ChevronDown className="h-4 w-4" aria-hidden />
@@ -779,7 +884,7 @@ export const TeamBoardRow = memo(function TeamBoardRow({
             colSpan={4 + thresholds.length + 2}
             className="p-0 align-top bg-[#0c0c0c] border-l-[3px] border-l-emerald-500/30"
           >
-            <ExpandedTeamPanel row={row} lens={lens} isLocked={isRowLocked} />
+            <ExpandedTeamPanel row={row} lens={lens} isLocked={false} />
           </td>
         </tr>
       )}
@@ -796,6 +901,7 @@ interface MobileTeamCardProps {
   isMatchLocked: boolean;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  onUnlockClick: () => void;
 }
 
 export const MobileTeamCard = memo(function MobileTeamCard({
@@ -805,8 +911,14 @@ export const MobileTeamCard = memo(function MobileTeamCard({
   isMatchLocked,
   isExpanded,
   onToggleExpand,
+  onUnlockClick,
 }: MobileTeamCardProps) {
   const isRowLocked = isMatchLocked && !row.is_free_match;
+
+  // Locked rows get a dedicated premium teaser card
+  if (isRowLocked) {
+    return <LockedTeaserMobileCard row={row} lens={lens} onUnlockClick={onUnlockClick} />;
+  }
   const conf = row.consistency_label ? CONF_STYLES[row.consistency_label] ?? CONF_STYLES.LOW : null;
   const proj = safeNum(row.projection);
   const avg = safeNum(row.recent_avg_l5);
@@ -841,18 +953,14 @@ export const MobileTeamCard = memo(function MobileTeamCard({
           <div className="flex items-center gap-1.5 shrink-0">
             <div className="text-right">
               <p className="text-[7px] text-white/25 uppercase tracking-wider leading-none mb-0.5">Proj</p>
-              {isRowLocked ? (
-                <span className="text-[14px] font-bold text-white/18 select-none" aria-hidden>••</span>
-              ) : proj != null ? (
+              {proj != null ? (
                 <span className="text-[17px] font-bold text-[#F5C84C] tabular-nums leading-none">{proj}</span>
               ) : (
                 <span className="text-[12px] text-white/22">—</span>
               )}
             </div>
             <span className={`inline-flex items-center justify-center h-6 w-6 rounded-lg shrink-0 ${isExpanded ? "bg-white/10 text-white/75" : "text-white/28"}`}>
-              {isRowLocked
-                ? <Lock className="h-3 w-3 text-[#F5C84C]/40" aria-hidden />
-                : isExpanded
+              {isExpanded
                 ? <ChevronUp className="h-3.5 w-3.5" aria-hidden />
                 : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
             </span>
@@ -888,9 +996,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
             return (
               <div key={t} className={`flex-1 px-1 py-1.5 text-center min-w-0 ${isLast ? "" : "border-r border-white/8"}`}>
                 <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">{t}+</p>
-                {isRowLocked ? (
-                  <p className="text-[9px] text-white/18 select-none leading-none">—</p>
-                ) : hasData && rate != null ? (
+                {hasData && rate != null ? (
                   <p className={`text-[10px] font-bold tabular-nums leading-none ${rateColor}`}>
                     {rate > 0 ? `${rate}%` : "0%"}
                   </p>
@@ -903,7 +1009,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
 
           <div className="flex-1 px-1.5 py-1.5 border-l border-white/8 min-w-0">
             <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">Form</p>
-            {!isRowLocked && conf ? (
+            {conf ? (
               <div className="flex items-center gap-1">
                 <span className={`h-[5px] w-[5px] rounded-full shrink-0 ${conf.dot}`} aria-hidden />
                 <span className={`text-[9px] font-semibold leading-none ${conf.text}`}>{conf.label}</span>
@@ -916,12 +1022,11 @@ export const MobileTeamCard = memo(function MobileTeamCard({
       </button>
 
       {/* Expanded detail */}
-      {isExpanded && !isRowLocked && (
+      {isExpanded && (
         <div className="border-t border-white/[0.08] bg-[#0c0c0c] border-l-[3px] border-l-emerald-500/30">
           <ExpandedTeamPanel row={row} lens={lens} isLocked={false} />
         </div>
       )}
-      {isExpanded && isRowLocked && <LockedTeamPanel teamName={row.team_name} />}
     </div>
   );
 });
