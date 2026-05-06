@@ -212,12 +212,12 @@ export default function StatBoardPlayersPage() {
       )}
 
       <div className="min-h-screen bg-[#0a0a0a] text-white">
-        <div className="mx-auto max-w-5xl px-4 pt-6 pb-20">
+        <div className="mx-auto max-w-5xl px-4 pt-4 sm:pt-6 pb-20">
 
           {/* Page header */}
-          <div className="mb-6">
-            <h1 className="text-xl font-bold tracking-tight text-white">AFL Player Stat Board</h1>
-            <p className="mt-1 text-sm text-white/50 max-w-xl leading-relaxed">
+          <div className="mb-4 sm:mb-6">
+            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white">AFL Player Stat Board</h1>
+            <p className="mt-1 text-sm text-white/50 max-w-xl leading-relaxed hidden sm:block">
               Pick a match, choose a stat, and compare every player's recent trends, hit rates and projections.
             </p>
           </div>
@@ -237,11 +237,10 @@ export default function StatBoardPlayersPage() {
           )}
 
           {/* ── Inline controls (observed for sticky trigger) ─────────────────── */}
-          <div ref={controlsRef} className="mb-4">
+          <div ref={controlsRef} className="mb-3 space-y-2">
 
-            {/* Single unified control row */}
+            {/* Row 1: stat toggle + position filters */}
             <div className="flex items-center gap-2 flex-wrap">
-
               {/* Stat toggle */}
               <div className="flex gap-0.5 rounded-lg bg-white/5 border border-white/8 p-0.5 shrink-0">
                 {(["disposals", "goals"] as StatLens[]).map((l) => (
@@ -263,7 +262,7 @@ export default function StatBoardPlayersPage() {
               <div className="h-5 w-px bg-white/10 shrink-0 hidden sm:block" aria-hidden />
 
               {/* Position filter */}
-              <div className="flex gap-0.5 shrink-0">
+              <div className="flex gap-0.5 shrink-0 flex-wrap">
                 {POSITION_OPTIONS.map(({ key, label }) => (
                   <button
                     key={key}
@@ -278,12 +277,12 @@ export default function StatBoardPlayersPage() {
                   </button>
                 ))}
               </div>
+            </div>
 
-              {/* Divider */}
-              <div className="h-5 w-px bg-white/10 shrink-0 hidden sm:block" aria-hidden />
-
-              {/* Search */}
-              <div className="relative flex-1 min-w-[140px] max-w-[220px]">
+            {/* Row 2: search + sort */}
+            <div className="flex items-center gap-2">
+              {/* Search — grows to fill available space */}
+              <div className="relative flex-1 min-w-0">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-white/25 pointer-events-none" />
                 <input
                   type="text"
@@ -303,15 +302,15 @@ export default function StatBoardPlayersPage() {
                 )}
               </div>
 
-              {/* Sort dropdown */}
-              <div className="relative ml-auto shrink-0">
+              {/* Sort dropdown — shrink-0, right-aligned dropdown */}
+              <div className="relative shrink-0">
                 <button
                   onClick={() => setSortOpen((v) => !v)}
                   className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/8 px-2.5 py-1.5 text-[12px] font-medium text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 whitespace-nowrap"
                   aria-haspopup="listbox"
                   aria-expanded={sortOpen}
                 >
-                  <span className="text-white/32 text-[11px]">Sort:</span>
+                  <span className="text-white/32 text-[11px] hidden sm:inline">Sort:</span>
                   <span className="text-white/72">{sortButtonLabel(sortKey)}</span>
                   <ChevronDown className={`h-3 w-3 text-white/30 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
                 </button>
@@ -330,7 +329,7 @@ export default function StatBoardPlayersPage() {
 
           {/* Context row */}
           {!playersLoading && selectedMatch && (
-            <div className="mb-5 flex items-center gap-1.5 flex-wrap text-[12px] text-white/48">
+            <div className="mb-3 sm:mb-5 flex items-center gap-1.5 flex-wrap text-[12px] text-white/48">
               <span className="text-white/30 text-[11px]">Viewing:</span>
               {[
                 selectedMatch.match_label,
@@ -380,7 +379,7 @@ export default function StatBoardPlayersPage() {
               onResetAll={() => { setPositionFilter("ALL"); setSearch(""); }}
             />
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-5 sm:space-y-8">
               <TeamBoard
                 matchId={selectedMatch?.match_id ?? null}
                 teamName={selectedMatch?.home_team_name ?? "Home"}
@@ -675,7 +674,7 @@ function SortDropdown({
       data-sort-dropdown
       role="listbox"
       aria-label="Sort options"
-      className="absolute right-0 top-full z-50 mt-1 w-56 rounded-xl border border-white/10 bg-[#141414] shadow-2xl overflow-hidden"
+      className="absolute right-0 top-full z-50 mt-1 w-56 max-w-[calc(100vw-2rem)] rounded-xl border border-white/10 bg-[#141414] shadow-2xl overflow-hidden"
     >
       {options.map((opt) => (
         <button
@@ -800,24 +799,24 @@ const TeamBoard = memo(function TeamBoard({
 
   // ── Team section header — shared between mobile/desktop ──
   const teamHeader = (
-    <div className="mb-2.5 flex items-center gap-2.5 flex-wrap">
+    <div className="mb-2 flex items-center gap-2 flex-wrap">
       <h2 className="text-[14px] font-bold text-white tracking-tight leading-none shrink-0">
         {teamName}
       </h2>
-      <span className="text-[11px] text-white/30 font-medium leading-none">
+      <span className="text-[10px] text-white/30 font-medium leading-none shrink-0">
         {headerCount}
       </span>
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <span className="text-[9px] font-semibold text-white/35 bg-white/6 border border-white/8 rounded-full px-2 py-0.5 whitespace-nowrap">
+      <div className="flex items-center gap-1 flex-wrap">
+        <span className="text-[9px] font-semibold text-white/32 bg-white/5 border border-white/8 rounded-full px-1.5 py-0.5 whitespace-nowrap">
           vs {opponentName}
         </span>
         {isHome === true && (
-          <span className="text-[9px] font-semibold text-emerald-500/65 bg-emerald-500/8 border border-emerald-500/12 rounded-full px-2 py-0.5 whitespace-nowrap">
+          <span className="text-[9px] font-semibold text-emerald-500/65 bg-emerald-500/8 border border-emerald-500/12 rounded-full px-1.5 py-0.5 whitespace-nowrap">
             Home
           </span>
         )}
         {isHome === false && (
-          <span className="text-[9px] font-semibold text-white/28 bg-white/5 border border-white/8 rounded-full px-2 py-0.5 whitespace-nowrap">
+          <span className="text-[9px] font-semibold text-white/28 bg-white/5 border border-white/8 rounded-full px-1.5 py-0.5 whitespace-nowrap">
             Away
           </span>
         )}

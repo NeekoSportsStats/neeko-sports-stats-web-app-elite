@@ -278,10 +278,10 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
         className="w-full text-left px-4 pt-3.5 pb-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60"
       >
         {/* ── Row 1: name + position + home/away badge + chevron ── */}
-        <div className="flex items-start justify-between gap-2 mb-2">
+        <div className="flex items-center justify-between gap-2 mb-2">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className={`text-[14px] font-bold leading-tight ${isExpanded ? "text-white" : "text-white/90"}`}>
+            <div className="flex items-center gap-1.5">
+              <span className={`text-[14px] font-bold leading-tight truncate ${isExpanded ? "text-white" : "text-white/90"}`}>
                 {player.player_name}
               </span>
               {player.position_group && (
@@ -290,25 +290,25 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-white/38 mt-0.5 flex items-center gap-1.5 flex-wrap">
-              <span>{player.team_name || "—"}</span>
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="text-[11px] text-white/38 truncate">{player.team_name || "—"}</span>
               {player.is_home === true && (
-                <span className="text-[9px] text-emerald-500/65 font-semibold bg-emerald-500/8 rounded px-1.5 py-0.5 leading-none">Home</span>
+                <span className="text-[9px] text-emerald-500/65 font-semibold bg-emerald-500/8 rounded px-1.5 py-0.5 leading-none shrink-0">H</span>
               )}
               {player.is_home === false && (
-                <span className="text-[9px] text-white/30 bg-white/5 rounded px-1.5 py-0.5 leading-none">Away</span>
+                <span className="text-[9px] text-white/30 bg-white/5 rounded px-1.5 py-0.5 leading-none shrink-0">A</span>
               )}
-            </p>
+            </div>
           </div>
 
           {/* Projection + expand */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <div className="text-right">
-              <p className="text-[8.5px] text-white/28 uppercase tracking-wider leading-none mb-0.5">Proj</p>
+              <p className="text-[8px] text-white/28 uppercase tracking-wider leading-none mb-0.5">Proj</p>
               {isPlayerLocked ? (
                 <span className="text-[15px] font-bold text-white/20 blur-[4px] select-none" aria-hidden>••</span>
               ) : projDisplay != null ? (
-                <span className="text-[17px] font-bold text-[#F5C84C] tabular-nums leading-none">{projDisplay}</span>
+                <span className="text-[18px] font-bold text-[#F5C84C] tabular-nums leading-none">{projDisplay}</span>
               ) : (
                 <span className="text-[13px] text-white/22">—</span>
               )}
@@ -331,7 +331,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
         </div>
 
         {/* ── Row 2: recent chips ── */}
-        <div className="flex items-center gap-[3px] mb-2.5" role="list" aria-label="Recent results">
+        <div className="flex items-center gap-[3px] mb-2.5 overflow-x-auto" role="list" aria-label="Recent results">
           {timeline != null ? (
             <TimelineChips slots={timeline} defaultThreshold={defaultThreshold} isLocked={isPlayerLocked} />
           ) : (
@@ -340,11 +340,11 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
         </div>
 
         {/* ── Row 3: stats strip ── */}
-        <div className="flex items-center gap-0 border border-white/8 rounded-xl overflow-hidden">
+        <div className="flex items-stretch gap-0 border border-white/8 rounded-xl overflow-hidden">
           {/* Recent avg */}
-          <div className="flex-1 px-2.5 py-2 border-r border-white/8">
-            <p className="text-[8px] text-white/28 uppercase tracking-wider leading-none mb-1">L10 Avg</p>
-            <p className={`text-[13px] font-semibold tabular-nums leading-none ${last10Avg != null ? "text-white/70" : "text-white/22"}`}>
+          <div className="flex-1 px-2 py-2 border-r border-white/8 min-w-0">
+            <p className="text-[7.5px] text-white/28 uppercase tracking-wide leading-none mb-1">Avg</p>
+            <p className={`text-[12px] font-semibold tabular-nums leading-none ${last10Avg != null ? "text-white/70" : "text-white/22"}`}>
               {avgDisplay}
             </p>
           </div>
@@ -364,21 +364,21 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
               : "text-white/35";
 
             return (
-              <div key={t} className={`flex-1 px-2 py-2 text-center ${isLast ? "" : "border-r border-white/8"}`}>
+              <div key={t} className={`flex-1 px-1.5 py-2 text-center min-w-0 ${isLast ? "" : "border-r border-white/8"}`}>
                 {isPlayerLocked ? (
                   <>
-                    <p className="text-[8px] text-white/28 uppercase tracking-wider leading-none mb-1">{t}+</p>
-                    <p className="text-[11px] text-white/18 blur-[3px] select-none tabular-nums leading-none">—</p>
+                    <p className="text-[7.5px] text-white/28 uppercase tracking-wide leading-none mb-1">{t}+</p>
+                    <p className="text-[10px] text-white/18 blur-[3px] select-none tabular-nums leading-none">—</p>
                   </>
                 ) : (
                   <>
-                    <p className="text-[8px] text-white/28 uppercase tracking-wider leading-none mb-1">{t}+</p>
+                    <p className="text-[7.5px] text-white/28 uppercase tracking-wide leading-none mb-1">{t}+</p>
                     {hasData && rate != null ? (
-                      <p className={`text-[12px] font-bold tabular-nums leading-none ${rateColor}`}>
+                      <p className={`text-[11px] font-bold tabular-nums leading-none ${rateColor}`}>
                         {rate > 0 ? `${rate}%` : "0%"}
                       </p>
                     ) : (
-                      <p className="text-[11px] text-white/22 leading-none">—</p>
+                      <p className="text-[10px] text-white/22 leading-none">—</p>
                     )}
                   </>
                 )}
@@ -387,15 +387,15 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
           })}
 
           {/* Consistency */}
-          <div className="flex-1 px-2.5 py-2 border-l border-white/8">
-            <p className="text-[8px] text-white/28 uppercase tracking-wider leading-none mb-1">Form</p>
+          <div className="flex-1 px-2 py-2 border-l border-white/8 min-w-0">
+            <p className="text-[7.5px] text-white/28 uppercase tracking-wide leading-none mb-1">Form</p>
             {!isPlayerLocked && conf && confidence ? (
-              <div className="flex items-center gap-1 justify-start">
-                <span className={`h-[6px] w-[6px] rounded-full shrink-0 ${conf.dot}`} aria-hidden />
-                <span className={`text-[11px] font-semibold leading-none ${conf.text}`}>{conf.label}</span>
+              <div className="flex items-center gap-1">
+                <span className={`h-[5px] w-[5px] rounded-full shrink-0 ${conf.dot}`} aria-hidden />
+                <span className={`text-[10px] font-semibold leading-none ${conf.text}`}>{conf.label}</span>
               </div>
             ) : (
-              <p className="text-[11px] text-white/22 leading-none">—</p>
+              <p className="text-[10px] text-white/22 leading-none">—</p>
             )}
           </div>
         </div>

@@ -50,7 +50,7 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
   }, [open, selected]);
 
   if (loading) {
-    return <div className="mb-6 h-9 w-64 rounded-lg bg-white/5 border border-white/8 animate-pulse" />;
+    return <div className="mb-4 sm:mb-6 h-9 w-full sm:w-64 rounded-lg bg-white/5 border border-white/8 animate-pulse" />;
   }
 
   if (matches.length === 0) return null;
@@ -69,7 +69,7 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
   const phaseLabel = selected ? competitionPhase(selected.round) : null;
 
   return (
-    <div ref={containerRef} className="relative mb-6">
+    <div ref={containerRef} className="relative mb-4 sm:mb-6">
       {/* ── Trigger ─────────────────────────────────────────────────────────── */}
       <button
         ref={triggerRef}
@@ -78,9 +78,9 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
         aria-expanded={open}
         aria-label={`Match: ${triggerRound ? triggerRound + " · " : ""}${triggerLabel}`}
         className={`
-          inline-flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-left
+          flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-left w-full sm:w-auto
           transition-all duration-100 focus:outline-none focus-visible:ring-2
-          focus-visible:ring-white/20 max-w-full
+          focus-visible:ring-white/20 max-w-full min-w-0
           ${open
             ? "bg-white/8 border-white/18 text-white"
             : "bg-white/[0.045] border-white/10 text-white/80 hover:bg-white/7 hover:border-white/16 hover:text-white/95"}
@@ -108,7 +108,7 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
         )}
 
         {/* Fixture label */}
-        <span className="text-[13px] font-medium leading-none truncate" style={{ maxWidth: "260px" }}>
+        <span className="text-[13px] font-medium leading-none truncate flex-1 min-w-0">
           {triggerLabel}
         </span>
 
@@ -136,7 +136,7 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
               ? { bottom: "calc(100% + 6px)", top: "auto" }
               : { top: "calc(100% + 6px)", bottom: "auto" }),
           }}
-          className="absolute left-0 z-50 w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border border-white/12 bg-[#111111] shadow-2xl shadow-black/70 overflow-hidden"
+          className="absolute left-0 z-50 w-full sm:w-[360px] max-w-[calc(100vw-2rem)] rounded-2xl border border-white/12 bg-[#111111] shadow-2xl shadow-black/70 overflow-hidden"
         >
           <style>{`
             @keyframes matchDropIn {
