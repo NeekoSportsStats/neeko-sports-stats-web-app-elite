@@ -149,21 +149,22 @@ export function ExpandedPlayerPanel({
     <div className="border-t border-white/8 bg-[#0c0c0c]">
 
       {/* ── 1. Compact context strip ────────────────────────────────────────── */}
-      <div className="px-5 py-3 flex items-center gap-4 flex-wrap border-b border-white/[0.06] bg-white/[0.015]">
-        <div className="flex items-center gap-2 min-w-0 flex-wrap">
+      <div className="px-5 py-2.5 flex items-center gap-3 flex-wrap border-b border-white/[0.06] bg-white/[0.015]">
+        {/* Metadata group — opponent + home/away + position */}
+        <div className="flex items-center gap-1.5 min-w-0">
           {player.opponent_team_name ? (
-            <span className="text-[11px] text-white/50">
-              vs <span className="text-white/70 font-medium">{player.opponent_team_name}</span>
+            <span className="text-[11px] text-white/45">
+              vs <span className="text-white/68 font-medium">{player.opponent_team_name}</span>
             </span>
           ) : null}
           {player.is_home === true && (
-            <span className="text-[10px] text-emerald-500/60 font-semibold bg-emerald-500/8 rounded px-1.5 py-0.5">Home</span>
+            <span className="text-[9px] text-emerald-500/65 font-semibold bg-emerald-500/8 rounded px-1.5 py-0.5 leading-none">Home</span>
           )}
           {player.is_home === false && (
-            <span className="text-[10px] text-white/32 bg-white/5 rounded px-1.5 py-0.5">Away</span>
+            <span className="text-[9px] text-white/30 bg-white/5 rounded px-1.5 py-0.5 leading-none">Away</span>
           )}
           {player.position_group && (
-            <span className="text-[9px] font-bold text-white/28 bg-white/6 rounded px-1.5 py-0.5 tracking-wide uppercase">
+            <span className="text-[9px] font-bold text-white/25 bg-white/5 rounded px-1.5 py-0.5 tracking-wide uppercase leading-none">
               {player.position_group}
             </span>
           )}
@@ -171,15 +172,16 @@ export function ExpandedPlayerPanel({
 
         <div className="flex-1" />
 
-        <div className="flex items-center gap-5 shrink-0">
+        {/* Stats + actions group */}
+        <div className="flex items-center gap-4 shrink-0">
           <div className="text-center">
-            <p className="text-[9px] text-white/28 uppercase tracking-wide leading-none mb-1">Recent Avg</p>
+            <p className="text-[9px] text-white/25 uppercase tracking-wide leading-none mb-1">Recent Avg</p>
             <p className={`text-[13px] font-semibold tabular-nums leading-none ${fmt1(player.last_10_avg) === "—" ? "text-white/22" : "text-white/65"}`}>
               {fmt1(player.last_10_avg)}
             </p>
           </div>
           <div className="text-center">
-            <p className="text-[9px] text-white/28 uppercase tracking-wide leading-none mb-1">Proj</p>
+            <p className="text-[9px] text-white/25 uppercase tracking-wide leading-none mb-1">Proj</p>
             <p className={`text-[15px] font-bold tabular-nums leading-none ${fmt1(player.projection) === "—" ? "text-white/22" : "text-[#F5C84C]"}`}>
               {fmt1(player.projection)}
             </p>
@@ -189,25 +191,25 @@ export function ExpandedPlayerPanel({
           )}
           <Link
             to={`/sports/afl/players/${playerToSlug(player.player_name, player.team_name)}`}
-            className="flex items-center gap-1 text-[10px] font-medium text-white/35 hover:text-white/70 transition-colors whitespace-nowrap"
+            className="flex items-center gap-1.5 text-[10px] font-semibold text-white/55 hover:text-white/85 bg-white/[0.05] hover:bg-white/[0.09] border border-white/10 hover:border-white/18 rounded-md px-2.5 py-1 transition-all whitespace-nowrap"
             title={`View full profile for ${player.player_name}`}
           >
             <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
-            Player profile
+            View Profile
           </Link>
         </div>
       </div>
 
       {/* ── 2. No-data state ──────────────────────────────────────────────── */}
       {!hasAnyData && (
-        <div className="px-6 py-8 text-center text-[12px] text-white/28 italic">
+        <div className="px-6 py-5 text-center text-[12px] text-white/28 italic">
           No recent game data available for this player.
         </div>
       )}
 
       {/* ── 3. Full-width chart ───────────────────────────────────────────── */}
       {hasAnyData && chartSlots.some((s) => s.value != null) && (
-        <section aria-label="Recent results chart" className="px-5 pt-4 pb-3">
+        <section aria-label="Recent results chart" className="px-5 pt-3 pb-2">
           <div className="flex items-center justify-between mb-2">
             <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider">
               Recent
@@ -240,7 +242,7 @@ export function ExpandedPlayerPanel({
 
       {/* ── 4. Two-column summary row ─────────────────────────────────────── */}
       {hasPlayerStats && (
-        <div className="px-5 pt-1 pb-5 grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+        <div className="px-5 pt-1 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
 
           <section aria-label="Stat averages">
             <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider mb-2">Averages</p>
@@ -322,7 +324,7 @@ export function ExpandedPlayerPanel({
       )}
 
       {/* ── 5. AI Insight ─────────────────────────────────────────────────── */}
-      <AiInsightBlock insight={insight} loading={insightLoading} />
+      <AiInsightBlock insight={insight} loading={insightLoading} playerName={player.player_name} />
 
       {/* ── 6. Full-width game log ────────────────────────────────────────── */}
       <GameLog
@@ -348,36 +350,57 @@ function hasFantasyLanguage(text: string): boolean {
 function AiInsightBlock({
   insight,
   loading,
+  playerName,
 }: {
   insight: StatBoardPlayerAiInsight | null;
   loading: boolean;
+  playerName: string;
 }) {
   const rawText = insight?.summary_long ?? insight?.summary_short ?? null;
   const text = rawText && !hasFantasyLanguage(rawText) ? rawText : null;
 
+  // Loading skeleton
+  if (loading) {
+    return (
+      <section aria-label="AI performance summary" aria-busy className="px-5 pb-4">
+        <div className="rounded-lg border border-white/8 bg-white/[0.018] px-4 py-3.5">
+          <div className="flex items-center gap-1.5 mb-2.5">
+            <Sparkles className="h-3 w-3 text-white/25" aria-hidden />
+            <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider">AI Performance Summary</p>
+          </div>
+          <div className="space-y-1.5">
+            <div className="h-2 w-full rounded bg-white/5 animate-pulse" />
+            <div className="h-2 w-[88%] rounded bg-white/5 animate-pulse" />
+            <div className="h-2 w-[68%] rounded bg-white/5 animate-pulse" />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // No content — compact single-line placeholder, no box chrome
+  if (!text) {
+    return (
+      <div className="px-5 pb-3 flex items-center gap-1.5">
+        <Sparkles className="h-3 w-3 text-white/18 shrink-0" aria-hidden />
+        <p className="text-[11px] text-white/25 italic">
+          AI summary not yet available for {playerName}.
+        </p>
+      </div>
+    );
+  }
+
+  // Has content — full card
   return (
-    <section aria-label="AI performance summary" className="px-5 pb-5">
-      <div className="rounded-lg border border-white/8 bg-white/[0.022] px-4 py-4">
-        <div className="flex items-center gap-1.5 mb-3">
+    <section aria-label="AI performance summary" className="px-5 pb-4">
+      <div className="rounded-lg border border-white/8 bg-white/[0.018] px-4 py-3.5">
+        <div className="flex items-center gap-1.5 mb-2.5">
           <Sparkles className="h-3 w-3 text-white/30" aria-hidden />
           <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
             AI Performance Summary
           </p>
         </div>
-
-        {loading ? (
-          <div className="space-y-2" aria-busy aria-label="Loading AI performance summary">
-            <div className="h-2.5 w-full rounded bg-white/5 animate-pulse" />
-            <div className="h-2.5 w-[90%] rounded bg-white/5 animate-pulse" />
-            <div className="h-2.5 w-[72%] rounded bg-white/5 animate-pulse" />
-          </div>
-        ) : text ? (
-          <p className="text-[12px] text-white/60 leading-relaxed">{text}</p>
-        ) : (
-          <p className="text-[11px] text-white/28 italic leading-relaxed">
-            AI performance summary will appear here once generated.
-          </p>
-        )}
+        <p className="text-[12px] text-white/60 leading-relaxed">{text}</p>
       </div>
     </section>
   );
@@ -882,24 +905,34 @@ function GameLog({
   const TOTAL_COLS = 14;
   const displayRows = [...rows].reverse();
 
+  const playedRowCount = rows.filter((r) => r.rowType === "played").length;
+
   return (
-    <section aria-label="Game-by-game log" className="px-5 pb-5">
+    <section aria-label="Game-by-game log" className="px-5 pb-4">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1.5 mb-2 group"
+        className="w-full flex items-center justify-between gap-2 mb-2 py-1 group rounded-md -mx-1 px-1 hover:bg-white/[0.03] transition-colors"
         aria-expanded={open}
       >
-        <span className="text-[10px] font-semibold text-white/38 uppercase tracking-wider group-hover:text-white/55 transition-colors">
-          Game log
-        </span>
-        {open
-          ? <ChevronUp className="h-3 w-3 text-white/25 group-hover:text-white/45 transition-colors" aria-hidden />
-          : <ChevronDown className="h-3 w-3 text-white/25 group-hover:text-white/45 transition-colors" aria-hidden />
-        }
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] font-semibold text-white/45 uppercase tracking-wider group-hover:text-white/65 transition-colors">
+            Game log
+          </span>
+          <span className="text-[9px] text-white/22 group-hover:text-white/35 transition-colors">
+            ({playedRowCount} {playedRowCount === 1 ? "game" : "games"})
+          </span>
+        </div>
+        <div className="flex items-center gap-1 text-white/30 group-hover:text-white/55 transition-colors shrink-0">
+          <span className="text-[9px]">{open ? "collapse" : "expand"}</span>
+          {open
+            ? <ChevronUp className="h-3.5 w-3.5" aria-hidden />
+            : <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+          }
+        </div>
       </button>
       {!open && (
         <p className="text-[11px] text-white/28 italic">
-          {rows.filter((r) => r.rowType === "played").length} game{rows.filter((r) => r.rowType === "played").length !== 1 ? "s" : ""} recorded —{" "}
+          {playedRowCount} game{playedRowCount !== 1 ? "s" : ""} recorded —{" "}
           <button onClick={() => setOpen(true)} className="underline underline-offset-2 hover:text-white/50 transition-colors">
             show log
           </button>
