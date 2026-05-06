@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, memo, useSyncExternalStore } from "react";
+import React, { useState, useEffect, useMemo, useCallback, memo, useSyncExternalStore } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
 import { ChevronDown, Lock, Check } from "lucide-react";
@@ -156,18 +156,11 @@ export default function StatBoardTeamsPage() {
   const thresholds  = teamThresholdsForLens(lens);
   const topThreshold = thresholds[0];
 
-  // Viewing label
   const roundLabel = matches[0]?.round_label ?? "";
   const totalTeams = rows.length;
   const selectedMatchObj = matchFilter !== null
     ? matches.find((m) => m.match_id === matchFilter) ?? null
     : null;
-
-  const viewingLabel = selectedMatchObj
-    ? `${formatMatchShort(selectedMatchObj.match_label)} · ${teamLensLabel(lens)} · 2 teams`
-    : roundLabel
-    ? `${roundLabel === "OR" ? "Opening Round" : `Round ${roundLabel.replace("R", "")}`} Team Board · ${teamLensLabel(lens)} · ${totalTeams} teams`
-    : `${teamLensLabel(lens)} · ${totalTeams} teams`;
 
   // Group rows into fixtures, then apply sort within each fixture
   const fixtures: FixtureGroup[] = useMemo(() => {
@@ -267,26 +260,16 @@ export default function StatBoardTeamsPage() {
             </div>
           </div>
 
-          {/* Viewing label + trust text */}
+          {/* Summary strip */}
           {!rowsLoading && rows.length > 0 && (
-            <div className="mb-4 space-y-1">
-              <div className="flex items-center gap-1.5 text-[11.5px] text-white/38">
-                <span className="text-white/22 text-[10.5px]">Viewing:</span>
-                <span>{viewingLabel}</span>
-                {hasMatchFilter && (
-                  <button
-                    onClick={() => handleMatchFilter(null)}
-                    className="ml-1 text-[10px] font-semibold text-white/35 bg-white/6 border border-white/10 rounded px-1.5 py-0.5 hover:text-white/60 hover:bg-white/10 transition-colors leading-none"
-                  >
-                    Clear filter
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/60 shrink-0" aria-hidden />
-                <span className="text-[10.5px] text-white/28">Updated before round lockout</span>
-              </div>
-            </div>
+            <BoardSummaryStrip
+              roundLabel={roundLabel}
+              fixtureCount={hasMatchFilter ? 1 : fixtures.length}
+              lens={lens}
+              teamCount={totalTeams}
+              hasMatchFilter={hasMatchFilter}
+              onClearFilter={() => handleMatchFilter(null)}
+            />
           )}
 
           {/* Locked match banner (only when a specific locked match is filtered) */}
@@ -364,6 +347,107 @@ export default function StatBoardTeamsPage() {
         </div>
       </div>
     </>
+  );
+}
+
+// ── Board summary strip ───────────────────────────────────────────────────────
+
+interface BoardSummaryStripProps {
+  roundLabel: string;
+  fixtureCount: number;
+  lens: TeamStatLens;
+  teamCount: number;
+  hasMatchFilter: boolean;
+  onClearFilter: () => void;
+}
+
+function BoardSummaryStrip({
+  roundLabel,
+  fixtureCount,
+  lens,
+  teamCount,
+  hasMatchFilter,
+  onClearFilter,
+}: BoardSummaryStripProps) {
+  const roundDisplay = !roundLabel
+    ? null
+    : roundLabel === "OR"
+    ? "Opening Round"
+    : `Round ${roundLabel.replace("R", "")}`;
+
+  const items: React.ReactNode[] = [];
+
+  if (roundDisplay) {
+    items.push(
+      <span key="round" className="flex items-center gap-1.5 whitespace-nowrap">
+        <span className="text-[10px] text-white/28 uppercase tracking-wide font-medium">Round</span>
+        <span className="text-[11px] font-semibold text-white/72">{roundDisplay.replace("Round ", "")}</span>
+      </span>
+    );
+  }
+
+  if (!hasMatchFilter) {
+    items.push(
+      <span key="fixtures" className="flex items-center gap-1.5 whitespace-nowrap">
+        <span className="text-[10px] text-white/28 uppercase tracking-wide font-medium">Fixtures</span>
+        <span className="text-[11px] font-semibold text-white/72">{fixtureCount}</span>
+      </span>
+    );
+  }
+
+  items.push(
+    <span key="lens" className="flex items-center gap-1.5 whitespace-nowrap">
+      <span className="text-[10px] text-white/28 uppercase tracking-wide font-medium">Lens</span>
+      <span className="text-[11px] font-semibold text-white/72">{teamLensLabel(lens)}</span>
+    </span>
+  );
+
+  if (!hasMatchFilter) {
+    items.push(
+      <span key="teams" className="flex items-center gap-1.5 whitespace-nowrap">
+        <span className="text-[10px] text-white/28 uppercase tracking-wide font-medium">Teams</span>
+        <span className="text-[11px] font-semibold text-white/72">{teamCount}</span>
+      </span>
+    );
+
+    items.push(
+      <span key="free" className="flex items-center gap-1.5 whitespace-nowrap">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 shrink-0" aria-hidden />
+        <span className="text-[11px] font-semibold text-emerald-500/80">First 2 matches free</span>
+      </span>
+    );
+  }
+
+  if (hasMatchFilter) {
+    items.push(
+      <button
+        key="clear"
+        onClick={onClearFilter}
+        className="flex items-center gap-1 text-[10px] font-semibold text-white/35 bg-white/6 border border-white/10 rounded px-1.5 py-0.5 hover:text-white/60 hover:bg-white/10 transition-colors leading-none whitespace-nowrap"
+      >
+        Clear filter
+      </button>
+    );
+  }
+
+  items.push(
+    <span key="updated" className="flex items-center gap-1.5 whitespace-nowrap">
+      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/60 shrink-0 animate-[pulse_3s_ease-in-out_infinite]" aria-hidden />
+      <span className="text-[11px] text-white/35">Updated before round lockout</span>
+    </span>
+  );
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-white/[0.07] bg-white/[0.025] px-3.5 py-2.5">
+      {items.map((item, idx) => (
+        <React.Fragment key={idx}>
+          {idx > 0 && (
+            <span className="h-3 w-px bg-white/10 shrink-0 hidden sm:block" aria-hidden />
+          )}
+          {item}
+        </React.Fragment>
+      ))}
+    </div>
   );
 }
 
