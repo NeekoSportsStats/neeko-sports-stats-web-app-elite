@@ -1,5 +1,5 @@
 import { memo, Fragment, useState, useCallback } from "react";
-import { ChevronDown, ChevronUp, Lock } from "lucide-react";
+import { ChevronDown, ChevronUp, Lock, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { StatBoardTeamRow, StatBoardTeamGameLog, TeamStatLens } from "../teamTypes";
 import { teamLensUnit, teamThresholdsForLens } from "../teamTypes";
@@ -609,6 +609,97 @@ export const LockedFixtureBlock = memo(function LockedFixtureBlock({
   );
 });
 
+// ── AI team summary (stat-generated fallback) ─────────────────────────────────
+
+function buildTeamSummary(row: StatBoardTeamRow, lens: TeamStatLens, thresholds: readonly number[]): string | null {
+  const unit = teamLensUnit(lens);
+  const l5 = safeNum(row.recent_avg_l5);
+  const proj = safeNum(row.projection);
+  const games = safeNum(row.recent_games_count);
+
+  if (l5 === null && proj === null) return null;
+
+  const parts: string[] = [];
+
+  // Sentence 1: recent average + projection
+  if (l5 !== null && proj !== null) {
+    parts.push(
+      `${row.team_name} has averaged ${l5.toFixed(1)} ${unit} over their last five matches and is projected for ${proj} ${unit} this round.`
+    );
+  } else if (l5 !== null) {
+    parts.push(`${row.team_name} has averaged ${l5.toFixed(1)} ${unit} over their last five matches.`);
+  } else if (proj !== null) {
+    parts.push(`${row.team_name} is projected for ${proj} ${unit} this round.`);
+  }
+
+  // Sentence 2: best hit rate threshold
+  const topThreshold = thresholds[0];
+  if (topThreshold !== undefined && row.all_threshold_hit_rates && games !== null && games > 0) {
+    const hr = row.all_threshold_hit_rates[String(topThreshold)];
+    const hits = safeNum(hr?.hits);
+    const hrGames = safeNum(hr?.games);
+    if (hits !== null && hrGames !== null && hrGames > 0) {
+      parts.push(
+        `They have cleared ${topThreshold}+ ${unit} in ${hits} of their last ${hrGames} matches.`
+      );
+    }
+  }
+
+  // Sentence 3: opponent context
+  const oppL5 = safeNum(row.opponent_conceded_l5);
+  const oppSeason = safeNum(row.opponent_conceded_season);
+  if (oppL5 !== null) {
+    const vsAvg = oppSeason !== null ? ` (season average ${oppSeason.toFixed(1)})` : "";
+    parts.push(
+      `${row.opponent_team_name} has conceded an average of ${oppL5.toFixed(1)} ${unit} over their last five${vsAvg}, providing context for the current projection.`
+    );
+  }
+
+  // Sentence 4: consistency
+  const cl = row.consistency_label;
+  if (cl && cl !== "UNKNOWN" && parts.length < 4) {
+    const desc =
+      cl === "VERY HIGH" || cl === "HIGH"
+        ? "showing strong consistency in their recent performances"
+        : cl === "MEDIUM"
+        ? "showing moderate consistency in recent results"
+        : "showing some variability in recent performances";
+    parts.push(`${row.team_name} ${desc}.`);
+  }
+
+  return parts.length > 0 ? parts.join(" ") : null;
+}
+
+function TeamAiSummary({
+  row,
+  lens,
+  thresholds,
+}: {
+  row: StatBoardTeamRow;
+  lens: TeamStatLens;
+  thresholds: readonly number[];
+}) {
+  const text = buildTeamSummary(row, lens, thresholds);
+
+  return (
+    <section aria-label="AI team summary">
+      <div className="rounded-lg border border-white/[0.08] bg-white/[0.018] px-4 py-3.5">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Sparkles className="h-3 w-3 text-white/30" aria-hidden />
+          <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">AI Team Summary</p>
+        </div>
+        {text ? (
+          <p className="text-[12px] text-white/60 leading-relaxed">{text}</p>
+        ) : (
+          <p className="text-[11px] text-white/28 italic">
+            Team summary will appear here once enough current-round data is available.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ── Expanded panel ────────────────────────────────────────────────────────────
 
 function ExpandedTeamPanel({
@@ -749,18 +840,13 @@ function ExpandedTeamPanel({
         </div>
       )}
 
+      {/* AI team summary */}
+      <TeamAiSummary row={row} lens={lens} thresholds={thresholds} />
+
       {/* Game log */}
       <div>
         <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider mb-1.5">Game Log</p>
         <GameLogTable log={log} lens={lens} loading={logLoading} />
-      </div>
-
-      {/* AI summary */}
-      <div className="rounded-xl border border-white/[0.07] bg-white/[0.018] px-3 py-2.5">
-        <p className="text-[9px] font-semibold text-white/25 uppercase tracking-wider mb-1">AI Team Summary</p>
-        <p className="text-[12px] text-white/38 leading-relaxed italic">
-          AI team summary not yet available for {row.team_name}.
-        </p>
       </div>
     </div>
   );
