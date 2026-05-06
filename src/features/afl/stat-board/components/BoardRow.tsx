@@ -96,7 +96,7 @@ export const BoardRow = memo(function BoardRow({
           border-b border-white/[0.06] last:border-b-0
           ${isExpanded
             ? "bg-white/[0.065] border-b-transparent"
-            : "hover:bg-white/[0.06] active:bg-white/[0.075]"}
+            : "hover:bg-white/[0.055] active:bg-white/[0.085]"}
         `}
       >
         {/* Left accent stripe — visible only when expanded */}
@@ -165,22 +165,22 @@ export const BoardRow = memo(function BoardRow({
         {/* Consistency */}
         <td className="px-2 py-3 text-center min-w-[84px]">
           {!isPlayerLocked && conf && confidence ? (
-            <div className="flex items-center justify-center gap-1.5">
-              <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${conf.dot}`} aria-hidden />
-              <span className={`text-[11px] font-semibold ${conf.text}`}>{conf.label}</span>
+            <div className="inline-flex items-center gap-1.5">
+              <span className={`h-[7px] w-[7px] rounded-full shrink-0 ${conf.dot}`} aria-hidden />
+              <span className={`text-[11px] font-semibold leading-none ${conf.text}`}>{conf.label}</span>
             </div>
           ) : (
             <span className="text-white/15 text-[10px]">—</span>
           )}
         </td>
 
-        {/* Expand chevron — larger touch target, brightens on hover */}
-        <td className="pr-3 pl-1 py-2 text-center w-10">
+        {/* Expand chevron */}
+        <td className="pr-2 pl-1 py-2 text-center w-10">
           <span className={`
-            inline-flex items-center justify-center h-7 w-7 rounded-lg transition-colors
+            inline-flex items-center justify-center h-7 w-7 rounded-lg transition-all duration-100
             ${isExpanded
-              ? "bg-white/10 text-white/70"
-              : "text-white/28 group-hover:bg-white/6 group-hover:text-white/55"}
+              ? "bg-white/12 text-white/80"
+              : "text-white/30 group-hover:bg-white/8 group-hover:text-white/65 group-active:bg-white/12"}
           `}>
             {isPlayerLocked ? (
               <Lock className="h-3.5 w-3.5 text-[#F5C84C]/40" aria-hidden />

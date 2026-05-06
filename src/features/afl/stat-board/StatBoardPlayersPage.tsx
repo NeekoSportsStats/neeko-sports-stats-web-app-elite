@@ -744,31 +744,27 @@ const TeamBoard = memo(function TeamBoard({
   return (
     <div>
       {/* ── Team section header — team name, count, pills only ── */}
-      <div className="mb-3 flex items-start gap-3 flex-wrap">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-baseline gap-2 flex-wrap">
-            <h2 className="text-[14px] font-bold text-white tracking-tight leading-none shrink-0">
-              {teamName}
-            </h2>
-            <span className="text-[11px] text-white/32 font-medium whitespace-nowrap leading-none">
-              · {headerCount}
+      <div className="mb-2.5 flex items-center gap-2.5 flex-wrap">
+        <h2 className="text-[14px] font-bold text-white tracking-tight leading-none shrink-0">
+          {teamName}
+        </h2>
+        <span className="text-[11px] text-white/30 font-medium leading-none">
+          {headerCount}
+        </span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[9px] font-semibold text-white/35 bg-white/6 border border-white/8 rounded-full px-2 py-0.5 whitespace-nowrap">
+            vs {opponentName}
+          </span>
+          {isHome === true && (
+            <span className="text-[9px] font-semibold text-emerald-500/65 bg-emerald-500/8 border border-emerald-500/12 rounded-full px-2 py-0.5 whitespace-nowrap">
+              Home
             </span>
-          </div>
-          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            <span className="text-[10px] font-semibold text-white/38 bg-white/6 border border-white/8 rounded-full px-2.5 py-0.5 whitespace-nowrap">
-              vs {opponentName}
+          )}
+          {isHome === false && (
+            <span className="text-[9px] font-semibold text-white/28 bg-white/5 border border-white/8 rounded-full px-2 py-0.5 whitespace-nowrap">
+              Away
             </span>
-            {isHome === true && (
-              <span className="text-[10px] font-semibold text-emerald-500/70 bg-emerald-500/8 border border-emerald-500/15 rounded-full px-2.5 py-0.5 whitespace-nowrap">
-                Home
-              </span>
-            )}
-            {isHome === false && (
-              <span className="text-[10px] font-semibold text-white/32 bg-white/5 border border-white/8 rounded-full px-2.5 py-0.5 whitespace-nowrap">
-                Away
-              </span>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
@@ -780,21 +776,8 @@ const TeamBoard = memo(function TeamBoard({
               <th className="pl-4 pr-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider whitespace-nowrap">
                 Player
               </th>
-              <th className="px-2 py-2.5 text-center whitespace-nowrap">
-                {/* Recent header with BYE/DNP legend */}
-                <div className="flex flex-col items-center gap-1">
-                  <span className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Recent</span>
-                  <div className="flex items-center gap-2" aria-label="Legend">
-                    <span className="flex items-center gap-0.5 text-[8px] text-white/22">
-                      <span className="inline-block w-5 h-3.5 rounded-sm bg-white/4 border border-white/8 text-center leading-[14px] font-bold text-[7px]">BYE</span>
-                      <span>= bye</span>
-                    </span>
-                    <span className="flex items-center gap-0.5 text-[8px] text-white/22">
-                      <span className="inline-block w-5 h-3.5 rounded-sm bg-white/4 border border-dashed border-white/12 text-center leading-[14px] font-bold text-[7px]">DNP</span>
-                      <span>= did not play</span>
-                    </span>
-                  </div>
-                </div>
+              <th className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-center whitespace-nowrap">
+                Recent
               </th>
               <th className="px-2 py-2.5 text-[10px] font-semibold text-white/40 uppercase tracking-wider text-right whitespace-nowrap">
                 Recent Avg
@@ -833,6 +816,18 @@ const TeamBoard = memo(function TeamBoard({
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* ── BYE/DNP legend — sits below table, reads as supporting footnote ── */}
+      <div className="flex items-center gap-3 px-1 pt-1.5 pb-0.5" aria-label="Legend">
+        <span className="flex items-center gap-1 text-[9px] text-white/22">
+          <span className="inline-flex items-center justify-center h-3.5 min-w-[22px] px-0.5 rounded bg-white/4 border border-white/8 font-bold text-[7px]">BYE</span>
+          bye week
+        </span>
+        <span className="flex items-center gap-1 text-[9px] text-white/22">
+          <span className="inline-flex items-center justify-center h-3.5 min-w-[22px] px-0.5 rounded bg-white/4 border border-dashed border-white/12 font-bold text-[7px]">DNP</span>
+          did not play
+        </span>
       </div>
 
       {/* ── Bottom expand/collapse control — only when cap applies ── */}
