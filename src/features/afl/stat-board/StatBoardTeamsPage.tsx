@@ -456,8 +456,8 @@ const FixtureSection = memo(function FixtureSection({
             <thead>
               <tr className="border-b border-white/10 bg-[#0f0f0f]">
                 <th className="pl-4 pr-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider whitespace-nowrap w-[180px]">Team</th>
-                <th className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">L5 Form</th>
-                <th className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-right whitespace-nowrap">L5 Avg</th>
+                <th className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider whitespace-nowrap">Recent</th>
+                <th className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-right whitespace-nowrap">Avg</th>
                 <th className="px-2 py-2.5 text-[10px] font-semibold text-[#F5C84C]/55 uppercase tracking-wider text-right whitespace-nowrap">Proj</th>
                 {thresholds.map((t) => (
                   <th key={t} className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">

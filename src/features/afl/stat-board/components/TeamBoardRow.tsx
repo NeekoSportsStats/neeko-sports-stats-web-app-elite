@@ -21,44 +21,52 @@ function fmt(v: number | null, decimals = 1): string {
 // ── Consistency / confidence styles ──────────────────────────────────────────
 
 const CONF_STYLES: Record<string, { dot: string; text: string; label: string }> = {
-  "VERY HIGH": { dot: "bg-emerald-300", text: "text-emerald-300", label: "Very High" },
+  "VERY HIGH": { dot: "bg-emerald-400", text: "text-emerald-400", label: "High" },
   HIGH:        { dot: "bg-emerald-400", text: "text-emerald-400", label: "High" },
-  MEDIUM:      { dot: "bg-amber-400",   text: "text-amber-400",   label: "Med" },
+  MEDIUM:      { dot: "bg-amber-400",   text: "text-amber-400",   label: "Medium" },
   LOW:         { dot: "bg-white/25",    text: "text-white/40",    label: "Low" },
   UNKNOWN:     { dot: "bg-white/15",    text: "text-white/28",    label: "—" },
 };
 
-// ── Mini bar chips (recent form visual) ───────────────────────────────────────
+// ── Recent stat chips ─────────────────────────────────────────────────────────
 
-function MiniBarChips({ values, lens }: { values: number[] | null; lens: TeamStatLens }) {
+function RecentChips({ values, lens }: { values: number[] | null; lens: TeamStatLens }) {
   const vals = (values ?? []).slice(-8);
   if (vals.length === 0) {
     return (
-      <div className="flex gap-[3px]">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <span key={i} className="h-[18px] w-[14px] rounded-sm bg-white/5 flex items-center justify-center text-[7px] text-white/18">—</span>
+      <div className="flex flex-wrap gap-[3px]">
+        {[0, 1, 2, 3].map((i) => (
+          <span key={i} className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/20">—</span>
         ))}
       </div>
     );
   }
-  const max = Math.max(...vals, 1);
   const unit = teamLensUnit(lens);
+  // Median for colour reference
+  const sorted = [...vals].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+
   return (
-    <div className="flex items-end gap-[3px]" aria-label={`Recent ${unit} values`}>
+    <div className="flex flex-wrap gap-[3px]" aria-label={`Recent ${unit} values`}>
       {vals.map((v, i) => {
         const isNewest = i === vals.length - 1;
-        const heightPct = Math.max(14, Math.round((v / max) * 34));
+        const isHigh   = v >= median * 1.08;
+        const isLow    = v < median * 0.92;
+        const chipCls = isNewest
+          ? "bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/35"
+          : isHigh
+          ? "bg-white/[0.08] text-white/80"
+          : isLow
+          ? "bg-white/[0.04] text-white/35"
+          : "bg-white/[0.06] text-white/60";
         return (
-          <div
+          <span
             key={i}
             title={`${v} ${unit}`}
-            style={{ height: heightPct }}
-            className={`w-[14px] rounded-sm flex items-end justify-center ${
-              isNewest ? "bg-emerald-500/45 ring-1 ring-emerald-400/30" : "bg-white/[0.12]"
-            }`}
+            className={`rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums leading-none ${chipCls}`}
           >
-            <span className="text-[7px] font-bold text-white/50 tabular-nums leading-none mb-[1px]">{v}</span>
-          </div>
+            {v}
+          </span>
         );
       })}
     </div>
@@ -616,14 +624,14 @@ export const TeamBoardRow = memo(function TeamBoardRow({
           </div>
         </td>
 
-        {/* Mini bar chart */}
-        <td className="px-2 py-3 min-w-[110px]">
-          <MiniBarChips values={row.recent_values} lens={lens} />
+        {/* Recent chips */}
+        <td className="px-2 py-3 min-w-[180px] max-w-[260px]">
+          <RecentChips values={row.recent_values} lens={lens} />
         </td>
 
-        {/* L5 Avg */}
+        {/* Avg */}
         <td className="px-2 py-3 text-right tabular-nums min-w-[52px]">
-          <span className={`text-[12px] font-medium ${avg != null ? "text-white/55" : "text-white/20"}`}>
+          <span className={`text-[13px] font-semibold ${avg != null ? "text-white/65" : "text-white/20"}`}>
             {avg != null ? fmt(avg) : "—"}
           </span>
         </td>
@@ -764,15 +772,15 @@ export const MobileTeamCard = memo(function MobileTeamCard({
           </div>
         </div>
 
-        {/* Row 2: mini bars */}
+        {/* Row 2: recent chips */}
         <div className="mb-2">
-          <MiniBarChips values={row.recent_values} lens={lens} />
+          <RecentChips values={row.recent_values} lens={lens} />
         </div>
 
         {/* Row 3: stats strip */}
         <div className="flex items-stretch gap-0 border border-white/8 rounded-lg overflow-hidden w-full">
           <div className="flex-1 px-1.5 py-1.5 border-r border-white/8 min-w-0">
-            <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">L5 {unit}</p>
+            <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">Avg</p>
             <p className={`text-[11px] font-semibold tabular-nums leading-none ${avg != null ? "text-white/68" : "text-white/22"}`}>
               {avg != null ? fmt(avg) : "—"}
             </p>
