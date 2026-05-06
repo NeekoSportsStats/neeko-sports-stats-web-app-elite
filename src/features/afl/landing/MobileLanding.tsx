@@ -1,189 +1,220 @@
 import { Link } from "react-router-dom";
-import { useRef, useState, useEffect, useCallback } from "react";
-import {
-  ArrowRight,
-  ChevronRight,
-  TrendingUp,
-  Zap,
-  Target,
-  Check,
-  Crown,
-} from "lucide-react";
-import { NEEKO_PRICING } from "@/config/neekoPricing";
-import type { RankingRow } from "@/features/afl/rankings/components/types";
-import type { MWPlayerRow } from "@/features/afl/market-watch/types";
+import { useRef, useState, useCallback, useEffect } from "react";
+import { ArrowRight, ChevronRight, ChartBar as BarChart2Icon, Target, Zap, Check } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+import type { StatBoardPlayer, StatBoardMatch } from "@/features/afl/stat-board/types";
 
 interface Props {
-  loading: boolean;
-  topRows: RankingRow[];
-  mwBuys: MWPlayerRow[];
-  mwSells: MWPlayerRow[];
-  cards: HeroCard[];
-  showSkeleton: boolean;
   isPremium: boolean;
 }
 
-interface HeroCard {
-  label: string;
-  color: string;
-  playerName: string;
-  team: string;
-  position?: string | null;
-  projection?: number | null;
-  seasonAvg?: number | null;
-  confidenceLabel?: string | null;
-  reason: string;
-  ctaLabel: string;
-  ctaTo: string;
+// ── Live Stat Board preview (same data as desktop) ────────────────────────────
+
+function MobileStatBoardPreviewRow({ player }: { player: StatBoardPlayer }) {
+  const hitData = player.all_threshold_hit_rates?.["20"] ?? player.all_threshold_hit_rates?.["1"];
+  const hitPct = hitData ? hitData.rate : player.hit_rate_last_10 != null ? Math.round(player.hit_rate_last_10 * 100) : null;
+  const hitFrac = hitData ? `${hitData.hits}/${hitData.games}` : null;
+  const proj = player.projection;
+
+  const confColor =
+    player.confidence_label === "HIGH" ? "#4ade80"
+    : player.confidence_label === "MEDIUM" ? "#fcd34d"
+    : "rgba(255,255,255,0.42)";
+
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "1fr 58px 58px 52px",
+      gap: 6,
+      alignItems: "center",
+      padding: "9px 12px",
+      borderBottom: "1px solid rgba(255,255,255,0.06)",
+    }}>
+      <div style={{ minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#f0f0f0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          {player.player_name}
+        </p>
+        <p style={{ margin: "2px 0 0", fontSize: 9.5, color: "rgba(255,255,255,0.45)", fontWeight: 500 }}>
+          {player.team_name}
+          {player.position_group && (
+            <span style={{ marginLeft: 5, background: "rgba(255,255,255,0.09)", padding: "1px 4px", borderRadius: 3, color: "rgba(255,255,255,0.52)" }}>
+              {player.position_group}
+            </span>
+          )}
+        </p>
+      </div>
+
+      <div style={{ textAlign: "right" }}>
+        <p style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#f5f5f5", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+          {proj != null ? proj : "—"}
+        </p>
+        <p style={{ margin: "2px 0 0", fontSize: 8.5, color: "rgba(255,255,255,0.35)", letterSpacing: "0.04em", textTransform: "uppercase" }}>Proj</p>
+      </div>
+
+      <div style={{ textAlign: "right" }}>
+        {hitFrac ? (
+          <>
+            <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: "#f0f0f0", fontVariantNumeric: "tabular-nums" }}>{hitFrac}</p>
+            {hitPct != null && (
+              <p style={{ margin: "2px 0 0", fontSize: 9.5, color: hitPct >= 70 ? "#4ade80" : hitPct >= 50 ? "#fcd34d" : "rgba(255,255,255,0.42)", fontWeight: 600 }}>
+                {hitPct}%
+              </p>
+            )}
+          </>
+        ) : (
+          <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.28)" }}>—</p>
+        )}
+        <p style={{ margin: "2px 0 0", fontSize: 8.5, color: "rgba(255,255,255,0.35)", letterSpacing: "0.04em", textTransform: "uppercase" }}>20+</p>
+      </div>
+
+      <div style={{ textAlign: "right" }}>
+        {player.confidence_label ? (
+          <span style={{
+            display: "inline-block",
+            fontSize: 8.5, fontWeight: 700,
+            color: confColor,
+            background: `${confColor}18`,
+            border: `1px solid ${confColor}35`,
+            padding: "2px 5px",
+            borderRadius: 999,
+            letterSpacing: "0.04em",
+            textTransform: "uppercase",
+          }}>
+            {player.confidence_label}
+          </span>
+        ) : (
+          <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 10 }}>—</span>
+        )}
+      </div>
+    </div>
+  );
 }
 
-const FREE_PREVIEW = 3;
+function MobileStatBoardPreview() {
+  const [players, setPlayers] = useState<StatBoardPlayer[]>([]);
+  const [match, setMatch] = useState<StatBoardMatch | null>(null);
+  const [loading, setLoading] = useState(true);
 
-const NAV_SECTIONS = [
-  { label: "This Week", id: "section-edge" },
-  { label: "Workflow", id: "section-workflow" },
-  { label: "Why It Works", id: "section-trust" },
-  { label: "Pricing", id: "section-pricing" },
-] as const;
+  useEffect(() => {
+    if (!supabase) { setLoading(false); return; }
+    (async () => {
+      const { data: matchData } = await supabase.rpc("get_stat_board_matches", { p_season: 2026, p_round: null });
+      const matches = (matchData as StatBoardMatch[] | null) ?? [];
+      const freeMatch = matches.find((m) => m.is_free_match) ?? matches[0] ?? null;
+      if (!freeMatch) { setLoading(false); return; }
+      setMatch(freeMatch);
 
-const WORKFLOW = [
-  { num: "1", icon: <Target size={15} />, title: "Find the Right Plays", desc: "Top projected scorers + must buys before lockout.", color: "#E0AE2D", to: "/sports/afl/rankings" },
-  { num: "2", icon: <TrendingUp size={15} />, title: "Trade With Confidence", desc: "Spot undervalued players. Avoid overpriced traps.", color: "#22C55E", to: "/sports/afl/market-watch" },
-  { num: "3", icon: <Zap size={15} />, title: "Make Faster Decisions", desc: "Rankings, signals, edge board — one clear workflow.", color: "#E8855A", to: "/sports/afl/current-round" },
-] as const;
+      const { data: playerData } = await supabase.rpc("get_stat_board_players", {
+        p_season: 2026,
+        p_round: null,
+        p_match_id: freeMatch.match_id,
+        p_lens: "disposals",
+        p_threshold: 20,
+        p_limit: 6,
+        p_offset: 0,
+      });
+      const rows = (playerData as StatBoardPlayer[] | null) ?? [];
+      setPlayers(rows.filter(p => p.projection != null).slice(0, 5));
+      setLoading(false);
+    })();
+  }, []);
 
-function signalFromRow(row: RankingRow): { label: string; color: string } {
-  const raw = (row.action_canonical ?? row.action_display ?? row.signal_tag ?? row.action ?? "").toUpperCase();
-  if (raw === "SMASH_START" || raw === "START")
-    return { label: "BUY", color: "#22C55E" };
-  if (raw === "HARD_SIT" || raw === "SIT")
-    return { label: "AVOID", color: "#EF4444" };
-  return { label: "HOLD", color: "#E0AE2D" };
+  if (loading) {
+    return (
+      <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
+        {[0, 1, 2, 3, 4].map(i => (
+          <div key={i} style={{ height: 50, background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.04)" }} />
+        ))}
+      </div>
+    );
+  }
+
+  if (players.length === 0) return null;
+
+  return (
+    <div style={{
+      borderRadius: 12,
+      border: "1px solid rgba(34,197,94,0.22)",
+      overflow: "hidden",
+      background: "rgba(6,8,12,0.92)",
+    }}>
+      {/* Table header */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 58px 58px 52px",
+        gap: 6,
+        padding: "7px 12px",
+        borderBottom: "1px solid rgba(255,255,255,0.08)",
+        background: "rgba(255,255,255,0.04)",
+      }}>
+        <span style={{ fontSize: 8.5, fontWeight: 700, color: "rgba(255,255,255,0.42)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          {match?.match_label ?? "Player"}
+        </span>
+        <span style={{ fontSize: 8.5, fontWeight: 700, color: "rgba(255,255,255,0.42)", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "right" }}>Proj</span>
+        <span style={{ fontSize: 8.5, fontWeight: 700, color: "rgba(255,255,255,0.42)", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "right" }}>Hit rate</span>
+        <span style={{ fontSize: 8.5, fontWeight: 700, color: "rgba(255,255,255,0.42)", textTransform: "uppercase", letterSpacing: "0.08em", textAlign: "right" }}>Form</span>
+      </div>
+      {players.map(p => (
+        <MobileStatBoardPreviewRow key={p.player_id} player={p} />
+      ))}
+      <Link
+        to="/stat-board/players"
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+          padding: "10px 12px",
+          fontSize: 11.5, fontWeight: 700,
+          color: "rgba(255,255,255,0.58)",
+          textDecoration: "none",
+          background: "rgba(255,255,255,0.04)",
+          borderTop: "1px solid rgba(255,255,255,0.07)",
+        }}
+      >
+        Open full Stat Board <ChevronRight size={11} />
+      </Link>
+    </div>
+  );
 }
+
+// ── How it works cards ────────────────────────────────────────────────────────
+
+const HOW_STEPS = [
+  { num: "01", icon: <BarChart2Icon size={14} />, title: "Pick a match", copy: "Choose any fixture from the current round." },
+  { num: "02", icon: <Target size={14} />, title: "Choose a stat", copy: "Disposals, goals — set your threshold." },
+  { num: "03", icon: <Zap size={14} />, title: "See the trend", copy: "Last 10, hit rate, projection and form." },
+] as const;
+
+const TRUST_ITEMS = [
+  "Updated before every round lockout",
+  "600+ players tracked weekly",
+  "Disposals, goals and more",
+  "Plan your round in 30 seconds",
+];
+
+// ── Sticky dot indicators for preview ────────────────────────────────────────
 
 function SectionDivider({ from, to }: { from: string; to: string }) {
   return (
     <div style={{
       position: "relative",
-      height: 32,
+      height: 24,
       background: `linear-gradient(to bottom, ${from}, ${to})`,
       pointerEvents: "none",
-      overflow: "hidden",
-    }}>
-      <div style={{
-        position: "absolute",
-        left: "50%",
-        top: "50%",
-        transform: "translate(-50%, -50%)",
-        width: 120,
-        height: 1,
-        background: "linear-gradient(to right, transparent, rgba(224,174,45,0.22), transparent)",
-      }} />
-    </div>
+    }} />
   );
 }
 
-function MobileHeroCard({ card, isActive }: { card: HeroCard; isActive: boolean }) {
-  const pts = card.projection != null ? Math.round(card.projection) : null;
-  const avg = card.seasonAvg != null ? Math.round(card.seasonAvg) : null;
-  const vsAvgDiff = pts != null && avg != null ? pts - avg : null;
-  const vsAvgStr = vsAvgDiff != null
-    ? (vsAvgDiff >= 0 ? `+${vsAvgDiff}` : `${vsAvgDiff}`) + " vs avg"
-    : null;
+// ── Main component ────────────────────────────────────────────────────────────
 
-  return (
-    <Link to={card.ctaTo} style={{ textDecoration: "none", display: "block", width: "82vw", maxWidth: 300, flexShrink: 0 }}>
-      <div style={{
-        background: isActive ? "rgba(255,255,255,0.075)" : "rgba(255,255,255,0.045)",
-        border: `1px solid ${isActive ? card.color + "40" : card.color + "18"}`,
-        borderRadius: 14,
-        padding: "14px 14px 14px",
-        position: "relative",
-        overflow: "hidden",
-        transform: isActive ? "scale(1.025)" : "scale(0.97)",
-        transition: "transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.2s ease, border-color 0.2s ease",
-        boxShadow: isActive ? `0 8px 32px rgba(0,0,0,0.50), 0 0 0 1px ${card.color}18 inset` : "none",
-      }}>
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: isActive ? 2.5 : 1.5, background: card.color, opacity: isActive ? 0.85 : 0.5, transition: "height 0.2s ease, opacity 0.2s ease" }} />
-
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 9 }}>
-          <span style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.26em", textTransform: "uppercase", color: `${card.color}BB`, flex: 1 }}>{card.label}</span>
-          {card.position && (
-            <span style={{ fontSize: 8, fontWeight: 800, color: card.color, background: `${card.color}15`, border: `1px solid ${card.color}25`, padding: "2px 6px", borderRadius: 4, textTransform: "uppercase", flexShrink: 0 }}>{card.position}</span>
-          )}
-          <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 7.5, fontWeight: 700, letterSpacing: "0.12em", color: "#22c55e", flexShrink: 0 }}>
-            <span className="live-dot" style={{ width: 4, height: 4, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
-            LIVE
-          </span>
-        </div>
-
-        <p style={{ fontSize: 15, fontWeight: 800, color: "#F0F0F0", marginBottom: 2, letterSpacing: "-0.02em", lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{card.playerName}</p>
-        <p style={{ fontSize: 10, color: "rgba(255,255,255,0.30)", marginBottom: 9, fontWeight: 500 }}>{card.team}</p>
-
-        {pts != null && (
-          <div style={{ marginBottom: 8 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 3 }}>
-              <span style={{ fontSize: 34, fontWeight: 900, color: card.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{pts}</span>
-              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.28)", fontWeight: 600, letterSpacing: "0.08em" }}>proj pts</span>
-              {vsAvgStr != null && (
-                <span style={{
-                  fontSize: 8.5, fontWeight: 700,
-                  color: vsAvgDiff! >= 0 ? "#4ade80" : "#f87171",
-                  background: vsAvgDiff! >= 0 ? "rgba(74,222,128,0.10)" : "rgba(248,113,113,0.10)",
-                  padding: "1px 5px", borderRadius: 4, letterSpacing: "0.04em", flexShrink: 0,
-                }}>
-                  {vsAvgStr}
-                </span>
-              )}
-            </div>
-            {card.confidenceLabel && (
-              <span style={{
-                fontSize: 8, fontWeight: 700,
-                color: card.confidenceLabel === "High" ? "#22c55e" : card.confidenceLabel === "Medium" ? "#E0AE2D" : "rgba(255,255,255,0.40)",
-                background: card.confidenceLabel === "High" ? "rgba(34,197,94,0.10)" : card.confidenceLabel === "Medium" ? "rgba(224,174,45,0.10)" : "rgba(255,255,255,0.05)",
-                border: `1px solid ${card.confidenceLabel === "High" ? "rgba(34,197,94,0.20)" : card.confidenceLabel === "Medium" ? "rgba(224,174,45,0.20)" : "rgba(255,255,255,0.08)"}`,
-                padding: "2px 7px", borderRadius: 999, letterSpacing: "0.08em", textTransform: "uppercase" as const,
-              }}>
-                {card.confidenceLabel} Confidence
-              </span>
-            )}
-          </div>
-        )}
-
-        <p style={{ fontSize: 11, color: "rgba(255,255,255,0.40)", lineHeight: 1.5, marginBottom: 11 }}>{card.reason}</p>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: card.color }}>
-          {card.ctaLabel} <ChevronRight size={10} />
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function SkeletonHeroCard() {
-  return (
-    <div style={{ width: "82vw", maxWidth: 300, flexShrink: 0, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 14, padding: "16px 14px" }}>
-      <div style={{ height: 8, background: "rgba(255,255,255,0.05)", borderRadius: 3, width: "38%", marginBottom: 14 }} />
-      <div style={{ height: 15, background: "rgba(255,255,255,0.07)", borderRadius: 3, width: "72%", marginBottom: 6 }} />
-      <div style={{ height: 10, background: "rgba(255,255,255,0.04)", borderRadius: 3, width: "45%", marginBottom: 14 }} />
-      <div style={{ height: 34, background: "rgba(255,255,255,0.05)", borderRadius: 3, width: "40%", marginBottom: 10 }} />
-      <div style={{ height: 11, background: "rgba(255,255,255,0.04)", borderRadius: 3, width: "65%" }} />
-    </div>
-  );
-}
-
-export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards, showSkeleton, isPremium }: Props) {
-  const [activeCard, setActiveCard] = useState(0);
+export default function MobileLanding({ isPremium }: Props) {
   const [activeSection, setActiveSection] = useState<string>("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const handleCardScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const cardWidth = el.scrollWidth / Math.max(cards.length, 1);
-    const idx = Math.round(el.scrollLeft / cardWidth);
-    setActiveCard(Math.min(idx, cards.length - 1));
-  }, [cards.length]);
+  const NAV_SECTIONS = [
+    { label: "Stat Board", id: "section-preview" },
+    { label: "How it Works", id: "section-how" },
+    { label: "Stats Available", id: "section-stats" },
+    { label: "Why It Works", id: "section-trust" },
+  ] as const;
 
   useEffect(() => {
     const sectionIds = NAV_SECTIONS.map(s => s.id);
@@ -193,9 +224,7 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
       const el = document.getElementById(id);
       if (!el) return;
       const obs = new IntersectionObserver(
-        ([entry]) => {
-          if (entry.isIntersecting) setActiveSection(id);
-        },
+        ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
         { rootMargin: "-40% 0px -55% 0px", threshold: 0 }
       );
       obs.observe(el);
@@ -206,151 +235,82 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
   }, []);
 
   return (
-    <div style={{ background: "#0a0908", overflowX: "hidden", paddingBottom: isPremium ? 0 : 68 }}>
+    <div style={{ background: "#0a0908", overflowX: "hidden", paddingBottom: isPremium ? 0 : 0 }}>
 
       {/* ─── HERO ─── */}
       <section style={{
         position: "relative",
-        background: "linear-gradient(160deg, #0d0b08 0%, #070503 100%)",
-        padding: "20px 16px 0",
+        background: "linear-gradient(160deg, #080c0a 0%, #060806 100%)",
+        padding: "28px 16px 0",
         overflow: "hidden",
       }}>
-        <div style={{ position: "absolute", top: -60, left: "50%", transform: "translateX(-50%)", width: 320, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(255,200,0,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: -60, left: "50%", transform: "translateX(-50%)", width: 320, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,197,94,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
 
-        {/* Above-fold content: eyebrow + headline + subtext + CTAs */}
         <div style={{ position: "relative", zIndex: 2, textAlign: "center" }}>
-          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(224,174,45,0.65)", marginBottom: 8 }}>
-            AFL Fantasy Intelligence
+          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(34,197,94,0.70)", marginBottom: 8 }}>
+            AFL Stat Board
           </p>
           <h1 style={{
-            fontSize: "clamp(1.65rem, 7.5vw, 2rem)",
-            fontWeight: 900, lineHeight: 1.08, letterSpacing: "-0.028em",
+            fontSize: "clamp(1.55rem, 7vw, 1.9rem)",
+            fontWeight: 900, lineHeight: 1.10, letterSpacing: "-0.028em",
             color: "#ffffff", marginBottom: 10,
           }}>
-            Stop Guessing.<br />
-            <span style={{ color: "#E0AE2D" }}>Start Winning</span><br />
-            AFL Fantasy.
+            Find AFL players most likely to{" "}
+            <span style={{ color: "#22c55e" }}>hit key stats</span>{" "}
+            this round.
           </h1>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.65)", lineHeight: 1.5, maxWidth: 300, margin: "0 auto 16px" }}>
-            Trades, captains &amp; traps — 600+ player projections updated every round.
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.62)", lineHeight: 1.55, maxWidth: 310, margin: "0 auto 20px" }}>
+            Pick a match, choose a stat, and view recent form, hit rates, projections and trends in seconds.
           </p>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 14 }}>
-            {isPremium ? (
-              <>
-                <Link to="/sports/afl/market-watch" style={{
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  background: "linear-gradient(160deg, #fad52a, #e09600)",
-                  color: "#1a0900", fontWeight: 900, fontSize: 15,
-                  padding: "14px 20px", borderRadius: 10, textDecoration: "none",
-                  boxShadow: "0 4px 24px rgba(224,174,45,0.32)",
-                  minHeight: 50, letterSpacing: "0.01em",
-                }}>
-                  Open Market Watch <ArrowRight size={15} />
-                </Link>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <Link to="/sports/afl/current-round" style={{
-                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                    background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)",
-                    color: "rgba(255,255,255,0.78)", fontWeight: 700, fontSize: 13,
-                    padding: "12px 10px", borderRadius: 10, textDecoration: "none", minHeight: 44,
-                  }}>
-                    Current Week
-                  </Link>
-                  <Link to="/sports/afl/rankings" style={{
-                    flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                    background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)",
-                    color: "rgba(255,255,255,0.78)", fontWeight: 700, fontSize: 13,
-                    padding: "12px 10px", borderRadius: 10, textDecoration: "none", minHeight: 44,
-                  }}>
-                    Rankings
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <>
-                <Link to="/auth" style={{
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  background: "linear-gradient(160deg, #fad52a, #e09600)",
-                  color: "#1a0900", fontWeight: 900, fontSize: 15,
-                  padding: "14px 20px", borderRadius: 10, textDecoration: "none",
-                  boxShadow: "0 4px 24px rgba(224,174,45,0.32)",
-                  minHeight: 50, letterSpacing: "0.01em",
-                }}>
-                  Unlock This Week's Game Plan <ArrowRight size={15} />
-                </Link>
-                <Link to="/sports/afl/market-watch" style={{
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.14)",
-                  color: "rgba(255,255,255,0.78)", fontWeight: 700, fontSize: 14,
-                  padding: "12px 20px", borderRadius: 10, textDecoration: "none", minHeight: 44,
-                }}>
-                  Open Market Watch
-                </Link>
-              </>
-            )}
+          <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 20 }}>
+            <Link to="/stat-board/players" style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              background: "linear-gradient(160deg, #22c55e 0%, #16a34a 100%)",
+              color: "#f0fff4", fontWeight: 900, fontSize: 15,
+              padding: "14px 20px", borderRadius: 10, textDecoration: "none",
+              boxShadow: "0 4px 24px rgba(34,197,94,0.28)",
+              minHeight: 50, letterSpacing: "0.01em",
+            }}>
+              Open Stat Board <ArrowRight size={15} />
+            </Link>
+            <Link to="/stat-board/teams" style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+              color: "rgba(255,255,255,0.72)", fontWeight: 700, fontSize: 13.5,
+              padding: "12px 20px", borderRadius: 10, textDecoration: "none", minHeight: 44,
+            }}>
+              Team Stats
+            </Link>
           </div>
 
-          <div style={{ display: "flex", justifyContent: "center", gap: 12, flexWrap: "wrap", paddingBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap", paddingBottom: 20 }}>
             {["Updated weekly", "Real AFL data", "30-sec picks"].map(t => (
-              <span key={t} style={{ fontSize: 10.5, color: "rgba(255,255,255,0.38)", display: "flex", alignItems: "center", gap: 4 }}>
-                <span style={{ color: "rgba(224,174,45,0.55)", fontSize: 8 }}>•</span> {t}
+              <span key={t} style={{ fontSize: 10.5, color: "rgba(255,255,255,0.35)", display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ color: "rgba(34,197,94,0.55)", fontSize: 8 }}>•</span> {t}
               </span>
             ))}
           </div>
         </div>
 
-        {/* Hero card carousel — below fold scroll reward */}
-        <div style={{ position: "relative", zIndex: 2, marginBottom: 0 }}>
+        {/* Live preview label */}
+        <div style={{ position: "relative", zIndex: 2, marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 }}>
             <span className="live-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", display: "inline-block", flexShrink: 0 }} />
-            <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.30em", textTransform: "uppercase", color: "rgba(224,174,45,0.60)", margin: 0 }}>
-              Live Picks
+            <p style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: "0.26em", textTransform: "uppercase", color: "rgba(34,197,94,0.65)", margin: 0 }}>
+              Live Stat Board Preview
             </p>
           </div>
-          <div
-            ref={scrollRef}
-            onScroll={handleCardScroll}
-            style={{
-              overflowX: "auto",
-              scrollSnapType: "x mandatory",
-              WebkitOverflowScrolling: "touch",
-              display: "flex", gap: 12,
-              paddingLeft: 16, paddingRight: 16, paddingBottom: 12,
-              scrollbarWidth: "none",
-            }}
-            className="mobile-card-scroll"
-          >
-            {showSkeleton
-              ? [0, 1, 2, 3].map(i => <SkeletonHeroCard key={i} />)
-              : cards.map((c, i) => (
-                <div key={c.label} style={{ scrollSnapAlign: "center", flexShrink: 0 }}>
-                  <MobileHeroCard card={c} isActive={i === activeCard} />
-                </div>
-              ))
-            }
-            <div style={{ width: 4, flexShrink: 0 }} />
-          </div>
-
-          {/* Dot indicators */}
-          {!showSkeleton && cards.length > 1 && (
-            <div style={{ display: "flex", justifyContent: "center", gap: 6, paddingBottom: 16, marginTop: 2 }}>
-              {cards.map((_, i) => (
-                <div key={i} style={{
-                  width: i === activeCard ? 18 : 5,
-                  height: 5, borderRadius: 999,
-                  background: i === activeCard ? "#E0AE2D" : "rgba(255,255,255,0.15)",
-                  transition: "width 0.25s ease, background 0.2s ease",
-                }} />
-              ))}
-            </div>
-          )}
-          {showSkeleton && <div style={{ height: 16 }} />}
+          <p style={{ textAlign: "center", fontSize: 9, color: "rgba(255,255,255,0.30)", marginBottom: 12, letterSpacing: "0.10em", textTransform: "uppercase" }}>
+            Disposals · 20+ threshold · current round
+          </p>
+          <MobileStatBoardPreview />
+          <div style={{ height: 20 }} />
         </div>
       </section>
 
       {/* ─── SECTION BREAK: hero → nav ─── */}
-      <SectionDivider from="#070503" to="#0c0b09" />
+      <SectionDivider from="#060806" to="#0c0b09" />
 
       {/* ─── STICKY SECTION NAV ─── */}
       <div style={{
@@ -366,17 +326,15 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
             return (
               <button
                 key={id}
-                onClick={() => {
-                  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                }}
+                onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}
                 style={{
                   display: "inline-flex", alignItems: "center",
                   padding: "7px 13px", borderRadius: 999,
                   fontSize: 12, fontWeight: 700, whiteSpace: "nowrap",
                   minHeight: 34,
-                  background: isActive ? "rgba(224,174,45,0.12)" : "rgba(255,255,255,0.04)",
-                  border: isActive ? "1px solid rgba(224,174,45,0.30)" : "1px solid rgba(255,255,255,0.07)",
-                  color: isActive ? "#E0AE2D" : "rgba(255,255,255,0.45)",
+                  background: isActive ? "rgba(34,197,94,0.10)" : "rgba(255,255,255,0.04)",
+                  border: isActive ? "1px solid rgba(34,197,94,0.28)" : "1px solid rgba(255,255,255,0.07)",
+                  color: isActive ? "#4ade80" : "rgba(255,255,255,0.42)",
                   cursor: "pointer",
                   transition: "all 0.2s ease",
                   outline: "none",
@@ -388,192 +346,163 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
         </div>
       </div>
 
-      {/* ─── SECTION BREAK: nav → edge ─── */}
       <SectionDivider from="#0c0b09" to="#0a0908" />
 
-      {/* ─── THIS WEEK'S EDGE ─── */}
-      <section id="section-edge" style={{ background: "#0a0908", padding: "28px 16px 40px" }}>
-        <div style={{ marginBottom: 24, textAlign: "center" }}>
+      {/* ─── LIVE PREVIEW SECTION ─── */}
+      <section id="section-preview" style={{ background: "#0a0908", padding: "28px 16px 36px" }}>
+        <div style={{ marginBottom: 20, textAlign: "center" }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
             <span className="live-dot" style={{ width: 5, height: 5, borderRadius: "50%", background: "#22c55e", display: "inline-block" }} />
-            <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "#22c55e", margin: 0, opacity: 0.75 }}>This Week Only</p>
+            <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "#22c55e", margin: 0, opacity: 0.75 }}>Live data</p>
           </div>
-          <h2 style={{ fontSize: "1.45rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15, margin: 0 }}>
-            This Week's Edge
+          <h2 style={{ fontSize: "1.35rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15, margin: 0 }}>
+            Player Stat Board
           </h2>
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.28)", marginTop: 6, lineHeight: 1.5 }}>
-            Live projections updated before lockout
+            Hit rates, projections and form — updated every round
           </p>
         </div>
-
-        <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 14, border: "1px solid rgba(224,174,45,0.10)", overflow: "hidden" }}>
-          {loading ? (
-            Array.from({ length: FREE_PREVIEW + 1 }).map((_, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 14px", borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                <div style={{ width: 20, height: 10, background: "rgba(255,255,255,0.05)", borderRadius: 3 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ height: 12, background: "rgba(255,255,255,0.07)", borderRadius: 3, width: "55%", marginBottom: 5 }} />
-                  <div style={{ height: 9, background: "rgba(255,255,255,0.04)", borderRadius: 3, width: "35%" }} />
-                </div>
-                <div style={{ width: 38, height: 18, background: "rgba(255,255,255,0.05)", borderRadius: 10 }} />
-              </div>
-            ))
-          ) : topRows.length === 0 ? (
-            <p style={{ padding: "28px 16px", textAlign: "center", color: "#444", fontSize: 13 }}>Rankings unavailable.</p>
-          ) : (
-            topRows.slice(0, FREE_PREVIEW + 1).map((player, i) => {
-              const locked = i >= FREE_PREVIEW;
-              const sig = signalFromRow(player);
-              const proj = player.projection != null ? Math.round(player.projection) : null;
-
-              return (
-                <div
-                  key={player.player_id ?? i}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 12,
-                    padding: "13px 14px", borderBottom: "1px solid rgba(255,255,255,0.04)",
-                    filter: locked ? "blur(5px)" : "none",
-                    userSelect: locked ? "none" : "auto",
-                    pointerEvents: locked ? "none" : "auto",
-                  }}
-                >
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.20)", width: 20, textAlign: "right", flexShrink: 0 }}>#{i + 1}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 13.5, fontWeight: 700, color: "#E8E8E8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{player.player_name}</p>
-                    <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", marginTop: 2 }}>
-                      {proj != null ? `${proj} pts` : "—"}{player.team ? ` · ${player.team}` : ""}
-                    </p>
-                  </div>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: sig.color, background: `${sig.color}18`, padding: "4px 9px", borderRadius: 999, border: `1px solid ${sig.color}28`, flexShrink: 0, letterSpacing: "0.04em" }}>{sig.label}</span>
-                </div>
-              );
-            })
-          )}
-
-          <div style={{ padding: "16px 14px", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", flexDirection: "column", alignItems: "stretch", gap: 10 }}>
-            {!loading && (
-              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.22)", textAlign: "center" }}>
-                Showing {FREE_PREVIEW} of {topRows[0]?.total_count ?? "630"}+ players
-              </p>
-            )}
-            <Link to="/sports/afl/rankings" style={{
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-              background: "linear-gradient(160deg, #fad52a, #e09600)",
-              color: "#1a0900", fontWeight: 900, fontSize: 14,
-              padding: "14px 20px", borderRadius: 10, textDecoration: "none",
-              boxShadow: "0 4px 18px rgba(224,174,45,0.28)", minHeight: 50,
-            }}>
-              Unlock Full Rankings <ArrowRight size={14} />
-            </Link>
-          </div>
+        <MobileStatBoardPreview />
+        <div style={{ marginTop: 14 }}>
+          <Link to="/stat-board/players" style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+            background: "linear-gradient(160deg, #22c55e 0%, #16a34a 100%)",
+            color: "#f0fff4", fontWeight: 900, fontSize: 14,
+            padding: "14px 20px", borderRadius: 10, textDecoration: "none",
+            boxShadow: "0 4px 18px rgba(34,197,94,0.25)", minHeight: 50,
+          }}>
+            Open Stat Board <ArrowRight size={14} />
+          </Link>
         </div>
       </section>
 
-      {/* ─── MARKET WATCH PREVIEW ─── */}
-      {(mwBuys.length > 0 || mwSells.length > 0) && (
-        <section style={{ background: "#0a0908", padding: "0 16px 28px" }}>
-          <div style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div>
-              <h3 style={{ fontSize: 14, fontWeight: 800, color: "#E8E8E8", margin: 0, letterSpacing: "-0.01em" }}>Market Watch</h3>
-              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", marginTop: 2 }}>Buys &amp; avoids this round</p>
-            </div>
-            <Link to="/sports/afl/market-watch" style={{ fontSize: 11, fontWeight: 700, color: "rgba(224,174,45,0.75)", textDecoration: "none", display: "flex", alignItems: "center", gap: 3 }}>
-              View all <ChevronRight size={10} />
-            </Link>
-          </div>
-          {mwBuys.slice(0, 3).map(p => (
-            <div key={p.player_id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 12px", borderRadius: 10, background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.10)", marginBottom: 6 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: "#E8E8E8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", margin: 0 }}>{p.player_name}</p>
-                <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", margin: "2px 0 0" }}>{p.team} · {p.position}</p>
-              </div>
-              <div style={{ textAlign: "right", flexShrink: 0 }}>
-                <p style={{ fontSize: 14, fontWeight: 900, color: "#22C55E", margin: 0 }}>{p.projection != null ? Math.round(p.projection) : "—"}</p>
-                <p style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", margin: "1px 0 0", letterSpacing: "0.05em" }}>proj pts</p>
-              </div>
-              <span style={{ fontSize: 9, fontWeight: 800, color: "#22C55E", background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.22)", padding: "3px 7px", borderRadius: 999, letterSpacing: "0.06em", flexShrink: 0 }}>BUY</span>
-            </div>
-          ))}
-          {mwSells.slice(0, 2).map(p => (
-            <div key={p.player_id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 12px", borderRadius: 10, background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.10)", marginBottom: 6 }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: "#E8E8E8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", margin: 0 }}>{p.player_name}</p>
-                <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", margin: "2px 0 0" }}>{p.team} · {p.position}</p>
-              </div>
-              <div style={{ textAlign: "right", flexShrink: 0 }}>
-                <p style={{ fontSize: 14, fontWeight: 900, color: "#EF4444", margin: 0 }}>{p.projection != null ? Math.round(p.projection) : "—"}</p>
-                <p style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", margin: "1px 0 0", letterSpacing: "0.05em" }}>proj pts</p>
-              </div>
-              <span style={{ fontSize: 9, fontWeight: 800, color: "#EF4444", background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.22)", padding: "3px 7px", borderRadius: 999, letterSpacing: "0.06em", flexShrink: 0 }}>AVOID</span>
-            </div>
-          ))}
-        </section>
-      )}
-
-      {/* ─── SECTION BREAK: edge → workflow ─── */}
       <SectionDivider from="#0a0908" to="#0f0e0c" />
 
-      {/* ─── YOUR WEEKLY WORKFLOW ─── */}
-      <section id="section-workflow" style={{ background: "#0f0e0c", padding: "28px 16px 40px" }}>
-        <div style={{ marginBottom: 28, textAlign: "center" }}>
-          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(224,174,45,0.55)", marginBottom: 8 }}>Your Edge</p>
-          <h2 style={{ fontSize: "1.45rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15 }}>
-            Win Your Week in 3 Steps
+      {/* ─── HOW IT WORKS ─── */}
+      <section id="section-how" style={{ background: "#0f0e0c", padding: "28px 16px 36px" }}>
+        <div style={{ marginBottom: 22, textAlign: "center" }}>
+          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(34,197,94,0.55)", marginBottom: 8 }}>How it works</p>
+          <h2 style={{ fontSize: "1.35rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15 }}>
+            Three steps to every player trend
           </h2>
-          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.28)", marginTop: 6, lineHeight: 1.5 }}>
-            The exact workflow to make better decisions every round
-          </p>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {WORKFLOW.map(({ num, icon, title, desc, color, to }) => (
-            <Link key={num} to={to} style={{ textDecoration: "none" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {HOW_STEPS.map(({ num, icon, title, copy }) => (
+            <div key={num} style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderRadius: 14, padding: "15px 14px",
+              display: "flex", gap: 14, alignItems: "flex-start",
+              position: "relative", overflow: "hidden",
+            }}>
+              <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1.5, background: "linear-gradient(to right, transparent, rgba(34,197,94,0.30), transparent)" }} />
               <div style={{
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.06)",
-                borderRadius: 14, padding: "16px 14px",
-                display: "flex", gap: 14, alignItems: "flex-start",
-                position: "relative", overflow: "hidden",
+                width: 34, height: 34, borderRadius: "50%",
+                background: "rgba(34,197,94,0.10)", border: "1.5px solid rgba(34,197,94,0.22)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "#22c55e", flexShrink: 0,
               }}>
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 1.5, background: `linear-gradient(to right, transparent, ${color}38, transparent)` }} />
-                <div style={{
-                  width: 36, height: 36, borderRadius: "50%",
-                  background: `${color}12`, border: `1.5px solid ${color}28`,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  color, flexShrink: 0,
-                }}>
-                  {icon}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-                    <h3 style={{ fontSize: 14, fontWeight: 800, color: "#E8E8E8", letterSpacing: "-0.01em" }}>{title}</h3>
-                    <span style={{ fontSize: 18, fontWeight: 900, color: `${color}18`, letterSpacing: "-0.04em", lineHeight: 1, flexShrink: 0 }}>{num}</span>
-                  </div>
-                  <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>{desc}</p>
-                </div>
+                {icon}
               </div>
-            </Link>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+                  <h3 style={{ fontSize: 13.5, fontWeight: 800, color: "#E8E8E8", letterSpacing: "-0.01em" }}>{title}</h3>
+                  <span style={{ fontSize: 17, fontWeight: 900, color: "rgba(34,197,94,0.15)", letterSpacing: "-0.04em", lineHeight: 1, flexShrink: 0 }}>{num}</span>
+                </div>
+                <p style={{ fontSize: 12, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>{copy}</p>
+              </div>
+            </div>
           ))}
+        </div>
+        <div style={{ marginTop: 14 }}>
+          <Link to="/stat-board/players" style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            fontSize: 13, fontWeight: 700, color: "#4ade80",
+            textDecoration: "none",
+            border: "1px solid rgba(34,197,94,0.24)",
+            padding: "11px 20px", borderRadius: 10,
+            background: "rgba(34,197,94,0.07)", minHeight: 44,
+          }}>
+            Open Stat Board <ArrowRight size={13} />
+          </Link>
         </div>
       </section>
 
-      {/* ─── SECTION BREAK: workflow → trust ─── */}
       <SectionDivider from="#0f0e0c" to="#0a0908" />
 
-      {/* ─── TRUST BLOCK ─── */}
-      <section id="section-trust" style={{ background: "#0a0908", padding: "28px 16px 36px" }}>
-        <div style={{ marginBottom: 18, textAlign: "center" }}>
-          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(34,197,94,0.55)", marginBottom: 8 }}>Why It Works</p>
-          <h2 style={{ fontSize: "1.3rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.2 }}>
-            Built for Serious Fantasy Players
+      {/* ─── STAT LENSES ─── */}
+      <section id="section-stats" style={{ background: "#0a0908", padding: "28px 16px 36px" }}>
+        <div style={{ marginBottom: 20, textAlign: "center" }}>
+          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(255,255,255,0.35)", marginBottom: 8 }}>Stat lenses</p>
+          <h2 style={{ fontSize: "1.35rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15 }}>
+            Start with the stats people check first.
           </h2>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {[
-            "630+ players analysed every round",
-            "Updated before every round lockout",
-            "Built on real AFL Fantasy data",
-            "Designed for winning decisions",
-          ].map(item => (
+            {
+              icon: <BarChart2Icon size={18} />, title: "Disposals", color: "#22c55e",
+              copy: "Track disposal trends using last 10 games, rolling averages and projections.",
+              pills: ["15+", "20+", "25+", "30+"],
+            },
+            {
+              icon: <Target size={18} />, title: "Goals", color: "#f59e0b",
+              copy: "Track goal-scoring trends using recent form, hit rates and projections.",
+              pills: ["1+", "2+", "3+", "4+"],
+            },
+          ].map(({ icon, title, color, copy, pills }) => (
+            <div key={title} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${color}22`, borderRadius: 12, padding: "16px 14px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}14`, border: `1px solid ${color}26`, display: "flex", alignItems: "center", justifyContent: "center", color, flexShrink: 0 }}>
+                  {icon}
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: 14, fontWeight: 800, color: "#ececec" }}>{title}</p>
+                  <span style={{ fontSize: 8.5, fontWeight: 700, color: "#4ade80", background: "rgba(34,197,94,0.09)", padding: "1px 7px", borderRadius: 999, letterSpacing: "0.07em" }}>Available now</span>
+                </div>
+              </div>
+              <p style={{ margin: "0 0 10px", fontSize: 12, color: "rgba(255,255,255,0.48)", lineHeight: 1.6 }}>{copy}</p>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {pills.map(pill => (
+                  <span key={pill} style={{
+                    fontSize: 10, fontWeight: 700,
+                    color: color === "#22c55e" ? "rgba(74,222,128,0.82)" : "rgba(253,211,77,0.82)",
+                    background: color === "#22c55e" ? "rgba(34,197,94,0.09)" : "rgba(245,158,11,0.09)",
+                    border: `1px solid ${color === "#22c55e" ? "rgba(34,197,94,0.20)" : "rgba(245,158,11,0.20)"}`,
+                    padding: "2px 8px", borderRadius: 5,
+                    letterSpacing: "0.03em",
+                  }}>{pill}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 14 }}>
+          <Link to="/stat-board/teams" style={{
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+            fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.55)",
+            textDecoration: "none",
+            border: "1px solid rgba(255,255,255,0.10)",
+            padding: "11px 20px", borderRadius: 10,
+            background: "rgba(255,255,255,0.04)", minHeight: 44,
+          }}>
+            View Team Stats <ChevronRight size={13} />
+          </Link>
+        </div>
+      </section>
+
+      <SectionDivider from="#0a0908" to="#0f0e0c" />
+
+      {/* ─── TRUST BLOCK ─── */}
+      <section id="section-trust" style={{ background: "#0f0e0c", padding: "28px 16px 36px" }}>
+        <div style={{ marginBottom: 18, textAlign: "center" }}>
+          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(34,197,94,0.55)", marginBottom: 8 }}>Why it works</p>
+          <h2 style={{ fontSize: "1.25rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.2 }}>
+            Built for serious AFL fans
+          </h2>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+          {TRUST_ITEMS.map(item => (
             <div key={item} style={{
               display: "flex", alignItems: "center", gap: 12,
               padding: "12px 14px",
@@ -592,158 +521,42 @@ export default function MobileLanding({ loading, topRows, mwBuys, mwSells, cards
         </div>
       </section>
 
-      {/* ─── SECTION BREAK: trust → pricing ─── */}
-      <SectionDivider from="#0a0908" to="#0d0b09" />
+      <SectionDivider from="#0f0e0c" to="#060806" />
 
-      {/* ─── PRICING ─── */}
-      <section id="section-pricing" style={{ background: "linear-gradient(180deg, #0d0b09 0%, #100e08 100%)", padding: "28px 16px 40px" }}>
-        <div style={{ marginBottom: 24, textAlign: "center" }}>
-          <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(224,174,45,0.55)", marginBottom: 8 }}>Pricing</p>
-          <h2 style={{ fontSize: "1.45rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15 }}>
-            Go Beyond Free Rankings
+      {/* ─── FINAL CTA ─── */}
+      <section style={{
+        background: "linear-gradient(180deg, #060806 0%, #030503 100%)",
+        padding: "36px 16px 52px",
+      }}>
+        <div style={{ textAlign: "center" }}>
+          <h2 style={{ fontSize: "1.65rem", fontWeight: 900, letterSpacing: "-0.03em", color: "#F5F5F5", lineHeight: 1.08, marginBottom: 10 }}>
+            Ready to check the stats?
           </h2>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", marginTop: 8 }}>
-            Free shows you players. <span style={{ color: "rgba(224,174,45,0.75)", fontWeight: 600 }}>Neeko+ tells you what to do.</span>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", lineHeight: 1.6, marginBottom: 24, maxWidth: 280, margin: "0 auto 24px" }}>
+            Open the Stat Board — pick a match, choose a stat, see who is most likely to deliver.
           </p>
-        </div>
-
-        <div style={{
-          background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)",
-          borderRadius: 14, padding: "18px 16px", marginBottom: 12,
-          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-        }}>
-          <div>
-            <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.32em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 4 }}>Free</p>
-            <p style={{ fontSize: 24, fontWeight: 900, color: "rgba(255,255,255,0.45)", letterSpacing: "-0.04em" }}>$0</p>
-            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.20)", marginTop: 2 }}>Basic rankings only</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <Link to="/stat-board/players" style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              background: "linear-gradient(160deg, #22c55e 0%, #16a34a 100%)",
+              color: "#f0fff4", fontWeight: 900, fontSize: 16,
+              padding: "17px 20px", borderRadius: 12, textDecoration: "none",
+              boxShadow: "0 6px 32px rgba(34,197,94,0.28)", minHeight: 56,
+            }}>
+              Open Stat Board <ArrowRight size={16} />
+            </Link>
+            <Link to="/stat-board/teams" style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 13, color: "rgba(255,255,255,0.38)", textDecoration: "none",
+              padding: "12px", minHeight: 44,
+            }}>
+              View Team Stats
+            </Link>
           </div>
-          <Link to="/sports/afl/rankings" style={{
-            display: "flex", alignItems: "center", justifyContent: "center",
-            padding: "10px 16px", borderRadius: 9,
-            border: "1px solid rgba(255,255,255,0.10)",
-            color: "rgba(255,255,255,0.38)", fontSize: 12, fontWeight: 700,
-            textDecoration: "none", whiteSpace: "nowrap",
-          }}>
-            View Free
-          </Link>
-        </div>
-
-        <div style={{
-          background: "linear-gradient(160deg, #1c1507 0%, #110e04 100%)",
-          border: "1px solid rgba(224,174,45,0.28)",
-          borderRadius: 16, padding: "22px 16px",
-          position: "relative", overflow: "hidden",
-          boxShadow: "0 8px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(224,174,45,0.06) inset",
-        }}>
-          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: "linear-gradient(to right, transparent, rgba(224,174,45,0.70), transparent)" }} />
-
-          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
-            <div>
-              <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.32em", textTransform: "uppercase", color: "#E0AE2D", marginBottom: 6 }}>Neeko+</p>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                <span style={{ fontSize: 36, fontWeight: 900, color: "#E0AE2D", letterSpacing: "-0.04em" }}>${NEEKO_PRICING.season.price}</span>
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.30)" }}> one-time</span>
-              </div>
-              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginTop: 3 }}>Full season access · No recurring charges</p>
-            </div>
-            <span style={{ fontSize: 8, fontWeight: 900, background: "#E0AE2D", color: "#1a0900", padding: "3px 8px", borderRadius: 5, letterSpacing: "0.08em", whiteSpace: "nowrap" }}>BEST VALUE</span>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 20 }}>
-            {[
-              "Full rankings — 630+ players",
-              "Market Watch & trade signals",
-              "Edge Board every round",
-              "Captain picks & start/sit tools",
-              "Updated before every lockout",
-            ].map(f => (
-              <div key={f} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <Check size={11} style={{ color: "#E0AE2D", flexShrink: 0 }} />
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.62)" }}>{f}</span>
-              </div>
-            ))}
-          </div>
-
-          <Link to="/neeko-plus" style={{
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            background: "linear-gradient(160deg, #fad52a, #e09600)",
-            color: "#1a0900", fontWeight: 900, fontSize: 15,
-            padding: "15px 20px", borderRadius: 10, textDecoration: "none",
-            boxShadow: "0 4px 24px rgba(224,174,45,0.30)", minHeight: 52,
-          }}>
-            <Crown size={14} /> Start Winning With Neeko+
-          </Link>
-
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", textAlign: "center", marginTop: 10 }}>
-            Or Weekly ${NEEKO_PRICING.weekly.price}/wk · Cancel anytime
-          </p>
         </div>
       </section>
 
-      {/* ─── FINAL CTA ─── */}
-      {!isPremium && (
-        <section style={{
-          background: "linear-gradient(180deg, #100e08 0%, #070503 100%)",
-          padding: "36px 16px 48px",
-        }}>
-          <div style={{ textAlign: "center" }}>
-            <h2 style={{ fontSize: "1.75rem", fontWeight: 900, letterSpacing: "-0.03em", color: "#F5F5F5", lineHeight: 1.08, marginBottom: 10 }}>
-              Start Winning<br />This Week
-            </h2>
-            <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.35)", lineHeight: 1.6, marginBottom: 24, maxWidth: 280, margin: "0 auto 24px" }}>
-              Every tool you need to dominate your AFL Fantasy league.
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <Link to="/neeko-plus" style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                background: "linear-gradient(160deg, #fad52a, #e09600)",
-                color: "#1a0900", fontWeight: 900, fontSize: 16,
-                padding: "17px 20px", borderRadius: 12, textDecoration: "none",
-                boxShadow: "0 6px 36px rgba(224,174,45,0.32)", minHeight: 56,
-              }}>
-                Unlock Full Access <ArrowRight size={16} />
-              </Link>
-              <Link to="/sports/afl/market-watch" style={{
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 13, color: "rgba(255,255,255,0.30)", textDecoration: "none",
-                padding: "12px", minHeight: 44,
-              }}>
-                Open Market Watch first
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ─── STICKY BOTTOM BAR ─── */}
-      {!isPremium && (
-        <div style={{
-          position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 200,
-          background: "rgba(10,9,8,0.97)",
-          backdropFilter: "blur(14px)",
-          WebkitBackdropFilter: "blur(14px)",
-          borderTop: "1px solid rgba(224,174,45,0.20)",
-          padding: "10px 16px",
-          display: "flex", alignItems: "center", gap: 10,
-        }}>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 12, fontWeight: 800, color: "#E0AE2D", marginBottom: 1 }}>Start Winning With Neeko+</p>
-            <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)" }}>From ${NEEKO_PRICING.weekly.price}/wk</p>
-          </div>
-          <Link to="/neeko-plus" style={{
-            display: "flex", alignItems: "center", gap: 6,
-            background: "linear-gradient(160deg, #fad52a, #e09600)",
-            color: "#1a0900", fontWeight: 900, fontSize: 12,
-            padding: "10px 16px", borderRadius: 8, textDecoration: "none",
-            whiteSpace: "nowrap", minHeight: 40,
-          }}>
-            Get Started <ArrowRight size={12} />
-          </Link>
-        </div>
-      )}
-
       <style>{`
-        .mobile-card-scroll::-webkit-scrollbar { display: none; }
         .mobile-nav-scroll::-webkit-scrollbar { display: none; }
         @keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
         .live-dot { animation: livePulse 1.8s ease-in-out infinite; }

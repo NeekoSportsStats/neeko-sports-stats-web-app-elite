@@ -533,15 +533,7 @@ export default function Index() {
     return (
       <div style={{ background: "#0a0908", overflowX: "hidden" }}>
         {helmet}
-        <MobileLanding
-          loading={loading}
-          topRows={topRows}
-          mwBuys={mwData.buys}
-          mwSells={mwData.sells}
-          cards={mobileCards}
-          showSkeleton={showSkeleton}
-          isPremium={isPremium}
-        />
+        <MobileLanding isPremium={isPremium} />
       </div>
     );
   }
