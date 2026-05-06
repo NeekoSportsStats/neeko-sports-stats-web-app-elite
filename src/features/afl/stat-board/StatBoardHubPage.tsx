@@ -22,8 +22,9 @@ const MODES: ModeCard[] = [
   {
     icon: <BarChart2 size={18} />,
     title: "Team Stats",
-    status: "coming-soon",
-    copy: "Team totals, scoring trends and projected match output.",
+    status: "available",
+    copy: "Team scoring trends, hit rates and projections by match.",
+    href: "/stat-board/teams",
   },
   {
     icon: <Swords size={18} />,

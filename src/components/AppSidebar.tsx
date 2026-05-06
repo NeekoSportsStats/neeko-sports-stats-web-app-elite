@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 
 const STAT_BOARD_SUB_ITEMS = [
   { title: "Player Stats", url: "/stat-board/players", disabled: false },
-  { title: "Team Stats",   url: null,                  disabled: true },
+  { title: "Team Stats",   url: "/stat-board/teams",   disabled: false },
   { title: "Match Centre", url: null,                  disabled: true },
 ] as const;
 
