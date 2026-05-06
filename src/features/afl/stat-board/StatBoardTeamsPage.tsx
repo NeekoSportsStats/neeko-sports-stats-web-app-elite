@@ -64,7 +64,7 @@ function sortRowsForFixture(
 }
 
 const SORT_OPTIONS: { key: TeamSortKey; label: string }[] = [
-  { key: "fixture",     label: "Fixture order" },
+  { key: "fixture",     label: "Match order" },
   { key: "projection",  label: "Projection — high to low" },
   { key: "hit_rate",    label: "Hit rate — high to low" },
   { key: "recent_avg",  label: "Recent avg — high to low" },
@@ -310,10 +310,11 @@ export default function StatBoardTeamsPage() {
             </div>
           ) : (
             <div className="space-y-6 sm:space-y-8">
-              {fixtures.map((fixture) => (
+              {fixtures.map((fixture, fixtureIndex) => (
                 <FixtureSection
                   key={fixture.matchId}
                   fixture={fixture}
+                  index={fixtureIndex}
                   lens={lens}
                   thresholds={thresholds}
                   expandedTeamKey={expandedTeamKey}
@@ -455,6 +456,7 @@ function BoardSummaryStrip({
 
 interface FixtureSectionProps {
   fixture: FixtureGroup;
+  index: number;
   lens: TeamStatLens;
   thresholds: readonly number[];
   expandedTeamKey: string | null;
@@ -464,6 +466,7 @@ interface FixtureSectionProps {
 
 const FixtureSection = memo(function FixtureSection({
   fixture,
+  index,
   lens,
   thresholds,
   expandedTeamKey,
@@ -501,6 +504,11 @@ const FixtureSection = memo(function FixtureSection({
           <h2 className="text-[13.5px] font-bold text-white tracking-tight leading-none truncate">
             {teams ? `${teams.home} vs ${teams.away}` : matchLabel}
           </h2>
+          {!isLocked && index < 2 && (
+            <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide text-emerald-400/75 bg-emerald-500/8 border border-emerald-500/18 rounded px-1.5 py-0.5 leading-none">
+              Free preview
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1.5 flex-wrap shrink-0">
           {dateStr && (
@@ -548,7 +556,7 @@ const FixtureSection = memo(function FixtureSection({
                       {t}+ <span className="font-normal opacity-60">{unit}</span>
                     </th>
                   ))}
-                  <th className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">Consistency</th>
+                  <th className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap" title="Based on recent hit-rate stability for the selected stat.">Consistency</th>
                   <th className="pr-3 pl-1 py-2.5 w-8" />
                 </tr>
               </thead>

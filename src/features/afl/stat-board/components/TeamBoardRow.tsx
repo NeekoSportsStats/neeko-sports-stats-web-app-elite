@@ -737,7 +737,7 @@ function TeamAiSummary({
           <p className="text-[12px] text-white/60 leading-relaxed">{text}</p>
         ) : (
           <p className="text-[11px] text-white/28 italic">
-            Team summary will appear here once enough current-round data is available.
+            AI team summary not yet available for {row.team_name}.
           </p>
         )}
       </div>
@@ -934,6 +934,7 @@ function ExpandedTeamPanel({
             thresholds={thresholds}
             lens={lens}
             gameContexts={logLoading ? undefined : gameContexts}
+            height={72}
           />
         </div>
       )}
