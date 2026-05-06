@@ -269,61 +269,61 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
         onClick={onToggleExpand}
         aria-expanded={isExpanded}
         aria-label={`${player.player_name} — ${isExpanded ? "collapse" : "expand"} detail`}
-        className="w-full text-left px-4 pt-3.5 pb-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60"
+        className="w-full text-left px-3 pt-3 pb-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60"
       >
-        {/* ── Row 1: name + position + home/away badge + chevron ── */}
-        <div className="flex items-center justify-between gap-2 mb-2 min-w-0">
+        {/* ── Row 1: name + position + home/away badge + projection + chevron ── */}
+        <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className={`text-[14px] font-bold leading-tight truncate ${isExpanded ? "text-white" : "text-white/90"}`}>
+              <span className={`text-[13px] font-bold leading-tight truncate ${isExpanded ? "text-white" : "text-white/90"}`}>
                 {player.player_name}
               </span>
               {player.position_group && (
-                <span className="text-[9px] font-bold text-white/35 bg-white/8 rounded px-1.5 py-0.5 tracking-wide shrink-0">
+                <span className="text-[8px] font-bold text-white/30 bg-white/7 rounded px-1 py-0.5 tracking-wide shrink-0">
                   {player.position_group}
                 </span>
               )}
             </div>
             <div className="flex items-center gap-1 mt-0.5 min-w-0">
-              <span className="text-[11px] text-white/38 truncate">{player.team_name || "—"}</span>
+              <span className="text-[10px] text-white/35 truncate">{player.team_name || "—"}</span>
               {player.is_home === true && (
-                <span className="text-[9px] text-emerald-500/65 font-semibold bg-emerald-500/8 rounded px-1.5 py-0.5 leading-none shrink-0">H</span>
+                <span className="text-[8px] text-emerald-500/60 font-semibold bg-emerald-500/7 rounded px-1 py-0.5 leading-none shrink-0">H</span>
               )}
               {player.is_home === false && (
-                <span className="text-[9px] text-white/30 bg-white/5 rounded px-1.5 py-0.5 leading-none shrink-0">A</span>
+                <span className="text-[8px] text-white/28 bg-white/5 rounded px-1 py-0.5 leading-none shrink-0">A</span>
               )}
             </div>
           </div>
 
           {/* Projection + expand */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <div className="text-right">
-              <p className="text-[8px] text-white/28 uppercase tracking-wider leading-none mb-0.5">Proj</p>
+              <p className="text-[7px] text-white/25 uppercase tracking-wider leading-none mb-0.5">Proj</p>
               {isPlayerLocked ? (
-                <span className="text-[15px] font-bold text-white/20 select-none" aria-hidden>••</span>
+                <span className="text-[14px] font-bold text-white/20 select-none" aria-hidden>••</span>
               ) : projDisplay != null ? (
-                <span className="text-[18px] font-bold text-[#F5C84C] tabular-nums leading-none">{projDisplay}</span>
+                <span className="text-[17px] font-bold text-[#F5C84C] tabular-nums leading-none">{projDisplay}</span>
               ) : (
-                <span className="text-[13px] text-white/22">—</span>
+                <span className="text-[12px] text-white/22">—</span>
               )}
             </div>
             <span className={`
-              inline-flex items-center justify-center h-7 w-7 rounded-lg shrink-0
-              ${isExpanded ? "bg-white/12 text-white/80" : "text-white/30"}
+              inline-flex items-center justify-center h-6 w-6 rounded-lg shrink-0
+              ${isExpanded ? "bg-white/10 text-white/75" : "text-white/28"}
             `}>
               {isPlayerLocked ? (
-                <Lock className="h-3.5 w-3.5 text-[#F5C84C]/40" aria-hidden />
+                <Lock className="h-3 w-3 text-[#F5C84C]/40" aria-hidden />
               ) : isExpanded ? (
-                <ChevronUp className="h-4 w-4" aria-hidden />
+                <ChevronUp className="h-3.5 w-3.5" aria-hidden />
               ) : (
-                <ChevronDown className="h-4 w-4" aria-hidden />
+                <ChevronDown className="h-3.5 w-3.5" aria-hidden />
               )}
             </span>
           </div>
         </div>
 
-        {/* ── Row 2: recent chips — wrap instead of overflow-x-auto ── */}
-        <div className="flex items-center gap-[3px] mb-2.5 flex-wrap" role="list" aria-label="Recent results">
+        {/* ── Row 2: recent chips — wrap safely, smaller on tiny screens ── */}
+        <div className="flex items-center gap-[3px] mb-2 flex-wrap" role="list" aria-label="Recent results">
           {timeline != null ? (
             <TimelineChips slots={timeline} defaultThreshold={defaultThreshold} isLocked={isPlayerLocked} />
           ) : (
@@ -331,12 +331,12 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
           )}
         </div>
 
-        {/* ── Row 3: stats strip ── */}
-        <div className="flex items-stretch gap-0 border border-white/8 rounded-xl overflow-hidden w-full">
+        {/* ── Row 3: compact stats strip ── */}
+        <div className="flex items-stretch gap-0 border border-white/8 rounded-lg overflow-hidden w-full">
           {/* Recent avg */}
-          <div className="flex-1 px-2 py-2 border-r border-white/8 min-w-0">
-            <p className="text-[7.5px] text-white/28 uppercase tracking-wide leading-none mb-1">Avg</p>
-            <p className={`text-[12px] font-semibold tabular-nums leading-none ${last10Avg != null ? "text-white/70" : "text-white/22"}`}>
+          <div className="flex-1 px-1.5 py-1.5 border-r border-white/8 min-w-0">
+            <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">Avg</p>
+            <p className={`text-[11px] font-semibold tabular-nums leading-none ${last10Avg != null ? "text-white/68" : "text-white/22"}`}>
               {avgDisplay}
             </p>
           </div>
@@ -353,24 +353,24 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
               ? "text-emerald-400"
               : rate != null && rate >= 50
               ? "text-amber-400"
-              : "text-white/35";
+              : "text-white/32";
 
             return (
-              <div key={t} className={`flex-1 px-1.5 py-2 text-center min-w-0 ${isLast ? "" : "border-r border-white/8"}`}>
+              <div key={t} className={`flex-1 px-1 py-1.5 text-center min-w-0 ${isLast ? "" : "border-r border-white/8"}`}>
                 {isPlayerLocked ? (
                   <>
-                    <p className="text-[7.5px] text-white/28 uppercase tracking-wide leading-none mb-1">{t}+</p>
-                    <p className="text-[10px] text-white/18 select-none tabular-nums leading-none">—</p>
+                    <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">{t}+</p>
+                    <p className="text-[9px] text-white/18 select-none tabular-nums leading-none">—</p>
                   </>
                 ) : (
                   <>
-                    <p className="text-[7.5px] text-white/28 uppercase tracking-wide leading-none mb-1">{t}+</p>
+                    <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">{t}+</p>
                     {hasData && rate != null ? (
-                      <p className={`text-[11px] font-bold tabular-nums leading-none ${rateColor}`}>
+                      <p className={`text-[10px] font-bold tabular-nums leading-none ${rateColor}`}>
                         {rate > 0 ? `${rate}%` : "0%"}
                       </p>
                     ) : (
-                      <p className="text-[10px] text-white/22 leading-none">—</p>
+                      <p className="text-[9px] text-white/20 leading-none">—</p>
                     )}
                   </>
                 )}
@@ -379,15 +379,15 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
           })}
 
           {/* Consistency */}
-          <div className="flex-1 px-2 py-2 border-l border-white/8 min-w-0">
-            <p className="text-[7.5px] text-white/28 uppercase tracking-wide leading-none mb-1">Form</p>
+          <div className="flex-1 px-1.5 py-1.5 border-l border-white/8 min-w-0">
+            <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">Form</p>
             {!isPlayerLocked && conf && confidence ? (
               <div className="flex items-center gap-1">
                 <span className={`h-[5px] w-[5px] rounded-full shrink-0 ${conf.dot}`} aria-hidden />
-                <span className={`text-[10px] font-semibold leading-none ${conf.text}`}>{conf.label}</span>
+                <span className={`text-[9px] font-semibold leading-none ${conf.text}`}>{conf.label}</span>
               </div>
             ) : (
-              <p className="text-[10px] text-white/22 leading-none">—</p>
+              <p className="text-[9px] text-white/20 leading-none">—</p>
             )}
           </div>
         </div>
@@ -478,7 +478,7 @@ function MiniChips({
     return (
       <>
         {Array.from({ length: 5 }).map((_, i) => (
-          <span key={i} className="h-5 w-5 rounded bg-white/5 flex items-center justify-center text-[9px] text-white/18">
+          <span key={i} className="h-[18px] w-[18px] rounded bg-white/5 flex items-center justify-center text-[8px] text-white/18">
             —
           </span>
         ))}
@@ -498,7 +498,7 @@ function MiniChips({
             <span
               key={i}
               role="listitem"
-              className="h-5 min-w-[18px] px-0.5 rounded bg-white/5 text-[9px] font-medium text-white/18 flex items-center justify-center tabular-nums"
+              className="h-[18px] min-w-[16px] px-0.5 rounded bg-white/5 text-[8px] font-medium text-white/18 flex items-center justify-center tabular-nums"
             >
               {safeV ?? "—"}
             </span>
@@ -510,14 +510,14 @@ function MiniChips({
             key={i}
             role="listitem"
             aria-label={safeV != null ? String(safeV) : "no data"}
-            className={`h-5 min-w-[18px] px-0.5 rounded text-[9px] font-bold flex items-center justify-center tabular-nums transition-colors ${
+            className={`h-[18px] min-w-[16px] px-0.5 rounded text-[8px] font-bold flex items-center justify-center tabular-nums ${
               isNewest
                 ? hit
-                  ? "bg-emerald-500/30 text-emerald-300 ring-1 ring-emerald-400/40"
-                  : "bg-white/12 text-white/70 ring-1 ring-white/22"
+                  ? "bg-emerald-500/28 text-emerald-300 ring-1 ring-emerald-400/35"
+                  : "bg-white/10 text-white/65 ring-1 ring-white/18"
                 : hit
-                ? "bg-emerald-500/15 text-emerald-400/80"
-                : "bg-white/5 text-white/32"
+                ? "bg-emerald-500/14 text-emerald-400/75"
+                : "bg-white/5 text-white/30"
             }`}
           >
             {safeV ?? "—"}
@@ -543,7 +543,7 @@ function TimelineChips({
     return (
       <>
         {Array.from({ length: 5 }).map((_, i) => (
-          <span key={i} className="h-5 w-5 rounded bg-white/5 flex items-center justify-center text-[9px] text-white/18">
+          <span key={i} className="h-[18px] w-[18px] rounded bg-white/5 flex items-center justify-center text-[8px] text-white/18">
             —
           </span>
         ))}
@@ -563,7 +563,7 @@ function TimelineChips({
               role="listitem"
               aria-label={`Week ${slot.week}: BYE`}
               title="BYE week"
-              className="h-5 min-w-[22px] px-0.5 rounded bg-white/4 text-[7px] font-bold text-white/25 flex items-center justify-center tracking-wide border border-white/8"
+              className="h-[18px] min-w-[20px] px-0.5 rounded bg-white/4 text-[6.5px] font-bold text-white/22 flex items-center justify-center tracking-wide border border-white/7"
             >
               BYE
             </span>
@@ -577,7 +577,7 @@ function TimelineChips({
               role="listitem"
               aria-label={`Week ${slot.week}: DNP`}
               title="Did not play"
-              className="h-5 min-w-[22px] px-0.5 rounded bg-white/4 text-[7px] font-bold text-white/22 flex items-center justify-center tracking-wide border border-dashed border-white/12"
+              className="h-[18px] min-w-[20px] px-0.5 rounded bg-white/3 text-[6.5px] font-bold text-white/18 flex items-center justify-center tracking-wide border border-dashed border-white/10"
             >
               DNP
             </span>
@@ -592,7 +592,7 @@ function TimelineChips({
             <span
               key={i}
               role="listitem"
-              className="h-5 min-w-[18px] px-0.5 rounded bg-white/5 text-[9px] font-medium text-white/18 flex items-center justify-center tabular-nums"
+              className="h-[18px] min-w-[16px] px-0.5 rounded bg-white/5 text-[8px] font-medium text-white/18 flex items-center justify-center tabular-nums"
             >
               {safeV ?? "—"}
             </span>
@@ -604,14 +604,14 @@ function TimelineChips({
             key={i}
             role="listitem"
             aria-label={safeV != null ? String(safeV) : "no data"}
-            className={`h-5 min-w-[18px] px-0.5 rounded text-[9px] font-bold flex items-center justify-center tabular-nums transition-colors ${
+            className={`h-[18px] min-w-[16px] px-0.5 rounded text-[8px] font-bold flex items-center justify-center tabular-nums ${
               isNewest
                 ? hit
-                  ? "bg-emerald-500/30 text-emerald-300 ring-1 ring-emerald-400/40"
-                  : "bg-white/12 text-white/70 ring-1 ring-white/22"
+                  ? "bg-emerald-500/28 text-emerald-300 ring-1 ring-emerald-400/35"
+                  : "bg-white/10 text-white/65 ring-1 ring-white/18"
                 : hit
-                ? "bg-emerald-500/15 text-emerald-400/80"
-                : "bg-white/5 text-white/32"
+                ? "bg-emerald-500/14 text-emerald-400/75"
+                : "bg-white/5 text-white/30"
             }`}
           >
             {safeV ?? "—"}

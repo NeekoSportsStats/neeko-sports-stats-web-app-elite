@@ -46,12 +46,12 @@ export function ExpandedPlayerPanel({
 
   if (loading) {
     return (
-      <div className="border-t border-white/8 px-6 py-5 space-y-4" aria-busy aria-label="Loading player trend">
+      <div className="border-t border-white/8 px-4 sm:px-6 py-4 sm:py-5 space-y-3 sm:space-y-4" aria-busy aria-label="Loading player trend">
         <div className="h-2.5 w-36 rounded bg-white/6 animate-pulse" />
-        <div className="h-[140px] w-full rounded-2xl bg-white/4 animate-pulse" />
-        <div className="grid grid-cols-4 gap-2">
+        <div className="h-[120px] sm:h-[140px] w-full rounded-xl bg-white/4 animate-pulse" />
+        <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-12 rounded-xl bg-white/4 animate-pulse" />
+            <div key={i} className="h-10 sm:h-12 rounded-lg bg-white/4 animate-pulse" />
           ))}
         </div>
       </div>
@@ -60,7 +60,7 @@ export function ExpandedPlayerPanel({
 
   if (error) {
     return (
-      <div role="alert" className="border-t border-white/8 px-6 py-5 text-xs text-red-400/80">
+      <div role="alert" className="border-t border-white/8 px-4 sm:px-6 py-4 sm:py-5 text-xs text-red-400/80">
         Could not load trend data. Try expanding again.
       </div>
     );
@@ -159,22 +159,22 @@ export function ExpandedPlayerPanel({
     <div className="border-t border-white/8 bg-[#0c0c0c]">
 
       {/* ── 1. Compact context strip ────────────────────────────────────────── */}
-      <div className="px-5 py-2.5 flex items-center gap-3 flex-wrap border-b border-white/[0.06] bg-white/[0.015]">
+      <div className="px-3 sm:px-5 py-2 flex items-center gap-2 sm:gap-3 flex-wrap border-b border-white/[0.06] bg-white/[0.012]">
         {/* Metadata group — opponent + home/away + position */}
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 flex-wrap">
           {player.opponent_team_name ? (
-            <span className="text-[11px] text-white/45">
-              vs <span className="text-white/68 font-medium">{player.opponent_team_name}</span>
+            <span className="text-[10px] sm:text-[11px] text-white/42">
+              vs <span className="text-white/65 font-medium">{player.opponent_team_name}</span>
             </span>
           ) : null}
           {player.is_home === true && (
-            <span className="text-[9px] text-emerald-500/65 font-semibold bg-emerald-500/8 rounded px-1.5 py-0.5 leading-none">Home</span>
+            <span className="text-[8px] text-emerald-500/60 font-semibold bg-emerald-500/7 rounded px-1 sm:px-1.5 py-0.5 leading-none">Home</span>
           )}
           {player.is_home === false && (
-            <span className="text-[9px] text-white/30 bg-white/5 rounded px-1.5 py-0.5 leading-none">Away</span>
+            <span className="text-[8px] text-white/28 bg-white/5 rounded px-1 sm:px-1.5 py-0.5 leading-none">Away</span>
           )}
           {player.position_group && (
-            <span className="text-[9px] font-bold text-white/25 bg-white/5 rounded px-1.5 py-0.5 tracking-wide uppercase leading-none">
+            <span className="text-[8px] font-bold text-white/22 bg-white/5 rounded px-1 sm:px-1.5 py-0.5 tracking-wide uppercase leading-none">
               {player.position_group}
             </span>
           )}
@@ -183,16 +183,16 @@ export function ExpandedPlayerPanel({
         <div className="flex-1" />
 
         {/* Stats + actions group */}
-        <div className="flex items-center gap-4 shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
           <div className="text-center">
-            <p className="text-[9px] text-white/25 uppercase tracking-wide leading-none mb-1">Recent Avg</p>
-            <p className={`text-[13px] font-semibold tabular-nums leading-none ${fmt1(player.last_10_avg) === "—" ? "text-white/22" : "text-white/65"}`}>
+            <p className="text-[8px] sm:text-[9px] text-white/22 uppercase tracking-wide leading-none mb-0.5 sm:mb-1">Avg</p>
+            <p className={`text-[12px] sm:text-[13px] font-semibold tabular-nums leading-none ${fmt1(player.last_10_avg) === "—" ? "text-white/22" : "text-white/62"}`}>
               {fmt1(player.last_10_avg)}
             </p>
           </div>
           <div className="text-center">
-            <p className="text-[9px] text-white/25 uppercase tracking-wide leading-none mb-1">Proj</p>
-            <p className={`text-[15px] font-bold tabular-nums leading-none ${fmt1(player.projection) === "—" ? "text-white/22" : "text-[#F5C84C]"}`}>
+            <p className="text-[8px] sm:text-[9px] text-white/22 uppercase tracking-wide leading-none mb-0.5 sm:mb-1">Proj</p>
+            <p className={`text-[14px] sm:text-[15px] font-bold tabular-nums leading-none ${fmt1(player.projection) === "—" ? "text-white/22" : "text-[#F5C84C]"}`}>
               {fmt1(player.projection)}
             </p>
           </div>
@@ -201,26 +201,26 @@ export function ExpandedPlayerPanel({
           )}
           <Link
             to={`/sports/afl/players/${playerToSlug(player.player_name, player.team_name)}`}
-            className="flex items-center gap-1.5 text-[10px] font-semibold text-white/55 hover:text-white/85 bg-white/[0.05] hover:bg-white/[0.09] border border-white/10 hover:border-white/18 rounded-md px-2.5 py-1 transition-all whitespace-nowrap"
+            className="flex items-center gap-1 sm:gap-1.5 text-[9px] sm:text-[10px] font-semibold text-white/50 hover:text-white/82 bg-white/[0.045] hover:bg-white/[0.085] border border-white/9 hover:border-white/16 rounded-md px-2 sm:px-2.5 py-1 transition-all whitespace-nowrap"
             title={`View full profile for ${player.player_name}`}
           >
-            <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
-            View Profile
+            <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3 shrink-0" aria-hidden />
+            Profile
           </Link>
         </div>
       </div>
 
       {/* ── 2. No-data state ──────────────────────────────────────────────── */}
       {!hasAnyData && (
-        <div className="px-6 py-5 text-center text-[12px] text-white/28 italic">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 text-center text-[12px] text-white/28 italic">
           No recent game data available for this player.
         </div>
       )}
 
       {/* ── 3. Full-width chart ───────────────────────────────────────────── */}
       {hasAnyData && chartSlots.some((s) => s.value != null) && (
-        <section aria-label="Recent results chart" className="px-5 pt-3 pb-2">
-          <div className="flex items-center justify-between mb-2">
+        <section aria-label="Recent results chart" className="px-3 sm:px-5 pt-2.5 pb-1.5 sm:pb-2">
+          <div className="flex items-center justify-between mb-1.5 sm:mb-2">
             <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider">
               Recent
               <span className="ml-1.5 text-white/22 font-normal normal-case tracking-normal">
@@ -252,15 +252,15 @@ export function ExpandedPlayerPanel({
 
       {/* ── 4. Two-column summary row ─────────────────────────────────────── */}
       {hasPlayerStats && (
-        <div className="px-5 pt-1 pb-4 grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+        <div className="px-3 sm:px-5 pt-1 pb-3 sm:pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 items-start">
 
           <section aria-label="Stat averages">
-            <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider mb-2">Averages</p>
-            <div className="grid grid-cols-4 gap-1.5">
+            <p className="text-[9px] sm:text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-1.5 sm:mb-2">Averages</p>
+            <div className="grid grid-cols-4 gap-1 sm:gap-1.5">
               {summaryStats.map(({ label, value, muted }) => (
-                <div key={label} className="rounded-lg bg-white/[0.03] border border-white/[0.06] px-2 py-2.5 text-center">
-                  <p className="text-[8px] text-white/25 mb-1.5 uppercase tracking-wide leading-none">{label}</p>
-                  <p className={`text-[13px] font-bold tabular-nums leading-none ${muted ? "text-white/20" : "text-white/85"}`}>
+                <div key={label} className="rounded-lg bg-white/[0.03] border border-white/[0.05] px-1.5 sm:px-2 py-2 sm:py-2.5 text-center">
+                  <p className="text-[7px] sm:text-[8px] text-white/22 mb-1 sm:mb-1.5 uppercase tracking-wide leading-none">{label}</p>
+                  <p className={`text-[12px] sm:text-[13px] font-bold tabular-nums leading-none ${muted ? "text-white/18" : "text-white/82"}`}>
                     {value}
                   </p>
                 </div>
@@ -269,7 +269,7 @@ export function ExpandedPlayerPanel({
           </section>
 
           <section aria-label="Hit rate by threshold">
-            <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider mb-2">
+            <p className="text-[9px] sm:text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-1.5 sm:mb-2">
               {lens === "disposals" ? "Disposal" : "Goal"} hit rates
               {playedCount > 0 && (
                 <span className="ml-1.5 font-normal normal-case tracking-normal text-white/22">
@@ -372,7 +372,7 @@ function AiInsightBlock({
   // Loading skeleton
   if (loading) {
     return (
-      <section aria-label="AI performance summary" aria-busy className="px-5 pb-4">
+      <section aria-label="AI performance summary" aria-busy className="px-3 sm:px-5 pb-3 sm:pb-4">
         <div className="rounded-lg border border-white/8 bg-white/[0.018] px-4 py-3.5">
           <div className="flex items-center gap-1.5 mb-2.5">
             <Sparkles className="h-3 w-3 text-white/25" aria-hidden />
@@ -391,7 +391,7 @@ function AiInsightBlock({
   // No content — compact single-line placeholder, no box chrome
   if (!text) {
     return (
-      <div className="px-5 pb-3 flex items-center gap-1.5">
+      <div className="px-3 sm:px-5 pb-2.5 sm:pb-3 flex items-center gap-1.5">
         <Sparkles className="h-3 w-3 text-white/18 shrink-0" aria-hidden />
         <p className="text-[11px] text-white/25 italic">
           AI summary not yet available for {playerName}.
@@ -402,7 +402,7 @@ function AiInsightBlock({
 
   // Has content — full card
   return (
-    <section aria-label="AI performance summary" className="px-5 pb-4">
+    <section aria-label="AI performance summary" className="px-3 sm:px-5 pb-3 sm:pb-4">
       <div className="rounded-lg border border-white/8 bg-white/[0.018] px-4 py-3.5">
         <div className="flex items-center gap-1.5 mb-2.5">
           <Sparkles className="h-3 w-3 text-white/30" aria-hidden />
@@ -1028,10 +1028,10 @@ function GameLog({
   const playedRowCount = rows.filter((r) => r.rowType === "played").length;
 
   return (
-    <section aria-label="Game-by-game log" className="px-5 pb-4">
+    <section aria-label="Game-by-game log" className="px-3 sm:px-5 pb-3 sm:pb-4">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-2 mb-2 py-1 group rounded-md -mx-1 px-1 hover:bg-white/[0.03] transition-colors"
+        className="w-full flex items-center justify-between gap-2 mb-1.5 sm:mb-2 py-1 group rounded-md -mx-1 px-1 hover:bg-white/[0.03] transition-colors"
         aria-expanded={open}
       >
         <div className="flex items-center gap-1.5">
