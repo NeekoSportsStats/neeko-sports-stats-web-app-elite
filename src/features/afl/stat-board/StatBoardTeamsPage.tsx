@@ -13,7 +13,7 @@ import type {
   StatBoardTeamRow,
   TeamStatLens,
 } from "./teamTypes";
-import { teamThresholdsForLens, teamLensLabel } from "./teamTypes";
+import { teamThresholdsForLens, teamLensLabel, teamLensUnit } from "./teamTypes";
 import { TeamBoardRow, MobileTeamCard, LockedFixtureBlock } from "./components/TeamBoardRow";
 
 // ── Mobile detection ──────────────────────────────────────────────────────────
@@ -471,6 +471,7 @@ const FixtureSection = memo(function FixtureSection({
   onUnlockClick,
 }: FixtureSectionProps) {
   const isMobile = useIsMobile();
+  const unit = teamLensUnit(lens);
   const { homeRow, awayRow, isLocked, isFree, matchLabel, gameDate, venue } = fixture;
 
   // Format date
@@ -544,7 +545,7 @@ const FixtureSection = memo(function FixtureSection({
                   <th className="px-2 py-2.5 text-[10px] font-semibold text-[#F5C84C]/55 uppercase tracking-wider text-right whitespace-nowrap">Proj</th>
                   {thresholds.map((t) => (
                     <th key={t} className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">
-                      {t}+
+                      {t}+ <span className="font-normal opacity-60">{unit}</span>
                     </th>
                   ))}
                   <th className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">Consistency</th>
@@ -593,7 +594,7 @@ const FixtureSection = memo(function FixtureSection({
                 <th className="px-2 py-2.5 text-[10px] font-semibold text-[#F5C84C]/55 uppercase tracking-wider text-right whitespace-nowrap">Proj</th>
                 {thresholds.map((t) => (
                   <th key={t} className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">
-                    {t}+
+                    {t}+ <span className="font-normal opacity-60">{unit}</span>
                   </th>
                 ))}
                 <th className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">Consistency</th>
