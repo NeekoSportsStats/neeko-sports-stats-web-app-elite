@@ -151,7 +151,7 @@ export default function StatBoardHubPage() {
             lineHeight: 1.4,
           }}>
             <span style={{ fontWeight: 700, color: "rgba(255,255,255,0.60)" }}>How it works:</span>
-            {["Pick a round", "Choose Player Stats or Team Stats", "Compare recent trends, hit rates and projections"].map((step, i, arr) => (
+            {["Pick Player Stats or Team Stats", "Choose stat lens", "View trends, projections and hit rates"].map((step, i, arr) => (
               <span key={step} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span>{step}</span>
                 {i < arr.length - 1 && <span style={{ color: "rgba(255,255,255,0.22)" }}>→</span>}

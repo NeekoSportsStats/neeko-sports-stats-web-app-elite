@@ -683,7 +683,7 @@ export default function Index() {
               </div>
             ))}
           </div>
-          <div style={{ textAlign: "center", marginTop: 18 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
             <Link
               to="/stat-board/players"
               style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "#4ade80", textDecoration: "none", border: "1px solid rgba(34,197,94,0.28)", padding: "9px 18px", borderRadius: 9, background: "rgba(34,197,94,0.07)", transition: "all 0.15s ease" }}
@@ -691,6 +691,14 @@ export default function Index() {
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(34,197,94,0.07)"; }}
             >
               Open Stat Board <ArrowRight size={14} />
+            </Link>
+            <Link
+              to="/stat-board/teams"
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: "rgba(255,255,255,0.48)", textDecoration: "none", border: "1px solid rgba(255,255,255,0.10)", padding: "9px 16px", borderRadius: 9, background: "rgba(255,255,255,0.04)", transition: "all 0.15s ease" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.75)"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.48)"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
+            >
+              Team Stats
             </Link>
           </div>
         </div>
