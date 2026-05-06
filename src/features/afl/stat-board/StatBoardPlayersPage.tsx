@@ -372,6 +372,7 @@ export default function StatBoardPlayersPage() {
           ) : (
             <div className="space-y-8">
               <TeamBoard
+                matchId={selectedMatch?.match_id ?? null}
                 teamName={selectedMatch?.home_team_name ?? "Home"}
                 opponentName={selectedMatch?.away_team_name ?? "Away"}
                 players={homePlayers}
@@ -384,6 +385,7 @@ export default function StatBoardPlayersPage() {
                 searchActive={search.trim().length > 0}
               />
               <TeamBoard
+                matchId={selectedMatch?.match_id ?? null}
                 teamName={selectedMatch?.away_team_name ?? "Away"}
                 opponentName={selectedMatch?.home_team_name ?? "Home"}
                 players={awayPlayers}
@@ -689,6 +691,7 @@ function SortDropdown({
 const TOP_N = 8;
 
 interface TeamBoardProps {
+  matchId: number | null;
   teamName: string;
   opponentName: string;
   players: StatBoardPlayer[];
@@ -702,6 +705,7 @@ interface TeamBoardProps {
 }
 
 const TeamBoard = memo(function TeamBoard({
+  matchId,
   teamName,
   opponentName,
   players,
@@ -722,16 +726,17 @@ const TeamBoard = memo(function TeamBoard({
     if (showAll) setShowAll(false);
   }
 
-  if (players.length === 0) return null;
-
-  const isHome: boolean | null = players[0]?.is_home ?? null;
-
+  // useMemo must be called unconditionally — before any early return
   const needsCap = !searchActive && players.length > TOP_N;
   const isCapped = needsCap && !showAll;
   const visiblePlayers = useMemo(
     () => (isCapped ? players.slice(0, TOP_N) : players),
     [players, isCapped]
   );
+
+  if (players.length === 0) return null;
+
+  const isHome: boolean | null = players[0]?.is_home ?? null;
   const totalCount = players.length;
   const hiddenCount = totalCount - TOP_N;
 
@@ -802,7 +807,7 @@ const TeamBoard = memo(function TeamBoard({
           <tbody>
             {visiblePlayers.map((player) => (
               <BoardRow
-                key={player.player_id}
+                key={`${matchId ?? 0}-${player.player_id}`}
                 player={player}
                 lens={lens}
                 thresholds={thresholds}
