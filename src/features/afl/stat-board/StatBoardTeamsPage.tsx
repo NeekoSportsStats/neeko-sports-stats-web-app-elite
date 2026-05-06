@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, memo, useSyncExternalStore } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
-import { ChevronDown, Lock } from "lucide-react";
+import { ChevronDown, Lock, Check } from "lucide-react";
 import { track } from "@/lib/analytics";
 
 import {
@@ -14,7 +14,6 @@ import type {
   TeamStatLens,
 } from "./teamTypes";
 import { teamThresholdsForLens, teamLensLabel } from "./teamTypes";
-import { TeamMatchSelector } from "./components/TeamMatchSelector";
 import { TeamBoardRow, MobileTeamCard } from "./components/TeamBoardRow";
 
 // ── Mobile detection ──────────────────────────────────────────────────────────
@@ -32,13 +31,18 @@ function useIsMobile() {
 
 // ── Sort ──────────────────────────────────────────────────────────────────────
 
-type TeamSortKey = "projection" | "hit_rate" | "recent_avg" | "name" | "consistency";
+type TeamSortKey = "fixture" | "projection" | "hit_rate" | "recent_avg" | "consistency";
 
 const CONSISTENCY_ORDER: Record<string, number> = {
   "VERY HIGH": 0, HIGH: 1, MEDIUM: 2, LOW: 3, UNKNOWN: 4,
 };
 
-function sortRows(rows: StatBoardTeamRow[], sortKey: TeamSortKey, topThreshold: number): StatBoardTeamRow[] {
+function sortRowsForFixture(
+  rows: StatBoardTeamRow[],
+  sortKey: TeamSortKey,
+  topThreshold: number,
+): StatBoardTeamRow[] {
+  if (sortKey === "fixture") return rows; // preserve RPC order (fixture order)
   return [...rows].sort((a, b) => {
     switch (sortKey) {
       case "projection":
@@ -50,8 +54,6 @@ function sortRows(rows: StatBoardTeamRow[], sortKey: TeamSortKey, topThreshold: 
       }
       case "recent_avg":
         return (Number(b.recent_avg_l5) || 0) - (Number(a.recent_avg_l5) || 0);
-      case "name":
-        return a.team_name.localeCompare(b.team_name);
       case "consistency":
         return (CONSISTENCY_ORDER[a.consistency_label ?? "UNKNOWN"] ?? 4) -
                (CONSISTENCY_ORDER[b.consistency_label ?? "UNKNOWN"] ?? 4);
@@ -61,89 +63,126 @@ function sortRows(rows: StatBoardTeamRow[], sortKey: TeamSortKey, topThreshold: 
   });
 }
 
-function sortButtonLabel(key: TeamSortKey): string {
-  switch (key) {
-    case "projection":  return "Projection ↓";
-    case "hit_rate":    return "Hit rate ↓";
-    case "recent_avg":  return "Recent avg ↓";
-    case "name":        return "Name A–Z";
-    case "consistency": return "Consistency ↓";
-  }
-}
+const SORT_OPTIONS: { key: TeamSortKey; label: string }[] = [
+  { key: "fixture",     label: "Fixture order" },
+  { key: "projection",  label: "Projection — high to low" },
+  { key: "hit_rate",    label: "Hit rate — high to low" },
+  { key: "recent_avg",  label: "Recent avg — high to low" },
+  { key: "consistency", label: "Consistency — best first" },
+];
 
 // ── Lens config ───────────────────────────────────────────────────────────────
 
 const LENSES: TeamStatLens[] = ["score", "goals", "scoring_shots", "disposals"];
 
+// ── Fixture grouping ──────────────────────────────────────────────────────────
+
+interface FixtureGroup {
+  matchId: number;
+  matchOrder: number;
+  matchLabel: string;
+  gameDate: string;
+  venue: string;
+  isLocked: boolean;
+  isFree: boolean;
+  homeRow: StatBoardTeamRow | null;
+  awayRow: StatBoardTeamRow | null;
+}
+
+function groupRowsByFixture(rows: StatBoardTeamRow[]): FixtureGroup[] {
+  const map = new Map<number, FixtureGroup>();
+  for (const row of rows) {
+    const existing = map.get(row.match_id);
+    if (!existing) {
+      map.set(row.match_id, {
+        matchId:    row.match_id,
+        matchOrder: row.match_order,
+        matchLabel: row.match_label,
+        gameDate:   row.game_date,
+        venue:      row.venue,
+        isLocked:   row.is_locked,
+        isFree:     row.is_free_match,
+        homeRow:    row.is_home ? row : null,
+        awayRow:    row.is_home ? null : row,
+      });
+    } else {
+      if (row.is_home) existing.homeRow = row;
+      else existing.awayRow = row;
+    }
+  }
+  // Sort by match_order (fixture order)
+  return Array.from(map.values()).sort((a, b) => a.matchOrder - b.matchOrder);
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function StatBoardTeamsPage() {
-  const [selectedMatch, setSelectedMatch] = useState<StatBoardTeamMatch | null>(null);
+  // null = all matches for the round; number = specific match filter
+  const [matchFilter, setMatchFilter] = useState<number | null>(null);
   const [lens, setLens] = useState<TeamStatLens>("score");
-  const [sortKey, setSortKey] = useState<TeamSortKey>("projection");
+  const [sortKey, setSortKey] = useState<TeamSortKey>("fixture");
   const [sortOpen, setSortOpen] = useState(false);
-  const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
+  const [expandedTeamKey, setExpandedTeamKey] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const { matches, loading: matchesLoading, error: matchesError } = useStatBoardTeamMatches();
 
+  // Always fetch — null matchFilter = full round
   const { rows, loading: rowsLoading, error: rowsError } = useStatBoardTeamRows({
-    matchId: selectedMatch?.match_id ?? null,
+    matchId: matchFilter,
     lens,
   });
 
-  // Auto-select first available match
-  useEffect(() => {
-    if (matches.length === 0 || selectedMatch !== null) return;
-    const maxWeek = Math.max(...matches.map((m) => m.week));
-    const latestRound = matches.filter((m) => m.week === maxWeek);
-    const defaultMatch =
-      latestRound.find((m) => m.is_free_match && m.match_order === 1) ??
-      latestRound.find((m) => m.is_free_match) ??
-      latestRound[0] ??
-      matches[0];
-    setSelectedMatch(defaultMatch);
-  }, [matches, selectedMatch]);
-
   function handleLensChange(newLens: TeamStatLens) {
     setLens(newLens);
-    setSortKey("projection");
-    setExpandedTeamId(null);
+    setExpandedTeamKey(null);
     track("Stat Board Team Lens Change", { lens: newLens });
   }
 
-  function handleMatchChange(match: StatBoardTeamMatch) {
-    setSelectedMatch(match);
-    setExpandedTeamId(null);
-    track("Stat Board Team Match Change", { match_id: match.match_id, match_label: match.match_label });
+  function handleMatchFilter(id: number | null) {
+    setMatchFilter(id);
+    setExpandedTeamKey(null);
+    track("Stat Board Team Match Filter", { match_id: id });
   }
 
   const handleToggleExpand = useCallback((key: string | null) => {
-    setExpandedTeamId(key);
+    setExpandedTeamKey(key);
   }, []);
 
   useEffect(() => {
     track("Page View", { path: "/stat-board/teams" });
   }, []);
 
-  const thresholds = teamThresholdsForLens(lens);
+  const thresholds  = teamThresholdsForLens(lens);
   const topThreshold = thresholds[0];
-  const isLocked = selectedMatch?.is_locked ?? false;
 
-  // Split into home / away sides of the selected match
-  const { homeRows, awayRows } = useMemo(() => {
-    if (!selectedMatch) return { homeRows: [], awayRows: [] };
-    const home: StatBoardTeamRow[] = [];
-    const away: StatBoardTeamRow[] = [];
-    for (const r of rows) {
-      if (r.team_id === selectedMatch.home_team_id) home.push(r);
-      else away.push(r);
-    }
-    return {
-      homeRows: sortRows(home, sortKey, topThreshold),
-      awayRows: sortRows(away, sortKey, topThreshold),
-    };
-  }, [rows, selectedMatch, sortKey, topThreshold]);
+  // Viewing label
+  const roundLabel = matches[0]?.round_label ?? "";
+  const totalTeams = rows.length;
+  const selectedMatchObj = matchFilter !== null
+    ? matches.find((m) => m.match_id === matchFilter) ?? null
+    : null;
+
+  const viewingLabel = selectedMatchObj
+    ? `${selectedMatchObj.match_label} · ${teamLensLabel(lens)} · 2 teams`
+    : roundLabel
+    ? `${roundLabel === "OR" ? "Opening Round" : `Round ${roundLabel.replace("R", "")}`} · ${teamLensLabel(lens)} · ${totalTeams} teams`
+    : `${teamLensLabel(lens)} · ${totalTeams} teams`;
+
+  // Group rows into fixtures, then apply sort within each fixture
+  const fixtures: FixtureGroup[] = useMemo(() => {
+    const groups = groupRowsByFixture(rows);
+    if (sortKey === "fixture") return groups;
+    // For non-fixture sorts, still keep fixture groupings but sort rows inside
+    return groups.map((g) => {
+      const both = [g.homeRow, g.awayRow].filter(Boolean) as StatBoardTeamRow[];
+      const sorted = sortRowsForFixture(both, sortKey, topThreshold);
+      return { ...g, homeRow: sorted[0] ?? null, awayRow: sorted[1] ?? null };
+    });
+  }, [rows, sortKey, topThreshold]);
+
+  const hasMatchFilter = matchFilter !== null;
+  const isMatchLocked = selectedMatchObj?.is_locked ?? false;
 
   return (
     <>
@@ -151,7 +190,7 @@ export default function StatBoardTeamsPage() {
         <title>AFL Team Stat Board | Hit Rates &amp; Projections</title>
         <meta
           name="description"
-          content="Compare every AFL team's recent scoring trends, hit rates and projections by match."
+          content="Compare every AFL team's recent scoring trends, hit rates and projections for the round."
         />
       </Helmet>
 
@@ -169,28 +208,28 @@ export default function StatBoardTeamsPage() {
           <div className="mb-4 sm:mb-5">
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white">AFL Team Stat Board</h1>
             <p className="mt-1 text-sm text-white/50 max-w-xl leading-relaxed hidden sm:block">
-              Pick a match, choose a stat lens, and compare each team's recent trends, hit rates and projections.
+              Compare every team's scoring trends, hit rates and projections for the round.
             </p>
           </div>
 
-          {/* Match selector */}
-          {matchesError ? (
-            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-              Could not load matches. Please try refreshing.
-            </div>
-          ) : (
-            <TeamMatchSelector
-              matches={matches}
-              selected={selectedMatch}
-              loading={matchesLoading}
-              onChange={handleMatchChange}
-            />
-          )}
+          {/* Controls row */}
+          <div className="mb-3 flex items-start gap-2 flex-wrap">
+            {/* Match filter dropdown */}
+            {matchesError ? (
+              <div className="text-xs text-red-400 border border-red-500/30 bg-red-500/10 rounded-lg px-3 py-2">
+                Could not load matches
+              </div>
+            ) : (
+              <MatchFilterDropdown
+                matches={matches}
+                selected={matchFilter}
+                loading={matchesLoading}
+                onChange={handleMatchFilter}
+              />
+            )}
 
-          {/* Controls: lens toggle + sort */}
-          <div className="mb-3 flex items-center gap-2 flex-wrap">
-            {/* Lens toggle */}
-            <div className="flex gap-0.5 rounded-lg bg-white/5 border border-white/8 p-0.5 shrink-0 flex-wrap">
+            {/* Lens tabs */}
+            <div className="flex gap-0.5 rounded-lg bg-white/5 border border-white/8 p-0.5 flex-wrap">
               {LENSES.map((l) => (
                 <button
                   key={l}
@@ -206,16 +245,16 @@ export default function StatBoardTeamsPage() {
               ))}
             </div>
 
-            {/* Sort dropdown */}
-            <div className="relative shrink-0 ml-auto">
+            {/* Sort */}
+            <div className="relative ml-auto shrink-0">
               <button
                 onClick={() => setSortOpen((v) => !v)}
-                className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/8 px-2.5 py-1.5 text-[12px] font-medium text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 whitespace-nowrap"
+                className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/8 px-2.5 py-1.5 text-[12px] font-medium text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors focus:outline-none whitespace-nowrap"
                 aria-haspopup="listbox"
                 aria-expanded={sortOpen}
               >
-                <span className="text-white/32 text-[11px] hidden sm:inline">Sort:</span>
-                <span className="text-white/72">{sortButtonLabel(sortKey)}</span>
+                <span className="text-white/30 text-[11px] hidden sm:inline">Sort:</span>
+                <span className="text-white/72">{SORT_OPTIONS.find((o) => o.key === sortKey)?.label ?? "—"}</span>
                 <ChevronDown className={`h-3 w-3 text-white/30 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
               </button>
               {sortOpen && (
@@ -228,8 +267,24 @@ export default function StatBoardTeamsPage() {
             </div>
           </div>
 
-          {/* Locked banner */}
-          {isLocked && (
+          {/* Viewing label */}
+          {!rowsLoading && rows.length > 0 && (
+            <div className="mb-4 flex items-center gap-1.5 text-[11.5px] text-white/38">
+              <span className="text-white/22 text-[10.5px]">Viewing:</span>
+              <span>{viewingLabel}</span>
+              {hasMatchFilter && (
+                <button
+                  onClick={() => handleMatchFilter(null)}
+                  className="ml-1 text-[10px] font-semibold text-white/35 bg-white/6 border border-white/10 rounded px-1.5 py-0.5 hover:text-white/60 hover:bg-white/10 transition-colors leading-none"
+                >
+                  Clear filter
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Locked match banner (only when a specific locked match is filtered) */}
+          {hasMatchFilter && isMatchLocked && (
             <div className="mb-4 flex items-start gap-3 rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/5 px-4 py-3.5">
               <Lock className="h-4 w-4 shrink-0 text-[#F5C84C] mt-0.5" />
               <div className="flex-1 min-w-0">
@@ -256,26 +311,42 @@ export default function StatBoardTeamsPage() {
 
           {/* Board */}
           {rowsLoading ? (
-            <TeamBoardSkeleton thresholdCount={thresholds.length} />
-          ) : rows.length === 0 && selectedMatch ? (
+            <TeamBoardSkeleton thresholdCount={thresholds.length} fixtureCount={hasMatchFilter ? 1 : 4} />
+          ) : fixtures.length === 0 ? (
             <div className="rounded-2xl border border-white/8 bg-white/[0.025] px-6 py-10 text-center">
               <p className="text-[15px] font-semibold text-white/75 mb-1.5">No team data found</p>
               <p className="text-[13px] text-white/38 max-w-xs mx-auto leading-relaxed">
-                Data may not be available for this match yet.
+                Data may not be available for this round yet.
               </p>
             </div>
           ) : (
-            <div className="space-y-5 sm:space-y-8">
-              <MatchSection
-                match={selectedMatch}
-                homeRows={homeRows}
-                awayRows={awayRows}
-                lens={lens}
-                thresholds={thresholds}
-                isMatchLocked={isLocked}
-                expandedTeamId={expandedTeamId}
-                onToggleExpand={handleToggleExpand}
-              />
+            <div className="space-y-6 sm:space-y-8">
+              {fixtures.map((fixture) => (
+                <FixtureSection
+                  key={fixture.matchId}
+                  fixture={fixture}
+                  lens={lens}
+                  thresholds={thresholds}
+                  expandedTeamKey={expandedTeamKey}
+                  onToggleExpand={handleToggleExpand}
+                  onUnlockClick={() => navigate("/neeko-plus")}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Freemium footer note when showing all fixtures */}
+          {!rowsLoading && !hasMatchFilter && fixtures.length > 0 && (
+            <div className="mt-8 flex items-center gap-3 text-[11px] text-white/28 px-1">
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/60" />
+                Free match
+              </span>
+              <span className="text-white/15">·</span>
+              <span className="flex items-center gap-1.5">
+                <Lock className="h-2.5 w-2.5 text-[#F5C84C]/45" />
+                Neeko+ required
+              </span>
             </div>
           )}
 
@@ -290,83 +361,96 @@ export default function StatBoardTeamsPage() {
   );
 }
 
-// ── Match section ─────────────────────────────────────────────────────────────
+// ── Fixture section ───────────────────────────────────────────────────────────
 
-interface MatchSectionProps {
-  match: StatBoardTeamMatch | null;
-  homeRows: StatBoardTeamRow[];
-  awayRows: StatBoardTeamRow[];
+interface FixtureSectionProps {
+  fixture: FixtureGroup;
   lens: TeamStatLens;
   thresholds: readonly number[];
-  isMatchLocked: boolean;
-  expandedTeamId: string | null;
+  expandedTeamKey: string | null;
   onToggleExpand: (key: string | null) => void;
+  onUnlockClick: () => void;
 }
 
-const MatchSection = memo(function MatchSection({
-  match,
-  homeRows,
-  awayRows,
+const FixtureSection = memo(function FixtureSection({
+  fixture,
   lens,
   thresholds,
-  isMatchLocked,
-  expandedTeamId,
+  expandedTeamKey,
   onToggleExpand,
-}: MatchSectionProps) {
+  onUnlockClick,
+}: FixtureSectionProps) {
   const isMobile = useIsMobile();
-  const allRows = [...homeRows, ...awayRows];
-  if (allRows.length === 0 || !match) return null;
+  const { homeRow, awayRow, isLocked, isFree, matchLabel, gameDate, venue } = fixture;
 
-  const teamHeader = (label: string, opponentLabel: string, isHome: boolean) => (
-    <div className="mb-2 flex items-center gap-2 flex-wrap">
-      <h2 className="text-[14px] font-bold text-white tracking-tight leading-none shrink-0">{label}</h2>
-      <div className="flex items-center gap-1.5">
-        {isHome ? (
-          <span className="text-[9px] font-bold text-emerald-400/70 bg-emerald-500/8 border border-emerald-500/15 rounded-full px-1.5 py-0.5 leading-none">
-            Home
-          </span>
-        ) : (
-          <span className="text-[9px] font-bold text-white/35 bg-white/5 border border-white/10 rounded-full px-1.5 py-0.5 leading-none">
-            Away
-          </span>
-        )}
-        <span className="text-[10px] text-white/28 leading-none">vs {opponentLabel}</span>
-      </div>
-    </div>
-  );
+  // Format date
+  const dateStr = gameDate
+    ? new Date(gameDate).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })
+    : null;
 
-  const renderTeam = (rows: StatBoardTeamRow[], isHome: boolean) => {
-    if (rows.length === 0) return null;
-    const teamName = isHome ? match.home_team_name : match.away_team_name;
-    const oppName  = isHome ? match.away_team_name : match.home_team_name;
+  const venueShort = venue
+    ? venue.replace(/ Stadium$/i, "").replace(/ Ground$/i, "").replace(/ Oval$/i, "").replace(/ Park$/i, "").trim()
+    : null;
 
-    if (isMobile) {
-      return (
-        <div className="w-full min-w-0">
-          {teamHeader(teamName, oppName, isHome)}
-          <div className="flex flex-col gap-2 w-full min-w-0">
-            {rows.map((row) => {
-              const key = `${row.match_id}-${row.team_id}`;
-              return (
-                <MobileTeamCard
-                  key={key}
-                  row={row}
-                  lens={lens}
-                  thresholds={thresholds}
-                  isMatchLocked={isMatchLocked}
-                  isExpanded={expandedTeamId === key}
-                  onToggleExpand={() => onToggleExpand(expandedTeamId === key ? null : key)}
-                />
-              );
-            })}
-          </div>
+  const teams = parseMatchLabel(matchLabel);
+
+  const rows = [homeRow, awayRow].filter(Boolean) as StatBoardTeamRow[];
+  if (rows.length === 0) return null;
+
+  return (
+    <div>
+      {/* Fixture header */}
+      <div className="mb-2 flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 min-w-0">
+          {isFree ? (
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500/65" aria-hidden />
+          ) : isLocked ? (
+            <Lock className="h-3 w-3 shrink-0 text-[#F5C84C]/50" aria-label="Neeko+ required" />
+          ) : null}
+          <h2 className="text-[13.5px] font-bold text-white tracking-tight leading-none truncate">
+            {teams ? `${teams.home} vs ${teams.away}` : matchLabel}
+          </h2>
         </div>
-      );
-    }
+        <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+          {dateStr && (
+            <span className="text-[10px] text-white/30">{dateStr}</span>
+          )}
+          {venueShort && (
+            <span className="text-[10px] text-white/22 hidden sm:inline">
+              <span className="text-white/12 mx-1">·</span>{venueShort}
+            </span>
+          )}
+          {isLocked && (
+            <button
+              onClick={onUnlockClick}
+              className="text-[9.5px] font-bold text-[#F5C84C]/70 bg-[#F5C84C]/8 border border-[#F5C84C]/18 rounded px-1.5 py-0.5 hover:bg-[#F5C84C]/14 transition-colors leading-none whitespace-nowrap"
+            >
+              Unlock
+            </button>
+          )}
+        </div>
+        <div className="flex-1 h-px bg-white/[0.06] ml-1 hidden sm:block" />
+      </div>
 
-    return (
-      <div>
-        {teamHeader(teamName, oppName, isHome)}
+      {/* Team rows */}
+      {isMobile ? (
+        <div className="flex flex-col gap-2 w-full min-w-0">
+          {rows.map((row) => {
+            const key = `${row.match_id}-${row.team_id}`;
+            return (
+              <MobileTeamCard
+                key={key}
+                row={row}
+                lens={lens}
+                thresholds={thresholds}
+                isMatchLocked={isLocked}
+                isExpanded={expandedTeamKey === key}
+                onToggleExpand={() => onToggleExpand(expandedTeamKey === key ? null : key)}
+              />
+            );
+          })}
+        </div>
+      ) : (
         <div className="overflow-x-auto rounded-xl border border-white/10 bg-[#0d0d0d]">
           <table className="w-full border-collapse text-left" style={{ minWidth: "640px" }}>
             <thead>
@@ -376,10 +460,7 @@ const MatchSection = memo(function MatchSection({
                 <th className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-right whitespace-nowrap">L5 Avg</th>
                 <th className="px-2 py-2.5 text-[10px] font-semibold text-[#F5C84C]/55 uppercase tracking-wider text-right whitespace-nowrap">Proj</th>
                 {thresholds.map((t) => (
-                  <th
-                    key={t}
-                    className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap"
-                  >
+                  <th key={t} className="px-2 py-2.5 text-[10px] font-semibold text-white/38 uppercase tracking-wider text-center whitespace-nowrap">
                     {t}+
                   </th>
                 ))}
@@ -396,27 +477,213 @@ const MatchSection = memo(function MatchSection({
                     row={row}
                     lens={lens}
                     thresholds={thresholds}
-                    isMatchLocked={isMatchLocked}
-                    isExpanded={expandedTeamId === key}
-                    onToggleExpand={() => onToggleExpand(expandedTeamId === key ? null : key)}
+                    isMatchLocked={isLocked}
+                    isExpanded={expandedTeamKey === key}
+                    onToggleExpand={() => onToggleExpand(expandedTeamKey === key ? null : key)}
                   />
                 );
               })}
             </tbody>
           </table>
         </div>
-        <div className="h-px" />
-      </div>
-    );
-  };
-
-  return (
-    <div className="space-y-5 sm:space-y-8">
-      {renderTeam(homeRows, true)}
-      {renderTeam(awayRows, false)}
+      )}
     </div>
   );
 });
+
+// ── Match filter dropdown ─────────────────────────────────────────────────────
+
+interface MatchFilterDropdownProps {
+  matches: StatBoardTeamMatch[];
+  selected: number | null;
+  loading: boolean;
+  onChange: (id: number | null) => void;
+}
+
+function MatchFilterDropdown({ matches, selected, loading, onChange }: MatchFilterDropdownProps) {
+  const [open, setOpen] = useState(false);
+  const containerRef = { current: null as HTMLDivElement | null };
+  const triggerRef = { current: null as HTMLButtonElement | null };
+  const [dropUp, setDropUp] = useState(false);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, []);
+
+  function handleOpen() {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropUp(window.innerHeight - rect.bottom < 320);
+    }
+    setOpen((v) => !v);
+  }
+
+  if (loading) {
+    return <div className="h-9 w-44 rounded-xl bg-white/5 border border-white/8 animate-pulse" />;
+  }
+  if (matches.length === 0) return null;
+
+  const selectedMatch = selected !== null ? matches.find((m) => m.match_id === selected) ?? null : null;
+  const triggerText = selectedMatch
+    ? formatMatchShort(selectedMatch.match_label)
+    : "All matches";
+
+  const roundLabel = matches[0]?.round_label ?? "";
+  const roundFull = roundLabel === "OR" ? "Opening Round" : `Round ${roundLabel.replace("R", "")}`;
+
+  return (
+    <div
+      ref={(el) => { containerRef.current = el; }}
+      className="relative shrink-0"
+    >
+      <button
+        ref={(el) => { triggerRef.current = el; }}
+        onClick={handleOpen}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition-all duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 whitespace-nowrap
+          ${open
+            ? "bg-white/8 border-white/18 text-white"
+            : "bg-white/[0.045] border-white/10 text-white/80 hover:bg-white/7 hover:border-white/16 hover:text-white/95"
+          }`}
+      >
+        {selectedMatch?.is_locked ? (
+          <Lock className="h-3 w-3 text-[#F5C84C]/55 shrink-0" />
+        ) : selectedMatch?.is_free_match ? (
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/80 shrink-0" />
+        ) : (
+          <span className="h-1.5 w-1.5 rounded-full bg-white/20 shrink-0" />
+        )}
+        <span className="text-[12.5px] font-semibold leading-none">{triggerText}</span>
+        <ChevronDown
+          className={`h-3.5 w-3.5 shrink-0 text-white/30 transition-transform duration-150 ml-1 ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label="Filter by match"
+          style={{
+            animation: "mfDropIn 120ms cubic-bezier(0.2,0,0,1) forwards",
+            ...(dropUp
+              ? { bottom: "calc(100% + 6px)", top: "auto" }
+              : { top: "calc(100% + 6px)", bottom: "auto" }),
+          }}
+          className="absolute left-0 z-50 w-[280px] max-w-[calc(100vw-2rem)] rounded-2xl border border-white/12 bg-[#111111] shadow-2xl shadow-black/70 overflow-hidden"
+        >
+          <style>{`
+            @keyframes mfDropIn {
+              from { opacity: 0; transform: translateY(-6px); }
+              to   { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
+
+          {/* "All matches" option */}
+          <button
+            role="option"
+            aria-selected={selected === null}
+            onClick={() => { onChange(null); setOpen(false); }}
+            className={`w-full flex items-center gap-3 px-3.5 py-3 text-left transition-colors duration-75 border-b border-white/[0.06]
+              ${selected === null ? "bg-white/[0.09]" : "hover:bg-white/[0.05]"}`}
+          >
+            <span className="w-5 h-5 flex items-center justify-center shrink-0">
+              {selected === null ? (
+                <Check className="h-3.5 w-3.5 text-emerald-400" />
+              ) : (
+                <span className="h-2 w-2 rounded-full bg-white/20" />
+              )}
+            </span>
+            <div>
+              <p className="text-[12.5px] font-semibold text-white/90 leading-tight">All matches</p>
+              <p className="text-[10px] text-white/30 mt-0.5">{roundFull} · {matches.length} fixtures</p>
+            </div>
+          </button>
+
+          {/* Individual matches */}
+          <div className="px-3.5 pt-2.5 pb-1 flex items-center gap-2">
+            <span className="text-[9.5px] font-bold text-white/25 uppercase tracking-widest shrink-0">
+              {roundFull}
+            </span>
+            <div className="flex-1 h-px bg-white/[0.06]" />
+          </div>
+
+          <div className="overflow-y-auto overscroll-contain pb-1.5" style={{ maxHeight: "min(320px, calc(100vh - 200px))" }}>
+            {matches.map((m) => {
+              const isSel = selected === m.match_id;
+              const teams = parseMatchLabel(m.match_label);
+              const dateStr = m.game_date
+                ? new Date(m.game_date).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })
+                : null;
+              return (
+                <button
+                  key={m.match_id}
+                  role="option"
+                  aria-selected={isSel}
+                  onClick={() => { onChange(m.match_id); setOpen(false); }}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-left transition-colors duration-75
+                    ${isSel
+                      ? "bg-white/[0.09]"
+                      : m.is_locked
+                      ? "hover:bg-white/[0.035] opacity-80 hover:opacity-100"
+                      : "hover:bg-white/[0.055]"
+                    }`}
+                >
+                  <span className="w-5 h-5 flex items-center justify-center shrink-0">
+                    {isSel ? (
+                      <Check className="h-3.5 w-3.5 text-emerald-400" />
+                    ) : m.is_locked ? (
+                      <Lock className="h-3 w-3 text-[#F5C84C]/45" />
+                    ) : (
+                      <span className="h-2 w-2 rounded-full bg-emerald-500/55" />
+                    )}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-[12.5px] font-semibold leading-tight truncate ${isSel ? "text-white" : m.is_locked ? "text-white/50" : "text-white/80"}`}>
+                      {teams ? `${teams.home} vs ${teams.away}` : m.match_label}
+                    </p>
+                    {dateStr && (
+                      <p className="text-[10px] text-white/28 mt-0.5 leading-none">{dateStr}</p>
+                    )}
+                  </div>
+                  {m.is_free_match && !isSel && (
+                    <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide text-emerald-500/70 bg-emerald-500/8 rounded px-1.5 py-0.5 leading-none">
+                      Free
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Legend */}
+          <div className="px-3.5 py-2 border-t border-white/[0.07] bg-white/[0.015] flex items-center gap-3">
+            <span className="flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 shrink-0" />
+              <span className="text-[10px] text-white/28">Free</span>
+            </span>
+            <span className="text-white/12">·</span>
+            <span className="flex items-center gap-1.5">
+              <Lock className="h-2.5 w-2.5 text-[#F5C84C]/40 shrink-0" />
+              <span className="text-[10px] text-white/28">Neeko+ required</span>
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ── Sort dropdown ─────────────────────────────────────────────────────────────
 
@@ -438,22 +705,14 @@ function SortDropdown({
     return () => document.removeEventListener("mousedown", handler);
   }, [onClose]);
 
-  const options: { key: TeamSortKey; label: string }[] = [
-    { key: "projection",  label: "Projection — high to low" },
-    { key: "hit_rate",    label: "Hit rate — high to low" },
-    { key: "recent_avg",  label: "Recent avg — high to low" },
-    { key: "name",        label: "Name — A to Z" },
-    { key: "consistency", label: "Consistency — best first" },
-  ];
-
   return (
     <div
       data-sort-dropdown
       role="listbox"
       aria-label="Sort options"
-      className="absolute right-0 top-full z-50 mt-1 w-52 max-w-[calc(100vw-2rem)] rounded-xl border border-white/10 bg-[#141414] shadow-2xl overflow-hidden"
+      className="absolute right-0 top-full z-50 mt-1 w-56 max-w-[calc(100vw-2rem)] rounded-xl border border-white/10 bg-[#141414] shadow-2xl overflow-hidden"
     >
-      {options.map((opt) => (
+      {SORT_OPTIONS.map((opt) => (
         <button
           key={opt.key}
           role="option"
@@ -474,14 +733,18 @@ function SortDropdown({
 
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 
-function TeamBoardSkeleton({ thresholdCount }: { thresholdCount: number }) {
+function TeamBoardSkeleton({ thresholdCount, fixtureCount }: { thresholdCount: number; fixtureCount: number }) {
   const colCount = 4 + thresholdCount + 2;
   return (
     <div className="space-y-8">
-      {[0, 1].map((g) => (
+      {Array.from({ length: fixtureCount }).map((_, g) => (
         <div key={g}>
-          <div className="h-4 w-32 rounded-lg bg-white/6 mb-3 animate-pulse" />
-          <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#0d0d0d]">
+          {/* Fixture header */}
+          <div className="flex items-center gap-2 mb-2">
+            <div className="h-3.5 w-48 rounded-md bg-white/6 animate-pulse" />
+            <div className="h-px flex-1 bg-white/[0.05]" />
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-white/10 bg-[#0d0d0d]">
             <table className="w-full border-collapse" style={{ minWidth: "640px" }}>
               <thead>
                 <tr className="border-b border-white/10 bg-[#0f0f0f]">
@@ -497,16 +760,12 @@ function TeamBoardSkeleton({ thresholdCount }: { thresholdCount: number }) {
                   <tr key={i} className="border-b border-white/[0.06] last:border-b-0">
                     <td className="pl-4 pr-2 py-3">
                       <div className="h-3 w-28 rounded bg-white/6 animate-pulse mb-1" />
-                      <div className="h-2 w-20 rounded bg-white/4 animate-pulse" />
+                      <div className="h-2 w-16 rounded bg-white/4 animate-pulse" />
                     </td>
                     <td className="px-2 py-3">
                       <div className="flex gap-[3px] items-end justify-center">
                         {Array.from({ length: 6 }).map((_, j) => (
-                          <div
-                            key={j}
-                            style={{ height: 12 + j * 3 }}
-                            className="w-[14px] rounded-sm bg-white/4 animate-pulse"
-                          />
+                          <div key={j} style={{ height: 12 + j * 3 }} className="w-[14px] rounded-sm bg-white/4 animate-pulse" />
                         ))}
                       </div>
                     </td>
@@ -526,3 +785,17 @@ function TeamBoardSkeleton({ thresholdCount }: { thresholdCount: number }) {
   );
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function parseMatchLabel(label: string): { home: string; away: string } | null {
+  const m = label.match(/^(.+?)\s+v(?:s\.?)?\s+(.+)$/i);
+  if (!m) return null;
+  const abbrev = (name: string) => name.replace(/ (Football Club|F\.?C\.?|AFC)$/i, "").trim();
+  return { home: abbrev(m[1].trim()), away: abbrev(m[2].trim()) };
+}
+
+function formatMatchShort(label: string): string {
+  const teams = parseMatchLabel(label);
+  if (!teams) return label;
+  return `${teams.home} vs ${teams.away}`;
+}

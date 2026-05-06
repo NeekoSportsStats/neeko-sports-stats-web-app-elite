@@ -39,27 +39,29 @@ export function useStatBoardTeamMatches() {
 // ── Team Rows ─────────────────────────────────────────────────────────────────
 
 interface UseStatBoardTeamRowsOptions {
+  // null = all matches in the round; number = specific match only
   matchId: number | null;
   lens: TeamStatLens;
 }
 
 export function useStatBoardTeamRows({ matchId, lens }: UseStatBoardTeamRowsOptions) {
   const [rows, setRows] = useState<StatBoardTeamRow[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
-    if (!supabase || matchId === null) return;
+    if (!supabase) { setError("Supabase not initialised"); setLoading(false); return; }
     setLoading(true);
     setError(null);
 
+    // matchId=null → pass null to get all teams for the current round
     const { data, error: err } = await supabase.rpc("get_stat_board_team_rows", {
-      p_season: SEASON,
-      p_round: null,
-      p_match_id: matchId,
-      p_lens: lens,
-      p_limit: 36,
-      p_offset: 0,
+      p_season:   SEASON,
+      p_round:    null,
+      p_match_id: matchId,   // null = whole round
+      p_lens:     lens,
+      p_limit:    36,
+      p_offset:   0,
     });
 
     if (err) {
