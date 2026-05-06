@@ -8,6 +8,7 @@ import {
   useStatBoardMatches,
   useStatBoardPlayers,
 } from "./useStatBoard";
+import { useStatBoardAccess } from "./useStatBoardAccess";
 import type {
   StatBoardMatch,
   StatBoardPlayer,
@@ -105,6 +106,8 @@ export default function StatBoardPlayersPage() {
   const [stickyVisible, setStickyVisible] = useState(false);
   const controlsRef = useRef<HTMLDivElement>(null);
 
+  const { hasFullAccess } = useStatBoardAccess("players");
+
   const threshold = defaultThreshold(lens);
   const thresholds = thresholdsForLens(lens);
 
@@ -123,14 +126,16 @@ export default function StatBoardPlayersPage() {
     if (matches.length === 0 || selectedMatch !== null) return;
     const maxWeek = Math.max(...matches.map((m) => m.week));
     const latestRound = matches.filter((m) => m.week === maxWeek);
-    const defaultMatch =
-      latestRound.find((m) => m.is_free_match && m.match_order === 1) ??
-      latestRound.find((m) => m.is_free_match) ??
-      latestRound.find((m) => m.match_order === 1) ??
-      latestRound[0] ??
-      matches[matches.length - 1];
+    // Premium users: always start on match_order=1 regardless of lock status
+    const defaultMatch = hasFullAccess
+      ? (latestRound.find((m) => m.match_order === 1) ?? latestRound[0] ?? matches[matches.length - 1])
+      : (latestRound.find((m) => m.is_free_match && m.match_order === 1) ??
+         latestRound.find((m) => m.is_free_match) ??
+         latestRound.find((m) => m.match_order === 1) ??
+         latestRound[0] ??
+         matches[matches.length - 1]);
     setSelectedMatch(defaultMatch);
-  }, [matches, selectedMatch]);
+  }, [matches, selectedMatch, hasFullAccess]);
 
   // Sticky controls: show when controls div scrolls above viewport
   useEffect(() => {
@@ -180,7 +185,8 @@ export default function StatBoardPlayersPage() {
     track("Page View", { path: "/stat-board/players" });
   }, []);
 
-  const isLocked = selectedMatch?.is_locked ?? false;
+  // Premium users see all matches unlocked; is_locked is a DB hint for free users only
+  const isLocked = hasFullAccess ? false : (selectedMatch?.is_locked ?? false);
   const navigate = useNavigate();
 
   return (

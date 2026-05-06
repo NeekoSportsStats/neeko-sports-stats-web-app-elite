@@ -8,6 +8,7 @@ import {
   useStatBoardTeamMatches,
   useStatBoardTeamRows,
 } from "./useStatBoardTeams";
+import { useStatBoardAccess } from "./useStatBoardAccess";
 import type {
   StatBoardTeamMatch,
   StatBoardTeamRow,
@@ -125,6 +126,8 @@ export default function StatBoardTeamsPage() {
   const [expandedTeamKey, setExpandedTeamKey] = useState<string | null>(null);
   const navigate = useNavigate();
 
+  const { hasFullAccess } = useStatBoardAccess("teams");
+
   const { matches, loading: matchesLoading, error: matchesError } = useStatBoardTeamMatches();
 
   // Always fetch — null matchFilter = full round
@@ -218,6 +221,7 @@ export default function StatBoardTeamsPage() {
                 selected={matchFilter}
                 loading={matchesLoading}
                 onChange={handleMatchFilter}
+                hasFullAccess={hasFullAccess}
               />
             )}
 
@@ -272,8 +276,8 @@ export default function StatBoardTeamsPage() {
             />
           )}
 
-          {/* Locked match banner (only when a specific locked match is filtered) */}
-          {hasMatchFilter && isMatchLocked && (
+          {/* Locked match banner (only when a specific locked match is filtered and user is not premium) */}
+          {hasMatchFilter && isMatchLocked && !hasFullAccess && (
             <div className="mb-4 flex items-start gap-3 rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/5 px-4 py-3.5">
               <Lock className="h-4 w-4 shrink-0 text-[#F5C84C] mt-0.5" />
               <div className="flex-1 min-w-0">
@@ -320,13 +324,14 @@ export default function StatBoardTeamsPage() {
                   expandedTeamKey={expandedTeamKey}
                   onToggleExpand={handleToggleExpand}
                   onUnlockClick={() => navigate("/neeko-plus")}
+                  hasFullAccess={hasFullAccess}
                 />
               ))}
             </div>
           )}
 
           {/* Freemium footer note when showing all fixtures */}
-          {!rowsLoading && !hasMatchFilter && fixtures.length > 0 && (
+          {!rowsLoading && !hasMatchFilter && fixtures.length > 0 && !hasFullAccess && (
             <div className="mt-8 flex items-center gap-3 text-[11px] text-white/28 px-1">
               <span className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/60" />
@@ -414,7 +419,7 @@ function BoardSummaryStrip({
     items.push(
       <span key="free" className="flex items-center gap-1.5 whitespace-nowrap">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 shrink-0" aria-hidden />
-        <span className="text-[11px] font-semibold text-emerald-500/80">First 2 matches free</span>
+        <span className="text-[11px] font-semibold text-emerald-500/80">First 4 matches free</span>
       </span>
     );
   }
@@ -462,6 +467,7 @@ interface FixtureSectionProps {
   expandedTeamKey: string | null;
   onToggleExpand: (key: string | null) => void;
   onUnlockClick: () => void;
+  hasFullAccess: boolean;
 }
 
 const FixtureSection = memo(function FixtureSection({
@@ -472,10 +478,13 @@ const FixtureSection = memo(function FixtureSection({
   expandedTeamKey,
   onToggleExpand,
   onUnlockClick,
+  hasFullAccess,
 }: FixtureSectionProps) {
   const isMobile = useIsMobile();
   const unit = teamLensUnit(lens);
-  const { homeRow, awayRow, isLocked, isFree, matchLabel, gameDate, venue } = fixture;
+  const { homeRow, awayRow, isFree, matchLabel, gameDate, venue } = fixture;
+  // Premium users always see fixtures as unlocked
+  const isLocked = hasFullAccess ? false : fixture.isLocked;
 
   // Format date
   const dateStr = gameDate
@@ -504,7 +513,7 @@ const FixtureSection = memo(function FixtureSection({
           <h2 className="text-[13.5px] font-bold text-white tracking-tight leading-none truncate">
             {teams ? `${teams.home} vs ${teams.away}` : matchLabel}
           </h2>
-          {!isLocked && index < 2 && (
+          {!isLocked && !hasFullAccess && index < 4 && (
             <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide text-emerald-400/75 bg-emerald-500/8 border border-emerald-500/18 rounded px-1.5 py-0.5 leading-none">
               Free preview
             </span>
@@ -640,9 +649,10 @@ interface MatchFilterDropdownProps {
   selected: number | null;
   loading: boolean;
   onChange: (id: number | null) => void;
+  hasFullAccess: boolean;
 }
 
-function MatchFilterDropdown({ matches, selected, loading, onChange }: MatchFilterDropdownProps) {
+function MatchFilterDropdown({ matches, selected, loading, onChange, hasFullAccess }: MatchFilterDropdownProps) {
   const [open, setOpen] = useState(false);
   const containerRef = { current: null as HTMLDivElement | null };
   const triggerRef = { current: null as HTMLButtonElement | null };
@@ -700,7 +710,7 @@ function MatchFilterDropdown({ matches, selected, loading, onChange }: MatchFilt
             : "bg-white/[0.045] border-white/10 text-white/80 hover:bg-white/7 hover:border-white/16 hover:text-white/95"
           }`}
       >
-        {selectedMatch?.is_locked ? (
+        {!hasFullAccess && selectedMatch?.is_locked ? (
           <Lock className="h-3 w-3 text-[#F5C84C]/55 shrink-0" />
         ) : selectedMatch?.is_free_match ? (
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/80 shrink-0" />
@@ -777,7 +787,7 @@ function MatchFilterDropdown({ matches, selected, loading, onChange }: MatchFilt
                   className={`w-full flex items-center gap-3 px-3.5 py-2.5 text-left transition-colors duration-75
                     ${isSel
                       ? "bg-white/[0.09]"
-                      : m.is_locked
+                      : !hasFullAccess && m.is_locked
                       ? "hover:bg-white/[0.035] opacity-80 hover:opacity-100"
                       : "hover:bg-white/[0.055]"
                     }`}
@@ -785,14 +795,14 @@ function MatchFilterDropdown({ matches, selected, loading, onChange }: MatchFilt
                   <span className="w-5 h-5 flex items-center justify-center shrink-0">
                     {isSel ? (
                       <Check className="h-3.5 w-3.5 text-emerald-400" />
-                    ) : m.is_locked ? (
+                    ) : !hasFullAccess && m.is_locked ? (
                       <Lock className="h-3 w-3 text-[#F5C84C]/45" />
                     ) : (
                       <span className="h-2 w-2 rounded-full bg-emerald-500/55" />
                     )}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-[12.5px] font-semibold leading-tight truncate ${isSel ? "text-white" : m.is_locked ? "text-white/50" : "text-white/80"}`}>
+                    <p className={`text-[12.5px] font-semibold leading-tight truncate ${isSel ? "text-white" : (!hasFullAccess && m.is_locked) ? "text-white/50" : "text-white/80"}`}>
                       {teams ? `${teams.home} vs ${teams.away}` : m.match_label}
                     </p>
                     {dateStr && (
@@ -815,11 +825,15 @@ function MatchFilterDropdown({ matches, selected, loading, onChange }: MatchFilt
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 shrink-0" />
               <span className="text-[10px] text-white/28">Free</span>
             </span>
-            <span className="text-white/12">·</span>
-            <span className="flex items-center gap-1.5">
-              <Lock className="h-2.5 w-2.5 text-[#F5C84C]/40 shrink-0" />
-              <span className="text-[10px] text-white/28">Neeko+ required</span>
-            </span>
+            {!hasFullAccess && (
+              <>
+                <span className="text-white/12">·</span>
+                <span className="flex items-center gap-1.5">
+                  <Lock className="h-2.5 w-2.5 text-[#F5C84C]/40 shrink-0" />
+                  <span className="text-[10px] text-white/28">Neeko+ required</span>
+                </span>
+              </>
+            )}
           </div>
         </div>
       )}
