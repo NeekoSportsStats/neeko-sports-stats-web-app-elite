@@ -7,9 +7,10 @@ interface Props {
   selected: StatBoardMatch | null;
   loading: boolean;
   onChange: (match: StatBoardMatch) => void;
+  hasFullAccess?: boolean;
 }
 
-export function MatchSelector({ matches, selected, loading, onChange }: Props) {
+export function MatchSelector({ matches, selected, loading, onChange, hasFullAccess = false }: Props) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -57,7 +58,7 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
 
   const groups = groupByRound(matches);
 
-  const selectedIsLocked = selected?.is_locked ?? false;
+  const selectedIsLocked = hasFullAccess ? false : (selected?.is_locked ?? false);
   const selectedIsFree   = selected ? !selectedIsLocked : false;
 
   // Trigger: "R9 · Fremantle Dockers vs Hawthorn Hawks"
@@ -172,6 +173,7 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
                       key={match.match_id}
                       match={match}
                       isSelected={isSelected}
+                      hasFullAccess={hasFullAccess}
                       onClick={() => {
                         onChange(match);
                         close();
@@ -183,18 +185,20 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
             ))}
           </div>
 
-          {/* Legend footer */}
-          <div className="px-3.5 py-2 border-t border-white/[0.07] bg-white/[0.015] flex items-center gap-3">
-            <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 shrink-0" aria-hidden />
-              <span className="text-[10px] text-white/28">Free</span>
-            </span>
-            <span className="text-white/12">·</span>
-            <span className="flex items-center gap-1.5">
-              <Lock className="h-2.5 w-2.5 text-[#F5C84C]/40 shrink-0" aria-hidden />
-              <span className="text-[10px] text-white/28">Neeko+ required</span>
-            </span>
-          </div>
+          {/* Legend footer — only shown to free/unauthenticated users */}
+          {!hasFullAccess && (
+            <div className="px-3.5 py-2 border-t border-white/[0.07] bg-white/[0.015] flex items-center gap-3">
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 shrink-0" aria-hidden />
+                <span className="text-[10px] text-white/28">Free</span>
+              </span>
+              <span className="text-white/12">·</span>
+              <span className="flex items-center gap-1.5">
+                <Lock className="h-2.5 w-2.5 text-[#F5C84C]/40 shrink-0" aria-hidden />
+                <span className="text-[10px] text-white/28">Neeko+ required</span>
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -206,12 +210,16 @@ export function MatchSelector({ matches, selected, loading, onChange }: Props) {
 function MatchOption({
   match,
   isSelected,
+  hasFullAccess,
   onClick,
 }: {
   match: StatBoardMatch;
   isSelected: boolean;
+  hasFullAccess: boolean;
   onClick: () => void;
 }) {
+  const isLocked = hasFullAccess ? false : match.is_locked;
+  const isFree   = hasFullAccess ? true  : match.is_free_match;
   const dateStr = match.game_date
     ? new Date(match.game_date).toLocaleDateString("en-AU", {
         weekday: "short",
@@ -234,7 +242,7 @@ function MatchOption({
         focus-visible:bg-white/8
         ${isSelected
           ? "bg-white/[0.09]"
-          : match.is_locked
+          : isLocked
           ? "hover:bg-white/[0.035] opacity-80 hover:opacity-100"
           : "hover:bg-white/[0.055]"}
       `}
@@ -243,7 +251,7 @@ function MatchOption({
       <span className="shrink-0 w-5 h-5 flex items-center justify-center rounded-md">
         {isSelected ? (
           <Check className="h-3.5 w-3.5 text-emerald-400" aria-hidden />
-        ) : match.is_free_match ? (
+        ) : isFree ? (
           <span className="h-2 w-2 rounded-full bg-emerald-500/55" aria-hidden />
         ) : (
           <Lock className="h-3 w-3 text-[#F5C84C]/45" aria-hidden />
@@ -254,7 +262,7 @@ function MatchOption({
       <div className="flex-1 min-w-0">
         {teams ? (
           <p className={`text-[12.5px] font-semibold leading-tight truncate ${
-            isSelected ? "text-white" : match.is_locked ? "text-white/50" : "text-white/80"
+            isSelected ? "text-white" : isLocked ? "text-white/50" : "text-white/80"
           }`}>
             {teams.home}
             <span className="mx-1.5 font-normal text-white/25 text-[11px]">vs</span>
@@ -262,7 +270,7 @@ function MatchOption({
           </p>
         ) : (
           <p className={`text-[12.5px] font-semibold leading-tight truncate ${
-            isSelected ? "text-white" : match.is_locked ? "text-white/50" : "text-white/80"
+            isSelected ? "text-white" : isLocked ? "text-white/50" : "text-white/80"
           }`}>
             {match.match_label}
           </p>
@@ -286,8 +294,8 @@ function MatchOption({
         </span>
       )}
 
-      {/* FREE badge */}
-      {match.is_free_match && !isSelected && (
+      {/* FREE badge — only for free users on free matches */}
+      {isFree && !isSelected && !hasFullAccess && (
         <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide text-emerald-500/70 bg-emerald-500/8 rounded px-1.5 py-0.5 leading-none">
           Free
         </span>

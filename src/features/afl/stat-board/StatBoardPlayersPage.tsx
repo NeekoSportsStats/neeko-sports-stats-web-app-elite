@@ -212,6 +212,7 @@ export default function StatBoardPlayersPage() {
             search={search}
             sortKey={sortKey}
             sortOpen={sortOpen}
+            hasFullAccess={hasFullAccess}
             onMatchChange={handleMatchChange}
             onLensChange={handleLensChange}
             onPositionChange={setPositionFilter}
@@ -241,6 +242,7 @@ export default function StatBoardPlayersPage() {
               selected={selectedMatch}
               loading={matchesLoading}
               onChange={handleMatchChange}
+              hasFullAccess={hasFullAccess}
             />
           )}
 
@@ -445,6 +447,7 @@ interface StickyControlsBarProps {
   search: string;
   sortKey: SortKey;
   sortOpen: boolean;
+  hasFullAccess: boolean;
   onMatchChange: (m: StatBoardMatch) => void;
   onLensChange: (l: StatLens) => void;
   onPositionChange: (p: PositionFilter) => void;
@@ -462,6 +465,7 @@ function StickyControlsBar({
   search,
   sortKey,
   sortOpen,
+  hasFullAccess,
   onMatchChange,
   onLensChange,
   onPositionChange,
@@ -483,6 +487,7 @@ function StickyControlsBar({
             selected={selectedMatch}
             loading={matchesLoading}
             onChange={onMatchChange}
+            hasFullAccess={hasFullAccess}
           />
         </div>
 
