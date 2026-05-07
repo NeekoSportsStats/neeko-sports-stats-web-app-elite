@@ -45,7 +45,7 @@ function usePreviewData(): PreviewData {
           supabase.rpc("get_rankings_updated_at"),
         ]);
         if (cancelled) return;
-        const rows: RankingRow[] = (rankingsRes.data ?? []).map(mapRankingRow).map(applyDecisionFields);
+        const rows: RankingRow[] = applyDecisionFields((rankingsRes.data ?? []).map(mapRankingRow));
         setRawRows(rows);
         if (roundRes.data && Array.isArray(roundRes.data) && roundRes.data.length > 0) {
           const d = roundRes.data[0] as { round_label?: string };
