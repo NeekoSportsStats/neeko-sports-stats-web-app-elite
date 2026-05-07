@@ -237,7 +237,7 @@ const TeamRow = memo(function TeamRow({
           <div className={`text-[11px] font-semibold leading-none ${confidenceColor(row.confidence_label)}`}>
             {row.confidence_label ?? "—"}
           </div>
-          <div className="text-[9px] text-white/22 leading-none mt-0.5">conf.</div>
+          <div className="text-[9px] text-white/22 leading-none mt-0.5">Confidence</div>
         </div>
       </div>
     </div>
@@ -517,18 +517,18 @@ function MatchNarrativeSection({
 
   return (
     <div>
-      <SectionHeader icon={<Zap className="h-3.5 w-3.5" />} title="Match Summary" />
+      <SectionHeader icon={<TrendingUp className="h-3.5 w-3.5" />} title="Match Summary" />
       {hasLowSample && (
         <div className="mb-2.5 inline-flex items-center gap-1.5 rounded-md bg-amber-400/[0.07] border border-amber-400/15 px-2.5 py-1">
           <span className="text-[10px] font-semibold text-amber-400/65">Limited recent sample</span>
         </div>
       )}
       {narrative ? (
-        <p className="text-[12.5px] text-white/50 leading-[1.75]">
+        <p className="text-[13px] text-white/62 leading-[1.8]">
           {narrative}
         </p>
       ) : (
-        <p className="text-[12px] text-white/28 italic">
+        <p className="text-[12px] text-white/30 italic">
           AI match summary not yet available for this fixture.
         </p>
       )}
@@ -597,9 +597,9 @@ function ExpandedPanel({
         </div>
       </div>
 
-      {/* 2 · Recent scoring profile ─────────────────────────────────────── */}
+      {/* 2 · Team Scoring Profile ─────────────────────────────────────── */}
       <div className="px-4 py-4">
-        <SectionHeader icon={<TrendingUp className="h-3.5 w-3.5" />} title="Recent Scoring Profile" />
+        <SectionHeader icon={<TrendingUp className="h-3.5 w-3.5" />} title="Team Scoring Profile" />
         <ComparisonTable
           homeLabel={home}
           awayLabel={away}
@@ -609,20 +609,20 @@ function ExpandedPanel({
         />
       </div>
 
-      {/* 3 · Matchup context ────────────────────────────────────────────── */}
+      {/* 3 · Match Context ────────────────────────────────────────────── */}
       <div className="px-4 py-4">
-        <SectionHeader icon={<Zap className="h-3.5 w-3.5" />} title="Matchup Context" />
+        <SectionHeader icon={<Zap className="h-3.5 w-3.5" />} title="Match Context" />
         <StatEnvironmentSection homeRow={homeRow} awayRow={awayRow} />
       </div>
 
-      {/* 4 · Match narrative ────────────────────────────────────────────── */}
+      {/* 4 · Match Summary ────────────────────────────────────────────── */}
       <div className="px-4 py-4">
         <MatchNarrativeSection homeRow={homeRow} awayRow={awayRow} />
       </div>
 
-      {/* 5 · Drill-down ─────────────────────────────────────────────────── */}
+      {/* 5 · Drill Down ─────────────────────────────────────────────────── */}
       <div className="px-4 py-4">
-        <SectionHeader icon={<ArrowUpRight className="h-3.5 w-3.5" />} title="Drill-down" />
+        <SectionHeader icon={<ArrowUpRight className="h-3.5 w-3.5" />} title="Drill Down" />
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <Link
             to={`/stat-board/players?match_id=${fixture.matchId}`}
@@ -702,7 +702,7 @@ function LockedFixture({
       {/* CTA */}
       <div className="px-4 py-3 border-t border-white/[0.05] flex items-center justify-between gap-3">
         <p className="text-[11px] text-white/28 leading-snug">
-          Projected total, projected margin and match trends locked.
+          Unlock projected totals, margin lean, team trends and full match context.
         </p>
         <button
           onClick={onUpgrade}
