@@ -82,7 +82,7 @@ export const BoardRow = memo(function BoardRow({
   const thresholdLength = thresholds.length;
 
   const expandedContent = isExpanded ? (
-    <div className="overflow-hidden border-l-[3px] border-emerald-500/30">
+    <div className="overflow-hidden border-l-[3px] border-emerald-500/30" style={{ contain: "layout" }}>
       <LazyExpandedContent
         player={player}
         lens={lens}
@@ -395,7 +395,10 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
 
       {/* ── Expanded detail — no animation, no transforms on mobile ── */}
       {isExpanded && !isPlayerLocked && (
-        <div className="mobile-expanded-panel border-t border-white/[0.08] bg-[#0c0c0c] border-l-[3px] border-l-emerald-500/30">
+        <div
+          className="mobile-expanded-panel border-t border-white/[0.08] bg-[#0c0c0c] border-l-[3px] border-l-emerald-500/30"
+          style={{ contain: "layout", overscrollBehavior: "contain" }}
+        >
           <LazyExpandedContent
             player={player}
             lens={lens}

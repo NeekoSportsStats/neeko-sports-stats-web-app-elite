@@ -537,6 +537,7 @@ function MultiThresholdChart({
   return (
     <div
       className="w-full relative"
+      style={{ touchAction: isMobile ? "pan-y" : undefined }}
       onMouseLeave={() => {
         if (isMobile) return;
         if (moveRafRef.current !== null) { cancelAnimationFrame(moveRafRef.current); moveRafRef.current = null; }
@@ -741,8 +742,8 @@ function MultiThresholdChart({
                   );
                 });
               }}
-              onTouchStart={!isMobile ? undefined : (e) => {
-                e.preventDefault();
+              onTouchEnd={!isMobile ? undefined : (e) => {
+                e.stopPropagation();
                 setHovered((prev) =>
                   prev?.slotIndex === i
                     ? null
@@ -1010,6 +1011,7 @@ function GameLog({
   loading: boolean;
 }) {
   // On mobile, game log is collapsed by default to reduce DOM and improve scroll performance.
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(() => typeof window !== "undefined" && window.innerWidth >= 768);
 
   if (rows.length === 0) {
@@ -1057,8 +1059,8 @@ function GameLog({
           </button>
         </p>
       )}
-      {open && <div className="rounded-lg border border-white/8 overflow-x-auto">
-        <table className="w-full text-[11px]" role="table" style={{ minWidth: "640px" }}>
+      {open && <div className={`rounded-lg border border-white/8 ${isMobile ? "overflow-x-hidden" : "overflow-x-auto"}`}>
+        <table className="w-full text-[11px]" role="table" style={isMobile ? undefined : { minWidth: "640px" }}>
           <thead>
             <tr className="border-b border-white/8 bg-white/[0.02]">
               <th className="text-left px-3 py-2 text-white/28 font-medium w-10 shrink-0" scope="col">Week</th>

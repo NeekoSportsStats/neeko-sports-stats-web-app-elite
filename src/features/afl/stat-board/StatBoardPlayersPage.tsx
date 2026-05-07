@@ -199,27 +199,27 @@ export default function StatBoardPlayersPage() {
         />
       </Helmet>
 
-      {/* Sticky controls bar — appears when inline controls scroll out of view */}
-      {stickyVisible && (
-        <StickyControlsBar
-          matches={matches}
-          selectedMatch={selectedMatch}
-          matchesLoading={matchesLoading}
-          lens={lens}
-          positionFilter={positionFilter}
-          search={search}
-          sortKey={sortKey}
-          sortOpen={sortOpen}
-          onMatchChange={handleMatchChange}
-          onLensChange={handleLensChange}
-          onPositionChange={setPositionFilter}
-          onSearchChange={setSearch}
-          onSortChange={setSortKey}
-          onSortOpenChange={setSortOpen}
-        />
-      )}
-
       <div className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden" style={{ maxWidth: "100vw" }}>
+
+        {/* Sticky controls bar — inside overflow-x-hidden wrapper, pre-promoted to compositing layer */}
+        {stickyVisible && (
+          <StickyControlsBar
+            matches={matches}
+            selectedMatch={selectedMatch}
+            matchesLoading={matchesLoading}
+            lens={lens}
+            positionFilter={positionFilter}
+            search={search}
+            sortKey={sortKey}
+            sortOpen={sortOpen}
+            onMatchChange={handleMatchChange}
+            onLensChange={handleLensChange}
+            onPositionChange={setPositionFilter}
+            onSearchChange={setSearch}
+            onSortChange={setSortKey}
+            onSortOpenChange={setSortOpen}
+          />
+        )}
         <div className="stat-board-mobile-root mx-auto max-w-5xl px-4 pt-4 sm:pt-6 pb-20 min-w-0 overflow-x-hidden">
 
           {/* Page header */}
@@ -472,7 +472,7 @@ function StickyControlsBar({
   return (
     <div
       className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#0a0a0a]"
-      style={{ maxWidth: "100vw", overflowX: "hidden" }}
+      style={{ maxWidth: "100vw", overflowX: "hidden", transform: "translateZ(0)" }}
     >
       <div className="mx-auto max-w-5xl px-4 py-2.5 flex flex-wrap items-center gap-2">
 
@@ -930,7 +930,47 @@ const TeamBoard = memo(function TeamBoard({
 // ── Loading skeleton ──────────────────────────────────────────────────────────
 
 function BoardSkeleton({ thresholdCount }: { thresholdCount: number }) {
+  const isMobile = useIsMobile();
   const colCount = 4 + thresholdCount + 2;
+
+  if (isMobile) {
+    return (
+      <div className="space-y-5">
+        {[0, 1].map((g) => (
+          <div key={g}>
+            <div className="h-4 w-32 rounded-lg bg-white/6 mb-3 animate-pulse" />
+            <div className="flex flex-col gap-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-2xl border border-white/10 bg-[#0d0d0d] p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <div className="h-3 w-28 rounded bg-white/6 animate-pulse mb-1" />
+                      <div className="h-2 w-16 rounded bg-white/4 animate-pulse" />
+                    </div>
+                    <div className="h-5 w-8 rounded bg-white/5 animate-pulse" />
+                  </div>
+                  <div className="flex gap-1 mb-2">
+                    {Array.from({ length: 8 }).map((_, j) => (
+                      <div key={j} className="h-[18px] w-[18px] rounded bg-white/4 animate-pulse" />
+                    ))}
+                  </div>
+                  <div className="flex gap-0 border border-white/8 rounded-lg overflow-hidden">
+                    {Array.from({ length: 4 }).map((_, j) => (
+                      <div key={j} className="flex-1 px-2 py-1.5 border-r border-white/8 last:border-r-0">
+                        <div className="h-1.5 w-4 rounded bg-white/5 animate-pulse mb-1 mx-auto" />
+                        <div className="h-3 w-6 rounded bg-white/4 animate-pulse mx-auto" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {[0, 1].map((g) => (
