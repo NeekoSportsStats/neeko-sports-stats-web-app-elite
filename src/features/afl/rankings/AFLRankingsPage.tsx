@@ -237,7 +237,7 @@ function InlineGateBlock({ onUpgrade }: { onUpgrade: () => void }) {
 }
 
 export default function AFLRankingsPage() {
-  const { isPremium, user } = useAuth();
+  const { isPremium, user, loading: authLoading } = useAuth();
 
   const [rows, setRows] = useState<RankingRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -332,8 +332,8 @@ export default function AFLRankingsPage() {
   }, [user?.id, isPremium]);
 
   useEffect(() => {
-    fetchRankings();
-  }, [fetchRankings]);
+    if (!authLoading) fetchRankings();
+  }, [fetchRankings, authLoading]);
 
   useEffect(() => {
     function onPricesApplied() {

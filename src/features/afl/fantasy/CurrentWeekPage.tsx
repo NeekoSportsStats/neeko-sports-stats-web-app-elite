@@ -40,7 +40,7 @@ interface RoundData {
 }
 
 function useRoundData(): RoundData {
-  const { user, isPremium } = useAuth();
+  const { user, isPremium, loading: authLoading } = useAuth();
   const [rawRows, setRawRows] = useState<RankingRow[]>([]);
   const [roundLabel, setRoundLabel] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
@@ -76,8 +76,8 @@ function useRoundData(): RoundData {
   }, [user?.id, isPremium]);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!authLoading) load();
+  }, [load, authLoading]);
 
   const { captains, mustBuys, budgetPicks, riskPicks, traps } = useMemo(() => {
     if (rawRows.length === 0) {

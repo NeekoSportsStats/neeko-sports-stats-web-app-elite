@@ -26,12 +26,13 @@ interface PreviewData {
 }
 
 function usePreviewData(): PreviewData {
-  const { user, isPremium } = useAuth();
+  const { user, isPremium, loading: authLoading } = useAuth();
   const [rawRows, setRawRows] = useState<RankingRow[]>([]);
   const [roundLabel, setRoundLabel] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (authLoading) return;
     let cancelled = false;
     async function load() {
       try {
@@ -58,7 +59,7 @@ function usePreviewData(): PreviewData {
     }
     load();
     return () => { cancelled = true; };
-  }, [user?.id, isPremium]);
+  }, [user?.id, isPremium, authLoading]);
 
   const derived = useMemo(() => {
     if (rawRows.length === 0) return { mustBuy: null, trap: null, captain: null, valuePick: null };
