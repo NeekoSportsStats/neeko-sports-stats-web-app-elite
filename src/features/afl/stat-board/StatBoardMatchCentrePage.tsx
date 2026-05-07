@@ -1093,7 +1093,7 @@ export default function StatBoardMatchCentrePage() {
           {/* ── Error ────────────────────────────────────────────────── */}
           {error && (
             <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-[13px] text-red-400/80 mb-5">
-              Failed to load match data. Please refresh.
+              Could not load Match Centre data. Please try again.
             </div>
           )}
 

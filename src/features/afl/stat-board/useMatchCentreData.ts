@@ -38,7 +38,8 @@ export function useMatchCentreData() {
       .then(({ data, error: rpcError }) => {
         if (cancelled) return;
         if (rpcError) {
-          setError(rpcError.message);
+          console.error("[StatBoard] get_stat_board_match_centre_rows error:", rpcError);
+          setError("Could not load Match Centre data. Please try again.");
           setRows([]);
         } else {
           setRows((data ?? []) as MatchCentreRow[]);

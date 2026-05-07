@@ -1,6 +1,6 @@
 import { useAuth } from "@/lib/auth";
 
-export function useStatBoardAccess(page: "players" | "teams") {
+export function useStatBoardAccess(page: "players" | "teams" | "match-centre") {
   const { isPremium, isAdmin, loading } = useAuth();
   const hasFullAccess = isPremium || isAdmin;
 
