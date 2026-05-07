@@ -1,48 +1,44 @@
 import { useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import { Users, ChartBar as BarChart2, Swords, ArrowRight, Lock } from "lucide-react";
+import { Users, ChartBar as BarChart2, Swords, ArrowRight } from "lucide-react";
 
 interface ModeCard {
   icon: React.ReactNode;
   title: string;
-  status: "available" | "coming-soon";
   copy: string;
-  href?: string;
+  href: string;
 }
 
 const MODES: ModeCard[] = [
   {
     icon: <Users size={18} />,
     title: "Player Stats",
-    status: "available",
-    copy: "Individual player hit rates, trend charts and projections. Filter by match, stat and threshold.",
+    copy: "Filter by match, stat and threshold. View recent form, hit rates, projections and player trends.",
     href: "/stat-board/players",
   },
   {
     icon: <BarChart2 size={18} />,
     title: "Team Stats",
-    status: "available",
-    copy: "Team scoring trends and projections by match. Hit rates for score, goals, scoring shots and disposals.",
+    copy: "Compare team scoring trends, hit rates, projections and matchup context.",
     href: "/stat-board/teams",
   },
   {
     icon: <Swords size={18} />,
     title: "Match Centre",
-    status: "available",
-    copy: "Compare every game by projected score, recent team form, stat environment and matchup context.",
+    copy: "Scan every fixture by projected total, margin, scoring environment and trend confidence.",
     href: "/stat-board/match-centre",
   },
 ];
 
 export default function StatBoardHubPage() {
-  const [heroHovered, setHeroHovered] = useState(false);
+  const [primaryHovered, setPrimaryHovered] = useState(false);
 
   return (
     <>
       <Helmet>
         <title>AFL Stat Board | Neeko Sports Stats</title>
-        <meta name="description" content="Explore AFL player stat trends, hit rates and projections by upcoming match." />
+        <meta name="description" content="Explore AFL player stats, team trends and match centre data. Filter by match, stat and threshold." />
       </Helmet>
 
       <div style={{ minHeight: "100vh", background: "#05070A", color: "#fff" }}>
@@ -85,19 +81,18 @@ export default function StatBoardHubPage() {
               Use Player Stats for individual hit rates, Team Stats for team scoring trends, or Match Centre for a full-round game scanner.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+              {/* Primary CTA */}
               <Link
                 to="/stat-board/players"
-                onMouseEnter={() => setHeroHovered(true)}
-                onMouseLeave={() => setHeroHovered(false)}
+                onMouseEnter={() => setPrimaryHovered(true)}
+                onMouseLeave={() => setPrimaryHovered(false)}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 7,
                   padding: "11px 20px",
                   borderRadius: 10,
-                  background: heroHovered
-                    ? "rgba(34,197,94,0.18)"
-                    : "rgba(34,197,94,0.12)",
-                  border: `1px solid ${heroHovered ? "rgba(34,197,94,0.45)" : "rgba(34,197,94,0.28)"}`,
-                  color: heroHovered ? "#4ade80" : "rgba(74,222,128,0.88)",
+                  background: primaryHovered ? "rgba(34,197,94,0.18)" : "rgba(34,197,94,0.12)",
+                  border: `1px solid ${primaryHovered ? "rgba(34,197,94,0.45)" : "rgba(34,197,94,0.28)"}`,
+                  color: primaryHovered ? "#4ade80" : "rgba(74,222,128,0.88)",
                   fontSize: 13, fontWeight: 800,
                   textDecoration: "none",
                   letterSpacing: "0.01em",
@@ -106,31 +101,7 @@ export default function StatBoardHubPage() {
               >
                 Open Player Stats <ArrowRight size={13} />
               </Link>
-              <Link
-                to="/stat-board/teams"
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 7,
-                  padding: "11px 20px",
-                  borderRadius: 10,
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(255,255,255,0.10)",
-                  color: "rgba(255,255,255,0.55)",
-                  fontSize: 13, fontWeight: 700,
-                  textDecoration: "none",
-                  letterSpacing: "0.01em",
-                  transition: "all 0.15s ease",
-                }}
-                onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
-                  (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.80)";
-                }}
-                onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
-                  (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.55)";
-                }}
-              >
-                Team Stats <ArrowRight size={13} />
-              </Link>
+              {/* Secondary CTA */}
               <Link
                 to="/stat-board/match-centre"
                 style={{
@@ -154,7 +125,7 @@ export default function StatBoardHubPage() {
                   (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.55)";
                 }}
               >
-                Match Centre <ArrowRight size={13} />
+                Open Match Centre <ArrowRight size={13} />
               </Link>
             </div>
           </div>
@@ -166,7 +137,7 @@ export default function StatBoardHubPage() {
             </div>
           </div>
 
-          {/* ── How it works — compact strip ──────────────────────────────── */}
+          {/* ── How it works strip ────────────────────────────────────────── */}
           <div style={{
             display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6,
             padding: "12px 16px",
@@ -177,7 +148,7 @@ export default function StatBoardHubPage() {
             lineHeight: 1.4,
           }}>
             <span style={{ fontWeight: 700, color: "rgba(255,255,255,0.60)" }}>How it works:</span>
-            {["Pick a mode (Player, Team or Match Centre)", "Choose stat lens", "View trends, projections and hit rates"].map((step, i, arr) => (
+            {["Pick a match", "Choose a stat lens", "Open the page you want to analyse"].map((step, i, arr) => (
               <span key={step} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span>{step}</span>
                 {i < arr.length - 1 && <span style={{ color: "rgba(255,255,255,0.22)" }}>→</span>}
@@ -195,49 +166,43 @@ export default function StatBoardHubPage() {
 
 function ModeTile({ mode }: { mode: ModeCard }) {
   const [hovered, setHovered] = useState(false);
-  const isAvailable = mode.status === "available";
 
-  const inner = (
-    <div
-      onMouseEnter={() => isAvailable && setHovered(true)}
-      onMouseLeave={() => isAvailable && setHovered(false)}
-      style={{
-        display: "flex", alignItems: "flex-start", gap: 14,
-        padding: "16px 18px",
-        borderRadius: 14,
-        border: isAvailable
-          ? `1px solid ${hovered ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.10)"}`
-          : "1px solid rgba(255,255,255,0.06)",
-        background: isAvailable
-          ? (hovered ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.025)")
-          : "rgba(255,255,255,0.015)",
-        opacity: isAvailable ? 1 : 0.78,
-        transition: "all 0.15s ease",
-        cursor: isAvailable ? "pointer" : "default",
-      }}
-    >
-      {/* Icon */}
-      <div style={{
-        width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-        background: isAvailable ? "rgba(34,197,94,0.10)" : "rgba(255,255,255,0.05)",
-        border: isAvailable ? "1px solid rgba(34,197,94,0.20)" : "1px solid rgba(255,255,255,0.08)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        color: isAvailable ? "#4ade80" : "rgba(255,255,255,0.35)",
-      }}>
-        {mode.icon}
-      </div>
+  return (
+    <Link to={mode.href} style={{ textDecoration: "none" }} aria-label={`Open ${mode.title}`}>
+      <div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          display: "flex", alignItems: "flex-start", gap: 14,
+          padding: "16px 18px",
+          borderRadius: 14,
+          border: `1px solid ${hovered ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.10)"}`,
+          background: hovered ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.025)",
+          transition: "all 0.15s ease",
+          cursor: "pointer",
+        }}
+      >
+        {/* Icon */}
+        <div style={{
+          width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+          background: "rgba(34,197,94,0.10)",
+          border: "1px solid rgba(34,197,94,0.20)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#4ade80",
+        }}>
+          {mode.icon}
+        </div>
 
-      {/* Content */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <span style={{
-            fontSize: 13.5, fontWeight: 700,
-            color: isAvailable ? "#ECECEC" : "rgba(255,255,255,0.62)",
-            letterSpacing: "-0.01em",
-          }}>
-            {mode.title}
-          </span>
-          {isAvailable ? (
+        {/* Content */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span style={{
+              fontSize: 13.5, fontWeight: 700,
+              color: "#ECECEC",
+              letterSpacing: "-0.01em",
+            }}>
+              {mode.title}
+            </span>
             <span style={{
               fontSize: 9.5, fontWeight: 700, letterSpacing: "0.06em",
               textTransform: "uppercase",
@@ -248,47 +213,24 @@ function ModeTile({ mode }: { mode: ModeCard }) {
             }}>
               Available
             </span>
-          ) : (
-            <span style={{
-              fontSize: 9.5, fontWeight: 600, letterSpacing: "0.04em",
-              color: "rgba(255,255,255,0.45)",
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.10)",
-              borderRadius: 5, padding: "2px 7px",
-              display: "inline-flex", alignItems: "center", gap: 4,
-            }}>
-              <Lock size={8} /> Coming soon
-            </span>
-          )}
+          </div>
+          <p style={{
+            margin: 0, fontSize: 12.5,
+            color: "rgba(255,255,255,0.48)",
+            lineHeight: 1.5,
+          }}>
+            {mode.copy}
+          </p>
         </div>
-        <p style={{
-          margin: 0, fontSize: 12.5,
-          color: isAvailable ? "rgba(255,255,255,0.48)" : "rgba(255,255,255,0.42)",
-          lineHeight: 1.5,
-        }}>
-          {mode.copy}
-        </p>
-      </div>
 
-      {/* Arrow */}
-      <div style={{ flexShrink: 0, alignSelf: "center" }}>
-        <ArrowRight size={15} style={{
-          color: isAvailable
-            ? (hovered ? "rgba(255,255,255,0.70)" : "rgba(255,255,255,0.28)")
-            : "rgba(255,255,255,0.10)",
-          transition: "color 0.15s",
-        }} />
+        {/* Arrow */}
+        <div style={{ flexShrink: 0, alignSelf: "center" }}>
+          <ArrowRight size={15} style={{
+            color: hovered ? "rgba(255,255,255,0.70)" : "rgba(255,255,255,0.28)",
+            transition: "color 0.15s",
+          }} />
+        </div>
       </div>
-    </div>
+    </Link>
   );
-
-  if (isAvailable && mode.href) {
-    return (
-      <Link to={mode.href} style={{ textDecoration: "none" }} aria-label={`Open ${mode.title}`}>
-        {inner}
-      </Link>
-    );
-  }
-
-  return <div aria-label={`${mode.title} — coming soon`}>{inner}</div>;
 }

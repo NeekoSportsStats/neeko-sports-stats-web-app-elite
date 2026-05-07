@@ -17,13 +17,13 @@ import { useAuth } from "@/lib/auth";
 import { Separator } from "@/components/ui/separator";
 
 const STAT_BOARD_SUB_ITEMS = [
-  { title: "Player Stats", url: "/stat-board/players", disabled: false },
-  { title: "Team Stats",   url: "/stat-board/teams",   disabled: false },
-  { title: "Match Centre", url: null,                  disabled: true },
+  { title: "Player Stats", url: "/stat-board/players"      },
+  { title: "Team Stats",   url: "/stat-board/teams"        },
+  { title: "Match Centre", url: "/stat-board/match-centre" },
 ] as const;
 
 export function AppSidebar() {
-  const { isMobile, state, setOpenMobile, setOpen } = useSidebar();
+  const { isMobile, state, setOpenMobile } = useSidebar();
   const { isPremium } = useAuth();
   const location = useLocation();
   const currentPath = location.pathname;
@@ -40,19 +40,23 @@ export function AppSidebar() {
     return currentPath === path || currentPath.startsWith(path + "/");
   };
 
+  // Show Stat Board sub-items whenever the user is anywhere under /stat-board
+  // (including the hub page itself) and the sidebar is visible.
+  const showStatBoardSubs = isActive("/stat-board") && (isExpanded || isMobile);
+
   const mainNav = [
-    { title: "Home",        url: "/",           icon: Home,            exact: true },
-    { title: "Stat Board",  url: "/stat-board",          icon: TableProperties },
-    { title: "Fantasy Hub", url: "/fantasy",    icon: Star },
-    { title: "Players",     url: "/sports/afl/players", icon: User },
+    { title: "Home",        url: "/",                    icon: Home,           exact: true },
+    { title: "Stat Board",  url: "/stat-board",          icon: TableProperties             },
+    { title: "Fantasy Hub", url: "/fantasy",             icon: Star                        },
+    { title: "Players",     url: "/sports/afl/players",  icon: User                        },
   ];
 
   const infoNav = [
-    { title: "About Us",   url: "/about",    icon: Users },
-    { title: "Socials",    url: "/socials",  icon: Share2 },
+    { title: "About Us",   url: "/about",    icon: Users      },
+    { title: "Socials",    url: "/socials",  icon: Share2     },
     { title: "FAQ",        url: "/faq",      icon: HelpCircle },
-    { title: "Policies",   url: "/policies", icon: FileText },
-    { title: "Contact Us", url: "/contact",  icon: Mail },
+    { title: "Policies",   url: "/policies", icon: FileText   },
+    { title: "Contact Us", url: "/contact",  icon: Mail       },
   ];
 
   return (
@@ -64,7 +68,6 @@ export function AppSidebar() {
               {mainNav.map(({ title, url, icon: Icon, exact }) => {
                 const active = exact ? currentPath === url : isActive(url);
                 const isStatBoard = title === "Stat Board";
-                const statBoardSectionActive = isStatBoard && isActive("/stat-board");
                 return (
                   <SidebarMenuItem key={title}>
                     <SidebarMenuButton asChild>
@@ -81,24 +84,11 @@ export function AppSidebar() {
                       </NavLink>
                     </SidebarMenuButton>
 
-                    {/* Stat Board contextual sub-items — when expanded (desktop) or on mobile overlay */}
-                    {isStatBoard && (isExpanded || isMobile) && statBoardSectionActive && (
+                    {/* Stat Board sub-items — shown on any /stat-board/* route */}
+                    {isStatBoard && showStatBoardSubs && (
                       <ul className="mt-0.5 mb-1 ml-7 space-y-0.5" role="group" aria-label="Stat Board sections">
                         {STAT_BOARD_SUB_ITEMS.map((sub) => {
-                          const subActive = !sub.disabled && sub.url !== null && currentPath === sub.url;
-                          if (sub.disabled || sub.url === null) {
-                            return (
-                              <li key={sub.title}>
-                                <span className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] font-medium text-foreground/25 cursor-default select-none">
-                                  <span className="h-1 w-1 rounded-full bg-foreground/15 shrink-0" aria-hidden />
-                                  {sub.title}
-                                  <span className="ml-auto text-[9px] font-semibold text-foreground/20 bg-foreground/8 rounded px-1.5 py-0.5 leading-none tracking-wide uppercase">
-                                    Soon
-                                  </span>
-                                </span>
-                              </li>
-                            );
-                          }
+                          const subActive = currentPath === sub.url;
                           return (
                             <li key={sub.title}>
                               <NavLink
@@ -110,7 +100,10 @@ export function AppSidebar() {
                                 }`}
                                 onClick={handleLinkClick}
                               >
-                                <span className={`h-1 w-1 rounded-full shrink-0 ${subActive ? "bg-primary" : "bg-foreground/20"}`} aria-hidden />
+                                <span
+                                  className={`h-1 w-1 rounded-full shrink-0 ${subActive ? "bg-primary" : "bg-foreground/20"}`}
+                                  aria-hidden
+                                />
                                 {sub.title}
                               </NavLink>
                             </li>
