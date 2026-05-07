@@ -3,14 +3,21 @@ import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { Users, ChartBar as BarChart2, Swords, ArrowRight } from "lucide-react";
 
-interface ModeCard {
+// ── Shared layout tokens (mirrored in FantasyHubPage) ─────────────────────────
+// maxWidth: 680 | padding: clamp(36px,4.5vw,60px) clamp(16px,4vw,32px) clamp(40px,5vw,72px)
+// card: borderRadius 14, padding 16px 18px, gap 14, icon 38×38 borderRadius 10
+// badge: fontSize 9.5, borderRadius 5, padding 2px 7px
+// CTA primary: padding 11px 20px, borderRadius 10, fontSize 13 fontWeight 800
+// CTA secondary: same padding, same borderRadius, fontSize 13 fontWeight 700
+
+interface HubCard {
   icon: React.ReactNode;
   title: string;
   copy: string;
   href: string;
 }
 
-const MODES: ModeCard[] = [
+const CARDS: HubCard[] = [
   {
     icon: <Users size={18} />,
     title: "Player Stats",
@@ -55,7 +62,7 @@ export default function StatBoardHubPage() {
               Stat Board
             </p>
             <h1 style={{
-              fontSize: "clamp(1.6rem, 3vw, 2.2rem)",
+              fontSize: "clamp(1.6rem,3vw,2.2rem)",
               fontWeight: 900, letterSpacing: "-0.03em",
               color: "#F5F5F5", lineHeight: 1.2,
               margin: "0 0 10px",
@@ -63,7 +70,7 @@ export default function StatBoardHubPage() {
               AFL Stat Board
             </h1>
             <p style={{
-              fontSize: "clamp(13px, 1vw, 14.5px)",
+              fontSize: "clamp(13px,1vw,14.5px)",
               color: "rgba(255,255,255,0.55)",
               lineHeight: 1.6,
               margin: "0 0 6px",
@@ -81,39 +88,33 @@ export default function StatBoardHubPage() {
               Use Player Stats for individual hit rates, Team Stats for team scoring trends, or Match Centre for a full-round game scanner.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-              {/* Primary CTA */}
               <Link
                 to="/stat-board/players"
                 onMouseEnter={() => setPrimaryHovered(true)}
                 onMouseLeave={() => setPrimaryHovered(false)}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 7,
-                  padding: "11px 20px",
-                  borderRadius: 10,
+                  padding: "11px 20px", borderRadius: 10,
                   background: primaryHovered ? "rgba(34,197,94,0.18)" : "rgba(34,197,94,0.12)",
                   border: `1px solid ${primaryHovered ? "rgba(34,197,94,0.45)" : "rgba(34,197,94,0.28)"}`,
                   color: primaryHovered ? "#4ade80" : "rgba(74,222,128,0.88)",
                   fontSize: 13, fontWeight: 800,
-                  textDecoration: "none",
-                  letterSpacing: "0.01em",
+                  textDecoration: "none", letterSpacing: "0.01em",
                   transition: "all 0.15s ease",
                 }}
               >
                 Open Player Stats <ArrowRight size={13} />
               </Link>
-              {/* Secondary CTA */}
               <Link
                 to="/stat-board/match-centre"
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 7,
-                  padding: "11px 20px",
-                  borderRadius: 10,
+                  padding: "11px 20px", borderRadius: 10,
                   background: "rgba(255,255,255,0.04)",
                   border: "1px solid rgba(255,255,255,0.10)",
                   color: "rgba(255,255,255,0.55)",
                   fontSize: 13, fontWeight: 700,
-                  textDecoration: "none",
-                  letterSpacing: "0.01em",
+                  textDecoration: "none", letterSpacing: "0.01em",
                   transition: "all 0.15s ease",
                 }}
                 onMouseEnter={e => {
@@ -130,31 +131,13 @@ export default function StatBoardHubPage() {
             </div>
           </div>
 
-          {/* ── Mode cards ────────────────────────────────────────────────── */}
-          <div style={{ marginBottom: "clamp(22px,3vw,32px)" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {MODES.map((mode) => <ModeTile key={mode.title} mode={mode} />)}
-            </div>
+          {/* ── Cards ─────────────────────────────────────────────────────── */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: "clamp(22px,3vw,32px)" }}>
+            {CARDS.map((card) => <HubTile key={card.title} card={card} />)}
           </div>
 
-          {/* ── How it works strip ────────────────────────────────────────── */}
-          <div style={{
-            display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6,
-            padding: "12px 16px",
-            background: "rgba(255,255,255,0.025)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderRadius: 10,
-            fontSize: 12, color: "rgba(255,255,255,0.42)",
-            lineHeight: 1.4,
-          }}>
-            <span style={{ fontWeight: 700, color: "rgba(255,255,255,0.60)" }}>How it works:</span>
-            {["Pick a match", "Choose a stat lens", "Open the page you want to analyse"].map((step, i, arr) => (
-              <span key={step} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span>{step}</span>
-                {i < arr.length - 1 && <span style={{ color: "rgba(255,255,255,0.22)" }}>→</span>}
-              </span>
-            ))}
-          </div>
+          {/* ── Footer strip ──────────────────────────────────────────────── */}
+          <FooterStrip steps={["Pick a match", "Choose a stat lens", "Open the page you want to analyse"]} />
 
         </div>
       </div>
@@ -162,27 +145,24 @@ export default function StatBoardHubPage() {
   );
 }
 
-// ── Mode tile ────────────────────────────────────────────────────────────────
+// ── Shared sub-components ─────────────────────────────────────────────────────
 
-function ModeTile({ mode }: { mode: ModeCard }) {
+export function HubTile({ card }: { card: HubCard }) {
   const [hovered, setHovered] = useState(false);
 
   return (
-    <Link to={mode.href} style={{ textDecoration: "none" }} aria-label={`Open ${mode.title}`}>
+    <Link to={card.href} style={{ textDecoration: "none" }} aria-label={`Open ${card.title}`}>
       <div
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
         style={{
           display: "flex", alignItems: "flex-start", gap: 14,
-          padding: "16px 18px",
-          borderRadius: 14,
+          padding: "16px 18px", borderRadius: 14,
           border: `1px solid ${hovered ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.10)"}`,
           background: hovered ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.025)",
-          transition: "all 0.15s ease",
-          cursor: "pointer",
+          transition: "all 0.15s ease", cursor: "pointer",
         }}
       >
-        {/* Icon */}
         <div style={{
           width: 38, height: 38, borderRadius: 10, flexShrink: 0,
           background: "rgba(34,197,94,0.10)",
@@ -190,18 +170,12 @@ function ModeTile({ mode }: { mode: ModeCard }) {
           display: "flex", alignItems: "center", justifyContent: "center",
           color: "#4ade80",
         }}>
-          {mode.icon}
+          {card.icon}
         </div>
-
-        {/* Content */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <span style={{
-              fontSize: 13.5, fontWeight: 700,
-              color: "#ECECEC",
-              letterSpacing: "-0.01em",
-            }}>
-              {mode.title}
+            <span style={{ fontSize: 13.5, fontWeight: 700, color: "#ECECEC", letterSpacing: "-0.01em" }}>
+              {card.title}
             </span>
             <span style={{
               fontSize: 9.5, fontWeight: 700, letterSpacing: "0.06em",
@@ -214,16 +188,10 @@ function ModeTile({ mode }: { mode: ModeCard }) {
               Available
             </span>
           </div>
-          <p style={{
-            margin: 0, fontSize: 12.5,
-            color: "rgba(255,255,255,0.48)",
-            lineHeight: 1.5,
-          }}>
-            {mode.copy}
+          <p style={{ margin: 0, fontSize: 12.5, color: "rgba(255,255,255,0.48)", lineHeight: 1.5 }}>
+            {card.copy}
           </p>
         </div>
-
-        {/* Arrow */}
         <div style={{ flexShrink: 0, alignSelf: "center" }}>
           <ArrowRight size={15} style={{
             color: hovered ? "rgba(255,255,255,0.70)" : "rgba(255,255,255,0.28)",
@@ -232,5 +200,26 @@ function ModeTile({ mode }: { mode: ModeCard }) {
         </div>
       </div>
     </Link>
+  );
+}
+
+export function FooterStrip({ steps }: { steps: string[] }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6,
+      padding: "12px 16px",
+      background: "rgba(255,255,255,0.025)",
+      border: "1px solid rgba(255,255,255,0.07)",
+      borderRadius: 10,
+      fontSize: 12, color: "rgba(255,255,255,0.42)", lineHeight: 1.4,
+    }}>
+      <span style={{ fontWeight: 700, color: "rgba(255,255,255,0.60)" }}>How it works:</span>
+      {steps.map((step, i) => (
+        <span key={step} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span>{step}</span>
+          {i < steps.length - 1 && <span style={{ color: "rgba(255,255,255,0.22)" }}>→</span>}
+        </span>
+      ))}
+    </div>
   );
 }
