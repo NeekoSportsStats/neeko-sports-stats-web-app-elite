@@ -318,7 +318,7 @@ export default function CurrentWeekPage() {
           )}
 
           {/* ── Sections ──────────────────────────────────────────────────── */}
-          {!data.error && (
+          {!data.error && !data.loading && (
             <div className="space-y-4">
 
               {/* Must Buys */}
@@ -504,7 +504,7 @@ export default function CurrentWeekPage() {
                 </p>
               </div>
               <Link
-                to="/fantasy/rankings"
+                to="/fantasy/start-sit"
                 className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-white/[0.12] bg-white/[0.04] px-3.5 py-2 text-[12px] font-[700] text-white/65 hover:text-white/88 hover:border-white/[0.20] hover:bg-white/[0.07] transition-colors"
               >
                 Start/Sit Tool
