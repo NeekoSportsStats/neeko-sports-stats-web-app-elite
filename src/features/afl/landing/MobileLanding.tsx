@@ -274,13 +274,13 @@ export default function MobileLanding({ isPremium }: Props) {
             }}>
               Open Stat Board <ArrowRight size={15} />
             </Link>
-            <Link to="/stat-board/teams" style={{
+            <Link to="/stat-board/match-centre" style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
               color: "rgba(255,255,255,0.72)", fontWeight: 700, fontSize: 13.5,
               padding: "12px 20px", borderRadius: 10, textDecoration: "none", minHeight: 44,
             }}>
-              Team Stats
+              Match Centre
             </Link>
           </div>
 
@@ -450,6 +450,11 @@ export default function MobileLanding({ isPremium }: Props) {
               copy: "Track goal-scoring trends using recent form, hit rates and projections.",
               pills: ["1+", "2+", "3+", "4+"],
             },
+            {
+              icon: <BarChart2Icon size={18} />, title: "Match Centre", color: "#60a5fa",
+              copy: "Scan every game by projected total, margin, scoring environment and matchup context.",
+              pills: ["Projected total", "Margin", "Trend"],
+            },
           ].map(({ icon, title, color, copy, pills }) => (
             <div key={title} style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${color}22`, borderRadius: 12, padding: "16px 14px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
@@ -466,9 +471,9 @@ export default function MobileLanding({ isPremium }: Props) {
                 {pills.map(pill => (
                   <span key={pill} style={{
                     fontSize: 10, fontWeight: 700,
-                    color: color === "#22c55e" ? "rgba(74,222,128,0.82)" : "rgba(253,211,77,0.82)",
-                    background: color === "#22c55e" ? "rgba(34,197,94,0.09)" : "rgba(245,158,11,0.09)",
-                    border: `1px solid ${color === "#22c55e" ? "rgba(34,197,94,0.20)" : "rgba(245,158,11,0.20)"}`,
+                    color: color === "#22c55e" ? "rgba(74,222,128,0.82)" : color === "#f59e0b" ? "rgba(253,211,77,0.82)" : "rgba(147,197,253,0.82)",
+                    background: color === "#22c55e" ? "rgba(34,197,94,0.09)" : color === "#f59e0b" ? "rgba(245,158,11,0.09)" : "rgba(96,165,250,0.09)",
+                    border: `1px solid ${color === "#22c55e" ? "rgba(34,197,94,0.20)" : color === "#f59e0b" ? "rgba(245,158,11,0.20)" : "rgba(96,165,250,0.20)"}`,
                     padding: "2px 8px", borderRadius: 5,
                     letterSpacing: "0.03em",
                   }}>{pill}</span>
@@ -477,8 +482,8 @@ export default function MobileLanding({ isPremium }: Props) {
             </div>
           ))}
         </div>
-        <div style={{ marginTop: 14 }}>
-          <Link to="/stat-board/teams" style={{
+        <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+          <Link to="/stat-board/match-centre" style={{
             display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
             fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.55)",
             textDecoration: "none",
@@ -486,7 +491,7 @@ export default function MobileLanding({ isPremium }: Props) {
             padding: "11px 20px", borderRadius: 10,
             background: "rgba(255,255,255,0.04)", minHeight: 44,
           }}>
-            View Team Stats <ChevronRight size={13} />
+            View Match Centre <ChevronRight size={13} />
           </Link>
         </div>
       </section>
@@ -545,12 +550,12 @@ export default function MobileLanding({ isPremium }: Props) {
             }}>
               Open Stat Board <ArrowRight size={16} />
             </Link>
-            <Link to="/stat-board/teams" style={{
+            <Link to="/stat-board/match-centre" style={{
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 13, color: "rgba(255,255,255,0.38)", textDecoration: "none",
               padding: "12px", minHeight: 44,
             }}>
-              View Team Stats
+              View Match Centre
             </Link>
           </div>
         </div>

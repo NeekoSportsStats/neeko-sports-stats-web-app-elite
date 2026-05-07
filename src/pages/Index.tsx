@@ -608,7 +608,7 @@ export default function Index() {
                 Open Stat Board <ArrowRight size={15} />
               </Link>
               <Link
-                to="/stat-board/teams"
+                to="/stat-board/match-centre"
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 8,
                   background: "rgba(255,255,255,0.06)", backdropFilter: "blur(8px)",
@@ -622,7 +622,7 @@ export default function Index() {
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.10)"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; }}
               >
-                Team Stats
+                Match Centre
               </Link>
             </div>
             {/* Trust row */}
@@ -693,12 +693,12 @@ export default function Index() {
               Open Stat Board <ArrowRight size={14} />
             </Link>
             <Link
-              to="/stat-board/teams"
+              to="/stat-board/match-centre"
               style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: "rgba(255,255,255,0.48)", textDecoration: "none", border: "1px solid rgba(255,255,255,0.10)", padding: "9px 16px", borderRadius: 9, background: "rgba(255,255,255,0.04)", transition: "all 0.15s ease" }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.75)"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.48)"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
             >
-              Team Stats
+              Match Centre
             </Link>
           </div>
         </div>

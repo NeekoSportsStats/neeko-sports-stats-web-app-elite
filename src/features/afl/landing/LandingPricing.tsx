@@ -13,7 +13,9 @@ const FREE_FEATURES = [
 const PREMIUM_FEATURES = [
   "Full round access",
   "All matches",
-  "Full Stat Board",
+  "Full Player Stat Board",
+  "Full Team Stat Board",
+  "Full Match Centre",
   "Player trends and projections",
   "Hit rates and consistency labels",
   "Fantasy Hub included",
