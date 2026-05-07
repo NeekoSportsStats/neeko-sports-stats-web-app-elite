@@ -190,7 +190,7 @@ export function MatchSelector({ matches, selected, loading, onChange, hasFullAcc
             <div className="px-3.5 py-2 border-t border-white/[0.07] bg-white/[0.015] flex items-center gap-3">
               <span className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 shrink-0" aria-hidden />
-                <span className="text-[10px] text-white/28">Free</span>
+                <span className="text-[10px] text-white/28">First 2 matches free</span>
               </span>
               <span className="text-white/12">·</span>
               <span className="flex items-center gap-1.5">
