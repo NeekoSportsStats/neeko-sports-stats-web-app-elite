@@ -419,7 +419,7 @@ function BoardSummaryStrip({
     items.push(
       <span key="free" className="flex items-center gap-1.5 whitespace-nowrap">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 shrink-0" aria-hidden />
-        <span className="text-[11px] font-semibold text-emerald-500/80">First 4 matches free</span>
+        <span className="text-[11px] font-semibold text-emerald-500/80">First 2 matches free</span>
       </span>
     );
   }
@@ -513,7 +513,7 @@ const FixtureSection = memo(function FixtureSection({
           <h2 className="text-[13.5px] font-bold text-white tracking-tight leading-none truncate">
             {teams ? `${teams.home} vs ${teams.away}` : matchLabel}
           </h2>
-          {!isLocked && !hasFullAccess && index < 4 && (
+          {!isLocked && !hasFullAccess && index < 2 && (
             <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide text-emerald-400/75 bg-emerald-500/8 border border-emerald-500/18 rounded px-1.5 py-0.5 leading-none">
               Free preview
             </span>
