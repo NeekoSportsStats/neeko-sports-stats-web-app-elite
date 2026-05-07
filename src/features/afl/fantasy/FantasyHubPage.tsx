@@ -1,35 +1,61 @@
 import { useEffect, useState, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import {
-  TrendingUp, Crown, DollarSign, TriangleAlert as AlertTriangle,
-  ArrowRight, ChevronRight, Zap,
-} from "lucide-react";
+import { Zap, TrendingUp, DollarSign, TriangleAlert as AlertTriangle, Crown, ArrowRight } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
 import { applyDecisionFields } from "@/lib/decisionEngine";
 import { buildCurrentRoundPlayers, type CurrentRoundPlayer } from "@/features/afl/current-round/engine";
 import { fmt, fmtPrice } from "@/features/afl/rankings/components/helpers";
-import { getCaptainScore } from "@/features/afl/shared/data/captainScoring";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
 
-// ── Live preview data ──────────────────────────────────────────────────────────
+// ── Nav cards ─────────────────────────────────────────────────────────────────
 
-interface PreviewData {
+interface NavCard {
+  icon: React.ReactNode;
+  title: string;
+  copy: string;
+  href: string;
+}
+
+const NAV_CARDS: NavCard[] = [
+  {
+    icon: <Zap size={18} />,
+    title: "Current Week",
+    copy: "Must buys, captain picks, trap alerts and weekly fantasy calls.",
+    href: "/fantasy/current-week",
+  },
+  {
+    icon: <TrendingUp size={18} />,
+    title: "Rankings",
+    copy: "Full player rankings by projection, form, confidence and value.",
+    href: "/fantasy/rankings",
+  },
+  {
+    icon: <DollarSign size={18} />,
+    title: "Market Watch",
+    copy: "Find underpriced targets, overpriced risks and trade value.",
+    href: "/fantasy/market-watch",
+  },
+];
+
+// ── Preview data hook ─────────────────────────────────────────────────────────
+
+interface PreviewState {
   mustBuy: CurrentRoundPlayer | null;
   trap: CurrentRoundPlayer | null;
   captain: CurrentRoundPlayer | null;
   valuePick: CurrentRoundPlayer | null;
   roundLabel: string | null;
-  loading: boolean;
+  loaded: boolean;
 }
 
-function usePreviewData(): PreviewData {
+function usePreview(): PreviewState {
   const { user, isPremium, loading: authLoading } = useAuth();
   const [rawRows, setRawRows] = useState<RankingRow[]>([]);
   const [roundLabel, setRoundLabel] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     if (authLoading) return;
@@ -51,10 +77,8 @@ function usePreviewData(): PreviewData {
           const d = roundRes.data[0] as { round_label?: string };
           setRoundLabel(d.round_label ?? null);
         }
-      } catch {
-        // preview strip shows empty state on error
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setLoaded(true);
       }
     }
     load();
@@ -63,9 +87,7 @@ function usePreviewData(): PreviewData {
 
   const derived = useMemo(() => {
     if (rawRows.length === 0) return { mustBuy: null, trap: null, captain: null, valuePick: null };
-
     const { captains, mustBuys, traps } = buildCurrentRoundPlayers(rawRows);
-
     const mustBuyIds = new Set(mustBuys.map(p => p.player_id));
     const valuePick = rawRows
       .filter(p =>
@@ -75,235 +97,329 @@ function usePreviewData(): PreviewData {
       )
       .map(p => ({ ...p, overallRank: 999, isFeaturedPick: false }) as CurrentRoundPlayer)
       .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))[0] ?? null;
-
-    return {
-      mustBuy:   mustBuys[0]  ?? null,
-      trap:      traps[0]     ?? null,
-      captain:   captains[0]  ?? null,
-      valuePick,
-    };
+    return { mustBuy: mustBuys[0] ?? null, trap: traps[0] ?? null, captain: captains[0] ?? null, valuePick };
   }, [rawRows]);
 
-  return { ...derived, roundLabel, loading };
+  return { ...derived, roundLabel, loaded };
 }
 
-// ── Tool cards config ──────────────────────────────────────────────────────────
-
-const TOOLS = [
-  {
-    key: "current-week",
-    title: "Current Week",
-    copy: "Must buys, trap alerts, captain picks and start/sit calls for this round.",
-    href: "/fantasy/current-week",
-    icon: Zap,
-    iconColor: "text-emerald-400",
-    accentBg:  "bg-emerald-500/[0.08]",
-    accentBorder: "border-emerald-500/20",
-    hoverBorder: "hover:border-emerald-500/30",
-    ctaLabel: "Open Current Week",
-  },
-  {
-    key: "rankings",
-    title: "Rankings",
-    copy: "Full player rankings with projections, form, confidence and value.",
-    href: "/fantasy/rankings",
-    icon: TrendingUp,
-    iconColor: "text-sky-400",
-    accentBg:  "bg-sky-500/[0.08]",
-    accentBorder: "border-sky-500/20",
-    hoverBorder: "hover:border-sky-500/25",
-    ctaLabel: "View Rankings",
-  },
-  {
-    key: "market-watch",
-    title: "Market Watch",
-    copy: "Find underpriced players, overpriced players and trade targets.",
-    href: "/fantasy/market-watch",
-    icon: DollarSign,
-    iconColor: "text-amber-400",
-    accentBg:  "bg-amber-500/[0.08]",
-    accentBorder: "border-amber-500/20",
-    hoverBorder: "hover:border-amber-500/25",
-    ctaLabel: "Open Market Watch",
-  },
-] as const;
-
-// ── Preview tile ───────────────────────────────────────────────────────────────
-
-interface PreviewTileProps {
-  icon: React.ReactNode;
-  label: string;
-  playerName: string | null;
-  stat: string | null;
-  loading: boolean;
-}
-
-function PreviewTile({ icon, label, playerName, stat, loading }: PreviewTileProps) {
-  return (
-    <div className="flex-1 min-w-0 rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2.5">
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <span className="shrink-0">{icon}</span>
-        <span className="text-[9.5px] font-[700] uppercase tracking-[0.12em] text-white/28 truncate leading-none">
-          {label}
-        </span>
-      </div>
-      {loading ? (
-        <div className="h-3.5 w-16 rounded bg-white/[0.05] animate-pulse" />
-      ) : playerName ? (
-        <>
-          <div className="text-[13px] font-[700] text-white/88 leading-tight truncate">
-            {playerName.split(" ").slice(-1)[0]}
-          </div>
-          {stat && <div className="text-[10px] text-white/35 mt-0.5 leading-none tabular-nums">{stat}</div>}
-        </>
-      ) : (
-        <div className="text-[11px] text-white/22">—</div>
-      )}
-    </div>
-  );
-}
-
-// ── Main page ──────────────────────────────────────────────────────────────────
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function FantasyHubPage() {
-  const preview = usePreviewData();
+  const preview = usePreview();
 
-  const trapEdge = preview.trap
+  const showPreview = preview.loaded && (
+    preview.mustBuy != null ||
+    preview.trap != null ||
+    preview.captain != null ||
+    preview.valuePick != null
+  );
+
+  const trapStat = preview.trap
     ? (() => {
-        const e = preview.trap.edge_canonical ??
-          ((preview.trap.projection ?? 0) - (preview.trap.breakeven ?? 0));
-        return typeof e === "number" && !isNaN(e)
-          ? `${e > 0 ? "+" : ""}${Math.round(e)} edge`
-          : null;
+        const e = (preview.trap.projection ?? 0) - (preview.trap.breakeven ?? 0);
+        return !isNaN(e) ? `${e > 0 ? "+" : ""}${Math.round(e)} edge` : null;
       })()
     : null;
 
-  const captainStat = preview.captain
-    ? `${fmt(preview.captain.projection, 0)} proj`
-    : null;
-
+  const captainStat = preview.captain ? `${fmt(preview.captain.projection, 0)} proj` : null;
   const valuePickStat = preview.valuePick
     ? (preview.valuePick.value_score != null
         ? `${fmt(preview.valuePick.value_score, 1)} val`
         : fmtPrice(preview.valuePick.price))
     : null;
 
-  // suppress unused-var lint: getCaptainScore is imported for side effects / available to callers
-  void getCaptainScore;
+  const [primaryHovered, setPrimaryHovered] = useState(false);
 
   return (
     <>
       <Helmet>
         <title>AFL Fantasy Hub | Neeko Sports Stats</title>
-        <meta
-          name="description"
-          content="AFL Fantasy Hub — must buys, trap alerts, captain picks and rankings in one decision-focused place."
-        />
+        <meta name="description" content="AFL Fantasy Hub — must buys, trap alerts, captain picks and rankings in one decision-focused place." />
         <link rel="canonical" href="https://neekostats.com.au/fantasy" />
         <meta property="og:url" content="https://neekostats.com.au/fantasy" />
         <meta property="og:title" content="AFL Fantasy Hub | Neeko Sports Stats" />
         <meta name="twitter:title" content="AFL Fantasy Hub | Neeko Sports Stats" />
       </Helmet>
 
-      <div className="min-h-screen bg-[#05070A] text-white overflow-x-hidden">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 pt-8 sm:pt-12 pb-16 sm:pb-24">
+      <div style={{ minHeight: "100vh", background: "#05070A", color: "#fff" }}>
+        <div style={{ maxWidth: 680, margin: "0 auto", padding: "clamp(36px,4.5vw,60px) clamp(16px,4vw,32px) clamp(40px,5vw,72px)" }}>
 
-          {/* ── Hero ─────────────────────────────────────────────────────── */}
-          <div className="mb-8 sm:mb-10">
-            <p className="text-[9px] font-[900] tracking-[0.46em] uppercase text-emerald-500/60 mb-3">
+          {/* ── Hero ──────────────────────────────────────────────────────── */}
+          <div style={{ marginBottom: "clamp(28px,3.5vw,40px)" }}>
+            <p style={{
+              fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em",
+              textTransform: "uppercase",
+              color: "rgba(34,197,94,0.65)",
+              margin: "0 0 10px",
+            }}>
               Fantasy Hub
             </p>
-            <h1 className="text-[clamp(1.6rem,5vw,2.25rem)] font-[900] tracking-tight text-[#F5F5F5] leading-[1.18] mb-3">
+            <h1 style={{
+              fontSize: "clamp(1.6rem, 3vw, 2.2rem)",
+              fontWeight: 900, letterSpacing: "-0.03em",
+              color: "#F5F5F5", lineHeight: 1.2,
+              margin: "0 0 10px",
+            }}>
               AFL Fantasy Hub
             </h1>
-            <p className="text-[clamp(13px,2vw,15px)] text-white/48 leading-[1.7] max-w-[480px] mb-5">
-              Make faster fantasy decisions with projections, form, value and weekly calls.
+            <p style={{
+              fontSize: "clamp(13px, 1vw, 14.5px)",
+              color: "rgba(255,255,255,0.55)",
+              lineHeight: 1.6,
+              margin: "0 0 6px",
+              maxWidth: 440,
+            }}>
+              Make faster fantasy decisions each round.
             </p>
-            <div className="flex flex-wrap gap-2.5">
+            <p style={{
+              fontSize: 13,
+              color: "rgba(255,255,255,0.40)",
+              lineHeight: 1.55,
+              margin: "0 0 20px",
+              maxWidth: 440,
+            }}>
+              Use Current Week for weekly calls, Rankings for the full player list, or Market Watch to find the best trade targets.
+            </p>
+            <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
               <Link
                 to="/fantasy/current-week"
-                className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/[0.12] border border-emerald-500/30 px-4 py-2.5 text-[13px] font-[700] text-emerald-400 hover:bg-emerald-500/[0.20] hover:border-emerald-500/50 transition-colors leading-none"
+                onMouseEnter={() => setPrimaryHovered(true)}
+                onMouseLeave={() => setPrimaryHovered(false)}
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 7,
+                  padding: "11px 20px",
+                  borderRadius: 10,
+                  background: primaryHovered ? "rgba(34,197,94,0.18)" : "rgba(34,197,94,0.12)",
+                  border: `1px solid ${primaryHovered ? "rgba(34,197,94,0.45)" : "rgba(34,197,94,0.28)"}`,
+                  color: primaryHovered ? "#4ade80" : "rgba(74,222,128,0.88)",
+                  fontSize: 13, fontWeight: 800,
+                  textDecoration: "none",
+                  letterSpacing: "0.01em",
+                  transition: "all 0.15s ease",
+                }}
               >
-                <Zap className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                Open Current Week
+                Open Current Week <ArrowRight size={13} />
               </Link>
               <Link
                 to="/fantasy/rankings"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/[0.10] bg-white/[0.04] px-4 py-2.5 text-[13px] font-[600] text-white/65 hover:text-white/88 hover:border-white/[0.18] hover:bg-white/[0.07] transition-colors leading-none"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 7,
+                  padding: "11px 20px",
+                  borderRadius: 10,
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  color: "rgba(255,255,255,0.55)",
+                  fontSize: 13, fontWeight: 700,
+                  textDecoration: "none",
+                  letterSpacing: "0.01em",
+                  transition: "all 0.15s ease",
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
+                  (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.80)";
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+                  (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.55)";
+                }}
               >
-                View Rankings
-                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-white/30" aria-hidden />
+                View Rankings <ArrowRight size={13} />
               </Link>
             </div>
           </div>
 
-          {/* ── Three tool cards ──────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-7">
-            {TOOLS.map(({ key, title, copy, href, icon: Icon, iconColor, accentBg, accentBorder, hoverBorder, ctaLabel }) => (
-              <Link
-                key={key}
-                to={href}
-                className={`group rounded-2xl border border-white/[0.09] bg-white/[0.025] px-4 py-4 flex flex-col gap-3 transition-colors ${hoverBorder} hover:bg-white/[0.04]`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className={`flex items-center justify-center h-8 w-8 rounded-xl ${accentBg} border ${accentBorder} shrink-0 ${iconColor}`}>
-                    <Icon className="h-4 w-4" aria-hidden />
-                  </div>
-                  <span className="text-[14px] font-[800] text-white/90 leading-tight">{title}</span>
-                </div>
-                <p className="text-[12px] text-white/45 leading-[1.65] flex-1">
-                  {copy}
-                </p>
-                <div className={`flex items-center gap-1 text-[12px] font-[600] ${iconColor} opacity-70 group-hover:opacity-100 transition-opacity`}>
-                  {ctaLabel}
-                  <ArrowRight className="h-3.5 w-3.5" aria-hidden />
-                </div>
-              </Link>
+          {/* ── Nav cards ─────────────────────────────────────────────────── */}
+          <div style={{ marginBottom: "clamp(22px,3vw,32px)" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {NAV_CARDS.map((card) => <NavTile key={card.title} card={card} />)}
+            </div>
+          </div>
+
+          {/* ── Live preview strip — only shown when real data exists ──────── */}
+          {showPreview && (
+            <div style={{
+              padding: "16px 18px",
+              borderRadius: 14,
+              border: "1px solid rgba(255,255,255,0.08)",
+              background: "rgba(255,255,255,0.02)",
+            }}>
+              <p style={{
+                fontSize: 9.5, fontWeight: 700,
+                letterSpacing: "0.18em", textTransform: "uppercase",
+                color: "rgba(255,255,255,0.28)",
+                margin: "0 0 12px",
+                lineHeight: 1,
+              }}>
+                {preview.roundLabel ? `This round · ${preview.roundLabel}` : "This round"}
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
+                {preview.mustBuy && (
+                  <PreviewCell
+                    icon={<TrendingUp size={11} style={{ color: "#4ade80" }} />}
+                    label="Must Buy"
+                    name={preview.mustBuy.player_name}
+                    stat={fmtPrice(preview.mustBuy.price)}
+                  />
+                )}
+                {preview.trap && (
+                  <PreviewCell
+                    icon={<AlertTriangle size={11} style={{ color: "#f87171" }} />}
+                    label="Top Trap"
+                    name={preview.trap.player_name}
+                    stat={trapStat}
+                  />
+                )}
+                {preview.captain && (
+                  <PreviewCell
+                    icon={<Crown size={11} style={{ color: "#F5C84C" }} />}
+                    label="Captain"
+                    name={preview.captain.player_name}
+                    stat={captainStat}
+                  />
+                )}
+                {preview.valuePick && (
+                  <PreviewCell
+                    icon={<DollarSign size={11} style={{ color: "#38bdf8" }} />}
+                    label="Value Pick"
+                    name={preview.valuePick.player_name}
+                    stat={valuePickStat}
+                  />
+                )}
+              </div>
+              <p style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", margin: "10px 0 0", lineHeight: 1.4 }}>
+                Live data · Updates each round
+              </p>
+            </div>
+          )}
+
+          {/* ── How it works strip ────────────────────────────────────────── */}
+          <div style={{
+            display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6,
+            padding: "12px 16px",
+            background: "rgba(255,255,255,0.025)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 10,
+            fontSize: 12, color: "rgba(255,255,255,0.42)",
+            lineHeight: 1.4,
+            marginTop: showPreview ? 10 : 0,
+          }}>
+            <span style={{ fontWeight: 700, color: "rgba(255,255,255,0.60)" }}>How it works:</span>
+            {["Pick a tool", "Get the data you need", "Make better trades this round"].map((step, i, arr) => (
+              <span key={step} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <span>{step}</span>
+                {i < arr.length - 1 && <span style={{ color: "rgba(255,255,255,0.22)" }}>→</span>}
+              </span>
             ))}
-          </div>
-
-          {/* ── Live preview strip ────────────────────────────────────────── */}
-          <div>
-            <p className="text-[9.5px] font-[700] uppercase tracking-[0.18em] text-white/22 mb-2.5 leading-none">
-              {preview.roundLabel ? `This round · ${preview.roundLabel}` : "This round"}
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <PreviewTile
-                icon={<TrendingUp className="h-3 w-3 text-emerald-400" />}
-                label="Must Buy"
-                playerName={preview.mustBuy?.player_name ?? null}
-                stat={preview.mustBuy ? fmtPrice(preview.mustBuy.price) : null}
-                loading={preview.loading}
-              />
-              <PreviewTile
-                icon={<AlertTriangle className="h-3 w-3 text-red-400" />}
-                label="Top Trap"
-                playerName={preview.trap?.player_name ?? null}
-                stat={trapEdge}
-                loading={preview.loading}
-              />
-              <PreviewTile
-                icon={<Crown className="h-3 w-3 text-[#F5C84C]" />}
-                label="Captain"
-                playerName={preview.captain?.player_name ?? null}
-                stat={captainStat}
-                loading={preview.loading}
-              />
-              <PreviewTile
-                icon={<DollarSign className="h-3 w-3 text-sky-400" />}
-                label="Value Pick"
-                playerName={preview.valuePick?.player_name ?? null}
-                stat={valuePickStat}
-                loading={preview.loading}
-              />
-            </div>
-            <p className="text-[10px] text-white/18 mt-2 leading-snug">
-              Live data · Updates each round
-            </p>
           </div>
 
         </div>
       </div>
     </>
+  );
+}
+
+// ── Nav tile ──────────────────────────────────────────────────────────────────
+
+function NavTile({ card }: { card: NavCard }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <Link to={card.href} style={{ textDecoration: "none" }} aria-label={`Open ${card.title}`}>
+      <div
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          display: "flex", alignItems: "flex-start", gap: 14,
+          padding: "16px 18px",
+          borderRadius: 14,
+          border: `1px solid ${hovered ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.10)"}`,
+          background: hovered ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.025)",
+          transition: "all 0.15s ease",
+          cursor: "pointer",
+        }}
+      >
+        <div style={{
+          width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+          background: "rgba(34,197,94,0.10)",
+          border: "1px solid rgba(34,197,94,0.20)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#4ade80",
+        }}>
+          {card.icon}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <span style={{
+              fontSize: 13.5, fontWeight: 700,
+              color: "#ECECEC",
+              letterSpacing: "-0.01em",
+            }}>
+              {card.title}
+            </span>
+            <span style={{
+              fontSize: 9.5, fontWeight: 700, letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "rgba(34,197,94,0.80)",
+              background: "rgba(34,197,94,0.10)",
+              border: "1px solid rgba(34,197,94,0.20)",
+              borderRadius: 5, padding: "2px 7px",
+            }}>
+              Available
+            </span>
+          </div>
+          <p style={{
+            margin: 0, fontSize: 12.5,
+            color: "rgba(255,255,255,0.48)",
+            lineHeight: 1.5,
+          }}>
+            {card.copy}
+          </p>
+        </div>
+        <div style={{ flexShrink: 0, alignSelf: "center" }}>
+          <ArrowRight size={15} style={{
+            color: hovered ? "rgba(255,255,255,0.70)" : "rgba(255,255,255,0.28)",
+            transition: "color 0.15s",
+          }} />
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// ── Preview cell ──────────────────────────────────────────────────────────────
+
+function PreviewCell({ icon, label, name, stat }: {
+  icon: React.ReactNode;
+  label: string;
+  name: string;
+  stat: string | null;
+}) {
+  return (
+    <div style={{
+      borderRadius: 10,
+      border: "1px solid rgba(255,255,255,0.07)",
+      background: "rgba(255,255,255,0.025)",
+      padding: "10px 12px",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
+        {icon}
+        <span style={{
+          fontSize: 9, fontWeight: 700, letterSpacing: "0.10em",
+          textTransform: "uppercase", color: "rgba(255,255,255,0.28)",
+          lineHeight: 1,
+        }}>
+          {label}
+        </span>
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.88)", lineHeight: 1.2, marginBottom: stat ? 3 : 0 }}>
+        {name.split(" ").slice(-1)[0]}
+      </div>
+      {stat && (
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+          {stat}
+        </div>
+      )}
+    </div>
   );
 }
