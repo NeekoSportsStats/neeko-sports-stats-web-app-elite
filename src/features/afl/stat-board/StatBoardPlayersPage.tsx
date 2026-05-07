@@ -199,7 +199,7 @@ export default function StatBoardPlayersPage() {
         />
       </Helmet>
 
-      <div className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden" style={{ maxWidth: "100vw" }}>
+      <div className="min-h-screen bg-[#0a0a0a] text-white [overflow-x:clip]" style={{ maxWidth: "100vw" }}>
 
         {/* Sticky controls bar — inside overflow-x-hidden wrapper, pre-promoted to compositing layer */}
         {stickyVisible && (
@@ -476,7 +476,7 @@ function StickyControlsBar({
   return (
     <div
       className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#0a0a0a]"
-      style={{ maxWidth: "100vw", overflowX: "hidden", transform: "translateZ(0)" }}
+      style={{ maxWidth: "100vw", overflowX: "clip" }}
     >
       <div className="mx-auto max-w-5xl px-4 py-2.5 flex flex-wrap items-center gap-2">
 
