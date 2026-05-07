@@ -281,15 +281,15 @@ export default function StatBoardTeamsPage() {
             <div className="mb-4 flex items-start gap-3 rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/5 px-4 py-3.5">
               <Lock className="h-4 w-4 shrink-0 text-[#F5C84C] mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-[#F5C84C] leading-snug">Neeko+ match</p>
+                <p className="text-sm font-semibold text-[#F5C84C] leading-snug">Unlock full round</p>
                 <p className="text-xs text-white/45 mt-0.5 leading-relaxed">
-                  Free users can explore the first two matches. Neeko+ unlocks every match, projection, hit rate and game log.
+                  First 2 matches free. Upgrade to Neeko+ to view every match, projection, hit rate and trend.
                 </p>
                 <button
                   onClick={() => navigate("/neeko-plus")}
                   className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[#F5C84C]/15 border border-[#F5C84C]/30 px-3.5 py-1.5 text-[11px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/25 transition-colors"
                 >
-                  Unlock Neeko+
+                  Upgrade to Neeko+
                 </button>
               </div>
             </div>
@@ -513,9 +513,9 @@ const FixtureSection = memo(function FixtureSection({
           <h2 className="text-[13.5px] font-bold text-white tracking-tight leading-none truncate">
             {teams ? `${teams.home} vs ${teams.away}` : matchLabel}
           </h2>
-          {!isLocked && !hasFullAccess && index < 2 && (
+          {isFree && !isLocked && !hasFullAccess && (
             <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide text-emerald-400/75 bg-emerald-500/8 border border-emerald-500/18 rounded px-1.5 py-0.5 leading-none">
-              Free preview
+              Free
             </span>
           )}
         </div>
