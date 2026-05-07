@@ -267,11 +267,15 @@ export default function CurrentWeekPage() {
   return (
     <>
       <Helmet>
-        <title>Current Week — AFL Fantasy | Neeko Sports</title>
+        <title>AFL Fantasy Current Week Picks | Neeko Sports Stats</title>
         <meta
           name="description"
           content="AFL Fantasy weekly calls — must buys, trap alerts, captain picks, value picks and risk watch for the current round."
         />
+        <link rel="canonical" href="https://neekostats.com.au/fantasy/current-week" />
+        <meta property="og:url" content="https://neekostats.com.au/fantasy/current-week" />
+        <meta property="og:title" content="AFL Fantasy Current Week Picks | Neeko Sports Stats" />
+        <meta name="twitter:title" content="AFL Fantasy Current Week Picks | Neeko Sports Stats" />
       </Helmet>
 
       <div className="min-h-screen bg-[#05070A] text-white overflow-x-hidden">
@@ -500,7 +504,7 @@ export default function CurrentWeekPage() {
                 </p>
               </div>
               <Link
-                to="/sports/afl/start-sit"
+                to="/fantasy/rankings"
                 className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-white/[0.12] bg-white/[0.04] px-3.5 py-2 text-[12px] font-[700] text-white/65 hover:text-white/88 hover:border-white/[0.20] hover:bg-white/[0.07] transition-colors"
               >
                 Start/Sit Tool

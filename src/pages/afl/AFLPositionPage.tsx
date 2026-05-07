@@ -52,7 +52,7 @@ export default function AFLPositionPage() {
         <div className="text-center max-w-md">
           <h2 className="text-2xl font-bold text-white mb-2">Position Not Found</h2>
           <p className="text-white/50 mb-6">Could not find position: {position}</p>
-          <Link to="/sports/afl/rankings">
+          <Link to="/fantasy/rankings">
             <Button variant="outline" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Rankings
@@ -124,7 +124,7 @@ export default function AFLPositionPage() {
             "@type": "BreadcrumbList",
             "itemListElement": [
               { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
-              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy Rankings", "item": "https://neekostats.com.au/sports/afl/rankings" },
+              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy Rankings", "item": "https://neekostats.com.au/fantasy/rankings" },
               { "@type": "ListItem", "position": 3, "name": `Best ${positionName}`, "item": pageUrl }
             ]
           }
@@ -134,7 +134,7 @@ export default function AFLPositionPage() {
       <div className="min-h-screen bg-[#0e0e0e]">
         <div className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
           <button
-            onClick={() => navigate('/sports/afl/rankings')}
+            onClick={() => navigate('/fantasy/rankings')}
             className="mb-4 flex items-center gap-2 text-white/50 hover:text-white/80 transition-colors text-sm"
           >
             <ArrowLeft size={16} />
@@ -279,7 +279,7 @@ export default function AFLPositionPage() {
 
           <div className="pt-6 mt-4 border-t border-white/10">
             <Link
-              to="/sports/afl/rankings"
+              to="/fantasy/rankings"
               className="flex items-center justify-center gap-2 rounded-xl bg-[#F5C84C] hover:bg-[#F5C84C]/90 text-black transition-all duration-150 px-6 py-4 font-bold text-sm w-full shadow-lg shadow-[#F5C84C]/20"
             >
               See full model rankings

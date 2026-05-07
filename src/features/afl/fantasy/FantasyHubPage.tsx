@@ -193,11 +193,15 @@ export default function FantasyHubPage() {
   return (
     <>
       <Helmet>
-        <title>AFL Fantasy Hub | Neeko Sports</title>
+        <title>AFL Fantasy Hub | Neeko Sports Stats</title>
         <meta
           name="description"
           content="AFL Fantasy Hub — must buys, trap alerts, captain picks and rankings in one decision-focused place."
         />
+        <link rel="canonical" href="https://neekostats.com.au/fantasy" />
+        <meta property="og:url" content="https://neekostats.com.au/fantasy" />
+        <meta property="og:title" content="AFL Fantasy Hub | Neeko Sports Stats" />
+        <meta name="twitter:title" content="AFL Fantasy Hub | Neeko Sports Stats" />
       </Helmet>
 
       <div className="min-h-screen bg-[#05070A] text-white overflow-x-hidden">

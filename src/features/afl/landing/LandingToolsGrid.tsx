@@ -27,7 +27,7 @@ const TOOLS = [
     icon: <GitCompare size={20} />,
     title: "Start / Sit",
     desc: "Two players. One answer. Head-to-head decisions before every lockout.",
-    to: "/sports/afl/start-sit",
+    to: "/fantasy/current-week",
     color: "#F87171",
   },
   {

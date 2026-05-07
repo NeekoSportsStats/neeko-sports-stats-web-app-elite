@@ -63,8 +63,6 @@ const UserConductPolicy = React.lazy(() => import("@/pages/policies/UserConductP
    AFL Pages — lazy
 ========================= */
 const AFLRankingsPage      = React.lazy(() => import("@/features/afl/rankings/AFLRankingsPage"));
-const AFLCurrentRoundPage  = React.lazy(() => import("@/features/afl/current-round/AFLCurrentRoundPage"));
-const AFLStartSitPage   = React.lazy(() => import("@/features/afl/start-sit/StartSitPage"));
 const AFLMarketWatch    = React.lazy(() => import("@/features/afl/market-watch/MarketWatchPageElite"));
 const AFLPlayerPage     = React.lazy(() => import("@/pages/afl/AFLPlayerPage"));
 const AFLTeamPage       = React.lazy(() => import("@/pages/afl/AFLTeamPage"));
@@ -124,11 +122,11 @@ function App() {
 
         <Route path="/neeko-plus" element={<S fallback={Generic}><NeekoPlusPurchase /></S>} />
 
-        {/* AFL Routes */}
-        <Route path="/sports/afl" element={<Navigate to="/sports/afl/current-round" replace />} />
+        {/* AFL Routes — legacy redirects to canonical /fantasy/* routes */}
+        <Route path="/sports/afl" element={<Navigate to="/fantasy/current-week" replace />} />
         <Route path="/sports/afl/rankings" element={<Navigate to="/fantasy/rankings" replace />} />
         <Route path="/sports/afl/captains" element={<Navigate to="/fantasy/current-week" replace />} />
-        <Route path="/sports/afl/current-round" element={<S fallback={Players}><AFLCurrentRoundPage /></S>} />
+        <Route path="/sports/afl/current-round" element={<Navigate to="/fantasy/current-week" replace />} />
         <Route path="/sports/afl/players" element={<S fallback={Players}><AFLPlayersPage /></S>} />
         <Route path="/sports/afl/players/:slug" element={<S fallback={Players}><AFLPlayerPage /></S>} />
 
@@ -137,7 +135,7 @@ function App() {
         <Route path="/sports/afl/positions/:position" element={<S fallback={Players}><AFLPositionPage /></S>} />
 
         <Route path="/sports/afl/edge-board" element={<Navigate to="/fantasy/market-watch" replace />} />
-        <Route path="/sports/afl/start-sit" element={<S fallback={AI}><AFLStartSitPage /></S>} />
+        <Route path="/sports/afl/start-sit" element={<Navigate to="/fantasy/current-week" replace />} />
         <Route path="/sports/afl/market-watch" element={<Navigate to="/fantasy/market-watch" replace />} />
         <Route path="/sports/afl/round/:roundNumber" element={<S fallback={Players}><AFLRoundPage /></S>} />
         <Route path="/fantasy" element={<S fallback={Players}><FantasyHubPage /></S>} />

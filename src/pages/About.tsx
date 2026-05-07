@@ -157,7 +157,7 @@ export default function About() {
         {/* CTA */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Link
-            to="/sports/afl/rankings"
+            to="/fantasy/rankings"
             className="inline-flex items-center gap-2 bg-[#F5C84C] text-black font-bold text-sm px-7 py-3 rounded-xl hover:brightness-110 transition-all"
           >
             View Rankings

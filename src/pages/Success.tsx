@@ -16,7 +16,7 @@ import { supabase } from "@/lib/supabaseClient";
 const POLL_INTERVAL_MS = 2000;
 const POLL_MAX_ATTEMPTS = 15;
 const REDIRECT_DELAY_MS = 1500;
-const REDIRECT_DESTINATION = "/sports/afl/rankings";
+const REDIRECT_DESTINATION = "/fantasy/rankings";
 
 export default function Success() {
   const [params] = useSearchParams();
@@ -208,7 +208,7 @@ export default function Success() {
 
           <div className="flex flex-col sm:flex-row gap-3 pt-4">
             <Button asChild className="flex-1">
-              <a href="/sports/afl/rankings">
+              <a href="/fantasy/rankings">
                 <ArrowRight className="mr-2 h-4 w-4" />
                 Start Exploring
               </a>

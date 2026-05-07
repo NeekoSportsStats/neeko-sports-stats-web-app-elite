@@ -180,16 +180,16 @@ export default function AFLRoundPage() {
               </ul>
             </div>
             <div className="flex flex-wrap gap-3 pt-1">
-              <Link to="/sports/afl/market-watch" className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors underline underline-offset-2">
+              <Link to="/fantasy/market-watch" className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors underline underline-offset-2">
                 Market Watch <ArrowRight size={11} />
               </Link>
-              <Link to="/sports/afl/edge-board" className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors underline underline-offset-2">
+              <Link to="/fantasy/current-week" className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors underline underline-offset-2">
                 Edge Board <ArrowRight size={11} />
               </Link>
-              <Link to="/sports/afl/rankings" className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors underline underline-offset-2">
+              <Link to="/fantasy/rankings" className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors underline underline-offset-2">
                 Full Rankings <ArrowRight size={11} />
               </Link>
-              <Link to="/sports/afl/start-sit" className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors underline underline-offset-2">
+              <Link to="/fantasy/current-week" className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white transition-colors underline underline-offset-2">
                 Start / Sit Tool <ArrowRight size={11} />
               </Link>
             </div>
@@ -326,7 +326,7 @@ export default function AFLRoundPage() {
             )}
             <p className="mt-3 text-xs text-white/30 leading-relaxed">
               Value ratio = projection ÷ baseline. Above 1.05 = strong value, below 0.95 = overpriced.
-              See the full <Link to="/sports/afl/market-watch" className="text-white/50 underline underline-offset-2 hover:text-white transition-colors">Market Watch</Link> for all trade targets.
+              See the full <Link to="/fantasy/market-watch" className="text-white/50 underline underline-offset-2 hover:text-white transition-colors">Market Watch</Link> for all trade targets.
             </p>
           </section>
 
@@ -372,19 +372,19 @@ export default function AFLRoundPage() {
           <div className="bg-white/[0.02] border border-white/[0.06] rounded-2xl p-6 space-y-3">
             <h3 className="text-sm font-semibold text-white">More AFL Fantasy Tools</h3>
             <div className="grid sm:grid-cols-2 gap-2">
-              <Link to="/sports/afl/rankings" className="flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors group">
+              <Link to="/fantasy/rankings" className="flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors group">
                 <span className="text-sm text-white/70 group-hover:text-white transition-colors">Full Player Rankings</span>
                 <ArrowRight size={14} className="text-white/20 group-hover:text-white/60 transition-colors" />
               </Link>
-              <Link to="/sports/afl/market-watch" className="flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors group">
+              <Link to="/fantasy/market-watch" className="flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors group">
                 <span className="text-sm text-white/70 group-hover:text-white transition-colors">Market Watch</span>
                 <ArrowRight size={14} className="text-white/20 group-hover:text-white/60 transition-colors" />
               </Link>
-              <Link to="/sports/afl/edge-board" className="flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors group">
+              <Link to="/fantasy/current-week" className="flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors group">
                 <span className="text-sm text-white/70 group-hover:text-white transition-colors">Edge Board</span>
                 <ArrowRight size={14} className="text-white/20 group-hover:text-white/60 transition-colors" />
               </Link>
-              <Link to="/sports/afl/start-sit" className="flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors group">
+              <Link to="/fantasy/current-week" className="flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.05] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors group">
                 <span className="text-sm text-white/70 group-hover:text-white transition-colors">Start / Sit Tool</span>
                 <ArrowRight size={14} className="text-white/20 group-hover:text-white/60 transition-colors" />
               </Link>

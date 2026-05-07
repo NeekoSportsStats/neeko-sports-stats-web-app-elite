@@ -57,14 +57,14 @@ export function CollapsibleSEO() {
                     Forwards
                   </a>{" "}
                   filters to focus on your specific roster needs. For deeper trade analysis visit{" "}
-                  <a href="/sports/afl/market-watch" className="text-[#F5C84C]/80 hover:text-[#F5C84C] underline underline-offset-2 transition-colors">
+                  <a href="/fantasy/market-watch" className="text-[#F5C84C]/80 hover:text-[#F5C84C] underline underline-offset-2 transition-colors">
                     Market Watch
                   </a>{" "}
                   or check the{" "}
-                  <a href="/sports/afl/edge-board" className="text-[#F5C84C]/80 hover:text-[#F5C84C] underline underline-offset-2 transition-colors">
-                    Edge Board
+                  <a href="/fantasy/current-week" className="text-[#F5C84C]/80 hover:text-[#F5C84C] underline underline-offset-2 transition-colors">
+                    Current Week
                   </a>{" "}
-                  for captain lock, breakout pick, and fade of the round.
+                  for captain picks, must buys, and trap alerts.
                 </p>
               </div>
             </div>
@@ -94,7 +94,7 @@ export function CollapsibleSEO() {
                 { label: "Rucks",       href: "/sports/afl/positions/ruck", sub: "Top RUC rankings" },
               ].map(({ label, href, sub }) => (
                 <a
-                  key={href}
+                  key={label}
                   href={href}
                   className="flex flex-col gap-1 bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors"
                 >
@@ -143,13 +143,13 @@ export function CollapsibleSEO() {
             <p className="text-xs text-white/35 uppercase tracking-wider font-medium">Tools &amp; Insights</p>
             <div className="grid sm:grid-cols-2 gap-3">
               {[
-                { label: "Market Watch",        href: "/sports/afl/market-watch",   sub: "Weekly trade targets, holds & avoids based on price movement" },
-                { label: "Edge Board",          href: "/sports/afl/edge-board",      sub: "Captain lock, breakout value pick, and fade of the round" },
-                { label: "Current Round Tips",  href: "/sports/afl/current-round",  sub: "Top picks, captain options, value plays and trap alerts" },
-                { label: "Start / Sit Tool",    href: "/sports/afl/start-sit",       sub: "AI verdict on which player to start in your lineup" },
+                { label: "Market Watch",     href: "/fantasy/market-watch",   sub: "Weekly trade targets, holds & avoids based on price movement" },
+                { label: "Current Week",     href: "/fantasy/current-week",   sub: "Must buys, captain picks, value plays and trap alerts" },
+                { label: "Fantasy Hub",      href: "/fantasy",                sub: "All fantasy tools in one place" },
+                { label: "Start / Sit Tool", href: "/fantasy/current-week",   sub: "Captain picks and head-to-head decisions before lockout" },
               ].map(({ label, href, sub }) => (
                 <a
-                  key={href}
+                  key={label}
                   href={href}
                   className="flex flex-col gap-1 bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors"
                 >

@@ -194,28 +194,28 @@ function InternalLinks({ position, team }: { position: string | null; team: stri
       <p className="text-[10px] text-white/35 uppercase tracking-wider mb-3">Explore More</p>
       <div className="grid grid-cols-2 gap-2 mb-3">
         <Link
-          to="/sports/afl/rankings"
+          to="/fantasy/rankings"
           className="flex items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.03] px-3 py-2.5 text-[12px] text-white/60 hover:text-white/80 hover:bg-white/[0.06] transition-all"
         >
           <BarChart2 size={13} className="shrink-0" />
           All Rankings
         </Link>
         <Link
-          to="/sports/afl/market-watch"
+          to="/fantasy/market-watch"
           className="flex items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.03] px-3 py-2.5 text-[12px] text-white/60 hover:text-white/80 hover:bg-white/[0.06] transition-all"
         >
           <TrendingUp size={13} className="shrink-0" />
           Market Watch
         </Link>
         <Link
-          to="/sports/afl/edge-board"
+          to="/fantasy/current-week"
           className="flex items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.03] px-3 py-2.5 text-[12px] text-white/60 hover:text-white/80 hover:bg-white/[0.06] transition-all"
         >
           <Zap size={13} className="shrink-0" />
           Edge Board
         </Link>
         <Link
-          to="/sports/afl/start-sit"
+          to="/fantasy/current-week"
           className="flex items-center gap-2 rounded-lg border border-white/[0.07] bg-white/[0.03] px-3 py-2.5 text-[12px] text-white/60 hover:text-white/80 hover:bg-white/[0.06] transition-all"
         >
           <Star size={13} className="shrink-0" />
@@ -413,7 +413,7 @@ export default function AFLPlayerPage() {
             Could not load data for: {playerName || slug}
           </p>
           <button
-            onClick={() => navigate('/sports/afl/rankings')}
+            onClick={() => navigate('/fantasy/rankings')}
             className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors"
           >
             <ArrowLeft size={15} />
@@ -613,7 +613,7 @@ export default function AFLPlayerPage() {
 
               <div className="pt-1">
                 <button
-                  onClick={() => navigate('/sports/afl/start-sit', { state: { playerA: player.player_name } })}
+                  onClick={() => navigate('/fantasy/current-week', { state: { playerA: player.player_name } })}
                   className="inline-flex items-center gap-2 rounded-lg border border-white/[0.10] bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/[0.18] transition-all px-4 py-2 text-[12px] text-white/60 hover:text-white/90"
                 >
                   <GitCompare size={13} className="shrink-0" />

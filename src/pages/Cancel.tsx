@@ -43,14 +43,14 @@ const Cancel = () => {
             </p>
             <div className="flex flex-wrap justify-center gap-2">
               <Button
-                onClick={() => navigate("/sports/afl/rankings")}
+                onClick={() => navigate("/fantasy/rankings")}
                 variant="outline"
                 size="sm"
               >
                 View Rankings
               </Button>
               <Button
-                onClick={() => navigate("/sports/afl/market-watch")}
+                onClick={() => navigate("/fantasy/market-watch")}
                 variant="outline"
                 size="sm"
               >

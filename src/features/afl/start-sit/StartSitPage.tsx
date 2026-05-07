@@ -118,14 +118,14 @@ function SEOGuide() {
               Best used after you've locked in your trades and need to finalise your lineup. For broader trade
               decisions check the{" "}
               <a
-                href="/sports/afl/market-watch"
+                href="/fantasy/market-watch"
                 className="text-white/70 underline underline-offset-2 hover:text-white transition-colors"
               >
                 Market Watch
               </a>{" "}
               for price movement targets, or the{" "}
               <a
-                href="/sports/afl/edge-board"
+                href="/fantasy/current-week"
                 className="text-white/70 underline underline-offset-2 hover:text-white transition-colors"
               >
                 Edge Board
