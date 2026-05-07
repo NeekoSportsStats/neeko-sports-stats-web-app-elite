@@ -64,7 +64,6 @@ const UserConductPolicy = React.lazy(() => import("@/pages/policies/UserConductP
 ========================= */
 const AFLRankingsPage      = React.lazy(() => import("@/features/afl/rankings/AFLRankingsPage"));
 const AFLCurrentRoundPage  = React.lazy(() => import("@/features/afl/current-round/AFLCurrentRoundPage"));
-const AFLRoundEdgeBoard = React.lazy(() => import("@/features/afl/edge/AFLRoundEdgeBoard"));
 const AFLStartSitPage   = React.lazy(() => import("@/features/afl/start-sit/StartSitPage"));
 const AFLMarketWatch    = React.lazy(() => import("@/features/afl/market-watch/MarketWatchPageElite"));
 const AFLPlayerPage     = React.lazy(() => import("@/pages/afl/AFLPlayerPage"));
@@ -137,9 +136,9 @@ function App() {
         <Route path="/sports/afl/teams/:team" element={<S fallback={Players}><AFLTeamPage /></S>} />
         <Route path="/sports/afl/positions/:position" element={<S fallback={Players}><AFLPositionPage /></S>} />
 
-        <Route path="/sports/afl/edge-board" element={<S fallback={AI}><AFLRoundEdgeBoard /></S>} />
+        <Route path="/sports/afl/edge-board" element={<Navigate to="/fantasy/market-watch" replace />} />
         <Route path="/sports/afl/start-sit" element={<S fallback={AI}><AFLStartSitPage /></S>} />
-        <Route path="/sports/afl/market-watch" element={<S fallback={AI}><AFLMarketWatch /></S>} />
+        <Route path="/sports/afl/market-watch" element={<Navigate to="/fantasy/market-watch" replace />} />
         <Route path="/sports/afl/round/:roundNumber" element={<S fallback={Players}><AFLRoundPage /></S>} />
         <Route path="/fantasy" element={<S fallback={Players}><FantasyHubPage /></S>} />
         <Route path="/fantasy/current-week" element={<S fallback={Players}><CurrentWeekPage /></S>} />
