@@ -1,9 +1,25 @@
-import { useMemo, useState, memo, useSyncExternalStore } from "react";
+import { useState, memo, useSyncExternalStore } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
-import { ChevronDown, ChevronUp, Lock, ArrowRight, ExternalLink, Users, ChartBar as BarChart2, ArrowUpRight } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Lock,
+  ArrowRight,
+  Users,
+  ChartBar as BarChart2,
+  ArrowUpRight,
+  Zap,
+  TrendingUp,
+  Target,
+} from "lucide-react";
 import { useMatchCentreData } from "./useMatchCentreData";
-import type { MatchCentreFixture, MatchCentreRow, MatchCentreSortMode, TeamStatLens } from "./matchCentreTypes";
+import type {
+  MatchCentreFixture,
+  MatchCentreRow,
+  MatchCentreSortMode,
+  TeamStatLens,
+} from "./matchCentreTypes";
 import { teamLensLabel } from "./teamTypes";
 
 // ── Mobile detection ──────────────────────────────────────────────────────────
@@ -24,11 +40,11 @@ function useIsMobile() {
 type MatchCentreLens = "overview" | TeamStatLens;
 
 const LENS_OPTIONS: { key: MatchCentreLens; label: string }[] = [
-  { key: "overview",       label: "Overview" },
-  { key: "score",          label: "Score" },
-  { key: "goals",          label: "Goals" },
-  { key: "scoring_shots",  label: "Scoring Shots" },
-  { key: "disposals",      label: "Disposals" },
+  { key: "overview",      label: "Overview" },
+  { key: "score",         label: "Score" },
+  { key: "goals",         label: "Goals" },
+  { key: "scoring_shots", label: "Scoring Shots" },
+  { key: "disposals",     label: "Disposals" },
 ];
 
 const SORT_OPTIONS: { key: MatchCentreSortMode; label: string }[] = [
@@ -44,10 +60,13 @@ function fmt(n: number | null | undefined, dec = 1): string {
   return n.toFixed(dec);
 }
 
+function fmtInt(n: number | null | undefined): string {
+  if (n == null) return "—";
+  return Math.round(n).toString();
+}
+
 function abbreviateTeam(name: string): string {
-  return name
-    .replace(/ (Football Club|F\.?C\.?|AFC)$/i, "")
-    .trim();
+  return name.replace(/ (Football Club|F\.?C\.?|AFC)$/i, "").trim();
 }
 
 function abbreviateVenue(venue: string): string {
@@ -113,6 +132,35 @@ function overallConfidence(home: MatchCentreRow | null, away: MatchCentreRow | n
   return (order[h] ?? 2) <= (order[a] ?? 2) ? h : a;
 }
 
+// Derives a scoring environment label from the combined projected total vs typical norms
+function scoringEnvLabel(home: MatchCentreRow | null, away: MatchCentreRow | null): string {
+  // Prefer the DB-supplied label if both teams have one
+  const hEnv = home?.scoring_environment_label;
+  const aEnv = away?.scoring_environment_label;
+  if (hEnv && aEnv) {
+    // Return the more descriptive / higher-scoring one
+    const rank = (s: string) => {
+      const l = s.toLowerCase();
+      if (l.includes("high") || l.includes("above")) return 2;
+      if (l.includes("low") || l.includes("below")) return 0;
+      return 1;
+    };
+    return rank(hEnv) >= rank(aEnv) ? hEnv : aEnv;
+  }
+  if (hEnv) return hEnv;
+  if (aEnv) return aEnv;
+
+  // Fallback: derive from combined projection vs season avg
+  const total = projectedTotal(home, away);
+  const seasonTotal =
+    (home?.season_avg ?? 0) + (away?.season_avg ?? 0);
+  if (total == null || seasonTotal === 0) return "Standard";
+  const ratio = total / seasonTotal;
+  if (ratio > 1.06) return "Above average";
+  if (ratio < 0.94) return "Below average";
+  return "Average";
+}
+
 // ── Sparkline chips ───────────────────────────────────────────────────────────
 
 function RecentChips({ values, lens }: { values: number[] | null; lens: TeamStatLens }) {
@@ -126,10 +174,7 @@ function RecentChips({ values, lens }: { values: number[] | null; lens: TeamStat
         <span
           key={i}
           className="inline-block text-[9px] font-semibold tabular-nums rounded px-1 py-0.5 leading-none"
-          style={{
-            background: "rgba(255,255,255,0.06)",
-            color: "rgba(255,255,255,0.50)",
-          }}
+          style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.50)" }}
         >
           {lens === "score" ? Math.round(v) : v.toFixed(1)}
         </span>
@@ -138,20 +183,17 @@ function RecentChips({ values, lens }: { values: number[] | null; lens: TeamStat
   );
 }
 
-// ── Team row ──────────────────────────────────────────────────────────────────
+// ── Team row (collapsed) ──────────────────────────────────────────────────────
 
 const TeamRow = memo(function TeamRow({
   row,
   lens,
-  isLocked,
 }: {
   row: MatchCentreRow;
   lens: TeamStatLens;
-  isLocked: boolean;
 }) {
   return (
     <div className="flex items-center gap-3 py-2.5 px-4 border-b border-white/[0.05] last:border-0">
-      {/* Team name */}
       <div className="flex-1 min-w-0">
         <span className="text-[13px] font-semibold text-white/85 leading-tight truncate block">
           {abbreviateTeam(row.team_name)}
@@ -160,45 +202,29 @@ const TeamRow = memo(function TeamRow({
           {row.is_home ? "Home" : "Away"}
         </span>
       </div>
-
-      {isLocked ? (
-        <div className="flex items-center gap-1.5">
-          <div className="h-5 w-14 rounded bg-white/[0.04] border border-white/[0.06]" />
-          <div className="h-5 w-10 rounded bg-white/[0.04] border border-white/[0.06]" />
-          <div className="h-5 w-12 rounded bg-white/[0.04] border border-white/[0.06]" />
+      <div className="flex items-center gap-3 text-right shrink-0">
+        <div className="hidden sm:flex items-center gap-1">
+          <RecentChips values={row.recent_values} lens={lens} />
         </div>
-      ) : (
-        <div className="flex items-center gap-3 text-right shrink-0">
-          {/* Recent chips */}
-          <div className="hidden sm:flex items-center gap-1">
-            <RecentChips values={row.recent_values} lens={lens} />
+        <div className="text-right min-w-[52px]">
+          <div className="text-[13px] font-bold text-white/90 tabular-nums leading-none">
+            {fmt(row.projection)}
           </div>
-
-          {/* Projection */}
-          <div className="text-right min-w-[52px]">
-            <div className="text-[13px] font-bold text-white/90 tabular-nums leading-none">
-              {fmt(row.projection)}
-            </div>
-            <div className="text-[9px] text-white/30 leading-none mt-0.5">proj</div>
-          </div>
-
-          {/* L5 avg */}
-          <div className="text-right min-w-[44px] hidden sm:block">
-            <div className="text-[12px] font-semibold text-white/55 tabular-nums leading-none">
-              {fmt(row.recent_avg_l5)}
-            </div>
-            <div className="text-[9px] text-white/25 leading-none mt-0.5">avg L5</div>
-          </div>
-
-          {/* Confidence */}
-          <div className="text-right min-w-[48px] hidden md:block">
-            <div className={`text-[11px] font-semibold leading-none ${confidenceColor(row.confidence_label)}`}>
-              {row.confidence_label ?? "—"}
-            </div>
-            <div className="text-[9px] text-white/25 leading-none mt-0.5">conf.</div>
-          </div>
+          <div className="text-[9px] text-white/30 leading-none mt-0.5">proj</div>
         </div>
-      )}
+        <div className="text-right min-w-[44px] hidden sm:block">
+          <div className="text-[12px] font-semibold text-white/55 tabular-nums leading-none">
+            {fmt(row.recent_avg_l5)}
+          </div>
+          <div className="text-[9px] text-white/25 leading-none mt-0.5">avg L5</div>
+        </div>
+        <div className="text-right min-w-[48px] hidden md:block">
+          <div className={`text-[11px] font-semibold leading-none ${confidenceColor(row.confidence_label)}`}>
+            {row.confidence_label ?? "—"}
+          </div>
+          <div className="text-[9px] text-white/25 leading-none mt-0.5">conf.</div>
+        </div>
+      </div>
     </div>
   );
 });
@@ -217,7 +243,6 @@ function LockedFixture({
 
   return (
     <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden">
-      {/* Header */}
       <div className="px-4 py-3 flex items-start justify-between gap-3 border-b border-white/[0.06]">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -233,14 +258,11 @@ function LockedFixture({
           </div>
           <p className="text-[10.5px] text-white/28 mt-0.5 leading-none">
             {formatMatchDate(fixture.gameDate)}
-            {fixture.venue && (
-              <> · {abbreviateVenue(fixture.venue)}</>
-            )}
+            {fixture.venue && <> · {abbreviateVenue(fixture.venue)}</>}
           </p>
         </div>
       </div>
 
-      {/* Team name ghosts */}
       <div className="px-4 py-2.5 border-b border-white/[0.05] flex items-center gap-3">
         <span className="text-[12.5px] font-semibold text-white/30 flex-1">{home}</span>
         <div className="flex items-center gap-1.5">
@@ -258,7 +280,6 @@ function LockedFixture({
         </div>
       </div>
 
-      {/* CTA */}
       <div className="px-4 py-3 border-t border-white/[0.06] bg-white/[0.015] flex items-center justify-between gap-3 flex-wrap">
         <p className="text-[11.5px] text-white/35 leading-snug">
           Upgrade to Neeko+ to view projections, hit rates and match trends.
@@ -279,28 +300,41 @@ function LockedFixture({
 function UnlockedFixture({
   fixture,
   lens,
+  uiLens,
   isFreePreview,
   hasFullAccess,
+  isExpanded,
+  onToggle,
 }: {
   fixture: MatchCentreFixture;
   lens: TeamStatLens;
+  uiLens: MatchCentreLens;
   isFreePreview: boolean;
   hasFullAccess: boolean;
+  isExpanded: boolean;
+  onToggle: () => void;
 }) {
-  const [expanded, setExpanded] = useState(false);
   const { homeRow, awayRow } = fixture;
-
   const total = projectedTotal(homeRow, awayRow);
   const margin = projectedMarginLabel(homeRow, awayRow);
   const conf = overallConfidence(homeRow, awayRow);
-
   const home = abbreviateTeam(fixture.homeTeamName);
   const away = abbreviateTeam(fixture.awayTeamName);
 
   return (
-    <div className="rounded-2xl border border-white/[0.10] bg-white/[0.03] overflow-hidden transition-all duration-150 hover:border-white/[0.15]">
-      {/* Header */}
-      <div className="px-4 py-3 flex items-start justify-between gap-3 border-b border-white/[0.06]">
+    <div
+      className={`rounded-2xl border overflow-hidden transition-all duration-150 ${
+        isExpanded
+          ? "border-white/[0.18] bg-white/[0.035]"
+          : "border-white/[0.10] bg-white/[0.03] hover:border-white/[0.15]"
+      }`}
+    >
+      {/* Header — always clickable to toggle expand */}
+      <button
+        onClick={onToggle}
+        className="w-full px-4 py-3 flex items-start justify-between gap-3 border-b border-white/[0.06] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20"
+        aria-expanded={isExpanded}
+      >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[13.5px] font-bold text-white/90 leading-snug">
@@ -316,26 +350,19 @@ function UnlockedFixture({
           </div>
           <p className="text-[10.5px] text-white/35 mt-0.5 leading-none">
             {formatMatchDate(fixture.gameDate)}
-            {fixture.venue && (
-              <> · {abbreviateVenue(fixture.venue)}</>
-            )}
+            {fixture.venue && <> · {abbreviateVenue(fixture.venue)}</>}
           </p>
         </div>
-
-        <button
-          onClick={() => setExpanded((v) => !v)}
-          className="shrink-0 flex items-center justify-center h-7 w-7 rounded-lg bg-white/[0.05] border border-white/[0.08] hover:bg-white/[0.09] transition-colors text-white/40"
-          aria-label={expanded ? "Collapse fixture" : "Expand fixture"}
-        >
-          {expanded
+        <span className="shrink-0 flex items-center justify-center h-7 w-7 rounded-lg bg-white/[0.05] border border-white/[0.08] text-white/40">
+          {isExpanded
             ? <ChevronUp className="h-3.5 w-3.5" aria-hidden />
             : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
-        </button>
-      </div>
+        </span>
+      </button>
 
       {/* Team rows */}
-      {homeRow && <TeamRow row={homeRow} lens={lens} isLocked={false} />}
-      {awayRow && <TeamRow row={awayRow} lens={lens} isLocked={false} />}
+      {homeRow && <TeamRow row={homeRow} lens={lens} />}
+      {awayRow && <TeamRow row={awayRow} lens={lens} />}
 
       {/* Summary strip */}
       <div className="px-4 py-2.5 flex items-center gap-4 flex-wrap border-t border-white/[0.05] bg-white/[0.015]">
@@ -359,147 +386,462 @@ function UnlockedFixture({
         )}
       </div>
 
-      {/* Expanded details */}
-      {expanded && (
-        <div className="border-t border-white/[0.07] bg-white/[0.015]">
-          <ExpandedDetails homeRow={homeRow} awayRow={awayRow} lens={lens} fixture={fixture} />
+      {/* Expanded panel */}
+      {isExpanded && (
+        <div className="border-t border-white/[0.08]">
+          <ExpandedPanel
+            fixture={fixture}
+            homeRow={homeRow}
+            awayRow={awayRow}
+            lens={lens}
+            uiLens={uiLens}
+          />
         </div>
       )}
     </div>
   );
 }
 
-// ── Expanded details ──────────────────────────────────────────────────────────
+// ── Expanded panel — 5 sections ───────────────────────────────────────────────
 
-function ExpandedDetails({
+function SectionHeader({
+  icon,
+  title,
+}: {
+  icon: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <span className="text-white/35">{icon}</span>
+      <span className="text-[10px] font-[900] uppercase tracking-[0.14em] text-white/35">{title}</span>
+      <div className="flex-1 h-px bg-white/[0.06]" />
+    </div>
+  );
+}
+
+function ExpandedPanel({
+  fixture,
   homeRow,
   awayRow,
   lens,
-  fixture,
+  uiLens,
 }: {
+  fixture: MatchCentreFixture;
   homeRow: MatchCentreRow | null;
   awayRow: MatchCentreRow | null;
   lens: TeamStatLens;
-  fixture: MatchCentreFixture;
+  uiLens: MatchCentreLens;
 }) {
-  function StatCompareRow({
-    label,
+  const home = abbreviateTeam(fixture.homeTeamName);
+  const away = abbreviateTeam(fixture.awayTeamName);
+  const total = projectedTotal(homeRow, awayRow);
+  const margin = projectedMarginLabel(homeRow, awayRow);
+  const conf = overallConfidence(homeRow, awayRow);
+  const envLabel = scoringEnvLabel(homeRow, awayRow);
+
+  return (
+    <div className="divide-y divide-white/[0.06]">
+
+      {/* ── Section 1: Match Snapshot ─────────────────────────────────── */}
+      <div className="px-4 py-4">
+        <SectionHeader icon={<Target className="h-3.5 w-3.5" />} title="Match Snapshot" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <SnapshotCard label="Projected total" value={total != null ? fmt(total) : "—"} />
+          <SnapshotCard label="Projected margin" value={margin ?? "—"} />
+          <SnapshotCard
+            label="Confidence"
+            value={conf ?? "—"}
+            valueClass={confidenceColor(conf)}
+          />
+          <SnapshotCard label="Scoring environment" value={envLabel} />
+        </div>
+      </div>
+
+      {/* ── Section 2: Team Comparison ────────────────────────────────── */}
+      <div className="px-4 py-4">
+        <SectionHeader icon={<TrendingUp className="h-3.5 w-3.5" />} title="Team Comparison" />
+        <ComparisonTable
+          homeLabel={home}
+          awayLabel={away}
+          homeRow={homeRow}
+          awayRow={awayRow}
+          lens={uiLens === "overview" ? "score" : lens}
+        />
+      </div>
+
+      {/* ── Section 3: Stat Environment ───────────────────────────────── */}
+      <div className="px-4 py-4">
+        <SectionHeader icon={<Zap className="h-3.5 w-3.5" />} title="Stat Environment" />
+        <StatEnvironmentSection homeRow={homeRow} awayRow={awayRow} />
+      </div>
+
+      {/* ── Section 4: AI Match Summary ───────────────────────────────── */}
+      <div className="px-4 py-4">
+        <AiMatchSummarySection homeRow={homeRow} awayRow={awayRow} />
+      </div>
+
+      {/* ── Section 5: Drill-down links ───────────────────────────────── */}
+      <div className="px-4 py-4">
+        <SectionHeader icon={<ArrowUpRight className="h-3.5 w-3.5" />} title="Drill-down" />
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link
+            to={`/stat-board/players?match_id=${fixture.matchId}`}
+            className="flex items-center gap-2 rounded-xl border border-white/[0.10] bg-white/[0.04] px-4 py-2.5 text-[12px] font-semibold text-white/65 hover:text-white/90 hover:bg-white/[0.07] hover:border-white/[0.18] transition-all"
+          >
+            <Users className="h-3.5 w-3.5" aria-hidden />
+            Open Player Stats
+            <ArrowUpRight className="h-3 w-3 text-white/30" aria-hidden />
+          </Link>
+          <Link
+            to={`/stat-board/teams?match_id=${fixture.matchId}`}
+            className="flex items-center gap-2 rounded-xl border border-white/[0.10] bg-white/[0.04] px-4 py-2.5 text-[12px] font-semibold text-white/65 hover:text-white/90 hover:bg-white/[0.07] hover:border-white/[0.18] transition-all"
+          >
+            <BarChart2 className="h-3.5 w-3.5" aria-hidden />
+            Open Team Stats
+            <ArrowUpRight className="h-3 w-3 text-white/30" aria-hidden />
+          </Link>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+// ── Snapshot card ─────────────────────────────────────────────────────────────
+
+function SnapshotCard({
+  label,
+  value,
+  valueClass = "text-white/80",
+}: {
+  label: string;
+  value: string;
+  valueClass?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] px-3.5 py-3">
+      <div className={`text-[14px] font-bold tabular-nums leading-none mb-1 ${valueClass}`}>
+        {value}
+      </div>
+      <div className="text-[10px] text-white/30 leading-snug">{label}</div>
+    </div>
+  );
+}
+
+// ── Comparison table ──────────────────────────────────────────────────────────
+
+function ComparisonTable({
+  homeLabel,
+  awayLabel,
+  homeRow,
+  awayRow,
+  lens,
+}: {
+  homeLabel: string;
+  awayLabel: string;
+  homeRow: MatchCentreRow | null;
+  awayRow: MatchCentreRow | null;
+  lens: TeamStatLens;
+}) {
+  function Row({
+    metric,
     homeVal,
     awayVal,
+    format = "num",
   }: {
-    label: string;
-    homeVal: React.ReactNode;
-    awayVal: React.ReactNode;
+    metric: string;
+    homeVal: number | string | null | undefined;
+    awayVal: number | string | null | undefined;
+    format?: "num" | "int" | "str";
   }) {
+    function display(v: number | string | null | undefined): string {
+      if (v == null) return "—";
+      if (typeof v === "string") return v;
+      if (format === "int") return fmtInt(v);
+      return fmt(v);
+    }
+
+    // Highlight the higher numeric value
+    const homeN = typeof homeVal === "number" ? homeVal : null;
+    const awayN = typeof awayVal === "number" ? awayVal : null;
+    const homeWins = homeN != null && awayN != null && homeN > awayN;
+    const awayWins = awayN != null && homeN != null && awayN > homeN;
+
     return (
-      <div className="flex items-center py-1.5 border-b border-white/[0.04] last:border-0">
-        <div className="w-28 text-[10.5px] font-semibold text-white/35 uppercase tracking-wide shrink-0">{label}</div>
-        <div className="flex-1 flex items-center gap-3">
-          <span className="text-[12px] text-white/70 tabular-nums font-semibold min-w-[52px] text-right">{homeVal}</span>
-          <span className="text-white/15 text-[10px]">·</span>
-          <span className="text-[12px] text-white/50 tabular-nums min-w-[52px]">{awayVal}</span>
+      <div className="flex items-center py-2 border-b border-white/[0.04] last:border-0">
+        <div className="w-36 text-[10.5px] font-semibold text-white/30 uppercase tracking-wide shrink-0 leading-tight">
+          {metric}
+        </div>
+        <div className="flex-1 grid grid-cols-2 gap-3">
+          <span className={`text-[12.5px] tabular-nums text-right font-semibold ${homeWins ? "text-white/85" : "text-white/50"}`}>
+            {display(homeVal)}
+          </span>
+          <span className={`text-[12.5px] tabular-nums font-semibold ${awayWins ? "text-white/85" : "text-white/50"}`}>
+            {display(awayVal)}
+          </span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="px-4 py-3 space-y-0">
+    <div>
       {/* Column headers */}
-      <div className="flex items-center pb-2 border-b border-white/[0.06] mb-1">
-        <div className="w-28 shrink-0" />
-        <div className="flex-1 flex items-center gap-3">
-          <span className="text-[9.5px] font-bold text-white/40 uppercase tracking-wide min-w-[52px] text-right">
-            {abbreviateTeam(fixture.homeTeamName)}
-          </span>
-          <span className="w-[10px]" />
-          <span className="text-[9.5px] font-bold text-white/25 uppercase tracking-wide min-w-[52px]">
-            {abbreviateTeam(fixture.awayTeamName)}
-          </span>
+      <div className="flex items-center pb-2 border-b border-white/[0.07] mb-1">
+        <div className="w-36 shrink-0" />
+        <div className="flex-1 grid grid-cols-2 gap-3">
+          <span className="text-[10px] font-bold text-white/45 uppercase tracking-wide text-right">{homeLabel}</span>
+          <span className="text-[10px] font-bold text-white/25 uppercase tracking-wide">{awayLabel}</span>
         </div>
       </div>
 
-      <StatCompareRow
-        label="Projection"
-        homeVal={fmt(homeRow?.projection)}
-        awayVal={fmt(awayRow?.projection)}
+      <Row metric="Projected score" homeVal={homeRow?.projection} awayVal={awayRow?.projection} />
+      <Row metric="Recent avg (L5)" homeVal={homeRow?.recent_avg_l5} awayVal={awayRow?.recent_avg_l5} />
+      <Row metric="Recent avg (L3)" homeVal={homeRow?.recent_avg_l3} awayVal={awayRow?.recent_avg_l3} />
+      <Row metric="Season avg" homeVal={homeRow?.season_avg} awayVal={awayRow?.season_avg} />
+      <Row metric="Opp conceded L5" homeVal={homeRow?.opponent_conceded_l5} awayVal={awayRow?.opponent_conceded_l5} />
+      <Row metric="Opp conceded season" homeVal={homeRow?.opponent_conceded_season} awayVal={awayRow?.opponent_conceded_season} />
+      <Row metric="High recent" homeVal={homeRow?.high_recent} awayVal={awayRow?.high_recent} />
+      <Row metric="Low recent" homeVal={homeRow?.low_recent} awayVal={awayRow?.low_recent} />
+      <Row
+        metric="Games sample"
+        homeVal={homeRow?.recent_games_count}
+        awayVal={awayRow?.recent_games_count}
+        format="int"
       />
-      <StatCompareRow
-        label="L3 avg"
-        homeVal={fmt(homeRow?.recent_avg_l3)}
-        awayVal={fmt(awayRow?.recent_avg_l3)}
-      />
-      <StatCompareRow
-        label="L5 avg"
-        homeVal={fmt(homeRow?.recent_avg_l5)}
-        awayVal={fmt(awayRow?.recent_avg_l5)}
-      />
-      <StatCompareRow
-        label="L8 avg"
-        homeVal={fmt(homeRow?.recent_avg_l8)}
-        awayVal={fmt(awayRow?.recent_avg_l8)}
-      />
-      <StatCompareRow
-        label="Season avg"
-        homeVal={fmt(homeRow?.season_avg)}
-        awayVal={fmt(awayRow?.season_avg)}
-      />
-      <StatCompareRow
-        label="Consistency"
-        homeVal={
-          <span className={`text-[11px] ${consistencyColor(homeRow?.consistency_label ?? null)}`}>
-            {homeRow?.consistency_label ?? "—"}
-          </span>
-        }
-        awayVal={
-          <span className={`text-[11px] ${consistencyColor(awayRow?.consistency_label ?? null)}`}>
-            {awayRow?.consistency_label ?? "—"}
-          </span>
-        }
-      />
-      {lens === "score" && (
-        <>
-          <StatCompareRow
-            label="Opp conceded L5"
-            homeVal={fmt(homeRow?.opponent_conceded_l5)}
-            awayVal={fmt(awayRow?.opponent_conceded_l5)}
-          />
-          <StatCompareRow
-            label="Scoring env."
-            homeVal={
-              <span className="text-[11px] text-white/55 truncate">
-                {homeRow?.scoring_environment_label ?? "—"}
-              </span>
-            }
-            awayVal={
-              <span className="text-[11px] text-white/35 truncate">
-                {awayRow?.scoring_environment_label ?? "—"}
-              </span>
-            }
-          />
-        </>
-      )}
+      {/* Key hit rate row (top threshold for lens) */}
+      <KeyHitRateRow homeRow={homeRow} awayRow={awayRow} lens={lens} />
+    </div>
+  );
+}
 
-      {/* Deep links */}
-      <div className="pt-3 pb-1 flex items-center gap-3 flex-wrap">
-        <Link
-          to={`/stat-board/players?match_id=${fixture.matchId}`}
-          className="flex items-center gap-1.5 text-[11.5px] font-semibold text-white/45 hover:text-white/70 transition-colors"
-        >
-          <Users className="h-3.5 w-3.5" aria-hidden />
-          Open Player Stats
-          <ArrowUpRight className="h-3 w-3" aria-hidden />
-        </Link>
-        <span className="text-white/15">·</span>
-        <Link
-          to={`/stat-board/teams?match_id=${fixture.matchId}`}
-          className="flex items-center gap-1.5 text-[11.5px] font-semibold text-white/45 hover:text-white/70 transition-colors"
-        >
-          <BarChart2 className="h-3.5 w-3.5" aria-hidden />
-          Open Team Stats
-          <ArrowUpRight className="h-3 w-3" aria-hidden />
-        </Link>
+function KeyHitRateRow({
+  homeRow,
+  awayRow,
+  lens,
+}: {
+  homeRow: MatchCentreRow | null;
+  awayRow: MatchCentreRow | null;
+  lens: TeamStatLens;
+}) {
+  const thresholdMap: Record<TeamStatLens, number> = {
+    score: 90,
+    goals: 10,
+    scoring_shots: 26,
+    disposals: 360,
+  };
+  const t = thresholdMap[lens];
+  const hRate = homeRow?.all_threshold_hit_rates?.[String(t)]?.rate;
+  const aRate = awayRow?.all_threshold_hit_rates?.[String(t)]?.rate;
+
+  function fmtRate(r: number | undefined): string {
+    if (r == null) return "—";
+    return `${Math.round(r * 100)}%`;
+  }
+
+  const label = `Hit rate ${t}+`;
+  const hWins = hRate != null && aRate != null && hRate > aRate;
+  const aWins = aRate != null && hRate != null && aRate > hRate;
+
+  return (
+    <div className="flex items-center py-2">
+      <div className="w-36 text-[10.5px] font-semibold text-white/30 uppercase tracking-wide shrink-0 leading-tight">
+        {label}
       </div>
+      <div className="flex-1 grid grid-cols-2 gap-3">
+        <span className={`text-[12.5px] tabular-nums text-right font-semibold ${hWins ? "text-emerald-400" : "text-white/50"}`}>
+          {fmtRate(hRate)}
+        </span>
+        <span className={`text-[12.5px] tabular-nums font-semibold ${aWins ? "text-emerald-400" : "text-white/50"}`}>
+          {fmtRate(aRate)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Stat environment section ──────────────────────────────────────────────────
+
+function envBadgeClass(label: string | null): string {
+  if (!label) return "bg-white/[0.04] text-white/25 border-white/[0.06]";
+  const l = label.toLowerCase();
+  if (l.includes("high") || l.includes("above")) return "bg-emerald-500/10 text-emerald-400/80 border-emerald-500/20";
+  if (l.includes("low") || l.includes("below"))  return "bg-red-500/10 text-red-400/70 border-red-500/15";
+  return "bg-white/[0.05] text-white/55 border-white/[0.09]";
+}
+
+function StatEnvironmentSection({
+  homeRow,
+  awayRow,
+}: {
+  homeRow: MatchCentreRow | null;
+  awayRow: MatchCentreRow | null;
+}) {
+  // Combine/average environment signals from both teams
+  function combineEnv(a: string | null | undefined, b: string | null | undefined): string {
+    if (a && b) {
+      const rank = (s: string) => {
+        const l = s.toLowerCase();
+        if (l.includes("high") || l.includes("above")) return 2;
+        if (l.includes("low") || l.includes("below")) return 0;
+        return 1;
+      };
+      const avg = (rank(a) + rank(b)) / 2;
+      if (avg > 1.4) return "Above average";
+      if (avg < 0.6) return "Below average";
+      return "Average";
+    }
+    return a || b || "Standard";
+  }
+
+  const scoreEnv = combineEnv(homeRow?.scoring_environment_label, awayRow?.scoring_environment_label);
+
+  // Goals environment — derived from projected goals avg
+  function goalsEnvLabel(): string {
+    const hGoals = homeRow?.recent_goals_avg;
+    const aGoals = awayRow?.recent_goals_avg;
+    if (hGoals == null && aGoals == null) return "Standard";
+    const avg = ((hGoals ?? 0) + (aGoals ?? 0)) / (hGoals != null && aGoals != null ? 2 : 1);
+    if (avg > 11) return "High";
+    if (avg < 8)  return "Low";
+    return "Medium";
+  }
+
+  // Scoring shots environment
+  function scoringShotsEnvLabel(): string {
+    const h = homeRow?.recent_scoring_shots_avg;
+    const a = awayRow?.recent_scoring_shots_avg;
+    if (h == null && a == null) return "Standard";
+    const avg = ((h ?? 0) + (a ?? 0)) / (h != null && a != null ? 2 : 1);
+    if (avg > 27) return "High";
+    if (avg < 20) return "Low";
+    return "Medium";
+  }
+
+  // Disposal environment
+  function disposalsEnvLabel(): string {
+    if (homeRow == null || awayRow == null) return "Standard";
+    // Disposals tend to be consistent; use season avg as proxy
+    const hAvg = homeRow.season_avg;
+    const aAvg = awayRow.season_avg;
+    if (hAvg == null && aAvg == null) return "Standard";
+    const avg = ((hAvg ?? 0) + (aAvg ?? 0)) / (hAvg != null && aAvg != null ? 2 : 1);
+    if (avg > 370) return "High";
+    if (avg < 320) return "Low";
+    return "Medium";
+  }
+
+  // Volatility from stddev
+  function volatilityLabel(): string {
+    const h = homeRow?.stddev_recent;
+    const a = awayRow?.stddev_recent;
+    if (h == null && a == null) return "Standard";
+    const avg = ((h ?? 0) + (a ?? 0)) / (h != null && a != null ? 2 : 1);
+    if (avg > 18) return "High";
+    if (avg < 8)  return "Low";
+    return "Medium";
+  }
+
+  const rows: { label: string; value: string }[] = [
+    { label: "Score environment", value: scoreEnv },
+    { label: "Goals environment", value: goalsEnvLabel() },
+    { label: "Scoring shots", value: scoringShotsEnvLabel() },
+    { label: "Disposals", value: disposalsEnvLabel() },
+    { label: "Volatility", value: volatilityLabel() },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {rows.map(({ label, value }) => (
+        <div
+          key={label}
+          className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${envBadgeClass(value)}`}
+        >
+          <span className="text-[10px] text-white/30 font-semibold uppercase tracking-wide">{label}</span>
+          <span className={`text-[11px] font-bold ${envBadgeClass(value).includes("emerald") ? "text-emerald-400/85" : envBadgeClass(value).includes("red") ? "text-red-400/75" : "text-white/55"}`}>
+            {value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── AI match summary section ──────────────────────────────────────────────────
+
+function AiMatchSummarySection({
+  homeRow,
+  awayRow,
+}: {
+  homeRow: MatchCentreRow | null;
+  awayRow: MatchCentreRow | null;
+}) {
+  // Build a data-driven narrative from available fields — no fake data
+  function buildNarrative(): string | null {
+    if (!homeRow || !awayRow) return null;
+
+    const hProj = homeRow.projection;
+    const aProj = awayRow.projection;
+    const hL5   = homeRow.recent_avg_l5;
+    const aL5   = awayRow.recent_avg_l5;
+    const conf  = overallConfidence(homeRow, awayRow);
+
+    // Need at least projections to say something meaningful
+    if (!hProj || !aProj) return null;
+
+    const homeName = abbreviateTeam(homeRow.team_name);
+    const awayName = abbreviateTeam(awayRow.team_name);
+    const favTeam  = hProj >= aProj ? homeName : awayName;
+    const favProj  = Math.max(hProj, aProj);
+    const undProj  = Math.min(hProj, aProj);
+    const marginVal = Math.abs(hProj - aProj).toFixed(1);
+    const total     = (hProj + aProj).toFixed(1);
+
+    let text = "";
+
+    // Home team sentence
+    if (hL5 != null) {
+      const trend = hProj > hL5 + 3 ? "is projecting above" : hProj < hL5 - 3 ? "is projecting below" : "is projecting in line with";
+      text += `${homeName} ${trend} their recent five-game average of ${fmt(hL5)}, with a projected score of ${fmt(hProj)}. `;
+    } else {
+      text += `${homeName} projects at ${fmt(hProj)} for this match. `;
+    }
+
+    // Away team sentence
+    if (aL5 != null) {
+      const trend = aProj > aL5 + 3 ? "is projecting above" : aProj < aL5 - 3 ? "is projecting below" : "is projecting in line with";
+      text += `${awayName} ${trend} their recent five-game average of ${fmt(aL5)}, projecting at ${fmt(aProj)}. `;
+    } else {
+      text += `${awayName} projects at ${fmt(aProj)}. `;
+    }
+
+    // Matchup summary
+    text += `${favTeam} holds the stronger projected output by ${marginVal} points, with a combined projected total of ${total}. `;
+
+    // Confidence close
+    if (conf) {
+      const confLower = conf.charAt(0) + conf.slice(1).toLowerCase();
+      text += `This match profiles as a ${confLower}-confidence scoring environment.`;
+    }
+
+    return text.trim();
+  }
+
+  const narrative = buildNarrative();
+
+  return (
+    <div>
+      <SectionHeader icon={<Zap className="h-3.5 w-3.5" />} title="Match Summary" />
+      {narrative ? (
+        <p className="text-[12.5px] text-white/55 leading-[1.7] max-w-[640px]">
+          {narrative}
+        </p>
+      ) : (
+        <p className="text-[12px] text-white/30 italic">
+          AI match summary not yet available for this fixture.
+        </p>
+      )}
     </div>
   );
 }
@@ -561,10 +903,7 @@ function MatchFilterDropdown({
               <button
                 key={f.matchId}
                 onClick={() => { onSelect(f.matchId); setOpen(false); }}
-                className={`
-                  w-full flex items-center gap-2.5 px-4 py-2.5 text-left hover:bg-white/[0.055] transition-colors
-                  ${isSelected ? "bg-white/[0.09]" : ""}
-                `}
+                className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-left hover:bg-white/[0.055] transition-colors ${isSelected ? "bg-white/[0.09]" : ""}`}
               >
                 <span className="shrink-0 w-4 h-4 flex items-center justify-center">
                   {isLocked
@@ -700,7 +1039,8 @@ function FixtureSkeleton() {
 
 export default function StatBoardMatchCentrePage() {
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _isMobile = useIsMobile();
 
   const {
     fixtures,
@@ -717,16 +1057,19 @@ export default function StatBoardMatchCentrePage() {
     error,
   } = useMatchCentreData();
 
-  // The hook uses TeamStatLens internally; overview is UI-only (maps to score for data)
+  // UI lens (includes "overview"); data lens always a real TeamStatLens
   const [uiLens, setUiLens] = useState<MatchCentreLens>("overview");
+
+  // Single-expand: only one fixture open at a time
+  const [expandedMatchId, setExpandedMatchId] = useState<number | null>(null);
 
   function handleLensChange(l: MatchCentreLens) {
     setUiLens(l);
-    if (l !== "overview") {
-      setLens(l as TeamStatLens);
-    } else {
-      setLens("score");
-    }
+    setLens(l !== "overview" ? (l as TeamStatLens) : "score");
+  }
+
+  function handleToggle(matchId: number) {
+    setExpandedMatchId((prev) => (prev === matchId ? null : matchId));
   }
 
   const dataLens: TeamStatLens = lens;
@@ -744,14 +1087,14 @@ export default function StatBoardMatchCentrePage() {
       <div style={{ minHeight: "100vh", background: "#05070A", color: "#fff" }}>
         <div style={{ maxWidth: 860, margin: "0 auto", padding: "clamp(28px,4vw,52px) clamp(16px,4vw,32px) clamp(40px,5vw,72px)" }}>
 
-          {/* ── Breadcrumb ────────────────────────────────────────────────── */}
+          {/* ── Breadcrumb ───────────────────────────────────────────────── */}
           <nav className="flex items-center gap-1.5 mb-5 text-[11px] text-white/30 font-medium">
             <Link to="/stat-board" className="hover:text-white/55 transition-colors">Stat Board</Link>
             <span>/</span>
             <span className="text-white/55">Match Centre</span>
           </nav>
 
-          {/* ── Header ───────────────────────────────────────────────────── */}
+          {/* ── Header ──────────────────────────────────────────────────── */}
           <div className="mb-6">
             <p className="text-[9.5px] font-[900] tracking-[0.44em] uppercase text-emerald-500/65 mb-2.5">
               Match Centre
@@ -766,7 +1109,6 @@ export default function StatBoardMatchCentrePage() {
 
           {/* ── Controls ─────────────────────────────────────────────────── */}
           <div className="mb-5 space-y-3">
-            {/* Lens tabs */}
             <div className="flex items-center gap-1 flex-wrap">
               {LENS_OPTIONS.map((l) => (
                 <button
@@ -784,7 +1126,6 @@ export default function StatBoardMatchCentrePage() {
               ))}
             </div>
 
-            {/* Match filter + sort */}
             <div className="flex items-center gap-2.5 flex-wrap">
               <MatchFilterDropdown
                 allFixtures={allFixtures}
@@ -796,7 +1137,7 @@ export default function StatBoardMatchCentrePage() {
             </div>
           </div>
 
-          {/* ── Summary strip ─────────────────────────────────────────────── */}
+          {/* ── Summary strip ────────────────────────────────────────────── */}
           {!loading && !error && (
             <div className="mb-5">
               <SummaryStrip
@@ -808,28 +1149,28 @@ export default function StatBoardMatchCentrePage() {
             </div>
           )}
 
-          {/* ── Error ─────────────────────────────────────────────────────── */}
+          {/* ── Error ────────────────────────────────────────────────────── */}
           {error && (
             <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-[13px] text-red-400/80 mb-5">
               Failed to load match data. Please refresh.
             </div>
           )}
 
-          {/* ── Loading ───────────────────────────────────────────────────── */}
+          {/* ── Loading ──────────────────────────────────────────────────── */}
           {loading && (
             <div className="space-y-3">
               {[0, 1, 2, 3].map((i) => <FixtureSkeleton key={i} />)}
             </div>
           )}
 
-          {/* ── Empty ─────────────────────────────────────────────────────── */}
+          {/* ── Empty ────────────────────────────────────────────────────── */}
           {!loading && !error && fixtures.length === 0 && (
             <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] px-4 py-8 text-center">
               <p className="text-[13px] text-white/40">No fixtures available for this round.</p>
             </div>
           )}
 
-          {/* ── Fixture list ──────────────────────────────────────────────── */}
+          {/* ── Fixture list ─────────────────────────────────────────────── */}
           {!loading && !error && fixtures.length > 0 && (
             <div className="space-y-3">
               {fixtures.map((fixture) =>
@@ -844,15 +1185,18 @@ export default function StatBoardMatchCentrePage() {
                     key={fixture.matchId}
                     fixture={fixture}
                     lens={dataLens}
+                    uiLens={uiLens}
                     isFreePreview={fixture.isFreePreview}
                     hasFullAccess={hasFullAccess}
+                    isExpanded={expandedMatchId === fixture.matchId}
+                    onToggle={() => handleToggle(fixture.matchId)}
                   />
                 )
               )}
             </div>
           )}
 
-          {/* ── Upgrade prompt (free users, bottom) ───────────────────────── */}
+          {/* ── Upgrade prompt (free users, bottom) ─────────────────────── */}
           {!loading && !hasFullAccess && allFixtures.some((f) => f.isLocked) && (
             <div className="mt-6 flex items-center gap-4 rounded-2xl border border-[#F5C84C]/20 bg-[#F5C84C]/[0.04] px-5 py-4">
               <Lock className="h-4 w-4 text-[#F5C84C] shrink-0" aria-hidden />
