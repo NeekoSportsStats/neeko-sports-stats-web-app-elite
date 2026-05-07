@@ -78,6 +78,7 @@ const StatBoardPlayersPage      = React.lazy(() => import("@/features/afl/stat-b
 const StatBoardTeamsPage        = React.lazy(() => import("@/features/afl/stat-board/StatBoardTeamsPage"));
 const StatBoardMatchCentrePage  = React.lazy(() => import("@/features/afl/stat-board/StatBoardMatchCentrePage"));
 const FantasyHubPage       = React.lazy(() => import("@/features/afl/fantasy/FantasyHubPage"));
+const CurrentWeekPage      = React.lazy(() => import("@/features/afl/fantasy/CurrentWeekPage"));
 
 /* =========================
    Suspense helpers
@@ -142,9 +143,12 @@ function App() {
         <Route path="/sports/afl/captains" element={<S fallback={AI}><AFLCaptainsPage /></S>} />
         <Route path="/sports/afl/round/:roundNumber" element={<S fallback={Players}><AFLRoundPage /></S>} />
         <Route path="/fantasy" element={<S fallback={Players}><FantasyHubPage /></S>} />
-        <Route path="/fantasy/current-week" element={<S fallback={Players}><AFLCurrentRoundPage /></S>} />
+        <Route path="/fantasy/current-week" element={<S fallback={Players}><CurrentWeekPage /></S>} />
         <Route path="/fantasy/rankings" element={<S fallback={Players}><AFLRankingsPage /></S>} />
         <Route path="/fantasy/market-watch" element={<S fallback={AI}><AFLMarketWatch /></S>} />
+
+        {/* Legacy redirects — keep old URLs working */}
+        <Route path="/sports/afl/captains" element={<Navigate to="/fantasy/current-week" replace />} />
         <Route path="/stat-board" element={<S fallback={Generic}><StatBoardHubPage /></S>} />
         <Route path="/stat-board/players" element={<S fallback={Players}><StatBoardPlayersPage /></S>} />
         <Route path="/stat-board/teams" element={<S fallback={Players}><StatBoardTeamsPage /></S>} />
