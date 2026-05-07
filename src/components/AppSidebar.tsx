@@ -22,6 +22,12 @@ const STAT_BOARD_SUB_ITEMS = [
   { title: "Match Centre", url: "/stat-board/match-centre" },
 ] as const;
 
+const FANTASY_SUB_ITEMS = [
+  { title: "Current Week", url: "/fantasy/current-week" },
+  { title: "Rankings",     url: "/fantasy/rankings"     },
+  { title: "Market Watch", url: "/fantasy/market-watch" },
+] as const;
+
 export function AppSidebar() {
   const { isMobile, state, setOpenMobile } = useSidebar();
   const { isPremium } = useAuth();
@@ -43,6 +49,7 @@ export function AppSidebar() {
   // Show Stat Board sub-items whenever the user is anywhere under /stat-board
   // (including the hub page itself) and the sidebar is visible.
   const showStatBoardSubs = isActive("/stat-board") && (isExpanded || isMobile);
+  const showFantasySubs   = isActive("/fantasy")    && (isExpanded || isMobile);
 
   const mainNav = [
     { title: "Home",        url: "/",                    icon: Home,           exact: true },
@@ -67,7 +74,8 @@ export function AppSidebar() {
             <SidebarMenu>
               {mainNav.map(({ title, url, icon: Icon, exact }) => {
                 const active = exact ? currentPath === url : isActive(url);
-                const isStatBoard = title === "Stat Board";
+                const isStatBoard  = title === "Stat Board";
+                const isFantasyHub = title === "Fantasy Hub";
                 return (
                   <SidebarMenuItem key={title}>
                     <SidebarMenuButton asChild>
@@ -88,6 +96,34 @@ export function AppSidebar() {
                     {isStatBoard && showStatBoardSubs && (
                       <ul className="mt-0.5 mb-1 ml-7 space-y-0.5" role="group" aria-label="Stat Board sections">
                         {STAT_BOARD_SUB_ITEMS.map((sub) => {
+                          const subActive = currentPath === sub.url;
+                          return (
+                            <li key={sub.title}>
+                              <NavLink
+                                to={sub.url}
+                                className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors hover:bg-muted/40 ${
+                                  subActive
+                                    ? "bg-muted/60 text-primary"
+                                    : "text-foreground/50 hover:text-foreground/80"
+                                }`}
+                                onClick={handleLinkClick}
+                              >
+                                <span
+                                  className={`h-1 w-1 rounded-full shrink-0 ${subActive ? "bg-primary" : "bg-foreground/20"}`}
+                                  aria-hidden
+                                />
+                                {sub.title}
+                              </NavLink>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+
+                    {/* Fantasy Hub sub-items — shown on any /fantasy/* route */}
+                    {isFantasyHub && showFantasySubs && (
+                      <ul className="mt-0.5 mb-1 ml-7 space-y-0.5" role="group" aria-label="Fantasy Hub sections">
+                        {FANTASY_SUB_ITEMS.map((sub) => {
                           const subActive = currentPath === sub.url;
                           return (
                             <li key={sub.title}>

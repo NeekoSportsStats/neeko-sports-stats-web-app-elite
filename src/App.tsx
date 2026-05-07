@@ -142,6 +142,9 @@ function App() {
         <Route path="/sports/afl/captains" element={<S fallback={AI}><AFLCaptainsPage /></S>} />
         <Route path="/sports/afl/round/:roundNumber" element={<S fallback={Players}><AFLRoundPage /></S>} />
         <Route path="/fantasy" element={<S fallback={Players}><FantasyHubPage /></S>} />
+        <Route path="/fantasy/current-week" element={<S fallback={Players}><AFLCurrentRoundPage /></S>} />
+        <Route path="/fantasy/rankings" element={<S fallback={Players}><AFLRankingsPage /></S>} />
+        <Route path="/fantasy/market-watch" element={<S fallback={AI}><AFLMarketWatch /></S>} />
         <Route path="/stat-board" element={<S fallback={Generic}><StatBoardHubPage /></S>} />
         <Route path="/stat-board/players" element={<S fallback={Players}><StatBoardPlayersPage /></S>} />
         <Route path="/stat-board/teams" element={<S fallback={Players}><StatBoardTeamsPage /></S>} />
