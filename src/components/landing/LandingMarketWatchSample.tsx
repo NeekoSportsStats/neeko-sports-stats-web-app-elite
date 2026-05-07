@@ -495,7 +495,7 @@ export function LandingMarketWatchSample({ buys, holds, sells, loading }: Landin
 
           <div className="mt-4 text-center">
             <Link
-              to="/sports/afl/market-watch"
+              to="/fantasy/market-watch"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#F5C84C]/70 hover:text-[#F5C84C] transition-colors"
             >
               View Full Market Watch
@@ -580,7 +580,7 @@ export function LandingMarketWatchSample({ buys, holds, sells, loading }: Landin
 
           <div className="mt-3 text-center">
             <Link
-              to="/sports/afl/market-watch"
+              to="/fantasy/market-watch"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#F5C84C]/70 hover:text-[#F5C84C] transition-colors"
             >
               View Full Market Watch

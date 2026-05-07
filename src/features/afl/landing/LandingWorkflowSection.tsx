@@ -11,7 +11,7 @@ const STEPS = [
     title: "Find the Best Picks Fast",
     sub: "See who's actually scoring this week.",
     color: GOLD,
-    to: "/sports/afl/rankings",
+    to: "/fantasy/rankings",
     cta: "View Rankings",
   },
   {
@@ -20,7 +20,7 @@ const STEPS = [
     title: "See Who's Underpriced or Overpriced",
     sub: "Find the players to target — and the ones to avoid.",
     color: "#34d170",
-    to: "/sports/afl/market-watch",
+    to: "/fantasy/market-watch",
     cta: "Open Market Watch",
   },
   {
@@ -29,8 +29,8 @@ const STEPS = [
     title: "Make Confident Trades & Captain Calls",
     sub: "Lock in your team with certainty before lockout.",
     color: "#E8855A",
-    to: "/sports/afl/current-round",
-    cta: "View This Round",
+    to: "/fantasy/current-week",
+    cta: "View This Week",
   },
 ] as const;
 
