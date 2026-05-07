@@ -1,9 +1,17 @@
 import { memo, Fragment, useState, useCallback, useRef } from "react";
 import { ChevronDown, ChevronUp, Lock, Sparkles } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+import { TEAM_SLUGS } from "@/lib/slugs";
 import type { StatBoardTeamRow, StatBoardTeamGameLog, TeamStatLens } from "../teamTypes";
 import { teamLensUnit, teamThresholdsForLens } from "../teamTypes";
 import { useStatBoardTeamGameLog } from "../useStatBoardTeams";
+
+// ── Team page URL helper ──────────────────────────────────────────────────────
+
+function teamPagePath(teamName: string): string | null {
+  const slug = TEAM_SLUGS[teamName];
+  return slug ? `/sports/afl/teams/${slug}` : null;
+}
 
 // ── Safe number helper ────────────────────────────────────────────────────────
 
@@ -541,7 +549,20 @@ export const LockedFixtureBlock = memo(function LockedFixtureBlock({
             className={`px-3 py-2.5 flex items-center gap-2 min-w-0 ${idx > 0 ? "border-t border-[#F5C84C]/10" : ""}`}
           >
             <div className="flex-1 min-w-0">
-              <span className="text-[13px] font-bold text-white/65 leading-tight block truncate">{row.team_name}</span>
+              {(() => {
+                const path = teamPagePath(row.team_name);
+                return path ? (
+                  <Link
+                    to={path}
+                    aria-label={`View ${row.team_name} team page`}
+                    className="text-[13px] font-bold text-white/65 leading-tight block truncate hover:underline decoration-white/25 underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/70 rounded-sm"
+                  >
+                    {row.team_name}
+                  </Link>
+                ) : (
+                  <span className="text-[13px] font-bold text-white/65 leading-tight block truncate">{row.team_name}</span>
+                );
+              })()}
               <div className="flex items-center gap-1 mt-0.5 min-w-0">
                 <span className="text-[10px] text-white/28 truncate">vs {row.opponent_team_name}</span>
                 {row.is_home
@@ -587,7 +608,20 @@ export const LockedFixtureBlock = memo(function LockedFixtureBlock({
           <td className="relative pl-0 pr-2 py-2.5 min-w-[150px]">
             <span className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full bg-[#F5C84C]/25" aria-hidden />
             <div className="pl-4">
-              <span className="text-[13px] font-semibold text-white/65 leading-tight">{row.team_name}</span>
+              {(() => {
+                const path = teamPagePath(row.team_name);
+                return path ? (
+                  <Link
+                    to={path}
+                    aria-label={`View ${row.team_name} team page`}
+                    className="text-[13px] font-semibold text-white/65 leading-tight hover:underline decoration-white/25 underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/70 rounded-sm"
+                  >
+                    {row.team_name}
+                  </Link>
+                ) : (
+                  <span className="text-[13px] font-semibold text-white/65 leading-tight">{row.team_name}</span>
+                );
+              })()}
               <p className="text-[10px] text-white/28 mt-0.5">
                 vs {row.opponent_team_name}
                 {row.is_home
@@ -1094,9 +1128,22 @@ export const TeamBoardRow = memo(function TeamBoardRow({
             <span className="absolute left-0 top-0 bottom-0 w-[3px] rounded-r-full bg-emerald-500/50" aria-hidden />
           )}
           <div className="pl-4">
-            <span className={`text-[13px] font-semibold leading-tight ${isExpanded ? "text-white" : "text-white/90"}`}>
-              {row.team_name}
-            </span>
+            {(() => {
+              const path = teamPagePath(row.team_name);
+              const cls = `text-[13px] font-semibold leading-tight ${isExpanded ? "text-white" : "text-white/90"}`;
+              return path ? (
+                <Link
+                  to={path}
+                  aria-label={`View ${row.team_name} team page`}
+                  onClick={(e) => e.stopPropagation()}
+                  className={`${cls} hover:underline decoration-white/30 underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/70 rounded-sm`}
+                >
+                  {row.team_name}
+                </Link>
+              ) : (
+                <span className={cls}>{row.team_name}</span>
+              );
+            })()}
             <p className="text-[10px] text-white/32 mt-0.5">
               vs {row.opponent_team_name}
               {row.is_home
@@ -1220,9 +1267,22 @@ export const MobileTeamCard = memo(function MobileTeamCard({
         {/* Row 1: team name + projection + chevron */}
         <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
           <div className="flex-1 min-w-0">
-            <span className={`text-[13px] font-bold leading-tight ${isExpanded ? "text-white" : "text-white/90"}`}>
-              {row.team_name}
-            </span>
+            {(() => {
+              const path = teamPagePath(row.team_name);
+              const cls = `text-[13px] font-bold leading-tight ${isExpanded ? "text-white" : "text-white/90"}`;
+              return path ? (
+                <Link
+                  to={path}
+                  aria-label={`View ${row.team_name} team page`}
+                  onClick={(e) => e.stopPropagation()}
+                  className={`${cls} inline hover:underline decoration-white/30 underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/70 rounded-sm`}
+                >
+                  {row.team_name}
+                </Link>
+              ) : (
+                <span className={cls}>{row.team_name}</span>
+              );
+            })()}
             <div className="flex items-center gap-1 mt-0.5 min-w-0">
               <span className="text-[10px] text-white/35 truncate">vs {row.opponent_team_name}</span>
               {row.is_home
