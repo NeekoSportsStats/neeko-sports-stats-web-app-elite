@@ -205,29 +205,30 @@ export default function StatBoardPlayersPage() {
         />
       </Helmet>
 
-      <div className="min-h-screen bg-[#0a0a0a] text-white [overflow-x:clip]" style={{ maxWidth: "100vw" }}>
+      {/* Sticky controls bar — rendered as a sibling of the scroll body, not inside an overflow parent.
+          This prevents Safari from breaking position:sticky due to overflow ancestors. */}
+      {stickyVisible && (
+        <StickyControlsBar
+          matches={matches}
+          selectedMatch={selectedMatch}
+          matchesLoading={matchesLoading}
+          lens={lens}
+          positionFilter={positionFilter}
+          search={search}
+          sortKey={sortKey}
+          sortOpen={sortOpen}
+          hasFullAccess={hasFullAccess}
+          onMatchChange={handleMatchChange}
+          onLensChange={handleLensChange}
+          onPositionChange={setPositionFilter}
+          onSearchChange={setSearch}
+          onSortChange={setSortKey}
+          onSortOpenChange={setSortOpen}
+        />
+      )}
 
-        {/* Sticky controls bar — inside overflow-x-hidden wrapper, pre-promoted to compositing layer */}
-        {stickyVisible && (
-          <StickyControlsBar
-            matches={matches}
-            selectedMatch={selectedMatch}
-            matchesLoading={matchesLoading}
-            lens={lens}
-            positionFilter={positionFilter}
-            search={search}
-            sortKey={sortKey}
-            sortOpen={sortOpen}
-            hasFullAccess={hasFullAccess}
-            onMatchChange={handleMatchChange}
-            onLensChange={handleLensChange}
-            onPositionChange={setPositionFilter}
-            onSearchChange={setSearch}
-            onSortChange={setSortKey}
-            onSortOpenChange={setSortOpen}
-          />
-        )}
-        <div className="stat-board-mobile-root mx-auto max-w-5xl px-4 pt-4 sm:pt-6 pb-20 min-w-0 overflow-x-hidden">
+      <div className="min-h-screen bg-[#0a0a0a] text-white">
+        <div className="stat-board-mobile-root mx-auto max-w-5xl px-4 pt-4 sm:pt-6 pb-20 min-w-0">
 
           {/* Page header */}
           <div className="mb-4 sm:mb-6">
@@ -482,7 +483,7 @@ function StickyControlsBar({
   return (
     <div
       className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#0a0a0a]"
-      style={{ maxWidth: "100vw", overflowX: "clip" }}
+      style={{ maxWidth: "100vw" }}
     >
       <div className="mx-auto max-w-5xl px-4 py-2.5 flex flex-wrap items-center gap-2">
 
@@ -846,7 +847,7 @@ const TeamBoard = memo(function TeamBoard({
   // ── Mobile layout — stacked cards ──
   if (isMobile) {
     return (
-      <div className="w-full min-w-0 overflow-x-hidden">
+      <div className="w-full min-w-0">
         {teamHeader}
         <div className="flex flex-col gap-2 w-full min-w-0">
           {visiblePlayers.map((player) => (

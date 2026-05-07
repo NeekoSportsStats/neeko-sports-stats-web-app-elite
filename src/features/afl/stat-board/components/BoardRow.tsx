@@ -258,7 +258,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
 
   return (
     <div
-      className={`mobile-player-card rounded-2xl border overflow-hidden w-full min-w-0 ${
+      className={`mobile-player-card rounded-2xl border w-full min-w-0 ${
         isExpanded
           ? "border-emerald-500/25 bg-[#111]"
           : "border-white/10 bg-[#0d0d0d]"
@@ -397,7 +397,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
       {isExpanded && !isPlayerLocked && (
         <div
           className="mobile-expanded-panel border-t border-white/[0.08] bg-[#0c0c0c] border-l-[3px] border-l-emerald-500/30"
-          style={{ contain: "layout", overscrollBehavior: "contain" }}
+          style={{ overscrollBehavior: "contain" }}
         >
           <LazyExpandedContent
             player={player}

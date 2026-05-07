@@ -1059,7 +1059,7 @@ function GameLog({
           </button>
         </p>
       )}
-      {open && <div className={`rounded-lg border border-white/8 ${isMobile ? "overflow-x-hidden" : "overflow-x-auto"}`}>
+      {open && <div className="rounded-lg border border-white/8 overflow-x-auto" style={isMobile ? { WebkitOverflowScrolling: "touch" } as React.CSSProperties : undefined}>
         <table className="w-full text-[11px]" role="table" style={isMobile ? undefined : { minWidth: "640px" }}>
           <thead>
             <tr className="border-b border-white/8 bg-white/[0.02]">
