@@ -76,6 +76,14 @@ function formatMatchDate(dateStr: string): string {
   }
 }
 
+// Backend returns hit rates as whole-number percents (e.g. 75, 88).
+// This helper handles both decimal ratios (≤1) and whole percents (>1) safely.
+function formatPercent(v: number | null | undefined): string {
+  if (v == null || isNaN(v)) return "—";
+  const pct = v <= 1 ? Math.round(v * 100) : Math.round(v);
+  return `${pct}%`;
+}
+
 function confidenceColor(label: string | null | undefined): string {
   switch (label) {
     case "HIGH":
@@ -437,7 +445,7 @@ function ComparisonTable({
         metric={`Hit rate ${t}+`}
         homeVal={hRate != null ? hRate : null}
         awayVal={aRate != null ? aRate : null}
-        fmt={(v) => (v == null ? "—" : `${Math.round(v * 100)}%`)}
+        fmt={formatPercent}
         isHitRate
       />
     </div>
