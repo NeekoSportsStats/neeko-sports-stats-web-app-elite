@@ -29,8 +29,9 @@ const MODES: ModeCard[] = [
   {
     icon: <Swords size={18} />,
     title: "Match Centre",
-    status: "coming-soon",
-    copy: "Game-by-game summaries, team comparisons and top player stat trends.",
+    status: "available",
+    copy: "Compare every game by projected score, recent team form, stat environment and matchup context.",
+    href: "/stat-board/match-centre",
   },
 ];
 
@@ -81,7 +82,7 @@ export default function StatBoardHubPage() {
               margin: "0 0 20px",
               maxWidth: 440,
             }}>
-              Use Player Stats for individual player hit rates, or Team Stats for team scoring trends and projections.
+              Use Player Stats for individual hit rates, Team Stats for team scoring trends, or Match Centre for a full-round game scanner.
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
               <Link
@@ -130,6 +131,31 @@ export default function StatBoardHubPage() {
               >
                 Team Stats <ArrowRight size={13} />
               </Link>
+              <Link
+                to="/stat-board/match-centre"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 7,
+                  padding: "11px 20px",
+                  borderRadius: 10,
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  color: "rgba(255,255,255,0.55)",
+                  fontSize: 13, fontWeight: 700,
+                  textDecoration: "none",
+                  letterSpacing: "0.01em",
+                  transition: "all 0.15s ease",
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
+                  (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.80)";
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)";
+                  (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.55)";
+                }}
+              >
+                Match Centre <ArrowRight size={13} />
+              </Link>
             </div>
           </div>
 
@@ -151,7 +177,7 @@ export default function StatBoardHubPage() {
             lineHeight: 1.4,
           }}>
             <span style={{ fontWeight: 700, color: "rgba(255,255,255,0.60)" }}>How it works:</span>
-            {["Pick Player Stats or Team Stats", "Choose stat lens", "View trends, projections and hit rates"].map((step, i, arr) => (
+            {["Pick a mode (Player, Team or Match Centre)", "Choose stat lens", "View trends, projections and hit rates"].map((step, i, arr) => (
               <span key={step} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <span>{step}</span>
                 {i < arr.length - 1 && <span style={{ color: "rgba(255,255,255,0.22)" }}>→</span>}
