@@ -285,8 +285,8 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
                 {aiText}
               </p>
             ) : (
-              <p className="text-[13px] text-white/25 leading-relaxed italic">
-                AI analysis pending for this player.
+              <p className="text-[13px] text-white/25 leading-relaxed">
+                Analysis not yet available for this player.
               </p>
             )}
 
