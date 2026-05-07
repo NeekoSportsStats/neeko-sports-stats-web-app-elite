@@ -67,7 +67,6 @@ const AFLCurrentRoundPage  = React.lazy(() => import("@/features/afl/current-rou
 const AFLRoundEdgeBoard = React.lazy(() => import("@/features/afl/edge/AFLRoundEdgeBoard"));
 const AFLStartSitPage   = React.lazy(() => import("@/features/afl/start-sit/StartSitPage"));
 const AFLMarketWatch    = React.lazy(() => import("@/features/afl/market-watch/MarketWatchPageElite"));
-const AFLCaptainsPage   = React.lazy(() => import("@/features/afl/captains/AFLCaptainsPage"));
 const AFLPlayerPage     = React.lazy(() => import("@/pages/afl/AFLPlayerPage"));
 const AFLTeamPage       = React.lazy(() => import("@/pages/afl/AFLTeamPage"));
 const AFLPositionPage   = React.lazy(() => import("@/pages/afl/AFLPositionPage"));
@@ -128,7 +127,8 @@ function App() {
 
         {/* AFL Routes */}
         <Route path="/sports/afl" element={<Navigate to="/sports/afl/current-round" replace />} />
-        <Route path="/sports/afl/rankings" element={<S fallback={Players}><AFLRankingsPage /></S>} />
+        <Route path="/sports/afl/rankings" element={<Navigate to="/fantasy/rankings" replace />} />
+        <Route path="/sports/afl/captains" element={<Navigate to="/fantasy/current-week" replace />} />
         <Route path="/sports/afl/current-round" element={<S fallback={Players}><AFLCurrentRoundPage /></S>} />
         <Route path="/sports/afl/players" element={<S fallback={Players}><AFLPlayersPage /></S>} />
         <Route path="/sports/afl/players/:slug" element={<S fallback={Players}><AFLPlayerPage /></S>} />
@@ -140,15 +140,11 @@ function App() {
         <Route path="/sports/afl/edge-board" element={<S fallback={AI}><AFLRoundEdgeBoard /></S>} />
         <Route path="/sports/afl/start-sit" element={<S fallback={AI}><AFLStartSitPage /></S>} />
         <Route path="/sports/afl/market-watch" element={<S fallback={AI}><AFLMarketWatch /></S>} />
-        <Route path="/sports/afl/captains" element={<S fallback={AI}><AFLCaptainsPage /></S>} />
         <Route path="/sports/afl/round/:roundNumber" element={<S fallback={Players}><AFLRoundPage /></S>} />
         <Route path="/fantasy" element={<S fallback={Players}><FantasyHubPage /></S>} />
         <Route path="/fantasy/current-week" element={<S fallback={Players}><CurrentWeekPage /></S>} />
         <Route path="/fantasy/rankings" element={<S fallback={Players}><AFLRankingsPage /></S>} />
         <Route path="/fantasy/market-watch" element={<S fallback={AI}><AFLMarketWatch /></S>} />
-
-        {/* Legacy redirects — keep old URLs working */}
-        <Route path="/sports/afl/captains" element={<Navigate to="/fantasy/current-week" replace />} />
         <Route path="/stat-board" element={<S fallback={Generic}><StatBoardHubPage /></S>} />
         <Route path="/stat-board/players" element={<S fallback={Players}><StatBoardPlayersPage /></S>} />
         <Route path="/stat-board/teams" element={<S fallback={Players}><StatBoardTeamsPage /></S>} />
