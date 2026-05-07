@@ -402,7 +402,7 @@ function ComparisonTable({
 
     return (
       <div className="flex items-center py-1.5 border-b border-white/[0.04] last:border-0">
-        <div className="w-[130px] min-w-[100px] text-[9.5px] font-semibold text-white/25 uppercase tracking-wide shrink-0 leading-tight pr-2">
+        <div className="w-[100px] sm:w-[130px] text-[9px] sm:text-[9.5px] font-semibold text-white/25 uppercase tracking-wide shrink-0 leading-tight pr-2 truncate">
           {metric}
         </div>
         <div className="flex-1 grid grid-cols-2 gap-2">
@@ -421,7 +421,7 @@ function ComparisonTable({
     <div>
       {/* Column headers */}
       <div className="flex items-center pb-2 border-b border-white/[0.06] mb-1">
-        <div className="w-[130px] min-w-[100px] shrink-0" />
+        <div className="w-[100px] sm:w-[130px] shrink-0" />
         <div className="flex-1 grid grid-cols-2 gap-2">
           <span className="text-[9.5px] font-bold text-white/40 uppercase tracking-wide text-right truncate">{homeLabel}</span>
           <span className="text-[9.5px] font-bold text-white/22 uppercase tracking-wide truncate">{awayLabel}</span>
@@ -626,19 +626,19 @@ function ExpandedPanel({
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <Link
             to={`/stat-board/players?match_id=${fixture.matchId}`}
-            className="flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.03] px-4 py-2.5 text-[12px] font-semibold text-white/60 hover:text-white/88 hover:bg-white/[0.06] hover:border-white/[0.16] transition-all"
+            className="flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.03] px-4 py-3.5 sm:py-2.5 text-[13px] sm:text-[12px] font-semibold text-white/60 hover:text-white/88 hover:bg-white/[0.06] hover:border-white/[0.16] active:bg-white/[0.08] transition-all"
           >
-            <Users className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <Users className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" aria-hidden />
             Player Stats
-            <ArrowUpRight className="h-3 w-3 text-white/25 ml-auto" aria-hidden />
+            <ArrowUpRight className="h-3.5 w-3.5 sm:h-3 sm:w-3 text-white/25 ml-auto" aria-hidden />
           </Link>
           <Link
             to={`/stat-board/teams?match_id=${fixture.matchId}`}
-            className="flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.03] px-4 py-2.5 text-[12px] font-semibold text-white/60 hover:text-white/88 hover:bg-white/[0.06] hover:border-white/[0.16] transition-all"
+            className="flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.03] px-4 py-3.5 sm:py-2.5 text-[13px] sm:text-[12px] font-semibold text-white/60 hover:text-white/88 hover:bg-white/[0.06] hover:border-white/[0.16] active:bg-white/[0.08] transition-all"
           >
-            <BarChart2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <BarChart2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" aria-hidden />
             Team Stats
-            <ArrowUpRight className="h-3 w-3 text-white/25 ml-auto" aria-hidden />
+            <ArrowUpRight className="h-3.5 w-3.5 sm:h-3 sm:w-3 text-white/25 ml-auto" aria-hidden />
           </Link>
         </div>
       </div>
@@ -682,13 +682,21 @@ function LockedFixture({
         </div>
       </div>
 
-      {/* Ghost stat rows */}
-      <div className="px-4 py-3 flex flex-col gap-2">
+      {/* Ghost score cards — mobile */}
+      <div className="sm:hidden px-3 pt-3 pb-3 grid grid-cols-2 gap-2">
         {[home, away].map((team) => (
-          <div
-            key={team}
-            className="flex items-center gap-3"
-          >
+          <div key={team} className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-3 py-3">
+            <div className="text-[10px] text-white/22 mb-2 truncate font-medium">{team}</div>
+            <div className="h-6 w-14 rounded bg-white/[0.05] mb-1.5" />
+            <div className="h-2.5 w-20 rounded bg-white/[0.035]" />
+          </div>
+        ))}
+      </div>
+
+      {/* Ghost stat rows — desktop */}
+      <div className="hidden sm:block px-4 py-3">
+        {[home, away].map((team) => (
+          <div key={team} className="flex items-center gap-3 py-1">
             <span className="flex-1 text-[12.5px] font-semibold text-white/22">{team}</span>
             <div className="flex items-center gap-2 shrink-0">
               <div className="h-3 w-10 rounded bg-white/[0.035]" />
@@ -700,13 +708,13 @@ function LockedFixture({
       </div>
 
       {/* CTA */}
-      <div className="px-4 py-3 border-t border-white/[0.05] flex items-center justify-between gap-3">
-        <p className="text-[11px] text-white/28 leading-snug">
+      <div className="px-4 py-3.5 sm:py-3 border-t border-white/[0.05] flex flex-col sm:flex-row sm:items-center gap-3">
+        <p className="text-[11px] text-white/28 leading-snug flex-1">
           Unlock projected totals, margin lean, team trends and full match context.
         </p>
         <button
           onClick={onUpgrade}
-          className="shrink-0 text-[11px] font-bold text-[#F5C84C] bg-[#F5C84C]/[0.09] border border-[#F5C84C]/22 rounded-lg px-3 py-1.5 hover:bg-[#F5C84C]/[0.15] active:scale-95 transition-all leading-none whitespace-nowrap"
+          className="w-full sm:w-auto shrink-0 text-[12px] sm:text-[11px] font-bold text-[#F5C84C] bg-[#F5C84C]/[0.09] border border-[#F5C84C]/22 rounded-xl px-4 py-3 sm:py-1.5 hover:bg-[#F5C84C]/[0.15] active:scale-95 transition-all leading-none whitespace-nowrap"
         >
           Unlock Neeko+
         </button>
@@ -753,7 +761,7 @@ function UnlockedFixture({
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <button
         onClick={onToggle}
-        className="w-full px-4 py-3 flex items-start justify-between gap-3 border-b border-white/[0.05] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 active:bg-white/[0.03] transition-colors"
+        className="w-full px-4 py-3.5 sm:py-3 flex items-start justify-between gap-3 border-b border-white/[0.05] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 active:bg-white/[0.03] transition-colors"
         aria-expanded={isExpanded}
       >
         <div className="min-w-0 flex-1">
@@ -769,46 +777,77 @@ function UnlockedFixture({
               </span>
             )}
           </div>
-          <p className="text-[10px] text-white/30 mt-0.5 leading-none">
+          <p className="text-[10px] text-white/30 mt-1 leading-none">
             {formatMatchDate(fixture.gameDate)}
             {fixture.venue && <> · {abbreviateVenue(fixture.venue)}</>}
           </p>
         </div>
-        <span className="shrink-0 flex items-center justify-center h-6 w-6 rounded-lg bg-white/[0.05] border border-white/[0.07] text-white/35 mt-0.5">
+        <span className="shrink-0 flex items-center justify-center h-8 w-8 sm:h-6 sm:w-6 rounded-lg bg-white/[0.05] border border-white/[0.07] text-white/35 mt-0.5">
           {isExpanded
-            ? <ChevronUp className="h-3.5 w-3.5" aria-hidden />
-            : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
+            ? <ChevronUp className="h-4 w-4 sm:h-3.5 sm:w-3.5" aria-hidden />
+            : <ChevronDown className="h-4 w-4 sm:h-3.5 sm:w-3.5" aria-hidden />}
         </span>
       </button>
 
-      {/* ── Mobile: 2-col score cards ────────────────────────────────────── */}
-      <div className="px-3 pt-3 pb-2.5 grid grid-cols-2 gap-2 sm:hidden">
-        {homeRow ? (
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-2.5">
-            <div className="text-[10px] text-white/28 mb-1.5 truncate font-medium">{home}</div>
-            <div className={`text-[18px] font-[800] tabular-nums leading-none ${homeRow.projection != null ? "text-[#F5C84C]" : "text-white/28"}`}>
-              {fmt(homeRow.projection)}
+      {/* ── Mobile: projected score cards + chip strip ───────────────────── */}
+      <div className="sm:hidden">
+        {/* Score cards */}
+        <div className="px-3 pt-3 pb-2 grid grid-cols-2 gap-2">
+          {homeRow ? (
+            <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3">
+              <div className="text-[10px] text-white/28 mb-2 truncate font-medium">{home}</div>
+              <div className={`text-[20px] font-[800] tabular-nums leading-none ${homeRow.projection != null ? "text-[#F5C84C]" : "text-white/28"}`}>
+                {fmt(homeRow.projection)}
+              </div>
+              <div className="text-[9px] text-white/22 mt-1.5">projected score</div>
             </div>
-            <div className="text-[9px] text-white/22 mt-1">projected score</div>
-          </div>
-        ) : (
-          <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-3 py-2.5 flex items-center justify-center">
-            <span className="text-[12px] text-white/22">—</span>
-          </div>
-        )}
-        {awayRow ? (
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-2.5">
-            <div className="text-[10px] text-white/28 mb-1.5 truncate font-medium">{away}</div>
-            <div className={`text-[18px] font-[800] tabular-nums leading-none ${awayRow.projection != null ? "text-[#F5C84C]" : "text-white/28"}`}>
-              {fmt(awayRow.projection)}
+          ) : (
+            <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-3 py-3 flex items-center justify-center min-h-[72px]">
+              <span className="text-[12px] text-white/22">—</span>
             </div>
-            <div className="text-[9px] text-white/22 mt-1">projected score</div>
-          </div>
-        ) : (
-          <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-3 py-2.5 flex items-center justify-center">
-            <span className="text-[12px] text-white/22">—</span>
-          </div>
-        )}
+          )}
+          {awayRow ? (
+            <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3">
+              <div className="text-[10px] text-white/28 mb-2 truncate font-medium">{away}</div>
+              <div className={`text-[20px] font-[800] tabular-nums leading-none ${awayRow.projection != null ? "text-[#F5C84C]" : "text-white/28"}`}>
+                {fmt(awayRow.projection)}
+              </div>
+              <div className="text-[9px] text-white/22 mt-1.5">projected score</div>
+            </div>
+          ) : (
+            <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-3 py-3 flex items-center justify-center min-h-[72px]">
+              <span className="text-[12px] text-white/22">—</span>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile chip strip — projected total, margin, confidence, env */}
+        <div className="px-3 pb-3 flex flex-wrap gap-1.5">
+          {total != null && (
+            <div className="flex items-center gap-1 rounded-lg bg-white/[0.04] border border-white/[0.07] px-2.5 py-1.5">
+              <span className="text-[9px] text-white/28 font-semibold uppercase tracking-wide">Total</span>
+              <span className="text-[11.5px] font-[800] text-[#F5C84C] tabular-nums ml-1">{fmt(total)}</span>
+            </div>
+          )}
+          {margin && (
+            <div className="flex items-center gap-1 rounded-lg bg-white/[0.04] border border-white/[0.07] px-2.5 py-1.5">
+              <span className="text-[9px] text-white/28 font-semibold uppercase tracking-wide">Lean</span>
+              <span className="text-[11px] font-semibold text-[#F5C84C]/80 ml-1">{margin}</span>
+            </div>
+          )}
+          {conf && (
+            <div className="flex items-center gap-1 rounded-lg bg-white/[0.04] border border-white/[0.07] px-2.5 py-1.5">
+              <span className="text-[9px] text-white/28 font-semibold uppercase tracking-wide">Conf.</span>
+              <span className={`text-[11px] font-semibold ml-1 ${confidenceColor(conf)}`}>{conf}</span>
+            </div>
+          )}
+          {env && (
+            <div className={`flex items-center gap-1 rounded-lg border px-2.5 py-1.5 ${envBadgeClass(env)}`}>
+              <span className="text-[9px] font-semibold uppercase tracking-wide opacity-60">Env</span>
+              <span className="text-[11px] font-semibold ml-1">{env}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Desktop: team rows ───────────────────────────────────────────── */}
@@ -817,8 +856,8 @@ function UnlockedFixture({
         {awayRow && <TeamRow row={awayRow} lens={lens} />}
       </div>
 
-      {/* ── Summary strip ───────────────────────────────────────────────── */}
-      <div className="px-4 py-2 flex items-center gap-x-4 gap-y-1 flex-wrap border-t border-white/[0.04] bg-white/[0.01]">
+      {/* ── Desktop summary strip ────────────────────────────────────────── */}
+      <div className="hidden sm:flex px-4 py-2 items-center gap-x-4 gap-y-1 flex-wrap border-t border-white/[0.04] bg-white/[0.01]">
         {total != null && (
           <div className="flex items-center gap-1.5">
             <span className="text-[9px] text-white/22 uppercase tracking-wide font-semibold">Projected total</span>
@@ -1039,8 +1078,8 @@ function FixtureSkeleton() {
         <div className="h-2.5 w-28 rounded bg-white/[0.035]" />
       </div>
       <div className="px-3 pt-3 pb-2.5 grid grid-cols-2 gap-2 sm:hidden">
-        <div className="h-[72px] rounded-xl bg-white/[0.035]" />
-        <div className="h-[72px] rounded-xl bg-white/[0.035]" />
+        <div className="h-[84px] rounded-xl bg-white/[0.035]" />
+        <div className="h-[84px] rounded-xl bg-white/[0.035]" />
       </div>
       <div className="hidden sm:block">
         <div className="px-4 py-3 border-b border-white/[0.04]">
