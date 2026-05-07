@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback, memo, useSyncExternalStore } from "react";
 import { Helmet } from "react-helmet-async";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Search, X, Lock, ChevronDown, ChevronUp } from "lucide-react";
 import { track } from "@/lib/analytics";
 
@@ -105,6 +105,8 @@ export default function StatBoardPlayersPage() {
   const [expandedPlayerId, setExpandedPlayerId] = useState<number | null>(null);
   const [stickyVisible, setStickyVisible] = useState(false);
   const controlsRef = useRef<HTMLDivElement>(null);
+  const [searchParams] = useSearchParams();
+  const urlMatchId = searchParams.get("match_id") ? Number(searchParams.get("match_id")) : null;
 
   const { hasFullAccess } = useStatBoardAccess("players");
 
@@ -121,9 +123,13 @@ export default function StatBoardPlayersPage() {
     search,
   });
 
-  // Auto-select default match
+  // Auto-select default match — prefer URL param match_id if present
   useEffect(() => {
     if (matches.length === 0 || selectedMatch !== null) return;
+    if (urlMatchId !== null) {
+      const fromUrl = matches.find((m) => m.match_id === urlMatchId);
+      if (fromUrl) { setSelectedMatch(fromUrl); return; }
+    }
     const maxWeek = Math.max(...matches.map((m) => m.week));
     const latestRound = matches.filter((m) => m.week === maxWeek);
     // Premium users: always start on match_order=1 regardless of lock status
@@ -135,7 +141,7 @@ export default function StatBoardPlayersPage() {
          latestRound[0] ??
          matches[matches.length - 1]);
     setSelectedMatch(defaultMatch);
-  }, [matches, selectedMatch, hasFullAccess]);
+  }, [matches, selectedMatch, hasFullAccess, urlMatchId]);
 
   // Sticky controls: show when controls div scrolls above viewport
   useEffect(() => {

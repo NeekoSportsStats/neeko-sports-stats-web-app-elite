@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, memo, useSyncExternalStore } from "react";
 import { Helmet } from "react-helmet-async";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronDown, Lock, Check } from "lucide-react";
 import { track } from "@/lib/analytics";
 
@@ -118,8 +118,11 @@ function groupRowsByFixture(rows: StatBoardTeamRow[]): FixtureGroup[] {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function StatBoardTeamsPage() {
+  const [searchParams] = useSearchParams();
+  const urlMatchId = searchParams.get("match_id") ? Number(searchParams.get("match_id")) : null;
+
   // null = all matches for the round; number = specific match filter
-  const [matchFilter, setMatchFilter] = useState<number | null>(null);
+  const [matchFilter, setMatchFilter] = useState<number | null>(urlMatchId);
   const [lens, setLens] = useState<TeamStatLens>("score");
   const [sortKey, setSortKey] = useState<TeamSortKey>("fixture");
   const [sortOpen, setSortOpen] = useState(false);
