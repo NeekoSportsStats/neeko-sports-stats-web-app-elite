@@ -1178,6 +1178,7 @@ export default function AFLPlayerPage() {
                       playerName={player.player_name}
                       playerId={String(player.player_id)}
                       hideProjection={!isPremium}
+                      seasonAvg={player.season_avg}
                     />
                   </Suspense>
                 </div>
