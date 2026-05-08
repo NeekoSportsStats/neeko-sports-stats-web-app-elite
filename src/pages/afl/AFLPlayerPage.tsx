@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, ChevronRight, TrendingUp, TrendingDown, Minus, Zap, Lock, Users, ChartBar as BarChart2, CircleAlert as AlertCircle, ChevronDown, ChevronUp, Activity, Target, ChartBar as BarChart3 } from 'lucide-react';
+import { ArrowLeft, ChevronRight, TrendingUp, TrendingDown, Minus, Zap, Lock, Users, ChartBar as BarChart2, CircleAlert as AlertCircle, ChevronDown, ChevronUp, Activity, Target, ChartBar as BarChart3, FlameKindling as Flame, Shield } from 'lucide-react';
 import {
   slugToPlayerName, playerToSlug,
   POSITION_SLUGS, POSITION_NAMES, TEAM_SLUG_TO_NAME,
@@ -101,6 +101,51 @@ function getActionMeta(action: string | null) {
 
 function fmtAvg(v: number | null): string {
   return v != null ? Math.round(v).toString() : '—';
+}
+
+// ─── Score Stats ──────────────────────────────────────────────────────────────
+
+interface ScoreStats {
+  scores:       number[];   // raw scores used for all calcs
+  high:         number;
+  low:          number;
+  range:        number;
+  rate80plus:   number;     // % of games >= 80
+  rate100plus:  number;     // % of games >= 100
+  rateBelow60:  number;     // % of games < 60
+  consistency:  number;     // % of games within ±15 of season avg
+  volatility:   'Low' | 'Medium' | 'High';
+  stdDev:       number;
+}
+
+function computeScoreStats(scores: number[]): ScoreStats {
+  const n    = scores.length;
+  const high = Math.max(...scores);
+  const low  = Math.min(...scores);
+  const mean = scores.reduce((a, b) => a + b, 0) / n;
+  const variance = scores.reduce((s, v) => s + (v - mean) ** 2, 0) / n;
+  const stdDev   = Math.sqrt(variance);
+
+  const rate  = (pred: (v: number) => boolean) => Math.round((scores.filter(pred).length / n) * 100);
+  const consistency = rate(v => Math.abs(v - mean) <= 15);
+
+  const volatility: ScoreStats['volatility'] =
+    stdDev < 18  ? 'Low' :
+    stdDev < 30  ? 'Medium' :
+                   'High';
+
+  return {
+    scores,
+    high,
+    low,
+    range:       high - low,
+    rate80plus:  rate(v => v >= 80),
+    rate100plus: rate(v => v >= 100),
+    rateBelow60: rate(v => v < 60),
+    consistency,
+    volatility,
+    stdDev,
+  };
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -575,6 +620,223 @@ function PlayerSEOBlock({ player, teamSlug, posSlug }: {
   );
 }
 
+/** Rate bar: a horizontal fill gauge for percentage metrics */
+function RateBar({ value, color }: { value: number; color: string }) {
+  return (
+    <div className="relative h-1.5 rounded-full bg-white/[0.06] overflow-hidden mt-1.5">
+      <div
+        className="absolute inset-y-0 left-0 rounded-full transition-all"
+        style={{ width: `${value}%`, background: color }}
+      />
+    </div>
+  );
+}
+
+/** Single stat card used inside the statistical profile */
+function ProfileCard({
+  label, value, sub, barValue, barColor, highlight,
+}: {
+  label: string;
+  value: React.ReactNode;
+  sub?: string;
+  barValue?: number;
+  barColor?: string;
+  highlight?: 'positive' | 'negative' | 'neutral';
+}) {
+  const textCls =
+    highlight === 'positive' ? 'text-emerald-400' :
+    highlight === 'negative' ? 'text-red-400/85' :
+    'text-white/75';
+
+  return (
+    <div className="flex flex-col rounded-xl border border-white/[0.07] bg-[#0c0c0c] px-3 py-2.5 gap-0.5">
+      <span className="text-[8.5px] uppercase tracking-widest text-white/24 font-semibold leading-tight">{label}</span>
+      <span className={`text-[19px] font-black tabular-nums leading-none ${textCls}`}>{value}</span>
+      {sub && <span className="text-[9px] text-white/22 leading-tight">{sub}</span>}
+      {barValue != null && barColor && <RateBar value={barValue} color={barColor} />}
+    </div>
+  );
+}
+
+/** Volatility pill */
+function VolatilityBadge({ level }: { level: ScoreStats['volatility'] }) {
+  const cfg = {
+    Low:    { cls: 'text-emerald-400 border-emerald-500/28 bg-emerald-500/[0.07]', label: 'Low' },
+    Medium: { cls: 'text-yellow-400 border-yellow-500/25 bg-yellow-500/[0.07]',   label: 'Medium' },
+    High:   { cls: 'text-red-400 border-red-500/22 bg-red-500/[0.06]',            label: 'High' },
+  }[level];
+  return (
+    <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide ${cfg.cls}`}>
+      {cfg.label}
+    </span>
+  );
+}
+
+/**
+ * Statistical Profile section.
+ * Free users: basic rate metrics (80+, 100+, sub-60, consistency).
+ * Premium users: full profile including score range, std dev, volatility, and pct-change vs avg.
+ */
+function StatisticalProfile({
+  stats,
+  isPremium,
+  player,
+}: {
+  stats: ScoreStats;
+  isPremium: boolean;
+  player: { season_avg: number | null; avg_last_3: number | null; avg_last_5: number | null };
+}) {
+  const n = stats.scores.length;
+  const MIN_GAMES_RATES    = 3;   // need at least 3 games for rate metrics
+  const MIN_GAMES_FULL     = 5;   // need at least 5 for premium profile completeness
+  const enoughForRates     = n >= MIN_GAMES_RATES;
+  const enoughForFull      = n >= MIN_GAMES_FULL;
+
+  // Pct change vs season avg — only if we have both
+  const pctChange3 = (player.avg_last_3 != null && player.season_avg != null && player.season_avg > 0)
+    ? Math.round(((player.avg_last_3 - player.season_avg) / player.season_avg) * 100)
+    : null;
+  const pctChange5 = (player.avg_last_5 != null && player.season_avg != null && player.season_avg > 0)
+    ? Math.round(((player.avg_last_5 - player.season_avg) / player.season_avg) * 100)
+    : null;
+
+  if (!enoughForRates) {
+    return (
+      <div className="rounded-xl border border-white/[0.06] bg-[#0c0c0c] px-4 py-4 text-center">
+        <p className="text-[11px] text-white/30">Not enough games yet for statistical profile.</p>
+        <p className="text-[10px] text-white/18 mt-0.5">{n} of {MIN_GAMES_RATES} minimum games played</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+
+      {/* Free tier: rate metrics grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <ProfileCard
+          label="80+ Score Rate"
+          value={`${stats.rate80plus}%`}
+          sub={`${stats.scores.filter(v => v >= 80).length} of ${n} games`}
+          barValue={stats.rate80plus}
+          barColor="rgba(52,211,153,0.7)"
+          highlight={stats.rate80plus >= 50 ? 'positive' : stats.rate80plus >= 30 ? 'neutral' : 'negative'}
+        />
+        <ProfileCard
+          label="100+ Score Rate"
+          value={`${stats.rate100plus}%`}
+          sub={`${stats.scores.filter(v => v >= 100).length} of ${n} games`}
+          barValue={stats.rate100plus}
+          barColor="rgba(52,211,153,0.6)"
+          highlight={stats.rate100plus >= 35 ? 'positive' : stats.rate100plus >= 15 ? 'neutral' : 'negative'}
+        />
+        <ProfileCard
+          label="Sub-60 Rate"
+          value={`${stats.rateBelow60}%`}
+          sub={`${stats.scores.filter(v => v < 60).length} of ${n} games`}
+          barValue={stats.rateBelow60}
+          barColor="rgba(248,113,113,0.65)"
+          highlight={stats.rateBelow60 <= 15 ? 'positive' : stats.rateBelow60 <= 35 ? 'neutral' : 'negative'}
+        />
+        <ProfileCard
+          label="Consistency"
+          value={`${stats.consistency}%`}
+          sub="within ±15 of avg"
+          barValue={stats.consistency}
+          barColor="rgba(250,204,21,0.65)"
+          highlight={stats.consistency >= 65 ? 'positive' : stats.consistency >= 45 ? 'neutral' : 'negative'}
+        />
+      </div>
+
+      {/* Premium tier: extended metrics */}
+      {isPremium ? (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <ProfileCard
+              label="High Score (L10)"
+              value={Math.round(stats.high)}
+              highlight="positive"
+            />
+            <ProfileCard
+              label="Low Score (L10)"
+              value={Math.round(stats.low)}
+              highlight="negative"
+            />
+            <ProfileCard
+              label="Score Range"
+              value={stats.range}
+              sub="high minus low"
+            />
+            <ProfileCard
+              label="Std Deviation"
+              value={stats.stdDev.toFixed(1)}
+              sub={<span className="flex items-center gap-1 mt-0.5"><VolatilityBadge level={stats.volatility} /></span>}
+            />
+          </div>
+
+          {/* Pct-change vs season avg — only if we have both */}
+          {(pctChange3 != null || pctChange5 != null) && (
+            <div className="rounded-xl border border-white/[0.06] bg-[#0c0c0c] px-4 py-3 space-y-2.5">
+              <p className="text-[8.5px] uppercase tracking-widest text-white/22 font-semibold">Form vs Season Average</p>
+              {pctChange3 != null && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-white/38">Last 3 avg vs season avg</span>
+                  <span className={`text-[12px] font-bold tabular-nums ${pctChange3 >= 0 ? 'text-emerald-400' : 'text-red-400/85'}`}>
+                    {pctChange3 >= 0 ? '+' : ''}{pctChange3}%
+                  </span>
+                </div>
+              )}
+              {pctChange5 != null && enoughForFull && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-white/38">Last 5 avg vs season avg</span>
+                  <span className={`text-[12px] font-bold tabular-nums ${pctChange5 >= 0 ? 'text-emerald-400' : 'text-red-400/85'}`}>
+                    {pctChange5 >= 0 ? '+' : ''}{pctChange5}%
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Volatility summary row */}
+          <div className="rounded-xl border border-white/[0.06] bg-[#0c0c0c] px-4 py-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Shield size={13} className="text-white/22 shrink-0" />
+              <div>
+                <p className="text-[10px] text-white/38 leading-tight">Volatility Rating</p>
+                <p className="text-[9px] text-white/20 leading-tight">
+                  {stats.volatility === 'Low'    && 'Consistent performer — predictable week to week.'}
+                  {stats.volatility === 'Medium' && 'Some score variance — moderate unpredictability.'}
+                  {stats.volatility === 'High'   && 'High variance — difficult to predict game-to-game.'}
+                </p>
+              </div>
+            </div>
+            <VolatilityBadge level={stats.volatility} />
+          </div>
+        </div>
+      ) : (
+        /* Free: soft upsell for premium extended profile */
+        <div className="rounded-xl border border-white/[0.06] bg-[#0c0c0c] px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Lock size={11} className="text-amber-400/40 shrink-0" />
+            <div>
+              <p className="text-[11px] text-white/42 font-semibold">Full Statistical Profile</p>
+              <p className="text-[10px] text-white/25 leading-snug">
+                High / low scores, score range, std deviation, volatility rating, and form % vs season avg.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/upgrade"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-amber-500/90 hover:bg-amber-400 transition-colors px-3 py-1.5 text-[10px] font-black text-black"
+          >
+            <Zap size={9} /> Unlock
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LoadingSkeleton() {
   return (
     <div className="min-h-screen bg-[#080808]">
@@ -613,7 +875,7 @@ export default function AFLPlayerPage() {
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState(false);
   const [showFullAI,   setShowFullAI]   = useState(false);
-  const [chartHighLow, setChartHighLow] = useState<{ high: number | null; low: number | null }>({ high: null, low: null });
+  const [scoreStats,   setScoreStats]   = useState<ScoreStats | null>(null);
 
   // ── Main data fetch ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -672,7 +934,7 @@ export default function AFLPlayerPage() {
     })();
   }, [playerName, user?.id]);
 
-  // ── Fetch high score from last 10 games for stat strip ───────────────────
+  // ── Fetch scores and compute statistical profile ──────────────────────────
   useEffect(() => {
     if (!player) return;
     (async () => {
@@ -681,20 +943,22 @@ export default function AFLPlayerPage() {
           p_player_id: String(player.player_id),
           n_games: 10,
         });
-        const scores = ((res as any[]) ?? [])
+        let scores = ((res as any[]) ?? [])
           .filter((r: any) => !r.is_future && r.actual_score != null)
           .map((r: any) => Number(r.actual_score));
-        if (scores.length > 0) {
-          setChartHighLow({ high: Math.max(...scores), low: Math.min(...scores) });
-        } else {
+
+        if (scores.length === 0) {
           const { data: byName } = await supabase.rpc('get_player_score_history', {
             player_name_in: player.player_name,
             n_games: 10,
           });
-          const nameScores = ((byName as any[]) ?? [])
+          scores = ((byName as any[]) ?? [])
             .filter((r: any) => r.fantasy_points != null)
             .map((r: any) => Number(r.fantasy_points));
-          if (nameScores.length > 0) setChartHighLow({ high: Math.max(...nameScores), low: Math.min(...nameScores) });
+        }
+
+        if (scores.length > 0) {
+          setScoreStats(computeScoreStats(scores));
         }
       } catch { /* silently skip */ }
     })();
@@ -875,8 +1139,8 @@ export default function AFLPlayerPage() {
                   { label: 'Last 3',     val: <span className={delta3 != null ? (delta3 >= 0 ? 'text-emerald-400' : 'text-red-400/85') : 'text-white/65'}>{fmtAvg(player.avg_last_3)}</span> },
                   ...(player.avg_last_5 != null ? [{ label: 'Last 5', val: <span className="text-white/60">{Math.round(player.avg_last_5)}</span> }] : []),
                   { label: 'Games',      val: <span className="text-white/50">{player.games_played ?? '—'}</span> },
-                  ...(chartHighLow.high != null ? [{ label: 'High (L10)', val: <span className="text-emerald-400/75">{Math.round(chartHighLow.high)}</span> }] : []),
-                  ...(chartHighLow.low != null ? [{ label: 'Low (L10)',  val: <span className="text-red-400/60">{Math.round(chartHighLow.low)}</span> }] : []),
+                  ...(scoreStats?.high != null ? [{ label: 'High (L10)', val: <span className="text-emerald-400/75">{Math.round(scoreStats.high)}</span> }] : []),
+                  ...(scoreStats?.low  != null ? [{ label: 'Low (L10)',  val: <span className="text-red-400/60">{Math.round(scoreStats.low)}</span> }] : []),
                 ];
                 return (
                   <div
@@ -925,6 +1189,22 @@ export default function AFLPlayerPage() {
                   </p>
                 )}
               </div>
+
+              {/* Statistical Profile */}
+              {scoreStats != null && (
+                <div>
+                  <SectionLabel icon={<Flame size={13} />} title="Statistical Profile" />
+                  <StatisticalProfile
+                    stats={scoreStats}
+                    isPremium={isPremium}
+                    player={{
+                      season_avg:  player.season_avg,
+                      avg_last_3:  player.avg_last_3,
+                      avg_last_5:  player.avg_last_5,
+                    }}
+                  />
+                </div>
+              )}
 
               {/* Scoring Profile */}
               <div>
