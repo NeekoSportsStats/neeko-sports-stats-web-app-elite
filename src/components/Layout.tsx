@@ -109,7 +109,7 @@ export function Layout() {
                       <span className="hidden sm:inline text-[#facc15]">Account</span>
                     </Button>
                   </Link>
-                ) : (
+                ) : location.pathname !== "/neeko-plus" ? (
                   <Link to="/neeko-plus">
                     <Button
                       size="sm"
@@ -120,7 +120,7 @@ export function Layout() {
                       <span className="hidden sm:inline">Neeko+</span>
                     </Button>
                   </Link>
-                )}
+                ) : null}
               </div>
             </div>
           </header>
