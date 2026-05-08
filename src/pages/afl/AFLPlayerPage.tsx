@@ -12,6 +12,7 @@ import {
   POSITION_SLUGS, POSITION_NAMES, TEAM_SLUG_TO_NAME,
 } from '@/lib/slugs';
 import { getPlayerDetailSafe, getSimilarPlayersSafe } from '@/lib/playerAccess';
+import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import { useAccessState } from '@/hooks/useAccessState';
 import { PlayerStatusPill } from '@/features/afl/rankings/components/PlayerStatusPill';
@@ -368,11 +369,12 @@ export default function AFLPlayerPage() {
 
   const playerName = useMemo(() => (slug ? slugToPlayerName(slug) : ''), [slug]);
 
-  const [player,     setPlayer]     = useState<PlayerData | null>(null);
-  const [similar,    setSimilar]    = useState<SimilarPlayer[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState(false);
-  const [showFullAI, setShowFullAI] = useState(false);
+  const [player,       setPlayer]       = useState<PlayerData | null>(null);
+  const [similar,      setSimilar]      = useState<SimilarPlayer[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState(false);
+  const [showFullAI,   setShowFullAI]   = useState(false);
+  const [chartHighLow, setChartHighLow] = useState<{ high: number | null }>({ high: null });
 
   useEffect(() => {
     if (!playerName) { setError(true); setLoading(false); return; }
@@ -452,6 +454,36 @@ export default function AFLPlayerPage() {
       }
     })();
   }, [playerName, user?.id]);
+
+  // ── Fetch high score from last 10 games for stat strip ───────────────────
+  useEffect(() => {
+    if (!player) return;
+    (async () => {
+      try {
+        const playerId = String(player.player_id);
+        const { data: res } = await supabase.rpc('get_player_chart_data', {
+          p_player_id: playerId,
+          n_games: 10,
+        });
+        const scores = ((res as any[]) ?? [])
+          .filter((r: any) => !r.is_future && r.actual_score != null)
+          .map((r: any) => Number(r.actual_score));
+        if (scores.length > 0) {
+          setChartHighLow({ high: Math.max(...scores) });
+        } else {
+          // fallback to name-based history
+          const { data: byName } = await supabase.rpc('get_player_score_history', {
+            player_name_in: player.player_name,
+            n_games: 10,
+          });
+          const nameScores = ((byName as any[]) ?? [])
+            .filter((r: any) => r.fantasy_points != null)
+            .map((r: any) => Number(r.fantasy_points));
+          if (nameScores.length > 0) setChartHighLow({ high: Math.max(...nameScores) });
+        }
+      } catch { /* silently skip */ }
+    })();
+  }, [player?.player_id, player?.player_name]);
 
   // ── Derived values ────────────────────────────────────────────────────────
   const posSlug  = player ? getPositionSlug(player.player_position) : null;
@@ -752,17 +784,70 @@ export default function AFLPlayerPage() {
           </div>
 
           {/* ══════════════════════════════════════════
-              2. RECENT FANTASY SCORES
-              FREE:    actual scores only, no projection overlay, no confidence panel
-              PREMIUM: full chart with projection line + confidence reliability
+              2. FANTASY FORM — chart + summary stats
+              FREE:    actual scores only (no projection overlay)
+              PREMIUM: chart with projection line + confidence panel
           ══════════════════════════════════════════ */}
           <div>
-            <SectionLabel icon={<Activity size={13} />} title="Recent Fantasy Scores" />
-            <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] overflow-hidden">
+            <SectionLabel icon={<Activity size={13} />} title="Fantasy Form" />
+
+            {/* Stat summary strip — always visible, no predictive fields */}
+            <div className="flex items-stretch rounded-xl border border-white/[0.07] overflow-hidden bg-[#0a0a0a] mb-3">
+              {/* Season Avg */}
+              <div className="flex-1 flex flex-col items-center justify-center py-3 px-2 gap-0.5 border-r border-white/[0.06]">
+                <span className="text-[16px] font-black tabular-nums text-white/80 leading-tight">
+                  {player.season_avg != null ? Math.round(player.season_avg) : '—'}
+                </span>
+                <span className="text-[9px] uppercase tracking-widest text-white/25 text-center leading-tight">Season</span>
+              </div>
+              {/* Last 3 */}
+              {(() => {
+                const delta3 = player.avg_last_3 != null && player.season_avg != null
+                  ? player.avg_last_3 - player.season_avg : null;
+                const up3 = delta3 != null && delta3 >= 0;
+                return (
+                  <div className="flex-1 flex flex-col items-center justify-center py-3 px-2 gap-0.5 border-r border-white/[0.06]">
+                    <span className={`text-[16px] font-black tabular-nums leading-tight ${up3 ? 'text-emerald-400' : delta3 != null ? 'text-red-400/80' : 'text-white/65'}`}>
+                      {player.avg_last_3 != null ? Math.round(player.avg_last_3) : '—'}
+                    </span>
+                    <span className="text-[9px] uppercase tracking-widest text-white/25 text-center leading-tight">Last 3</span>
+                  </div>
+                );
+              })()}
+              {/* Last 5 */}
+              {(() => {
+                const delta5 = player.avg_last_5 != null && player.season_avg != null
+                  ? player.avg_last_5 - player.season_avg : null;
+                const up5 = delta5 != null && delta5 >= 0;
+                return (
+                  <div className="flex-1 flex flex-col items-center justify-center py-3 px-2 gap-0.5 border-r border-white/[0.06]">
+                    <span className={`text-[16px] font-black tabular-nums leading-tight ${up5 ? 'text-emerald-400/75' : delta5 != null ? 'text-red-400/65' : 'text-white/55'}`}>
+                      {player.avg_last_5 != null ? Math.round(player.avg_last_5) : '—'}
+                    </span>
+                    <span className="text-[9px] uppercase tracking-widest text-white/25 text-center leading-tight">Last 5</span>
+                  </div>
+                );
+              })()}
+              {/* Games */}
+              <div className="flex-1 flex flex-col items-center justify-center py-3 px-2 gap-0.5 border-r border-white/[0.06]">
+                <span className="text-[16px] font-black tabular-nums text-white/55 leading-tight">
+                  {player.games_played ?? '—'}
+                </span>
+                <span className="text-[9px] uppercase tracking-widest text-white/25 text-center leading-tight">Played</span>
+              </div>
+              {/* High score */}
+              <div className="flex-1 flex flex-col items-center justify-center py-3 px-2 gap-0.5">
+                <span className="text-[16px] font-black tabular-nums text-white/40 leading-tight">
+                  {chartHighLow.high != null ? Math.round(chartHighLow.high) : '—'}
+                </span>
+                <span className="text-[9px] uppercase tracking-widest text-white/22 text-center leading-tight">High</span>
+              </div>
+            </div>
+
+            {/* Chart */}
+            <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] overflow-hidden px-3 pt-3 pb-2">
               <Suspense fallback={
-                <div className="h-48 flex items-center justify-center">
-                  <div className="h-32 w-full mx-4 rounded bg-white/[0.03] animate-pulse" />
-                </div>
+                <div className="h-[190px] animate-pulse rounded-lg bg-white/[0.03]" />
               }>
                 <ScoreHistoryChart
                   playerName={player.player_name}
@@ -771,12 +856,13 @@ export default function AFLPlayerPage() {
                 />
               </Suspense>
             </div>
-            {/* Free: contextual note below chart */}
+
+            {/* Free: note about locked projection line */}
             {!isPremium && (
-              <p className="text-[10px] text-white/25 mt-2 px-1 flex items-center gap-1.5">
-                <Lock size={9} className="text-amber-400/40 shrink-0" />
-                Projection line and confidence analysis available on Neeko+.{' '}
-                <Link to="/upgrade" className="text-amber-400/60 hover:text-amber-400 transition-colors underline underline-offset-2">
+              <p className="text-[10px] text-white/22 mt-2 px-1 flex items-center gap-1.5">
+                <Lock size={9} className="text-amber-400/38 shrink-0" />
+                Projection overlay and confidence analysis available on Neeko+.{' '}
+                <Link to="/upgrade" className="text-amber-400/55 hover:text-amber-400 transition-colors underline underline-offset-2">
                   Upgrade
                 </Link>
               </p>
