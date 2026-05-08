@@ -1025,19 +1025,24 @@ export default function CurrentWeekPage() {
                     ? { value: fmt(p.projection, 0), label: "proj" }
                     : null;
 
-                  // Premium chips: risk rating, matchup, projection — only real values
+                  // Premium chips: BE → proj → edge → matchup → risk (only ELEVATED+)
                   const premiumChips: Array<{ label: string; value: string; color?: string }> = [];
                   if (hasFullAccess) {
-                    if (p.risk_rating != null) {
-                      const rb = getRiskBadge(p.risk_rating);
-                      premiumChips.push({ label: "risk", value: rb.label, color: rb.text });
-                    }
+                    if (p.breakeven != null)
+                      premiumChips.push({ label: "be", value: fmt(p.breakeven, 0), color: "text-white/50" });
+                    if (p.projection != null)
+                      premiumChips.push({ label: "proj", value: fmt(p.projection, 0), color: "text-red-400/70" });
+                    if (edgeStr)
+                      premiumChips.push({ label: "edge", value: edgeStr, color: "text-red-400" });
                     if (p.matchup_label) {
                       const ml = fmtMatchup(p.matchup_label);
                       if (ml && ml !== "—") premiumChips.push({ label: "matchup", value: ml, color: getMatchupColor(p.matchup_label) });
                     }
-                    if (p.projection != null)
-                      premiumChips.push({ label: "proj", value: fmt(p.projection, 0), color: "text-red-400/70" });
+                    // Only show risk label for ELEVATED (38+) and above — never LOW RISK or MODERATE
+                    if (p.risk_rating != null && p.risk_rating >= 38) {
+                      const rb = getRiskBadge(p.risk_rating);
+                      premiumChips.push({ label: "risk", value: rb.label, color: rb.text });
+                    }
                   }
 
                   return (
