@@ -4,23 +4,23 @@ import { Check, ArrowRight, Zap } from "lucide-react";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
 
 const FREE_FEATURES = [
+  { text: "$0 forever", included: true },
+  { text: "No card required", included: true },
   { text: "First matches preview", included: true },
   { text: "Disposals and goals", included: true },
   { text: "Limited access", included: true },
-  { text: "No card required", included: true },
 ];
 
 const PREMIUM_FEATURES = [
-  "Full round access",
-  "All matches",
-  "Full Player Stat Board",
-  "Full Team Stat Board",
+  "Full round access — every match",
+  "All matches unlocked",
+  "Full player and team stats",
   "Full Match Centre",
   "Player trends and projections",
   "Hit rates and consistency labels",
   "Fantasy Hub included",
   "Must Buys, Trap Alerts, Captain Picks",
-  "Full player history",
+  "Full player and team history",
 ];
 
 type Plan = "season" | "weekly";

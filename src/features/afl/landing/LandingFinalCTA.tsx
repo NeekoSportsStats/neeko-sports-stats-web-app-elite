@@ -49,10 +49,10 @@ export default function LandingFinalCTA() {
         <p style={{
           fontSize: "clamp(13px, 0.95vw, 15px)",
           color: "rgba(255,255,255,0.40)",
-          lineHeight: 1.6, maxWidth: 420,
+          lineHeight: 1.6, maxWidth: 440,
           margin: "0 auto 36px",
         }}>
-          Open the Stat Board, pick a round, and compare player hit rates or team scoring trends in seconds.
+          Open the Stat Board for free, or unlock the full round with Neeko+.
         </p>
 
         <div style={{
@@ -60,7 +60,7 @@ export default function LandingFinalCTA() {
           alignItems: "center", gap: 14,
         }}>
           <Link
-            to="/stat-board"
+            to="/stat-board/players"
             onMouseEnter={() => setPrimaryHovered(true)}
             onMouseLeave={() => { setPrimaryHovered(false); setPrimaryActive(false); }}
             onMouseDown={() => setPrimaryActive(true)}
@@ -83,22 +83,22 @@ export default function LandingFinalCTA() {
               transition: "all 0.18s cubic-bezier(0.22,1,0.36,1)",
             }}
           >
-            Open Stat Board <ArrowRight size={16} />
+            Open Stat Board Free <ArrowRight size={16} />
           </Link>
 
           <Link
-            to="/fantasy"
+            to="/neeko-plus"
             onMouseEnter={() => setSecondaryHovered(true)}
             onMouseLeave={() => { setSecondaryHovered(false); setSecondaryActive(false); }}
             onMouseDown={() => setSecondaryActive(true)}
             onMouseUp={() => setSecondaryActive(false)}
             style={{
               display: "inline-flex", alignItems: "center", gap: 8,
-              background: secondaryHovered ? "rgba(255,255,255,0.07)" : "rgba(255,255,255,0.04)",
+              background: secondaryHovered ? "rgba(224,174,45,0.10)" : "rgba(224,174,45,0.05)",
               backdropFilter: "blur(8px)",
               WebkitBackdropFilter: "blur(8px)",
-              border: `1px solid ${secondaryHovered ? "rgba(255,255,255,0.16)" : "rgba(255,255,255,0.10)"}`,
-              color: secondaryHovered ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.55)",
+              border: `1px solid ${secondaryHovered ? "rgba(224,174,45,0.32)" : "rgba(224,174,45,0.18)"}`,
+              color: secondaryHovered ? "rgba(224,174,45,0.95)" : "rgba(224,174,45,0.70)",
               fontWeight: 700, fontSize: "clamp(12px, 0.88vw, 14px)",
               padding: "13px 28px",
               borderRadius: 10,
@@ -108,7 +108,7 @@ export default function LandingFinalCTA() {
               transition: "all 0.20s ease",
             }}
           >
-            View Fantasy Hub
+            Unlock Full Round with Neeko+
           </Link>
         </div>
       </div>

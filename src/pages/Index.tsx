@@ -605,10 +605,10 @@ export default function Index() {
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 12px 32px rgba(34,197,94,0.42), 0 4px 12px rgba(0,0,0,0.5)"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform = "translateY(0)"; (e.currentTarget as HTMLElement).style.boxShadow = "0 8px 26px rgba(34,197,94,0.32), 0 4px 12px rgba(0,0,0,0.5)"; }}
               >
-                Open Stat Board <ArrowRight size={15} />
+                Open Stat Board Free <ArrowRight size={15} />
               </Link>
               <Link
-                to="/stat-board/match-centre"
+                to="/neeko-plus"
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 8,
                   background: "rgba(255,255,255,0.06)", backdropFilter: "blur(8px)",
@@ -622,9 +622,14 @@ export default function Index() {
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.10)"; }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; }}
               >
-                Match Centre
+                Unlock Full Round
               </Link>
             </div>
+            {/* Premium hook */}
+            <p className="hero-hook" style={{ margin: "12px 0 0", fontSize: 11, color: "rgba(255,255,255,0.42)", fontWeight: 500, lineHeight: 1.5 }}>
+              Free preview available.{" "}
+              <span style={{ color: "rgba(224,174,45,0.75)", fontWeight: 600 }}>Neeko+ unlocks every match, every player and full round history.</span>
+            </p>
             {/* Trust row */}
             <div className="hero-trust" style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 28 }}>
               {trustItems.map(({ icon, text }) => (
@@ -669,9 +674,9 @@ export default function Index() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }} className="how-grid">
             {[
-              { num: "01", icon: <BarChart2 size={20} />, title: "Pick a match", copy: "Choose any fixture from the current round." },
-              { num: "02", icon: <Target size={20} />, title: "Choose a stat", copy: "Start with disposals or goals, then set your threshold." },
-              { num: "03", icon: <Zap size={20} />, title: "See the trend", copy: "View last 10, hit rate, projection and consistency." },
+              { num: "01", icon: <BarChart2 size={20} />, title: "Pick this round's match", copy: "Select any fixture from the current AFL round. Free access includes the first matches — Neeko+ unlocks all of them." },
+              { num: "02", icon: <Target size={20} />, title: "Choose the stat that matters", copy: "Start with disposals or goals. Set a threshold like 20+ disposals and see every player ranked against it." },
+              { num: "03", icon: <Zap size={20} />, title: "See the trend instantly", copy: "View last 10 games, hit rate, projection and consistency label — all on one screen, updated before lockout." },
             ].map(({ num, icon, title, copy }) => (
               <div key={num} style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "16px 15px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
@@ -690,15 +695,15 @@ export default function Index() {
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(34,197,94,0.13)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(34,197,94,0.07)"; }}
             >
-              Open Stat Board <ArrowRight size={14} />
+              Open Stat Board Free <ArrowRight size={14} />
             </Link>
             <Link
-              to="/stat-board/match-centre"
-              style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: "rgba(255,255,255,0.48)", textDecoration: "none", border: "1px solid rgba(255,255,255,0.10)", padding: "9px 16px", borderRadius: 9, background: "rgba(255,255,255,0.04)", transition: "all 0.15s ease" }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.75)"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.48)"; (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
+              to="/neeko-plus"
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: "rgba(224,174,45,0.72)", textDecoration: "none", border: "1px solid rgba(224,174,45,0.20)", padding: "9px 16px", borderRadius: 9, background: "rgba(224,174,45,0.05)", transition: "all 0.15s ease" }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(224,174,45,0.90)"; (e.currentTarget as HTMLElement).style.background = "rgba(224,174,45,0.09)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(224,174,45,0.72)"; (e.currentTarget as HTMLElement).style.background = "rgba(224,174,45,0.05)"; }}
             >
-              Match Centre
+              Unlock Full Round
             </Link>
           </div>
         </div>
@@ -771,10 +776,10 @@ export default function Index() {
               Fantasy Hub{currentRound != null ? ` — Round ${currentRound}` : ""}
             </p>
             <h2 style={{ margin: "0 0 7px", fontSize: "clamp(16px, 1.6vw, 22px)", fontWeight: 800, color: "#e8e8e8", letterSpacing: "-0.02em" }}>
-              Want fantasy-specific calls?
+              Need fantasy-specific calls?
             </h2>
-            <p style={{ margin: "0 0 12px", fontSize: "clamp(11px, 0.78vw, 13px)", color: "rgba(255,255,255,0.45)", fontWeight: 500, lineHeight: 1.5, maxWidth: 440, marginLeft: "auto", marginRight: "auto" }}>
-              Must Buys, Trap Alerts, Captain Picks and Rankings — in the Fantasy Hub.
+            <p style={{ margin: "0 0 12px", fontSize: "clamp(11px, 0.78vw, 13px)", color: "rgba(255,255,255,0.45)", fontWeight: 500, lineHeight: 1.5, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
+              Must Buys, Trap Alerts, Captain Picks and live Rankings updated before every lockout — all in the Fantasy Hub.
             </p>
             <Link
               to="/fantasy"
@@ -820,7 +825,8 @@ export default function Index() {
         .hero-h1 { opacity: 0; animation: heroFadeUp 0.60s cubic-bezier(0.22,1,0.36,1) 0.22s forwards; }
         .hero-sub { opacity: 0; animation: heroFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.34s forwards; }
         .hero-ctas { opacity: 0; animation: heroFadeUp 0.50s cubic-bezier(0.22,1,0.36,1) 0.46s forwards; }
-        .hero-trust { opacity: 0; animation: heroFadeUp 0.45s cubic-bezier(0.22,1,0.36,1) 0.56s forwards; }
+        .hero-hook { opacity: 0; animation: heroFadeUp 0.45s cubic-bezier(0.22,1,0.36,1) 0.52s forwards; }
+        .hero-trust { opacity: 0; animation: heroFadeUp 0.45s cubic-bezier(0.22,1,0.36,1) 0.60s forwards; }
         .hero-preview { opacity: 0; animation: heroFadeUp 0.55s cubic-bezier(0.22,1,0.36,1) 0.38s forwards; }
         .scroll-reveal { opacity: 0; transform: translateY(10px); transition: opacity 0.30s cubic-bezier(0.22,1,0.36,1), transform 0.30s cubic-bezier(0.22,1,0.36,1); will-change: transform; }
         .scroll-reveal.revealed { opacity: 1; transform: translateY(0); }
