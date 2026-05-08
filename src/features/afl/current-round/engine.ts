@@ -43,11 +43,52 @@ function getAction(p: RankingRow): string {
 
 function hasNegativeAction(p: RankingRow): boolean {
   const ac = getAction(p);
-  return ac === "SIT" || ac === "STRONG_SIT";
+  return ["SIT", "STRONG_SIT", "HARD_SIT", "FADE", "RISK"].includes(ac);
 }
 
 function isHardSit(p: RankingRow): boolean {
-  return getAction(p) === "STRONG_SIT";
+  const ac = getAction(p);
+  return ac === "STRONG_SIT" || ac === "HARD_SIT";
+}
+
+/**
+ * Composite warning score for trap/fade sorting.
+ * Higher = stronger negative signal = appears first in the section.
+ * Built entirely from real fields — no invented values.
+ */
+function trapWarningScore(p: RankingRow): number {
+  let score = 0;
+
+  // Negative edge (projection vs breakeven gap) — strongest signal
+  const edge = typeof p.edge_canonical === "number" ? p.edge_canonical : null;
+  if (edge !== null && edge < 0) score += Math.abs(edge) * 2;
+
+  // Projection below breakeven computed directly
+  const proj = typeof p.projection === "number" ? p.projection : null;
+  const be   = typeof p.breakeven  === "number" ? p.breakeven  : null;
+  if (proj !== null && be !== null && proj < be) score += (be - proj);
+
+  // Risk rating — higher risk = higher warning
+  const rr = typeof p.risk_rating === "number" ? p.risk_rating : null;
+  if (rr !== null) score += rr * 0.5;
+
+  // Hard sits get a strong bonus to stay at the top
+  if (isHardSit(p)) score += 80;
+  else if (hasNegativeAction(p)) score += 40;
+
+  // Negative decision score pushes further down
+  const ds = typeof p.decision_score === "number" ? p.decision_score : null;
+  if (ds !== null && ds < 0) score += Math.abs(ds) * 0.3;
+
+  // Negative value score
+  const vs = typeof p.value_score === "number" ? p.value_score : null;
+  if (vs !== null && vs < 0) score += Math.abs(vs);
+
+  // Declining trend
+  const fd = typeof p.form_delta === "number" ? p.form_delta : null;
+  if (fd !== null && fd < 0) score += Math.abs(fd) * 0.5;
+
+  return score;
 }
 
 function hasStrongPositiveAction(p: RankingRow): boolean {
@@ -119,7 +160,6 @@ export function buildCurrentRoundPlayers(
 
   const byProjDesc     = [...pool].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0));
   const byDecisionDesc = [...pool].sort((a, b) => decisionScore(b) - decisionScore(a));
-  const byDecisionAsc  = [...poolAll].sort((a, b) => decisionScore(a) - decisionScore(b));
 
   const assigned = new Set<string>();
 
@@ -217,52 +257,47 @@ export function buildCurrentRoundPlayers(
   }
 
   // ── 3. TRAP / FADE ALERTS ──────────────────────────────────────────────────
-  // Traps (hard sits) come first, then broader risk/overpriced players.
-  // These do NOT block each other — both pools draw from the same negative-action players.
+  // Single unified pool: any player with a genuine negative signal,
+  // sorted by composite trapWarningScore descending (strongest warning first).
+  // Players already assigned to captains or buy/value picks are excluded.
   const positiveIds = new Set([...assigned]);
 
-  const trapFadeAlerts: CurrentRoundPlayer[] = [];
-  const trapFadeIds = new Set<string>();
-
-  // First pass: hard sits (STRONG_SIT)
-  const hardSits = byDecisionAsc.filter(p =>
-    !positiveIds.has(p.player_id ?? "") && isHardSit(p)
-  );
-  for (const p of hardSits) {
-    if (trapFadeAlerts.length >= TRAP_FADE_TARGET) break;
-    const id = p.player_id ?? "";
-    if (!trapFadeIds.has(id)) {
-      trapFadeIds.add(id);
-      trapFadeAlerts.push(p);
-    }
-  }
-
-  // Second pass: any negative-action player (SIT or STRONG_SIT) not yet added
-  const negativePlayers = byDecisionAsc.filter(p =>
+  // Tier 1: explicit negative actions (SIT, STRONG_SIT, HARD_SIT, FADE, RISK)
+  const tier1 = poolAll.filter(p =>
     !positiveIds.has(p.player_id ?? "") && hasNegativeAction(p)
   );
-  for (const p of negativePlayers) {
-    if (trapFadeAlerts.length >= TRAP_FADE_TARGET) break;
+
+  // Tier 2: no explicit negative action but has a quantifiable negative signal
+  // (negative edge, projected below breakeven, or elevated risk_rating)
+  const tier2 = pool.filter(p => {
     const id = p.player_id ?? "";
-    if (!trapFadeIds.has(id)) {
-      trapFadeIds.add(id);
-      trapFadeAlerts.push(p);
-    }
+    if (positiveIds.has(id)) return false;
+    if (hasNegativeAction(p)) return false; // already in tier 1
+
+    const edge = typeof p.edge_canonical === "number" ? p.edge_canonical : null;
+    const proj = typeof p.projection  === "number" ? p.projection  : null;
+    const be   = typeof p.breakeven   === "number" ? p.breakeven   : null;
+    const rr   = typeof p.risk_rating === "number" ? p.risk_rating : null;
+    const vs   = typeof p.value_score === "number" ? p.value_score : null;
+
+    const hasNegativeEdge = edge !== null && edge < -5;
+    const projBelowBe     = proj !== null && be !== null && proj < be - 5;
+    const highRisk        = rr !== null && rr >= 65;
+    const negativeValue   = vs !== null && vs < -2;
+
+    return hasNegativeEdge || projBelowBe || highRisk || negativeValue;
+  });
+
+  // Merge, deduplicate, score and sort — strongest warning first
+  const trapCandidateMap = new Map<string, CurrentRoundPlayer>();
+  for (const p of [...tier1, ...tier2]) {
+    const id = p.player_id ?? "";
+    if (id && !trapCandidateMap.has(id)) trapCandidateMap.set(id, p);
   }
 
-  // Refill: lowest decision_score non-positive players if still under target
-  if (trapFadeAlerts.length < 3) {
-    const lowScoreFill = byDecisionAsc.filter(p => {
-      const id = p.player_id ?? "";
-      return !positiveIds.has(id) && !trapFadeIds.has(id);
-    });
-    for (const p of lowScoreFill) {
-      if (trapFadeAlerts.length >= TRAP_FADE_TARGET) break;
-      const id = p.player_id ?? "";
-      trapFadeIds.add(id);
-      trapFadeAlerts.push(p);
-    }
-  }
+  const trapFadeAlerts = [...trapCandidateMap.values()]
+    .sort((a, b) => trapWarningScore(b) - trapWarningScore(a))
+    .slice(0, TRAP_FADE_TARGET);
 
   return { captains, buyValuePicks, trapFadeAlerts };
 }
