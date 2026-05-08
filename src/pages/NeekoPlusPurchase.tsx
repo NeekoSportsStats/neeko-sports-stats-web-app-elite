@@ -4,7 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track } from "@/lib/analytics";
-import { Check, Crown, Loader as Loader2, ArrowLeft, TrendingUp, Target, Zap, Shield, ArrowRight, Lock, Clock, ChartBar as BarChart2, Activity, ChartLine as LineChart, Users } from "lucide-react";
+import { Check, Crown, Loader as Loader2, TrendingUp, Target, Zap, Shield, ArrowRight, Lock, Clock, ChartBar as BarChart2, Activity, ChartLine as LineChart, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { NEEKO_PRICING, NeekoPlan } from "@/config/neekoPricing";
 import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
@@ -601,20 +601,7 @@ const NeekoPlusPurchase = () => {
         <script type="application/ld+json">{JSON.stringify(productSchema)}</script>
       </Helmet>
 
-      <div style={{ maxWidth: 680, margin: "0 auto", padding: "28px clamp(16px, 5vw, 32px) 100px" }}>
-        {/* Back button */}
-        <button
-          onClick={() => navigate(-1)}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            background: "transparent", border: "none", cursor: "pointer",
-            color: "rgba(255,255,255,0.30)", fontSize: 13, fontWeight: 600,
-            padding: "4px 0", marginBottom: 36,
-          }}
-        >
-          <ArrowLeft size={14} />
-          Back
-        </button>
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "52px clamp(16px, 5vw, 32px) 100px" }}>
 
         {/* Hero header */}
         <div style={{ textAlign: "center", marginBottom: 44 }}>
