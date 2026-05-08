@@ -752,9 +752,36 @@ export default function CurrentWeekPage() {
   const hasFullAccess = isPremium || isAdmin;
   const data = useRoundData();
 
-  const topCaptain = data.captains[0] ?? null;
-  const topValue   = data.buyValuePicks[0] ?? null;
-  const topTrap    = data.trapFadeAlerts[0] ?? null;
+  // Pick the best hero card player from the top-10 of each sorted section array.
+  // If the #1 row has LOW confidence and a top-10 row has MEDIUM/HIGH confidence
+  // with projection within 15% of the leader, prefer the stronger-confidence row.
+  function pickHero(rows: CurrentRoundPlayer[]): CurrentRoundPlayer | null {
+    if (rows.length === 0) return null;
+    const CONF_RANK = (c: string | null | undefined) => {
+      const u = (c ?? "").toUpperCase();
+      if (u === "HIGH") return 3;
+      if (u === "MEDIUM") return 2;
+      if (u === "LOW") return 1;
+      return 0;
+    };
+    const leader = rows[0];
+    const leaderConf = CONF_RANK(leader.confidence_label);
+    // Only upgrade if the leader is LOW/unknown confidence
+    if (leaderConf >= 2) return leader;
+    const leaderProj = leader.projection ?? 0;
+    const pool = rows.slice(0, 10);
+    const upgrade = pool.find((p) => {
+      if (CONF_RANK(p.confidence_label) < 2) return false;
+      const proj = p.projection ?? 0;
+      // Within 15% of leader's projection — similar quality
+      return leaderProj === 0 || Math.abs(proj - leaderProj) / Math.max(leaderProj, 1) <= 0.15;
+    });
+    return upgrade ?? leader;
+  }
+
+  const topCaptain = pickHero(data.captains);
+  const topValue   = pickHero(data.buyValuePicks);
+  const topTrap    = pickHero(data.trapFadeAlerts);
 
   const allEmpty =
     !data.loading &&
