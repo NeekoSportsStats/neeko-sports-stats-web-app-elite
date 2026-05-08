@@ -231,8 +231,8 @@ function RosterDepthChart({
     <div>
       <div className="flex items-center justify-between mb-3">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-white/35">Scoring Depth</p>
-          <p className="text-[9px] text-white/22 mt-0.5">Top 15 by projection · avg ref line</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-white/35">Projection Depth</p>
+          <p className="text-[9px] text-white/22 mt-0.5">Top 15 by projected score · squad average ref</p>
         </div>
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1 text-[8px] text-white/30">
@@ -300,10 +300,10 @@ function ActionMixChart({
   startCt: number; holdCt: number; sitCt: number; hardSitCt: number; totalPlayers: number;
 }) {
   const segments = [
-    { label: 'Start',     count: startCt,              color: '#34d399', desc: 'Projected to beat breakeven' },
-    { label: 'Hold',      count: holdCt - hardSitCt,   color: 'rgba(255,255,255,0.25)', desc: 'Monitor — no clear signal' },
-    { label: 'Sit',       count: sitCt,                color: '#fb923c', desc: 'Projected under breakeven' },
-    { label: 'Hard Sit',  count: hardSitCt,            color: '#ef4444', desc: 'Strong avoidance signal' },
+    { label: 'Start',     count: startCt,              color: '#34d399', desc: 'Projection clears breakeven target' },
+    { label: 'Hold',      count: holdCt - hardSitCt,   color: 'rgba(255,255,255,0.25)', desc: 'No decisive signal — monitor' },
+    { label: 'Sit',       count: sitCt,                color: '#fb923c', desc: 'Projection falls below breakeven' },
+    { label: 'Hard Sit',  count: hardSitCt,            color: '#ef4444', desc: 'Strong avoidance — consider trading' },
   ].filter(s => s.count > 0);
 
   // SVG donut via stroke-dasharray
@@ -326,8 +326,8 @@ function ActionMixChart({
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-[10px] font-bold uppercase tracking-widest text-white/35">Action Mix</p>
-        <p className="text-[9px] text-white/22 mt-0.5">Round signal distribution across the squad</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-white/35">Signal Distribution</p>
+        <p className="text-[9px] text-white/22 mt-0.5">Round action signals across the full squad</p>
       </div>
 
       <div className="flex items-center gap-5">
@@ -392,8 +392,8 @@ function ActionMixChart({
       {/* insight line */}
       {startCt > 0 && (
         <p className="text-[9px] text-white/30 leading-snug border-t border-white/[0.05] pt-3">
-          {startCt} of {totalPlayers} players ({Math.round((startCt / totalPlayers) * 100)}%) carry a Start signal this round.
-          {sitCt + hardSitCt > 0 && ` ${sitCt + hardSitCt} are flagged Sit or Hard Sit.`}
+          {startCt} of {totalPlayers} players ({Math.round((startCt / totalPlayers) * 100)}%) hold a Start signal this round.
+          {sitCt + hardSitCt > 0 && ` ${sitCt + hardSitCt} are rated Sit or Hard Sit.`}
         </p>
       )}
     </div>
@@ -488,7 +488,7 @@ function LineSummaryCard({
 
       {/* ── signal bar ── */}
       <div className="px-4 py-2.5 border-b border-white/[0.04] space-y-1.5">
-        <span className="text-[7px] uppercase tracking-widest text-white/22">Signal mix</span>
+        <span className="text-[7px] uppercase tracking-widest text-white/22">Action signals</span>
         <div className="flex h-1.5 rounded-full overflow-hidden gap-px">
           {startPct > 0 && <div className="rounded-l-full" style={{ width: `${startPct}%`, backgroundColor: '#34d399' }} />}
           {holdPct  > 0 && <div style={{ width: `${holdPct}%`,  backgroundColor: 'rgba(255,255,255,0.15)' }} />}
@@ -508,7 +508,7 @@ function LineSummaryCard({
           className="flex items-center justify-between px-4 py-2.5 hover:bg-white/[0.03] transition-colors group"
         >
           <div className="min-w-0">
-            <p className="text-[8px] uppercase tracking-widest text-white/22 mb-0.5">Top projected</p>
+            <p className="text-[8px] uppercase tracking-widest text-white/22 mb-0.5">Leading scorer</p>
             <p className="text-[12px] font-semibold text-white/75 group-hover:text-white transition-colors truncate">
               {topPlayer.player_name}
             </p>
@@ -758,7 +758,7 @@ function RosterSection({
       <div className="flex flex-wrap items-center gap-3 mb-3">
         <div className="flex items-center gap-2">
           <span className="text-white/25"><Users size={13} /></span>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">Full Roster</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">Roster Outlook</span>
         </div>
         <div className="flex-1 hidden sm:block h-px bg-white/[0.05]" />
         {/* line filter chips */}
@@ -843,11 +843,11 @@ function RosterSection({
                 <div className="flex items-center justify-center gap-1.5">
                   <Lock size={13} className="text-amber-400/70" />
                   <p className="text-[12px] font-semibold text-white/60">
-                    {gatedCount} more {teamName.split(' ')[0]} players hidden
+                    {gatedCount} more {teamName.split(' ')[0]} players in the full squad
                   </p>
                 </div>
                 <p className="text-[10px] text-white/32 leading-relaxed max-w-[280px] mx-auto">
-                  Upgrade for the full roster — breakeven scores, edge ratings, and value signals for every player.
+                  Upgrade for the complete roster — breakeven targets, edge ratings, and value signals for every player.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
                   <Link
@@ -871,7 +871,7 @@ function RosterSection({
           {/* premium: empty filter result */}
           {isPremium && filtered.length === 0 && (
             <div className="px-4 py-8 text-center">
-              <p className="text-[12px] text-white/35">No {activeFilter} players in this squad.</p>
+              <p className="text-[12px] text-white/35">No {activeFilter} players listed for this squad.</p>
             </div>
           )}
 
@@ -882,7 +882,7 @@ function RosterSection({
                 {filtered.length} player{filtered.length !== 1 ? 's' : ''}
                 {activeFilter !== 'ALL' ? ` · ${activeFilter}` : ''}
               </span>
-              <span className="text-[8px] text-white/20 uppercase tracking-widest">sorted by projection</span>
+              <span className="text-[8px] text-white/20 uppercase tracking-widest">ordered by projected score</span>
             </div>
           )}
         </div>
@@ -1206,8 +1206,8 @@ export default function AFLTeamPage() {
   }
 
   const shortName   = teamName.split(' ')[0];
-  const pageTitle   = `${teamName} AFL Fantasy Players 2026 | Neeko`;
-  const pageDescription = `${teamName} AFL Fantasy players for 2026. Projected scores, prices, and rankings for every ${teamName} player this round. ${stats.totalPlayers} players listed, ${stats.startCt} Start signals identified.`;
+  const pageTitle   = `${teamName} — AFL Fantasy Intelligence 2026 | Neeko`;
+  const pageDescription = `${teamName} squad analysis for AFL Fantasy 2026. Projected scores, breakeven targets, and buy/sell signals for all ${stats.totalPlayers} players — updated each round. ${stats.startCt} Start signal${stats.startCt !== 1 ? 's' : ''} active.`;
   const pageUrl     = `https://neekostats.com.au/sports/afl/teams/${team}`;
 
   return (
@@ -1280,13 +1280,13 @@ export default function AFLTeamPage() {
               <div className="flex items-start justify-between gap-4 mb-5">
                 <div className="min-w-0">
                   <p className="text-[9px] uppercase tracking-widest text-white/28 mb-2">
-                    AFL 2026 · Team Intelligence
+                    AFL Fantasy 2026 · Squad Intelligence
                   </p>
                   <h1 className="text-[28px] sm:text-[34px] font-black text-white leading-tight tracking-tight">
                     {teamName}
                   </h1>
                   <p className="text-[12px] text-white/42 mt-1.5 leading-snug max-w-sm">
-                    Projections, signals, and squad analysis for every {shortName} player — updated each round.
+                    Scoring projections, breakeven targets, and round signals for the full {shortName} squad — refreshed weekly.
                   </p>
                 </div>
                 {/* accent badge */}
@@ -1301,8 +1301,8 @@ export default function AFLTeamPage() {
               {/* ── 6-metric stat grid ── */}
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-5">
                 {[
-                  { label: 'Players',       value: stats.totalPlayers,  accent: undefined },
-                  { label: 'Top Proj',      value: stats.topProj,       accent: '#34d399' },
+                  { label: 'Squad Size',    value: stats.totalPlayers,  accent: undefined },
+                  { label: 'Ceiling',       value: stats.topProj,       accent: '#34d399' },
                   { label: 'Avg Proj',      value: stats.avgProj,       accent: undefined },
                   { label: 'Season Avg',    value: stats.avgSeasonAvg,  accent: undefined },
                   { label: 'Start',         value: stats.startCt,       accent: stats.startCt > 0 ? '#34d399' : undefined },
@@ -1326,7 +1326,7 @@ export default function AFLTeamPage() {
               {/* ── top 3 mini-player strip ── */}
               {players.length > 0 && (
                 <div className="border-t border-white/[0.06] py-3 flex items-center gap-1 overflow-x-auto scrollbar-hide">
-                  <span className="text-[8px] uppercase tracking-widest text-white/22 shrink-0 mr-2">Top players</span>
+                  <span className="text-[8px] uppercase tracking-widest text-white/22 shrink-0 mr-2">Top scorers</span>
                   {players.slice(0, 3).map((p, i) => {
                     const slug = nameToSlug(p.player_name);
                     const ac   = (p.action_canonical ?? '').toUpperCase();
@@ -1402,7 +1402,7 @@ export default function AFLTeamPage() {
           ══════════════════════════════════════════ */}
           {players.length > 0 && (
             <div>
-              <SectionLabel icon={<BarChart2 size={13} />} title="Team Analytics" />
+              <SectionLabel icon={<BarChart2 size={13} />} title="Scoring Profile" />
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
                 {/* Left — scoring depth chart */}
@@ -1429,14 +1429,14 @@ export default function AFLTeamPage() {
           ══════════════════════════════════════════ */}
           {players.length > 0 && (
             <div>
-              <SectionLabel icon={<Flame size={13} />} title="Team Insights" />
+              <SectionLabel icon={<Flame size={13} />} title="Key Indicators" />
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
 
                 {/* 1 — Top projected */}
                 {stats.topPlayer && (
                   <InsightCard
                     icon={<Trophy size={14} />}
-                    label="Top Projected"
+                    label="Squad Leader"
                     playerName={stats.topPlayer.player_name}
                     stat={fmtProj(stats.topPlayer.projection)}
                     statLabel="projected pts"
@@ -1459,7 +1459,7 @@ export default function AFLTeamPage() {
                 {stats.topValuePlayer && (
                   <InsightCard
                     icon={<Star size={14} />}
-                    label="Best Value Target"
+                    label="Value Pick"
                     playerName={stats.topValuePlayer.player_name}
                     stat={
                       stats.topValuePlayer.value_score != null
@@ -1486,7 +1486,7 @@ export default function AFLTeamPage() {
                 {stats.worstValuePlayer && (
                   <InsightCard
                     icon={<AlertCircle size={14} />}
-                    label="Trap Alert"
+                    label="Avoid This Week"
                     playerName={stats.worstValuePlayer.player_name}
                     stat={
                       stats.worstValuePlayer.value_score != null
@@ -1514,7 +1514,7 @@ export default function AFLTeamPage() {
                 {stats.mostExpensivePlayer && (
                   <InsightCard
                     icon={<DollarSign size={14} />}
-                    label="Highest Priced"
+                    label="Premium Asset"
                     playerName={stats.mostExpensivePlayer.player_name}
                     stat={fmtPrice(stats.mostExpensivePlayer.price)}
                     statLabel="price"
@@ -1538,7 +1538,7 @@ export default function AFLTeamPage() {
                 {stats.bestBudgetPlayer && (
                   <InsightCard
                     icon={<Zap size={14} />}
-                    label="Budget Pick"
+                    label="Cash Cow"
                     playerName={stats.bestBudgetPlayer.player_name}
                     stat={fmtProj(stats.bestBudgetPlayer.projection)}
                     statLabel="projected pts"
@@ -1561,24 +1561,24 @@ export default function AFLTeamPage() {
                 <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] p-4 flex flex-col gap-3">
                   <div className="flex items-center gap-2">
                     <Activity size={14} className="text-white/30" />
-                    <span className="text-[9px] uppercase tracking-widest text-white/30">Premium Core</span>
+                    <span className="text-[9px] uppercase tracking-widest text-white/30">Premium Depth</span>
                   </div>
                   <div>
                     <p className="text-[22px] font-black tabular-nums leading-none" style={{ color: accentSafe }}>
                       {stats.premiumCount}
                     </p>
-                    <p className="text-[8px] uppercase tracking-widest text-white/25 mt-0.5">players over $700k</p>
+                    <p className="text-[8px] uppercase tracking-widest text-white/25 mt-0.5">players priced over $700k</p>
                   </div>
                   <div className="space-y-1.5 mt-auto">
                     <p className="text-[10px] text-white/45 leading-snug">
-                      Avg proj of premium core: <span className="text-white/65 font-semibold">{stats.premiumAvgProj} pts</span>
+                      Premium avg projection: <span className="text-white/65 font-semibold">{stats.premiumAvgProj} pts</span>
                     </p>
                     <p className="text-[9px] text-white/28 leading-snug">
                       {stats.premiumCount === 0
                         ? `No ${shortName} players currently priced above $700k.`
                         : stats.premiumCount <= 3
-                        ? `${shortName} carry a thin premium core — squad value may lie in mid-pricers.`
-                        : `${shortName} have a deep premium core — strong ceiling but limited budget flexibility.`}
+                        ? `${shortName} has a thin premium core — value likely sits in the mid-price bracket.`
+                        : `${shortName} has a deep premium core — high ceiling, but budget flexibility is limited.`}
                     </p>
                   </div>
                 </div>
@@ -1592,11 +1592,11 @@ export default function AFLTeamPage() {
           ══════════════════════════════════════════ */}
           {players.length > 0 && (
             <div>
-              <SectionLabel icon={<Target size={13} />} title="Signal Distribution" />
+              <SectionLabel icon={<Target size={13} />} title="Round Signals" />
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {/* Action breakdown */}
                 <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-4 py-3.5 space-y-3">
-                  <p className="text-[9px] uppercase tracking-widest text-white/28 font-semibold">Round Signals</p>
+                  <p className="text-[9px] uppercase tracking-widest text-white/28 font-semibold">Signal Breakdown</p>
                   <div className="space-y-2">
                     {[
                       { label: 'Start', count: stats.startCt, color: '#34d399' },
@@ -1622,11 +1622,11 @@ export default function AFLTeamPage() {
 
                 {/* Form summary */}
                 <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-4 py-3.5 space-y-3">
-                  <p className="text-[9px] uppercase tracking-widest text-white/28 font-semibold">Squad Form</p>
+                  <p className="text-[9px] uppercase tracking-widest text-white/28 font-semibold">Form &amp; Consistency</p>
                   <div className="space-y-2.5">
                     <div>
                       <div className="flex justify-between mb-0.5">
-                        <span className="text-[9px] text-white/32">Avg Form Score</span>
+                        <span className="text-[9px] text-white/32">Form Score</span>
                         <span className="text-[9px] font-semibold text-white/50">{stats.avgFormScore}</span>
                       </div>
                       <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
@@ -1635,7 +1635,7 @@ export default function AFLTeamPage() {
                     </div>
                     <div>
                       <div className="flex justify-between mb-0.5">
-                        <span className="text-[9px] text-white/32">Avg Consistency</span>
+                        <span className="text-[9px] text-white/32">Consistency</span>
                         <span className="text-[9px] font-semibold text-white/50">{stats.avgConsistency}%</span>
                       </div>
                       <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
@@ -1661,7 +1661,7 @@ export default function AFLTeamPage() {
 
                 {/* Price movers */}
                 <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-4 py-3.5 space-y-2">
-                  <p className="text-[9px] uppercase tracking-widest text-white/28 font-semibold mb-1">Recent Price Movers</p>
+                  <p className="text-[9px] uppercase tracking-widest text-white/28 font-semibold mb-1">Price Movement</p>
                   {players
                     .filter(p => p.price_change != null && p.price_change !== 0)
                     .sort((a, b) => Math.abs(b.price_change ?? 0) - Math.abs(a.price_change ?? 0))
@@ -1677,7 +1677,7 @@ export default function AFLTeamPage() {
                       </Link>
                     ))}
                   {players.filter(p => p.price_change != null && p.price_change !== 0).length === 0 && (
-                    <p className="text-[10px] text-white/25">No price changes this round.</p>
+                    <p className="text-[10px] text-white/25">No price movement recorded this round.</p>
                   )}
                 </div>
               </div>
@@ -1689,7 +1689,7 @@ export default function AFLTeamPage() {
           ══════════════════════════════════════════ */}
           {players.length > 0 && (
             <div className="space-y-4">
-              <SectionLabel icon={<Shield size={13} />} title="Squad Breakdown" />
+              <SectionLabel icon={<Shield size={13} />} title="Line Breakdown" />
 
               {/* Tier 1 — summary stat cards (one per line) */}
               <div className={`grid gap-3 ${lineGroups.RUC.length > 0 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}>
