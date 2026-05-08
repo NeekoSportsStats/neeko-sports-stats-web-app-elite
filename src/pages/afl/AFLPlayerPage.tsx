@@ -536,27 +536,27 @@ function PlayerSEOBlock({ player, teamSlug }: {
       </h2>
       <div className="space-y-4 text-[12px] text-white/28 leading-relaxed">
         <div>
-          <h3 className="text-[9px] font-bold text-white/26 uppercase tracking-widest mb-1.5">Overview</h3>
+          <h3 className="text-[9px] font-bold text-white/26 uppercase tracking-widest mb-1.5">Player Profile</h3>
           <p>
-            {player.player_name} is a {posLabel} for {team} in the 2026 AFL Fantasy season.
-            {player.season_avg != null && ` Season average: ${Math.round(player.season_avg)} pts.`}
+            {player.player_name} is a {posLabel} for {team} in the 2026 AFL season.
+            {player.season_avg != null && ` 2026 season average: ${Math.round(player.season_avg)} pts.`}
             {formSentence && ` ${formSentence}`}
           </p>
         </div>
         <div>
-          <h3 className="text-[9px] font-bold text-white/26 uppercase tracking-widest mb-1.5">2026 Fantasy Outlook</h3>
+          <h3 className="text-[9px] font-bold text-white/26 uppercase tracking-widest mb-1.5">2026 Season Data</h3>
           <p>
-            {player.price != null && `Currently priced at ${fmtPriceHelper(player.price)}.`}
-            {player.games_played != null && ` ${player.games_played} games played this season.`}
-            {player.avg_last_3 != null && ` Last 3 average: ${Math.round(player.avg_last_3)} pts.`}
-            {player.avg_last_5 != null && ` Last 5 average: ${Math.round(player.avg_last_5)} pts.`}
-            {' '}Neeko models expected fantasy output using recent form, opponent concession rates, and venue factors.
+            {player.price != null && `Current fantasy price: ${fmtPriceHelper(player.price)}.`}
+            {player.games_played != null && ` ${player.games_played} games played in 2026.`}
+            {player.avg_last_3 != null && ` Last 3 match average: ${Math.round(player.avg_last_3)} pts.`}
+            {player.avg_last_5 != null && ` Last 5 match average: ${Math.round(player.avg_last_5)} pts.`}
+            {' '}Projections are modelled using recent form, opponent concession rates, and venue factors.
           </p>
         </div>
         <div>
-          <h3 className="text-[9px] font-bold text-white/26 uppercase tracking-widest mb-2">Explore</h3>
+          <h3 className="text-[9px] font-bold text-white/26 uppercase tracking-widest mb-2">More Stats</h3>
           <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-            <Link to="/fantasy/rankings" className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">AFL Fantasy Rankings</Link>
+            <Link to="/fantasy/rankings" className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">AFL Rankings</Link>
             {teamSlug && <Link to={`/sports/afl/teams/${teamSlug}`} className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">{player.team} players</Link>}
             <Link to="/sports/afl/players" className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">All AFL Players</Link>
             <Link to="/fantasy/market-watch" className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">Market Watch</Link>
@@ -775,7 +775,7 @@ function StatisticalProfile({
           <div className="flex items-center gap-2.5">
             <Lock size={11} className="text-amber-400/40 shrink-0" />
             <div>
-              <p className="text-[11px] text-white/42 font-semibold">Full Statistical Profile</p>
+              <p className="text-[11px] text-white/42 font-semibold">Extended Profile</p>
               <p className="text-[10px] text-white/25 leading-snug">
                 High / low scores (last 10 matches), score range, std deviation, volatility rating, and form % vs 2026 avg.
               </p>
@@ -1149,9 +1149,9 @@ export default function AFLPlayerPage() {
             {/* ── MAIN COLUMN ─────────────────────────── */}
             <div className="space-y-5 min-w-0">
 
-              {/* Fantasy Scoring History */}
+              {/* Scoring History */}
               <div>
-                <SectionLabel icon={<Activity size={13} />} title="Fantasy Scoring History" />
+                <SectionLabel icon={<Activity size={13} />} title="Scoring History" />
                 <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] overflow-hidden px-3 pt-3 pb-2">
                   <Suspense fallback={<div className="h-[190px] animate-pulse rounded-lg bg-white/[0.03]" />}>
                     <ScoreHistoryChart
@@ -1165,12 +1165,12 @@ export default function AFLPlayerPage() {
                 {!isPremium && (
                   <p className="text-[10px] text-white/20 mt-1.5 px-1 flex items-center gap-1.5">
                     <Lock size={9} className="text-amber-400/35 shrink-0" />
-                    Projection overlay available on Neeko+.{' '}
+                    Score projection available on Neeko+.{' '}
                     <Link to="/upgrade" className="text-amber-400/52 hover:text-amber-400 transition-colors underline underline-offset-2">Upgrade</Link>
                   </p>
                 )}
                 <p className="text-[9px] text-white/18 mt-2 px-1">
-                  Season metrics (2026 avg, 2026 games) use the current AFL season only. Recent-form metrics (Last 3, Last 5, Last 10) use the most recent completed matches.
+                  Season metrics (2026 avg, 2026 games) reflect the current AFL season only. Recent-form metrics (Last 3, Last 5, Last 10) reflect the most recent completed matches.
                 </p>
               </div>
 
@@ -1292,9 +1292,9 @@ export default function AFLPlayerPage() {
             {/* ── SIDEBAR COLUMN ──────────────────────── */}
             <div className="space-y-4">
 
-              {/* Fantasy Decision */}
+              {/* Decision Centre */}
               <div>
-                <SectionLabel icon={<Target size={13} />} title="Fantasy Decision" />
+                <SectionLabel icon={<Target size={13} />} title="Decision Centre" />
                 <FantasyDecision
                   player={player}
                   isPremium={isPremium}
@@ -1316,7 +1316,7 @@ export default function AFLPlayerPage() {
                   {/* One-line upgrade note for free users */}
                   {!isPremium && (
                     <div className="flex items-center justify-between gap-2 px-3 py-2 mb-2 rounded-lg border border-white/[0.05] bg-white/[0.02]">
-                      <p className="text-[10px] text-white/30">Projection &amp; signal on Neeko+</p>
+                      <p className="text-[10px] text-white/30">Score projection &amp; signal on Neeko+</p>
                       <Link
                         to="/upgrade"
                         className="text-[9px] font-bold text-amber-400/70 hover:text-amber-400 transition-colors uppercase tracking-wider whitespace-nowrap"
