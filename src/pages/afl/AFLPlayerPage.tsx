@@ -678,7 +678,7 @@ function StatisticalProfile({
         <ProfileCard
           label="80+ Score Rate"
           value={`${stats.rate80plus}%`}
-          sub={`${stats.scores.filter(v => v >= 80).length} of ${n} games`}
+          sub={`${stats.scores.filter(v => v >= 80).length} of ${n} matches`}
           barValue={stats.rate80plus}
           barColor="rgba(52,211,153,0.7)"
           highlight={stats.rate80plus >= 50 ? 'positive' : stats.rate80plus >= 30 ? 'neutral' : 'negative'}
@@ -686,7 +686,7 @@ function StatisticalProfile({
         <ProfileCard
           label="100+ Score Rate"
           value={`${stats.rate100plus}%`}
-          sub={`${stats.scores.filter(v => v >= 100).length} of ${n} games`}
+          sub={`${stats.scores.filter(v => v >= 100).length} of ${n} matches`}
           barValue={stats.rate100plus}
           barColor="rgba(52,211,153,0.6)"
           highlight={stats.rate100plus >= 35 ? 'positive' : stats.rate100plus >= 15 ? 'neutral' : 'negative'}
@@ -694,7 +694,7 @@ function StatisticalProfile({
         <ProfileCard
           label="Sub-60 Rate"
           value={`${stats.rateBelow60}%`}
-          sub={`${stats.scores.filter(v => v < 60).length} of ${n} games`}
+          sub={`${stats.scores.filter(v => v < 60).length} of ${n} matches`}
           barValue={stats.rateBelow60}
           barColor="rgba(248,113,113,0.65)"
           highlight={stats.rateBelow60 <= 15 ? 'positive' : stats.rateBelow60 <= 35 ? 'neutral' : 'negative'}
@@ -714,12 +714,12 @@ function StatisticalProfile({
         <div className="space-y-2">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <ProfileCard
-              label="High Score (L10)"
+              label="High Score (Last 10)"
               value={Math.round(stats.high)}
               highlight="positive"
             />
             <ProfileCard
-              label="Low Score (L10)"
+              label="Low Score (Last 10)"
               value={Math.round(stats.low)}
               highlight="negative"
             />
@@ -782,7 +782,7 @@ function StatisticalProfile({
             <div>
               <p className="text-[11px] text-white/42 font-semibold">Full Statistical Profile</p>
               <p className="text-[10px] text-white/25 leading-snug">
-                High / low scores, score range, std deviation, volatility rating, and form % vs season avg.
+                High / low scores (last 10 matches), score range, std deviation, volatility rating, and form % vs 2026 avg.
               </p>
             </div>
           </div>
@@ -1121,13 +1121,13 @@ export default function AFLPlayerPage() {
               {/* Stat strip — stats-first, no premium fields */}
               {(() => {
                 const cells: { label: string; val: React.ReactNode }[] = [
-                  { label: 'Price',      val: <span className="text-white/80">{fmtPriceHelper(player.price)}</span> },
-                  { label: 'Season Avg', val: <span className="text-white/82">{fmtAvg(player.season_avg)}</span> },
-                  { label: 'Last 3',     val: <span className={delta3 != null ? (delta3 >= 0 ? 'text-emerald-400' : 'text-red-400/85') : 'text-white/65'}>{fmtAvg(player.avg_last_3)}</span> },
-                  ...(player.avg_last_5 != null ? [{ label: 'Last 5', val: <span className="text-white/60">{Math.round(player.avg_last_5)}</span> }] : []),
-                  { label: 'Games',      val: <span className="text-white/50">{player.games_played ?? '—'}</span> },
-                  ...(scoreStats?.high != null ? [{ label: 'High (L10)', val: <span className="text-emerald-400/75">{Math.round(scoreStats.high)}</span> }] : []),
-                  ...(scoreStats?.low  != null ? [{ label: 'Low (L10)',  val: <span className="text-red-400/60">{Math.round(scoreStats.low)}</span> }] : []),
+                  { label: 'Price',          val: <span className="text-white/80">{fmtPriceHelper(player.price)}</span> },
+                  { label: '2026 Avg',       val: <span className="text-white/82">{fmtAvg(player.season_avg)}</span> },
+                  { label: 'Last 3 Matches', val: <span className={delta3 != null ? (delta3 >= 0 ? 'text-emerald-400' : 'text-red-400/85') : 'text-white/65'}>{fmtAvg(player.avg_last_3)}</span> },
+                  ...(player.avg_last_5 != null ? [{ label: 'Last 5 Matches', val: <span className="text-white/60">{Math.round(player.avg_last_5)}</span> }] : []),
+                  { label: '2026 Games',     val: <span className="text-white/50">{player.games_played ?? '—'}</span> },
+                  ...(scoreStats?.high != null ? [{ label: 'High (L10 Matches)', val: <span className="text-emerald-400/75">{Math.round(scoreStats.high)}</span> }] : []),
+                  ...(scoreStats?.low  != null ? [{ label: 'Low (L10 Matches)',  val: <span className="text-red-400/60">{Math.round(scoreStats.low)}</span> }] : []),
                 ];
                 return (
                   <div
@@ -1176,6 +1176,9 @@ export default function AFLPlayerPage() {
                     <Link to="/upgrade" className="text-amber-400/52 hover:text-amber-400 transition-colors underline underline-offset-2">Upgrade</Link>
                   </p>
                 )}
+                <p className="text-[9px] text-white/18 mt-2 px-1">
+                  Season metrics (2026 avg, 2026 games) use the current AFL season only. Recent-form metrics (Last 3, Last 5, Last 10) use the most recent completed matches.
+                </p>
               </div>
 
               {/* Statistical Profile */}
@@ -1201,28 +1204,28 @@ export default function AFLPlayerPage() {
                   {/* Stat tiles */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <StatTile
-                      label="Season Avg"
+                      label="2026 Avg"
                       value={<span className="text-white/80">{fmtAvg(player.season_avg)}</span>}
                       sub="2026 season"
                     />
                     <StatTile
-                      label="Last 3"
+                      label="Last 3 Matches"
                       value={
                         <span className={delta3 != null ? (delta3 >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-white/70'}>
                           {fmtAvg(player.avg_last_3)}
                         </span>
                       }
-                      sub={delta3 != null ? `${delta3 >= 0 ? '+' : ''}${delta3} vs avg` : undefined}
+                      sub={delta3 != null ? `${delta3 >= 0 ? '+' : ''}${delta3} vs 2026 avg` : undefined}
                     />
                     <StatTile
-                      label="Last 5"
+                      label="Last 5 Matches"
                       value={<span className="text-white/65">{fmtAvg(player.avg_last_5)}</span>}
-                      sub="5-game window"
+                      sub="5-match window"
                     />
                     <StatTile
-                      label="High (L10)"
+                      label="High (Last 10)"
                       value={<span className="text-white/55">{scoreStats?.high != null ? Math.round(scoreStats.high) : '—'}</span>}
-                      sub="last 10 games"
+                      sub="last 10 matches"
                     />
                   </div>
 
@@ -1234,15 +1237,15 @@ export default function AFLPlayerPage() {
                       <div className="flex items-center gap-4 flex-wrap">
                         <div className="flex items-center gap-1.5">
                           <div className="w-2 h-2 rounded-sm bg-white/15" />
-                          <span className="text-[9px] text-white/28">5-game range</span>
+                          <span className="text-[9px] text-white/28">5-match range</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <div className={`w-1.5 h-1.5 rounded-sm ${delta3 != null && delta3 >= 0 ? 'bg-emerald-400' : 'bg-red-400/80'}`} />
-                          <span className="text-[9px] text-white/28">Last 3 avg</span>
+                          <span className="text-[9px] text-white/28">Last 3 matches avg</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <div className="w-px h-3 bg-white/22" />
-                          <span className="text-[9px] text-white/28">Season avg</span>
+                          <span className="text-[9px] text-white/28">2026 avg</span>
                         </div>
                       </div>
                     </div>
