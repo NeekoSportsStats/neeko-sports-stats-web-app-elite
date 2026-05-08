@@ -53,22 +53,22 @@ const TRUST_ITEMS = [
   {
     icon: TrendingUp,
     title: "Updated every round",
-    description: "Projections and signals rebuilt before each lockout using live AFL data.",
+    description: "Stats, projections and signals refresh before each lockout.",
   },
   {
     icon: Target,
-    title: "Stats and fantasy in one place",
-    description: "Stat trends, hit rates, matchup data, projections and fantasy signals — all connected.",
+    title: "Built for AFL decisions",
+    description: "Use projections, hit rates, breakevens and form trends in one place.",
   },
   {
     icon: Zap,
-    title: "Decisions in 30 seconds",
-    description: "Know who to trade, captain, and bench before lockout closes.",
+    title: "Find the edge faster",
+    description: "Spot value, traps, captain options and player trends without digging through spreadsheets.",
   },
   {
     icon: Shield,
-    title: "No gambling, no hype",
-    description: "Structured analytics only. Clean interface, clear signals.",
+    title: "No gambling. No hype.",
+    description: "Clean AFL stats intelligence only — clear signals, transparent data and practical analysis.",
   },
 ];
 
@@ -979,7 +979,7 @@ const NeekoPlusPurchase = () => {
             letterSpacing: "-0.03em",
             textAlign: "center", margin: "0 0 6px",
           }}>
-            Why coaches trust Neeko+
+            Why serious AFL users choose Neeko+
           </h2>
           <p style={{ fontSize: 13, color: "rgba(255,255,255,0.28)", textAlign: "center", margin: "0 0 28px" }}>
             Built for serious AFL stats and fantasy managers.
