@@ -125,6 +125,8 @@ export function classifyPlayers(raw: MWPlayerRow[] | undefined | null): {
     if (p.decision_score != null) return p.decision_score;
     if (p.value_score != null) return p.value_score;
     if (p.projection != null && p.breakeven != null) return p.projection - p.breakeven;
+    // trend_score = projection - season_avg, always returned ungated for all rows
+    if ((p as any).trend_score != null) return (p as any).trend_score as number;
     return 0;
   }
 

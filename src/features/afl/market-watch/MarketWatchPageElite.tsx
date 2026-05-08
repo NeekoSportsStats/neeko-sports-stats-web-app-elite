@@ -461,7 +461,11 @@ export default function MarketWatchPageElite() {
         if (searchQuery.length >= 2 && !p.player_name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
         return true;
       })
-      .sort((a, b) => ((b as any).decision_score ?? b.value_score ?? 0) - ((a as any).decision_score ?? a.value_score ?? 0));
+      .sort((a, b) => {
+        const valB = (b as any).decision_score ?? b.value_score ?? (b as any).trend_score ?? 0;
+        const valA = (a as any).decision_score ?? a.value_score ?? (a as any).trend_score ?? 0;
+        return valB - valA;
+      });
   }, [buys, holds, sells, activeTab, selectedPosition, priceMin, priceMax, searchQuery]);
 
   // ── GROUPED VIEW (ALL tab) ──────────────────────────────────────────────────
@@ -607,7 +611,7 @@ export default function MarketWatchPageElite() {
                   />
                 )}
               </div>
-              <p className="text-sm text-white/40 mt-1">Value-sorted trade signals — who to buy, hold and move on from this round</p>
+              <p className="text-sm text-white/40 mt-1">Trade signals ranked by Neeko value, projection and confidence.</p>
             </div>
             <button
               onClick={() => fetchData(true)}
