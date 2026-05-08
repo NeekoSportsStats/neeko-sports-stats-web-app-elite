@@ -411,55 +411,174 @@ function MiniBar({ value, max, color }: { value: number; max: number; color: str
   );
 }
 
-// ─── Line group card (Mids / Defs / Fwds / Rucks) ─────────────────────────────
+// ─── Line summary card (header stat strip for Squad Breakdown) ────────────────
 
-function LineCard({
-  title, players, accentColor, isPremium,
+const LINE_META: Record<string, { label: string; abbr: string; icon: React.ReactNode }> = {
+  MID: { label: 'Midfielders', abbr: 'MID', icon: <Activity size={13} /> },
+  DEF: { label: 'Defenders',   abbr: 'DEF', icon: <Shield size={13} /> },
+  FWD: { label: 'Forwards',    abbr: 'FWD', icon: <TrendingUp size={13} /> },
+  RUC: { label: 'Rucks',       abbr: 'RUC', icon: <Target size={13} /> },
+};
+
+function LineSummaryCard({
+  lineKey, players, accentColor,
 }: {
-  title: string;
+  lineKey: string;
+  players: TeamPlayer[];
+  accentColor: string;
+}) {
+  if (!players.length) return null;
+  const meta     = LINE_META[lineKey] ?? { label: lineKey, abbr: lineKey, icon: null };
+  const topPlayer = players[0];
+  const avgProj   = Math.round(players.reduce((s, p) => s + (p.projection ?? 0), 0) / players.length);
+  const startCt   = players.filter(p => {
+    const ac = (p.action_canonical ?? '').toUpperCase();
+    return ac === 'START' || ac === 'SMASH_START';
+  }).length;
+  const sitCt = players.filter(p => {
+    const ac = (p.action_canonical ?? '').toUpperCase();
+    return ac === 'SIT' || ac === 'HARD_SIT';
+  }).length;
+  const holdCt = players.length - startCt - sitCt;
+
+  // signal bar widths
+  const total = players.length || 1;
+  const startPct = Math.round((startCt / total) * 100);
+  const sitPct   = Math.round((sitCt   / total) * 100);
+  const holdPct  = 100 - startPct - sitPct;
+
+  return (
+    <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] overflow-hidden flex flex-col">
+      {/* ── line header ── */}
+      <div
+        className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05]"
+        style={{ background: `linear-gradient(90deg, ${accentColor}10 0%, transparent 100%)` }}
+      >
+        <div className="flex items-center gap-2">
+          <span style={{ color: accentColor }}>{meta.icon}</span>
+          <span className="text-[12px] font-bold text-white/80 tracking-wide">{meta.label}</span>
+        </div>
+        <span
+          className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded"
+          style={{ color: accentColor, background: `${accentColor}18` }}
+        >
+          {meta.abbr}
+        </span>
+      </div>
+
+      {/* ── 4 key metrics ── */}
+      <div className="grid grid-cols-4 divide-x divide-white/[0.04] border-b border-white/[0.05]">
+        {[
+          { label: 'Players', value: players.length,    color: undefined },
+          { label: 'Avg Proj', value: avgProj,          color: undefined },
+          { label: 'Start',   value: startCt,           color: startCt > 0 ? '#34d399' : undefined },
+          { label: 'Sit',     value: sitCt,             color: sitCt   > 0 ? '#fb923c' : undefined },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="flex flex-col items-center py-2.5 gap-0.5">
+            <span
+              className="text-[16px] font-black tabular-nums leading-none"
+              style={color ? { color } : { color: 'rgba(255,255,255,0.70)' }}
+            >
+              {value}
+            </span>
+            <span className="text-[7px] uppercase tracking-widest text-white/25 leading-tight text-center">{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* ── signal bar ── */}
+      <div className="px-4 py-2.5 border-b border-white/[0.04] space-y-1.5">
+        <span className="text-[7px] uppercase tracking-widest text-white/22">Signal mix</span>
+        <div className="flex h-1.5 rounded-full overflow-hidden gap-px">
+          {startPct > 0 && <div className="rounded-l-full" style={{ width: `${startPct}%`, backgroundColor: '#34d399' }} />}
+          {holdPct  > 0 && <div style={{ width: `${holdPct}%`,  backgroundColor: 'rgba(255,255,255,0.15)' }} />}
+          {sitPct   > 0 && <div className="rounded-r-full" style={{ width: `${sitPct}%`,   backgroundColor: '#fb923c' }} />}
+        </div>
+        <div className="flex items-center gap-3">
+          {startCt > 0 && <span className="text-[8px] text-emerald-400/70">{startCt} Start</span>}
+          <span className="text-[8px] text-white/25">{holdCt} Hold</span>
+          {sitCt > 0   && <span className="text-[8px] text-orange-400/70">{sitCt} Sit</span>}
+        </div>
+      </div>
+
+      {/* ── top player callout ── */}
+      {topPlayer && (
+        <Link
+          to={`/sports/afl/players/${nameToSlug(topPlayer.player_name)}`}
+          className="flex items-center justify-between px-4 py-2.5 hover:bg-white/[0.03] transition-colors group"
+        >
+          <div className="min-w-0">
+            <p className="text-[8px] uppercase tracking-widest text-white/22 mb-0.5">Top projected</p>
+            <p className="text-[12px] font-semibold text-white/75 group-hover:text-white transition-colors truncate">
+              {topPlayer.player_name}
+            </p>
+            <p className="text-[8px] text-white/30 mt-0.5">
+              {POSITION_NAMES[topPlayer.position ?? ''] ?? topPlayer.position ?? '—'}
+              {topPlayer.price != null ? ` · ${fmtPrice(topPlayer.price)}` : ''}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="text-right">
+              <p className="text-[15px] font-black tabular-nums leading-none" style={{ color: accentColor }}>
+                {fmtProj(topPlayer.projection)}
+              </p>
+              <p className="text-[7px] text-white/22 uppercase tracking-wide">proj</p>
+            </div>
+            <ChevronRight size={11} className="text-white/12 group-hover:text-white/38 transition-colors" />
+          </div>
+        </Link>
+      )}
+    </div>
+  );
+}
+
+// ─── Line detail rows (expandable player list per line) ────────────────────────
+
+function LineDetailRows({
+  lineKey, players, accentColor, isPremium,
+}: {
+  lineKey: string;
   players: TeamPlayer[];
   accentColor: string;
   isPremium: boolean;
 }) {
+  const [expanded, setExpanded] = useState(false);
   if (!players.length) return null;
-  const maxProj = Math.max(...players.map(p => p.projection ?? 0));
-  const avgProj = Math.round(players.reduce((s, p) => s + (p.projection ?? 0), 0) / players.length);
-  const startCt = players.filter(p => {
-    const ac = (p.action_canonical ?? '').toUpperCase();
-    return ac === 'START' || ac === 'SMASH_START';
-  }).length;
+  const meta    = LINE_META[lineKey] ?? { label: lineKey, abbr: lineKey, icon: null };
+  const maxProj = Math.max(...players.map(p => p.projection ?? 0)) || 1;
+  const visible = expanded ? players : players.slice(0, 5);
 
   return (
     <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] overflow-hidden">
-      {/* line header */}
+      {/* section label */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-white/[0.05]">
         <div className="flex items-center gap-2">
-          <div className="w-1.5 h-4 rounded-full" style={{ backgroundColor: accentColor }} />
-          <span className="text-[11px] font-bold text-white/70 uppercase tracking-wider">{title}</span>
-          <span className="text-[9px] text-white/25">{players.length} players</span>
+          <div className="w-1 h-3.5 rounded-full" style={{ backgroundColor: accentColor, opacity: 0.7 }} />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">{meta.label}</span>
+          <span className="text-[9px] text-white/22">{players.length}</span>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-[9px] text-white/25">avg proj <span className="text-white/45 font-semibold">{avgProj}</span></span>
-          {startCt > 0 && (
-            <span className="text-[9px] text-emerald-400/70">{startCt} start</span>
-          )}
-        </div>
+        {players.length > 5 && (
+          <button
+            onClick={() => setExpanded(e => !e)}
+            className="text-[8px] text-white/28 hover:text-white/55 transition-colors uppercase tracking-wide"
+          >
+            {expanded ? 'Show less' : `+${players.length - 5} more`}
+          </button>
+        )}
       </div>
-      {/* player rows */}
       <div className="divide-y divide-white/[0.03]">
-        {players.slice(0, 6).map(p => {
-          const slug = nameToSlug(p.player_name);
+        {visible.map(p => {
           const proj = p.projection ?? 0;
           return (
             <Link
               key={p.player_id ?? p.player_name}
-              to={`/sports/afl/players/${slug}`}
+              to={`/sports/afl/players/${nameToSlug(p.player_name)}`}
               className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.03] transition-colors group"
             >
               <ActionIcon action={p.action_canonical} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[12px] font-semibold text-white/80 group-hover:text-white transition-colors truncate">
+                  <span className="text-[12px] font-semibold text-white/78 group-hover:text-white transition-colors truncate">
                     {p.player_name}
                   </span>
                   <PlayerStatusPill
@@ -474,25 +593,20 @@ function LineCard({
                   />
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-[9px] text-white/30">{fmtPrice(p.price)}</span>
+                  <span className="text-[9px] text-white/28">{fmtPrice(p.price)}</span>
                   {isPremium && p.breakeven != null && (
-                    <span className="text-[9px] text-white/25">BE: {Math.round(p.breakeven)}</span>
+                    <span className="text-[9px] text-white/22">BE {Math.round(p.breakeven)}</span>
                   )}
-                  <MiniBar value={proj} max={maxProj || 1} color={accentColor} />
+                  <MiniBar value={proj} max={maxProj} color={accentColor} />
                 </div>
               </div>
               <div className="text-right shrink-0">
-                <span className="text-[13px] font-bold tabular-nums text-white/75">{fmtProj(p.projection)}</span>
-                <p className="text-[8px] text-white/22 uppercase tracking-wide">proj</p>
+                <span className="text-[13px] font-bold tabular-nums text-white/72">{fmtProj(p.projection)}</span>
+                <p className="text-[7px] text-white/20 uppercase tracking-wide">proj</p>
               </div>
             </Link>
           );
         })}
-        {players.length > 6 && (
-          <div className="px-4 py-2 text-center">
-            <span className="text-[9px] text-white/22">+{players.length - 6} more in full roster</span>
-          </div>
-        )}
       </div>
     </div>
   );
@@ -1405,17 +1519,43 @@ export default function AFLTeamPage() {
           )}
 
           {/* ══════════════════════════════════════════
-              SQUAD BY LINE
+              SQUAD BREAKDOWN BY LINE
           ══════════════════════════════════════════ */}
           {players.length > 0 && (
-            <div>
-              <SectionLabel icon={<Shield size={13} />} title="Squad by Line" />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                <LineCard title="Midfielders" players={lineGroups.MID} accentColor={accentSafe} isPremium={isPremium} />
-                <LineCard title="Defenders"   players={lineGroups.DEF} accentColor={accentSafe} isPremium={isPremium} />
-                <LineCard title="Forwards"    players={lineGroups.FWD} accentColor={accentSafe} isPremium={isPremium} />
+            <div className="space-y-4">
+              <SectionLabel icon={<Shield size={13} />} title="Squad Breakdown" />
+
+              {/* Tier 1 — summary stat cards (one per line) */}
+              <div className={`grid gap-3 ${lineGroups.RUC.length > 0 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}>
+                {(['MID', 'DEF', 'FWD'] as const).map(key => (
+                  <LineSummaryCard
+                    key={key}
+                    lineKey={key}
+                    players={lineGroups[key]}
+                    accentColor={accentSafe}
+                  />
+                ))}
                 {lineGroups.RUC.length > 0 && (
-                  <LineCard title="Rucks" players={lineGroups.RUC} accentColor={accentSafe} isPremium={isPremium} />
+                  <LineSummaryCard
+                    lineKey="RUC"
+                    players={lineGroups.RUC}
+                    accentColor={accentSafe}
+                  />
+                )}
+              </div>
+
+              {/* Tier 2 — detailed player rows per line */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                {(['MID', 'DEF', 'FWD', 'RUC'] as const).map(key =>
+                  lineGroups[key].length > 0 ? (
+                    <LineDetailRows
+                      key={key}
+                      lineKey={key}
+                      players={lineGroups[key]}
+                      accentColor={accentSafe}
+                      isPremium={isPremium}
+                    />
+                  ) : null
                 )}
               </div>
             </div>
