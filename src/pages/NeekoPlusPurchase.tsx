@@ -744,16 +744,31 @@ const NeekoPlusPurchase = () => {
 
               {/* Per round breakdown */}
               <div style={{
-                display: "inline-flex", alignItems: "center", gap: 4,
-                background: selectedPlan === "season" ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)",
-                border: `1px solid ${selectedPlan === "season" ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.07)"}`,
-                borderRadius: 6,
-                padding: "3px 8px",
-                fontSize: 10, fontWeight: 700,
-                color: selectedPlan === "season" ? "rgba(34,197,94,0.85)" : "rgba(255,255,255,0.28)",
+                display: "flex", flexWrap: "wrap", gap: 5,
                 marginBottom: 16,
               }}>
-                ${seasonPerRound}/round · save ${savings} vs weekly
+                <span style={{
+                  display: "inline-flex", alignItems: "center",
+                  background: selectedPlan === "season" ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)",
+                  border: `1px solid ${selectedPlan === "season" ? "rgba(34,197,94,0.18)" : "rgba(255,255,255,0.07)"}`,
+                  borderRadius: 6,
+                  padding: "3px 8px",
+                  fontSize: 10, fontWeight: 700,
+                  color: selectedPlan === "season" ? "rgba(34,197,94,0.85)" : "rgba(255,255,255,0.28)",
+                }}>
+                  ${seasonPerRound}/round
+                </span>
+                <span style={{
+                  display: "inline-flex", alignItems: "center",
+                  background: selectedPlan === "season" ? "rgba(224,174,45,0.09)" : "rgba(255,255,255,0.03)",
+                  border: `1px solid ${selectedPlan === "season" ? "rgba(224,174,45,0.22)" : "rgba(255,255,255,0.06)"}`,
+                  borderRadius: 6,
+                  padding: "3px 8px",
+                  fontSize: 10, fontWeight: 700,
+                  color: selectedPlan === "season" ? "rgba(224,174,45,0.80)" : "rgba(255,255,255,0.22)",
+                }}>
+                  Save ${savings} vs weekly
+                </span>
               </div>
 
               {/* Radio indicator */}
@@ -777,20 +792,21 @@ const NeekoPlusPurchase = () => {
               onClick={() => setSelectedPlan("weekly")}
               style={{
                 background: selectedPlan === "weekly"
-                  ? "rgba(255,255,255,0.055)"
-                  : "rgba(255,255,255,0.02)",
-                border: `2px solid ${selectedPlan === "weekly" ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.06)"}`,
+                  ? "rgba(255,255,255,0.05)"
+                  : "rgba(255,255,255,0.025)",
+                border: `2px solid ${selectedPlan === "weekly" ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.09)"}`,
                 borderRadius: 16,
                 padding: "24px 20px 20px",
                 cursor: "pointer",
                 transition: "all 0.16s ease",
                 display: "flex", flexDirection: "column",
+                boxShadow: selectedPlan === "weekly" ? "0 4px 24px rgba(0,0,0,0.40)" : "none",
               }}
             >
               <p style={{
                 fontSize: 8.5, fontWeight: 900, letterSpacing: "0.36em",
                 textTransform: "uppercase",
-                color: "rgba(255,255,255,0.30)",
+                color: selectedPlan === "weekly" ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.38)",
                 margin: "0 0 10px",
               }}>
                 Weekly
@@ -799,35 +815,35 @@ const NeekoPlusPurchase = () => {
               <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 2 }}>
                 <span style={{
                   fontSize: 38, fontWeight: 900,
-                  color: "rgba(255,255,255,0.65)",
+                  color: selectedPlan === "weekly" ? "#F5F5F5" : "rgba(255,255,255,0.72)",
                   letterSpacing: "-0.04em",
                 }}>
                   ${NEEKO_PRICING.weekly.price}
                 </span>
-                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.25)" }}>AUD</span>
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.32)" }}>AUD/wk</span>
               </div>
 
-              <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.25)", margin: "0 0 10px", lineHeight: 1.4 }}>
-                Per week. Cancel anytime.
+              <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.42)", margin: "0 0 10px", lineHeight: 1.4 }}>
+                Flexible access. Cancel anytime.
               </p>
 
               <div style={{
                 display: "inline-flex", alignItems: "center", gap: 4,
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.06)",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
                 borderRadius: 6,
                 padding: "3px 8px",
                 fontSize: 10, fontWeight: 600,
-                color: "rgba(255,255,255,0.25)",
+                color: "rgba(255,255,255,0.38)",
                 marginBottom: 16,
               }}>
-                ${weeklyTotal} AUD for full season
+                ${weeklyTotal} AUD if held all season
               </div>
 
               <div style={{
                 width: 20, height: 20, borderRadius: "50%",
-                background: selectedPlan === "weekly" ? "rgba(255,255,255,0.80)" : "transparent",
-                border: `2px solid ${selectedPlan === "weekly" ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.18)"}`,
+                background: selectedPlan === "weekly" ? "rgba(255,255,255,0.85)" : "transparent",
+                border: `2px solid ${selectedPlan === "weekly" ? "rgba(255,255,255,0.80)" : "rgba(255,255,255,0.22)"}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 marginTop: "auto",
                 transition: "all 0.15s",
@@ -891,7 +907,7 @@ const NeekoPlusPurchase = () => {
               <>
                 {selectedPlan === "season"
                   ? `Get Full Season Access — $${NEEKO_PRICING.season.price} AUD`
-                  : `Unlock This Week — $${NEEKO_PRICING.weekly.price} AUD/wk`}
+                  : `Start Weekly Access — $${NEEKO_PRICING.weekly.price} AUD`}
                 <ArrowRight size={15} />
               </>
             )}
@@ -1024,8 +1040,8 @@ const NeekoPlusPurchase = () => {
               ) : (
                 <>
                   {selectedPlan === "season"
-                    ? `Get Neeko+ — Season Pass`
-                    : `Get Neeko+ — Weekly Access`}
+                    ? `Get Full Season Access — $${NEEKO_PRICING.season.price} AUD`
+                    : `Start Weekly Access — $${NEEKO_PRICING.weekly.price} AUD`}
                   <ArrowRight size={14} />
                 </>
               )}
