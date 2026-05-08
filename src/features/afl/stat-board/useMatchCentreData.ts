@@ -12,7 +12,7 @@ const SEASON = 2026;
 const FREE_MATCH_LIMIT = 2;
 
 export function useMatchCentreData() {
-  const { isPremium, isAdmin } = useAuth();
+  const { isPremium, isAdmin, loading: authLoading } = useAuth();
   const hasFullAccess = isPremium || isAdmin;
 
   const [lens, setLens] = useState<TeamStatLens>("score");
@@ -23,6 +23,10 @@ export function useMatchCentreData() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Wait for auth to resolve before fetching — prevents a free-user fetch
+    // permanently caching null data for locked rows when premium resolves later.
+    if (authLoading) return;
+
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -34,6 +38,7 @@ export function useMatchCentreData() {
         p_lens: lens,
         p_limit: 200,
         p_offset: 0,
+        p_is_premium: hasFullAccess,
       })
       .then(({ data, error: rpcError }) => {
         if (cancelled) return;
@@ -48,15 +53,14 @@ export function useMatchCentreData() {
       });
 
     return () => { cancelled = true; };
-  }, [lens]);
+  }, [lens, hasFullAccess, authLoading]);
 
-  // Group flat rows into fixture pairs and apply premium override
+  // Group flat rows into fixture pairs
   const fixtures: MatchCentreFixture[] = useMemo(() => {
     const fixtureMap = new Map<number, MatchCentreFixture>();
 
     for (const row of rows) {
       if (!fixtureMap.has(row.match_id)) {
-        const isLocked = hasFullAccess ? false : row.is_locked;
         fixtureMap.set(row.match_id, {
           matchId: row.match_id,
           week: row.week,
@@ -70,22 +74,19 @@ export function useMatchCentreData() {
           awayTeamId: row.away_team_id,
           awayTeamName: row.away_team_name,
           isFreePreview: row.fixture_order <= FREE_MATCH_LIMIT,
-          isLocked,
-          lockReason: isLocked ? "Unlock full round" : null,
+          isLocked: row.is_locked,
+          lockReason: row.is_locked ? "Unlock full round" : null,
           homeRow: null,
           awayRow: null,
         });
       }
 
       const fixture = fixtureMap.get(row.match_id)!;
-      const resolvedRow: MatchCentreRow = hasFullAccess
-        ? { ...row, is_locked: false, is_premium_unlocked: true, is_free_preview: true }
-        : row;
 
       if (row.is_home) {
-        fixture.homeRow = resolvedRow;
+        fixture.homeRow = row;
       } else {
-        fixture.awayRow = resolvedRow;
+        fixture.awayRow = row;
       }
     }
 
@@ -108,9 +109,8 @@ export function useMatchCentreData() {
     }
 
     return fixtureList;
-  }, [rows, hasFullAccess, sortMode]);
+  }, [rows, sortMode]);
 
-  // Derived single-fixture view when a match filter is active
   const filteredFixtures = useMemo(() => {
     if (selectedMatchId === null) return fixtures;
     return fixtures.filter((f) => f.matchId === selectedMatchId);
@@ -120,23 +120,19 @@ export function useMatchCentreData() {
   const week = rows[0]?.week ?? null;
 
   return {
-    // Data
     fixtures: filteredFixtures,
     allFixtures: fixtures,
     roundLabel,
     week,
-    // State
     lens,
     setLens,
     selectedMatchId,
     setSelectedMatchId,
     sortMode,
     setSortMode,
-    // Access
     hasFullAccess,
     isPremium,
     isAdmin,
-    // Loading
     loading,
     error,
   };
