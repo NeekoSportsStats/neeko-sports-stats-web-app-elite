@@ -134,7 +134,7 @@ function MetricCard({ label, value, sub, accent }: { label: string; value: strin
 // ─── Insight card (dashboard highlight) ──────────────────────────────────────
 
 function InsightCard({
-  icon, label, playerName, stat, statLabel, sub, slug, accentColor,
+  icon, label, playerName, stat, statLabel, sub, context, slug, accentColor, dimStat,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -142,31 +142,47 @@ function InsightCard({
   stat: string;
   statLabel: string;
   sub?: string;
+  context?: string;
   slug: string;
   accentColor: string;
+  dimStat?: boolean;
 }) {
   return (
     <Link
       to={`/sports/afl/players/${slug}`}
       className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] p-4 hover:bg-white/[0.03] hover:border-white/[0.12] transition-all group flex flex-col gap-2.5"
     >
+      {/* header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span style={{ color: accentColor }}>{icon}</span>
-          <span className="text-[9px] uppercase tracking-widest text-white/30">{label}</span>
+        <div className="flex items-center gap-1.5">
+          <span style={{ color: accentColor, opacity: dimStat ? 0.7 : 1 }}>{icon}</span>
+          <span className="text-[9px] uppercase tracking-widest text-white/28">{label}</span>
         </div>
-        <ChevronRight size={11} className="text-white/15 group-hover:text-white/35 transition-colors" />
+        <ChevronRight size={10} className="text-white/12 group-hover:text-white/35 transition-colors" />
       </div>
-      <p className="text-[13px] font-semibold text-white/85 truncate group-hover:text-white transition-colors leading-tight">
+      {/* player name */}
+      <p className="text-[13px] font-semibold text-white/80 truncate group-hover:text-white transition-colors leading-tight">
         {playerName}
       </p>
-      <div className="flex items-end justify-between">
-        <span className="text-[22px] font-black tabular-nums leading-none" style={{ color: accentColor }}>{stat}</span>
-        <div className="text-right">
-          <span className="text-[8px] text-white/25 uppercase tracking-wide block">{statLabel}</span>
-          {sub && <span className="text-[8px] text-white/18 block">{sub}</span>}
+      {/* key stat + label */}
+      <div className="flex items-end justify-between gap-2">
+        <span
+          className="text-[22px] font-black tabular-nums leading-none"
+          style={{ color: dimStat ? 'rgba(255,255,255,0.35)' : accentColor }}
+        >
+          {stat}
+        </span>
+        <div className="text-right shrink-0">
+          <span className="text-[8px] text-white/25 uppercase tracking-wide block leading-tight">{statLabel}</span>
+          {sub && <span className="text-[8px] text-white/38 block leading-tight mt-0.5">{sub}</span>}
         </div>
       </div>
+      {/* context line */}
+      {context && (
+        <p className="text-[9px] text-white/30 leading-snug border-t border-white/[0.05] pt-2 mt-auto">
+          {context}
+        </p>
+      )}
     </Link>
   );
 }
@@ -774,6 +790,7 @@ export default function AFLTeamPage() {
     if (!players.length) return {
       totalPlayers: 0, topProj: 0, avgProj: 0, avgSeasonAvg: 0,
       topPlayer: null, mostExpensivePlayer: null, topValuePlayer: null,
+      worstValuePlayer: null, bestBudgetPlayer: null, premiumCount: 0, premiumAvgProj: 0,
       startCt: 0, sitCt: 0, holdCt: 0, hardSitCt: 0,
       avgFormScore: 0, avgConsistency: 0,
     };
@@ -790,9 +807,30 @@ export default function AFLTeamPage() {
 
     const topPlayer = players[0];
     const mostExpensivePlayer = [...players].sort((a, b) => (Number(b.price) || 0) - (Number(a.price) || 0))[0];
+
+    // Best value: highest value_score among active players (start signals preferred)
     const topValuePlayer = [...active]
       .filter(p => p.value_score != null)
       .sort((a, b) => (Number(b.value_score) || 0) - (Number(a.value_score) || 0))[0] ?? null;
+
+    // Worst value / trap: lowest value_score with a meaningful price (>200k)
+    const worstValuePlayer = [...active]
+      .filter(p => p.value_score != null && (p.price ?? 0) > 200000)
+      .sort((a, b) => (Number(a.value_score) || 0) - (Number(b.value_score) || 0))[0] ?? null;
+
+    // Best budget: highest projection among players priced under $450k
+    const BUDGET_CEILING = 450000;
+    const bestBudgetPlayer = [...active]
+      .filter(p => (p.price ?? 0) > 0 && (p.price ?? 0) < BUDGET_CEILING)
+      .sort((a, b) => (Number(b.projection) || 0) - (Number(a.projection) || 0))[0] ?? null;
+
+    // Premium count: players priced above $700k
+    const PREMIUM_FLOOR = 700000;
+    const premiumPlayers = players.filter(p => (p.price ?? 0) >= PREMIUM_FLOOR);
+    const premiumCount = premiumPlayers.length;
+    const premiumAvgProj = premiumPlayers.length
+      ? Math.round(premiumPlayers.reduce((s, p) => s + (p.projection ?? 0), 0) / premiumPlayers.length)
+      : 0;
 
     const startCt = players.filter(p => {
       const ac = (p.action_canonical ?? '').toUpperCase();
@@ -820,6 +858,7 @@ export default function AFLTeamPage() {
     return {
       totalPlayers: players.length, topProj: Math.round(topProj), avgProj, avgSeasonAvg,
       topPlayer, mostExpensivePlayer, topValuePlayer,
+      worstValuePlayer, bestBudgetPlayer, premiumCount, premiumAvgProj,
       startCt, sitCt, holdCt, hardSitCt,
       avgFormScore, avgConsistency,
     };
@@ -1106,12 +1145,14 @@ export default function AFLTeamPage() {
           )}
 
           {/* ══════════════════════════════════════════
-              INTELLIGENCE CARDS
+              TEAM INSIGHT CARDS
           ══════════════════════════════════════════ */}
           {players.length > 0 && (
             <div>
-              <SectionLabel icon={<Flame size={13} />} title="Squad Highlights" />
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <SectionLabel icon={<Flame size={13} />} title="Team Insights" />
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+
+                {/* 1 — Top projected */}
                 {stats.topPlayer && (
                   <InsightCard
                     icon={<Trophy size={14} />}
@@ -1119,47 +1160,149 @@ export default function AFLTeamPage() {
                     playerName={stats.topPlayer.player_name}
                     stat={fmtProj(stats.topPlayer.projection)}
                     statLabel="projected pts"
-                    sub={stats.topPlayer.season_avg != null ? `2026 avg ${fmtAvg(stats.topPlayer.season_avg)}` : undefined}
+                    sub={
+                      stats.topPlayer.season_avg != null
+                        ? `2026 avg · ${fmtAvg(stats.topPlayer.season_avg)} pts`
+                        : undefined
+                    }
+                    context={
+                      stats.topPlayer.last_3_avg != null
+                        ? `Last 3 avg: ${fmtAvg(stats.topPlayer.last_3_avg)}`
+                        : undefined
+                    }
                     slug={nameToSlug(stats.topPlayer.player_name)}
                     accentColor="#34d399"
                   />
                 )}
+
+                {/* 2 — Best value target */}
+                {stats.topValuePlayer && (
+                  <InsightCard
+                    icon={<Star size={14} />}
+                    label="Best Value Target"
+                    playerName={stats.topValuePlayer.player_name}
+                    stat={
+                      stats.topValuePlayer.value_score != null
+                        ? stats.topValuePlayer.value_score.toFixed(1)
+                        : '—'
+                    }
+                    statLabel="value score"
+                    sub={
+                      stats.topValuePlayer.price != null
+                        ? `Priced at ${fmtPrice(stats.topValuePlayer.price)}`
+                        : undefined
+                    }
+                    context={
+                      stats.topValuePlayer.projection != null && stats.topValuePlayer.breakeven != null
+                        ? `Proj ${fmtProj(stats.topValuePlayer.projection)} vs BE ${Math.round(stats.topValuePlayer.breakeven)}`
+                        : undefined
+                    }
+                    slug={nameToSlug(stats.topValuePlayer.player_name)}
+                    accentColor="#F5C84C"
+                  />
+                )}
+
+                {/* 3 — Biggest trap */}
+                {stats.worstValuePlayer && (
+                  <InsightCard
+                    icon={<AlertCircle size={14} />}
+                    label="Trap Alert"
+                    playerName={stats.worstValuePlayer.player_name}
+                    stat={
+                      stats.worstValuePlayer.value_score != null
+                        ? stats.worstValuePlayer.value_score.toFixed(1)
+                        : '—'
+                    }
+                    statLabel="value score"
+                    sub={
+                      stats.worstValuePlayer.price != null
+                        ? `Priced at ${fmtPrice(stats.worstValuePlayer.price)}`
+                        : undefined
+                    }
+                    context={
+                      stats.worstValuePlayer.projection != null && stats.worstValuePlayer.breakeven != null
+                        ? `Proj ${fmtProj(stats.worstValuePlayer.projection)} vs BE ${Math.round(stats.worstValuePlayer.breakeven)}`
+                        : 'Overpriced relative to output'
+                    }
+                    slug={nameToSlug(stats.worstValuePlayer.player_name)}
+                    accentColor="#f87171"
+                    dimStat
+                  />
+                )}
+
+                {/* 4 — Most expensive */}
                 {stats.mostExpensivePlayer && (
                   <InsightCard
                     icon={<DollarSign size={14} />}
                     label="Highest Priced"
                     playerName={stats.mostExpensivePlayer.player_name}
                     stat={fmtPrice(stats.mostExpensivePlayer.price)}
-                    statLabel="current price"
-                    sub={stats.mostExpensivePlayer.price_change != null && stats.mostExpensivePlayer.price_change !== 0
-                      ? `${stats.mostExpensivePlayer.price_change > 0 ? '+' : ''}${fmtPrice(stats.mostExpensivePlayer.price_change)} last round`
-                      : undefined}
+                    statLabel="price"
+                    sub={
+                      stats.mostExpensivePlayer.price_change != null &&
+                      stats.mostExpensivePlayer.price_change !== 0
+                        ? `${stats.mostExpensivePlayer.price_change > 0 ? '+' : ''}${fmtPrice(stats.mostExpensivePlayer.price_change)} this round`
+                        : 'No price change'
+                    }
+                    context={
+                      stats.mostExpensivePlayer.projection != null
+                        ? `Projected ${fmtProj(stats.mostExpensivePlayer.projection)} pts`
+                        : undefined
+                    }
                     slug={nameToSlug(stats.mostExpensivePlayer.player_name)}
                     accentColor={accentSafe}
                   />
                 )}
-                {stats.topValuePlayer ? (
+
+                {/* 5 — Best budget option */}
+                {stats.bestBudgetPlayer && (
                   <InsightCard
-                    icon={<Star size={14} />}
-                    label="Best Value Signal"
-                    playerName={stats.topValuePlayer.player_name}
-                    stat={stats.topValuePlayer.value_score != null ? stats.topValuePlayer.value_score.toFixed(1) : '—'}
-                    statLabel="value score"
-                    sub={stats.topValuePlayer.price != null ? fmtPrice(stats.topValuePlayer.price) : undefined}
-                    slug={nameToSlug(stats.topValuePlayer.player_name)}
-                    accentColor="#F5C84C"
-                  />
-                ) : stats.topPlayer ? (
-                  <InsightCard
-                    icon={<Activity size={14} />}
-                    label="Squad Avg Projection"
-                    playerName={`${shortName} squad`}
-                    stat={String(stats.avgProj)}
-                    statLabel="avg projected pts"
-                    slug={nameToSlug(stats.topPlayer.player_name)}
+                    icon={<Zap size={14} />}
+                    label="Budget Pick"
+                    playerName={stats.bestBudgetPlayer.player_name}
+                    stat={fmtProj(stats.bestBudgetPlayer.projection)}
+                    statLabel="projected pts"
+                    sub={
+                      stats.bestBudgetPlayer.price != null
+                        ? `Only ${fmtPrice(stats.bestBudgetPlayer.price)}`
+                        : undefined
+                    }
+                    context={
+                      stats.bestBudgetPlayer.breakeven != null
+                        ? `BE: ${Math.round(stats.bestBudgetPlayer.breakeven)} — best u/$450k`
+                        : 'Best output under $450k'
+                    }
+                    slug={nameToSlug(stats.bestBudgetPlayer.player_name)}
                     accentColor="#60a5fa"
                   />
-                ) : null}
+                )}
+
+                {/* 6 — Premium count */}
+                <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] p-4 flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
+                    <Activity size={14} className="text-white/30" />
+                    <span className="text-[9px] uppercase tracking-widest text-white/30">Premium Core</span>
+                  </div>
+                  <div>
+                    <p className="text-[22px] font-black tabular-nums leading-none" style={{ color: accentSafe }}>
+                      {stats.premiumCount}
+                    </p>
+                    <p className="text-[8px] uppercase tracking-widest text-white/25 mt-0.5">players over $700k</p>
+                  </div>
+                  <div className="space-y-1.5 mt-auto">
+                    <p className="text-[10px] text-white/45 leading-snug">
+                      Avg proj of premium core: <span className="text-white/65 font-semibold">{stats.premiumAvgProj} pts</span>
+                    </p>
+                    <p className="text-[9px] text-white/28 leading-snug">
+                      {stats.premiumCount === 0
+                        ? `No ${shortName} players currently priced above $700k.`
+                        : stats.premiumCount <= 3
+                        ? `${shortName} carry a thin premium core — squad value may lie in mid-pricers.`
+                        : `${shortName} have a deep premium core — strong ceiling but limited budget flexibility.`}
+                    </p>
+                  </div>
+                </div>
+
               </div>
             </div>
           )}
