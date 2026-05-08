@@ -108,10 +108,10 @@ function TeamCard({ team, stats }: { team: TeamMeta; stats?: TeamStats }) {
         overflow: "hidden",
         borderRadius: 10,
         border: hovered
-          ? `1px solid ${team.color}55`
-          : "1px solid rgba(255,255,255,0.07)",
+          ? `1px solid ${team.color}80`
+          : "1px solid rgba(255,255,255,0.08)",
         background: hovered
-          ? `linear-gradient(140deg, ${team.color}18 0%, rgba(255,255,255,0.02) 100%)`
+          ? `linear-gradient(140deg, ${team.color}22 0%, rgba(255,255,255,0.03) 100%)`
           : "rgba(255,255,255,0.03)",
         textDecoration: "none",
         transition: "border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease",
@@ -221,7 +221,7 @@ function TeamCard({ team, stats }: { team: TeamMeta; stats?: TeamStats }) {
           <span style={{
             fontSize: 11,
             fontWeight: 600,
-            color: hovered ? `${accentText}dd` : "rgba(255,255,255,0.22)",
+            color: hovered ? `${accentText}ff` : "rgba(255,255,255,0.42)",
             letterSpacing: "0.01em",
             transition: "color 0.18s ease",
           }}>
@@ -230,9 +230,9 @@ function TeamCard({ team, stats }: { team: TeamMeta; stats?: TeamStats }) {
           <ArrowRight
             size={10}
             style={{
-              color: hovered ? `${accentText}bb` : "rgba(255,255,255,0.16)",
+              color: hovered ? `${accentText}ee` : "rgba(255,255,255,0.32)",
               transition: "color 0.18s ease, transform 0.18s ease",
-              transform: hovered ? "translateX(2px)" : "translateX(0)",
+              transform: hovered ? "translateX(3px)" : "translateX(0)",
             }}
           />
         </div>
