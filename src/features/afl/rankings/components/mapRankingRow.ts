@@ -77,7 +77,11 @@ export function mapRankingRow(r: Record<string, unknown>): RankingRow {
         ? Number(r.confidence_score_100) >= 67 ? "HIGH"
           : Number(r.confidence_score_100) >= 50 ? "MEDIUM"
           : "LOW"
-        : null
+        : r.projection_confidence != null
+          ? Number(r.projection_confidence) >= 68 ? "HIGH"
+            : Number(r.projection_confidence) >= 50 ? "MEDIUM"
+            : "LOW"
+          : null
     ),
     edge:                    r.edge != null ? Number(r.edge) : null,
     value_score,

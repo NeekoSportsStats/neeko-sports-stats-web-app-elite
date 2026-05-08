@@ -16,6 +16,76 @@ import { LockedCell } from "./RankingsModals";
 import { ExpandedPlayerRow } from "./ExpandedPlayerRow";
 import { PlayerStatusPill } from "./PlayerStatusPill";
 
+// ─── Why text conflict resolution ─────────────────────────────────────────────
+// When AI why text contradicts the canonical signal direction, replace with
+// a deterministic explanation derived from real available fields.
+
+function getSignalSentiment(row: RankingRow): "positive" | "negative" | "neutral" {
+  const sig = (
+    row.action_canonical ?? row.action_display ?? row.action ?? row.signal_display ?? row.signal_tag ?? ""
+  ).toLowerCase();
+  if (sig.includes("strong start") || sig.includes("start") || sig.includes("buy") || sig.includes("strong_start")) return "positive";
+  if (sig.includes("sit") || sig.includes("fade") || sig.includes("avoid") || sig.includes("trap") || sig.includes("hard")) return "negative";
+  if (sig.includes("watch")) return "neutral";
+  const ts = row.trend_signal ?? "";
+  if (ts === "STRONG_UP" || ts === "UP") return "positive";
+  if (ts === "STRONG_DOWN" || ts === "DOWN") return "negative";
+  return "neutral";
+}
+
+function hasWhyConflict(why: string, sentiment: "positive" | "negative" | "neutral"): boolean {
+  const w = why.toLowerCase();
+  const hasNegativeLanguage = w.includes("overpriced") || w.includes("negative edge") || w.includes("below breakeven") || w.includes("fade") || w.includes("avoid") || w.includes("risk");
+  const hasPositiveLanguage = w.includes("strong buy") || w.includes("buy recommendation") || w.includes("strong start") || w.includes("confirms the") && (w.includes("edge") || w.includes("value"));
+  if (sentiment === "positive" && hasNegativeLanguage) return true;
+  if (sentiment === "negative" && hasPositiveLanguage) return true;
+  return false;
+}
+
+function buildDeterministicWhy(row: RankingRow, sentiment: "positive" | "negative" | "neutral"): string {
+  const proj = row.projection != null ? Math.round(row.projection) : null;
+  const ts   = row.trend_score;
+  const l3   = row.last_3_avg != null ? Math.round(row.last_3_avg) : null;
+  const avg  = row.season_avg != null ? Math.round(row.season_avg) : null;
+
+  if (sentiment === "positive") {
+    if (proj != null && l3 != null && l3 > proj * 0.85) {
+      return `Projected ${proj} with recent form of ${l3} — strong output expected this round.`;
+    }
+    if (ts != null && ts >= 8) return `Projecting well above baseline (+${ts.toFixed(0)}) — positive forward outlook.`;
+    if (proj != null) return `Projected ${proj} — model rates this as a start-able option.`;
+    return "Model rates this as a positive play this round.";
+  }
+
+  if (sentiment === "negative") {
+    if (ts != null && ts <= -8) return `Projecting ${Math.abs(ts).toFixed(0)} points below baseline — regression risk this round.`;
+    if (proj != null && avg != null && proj < avg - 5) return `Projection of ${proj} sits below season average of ${avg} — proceed with caution.`;
+    if (proj != null) return `Projection of ${proj} suggests limited upside — watch or fade this round.`;
+    return "Model flags downside risk — consider alternatives.";
+  }
+
+  // neutral / watch
+  if (proj != null && ts != null) {
+    const sign = ts >= 0 ? "+" : "";
+    return `Projected ${proj} with trend ${sign}${ts.toFixed(0)} vs average — monitor before committing.`;
+  }
+  if (proj != null) return `Projected ${proj} — neutral signal, monitor matchup and conditions.`;
+  return getTrendWhyText(row);
+}
+
+function getConsistentWhyText(row: RankingRow): string {
+  const rawWhy = row.why;
+  const sentiment = getSignalSentiment(row);
+
+  if (!rawWhy) return buildDeterministicWhy(row, sentiment);
+
+  if (hasWhyConflict(rawWhy, sentiment)) {
+    return buildDeterministicWhy(row, sentiment);
+  }
+
+  return rawWhy;
+}
+
 // ─── Column widths ─────────────────────────────────────────────────────────────
 // Player | Action | Confidence | Why (flex) | Projection | Value | Trend | Form
 const TOTAL_COLS = 8;
@@ -28,7 +98,7 @@ const TH =
 function ActionBadge({ row, locked, onUpgrade }: { row: RankingRow; locked?: boolean; onUpgrade: () => void }) {
   if (locked) return <LockedCell onClick={onUpgrade} />;
 
-  const display = row.action_display ?? row.action ?? null;
+  const display = row.action_display ?? row.action ?? row.signal_display ?? null;
   const label = display ?? "Hold";
   const cls = getActionDisplayStyles(label);
 
@@ -112,8 +182,17 @@ function FormCell({ row }: { row: RankingRow }) {
 // ─── Value cell ────────────────────────────────────────────────────────────────
 
 function ValueCell({ row }: { row: RankingRow }) {
-  if (row.is_bye || row.value_score == null) return <span className="text-sm text-white/20">—</span>;
-  const vs = row.value_score;
+  if (row.is_bye) return <span className="text-sm text-white/20">—</span>;
+
+  // Prefer value_score, fall back to edge_canonical/edge, then projection - breakeven
+  const vs =
+    row.value_score != null ? row.value_score :
+    row.edge_canonical != null ? row.edge_canonical :
+    row.edge != null ? row.edge :
+    (row.projection != null && row.breakeven != null) ? row.projection - row.breakeven :
+    null;
+
+  if (vs == null) return <span className="text-sm text-white/20">—</span>;
   const color = getValueScoreColor(vs);
   return (
     <span className={`text-sm font-semibold tabular-nums ${color}`}>{fmtValueScore(vs)}</span>
@@ -210,7 +289,7 @@ export function TableRow({
   const isLocked = !isPremium && idx >= FREE_FULL_ROWS;
   const isTop3 = rank <= 3;
 
-  const whyText = row.why ?? getTrendWhyText(row);
+  const whyText = getConsistentWhyText(row);
 
   const rowCls = [
     "border-b cursor-pointer hover:bg-white/[0.018] transition-colors duration-100 group",
