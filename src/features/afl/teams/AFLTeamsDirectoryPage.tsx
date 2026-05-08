@@ -386,29 +386,6 @@ export default function AFLTeamsDirectoryPage() {
           }
         </div>
 
-        {/* ── Footer links ── */}
-        {!loading && (
-          <div style={{ marginTop: 44, paddingTop: 22, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <p style={{
-              margin: "0 0 11px",
-              fontSize: 10, fontWeight: 800, letterSpacing: "0.40em",
-              textTransform: "uppercase", color: "rgba(255,255,255,0.18)",
-            }}>
-              Browse by Position
-            </p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
-              {[
-                { label: "Defenders",   slug: "def"  },
-                { label: "Midfielders", slug: "mid"  },
-                { label: "Forwards",    slug: "fwd"  },
-                { label: "Rucks",       slug: "ruck" },
-              ].map(({ label, slug }) => (
-                <FooterLink key={slug} to={`/sports/afl/positions/${slug}`} label={`All ${label}`} />
-              ))}
-              <FooterLink to="/sports/afl/players" label="Player Directory" />
-            </div>
-          </div>
-        )}
       </div>
 
       <style>{`
@@ -418,33 +395,5 @@ export default function AFLTeamsDirectoryPage() {
         }
       `}</style>
     </>
-  );
-}
-
-function FooterLink({ to, label }: { to: string; label: string }) {
-  const [hov, setHov] = useState(false);
-  return (
-    <Link
-      to={to}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        fontSize: 12, fontWeight: 600,
-        color: hov ? "rgba(255,255,255,0.68)" : "rgba(255,255,255,0.28)",
-        textDecoration: "none",
-        padding: "7px 13px",
-        borderRadius: 7,
-        border: hov ? "1px solid rgba(255,255,255,0.13)" : "1px solid rgba(255,255,255,0.07)",
-        background: hov ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)",
-        transition: "all 0.15s ease",
-        letterSpacing: "0.01em",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-      }}
-    >
-      {label}
-      <ArrowRight size={10} style={{ opacity: hov ? 0.7 : 0.35, transition: "opacity 0.15s ease" }} />
-    </Link>
   );
 }
