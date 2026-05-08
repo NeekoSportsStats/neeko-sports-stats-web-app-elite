@@ -235,9 +235,9 @@ function MetricPill({
   accentColor: string;
 }) {
   return (
-    <div className="text-right min-w-[52px]">
+    <div className="text-right">
       <div className={`text-[13px] font-[800] tabular-nums leading-tight ${accentColor}`}>{value}</div>
-      <div className="text-[9px] text-white/22 uppercase tracking-wider leading-none mt-px">{label}</div>
+      <div className="text-[10px] text-white/22 uppercase tracking-wider leading-none mt-px">{label}</div>
     </div>
   );
 }
@@ -299,34 +299,36 @@ function EnrichedRow({
 
   const inner = (
     <div
-      className={`flex items-start gap-3 py-3 px-4 transition-colors group cursor-pointer hover:bg-white/[0.028] ${
+      className={`flex items-start gap-2.5 sm:gap-3 py-3 px-3 sm:px-4 transition-colors group cursor-pointer hover:bg-white/[0.028] ${
         isFirst ? "" : "border-t border-white/[0.04]"
       }`}
     >
       {/* Rank */}
-      <span className="text-[11px] font-[700] text-white/18 w-5 shrink-0 text-right tabular-nums mt-0.5">
+      <span className="text-[11px] font-[700] text-white/18 w-4 shrink-0 text-right tabular-nums mt-0.5">
         {rank}
       </span>
 
       {/* Player info block */}
       <div className="flex-1 min-w-0">
-        {/* Name row */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[13px] font-[700] text-white/88 leading-tight">{p.player_name}</span>
+        {/* Name + meta row — name truncates, team/position/badge wrap below on mobile */}
+        <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
+          <span className="text-[13px] font-[700] text-white/88 leading-tight truncate max-w-[9rem] sm:max-w-none">
+            {p.player_name}
+          </span>
           {p.team && (
-            <span className="text-[10px] text-white/32 font-[500] shrink-0 bg-white/[0.04] px-1.5 py-px rounded border border-white/[0.05]">
+            <span className="text-[10px] text-white/32 font-[500] shrink-0 bg-white/[0.04] px-1.5 py-px rounded border border-white/[0.05] leading-tight">
               {p.team}
             </span>
           )}
           {p.position && (
-            <span className="text-[10px] text-white/22 font-[500] shrink-0">{p.position}</span>
+            <span className="text-[10px] text-white/22 font-[500] shrink-0 leading-tight">{p.position}</span>
           )}
-          {nameBadge}
+          {nameBadge && <span className="shrink-0">{nameBadge}</span>}
         </div>
 
         {/* Reason line — deterministic, never shown if null */}
         {reason && (
-          <p className="text-[11px] text-white/35 leading-snug mt-1 pr-4">{reason}</p>
+          <p className="text-[11px] text-white/35 leading-snug mt-1">{reason}</p>
         )}
 
         {/* Premium metric chips — only rendered for premium users, only when values exist */}
@@ -335,19 +337,28 @@ function EnrichedRow({
         )}
       </div>
 
-      {/* Right side: badges + metric + link icon */}
-      <div className="flex items-center gap-2.5 shrink-0 mt-0.5">
-        <ConfidenceBadge label={p.confidence_label} />
-        {rightBadge}
-        {metric && (
-          <MetricPill value={metric.value} label={metric.label} accentColor={accentColor} />
-        )}
-        {isLinked && (
-          <ExternalLink
-            className="h-3 w-3 text-white/12 group-hover:text-white/30 transition-colors shrink-0"
-            aria-hidden
-          />
-        )}
+      {/* Right side: on mobile show only metric + link; badges hidden to prevent overflow */}
+      <div className="flex flex-col items-end gap-1 shrink-0 mt-0.5">
+        {/* Confidence + action badges: hidden on mobile to keep rows tight */}
+        <div className="hidden sm:flex items-center gap-2">
+          <ConfidenceBadge label={p.confidence_label} />
+          {rightBadge}
+        </div>
+        <div className="flex items-center gap-1.5">
+          {metric && (
+            <MetricPill value={metric.value} label={metric.label} accentColor={accentColor} />
+          )}
+          {isLinked && (
+            <ExternalLink
+              className="h-3 w-3 text-white/12 group-hover:text-white/30 transition-colors shrink-0"
+              aria-hidden
+            />
+          )}
+        </div>
+        {/* On mobile: show action badge below the metric so it doesn't compete for space */}
+        <div className="flex sm:hidden items-center gap-1.5">
+          {rightBadge}
+        </div>
       </div>
     </div>
   );
@@ -369,20 +380,20 @@ function LockRow({ count }: { count: number }) {
     <div className="border-t border-white/[0.04]">
       <Link
         to="/neeko-plus"
-        className="group flex items-center gap-4 px-5 py-4 hover:bg-[#F5C84C]/[0.04] transition-colors"
+        className="group flex items-center gap-3 sm:gap-4 px-3 sm:px-5 py-4 min-h-[52px] hover:bg-[#F5C84C]/[0.04] transition-colors"
       >
         <div className="flex items-center justify-center h-9 w-9 rounded-xl bg-[#F5C84C]/[0.08] border border-[#F5C84C]/20 shrink-0 group-hover:border-[#F5C84C]/35 transition-colors">
           <Lock className="h-4 w-4 text-[#F5C84C]/70" aria-hidden />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[13px] font-[700] text-white/60 group-hover:text-white/80 transition-colors leading-tight">
-            Unlock {count} more weekly {count === 1 ? "call" : "calls"} with Neeko+
+            Unlock {count} more {count === 1 ? "call" : "calls"} with Neeko+
           </p>
-          <p className="text-[11px] text-white/28 mt-0.5">
+          <p className="text-[11px] text-white/28 mt-0.5 hidden sm:block">
             Full captain picks, value targets and trap alerts every round.
           </p>
         </div>
-        <span className="shrink-0 inline-flex items-center gap-1 rounded-xl border border-[#F5C84C]/30 bg-[#F5C84C]/[0.10] px-3.5 py-1.5 text-[11px] font-[700] text-[#F5C84C] group-hover:bg-[#F5C84C]/[0.18] group-hover:border-[#F5C84C]/50 transition-colors">
+        <span className="shrink-0 inline-flex items-center gap-1 rounded-xl border border-[#F5C84C]/30 bg-[#F5C84C]/[0.10] px-3.5 py-2 text-[12px] font-[700] text-[#F5C84C] group-hover:bg-[#F5C84C]/[0.18] group-hover:border-[#F5C84C]/50 transition-colors min-h-[36px]">
           Upgrade
           <ChevronRight className="h-3.5 w-3.5" aria-hidden />
         </span>
@@ -502,8 +513,8 @@ function CaptainLockCard({ player }: { player: CurrentRoundPlayer | null }) {
       {player ? (
         <div className="relative flex flex-col gap-2 flex-1">
           <div>
-            <p className="text-[16px] font-[800] text-white/92 leading-tight tracking-tight">{player.player_name}</p>
-            <div className="flex items-center gap-1.5 mt-1">
+            <p className="text-[15px] sm:text-[16px] font-[800] text-white/92 leading-tight tracking-tight truncate">{player.player_name}</p>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {player.team && (
                 <span className="text-[10px] text-white/32 font-[500] bg-white/[0.04] px-1.5 py-px rounded border border-white/[0.05]">
                   {player.team}
@@ -516,10 +527,10 @@ function CaptainLockCard({ player }: { player: CurrentRoundPlayer | null }) {
             <div className="flex flex-col gap-px">
               {player.projection != null && (
                 <>
-                  <span className="text-[26px] font-[900] text-[#F5C84C] leading-none tabular-nums">
+                  <span className="text-[22px] sm:text-[26px] font-[900] text-[#F5C84C] leading-none tabular-nums">
                     {fmt(player.projection, 0)}
                   </span>
-                  <span className="text-[9px] text-white/25 uppercase tracking-wider font-[600]">projected pts</span>
+                  <span className="text-[10px] text-white/25 uppercase tracking-wider font-[600]">projected pts</span>
                 </>
               )}
             </div>
@@ -562,8 +573,8 @@ function BestValueCard({ player }: { player: CurrentRoundPlayer | null }) {
       {player ? (
         <div className="relative flex flex-col gap-2 flex-1">
           <div>
-            <p className="text-[16px] font-[800] text-white/92 leading-tight tracking-tight">{player.player_name}</p>
-            <div className="flex items-center gap-1.5 mt-1">
+            <p className="text-[15px] sm:text-[16px] font-[800] text-white/92 leading-tight tracking-tight truncate">{player.player_name}</p>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {player.team && (
                 <span className="text-[10px] text-white/32 font-[500] bg-white/[0.04] px-1.5 py-px rounded border border-white/[0.05]">
                   {player.team}
@@ -576,13 +587,13 @@ function BestValueCard({ player }: { player: CurrentRoundPlayer | null }) {
             <div className="flex flex-col gap-px">
               {player.price != null && player.price > 0 ? (
                 <>
-                  <span className="text-[26px] font-[900] text-emerald-400 leading-none tabular-nums">{fmtPrice(player.price)}</span>
-                  <span className="text-[9px] text-white/25 uppercase tracking-wider font-[600]">price</span>
+                  <span className="text-[22px] sm:text-[26px] font-[900] text-emerald-400 leading-none tabular-nums">{fmtPrice(player.price)}</span>
+                  <span className="text-[10px] text-white/25 uppercase tracking-wider font-[600]">price</span>
                 </>
               ) : player.projection != null ? (
                 <>
-                  <span className="text-[26px] font-[900] text-emerald-400 leading-none tabular-nums">{fmt(player.projection, 0)}</span>
-                  <span className="text-[9px] text-white/25 uppercase tracking-wider font-[600]">proj pts</span>
+                  <span className="text-[22px] sm:text-[26px] font-[900] text-emerald-400 leading-none tabular-nums">{fmt(player.projection, 0)}</span>
+                  <span className="text-[10px] text-white/25 uppercase tracking-wider font-[600]">proj pts</span>
                 </>
               ) : null}
             </div>
@@ -631,8 +642,8 @@ function BiggestTrapCard({ player }: { player: CurrentRoundPlayer | null }) {
       {player ? (
         <div className="relative flex flex-col gap-2 flex-1">
           <div>
-            <p className="text-[16px] font-[800] text-white/92 leading-tight tracking-tight">{player.player_name}</p>
-            <div className="flex items-center gap-1.5 mt-1">
+            <p className="text-[15px] sm:text-[16px] font-[800] text-white/92 leading-tight tracking-tight truncate">{player.player_name}</p>
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {player.team && (
                 <span className="text-[10px] text-white/32 font-[500] bg-white/[0.04] px-1.5 py-px rounded border border-white/[0.05]">
                   {player.team}
@@ -645,8 +656,8 @@ function BiggestTrapCard({ player }: { player: CurrentRoundPlayer | null }) {
             <div className="flex flex-col gap-px">
               {player.projection != null && (
                 <>
-                  <span className="text-[26px] font-[900] text-red-400 leading-none tabular-nums">{fmt(player.projection, 0)}</span>
-                  <span className="text-[9px] text-white/25 uppercase tracking-wider font-[600]">proj pts</span>
+                  <span className="text-[22px] sm:text-[26px] font-[900] text-red-400 leading-none tabular-nums">{fmt(player.projection, 0)}</span>
+                  <span className="text-[10px] text-white/25 uppercase tracking-wider font-[600]">proj pts</span>
                 </>
               )}
             </div>
@@ -679,26 +690,32 @@ function MidPageUpgradeBlock() {
       {/* Top gold accent line */}
       <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-[#F5C84C]/40 to-transparent" />
 
-      <div className="relative px-6 py-6 sm:px-8 sm:py-7 flex flex-col sm:flex-row items-start sm:items-center gap-5">
-        {/* Icon */}
-        <div className="flex items-center justify-center h-12 w-12 rounded-2xl bg-[#F5C84C]/[0.10] border border-[#F5C84C]/25 shrink-0">
+      <div className="relative px-5 py-5 sm:px-8 sm:py-7 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5">
+        {/* Icon — hide on smallest screens to save horizontal space */}
+        <div className="hidden sm:flex items-center justify-center h-12 w-12 rounded-2xl bg-[#F5C84C]/[0.10] border border-[#F5C84C]/25 shrink-0">
           <Crown className="h-5 w-5 text-[#F5C84C]/85" aria-hidden />
         </div>
 
         {/* Copy */}
         <div className="flex-1 min-w-0">
-          <p className="text-[16px] sm:text-[17px] font-[800] text-white/90 leading-tight tracking-tight">
-            Unlock the full weekly board
-          </p>
-          <p className="text-[12px] sm:text-[13px] text-white/40 mt-1.5 leading-snug max-w-sm">
+          {/* Mobile: icon inline with heading */}
+          <div className="flex items-center gap-2 sm:block">
+            <div className="flex sm:hidden items-center justify-center h-8 w-8 rounded-xl bg-[#F5C84C]/[0.10] border border-[#F5C84C]/25 shrink-0">
+              <Crown className="h-4 w-4 text-[#F5C84C]/85" aria-hidden />
+            </div>
+            <p className="text-[15px] sm:text-[17px] font-[800] text-white/90 leading-tight tracking-tight">
+              Unlock the full weekly board
+            </p>
+          </div>
+          <p className="text-[12px] sm:text-[13px] text-white/40 mt-1.5 leading-snug">
             See every captain call, value target and trap alert before lockout.
           </p>
         </div>
 
-        {/* CTA */}
+        {/* CTA — full width on mobile for easy tap */}
         <Link
           to="/neeko-plus"
-          className="shrink-0 inline-flex items-center gap-2 rounded-xl border border-[#F5C84C]/35 bg-[#F5C84C]/[0.12] px-5 py-2.5 text-[13px] font-[800] text-[#F5C84C] hover:bg-[#F5C84C]/[0.22] hover:border-[#F5C84C]/55 hover:shadow-[0_0_20px_rgba(245,200,76,0.12)] transition-all duration-200 whitespace-nowrap"
+          className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2 rounded-xl border border-[#F5C84C]/35 bg-[#F5C84C]/[0.12] px-5 py-3 sm:py-2.5 text-[13px] font-[800] text-[#F5C84C] hover:bg-[#F5C84C]/[0.22] hover:border-[#F5C84C]/55 hover:shadow-[0_0_20px_rgba(245,200,76,0.12)] transition-all duration-200 min-h-[44px]"
         >
           <Crown className="h-3.5 w-3.5 shrink-0" aria-hidden />
           Unlock Neeko+
@@ -1043,7 +1060,7 @@ export default function CurrentWeekPage() {
                 </div>
                 <Link
                   to="/fantasy/start-sit"
-                  className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-white/[0.10] bg-white/[0.04] px-4 py-2 text-[12px] font-[700] text-white/60 hover:text-white/85 hover:border-white/[0.18] hover:bg-white/[0.07] transition-colors"
+                  className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-white/[0.10] bg-white/[0.04] px-4 py-2 min-h-[44px] text-[12px] font-[700] text-white/60 hover:text-white/85 hover:border-white/[0.18] hover:bg-white/[0.07] transition-colors"
                 >
                   Start/Sit Tool
                   <ChevronRight className="h-3.5 w-3.5 shrink-0 text-white/30" aria-hidden />
@@ -1064,7 +1081,7 @@ export default function CurrentWeekPage() {
                   </div>
                   <Link
                     to="/neeko-plus"
-                    className="relative shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-[#F5C84C]/30 bg-[#F5C84C]/[0.10] px-4 py-2 text-[12px] font-[700] text-[#F5C84C] hover:bg-[#F5C84C]/[0.18] hover:border-[#F5C84C]/48 transition-colors"
+                    className="relative shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-[#F5C84C]/30 bg-[#F5C84C]/[0.10] px-4 py-2 min-h-[44px] text-[12px] font-[700] text-[#F5C84C] hover:bg-[#F5C84C]/[0.18] hover:border-[#F5C84C]/48 transition-colors"
                   >
                     Upgrade
                     <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
