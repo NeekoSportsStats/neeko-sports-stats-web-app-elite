@@ -264,8 +264,8 @@ export default function AFLTeamsDirectoryPage() {
   const teamStats = useMemo(() => computeTeamStats(rows), [rows]);
 
   const pageUrl   = "https://neekostats.com.au/sports/afl/teams";
-  const pageTitle = "AFL Fantasy Team Directory 2026 | Neeko Sports";
-  const pageDesc  = "Browse every AFL team, view roster counts and jump into team pages for player breakdowns, projections and fantasy signals.";
+  const pageTitle = "AFL Fantasy Team Directory | Neeko Sports Stats";
+  const pageDesc  = "Browse every AFL Fantasy team, view team rosters and jump into player breakdowns, projections and fantasy signals with Neeko Sports Stats.";
 
   return (
     <>
@@ -287,7 +287,7 @@ export default function AFLTeamsDirectoryPage() {
           "@type": "BreadcrumbList",
           itemListElement: [
             { "@type": "ListItem", position: 1, name: "Home",                      item: "https://neekostats.com.au" },
-            { "@type": "ListItem", position: 2, name: "AFL Fantasy Team Directory", item: pageUrl },
+            { "@type": "ListItem", position: 2, name: "AFL Fantasy Team Directory | Neeko Sports Stats", item: pageUrl },
           ],
         })}</script>
       </Helmet>
