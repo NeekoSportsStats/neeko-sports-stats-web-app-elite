@@ -44,7 +44,7 @@ interface RoundData {
 }
 
 function useRoundData(): RoundData {
-  const { user, isPremium, loading: authLoading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [rawRows, setRawRows] = useState<RankingRow[]>([]);
   const [roundLabel, setRoundLabel] = useState<string | null>(null);
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
@@ -57,7 +57,7 @@ function useRoundData(): RoundData {
         supabase.rpc("get_rankings_safe", {
           p_user_id: user?.id ?? null,
           p_is_bot: false,
-          p_limit: isPremium ? 400 : 80,
+          p_limit: 400,
         }),
         supabase.rpc("get_rankings_updated_at"),
       ]);
@@ -77,7 +77,7 @@ function useRoundData(): RoundData {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, isPremium]);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!authLoading) load();
