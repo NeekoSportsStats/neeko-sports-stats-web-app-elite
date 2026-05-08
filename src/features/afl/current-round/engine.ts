@@ -7,19 +7,16 @@ export interface CurrentRoundPlayer extends RankingRow {
 
 export interface CurrentRoundResult {
   captains: CurrentRoundPlayer[];
-  mustBuys: CurrentRoundPlayer[];
-  budgetPicks: CurrentRoundPlayer[];
-  riskPicks: CurrentRoundPlayer[];
-  traps: CurrentRoundPlayer[];
+  /** Merged: strong-action buys + budget upside picks, deduped */
+  buyValuePicks: CurrentRoundPlayer[];
+  /** Merged: hard-sit traps + risk/overpriced players, deduped, traps first */
+  trapFadeAlerts: CurrentRoundPlayer[];
 }
 
 // ── TARGETS ──────────────────────────────────────────────────────────────────
-// These are the full premium arrays. Free users see a slice of the same arrays.
-const CAPTAIN_TARGET  = 6;
-const MUST_BUY_TARGET = 10;
-const BUDGET_TARGET   = 10;
-const RISK_TARGET     = 10;
-const TRAP_TARGET     = 8;
+const CAPTAIN_TARGET   = 6;
+const BUY_VALUE_TARGET = 12;
+const TRAP_FADE_TARGET = 10;
 
 const BUDGET_BAND_A_MAX = 350_000;
 const BUDGET_BAND_B_MAX = 650_000;
@@ -101,10 +98,9 @@ export function buildCurrentRoundPlayers(
   edgeBoardIds: Set<string> = new Set()
 ): CurrentRoundResult {
   if (players.length === 0) {
-    return { captains: [], mustBuys: [], budgetPicks: [], riskPicks: [], traps: [] };
+    return { captains: [], buyValuePicks: [], trapFadeAlerts: [] };
   }
 
-  // One canonical eligible pool — active, no delisted/retired
   const eligible = players.filter(isEligible);
   const eligibleWithProjection = eligible.filter(hasProjection);
 
@@ -118,19 +114,18 @@ export function buildCurrentRoundPlayers(
     return { ...p, overallRank: rankMap.get(id) ?? 999, isFeaturedPick: edgeBoardIds.has(id) };
   }
 
-  const pool = eligibleWithProjection.map(enrich);
+  const pool    = eligibleWithProjection.map(enrich);
   const poolAll = eligible.map(enrich);
 
-  // Pre-sorted views
   const byProjDesc     = [...pool].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0));
   const byDecisionDesc = [...pool].sort((a, b) => decisionScore(b) - decisionScore(a));
   const byDecisionAsc  = [...poolAll].sort((a, b) => decisionScore(a) - decisionScore(b));
 
   const assigned = new Set<string>();
 
-  function assign(players: CurrentRoundPlayer[]): CurrentRoundPlayer[] {
+  function assign(list: CurrentRoundPlayer[]): CurrentRoundPlayer[] {
     const out: CurrentRoundPlayer[] = [];
-    for (const p of players) {
+    for (const p of list) {
       const id = p.player_id ?? "";
       if (!assigned.has(id)) {
         assigned.add(id);
@@ -159,160 +154,115 @@ export function buildCurrentRoundPlayers(
   }
 
   // ── 1. CAPTAINS ────────────────────────────────────────────────────────────
-  // Top projection players without a negative action signal.
   const captainCandidates = byProjDesc.filter(p => !hasNegativeAction(p));
   const captains = assign(captainCandidates.slice(0, CAPTAIN_TARGET));
 
-  // ── 2. MUST BUYS ───────────────────────────────────────────────────────────
-  // Primary: strong positive action, sorted by decision_score desc, not already captain.
-  // Refill: any non-negative player sorted by decision_score desc.
+  // ── 2. BUY / VALUE PICKS ───────────────────────────────────────────────────
+  // Primary: strong positive action sorted by decision_score desc.
   const mustBuyPrimary = byDecisionDesc.filter(p =>
     !assigned.has(p.player_id ?? "") && hasStrongPositiveAction(p)
   );
-  let mustBuys = assign(mustBuyPrimary.slice(0, MUST_BUY_TARGET));
+  let buyValuePicks = assign(mustBuyPrimary.slice(0, BUY_VALUE_TARGET));
 
-  if (mustBuys.length < MUST_BUY_TARGET) {
-    const refillCandidates = byDecisionDesc.filter(p =>
-      !assigned.has(p.player_id ?? "") && !hasNegativeAction(p)
+  // Fill remaining slots from budget/value players (under $650k with upside)
+  if (buyValuePicks.length < BUY_VALUE_TARGET) {
+    const budgetEligible = pool.filter(p =>
+      !assigned.has(p.player_id ?? "") &&
+      (p.price ?? 0) > 0 &&
+      (p.price ?? 999_999) <= BUDGET_BAND_B_MAX &&
+      !hasNegativeAction(p)
     );
-    mustBuys = refillFrom(mustBuys, refillCandidates, MUST_BUY_TARGET);
-  }
 
-  // ── 3. BUDGET UPSIDE ───────────────────────────────────────────────────────
-  // Under BUDGET_BAND_B_MAX price, not already assigned, not negative action.
-  // Ranked by upside score; interleaved band A / band B.
-  const budgetEligible = pool.filter(p =>
-    !assigned.has(p.player_id ?? "") &&
-    (p.price ?? 0) > 0 &&
-    (p.price ?? 999_999) <= BUDGET_BAND_B_MAX &&
-    !hasNegativeAction(p)
-  );
-
-  const bandA = budgetEligible
-    .filter(p => (p.price ?? 999_999) <= BUDGET_BAND_A_MAX && hasRealUpside(p))
-    .map(p => ({ p, score: getBudgetUpsideScore(p) }))
-    .filter(({ score }) => score !== null)
-    .sort((a, b) => (b.score as number) - (a.score as number))
-    .map(({ p }) => p);
-
-  const bandB = budgetEligible
-    .filter(p => (p.price ?? 0) > BUDGET_BAND_A_MAX && (p.price ?? 999_999) <= BUDGET_BAND_B_MAX && hasRealUpside(p))
-    .map(p => ({ p, score: getBudgetUpsideScore(p) }))
-    .filter(({ score }) => score !== null)
-    .sort((a, b) => (b.score as number) - (a.score as number))
-    .map(({ p }) => p);
-
-  // Interleave: one from each band, then fill from whichever has more
-  const interleaved: CurrentRoundPlayer[] = [];
-  const inBudget = new Set<string>();
-
-  function addBudget(c: CurrentRoundPlayer) {
-    const id = c.player_id ?? "";
-    if (!assigned.has(id) && !inBudget.has(id) && interleaved.length < BUDGET_TARGET) {
-      interleaved.push(c);
-      inBudget.add(id);
-      assigned.add(id);
-    }
-  }
-
-  if (bandB.length > 0) addBudget(bandB[0]);
-  if (bandA.length > 0) addBudget(bandA[0]);
-  for (const c of bandB.slice(1)) addBudget(c);
-  for (const c of bandA.slice(1)) addBudget(c);
-
-  // Refill budget: any remaining eligible budget players without upside signal
-  if (interleaved.length < 3) {
-    const fallbackBudget = budgetEligible
-      .filter(p => !inBudget.has(p.player_id ?? ""))
+    const bandA = budgetEligible
+      .filter(p => (p.price ?? 999_999) <= BUDGET_BAND_A_MAX && hasRealUpside(p))
       .map(p => ({ p, score: getBudgetUpsideScore(p) }))
       .filter(({ score }) => score !== null)
       .sort((a, b) => (b.score as number) - (a.score as number))
       .map(({ p }) => p);
-    for (const c of fallbackBudget) addBudget(c);
-  }
 
-  // Last resort: any non-negative budget player sorted by decision_score
-  if (interleaved.length < 3) {
-    const lastResort = budgetEligible
-      .filter(p => !inBudget.has(p.player_id ?? ""))
-      .sort((a, b) => decisionScore(b) - decisionScore(a));
-    for (const c of lastResort) addBudget(c);
-  }
+    const bandB = budgetEligible
+      .filter(p => (p.price ?? 0) > BUDGET_BAND_A_MAX && hasRealUpside(p))
+      .map(p => ({ p, score: getBudgetUpsideScore(p) }))
+      .filter(({ score }) => score !== null)
+      .sort((a, b) => (b.score as number) - (a.score as number))
+      .map(({ p }) => p);
 
-  const budgetPicks = interleaved;
+    // Interleave band B (mid-price) and band A (cheap) for variety
+    const budgetCandidates: CurrentRoundPlayer[] = [];
+    const seen = new Set<string>();
+    const maxBudget = BUY_VALUE_TARGET - buyValuePicks.length;
 
-  // ── 4. RISK / OVERPRICED ────────────────────────────────────────────────────
-  // Primary: players with a SIT or HARD_SIT action, worst decision_score first.
-  // Refill: lowest decision_score players from the FULL eligible pool (not in positive categories).
-  // This ensures the category is populated even when action_canonical is sparse.
-  const positiveIds = new Set([...assigned]);
-
-  const riskPrimary = byDecisionAsc.filter(p =>
-    !positiveIds.has(p.player_id ?? "") && hasNegativeAction(p)
-  );
-
-  // For risk, we do NOT use assign() — risk players don't block traps
-  const riskIds = new Set<string>();
-  const riskPicks: CurrentRoundPlayer[] = [];
-
-  for (const p of riskPrimary) {
-    if (riskPicks.length >= RISK_TARGET) break;
-    const id = p.player_id ?? "";
-    if (!riskIds.has(id)) {
-      riskIds.add(id);
-      riskPicks.push(p);
-    }
-  }
-
-  // Refill with any non-positive players ranked worst decision_score
-  if (riskPicks.length < RISK_TARGET) {
-    const refillRisk = byDecisionAsc.filter(p => {
-      const id = p.player_id ?? "";
-      return !positiveIds.has(id) && !riskIds.has(id);
-    });
-    for (const p of refillRisk) {
-      if (riskPicks.length >= RISK_TARGET) break;
-      const id = p.player_id ?? "";
-      riskIds.add(id);
-      riskPicks.push(p);
-    }
-  }
-
-  // ── 5. TRAPS ────────────────────────────────────────────────────────────────
-  // Primary: HARD_SIT only. Refill from all riskPicks if needed.
-  // Traps are a subset view of the risk pool (can overlap with riskPicks).
-  const traps: CurrentRoundPlayer[] = [];
-  const trapIds = new Set<string>();
-
-  const hardSitCandidates = byDecisionAsc.filter(p =>
-    !positiveIds.has(p.player_id ?? "") && isHardSit(p)
-  );
-  for (const p of hardSitCandidates) {
-    if (traps.length >= TRAP_TARGET) break;
-    const id = p.player_id ?? "";
-    if (!trapIds.has(id)) {
-      trapIds.add(id);
-      traps.push(p);
-    }
-  }
-
-  // Refill traps from riskPicks (all negative-action players)
-  if (traps.length < 2) {
-    for (const p of riskPicks) {
-      if (traps.length >= TRAP_TARGET) break;
-      const id = p.player_id ?? "";
-      if (!trapIds.has(id)) {
-        trapIds.add(id);
-        traps.push(p);
+    function addBudgetCandidate(c: CurrentRoundPlayer) {
+      const id = c.player_id ?? "";
+      if (!assigned.has(id) && !seen.has(id) && budgetCandidates.length < maxBudget) {
+        budgetCandidates.push(c);
+        seen.add(id);
       }
     }
+
+    if (bandB.length > 0) addBudgetCandidate(bandB[0]);
+    if (bandA.length > 0) addBudgetCandidate(bandA[0]);
+    for (const c of bandB.slice(1)) addBudgetCandidate(c);
+    for (const c of bandA.slice(1)) addBudgetCandidate(c);
+
+    buyValuePicks = refillFrom(buyValuePicks, budgetCandidates, BUY_VALUE_TARGET);
   }
 
-  return {
-    captains,
-    mustBuys,
-    budgetPicks,
-    riskPicks,
-    traps,
-  };
+  // Last resort fill: any non-negative player by decision_score
+  if (buyValuePicks.length < BUY_VALUE_TARGET) {
+    const fallback = byDecisionDesc.filter(p =>
+      !assigned.has(p.player_id ?? "") && !hasNegativeAction(p)
+    );
+    buyValuePicks = refillFrom(buyValuePicks, fallback, BUY_VALUE_TARGET);
+  }
+
+  // ── 3. TRAP / FADE ALERTS ──────────────────────────────────────────────────
+  // Traps (hard sits) come first, then broader risk/overpriced players.
+  // These do NOT block each other — both pools draw from the same negative-action players.
+  const positiveIds = new Set([...assigned]);
+
+  const trapFadeAlerts: CurrentRoundPlayer[] = [];
+  const trapFadeIds = new Set<string>();
+
+  // First pass: hard sits (STRONG_SIT)
+  const hardSits = byDecisionAsc.filter(p =>
+    !positiveIds.has(p.player_id ?? "") && isHardSit(p)
+  );
+  for (const p of hardSits) {
+    if (trapFadeAlerts.length >= TRAP_FADE_TARGET) break;
+    const id = p.player_id ?? "";
+    if (!trapFadeIds.has(id)) {
+      trapFadeIds.add(id);
+      trapFadeAlerts.push(p);
+    }
+  }
+
+  // Second pass: any negative-action player (SIT or STRONG_SIT) not yet added
+  const negativePlayers = byDecisionAsc.filter(p =>
+    !positiveIds.has(p.player_id ?? "") && hasNegativeAction(p)
+  );
+  for (const p of negativePlayers) {
+    if (trapFadeAlerts.length >= TRAP_FADE_TARGET) break;
+    const id = p.player_id ?? "";
+    if (!trapFadeIds.has(id)) {
+      trapFadeIds.add(id);
+      trapFadeAlerts.push(p);
+    }
+  }
+
+  // Refill: lowest decision_score non-positive players if still under target
+  if (trapFadeAlerts.length < 3) {
+    const lowScoreFill = byDecisionAsc.filter(p => {
+      const id = p.player_id ?? "";
+      return !positiveIds.has(id) && !trapFadeIds.has(id);
+    });
+    for (const p of lowScoreFill) {
+      if (trapFadeAlerts.length >= TRAP_FADE_TARGET) break;
+      const id = p.player_id ?? "";
+      trapFadeIds.add(id);
+      trapFadeAlerts.push(p);
+    }
+  }
+
+  return { captains, buyValuePicks, trapFadeAlerts };
 }

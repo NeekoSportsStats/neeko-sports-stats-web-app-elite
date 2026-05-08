@@ -2,8 +2,8 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import {
-  TrendingUp, Crown, DollarSign, TriangleAlert as AlertTriangle,
-  ShieldAlert, Zap, Lock, ChevronRight, ExternalLink,
+  Crown, DollarSign, TriangleAlert as AlertTriangle,
+  Lock, ChevronRight, ExternalLink,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
@@ -29,10 +29,8 @@ const FREE_LIMIT = 2;
 
 interface RoundData {
   captains: CurrentRoundPlayer[];
-  mustBuys: CurrentRoundPlayer[];
-  valuePicks: CurrentRoundPlayer[];
-  traps: CurrentRoundPlayer[];
-  riskPicks: CurrentRoundPlayer[];
+  buyValuePicks: CurrentRoundPlayer[];
+  trapFadeAlerts: CurrentRoundPlayer[];
   roundLabel: string | null;
   updatedAt: string | null;
   loading: boolean;
@@ -79,33 +77,14 @@ function useRoundData(): RoundData {
     if (!authLoading) load();
   }, [load, authLoading]);
 
-  const { captains, mustBuys, budgetPicks, riskPicks, traps } = useMemo(() => {
+  const { captains, buyValuePicks, trapFadeAlerts } = useMemo(() => {
     if (rawRows.length === 0) {
-      return { captains: [], mustBuys: [], budgetPicks: [], riskPicks: [], traps: [] };
+      return { captains: [], buyValuePicks: [], trapFadeAlerts: [] };
     }
     return buildCurrentRoundPlayers(rawRows);
   }, [rawRows]);
 
-  // Value picks: budget picks are already value-focused; supplement with high value_score
-  const valuePicks = useMemo(() => {
-    if (rawRows.length === 0) return [];
-    const budgetIds = new Set(budgetPicks.map(p => p.player_id));
-    const extras = rawRows
-      .filter(p =>
-        p.player_id &&
-        !budgetIds.has(p.player_id) &&
-        (p.value_score ?? 0) > 0 &&
-        (p.projection ?? 0) > 50 &&
-        !p.is_injured &&
-        !p.is_bye
-      )
-      .map(p => ({ ...p, overallRank: 999, isFeaturedPick: false }) as CurrentRoundPlayer)
-      .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0));
-
-    return [...budgetPicks, ...extras].slice(0, 10);
-  }, [rawRows, budgetPicks]);
-
-  return { captains, mustBuys, valuePicks, traps, riskPicks, roundLabel, updatedAt, loading, error };
+  return { captains, buyValuePicks, trapFadeAlerts, roundLabel, updatedAt, loading, error };
 }
 
 // ── Player slug helper ────────────────────────────────────────────────────────
@@ -192,23 +171,16 @@ function PlayerRow({ player: p, rank, statLabel, statValue, accentColor = "text-
   );
 }
 
-function LockRow({ count, onUpgrade }: { count: number; onUpgrade?: () => void }) {
+function LockRow({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
-    <div
-      className="flex items-center gap-2 py-2.5 px-3 rounded-xl border border-dashed border-white/[0.08] cursor-pointer hover:border-[#F5C84C]/20 hover:bg-[#F5C84C]/[0.03] transition-colors"
-      onClick={onUpgrade}
-      role="button"
-      tabIndex={0}
-      onKeyDown={e => e.key === "Enter" && onUpgrade?.()}
-    >
+    <div className="flex items-center gap-2 py-2.5 px-3 rounded-xl border border-dashed border-white/[0.08] hover:border-[#F5C84C]/20 hover:bg-[#F5C84C]/[0.03] transition-colors">
       <Lock className="h-3 w-3 text-[#F5C84C]/40 shrink-0" aria-hidden />
       <span className="text-[12px] text-white/28 flex-1">
         +{count} more hidden
       </span>
       <Link
         to="/neeko-plus"
-        onClick={e => e.stopPropagation()}
         className="text-[11px] font-[700] text-[#F5C84C]/70 hover:text-[#F5C84C] transition-colors flex items-center gap-1"
       >
         Unlock <ChevronRight className="h-3 w-3" aria-hidden />
@@ -245,7 +217,7 @@ function Section({ title, icon, iconBg, players, isPremium, renderPlayer, emptyM
       <div className="px-1 py-1">
         {visible.length === 0 ? (
           <p className="text-[12px] text-white/25 px-3 py-3">
-            {emptyMessage ?? "No data available for this round."}
+            {emptyMessage ?? "Live data not available for this round yet."}
           </p>
         ) : (
           <>
@@ -270,7 +242,7 @@ export default function CurrentWeekPage() {
         <title>AFL Fantasy Current Week Picks | Neeko Sports Stats</title>
         <meta
           name="description"
-          content="AFL Fantasy weekly calls — must buys, trap alerts, captain picks, value picks and risk watch for the current round."
+          content="AFL Fantasy weekly calls — captain picks, buy and value picks, and trap alerts for the current round."
         />
         <link rel="canonical" href="https://neekostats.com.au/fantasy/current-week" />
         <meta property="og:url" content="https://neekostats.com.au/fantasy/current-week" />
@@ -297,7 +269,7 @@ export default function CurrentWeekPage() {
                   )}
                 </h1>
                 <p className="text-[clamp(13px,2vw,15px)] text-white/45 leading-[1.7] max-w-[480px]">
-                  Weekly fantasy calls — must buys, traps, captains and value picks for this round.
+                  Your weekly fantasy decision page — captains, buys, and fades for this round.
                 </p>
               </div>
               {data.updatedAt && (
@@ -317,163 +289,14 @@ export default function CurrentWeekPage() {
             </div>
           )}
 
-          {/* ── Sections ──────────────────────────────────────────────────── */}
-          {!data.error && !data.loading && (
-            <div className="space-y-4">
-
-              {/* Must Buys */}
-              <Section
-                title="Must Buys"
-                icon={<Zap className="h-3.5 w-3.5 text-emerald-400" aria-hidden />}
-                iconBg="bg-emerald-500/[0.12]"
-                players={data.mustBuys}
-                isPremium={isPremium}
-                emptyMessage="No must buy picks identified this round."
-                renderPlayer={(p, i) => (
-                  <PlayerRow
-                    key={p.player_id ?? i}
-                    player={p}
-                    rank={i + 1}
-                    statLabel="proj"
-                    statValue={data.loading ? "—" : fmt(p.projection, 0)}
-                    accentColor="text-emerald-400"
-                    extraBadge={<ActionBadge action={p.action_canonical} />}
-                  />
-                )}
-              />
-
-              {/* Captain Picks */}
-              <Section
-                title="Captain Picks"
-                icon={<Crown className="h-3.5 w-3.5 text-[#F5C84C]" aria-hidden />}
-                iconBg="bg-[#F5C84C]/[0.10]"
-                players={data.captains}
-                isPremium={isPremium}
-                emptyMessage="No captain picks available for this round."
-                renderPlayer={(p, i) => {
-                  const captScore = p.captain_score ?? getCaptainScore(p);
-                  const captConf  = getCaptainConfidence(captScore);
-                  const tier = i === 0 ? "LOCK" : i < 3 ? "SAFE" : "POD";
-                  const tierColor = tier === "LOCK"
-                    ? "text-[#F5C84C] bg-[#F5C84C]/[0.10]"
-                    : tier === "SAFE"
-                    ? "text-sky-400 bg-sky-500/[0.08]"
-                    : "text-white/40 bg-white/[0.04]";
-                  void captConf;
-                  return (
-                    <PlayerRow
-                      key={p.player_id ?? i}
-                      player={p}
-                      rank={i + 1}
-                      statLabel="proj"
-                      statValue={data.loading ? "—" : fmt(p.projection, 0)}
-                      accentColor="text-[#F5C84C]"
-                      extraBadge={
-                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-[700] uppercase tracking-wider ${tierColor}`}>
-                          {tier}
-                        </span>
-                      }
-                    />
-                  );
-                }}
-              />
-
-              {/* Value Picks */}
-              <Section
-                title="Value Picks"
-                icon={<DollarSign className="h-3.5 w-3.5 text-sky-400" aria-hidden />}
-                iconBg="bg-sky-500/[0.08]"
-                players={data.valuePicks}
-                isPremium={isPremium}
-                emptyMessage="No value picks identified this round."
-                renderPlayer={(p, i) => (
-                  <PlayerRow
-                    key={p.player_id ?? i}
-                    player={p}
-                    rank={i + 1}
-                    statLabel={p.price != null ? "price" : "proj"}
-                    statValue={
-                      data.loading
-                        ? "—"
-                        : p.price != null
-                        ? fmtPrice(p.price)
-                        : fmt(p.projection, 0)
-                    }
-                    accentColor="text-sky-400"
-                    extraBadge={
-                      p.value_score != null ? (
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-[700] text-sky-400 bg-sky-500/[0.08]">
-                          +{fmt(p.value_score, 1)} val
-                        </span>
-                      ) : undefined
-                    }
-                  />
-                )}
-              />
-
-              {/* Trap Alerts */}
-              <Section
-                title="Trap Alerts"
-                icon={<AlertTriangle className="h-3.5 w-3.5 text-red-400" aria-hidden />}
-                iconBg="bg-red-500/[0.10]"
-                players={data.traps}
-                isPremium={isPremium}
-                emptyMessage="No trap alerts for this round."
-                renderPlayer={(p, i) => {
-                  const edge = p.edge_canonical ?? (((p.projection ?? 0) - (p.breakeven ?? 0)) || null);
-                  const edgeStr = edge != null && !isNaN(edge)
-                    ? `${edge > 0 ? "+" : ""}${Math.round(edge)}`
-                    : null;
-                  return (
-                    <PlayerRow
-                      key={p.player_id ?? i}
-                      player={p}
-                      rank={i + 1}
-                      statLabel={edgeStr ? "edge" : "proj"}
-                      statValue={
-                        data.loading
-                          ? "—"
-                          : edgeStr ?? fmt(p.projection, 0)
-                      }
-                      accentColor="text-red-400"
-                      extraBadge={<ActionBadge action={p.action_canonical} />}
-                    />
-                  );
-                }}
-              />
-
-              {/* Risk Watch */}
-              <Section
-                title="Risk Watch"
-                icon={<ShieldAlert className="h-3.5 w-3.5 text-amber-400" aria-hidden />}
-                iconBg="bg-amber-500/[0.08]"
-                players={data.riskPicks}
-                isPremium={isPremium}
-                emptyMessage="No risk watch players this round."
-                renderPlayer={(p, i) => (
-                  <PlayerRow
-                    key={p.player_id ?? i}
-                    player={p}
-                    rank={i + 1}
-                    statLabel="proj"
-                    statValue={data.loading ? "—" : fmt(p.projection, 0)}
-                    accentColor="text-amber-400"
-                    extraBadge={<TrendingUp className="h-3 w-3 text-red-400/60 rotate-180 shrink-0" aria-hidden />}
-                  />
-                )}
-              />
-
-            </div>
-          )}
-
           {/* ── Loading skeleton ──────────────────────────────────────────── */}
           {data.loading && (
             <div className="space-y-4">
-              {Array.from({ length: 5 }).map((_, i) => (
+              {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="rounded-2xl border border-white/[0.08] bg-white/[0.02] overflow-hidden">
                   <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/[0.05]">
                     <div className="h-7 w-7 rounded-lg bg-white/[0.04] animate-pulse" />
-                    <div className="h-4 w-24 rounded bg-white/[0.04] animate-pulse" />
+                    <div className="h-4 w-28 rounded bg-white/[0.04] animate-pulse" />
                   </div>
                   <div className="px-1 py-1 space-y-0.5">
                     {Array.from({ length: FREE_LIMIT }).map((_, j) => (
@@ -489,6 +312,108 @@ export default function CurrentWeekPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* ── 3 sections ────────────────────────────────────────────────── */}
+          {!data.error && !data.loading && (
+            <div className="space-y-4">
+
+              {/* 1. Captain Picks */}
+              <Section
+                title="Captain Picks"
+                icon={<Crown className="h-3.5 w-3.5 text-[#F5C84C]" aria-hidden />}
+                iconBg="bg-[#F5C84C]/[0.10]"
+                players={data.captains}
+                isPremium={isPremium}
+                emptyMessage="Live data not available for this round yet."
+                renderPlayer={(p, i) => {
+                  const captScore = p.captain_score ?? getCaptainScore(p);
+                  void getCaptainConfidence(captScore);
+                  const tier = i === 0 ? "LOCK" : i < 3 ? "SAFE" : "POD";
+                  const tierColor = tier === "LOCK"
+                    ? "text-[#F5C84C] bg-[#F5C84C]/[0.10]"
+                    : tier === "SAFE"
+                    ? "text-sky-400 bg-sky-500/[0.08]"
+                    : "text-white/40 bg-white/[0.04]";
+                  return (
+                    <PlayerRow
+                      key={p.player_id ?? i}
+                      player={p}
+                      rank={i + 1}
+                      statLabel="proj"
+                      statValue={fmt(p.projection, 0)}
+                      accentColor="text-[#F5C84C]"
+                      extraBadge={
+                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-[700] uppercase tracking-wider ${tierColor}`}>
+                          {tier}
+                        </span>
+                      }
+                    />
+                  );
+                }}
+              />
+
+              {/* 2. Buy / Value Picks */}
+              <Section
+                title="Buy / Value Picks"
+                icon={<DollarSign className="h-3.5 w-3.5 text-emerald-400" aria-hidden />}
+                iconBg="bg-emerald-500/[0.10]"
+                players={data.buyValuePicks}
+                isPremium={isPremium}
+                emptyMessage="Live data not available for this round yet."
+                renderPlayer={(p, i) => (
+                  <PlayerRow
+                    key={p.player_id ?? i}
+                    player={p}
+                    rank={i + 1}
+                    statLabel={p.price != null ? "price" : "proj"}
+                    statValue={
+                      p.price != null
+                        ? fmtPrice(p.price)
+                        : fmt(p.projection, 0)
+                    }
+                    accentColor="text-emerald-400"
+                    extraBadge={
+                      p.value_score != null ? (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-[700] text-emerald-400 bg-emerald-500/[0.08]">
+                          +{fmt(p.value_score, 1)} val
+                        </span>
+                      ) : (
+                        <ActionBadge action={p.action_canonical} />
+                      )
+                    }
+                  />
+                )}
+              />
+
+              {/* 3. Trap / Fade Alerts */}
+              <Section
+                title="Trap / Fade Alerts"
+                icon={<AlertTriangle className="h-3.5 w-3.5 text-red-400" aria-hidden />}
+                iconBg="bg-red-500/[0.10]"
+                players={data.trapFadeAlerts}
+                isPremium={isPremium}
+                emptyMessage="Live data not available for this round yet."
+                renderPlayer={(p, i) => {
+                  const edge = p.edge_canonical ?? (((p.projection ?? 0) - (p.breakeven ?? 0)) || null);
+                  const edgeStr = edge != null && !isNaN(edge)
+                    ? `${edge > 0 ? "+" : ""}${Math.round(edge)}`
+                    : null;
+                  return (
+                    <PlayerRow
+                      key={p.player_id ?? i}
+                      player={p}
+                      rank={i + 1}
+                      statLabel={edgeStr ? "edge" : "proj"}
+                      statValue={edgeStr ?? fmt(p.projection, 0)}
+                      accentColor="text-red-400"
+                      extraBadge={<ActionBadge action={p.action_canonical} />}
+                    />
+                  );
+                }}
+              />
+
             </div>
           )}
 
@@ -522,7 +447,7 @@ export default function CurrentWeekPage() {
                   Unlock full sections with Neeko+
                 </p>
                 <p className="text-[11px] text-white/30 mt-0.5">
-                  See all must buys, captains, value picks and risk watch players.
+                  See all captain picks, buy targets, and trap alerts for this round.
                 </p>
               </div>
               <Link
