@@ -57,11 +57,15 @@ interface SimilarPlayer {
   player_id: number;
   player_name: string;
   team: string | null;
-  player_position: string | null;
+  position: string | null;
   price: number | null;
+  season_avg: number | null;
   projection: number | null;
-  edge_canonical: number | null;
-  action_canonical: string | null;
+  value_score: number | null;
+  signal: string | null;
+  signal_display: string | null;
+  neeko_rating: number | null;
+  is_injured: boolean | null;
   is_locked: boolean | null;
 }
 
@@ -424,51 +428,62 @@ function PositionComparisonSection({
   );
 }
 
-/** Similar player row */
+/** Similar player row — free/premium split */
 function SimilarPlayerRow({ player, isPremium }: { player: SimilarPlayer; isPremium: boolean }) {
-  const slug     = playerToSlug(player.player_name, player.team ?? undefined);
-  const isLocked = !isPremium && player.is_locked;
-  const meta     = getActionMeta(player.action_canonical);
-  const actionCls =
-    meta.isStart ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/28' :
-    meta.isSit   ? 'bg-orange-500/10 text-orange-400 border-orange-500/22'   :
-                   'bg-white/[0.03] text-white/28 border-white/[0.07]';
+  const slug   = playerToSlug(player.player_name, player.team ?? undefined);
+  const signal = (player.signal ?? '').toUpperCase();
+  const isStart = signal === 'ELITE' || signal === 'RISING';
+  const isSit   = signal === 'CAUTION' || signal === 'AVOID';
+  const signalColor = isStart ? '#10b981' : isSit ? '#f87171' : '#64748b';
+  const signalLabel = player.signal_display ?? player.signal ?? null;
 
   return (
     <Link
       to={`/sports/afl/players/${slug}`}
-      className="flex items-center gap-3 rounded-xl bg-[#0c0c0c] border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.025] transition-all px-3.5 py-2.5 group"
+      className="flex items-center gap-3 rounded-xl bg-[#0c0c0c] border border-white/[0.06] hover:border-white/[0.12] hover:bg-white/[0.025] transition-all px-3 py-2.5 group"
     >
-      <span className="shrink-0">
-        {isLocked
-          ? <Minus size={11} className="text-white/15" />
-          : meta.isStart
-          ? <TrendingUp size={11} className="text-emerald-400" />
-          : meta.isSit
-          ? <TrendingDown size={11} className="text-orange-400" />
-          : <Minus size={11} className="text-white/18" />
-        }
-      </span>
+      {/* Name + meta */}
       <div className="flex-1 min-w-0">
         <p className="text-[12px] font-semibold text-white/75 group-hover:text-white transition-colors truncate">
           {player.player_name}
         </p>
-        <p className="text-[10px] text-white/28 mt-0.5 tabular-nums">
-          {player.team ?? '—'} · {fmtPriceHelper(player.price)}
+        <p className="text-[10px] text-white/28 mt-0.5 truncate">
+          {player.team ?? '—'}
+          {player.price != null && <span className="tabular-nums"> · {fmtPriceHelper(player.price)}</span>}
         </p>
       </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        {!isLocked ? (
+
+      {/* Right column: differs by tier */}
+      <div className="flex items-center gap-2 shrink-0">
+        {isPremium ? (
+          /* Premium: projection + signal badge */
           <>
             {player.projection != null && (
-              <span className="text-[12px] font-bold text-white/60 tabular-nums">{Math.round(player.projection)}</span>
+              <span className="text-[12px] font-bold tabular-nums text-white/65">
+                {Math.round(player.projection)}
+              </span>
             )}
-            <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${actionCls}`}>
-              {meta.label}
-            </span>
+            {signalLabel && (
+              <span
+                className="text-[8px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider"
+                style={{
+                  color: signalColor,
+                  borderColor: `${signalColor}35`,
+                  background: `${signalColor}10`,
+                }}
+              >
+                {signalLabel}
+              </span>
+            )}
           </>
         ) : (
-          <LockedChip label="+" />
+          /* Free: season avg only */
+          player.season_avg != null && (
+            <span className="text-[12px] font-bold tabular-nums text-white/45">
+              {Math.round(player.season_avg)}
+              <span className="text-[9px] font-normal text-white/22 ml-0.5">avg</span>
+            </span>
+          )
         )}
         <ChevronRight size={10} className="text-white/15 group-hover:text-white/35 transition-colors" />
       </div>
@@ -1021,10 +1036,16 @@ export default function AFLPlayerPage() {
 
         setPlayer(mapped);
 
+        const proj      = raw.projection != null ? Number(raw.projection) : 0;
+        const projRange = Math.max(20, proj * 0.35);
         const sim = await getSimilarPlayersSafe(
-          raw.player_id, raw.player_position, raw.projection, user?.id ?? null,
+          raw.player_id,
+          raw.player_position ?? '',
+          proj - projRange,
+          proj + projRange,
+          user?.id ?? null,
         );
-        setSimilar(sim.filter((s: any) => s.player_id !== mapped.player_id).slice(0, 5));
+        setSimilar(sim.filter((s: any) => String(s.player_id) !== String(mapped.player_id)).slice(0, 5));
       } catch (err) {
         console.error('[AFLPlayerPage]', playerName, err);
         setError(true);
@@ -1453,7 +1474,7 @@ export default function AFLPlayerPage() {
               {/* Similar Players */}
               {similar.length > 0 && (
                 <div>
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-2.5">
                     <SectionLabel icon={<Users size={13} />} title={`Similar ${posName}`} />
                     {posSlug && (
                       <Link
@@ -1464,6 +1485,20 @@ export default function AFLPlayerPage() {
                       </Link>
                     )}
                   </div>
+
+                  {/* One-line upgrade note for free users */}
+                  {!isPremium && (
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 mb-2 rounded-lg border border-white/[0.05] bg-white/[0.02]">
+                      <p className="text-[10px] text-white/30">Projection &amp; signal on Neeko+</p>
+                      <Link
+                        to="/upgrade"
+                        className="text-[9px] font-bold text-amber-400/70 hover:text-amber-400 transition-colors uppercase tracking-wider whitespace-nowrap"
+                      >
+                        Upgrade
+                      </Link>
+                    </div>
+                  )}
+
                   <div className="space-y-1.5">
                     {similar.map(s => (
                       <SimilarPlayerRow key={s.player_id} player={s} isPremium={isPremium} />
