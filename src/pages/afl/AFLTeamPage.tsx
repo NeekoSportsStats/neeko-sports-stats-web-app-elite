@@ -9,6 +9,10 @@ import { getTeamAccentColour } from '@/config/aflTeamColours';
 import { PlayerStatusPill } from '@/features/afl/rankings/components/PlayerStatusPill';
 import { fmtEdge, getEdgeColor } from '@/features/afl/rankings/components/helpers';
 import { useAccessState } from '@/hooks/useAccessState';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip,
+  Cell, ReferenceLine,
+} from 'recharts';
 
 const FREE_PLAYER_LIMIT = 8;
 
@@ -164,6 +168,219 @@ function InsightCard({
         </div>
       </div>
     </Link>
+  );
+}
+
+// ─── Roster depth chart ───────────────────────────────────────────────────────
+
+function RosterDepthChart({
+  players,
+  accentColor,
+}: {
+  players: TeamPlayer[];
+  accentColor: string;
+}) {
+  const data = players
+    .slice(0, 15)
+    .map((p, i) => {
+      const ac = (p.action_canonical ?? '').toUpperCase();
+      const isStart = ac === 'START' || ac === 'SMASH_START';
+      const isSit   = ac === 'SIT'   || ac === 'HARD_SIT';
+      return {
+        name: p.player_name.split(' ').slice(-1)[0], // last name only
+        proj: p.projection != null ? Math.round(Number(p.projection)) : 0,
+        avg:  p.season_avg  != null ? Math.round(Number(p.season_avg))  : 0,
+        signal: isStart ? 'start' : isSit ? 'sit' : 'hold',
+        rank: i + 1,
+      };
+    });
+
+  const avg = data.length
+    ? Math.round(data.reduce((s, d) => s + d.proj, 0) / data.length)
+    : 0;
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null;
+    const d = payload[0].payload;
+    return (
+      <div className="rounded-lg border border-white/[0.10] bg-[#111] px-3 py-2 text-[11px] shadow-xl">
+        <p className="font-semibold text-white mb-0.5">{d.name}</p>
+        <p className="text-white/55">Proj: <span className="text-white font-bold">{d.proj}</span></p>
+        {d.avg > 0 && <p className="text-white/40">2026 avg: {d.avg}</p>}
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-white/35">Scoring Depth</p>
+          <p className="text-[9px] text-white/22 mt-0.5">Top 15 by projection · avg ref line</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1 text-[8px] text-white/30">
+            <span className="w-2 h-2 rounded-sm inline-block" style={{ backgroundColor: accentColor, opacity: 0.9 }} />
+            Start
+          </span>
+          <span className="flex items-center gap-1 text-[8px] text-white/30">
+            <span className="w-2 h-2 rounded-sm inline-block bg-white/20" />
+            Hold
+          </span>
+          <span className="flex items-center gap-1 text-[8px] text-white/30">
+            <span className="w-2 h-2 rounded-sm inline-block bg-orange-400/60" />
+            Sit
+          </span>
+        </div>
+      </div>
+      <ResponsiveContainer width="100%" height={200}>
+        <BarChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: -22 }} barSize={14} barGap={2}>
+          <XAxis
+            dataKey="name"
+            tick={{ fill: 'rgba(255,255,255,0.28)', fontSize: 8 }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis
+            tick={{ fill: 'rgba(255,255,255,0.22)', fontSize: 8 }}
+            tickLine={false}
+            axisLine={false}
+            domain={[0, 'dataMax + 10']}
+          />
+          <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+          {avg > 0 && (
+            <ReferenceLine
+              y={avg}
+              stroke="rgba(255,255,255,0.18)"
+              strokeDasharray="4 3"
+              label={{ value: `avg ${avg}`, fill: 'rgba(255,255,255,0.28)', fontSize: 8, position: 'insideTopRight' }}
+            />
+          )}
+          <Bar dataKey="proj" radius={[3, 3, 0, 0]}>
+            {data.map((entry) => (
+              <Cell
+                key={entry.rank}
+                fill={
+                  entry.signal === 'start'
+                    ? accentColor
+                    : entry.signal === 'sit'
+                    ? 'rgba(251,146,60,0.55)'
+                    : 'rgba(255,255,255,0.18)'
+                }
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+// ─── Action mix donut chart ───────────────────────────────────────────────────
+
+function ActionMixChart({
+  startCt, holdCt, sitCt, hardSitCt, totalPlayers,
+}: {
+  startCt: number; holdCt: number; sitCt: number; hardSitCt: number; totalPlayers: number;
+}) {
+  const segments = [
+    { label: 'Start',     count: startCt,              color: '#34d399', desc: 'Projected to beat breakeven' },
+    { label: 'Hold',      count: holdCt - hardSitCt,   color: 'rgba(255,255,255,0.25)', desc: 'Monitor — no clear signal' },
+    { label: 'Sit',       count: sitCt,                color: '#fb923c', desc: 'Projected under breakeven' },
+    { label: 'Hard Sit',  count: hardSitCt,            color: '#ef4444', desc: 'Strong avoidance signal' },
+  ].filter(s => s.count > 0);
+
+  // SVG donut via stroke-dasharray
+  const size  = 120;
+  const cx    = size / 2;
+  const cy    = size / 2;
+  const r     = 46;
+  const circ  = 2 * Math.PI * r;
+  const gap   = 3; // px gap between segments
+
+  let offset = -circ * 0.25; // start at top
+  const rings = segments.map(s => {
+    const pct  = totalPlayers > 0 ? s.count / totalPlayers : 0;
+    const dash = Math.max(0, circ * pct - gap);
+    const item = { ...s, pct, dash, offset };
+    offset += circ * pct;
+    return item;
+  });
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-white/35">Action Mix</p>
+        <p className="text-[9px] text-white/22 mt-0.5">Round signal distribution across the squad</p>
+      </div>
+
+      <div className="flex items-center gap-5">
+        {/* SVG donut */}
+        <div className="shrink-0">
+          <svg width={size} height={size}>
+            {/* track */}
+            <circle
+              cx={cx} cy={cy} r={r}
+              fill="none"
+              stroke="rgba(255,255,255,0.06)"
+              strokeWidth={14}
+            />
+            {/* segments */}
+            {rings.map((s) => (
+              <circle
+                key={s.label}
+                cx={cx} cy={cy} r={r}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={14}
+                strokeDasharray={`${s.dash} ${circ}`}
+                strokeDashoffset={-s.offset}
+                strokeLinecap="butt"
+              />
+            ))}
+            {/* centre text */}
+            <text x={cx} y={cy - 6} textAnchor="middle" fill="rgba(255,255,255,0.75)" fontSize={18} fontWeight={900} fontFamily="inherit">
+              {totalPlayers}
+            </text>
+            <text x={cx} y={cy + 10} textAnchor="middle" fill="rgba(255,255,255,0.28)" fontSize={8} fontFamily="inherit" letterSpacing="1">
+              PLAYERS
+            </text>
+          </svg>
+        </div>
+
+        {/* legend */}
+        <div className="flex-1 space-y-2.5">
+          {rings.map((s) => (
+            <div key={s.label}>
+              <div className="flex items-center justify-between mb-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: s.color }} />
+                  <span className="text-[10px] text-white/55">{s.label}</span>
+                </div>
+                <span className="text-[11px] font-bold tabular-nums text-white/70">{s.count}</span>
+              </div>
+              <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${totalPlayers > 0 ? Math.round((s.count / totalPlayers) * 100) : 0}%`,
+                    backgroundColor: s.color,
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* insight line */}
+      {startCt > 0 && (
+        <p className="text-[9px] text-white/30 leading-snug border-t border-white/[0.05] pt-3">
+          {startCt} of {totalPlayers} players ({Math.round((startCt / totalPlayers) * 100)}%) carry a Start signal this round.
+          {sitCt + hardSitCt > 0 && ` ${sitCt + hardSitCt} are flagged Sit or Hard Sit.`}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -557,7 +774,7 @@ export default function AFLTeamPage() {
     if (!players.length) return {
       totalPlayers: 0, topProj: 0, avgProj: 0, avgSeasonAvg: 0,
       topPlayer: null, mostExpensivePlayer: null, topValuePlayer: null,
-      startCt: 0, sitCt: 0, holdCt: 0,
+      startCt: 0, sitCt: 0, holdCt: 0, hardSitCt: 0,
       avgFormScore: 0, avgConsistency: 0,
     };
 
@@ -581,6 +798,9 @@ export default function AFLTeamPage() {
       const ac = (p.action_canonical ?? '').toUpperCase();
       return ac === 'START' || ac === 'SMASH_START';
     }).length;
+    const hardSitCt = players.filter(p =>
+      (p.action_canonical ?? '').toUpperCase() === 'HARD_SIT'
+    ).length;
     const sitCt = players.filter(p => {
       const ac = (p.action_canonical ?? '').toUpperCase();
       return ac === 'SIT' || ac === 'HARD_SIT';
@@ -600,7 +820,7 @@ export default function AFLTeamPage() {
     return {
       totalPlayers: players.length, topProj: Math.round(topProj), avgProj, avgSeasonAvg,
       topPlayer, mostExpensivePlayer, topValuePlayer,
-      startCt, sitCt, holdCt,
+      startCt, sitCt, holdCt, hardSitCt,
       avgFormScore, avgConsistency,
     };
   }, [players]);
@@ -857,6 +1077,33 @@ export default function AFLTeamPage() {
               )}
             </div>
           </div>
+
+          {/* ══════════════════════════════════════════
+              TEAM ANALYTICS
+          ══════════════════════════════════════════ */}
+          {players.length > 0 && (
+            <div>
+              <SectionLabel icon={<BarChart2 size={13} />} title="Team Analytics" />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+                {/* Left — scoring depth chart */}
+                <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-5 py-4">
+                  <RosterDepthChart players={players} accentColor={accentSafe} />
+                </div>
+
+                {/* Right — action mix */}
+                <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-5 py-4">
+                  <ActionMixChart
+                    startCt={stats.startCt}
+                    holdCt={stats.holdCt}
+                    sitCt={stats.sitCt}
+                    hardSitCt={stats.hardSitCt}
+                    totalPlayers={stats.totalPlayers}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ══════════════════════════════════════════
               INTELLIGENCE CARDS
