@@ -20,24 +20,24 @@ interface TeamEntry {
 }
 
 const AFL_TEAMS: TeamEntry[] = [
-  { name: "Adelaide Crows",               slug: "adelaide-crows",              shortName: "Adelaide",    color: "#002B5C" },
-  { name: "Brisbane Lions",               slug: "brisbane-lions",              shortName: "Brisbane",    color: "#7C1C3B" },
-  { name: "Carlton Blues",                slug: "carlton-blues",               shortName: "Carlton",     color: "#001489" },
-  { name: "Collingwood Magpies",          slug: "collingwood-magpies",         shortName: "Collingwood", color: "#2a2a2a" },
-  { name: "Essendon Bombers",             slug: "essendon-bombers",            shortName: "Essendon",    color: "#CC0000" },
-  { name: "Fremantle Dockers",            slug: "fremantle-dockers",           shortName: "Fremantle",   color: "#2F0066" },
-  { name: "Geelong Cats",                 slug: "geelong-cats",                shortName: "Geelong",     color: "#1C3D7C" },
-  { name: "Gold Coast Suns",              slug: "gold-coast-suns",             shortName: "Gold Coast",  color: "#D4782A" },
-  { name: "Greater Western Sydney Giants",slug: "gws-giants",                  shortName: "GWS",         color: "#F15A22" },
-  { name: "Hawthorn Hawks",               slug: "hawthorn-hawks",              shortName: "Hawthorn",    color: "#4D2004" },
-  { name: "Melbourne Demons",             slug: "melbourne-demons",            shortName: "Melbourne",   color: "#0C2340" },
-  { name: "North Melbourne Kangaroos",    slug: "north-melbourne-kangaroos",   shortName: "North Melb.", color: "#0057B8" },
-  { name: "Port Adelaide Power",          slug: "port-adelaide-power",         shortName: "Port Adel.",  color: "#008A8F" },
-  { name: "Richmond Tigers",              slug: "richmond-tigers",             shortName: "Richmond",    color: "#897000" },
-  { name: "St Kilda Saints",              slug: "st-kilda-saints",             shortName: "St Kilda",    color: "#ED1B2E" },
-  { name: "Sydney Swans",                 slug: "sydney-swans",                shortName: "Sydney",      color: "#E1251B" },
-  { name: "West Coast Eagles",            slug: "west-coast-eagles",           shortName: "West Coast",  color: "#003087" },
-  { name: "Western Bulldogs",             slug: "western-bulldogs",            shortName: "Bulldogs",    color: "#00205B" },
+  { name: "Adelaide Crows",                slug: "adelaide-crows",              shortName: "Adelaide",    color: "#002B5C" },
+  { name: "Brisbane Lions",                slug: "brisbane-lions",              shortName: "Brisbane",    color: "#7C1C3B" },
+  { name: "Carlton Blues",                 slug: "carlton-blues",               shortName: "Carlton",     color: "#001489" },
+  { name: "Collingwood Magpies",           slug: "collingwood-magpies",         shortName: "Collingwood", color: "#2a2a2a" },
+  { name: "Essendon Bombers",              slug: "essendon-bombers",            shortName: "Essendon",    color: "#CC0000" },
+  { name: "Fremantle Dockers",             slug: "fremantle-dockers",           shortName: "Fremantle",   color: "#2F0066" },
+  { name: "Geelong Cats",                  slug: "geelong-cats",                shortName: "Geelong",     color: "#1C3D7C" },
+  { name: "Gold Coast Suns",               slug: "gold-coast-suns",             shortName: "Gold Coast",  color: "#D4782A" },
+  { name: "Greater Western Sydney Giants", slug: "gws-giants",                  shortName: "GWS",         color: "#F15A22" },
+  { name: "Hawthorn Hawks",                slug: "hawthorn-hawks",              shortName: "Hawthorn",    color: "#4D2004" },
+  { name: "Melbourne Demons",              slug: "melbourne-demons",            shortName: "Melbourne",   color: "#0C2340" },
+  { name: "North Melbourne Kangaroos",     slug: "north-melbourne-kangaroos",   shortName: "North Melb.", color: "#0057B8" },
+  { name: "Port Adelaide Power",           slug: "port-adelaide-power",         shortName: "Port Adel.",  color: "#008A8F" },
+  { name: "Richmond Tigers",               slug: "richmond-tigers",             shortName: "Richmond",    color: "#897000" },
+  { name: "St Kilda Saints",               slug: "st-kilda-saints",             shortName: "St Kilda",    color: "#ED1B2E" },
+  { name: "Sydney Swans",                  slug: "sydney-swans",                shortName: "Sydney",      color: "#E1251B" },
+  { name: "West Coast Eagles",             slug: "west-coast-eagles",           shortName: "West Coast",  color: "#003087" },
+  { name: "Western Bulldogs",              slug: "western-bulldogs",            shortName: "Bulldogs",    color: "#00205B" },
 ];
 
 // ─── Position filter options ────────────────────────────────────────────────
@@ -50,6 +50,8 @@ const POSITIONS = [
   { code: "RUC", label: "Rucks" },
 ];
 
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
 // ─── Format helpers ─────────────────────────────────────────────────────────
 
 function fmt(val: number | null | undefined, decimals = 0): string {
@@ -61,6 +63,10 @@ function fmtPrice(val: number | null | undefined): string {
   if (val == null || val === 0) return "—";
   if (val >= 1_000_000) return `$${(val / 1_000_000).toFixed(3)}M`;
   return `$${Math.floor(val / 1000)}K`;
+}
+
+function firstLetter(name: string): string {
+  return (name?.[0] ?? "#").toUpperCase();
 }
 
 // ─── Subcomponents ──────────────────────────────────────────────────────────
@@ -121,17 +127,18 @@ function TeamCard({ team }: { team: TeamEntry }) {
 export default function AFLPlayersPage() {
   const { user, isPremium } = useAuth();
 
-  const [rows, setRows]         = useState<RankingRow[]>([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState<string | null>(null);
+  const [rows, setRows]             = useState<RankingRow[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState<string | null>(null);
 
-  const [search, setSearch]     = useState("");
-  const [position, setPosition] = useState("");
+  const [search, setSearch]         = useState("");
+  const [position, setPosition]     = useState("");
   const [teamFilter, setTeamFilter] = useState("");
-  const [sortBy, setSortBy]     = useState<"player_name" | "projection" | "price">("player_name");
-  const [sortDir, setSortDir]   = useState<"asc" | "desc">("asc");
+  const [sortBy, setSortBy]         = useState<"player_name" | "projection" | "price">("player_name");
+  const [sortDir, setSortDir]       = useState<"asc" | "desc">("asc");
 
-  const searchRef = useRef<HTMLInputElement>(null);
+  const searchRef  = useRef<HTMLInputElement>(null);
+  const letterRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
 
   const userId = user?.id ?? null;
 
@@ -206,6 +213,16 @@ export default function AFLPlayersPage() {
     return out;
   }, [rows, search, position, teamFilter, sortBy, sortDir]);
 
+  // A-Z nav is only active when showing the full unfiltered name-sorted list
+  const isAlphaView = !search.trim() && !position && !teamFilter && sortBy === "player_name" && sortDir === "asc";
+
+  // Letters that have at least one player in the current filtered set
+  const availableLetters = useMemo<Set<string>>(() => {
+    const set = new Set<string>();
+    filtered.forEach(r => set.add(firstLetter(r.player_name)));
+    return set;
+  }, [filtered]);
+
   const handleSort = useCallback((col: typeof sortBy) => {
     if (sortBy === col) {
       setSortDir(d => d === "asc" ? "desc" : "asc");
@@ -215,20 +232,48 @@ export default function AFLPlayersPage() {
     }
   }, [sortBy]);
 
+  const handleLetterClick = useCallback((letter: string) => {
+    const el = letterRefs.current[letter];
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   const totalCount = rows.length;
 
-  const pageUrl = "https://neekostats.com.au/sports/afl/players";
-  const pageTitle = "AFL Fantasy Player Directory 2026 | Neeko Sports";
+  const pageUrl         = "https://neekostats.com.au/sports/afl/players";
+  const pageTitle       = "AFL Fantasy Player Directory 2026 | Neeko Sports";
   const pageDescription = "Search every 2026 AFL Fantasy player by name, team or position. View basic player info for free, or unlock projections, signals and AI analysis with Neeko+.";
 
   const breadcrumbJsonLd = JSON.stringify({
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
-      { "@type": "ListItem", "position": 2, "name": "AFL Fantasy Player Directory", "item": pageUrl },
+      { "@type": "ListItem", "position": 1, "name": "Home",                       "item": "https://neekostats.com.au" },
+      { "@type": "ListItem", "position": 2, "name": "AFL Fantasy Player Directory","item": pageUrl },
     ],
   });
+
+  // Build grouped rows for alpha view — each entry is either a letter header or a player row
+  type TableItem =
+    | { kind: "header"; letter: string }
+    | { kind: "player"; row: RankingRow; idx: number };
+
+  const tableItems = useMemo<TableItem[]>(() => {
+    if (!isAlphaView) {
+      return filtered.map((row, idx) => ({ kind: "player", row, idx }));
+    }
+    const items: TableItem[] = [];
+    let lastLetter = "";
+    filtered.forEach((row, idx) => {
+      const letter = firstLetter(row.player_name);
+      if (letter !== lastLetter) {
+        items.push({ kind: "header", letter });
+        lastLetter = letter;
+      }
+      items.push({ kind: "player", row, idx });
+    });
+    return items;
+  }, [filtered, isAlphaView]);
 
   return (
     <>
@@ -325,27 +370,12 @@ export default function AFLPlayersPage() {
         </div>
 
         {/* ── Filters row ───────────────────────────────────────────────── */}
-        <div style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 8,
-          marginBottom: 16,
-          alignItems: "center",
-        }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, alignItems: "center" }}>
           {/* Search */}
-          <div style={{
-            position: "relative",
-            flex: "1 1 200px",
-            minWidth: 180,
-            maxWidth: 320,
-          }}>
+          <div style={{ position: "relative", flex: "1 1 200px", minWidth: 180, maxWidth: 320 }}>
             <Search size={13} style={{
-              position: "absolute",
-              left: 11,
-              top: "50%",
-              transform: "translateY(-50%)",
-              color: "rgba(255,255,255,0.30)",
-              pointerEvents: "none",
+              position: "absolute", left: 11, top: "50%",
+              transform: "translateY(-50%)", color: "rgba(255,255,255,0.30)", pointerEvents: "none",
             }} />
             <input
               ref={searchRef}
@@ -354,18 +384,9 @@ export default function AFLPlayersPage() {
               onChange={e => setSearch(e.target.value)}
               placeholder="Search players..."
               style={{
-                width: "100%",
-                paddingLeft: 32,
-                paddingRight: 12,
-                paddingTop: 8,
-                paddingBottom: 8,
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.10)",
-                borderRadius: 8,
-                fontSize: 13,
-                color: "#fff",
-                outline: "none",
-                boxSizing: "border-box",
+                width: "100%", paddingLeft: 32, paddingRight: 12, paddingTop: 8, paddingBottom: 8,
+                background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)",
+                borderRadius: 8, fontSize: 13, color: "#fff", outline: "none", boxSizing: "border-box",
               }}
             />
           </div>
@@ -376,17 +397,10 @@ export default function AFLPlayersPage() {
               value={position}
               onChange={e => setPosition(e.target.value)}
               style={{
-                appearance: "none",
-                WebkitAppearance: "none",
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.10)",
-                borderRadius: 8,
-                color: position ? "#fff" : "rgba(255,255,255,0.45)",
-                fontSize: 12.5,
-                fontWeight: 600,
-                padding: "8px 30px 8px 12px",
-                cursor: "pointer",
-                outline: "none",
+                appearance: "none", WebkitAppearance: "none",
+                background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)",
+                borderRadius: 8, color: position ? "#fff" : "rgba(255,255,255,0.45)",
+                fontSize: 12.5, fontWeight: 600, padding: "8px 30px 8px 12px", cursor: "pointer", outline: "none",
               }}
             >
               {POSITIONS.map(p => (
@@ -402,18 +416,11 @@ export default function AFLPlayersPage() {
               value={teamFilter}
               onChange={e => setTeamFilter(e.target.value)}
               style={{
-                appearance: "none",
-                WebkitAppearance: "none",
-                background: "rgba(255,255,255,0.05)",
-                border: "1px solid rgba(255,255,255,0.10)",
-                borderRadius: 8,
-                color: teamFilter ? "#fff" : "rgba(255,255,255,0.45)",
-                fontSize: 12.5,
-                fontWeight: 600,
-                padding: "8px 30px 8px 12px",
-                cursor: "pointer",
-                outline: "none",
-                maxWidth: 160,
+                appearance: "none", WebkitAppearance: "none",
+                background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)",
+                borderRadius: 8, color: teamFilter ? "#fff" : "rgba(255,255,255,0.45)",
+                fontSize: 12.5, fontWeight: 600, padding: "8px 30px 8px 12px", cursor: "pointer",
+                outline: "none", maxWidth: 160,
               }}
             >
               <option value="" style={{ background: "#111", color: "#fff" }}>All Teams</option>
@@ -429,15 +436,9 @@ export default function AFLPlayersPage() {
             <button
               onClick={() => { setSearch(""); setPosition(""); setTeamFilter(""); }}
               style={{
-                background: "none",
-                border: "1px solid rgba(255,255,255,0.10)",
-                borderRadius: 8,
-                color: "rgba(255,255,255,0.40)",
-                fontSize: 12,
-                fontWeight: 600,
-                padding: "8px 12px",
-                cursor: "pointer",
-                flexShrink: 0,
+                background: "none", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 8,
+                color: "rgba(255,255,255,0.40)", fontSize: 12, fontWeight: 600,
+                padding: "8px 12px", cursor: "pointer", flexShrink: 0,
               }}
             >
               Clear
@@ -445,16 +446,72 @@ export default function AFLPlayersPage() {
           )}
         </div>
 
+        {/* ── A–Z navigation bar ───────────────────────────────────────────── */}
+        {!loading && isAlphaView && (
+          <div style={{
+            overflowX: "auto",
+            WebkitOverflowScrolling: "touch" as React.CSSProperties["WebkitOverflowScrolling"],
+            scrollbarWidth: "none",
+            marginBottom: 14,
+            paddingBottom: 2,
+          }}>
+            <div style={{
+              display: "flex",
+              gap: 2,
+              minWidth: "max-content",
+              padding: "6px 0",
+            }}>
+              {ALPHABET.map(letter => {
+                const active = availableLetters.has(letter);
+                return (
+                  <button
+                    key={letter}
+                    onClick={() => active && handleLetterClick(letter)}
+                    disabled={!active}
+                    style={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: 6,
+                      border: active
+                        ? "1px solid rgba(255,255,255,0.12)"
+                        : "1px solid rgba(255,255,255,0.04)",
+                      background: active ? "rgba(255,255,255,0.06)" : "transparent",
+                      color: active ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.15)",
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: "0.04em",
+                      cursor: active ? "pointer" : "default",
+                      transition: "all 0.12s ease",
+                      flexShrink: 0,
+                      lineHeight: 1,
+                      padding: 0,
+                    }}
+                    onMouseEnter={e => {
+                      if (!active) return;
+                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(245,200,76,0.12)";
+                      (e.currentTarget as HTMLButtonElement).style.color = "#F5C84C";
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(245,200,76,0.30)";
+                    }}
+                    onMouseLeave={e => {
+                      if (!active) return;
+                      (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
+                      (e.currentTarget as HTMLButtonElement).style.color = "rgba(255,255,255,0.65)";
+                      (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.12)";
+                    }}
+                  >
+                    {letter}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* ── Freemium banner (free users) ─────────────────────────────── */}
         {!isPremium && !loading && totalCount > 0 && (
           <div style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "10px 14px",
-            borderRadius: 8,
-            background: "rgba(245,200,76,0.06)",
-            border: "1px solid rgba(245,200,76,0.18)",
+            display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+            borderRadius: 8, background: "rgba(245,200,76,0.06)", border: "1px solid rgba(245,200,76,0.18)",
             marginBottom: 14,
           }}>
             <Crown size={13} style={{ color: "#F5C84C", flexShrink: 0 }} />
@@ -499,9 +556,9 @@ export default function AFLPlayersPage() {
           <div style={{ overflow: "hidden", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
-                {/* Header */}
+                {/* Sticky header */}
                 <thead>
-                  <tr style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                  <tr style={{ background: "rgba(18,18,18,1)", borderBottom: "1px solid rgba(255,255,255,0.08)", position: "sticky", top: 0, zIndex: 2 }}>
                     <SortTh
                       label="Player"
                       col="player_name"
@@ -512,26 +569,12 @@ export default function AFLPlayersPage() {
                     />
                     <th style={thStyle}>Team</th>
                     <th style={thStyle}>Pos</th>
-                    <SortTh
-                      label="Price"
-                      col="price"
-                      current={sortBy}
-                      dir={sortDir}
-                      onClick={handleSort}
-                    />
-                    {/* 5th column: Avg for free, sortable Proj for premium */}
+                    <SortTh label="Price" col="price" current={sortBy} dir={sortDir} onClick={handleSort} />
                     {isPremium ? (
-                      <SortTh
-                        label="Proj."
-                        col="projection"
-                        current={sortBy}
-                        dir={sortDir}
-                        onClick={handleSort}
-                      />
+                      <SortTh label="Proj." col="projection" current={sortBy} dir={sortDir} onClick={handleSort} />
                     ) : (
                       <th style={thStyle}>2026 Avg</th>
                     )}
-                    {/* Signal column */}
                     <th style={thStyle}>
                       {isPremium ? "Signal" : (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
@@ -552,11 +595,38 @@ export default function AFLPlayersPage() {
                     </tr>
                   )}
 
-                  {filtered.map((row, idx) => {
-                    const slug      = playerToSlug(row.player_name, row.team_name ?? row.team);
-                    const teamShort = AFL_TEAMS.find(t => t.name === (row.team_name ?? row.team))?.shortName
-                                   ?? (row.team_name ?? row.team ?? "—");
-                    const signalVal  = signalFromField(row.signal ?? null);
+                  {tableItems.map((item) => {
+                    if (item.kind === "header") {
+                      return (
+                        <tr
+                          key={`header-${item.letter}`}
+                          ref={el => { letterRefs.current[item.letter] = el; }}
+                          style={{ background: "rgba(255,255,255,0.02)" }}
+                        >
+                          <td
+                            colSpan={6}
+                            style={{
+                              padding: "7px 14px 5px",
+                              fontSize: 11,
+                              fontWeight: 800,
+                              letterSpacing: "0.12em",
+                              color: "rgba(255,255,255,0.30)",
+                              textTransform: "uppercase",
+                              borderTop: "1px solid rgba(255,255,255,0.06)",
+                              borderBottom: "1px solid rgba(255,255,255,0.04)",
+                            }}
+                          >
+                            {item.letter}
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    const { row, idx } = item;
+                    const slug       = playerToSlug(row.player_name, row.team_name ?? row.team);
+                    const teamShort  = AFL_TEAMS.find(t => t.name === (row.team_name ?? row.team))?.shortName
+                                    ?? (row.team_name ?? row.team ?? "—");
+                    const signalVal   = signalFromField(row.signal ?? null);
                     const signalColor = getEdgeSignalColor(signalVal);
                     const signalLabel = signalVal ? formatEdgeSignalLabel(signalVal) : null;
 
@@ -571,20 +641,15 @@ export default function AFLPlayersPage() {
                         onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
                         onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                       >
-                        {/* Player name — always visible, always linkable */}
+                        {/* Player name */}
                         <td style={{ padding: "10px 12px 10px 14px" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
                             <Link
                               to={`/sports/afl/players/${slug}`}
                               style={{
-                                fontSize: 13,
-                                fontWeight: 700,
-                                color: "rgba(255,255,255,0.88)",
-                                textDecoration: "none",
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                letterSpacing: "0.005em",
+                                fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.88)",
+                                textDecoration: "none", whiteSpace: "nowrap", overflow: "hidden",
+                                textOverflow: "ellipsis", letterSpacing: "0.005em",
                               }}
                               onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
                               onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.88)")}
@@ -620,8 +685,7 @@ export default function AFLPlayersPage() {
                         {isPremium ? (
                           <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
                             <span style={{
-                              fontSize: 13,
-                              fontWeight: 700,
+                              fontSize: 13, fontWeight: 700,
                               color: row.projection != null ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.25)",
                             }}>
                               {fmt(row.projection)}
@@ -644,7 +708,7 @@ export default function AFLPlayersPage() {
                           </td>
                         )}
 
-                        {/* Signal: full label for premium, consistent lock for free */}
+                        {/* Signal */}
                         <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
                           {isPremium ? (
                             signalLabel ? (
@@ -659,14 +723,9 @@ export default function AFLPlayersPage() {
                               to="/neeko-plus"
                               title="Unlock signals with Neeko+"
                               style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 4,
-                                fontSize: 10.5,
-                                fontWeight: 600,
-                                color: "rgba(245,200,76,0.45)",
-                                textDecoration: "none",
-                                letterSpacing: "0.02em",
+                                display: "inline-flex", alignItems: "center", gap: 4,
+                                fontSize: 10.5, fontWeight: 600, color: "rgba(245,200,76,0.45)",
+                                textDecoration: "none", letterSpacing: "0.02em",
                               }}
                             >
                               <Lock size={9} style={{ flexShrink: 0 }} />
@@ -685,17 +744,10 @@ export default function AFLPlayersPage() {
                         <Link
                           to="/neeko-plus"
                           style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 7,
-                            fontSize: 12.5,
-                            fontWeight: 700,
-                            color: "#F5C84C",
-                            textDecoration: "none",
-                            padding: "9px 20px",
-                            borderRadius: 8,
-                            background: "rgba(245,200,76,0.10)",
-                            border: "1px solid rgba(245,200,76,0.22)",
+                            display: "inline-flex", alignItems: "center", gap: 7,
+                            fontSize: 12.5, fontWeight: 700, color: "#F5C84C", textDecoration: "none",
+                            padding: "9px 20px", borderRadius: 8,
+                            background: "rgba(245,200,76,0.10)", border: "1px solid rgba(245,200,76,0.22)",
                           }}
                         >
                           <Crown size={13} /> Unlock projections, signals and AI analysis with Neeko+
@@ -713,25 +765,19 @@ export default function AFLPlayersPage() {
         {!loading && (
           <div style={{ marginTop: 32, display: "flex", flexWrap: "wrap", gap: 8 }}>
             {[
-              { code: "DEF", label: "Defenders", slug: "def" },
-              { code: "MID", label: "Midfielders", slug: "mid" },
-              { code: "FWD", label: "Forwards", slug: "fwd" },
-              { code: "RUC", label: "Rucks", slug: "ruck" },
+              { label: "Defenders", slug: "def" },
+              { label: "Midfielders", slug: "mid" },
+              { label: "Forwards", slug: "fwd" },
+              { label: "Rucks", slug: "ruck" },
             ].map(pos => (
               <Link
-                key={pos.code}
+                key={pos.slug}
                 to={`/sports/afl/positions/${pos.slug}`}
                 style={{
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: "rgba(255,255,255,0.35)",
-                  textDecoration: "none",
-                  padding: "7px 14px",
-                  borderRadius: 7,
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  background: "rgba(255,255,255,0.03)",
-                  transition: "all 0.15s ease",
-                  letterSpacing: "0.02em",
+                  fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.35)",
+                  textDecoration: "none", padding: "7px 14px", borderRadius: 7,
+                  border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)",
+                  transition: "all 0.15s ease", letterSpacing: "0.02em",
                 }}
                 onMouseEnter={e => {
                   (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.72)";
