@@ -1263,11 +1263,11 @@ export default function AFLTeamPage() {
           <h2 className="text-xl font-bold text-white mb-2">Team Not Found</h2>
           <p className="text-white/40 mb-6 text-sm">Could not load data for: {teamName || team}</p>
           <button
-            onClick={() => navigate('/fantasy/rankings')}
+            onClick={() => navigate('/sports/afl/teams')}
             className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/[0.08] transition-colors"
           >
             <ArrowLeft size={15} />
-            Back to Rankings
+            All Teams
           </button>
         </div>
       </div>
@@ -1319,11 +1319,11 @@ export default function AFLTeamPage() {
 
           {/* Back nav */}
           <button
-            onClick={() => navigate('/fantasy/rankings')}
+            onClick={() => navigate('/sports/afl/teams')}
             className="flex items-center gap-1.5 text-white/35 hover:text-white/65 transition-colors text-[11px]"
           >
             <ArrowLeft size={13} />
-            Rankings
+            All Teams
           </button>
 
           {/* ══════════════════════════════════════════
