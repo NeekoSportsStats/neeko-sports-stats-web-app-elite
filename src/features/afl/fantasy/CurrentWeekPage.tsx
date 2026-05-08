@@ -876,7 +876,7 @@ export default function CurrentWeekPage() {
 
           {/* ── Summary cards ───────────────────────────────────────────────── */}
           {!data.error && !allEmpty && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
               {data.loading ? (
                 <><SummaryCardSkeleton /><SummaryCardSkeleton /><SummaryCardSkeleton /></>
               ) : (
@@ -889,14 +889,6 @@ export default function CurrentWeekPage() {
             </div>
           )}
 
-          {/* ── Divider ─────────────────────────────────────────────────────── */}
-          {!data.error && !data.loading && !allEmpty && (
-            <div className="flex items-center gap-4 mb-6">
-              <div className="h-px flex-1 bg-white/[0.055]" />
-              <span className="text-[9px] font-[800] tracking-[0.40em] uppercase text-white/20">Full picks</span>
-              <div className="h-px flex-1 bg-white/[0.055]" />
-            </div>
-          )}
 
           {/* ── Section skeletons (shown while auth or data resolves) ────────── */}
           {(data.loading || authLoading) && (
