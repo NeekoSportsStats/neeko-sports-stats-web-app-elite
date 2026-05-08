@@ -474,18 +474,32 @@ function Section({
 
 function SummaryCardSkeleton() {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#0A0D12] p-5 flex flex-col gap-4 shadow-[0_1px_24px_rgba(0,0,0,0.35)]">
-      <div className="flex items-center gap-2">
-        <div className="h-7 w-7 rounded-lg bg-white/[0.04] animate-pulse" />
-        <div className="h-2.5 w-20 rounded-full bg-white/[0.04] animate-pulse" />
+    <div className="rounded-2xl border border-white/[0.06] bg-[#0A0D12] p-5 flex flex-col gap-3 min-h-[148px] shadow-[0_1px_24px_rgba(0,0,0,0.35)]">
+      {/* header row */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-lg bg-white/[0.04] animate-pulse shrink-0" />
+          <div className="h-2.5 w-20 rounded-full bg-white/[0.04] animate-pulse" />
+        </div>
       </div>
-      <div className="space-y-2">
-        <div className="h-4 w-28 rounded bg-white/[0.05] animate-pulse" />
-        <div className="h-3 w-16 rounded bg-white/[0.03] animate-pulse" />
+      {/* name */}
+      <div className="space-y-1.5 flex-1">
+        <div className="h-4 w-32 rounded bg-white/[0.05] animate-pulse" />
+        <div className="flex items-center gap-1.5">
+          <div className="h-3 w-10 rounded bg-white/[0.03] animate-pulse" />
+          <div className="h-3 w-6 rounded bg-white/[0.02] animate-pulse" />
+        </div>
       </div>
-      <div className="flex items-end justify-between">
-        <div className="h-7 w-12 rounded bg-white/[0.06] animate-pulse" />
-        <div className="h-5 w-14 rounded-lg bg-white/[0.04] animate-pulse" />
+      {/* bottom row */}
+      <div className="flex items-end justify-between mt-auto pt-1">
+        <div className="space-y-1">
+          <div className="h-7 w-14 rounded bg-white/[0.06] animate-pulse" />
+          <div className="h-2.5 w-16 rounded bg-white/[0.02] animate-pulse" />
+        </div>
+        <div className="flex flex-col items-end gap-1.5">
+          <div className="h-6 w-14 rounded-lg bg-white/[0.04] animate-pulse" />
+          <div className="h-4 w-10 rounded bg-white/[0.03] animate-pulse" />
+        </div>
       </div>
     </div>
   );
@@ -727,29 +741,49 @@ function MidPageUpgradeBlock() {
 
 // ── Section loading skeleton ──────────────────────────────────────────────────
 
+const SKELETON_ROW_COUNT = 3;
+
+function SkeletonRow({ isFirst }: { isFirst: boolean }) {
+  return (
+    <div className={`flex items-start gap-2.5 py-3 px-3 sm:px-4 ${isFirst ? "" : "border-t border-white/[0.04]"}`}>
+      {/* rank */}
+      <div className="h-3 w-4 rounded bg-white/[0.03] animate-pulse shrink-0 mt-0.5" />
+      {/* player block */}
+      <div className="flex-1 space-y-2 min-w-0">
+        {/* name row */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="h-3.5 w-28 sm:w-36 rounded bg-white/[0.04] animate-pulse" />
+          <div className="h-3 w-10 rounded bg-white/[0.03] animate-pulse" />
+        </div>
+        {/* reason line */}
+        <div className="h-2.5 w-44 sm:w-56 rounded bg-white/[0.025] animate-pulse" />
+      </div>
+      {/* right side */}
+      <div className="flex flex-col items-end gap-1.5 shrink-0">
+        <div className="hidden sm:block h-4 w-14 rounded bg-white/[0.03] animate-pulse" />
+        <div className="h-5 w-10 rounded bg-white/[0.04] animate-pulse" />
+        <div className="h-2.5 w-8 rounded bg-white/[0.02] animate-pulse" />
+      </div>
+    </div>
+  );
+}
+
 function SectionSkeleton() {
   return (
     <div className="rounded-2xl border border-white/[0.07] bg-[#0A0D12] overflow-hidden shadow-[0_1px_24px_rgba(0,0,0,0.35)]">
+      {/* header */}
       <div className="flex items-center gap-3.5 px-5 py-4 border-b border-white/[0.06] bg-white/[0.015]">
         <div className="h-9 w-9 rounded-xl bg-white/[0.04] animate-pulse shrink-0" />
         <div className="flex-1 space-y-1.5">
           <div className="h-4 w-32 rounded bg-white/[0.04] animate-pulse" />
-          <div className="h-2.5 w-48 rounded bg-white/[0.03] animate-pulse" />
+          <div className="h-2.5 w-52 rounded bg-white/[0.03] animate-pulse" />
         </div>
+        <div className="h-5 w-14 rounded-full bg-white/[0.03] animate-pulse shrink-0" />
       </div>
+      {/* rows */}
       <div>
-        {Array.from({ length: FREE_LIMIT }).map((_, j) => (
-          <div key={j} className={`flex items-start gap-3 py-3 px-4 ${j > 0 ? "border-t border-white/[0.04]" : ""}`}>
-            <div className="h-3 w-4 rounded bg-white/[0.03] animate-pulse shrink-0 mt-0.5" />
-            <div className="flex-1 space-y-2">
-              <div className="h-3.5 w-36 rounded bg-white/[0.04] animate-pulse" />
-              <div className="h-2.5 w-48 rounded bg-white/[0.03] animate-pulse" />
-            </div>
-            <div className="space-y-1 shrink-0">
-              <div className="h-5 w-12 rounded bg-white/[0.03] animate-pulse" />
-              <div className="h-3 w-10 rounded bg-white/[0.02] animate-pulse" />
-            </div>
-          </div>
+        {Array.from({ length: SKELETON_ROW_COUNT }).map((_, j) => (
+          <SkeletonRow key={j} isFirst={j === 0} />
         ))}
       </div>
     </div>
@@ -766,6 +800,13 @@ export default function CurrentWeekPage() {
   const topCaptain = data.captains[0] ?? null;
   const topValue   = data.buyValuePicks[0] ?? null;
   const topTrap    = data.trapFadeAlerts[0] ?? null;
+
+  const allEmpty =
+    !data.loading &&
+    !data.error &&
+    data.captains.length === 0 &&
+    data.buyValuePicks.length === 0 &&
+    data.trapFadeAlerts.length === 0;
 
   return (
     <>
@@ -825,15 +866,34 @@ export default function CurrentWeekPage() {
 
           {/* ── Error state ─────────────────────────────────────────────────── */}
           {data.error && !data.loading && (
-            <div className="rounded-2xl border border-white/[0.07] bg-[#0A0D12] px-6 py-10 text-center mb-8 shadow-[0_1px_24px_rgba(0,0,0,0.35)]">
-              <p className="text-[13px] text-white/35">
-                Could not load round data. Please try again later.
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0A0D12] px-6 py-12 text-center mb-8 shadow-[0_1px_24px_rgba(0,0,0,0.35)]">
+              <AlertTriangle className="h-6 w-6 text-white/20 mx-auto mb-3" aria-hidden />
+              <p className="text-[14px] font-[600] text-white/50 mb-1">
+                Unable to load current round data right now.
+              </p>
+              <p className="text-[12px] text-white/25">
+                Please try again later or check back closer to lockout.
+              </p>
+            </div>
+          )}
+
+          {/* ── All-sections empty state ────────────────────────────────────── */}
+          {allEmpty && !authLoading && (
+            <div className="rounded-2xl border border-white/[0.07] bg-[#0A0D12] px-6 py-14 text-center mb-8 shadow-[0_1px_24px_rgba(0,0,0,0.35)]">
+              <div className="flex items-center justify-center h-12 w-12 rounded-2xl bg-white/[0.04] border border-white/[0.06] mx-auto mb-4">
+                <Crown className="h-5 w-5 text-white/20" aria-hidden />
+              </div>
+              <p className="text-[15px] font-[700] text-white/50 mb-2">
+                Current round data is not available yet.
+              </p>
+              <p className="text-[12px] text-white/25 max-w-xs mx-auto leading-snug">
+                Check back closer to lockout — picks are published once projections are live.
               </p>
             </div>
           )}
 
           {/* ── Summary cards ───────────────────────────────────────────────── */}
-          {!data.error && (
+          {!data.error && !allEmpty && (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
               {data.loading ? (
                 <><SummaryCardSkeleton /><SummaryCardSkeleton /><SummaryCardSkeleton /></>
@@ -848,7 +908,7 @@ export default function CurrentWeekPage() {
           )}
 
           {/* ── Divider ─────────────────────────────────────────────────────── */}
-          {!data.error && !data.loading && (
+          {!data.error && !data.loading && !allEmpty && (
             <div className="flex items-center gap-4 mb-6">
               <div className="h-px flex-1 bg-white/[0.055]" />
               <span className="text-[9px] font-[800] tracking-[0.40em] uppercase text-white/20">Full picks</span>
@@ -866,7 +926,7 @@ export default function CurrentWeekPage() {
           )}
 
           {/* ── 3 sections ──────────────────────────────────────────────────── */}
-          {!data.error && !data.loading && !authLoading && (
+          {!data.error && !data.loading && !authLoading && !allEmpty && (
             <div className="space-y-5">
 
               {/* 1. Captain Picks */}
@@ -878,7 +938,7 @@ export default function CurrentWeekPage() {
                 headerIcon={<Crown className="h-4 w-4 text-[#F5C84C]/80" aria-hidden />}
                 players={data.captains}
                 isPremium={hasFullAccess}
-                emptyMessage="Live data not available for this round yet."
+                emptyMessage="No live calls available yet for this section."
                 renderPlayer={(p, i) => {
                   const captScore = p.captain_score ?? getCaptainScore(p);
                   void getCaptainConfidence(captScore);
@@ -927,7 +987,7 @@ export default function CurrentWeekPage() {
                 headerIcon={<TrendingUp className="h-4 w-4 text-emerald-400/80" aria-hidden />}
                 players={data.buyValuePicks}
                 isPremium={hasFullAccess}
-                emptyMessage="Live data not available for this round yet."
+                emptyMessage="No live calls available yet for this section."
                 renderPlayer={(p, i) => {
                   const reason = getBuyValueReason(p);
 
@@ -991,7 +1051,7 @@ export default function CurrentWeekPage() {
                 headerIcon={<ShieldAlert className="h-4 w-4 text-red-400/80" aria-hidden />}
                 players={data.trapFadeAlerts}
                 isPremium={hasFullAccess}
-                emptyMessage="Live data not available for this round yet."
+                emptyMessage="No live calls available yet for this section."
                 renderPlayer={(p, i) => {
                   const reason = getTrapFadeReason(p);
 
@@ -1049,7 +1109,7 @@ export default function CurrentWeekPage() {
           )}
 
           {/* ── Footer CTAs ──────────────────────────────────────────────────── */}
-          {!data.loading && !authLoading && !data.error && (
+          {!data.loading && !authLoading && !data.error && !allEmpty && (
             <div className="mt-6 space-y-3">
               <div className="rounded-2xl border border-white/[0.07] bg-[#0A0D12] px-5 py-4 flex items-center gap-4 shadow-[0_1px_24px_rgba(0,0,0,0.35)]">
                 <div className="flex-1 min-w-0">
