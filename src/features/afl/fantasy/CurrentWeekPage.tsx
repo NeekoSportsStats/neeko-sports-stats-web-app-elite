@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo, useCallback } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import {
-  Crown, DollarSign, TriangleAlert as AlertTriangle,
+  Crown, TriangleAlert as AlertTriangle,
   Lock, ChevronRight, ExternalLink, ShieldAlert, TrendingUp,
   Zap,
 } from "lucide-react";
@@ -694,51 +694,6 @@ function BiggestTrapCard({ player }: { player: CurrentRoundPlayer | null }) {
   return player && href !== "#" ? <Link to={href} className="block h-full">{inner}</Link> : inner;
 }
 
-// ── Mid-page upgrade block ────────────────────────────────────────────────────
-
-function MidPageUpgradeBlock() {
-  return (
-    <div className="relative rounded-2xl overflow-hidden border border-[#F5C84C]/22 bg-[#0A0D12] shadow-[0_0_40px_rgba(245,200,76,0.06)] my-1">
-      {/* Ambient gold glow layer */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#F5C84C]/[0.05] via-transparent to-transparent pointer-events-none" />
-      {/* Top gold accent line */}
-      <div className="absolute top-0 left-8 right-8 h-px bg-gradient-to-r from-transparent via-[#F5C84C]/40 to-transparent" />
-
-      <div className="relative px-5 py-5 sm:px-8 sm:py-7 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-5">
-        {/* Icon — hide on smallest screens to save horizontal space */}
-        <div className="hidden sm:flex items-center justify-center h-12 w-12 rounded-2xl bg-[#F5C84C]/[0.10] border border-[#F5C84C]/25 shrink-0">
-          <Crown className="h-5 w-5 text-[#F5C84C]/85" aria-hidden />
-        </div>
-
-        {/* Copy */}
-        <div className="flex-1 min-w-0">
-          {/* Mobile: icon inline with heading */}
-          <div className="flex items-center gap-2 sm:block">
-            <div className="flex sm:hidden items-center justify-center h-8 w-8 rounded-xl bg-[#F5C84C]/[0.10] border border-[#F5C84C]/25 shrink-0">
-              <Crown className="h-4 w-4 text-[#F5C84C]/85" aria-hidden />
-            </div>
-            <p className="text-[15px] sm:text-[17px] font-[800] text-white/90 leading-tight tracking-tight">
-              Unlock the full weekly board
-            </p>
-          </div>
-          <p className="text-[12px] sm:text-[13px] text-white/40 mt-1.5 leading-snug">
-            See every captain call, value target and trap alert before lockout.
-          </p>
-        </div>
-
-        {/* CTA — full width on mobile for easy tap */}
-        <Link
-          to="/neeko-plus"
-          className="w-full sm:w-auto shrink-0 inline-flex items-center justify-center gap-2 rounded-xl border border-[#F5C84C]/35 bg-[#F5C84C]/[0.12] px-5 py-3 sm:py-2.5 text-[13px] font-[800] text-[#F5C84C] hover:bg-[#F5C84C]/[0.22] hover:border-[#F5C84C]/55 hover:shadow-[0_0_20px_rgba(245,200,76,0.12)] transition-all duration-200 min-h-[44px]"
-        >
-          <Crown className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          Unlock Neeko+
-        </Link>
-      </div>
-    </div>
-  );
-}
-
 // ── Section loading skeleton ──────────────────────────────────────────────────
 
 const SKELETON_ROW_COUNT = 3;
@@ -1039,9 +994,6 @@ export default function CurrentWeekPage() {
                 }}
               />
 
-              {/* ── Mid-page upgrade block (free users only) ─────────────────── */}
-              {!hasFullAccess && <MidPageUpgradeBlock />}
-
               {/* 3. Trap / Fade Alerts */}
               <Section
                 title="Trap / Fade Alerts"
@@ -1108,48 +1060,6 @@ export default function CurrentWeekPage() {
             </div>
           )}
 
-          {/* ── Footer CTAs ──────────────────────────────────────────────────── */}
-          {!data.loading && !authLoading && !data.error && !allEmpty && (
-            <div className="mt-6 space-y-3">
-              <div className="rounded-2xl border border-white/[0.07] bg-[#0A0D12] px-5 py-4 flex items-center gap-4 shadow-[0_1px_24px_rgba(0,0,0,0.35)]">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-[700] text-white/72 leading-tight">Need a Start/Sit decision?</p>
-                  <p className="text-[11px] text-white/30 mt-0.5">
-                    Get a personalised call for any two players you're comparing.
-                  </p>
-                </div>
-                <Link
-                  to="/fantasy/start-sit"
-                  className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-white/[0.10] bg-white/[0.04] px-4 py-2 min-h-[44px] text-[12px] font-[700] text-white/60 hover:text-white/85 hover:border-white/[0.18] hover:bg-white/[0.07] transition-colors"
-                >
-                  Start/Sit Tool
-                  <ChevronRight className="h-3.5 w-3.5 shrink-0 text-white/30" aria-hidden />
-                </Link>
-              </div>
-
-              {!hasFullAccess && (
-                <div className="rounded-2xl border border-[#F5C84C]/20 bg-[#0A0D12] px-5 py-4 flex items-center gap-4 shadow-[0_1px_24px_rgba(0,0,0,0.35)] relative overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-[#F5C84C]/[0.03] to-transparent pointer-events-none" />
-                  <div className="relative flex items-center justify-center h-9 w-9 rounded-xl bg-[#F5C84C]/[0.08] border border-[#F5C84C]/20 shrink-0">
-                    <Crown className="h-4 w-4 text-[#F5C84C]/70" aria-hidden />
-                  </div>
-                  <div className="relative flex-1 min-w-0">
-                    <p className="text-[13px] font-[700] text-white/75 leading-tight">Unlock all picks with Neeko+</p>
-                    <p className="text-[11px] text-white/30 mt-0.5">
-                      See every captain option, value target, and trap alert for this round.
-                    </p>
-                  </div>
-                  <Link
-                    to="/neeko-plus"
-                    className="relative shrink-0 inline-flex items-center gap-1.5 rounded-xl border border-[#F5C84C]/30 bg-[#F5C84C]/[0.10] px-4 py-2 min-h-[44px] text-[12px] font-[700] text-[#F5C84C] hover:bg-[#F5C84C]/[0.18] hover:border-[#F5C84C]/48 transition-colors"
-                  >
-                    Upgrade
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                  </Link>
-                </div>
-              )}
-            </div>
-          )}
 
         </div>
       </div>
