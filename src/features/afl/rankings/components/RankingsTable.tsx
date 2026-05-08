@@ -184,12 +184,14 @@ function FormCell({ row }: { row: RankingRow }) {
 function ValueCell({ row }: { row: RankingRow }) {
   if (row.is_bye) return <span className="text-sm text-white/20">—</span>;
 
-  // Prefer value_score, fall back to edge_canonical/edge, then projection - breakeven
+  // Fallback chain: gated fields first, then ungated projection - season_avg proxy.
+  // trend_score === projection - season_avg and is always returned for every row.
   const vs =
     row.value_score != null ? row.value_score :
     row.edge_canonical != null ? row.edge_canonical :
     row.edge != null ? row.edge :
     (row.projection != null && row.breakeven != null) ? row.projection - row.breakeven :
+    row.trend_score != null ? row.trend_score :
     null;
 
   if (vs == null) return <span className="text-sm text-white/20">—</span>;
