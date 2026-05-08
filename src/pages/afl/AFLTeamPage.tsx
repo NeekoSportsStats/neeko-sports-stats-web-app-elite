@@ -612,79 +612,282 @@ function LineDetailRows({
   );
 }
 
-// ─── Full roster row ──────────────────────────────────────────────────────────
+// ─── Compact roster row ───────────────────────────────────────────────────────
 
 function RosterRow({ player, rank, isPremium }: { player: TeamPlayer; rank: number; isPremium: boolean }) {
   const slug = nameToSlug(player.player_name);
+  const pos  = POSITION_NAMES[player.position ?? ''] ?? player.position ?? '—';
+
   return (
     <Link
       to={`/sports/afl/players/${slug}`}
-      className="flex items-center justify-between rounded-xl bg-[#0d0d0d] border border-white/[0.05] hover:bg-white/[0.03] hover:border-white/[0.10] transition-all duration-150 px-4 py-3 group"
+      className="flex items-center gap-2 sm:gap-3 rounded-xl bg-[#0d0d0d] border border-white/[0.05] hover:bg-white/[0.03] hover:border-white/[0.10] transition-all duration-150 px-3 sm:px-4 py-2.5 group"
     >
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <span className="text-[11px] font-bold text-white/18 w-5 shrink-0 text-center tabular-nums">{rank}</span>
-        <ActionIcon action={player.action_canonical} />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <p className="text-[13px] font-semibold text-white/80 truncate group-hover:text-white transition-colors">
-              {player.player_name}
-            </p>
-            <PlayerStatusPill
-              row={{
-                status: player.status ?? null,
-                manual_status: null,
-                is_bye: player.is_bye ?? null,
-                bye_next_round: null,
-                bye_round: null,
-              }}
-              showUpcomingBye
-            />
-          </div>
-          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-            <span className="text-[9px] text-white/30">
-              {POSITION_NAMES[player.position ?? ''] ?? player.position ?? '—'}
-            </span>
-            <span className="text-[9px] text-white/18">·</span>
-            <span className="text-[9px] text-white/30">{fmtPrice(player.price)}</span>
-            {isPremium && player.breakeven != null && (
-              <>
-                <span className="text-[9px] text-white/18">·</span>
-                <span className="text-[9px] text-white/35">BE: {Math.round(player.breakeven)}</span>
-              </>
-            )}
-            {!isPremium && (
-              <>
-                <span className="text-[9px] text-white/18">·</span>
-                <span className="text-[9px] text-white/22">BE: <LockedField /></span>
-              </>
-            )}
-          </div>
+      {/* rank */}
+      <span className="text-[10px] font-bold text-white/16 w-4 shrink-0 text-center tabular-nums hidden sm:block">
+        {rank}
+      </span>
+
+      {/* action icon */}
+      <ActionIcon action={player.action_canonical} />
+
+      {/* name + status */}
+      <div className="flex-1 min-w-0 flex items-center gap-1.5">
+        <p className="text-[12px] sm:text-[13px] font-semibold text-white/78 truncate group-hover:text-white transition-colors">
+          {player.player_name}
+        </p>
+        <PlayerStatusPill
+          row={{
+            status: player.status ?? null,
+            manual_status: null,
+            is_bye: player.is_bye ?? null,
+            bye_next_round: null,
+            bye_round: null,
+          }}
+          showUpcomingBye
+        />
+      </div>
+
+      {/* pos chip */}
+      <span className="hidden sm:block text-[8px] uppercase tracking-wide text-white/25 shrink-0 w-7 text-center">
+        {pos}
+      </span>
+
+      {/* price */}
+      <span className="text-[10px] text-white/32 shrink-0 hidden sm:block tabular-nums w-10 text-right">
+        {fmtPrice(player.price)}
+      </span>
+
+      {/* breakeven */}
+      <div className="text-right shrink-0 hidden md:block w-10">
+        <p className="text-[10px] tabular-nums text-white/40">
+          {isPremium && player.breakeven != null
+            ? Math.round(player.breakeven)
+            : <LockedField />}
+        </p>
+        <p className="text-[7px] text-white/18 uppercase tracking-wide">BE</p>
+      </div>
+
+      {/* edge */}
+      <div className="text-right shrink-0 hidden md:block w-10">
+        {isPremium && player.edge_canonical != null ? (
+          <p className={`text-[10px] font-semibold tabular-nums ${getEdgeColor(player.edge_canonical)}`}>
+            {fmtEdge(player.edge_canonical)}
+          </p>
+        ) : (
+          <p className="text-[10px] text-white/18"><LockedField /></p>
+        )}
+        <p className="text-[7px] text-white/18 uppercase tracking-wide">Edge</p>
+      </div>
+
+      {/* projection */}
+      <div className="text-right shrink-0 min-w-[36px]">
+        <p className="text-[13px] font-bold tabular-nums text-white/75">{fmtProj(player.projection)}</p>
+        <p className="text-[7px] text-white/20 uppercase tracking-wide">proj</p>
+      </div>
+
+      {/* action badge */}
+      <ActionBadge action={player.action_canonical} actionDisplay={player.action_display} />
+
+      <ChevronRight size={12} className="text-white/12 group-hover:text-white/38 transition-colors shrink-0" />
+    </Link>
+  );
+}
+
+// ─── Roster section with line filters and freemium gating ────────────────────
+
+const LINE_FILTERS = [
+  { key: 'ALL', label: 'All' },
+  { key: 'MID', label: 'MID' },
+  { key: 'DEF', label: 'DEF' },
+  { key: 'FWD', label: 'FWD' },
+  { key: 'RUC', label: 'RUC' },
+] as const;
+
+type LineFilter = typeof LINE_FILTERS[number]['key'];
+
+const FREE_ROSTER_LIMIT = 8;
+
+function RosterSection({
+  players, isPremium, teamName, accentColor,
+}: {
+  players: TeamPlayer[];
+  isPremium: boolean;
+  teamName: string;
+  accentColor: string;
+}) {
+  const [activeFilter, setActiveFilter] = useState<LineFilter>('ALL');
+
+  const filtered = useMemo(() => {
+    if (activeFilter === 'ALL') return players;
+    return players.filter(p => {
+      const pg = (p.position_group ?? p.position ?? '').toUpperCase();
+      if (activeFilter === 'MID') return pg.startsWith('MID') || pg === 'C';
+      if (activeFilter === 'DEF') return pg.startsWith('DEF') || pg === 'D';
+      if (activeFilter === 'FWD') return pg.startsWith('FWD') || pg === 'F';
+      if (activeFilter === 'RUC') return pg === 'RUC' || pg === 'R';
+      return true;
+    });
+  }, [players, activeFilter]);
+
+  const hasRucks = players.some(p => {
+    const pg = (p.position_group ?? p.position ?? '').toUpperCase();
+    return pg === 'RUC' || pg === 'R';
+  });
+
+  // free users: show first 8, then gate
+  const visibleRows = isPremium ? filtered : filtered.slice(0, FREE_ROSTER_LIMIT);
+  const gatedCount  = !isPremium && filtered.length > FREE_ROSTER_LIMIT
+    ? filtered.length - FREE_ROSTER_LIMIT
+    : 0;
+
+  // column header labels
+  const colHeaders = [
+    { label: 'Player', className: 'flex-1' },
+    { label: 'Pos',    className: 'hidden sm:block w-7 text-center' },
+    { label: 'Price',  className: 'hidden sm:block w-10 text-right' },
+    { label: 'BE',     className: 'hidden md:block w-10 text-right' },
+    { label: 'Edge',   className: 'hidden md:block w-10 text-right' },
+    { label: 'Proj',   className: 'w-9 text-right' },
+    { label: 'Signal', className: 'w-14 text-right' },
+  ];
+
+  return (
+    <div>
+      {/* section header + filters */}
+      <div className="flex flex-wrap items-center gap-3 mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-white/25"><Users size={13} /></span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">Full Roster</span>
+        </div>
+        <div className="flex-1 hidden sm:block h-px bg-white/[0.05]" />
+        {/* line filter chips */}
+        <div className="flex items-center gap-1.5 ml-auto">
+          {LINE_FILTERS.filter(f => f.key !== 'RUC' || hasRucks).map(f => (
+            <button
+              key={f.key}
+              onClick={() => setActiveFilter(f.key)}
+              className={[
+                'px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all',
+                activeFilter === f.key
+                  ? 'text-black'
+                  : 'text-white/35 bg-white/[0.04] border border-white/[0.07] hover:text-white/60 hover:bg-white/[0.07]',
+              ].join(' ')}
+              style={activeFilter === f.key ? { backgroundColor: accentColor, border: `1px solid ${accentColor}` } : {}}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <div className="flex items-center gap-3 shrink-0">
-        {isPremium && player.edge_canonical != null && (
-          <div className="text-right hidden sm:block">
-            <p className="text-[8px] text-white/22 uppercase tracking-wide">Edge</p>
-            <p className={`text-[11px] font-semibold tabular-nums ${getEdgeColor(player.edge_canonical)}`}>
-              {fmtEdge(player.edge_canonical)}
-            </p>
-          </div>
-        )}
-        {!isPremium && (
-          <div className="text-right hidden sm:block">
-            <p className="text-[8px] text-white/22 uppercase tracking-wide">Edge</p>
-            <p className="text-[11px] text-white/18"><LockedField /></p>
-          </div>
-        )}
-        <div className="text-right min-w-[38px]">
-          <p className="text-[13px] font-bold text-white/75 tabular-nums">{fmtProj(player.projection)}</p>
-          <p className="text-[8px] text-white/22 uppercase tracking-wide">proj</p>
+      {players.length === 0 ? (
+        <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-4 py-8 text-center">
+          <p className="text-sm text-white/40">No player data available yet.</p>
+          <p className="text-[11px] text-white/25 mt-1">Check back after round data is processed.</p>
         </div>
-        <ActionBadge action={player.action_canonical} actionDisplay={player.action_display} />
-        <ChevronRight size={13} className="text-white/15 group-hover:text-white/38 transition-colors" />
-      </div>
-    </Link>
+      ) : (
+        <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] overflow-hidden">
+          {/* column header row */}
+          <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 border-b border-white/[0.05]">
+            <span className="w-4 shrink-0 hidden sm:block" />
+            <span className="w-5 shrink-0" />{/* action icon space */}
+            {colHeaders.map(h => (
+              <span
+                key={h.label}
+                className={`text-[7px] uppercase tracking-widest text-white/22 ${h.className}`}
+              >
+                {h.label}
+              </span>
+            ))}
+            <span className="w-3 shrink-0" />{/* chevron space */}
+          </div>
+
+          {/* visible rows */}
+          <div className="divide-y divide-white/[0.03]">
+            {visibleRows.map((player, idx) => (
+              <RosterRow
+                key={player.player_id ?? player.player_name}
+                player={player}
+                rank={idx + 1}
+                isPremium={isPremium}
+              />
+            ))}
+          </div>
+
+          {/* freemium gate */}
+          {gatedCount > 0 && (
+            <>
+              {/* blurred ghost rows */}
+              <div className="relative overflow-hidden">
+                <div className="divide-y divide-white/[0.03] pointer-events-none select-none" aria-hidden>
+                  {filtered.slice(FREE_ROSTER_LIMIT, FREE_ROSTER_LIMIT + 3).map((player, idx) => (
+                    <div
+                      key={player.player_id ?? player.player_name}
+                      className="flex items-center gap-3 px-4 py-2.5 opacity-30 blur-[2px]"
+                    >
+                      <span className="text-[10px] text-white/18 w-4">{FREE_ROSTER_LIMIT + idx + 1}</span>
+                      <div className="w-3 h-3 rounded-full bg-white/10 shrink-0" />
+                      <div className="flex-1 h-3 rounded bg-white/8" />
+                      <div className="w-12 h-3 rounded bg-white/8" />
+                      <div className="w-8 h-3 rounded bg-white/8" />
+                    </div>
+                  ))}
+                </div>
+                {/* gradient fade */}
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0d0d0d]/60 to-[#0d0d0d]" />
+              </div>
+
+              {/* unlock block */}
+              <div className="px-4 pt-2 pb-5 text-center border-t border-white/[0.05] space-y-3">
+                <div className="flex items-center justify-center gap-1.5">
+                  <Lock size={13} className="text-amber-400/70" />
+                  <p className="text-[12px] font-semibold text-white/60">
+                    {gatedCount} more {teamName.split(' ')[0]} players hidden
+                  </p>
+                </div>
+                <p className="text-[10px] text-white/32 leading-relaxed max-w-[280px] mx-auto">
+                  Upgrade for the full roster — breakeven scores, edge ratings, and value signals for every player.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                  <Link
+                    to="/upgrade"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 transition-colors px-4 py-2 text-[12px] font-bold text-black"
+                  >
+                    <Zap size={12} />
+                    Unlock Neeko+
+                  </Link>
+                  <Link
+                    to="/auth"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition-colors px-4 py-2 text-[12px] text-white/45 hover:text-white"
+                  >
+                    Sign in
+                  </Link>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* premium: empty filter result */}
+          {isPremium && filtered.length === 0 && (
+            <div className="px-4 py-8 text-center">
+              <p className="text-[12px] text-white/35">No {activeFilter} players in this squad.</p>
+            </div>
+          )}
+
+          {/* premium: result count footer */}
+          {isPremium && filtered.length > 0 && (
+            <div className="px-4 py-2 border-t border-white/[0.05] flex items-center justify-between">
+              <span className="text-[8px] text-white/20 uppercase tracking-widest">
+                {filtered.length} player{filtered.length !== 1 ? 's' : ''}
+                {activeFilter !== 'ALL' ? ` · ${activeFilter}` : ''}
+              </span>
+              <span className="text-[8px] text-white/20 uppercase tracking-widest">sorted by projection</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -995,8 +1198,6 @@ export default function AFLTeamPage() {
   const accentColor = getTeamAccentColour(teamName.split(' ')[0]) ?? '#4ade80';
   const accentSafe  = accentColor === '#FFD200' ? '#F5C84C' : accentColor;
 
-  const visiblePlayers = isPremium ? players : players.slice(0, FREE_PLAYER_LIMIT);
-  const hasMore = !isPremium && players.length > FREE_PLAYER_LIMIT;
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (loading) {
@@ -1562,39 +1763,14 @@ export default function AFLTeamPage() {
           )}
 
           {/* ══════════════════════════════════════════
-              FULL ROSTER
+              ROSTER
           ══════════════════════════════════════════ */}
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-white/25"><Users size={13} /></span>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">Full Roster</span>
-              <div className="flex-1 h-px bg-white/[0.05]" />
-              <span className="text-[9px] text-white/22 uppercase tracking-wide">sorted by projection</span>
-            </div>
-
-            {players.length === 0 ? (
-              <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-4 py-8 text-center">
-                <p className="text-sm text-white/40">No player data available yet.</p>
-                <p className="text-[11px] text-white/25 mt-1">Check back after round data is processed.</p>
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                {visiblePlayers.map((player, idx) => (
-                  <RosterRow
-                    key={player.player_id ?? player.player_name}
-                    player={player}
-                    rank={idx + 1}
-                    isPremium={isPremium}
-                  />
-                ))}
-                {hasMore && (
-                  <div className="pt-2">
-                    <PremiumCTA teamName={teamName} />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+          <RosterSection
+            players={players}
+            isPremium={isPremium}
+            teamName={teamName}
+            accentColor={accentSafe}
+          />
 
           {/* ══════════════════════════════════════════
               EXPLORE / RELATED
