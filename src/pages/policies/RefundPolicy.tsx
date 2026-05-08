@@ -19,8 +19,8 @@ const TOC = [
 
 function Section({ id, num, title, children }: { id: string; num: string; title: string; children: React.ReactNode }) {
   return (
-    <div id={id} className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] px-6 py-5">
-      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/20 mb-2">{num}</p>
+    <div id={id} className="scroll-mt-24 rounded-2xl border border-white/[0.07] bg-[#0e0e0e] px-6 py-5">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/35 mb-2">{num}</p>
       <h2 className="text-base font-bold text-white mb-4">{title}</h2>
       {children}
     </div>
@@ -28,15 +28,15 @@ function Section({ id, num, title, children }: { id: string; num: string; title:
 }
 
 function Prose({ children }: { children: React.ReactNode }) {
-  return <div className="text-sm text-white/45 leading-relaxed space-y-3">{children}</div>;
+  return <div className="text-sm text-white/60 leading-relaxed space-y-3">{children}</div>;
 }
 
 function BulletList({ items }: { items: (string | React.ReactNode)[] }) {
   return (
-    <ul className="space-y-2 text-sm text-white/40 mt-2">
+    <ul className="space-y-2 text-sm text-white/60 mt-2">
       {items.map((item, i) => (
         <li key={i} className="flex gap-2">
-          <span className="text-white/20 mt-0.5 shrink-0">—</span>
+          <span className="text-white/35 mt-0.5 shrink-0">—</span>
           <span>{item}</span>
         </li>
       ))}
@@ -52,14 +52,14 @@ export default function RefundPolicy() {
       <Helmet>
         <title>Refund Policy | Neeko Sports Stats</title>
         <meta name="description" content="Refund policy for Neeko Sports Stats. Covers Season Pass and Weekly plan refund terms, cancellation and how to request a refund." />
-        <meta name="robots" content="noindex, nofollow" />
+        <meta name="robots" content="noindex, follow" />
       </Helmet>
       <div className="min-h-screen bg-[#070707] text-white">
         <div className="max-w-3xl mx-auto px-4 py-16">
 
           <button
             onClick={() => navigate("/policies")}
-            className="flex items-center gap-2 text-white/30 hover:text-white/60 text-sm mb-10 transition-colors"
+            className="flex items-center gap-2 text-white/55 hover:text-white/80 text-sm mb-10 transition-colors"
           >
             <ArrowLeft size={14} />
             Back to Policies
@@ -77,7 +77,7 @@ export default function RefundPolicy() {
             <ol className="space-y-1.5">
               {TOC.map(({ id, label }) => (
                 <li key={id}>
-                  <a href={`#${id}`} className="text-sm text-white/40 hover:text-white/70 transition-colors">{label}</a>
+                  <a href={`#${id}`} className="text-sm text-white/55 hover:text-white/80 transition-colors">{label}</a>
                 </li>
               ))}
             </ol>
@@ -101,7 +101,7 @@ export default function RefundPolicy() {
                     <p className="text-sm font-bold text-white/80 mb-1">
                       Season Pass — ${NEEKO_PRICING.season.price} AUD
                     </p>
-                    <p className="text-sm text-white/40">
+                    <p className="text-sm text-white/60">
                       One-time payment. Full access for the entire 2026 AFL season. No recurring billing.
                     </p>
                   </div>
@@ -109,7 +109,7 @@ export default function RefundPolicy() {
                     <p className="text-sm font-bold text-white/80 mb-1">
                       Weekly — ${NEEKO_PRICING.weekly.price} AUD / week
                     </p>
-                    <p className="text-sm text-white/40">
+                    <p className="text-sm text-white/60">
                       Recurring weekly billing via Stripe. Automatically renews unless cancelled before the next billing date. A receipt is sent by email after each successful charge.
                     </p>
                   </div>
@@ -143,14 +143,14 @@ export default function RefundPolicy() {
                   "Extended service outages of 48 or more consecutive hours",
                   "Technical access failures that prevent use of the purchased plan",
                 ]} />
-                <p>Refund requests are assessed on a case-by-case basis and are not guaranteed outside the circumstances listed above.</p>
+                <p>Refund requests are assessed in accordance with this policy and applicable Australian Consumer Law. Where a refund is required by law, it will be provided. Other requests may be reviewed on a case-by-case basis.</p>
               </Prose>
             </Section>
 
             <Section id="s5" num="5" title="Change of Mind">
               <Prose>
                 <p>
-                  Change-of-mind refunds are generally not provided once access has been granted and the subscription period has begun. This includes forgetting to cancel before a renewal date or dissatisfaction with the accuracy of projections or data.
+                  Change-of-mind refunds are not provided once digital access has been granted and the subscription period has begun, except where required by applicable law. This includes forgetting to cancel before a renewal date or dissatisfaction with the accuracy of projections or data.
                 </p>
                 <p>
                   If you believe your situation warrants consideration, contact us and we will review it.
@@ -185,7 +185,7 @@ export default function RefundPolicy() {
                   If you believe a charge was made in error, please contact us before disputing the charge with your bank. We are generally able to resolve billing issues faster than the chargeback process.
                 </p>
                 <p>
-                  Filing a chargeback without first contacting support may result in account suspension. Fraudulent or unjustified chargebacks may be referred to Stripe's fraud monitoring systems.
+                  Filing a chargeback without first contacting support may result in account suspension. Fraudulent or unjustified chargebacks may result in account review, suspension, or dispute handling through Stripe.
                 </p>
               </Prose>
             </Section>

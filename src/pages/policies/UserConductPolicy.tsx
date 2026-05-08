@@ -16,8 +16,8 @@ const TOC = [
 
 function Section({ id, num, title, children }: { id: string; num: string; title: string; children: React.ReactNode }) {
   return (
-    <div id={id} className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] px-6 py-5">
-      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/20 mb-2">{num}</p>
+    <div id={id} className="scroll-mt-24 rounded-2xl border border-white/[0.07] bg-[#0e0e0e] px-6 py-5">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/35 mb-2">{num}</p>
       <h2 className="text-base font-bold text-white mb-4">{title}</h2>
       {children}
     </div>
@@ -25,15 +25,15 @@ function Section({ id, num, title, children }: { id: string; num: string; title:
 }
 
 function Prose({ children }: { children: React.ReactNode }) {
-  return <div className="text-sm text-white/45 leading-relaxed space-y-3">{children}</div>;
+  return <div className="text-sm text-white/60 leading-relaxed space-y-3">{children}</div>;
 }
 
 function BulletList({ items }: { items: (string | React.ReactNode)[] }) {
   return (
-    <ul className="space-y-2 text-sm text-white/40 mt-2">
+    <ul className="space-y-2 text-sm text-white/60 mt-2">
       {items.map((item, i) => (
         <li key={i} className="flex gap-2">
-          <span className="text-white/20 mt-0.5 shrink-0">—</span>
+          <span className="text-white/35 mt-0.5 shrink-0">—</span>
           <span>{item}</span>
         </li>
       ))}
@@ -49,14 +49,14 @@ export default function UserConductPolicy() {
       <Helmet>
         <title>User Conduct Policy | Neeko Sports Stats</title>
         <meta name="description" content="User conduct policy for Neeko Sports Stats. Covers acceptable use, account misuse, scraping, content standards and enforcement." />
-        <meta name="robots" content="noindex, nofollow" />
+        <meta name="robots" content="noindex, follow" />
       </Helmet>
       <div className="min-h-screen bg-[#070707] text-white">
         <div className="max-w-3xl mx-auto px-4 py-16">
 
           <button
             onClick={() => navigate("/policies")}
-            className="flex items-center gap-2 text-white/30 hover:text-white/60 text-sm mb-10 transition-colors"
+            className="flex items-center gap-2 text-white/55 hover:text-white/80 text-sm mb-10 transition-colors"
           >
             <ArrowLeft size={14} />
             Back to Policies
@@ -74,7 +74,7 @@ export default function UserConductPolicy() {
             <ol className="space-y-1.5">
               {TOC.map(({ id, label }) => (
                 <li key={id}>
-                  <a href={`#${id}`} className="text-sm text-white/40 hover:text-white/70 transition-colors">{label}</a>
+                  <a href={`#${id}`} className="text-sm text-white/55 hover:text-white/80 transition-colors">{label}</a>
                 </li>
               ))}
             </ol>
@@ -111,7 +111,7 @@ export default function UserConductPolicy() {
                   "Filing fraudulent chargebacks without first contacting support",
                   "Impersonating another user, staff member, or organisation",
                 ]} />
-                <p className="text-white/30 mt-2">
+                <p className="text-white/50 mt-2">
                   Accounts terminated for misuse forfeit all subscription benefits. Refunds in such cases are subject to the Refund Policy and applicable law.
                 </p>
               </Prose>
@@ -131,7 +131,7 @@ export default function UserConductPolicy() {
                   "Making excessive automated requests that degrade platform performance for other users",
                   "Using premium data for commercial purposes without written permission",
                 ]} />
-                <p className="text-white/30 mt-2">
+                <p className="text-white/50 mt-2">
                   Detection of automated access will result in immediate IP and account blocking. Legal action may follow for material data theft.
                 </p>
               </Prose>
@@ -158,7 +158,7 @@ export default function UserConductPolicy() {
                   <><strong className="text-white/60">Permanent ban</strong> — fraud, scraping, credential sharing, chargeback abuse</>,
                   <><strong className="text-white/60">Legal referral</strong> — data theft or other criminal conduct</>,
                 ]} />
-                <p className="text-white/30 mt-2">
+                <p className="text-white/50 mt-2">
                   To appeal a suspension, contact admin@neekostats.com.au within 14 days. Appeals are reviewed within 5–7 business days.
                 </p>
               </Prose>
