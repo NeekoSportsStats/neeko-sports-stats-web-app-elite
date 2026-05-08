@@ -241,15 +241,15 @@ export default function AFLPlayersPage() {
   const totalCount = rows.length;
 
   const pageUrl = "https://neekostats.com.au/sports/afl/players";
-  const pageTitle = "AFL Fantasy Players Directory 2026 | Neeko";
-  const pageDescription = "Browse every AFL Fantasy player for the 2026 season. Search by name, filter by team or position, and jump to player detail pages for projections, signals and AI analysis.";
+  const pageTitle = "AFL Fantasy Player Directory 2026 | Neeko Sports";
+  const pageDescription = "Search every 2026 AFL Fantasy player by name, team or position. View basic player info for free, or unlock projections, signals and AI analysis with Neeko+.";
 
   const breadcrumbJsonLd = JSON.stringify({
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
       { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
-      { "@type": "ListItem", "position": 2, "name": "AFL Fantasy Players", "item": pageUrl },
+      { "@type": "ListItem", "position": 2, "name": "AFL Fantasy Player Directory", "item": pageUrl },
     ],
   });
 
@@ -295,26 +295,31 @@ export default function AFLPlayersPage() {
             margin: 0,
             lineHeight: 1.1,
           }}>
-            Players &amp; Teams
+            AFL Fantasy Player Directory
           </h1>
           <p style={{
             marginTop: 8,
             fontSize: 13.5,
             color: "rgba(255,255,255,0.38)",
             lineHeight: 1.5,
-            maxWidth: 520,
+            maxWidth: 580,
           }}>
-            Every player in the 2026 AFL Fantasy season. Search by name, filter by position or team, then jump to any player or team page for the full breakdown.
+            Search every 2026 AFL Fantasy player by name, team or position. View basic player info for free, or unlock projections, signals and AI analysis with Neeko+.
           </p>
         </div>
 
         {/* ── Teams grid ────────────────────────────────────────────────── */}
         <section style={{ marginBottom: 36 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-            <Shield size={13} style={{ color: "rgba(255,255,255,0.30)" }} />
-            <h2 style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(255,255,255,0.30)" }}>
-              Browse by Team
-            </h2>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Shield size={13} style={{ color: "rgba(255,255,255,0.30)" }} />
+              <h2 style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(255,255,255,0.30)" }}>
+                Browse by Team
+              </h2>
+            </div>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", fontWeight: 500 }}>
+              Shortcut to each team's player page
+            </span>
           </div>
           <div style={{
             display: "grid",
