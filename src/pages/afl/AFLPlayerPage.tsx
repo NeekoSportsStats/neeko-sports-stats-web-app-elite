@@ -1139,9 +1139,44 @@ export default function AFLPlayerPage() {
   }
 
   // ── SEO ───────────────────────────────────────────────────────────────────
-  const pageTitle       = `${player.player_name}${player.team ? ` (${player.team})` : ''} AFL Fantasy 2026 | ${posName} Stats & History | Neeko`;
-  const pageDescription = `${player.player_name} AFL Fantasy 2026. Season avg: ${player.season_avg != null ? Math.round(player.season_avg) : 'TBC'} pts. Price: ${fmtPriceHelper(player.price)}. ${player.games_played ?? 0} games played. Updated weekly.`;
   const pageUrl         = `https://neekostats.com.au/sports/afl/players/${slug}`;
+  const pageTitle       = `${player.player_name} AFL Fantasy 2026 Stats, Form & Projection | Neeko Sports Stats`;
+  const pageDescription = `View ${player.player_name} AFL Fantasy 2026 stats, recent form, price, season average, projection and fantasy analysis with Neeko Sports Stats.`;
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebPage',
+        '@id': pageUrl,
+        url: pageUrl,
+        name: pageTitle,
+        description: pageDescription,
+        inLanguage: 'en-AU',
+        isPartOf: { '@id': 'https://neekostats.com.au/#website' },
+        about: {
+          '@type': 'Person',
+          name: player.player_name,
+          ...(player.team       ? { memberOf: { '@type': 'SportsTeam', name: player.team, sport: 'Australian Rules Football' } } : {}),
+          ...(posName           ? { jobTitle: `${posName} – AFL Fantasy` } : {}),
+        },
+        publisher: {
+          '@type': 'Organization',
+          '@id': 'https://neekostats.com.au/#organization',
+          name: 'Neeko Sports Stats',
+          url: 'https://neekostats.com.au',
+        },
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home',         item: 'https://neekostats.com.au' },
+          { '@type': 'ListItem', position: 2, name: 'AFL Rankings', item: 'https://neekostats.com.au/fantasy/rankings' },
+          ...(posName && posSlug ? [{ '@type': 'ListItem', position: 3, name: `${posName} Rankings`, item: `https://neekostats.com.au/sports/afl/positions/${posSlug}` }] : []),
+          { '@type': 'ListItem', position: posName && posSlug ? 4 : 3, name: player.player_name, item: pageUrl },
+        ],
+      },
+    ],
+  };
 
   const delta3 = player.avg_last_3 != null && player.season_avg != null
     ? Math.round(player.avg_last_3 - player.season_avg) : null;
@@ -1150,35 +1185,19 @@ export default function AFLPlayerPage() {
     <>
       <Helmet>
         <title>{pageTitle}</title>
-        <meta name="description"          content={pageDescription} />
-        <meta name="keywords"             content={`${player.player_name}, AFL Fantasy, AFL Fantasy 2026, ${player.team ?? ''}, ${posName}, ${player.player_name} stats, fantasy 2026`} />
-        <meta property="og:title"         content={pageTitle} />
-        <meta property="og:description"   content={pageDescription} />
-        <meta property="og:type"          content="website" />
-        <meta property="og:url"           content={pageUrl} />
-        <meta property="og:site_name"     content="Neeko Sports" />
-        <link rel="canonical"             href={pageUrl} />
-        <meta name="robots"               content="index, follow" />
-        <meta name="twitter:card"         content="summary_large_image" />
-        <meta name="twitter:title"        content={pageTitle} />
-        <meta name="twitter:description"  content={pageDescription} />
-        <script type="application/ld+json">{JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'Person',
-          name: player.player_name,
-          description: pageDescription,
-          url: pageUrl,
-          memberOf: player.team ? { '@type': 'SportsTeam', name: player.team } : undefined,
-          publisher: { '@type': 'Organization', name: 'Neeko Sports', url: 'https://neekostats.com.au' },
-          breadcrumb: {
-            '@type': 'BreadcrumbList',
-            itemListElement: [
-              { '@type': 'ListItem', position: 1, name: 'Home',         item: 'https://neekostats.com.au' },
-              { '@type': 'ListItem', position: 2, name: 'AFL Rankings', item: 'https://neekostats.com.au/fantasy/rankings' },
-              { '@type': 'ListItem', position: 3, name: player.player_name, item: pageUrl },
-            ],
-          },
-        })}</script>
+        <meta name="description"         content={pageDescription} />
+        <meta name="keywords"            content={`${player.player_name}, AFL Fantasy 2026, ${player.team ?? ''}, ${posName}, ${player.player_name} stats, AFL Fantasy stats, Neeko Sports Stats`} />
+        <link rel="canonical"            href={pageUrl} />
+        <meta name="robots"              content="index, follow" />
+        <meta property="og:type"         content="website" />
+        <meta property="og:url"          content={pageUrl} />
+        <meta property="og:title"        content={pageTitle} />
+        <meta property="og:description"  content={pageDescription} />
+        <meta property="og:site_name"    content="Neeko Sports Stats" />
+        <meta name="twitter:card"        content="summary" />
+        <meta name="twitter:title"       content={pageTitle} />
+        <meta name="twitter:description" content={pageDescription} />
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
       <div className="min-h-screen bg-[#080808]">
