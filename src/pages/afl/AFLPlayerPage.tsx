@@ -476,24 +476,6 @@ function SimilarPlayerRow({ player, isPremium }: { player: SimilarPlayer; isPrem
   );
 }
 
-/** Nav card for Team / Position */
-function NavCard({ to, label, detail, icon }: {
-  to: string; label: string; detail: string; icon: React.ReactNode;
-}) {
-  return (
-    <Link
-      to={to}
-      className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-[#0c0c0c] px-4 py-3 hover:bg-white/[0.025] hover:border-white/[0.12] transition-all group"
-    >
-      <span className="text-white/20 group-hover:text-white/38 transition-colors shrink-0">{icon}</span>
-      <div className="flex-1 min-w-0">
-        <p className="text-[9px] uppercase tracking-widest text-white/22 mb-0.5">{label}</p>
-        <p className="text-[12px] font-semibold text-white/60 group-hover:text-white/82 transition-colors truncate">{detail}</p>
-      </div>
-      <ChevronRight size={11} className="text-white/15 group-hover:text-white/38 transition-colors shrink-0" />
-    </Link>
-  );
-}
 
 /** Compact Fantasy Decision module */
 function FantasyDecision({
@@ -721,7 +703,6 @@ function PlayerSEOBlock({ player, teamSlug, posSlug }: {
             {teamSlug && <Link to={`/sports/afl/teams/${teamSlug}`} className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">{player.team} players</Link>}
             {posSlug && <Link to={`/sports/afl/positions/${posSlug}`} className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">{posName} rankings</Link>}
             <Link to="/fantasy/market-watch" className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">Market Watch</Link>
-            <Link to="/fantasy/start-sit" className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">Start / Sit</Link>
           </div>
         </div>
       </div>
@@ -1407,6 +1388,45 @@ export default function AFLPlayerPage() {
                 </div>
               )}
 
+              {/* Related Links */}
+              <div>
+                <SectionLabel icon={<ChevronRight size={13} />} title="Related" />
+                <div className="flex flex-wrap gap-x-5 gap-y-2 px-0.5">
+                  {teamSlug && (
+                    <Link
+                      to={`/sports/afl/teams/${teamSlug}`}
+                      className="flex items-center gap-1.5 text-[11px] text-white/38 hover:text-white/70 transition-colors"
+                    >
+                      <Users size={10} className="shrink-0 text-white/22" />
+                      {player.team} players
+                    </Link>
+                  )}
+                  {posSlug && (
+                    <Link
+                      to={`/sports/afl/positions/${posSlug}`}
+                      className="flex items-center gap-1.5 text-[11px] text-white/38 hover:text-white/70 transition-colors"
+                    >
+                      <BarChart2 size={10} className="shrink-0 text-white/22" />
+                      {posName} rankings
+                    </Link>
+                  )}
+                  <Link
+                    to="/fantasy/rankings"
+                    className="flex items-center gap-1.5 text-[11px] text-white/38 hover:text-white/70 transition-colors"
+                  >
+                    <Activity size={10} className="shrink-0 text-white/22" />
+                    AFL Rankings
+                  </Link>
+                  <Link
+                    to="/fantasy/market-watch"
+                    className="flex items-center gap-1.5 text-[11px] text-white/38 hover:text-white/70 transition-colors"
+                  >
+                    <TrendingUp size={10} className="shrink-0 text-white/22" />
+                    Market Watch
+                  </Link>
+                </div>
+              </div>
+
               {/* SEO block — bottom of main column on desktop */}
               <div className="hidden lg:block">
                 <PlayerSEOBlock player={player} teamSlug={teamSlug} posSlug={posSlug} />
@@ -1452,17 +1472,6 @@ export default function AFLPlayerPage() {
                 </div>
               )}
 
-              {/* Team + Position nav cards */}
-              {(teamSlug || posSlug) && (
-                <div className={`grid gap-2 ${teamSlug && posSlug ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                  {teamSlug && (
-                    <NavCard to={`/sports/afl/teams/${teamSlug}`} label="Team" detail={player.team ?? ''} icon={<Users size={12} />} />
-                  )}
-                  {posSlug && (
-                    <NavCard to={`/sports/afl/positions/${posSlug}`} label="Position" detail={posName} icon={<BarChart2 size={12} />} />
-                  )}
-                </div>
-              )}
             </div>
           </div>
 
