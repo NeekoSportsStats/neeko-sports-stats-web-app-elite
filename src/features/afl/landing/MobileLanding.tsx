@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useRef, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowRight, ChevronRight, ChartBar as BarChart2Icon, Target,
   Zap, Check, Menu, X, Crown, TrendingUp, TriangleAlert as AlertTriangle,
@@ -7,7 +7,6 @@ import {
   FileText, Mail, LogIn,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
-import { useAuth } from "@/lib/auth";
 import type { StatBoardPlayer, StatBoardMatch } from "@/features/afl/stat-board/types";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
 
@@ -332,13 +331,22 @@ function MobileCompactPreview() {
     return (
       <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
         {[0, 1, 2].map(i => (
-          <div key={i} style={{ height: 52, background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.04)", animation: "shimmer 1.3s ease-in-out infinite", backgroundSize: "200% 100%" }} />
+          <div key={i} style={{ height: 52, background: "linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%)", backgroundSize: "200% 100%", backgroundPosition: "-200% 0", animation: "shimmer 1.3s ease-in-out infinite", borderBottom: "1px solid rgba(255,255,255,0.04)" }} />
         ))}
       </div>
     );
   }
 
-  if (players.length === 0) return null;
+  if (players.length === 0) {
+    return (
+      <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.07)", overflow: "hidden", background: "rgba(6,8,12,0.95)", padding: "18px 14px", textAlign: "center" }}>
+        <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.30)", lineHeight: 1.55 }}>
+          Preview updates before each round.<br />
+          <span style={{ color: "rgba(255,255,255,0.18)" }}>Check back closer to lockout.</span>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -427,7 +435,6 @@ const PREMIUM_ITEMS = [
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function MobileLanding({ isPremium }: Props) {
-  const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (

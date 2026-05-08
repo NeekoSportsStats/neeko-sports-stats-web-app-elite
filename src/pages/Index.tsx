@@ -145,7 +145,16 @@ function StatBoardPreview() {
     );
   }
 
-  if (players.length === 0) return null;
+  if (players.length === 0) {
+    return (
+      <div style={{ borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden", background: "rgba(6,8,12,0.92)", padding: "24px 16px", textAlign: "center" }}>
+        <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.32)", lineHeight: 1.55 }}>
+          Preview updates before each round.<br />
+          <span style={{ color: "rgba(255,255,255,0.18)" }}>Check back closer to lockout.</span>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ borderRadius: 12, border: "1px solid rgba(224,174,45,0.22)", overflow: "hidden", background: "rgba(6,8,12,0.92)", backdropFilter: "blur(12px)", boxShadow: "0 0 0 1px rgba(224,174,45,0.06) inset, 0 12px 48px rgba(0,0,0,0.65), 0 0 32px rgba(224,174,45,0.06)" }}>
