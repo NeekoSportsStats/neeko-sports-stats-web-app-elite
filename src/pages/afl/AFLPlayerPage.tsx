@@ -268,6 +268,162 @@ function PositionComparisonBar({ value, label, posLabel }: {
   );
 }
 
+// ─── Position Comparison types & component ────────────────────────────────────
+
+interface PosCompRow {
+  metric:          string;
+  player_value:    number;
+  position_count:  number;
+  percentile:      number;
+  position_label:  string;
+}
+
+const METRIC_LABELS: Record<string, string> = {
+  season_avg: 'Season Average',
+  last3_avg:  'Last 3 Average',
+  last5_avg:  'Last 5 Average',
+  price:      'Price',
+  consistency:'Consistency',
+};
+
+function PercentileBar({
+  label,
+  playerValue,
+  percentile,
+  positionLabel,
+  positionCount,
+  formatValue,
+}: {
+  label:          string;
+  playerValue:    number;
+  percentile:     number;
+  positionLabel:  string;
+  positionCount:  number;
+  formatValue:    (v: number) => string;
+}) {
+  const isStrong  = percentile >= 70;
+  const isMid     = percentile >= 40;
+  const barColor  = isStrong ? '#10b981' : isMid ? '#60a5fa' : '#f87171';
+  const qualifier = percentile >= 85 ? 'Elite' : percentile >= 70 ? 'Above average' :
+                    percentile >= 45 ? 'Average' : percentile >= 25 ? 'Below average' : 'Low';
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <span className="text-[10px] text-white/40">{label}</span>
+        </div>
+        <div className="text-right shrink-0">
+          <span className="text-[11px] font-bold tabular-nums" style={{ color: barColor }}>
+            Top {100 - percentile}%
+          </span>
+          <span className="ml-1.5 text-[9px] text-white/28">
+            {qualifier} among {positionLabel.toLowerCase()}
+          </span>
+        </div>
+      </div>
+      <div className="relative h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+        <div
+          className="absolute inset-y-0 left-0 rounded-full transition-all"
+          style={{ width: `${percentile}%`, background: barColor, opacity: 0.7 }}
+        />
+        <div
+          className="absolute inset-y-0 w-0.5 bg-white/30 rounded-full"
+          style={{ left: '50%' }}
+        />
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-[9px] text-white/20 tabular-nums">{formatValue(playerValue)}</span>
+        <span className="text-[9px] text-white/15">{positionCount} {positionLabel.toLowerCase()} with data</span>
+      </div>
+    </div>
+  );
+}
+
+function PositionComparisonSection({
+  rows,
+  isPremium,
+}: {
+  rows:       PosCompRow[];
+  isPremium:  boolean;
+}) {
+  if (rows.length === 0) return null;
+
+  const positionLabel = rows[0]?.position_label ?? 'Players';
+
+  // Metrics visible to free users
+  const FREE_METRICS  = ['season_avg', 'price'];
+  const freeRows      = rows.filter(r => FREE_METRICS.includes(r.metric) && r.percentile != null);
+  const premiumRows   = rows.filter(r => !FREE_METRICS.includes(r.metric) && r.percentile != null);
+
+  if (freeRows.length === 0 && premiumRows.length === 0) return null;
+
+  function fmtVal(metric: string, val: number): string {
+    if (metric === 'price') return `$${(val / 1000).toFixed(0)}k`;
+    if (metric === 'consistency') return `${Math.round(val)}%`;
+    return `${Math.round(val)} pts`;
+  }
+
+  const visibleFree    = freeRows;
+  const visiblePremium = isPremium ? premiumRows : [];
+  const lockedCount    = isPremium ? 0 : premiumRows.length;
+
+  return (
+    <div className="rounded-xl border border-white/[0.07] bg-[#0c0c0c] px-4 py-4 space-y-4">
+      {/* Free rows */}
+      {visibleFree.map(r => (
+        <PercentileBar
+          key={r.metric}
+          label={METRIC_LABELS[r.metric] ?? r.metric}
+          playerValue={r.player_value}
+          percentile={r.percentile}
+          positionLabel={positionLabel}
+          positionCount={r.position_count}
+          formatValue={v => fmtVal(r.metric, v)}
+        />
+      ))}
+
+      {/* Premium rows */}
+      {visiblePremium.map(r => (
+        <PercentileBar
+          key={r.metric}
+          label={METRIC_LABELS[r.metric] ?? r.metric}
+          playerValue={r.player_value}
+          percentile={r.percentile}
+          positionLabel={positionLabel}
+          positionCount={r.position_count}
+          formatValue={v => fmtVal(r.metric, v)}
+        />
+      ))}
+
+      {/* Locked gate for free users */}
+      {!isPremium && lockedCount > 0 && (
+        <div className="rounded-lg border border-amber-500/15 bg-amber-500/[0.04] px-3.5 py-3 flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold text-amber-400/70 uppercase tracking-wider">
+              {lockedCount} more comparison{lockedCount > 1 ? 's' : ''} on Neeko+
+            </p>
+            <p className="text-[9px] text-white/25 mt-0.5">
+              Last 3, Last 5, Consistency vs {positionLabel.toLowerCase()}
+            </p>
+          </div>
+          <Link
+            to="/upgrade"
+            className="shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-amber-500/30 bg-amber-500/[0.08] text-[9px] font-bold uppercase tracking-wider text-amber-400/80 hover:text-amber-400 hover:bg-amber-500/[0.14] transition-colors"
+          >
+            <Lock size={8} />
+            Upgrade
+          </Link>
+        </div>
+      )}
+
+      <p className="text-[9px] text-white/18 pt-0.5">
+        Percentiles calculated from active {positionLabel.toLowerCase()} with 3+ games in 2026.
+      </p>
+    </div>
+  );
+}
+
 /** Similar player row */
 function SimilarPlayerRow({ player, isPremium }: { player: SimilarPlayer; isPremium: boolean }) {
   const slug     = playerToSlug(player.player_name, player.team ?? undefined);
@@ -876,6 +1032,7 @@ export default function AFLPlayerPage() {
   const [error,        setError]        = useState(false);
   const [showFullAI,   setShowFullAI]   = useState(false);
   const [scoreStats,   setScoreStats]   = useState<ScoreStats | null>(null);
+  const [posComp,      setPosComp]      = useState<PosCompRow[]>([]);
 
   // ── Main data fetch ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -963,6 +1120,23 @@ export default function AFLPlayerPage() {
       } catch { /* silently skip */ }
     })();
   }, [player?.player_id, player?.player_name]);
+
+  // ── Fetch position comparison percentiles ────────────────────────────────
+  useEffect(() => {
+    if (!player?.player_id) return;
+    (async () => {
+      try {
+        const { data } = await supabase.rpc('get_position_comparison_safe', {
+          p_player_id: String(player.player_id),
+          p_user_id:   user?.id ?? null,
+        });
+        const rows = ((data as any[]) ?? []).filter(
+          (r: any) => r.percentile != null && r.position_count >= 3
+        ) as PosCompRow[];
+        setPosComp(rows);
+      } catch { /* silently skip */ }
+    })();
+  }, [player?.player_id, user?.id]);
 
   // ── Derived values ────────────────────────────────────────────────────────
   const posSlug  = player ? getPositionSlug(player.player_position) : null;
@@ -1263,22 +1437,11 @@ export default function AFLPlayerPage() {
                 </div>
               </div>
 
-              {/* Position context */}
-              {player.season_avg != null && (
+              {/* Position Comparison */}
+              {posComp.length > 0 && (
                 <div>
-                  <SectionLabel icon={<Target size={13} />} title="Position Context" />
-                  <div className="rounded-xl border border-white/[0.07] bg-[#0c0c0c] px-4 py-4 space-y-3.5">
-                    <PositionComparisonBar value={player.season_avg} label="Season Average" posLabel={posName} />
-                    {player.avg_last_3 != null && (
-                      <PositionComparisonBar value={player.avg_last_3} label="Last 3 Average" posLabel={posName} />
-                    )}
-                    {player.avg_last_5 != null && (
-                      <PositionComparisonBar value={player.avg_last_5} label="Last 5 Average" posLabel={posName} />
-                    )}
-                    <p className="text-[9px] text-white/20 pt-0.5">
-                      Position avg is estimated from typical {posName.replace(/s$/, '')} scoring ranges in AFL Fantasy 2026.
-                    </p>
-                  </div>
+                  <SectionLabel icon={<Target size={13} />} title="Position Comparison" />
+                  <PositionComparisonSection rows={posComp} isPremium={isPremium} />
                 </div>
               )}
 
