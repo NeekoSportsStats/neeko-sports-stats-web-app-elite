@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { Crown, Menu, X, TrendingUp, ChartBar as BarChart2, Users, Shield, CalendarDays } from "lucide-react";
+import { Crown, Menu, X, TableProperties, Star, Users, Shield } from "lucide-react";
 
 const NAV_LINKS = [
-  { label: "Current Week", to: "/fantasy/current-week", icon: CalendarDays },
-  { label: "Market Watch", to: "/fantasy/market-watch", icon: TrendingUp   },
-  { label: "Rankings",     to: "/fantasy/rankings",     icon: BarChart2    },
-  { label: "Players",      to: "/sports/afl/players",   icon: Users        },
-  { label: "Teams",        to: "/sports/afl/teams",     icon: Shield       },
+  { label: "Stat Board",  to: "/stat-board",          icon: TableProperties },
+  { label: "Fantasy Hub", to: "/fantasy",             icon: Star            },
+  { label: "Players",     to: "/sports/afl/players",  icon: Users           },
+  { label: "Teams",       to: "/sports/afl/teams",    icon: Shield          },
 ];
 
 export function LandingLayout() {
