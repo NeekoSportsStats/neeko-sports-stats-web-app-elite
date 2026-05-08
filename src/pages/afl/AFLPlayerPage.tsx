@@ -1391,7 +1391,7 @@ export default function AFLPlayerPage() {
                     />
                     <StatTile
                       label="High (L10)"
-                      value={<span className="text-white/55">{chartHighLow.high != null ? Math.round(chartHighLow.high) : '—'}</span>}
+                      value={<span className="text-white/55">{scoreStats?.high != null ? Math.round(scoreStats.high) : '—'}</span>}
                       sub="last 10 games"
                     />
                   </div>
