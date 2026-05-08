@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { Crown, Menu, X, Activity, TrendingUp, ChartBar as BarChart2, Users, Shield, CalendarDays } from "lucide-react";
+import { Crown, Menu, X, TrendingUp, ChartBar as BarChart2, Users, Shield, CalendarDays } from "lucide-react";
 
 const NAV_LINKS = [
-  { label: "Current Week", to: "/fantasy/current-week", icon: <CalendarDays size={14} /> },
-  { label: "Market Watch", to: "/fantasy/market-watch", icon: <TrendingUp size={14} /> },
-  { label: "Rankings",     to: "/fantasy/rankings",     icon: <BarChart2 size={14} /> },
-  { label: "Players",      to: "/sports/afl/players",   icon: <Users size={14} /> },
-  { label: "Teams",        to: "/sports/afl/teams",     icon: <Shield size={14} /> },
+  { label: "Current Week", to: "/fantasy/current-week", icon: CalendarDays },
+  { label: "Market Watch", to: "/fantasy/market-watch", icon: TrendingUp   },
+  { label: "Rankings",     to: "/fantasy/rankings",     icon: BarChart2    },
+  { label: "Players",      to: "/sports/afl/players",   icon: Users        },
+  { label: "Teams",        to: "/sports/afl/teams",     icon: Shield       },
 ];
 
 export function LandingLayout() {
@@ -31,7 +31,7 @@ export function LandingLayout() {
         borderBottom: "1px solid rgba(255,255,255,0.07)",
         display: "flex",
         alignItems: "center",
-        padding: "0 24px",
+        padding: "0 16px 0 8px",
         gap: 0,
       }}>
 
@@ -40,21 +40,21 @@ export function LandingLayout() {
           <img src="/logo.png" alt="Neeko" style={{ height: 80, width: "auto" }} />
         </Link>
 
-        {/* CENTER — Nav links (desktop) — absolutely centered on the full header width */}
-        <nav style={{
+        {/* CENTER — Nav links — matches Layout.tsx exactly */}
+        <nav className="landing-nav" style={{
           display: "flex",
           alignItems: "center",
-          gap: 4,
+          gap: 1,
           position: "absolute",
-          left: "calc(50% - 6px)",
+          left: "50%",
           transform: "translateX(-50%)",
         }}>
-          {NAV_LINKS.map(link => {
-            const active = location.pathname === link.to || location.pathname.startsWith(link.to + "/");
+          {NAV_LINKS.map(({ label, to, icon: Icon }) => {
+            const active = location.pathname === to || location.pathname.startsWith(to + "/");
             return (
               <Link
-                key={link.to}
-                to={link.to}
+                key={to}
+                to={to}
                 style={{
                   display: "flex", alignItems: "center", gap: 5,
                   fontSize: 12.5, fontWeight: active ? 700 : 500,
@@ -81,8 +81,8 @@ export function LandingLayout() {
                   }
                 }}
               >
-                <span style={{ opacity: 0.7 }}>{link.icon}</span>
-                <span className="nav-label">{link.label}</span>
+                <Icon size={13} style={{ opacity: 0.7 }} />
+                {label}
               </Link>
             );
           })}
@@ -91,7 +91,7 @@ export function LandingLayout() {
         {/* RIGHT — Auth buttons */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: "auto" }}>
           {!user && (
-            <Link to="/auth" style={{
+            <Link to="/auth" className="landing-sign-in" style={{
               fontSize: 13, fontWeight: 600,
               color: "rgba(255,255,255,0.80)",
               textDecoration: "none",
@@ -102,9 +102,7 @@ export function LandingLayout() {
               letterSpacing: "0.01em",
               whiteSpace: "nowrap",
               display: "none",
-            }}
-              className="sign-in-btn"
-            >
+            }}>
               Sign In
             </Link>
           )}
@@ -142,22 +140,21 @@ export function LandingLayout() {
           )}
 
           {user && (
-            <button onClick={signOut} style={{
+            <button onClick={signOut} className="landing-logout" style={{
               fontSize: 12, fontWeight: 500,
               color: "rgba(255,255,255,0.35)",
               background: "none", border: "none",
               cursor: "pointer", padding: "7px 10px",
               display: "none",
-            }}
-              className="logout-btn"
-            >
+            }}>
               Logout
             </button>
           )}
 
-          {/* Hamburger (mobile) */}
+          {/* Hamburger — mobile only */}
           <button
             onClick={() => setMenuOpen(v => !v)}
+            className="landing-hamburger"
             style={{
               display: "none",
               alignItems: "center", justifyContent: "center",
@@ -168,7 +165,6 @@ export function LandingLayout() {
               cursor: "pointer",
               color: "rgba(255,255,255,0.80)",
             }}
-            className="hamburger-btn"
             aria-label="Toggle menu"
           >
             {menuOpen ? <X size={18} /> : <Menu size={18} />}
@@ -176,54 +172,56 @@ export function LandingLayout() {
         </div>
       </header>
 
-      {/* ── MOBILE DRAWER ──────────────────────────────────────────────── */}
+      {/* ── MOBILE OVERLAY ─────────────────────────────────────────────── */}
       {menuOpen && (
         <div
           onClick={() => setMenuOpen(false)}
           style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 98,
+            position: "fixed", inset: 0, zIndex: 98,
             background: "rgba(0,0,0,0.55)",
           }}
         />
       )}
-      <div style={{
-        position: "fixed",
-        top: 60, right: 0,
-        width: 240,
-        background: "#0e1116",
-        border: "1px solid rgba(255,255,255,0.10)",
-        borderRadius: "0 0 0 12px",
-        zIndex: 99,
-        padding: "12px 0 20px",
-        transform: menuOpen ? "translateX(0)" : "translateX(100%)",
-        transition: "transform 0.22s cubic-bezier(0.4,0,0.2,1)",
-        display: "none",
-      }}
-        className="mobile-drawer"
+
+      {/* ── MOBILE DRAWER ──────────────────────────────────────────────── */}
+      <div
+        className="landing-drawer"
+        style={{
+          position: "fixed",
+          top: 60, right: 0,
+          width: 240,
+          background: "#0e1116",
+          border: "1px solid rgba(255,255,255,0.10)",
+          borderRadius: "0 0 0 12px",
+          zIndex: 99,
+          padding: "12px 0 20px",
+          transform: menuOpen ? "translateX(0)" : "translateX(100%)",
+          transition: "transform 0.22s cubic-bezier(0.4,0,0.2,1)",
+          display: "none",
+        }}
       >
-        {NAV_LINKS.map(link => {
-          const mobileActive = location.pathname === link.to || location.pathname.startsWith(link.to + "/");
+        {NAV_LINKS.map(({ label, to, icon: Icon }) => {
+          const mobileActive = location.pathname === to || location.pathname.startsWith(to + "/");
           return (
-          <Link
-            key={link.to}
-            to={link.to}
-            onClick={() => setMenuOpen(false)}
-            style={{
-              display: "flex", alignItems: "center", gap: 10,
-              fontSize: 14, fontWeight: 600,
-              color: mobileActive ? "#fff" : "rgba(255,255,255,0.65)",
-              textDecoration: "none",
-              padding: "11px 20px",
-              borderLeft: mobileActive ? "2px solid #facc15" : "2px solid transparent",
-              background: mobileActive ? "rgba(255,255,255,0.05)" : "transparent",
-            }}
-          >
-            {link.icon} {link.label}
-          </Link>
+            <Link
+              key={to}
+              to={to}
+              onClick={() => setMenuOpen(false)}
+              style={{
+                display: "flex", alignItems: "center", gap: 10,
+                fontSize: 14, fontWeight: 600,
+                color: mobileActive ? "#fff" : "rgba(255,255,255,0.65)",
+                textDecoration: "none",
+                padding: "11px 20px",
+                borderLeft: mobileActive ? "2px solid #facc15" : "2px solid transparent",
+                background: mobileActive ? "rgba(255,255,255,0.05)" : "transparent",
+              }}
+            >
+              <Icon size={15} style={{ opacity: 0.7 }} /> {label}
+            </Link>
           );
         })}
+
         <div style={{ margin: "12px 16px 0", borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
           {!user && (
             <Link to="/auth" onClick={() => setMenuOpen(false)} style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.75)", textDecoration: "none", padding: "8px 12px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)", textAlign: "center" }}>
@@ -233,6 +231,11 @@ export function LandingLayout() {
           {!isPremium && (
             <Link to="/neeko-plus" onClick={() => setMenuOpen(false)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 13, fontWeight: 800, color: "#130c00", textDecoration: "none", background: "linear-gradient(160deg, #fad52a, #e8a800)", padding: "9px 12px", borderRadius: 7 }}>
               <Crown size={13} /> Get Neeko+
+            </Link>
+          )}
+          {isPremium && (
+            <Link to="/account" onClick={() => setMenuOpen(false)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "#facc15", textDecoration: "none", border: "1px solid rgba(250,204,21,0.25)", padding: "9px 12px", borderRadius: 7 }}>
+              <Crown size={13} /> Account
             </Link>
           )}
           {user && (
@@ -266,17 +269,12 @@ export function LandingLayout() {
           <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.18)" }}>
             © {new Date().getFullYear()} Neeko Sports Stats
           </p>
-          <nav style={{
-            display: "flex",
-            flexWrap: "wrap",
-            gap: 20,
-            alignItems: "center",
-          }}>
+          <nav style={{ display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center" }}>
             {[
-              { label: "Policies",  to: "/policies" },
-              { label: "Contact",   to: "/contact"  },
-              { label: "About",     to: "/about"    },
-              { label: "FAQ",       to: "/faq"      },
+              { label: "Policies", to: "/policies" },
+              { label: "Contact",  to: "/contact"  },
+              { label: "About",    to: "/about"     },
+              { label: "FAQ",      to: "/faq"       },
             ].map(link => (
               <Link
                 key={link.to}
@@ -301,18 +299,15 @@ export function LandingLayout() {
 
       {/* ── RESPONSIVE STYLES ──────────────────────────────────────────── */}
       <style>{`
-        @media (max-width: 900px) {
-          header nav { display: none !important; }
-          .hamburger-btn { display: flex !important; }
-          .mobile-drawer { display: block !important; }
+        /* Match Layout.tsx: hide nav below 1024px (lg), show hamburger */
+        @media (max-width: 1023px) {
+          .landing-nav { display: none !important; }
+          .landing-hamburger { display: flex !important; }
+          .landing-drawer { display: block !important; }
         }
-        @media (min-width: 901px) {
-          .sign-in-btn { display: flex !important; }
-          .logout-btn { display: block !important; }
-          header nav { display: flex !important; }
-        }
-        @media (max-width: 680px) {
-          .nav-label { display: none; }
+        @media (min-width: 1024px) {
+          .landing-sign-in { display: flex !important; }
+          .landing-logout { display: block !important; }
         }
         @media (max-width: 600px) {
           footer > div {
@@ -320,9 +315,7 @@ export function LandingLayout() {
             align-items: center !important;
             text-align: center !important;
           }
-          footer nav {
-            justify-content: center !important;
-          }
+          footer nav { justify-content: center !important; }
         }
       `}</style>
     </div>
