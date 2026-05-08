@@ -22,6 +22,15 @@ import { NEEKO_PRICING, NeekoPlan } from "@/config/neekoPricing";
 
 const FEATURE_GROUPS = [
   {
+    title: "Stat Board & Stats Intelligence",
+    features: [
+      "Full Stat Board — players, teams & matches",
+      "Hit rates, stat trends and form cycles",
+      "Team concession data by position",
+      "Historical game logs for every player",
+    ],
+  },
+  {
     title: "Rankings & Projections",
     features: [
       "Full rankings for all 600+ players",
@@ -31,12 +40,12 @@ const FEATURE_GROUPS = [
     ],
   },
   {
-    title: "Decision Tools",
+    title: "Fantasy Decision Tools",
     features: [
       "Captain picks with confidence rating",
       "Weekly start/sit recommendations",
       "Breakout alerts before the market moves",
-      "Trap warnings — avoid costly mistakes",
+      "Trap warnings — avoid costly trade mistakes",
     ],
   },
   {
@@ -58,8 +67,8 @@ const TRUST_ITEMS = [
   },
   {
     icon: Target,
-    title: "Fantasy-first metrics",
-    description: "Every number tuned for AFL Fantasy — not real footy stats.",
+    title: "Stats and fantasy in one place",
+    description: "Stat trends, hit rates, matchup data, projections and fantasy signals — all connected.",
   },
   {
     icon: Zap,
@@ -163,7 +172,7 @@ const NeekoPlusPurchase = () => {
     "@context": "https://schema.org",
     "@type": "Product",
     "name": "Neeko+",
-    "description": "Premium AFL Fantasy analytics. Full player rankings, AI breakdowns, captain signals, breakout alerts and trade targets.",
+    "description": "Premium AFL stats intelligence. Full Stat Board, player rankings, AI breakdowns, breakeven scores, captain signals, breakout alerts and trade targets.",
     "url": "https://neekostats.com.au/neeko-plus",
     "brand": { "@type": "Brand", "name": "Neeko Sports Stats" },
     "offers": [
@@ -195,13 +204,13 @@ const NeekoPlusPurchase = () => {
   return (
     <div style={{ minHeight: "100vh", background: "#080707" }}>
       <Helmet>
-        <title>Neeko+ — AFL Fantasy Analytics | Neeko Sports Stats</title>
-        <meta name="description" content={`Upgrade to Neeko+ for full AFL Fantasy rankings, AI player analysis, captain signals, breakout alerts and trade targets. Season Pass $${NEEKO_PRICING.season.price} AUD.`} />
+        <title>Neeko+ — AFL Stats Intelligence | Neeko Sports Stats</title>
+        <meta name="description" content={`Upgrade to Neeko+ for the full AFL stats edge — Stat Board, player rankings, AI analysis, breakeven scores, captain signals and trade targets. Season Pass $${NEEKO_PRICING.season.price} AUD.`} />
         <link rel="canonical" href="https://neekostats.com.au/neeko-plus" />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://neekostats.com.au/neeko-plus" />
-        <meta property="og:title" content="Neeko+ — AFL Fantasy Analytics" />
-        <meta property="og:description" content={`Full AFL Fantasy edge. Season Pass $${NEEKO_PRICING.season.price} AUD — updated every round.`} />
+        <meta property="og:title" content="Neeko+ — AFL Stats Intelligence" />
+        <meta property="og:description" content={`Full AFL stats and fantasy edge. Season Pass $${NEEKO_PRICING.season.price} AUD — updated every round.`} />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
         <meta name="twitter:card" content="summary_large_image" />
         <script type="application/ld+json">{JSON.stringify(productSchema)}</script>
@@ -246,7 +255,7 @@ const NeekoPlusPurchase = () => {
             lineHeight: 1.1,
             margin: "0 0 14px",
           }}>
-            Your AFL Fantasy<br />
+            Your AFL Stats<br />
             <span style={{ color: "#E0AE2D" }}>Edge, Every Round.</span>
           </h1>
 
@@ -257,7 +266,7 @@ const NeekoPlusPurchase = () => {
             lineHeight: 1.6,
             maxWidth: 420,
           }}>
-            Trade smarter, captain better, and avoid the traps your rivals fall into. Updated before every lockout.
+            Unlock full player projections, breakevens, stat trends, hit rates, team dashboards, market signals and fantasy decision tools — updated before every lockout.
           </p>
         </div>
 
@@ -582,7 +591,7 @@ const NeekoPlusPurchase = () => {
             Why coaches trust Neeko+
           </h2>
           <p style={{ fontSize: 13, color: "rgba(255,255,255,0.28)", textAlign: "center", margin: "0 0 28px" }}>
-            Built for serious AFL Fantasy managers.
+            Built for serious AFL stats and fantasy managers.
           </p>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -609,7 +618,7 @@ const NeekoPlusPurchase = () => {
           </div>
 
           <p style={{ textAlign: "center", marginTop: 26, fontSize: 11, color: "rgba(255,255,255,0.18)", letterSpacing: "0.02em" }}>
-            No betting tips. No hype. Just clean AFL Fantasy intelligence, updated every round.
+            No betting tips. No hype. Just clean AFL stats intelligence, updated every round.
           </p>
         </div>
 
