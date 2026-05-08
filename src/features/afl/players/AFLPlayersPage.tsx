@@ -366,7 +366,7 @@ export default function AFLPlayersPage() {
           </div>
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
             gap: 5,
           }}>
             {AFL_TEAMS.map(team => (
@@ -579,212 +579,233 @@ export default function AFLPlayersPage() {
         {/* ── Player table ───────────────────────────────────────────────── */}
         {!loading && !error && (
           <div style={{ overflow: "hidden", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
-                {/* Sticky header */}
-                <thead>
-                  <tr style={{ background: "rgba(18,18,18,1)", borderBottom: "1px solid rgba(255,255,255,0.08)", position: "sticky", top: 0, zIndex: 2 }}>
-                    <SortTh
-                      label="Player"
-                      col="player_name"
-                      current={sortBy}
-                      dir={sortDir}
-                      onClick={handleSort}
-                      style={{ width: "34%", textAlign: "left", paddingLeft: 14 }}
-                    />
-                    <th style={thStyle}>Team</th>
-                    <th style={thStyle}>Pos</th>
-                    <SortTh label="Price" col="price" current={sortBy} dir={sortDir} onClick={handleSort} />
-                    {isPremium ? (
-                      <SortTh label="Proj." col="projection" current={sortBy} dir={sortDir} onClick={handleSort} />
-                    ) : (
-                      <th style={thStyle}>2026 Avg</th>
-                    )}
-                    <th style={thStyle}>
-                      {isPremium ? "Signal" : (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          Signal
-                          <Lock size={10} style={{ color: "rgba(245,200,76,0.55)" }} />
-                        </span>
-                      )}
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {filtered.length === 0 && (
-                    <tr>
-                      <td colSpan={6} style={{ padding: "32px 16px", textAlign: "center", color: "rgba(255,255,255,0.28)", fontSize: 13 }}>
-                        No players match your filters.
-                      </td>
-                    </tr>
+            {/*
+              Table strategy: Team and Pos columns are hidden on mobile via class="sm-col"
+              and shown as a sub-line under the player name instead.
+              This eliminates the need for minWidth / horizontal scroll.
+            */}
+            <style>{`
+              @media (max-width: 539px) {
+                .plyr-col-team, .plyr-col-pos { display: none; }
+                .plyr-mobile-sub { display: block; }
+              }
+              @media (min-width: 540px) {
+                .plyr-mobile-sub { display: none; }
+              }
+            `}</style>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              {/* Sticky header */}
+              <thead>
+                <tr style={{ background: "rgba(18,18,18,1)", borderBottom: "1px solid rgba(255,255,255,0.08)", position: "sticky", top: 0, zIndex: 2 }}>
+                  <SortTh
+                    label="Player"
+                    col="player_name"
+                    current={sortBy}
+                    dir={sortDir}
+                    onClick={handleSort}
+                    style={{ textAlign: "left", paddingLeft: 14 }}
+                  />
+                  <th style={thStyle} className="plyr-col-team">Team</th>
+                  <th style={thStyle} className="plyr-col-pos">Pos</th>
+                  <SortTh label="Price" col="price" current={sortBy} dir={sortDir} onClick={handleSort} />
+                  {isPremium ? (
+                    <SortTh label="Proj." col="projection" current={sortBy} dir={sortDir} onClick={handleSort} />
+                  ) : (
+                    <th style={thStyle}>Avg</th>
                   )}
+                  <th style={thStyle}>
+                    {isPremium ? "Signal" : (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        Signal
+                        <Lock size={10} style={{ color: "rgba(245,200,76,0.55)" }} />
+                      </span>
+                    )}
+                  </th>
+                </tr>
+              </thead>
 
-                  {tableItems.map((item) => {
-                    if (item.kind === "header") {
-                      return (
-                        <tr
-                          key={`header-${item.letter}`}
-                          ref={el => { letterRefs.current[item.letter] = el; }}
-                          style={{ background: "rgba(255,255,255,0.02)" }}
-                        >
-                          <td
-                            colSpan={6}
-                            style={{
-                              padding: "7px 14px 5px",
-                              fontSize: 11,
-                              fontWeight: 800,
-                              letterSpacing: "0.12em",
-                              color: "rgba(255,255,255,0.30)",
-                              textTransform: "uppercase",
-                              borderTop: "1px solid rgba(255,255,255,0.06)",
-                              borderBottom: "1px solid rgba(255,255,255,0.04)",
-                            }}
-                          >
-                            {item.letter}
-                          </td>
-                        </tr>
-                      );
-                    }
+              <tbody>
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={6} style={{ padding: "32px 16px", textAlign: "center", color: "rgba(255,255,255,0.28)", fontSize: 13 }}>
+                      No players match your filters.
+                    </td>
+                  </tr>
+                )}
 
-                    const { row, idx } = item;
-                    const slug      = playerToSlug(row.player_name, row.team_name ?? row.team);
-                    const teamShort = AFL_TEAMS.find(t => t.dbName === (row.team_name ?? row.team))?.displayName
-                                   ?? (row.team_name ?? row.team ?? "—");
-
-                    // Signal vars only computed for premium users — never exposed to free path
-                    const signalVal   = isPremium ? signalFromField(row.signal ?? null) : null;
-                    const signalColor = isPremium && signalVal ? getEdgeSignalColor(signalVal) : "transparent";
-                    const signalLabel = isPremium && signalVal ? formatEdgeSignalLabel(signalVal) : null;
-
+                {tableItems.map((item) => {
+                  if (item.kind === "header") {
                     return (
                       <tr
-                        key={row.player_id ?? `row-${idx}`}
-                        style={{
-                          borderBottom: "1px solid rgba(255,255,255,0.04)",
-                          transition: "background 0.12s ease",
-                          cursor: "pointer",
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                        key={`header-${item.letter}`}
+                        ref={el => { letterRefs.current[item.letter] = el; }}
+                        style={{ background: "rgba(255,255,255,0.02)" }}
                       >
-                        {/* Player name */}
-                        <td style={{ padding: "10px 12px 10px 14px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-                            <Link
-                              to={`/sports/afl/players/${slug}`}
-                              style={{
-                                fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.88)",
-                                textDecoration: "none", whiteSpace: "nowrap", overflow: "hidden",
-                                textOverflow: "ellipsis", letterSpacing: "0.005em",
-                              }}
-                              onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
-                              onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.88)")}
-                            >
-                              {row.player_name}
-                            </Link>
-                            <PlayerStatusPill row={row} showUpcomingBye />
-                          </div>
-                        </td>
-
-                        {/* Team */}
-                        <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
-                          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.42)", fontWeight: 500 }}>
-                            {teamShort}
-                          </span>
-                        </td>
-
-                        {/* Position */}
-                        <td style={{ padding: "10px 12px" }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", color: "rgba(255,255,255,0.40)" }}>
-                            {row.position ?? "—"}
-                          </span>
-                        </td>
-
-                        {/* Price */}
-                        <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
-                          <span style={{ fontSize: 12.5, fontWeight: 600, color: "rgba(255,255,255,0.65)" }}>
-                            {fmtPrice(row.price)}
-                          </span>
-                        </td>
-
-                        {/* 5th col: 2026 Avg (free) or Projection (premium) */}
-                        {isPremium ? (
-                          <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
-                            <span style={{
-                              fontSize: 13, fontWeight: 700,
-                              color: row.projection != null ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.25)",
-                            }}>
-                              {fmt(row.projection)}
-                            </span>
-                          </td>
-                        ) : (
-                          <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
-                            {row.season_avg != null ? (
-                              <span style={{ fontSize: 12.5, fontWeight: 600, color: "rgba(255,255,255,0.70)" }}>
-                                {fmt(row.season_avg)}
-                                {row.games_played != null && (
-                                  <span style={{ fontSize: 10, color: "rgba(255,255,255,0.28)", marginLeft: 3 }}>
-                                    ({row.games_played}g)
-                                  </span>
-                                )}
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.22)" }}>—</span>
-                            )}
-                          </td>
-                        )}
-
-                        {/* Signal — free users always see the locked state, no signal value ever shown */}
-                        <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
-                          {isPremium ? (
-                            signalLabel && row.signal != null ? (
-                              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.03em", color: signalColor }}>
-                                {signalLabel}
-                              </span>
-                            ) : (
-                              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.18)" }}>—</span>
-                            )
-                          ) : (
-                            <Link
-                              to="/neeko-plus"
-                              title="Unlock signals with Neeko+"
-                              style={{
-                                display: "inline-flex", alignItems: "center", gap: 4,
-                                fontSize: 10.5, fontWeight: 600, color: "rgba(245,200,76,0.45)",
-                                textDecoration: "none", letterSpacing: "0.02em",
-                              }}
-                            >
-                              <Lock size={9} style={{ flexShrink: 0 }} />
-                              Neeko+
-                            </Link>
-                          )}
+                        <td
+                          colSpan={6}
+                          style={{
+                            padding: "7px 14px 5px",
+                            fontSize: 11,
+                            fontWeight: 800,
+                            letterSpacing: "0.12em",
+                            color: "rgba(255,255,255,0.30)",
+                            textTransform: "uppercase",
+                            borderTop: "1px solid rgba(255,255,255,0.06)",
+                            borderBottom: "1px solid rgba(255,255,255,0.04)",
+                          }}
+                        >
+                          {item.letter}
                         </td>
                       </tr>
                     );
-                  })}
+                  }
 
-                  {/* Upgrade CTA row for free users */}
-                  {!isPremium && (
-                    <tr style={{ background: "rgba(245,200,76,0.03)" }}>
-                      <td colSpan={6} style={{ padding: "16px 14px", textAlign: "center" }}>
-                        <Link
-                          to="/neeko-plus"
-                          style={{
-                            display: "inline-flex", alignItems: "center", gap: 7,
-                            fontSize: 12.5, fontWeight: 700, color: "#F5C84C", textDecoration: "none",
-                            padding: "9px 20px", borderRadius: 8,
-                            background: "rgba(245,200,76,0.10)", border: "1px solid rgba(245,200,76,0.22)",
-                          }}
+                  const { row, idx } = item;
+                  const slug      = playerToSlug(row.player_name, row.team_name ?? row.team);
+                  const teamShort = AFL_TEAMS.find(t => t.dbName === (row.team_name ?? row.team))?.displayName
+                                 ?? (row.team_name ?? row.team ?? "—");
+                  // Short team name for mobile sub-line (first word of team name)
+                  const teamMini  = (row.team_name ?? row.team ?? "").split(" ")[0] || teamShort;
+
+                  // Signal vars only computed for premium users — never exposed to free path
+                  const signalVal   = isPremium ? signalFromField(row.signal ?? null) : null;
+                  const signalColor = isPremium && signalVal ? getEdgeSignalColor(signalVal) : "transparent";
+                  const signalLabel = isPremium && signalVal ? formatEdgeSignalLabel(signalVal) : null;
+
+                  return (
+                    <tr
+                      key={row.player_id ?? `row-${idx}`}
+                      style={{
+                        borderBottom: "1px solid rgba(255,255,255,0.04)",
+                        transition: "background 0.12s ease",
+                        cursor: "pointer",
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                    >
+                      {/* Player name + mobile sub-line */}
+                      <td style={{ padding: "9px 10px 9px 14px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                          <Link
+                            to={`/sports/afl/players/${slug}`}
+                            style={{
+                              fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.88)",
+                              textDecoration: "none", overflow: "hidden",
+                              textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: "0.005em",
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
+                            onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.88)")}
+                          >
+                            {row.player_name}
+                          </Link>
+                          <PlayerStatusPill row={row} showUpcomingBye />
+                        </div>
+                        {/* Sub-line visible on mobile only — shows team + pos when columns hidden */}
+                        <div
+                          className="plyr-mobile-sub"
+                          style={{ marginTop: 2, fontSize: 10.5, color: "rgba(255,255,255,0.32)", fontWeight: 500 }}
                         >
-                          <Crown size={13} /> Unlock projections, signals and AI analysis with Neeko+
-                        </Link>
+                          {teamMini}{row.position ? ` · ${row.position}` : ""}
+                        </div>
+                      </td>
+
+                      {/* Team — hidden on mobile */}
+                      <td style={{ padding: "9px 10px", whiteSpace: "nowrap" }} className="plyr-col-team">
+                        <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.40)", fontWeight: 500 }}>
+                          {teamShort}
+                        </span>
+                      </td>
+
+                      {/* Position — hidden on mobile */}
+                      <td style={{ padding: "9px 10px" }} className="plyr-col-pos">
+                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", color: "rgba(255,255,255,0.38)" }}>
+                          {row.position ?? "—"}
+                        </span>
+                      </td>
+
+                      {/* Price */}
+                      <td style={{ padding: "9px 10px", whiteSpace: "nowrap" }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.62)" }}>
+                          {fmtPrice(row.price)}
+                        </span>
+                      </td>
+
+                      {/* 5th col: 2026 Avg (free) or Projection (premium) */}
+                      {isPremium ? (
+                        <td style={{ padding: "9px 10px", whiteSpace: "nowrap" }}>
+                          <span style={{
+                            fontSize: 13, fontWeight: 700,
+                            color: row.projection != null ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.25)",
+                          }}>
+                            {fmt(row.projection)}
+                          </span>
+                        </td>
+                      ) : (
+                        <td style={{ padding: "9px 10px", whiteSpace: "nowrap" }}>
+                          {row.season_avg != null ? (
+                            <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.68)" }}>
+                              {fmt(row.season_avg)}
+                              {row.games_played != null && (
+                                <span style={{ fontSize: 9.5, color: "rgba(255,255,255,0.28)", marginLeft: 3 }}>
+                                  ({row.games_played}g)
+                                </span>
+                              )}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.22)" }}>—</span>
+                          )}
+                        </td>
+                      )}
+
+                      {/* Signal — free users always see the locked state */}
+                      <td style={{ padding: "9px 10px", whiteSpace: "nowrap" }}>
+                        {isPremium ? (
+                          signalLabel && row.signal != null ? (
+                            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.03em", color: signalColor }}>
+                              {signalLabel}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.18)" }}>—</span>
+                          )
+                        ) : (
+                          <Link
+                            to="/neeko-plus"
+                            title="Unlock signals with Neeko+"
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 4,
+                              fontSize: 10, fontWeight: 600, color: "rgba(245,200,76,0.45)",
+                              textDecoration: "none", letterSpacing: "0.02em",
+                            }}
+                          >
+                            <Lock size={9} style={{ flexShrink: 0 }} />
+                            Neeko+
+                          </Link>
+                        )}
                       </td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  );
+                })}
+
+                {/* Upgrade CTA row for free users */}
+                {!isPremium && (
+                  <tr style={{ background: "rgba(245,200,76,0.03)" }}>
+                    <td colSpan={6} style={{ padding: "14px", textAlign: "center" }}>
+                      <Link
+                        to="/neeko-plus"
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 7,
+                          fontSize: 12, fontWeight: 700, color: "#F5C84C", textDecoration: "none",
+                          padding: "9px 18px", borderRadius: 8,
+                          background: "rgba(245,200,76,0.10)", border: "1px solid rgba(245,200,76,0.22)",
+                        }}
+                      >
+                        <Crown size={13} /> Unlock projections, signals &amp; AI with Neeko+
+                      </Link>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         )}
 

@@ -1072,12 +1072,12 @@ export default function AFLPlayerPage() {
                       showUpcomingBye
                     />
                   </div>
-                  <h1 className="text-[28px] sm:text-[34px] font-black text-white leading-none tracking-tight mb-2">
+                  <h1 className="text-[24px] sm:text-[34px] font-black text-white leading-none tracking-tight mb-2">
                     {player.player_name}
                   </h1>
                   {/* Form label + delta — derived from real scoring, always visible if data present */}
                   {delta3 != null && (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide ${getFormStyles(formLabel)}`}>
                         {formLabel}
                       </span>
@@ -1092,14 +1092,14 @@ export default function AFLPlayerPage() {
                 {/* Premium-only action signal badge */}
                 {isPremium && player.action_canonical != null && (
                   <div
-                    className="flex flex-col items-center justify-center w-[72px] shrink-0 rounded-xl border px-2 py-2.5 text-center gap-0.5"
+                    className="flex flex-col items-center justify-center w-[66px] shrink-0 rounded-xl border px-2 py-2 text-center gap-0.5"
                     style={{
                       background: `${actionMeta.color}0c`,
                       borderColor: `${actionMeta.color}30`,
                     }}
                   >
                     <span className="text-[7px] uppercase tracking-widest font-bold" style={{ color: `${actionMeta.color}80` }}>Action</span>
-                    <span className="text-[13px] font-black uppercase leading-tight" style={{ color: actionMeta.color }}>
+                    <span className="text-[11px] sm:text-[13px] font-black uppercase leading-tight" style={{ color: actionMeta.color }}>
                       {actionMeta.label}
                     </span>
                     {player.confidence_label && (
@@ -1123,16 +1123,20 @@ export default function AFLPlayerPage() {
                   ...(scoreStats?.low  != null ? [{ label: 'Low (L10 Matches)',  val: <span className="text-red-400/60">{Math.round(scoreStats.low)}</span> }] : []),
                 ];
                 return (
-                  <div
-                    className="grid divide-x divide-white/[0.06] rounded-xl border border-white/[0.07] bg-black/20 overflow-hidden"
-                    style={{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))` }}
-                  >
-                    {cells.map(({ label, val }) => (
-                      <div key={label} className="flex flex-col items-center justify-center py-3 px-1.5 gap-0.5">
-                        <span className="text-[14px] sm:text-[15px] font-black tabular-nums leading-tight">{val}</span>
-                        <span className="text-[7px] sm:text-[8px] uppercase tracking-widest text-white/24 text-center leading-tight">{label}</span>
-                      </div>
-                    ))}
+                  <div className="rounded-xl border border-white/[0.07] bg-black/20 overflow-hidden">
+                    {/* scrollable on mobile, grid on sm+ */}
+                    <div
+                      className="flex overflow-x-auto no-scrollbar sm:grid divide-x divide-white/[0.06]"
+                      style={{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))` }}
+                    >
+                      {cells.map(({ label, val }) => (
+                        <div key={label} className="flex flex-col items-center justify-center py-3 shrink-0 sm:shrink gap-0.5"
+                          style={{ minWidth: 72, padding: '10px 10px' }}>
+                          <span className="text-[14px] sm:text-[15px] font-black tabular-nums leading-tight">{val}</span>
+                          <span className="text-[7px] sm:text-[8px] uppercase tracking-widest text-white/24 text-center leading-tight">{label}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 );
               })()}

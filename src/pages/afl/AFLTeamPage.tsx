@@ -827,30 +827,27 @@ function RosterSection({
   return (
     <div>
       {/* section header + filters */}
-      <div className="flex flex-wrap items-center gap-3 mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-white/25"><Users size={13} /></span>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">Roster Outlook</span>
-        </div>
-        <div className="flex-1 hidden sm:block h-px bg-white/[0.05]" />
-        {/* line filter chips */}
-        <div className="flex items-center gap-1.5 ml-auto">
-          {LINE_FILTERS.filter(f => f.key !== 'RUC' || hasRucks).map(f => (
-            <button
-              key={f.key}
-              onClick={() => setActiveFilter(f.key)}
-              className={[
-                'px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all',
-                activeFilter === f.key
-                  ? 'text-black'
-                  : 'text-white/35 bg-white/[0.04] border border-white/[0.07] hover:text-white/60 hover:bg-white/[0.07]',
-              ].join(' ')}
-              style={activeFilter === f.key ? { backgroundColor: accentColor, border: `1px solid ${accentColor}` } : {}}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-center gap-2 mb-2">
+        <span className="text-white/25"><Users size={13} /></span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-white/35">Roster Outlook</span>
+      </div>
+      {/* line filter chips — scrollable on mobile */}
+      <div className="flex overflow-x-auto gap-1.5 mb-3 pb-0.5 no-scrollbar">
+        {LINE_FILTERS.filter(f => f.key !== 'RUC' || hasRucks).map(f => (
+          <button
+            key={f.key}
+            onClick={() => setActiveFilter(f.key)}
+            className={[
+              'shrink-0 px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all',
+              activeFilter === f.key
+                ? 'text-black'
+                : 'text-white/35 bg-white/[0.04] border border-white/[0.07] hover:text-white/60 hover:bg-white/[0.07]',
+            ].join(' ')}
+            style={activeFilter === f.key ? { backgroundColor: accentColor, border: `1px solid ${accentColor}` } : {}}
+          >
+            {f.label}
+          </button>
+        ))}
       </div>
 
       {players.length === 0 ? (
