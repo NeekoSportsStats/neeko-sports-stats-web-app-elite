@@ -41,14 +41,39 @@ function getAction(p: RankingRow): string {
   return String(p.action_canonical ?? p.signal_tag ?? p.signal ?? "").trim().toUpperCase();
 }
 
+// Detect negative/avoid signals using both gated fields (action_canonical, signal_tag)
+// and ungated fields (category, signal_display, action_display) so the engine works
+// correctly even when the user fetch returns null for gated action fields.
 function hasNegativeAction(p: RankingRow): boolean {
   const ac = getAction(p);
-  return ["SIT", "STRONG_SIT", "HARD_SIT", "FADE", "RISK"].includes(ac);
+  if (["SIT", "STRONG_SIT", "HARD_SIT", "FADE", "RISK", "AVOID", "TRAP"].includes(ac)) return true;
+
+  // Ungated: category === 'Avoid' is returned for all users
+  const cat = (p.category ?? p.category_canonical ?? "").toUpperCase();
+  if (cat === "AVOID") return true;
+
+  // Ungated: signal_display contains avoidance language
+  const sd = (p.signal_display ?? "").toLowerCase();
+  if (sd.includes("avoid") || sd.includes("sit") || sd.includes("fade") || sd.includes("trap")) return true;
+
+  // Ungated: action_display
+  const ad = (p.action_display ?? "").toLowerCase();
+  if (ad.includes("sit") || ad.includes("fade") || ad.includes("avoid") || ad.includes("hard")) return true;
+
+  return false;
 }
 
 function isHardSit(p: RankingRow): boolean {
   const ac = getAction(p);
-  return ac === "STRONG_SIT" || ac === "HARD_SIT";
+  if (ac === "STRONG_SIT" || ac === "HARD_SIT") return true;
+
+  const sd = (p.signal_display ?? "").toLowerCase();
+  if (sd.includes("hard")) return true;
+
+  const ad = (p.action_display ?? "").toLowerCase();
+  if (ad.includes("hard")) return true;
+
+  return false;
 }
 
 /**
@@ -59,34 +84,40 @@ function isHardSit(p: RankingRow): boolean {
 function trapWarningScore(p: RankingRow): number {
   let score = 0;
 
-  // Negative edge (projection vs breakeven gap) — strongest signal
-  const edge = typeof p.edge_canonical === "number" ? p.edge_canonical : null;
+  // Negative edge — strongest signal (gated field, may be null for free users)
+  const edge = typeof p.edge_canonical === "number" ? p.edge_canonical
+    : typeof p.edge === "number" ? p.edge : null;
   if (edge !== null && edge < 0) score += Math.abs(edge) * 2;
 
-  // Projection below breakeven computed directly
+  // Projection below breakeven computed directly (breakeven is gated, use when available)
   const proj = typeof p.projection === "number" ? p.projection : null;
   const be   = typeof p.breakeven  === "number" ? p.breakeven  : null;
   if (proj !== null && be !== null && proj < be) score += (be - proj);
 
-  // Risk rating — higher risk = higher warning
+  // Risk rating — higher raw risk number = higher warning
   const rr = typeof p.risk_rating === "number" ? p.risk_rating : null;
-  if (rr !== null) score += rr * 0.5;
+  if (rr !== null && rr > 0) score += rr * 3;
 
-  // Hard sits get a strong bonus to stay at the top
+  // Hard sits get a strong bonus
   if (isHardSit(p)) score += 80;
   else if (hasNegativeAction(p)) score += 40;
 
-  // Negative decision score pushes further down
+  // Negative decision score
   const ds = typeof p.decision_score === "number" ? p.decision_score : null;
   if (ds !== null && ds < 0) score += Math.abs(ds) * 0.3;
 
-  // Negative value score
+  // Negative value score (gated, use when available)
   const vs = typeof p.value_score === "number" ? p.value_score : null;
   if (vs !== null && vs < 0) score += Math.abs(vs);
 
   // Declining trend
   const fd = typeof p.form_delta === "number" ? p.form_delta : null;
   if (fd !== null && fd < 0) score += Math.abs(fd) * 0.5;
+
+  // Boost for high confidence negative signals (these players are certain traps)
+  const conf = (p.confidence_label ?? "").toUpperCase();
+  if (conf === "HIGH" && hasNegativeAction(p)) score += 20;
+  else if (conf === "MEDIUM" && hasNegativeAction(p)) score += 10;
 
   return score;
 }
@@ -267,14 +298,16 @@ export function buildCurrentRoundPlayers(
     !positiveIds.has(p.player_id ?? "") && hasNegativeAction(p)
   );
 
-  // Tier 2: no explicit negative action but has a quantifiable negative signal
-  // (negative edge, projected below breakeven, or elevated risk_rating)
-  const tier2 = pool.filter(p => {
+  // Tier 2: no explicit negative action but has a quantifiable negative signal.
+  // Uses both gated fields (when available) and ungated fields (category, signal_display)
+  // so free-user engine fetches produce consistent results with premium.
+  const tier2 = poolAll.filter(p => {
     const id = p.player_id ?? "";
     if (positiveIds.has(id)) return false;
     if (hasNegativeAction(p)) return false; // already in tier 1
 
-    const edge = typeof p.edge_canonical === "number" ? p.edge_canonical : null;
+    const edge = typeof p.edge_canonical === "number" ? p.edge_canonical
+      : typeof p.edge === "number" ? p.edge : null;
     const proj = typeof p.projection  === "number" ? p.projection  : null;
     const be   = typeof p.breakeven   === "number" ? p.breakeven   : null;
     const rr   = typeof p.risk_rating === "number" ? p.risk_rating : null;
@@ -282,7 +315,8 @@ export function buildCurrentRoundPlayers(
 
     const hasNegativeEdge = edge !== null && edge < -5;
     const projBelowBe     = proj !== null && be !== null && proj < be - 5;
-    const highRisk        = rr !== null && rr >= 65;
+    // risk_rating is a raw numeric from 1-5 (not 0-100), so >= 4 means high risk
+    const highRisk        = rr !== null && rr >= 4;
     const negativeValue   = vs !== null && vs < -2;
 
     return hasNegativeEdge || projBelowBe || highRisk || negativeValue;

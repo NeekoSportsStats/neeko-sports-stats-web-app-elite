@@ -1055,6 +1055,7 @@ export default function CurrentWeekPage() {
                 renderPlayer={(p, i) => {
                   const reason = getTrapFadeReason(p);
 
+                  // edge_canonical is premium-gated; fall back to computed gap
                   const edge =
                     p.edge_canonical ??
                     (p.projection != null && p.breakeven != null
@@ -1065,7 +1066,12 @@ export default function CurrentWeekPage() {
                       ? `${edge > 0 ? "+" : ""}${Math.round(edge)}`
                       : null;
 
-                  const rightBadge = <ActionBadge action={p.action_canonical} />;
+                  // Use action_canonical badge; fall back to signal_display for ungated label
+                  const rightBadge = p.action_canonical
+                    ? <ActionBadge action={p.action_canonical} />
+                    : p.signal_display
+                    ? <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-[700] uppercase tracking-wider text-red-400 bg-red-500/[0.10] border border-red-500/20">{p.signal_display}</span>
+                    : null;
 
                   const metric = edgeStr
                     ? { value: edgeStr, label: "edge" }
@@ -1073,7 +1079,7 @@ export default function CurrentWeekPage() {
                     ? { value: fmt(p.projection, 0), label: "proj" }
                     : null;
 
-                  // Premium chips: BE → Projection → Edge → Matchup → Risk (ELEVATED+ only)
+                  // Premium chips: BE → Projection → Edge → Matchup → Risk (MEDIUM+ only)
                   const premiumChips: Array<{ label: string; value: string; color?: string }> = [];
                   if (hasFullAccess) {
                     if (p.breakeven != null)
@@ -1086,10 +1092,11 @@ export default function CurrentWeekPage() {
                       const ml = fmtMatchup(p.matchup_label);
                       if (ml && ml !== "—") premiumChips.push({ label: "Matchup", value: `vs ${ml}`, color: getMatchupColor(p.matchup_label) });
                     }
-                    // Only show risk label for ELEVATED (38+) and above — never LOW RISK or MODERATE
-                    if (p.risk_rating != null && p.risk_rating >= 38) {
-                      const rb = getRiskBadge(p.risk_rating);
-                      premiumChips.push({ label: "Risk", value: rb.label, color: rb.text });
+                    // risk_rating is 1–5 scale; only show MEDIUM (3) or HIGH (4–5), never LOW (1–2)
+                    if (p.risk_rating != null && p.risk_rating >= 3) {
+                      const riskLabel = p.risk_rating >= 4 ? "HIGH RISK" : "MEDIUM RISK";
+                      const riskColor = p.risk_rating >= 4 ? "text-orange-400" : "text-yellow-400";
+                      premiumChips.push({ label: "Risk", value: riskLabel, color: riskColor });
                     }
                   }
 
