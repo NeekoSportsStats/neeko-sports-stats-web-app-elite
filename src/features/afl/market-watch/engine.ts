@@ -44,6 +44,11 @@ function displaySignalFromCategory(p: MWPlayerRow): DisplaySignal {
     canonical === "STRONG_DOWN"
   ) return "AVOID";
 
+  // Fall back to signal_display (always returned for all rows, never gated)
+  const sd = (p.signal_display ?? "").toLowerCase();
+  if (sd === "strong start" || sd === "start") return "TARGET";
+  if (sd === "hard avoid" || sd === "avoid" || sd === "hard sit" || sd === "sit") return "AVOID";
+
   return "WATCH";
 }
 

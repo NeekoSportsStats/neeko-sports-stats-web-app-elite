@@ -28,11 +28,18 @@ import type { MWPlayerRow } from "./types";
 // ─── CONVERSION ──────────────────────────────────────────────────────────────
 
 function rankingToMW(r: RankingRow): MWPlayerRow {
+  // Use action_canonical when available (premium/free_player_ids rows),
+  // then fall back to signal_display which is always returned for all rows.
   const acRaw = (r.action_canonical ?? r.category ?? "").toLowerCase();
+  const sdRaw = (r.signal_display ?? "").toLowerCase();
   const displaySignal: "TARGET" | "WATCH" | "AVOID" =
     acRaw === "start" || acRaw === "smash_start" || acRaw === "strong_start" || acRaw === "target"
       ? "TARGET"
       : acRaw === "sit" || acRaw === "hard_sit" || acRaw === "avoid"
+      ? "AVOID"
+      : sdRaw === "strong start" || sdRaw === "start"
+      ? "TARGET"
+      : sdRaw === "hard avoid" || sdRaw === "avoid" || sdRaw === "hard sit" || sdRaw === "sit"
       ? "AVOID"
       : "WATCH";
   return {
@@ -85,14 +92,13 @@ function rankingToMW(r: RankingRow): MWPlayerRow {
 // ─── CACHE ───────────────────────────────────────────────────────────────────
 
 const _MW_STALE_MS = 60_000;
-const _MW_CACHE_VERSION = "v3-trade-table";
+const _MW_CACHE_VERSION = "v4-dual-fetch";
 const _mwCache: {
   data: MWPlayerRow[] | null;
   ts: number;
   userId: string | null;
-  tier: string | null;
   version: string;
-} = { data: null, ts: 0, userId: null, tier: null, version: "" };
+} = { data: null, ts: 0, userId: null, version: "" };
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 
@@ -356,13 +362,11 @@ export default function MarketWatchPageElite() {
   const fetchData = useCallback(
     async (force = false) => {
       const userId = user?.id ?? null;
-      const tier = isPremium ? "premium" : "free";
       const now = Date.now();
       if (
         !force &&
         _mwCache.data &&
         _mwCache.userId === userId &&
-        _mwCache.tier === tier &&
         _mwCache.version === _MW_CACHE_VERSION &&
         now - _mwCache.ts < _MW_STALE_MS
       ) {
@@ -376,22 +380,44 @@ export default function MarketWatchPageElite() {
       setFetchError(null);
 
       try {
-        const limit = isPremium ? 700 : 250;
-        const { data, error } = await supabase.rpc("get_rankings_safe", {
-          p_user_id: userId,
-          p_is_bot: false,
-          p_limit: limit,
-        });
-        if (error) throw error;
-        if (data) {
-          const rows = applyDecisionFields((data as Record<string, unknown>[]).map(mapRankingRow)).map(rankingToMW);
+        // Dual-fetch: engine fetch uses null user_id to get full 700-row dataset with all
+        // ungated fields for correct classification. User fetch (when logged in) returns
+        // per-row access_tier so display gating is accurate.
+        const [engineRes, userRes] = await Promise.all([
+          supabase.rpc("get_rankings_safe", { p_user_id: null, p_is_bot: false, p_limit: 700 }),
+          userId
+            ? supabase.rpc("get_rankings_safe", { p_user_id: userId, p_is_bot: false, p_limit: 700 })
+            : Promise.resolve({ data: null, error: null }),
+        ]);
+
+        if (engineRes.error) throw engineRes.error;
+
+        if (engineRes.data) {
+          // Build access_tier map from user fetch
+          const accessMap = new Map<string, string>();
+          if (userRes.data && Array.isArray(userRes.data)) {
+            for (const r of userRes.data as Record<string, unknown>[]) {
+              if (r.player_id && r.access_tier) {
+                accessMap.set(String(r.player_id), String(r.access_tier));
+              }
+            }
+          }
+
+          const rows = applyDecisionFields(
+            (engineRes.data as Record<string, unknown>[]).map((r) => {
+              const mapped = mapRankingRow(r);
+              const tier = accessMap.get(String(mapped.player_id ?? ""));
+              return tier ? { ...mapped, access_tier: tier as "premium" | "free" | "locked" } : mapped;
+            })
+          ).map(rankingToMW);
+
           const filtered = rows.filter((p) => !p.is_bye && !p.is_injured);
-          const firstCachedAt = (data as Record<string, unknown>[])[0]?.cached_at as string | undefined;
+          const firstCachedAt = (engineRes.data as Record<string, unknown>[])[0]?.cached_at as string | undefined;
           if (firstCachedAt) setDataUpdatedAt(firstCachedAt);
+
           _mwCache.data = filtered;
           _mwCache.ts = Date.now();
           _mwCache.userId = userId;
-          _mwCache.tier = tier;
           _mwCache.version = _MW_CACHE_VERSION;
           setPlayers(filtered);
         }
@@ -403,7 +429,7 @@ export default function MarketWatchPageElite() {
         setRefreshing(false);
       }
     },
-    [isPremium, user]
+    [user]
   );
 
   useEffect(() => {
