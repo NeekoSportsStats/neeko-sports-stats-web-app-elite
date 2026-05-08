@@ -5,44 +5,68 @@ import { Shield, Users, ArrowRight } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
+import { TEAM_SLUGS } from "@/lib/slugs";
+import { getTeamAccentColour } from "@/config/aflTeamColours";
 
-// ─── Team registry ────────────────────────────────────────────────────────────
+// ─── Team registry (derived from canonical slug map — no duplication) ─────────
 
 interface TeamMeta {
   displayName: string;
   abbr: string;
-  dbName: string;
   slug: string;
+  dbName: string;
   color: string;
 }
 
-const AFL_TEAMS: TeamMeta[] = [
-  { displayName: "Adelaide Crows",            abbr: "ADEL", dbName: "Adelaide Crows",                slug: "adelaide-crows",            color: "#002B5C" },
-  { displayName: "Brisbane Lions",            abbr: "BL",   dbName: "Brisbane Lions",                slug: "brisbane-lions",            color: "#7C1C3B" },
-  { displayName: "Carlton Blues",             abbr: "CARL", dbName: "Carlton Blues",                 slug: "carlton-blues",             color: "#1a2e6e" },
-  { displayName: "Collingwood Magpies",       abbr: "COLL", dbName: "Collingwood Magpies",           slug: "collingwood-magpies",       color: "#3a3a3a" },
-  { displayName: "Essendon Bombers",          abbr: "ESS",  dbName: "Essendon Bombers",              slug: "essendon-bombers",          color: "#CC0000" },
-  { displayName: "Fremantle Dockers",         abbr: "FRE",  dbName: "Fremantle Dockers",             slug: "fremantle-dockers",         color: "#4a2080" },
-  { displayName: "Geelong Cats",              abbr: "GEEL", dbName: "Geelong Cats",                  slug: "geelong-cats",              color: "#1C3D7C" },
-  { displayName: "Gold Coast Suns",           abbr: "GC",   dbName: "Gold Coast Suns",               slug: "gold-coast-suns",           color: "#D4782A" },
-  { displayName: "GWS Giants",                abbr: "GWS",  dbName: "Greater Western Sydney Giants", slug: "gws-giants",                color: "#F15A22" },
-  { displayName: "Hawthorn Hawks",            abbr: "HAW",  dbName: "Hawthorn Hawks",                slug: "hawthorn-hawks",            color: "#4D2004" },
-  { displayName: "Melbourne Demons",          abbr: "MELB", dbName: "Melbourne Demons",              slug: "melbourne-demons",          color: "#0C2340" },
-  { displayName: "North Melbourne Kangaroos", abbr: "NM",   dbName: "North Melbourne Kangaroos",     slug: "north-melbourne-kangaroos", color: "#0057B8" },
-  { displayName: "Port Adelaide Power",       abbr: "PORT", dbName: "Port Adelaide Power",           slug: "port-adelaide-power",       color: "#008A8F" },
-  { displayName: "Richmond Tigers",           abbr: "RICH", dbName: "Richmond Tigers",               slug: "richmond-tigers",           color: "#897000" },
-  { displayName: "St Kilda Saints",           abbr: "STK",  dbName: "St Kilda Saints",               slug: "st-kilda-saints",           color: "#ED1B2E" },
-  { displayName: "Sydney Swans",              abbr: "SYD",  dbName: "Sydney Swans",                  slug: "sydney-swans",              color: "#E1251B" },
-  { displayName: "West Coast Eagles",         abbr: "WCE",  dbName: "West Coast Eagles",             slug: "west-coast-eagles",         color: "#003087" },
-  { displayName: "Western Bulldogs",          abbr: "WB",   dbName: "Western Bulldogs",              slug: "western-bulldogs",          color: "#00205B" },
-];
+const ABBR_MAP: Record<string, string> = {
+  "Adelaide Crows":                "ADEL",
+  "Brisbane Lions":                "BL",
+  "Carlton Blues":                 "CARL",
+  "Collingwood Magpies":           "COLL",
+  "Essendon Bombers":              "ESS",
+  "Fremantle Dockers":             "FRE",
+  "Geelong Cats":                  "GEEL",
+  "Gold Coast Suns":               "GCS",
+  "Greater Western Sydney Giants": "GWS",
+  "Hawthorn Hawks":                "HAW",
+  "Melbourne Demons":              "MELB",
+  "North Melbourne Kangaroos":     "NMK",
+  "Port Adelaide Power":           "PORT",
+  "Richmond Tigers":               "RICH",
+  "St Kilda Saints":               "STK",
+  "Sydney Swans":                  "SYD",
+  "West Coast Eagles":             "WCE",
+  "Western Bulldogs":              "WB",
+};
+
+// Display-friendly short names for cards (avoids "Greater Western Sydney Giants" overflowing)
+const DISPLAY_NAME_MAP: Record<string, string> = {
+  "Greater Western Sydney Giants": "GWS Giants",
+  "North Melbourne Kangaroos":     "North Melbourne Kangaroos",
+};
+
+function buildTeamList(): TeamMeta[] {
+  return Object.entries(TEAM_SLUGS)
+    .map(([dbName, slug]) => {
+      const displayName = DISPLAY_NAME_MAP[dbName] ?? dbName;
+      const firstWord   = dbName.split(" ")[0];
+      const color       = getTeamAccentColour(firstWord) ?? getTeamAccentColour(dbName) ?? "#444";
+      return {
+        displayName,
+        abbr: ABBR_MAP[dbName] ?? slug.split("-")[0].toUpperCase().slice(0, 4),
+        slug,
+        dbName,
+        color: color === "#1A1A1A" ? "#3a3a3a" : color, // Collingwood: lighten slightly for strip
+      };
+    })
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+const AFL_TEAMS: TeamMeta[] = buildTeamList();
 
 // ─── Stats helpers ────────────────────────────────────────────────────────────
 
-interface TeamStats {
-  total: number;
-  byPosition: Partial<Record<string, number>>;
-}
+interface TeamStats { total: number; byPosition: Partial<Record<string, number>> }
 
 const POS_ORDER = ["DEF", "MID", "RUC", "FWD"] as const;
 
@@ -69,6 +93,9 @@ function TeamCard({ team, stats }: { team: TeamMeta; stats?: TeamStats }) {
     .filter(({ n }) => n > 0);
 
   const hasCount = stats != null && stats.total > 0;
+
+  // Safe accent — Richmond yellow is too low-contrast for text, use a muted version
+  const accentText = team.color === "#FFD200" ? "#C9A800" : team.color;
 
   return (
     <Link
@@ -102,18 +129,18 @@ function TeamCard({ team, stats }: { team: TeamMeta; stats?: TeamStats }) {
       }} />
 
       {/* Card body */}
-      <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 12, flex: 1 }}>
+      <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
 
         {/* Top row — name + abbr badge */}
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
           <div style={{ minWidth: 0 }}>
             <p style={{
               margin: 0,
-              fontSize: 13.5,
+              fontSize: 13,
               fontWeight: 700,
               color: hovered ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.76)",
               letterSpacing: "-0.01em",
-              lineHeight: 1.25,
+              lineHeight: 1.3,
               transition: "color 0.18s ease",
               wordBreak: "break-word",
             }}>
@@ -121,7 +148,7 @@ function TeamCard({ team, stats }: { team: TeamMeta; stats?: TeamStats }) {
             </p>
             {hasCount && (
               <p style={{
-                margin: "4px 0 0",
+                margin: "3px 0 0",
                 fontSize: 11,
                 color: "rgba(255,255,255,0.30)",
                 fontWeight: 500,
@@ -132,17 +159,18 @@ function TeamCard({ team, stats }: { team: TeamMeta; stats?: TeamStats }) {
           </div>
           <span style={{
             flexShrink: 0,
-            fontSize: 9.5,
+            fontSize: 9,
             fontWeight: 800,
             letterSpacing: "0.12em",
             textTransform: "uppercase",
-            color: hovered ? "rgba(255,255,255,0.55)" : "rgba(255,255,255,0.22)",
+            color: hovered ? "rgba(255,255,255,0.50)" : "rgba(255,255,255,0.22)",
             background: "rgba(255,255,255,0.05)",
             border: "1px solid rgba(255,255,255,0.07)",
             borderRadius: 5,
             padding: "3px 7px",
             transition: "color 0.18s ease",
             marginTop: 1,
+            whiteSpace: "nowrap",
           }}>
             {team.abbr}
           </span>
@@ -150,30 +178,30 @@ function TeamCard({ team, stats }: { team: TeamMeta; stats?: TeamStats }) {
 
         {/* Position breakdown */}
         {posCounts.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
             {posCounts.map(({ pos, n }) => (
               <span key={pos} style={{
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 4,
-                padding: "3px 8px",
+                padding: "3px 7px",
                 borderRadius: 5,
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(255,255,255,0.07)",
               }}>
                 <span style={{
-                  fontSize: 9.5,
+                  fontSize: 9,
                   fontWeight: 800,
                   letterSpacing: "0.09em",
                   textTransform: "uppercase",
-                  color: "rgba(255,255,255,0.38)",
+                  color: "rgba(255,255,255,0.35)",
                 }}>
                   {pos}
                 </span>
                 <span style={{
                   fontSize: 11,
                   fontWeight: 700,
-                  color: "rgba(255,255,255,0.60)",
+                  color: "rgba(255,255,255,0.58)",
                 }}>
                   {n}
                 </span>
@@ -188,21 +216,21 @@ function TeamCard({ team, stats }: { team: TeamMeta; stats?: TeamStats }) {
           display: "flex",
           alignItems: "center",
           gap: 4,
-          paddingTop: posCounts.length > 0 ? 4 : 0,
+          paddingTop: 2,
         }}>
           <span style={{
-            fontSize: 11.5,
+            fontSize: 11,
             fontWeight: 600,
-            color: hovered ? `${team.color === "#3a3a3a" ? "#aaa" : team.color}cc` : "rgba(255,255,255,0.22)",
+            color: hovered ? `${accentText}dd` : "rgba(255,255,255,0.22)",
             letterSpacing: "0.01em",
             transition: "color 0.18s ease",
           }}>
             View team
           </span>
           <ArrowRight
-            size={11}
+            size={10}
             style={{
-              color: hovered ? `${team.color === "#3a3a3a" ? "#aaa" : team.color}bb` : "rgba(255,255,255,0.16)",
+              color: hovered ? `${accentText}bb` : "rgba(255,255,255,0.16)",
               transition: "color 0.18s ease, transform 0.18s ease",
               transform: hovered ? "translateX(2px)" : "translateX(0)",
             }}
@@ -224,15 +252,15 @@ function SkeletonCard() {
       overflow: "hidden",
     }}>
       <div style={{ height: 3, background: "rgba(255,255,255,0.06)" }} />
-      <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
           <div style={{ flex: 1 }}>
             <div style={{ height: 13, width: "72%", borderRadius: 4, background: "rgba(255,255,255,0.08)", animation: "nbpulse 1.5s ease-in-out infinite" }} />
-            <div style={{ height: 10, width: "30%", borderRadius: 3, background: "rgba(255,255,255,0.05)", marginTop: 6, animation: "nbpulse 1.5s ease-in-out infinite" }} />
+            <div style={{ height: 10, width: "30%", borderRadius: 3, background: "rgba(255,255,255,0.05)", marginTop: 5, animation: "nbpulse 1.5s ease-in-out infinite" }} />
           </div>
           <div style={{ height: 20, width: 38, borderRadius: 5, background: "rgba(255,255,255,0.05)", animation: "nbpulse 1.5s ease-in-out infinite" }} />
         </div>
-        <div style={{ display: "flex", gap: 5 }}>
+        <div style={{ display: "flex", gap: 4 }}>
           {[34, 34, 32, 34].map((w, i) => (
             <div key={i} style={{ height: 22, width: w, borderRadius: 5, background: "rgba(255,255,255,0.05)", animation: "nbpulse 1.5s ease-in-out infinite" }} />
           ))}
@@ -246,7 +274,7 @@ function SkeletonCard() {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AFLTeamsDirectoryPage() {
-  const [rows, setRows]     = useState<RankingRow[]>([]);
+  const [rows, setRows]       = useState<RankingRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -278,7 +306,7 @@ export default function AFLTeamsDirectoryPage() {
         <meta property="og:description" content={pageDesc} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={pageUrl} />
-        <meta property="og:site_name" content="Neeko Sports" />
+        <meta property="og:site_name" content="Neeko Sports Stats" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDesc} />
@@ -286,8 +314,8 @@ export default function AFLTeamsDirectoryPage() {
           "@context": "https://schema.org",
           "@type": "BreadcrumbList",
           itemListElement: [
-            { "@type": "ListItem", position: 1, name: "Home",                      item: "https://neekostats.com.au" },
-            { "@type": "ListItem", position: 2, name: "AFL Fantasy Team Directory | Neeko Sports Stats", item: pageUrl },
+            { "@type": "ListItem", position: 1, name: "Home",                                                item: "https://neekostats.com.au" },
+            { "@type": "ListItem", position: 2, name: "AFL Fantasy Team Directory | Neeko Sports Stats",     item: pageUrl },
           ],
         })}</script>
       </Helmet>
