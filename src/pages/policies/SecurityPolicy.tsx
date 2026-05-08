@@ -1,8 +1,52 @@
 import { Helmet } from "react-helmet-async";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+
+const LAST_UPDATED = "9 May 2026";
+
+const TOC = [
+  { id: "s1",  label: "Overview" },
+  { id: "s2",  label: "Payment Security" },
+  { id: "s3",  label: "Authentication & Account Security" },
+  { id: "s4",  label: "Data Transmission" },
+  { id: "s5",  label: "Infrastructure & Hosting" },
+  { id: "s6",  label: "Access Controls" },
+  { id: "s7",  label: "Data Storage and Retention" },
+  { id: "s8",  label: "Monitoring and Incident Response" },
+  { id: "s9",  label: "Data Breach Notification" },
+  { id: "s10", label: "User Account Security" },
+  { id: "s11", label: "Vulnerability Reporting" },
+  { id: "s12", label: "Third-Party Services" },
+  { id: "s13", label: "Updates to This Policy" },
+  { id: "s14", label: "Contact" },
+];
+
+function Section({ id, num, title, children }: { id: string; num: string; title: string; children: React.ReactNode }) {
+  return (
+    <div id={id} className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] px-6 py-5">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/20 mb-2">{num}</p>
+      <h2 className="text-base font-bold text-white mb-4">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function Prose({ children }: { children: React.ReactNode }) {
+  return <div className="text-sm text-white/45 leading-relaxed space-y-3">{children}</div>;
+}
+
+function BulletList({ items }: { items: (string | React.ReactNode)[] }) {
+  return (
+    <ul className="space-y-2 text-sm text-white/40 mt-2">
+      {items.map((item, i) => (
+        <li key={i} className="flex gap-2">
+          <span className="text-white/20 mt-0.5 shrink-0">—</span>
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function SecurityPolicy() {
   const navigate = useNavigate();
@@ -10,296 +54,207 @@ export default function SecurityPolicy() {
   return (
     <>
       <Helmet>
-        <title>Security Policy — Neeko Sports Stats</title>
+        <title>Data Handling &amp; Security Policy | Neeko Sports Stats</title>
+        <meta name="description" content="Data handling and security policy for Neeko Sports Stats. Covers payment security, data protection, infrastructure, breach response and vulnerability reporting." />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <Button
-        variant="ghost"
-        onClick={() => navigate("/policies")}
-        className="mb-6 gap-2"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Policies
-      </Button>
+      <div className="min-h-screen bg-[#070707] text-white">
+        <div className="max-w-3xl mx-auto px-4 py-16">
 
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Data Handling & Security Policy</h1>
-        <p className="text-muted-foreground text-lg">
-          Last updated: {new Date().toLocaleDateString()}
-        </p>
+          <button
+            onClick={() => navigate("/policies")}
+            className="flex items-center gap-2 text-white/30 hover:text-white/60 text-sm mb-10 transition-colors"
+          >
+            <ArrowLeft size={14} />
+            Back to Policies
+          </button>
+
+          <div className="mb-10">
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/25 mb-4">Legal</p>
+            <h1 className="text-3xl md:text-4xl font-extrabold mb-3 tracking-tight">Data Handling &amp; Security Policy</h1>
+            <p className="text-white/35 text-sm">Last updated: {LAST_UPDATED}</p>
+          </div>
+
+          {/* TOC */}
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] px-6 py-5 mb-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/25 mb-3">Contents</p>
+            <ol className="space-y-1.5">
+              {TOC.map(({ id, label }) => (
+                <li key={id}>
+                  <a href={`#${id}`} className="text-sm text-white/40 hover:text-white/70 transition-colors">{label}</a>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="space-y-3">
+
+            <Section id="s1" num="1" title="Overview">
+              <Prose>
+                <p>
+                  Neeko Sports Stats uses reasonable technical and organisational safeguards to protect user data against unauthorised access, disclosure, alteration, and loss. This policy explains the practices we follow and the limits of those protections.
+                </p>
+                <p>
+                  No online service can guarantee absolute security. Users should also take steps to protect their own account credentials.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s2" num="2" title="Payment Security">
+              <Prose>
+                <p>
+                  All payment processing is handled by Stripe. Neeko Sports Stats does not receive, handle, or store full credit card numbers or CVV codes. Payment data is tokenised and processed entirely within Stripe's infrastructure.
+                </p>
+                <p>
+                  For details about Stripe's security and compliance practices, see{" "}
+                  <a href="https://stripe.com/security" target="_blank" rel="noopener noreferrer" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    stripe.com/security
+                  </a>.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s3" num="3" title="Authentication & Account Security">
+              <Prose>
+                <p>
+                  Authentication and account access are managed through trusted infrastructure providers. User passwords are not stored in plain text. Session tokens are used to maintain authenticated access and are subject to expiry.
+                </p>
+                <p>
+                  Account credentials are not visible to Neeko Sports Stats staff and should be kept confidential by the user.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s4" num="4" title="Data Transmission">
+              <Prose>
+                <p>
+                  Data transmitted between your browser and our servers is protected using standard encryption protocols. This applies to all platform traffic, including account sign-in, subscription management, and data retrieval.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s5" num="5" title="Infrastructure & Hosting">
+              <Prose>
+                <p>
+                  Platform data is hosted in cloud environments operated by trusted infrastructure providers. These providers implement their own security controls, including physical security, access management, and redundancy.
+                </p>
+                <p>
+                  We do not manage our own physical server infrastructure.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s6" num="6" title="Access Controls">
+              <Prose>
+                <p>Access to user data is restricted to those with a legitimate operational need. Neeko Sports Stats is operated by a small team and data access is managed accordingly.</p>
+                <BulletList items={[
+                  "Administrative access to backend systems requires authentication",
+                  "User data is not shared with external parties except as described in the Privacy Policy",
+                  "Access controls are reviewed as the platform evolves",
+                ]} />
+              </Prose>
+            </Section>
+
+            <Section id="s7" num="7" title="Data Storage and Retention">
+              <Prose>
+                <div className="space-y-4">
+                  <div>
+                    <p className="font-semibold text-white/60 mb-2">Active user data</p>
+                    <BulletList items={[
+                      "Account information: retained while the account is active",
+                      "Usage logs: retained for operational and security purposes",
+                      "Analytics data: may be anonymised and retained for platform improvement",
+                    ]} />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-white/60 mb-2">Deleted account data</p>
+                    <BulletList items={[
+                      "Personal data is removed from active systems within 30 days of deletion",
+                      "Billing records may be retained for up to 7 years for legal and accounting purposes",
+                    ]} />
+                  </div>
+                </div>
+              </Prose>
+            </Section>
+
+            <Section id="s8" num="8" title="Monitoring and Incident Response">
+              <Prose>
+                <p>
+                  We monitor platform activity for signs of misuse, unusual access patterns, and security anomalies. In the event of a security incident, we will investigate, take corrective action, and notify affected users where required.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s9" num="9" title="Data Breach Notification">
+              <Prose>
+                <p>If a security incident affects user personal data:</p>
+                <BulletList items={[
+                  "Affected users will be notified as soon as practicable after the breach is confirmed",
+                  "Notification will describe what data was involved and the steps being taken",
+                  "Regulatory authorities will be notified as required by applicable law",
+                ]} />
+              </Prose>
+            </Section>
+
+            <Section id="s10" num="10" title="User Account Security">
+              <Prose>
+                <p>Users are responsible for maintaining the security of their own account. We recommend:</p>
+                <BulletList items={[
+                  "Use a strong, unique password for your Neeko Sports Stats account",
+                  "Never share your password or account credentials with anyone",
+                  "Sign out of shared or public devices after use",
+                  "Report any suspected unauthorised access immediately to admin@neekostats.com.au",
+                ]} />
+              </Prose>
+            </Section>
+
+            <Section id="s11" num="11" title="Vulnerability Reporting">
+              <Prose>
+                <p>If you discover a security vulnerability in Neeko Sports Stats:</p>
+                <BulletList items={[
+                  <>Email <a href="mailto:admin@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">admin@neekostats.com.au</a> with the subject line "Security Vulnerability"</>,
+                  "Describe the issue and include steps to reproduce it",
+                  "Do not publicly disclose the vulnerability until we have had the opportunity to address it",
+                ]} />
+                <p>We take all valid security reports seriously and will acknowledge receipt.</p>
+              </Prose>
+            </Section>
+
+            <Section id="s12" num="12" title="Third-Party Services">
+              <Prose>
+                <p>Neeko Sports Stats relies on the following third-party providers:</p>
+                <BulletList items={[
+                  <><strong className="text-white/60">Stripe:</strong> Payment processing. Card data is handled entirely within Stripe's infrastructure.</>,
+                  <><strong className="text-white/60">Supabase:</strong> Database, authentication, and backend infrastructure.</>,
+                  <><strong className="text-white/60">Analytics tools:</strong> Where used, data is processed in anonymised or aggregate form.</>,
+                ]} />
+                <p>These providers maintain their own security practices and compliance certifications. We choose providers with strong security reputations.</p>
+              </Prose>
+            </Section>
+
+            <Section id="s13" num="13" title="Updates to This Policy">
+              <Prose>
+                <p>
+                  This policy may be updated as our practices or infrastructure change. The current version is posted on this page with a revision date.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s14" num="14" title="Contact">
+              <Prose>
+                <p>
+                  For security concerns, vulnerability reports, or data handling questions, contact us at:{" "}
+                  <a href="mailto:admin@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    admin@neekostats.com.au
+                  </a>
+                </p>
+                <p>Melbourne, Victoria, Australia</p>
+              </Prose>
+            </Section>
+
+          </div>
+        </div>
       </div>
-
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>1. Security Overview</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>
-              Neeko's Sports Stats is committed to protecting user data through industry-standard security practices. We implement technical, administrative, and physical safeguards to protect personal information from unauthorized access, disclosure, alteration, and destruction.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>2. Data Encryption</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>
-              We use encryption to protect data both in transit and at rest:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li><strong>In Transit:</strong> All data transmitted between your browser and our servers is encrypted using TLS 1.2 or higher</li>
-              <li><strong>At Rest:</strong> Sensitive data stored in our databases is encrypted using AES-256 encryption</li>
-              <li><strong>Passwords:</strong> User passwords are hashed using bcrypt with industry-standard salting</li>
-              <li><strong>Session Tokens:</strong> Authentication tokens are encrypted and expire after a defined period</li>
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>3. Payment Security</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none space-y-3">
-            <p>
-              All payment processing is handled by Stripe, a PCI-DSS Level 1 certified payment processor:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Neeko's Sports Stats never stores full credit card numbers or CVV codes</li>
-              <li>Payment data is tokenized and processed entirely through Stripe's secure infrastructure</li>
-              <li>Stripe complies with international payment security standards (PCI-DSS)</li>
-              <li>Stripe uses fraud detection algorithms to identify and prevent suspicious transactions</li>
-            </ul>
-            <p className="mt-3">
-              For more information about Stripe's security practices, visit{" "}
-              <a href="https://stripe.com/security" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                stripe.com/security
-              </a>
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>4. Infrastructure Security</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>
-              Our platform infrastructure is secured through multiple layers of protection:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Cloud hosting providers with SOC 2 Type II certification</li>
-              <li>Distributed denial-of-service (DDoS) protection</li>
-              <li>Web application firewall (WAF) to block malicious traffic</li>
-              <li>Regular security patches and updates to all systems</li>
-              <li>Isolated database environments with restricted access</li>
-              <li>Automated backups with encrypted storage</li>
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>5. Access Controls</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>
-              Access to user data is strictly limited and controlled:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Only authorized personnel with a legitimate business need can access user data</li>
-              <li>Multi-factor authentication (MFA) is required for all administrative accounts</li>
-              <li>Role-based access control (RBAC) limits what each team member can view or modify</li>
-              <li>All access to sensitive systems is logged and audited regularly</li>
-              <li>Employees sign confidentiality agreements and undergo security training</li>
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>6. Data Storage and Retention</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none space-y-3">
-            <p>
-              Neeko's Sports Stats stores data according to the following retention policies:
-            </p>
-            
-            <div className="mt-4">
-              <h4 className="font-semibold mb-2">Active User Data</h4>
-              <ul className="list-disc pl-6 space-y-2">
-                <li>Account information: Retained while account is active</li>
-                <li>Usage logs: Retained for 90 days</li>
-                <li>Analytics data: Anonymized and retained indefinitely for platform improvements</li>
-              </ul>
-            </div>
-
-            <div className="mt-4">
-              <h4 className="font-semibold mb-2">Deleted Account Data</h4>
-              <ul className="list-disc pl-6 space-y-2">
-                <li>Personal data is removed from active systems within 30 days</li>
-                <li>Backups containing deleted data are purged within 90 days</li>
-                <li>Billing records may be retained for up to 7 years for tax and legal compliance</li>
-              </ul>
-            </div>
-
-            <div className="mt-4">
-              <h4 className="font-semibold mb-2">Transaction Records</h4>
-              <ul className="list-disc pl-6 space-y-2">
-                <li>Payment records: Retained for 7 years per accounting requirements</li>
-                <li>Subscription history: Retained for the duration of the subscription plus 7 years</li>
-                <li>Refund records: Retained for 7 years</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>7. Monitoring and Incident Response</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>
-              We actively monitor our systems for security threats and anomalies:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>24/7 automated monitoring of infrastructure and application logs</li>
-              <li>Real-time alerts for suspicious activity (failed login attempts, unusual traffic patterns)</li>
-              <li>Incident response team trained to handle security breaches</li>
-              <li>Regular security audits and penetration testing by third-party experts</li>
-              <li>Post-incident analysis and reporting to improve security measures</li>
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>8. Data Breach Notification</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none space-y-3">
-            <p>
-              In the event of a security breach affecting user data:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Affected users will be notified within 72 hours of discovery</li>
-              <li>Notification will include details of what data was compromised</li>
-              <li>We will provide guidance on steps users can take to protect themselves</li>
-              <li>Regulatory authorities will be notified as required by law</li>
-              <li>We will publish a public incident report (if legally permitted)</li>
-            </ul>
-            <p className="mt-3 font-semibold">
-              No breach of user data has occurred to date. We take all necessary precautions to prevent such incidents.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>9. User Account Security</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none space-y-3">
-            <p>
-              Users play a critical role in maintaining account security. We recommend:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Use a strong, unique password (minimum 8 characters with mixed case, numbers, and symbols)</li>
-              <li>Never share your password or account credentials</li>
-              <li>Log out of shared or public devices after use</li>
-              <li>Enable email notifications for account changes and logins</li>
-              <li>Report suspicious activity immediately to admin@neekostats.com.au</li>
-            </ul>
-            <p className="mt-3">
-              If you suspect your account has been compromised, change your password immediately and contact support.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>10. Third-Party Services</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>
-              Neeko's Sports Stats uses select third-party services that adhere to strict security standards:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li><strong>Stripe:</strong> Payment processing (PCI-DSS Level 1 compliant)</li>
-              <li><strong>Cloud Hosting:</strong> SOC 2 Type II certified infrastructure providers</li>
-              <li><strong>Analytics Tools:</strong> Limited to anonymized usage data only</li>
-            </ul>
-            <p className="mt-3">
-              All third-party providers are contractually required to maintain data security and confidentiality.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>11. Vulnerability Reporting</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>
-              If you discover a security vulnerability in Neeko's Sports Stats:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Email us immediately at admin@neekostats.com.au with subject line "Security Vulnerability"</li>
-              <li>Include detailed steps to reproduce the issue</li>
-              <li>Do not publicly disclose the vulnerability until we have addressed it</li>
-              <li>Allow us reasonable time to investigate and fix the issue before disclosure</li>
-            </ul>
-            <p className="mt-3">
-              We appreciate responsible disclosure and will acknowledge all valid reports.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>12. Compliance</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>
-              Neeko's Sports Stats is committed to complying with applicable data protection regulations:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Australian Privacy Principles (APPs)</li>
-              <li>General Data Protection Regulation (GDPR) for EU users</li>
-              <li>California Consumer Privacy Act (CCPA) for California residents</li>
-              <li>Industry-standard security frameworks (ISO 27001 principles)</li>
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>13. Updates to This Policy</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>
-              We regularly review and update our security practices. This policy may be updated to reflect improvements or changes in our security measures. Updated versions will be posted with a new revision date.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>14. Contact Information</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>
-              For security concerns, vulnerability reports, or questions about data handling:
-            </p>
-            <p className="mt-3">
-              <strong>Email:</strong> admin@neekostats.com.au<br />
-              <strong>Address:</strong> Melbourne, Victoria, Australia
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
     </>
   );
 }

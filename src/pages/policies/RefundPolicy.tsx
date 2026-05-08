@@ -3,136 +3,46 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
 
-const SECTIONS = [
-  {
-    id: "1",
-    title: "Overview",
-    content: (
-      <p className="text-white/40 text-sm leading-relaxed">
-        Neeko Sports Stats offers two Neeko+ subscription plans, billed through Stripe. All transactions are processed securely via Stripe's PCI-compliant infrastructure. Neeko does not store card details.
-      </p>
-    ),
-  },
-  {
-    id: "2",
-    title: "Subscription Plans & Billing",
-    content: (
-      <>
-        <p className="text-white/40 text-sm leading-relaxed mb-4">
-          Neeko+ is available on the following plans:
-        </p>
-        <div className="space-y-3">
-          <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
-            <p className="text-sm font-bold text-white mb-1">Season Pass — ${NEEKO_PRICING.season.price} AUD</p>
-            <p className="text-sm text-white/40">One-time payment. Full access for the entire 2026 AFL season. No recurring charges.</p>
-          </div>
-          <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
-            <p className="text-sm font-bold text-white mb-1">Weekly — ${NEEKO_PRICING.weekly.price} AUD / week</p>
-            <p className="text-sm text-white/40">Billed weekly via Stripe. Automatically renews unless cancelled before the next billing date.</p>
-          </div>
-        </div>
-        <p className="text-white/30 text-sm mt-4">
-          A receipt is sent via email after each successful charge.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "3",
-    title: "Cancellation",
-    content: (
-      <>
-        <p className="text-white/40 text-sm leading-relaxed mb-3">
-          You may cancel at any time from your Account Settings under "Manage Subscription".
-        </p>
-        <ul className="space-y-2 text-sm text-white/40">
-          <li className="flex gap-2"><span className="text-white/20 mt-0.5">—</span>Cancellation stops future billing immediately</li>
-          <li className="flex gap-2"><span className="text-white/20 mt-0.5">—</span>Access continues until the end of the current billing period</li>
-          <li className="flex gap-2"><span className="text-white/20 mt-0.5">—</span>No prorated refund is issued for the unused portion of a standard cancellation</li>
-          <li className="flex gap-2"><span className="text-white/20 mt-0.5">—</span>You can resubscribe at any time</li>
-        </ul>
-      </>
-    ),
-  },
-  {
-    id: "4",
-    title: "Refund Eligibility",
-    content: (
-      <>
-        <p className="text-white/40 text-sm leading-relaxed mb-4">
-          Refund windows are based on your plan at the time of the charge:
-        </p>
-        <div className="space-y-3 mb-4">
-          <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
-            <p className="text-sm font-bold text-white mb-1">Season Pass — 14-day refund window</p>
-            <p className="text-sm text-white/40">Requests submitted within 14 days of purchase are eligible for review. After 14 days, access remains active until end of season with no refund.</p>
-          </div>
-          <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
-            <p className="text-sm font-bold text-white mb-1">Weekly plan — 7-day refund window</p>
-            <p className="text-sm text-white/40">Requests submitted within 7 days of the charge are eligible for review. After 7 days, the subscription remains active until renewal with no refund.</p>
-          </div>
-        </div>
-        <p className="text-white/40 text-sm leading-relaxed mb-3">Outside the refund window, refund requests may still be reviewed for:</p>
-        <ul className="space-y-2 text-sm text-white/40">
-          <li className="flex gap-2"><span className="text-white/20 mt-0.5">—</span>Accidental duplicate charges</li>
-          <li className="flex gap-2"><span className="text-white/20 mt-0.5">—</span>Billing errors caused by platform malfunction</li>
-          <li className="flex gap-2"><span className="text-white/20 mt-0.5">—</span>Unauthorised charges (subject to verification)</li>
-          <li className="flex gap-2"><span className="text-white/20 mt-0.5">—</span>Extended service outages (48+ consecutive hours)</li>
-        </ul>
-        <p className="text-white/30 text-sm mt-4">
-          Refunds are not issued for change of mind, forgetting to cancel, or dissatisfaction with prediction accuracy.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "5",
-    title: "How to Request a Refund",
-    content: (
-      <>
-        <p className="text-white/40 text-sm leading-relaxed mb-3">
-          Email{" "}
-          <a href="mailto:admin@neekostats.com.au" className="text-white/60 hover:text-white underline underline-offset-2 transition-colors">
-            admin@neekostats.com.au
-          </a>{" "}
-          with:
-        </p>
-        <ul className="space-y-2 text-sm text-white/40">
-          <li className="flex gap-2"><span className="text-white/20 mt-0.5">—</span>Your account email address</li>
-          <li className="flex gap-2"><span className="text-white/20 mt-0.5">—</span>The date of the charge</li>
-          <li className="flex gap-2"><span className="text-white/20 mt-0.5">—</span>The reason for your request</li>
-          <li className="flex gap-2"><span className="text-white/20 mt-0.5">—</span>Any supporting evidence (screenshots, error messages)</li>
-        </ul>
-        <p className="text-white/30 text-sm mt-4">
-          Requests are reviewed within 5–7 business days. Approved refunds are returned to the original payment method via Stripe and typically clear within 5–10 business days depending on your bank.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "6",
-    title: "Chargeback Policy",
-    content: (
-      <>
-        <p className="text-white/40 text-sm leading-relaxed mb-3">
-          Contact us before disputing a charge with your bank. Filing a chargeback without first contacting support may result in permanent account termination.
-        </p>
-        <p className="text-white/30 text-sm">
-          Fraudulent or unjustified chargebacks will result in a permanent ban and may be referred to Stripe's fraud monitoring systems.
-        </p>
-      </>
-    ),
-  },
-  {
-    id: "7",
-    title: "Policy Updates",
-    content: (
-      <p className="text-white/40 text-sm leading-relaxed">
-        This policy may be updated at any time. The current version is posted on this page. Continued use of Neeko+ constitutes acceptance of the current policy.
-      </p>
-    ),
-  },
+const LAST_UPDATED = "9 May 2026";
+
+const TOC = [
+  { id: "s1", label: "Overview" },
+  { id: "s2", label: "Subscription Plans & Billing" },
+  { id: "s3", label: "Cancellation" },
+  { id: "s4", label: "Refund Eligibility" },
+  { id: "s5", label: "Change of Mind" },
+  { id: "s6", label: "How to Request a Refund" },
+  { id: "s7", label: "Chargeback Policy" },
+  { id: "s8", label: "Australian Consumer Law" },
+  { id: "s9", label: "Policy Updates" },
 ];
+
+function Section({ id, num, title, children }: { id: string; num: string; title: string; children: React.ReactNode }) {
+  return (
+    <div id={id} className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] px-6 py-5">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/20 mb-2">{num}</p>
+      <h2 className="text-base font-bold text-white mb-4">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function Prose({ children }: { children: React.ReactNode }) {
+  return <div className="text-sm text-white/45 leading-relaxed space-y-3">{children}</div>;
+}
+
+function BulletList({ items }: { items: (string | React.ReactNode)[] }) {
+  return (
+    <ul className="space-y-2 text-sm text-white/40 mt-2">
+      {items.map((item, i) => (
+        <li key={i} className="flex gap-2">
+          <span className="text-white/20 mt-0.5 shrink-0">—</span>
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function RefundPolicy() {
   const navigate = useNavigate();
@@ -140,51 +50,176 @@ export default function RefundPolicy() {
   return (
     <>
       <Helmet>
-        <title>Refund Policy — Neeko Sports Stats</title>
+        <title>Refund Policy | Neeko Sports Stats</title>
+        <meta name="description" content="Refund policy for Neeko Sports Stats. Covers Season Pass and Weekly plan refund terms, cancellation and how to request a refund." />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
-    <div className="min-h-screen bg-[#070707] text-white">
-      <div className="max-w-3xl mx-auto px-4 py-16">
+      <div className="min-h-screen bg-[#070707] text-white">
+        <div className="max-w-3xl mx-auto px-4 py-16">
 
-        <button
-          onClick={() => navigate("/policies")}
-          className="flex items-center gap-2 text-white/30 hover:text-white/60 text-sm mb-10 transition-colors"
-        >
-          <ArrowLeft size={14} />
-          Back to Policies
-        </button>
+          <button
+            onClick={() => navigate("/policies")}
+            className="flex items-center gap-2 text-white/30 hover:text-white/60 text-sm mb-10 transition-colors"
+          >
+            <ArrowLeft size={14} />
+            Back to Policies
+          </button>
 
-        <div className="mb-12">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/25 mb-4">Legal</p>
-          <h1 className="text-4xl font-extrabold mb-3">Refund Policy</h1>
-          <p className="text-white/40 text-sm">Last updated: 3 March 2026</p>
+          <div className="mb-10">
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/25 mb-4">Legal</p>
+            <h1 className="text-3xl md:text-4xl font-extrabold mb-3 tracking-tight">Refund Policy</h1>
+            <p className="text-white/35 text-sm">Last updated: {LAST_UPDATED}</p>
+          </div>
+
+          {/* TOC */}
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] px-6 py-5 mb-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/25 mb-3">Contents</p>
+            <ol className="space-y-1.5">
+              {TOC.map(({ id, label }) => (
+                <li key={id}>
+                  <a href={`#${id}`} className="text-sm text-white/40 hover:text-white/70 transition-colors">{label}</a>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="space-y-3">
+
+            <Section id="s1" num="1" title="Overview">
+              <Prose>
+                <p>
+                  Neeko Sports Stats processes all Neeko+ payments through Stripe. This policy outlines the refund and cancellation terms for the Season Pass and Weekly subscription plans.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s2" num="2" title="Subscription Plans & Billing">
+              <Prose>
+                <p>Neeko+ is available on the following plans:</p>
+                <div className="space-y-3 mt-2">
+                  <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
+                    <p className="text-sm font-bold text-white/80 mb-1">
+                      Season Pass — ${NEEKO_PRICING.season.price} AUD
+                    </p>
+                    <p className="text-sm text-white/40">
+                      One-time payment. Full access for the entire 2026 AFL season. No recurring billing.
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-white/[0.07] bg-[#151515] px-5 py-4">
+                    <p className="text-sm font-bold text-white/80 mb-1">
+                      Weekly — ${NEEKO_PRICING.weekly.price} AUD / week
+                    </p>
+                    <p className="text-sm text-white/40">
+                      Recurring weekly billing via Stripe. Automatically renews unless cancelled before the next billing date. A receipt is sent by email after each successful charge.
+                    </p>
+                  </div>
+                </div>
+              </Prose>
+            </Section>
+
+            <Section id="s3" num="3" title="Cancellation">
+              <Prose>
+                <p>
+                  The Weekly Plan can be cancelled at any time from your Account Settings. The Season Pass is a one-time payment and does not require cancellation — there is no recurring charge to cancel.
+                </p>
+                <BulletList items={[
+                  "Cancelling the Weekly Plan stops future billing immediately",
+                  "Access continues until the end of the current paid period",
+                  "Cancellation of the Weekly Plan does not automatically trigger a refund for the current period unless required by law",
+                  "You can resubscribe at any time",
+                ]} />
+              </Prose>
+            </Section>
+
+            <Section id="s4" num="4" title="Refund Eligibility">
+              <Prose>
+                <p>
+                  Digital access to Neeko+ begins immediately after purchase. Refund requests are reviewed in the following circumstances:
+                </p>
+                <BulletList items={[
+                  "Accidental duplicate charges or duplicate purchases",
+                  "Billing errors caused by a platform or payment processing malfunction",
+                  "Unauthorised charges (subject to verification)",
+                  "Extended service outages of 48 or more consecutive hours",
+                  "Technical access failures that prevent use of the purchased plan",
+                ]} />
+                <p>Refund requests are assessed on a case-by-case basis and are not guaranteed outside the circumstances listed above.</p>
+              </Prose>
+            </Section>
+
+            <Section id="s5" num="5" title="Change of Mind">
+              <Prose>
+                <p>
+                  Change-of-mind refunds are generally not provided once access has been granted and the subscription period has begun. This includes forgetting to cancel before a renewal date or dissatisfaction with the accuracy of projections or data.
+                </p>
+                <p>
+                  If you believe your situation warrants consideration, contact us and we will review it.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s6" num="6" title="How to Request a Refund">
+              <Prose>
+                <p>
+                  Email{" "}
+                  <a href="mailto:admin@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    admin@neekostats.com.au
+                  </a>{" "}
+                  with:
+                </p>
+                <BulletList items={[
+                  "Your account email address",
+                  "The date and amount of the charge",
+                  "The reason for your request",
+                  "Any supporting evidence such as screenshots or error messages",
+                ]} />
+                <p>
+                  Requests are reviewed within 5–7 business days. Approved refunds are returned to the original payment method via Stripe and typically clear within 5–10 business days depending on your bank.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s7" num="7" title="Chargeback Policy">
+              <Prose>
+                <p>
+                  If you believe a charge was made in error, please contact us before disputing the charge with your bank. We are generally able to resolve billing issues faster than the chargeback process.
+                </p>
+                <p>
+                  Filing a chargeback without first contacting support may result in account suspension. Fraudulent or unjustified chargebacks may be referred to Stripe's fraud monitoring systems.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s8" num="8" title="Australian Consumer Law">
+              <Prose>
+                <p>
+                  Nothing in this Refund Policy limits any rights you may have under Australian Consumer Law. Where applicable law provides guarantees or rights that cannot be excluded or limited, those rights apply to the extent required by law.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s9" num="9" title="Policy Updates">
+              <Prose>
+                <p>
+                  This policy may be updated at any time. The current version is posted on this page. Continued use of Neeko+ constitutes acceptance of the current policy.
+                </p>
+              </Prose>
+            </Section>
+
+          </div>
+
+          <div className="mt-10 rounded-2xl border border-white/[0.07] bg-[#0e0e0e] p-6">
+            <p className="text-sm font-semibold text-white mb-1">Billing question or refund request?</p>
+            <p className="text-sm text-white/35">
+              Email{" "}
+              <a href="mailto:admin@neekostats.com.au" className="text-white/60 hover:text-white underline underline-offset-2 transition-colors">
+                admin@neekostats.com.au
+              </a>
+            </p>
+          </div>
+
         </div>
-
-        <div className="space-y-3">
-          {SECTIONS.map(({ id, title, content }) => (
-            <div
-              key={id}
-              className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] px-6 py-5"
-            >
-              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/20 mb-3">{id}</p>
-              <h2 className="text-base font-bold text-white mb-4">{title}</h2>
-              {content}
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-10 rounded-2xl border border-white/[0.07] bg-[#0e0e0e] p-6">
-          <p className="text-sm font-semibold text-white mb-1">Billing question or refund request?</p>
-          <p className="text-sm text-white/35">
-            Email{" "}
-            <a href="mailto:admin@neekostats.com.au" className="text-white/60 hover:text-white underline underline-offset-2 transition-colors">
-              admin@neekostats.com.au
-            </a>
-          </p>
-        </div>
-
       </div>
-    </div>
     </>
   );
 }

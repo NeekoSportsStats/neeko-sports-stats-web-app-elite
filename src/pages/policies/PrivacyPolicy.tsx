@@ -1,8 +1,50 @@
 import { Helmet } from "react-helmet-async";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+
+const LAST_UPDATED = "9 May 2026";
+
+const TOC = [
+  { id: "s1",  label: "What Information We Collect" },
+  { id: "s2",  label: "How We Use Your Information" },
+  { id: "s3",  label: "Payment Information" },
+  { id: "s4",  label: "Cookies and Local Storage" },
+  { id: "s5",  label: "Third-Party Services" },
+  { id: "s6",  label: "Data Storage and Protection" },
+  { id: "s7",  label: "Data Sharing and Disclosure" },
+  { id: "s8",  label: "Your Privacy Rights" },
+  { id: "s9",  label: "Data Retention" },
+  { id: "s10", label: "Children's Privacy" },
+  { id: "s11", label: "Changes to This Policy" },
+  { id: "s12", label: "Contact" },
+];
+
+function Section({ id, num, title, children }: { id: string; num: string; title: string; children: React.ReactNode }) {
+  return (
+    <div id={id} className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] px-6 py-5">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-white/20 mb-2">{num}</p>
+      <h2 className="text-base font-bold text-white mb-4">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+function Prose({ children }: { children: React.ReactNode }) {
+  return <div className="text-sm text-white/45 leading-relaxed space-y-3">{children}</div>;
+}
+
+function BulletList({ items }: { items: (string | React.ReactNode)[] }) {
+  return (
+    <ul className="space-y-2 text-sm text-white/40 mt-2">
+      {items.map((item, i) => (
+        <li key={i} className="flex gap-2">
+          <span className="text-white/20 mt-0.5 shrink-0">—</span>
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function PrivacyPolicy() {
   const navigate = useNavigate();
@@ -10,217 +52,199 @@ export default function PrivacyPolicy() {
   return (
     <>
       <Helmet>
-        <title>Privacy Policy — Neeko Sports Stats</title>
+        <title>Privacy Policy | Neeko Sports Stats</title>
+        <meta name="description" content="Privacy policy for Neeko Sports Stats. Learn what data we collect, how it is used, and how to exercise your privacy rights." />
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <Button
-        variant="ghost"
-        onClick={() => navigate("/policies")}
-        className="mb-6 gap-2"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Policies
-      </Button>
+      <div className="min-h-screen bg-[#070707] text-white">
+        <div className="max-w-3xl mx-auto px-4 py-16">
 
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Privacy Policy</h1>
-        <p className="text-muted-foreground text-lg">
-          Last updated: {new Date().toLocaleDateString()}
-        </p>
+          <button
+            onClick={() => navigate("/policies")}
+            className="flex items-center gap-2 text-white/30 hover:text-white/60 text-sm mb-10 transition-colors"
+          >
+            <ArrowLeft size={14} />
+            Back to Policies
+          </button>
+
+          <div className="mb-10">
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/25 mb-4">Legal</p>
+            <h1 className="text-3xl md:text-4xl font-extrabold mb-3 tracking-tight">Privacy Policy</h1>
+            <p className="text-white/35 text-sm">Last updated: {LAST_UPDATED}</p>
+          </div>
+
+          {/* TOC */}
+          <div className="rounded-2xl border border-white/[0.07] bg-[#0e0e0e] px-6 py-5 mb-6">
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/25 mb-3">Contents</p>
+            <ol className="space-y-1.5">
+              {TOC.map(({ id, label }) => (
+                <li key={id}>
+                  <a href={`#${id}`} className="text-sm text-white/40 hover:text-white/70 transition-colors">{label}</a>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="space-y-3">
+
+            <Section id="s1" num="1" title="What Information We Collect">
+              <Prose>
+                <p>Neeko Sports Stats collects the following types of information:</p>
+                <BulletList items={[
+                  <><strong className="text-white/60">Account information:</strong> Your email address and a hashed version of your password, used to create and manage your account.</>,
+                  <><strong className="text-white/60">Subscription status:</strong> Whether you hold an active Neeko+ Season Pass or Weekly subscription, used to control access to premium features.</>,
+                  <><strong className="text-white/60">Usage data:</strong> Pages visited, features used, and interaction patterns. This helps us understand how the platform is being used and improve it over time.</>,
+                  <><strong className="text-white/60">Device and browser information:</strong> Browser type, operating system, and IP address, collected automatically when you access the Service.</>,
+                  <><strong className="text-white/60">Payment confirmation:</strong> We receive confirmation of successful payments from Stripe. We do not receive or store full credit card numbers or CVV codes.</>,
+                ]} />
+              </Prose>
+            </Section>
+
+            <Section id="s2" num="2" title="How We Use Your Information">
+              <Prose>
+                <p>We use collected information to:</p>
+                <BulletList items={[
+                  "Provide and maintain the Service",
+                  "Manage your Neeko+ access and subscription status",
+                  "Send transactional emails such as payment confirmations and support replies",
+                  "Analyse usage patterns to improve platform performance and features",
+                  "Detect and prevent misuse, fraud, and security threats",
+                  "Comply with legal obligations",
+                ]} />
+                <p>We do not use your information for advertising or share it with third parties for marketing purposes.</p>
+              </Prose>
+            </Section>
+
+            <Section id="s3" num="3" title="Payment Information">
+              <Prose>
+                <p>
+                  All payment processing is handled by Stripe. When you purchase Neeko+, your card details are entered directly into Stripe's secure payment interface. Neeko Sports Stats does not receive, handle, or store full credit card numbers, CVV codes, or other sensitive payment credentials.
+                </p>
+                <p>
+                  We receive confirmation from Stripe when a payment is successful, and we store only the subscription status associated with your account.
+                </p>
+                <p>
+                  For information about how Stripe handles payment data, see{" "}
+                  <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    stripe.com/privacy
+                  </a>.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s4" num="4" title="Cookies and Local Storage">
+              <Prose>
+                <p>
+                  Neeko Sports Stats uses cookies and local storage to maintain your session and authentication state across page loads. This is required for the platform to function correctly.
+                </p>
+                <BulletList items={[
+                  <><strong className="text-white/60">Authentication tokens:</strong> Used to keep you signed in between sessions.</>,
+                  <><strong className="text-white/60">Preference storage:</strong> Used to remember settings such as filters or display preferences.</>,
+                  <><strong className="text-white/60">Analytics:</strong> We may use analytics tools to understand aggregate usage patterns. Where used, this data is anonymised.</>,
+                ]} />
+                <p>
+                  You can control cookies through your browser settings. Disabling essential cookies will prevent you from signing in or maintaining a session.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s5" num="5" title="Third-Party Services">
+              <Prose>
+                <p>We use the following third-party services to operate Neeko Sports Stats:</p>
+                <BulletList items={[
+                  <><strong className="text-white/60">Stripe:</strong> Handles all payment processing. Stripe maintains PCI-DSS compliance. Card data is handled entirely within Stripe's infrastructure.</>,
+                  <><strong className="text-white/60">Supabase:</strong> Provides our database, authentication, and backend infrastructure. User account data and subscription records are stored in Supabase-hosted environments.</>,
+                  <><strong className="text-white/60">Analytics tools:</strong> We may use analytics services to measure platform usage. Where used, data is processed in aggregate or anonymised form.</>,
+                ]} />
+                <p>These providers are used only as necessary to operate the Service and are not authorised to use your data for other purposes.</p>
+              </Prose>
+            </Section>
+
+            <Section id="s6" num="6" title="Data Storage and Protection">
+              <Prose>
+                <p>
+                  Reasonable technical and organisational safeguards are used to protect your data against unauthorised access, disclosure, or loss. Authentication and account access are handled through trusted infrastructure providers.
+                </p>
+                <p>
+                  No online service can guarantee absolute security. Users should protect their own account credentials and report any suspected unauthorised access promptly.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s7" num="7" title="Data Sharing and Disclosure">
+              <Prose>
+                <p className="font-semibold text-white/60">We do not sell, rent, or trade your personal information to third parties.</p>
+                <p>We may share information only in the following circumstances:</p>
+                <BulletList items={[
+                  "With your explicit consent",
+                  "To comply with legal obligations, court orders, or government requests",
+                  "To protect the rights, property, or safety of Neeko Sports Stats or its users",
+                  "With service providers who operate the platform, under confidentiality obligations",
+                  "In connection with a business transfer or acquisition, with prior notice to affected users",
+                ]} />
+              </Prose>
+            </Section>
+
+            <Section id="s8" num="8" title="Your Privacy Rights">
+              <Prose>
+                <p>You have the right to:</p>
+                <BulletList items={[
+                  <><strong className="text-white/60">Access:</strong> Request a copy of the personal data we hold about you.</>,
+                  <><strong className="text-white/60">Correction:</strong> Update inaccurate information through your account settings or by contacting us.</>,
+                  <><strong className="text-white/60">Deletion:</strong> Request deletion of your account and associated personal data, subject to legal retention requirements.</>,
+                  <><strong className="text-white/60">Opt-out:</strong> Unsubscribe from non-essential communications at any time.</>,
+                ]} />
+                <p>
+                  To exercise any of these rights, contact us at{" "}
+                  <a href="mailto:admin@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    admin@neekostats.com.au
+                  </a>.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s9" num="9" title="Data Retention">
+              <Prose>
+                <BulletList items={[
+                  "Account data is retained while your account is active",
+                  "Payment and billing records may be retained for up to 7 years for legal and accounting purposes",
+                  "Usage and analytics data may be anonymised and retained for platform improvement",
+                  "Deleted accounts are removed from active systems within 30 days; backup retention may extend beyond this period",
+                ]} />
+              </Prose>
+            </Section>
+
+            <Section id="s10" num="10" title="Children's Privacy">
+              <Prose>
+                <p>
+                  Neeko Sports Stats is not directed at users under the age of 13. We do not knowingly collect personal information from children. If we become aware that a child has provided personal data, we will take steps to delete it.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s11" num="11" title="Changes to This Policy">
+              <Prose>
+                <p>
+                  We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated date. Continued use of the Service after changes constitutes acceptance of the updated policy.
+                </p>
+              </Prose>
+            </Section>
+
+            <Section id="s12" num="12" title="Contact">
+              <Prose>
+                <p>
+                  For privacy questions or data requests, contact us at:{" "}
+                  <a href="mailto:admin@neekostats.com.au" className="text-white/55 hover:text-white underline underline-offset-2 transition-colors">
+                    admin@neekostats.com.au
+                  </a>
+                </p>
+                <p>Melbourne, Victoria, Australia</p>
+              </Prose>
+            </Section>
+
+          </div>
+        </div>
       </div>
-
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>1. Information We Collect</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none space-y-3">
-            <p>
-              Neeko's Sports Stats collects the following types of information to provide and improve our services:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li><strong>Account Information:</strong> Email address, username, and password (encrypted)</li>
-              <li><strong>Profile Data:</strong> Optional profile details, preferences, and settings</li>
-              <li><strong>Usage Data:</strong> Pages visited, features used, time spent on platform, and interaction patterns</li>
-              <li><strong>Device Information:</strong> Browser type, operating system, IP address, and device identifiers</li>
-              <li><strong>Payment Information:</strong> Processed securely through Stripe (we do not store full credit card details)</li>
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>2. How We Use Your Information</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>We use collected information to:</p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Provide and maintain the Service</li>
-              <li>Process Neeko+ subscription payments and manage billing</li>
-              <li>Send important updates, security alerts, and support messages</li>
-              <li>Analyze usage patterns to improve platform performance and features</li>
-              <li>Detect and prevent fraud, abuse, and security threats</li>
-              <li>Comply with legal obligations and enforce our Terms and Conditions</li>
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>3. Cookies and Tracking Technologies</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none space-y-3">
-            <p>
-              Neeko's Sports Stats uses cookies and similar tracking technologies to enhance user experience and analyze platform usage.
-            </p>
-            <p>Types of cookies we use:</p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li><strong>Essential Cookies:</strong> Required for authentication and basic platform functionality</li>
-              <li><strong>Analytics Cookies:</strong> Help us understand how users normally interact with the platform</li>
-              <li><strong>Preference Cookies:</strong> Remember your settings and customization choices</li>
-            </ul>
-            <p className="mt-3">
-              You can control cookie preferences through your browser settings, but disabling certain cookies may limit platform functionality.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>4. Third-Party Services</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none space-y-3">
-            <p>
-              We use trusted third-party services to operate Neeko's Sports Stats:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li><strong>Stripe:</strong> Handles all payment processing securely with industry-standard encryption. Stripe maintains PCI-DSS compliance and does not share full payment details with us.</li>
-              <li><strong>Hosting Providers:</strong> Store and process data in secure data centers with encryption and access controls</li>
-              <li><strong>Analytics Tools:</strong> Help us understand user behavior and improve the platform (data is anonymized)</li>
-            </ul>
-            <p className="mt-3">
-              These third parties are contractually obligated to protect your data and use it only for the purposes we specify.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>5. Data Storage and Protection</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>
-              Neeko's Sports Stats implements industry-standard security measures to protect user data:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Passwords are encrypted using secure hashing algorithms</li>
-              <li>Data transmission is protected with SSL/TLS encryption</li>
-              <li>Access to user data is restricted to authorized personnel only</li>
-              <li>Regular security audits and vulnerability assessments are performed</li>
-              <li>Backup systems ensure data recovery in case of technical issues</li>
-            </ul>
-            <p className="mt-3">
-              While we take all reasonable precautions, no method of internet transmission is 100% secure. Users should also take steps to protect their account credentials.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>6. Data Sharing and Disclosure</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none space-y-3">
-            <p className="font-semibold">
-              We do not sell, rent, or trade your personal information to third parties.
-            </p>
-            <p>
-              We may share information only in the following circumstances:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>With your explicit consent</li>
-              <li>To comply with legal obligations, court orders, or government requests</li>
-              <li>To protect our rights, property, or safety, and that of our users</li>
-              <li>In connection with a business transfer, merger, or acquisition (users will be notified)</li>
-              <li>With service providers who assist in operating the platform (under strict confidentiality agreements)</li>
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>7. Your Privacy Rights</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>You have the right to:</p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li><strong>Access:</strong> Request a copy of the personal data we hold about you</li>
-              <li><strong>Correction:</strong> Update or correct inaccurate information in your account settings</li>
-              <li><strong>Deletion:</strong> Request deletion of your account and associated data (subject to legal retention requirements)</li>
-              <li><strong>Data Portability:</strong> Request your data in a structured, machine-readable format</li>
-              <li><strong>Opt-Out:</strong> Unsubscribe from marketing emails at any time</li>
-            </ul>
-            <p className="mt-3">
-              To exercise these rights, contact us at admin@neekostats.com.au with your request.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>8. Data Retention</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>
-              We retain personal data for as long as necessary to provide the Service and comply with legal obligations:
-            </p>
-            <ul className="list-disc pl-6 space-y-2">
-              <li>Account data is retained while your account is active</li>
-              <li>Payment and billing records are kept for tax and accounting purposes (typically 7 years)</li>
-              <li>Usage logs and analytics data may be anonymized and retained indefinitely</li>
-              <li>Deleted accounts are removed from active systems within 30 days (backups may persist longer)</li>
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>9. Children's Privacy</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>
-              Neeko's Sports Stats is not intended for users under the age of 18. We do not knowingly collect personal information from children. If we become aware that a child has provided us with personal data, we will take steps to delete such information promptly.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>10. Changes to Privacy Policy</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>
-              We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated revision date. We encourage users to review this policy periodically. Continued use of the Service after changes constitutes acceptance of the updated policy.
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>11. Contact Us</CardTitle>
-          </CardHeader>
-          <CardContent className="prose prose-sm max-w-none">
-            <p>
-              If you have questions or concerns about this Privacy Policy or how your data is handled, please contact us:
-            </p>
-            <p className="mt-3">
-              <strong>Email:</strong> admin@neekostats.com.au<br />
-              <strong>Address:</strong> Melbourne, Victoria, Australia
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
     </>
   );
 }
