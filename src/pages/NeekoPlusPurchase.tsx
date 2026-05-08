@@ -627,8 +627,8 @@ const NeekoPlusPurchase = () => {
             lineHeight: 1.1,
             margin: "0 0 14px",
           }}>
-            Your AFL Stats<br />
-            <span style={{ color: "#E0AE2D" }}>Edge, Every Round.</span>
+            Your AFL Stat Edge,<br />
+            <span style={{ color: "#E0AE2D" }}>Every Round.</span>
           </h1>
 
           <p style={{
@@ -636,9 +636,9 @@ const NeekoPlusPurchase = () => {
             color: "rgba(255,255,255,0.42)",
             margin: "0 auto",
             lineHeight: 1.6,
-            maxWidth: 420,
+            maxWidth: 460,
           }}>
-            Unlock full player projections, breakevens, stat trends, hit rates, team dashboards, market signals and fantasy decision tools — updated before every lockout.
+            Unlock full player projections, breakevens, stat trends, hit rates, team dashboards, market signals and Fantasy Hub decision tools — updated before every lockout.
           </p>
         </div>
 
@@ -907,7 +907,7 @@ const NeekoPlusPurchase = () => {
               <>
                 {selectedPlan === "season"
                   ? `Get Full Season Access — $${NEEKO_PRICING.season.price} AUD`
-                  : `Start Weekly Access — $${NEEKO_PRICING.weekly.price} AUD`}
+                  : `Start Weekly — $${NEEKO_PRICING.weekly.price} AUD/wk`}
                 <ArrowRight size={15} />
               </>
             )}
@@ -919,6 +919,88 @@ const NeekoPlusPurchase = () => {
             ? "One-time payment. No subscription. Access until end of 2026 AFL season."
             : "Billed weekly via Stripe. Cancel anytime from your account page."}
         </p>
+
+        {/* ── Free vs Neeko+ comparison ── */}
+        <div style={{ marginTop: 36 }}>
+          <p style={{
+            fontSize: 9.5, fontWeight: 900, letterSpacing: "0.36em",
+            textTransform: "uppercase",
+            color: "rgba(255,255,255,0.22)",
+            margin: "0 0 14px",
+            textAlign: "center",
+          }}>
+            What you unlock
+          </p>
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 10,
+          }}>
+            {/* Free column */}
+            <div style={{
+              background: "rgba(255,255,255,0.02)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              borderRadius: 14,
+              padding: "18px 16px",
+            }}>
+              <p style={{
+                fontSize: 10, fontWeight: 800, letterSpacing: "0.22em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.28)",
+                margin: "0 0 12px",
+              }}>
+                Free
+              </p>
+              {[
+                "Limited rows per page",
+                "Basic player and team pages",
+                "Preview-level stats only",
+                "Locked premium signals",
+              ].map((item) => (
+                <div key={item} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.18)", flexShrink: 0, marginTop: 1 }}>—</span>
+                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.32)", lineHeight: 1.4 }}>{item}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Neeko+ column */}
+            <div style={{
+              background: "linear-gradient(160deg, #1c1507 0%, #110e04 100%)",
+              border: "1px solid rgba(224,174,45,0.28)",
+              borderRadius: 14,
+              padding: "18px 16px",
+            }}>
+              <p style={{
+                fontSize: 10, fontWeight: 800, letterSpacing: "0.22em",
+                textTransform: "uppercase",
+                color: "rgba(224,174,45,0.65)",
+                margin: "0 0 12px",
+              }}>
+                Neeko+
+              </p>
+              {[
+                "Full player pool — all 600+",
+                "Full projections and breakevens",
+                "Full Stat Board, Market Watch and Player/Team intelligence",
+                "AI summaries, trends, signals and decision tools",
+              ].map((item) => (
+                <div key={item} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                  <div style={{
+                    width: 14, height: 14, borderRadius: "50%", flexShrink: 0, marginTop: 1,
+                    background: "rgba(34,197,94,0.12)",
+                    border: "1px solid rgba(34,197,94,0.28)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    <Check size={7} style={{ color: "#22c55e" }} />
+                  </div>
+                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.65)", lineHeight: 1.4 }}>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {/* ── Premium preview section ── */}
         <ProductPreview rows={previewRows} />
@@ -1013,11 +1095,11 @@ const NeekoPlusPurchase = () => {
           </p>
         </div>
 
-        {/* Sticky CTA repeat */}
+        {/* Bottom CTA repeat */}
         {!isPremium && (
           <div style={{ marginTop: 48, textAlign: "center" }}>
             <button
-              onClick={() => handleSubscribe(selectedPlan)}
+              onClick={() => handleSubscribe("season")}
               disabled={loading}
               style={{
                 padding: "15px 40px",
@@ -1039,18 +1121,41 @@ const NeekoPlusPurchase = () => {
                 </>
               ) : (
                 <>
-                  {selectedPlan === "season"
-                    ? `Get Full Season Access — $${NEEKO_PRICING.season.price} AUD`
-                    : `Start Weekly Access — $${NEEKO_PRICING.weekly.price} AUD`}
+                  {`Get Full Season Access — $${NEEKO_PRICING.season.price} AUD`}
                   <ArrowRight size={14} />
                 </>
               )}
             </button>
             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", margin: "8px 0 0" }}>
-              {selectedPlan === "season"
-                ? `$${NEEKO_PRICING.season.price} AUD · $${seasonPerRound}/round · Full 2026 season`
-                : `$${NEEKO_PRICING.weekly.price} AUD/wk · Cancel anytime`}
+              {`$${NEEKO_PRICING.season.price} AUD · $${seasonPerRound}/round · Full 2026 season`}
             </p>
+            <button
+              onClick={() => handleSubscribe("weekly")}
+              disabled={loading}
+              style={{
+                marginTop: 10,
+                padding: "9px 24px",
+                borderRadius: 8,
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "rgba(255,255,255,0.38)",
+                fontSize: 12, fontWeight: 600,
+                cursor: loading ? "not-allowed" : "pointer",
+                display: "inline-flex", alignItems: "center", gap: 6,
+                transition: "all 0.15s ease",
+                opacity: loading ? 0.7 : 1,
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.65)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.22)";
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.38)";
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.12)";
+              }}
+            >
+              View Weekly Option — ${NEEKO_PRICING.weekly.price} AUD/wk
+            </button>
           </div>
         )}
       </div>
