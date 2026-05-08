@@ -138,7 +138,7 @@ export default function About() {
             maxWidth: 620,
             margin: "0 0 40px",
           }}>
-            Neeko Sports Stats tracks AFL player performance, projections, prices, trends and matchup signals so users can compare players, find value, avoid traps and make faster decisions.
+            Neeko Sports Stats was built to make AFL player data easier to use before lockout. Instead of jumping between spreadsheets, match stats, price lists and social media opinions, Neeko brings player trends, projections, prices, breakevens, hit rates and team context into one weekly decision platform.
           </p>
 
           {/* Stat strip */}
@@ -394,7 +394,7 @@ export default function About() {
               Ready to get started?
             </h2>
             <p style={{ fontSize: 14, color: "rgba(255,255,255,0.38)", margin: "0 0 28px", lineHeight: 1.6 }}>
-              Explore the Stat Board and Fantasy Hub free, or unlock the full platform with Neeko+.
+              Explore the Stat Board and Fantasy Hub for free, or unlock the full platform with Neeko+.
             </p>
 
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10, justifyContent: "center" }}>
