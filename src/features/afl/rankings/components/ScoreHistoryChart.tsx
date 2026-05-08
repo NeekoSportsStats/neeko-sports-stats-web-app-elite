@@ -245,35 +245,43 @@ export default function ScoreHistoryChart({ playerName, playerId }: { playerName
 
   if (loading) return <div className="h-[180px] animate-pulse rounded-lg bg-white/5" />;
 
-  if (!data.length) {
+  // Only plot completed games with a real actual score
+  const completedData = data.filter((d) => !d.is_future && d.actual_score != null);
+
+  if (completedData.length < 3) {
     return (
-      <div className="h-[160px] flex flex-col items-center justify-center rounded-lg bg-white/[0.03] border border-white/5 gap-3 px-4 text-center">
-        <div className="flex gap-1 items-end h-7 opacity-20">
-          {[40, 65, 52, 78, 61, 85, 70, 58, 90, 74].map((h, i) => (
-            <div key={i} className="w-3 rounded-t bg-white/40" style={{ height: `${h}%` }} />
-          ))}
-        </div>
-        <p className="text-xs text-white/30 leading-relaxed max-w-[220px]">
-          No completed matches found. Scoring history will appear once games are played.
+      <div className="h-[120px] flex flex-col items-center justify-center rounded-lg bg-white/[0.03] border border-white/5 gap-2 px-4 text-center">
+        <p className="text-xs text-white/40 leading-relaxed">
+          Not enough completed games to chart form yet.
         </p>
+        {completedData.length > 0 && (
+          <p className="text-[10px] text-white/20">{completedData.length} of 3 required games played</p>
+        )}
       </div>
     );
   }
 
-  const actuals   = data.map((d) => d.actual_score).filter((v): v is number => v !== null);
-  const projected = data.map((d) => d.projected_score).filter((v): v is number => v !== null);
+  // Future projection row (at most one) — append after completed games for the "next round" dashed segment
+  const futureData = data.filter((d) => d.is_future && d.projected_score != null).slice(0, 1);
+  const plotData   = [...completedData, ...futureData];
+
+  const actuals   = completedData.map((d) => d.actual_score!);
+  const projected = plotData.map((d) => d.projected_score).filter((v): v is number => v !== null);
   const allVals   = [...actuals, ...projected];
-  const minVal    = allVals.length ? Math.min(...allVals) : 0;
-  const maxVal    = allVals.length ? Math.max(...allVals) : 100;
-  const pad       = Math.max(10, (maxVal - minVal) * 0.18);
+  const minVal    = Math.min(...allVals);
+  const maxVal    = Math.max(...allVals);
+  const pad       = Math.max(10, (maxVal - minVal) * 0.20);
+  // Round Y domain to clean multiples of 10
+  const yMin      = Math.floor((minVal - pad) / 10) * 10;
+  const yMax      = Math.ceil((maxVal + pad) / 10) * 10;
 
-  const hasActuals       = actuals.length > 0;
-  const hasHistoricalProj = data.some((d) => !d.is_future && d.projected_score != null);
-  const hasFutureProj     = data.some((d) => d.is_future && d.projected_score != null);
+  const hasActuals        = actuals.length > 0;
+  const hasHistoricalProj = completedData.some((d) => d.projected_score != null);
+  const hasFutureProj     = futureData.length > 0;
   const hasAnyProj        = hasHistoricalProj || hasFutureProj;
-  const hasPairedData     = data.some((d) => !d.is_future && d.actual_score != null && d.projected_score != null);
+  const hasPairedData     = completedData.some((d) => d.actual_score != null && d.projected_score != null);
 
-  const chartData = data.map((d) => {
+  const chartData = plotData.map((d) => {
     const a    = d.actual_score;
     const p    = d.projected_score;
     const conf = d.projection_confidence;
@@ -303,10 +311,13 @@ export default function ScoreHistoryChart({ playerName, playerId }: { playerName
     };
   }
 
+  // Show every label if 6 or fewer rounds, otherwise show every other one
+  const tickInterval = chartData.length <= 6 ? 0 : 1;
+
   return (
     <>
-      <ResponsiveContainer width="100%" height={185}>
-        <ComposedChart data={chartData} margin={{ top: 4, right: 8, bottom: 0, left: -20 }}>
+      <ResponsiveContainer width="100%" height={190}>
+        <ComposedChart data={chartData} margin={{ top: 6, right: 6, bottom: 4, left: 4 }}>
           <defs>
             <linearGradient id="greenShade" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="rgba(34,197,94,0.25)" />
@@ -320,16 +331,18 @@ export default function ScoreHistoryChart({ playerName, playerId }: { playerName
 
           <XAxis
             dataKey="round_label"
-            tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 10 }}
+            tick={{ fill: "rgba(255,255,255,0.30)", fontSize: 10, fontWeight: 500 }}
             axisLine={false}
             tickLine={false}
+            interval={tickInterval}
           />
           <YAxis
-            domain={[minVal - pad, maxVal + pad]}
-            tick={{ fill: "rgba(255,255,255,0.25)", fontSize: 10 }}
+            domain={[yMin, yMax]}
+            tick={{ fill: "rgba(255,255,255,0.30)", fontSize: 10 }}
             axisLine={false}
             tickLine={false}
-            width={32}
+            width={30}
+            tickFormatter={(v) => String(Math.round(v))}
           />
           <RechartsTooltip content={<ChartTooltip />} />
 
@@ -465,7 +478,7 @@ export default function ScoreHistoryChart({ playerName, playerId }: { playerName
         {hasFutureProj && !hasActuals && (
           <span className="text-[10px] text-white/20 italic">Season starts soon</span>
         )}
-        {data.some((d) => d.projection_confidence != null) && (
+        {completedData.some((d) => d.projection_confidence != null) && (
           <div className="flex items-center gap-1.5">
             <svg width="14" height="14" viewBox="0 0 14 14">
               <circle cx="7" cy="7" r="5" fill="rgba(52,211,153,0.25)" />
@@ -476,7 +489,7 @@ export default function ScoreHistoryChart({ playerName, playerId }: { playerName
         )}
       </div>
 
-      <ConfidenceReliabilityPanel data={data} />
+      <ConfidenceReliabilityPanel data={completedData} />
     </>
   );
 }

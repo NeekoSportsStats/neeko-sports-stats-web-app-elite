@@ -598,8 +598,11 @@ export function PlayerDetailModal({
 
           {/* 8. Last 10 Games — visible for all free 1–8 */}
           {canSeeAI && (
-            <div className="rounded-lg bg-white/[0.03] border border-white/5 px-4 py-4">
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-3">Last 10 Completed Games</p>
+            <div className="rounded-lg bg-white/[0.03] border border-white/5 px-4 py-4 overflow-hidden">
+              <div className="flex items-baseline justify-between mb-3">
+                <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">Last 10 Completed Games</p>
+                <p className="text-[10px] text-white/20 italic">Actual AFL Fantasy scores</p>
+              </div>
               <Suspense fallback={<div className="h-[180px] animate-pulse rounded-lg bg-white/5" />}>
                 <ScoreHistoryChart playerName={row.player_name} playerId={row.player_id} />
               </Suspense>
