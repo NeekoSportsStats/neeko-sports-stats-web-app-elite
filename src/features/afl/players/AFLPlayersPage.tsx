@@ -648,12 +648,14 @@ export default function AFLPlayersPage() {
                     }
 
                     const { row, idx } = item;
-                    const slug       = playerToSlug(row.player_name, row.team_name ?? row.team);
-                    const teamShort  = AFL_TEAMS.find(t => t.dbName === (row.team_name ?? row.team))?.displayName
-                                    ?? (row.team_name ?? row.team ?? "—");
-                    const signalVal   = signalFromField(row.signal ?? null);
-                    const signalColor = getEdgeSignalColor(signalVal);
-                    const signalLabel = signalVal ? formatEdgeSignalLabel(signalVal) : null;
+                    const slug      = playerToSlug(row.player_name, row.team_name ?? row.team);
+                    const teamShort = AFL_TEAMS.find(t => t.dbName === (row.team_name ?? row.team))?.displayName
+                                   ?? (row.team_name ?? row.team ?? "—");
+
+                    // Signal vars only computed for premium users — never exposed to free path
+                    const signalVal   = isPremium ? signalFromField(row.signal ?? null) : null;
+                    const signalColor = isPremium && signalVal ? getEdgeSignalColor(signalVal) : "transparent";
+                    const signalLabel = isPremium && signalVal ? formatEdgeSignalLabel(signalVal) : null;
 
                     return (
                       <tr
@@ -733,10 +735,10 @@ export default function AFLPlayersPage() {
                           </td>
                         )}
 
-                        {/* Signal */}
+                        {/* Signal — free users always see the locked state, no signal value ever shown */}
                         <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
                           {isPremium ? (
-                            signalLabel ? (
+                            signalLabel && row.signal != null ? (
                               <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.03em", color: signalColor }}>
                                 {signalLabel}
                               </span>
