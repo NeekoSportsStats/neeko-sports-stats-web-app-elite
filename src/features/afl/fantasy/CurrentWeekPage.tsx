@@ -3,7 +3,7 @@ import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import {
   Crown, DollarSign, TriangleAlert as AlertTriangle,
-  Lock, ChevronRight, ExternalLink,
+  Lock, ChevronRight, ExternalLink, ShieldAlert,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
@@ -230,11 +230,290 @@ function Section({ title, icon, iconBg, players, isPremium, renderPlayer, emptyM
   );
 }
 
+// ── Summary card skeleton ─────────────────────────────────────────────────────
+
+function SummaryCardSkeleton() {
+  return (
+    <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-4 flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <div className="h-5 w-5 rounded-md bg-white/[0.04] animate-pulse" />
+        <div className="h-3 w-20 rounded bg-white/[0.04] animate-pulse" />
+      </div>
+      <div className="space-y-1.5">
+        <div className="h-4 w-28 rounded bg-white/[0.05] animate-pulse" />
+        <div className="h-3 w-16 rounded bg-white/[0.03] animate-pulse" />
+      </div>
+      <div className="h-6 w-14 rounded-lg bg-white/[0.04] animate-pulse mt-auto" />
+    </div>
+  );
+}
+
+// ── Captain Lock card ─────────────────────────────────────────────────────────
+
+function CaptainLockCard({ player }: { player: CurrentRoundPlayer | null }) {
+  const href = player ? playerHref(player) : "#";
+
+  const inner = (
+    <div className="rounded-2xl border border-[#F5C84C]/20 bg-[#F5C84C]/[0.03] p-4 flex flex-col gap-2.5 h-full hover:border-[#F5C84C]/35 hover:bg-[#F5C84C]/[0.055] transition-all duration-200 group">
+      {/* Label row */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <Crown className="h-3.5 w-3.5 text-[#F5C84C]/70 shrink-0" aria-hidden />
+          <span className="text-[10px] font-[800] tracking-[0.12em] uppercase text-[#F5C84C]/60">
+            Captain Lock
+          </span>
+        </div>
+        {player && (
+          <ExternalLink className="h-3 w-3 text-white/15 group-hover:text-white/35 transition-colors shrink-0" aria-hidden />
+        )}
+      </div>
+
+      {player ? (
+        <>
+          {/* Player identity */}
+          <div className="flex-1">
+            <p className="text-[15px] font-[800] text-white/92 leading-tight tracking-tight">
+              {player.player_name}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {player.team && (
+                <span className="text-[10px] text-white/35 font-[500]">{player.team}</span>
+              )}
+              {player.position && (
+                <>
+                  <span className="text-white/15 text-[10px]">·</span>
+                  <span className="text-[10px] text-white/25 font-[500]">{player.position}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="flex items-end justify-between gap-2 mt-0.5">
+            <div className="flex flex-col gap-0.5">
+              {player.projection != null && (
+                <>
+                  <span className="text-[22px] font-[900] text-[#F5C84C] leading-none tabular-nums">
+                    {fmt(player.projection, 0)}
+                  </span>
+                  <span className="text-[9px] text-white/25 uppercase tracking-wider font-[600]">
+                    proj pts
+                  </span>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              <span className="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-[800] uppercase tracking-wider text-[#F5C84C] bg-[#F5C84C]/[0.12] border border-[#F5C84C]/25">
+                LOCK
+              </span>
+              {player.confidence_label && (
+                <ConfidenceBadge label={player.confidence_label} />
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <p className="text-[12px] text-white/25 flex-1 flex items-center">
+          Live data not available yet.
+        </p>
+      )}
+    </div>
+  );
+
+  return player && href !== "#" ? (
+    <Link to={href} className="block h-full">{inner}</Link>
+  ) : (
+    inner
+  );
+}
+
+// ── Best Value card ───────────────────────────────────────────────────────────
+
+function BestValueCard({ player }: { player: CurrentRoundPlayer | null }) {
+  const href = player ? playerHref(player) : "#";
+
+  const inner = (
+    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.03] p-4 flex flex-col gap-2.5 h-full hover:border-emerald-500/35 hover:bg-emerald-500/[0.055] transition-all duration-200 group">
+      {/* Label row */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <DollarSign className="h-3.5 w-3.5 text-emerald-400/70 shrink-0" aria-hidden />
+          <span className="text-[10px] font-[800] tracking-[0.12em] uppercase text-emerald-400/60">
+            Best Value
+          </span>
+        </div>
+        {player && (
+          <ExternalLink className="h-3 w-3 text-white/15 group-hover:text-white/35 transition-colors shrink-0" aria-hidden />
+        )}
+      </div>
+
+      {player ? (
+        <>
+          {/* Player identity */}
+          <div className="flex-1">
+            <p className="text-[15px] font-[800] text-white/92 leading-tight tracking-tight">
+              {player.player_name}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {player.team && (
+                <span className="text-[10px] text-white/35 font-[500]">{player.team}</span>
+              )}
+              {player.position && (
+                <>
+                  <span className="text-white/15 text-[10px]">·</span>
+                  <span className="text-[10px] text-white/25 font-[500]">{player.position}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="flex items-end justify-between gap-2 mt-0.5">
+            <div className="flex flex-col gap-0.5">
+              {player.price != null && player.price > 0 ? (
+                <>
+                  <span className="text-[22px] font-[900] text-emerald-400 leading-none tabular-nums">
+                    {fmtPrice(player.price)}
+                  </span>
+                  <span className="text-[9px] text-white/25 uppercase tracking-wider font-[600]">
+                    price
+                  </span>
+                </>
+              ) : player.projection != null ? (
+                <>
+                  <span className="text-[22px] font-[900] text-emerald-400 leading-none tabular-nums">
+                    {fmt(player.projection, 0)}
+                  </span>
+                  <span className="text-[9px] text-white/25 uppercase tracking-wider font-[600]">
+                    proj pts
+                  </span>
+                </>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              {player.value_score != null && (
+                <span className="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-[800] tabular-nums text-emerald-400 bg-emerald-500/[0.12] border border-emerald-500/25">
+                  +{fmt(player.value_score, 1)} val
+                </span>
+              )}
+              {player.confidence_label && (
+                <ConfidenceBadge label={player.confidence_label} />
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <p className="text-[12px] text-white/25 flex-1 flex items-center">
+          Live data not available yet.
+        </p>
+      )}
+    </div>
+  );
+
+  return player && href !== "#" ? (
+    <Link to={href} className="block h-full">{inner}</Link>
+  ) : (
+    inner
+  );
+}
+
+// ── Biggest Trap card ─────────────────────────────────────────────────────────
+
+function BiggestTrapCard({ player }: { player: CurrentRoundPlayer | null }) {
+  const href = player ? playerHref(player) : "#";
+
+  const edge = player
+    ? (player.edge_canonical ?? (((player.projection ?? 0) - (player.breakeven ?? 0)) || null))
+    : null;
+  const edgeStr = edge != null && !isNaN(edge)
+    ? `${edge > 0 ? "+" : ""}${Math.round(edge)}`
+    : null;
+
+  const inner = (
+    <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.03] p-4 flex flex-col gap-2.5 h-full hover:border-red-500/35 hover:bg-red-500/[0.055] transition-all duration-200 group">
+      {/* Label row */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <ShieldAlert className="h-3.5 w-3.5 text-red-400/70 shrink-0" aria-hidden />
+          <span className="text-[10px] font-[800] tracking-[0.12em] uppercase text-red-400/60">
+            Biggest Trap
+          </span>
+        </div>
+        {player && (
+          <ExternalLink className="h-3 w-3 text-white/15 group-hover:text-white/35 transition-colors shrink-0" aria-hidden />
+        )}
+      </div>
+
+      {player ? (
+        <>
+          {/* Player identity */}
+          <div className="flex-1">
+            <p className="text-[15px] font-[800] text-white/92 leading-tight tracking-tight">
+              {player.player_name}
+            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {player.team && (
+                <span className="text-[10px] text-white/35 font-[500]">{player.team}</span>
+              )}
+              {player.position && (
+                <>
+                  <span className="text-white/15 text-[10px]">·</span>
+                  <span className="text-[10px] text-white/25 font-[500]">{player.position}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="flex items-end justify-between gap-2 mt-0.5">
+            <div className="flex flex-col gap-0.5">
+              {player.projection != null && (
+                <>
+                  <span className="text-[22px] font-[900] text-red-400 leading-none tabular-nums">
+                    {fmt(player.projection, 0)}
+                  </span>
+                  <span className="text-[9px] text-white/25 uppercase tracking-wider font-[600]">
+                    proj pts
+                  </span>
+                </>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 flex-wrap justify-end">
+              {edgeStr && (
+                <span className="inline-flex items-center px-2 py-1 rounded-lg text-[10px] font-[800] tabular-nums text-red-400 bg-red-500/[0.12] border border-red-500/25">
+                  {edgeStr} edge
+                </span>
+              )}
+              {player.action_canonical && (
+                <ActionBadge action={player.action_canonical} />
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <p className="text-[12px] text-white/25 flex-1 flex items-center">
+          Live data not available yet.
+        </p>
+      )}
+    </div>
+  );
+
+  return player && href !== "#" ? (
+    <Link to={href} className="block h-full">{inner}</Link>
+  ) : (
+    inner
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function CurrentWeekPage() {
   const { isPremium } = useAuth();
   const data = useRoundData();
+
+  const topCaptain = data.captains[0] ?? null;
+  const topValue   = data.buyValuePicks[0] ?? null;
+  const topTrap    = data.trapFadeAlerts[0] ?? null;
 
   return (
     <>
@@ -254,30 +533,39 @@ export default function CurrentWeekPage() {
         <div className="mx-auto max-w-3xl px-4 sm:px-6 pt-8 sm:pt-12 pb-16 sm:pb-24">
 
           {/* ── Hero ──────────────────────────────────────────────────────── */}
-          <div className="mb-8 sm:mb-10">
-            <p className="text-[9px] font-[900] tracking-[0.46em] uppercase text-emerald-500/60 mb-3">
-              Fantasy Hub
-            </p>
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-              <div>
-                <h1 className="text-[clamp(1.6rem,5vw,2.25rem)] font-[900] tracking-tight text-[#F5F5F5] leading-[1.18] mb-2">
-                  Current Week
-                  {data.roundLabel && (
-                    <span className="ml-3 text-[clamp(0.9rem,2.5vw,1.1rem)] font-[600] text-white/35">
-                      {data.roundLabel}
-                    </span>
-                  )}
+          <div className="mb-7 sm:mb-9">
+            <div className="flex items-center gap-2 mb-4">
+              <p className="text-[9px] font-[900] tracking-[0.46em] uppercase text-emerald-500/60">
+                Fantasy Hub
+              </p>
+              {data.roundLabel && !data.loading && (
+                <>
+                  <span className="text-white/15 text-[9px]">·</span>
+                  <span className="text-[9px] font-[700] tracking-[0.2em] uppercase text-white/25">
+                    {data.roundLabel}
+                  </span>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-start justify-between gap-4 flex-wrap mb-2">
+              <div className="flex-1 min-w-0">
+                <h1 className="text-[clamp(1.5rem,4.5vw,2.1rem)] font-[900] tracking-tight text-[#F5F5F5] leading-[1.18]">
+                  This Round's AFL Fantasy
+                  <br />
+                  <span className="text-[#F5C84C]">Cheat Sheet</span>
                 </h1>
-                <p className="text-[clamp(13px,2vw,15px)] text-white/45 leading-[1.7] max-w-[480px]">
-                  Your weekly fantasy decision page — captains, buys, and fades for this round.
-                </p>
               </div>
-              {data.updatedAt && (
-                <span className="text-[10px] text-white/20 shrink-0 pt-1">
+              {data.updatedAt && !data.loading && (
+                <span className="text-[10px] text-white/18 shrink-0 pt-1 tabular-nums">
                   {fmtUpdatedAt(data.updatedAt)}
                 </span>
               )}
             </div>
+
+            <p className="text-[clamp(12px,1.8vw,14px)] text-white/38 leading-[1.75] max-w-[520px]">
+              Live Neeko projections, captain calls, value targets and trap alerts for the current AFL Fantasy round.
+            </p>
           </div>
 
           {/* ── Error state ───────────────────────────────────────────────── */}
@@ -289,7 +577,37 @@ export default function CurrentWeekPage() {
             </div>
           )}
 
-          {/* ── Loading skeleton ──────────────────────────────────────────── */}
+          {/* ── Summary cards ─────────────────────────────────────────────── */}
+          {!data.error && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+              {data.loading ? (
+                <>
+                  <SummaryCardSkeleton />
+                  <SummaryCardSkeleton />
+                  <SummaryCardSkeleton />
+                </>
+              ) : (
+                <>
+                  <CaptainLockCard player={topCaptain} />
+                  <BestValueCard   player={topValue} />
+                  <BiggestTrapCard player={topTrap} />
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ── Section divider ───────────────────────────────────────────── */}
+          {!data.error && !data.loading && (
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-px flex-1 bg-white/[0.06]" />
+              <span className="text-[9px] font-[800] tracking-[0.35em] uppercase text-white/18">
+                Full picks
+              </span>
+              <div className="h-px flex-1 bg-white/[0.06]" />
+            </div>
+          )}
+
+          {/* ── Loading skeleton (sections) ───────────────────────────────── */}
           {data.loading && (
             <div className="space-y-4">
               {Array.from({ length: 3 }).map((_, i) => (
