@@ -79,14 +79,6 @@ function SectionLabel({ icon, title }: { icon: React.ReactNode; title: string })
   );
 }
 
-function StatPill({ label, value, color = 'text-white' }: { label: string; value: string | number; color?: string }) {
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className={`text-sm font-bold tabular-nums ${color}`}>{value}</span>
-      <span className="text-[9px] uppercase tracking-wider text-white/30">{label}</span>
-    </div>
-  );
-}
 
 function ActionIcon({ action }: { action: string | null }) {
   const ac = (action ?? 'HOLD').toUpperCase();
@@ -731,40 +723,138 @@ export default function AFLTeamPage() {
           ══════════════════════════════════════════ */}
           <div
             className="rounded-2xl border border-white/[0.07] relative overflow-hidden"
-            style={{ background: `linear-gradient(135deg, ${accentSafe}14 0%, #0d0d0d 55%)` }}
+            style={{ background: `linear-gradient(135deg, ${accentSafe}16 0%, #0a0a0a 60%)` }}
           >
+            {/* ambient glow layers */}
             <div
               className="absolute inset-0 pointer-events-none"
-              style={{ background: `radial-gradient(ellipse at top left, ${accentSafe}18 0%, transparent 55%)` }}
+              style={{ background: `radial-gradient(ellipse at top left, ${accentSafe}20 0%, transparent 52%)` }}
             />
-            <div className="relative px-5 sm:px-7 py-6">
+            <div
+              className="absolute bottom-0 right-0 w-64 h-64 pointer-events-none"
+              style={{ background: `radial-gradient(ellipse at bottom right, ${accentSafe}08 0%, transparent 70%)` }}
+            />
 
-              {/* eyebrow + title */}
+            <div className="relative px-5 sm:px-8 pt-6 pb-0">
+
+              {/* ── top row: eyebrow / title / badge ── */}
               <div className="flex items-start justify-between gap-4 mb-5">
-                <div>
-                  <p className="text-[9px] uppercase tracking-widest text-white/28 mb-1.5">AFL 2026 · Team Dashboard</p>
-                  <h1 className="text-[26px] sm:text-[30px] font-black text-white leading-tight tracking-tight">
+                <div className="min-w-0">
+                  <p className="text-[9px] uppercase tracking-widest text-white/28 mb-2">
+                    AFL 2026 · Team Intelligence
+                  </p>
+                  <h1 className="text-[28px] sm:text-[34px] font-black text-white leading-tight tracking-tight">
                     {teamName}
                   </h1>
-                  <p className="text-[12px] text-white/40 mt-1">
-                    {stats.totalPlayers} players tracked · {stats.startCt} start signal{stats.startCt !== 1 ? 's' : ''} · sorted by projection
+                  <p className="text-[12px] text-white/42 mt-1.5 leading-snug max-w-sm">
+                    Projections, signals, and squad analysis for every {shortName} player — updated each round.
                   </p>
                 </div>
+                {/* accent badge */}
                 <div
-                  className="flex items-center justify-center w-11 h-11 rounded-xl shrink-0"
-                  style={{ background: `${accentSafe}1a`, border: `1px solid ${accentSafe}30` }}
+                  className="flex items-center justify-center w-12 h-12 rounded-2xl shrink-0 mt-0.5"
+                  style={{ background: `${accentSafe}18`, border: `1.5px solid ${accentSafe}35` }}
                 >
-                  <Users size={20} style={{ color: accentSafe }} />
+                  <Users size={22} style={{ color: accentSafe }} />
                 </div>
               </div>
 
-              {/* stat strip */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                <MetricCard label="Top Projection"  value={stats.topProj}       accent="#34d399" />
-                <MetricCard label="Squad Avg Proj"  value={stats.avgProj}       />
-                <MetricCard label="2026 Avg Score"  value={stats.avgSeasonAvg}  />
-                <MetricCard label="Start Signals"   value={stats.startCt}       accent={stats.startCt > 0 ? '#34d399' : undefined} />
+              {/* ── 6-metric stat grid ── */}
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-5">
+                {[
+                  { label: 'Players',       value: stats.totalPlayers,  accent: undefined },
+                  { label: 'Top Proj',      value: stats.topProj,       accent: '#34d399' },
+                  { label: 'Avg Proj',      value: stats.avgProj,       accent: undefined },
+                  { label: 'Season Avg',    value: stats.avgSeasonAvg,  accent: undefined },
+                  { label: 'Start',         value: stats.startCt,       accent: stats.startCt > 0 ? '#34d399' : undefined },
+                  { label: 'Sit / Hold',    value: `${stats.sitCt} / ${stats.holdCt}`, accent: stats.sitCt > 3 ? '#fb923c' : undefined },
+                ].map(({ label, value, accent }) => (
+                  <div
+                    key={label}
+                    className="flex flex-col gap-0.5 px-3 py-2.5 rounded-xl border border-white/[0.06] bg-black/25"
+                  >
+                    <span
+                      className="text-[18px] sm:text-[20px] font-black tabular-nums leading-none"
+                      style={accent ? { color: accent } : { color: 'rgba(255,255,255,0.82)' }}
+                    >
+                      {value}
+                    </span>
+                    <span className="text-[8px] uppercase tracking-widest text-white/25 leading-tight">{label}</span>
+                  </div>
+                ))}
               </div>
+
+              {/* ── top 3 mini-player strip ── */}
+              {players.length > 0 && (
+                <div className="border-t border-white/[0.06] py-3 flex items-center gap-1 overflow-x-auto scrollbar-hide">
+                  <span className="text-[8px] uppercase tracking-widest text-white/22 shrink-0 mr-2">Top players</span>
+                  {players.slice(0, 3).map((p, i) => {
+                    const slug = nameToSlug(p.player_name);
+                    const ac   = (p.action_canonical ?? '').toUpperCase();
+                    const isStart = ac === 'START' || ac === 'SMASH_START';
+                    const isSit   = ac === 'SIT'   || ac === 'HARD_SIT';
+                    const signalColor = isStart ? '#34d399' : isSit ? '#fb923c' : 'rgba(255,255,255,0.35)';
+                    return (
+                      <Link
+                        key={p.player_id ?? p.player_name}
+                        to={`/sports/afl/players/${slug}`}
+                        className="flex items-center gap-2.5 shrink-0 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/[0.12] transition-all px-3 py-2 group"
+                      >
+                        {/* rank dot */}
+                        <span
+                          className="text-[10px] font-black tabular-nums w-4 text-center shrink-0"
+                          style={{ color: accentSafe }}
+                        >
+                          {i + 1}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold text-white/80 group-hover:text-white transition-colors leading-tight truncate max-w-[100px]">
+                            {p.player_name}
+                          </p>
+                          <p className="text-[8px] text-white/30 leading-tight">
+                            {POSITION_NAMES[p.position ?? ''] ?? p.position ?? '—'}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-[13px] font-black tabular-nums leading-none" style={{ color: signalColor }}>
+                            {fmtProj(p.projection)}
+                          </p>
+                          <p className="text-[7px] text-white/22 uppercase tracking-wide">proj</p>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                  {/* most expensive */}
+                  {stats.mostExpensivePlayer && !players.slice(0, 3).some(p => p.player_id === stats.mostExpensivePlayer!.player_id) && (
+                    <Link
+                      to={`/sports/afl/players/${nameToSlug(stats.mostExpensivePlayer.player_name)}`}
+                      className="flex items-center gap-2.5 shrink-0 rounded-xl border border-white/[0.06] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/[0.12] transition-all px-3 py-2 group"
+                    >
+                      <DollarSign size={11} style={{ color: accentSafe }} className="shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold text-white/80 group-hover:text-white transition-colors leading-tight truncate max-w-[100px]">
+                          {stats.mostExpensivePlayer.player_name}
+                        </p>
+                        <p className="text-[8px] text-white/30 leading-tight">
+                          {POSITION_NAMES[stats.mostExpensivePlayer.position ?? ''] ?? stats.mostExpensivePlayer.position ?? '—'}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-[12px] font-black tabular-nums leading-none" style={{ color: accentSafe }}>
+                          {fmtPrice(stats.mostExpensivePlayer.price)}
+                        </p>
+                        <p className="text-[7px] text-white/22 uppercase tracking-wide">price</p>
+                      </div>
+                    </Link>
+                  )}
+                  <Link
+                    to="/fantasy/rankings"
+                    className="shrink-0 ml-1 flex items-center gap-1 text-[9px] text-white/25 hover:text-white/50 transition-colors whitespace-nowrap"
+                  >
+                    All players <ChevronRight size={9} />
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
 
