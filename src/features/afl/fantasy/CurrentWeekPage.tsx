@@ -17,6 +17,10 @@ import {
   formatCanonicalConfidenceLabel,
   getActionDisplayStyles,
   formatActionLabel,
+  getRiskBadge,
+  fmtMatchup,
+  getMatchupColor,
+  fmtPriceChange,
 } from "@/features/afl/rankings/components/helpers";
 import { getCaptainScore, getCaptainConfidence } from "@/features/afl/shared/data/captainScoring";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
@@ -24,7 +28,8 @@ import { playerToSlug } from "@/lib/slugs";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const FREE_LIMIT = 2;
+const FREE_LIMIT    = 2;
+const PREMIUM_LIMIT = 10;
 
 // ── Data hook ─────────────────────────────────────────────────────────────────
 
@@ -237,6 +242,28 @@ function MetricPill({
   );
 }
 
+// ── Premium metric chip (inline, only renders when value is present) ──────────
+
+interface MetricChip {
+  label: string;
+  value: string;
+  color?: string;
+}
+
+function PremiumMetricStrip({ chips }: { chips: MetricChip[] }) {
+  if (chips.length === 0) return null;
+  return (
+    <div className="flex items-center gap-2.5 flex-wrap mt-1.5">
+      {chips.map((c) => (
+        <span key={c.label} className="inline-flex items-center gap-1 text-[10px] tabular-nums">
+          <span className="text-white/22 font-[500]">{c.label}</span>
+          <span className={`font-[700] ${c.color ?? "text-white/55"}`}>{c.value}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 // ── Unified player row ────────────────────────────────────────────────────────
 
 interface EnrichedRowProps {
@@ -252,6 +279,8 @@ interface EnrichedRowProps {
   accentColor: string;
   // Deterministic reason string (null = don't show)
   reason: string | null;
+  // Premium-only secondary metric chips below the reason line
+  premiumChips?: MetricChip[];
 }
 
 function EnrichedRow({
@@ -263,6 +292,7 @@ function EnrichedRow({
   metric,
   accentColor,
   reason,
+  premiumChips,
 }: EnrichedRowProps) {
   const href = playerHref(p);
   const isLinked = href !== "#";
@@ -297,6 +327,11 @@ function EnrichedRow({
         {/* Reason line — deterministic, never shown if null */}
         {reason && (
           <p className="text-[11px] text-white/35 leading-snug mt-1 pr-4">{reason}</p>
+        )}
+
+        {/* Premium metric chips — only rendered for premium users, only when values exist */}
+        {premiumChips && premiumChips.length > 0 && (
+          <PremiumMetricStrip chips={premiumChips} />
         )}
       </div>
 
@@ -361,6 +396,7 @@ function LockRow({ count }: { count: number }) {
 interface SectionConfig {
   title: string;
   description: string;
+  premiumDescription?: string;
   accentBar: string;
   headerIcon: React.ReactNode;
   players: CurrentRoundPlayer[];
@@ -372,6 +408,7 @@ interface SectionConfig {
 function Section({
   title,
   description,
+  premiumDescription,
   accentBar,
   headerIcon,
   players,
@@ -379,9 +416,12 @@ function Section({
   renderPlayer,
   emptyMessage,
 }: SectionConfig) {
-  const visible = isPremium ? players : players.slice(0, FREE_LIMIT);
+  const visible = isPremium
+    ? players.slice(0, PREMIUM_LIMIT)
+    : players.slice(0, FREE_LIMIT);
   const hidden = isPremium ? 0 : Math.max(0, players.length - FREE_LIMIT);
   const total = players.length;
+  const shownDescription = isPremium && premiumDescription ? premiumDescription : description;
 
   return (
     <div className="rounded-2xl border border-white/[0.07] bg-[#0A0D12] overflow-hidden shadow-[0_1px_24px_rgba(0,0,0,0.35)]">
@@ -399,7 +439,7 @@ function Section({
               </span>
             )}
           </div>
-          <p className="text-[11px] text-white/32 mt-0.5 leading-snug">{description}</p>
+          <p className="text-[11px] text-white/32 mt-0.5 leading-snug">{shownDescription}</p>
         </div>
       </div>
 
@@ -816,6 +856,7 @@ export default function CurrentWeekPage() {
               <Section
                 title="Captain Picks"
                 description="Top projected scorers for the captain multiplier — ranked by Neeko projection."
+                premiumDescription="Best captain options ranked by projection, confidence and ceiling."
                 accentBar="bg-[#F5C84C]/50"
                 headerIcon={<Crown className="h-4 w-4 text-[#F5C84C]/80" aria-hidden />}
                 players={data.captains}
@@ -827,6 +868,17 @@ export default function CurrentWeekPage() {
                   const tier: "LOCK" | "SAFE" | "POD" =
                     i === 0 ? "LOCK" : i < 3 ? "SAFE" : "POD";
                   const reason = getCaptainReason(p, tier);
+
+                  // Premium chips: ceiling, form score, matchup — only if values exist
+                  const premiumChips: Array<{ label: string; value: string; color?: string }> = [];
+                  if (hasFullAccess) {
+                    if (p.ceiling_estimate != null)
+                      premiumChips.push({ label: "ceil", value: fmt(p.ceiling_estimate, 0), color: "text-[#F5C84C]/80" });
+                    if (p.form_score != null)
+                      premiumChips.push({ label: "form", value: fmt(p.form_score, 0), color: p.form_score >= 70 ? "text-emerald-400" : p.form_score >= 50 ? "text-white/55" : "text-orange-400" });
+                    if (p.matchup_label)
+                      premiumChips.push({ label: "matchup", value: p.matchup_label, color: getMatchupColor(p.matchup_label) });
+                  }
 
                   return (
                     <EnrichedRow
@@ -843,6 +895,7 @@ export default function CurrentWeekPage() {
                       }
                       accentColor="text-[#F5C84C]"
                       reason={reason}
+                      premiumChips={premiumChips}
                     />
                   );
                 }}
@@ -852,6 +905,7 @@ export default function CurrentWeekPage() {
               <Section
                 title="Buy / Value Picks"
                 description="Players exceeding their breakeven with strong projected upside — trade targets and holds."
+                premiumDescription="Players showing strong value, start or buy signals this round."
                 accentBar="bg-emerald-500/50"
                 headerIcon={<TrendingUp className="h-4 w-4 text-emerald-400/80" aria-hidden />}
                 players={data.buyValuePicks}
@@ -878,6 +932,19 @@ export default function CurrentWeekPage() {
                       ? { value: fmt(p.projection, 0), label: "proj" }
                       : null;
 
+                  // Premium chips: breakeven, price change, projection — only real values
+                  const premiumChips: Array<{ label: string; value: string; color?: string }> = [];
+                  if (hasFullAccess) {
+                    if (p.breakeven != null)
+                      premiumChips.push({ label: "be", value: fmt(p.breakeven, 0), color: "text-white/50" });
+                    if (p.price_change != null && p.price_change !== 0) {
+                      const pcStr = fmtPriceChange(p.price_change);
+                      if (pcStr) premiumChips.push({ label: "Δ price", value: pcStr, color: p.price_change > 0 ? "text-emerald-400" : "text-red-400" });
+                    }
+                    if (p.projection != null && p.price != null && p.price > 0)
+                      premiumChips.push({ label: "proj", value: fmt(p.projection, 0), color: "text-emerald-400/80" });
+                  }
+
                   return (
                     <EnrichedRow
                       key={p.player_id ?? i}
@@ -889,6 +956,7 @@ export default function CurrentWeekPage() {
                       metric={metric}
                       accentColor="text-emerald-400"
                       reason={reason}
+                      premiumChips={premiumChips}
                     />
                   );
                 }}
@@ -901,6 +969,7 @@ export default function CurrentWeekPage() {
               <Section
                 title="Trap / Fade Alerts"
                 description="Overpriced or underperforming players to avoid or trade out before the round locks."
+                premiumDescription="Players carrying negative edge, risk or avoid signals."
                 accentBar="bg-red-500/50"
                 headerIcon={<ShieldAlert className="h-4 w-4 text-red-400/80" aria-hidden />}
                 players={data.trapFadeAlerts}
@@ -911,7 +980,9 @@ export default function CurrentWeekPage() {
 
                   const edge =
                     p.edge_canonical ??
-                    (((p.projection ?? 0) - (p.breakeven ?? 0)) || null);
+                    (p.projection != null && p.breakeven != null
+                      ? p.projection - p.breakeven
+                      : null);
                   const edgeStr =
                     edge != null && !isNaN(edge)
                       ? `${edge > 0 ? "+" : ""}${Math.round(edge)}`
@@ -925,6 +996,21 @@ export default function CurrentWeekPage() {
                     ? { value: fmt(p.projection, 0), label: "proj" }
                     : null;
 
+                  // Premium chips: risk rating, matchup, projection — only real values
+                  const premiumChips: Array<{ label: string; value: string; color?: string }> = [];
+                  if (hasFullAccess) {
+                    if (p.risk_rating != null) {
+                      const rb = getRiskBadge(p.risk_rating);
+                      premiumChips.push({ label: "risk", value: rb.label, color: rb.text });
+                    }
+                    if (p.matchup_label) {
+                      const ml = fmtMatchup(p.matchup_label);
+                      if (ml && ml !== "—") premiumChips.push({ label: "matchup", value: ml, color: getMatchupColor(p.matchup_label) });
+                    }
+                    if (p.projection != null)
+                      premiumChips.push({ label: "proj", value: fmt(p.projection, 0), color: "text-red-400/70" });
+                  }
+
                   return (
                     <EnrichedRow
                       key={p.player_id ?? i}
@@ -936,6 +1022,7 @@ export default function CurrentWeekPage() {
                       metric={metric}
                       accentColor="text-red-400"
                       reason={reason}
+                      premiumChips={premiumChips}
                     />
                   );
                 }}
