@@ -102,7 +102,8 @@ const _mwCache: {
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 
-const FREE_LIMIT = 8;
+const FREE_BUY_LIMIT = 5;
+const FREE_AVOID_LIMIT = 2;
 const POSITIONS = ["DEF", "MID", "RUC", "FWD"];
 
 type TabFilter = "ALL" | "BUY" | "HOLD" | "AVOID";
@@ -264,14 +265,22 @@ function PlayerTableRow({
 
 // ─── LOCKED ROW ──────────────────────────────────────────────────────────────
 
-function LockedRow({ rank }: { rank: number }) {
+function LockedRow({ rank, lockedCount }: { rank: number; lockedCount?: number }) {
   return (
-    <div className="flex items-center gap-3 px-3 py-3 border-b border-white/[0.04] select-none pointer-events-none">
+    <div className="flex items-center gap-3 px-3 py-3 border-b border-white/[0.04] select-none pointer-events-none opacity-60">
       <span className="text-[10px] text-white/20 w-5 text-right shrink-0 font-mono tabular-nums">{rank}</span>
       <div className="flex-1 min-w-0 flex items-center gap-2">
-        <Lock className="w-3 h-3 text-white/15 shrink-0" />
-        <div className="h-2.5 w-32 rounded bg-white/[0.06]" />
-        <div className="h-2 w-10 rounded bg-white/[0.04]" />
+        <Lock className="w-3 h-3 text-white/25 shrink-0" />
+        {lockedCount != null ? (
+          <span className="text-[11px] text-white/30 font-medium">
+            {lockedCount} more {lockedCount === 1 ? "player" : "players"} locked — Neeko+
+          </span>
+        ) : (
+          <>
+            <div className="h-2.5 w-32 rounded bg-white/[0.06]" />
+            <div className="h-2 w-10 rounded bg-white/[0.04]" />
+          </>
+        )}
       </div>
       <div className="h-2.5 w-10 rounded bg-white/[0.04] shrink-0" />
     </div>
@@ -474,14 +483,15 @@ export default function MarketWatchPageElite() {
       return null;
     }
     return {
-      targets: buys.slice(0, isPremium ? 999 : FREE_LIMIT),
-      options: holds.slice(0, isPremium ? 999 : Math.max(0, FREE_LIMIT - buys.length)),
-      risks: sells.slice(0, isPremium ? 999 : 0),
+      targets: isPremium ? buys : buys.slice(0, FREE_BUY_LIMIT),
+      options: isPremium ? holds : [],
+      risks: isPremium ? sells : sells.slice(0, FREE_AVOID_LIMIT),
     };
   }, [activeTab, buys, holds, sells, isPremium, selectedPosition, priceMin, priceMax, searchQuery]);
 
-  const visiblePlayers = isPremium ? allPlayers : allPlayers.slice(0, FREE_LIMIT);
-  const hiddenCount = isPremium ? 0 : Math.max(0, allPlayers.length - FREE_LIMIT);
+  // For flat filtered view (tabs / search / filters)
+  const visiblePlayers = isPremium ? allPlayers : allPlayers.slice(0, FREE_BUY_LIMIT);
+  const hiddenCount = isPremium ? 0 : Math.max(0, allPlayers.length - FREE_BUY_LIMIT);
 
   // ── HERO STATS ──────────────────────────────────────────────────────────────
   const bestBuy = buys[0] ?? null;
@@ -853,7 +863,7 @@ export default function MarketWatchPageElite() {
             {/* Grouped view (default ALL tab, no filters) */}
             {groupedView ? (
               <>
-                {/* Must Have */}
+                {/* Must Have / Buy section */}
                 {groupedView.targets.length > 0 && (
                   <div>
                     <GroupHeader
@@ -868,8 +878,8 @@ export default function MarketWatchPageElite() {
                   </div>
                 )}
 
-                {/* Strong Value */}
-                {groupedView.options.length > 0 && (
+                {/* Strong Value / Hold — premium only */}
+                {isPremium && groupedView.options.length > 0 && (
                   <div>
                     <GroupHeader
                       label="Strong Value"
@@ -883,17 +893,7 @@ export default function MarketWatchPageElite() {
                   </div>
                 )}
 
-                {/* Lock CTA for free users after showing FREE_LIMIT rows */}
-                {!isPremium && hiddenCount > 0 && (
-                  <div className="relative">
-                    {Array.from({ length: Math.min(3, hiddenCount) }).map((_, i) => (
-                      <LockedRow key={i} rank={FREE_LIMIT + i + 1} />
-                    ))}
-                    <LockCTA onUpgrade={() => setShowUpgradeModal(true)} hiddenCount={hiddenCount} />
-                  </div>
-                )}
-
-                {/* Risk / Avoid — always shown, rows locked for free users */}
+                {/* Overpriced / Avoid section */}
                 {sells.length > 0 && (
                   <div>
                     <GroupHeader
@@ -902,46 +902,38 @@ export default function MarketWatchPageElite() {
                       accentColor="#f87171"
                       icon={<AlertTriangle className="w-3 h-3" />}
                     />
-                    {isPremium ? (
-                      sells.map((p, i) => (
-                        <PlayerTableRow key={p.player_id} player={p} rank={i + 1} onClick={() => openPlayer(p, i + 1)} />
-                      ))
-                    ) : (
-                      <div className="relative">
-                        {Array.from({ length: Math.min(3, sells.length) }).map((_, i) => (
-                          <LockedRow key={i} rank={i + 1} />
-                        ))}
-                        <LockCTA onUpgrade={() => setShowUpgradeModal(true)} hiddenCount={sells.length} />
-                      </div>
+                    {groupedView.risks.map((p, i) => (
+                      <PlayerTableRow key={p.player_id} player={p} rank={i + 1} onClick={() => openPlayer(p, i + 1)} />
+                    ))}
+                    {!isPremium && sells.length > FREE_AVOID_LIMIT && (
+                      <LockedRow rank={FREE_AVOID_LIMIT + 1} lockedCount={sells.length - FREE_AVOID_LIMIT} />
                     )}
                   </div>
+                )}
+
+                {/* Upgrade CTA for free users */}
+                {!isPremium && (
+                  <LockCTA
+                    onUpgrade={() => setShowUpgradeModal(true)}
+                    hiddenCount={Math.max(0, (buys.length - FREE_BUY_LIMIT) + holds.length + Math.max(0, sells.length - FREE_AVOID_LIMIT))}
+                  />
                 )}
               </>
             ) : (
               /* Flat filtered view */
               <>
-                {visiblePlayers.length === 0 && (isPremium || activeTab !== "AVOID") ? (
+                {visiblePlayers.length === 0 ? (
                   <div className="py-12 text-center text-white/30 text-sm">No players match these filters.</div>
                 ) : (
                   visiblePlayers.map((p, i) => (
                     <PlayerTableRow key={p.player_id} player={p} rank={i + 1} onClick={() => openPlayer(p, i + 1)} />
                   ))
                 )}
-                {!isPremium && activeTab === "AVOID" && allPlayers.length > 0 && (
-                  <div className="relative">
-                    {Array.from({ length: Math.min(3, allPlayers.length) }).map((_, i) => (
-                      <LockedRow key={i} rank={i + 1} />
-                    ))}
-                    <LockCTA onUpgrade={() => setShowUpgradeModal(true)} hiddenCount={allPlayers.length} />
-                  </div>
-                )}
-                {!isPremium && activeTab !== "AVOID" && hiddenCount > 0 && (
-                  <div className="relative">
-                    {Array.from({ length: Math.min(3, hiddenCount) }).map((_, i) => (
-                      <LockedRow key={i} rank={FREE_LIMIT + i + 1} />
-                    ))}
+                {!isPremium && hiddenCount > 0 && (
+                  <>
+                    <LockedRow rank={visiblePlayers.length + 1} lockedCount={hiddenCount} />
                     <LockCTA onUpgrade={() => setShowUpgradeModal(true)} hiddenCount={hiddenCount} />
-                  </div>
+                  </>
                 )}
               </>
             )}
@@ -950,7 +942,7 @@ export default function MarketWatchPageElite() {
             {players.length > 0 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-white/[0.05]">
                 <span className="text-[10px] text-white/20">
-                  {isPremium ? `${allPlayers.length} players` : `${Math.min(FREE_LIMIT, allPlayers.length)} of ${allPlayers.length} players`}
+                  {isPremium ? `${allPlayers.length} players` : `${FREE_BUY_LIMIT + FREE_AVOID_LIMIT} of ${allPlayers.length} players`}
                 </span>
                 <div className="flex items-center gap-3">
                   <span className="text-[10px] text-green-400/60">{buys.length} buy</span>
