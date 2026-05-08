@@ -53,6 +53,8 @@ interface PlayerData {
   why_long: string | null;
   neeko_rating: number | null;
   is_locked: boolean | null;
+  floor_estimate: number | null;
+  ceiling_estimate: number | null;
 }
 
 interface SimilarPlayer {
@@ -409,8 +411,10 @@ export default function AFLPlayerPage() {
           season_avg:       raw.season_avg    != null ? Number(raw.season_avg)    : null,
           why:              raw.why      ?? null,
           why_long:         raw.why_long ?? null,
-          neeko_rating:     raw.neeko_rating != null ? Number(raw.neeko_rating) : null,
-          is_locked:        raw.is_locked    != null ? Boolean(raw.is_locked)   : null,
+          neeko_rating:     raw.neeko_rating     != null ? Number(raw.neeko_rating)     : null,
+          is_locked:        raw.is_locked        != null ? Boolean(raw.is_locked)        : null,
+          floor_estimate:   raw.floor_estimate   != null ? Number(raw.floor_estimate)   : null,
+          ceiling_estimate: raw.ceiling_estimate != null ? Number(raw.ceiling_estimate) : null,
         };
 
         setPlayer(mapped);
@@ -780,216 +784,343 @@ export default function AFLPlayerPage() {
           </div>
 
           {/* ══════════════════════════════════════════
-              3. DECISION CENTRE — PREMIUM ONLY
-              Free: upgrade callout showing what's inside
+              3. PREMIUM DECISION CENTRE
+              This is the core premium conversion section.
+              FREE: blurred layout + strong CTA overlay
+              PREMIUM: full metrics + AI reasoning
           ══════════════════════════════════════════ */}
           <div>
-            <SectionLabel icon={<Target size={13} />} title="Decision Centre" />
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-white/25"><Target size={13} /></span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.38em] text-white/30">Decision Centre</span>
+              <span className="ml-auto text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/[0.08] text-amber-400/70">
+                Neeko+
+              </span>
+            </div>
 
-            {isPremium ? (
-              <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] overflow-hidden">
-                {/* Action signal header */}
-                <div
-                  className="px-4 py-3.5 border-b border-white/[0.05] flex items-center justify-between gap-3"
-                  style={{ background: `${actionMeta.color}07` }}
-                >
-                  <div className="flex items-center gap-3">
-                    {actionMeta.isStart
-                      ? <TrendingUp size={16} style={{ color: actionMeta.color }} />
-                      : actionMeta.isSit
-                      ? <TrendingDown size={16} style={{ color: actionMeta.color }} />
-                      : <Minus size={16} className="text-white/25" />
-                    }
-                    <div>
-                      <p className="text-[9px] uppercase tracking-widest text-white/28 mb-0.5">Neeko Action</p>
-                      <p className="text-[15px] font-black uppercase tracking-wider leading-none" style={{ color: actionMeta.color }}>
-                        {player.action_display ?? actionMeta.label}
-                      </p>
+            <div className="rounded-2xl border overflow-hidden relative"
+              style={{
+                borderColor: isPremium ? `${actionMeta.color}25` : 'rgba(255,255,255,0.07)',
+                background: isPremium
+                  ? `linear-gradient(160deg, ${actionMeta.color}07 0%, #0c0c0c 50%)`
+                  : '#0c0c0c',
+              }}
+            >
+              {/* Top accent stripe */}
+              {isPremium && (
+                <div className="h-[2px]" style={{ background: `linear-gradient(90deg, ${actionMeta.color}60, transparent 70%)` }} />
+              )}
+
+              {/* ─── PREMIUM VIEW ─────────────────────────── */}
+              {isPremium ? (
+                <div className="p-5 space-y-5">
+
+                  {/* Action Signal header */}
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex items-center justify-center w-12 h-12 rounded-xl border"
+                        style={{ background: `${actionMeta.color}10`, borderColor: `${actionMeta.color}35` }}
+                      >
+                        {actionMeta.isStart
+                          ? <TrendingUp size={20} style={{ color: actionMeta.color }} />
+                          : actionMeta.isSit
+                          ? <TrendingDown size={20} style={{ color: actionMeta.color }} />
+                          : <Minus size={20} className="text-white/30" />
+                        }
+                      </div>
+                      <div>
+                        <p className="text-[9px] uppercase tracking-[0.25em] text-white/30 mb-0.5">Neeko Action</p>
+                        <p className="text-[22px] font-black uppercase tracking-wide leading-none" style={{ color: actionMeta.color }}>
+                          {player.action_display ?? actionMeta.label}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {player.confidence_label && (
+                        <span className={`text-[9px] font-bold px-2.5 py-1 rounded-lg border uppercase tracking-wider ${
+                          player.confidence_label.toUpperCase() === 'HIGH'
+                            ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
+                            : player.confidence_label.toUpperCase() === 'MEDIUM'
+                            ? 'text-yellow-400 border-yellow-500/25 bg-yellow-500/[0.08]'
+                            : 'text-white/35 border-white/10 bg-white/[0.04]'
+                        }`}>
+                          {player.confidence_label} confidence
+                        </span>
+                      )}
+                      {player.value_band && (
+                        <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg border uppercase tracking-wider text-emerald-300 border-emerald-500/25 bg-emerald-500/[0.07]">
+                          {player.value_band}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap justify-end">
-                    {player.confidence_label && (
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${
-                        player.confidence_label.toUpperCase() === 'HIGH'
-                          ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
-                          : player.confidence_label.toUpperCase() === 'MEDIUM'
-                          ? 'text-yellow-400 border-yellow-500/25 bg-yellow-500/[0.07]'
-                          : 'text-white/30 border-white/10 bg-white/[0.03]'
-                      }`}>
-                        {player.confidence_label} conf
-                      </span>
-                    )}
-                    {player.value_band && (
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider text-emerald-300 border-emerald-500/25 bg-emerald-500/[0.07]">
-                        {player.value_band}
-                      </span>
-                    )}
-                  </div>
-                </div>
 
-                {/* Metric rows */}
-                <div className="px-4">
-                  <DecisionRow
-                    icon={<Target size={13} />}
-                    label="Breakeven"
-                    value={
-                      <span className={
+                  {/* ── Metrics grid: Projection / Breakeven / Edge / Form ── */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Projection */}
+                    <div className="rounded-xl border border-white/[0.07] bg-black/25 p-3.5 flex flex-col gap-1.5">
+                      <p className="text-[9px] uppercase tracking-widest text-white/28 font-semibold">Projection</p>
+                      <p className="text-[26px] font-black text-white tabular-nums leading-none">
+                        {player.projection != null ? Math.round(player.projection) : '—'}
+                      </p>
+                      <p className="text-[9px] text-white/30">expected fantasy pts</p>
+                    </div>
+
+                    {/* Breakeven */}
+                    <div className="rounded-xl border border-white/[0.07] bg-black/25 p-3.5 flex flex-col gap-1.5">
+                      <p className="text-[9px] uppercase tracking-widest text-white/28 font-semibold">Breakeven</p>
+                      <p className={`text-[26px] font-black tabular-nums leading-none ${
                         player.breakeven != null && player.avg_last_3 != null
                           ? player.avg_last_3 >= player.breakeven ? 'text-emerald-400' : 'text-red-400'
                           : 'text-white/60'
-                      }>
+                      }`}>
                         {player.breakeven != null ? Math.round(player.breakeven) : '—'}
-                      </span>
-                    }
-                    sub={player.breakeven != null ? 'score needed to hold price' : undefined}
-                  />
-                  <DecisionRow
-                    icon={<Zap size={13} />}
-                    label="Proj vs Breakeven"
-                    value={
-                      bevsProj != null
-                        ? <span className={bevsProj >= 0 ? 'text-emerald-400' : 'text-red-400'}>
-                            {bevsProj >= 0 ? '+' : ''}{bevsProj} pts
-                          </span>
-                        : <span className="text-white/35">—</span>
-                    }
-                    sub={bevsProj != null ? (bevsProj >= 0 ? 'on track to rise in price' : 'at risk of price drop') : undefined}
-                  />
-                  {player.edge_canonical != null && (
-                    <DecisionRow
-                      icon={<Activity size={13} />}
-                      label="Edge Score"
-                      value={
-                        <span className={getEdgeColor(player.edge_canonical)}>
-                          {fmtEdge(player.edge_canonical)}
-                        </span>
-                      }
-                      sub="projection vs market expectation"
-                    />
-                  )}
-                  <DecisionRow
-                    icon={<TrendingUp size={13} />}
-                    label="3-Game Average"
-                    value={
-                      <span className={
-                        player.avg_last_3 != null && player.season_avg != null
-                          ? player.avg_last_3 >= player.season_avg ? 'text-emerald-400' : 'text-orange-400'
-                          : 'text-white/60'
-                      }>
-                        {fmtAvg(player.avg_last_3)}
-                      </span>
-                    }
-                    sub={player.season_avg != null ? `season avg ${Math.round(player.season_avg)}` : undefined}
-                  />
-                  <DecisionRow
-                    icon={<DollarSign size={13} />}
-                    label="Price"
-                    value={<span className="text-white/65">{fmtPriceHelper(player.price)}</span>}
-                  />
-                </div>
-              </div>
-            ) : (
-              /* Free: teaser card listing what's locked */
-              <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] overflow-hidden">
-                {/* Blurred preview rows */}
-                <div className="px-4 py-3 border-b border-white/[0.04] flex items-center justify-between opacity-40 pointer-events-none select-none" style={{ filter: 'blur(3px)' }}>
-                  <span className="text-[12px] text-white/45">Neeko Action Signal</span>
-                  <span className="text-[13px] font-bold text-emerald-400">START</span>
-                </div>
-                <div className="px-4 py-3 border-b border-white/[0.04] flex items-center justify-between opacity-40 pointer-events-none select-none" style={{ filter: 'blur(3px)' }}>
-                  <span className="text-[12px] text-white/45">Breakeven</span>
-                  <span className="text-[13px] font-bold text-white/70">74</span>
-                </div>
-                <div className="px-4 py-3 border-b border-white/[0.04] flex items-center justify-between opacity-40 pointer-events-none select-none" style={{ filter: 'blur(3px)' }}>
-                  <span className="text-[12px] text-white/45">Projection vs Breakeven</span>
-                  <span className="text-[13px] font-bold text-emerald-400">+11 pts</span>
-                </div>
-                <div className="px-4 py-3 flex items-center justify-between opacity-40 pointer-events-none select-none" style={{ filter: 'blur(3px)' }}>
-                  <span className="text-[12px] text-white/45">Edge Score</span>
-                  <span className="text-[13px] font-bold text-emerald-400">+8.2</span>
-                </div>
-                {/* CTA overlay */}
-                <div className="border-t border-amber-500/15 bg-gradient-to-b from-amber-500/[0.04] to-[#0d0d0d] px-4 py-4 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 shrink-0">
-                      <Lock size={13} className="text-amber-400" />
+                      </p>
+                      <p className="text-[9px] text-white/30">to hold price</p>
                     </div>
-                    <div>
-                      <p className="text-[12px] font-bold text-white leading-tight">Decision Centre</p>
-                      <p className="text-[10px] text-white/38 mt-0.5">Action · Breakeven · Edge · Projection</p>
+
+                    {/* Floor */}
+                    <div className="rounded-xl border border-white/[0.07] bg-black/25 p-3.5 flex flex-col gap-1.5">
+                      <p className="text-[9px] uppercase tracking-widest text-white/28 font-semibold">Floor</p>
+                      <p className="text-[22px] font-black text-red-400/80 tabular-nums leading-none">
+                        {player.floor_estimate != null ? Math.round(player.floor_estimate) : '—'}
+                      </p>
+                      <p className="text-[9px] text-white/30">worst-case score</p>
+                    </div>
+
+                    {/* Ceiling */}
+                    <div className="rounded-xl border border-white/[0.07] bg-black/25 p-3.5 flex flex-col gap-1.5">
+                      <p className="text-[9px] uppercase tracking-widest text-white/28 font-semibold">Ceiling</p>
+                      <p className="text-[22px] font-black text-emerald-400 tabular-nums leading-none">
+                        {player.ceiling_estimate != null ? Math.round(player.ceiling_estimate) : '—'}
+                      </p>
+                      <p className="text-[9px] text-white/30">best-case score</p>
                     </div>
                   </div>
-                  <Link
-                    to="/upgrade"
-                    className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 transition-colors px-3.5 py-2 text-[11px] font-bold text-black"
-                  >
-                    <Zap size={11} />
-                    Unlock
-                  </Link>
-                </div>
-              </div>
-            )}
-          </div>
 
-          {/* ══════════════════════════════════════════
-              4. AI ANALYSIS — PREMIUM ONLY
-          ══════════════════════════════════════════ */}
-          {isPremium ? (
-            hasAI && (
-              <div>
-                <SectionLabel icon={<Brain size={13} />} title="AI Analysis" />
-                <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] p-4 space-y-3">
-                  {player.why && (
-                    <p className="text-[14px] font-medium text-white/82 leading-relaxed">{player.why}</p>
-                  )}
-                  {(player.action_reason_1 || player.action_reason_2) && (
-                    <div className="space-y-2 pt-0.5">
-                      {player.action_reason_1 && (
-                        <div className="flex items-start gap-2.5">
-                          <div className="w-1.5 h-1.5 rounded-full shrink-0 mt-[5px]" style={{ background: `${actionMeta.color}80` }} />
-                          <span className="text-[12.5px] text-white/50 leading-snug">{player.action_reason_1}</span>
+                  {/* ── Row metrics: Proj vs BE / Edge / Form ── */}
+                  <div className="rounded-xl border border-white/[0.06] bg-black/20 divide-y divide-white/[0.04]">
+                    {/* Proj vs Breakeven */}
+                    <div className="flex items-center justify-between px-4 py-3 gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <Zap size={12} className="text-white/25 shrink-0" />
+                        <span className="text-[12px] text-white/45">Proj vs Breakeven</span>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-[13px] font-bold tabular-nums ${
+                          bevsProj != null ? (bevsProj >= 0 ? 'text-emerald-400' : 'text-red-400') : 'text-white/35'
+                        }`}>
+                          {bevsProj != null ? `${bevsProj >= 0 ? '+' : ''}${bevsProj} pts` : '—'}
+                        </span>
+                        {bevsProj != null && (
+                          <p className="text-[9px] text-white/25 mt-0.5">
+                            {bevsProj >= 0 ? 'on track to rise' : 'risk of price drop'}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Edge Score */}
+                    <div className="flex items-center justify-between px-4 py-3 gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <Activity size={12} className="text-white/25 shrink-0" />
+                        <span className="text-[12px] text-white/45">Edge Score</span>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-[13px] font-bold tabular-nums ${
+                          player.edge_canonical != null ? getEdgeColor(player.edge_canonical) : 'text-white/35'
+                        }`}>
+                          {player.edge_canonical != null ? fmtEdge(player.edge_canonical) : '—'}
+                        </span>
+                        <p className="text-[9px] text-white/25 mt-0.5">proj vs market</p>
+                      </div>
+                    </div>
+
+                    {/* Form */}
+                    <div className="flex items-center justify-between px-4 py-3 gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <TrendingUp size={12} className="text-white/25 shrink-0" />
+                        <span className="text-[12px] text-white/45">Form</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded border uppercase tracking-wide ${getFormStyles(formLabel)}`}>
+                          {formLabel}
+                        </span>
+                        {player.avg_last_3 != null && player.season_avg != null && (
+                          <span className={`text-[12px] font-semibold tabular-nums ${
+                            player.avg_last_3 >= player.season_avg ? 'text-emerald-400' : 'text-red-400'
+                          }`}>
+                            {player.avg_last_3 >= player.season_avg ? '+' : ''}{Math.round(player.avg_last_3 - player.season_avg)}
+                            <span className="text-white/25 font-normal text-[10px] ml-1">vs avg</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── AI Reasoning ── */}
+                  {(player.why || player.action_reason_1 || player.action_reason_2) && (
+                    <div className="space-y-3">
+                      <p className="text-[9px] uppercase tracking-widest text-white/25 font-bold">AI Reasoning</p>
+
+                      {player.why && (
+                        <p className="text-[13px] font-medium text-white/75 leading-relaxed">
+                          {player.why}
+                        </p>
+                      )}
+
+                      {(player.action_reason_1 || player.action_reason_2) && (
+                        <div className="space-y-2">
+                          {player.action_reason_1 && (
+                            <div className="flex items-start gap-2.5">
+                              <div className="w-1 h-1 rounded-full shrink-0 mt-[6px]" style={{ background: `${actionMeta.color}90` }} />
+                              <span className="text-[12px] text-white/52 leading-snug">{player.action_reason_1}</span>
+                            </div>
+                          )}
+                          {player.action_reason_2 && (
+                            <div className="flex items-start gap-2.5">
+                              <div className="w-1 h-1 rounded-full bg-white/20 shrink-0 mt-[6px]" />
+                              <span className="text-[12px] text-white/38 leading-snug">{player.action_reason_2}</span>
+                            </div>
+                          )}
                         </div>
                       )}
-                      {player.action_reason_2 && (
-                        <div className="flex items-start gap-2.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-white/18 shrink-0 mt-[5px]" />
-                          <span className="text-[12.5px] text-white/38 leading-snug">{player.action_reason_2}</span>
-                        </div>
+
+                      {player.why_long && (
+                        <>
+                          <button
+                            onClick={() => setShowFullAI(v => !v)}
+                            className="flex items-center gap-1.5 text-[11px] text-white/28 hover:text-white/55 transition-colors"
+                          >
+                            {showFullAI ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                            {showFullAI ? 'Show less' : 'Full AI analysis'}
+                          </button>
+                          {showFullAI && (
+                            <div className="border-t border-white/[0.05] pt-3">
+                              <p className="text-[12px] text-white/42 leading-relaxed whitespace-pre-line">
+                                {player.why_long}
+                              </p>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
-                  {player.why_long && (
-                    <>
-                      <button
-                        onClick={() => setShowFullAI(v => !v)}
-                        className="flex items-center gap-1.5 text-[11px] text-white/28 hover:text-white/55 transition-colors pt-0.5"
-                      >
-                        {showFullAI ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
-                        {showFullAI ? 'Show less' : 'Full analysis'}
-                      </button>
-                      {showFullAI && (
-                        <div className="border-t border-white/[0.05] pt-3">
-                          <p className="text-[12.5px] text-white/45 leading-relaxed whitespace-pre-line">
-                            {player.why_long}
-                          </p>
-                        </div>
-                      )}
-                    </>
-                  )}
                 </div>
-              </div>
-            )
-          ) : (
-            /* Free: compact AI teaser — no blurred text to avoid leaking content */
-            <div>
-              <SectionLabel icon={<Brain size={13} />} title="AI Analysis" />
-              <PremiumCallout
-                title="AI Analysis — Premium"
-                desc={`Unlock the weekly Neeko AI summary, action reasoning, and full outlook`}
-                playerName={player.player_name}
-              />
+
+              ) : (
+                /* ─── FREE VIEW ── blurred content + strong CTA ────────────── */
+                <div>
+                  {/* Blurred content preview */}
+                  <div className="relative select-none pointer-events-none" style={{ filter: 'blur(4px)', opacity: 0.45 }}>
+                    <div className="p-5 space-y-4">
+                      {/* Fake action header */}
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center justify-center w-12 h-12 rounded-xl border border-emerald-500/25 bg-emerald-500/10">
+                          <TrendingUp size={20} className="text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="text-[9px] uppercase tracking-widest text-white/30 mb-0.5">Neeko Action</p>
+                          <p className="text-[22px] font-black text-emerald-400 uppercase">START</p>
+                        </div>
+                        <div className="ml-auto">
+                          <span className="text-[9px] font-bold px-2.5 py-1 rounded-lg border uppercase tracking-wider text-emerald-400 border-emerald-500/30 bg-emerald-500/10">
+                            High confidence
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Fake metric grid */}
+                      <div className="grid grid-cols-2 gap-2">
+                        {[['Projection', '112', 'expected pts'], ['Breakeven', '84', 'to hold price'], ['Floor', '88', 'worst-case'], ['Ceiling', '138', 'best-case']].map(([lbl, val, sub]) => (
+                          <div key={lbl} className="rounded-xl border border-white/[0.07] bg-black/25 p-3.5">
+                            <p className="text-[9px] uppercase tracking-widest text-white/28 font-semibold mb-1.5">{lbl}</p>
+                            <p className="text-[26px] font-black text-white tabular-nums leading-none">{val}</p>
+                            <p className="text-[9px] text-white/30 mt-1">{sub}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Fake rows */}
+                      <div className="rounded-xl border border-white/[0.06] bg-black/20 divide-y divide-white/[0.04]">
+                        {[['Proj vs Breakeven', '+28 pts', 'on track to rise'], ['Edge Score', '+11.4', 'proj vs market'], ['Form', 'HOT', '+18 vs avg']].map(([lbl, val, sub]) => (
+                          <div key={lbl} className="flex items-center justify-between px-4 py-3">
+                            <span className="text-[12px] text-white/45">{lbl}</span>
+                            <div className="text-right">
+                              <span className="text-[13px] font-bold text-emerald-400">{val}</span>
+                              <p className="text-[9px] text-white/25 mt-0.5">{sub}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Fake AI reasoning */}
+                      <div className="space-y-2">
+                        <p className="text-[9px] uppercase tracking-widest text-white/25 font-bold">AI Reasoning</p>
+                        <p className="text-[13px] text-white/60 leading-relaxed">
+                          Consistent scoring above breakeven across last 5 rounds with a favourable matchup and improving role.
+                        </p>
+                        <div className="flex items-start gap-2.5">
+                          <div className="w-1 h-1 rounded-full bg-emerald-400/80 shrink-0 mt-1.5" />
+                          <span className="text-[12px] text-white/45">Strong opponent concession rate for this position</span>
+                        </div>
+                        <div className="flex items-start gap-2.5">
+                          <div className="w-1 h-1 rounded-full bg-white/20 shrink-0 mt-1.5" />
+                          <span className="text-[12px] text-white/35">Price trending up — buy window may be closing</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lock overlay CTA */}
+                  <div className="border-t-2 border-amber-500/20 bg-gradient-to-b from-amber-500/[0.07] to-[#0c0c0c] p-5">
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="flex items-center justify-center w-11 h-11 rounded-xl bg-amber-500/12 border border-amber-500/25 shrink-0">
+                        <Lock size={18} className="text-amber-400" />
+                      </div>
+                      <div>
+                        <p className="text-[15px] font-black text-white mb-1">Unlock the Decision Centre</p>
+                        <p className="text-[12px] text-white/40 leading-relaxed">
+                          Get the full picture — projection, breakeven, edge score, floor/ceiling range, form signal, and weekly AI reasoning for every player.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Feature list */}
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mb-4 pl-1">
+                      {[
+                        'Projection', 'Breakeven', 'Floor & Ceiling',
+                        'Edge Score', 'Form Signal', 'AI Reasoning',
+                        'Action Signal', 'Confidence', 'Value Label',
+                      ].map(feat => (
+                        <div key={feat} className="flex items-center gap-1.5">
+                          <div className="w-1 h-1 rounded-full bg-amber-400/50 shrink-0" />
+                          <span className="text-[11px] text-white/45">{feat}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Link
+                        to="/upgrade"
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 transition-colors px-5 py-2.5 text-[13px] font-black text-black"
+                      >
+                        <Zap size={13} />
+                        Unlock Neeko+
+                      </Link>
+                      <Link
+                        to="/auth"
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] hover:bg-white/[0.07] transition-colors px-4 py-2.5 text-[12px] text-white/45 hover:text-white"
+                      >
+                        Sign in
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* ══════════════════════════════════════════
               5. SIMILAR PLAYERS
