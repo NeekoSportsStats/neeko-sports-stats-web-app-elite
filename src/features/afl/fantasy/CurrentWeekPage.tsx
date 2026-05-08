@@ -20,7 +20,6 @@ import {
   getRiskBadge,
   fmtMatchup,
   getMatchupColor,
-  fmtPriceChange,
 } from "@/features/afl/rankings/components/helpers";
 import { getCaptainScore, getCaptainConfidence } from "@/features/afl/shared/data/captainScoring";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
@@ -253,11 +252,12 @@ interface MetricChip {
 function PremiumMetricStrip({ chips }: { chips: MetricChip[] }) {
   if (chips.length === 0) return null;
   return (
-    <div className="flex items-center gap-2.5 flex-wrap mt-1.5">
-      {chips.map((c) => (
-        <span key={c.label} className="inline-flex items-center gap-1 text-[10px] tabular-nums">
-          <span className="text-white/22 font-[500]">{c.label}</span>
-          <span className={`font-[700] ${c.color ?? "text-white/55"}`}>{c.value}</span>
+    <div className="flex items-center flex-wrap mt-1.5">
+      {chips.map((c, i) => (
+        <span key={c.label} className="inline-flex items-center text-[10px] tabular-nums">
+          {i > 0 && <span className="text-white/18 mx-1.5">·</span>}
+          <span className="text-white/30 font-[500]">{c.label}</span>
+          <span className={`font-[700] ml-1 ${c.color ?? "text-white/55"}`}>{c.value}</span>
         </span>
       ))}
     </div>
@@ -901,15 +901,17 @@ export default function CurrentWeekPage() {
                     i === 0 ? "LOCK" : i < 3 ? "SAFE" : "POD";
                   const reason = getCaptainReason(p, tier);
 
-                  // Premium chips: ceiling, form score, matchup — only if values exist
+                  // Premium chips: Ceiling, Form, Matchup — only if values exist
                   const premiumChips: Array<{ label: string; value: string; color?: string }> = [];
                   if (hasFullAccess) {
                     if (p.ceiling_estimate != null)
-                      premiumChips.push({ label: "ceil", value: fmt(p.ceiling_estimate, 0), color: "text-[#F5C84C]/80" });
+                      premiumChips.push({ label: "Ceiling", value: fmt(p.ceiling_estimate, 0), color: "text-[#F5C84C]/80" });
                     if (p.form_score != null)
-                      premiumChips.push({ label: "form", value: fmt(p.form_score, 0), color: p.form_score >= 70 ? "text-emerald-400" : p.form_score >= 50 ? "text-white/55" : "text-orange-400" });
-                    if (p.matchup_label)
-                      premiumChips.push({ label: "matchup", value: p.matchup_label, color: getMatchupColor(p.matchup_label) });
+                      premiumChips.push({ label: "Form", value: fmt(p.form_score, 0), color: p.form_score >= 70 ? "text-emerald-400" : p.form_score >= 50 ? "text-white/55" : "text-orange-400" });
+                    if (p.matchup_label) {
+                      const ml = fmtMatchup(p.matchup_label);
+                      if (ml && ml !== "—") premiumChips.push({ label: "Matchup", value: `vs ${ml}`, color: getMatchupColor(p.matchup_label) });
+                    }
                   }
 
                   return (
@@ -964,17 +966,17 @@ export default function CurrentWeekPage() {
                       ? { value: fmt(p.projection, 0), label: "proj" }
                       : null;
 
-                  // Premium chips: breakeven, price change, projection — only real values
+                  // Premium chips: BE, Projection, Value — only real values
                   const premiumChips: Array<{ label: string; value: string; color?: string }> = [];
                   if (hasFullAccess) {
                     if (p.breakeven != null)
-                      premiumChips.push({ label: "be", value: fmt(p.breakeven, 0), color: "text-white/50" });
-                    if (p.price_change != null && p.price_change !== 0) {
-                      const pcStr = fmtPriceChange(p.price_change);
-                      if (pcStr) premiumChips.push({ label: "Δ price", value: pcStr, color: p.price_change > 0 ? "text-emerald-400" : "text-red-400" });
+                      premiumChips.push({ label: "BE", value: fmt(p.breakeven, 0), color: "text-white/50" });
+                    if (p.projection != null)
+                      premiumChips.push({ label: "Projection", value: fmt(p.projection, 0), color: "text-emerald-400/80" });
+                    if (p.value_score != null) {
+                      const vs = p.value_score;
+                      premiumChips.push({ label: "Value", value: `${vs > 0 ? "+" : ""}${fmt(vs, 1)}`, color: vs > 0 ? "text-emerald-400" : "text-red-400" });
                     }
-                    if (p.projection != null && p.price != null && p.price > 0)
-                      premiumChips.push({ label: "proj", value: fmt(p.projection, 0), color: "text-emerald-400/80" });
                   }
 
                   return (
@@ -1025,23 +1027,23 @@ export default function CurrentWeekPage() {
                     ? { value: fmt(p.projection, 0), label: "proj" }
                     : null;
 
-                  // Premium chips: BE → proj → edge → matchup → risk (only ELEVATED+)
+                  // Premium chips: BE → Projection → Edge → Matchup → Risk (ELEVATED+ only)
                   const premiumChips: Array<{ label: string; value: string; color?: string }> = [];
                   if (hasFullAccess) {
                     if (p.breakeven != null)
-                      premiumChips.push({ label: "be", value: fmt(p.breakeven, 0), color: "text-white/50" });
+                      premiumChips.push({ label: "BE", value: fmt(p.breakeven, 0), color: "text-white/50" });
                     if (p.projection != null)
-                      premiumChips.push({ label: "proj", value: fmt(p.projection, 0), color: "text-red-400/70" });
+                      premiumChips.push({ label: "Projection", value: fmt(p.projection, 0), color: "text-red-400/70" });
                     if (edgeStr)
-                      premiumChips.push({ label: "edge", value: edgeStr, color: "text-red-400" });
+                      premiumChips.push({ label: "Edge", value: edgeStr, color: "text-red-400" });
                     if (p.matchup_label) {
                       const ml = fmtMatchup(p.matchup_label);
-                      if (ml && ml !== "—") premiumChips.push({ label: "matchup", value: ml, color: getMatchupColor(p.matchup_label) });
+                      if (ml && ml !== "—") premiumChips.push({ label: "Matchup", value: `vs ${ml}`, color: getMatchupColor(p.matchup_label) });
                     }
                     // Only show risk label for ELEVATED (38+) and above — never LOW RISK or MODERATE
                     if (p.risk_rating != null && p.risk_rating >= 38) {
                       const rb = getRiskBadge(p.risk_rating);
-                      premiumChips.push({ label: "risk", value: rb.label, color: rb.text });
+                      premiumChips.push({ label: "Risk", value: rb.label, color: rb.text });
                     }
                   }
 
