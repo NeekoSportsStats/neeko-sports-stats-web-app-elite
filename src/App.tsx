@@ -68,7 +68,8 @@ const AFLPlayerPage     = React.lazy(() => import("@/pages/afl/AFLPlayerPage"));
 const AFLTeamPage       = React.lazy(() => import("@/pages/afl/AFLTeamPage"));
 const AFLPositionPage   = React.lazy(() => import("@/pages/afl/AFLPositionPage"));
 const AFLRoundPage      = React.lazy(() => import("@/features/afl/round/AFLRoundPage"));
-const AFLPlayersPage    = React.lazy(() => import("@/features/afl/players/AFLPlayersPage"));
+const AFLPlayersPage         = React.lazy(() => import("@/features/afl/players/AFLPlayersPage"));
+const AFLTeamsDirectoryPage  = React.lazy(() => import("@/features/afl/teams/AFLTeamsDirectoryPage"));
 const StatBoardHubPage          = React.lazy(() => import("@/features/afl/stat-board/StatBoardHubPage"));
 const StatBoardPlayersPage      = React.lazy(() => import("@/features/afl/stat-board/StatBoardPlayersPage"));
 const StatBoardTeamsPage        = React.lazy(() => import("@/features/afl/stat-board/StatBoardTeamsPage"));
@@ -132,6 +133,7 @@ function App() {
         <Route path="/sports/afl/players/:slug" element={<S fallback={Players}><AFLPlayerPage /></S>} />
 
         {/* SEO-ONLY ROUTES: Teams & Positions pages accessible via direct URL only, hidden from UX */}
+        <Route path="/sports/afl/teams" element={<S fallback={Players}><AFLTeamsDirectoryPage /></S>} />
         <Route path="/sports/afl/teams/:team" element={<S fallback={Players}><AFLTeamPage /></S>} />
         <Route path="/sports/afl/positions/:position" element={<S fallback={Players}><AFLPositionPage /></S>} />
 
