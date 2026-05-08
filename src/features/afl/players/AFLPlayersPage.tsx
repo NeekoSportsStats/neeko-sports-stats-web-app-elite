@@ -13,31 +13,33 @@ import type { RankingRow } from "@/features/afl/rankings/components/types";
 // ─── Team directory data ────────────────────────────────────────────────────
 
 interface TeamEntry {
-  name: string;
+  // Display name shown on the card
+  displayName: string;
+  // Canonical DB name used to match against row.team_name / row.team
+  dbName: string;
   slug: string;
-  shortName: string;
   color: string;
 }
 
 const AFL_TEAMS: TeamEntry[] = [
-  { name: "Adelaide Crows",                slug: "adelaide-crows",              shortName: "Adelaide",    color: "#002B5C" },
-  { name: "Brisbane Lions",                slug: "brisbane-lions",              shortName: "Brisbane",    color: "#7C1C3B" },
-  { name: "Carlton Blues",                 slug: "carlton-blues",               shortName: "Carlton",     color: "#001489" },
-  { name: "Collingwood Magpies",           slug: "collingwood-magpies",         shortName: "Collingwood", color: "#2a2a2a" },
-  { name: "Essendon Bombers",              slug: "essendon-bombers",            shortName: "Essendon",    color: "#CC0000" },
-  { name: "Fremantle Dockers",             slug: "fremantle-dockers",           shortName: "Fremantle",   color: "#2F0066" },
-  { name: "Geelong Cats",                  slug: "geelong-cats",                shortName: "Geelong",     color: "#1C3D7C" },
-  { name: "Gold Coast Suns",               slug: "gold-coast-suns",             shortName: "Gold Coast",  color: "#D4782A" },
-  { name: "Greater Western Sydney Giants", slug: "gws-giants",                  shortName: "GWS",         color: "#F15A22" },
-  { name: "Hawthorn Hawks",                slug: "hawthorn-hawks",              shortName: "Hawthorn",    color: "#4D2004" },
-  { name: "Melbourne Demons",              slug: "melbourne-demons",            shortName: "Melbourne",   color: "#0C2340" },
-  { name: "North Melbourne Kangaroos",     slug: "north-melbourne-kangaroos",   shortName: "North Melb.", color: "#0057B8" },
-  { name: "Port Adelaide Power",           slug: "port-adelaide-power",         shortName: "Port Adel.",  color: "#008A8F" },
-  { name: "Richmond Tigers",               slug: "richmond-tigers",             shortName: "Richmond",    color: "#897000" },
-  { name: "St Kilda Saints",               slug: "st-kilda-saints",             shortName: "St Kilda",    color: "#ED1B2E" },
-  { name: "Sydney Swans",                  slug: "sydney-swans",                shortName: "Sydney",      color: "#E1251B" },
-  { name: "West Coast Eagles",             slug: "west-coast-eagles",           shortName: "West Coast",  color: "#003087" },
-  { name: "Western Bulldogs",              slug: "western-bulldogs",            shortName: "Bulldogs",    color: "#00205B" },
+  { displayName: "Adelaide Crows",           dbName: "Adelaide Crows",                slug: "adelaide-crows",            color: "#002B5C" },
+  { displayName: "Brisbane Lions",           dbName: "Brisbane Lions",                slug: "brisbane-lions",            color: "#7C1C3B" },
+  { displayName: "Carlton Blues",            dbName: "Carlton Blues",                 slug: "carlton-blues",             color: "#001489" },
+  { displayName: "Collingwood Magpies",      dbName: "Collingwood Magpies",           slug: "collingwood-magpies",       color: "#2a2a2a" },
+  { displayName: "Essendon Bombers",         dbName: "Essendon Bombers",              slug: "essendon-bombers",          color: "#CC0000" },
+  { displayName: "Fremantle Dockers",        dbName: "Fremantle Dockers",             slug: "fremantle-dockers",         color: "#2F0066" },
+  { displayName: "Geelong Cats",             dbName: "Geelong Cats",                  slug: "geelong-cats",              color: "#1C3D7C" },
+  { displayName: "Gold Coast Suns",          dbName: "Gold Coast Suns",               slug: "gold-coast-suns",           color: "#D4782A" },
+  { displayName: "GWS Giants",               dbName: "Greater Western Sydney Giants", slug: "gws-giants",                color: "#F15A22" },
+  { displayName: "Hawthorn Hawks",           dbName: "Hawthorn Hawks",                slug: "hawthorn-hawks",            color: "#4D2004" },
+  { displayName: "Melbourne Demons",         dbName: "Melbourne Demons",              slug: "melbourne-demons",          color: "#0C2340" },
+  { displayName: "North Melbourne Kangaroos",dbName: "North Melbourne Kangaroos",     slug: "north-melbourne-kangaroos", color: "#0057B8" },
+  { displayName: "Port Adelaide Power",      dbName: "Port Adelaide Power",           slug: "port-adelaide-power",       color: "#008A8F" },
+  { displayName: "Richmond Tigers",          dbName: "Richmond Tigers",               slug: "richmond-tigers",           color: "#897000" },
+  { displayName: "St Kilda Saints",          dbName: "St Kilda Saints",               slug: "st-kilda-saints",           color: "#ED1B2E" },
+  { displayName: "Sydney Swans",             dbName: "Sydney Swans",                  slug: "sydney-swans",              color: "#E1251B" },
+  { displayName: "West Coast Eagles",        dbName: "West Coast Eagles",             slug: "west-coast-eagles",         color: "#003087" },
+  { displayName: "Western Bulldogs",         dbName: "Western Bulldogs",              slug: "western-bulldogs",          color: "#00205B" },
 ];
 
 // ─── Position filter options ────────────────────────────────────────────────
@@ -71,7 +73,7 @@ function firstLetter(name: string): string {
 
 // ─── Subcomponents ──────────────────────────────────────────────────────────
 
-function TeamCard({ team }: { team: TeamEntry }) {
+function TeamCard({ team, playerCount }: { team: TeamEntry; playerCount?: number }) {
   const [hovered, setHovered] = useState(false);
   return (
     <Link
@@ -81,43 +83,57 @@ function TeamCard({ team }: { team: TeamEntry }) {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 10,
-        padding: "10px 14px",
-        borderRadius: 9,
+        justifyContent: "space-between",
+        gap: 8,
+        padding: "7px 11px",
+        borderRadius: 7,
         background: hovered
-          ? `linear-gradient(135deg, ${team.color}28 0%, rgba(255,255,255,0.04) 100%)`
-          : "rgba(255,255,255,0.035)",
+          ? `linear-gradient(135deg, ${team.color}20 0%, rgba(255,255,255,0.03) 100%)`
+          : "rgba(255,255,255,0.025)",
         border: hovered
-          ? `1px solid ${team.color}55`
-          : "1px solid rgba(255,255,255,0.07)",
+          ? `1px solid ${team.color}44`
+          : "1px solid rgba(255,255,255,0.055)",
         textDecoration: "none",
-        transition: "all 0.15s ease",
+        transition: "all 0.14s ease",
         minWidth: 0,
       }}
     >
-      <div
-        style={{
-          width: 8,
-          height: 8,
-          borderRadius: "50%",
-          background: team.color,
+      <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+        <div
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: "50%",
+            background: team.color,
+            flexShrink: 0,
+            opacity: hovered ? 1 : 0.75,
+            transition: "opacity 0.14s ease",
+          }}
+        />
+        <span style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: hovered ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.52)",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          letterSpacing: "0.01em",
+          transition: "color 0.14s ease",
+        }}>
+          {team.displayName}
+        </span>
+      </div>
+      {playerCount != null && (
+        <span style={{
+          fontSize: 10,
+          fontWeight: 600,
+          color: "rgba(255,255,255,0.20)",
           flexShrink: 0,
-          boxShadow: hovered ? `0 0 8px ${team.color}80` : "none",
-          transition: "box-shadow 0.15s ease",
-        }}
-      />
-      <span style={{
-        fontSize: 12.5,
-        fontWeight: 600,
-        color: hovered ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.60)",
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        letterSpacing: "0.01em",
-        transition: "color 0.15s ease",
-      }}>
-        {team.shortName}
-      </span>
+          letterSpacing: "0.02em",
+        }}>
+          {playerCount}
+        </span>
+      )}
     </Link>
   );
 }
@@ -240,6 +256,16 @@ export default function AFLPlayersPage() {
 
   const totalCount = rows.length;
 
+  // Count players per team from real loaded data
+  const teamCounts = useMemo<Record<string, number>>(() => {
+    const counts: Record<string, number> = {};
+    rows.forEach(r => {
+      const name = r.team_name ?? r.team ?? "";
+      if (name) counts[name] = (counts[name] ?? 0) + 1;
+    });
+    return counts;
+  }, [rows]);
+
   const pageUrl         = "https://neekostats.com.au/sports/afl/players";
   const pageTitle       = "AFL Fantasy Player Directory 2026 | Neeko Sports";
   const pageDescription = "Search every 2026 AFL Fantasy player by name, team or position. View basic player info for free, or unlock projections, signals and AI analysis with Neeko+.";
@@ -331,25 +357,24 @@ export default function AFLPlayersPage() {
         </div>
 
         {/* ── Teams grid ────────────────────────────────────────────────── */}
-        <section style={{ marginBottom: 36 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Shield size={13} style={{ color: "rgba(255,255,255,0.30)" }} />
-              <h2 style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(255,255,255,0.30)" }}>
-                Browse by Team
-              </h2>
-            </div>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", fontWeight: 500 }}>
-              Shortcut to each team's player page
-            </span>
+        <section style={{ marginBottom: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
+            <Shield size={11} style={{ color: "rgba(255,255,255,0.22)" }} />
+            <h2 style={{ margin: 0, fontSize: 10.5, fontWeight: 700, letterSpacing: "0.36em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)" }}>
+              Browse by Team
+            </h2>
           </div>
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))",
-            gap: 6,
+            gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+            gap: 5,
           }}>
             {AFL_TEAMS.map(team => (
-              <TeamCard key={team.slug} team={team} />
+              <TeamCard
+                key={team.slug}
+                team={team}
+                playerCount={loading ? undefined : teamCounts[team.dbName]}
+              />
             ))}
           </div>
         </section>
@@ -425,7 +450,7 @@ export default function AFLPlayersPage() {
             >
               <option value="" style={{ background: "#111", color: "#fff" }}>All Teams</option>
               {AFL_TEAMS.map(t => (
-                <option key={t.slug} value={t.name} style={{ background: "#111", color: "#fff" }}>{t.shortName}</option>
+                <option key={t.slug} value={t.dbName} style={{ background: "#111", color: "#fff" }}>{t.displayName}</option>
               ))}
             </select>
             <ChevronDown size={12} style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)", pointerEvents: "none" }} />
@@ -624,7 +649,7 @@ export default function AFLPlayersPage() {
 
                     const { row, idx } = item;
                     const slug       = playerToSlug(row.player_name, row.team_name ?? row.team);
-                    const teamShort  = AFL_TEAMS.find(t => t.name === (row.team_name ?? row.team))?.shortName
+                    const teamShort  = AFL_TEAMS.find(t => t.dbName === (row.team_name ?? row.team))?.displayName
                                     ?? (row.team_name ?? row.team ?? "—");
                     const signalVal   = signalFromField(row.signal ?? null);
                     const signalColor = getEdgeSignalColor(signalVal);
