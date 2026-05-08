@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { playerToSlug } from "@/lib/slugs";
 import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
 import { PlayerStatusPill } from "@/features/afl/rankings/components/PlayerStatusPill";
+import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from "@/utils/aflEdgeSignal";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
 
 // ─── Team directory data ────────────────────────────────────────────────────
@@ -62,15 +63,6 @@ function fmtPrice(val: number | null | undefined): string {
   return `$${Math.floor(val / 1000)}K`;
 }
 
-function actionColor(action: string | null): string {
-  if (!action) return "rgba(255,255,255,0.28)";
-  const a = action.toLowerCase();
-  if (a.includes("strong start") || a.includes("start")) return "#10b981";
-  if (a.includes("sit") || a.includes("hard sit"))        return "#f59e0b";
-  if (a.includes("hold"))                                  return "rgba(255,255,255,0.50)";
-  return "rgba(255,255,255,0.50)";
-}
-
 // ─── Subcomponents ──────────────────────────────────────────────────────────
 
 function TeamCard({ team }: { team: TeamEntry }) {
@@ -121,21 +113,6 @@ function TeamCard({ team }: { team: TeamEntry }) {
         {team.shortName}
       </span>
     </Link>
-  );
-}
-
-// ─── Blurred premium cell ───────────────────────────────────────────────────
-
-function BlurredCell({ children }: { children: React.ReactNode }) {
-  return (
-    <span style={{
-      filter: "blur(5px)",
-      userSelect: "none",
-      pointerEvents: "none",
-      opacity: 0.5,
-    }}>
-      {children}
-    </span>
   );
 }
 
@@ -482,11 +459,11 @@ export default function AFLPlayersPage() {
           }}>
             <Crown size={13} style={{ color: "#F5C84C", flexShrink: 0 }} />
             <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.50)", lineHeight: 1.4 }}>
-              Signals are hidden for non-subscribers.{" "}
+              Showing 2026 season averages.{" "}
               <Link to="/neeko-plus" style={{ color: "#F5C84C", textDecoration: "none", fontWeight: 700 }}>
                 Upgrade to Neeko+
               </Link>{" "}
-              to unlock signals and AI analysis for all {totalCount}+ players.
+              to unlock round projections, signals and AI analysis for all {totalCount}+ players.
             </p>
           </div>
         )}
@@ -521,7 +498,7 @@ export default function AFLPlayersPage() {
         {!loading && !error && (
           <div style={{ overflow: "hidden", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 560 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
                 {/* Header */}
                 <thead>
                   <tr style={{ background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
@@ -542,17 +519,25 @@ export default function AFLPlayersPage() {
                       dir={sortDir}
                       onClick={handleSort}
                     />
-                    <SortTh
-                      label="Proj."
-                      col="projection"
-                      current={sortBy}
-                      dir={sortDir}
-                      onClick={handleSort}
-                    />
+                    {/* 5th column: Avg for free, sortable Proj for premium */}
+                    {isPremium ? (
+                      <SortTh
+                        label="Proj."
+                        col="projection"
+                        current={sortBy}
+                        dir={sortDir}
+                        onClick={handleSort}
+                      />
+                    ) : (
+                      <th style={thStyle}>2026 Avg</th>
+                    )}
+                    {/* Signal column */}
                     <th style={thStyle}>
-                      Signal
-                      {!isPremium && (
-                        <Lock size={10} style={{ marginLeft: 4, color: "rgba(245,200,76,0.50)", verticalAlign: "middle" }} />
+                      {isPremium ? "Signal" : (
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          Signal
+                          <Lock size={10} style={{ color: "rgba(245,200,76,0.55)" }} />
+                        </span>
                       )}
                     </th>
                   </tr>
@@ -568,11 +553,12 @@ export default function AFLPlayersPage() {
                   )}
 
                   {filtered.map((row, idx) => {
-                    const isLocked = !isPremium && row.access_tier === "locked";
-                    const slug     = playerToSlug(row.player_name, row.team_name ?? row.team);
-                    const action   = row.action_display ?? row.action_canonical ?? null;
+                    const slug      = playerToSlug(row.player_name, row.team_name ?? row.team);
                     const teamShort = AFL_TEAMS.find(t => t.name === (row.team_name ?? row.team))?.shortName
                                    ?? (row.team_name ?? row.team ?? "—");
+                    const signalVal  = signalFromField(row.signal ?? null);
+                    const signalColor = getEdgeSignalColor(signalVal);
+                    const signalLabel = signalVal ? formatEdgeSignalLabel(signalVal) : null;
 
                     return (
                       <tr
@@ -585,7 +571,7 @@ export default function AFLPlayersPage() {
                         onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
                         onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                       >
-                        {/* Player name — always visible */}
+                        {/* Player name — always visible, always linkable */}
                         <td style={{ padding: "10px 12px 10px 14px" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
                             <Link
@@ -609,60 +595,83 @@ export default function AFLPlayersPage() {
                           </div>
                         </td>
 
-                        {/* Team — always visible */}
+                        {/* Team */}
                         <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
                           <span style={{ fontSize: 12, color: "rgba(255,255,255,0.42)", fontWeight: 500 }}>
                             {teamShort}
                           </span>
                         </td>
 
-                        {/* Position — always visible */}
+                        {/* Position */}
                         <td style={{ padding: "10px 12px" }}>
-                          <span style={{
-                            fontSize: 11,
-                            fontWeight: 700,
-                            letterSpacing: "0.04em",
-                            color: "rgba(255,255,255,0.40)",
-                          }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", color: "rgba(255,255,255,0.40)" }}>
                             {row.position ?? "—"}
                           </span>
                         </td>
 
-                        {/* Price — always visible */}
+                        {/* Price */}
                         <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
                           <span style={{ fontSize: 12.5, fontWeight: 600, color: "rgba(255,255,255,0.65)" }}>
                             {fmtPrice(row.price)}
                           </span>
                         </td>
 
-                        {/* Projection — always visible for all users */}
-                        <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
-                          <span style={{
-                            fontSize: 13,
-                            fontWeight: 700,
-                            color: row.projection != null ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.25)",
-                          }}>
-                            {fmt(row.projection)}
-                          </span>
-                        </td>
-
-                        {/* Signal — blurred for locked free rows */}
-                        <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
-                          {isLocked ? (
-                            <BlurredCell>
-                              <span style={{ fontSize: 11, fontWeight: 700, color: "#10b981" }}>Start</span>
-                            </BlurredCell>
-                          ) : action ? (
+                        {/* 5th col: 2026 Avg (free) or Projection (premium) */}
+                        {isPremium ? (
+                          <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
                             <span style={{
-                              fontSize: 11,
+                              fontSize: 13,
                               fontWeight: 700,
-                              letterSpacing: "0.03em",
-                              color: actionColor(action),
+                              color: row.projection != null ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.25)",
                             }}>
-                              {action}
+                              {fmt(row.projection)}
                             </span>
+                          </td>
+                        ) : (
+                          <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
+                            {row.season_avg != null ? (
+                              <span style={{ fontSize: 12.5, fontWeight: 600, color: "rgba(255,255,255,0.70)" }}>
+                                {fmt(row.season_avg)}
+                                {row.games_played != null && (
+                                  <span style={{ fontSize: 10, color: "rgba(255,255,255,0.28)", marginLeft: 3 }}>
+                                    ({row.games_played}g)
+                                  </span>
+                                )}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.22)" }}>—</span>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Signal: full label for premium, consistent lock for free */}
+                        <td style={{ padding: "10px 12px", whiteSpace: "nowrap" }}>
+                          {isPremium ? (
+                            signalLabel ? (
+                              <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.03em", color: signalColor }}>
+                                {signalLabel}
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.18)" }}>—</span>
+                            )
                           ) : (
-                            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.18)" }}>—</span>
+                            <Link
+                              to="/neeko-plus"
+                              title="Unlock signals with Neeko+"
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                fontSize: 10.5,
+                                fontWeight: 600,
+                                color: "rgba(245,200,76,0.45)",
+                                textDecoration: "none",
+                                letterSpacing: "0.02em",
+                              }}
+                            >
+                              <Lock size={9} style={{ flexShrink: 0 }} />
+                              Neeko+
+                            </Link>
                           )}
                         </td>
                       </tr>
@@ -689,7 +698,7 @@ export default function AFLPlayersPage() {
                             border: "1px solid rgba(245,200,76,0.22)",
                           }}
                         >
-                          <Crown size={13} /> Unlock signals and AI analysis with Neeko+
+                          <Crown size={13} /> Unlock projections, signals and AI analysis with Neeko+
                         </Link>
                       </td>
                     </tr>
