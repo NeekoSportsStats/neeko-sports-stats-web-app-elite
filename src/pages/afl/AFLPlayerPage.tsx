@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, ChevronRight, TrendingUp, TrendingDown, Minus, Zap, Lock, Users, ChartBar as BarChart2, CircleAlert as AlertCircle, ChevronDown, ChevronUp, Activity, Target, ChartBar as BarChart3, FlameKindling as Flame, Shield } from 'lucide-react';
 import {
   slugToPlayerName, playerToSlug,
-  POSITION_SLUGS, POSITION_NAMES, TEAM_SLUG_TO_NAME,
+  POSITION_NAMES, TEAM_SLUG_TO_NAME,
 } from '@/lib/slugs';
 import { getPlayerDetailSafe, getSimilarPlayersSafe } from '@/lib/playerAccess';
 import { supabase } from '@/lib/supabaseClient';
@@ -71,10 +71,6 @@ interface SimilarPlayer {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function getPositionSlug(pos: string | null | undefined): string | null {
-  if (!pos) return null;
-  return POSITION_SLUGS[pos] ?? null;
-}
 
 function getPositionName(pos: string | null | undefined): string {
   if (!pos) return 'Player';
@@ -516,10 +512,9 @@ function FantasyDecision({
 }
 
 /** SEO guide — player overview, 2026 outlook, internal links */
-function PlayerSEOBlock({ player, teamSlug, posSlug }: {
+function PlayerSEOBlock({ player, teamSlug }: {
   player: PlayerData;
   teamSlug: string | undefined;
-  posSlug: string | null;
 }) {
   const posName  = getPositionName(player.player_position);
   const posLabel = posName.replace(/s$/, '');
@@ -563,7 +558,7 @@ function PlayerSEOBlock({ player, teamSlug, posSlug }: {
           <div className="flex flex-wrap gap-x-4 gap-y-1.5">
             <Link to="/fantasy/rankings" className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">AFL Fantasy Rankings</Link>
             {teamSlug && <Link to={`/sports/afl/teams/${teamSlug}`} className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">{player.team} players</Link>}
-            {posSlug && <Link to={`/sports/afl/positions/${posSlug}`} className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">{posName} rankings</Link>}
+            <Link to="/sports/afl/players" className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">All AFL Players</Link>
             <Link to="/fantasy/market-watch" className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">Market Watch</Link>
           </div>
         </div>
@@ -933,7 +928,6 @@ export default function AFLPlayerPage() {
 
 
   // ── Derived values ────────────────────────────────────────────────────────
-  const posSlug  = player ? getPositionSlug(player.player_position) : null;
   const posName  = player ? getPositionName(player.player_position) : '';
   const teamSlug = Object.entries(TEAM_SLUG_TO_NAME).find(([, n]) => n === player?.team)?.[0];
 
@@ -1001,8 +995,7 @@ export default function AFLPlayerPage() {
         itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'Home',         item: 'https://neekostats.com.au' },
           { '@type': 'ListItem', position: 2, name: 'AFL Rankings', item: 'https://neekostats.com.au/fantasy/rankings' },
-          ...(posName && posSlug ? [{ '@type': 'ListItem', position: 3, name: `${posName} Rankings`, item: `https://neekostats.com.au/sports/afl/positions/${posSlug}` }] : []),
-          { '@type': 'ListItem', position: posName && posSlug ? 4 : 3, name: player.player_name, item: pageUrl },
+          { '@type': 'ListItem', position: 3, name: player.player_name, item: pageUrl },
         ],
       },
     ],
@@ -1266,15 +1259,13 @@ export default function AFLPlayerPage() {
                       {player.team} players
                     </Link>
                   )}
-                  {posSlug && (
-                    <Link
-                      to={`/sports/afl/positions/${posSlug}`}
-                      className="flex items-center gap-1.5 text-[11px] text-white/38 hover:text-white/70 transition-colors"
-                    >
-                      <BarChart2 size={10} className="shrink-0 text-white/22" />
-                      {posName} rankings
-                    </Link>
-                  )}
+                  <Link
+                    to="/sports/afl/players"
+                    className="flex items-center gap-1.5 text-[11px] text-white/38 hover:text-white/70 transition-colors"
+                  >
+                    <Users size={10} className="shrink-0 text-white/22" />
+                    All AFL Players
+                  </Link>
                   <Link
                     to="/fantasy/rankings"
                     className="flex items-center gap-1.5 text-[11px] text-white/38 hover:text-white/70 transition-colors"
@@ -1294,7 +1285,7 @@ export default function AFLPlayerPage() {
 
               {/* SEO block — bottom of main column on desktop */}
               <div className="hidden lg:block">
-                <PlayerSEOBlock player={player} teamSlug={teamSlug} posSlug={posSlug} />
+                <PlayerSEOBlock player={player} teamSlug={teamSlug} />
               </div>
             </div>
 
@@ -1318,16 +1309,8 @@ export default function AFLPlayerPage() {
               {/* Similar Players */}
               {similar.length > 0 && (
                 <div>
-                  <div className="flex items-center justify-between mb-2.5">
-                    <SectionLabel icon={<Users size={13} />} title={`Similar ${posName}`} />
-                    {posSlug && (
-                      <Link
-                        to={`/sports/afl/positions/${posSlug}`}
-                        className="flex items-center gap-1 text-[11px] text-white/25 hover:text-white/52 transition-colors mb-3"
-                      >
-                        All <ChevronRight size={10} />
-                      </Link>
-                    )}
+                  <div className="mb-2.5">
+                    <SectionLabel icon={<Users size={13} />} title="Similar Players" />
                   </div>
 
                   {/* One-line upgrade note for free users */}
@@ -1356,7 +1339,7 @@ export default function AFLPlayerPage() {
 
           {/* SEO block — shown below both columns on mobile */}
           <div className="lg:hidden mt-5">
-            <PlayerSEOBlock player={player} teamSlug={teamSlug} posSlug={posSlug} />
+            <PlayerSEOBlock player={player} teamSlug={teamSlug} />
           </div>
 
         </div>
