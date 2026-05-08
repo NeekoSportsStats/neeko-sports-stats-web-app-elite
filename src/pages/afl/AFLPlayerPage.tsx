@@ -613,7 +613,7 @@ export default function AFLPlayerPage() {
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState(false);
   const [showFullAI,   setShowFullAI]   = useState(false);
-  const [chartHighLow, setChartHighLow] = useState<{ high: number | null }>({ high: null });
+  const [chartHighLow, setChartHighLow] = useState<{ high: number | null; low: number | null }>({ high: null, low: null });
 
   // ── Main data fetch ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -685,7 +685,7 @@ export default function AFLPlayerPage() {
           .filter((r: any) => !r.is_future && r.actual_score != null)
           .map((r: any) => Number(r.actual_score));
         if (scores.length > 0) {
-          setChartHighLow({ high: Math.max(...scores) });
+          setChartHighLow({ high: Math.max(...scores), low: Math.min(...scores) });
         } else {
           const { data: byName } = await supabase.rpc('get_player_score_history', {
             player_name_in: player.player_name,
@@ -694,7 +694,7 @@ export default function AFLPlayerPage() {
           const nameScores = ((byName as any[]) ?? [])
             .filter((r: any) => r.fantasy_points != null)
             .map((r: any) => Number(r.fantasy_points));
-          if (nameScores.length > 0) setChartHighLow({ high: Math.max(...nameScores) });
+          if (nameScores.length > 0) setChartHighLow({ high: Math.max(...nameScores), low: Math.min(...nameScores) });
         }
       } catch { /* silently skip */ }
     })();
@@ -831,7 +831,7 @@ export default function AFLPlayerPage() {
                   <h1 className="text-[28px] sm:text-[34px] font-black text-white leading-none tracking-tight mb-2">
                     {player.player_name}
                   </h1>
-                  {/* Form delta */}
+                  {/* Form label + delta — derived from real scoring, always visible if data present */}
                   {delta3 != null && (
                     <div className="flex items-center gap-1.5">
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide ${getFormStyles(formLabel)}`}>
@@ -845,35 +845,53 @@ export default function AFLPlayerPage() {
                   )}
                 </div>
 
-                {/* Neeko rating badge — always visible */}
-                {player.neeko_rating != null && (
+                {/* Premium-only action signal badge */}
+                {isPremium && player.action_canonical != null && (
                   <div
-                    className="flex flex-col items-center justify-center w-[68px] h-[68px] rounded-xl shrink-0 border text-center"
-                    style={{ background: `${accent}0a`, borderColor: `${accent}30` }}
+                    className="flex flex-col items-center justify-center w-[72px] shrink-0 rounded-xl border px-2 py-2.5 text-center gap-0.5"
+                    style={{
+                      background: `${actionMeta.color}0c`,
+                      borderColor: `${actionMeta.color}30`,
+                    }}
                   >
-                    <span className="text-[8px] uppercase tracking-widest mb-0.5" style={{ color: `${accent}80` }}>Rating</span>
-                    <span className="text-[22px] font-black leading-none" style={{ color: accent }}>
-                      {Number(player.neeko_rating).toFixed(1)}
+                    <span className="text-[7px] uppercase tracking-widest font-bold" style={{ color: `${actionMeta.color}80` }}>Action</span>
+                    <span className="text-[13px] font-black uppercase leading-tight" style={{ color: actionMeta.color }}>
+                      {actionMeta.label}
                     </span>
+                    {player.confidence_label && (
+                      <span className="text-[7px] uppercase tracking-wider text-white/32 font-semibold leading-tight">
+                        {player.confidence_label}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Stat strip — always visible */}
-              <div className="grid grid-cols-5 divide-x divide-white/[0.06] rounded-xl border border-white/[0.07] bg-black/20 overflow-hidden">
-                {[
+              {/* Stat strip — stats-first, no premium fields */}
+              {(() => {
+                const cells: { label: string; val: React.ReactNode }[] = [
                   { label: 'Price',      val: <span className="text-white/80">{fmtPriceHelper(player.price)}</span> },
                   { label: 'Season Avg', val: <span className="text-white/82">{fmtAvg(player.season_avg)}</span> },
                   { label: 'Last 3',     val: <span className={delta3 != null ? (delta3 >= 0 ? 'text-emerald-400' : 'text-red-400/85') : 'text-white/65'}>{fmtAvg(player.avg_last_3)}</span> },
-                  { label: 'Last 5',     val: <span className="text-white/58">{fmtAvg(player.avg_last_5)}</span> },
+                  ...(player.avg_last_5 != null ? [{ label: 'Last 5', val: <span className="text-white/60">{Math.round(player.avg_last_5)}</span> }] : []),
                   { label: 'Games',      val: <span className="text-white/50">{player.games_played ?? '—'}</span> },
-                ].map(({ label, val }) => (
-                  <div key={label} className="flex flex-col items-center justify-center py-3 px-2 gap-0.5">
-                    <span className="text-[15px] font-black tabular-nums leading-tight">{val}</span>
-                    <span className="text-[8px] uppercase tracking-widest text-white/24 text-center leading-tight">{label}</span>
+                  ...(chartHighLow.high != null ? [{ label: 'High (L10)', val: <span className="text-emerald-400/75">{Math.round(chartHighLow.high)}</span> }] : []),
+                  ...(chartHighLow.low != null ? [{ label: 'Low (L10)',  val: <span className="text-red-400/60">{Math.round(chartHighLow.low)}</span> }] : []),
+                ];
+                return (
+                  <div
+                    className="grid divide-x divide-white/[0.06] rounded-xl border border-white/[0.07] bg-black/20 overflow-hidden"
+                    style={{ gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))` }}
+                  >
+                    {cells.map(({ label, val }) => (
+                      <div key={label} className="flex flex-col items-center justify-center py-3 px-1.5 gap-0.5">
+                        <span className="text-[14px] sm:text-[15px] font-black tabular-nums leading-tight">{val}</span>
+                        <span className="text-[7px] sm:text-[8px] uppercase tracking-widest text-white/24 text-center leading-tight">{label}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                );
+              })()}
             </div>
           </div>
 
