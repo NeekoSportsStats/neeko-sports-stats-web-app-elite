@@ -108,11 +108,23 @@ function ActionBadge({ action, actionDisplay }: { action: string | null; actionD
   );
 }
 
-function LockedField() {
+function LockedField({ size = 'sm' }: { size?: 'xs' | 'sm' | 'md' }) {
+  const textCls = size === 'xs' ? 'text-[8px]' : size === 'md' ? 'text-[12px]' : 'text-[10px]';
+  const iconSz  = size === 'xs' ? 7 : size === 'md' ? 11 : 9;
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] text-white/20 select-none">
-      <Lock size={9} className="shrink-0" />
-      <span className="blur-[3px]">000</span>
+    <span className={`inline-flex items-center gap-1 ${textCls} text-amber-400/40 select-none`}>
+      <Lock size={iconSz} className="shrink-0 text-amber-400/50" />
+      <span className="blur-[3.5px] text-white/30 font-mono">000</span>
+    </span>
+  );
+}
+
+/** Full locked cell — used where a column would otherwise show a value */
+function LockedCell({ label }: { label?: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-500/[0.06] border border-amber-500/[0.12] text-[8px] text-amber-400/50 select-none whitespace-nowrap">
+      <Lock size={7} className="shrink-0" />
+      {label ?? 'Neeko+'}
     </span>
   );
 }
@@ -139,7 +151,7 @@ function InsightCard({
   icon: React.ReactNode;
   label: string;
   playerName: string;
-  stat: string;
+  stat: string | null;   // null = locked/gated
   statLabel: string;
   sub?: string;
   context?: string;
@@ -147,6 +159,7 @@ function InsightCard({
   accentColor: string;
   dimStat?: boolean;
 }) {
+  const isLocked = stat === null;
   return (
     <Link
       to={`/sports/afl/players/${slug}`}
@@ -166,12 +179,16 @@ function InsightCard({
       </p>
       {/* key stat + label */}
       <div className="flex items-end justify-between gap-2">
-        <span
-          className="text-[22px] font-black tabular-nums leading-none"
-          style={{ color: dimStat ? 'rgba(255,255,255,0.35)' : accentColor }}
-        >
-          {stat}
-        </span>
+        {isLocked ? (
+          <LockedCell label="Neeko+" />
+        ) : (
+          <span
+            className="text-[22px] font-black tabular-nums leading-none"
+            style={{ color: dimStat ? 'rgba(255,255,255,0.35)' : accentColor }}
+          >
+            {stat}
+          </span>
+        )}
         <div className="text-right shrink-0">
           <span className="text-[8px] text-white/25 uppercase tracking-wide block leading-tight">{statLabel}</span>
           {sub && <span className="text-[8px] text-white/38 block leading-tight mt-0.5">{sub}</span>}
@@ -594,9 +611,12 @@ function LineDetailRows({
                 </div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-[9px] text-white/28">{fmtPrice(p.price)}</span>
-                  {isPremium && p.breakeven != null && (
-                    <span className="text-[9px] text-white/22">BE {Math.round(p.breakeven)}</span>
-                  )}
+                  {isPremium
+                    ? p.breakeven != null && (
+                        <span className="text-[9px] text-white/22">BE {Math.round(p.breakeven)}</span>
+                      )
+                    : <LockedField size="xs" />
+                  }
                   <MiniBar value={proj} max={maxProj} color={accentColor} />
                 </div>
               </div>
@@ -628,8 +648,8 @@ function RosterRow({ player, rank, isPremium }: { player: TeamPlayer; rank: numb
         {rank}
       </span>
 
-      {/* action icon */}
-      <ActionIcon action={player.action_canonical} />
+      {/* action icon — always visible; arrow only, not the labelled badge */}
+      <ActionIcon action={isPremium ? player.action_canonical : null} />
 
       {/* name + status */}
       <div className="flex-1 min-w-0 flex items-center gap-1.5">
@@ -653,41 +673,49 @@ function RosterRow({ player, rank, isPremium }: { player: TeamPlayer; rank: numb
         {pos}
       </span>
 
-      {/* price */}
+      {/* price — always visible */}
       <span className="text-[10px] text-white/32 shrink-0 hidden sm:block tabular-nums w-10 text-right">
         {fmtPrice(player.price)}
       </span>
 
-      {/* breakeven */}
-      <div className="text-right shrink-0 hidden md:block w-10">
-        <p className="text-[10px] tabular-nums text-white/40">
-          {isPremium && player.breakeven != null
-            ? Math.round(player.breakeven)
-            : <LockedField />}
-        </p>
-        <p className="text-[7px] text-white/18 uppercase tracking-wide">BE</p>
-      </div>
-
-      {/* edge */}
-      <div className="text-right shrink-0 hidden md:block w-10">
-        {isPremium && player.edge_canonical != null ? (
-          <p className={`text-[10px] font-semibold tabular-nums ${getEdgeColor(player.edge_canonical)}`}>
-            {fmtEdge(player.edge_canonical)}
-          </p>
+      {/* breakeven — premium only */}
+      <div className="text-right shrink-0 hidden md:block w-12">
+        {isPremium && player.breakeven != null ? (
+          <>
+            <p className="text-[10px] tabular-nums text-white/40">{Math.round(player.breakeven)}</p>
+            <p className="text-[7px] text-white/18 uppercase tracking-wide">BE</p>
+          </>
         ) : (
-          <p className="text-[10px] text-white/18"><LockedField /></p>
+          <LockedCell />
         )}
-        <p className="text-[7px] text-white/18 uppercase tracking-wide">Edge</p>
       </div>
 
-      {/* projection */}
+      {/* edge — premium only */}
+      <div className="text-right shrink-0 hidden md:block w-12">
+        {isPremium && player.edge_canonical != null ? (
+          <>
+            <p className={`text-[10px] font-semibold tabular-nums ${getEdgeColor(player.edge_canonical)}`}>
+              {fmtEdge(player.edge_canonical)}
+            </p>
+            <p className="text-[7px] text-white/18 uppercase tracking-wide">Edge</p>
+          </>
+        ) : (
+          <LockedCell />
+        )}
+      </div>
+
+      {/* projection — always visible */}
       <div className="text-right shrink-0 min-w-[36px]">
         <p className="text-[13px] font-bold tabular-nums text-white/75">{fmtProj(player.projection)}</p>
         <p className="text-[7px] text-white/20 uppercase tracking-wide">proj</p>
       </div>
 
-      {/* action badge */}
-      <ActionBadge action={player.action_canonical} actionDisplay={player.action_display} />
+      {/* action badge — premium only; free gets locked pill */}
+      {isPremium ? (
+        <ActionBadge action={player.action_canonical} actionDisplay={player.action_display} />
+      ) : (
+        <LockedCell label="Signal" />
+      )}
 
       <ChevronRight size={12} className="text-white/12 group-hover:text-white/38 transition-colors shrink-0" />
     </Link>
@@ -741,15 +769,15 @@ function RosterSection({
     ? filtered.length - FREE_ROSTER_LIMIT
     : 0;
 
-  // column header labels
+  // column header labels — widths must match RosterRow column widths
   const colHeaders = [
     { label: 'Player', className: 'flex-1' },
     { label: 'Pos',    className: 'hidden sm:block w-7 text-center' },
     { label: 'Price',  className: 'hidden sm:block w-10 text-right' },
-    { label: 'BE',     className: 'hidden md:block w-10 text-right' },
-    { label: 'Edge',   className: 'hidden md:block w-10 text-right' },
+    { label: isPremium ? 'BE' : '',     className: 'hidden md:block w-12 text-right' },
+    { label: isPremium ? 'Edge' : '',   className: 'hidden md:block w-12 text-right' },
     { label: 'Proj',   className: 'w-9 text-right' },
-    { label: 'Signal', className: 'w-14 text-right' },
+    { label: isPremium ? 'Signal' : '', className: 'w-14 text-right' },
   ];
 
   return (
@@ -1462,9 +1490,9 @@ export default function AFLTeamPage() {
                     label="Value Pick"
                     playerName={stats.topValuePlayer.player_name}
                     stat={
-                      stats.topValuePlayer.value_score != null
+                      isPremium && stats.topValuePlayer.value_score != null
                         ? stats.topValuePlayer.value_score.toFixed(1)
-                        : '—'
+                        : null
                     }
                     statLabel="value score"
                     sub={
@@ -1473,7 +1501,7 @@ export default function AFLTeamPage() {
                         : undefined
                     }
                     context={
-                      stats.topValuePlayer.projection != null && stats.topValuePlayer.breakeven != null
+                      isPremium && stats.topValuePlayer.projection != null && stats.topValuePlayer.breakeven != null
                         ? `Proj ${fmtProj(stats.topValuePlayer.projection)} vs BE ${Math.round(stats.topValuePlayer.breakeven)}`
                         : undefined
                     }
@@ -1489,9 +1517,9 @@ export default function AFLTeamPage() {
                     label="Avoid This Week"
                     playerName={stats.worstValuePlayer.player_name}
                     stat={
-                      stats.worstValuePlayer.value_score != null
+                      isPremium && stats.worstValuePlayer.value_score != null
                         ? stats.worstValuePlayer.value_score.toFixed(1)
-                        : '—'
+                        : null
                     }
                     statLabel="value score"
                     sub={
@@ -1500,9 +1528,9 @@ export default function AFLTeamPage() {
                         : undefined
                     }
                     context={
-                      stats.worstValuePlayer.projection != null && stats.worstValuePlayer.breakeven != null
+                      isPremium && stats.worstValuePlayer.projection != null && stats.worstValuePlayer.breakeven != null
                         ? `Proj ${fmtProj(stats.worstValuePlayer.projection)} vs BE ${Math.round(stats.worstValuePlayer.breakeven)}`
-                        : 'Overpriced relative to output'
+                        : isPremium ? 'Overpriced relative to output' : undefined
                     }
                     slug={nameToSlug(stats.worstValuePlayer.player_name)}
                     accentColor="#f87171"
@@ -1548,7 +1576,7 @@ export default function AFLTeamPage() {
                         : undefined
                     }
                     context={
-                      stats.bestBudgetPlayer.breakeven != null
+                      isPremium && stats.bestBudgetPlayer.breakeven != null
                         ? `BE: ${Math.round(stats.bestBudgetPlayer.breakeven)} — best u/$450k`
                         : 'Best output under $450k'
                     }
