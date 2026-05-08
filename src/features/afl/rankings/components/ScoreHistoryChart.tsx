@@ -186,7 +186,7 @@ function ConfidenceReliabilityPanel({ data }: { data: ChartDataPoint[] }) {
   );
 }
 
-export default function ScoreHistoryChart({ playerName, playerId }: { playerName: string; playerId?: string | null }) {
+export default function ScoreHistoryChart({ playerName, playerId, hideProjection }: { playerName: string; playerId?: string | null; hideProjection?: boolean }) {
   const [data, setData] = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -245,8 +245,13 @@ export default function ScoreHistoryChart({ playerName, playerId }: { playerName
 
   if (loading) return <div className="h-[180px] animate-pulse rounded-lg bg-white/5" />;
 
+  // Strip predictive fields for free users
+  const displayData = hideProjection
+    ? data.map((d) => ({ ...d, projected_score: null, projection_confidence: null, is_future: false }))
+    : data;
+
   // Only plot completed games with a real actual score
-  const completedData = data.filter((d) => !d.is_future && d.actual_score != null);
+  const completedData = displayData.filter((d) => !d.is_future && d.actual_score != null);
 
   if (completedData.length < 3) {
     return (
@@ -262,7 +267,7 @@ export default function ScoreHistoryChart({ playerName, playerId }: { playerName
   }
 
   // Future projection row (at most one) — append after completed games for the "next round" dashed segment
-  const futureData = data.filter((d) => d.is_future && d.projected_score != null).slice(0, 1);
+  const futureData = displayData.filter((d) => d.is_future && d.projected_score != null).slice(0, 1);
   const plotData   = [...completedData, ...futureData];
 
   const actuals   = completedData.map((d) => d.actual_score!);
@@ -489,7 +494,7 @@ export default function ScoreHistoryChart({ playerName, playerId }: { playerName
         )}
       </div>
 
-      <ConfidenceReliabilityPanel data={completedData} />
+      {!hideProjection && <ConfidenceReliabilityPanel data={completedData} />}
     </>
   );
 }
