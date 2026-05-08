@@ -331,14 +331,26 @@ function EnrichedRow({
 function LockRow({ count }: { count: number }) {
   if (count <= 0) return null;
   return (
-    <div className="mx-3 mb-3 mt-1 flex items-center gap-3 py-3 px-4 rounded-xl border border-dashed border-white/[0.07] hover:border-[#F5C84C]/25 hover:bg-[#F5C84C]/[0.03] transition-colors">
-      <Lock className="h-3.5 w-3.5 text-[#F5C84C]/40 shrink-0" aria-hidden />
-      <span className="text-[12px] text-white/30 flex-1">+{count} more picks hidden</span>
+    <div className="border-t border-white/[0.04]">
       <Link
         to="/neeko-plus"
-        className="inline-flex items-center gap-1 text-[11px] font-[700] text-[#F5C84C]/65 hover:text-[#F5C84C] transition-colors"
+        className="group flex items-center gap-4 px-5 py-4 hover:bg-[#F5C84C]/[0.04] transition-colors"
       >
-        Unlock Neeko+ <ChevronRight className="h-3 w-3" aria-hidden />
+        <div className="flex items-center justify-center h-9 w-9 rounded-xl bg-[#F5C84C]/[0.08] border border-[#F5C84C]/20 shrink-0 group-hover:border-[#F5C84C]/35 transition-colors">
+          <Lock className="h-4 w-4 text-[#F5C84C]/70" aria-hidden />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-[700] text-white/60 group-hover:text-white/80 transition-colors leading-tight">
+            Unlock {count} more weekly {count === 1 ? "call" : "calls"} with Neeko+
+          </p>
+          <p className="text-[11px] text-white/28 mt-0.5">
+            Full captain picks, value targets and trap alerts every round.
+          </p>
+        </div>
+        <span className="shrink-0 inline-flex items-center gap-1 rounded-xl border border-[#F5C84C]/30 bg-[#F5C84C]/[0.10] px-3.5 py-1.5 text-[11px] font-[700] text-[#F5C84C] group-hover:bg-[#F5C84C]/[0.18] group-hover:border-[#F5C84C]/50 transition-colors">
+          Upgrade
+          <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+        </span>
       </Link>
     </div>
   );
@@ -651,7 +663,8 @@ function SectionSkeleton() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function CurrentWeekPage() {
-  const { isPremium } = useAuth();
+  const { isPremium, isAdmin, loading: authLoading } = useAuth();
+  const hasFullAccess = isPremium || isAdmin;
   const data = useRoundData();
 
   const topCaptain = data.captains[0] ?? null;
@@ -747,8 +760,8 @@ export default function CurrentWeekPage() {
             </div>
           )}
 
-          {/* ── Section skeletons ────────────────────────────────────────────── */}
-          {data.loading && (
+          {/* ── Section skeletons (shown while auth or data resolves) ────────── */}
+          {(data.loading || authLoading) && (
             <div className="space-y-5">
               <SectionSkeleton />
               <SectionSkeleton />
@@ -757,7 +770,7 @@ export default function CurrentWeekPage() {
           )}
 
           {/* ── 3 sections ──────────────────────────────────────────────────── */}
-          {!data.error && !data.loading && (
+          {!data.error && !data.loading && !authLoading && (
             <div className="space-y-5">
 
               {/* 1. Captain Picks */}
@@ -767,7 +780,7 @@ export default function CurrentWeekPage() {
                 accentBar="bg-[#F5C84C]/50"
                 headerIcon={<Crown className="h-4 w-4 text-[#F5C84C]/80" aria-hidden />}
                 players={data.captains}
-                isPremium={isPremium}
+                isPremium={hasFullAccess}
                 emptyMessage="Live data not available for this round yet."
                 renderPlayer={(p, i) => {
                   const captScore = p.captain_score ?? getCaptainScore(p);
@@ -803,7 +816,7 @@ export default function CurrentWeekPage() {
                 accentBar="bg-emerald-500/50"
                 headerIcon={<TrendingUp className="h-4 w-4 text-emerald-400/80" aria-hidden />}
                 players={data.buyValuePicks}
-                isPremium={isPremium}
+                isPremium={hasFullAccess}
                 emptyMessage="Live data not available for this round yet."
                 renderPlayer={(p, i) => {
                   const reason = getBuyValueReason(p);
@@ -849,7 +862,7 @@ export default function CurrentWeekPage() {
                 accentBar="bg-red-500/50"
                 headerIcon={<ShieldAlert className="h-4 w-4 text-red-400/80" aria-hidden />}
                 players={data.trapFadeAlerts}
-                isPremium={isPremium}
+                isPremium={hasFullAccess}
                 emptyMessage="Live data not available for this round yet."
                 renderPlayer={(p, i) => {
                   const reason = getTrapFadeReason(p);
@@ -890,7 +903,7 @@ export default function CurrentWeekPage() {
           )}
 
           {/* ── Footer CTAs ──────────────────────────────────────────────────── */}
-          {!data.loading && !data.error && (
+          {!data.loading && !authLoading && !data.error && (
             <div className="mt-6 space-y-3">
               <div className="rounded-2xl border border-white/[0.07] bg-[#0A0D12] px-5 py-4 flex items-center gap-4 shadow-[0_1px_24px_rgba(0,0,0,0.35)]">
                 <div className="flex-1 min-w-0">
@@ -908,7 +921,7 @@ export default function CurrentWeekPage() {
                 </Link>
               </div>
 
-              {!isPremium && (
+              {!hasFullAccess && (
                 <div className="rounded-2xl border border-[#F5C84C]/20 bg-[#0A0D12] px-5 py-4 flex items-center gap-4 shadow-[0_1px_24px_rgba(0,0,0,0.35)] relative overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-r from-[#F5C84C]/[0.03] to-transparent pointer-events-none" />
                   <div className="relative flex items-center justify-center h-9 w-9 rounded-xl bg-[#F5C84C]/[0.08] border border-[#F5C84C]/20 shrink-0">
