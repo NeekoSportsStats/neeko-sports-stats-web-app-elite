@@ -944,77 +944,42 @@ function TeamSEOBlock({ teamName, teamSlug, players }: { teamName: string; teamS
   const startNames = startPlayers.slice(0, 3).map(p => p.player_name).join(', ');
 
   return (
-    <section className="border-t border-white/[0.05] pt-8 pb-4 space-y-6">
-      <h2 className="text-[13px] font-bold text-white/30 leading-snug">
+    <section className="border-t border-white/[0.05] pt-6 pb-4 space-y-4">
+      <h2 className="text-[12px] font-bold text-white/28 leading-snug">
         {teamName} — 2026 AFL Season Stats &amp; Analysis
       </h2>
 
-      <div className="space-y-4 text-[12px] text-white/28 leading-relaxed">
-        <div>
-          <h3 className="text-[9px] font-bold text-white/26 uppercase tracking-widest mb-1.5">Team Overview</h3>
-          <p>
-            The {teamName} are one of the AFL's {isHistoric ? 'most historic' : 'competitive'} clubs.
-            This page tracks every {teamName} player's projected score, price, and signal for the 2026 AFL season.
-            {topPlayer && ` ${topPlayer.player_name} currently leads the squad with a projected ${topProj} points.`}
-          </p>
-        </div>
+      <div className="space-y-3 text-[11px] text-white/26 leading-relaxed">
+        <p>
+          The {teamName} are one of the AFL's {isHistoric ? 'most historic' : 'competitive'} clubs.
+          This page tracks every {teamName} player's projected score, price, and signal for the 2026 AFL season.
+          {topPlayer && ` ${topPlayer.player_name} currently leads the squad with a projected ${topProj} points.`}
+        </p>
 
-        <div>
-          <h3 className="text-[9px] font-bold text-white/26 uppercase tracking-widest mb-1.5">Key Players</h3>
-          <p>
-            {teamName} players ranked by projected output: {top5}.
-            Projections are calculated using recent form, matchup difficulty, venue factors, and price efficiency —
-            updated weekly following each AFL round.
-          </p>
-        </div>
+        <p>
+          {teamName} players ranked by projected output: {top5}.
+          Projections are calculated using recent form, matchup difficulty, venue factors, and price efficiency —
+          updated weekly following each AFL round.
+        </p>
 
         {startNames && (
-          <div>
-            <h3 className="text-[9px] font-bold text-white/26 uppercase tracking-widest mb-1.5">Start Signals</h3>
-            <p>
-              Current Start signals from the {teamName} squad: {startNames}.
-              Start signals identify players whose projected score exceeds their breakeven, indicating likely price growth.
-            </p>
-          </div>
+          <p>
+            Current Start signals from the {teamName} squad: {startNames}.
+            Start signals identify players whose projected score exceeds their breakeven, indicating likely price growth.
+          </p>
         )}
 
-        <div>
-          <h3 className="text-[9px] font-bold text-white/26 uppercase tracking-widest mb-1.5">How Projections Work</h3>
-          <p>
-            Each player's projection is computed using Neeko's statistical model — combining season averages,
-            last-3-match form, opponent position concession rates, venue multipliers, and role stability signals.
-            Click any player to view their full scoring history, statistical profile, and AI analysis.
-          </p>
-        </div>
-
-        <div>
-          <h3 className="text-[9px] font-bold text-white/26 uppercase tracking-widest mb-2">More Stats</h3>
-          <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-            <Link to="/fantasy/rankings" className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">AFL Rankings</Link>
-            <Link to="/fantasy/market-watch" className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">Market Watch</Link>
-            <Link to="/sports/afl/players" className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">All AFL Players</Link>
-            <Link to="/fantasy/current-week" className="text-white/28 hover:text-white/52 transition-colors underline underline-offset-2 decoration-white/14">Edge Board</Link>
-          </div>
-        </div>
-      </div>
-
-      {/* Other teams */}
-      <div>
-        <p className="text-[9px] text-white/22 uppercase tracking-widest mb-2">More AFL Teams</p>
-        <div className="flex flex-wrap gap-1.5">
-          {Object.entries(TEAM_SLUG_TO_NAME)
-            .filter(([slug]) => slug !== teamSlug)
-            .slice(0, 12)
-            .map(([slug, name]) => (
-              <Link
-                key={slug}
-                to={`/sports/afl/teams/${slug}`}
-                className="text-[9px] text-white/28 border border-white/[0.06] rounded px-2 py-0.5 hover:text-white/55 hover:border-white/[0.12] transition-all"
-              >
-                {name.split(' ')[0]}
-              </Link>
-            ))}
-        </div>
+        <p>
+          Each player's projection is computed using Neeko's statistical model — combining season averages,
+          last-3-match form, opponent position concession rates, venue multipliers, and role stability signals.
+          View the full{' '}
+          <Link to="/fantasy/rankings" className="text-white/36 hover:text-white/55 transition-colors underline underline-offset-2 decoration-white/14">AFL Rankings</Link>
+          ,{' '}
+          <Link to="/fantasy/market-watch" className="text-white/36 hover:text-white/55 transition-colors underline underline-offset-2 decoration-white/14">Market Watch</Link>
+          , or{' '}
+          <Link to="/fantasy/current-week" className="text-white/36 hover:text-white/55 transition-colors underline underline-offset-2 decoration-white/14">Edge Board</Link>
+          {' '}for league-wide analysis.
+        </p>
       </div>
 
       <p className="sr-only">
@@ -1773,27 +1738,29 @@ export default function AFLTeamPage() {
           />
 
           {/* ══════════════════════════════════════════
-              EXPLORE / RELATED
+              QUICK LINKS
           ══════════════════════════════════════════ */}
-          <div>
-            <SectionLabel icon={<BarChart2 size={13} />} title="Explore" />
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {[
-                { to: '/fantasy/rankings',     icon: <BarChart2 size={13} />, label: 'AFL Rankings'   },
-                { to: '/fantasy/market-watch', icon: <TrendingUp size={13} />, label: 'Market Watch'  },
-                { to: '/fantasy/current-week', icon: <Zap size={13} />,       label: 'Edge Board'    },
-                { to: '/sports/afl/players',   icon: <Users size={13} />,     label: 'All Players'   },
-              ].map(({ to, icon, label }) => (
+          <div className="flex flex-wrap items-center gap-x-1 gap-y-1.5">
+            <span className="text-[8px] uppercase tracking-widest text-white/20 mr-1">Explore</span>
+            {[
+              { to: '/sports/afl/teams',       label: 'All Teams'    },
+              { to: '/fantasy/rankings',        label: 'Rankings'     },
+              { to: '/fantasy/market-watch',    label: 'Market Watch' },
+              { to: '/fantasy/current-week',    label: 'Edge Board'   },
+              { to: '/sports/afl/players',      label: 'Top Players'  },
+            ].map(({ to, label }, i, arr) => (
+              <span key={to} className="flex items-center gap-x-1">
                 <Link
-                  key={to}
                   to={to}
-                  className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-[#0d0d0d] px-3 py-2.5 text-[11px] text-white/45 hover:text-white/75 hover:bg-white/[0.04] hover:border-white/[0.10] transition-all"
+                  className="text-[10px] text-white/32 hover:text-white/60 transition-colors"
                 >
-                  <span className="text-white/22 shrink-0">{icon}</span>
                   {label}
                 </Link>
-              ))}
-            </div>
+                {i < arr.length - 1 && (
+                  <span className="text-white/12 text-[10px]">·</span>
+                )}
+              </span>
+            ))}
           </div>
 
           {/* ══════════════════════════════════════════
