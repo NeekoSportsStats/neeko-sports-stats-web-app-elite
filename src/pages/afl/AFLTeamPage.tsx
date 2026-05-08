@@ -58,7 +58,11 @@ interface TeamPlayer {
 
 function fmtPrice(p: number | null) {
   if (!p) return '—';
-  return `$${Math.round(p / 1000)}k`;
+  if (Math.abs(p) >= 1_000_000) {
+    const m = p / 1_000_000;
+    return `$${m % 1 === 0 ? m.toFixed(0) : m.toFixed(2).replace(/\.?0+$/, '')}M`;
+  }
+  return `$${Math.round(p / 1000)}K`;
 }
 
 function fmtProj(p: number | null | undefined) {
@@ -69,6 +73,17 @@ function fmtProj(p: number | null | undefined) {
 function fmtAvg(v: number | null | undefined) {
   if (v == null) return '—';
   return Math.round(Number(v)).toString();
+}
+
+// Short position abbreviations for compact table cells
+const POS_ABBR: Record<string, string> = {
+  DEF: 'DEF', MID: 'MID', FWD: 'FWD', RUC: 'RUC',
+  // handle any alternate raw codes that come through
+  D: 'DEF', M: 'MID', F: 'FWD', R: 'RUC',
+};
+function posAbbr(raw: string | null | undefined): string {
+  const key = (raw ?? '').toUpperCase().trim();
+  return POS_ABBR[key] ?? (key.slice(0, 3) || '—');
 }
 
 // ─── Shared small components ──────────────────────────────────────────────────
@@ -530,7 +545,7 @@ function LineSummaryCard({
               {topPlayer.player_name}
             </p>
             <p className="text-[8px] text-white/30 mt-0.5">
-              {POSITION_NAMES[topPlayer.position ?? ''] ?? topPlayer.position ?? '—'}
+              {posAbbr(topPlayer.position)}
               {topPlayer.price != null ? ` · ${fmtPrice(topPlayer.price)}` : ''}
             </p>
           </div>
@@ -634,90 +649,116 @@ function LineDetailRows({
 
 // ─── Compact roster row ───────────────────────────────────────────────────────
 
+// Shared column widths — single source of truth used by both header and row
+const COL = {
+  rank:   'w-5 shrink-0 hidden sm:block',
+  icon:   'w-4 shrink-0',
+  pos:    'w-9 shrink-0 hidden sm:block',
+  price:  'w-14 shrink-0 hidden sm:block',
+  be:     'w-12 shrink-0 hidden md:block',
+  edge:   'w-12 shrink-0 hidden md:block',
+  proj:   'w-10 shrink-0',
+  signal: 'w-16 shrink-0',
+  chev:   'w-3 shrink-0',
+};
+
+/** Two-line metric cell: value on top, sub-label below — same height as LockedCell */
+function MetricCell({ value, label, colorCls = 'text-white/45' }: { value: string; label: string; colorCls?: string }) {
+  return (
+    <div className="text-right">
+      <p className={`text-[10px] font-semibold tabular-nums leading-tight ${colorCls}`}>{value}</p>
+      <p className="text-[7px] text-white/18 uppercase tracking-wider leading-tight mt-0.5">{label}</p>
+    </div>
+  );
+}
+
 function RosterRow({ player, rank, isPremium }: { player: TeamPlayer; rank: number; isPremium: boolean }) {
   const slug = nameToSlug(player.player_name);
-  const pos  = POSITION_NAMES[player.position ?? ''] ?? player.position ?? '—';
+  const pos  = posAbbr(player.position);
 
   return (
     <Link
       to={`/sports/afl/players/${slug}`}
-      className="flex items-center gap-2 sm:gap-3 rounded-xl bg-[#0d0d0d] border border-white/[0.05] hover:bg-white/[0.03] hover:border-white/[0.10] transition-all duration-150 px-3 sm:px-4 py-2.5 group"
+      className="flex items-center gap-3 rounded-xl bg-[#0d0d0d] border border-white/[0.05] hover:bg-white/[0.03] hover:border-white/[0.10] transition-all duration-150 px-4 py-3 group"
     >
       {/* rank */}
-      <span className="text-[10px] font-bold text-white/16 w-4 shrink-0 text-center tabular-nums hidden sm:block">
+      <span className={`${COL.rank} text-[9px] font-bold text-white/16 text-center tabular-nums`}>
         {rank}
       </span>
 
-      {/* action icon — always visible; arrow only, not the labelled badge */}
-      <ActionIcon action={isPremium ? player.action_canonical : null} />
+      {/* action icon — direction only, not the labelled badge */}
+      <span className={COL.icon}>
+        <ActionIcon action={isPremium ? player.action_canonical : null} />
+      </span>
 
-      {/* name + status */}
-      <div className="flex-1 min-w-0 flex items-center gap-1.5">
-        <p className="text-[12px] sm:text-[13px] font-semibold text-white/78 truncate group-hover:text-white transition-colors">
-          {player.player_name}
+      {/* name + status — fills remaining space */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <p className="text-[13px] font-semibold text-white/80 truncate group-hover:text-white transition-colors leading-tight">
+            {player.player_name}
+          </p>
+          <PlayerStatusPill
+            row={{
+              status: player.status ?? null,
+              manual_status: null,
+              is_bye: player.is_bye ?? null,
+              bye_next_round: null,
+              bye_round: null,
+            }}
+            showUpcomingBye
+          />
+        </div>
+        {/* mobile sub-line — shows pos + price when columns are hidden */}
+        <p className="sm:hidden text-[9px] text-white/28 mt-0.5 tabular-nums">
+          {pos} · {fmtPrice(player.price)}
         </p>
-        <PlayerStatusPill
-          row={{
-            status: player.status ?? null,
-            manual_status: null,
-            is_bye: player.is_bye ?? null,
-            bye_next_round: null,
-            bye_round: null,
-          }}
-          showUpcomingBye
-        />
       </div>
 
-      {/* pos chip */}
-      <span className="hidden sm:block text-[8px] uppercase tracking-wide text-white/25 shrink-0 w-7 text-center">
+      {/* pos — desktop only */}
+      <span className={`${COL.pos} text-[9px] font-medium text-white/30 text-center tracking-wide`}>
         {pos}
       </span>
 
-      {/* price — always visible */}
-      <span className="text-[10px] text-white/32 shrink-0 hidden sm:block tabular-nums w-10 text-right">
+      {/* price — desktop only, always visible */}
+      <span className={`${COL.price} text-[10px] text-white/38 text-right tabular-nums`}>
         {fmtPrice(player.price)}
       </span>
 
-      {/* breakeven — premium only */}
-      <div className="text-right shrink-0 hidden md:block w-12">
-        {isPremium && player.breakeven != null ? (
-          <>
-            <p className="text-[10px] tabular-nums text-white/40">{Math.round(player.breakeven)}</p>
-            <p className="text-[7px] text-white/18 uppercase tracking-wide">BE</p>
-          </>
-        ) : (
-          <LockedCell />
-        )}
+      {/* breakeven — desktop, premium only */}
+      <div className={`${COL.be} flex items-center justify-end`}>
+        {isPremium
+          ? <MetricCell value={player.breakeven != null ? String(Math.round(player.breakeven)) : '—'} label="BE" />
+          : <LockedCell />
+        }
       </div>
 
-      {/* edge — premium only */}
-      <div className="text-right shrink-0 hidden md:block w-12">
-        {isPremium && player.edge_canonical != null ? (
-          <>
-            <p className={`text-[10px] font-semibold tabular-nums ${getEdgeColor(player.edge_canonical)}`}>
-              {fmtEdge(player.edge_canonical)}
-            </p>
-            <p className="text-[7px] text-white/18 uppercase tracking-wide">Edge</p>
-          </>
-        ) : (
-          <LockedCell />
-        )}
+      {/* edge — desktop, premium only */}
+      <div className={`${COL.edge} flex items-center justify-end`}>
+        {isPremium
+          ? <MetricCell
+              value={player.edge_canonical != null ? fmtEdge(player.edge_canonical) : '—'}
+              label="Edge"
+              colorCls={player.edge_canonical != null ? getEdgeColor(player.edge_canonical) : 'text-white/28'}
+            />
+          : <LockedCell />
+        }
       </div>
 
       {/* projection — always visible */}
-      <div className="text-right shrink-0 min-w-[36px]">
-        <p className="text-[13px] font-bold tabular-nums text-white/75">{fmtProj(player.projection)}</p>
-        <p className="text-[7px] text-white/20 uppercase tracking-wide">proj</p>
+      <div className={`${COL.proj} text-right`}>
+        <p className="text-[14px] font-bold tabular-nums text-white/78 leading-tight">{fmtProj(player.projection)}</p>
+        <p className="text-[7px] text-white/20 uppercase tracking-wider leading-tight mt-0.5">proj</p>
       </div>
 
-      {/* action badge — premium only; free gets locked pill */}
-      {isPremium ? (
-        <ActionBadge action={player.action_canonical} actionDisplay={player.action_display} />
-      ) : (
-        <LockedCell label="Signal" />
-      )}
+      {/* action badge — premium; free gets locked pill */}
+      <div className={`${COL.signal} flex justify-end`}>
+        {isPremium
+          ? <ActionBadge action={player.action_canonical} actionDisplay={player.action_display} />
+          : <LockedCell label="Signal" />
+        }
+      </div>
 
-      <ChevronRight size={12} className="text-white/12 group-hover:text-white/38 transition-colors shrink-0" />
+      <ChevronRight size={11} className={`${COL.chev} text-white/12 group-hover:text-white/38 transition-colors`} />
     </Link>
   );
 }
@@ -769,15 +810,18 @@ function RosterSection({
     ? filtered.length - FREE_ROSTER_LIMIT
     : 0;
 
-  // column header labels — widths must match RosterRow column widths
-  const colHeaders = [
-    { label: 'Player', className: 'flex-1' },
-    { label: 'Pos',    className: 'hidden sm:block w-7 text-center' },
-    { label: 'Price',  className: 'hidden sm:block w-10 text-right' },
-    { label: isPremium ? 'BE' : '',     className: 'hidden md:block w-12 text-right' },
-    { label: isPremium ? 'Edge' : '',   className: 'hidden md:block w-12 text-right' },
-    { label: 'Proj',   className: 'w-9 text-right' },
-    { label: isPremium ? 'Signal' : '', className: 'w-14 text-right' },
+  // column header labels — widths mirror COL constants in RosterRow
+  const colHeaders: { label: string; className: string }[] = [
+    { label: '',                          className: COL.rank },              // rank spacer
+    { label: '',                          className: COL.icon },              // icon spacer
+    { label: 'Player',                    className: 'flex-1 text-left' },
+    { label: 'Pos',                       className: `${COL.pos} text-center` },
+    { label: 'Price',                     className: `${COL.price} text-right` },
+    { label: isPremium ? 'BE'     : '',   className: `${COL.be} text-right` },
+    { label: isPremium ? 'Edge'   : '',   className: `${COL.edge} text-right` },
+    { label: 'Proj',                      className: `${COL.proj} text-right` },
+    { label: isPremium ? 'Signal' : '',   className: `${COL.signal} text-right` },
+    { label: '',                          className: COL.chev },              // chevron spacer
   ];
 
   return (
@@ -817,18 +861,15 @@ function RosterSection({
       ) : (
         <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] overflow-hidden">
           {/* column header row */}
-          <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 border-b border-white/[0.05]">
-            <span className="w-4 shrink-0 hidden sm:block" />
-            <span className="w-5 shrink-0" />{/* action icon space */}
-            {colHeaders.map(h => (
+          <div className="flex items-center gap-3 px-4 py-2 border-b border-white/[0.05]">
+            {colHeaders.map((h, i) => (
               <span
-                key={h.label}
+                key={i}
                 className={`text-[7px] uppercase tracking-widest text-white/22 ${h.className}`}
               >
                 {h.label}
               </span>
             ))}
-            <span className="w-3 shrink-0" />{/* chevron space */}
           </div>
 
           {/* visible rows */}
