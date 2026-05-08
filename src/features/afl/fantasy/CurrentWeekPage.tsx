@@ -52,18 +52,45 @@ function useRoundData(): RoundData {
 
   const load = useCallback(async () => {
     try {
-      const [rankRes, metaRes] = await Promise.all([
+      // Fetch in parallel:
+      //   engineFetch — p_user_id: null gives every row its full field set so the
+      //                 engine can sort/categorise correctly regardless of auth state.
+      //   userFetch   — p_user_id: user?.id gives the per-row access_tier so we know
+      //                 which rows to gate visually for free users.
+      //   metaFetch   — round label + updated_at timestamp.
+      const [engineRes, userRes, metaRes] = await Promise.all([
         supabase.rpc("get_rankings_safe", {
-          p_user_id: user?.id ?? null,
+          p_user_id: null,
           p_is_bot: false,
           p_limit: 400,
         }),
+        user?.id
+          ? supabase.rpc("get_rankings_safe", {
+              p_user_id: user.id,
+              p_is_bot: false,
+              p_limit: 400,
+            })
+          : Promise.resolve({ data: null, error: null }),
         supabase.rpc("get_rankings_updated_at"),
       ]);
 
-      const rows: RankingRow[] = (rankRes.data ?? []).map(mapRankingRow).map(r =>
-        applyDecisionFields([r])[0]
-      );
+      // Build a player_id → access_tier map from the user-specific call.
+      const accessMap = new Map<string, string>();
+      if (userRes.data && Array.isArray(userRes.data)) {
+        for (const r of userRes.data) {
+          if (r.player_id && r.access_tier) accessMap.set(String(r.player_id), String(r.access_tier));
+        }
+      }
+
+      // Merge: use engine rows (full fields) but stamp access_tier from the user call.
+      // If no user call was made, every row keeps the null-user access_tier ('locked'
+      // for most, 'free' for the configured free player ids).
+      const rows: RankingRow[] = (engineRes.data ?? []).map(r => {
+        const mapped = mapRankingRow(r);
+        const tier = accessMap.get(String(mapped.player_id ?? ""));
+        return applyDecisionFields([tier ? { ...mapped, access_tier: tier } : mapped])[0];
+      });
+
       setRawRows(rows);
 
       if (metaRes.data && Array.isArray(metaRes.data) && metaRes.data.length > 0) {
