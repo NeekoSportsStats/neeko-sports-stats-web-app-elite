@@ -5,7 +5,9 @@ const ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 async function getToken(): Promise<string> {
   const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token ?? "";
+  const token = session?.access_token;
+  if (!token) throw new Error("Session expired. Please sign in again.");
+  return token;
 }
 
 async function callAdminFn(slug: string, body: Record<string, unknown> = {}): Promise<Record<string, unknown>> {

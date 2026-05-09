@@ -27,7 +27,7 @@ const ACTIVE_GROUP_COLOR_MAP: Record<string, string> = {
 
 export function PlayerExplorerTable() {
   const {
-    rows, signalsMap, edgeMap, loading, filtered,
+    rows, signalsMap, edgeMap, loading, error, filtered,
     search, setSearch,
     posFilter, setPosFilter,
     teamFilter, setTeamFilter,
@@ -85,6 +85,12 @@ export function PlayerExplorerTable() {
       />
 
       <DataWarningBanner warnings={warnings} />
+
+      {error && (
+        <div className="rounded-md border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </div>
+      )}
 
       {/* Quick filters */}
       <div className="flex flex-wrap gap-1.5">
