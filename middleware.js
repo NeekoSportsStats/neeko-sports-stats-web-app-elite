@@ -5,6 +5,16 @@ export const config = {
     "/faq",
     "/neeko-plus",
     "/contact",
+    "/fantasy",
+    "/fantasy/rankings",
+    "/fantasy/market-watch",
+    "/fantasy/current-week",
+    "/fantasy/captains",
+    "/fantasy/edge-board",
+    "/stat-board",
+    "/stat-board/players",
+    "/stat-board/teams",
+    "/stat-board/match-centre",
     "/sports/afl/rankings",
     "/sports/afl/market-watch",
     "/sports/afl/edge-board",
@@ -67,7 +77,7 @@ function isBot(userAgent) {
 const DOMAIN = "https://neekostats.com.au";
 const DEFAULT_IMAGE = `${DOMAIN}/og-default.png`;
 const DEFAULT_DESCRIPTION =
-  "AI-powered AFL Fantasy projections, rankings, trade targets and Start/Sit analysis built to give fantasy coaches an edge.";
+  "AFL Fantasy rankings, Stat Board, captain picks, price movers and weekly projections built to give fantasy coaches a data edge.";
 
 function slugToTitle(slug) {
   if (!slug) return "";
@@ -82,9 +92,99 @@ function getPageMeta(pathname) {
 
   if (p === "/") {
     return {
-      title: "Neeko Sports Stats — AI AFL Fantasy Projections",
+      title: "Neeko Sports Stats — AFL Fantasy Rankings, Stats & Projections 2026",
       description: DEFAULT_DESCRIPTION,
       canonical: DOMAIN,
+    };
+  }
+
+  if (p === "/fantasy") {
+    return {
+      title: "AFL Fantasy Hub 2026 — Rankings, Captains & Market Watch | Neeko Sports Stats",
+      description:
+        "AFL Fantasy rankings, captain picks, value targets and trap alerts for the current round. Stat-generated weekly decision tools from Neeko Sports Stats.",
+      canonical: `${DOMAIN}/fantasy`,
+    };
+  }
+
+  if (p === "/fantasy/rankings") {
+    return {
+      title: "AFL Fantasy Rankings 2026 — Player Projections & Value | Neeko Sports Stats",
+      description:
+        "AFL Fantasy player rankings for 2026 with projected scores, value ratings, trends, form signals and weekly buy, hold and avoid calls.",
+      canonical: `${DOMAIN}/fantasy/rankings`,
+    };
+  }
+
+  if (p === "/fantasy/market-watch") {
+    return {
+      title: "AFL Fantasy Market Watch 2026 — Price Movers & Value Targets | Neeko Sports Stats",
+      description:
+        "Track AFL Fantasy price movers, value targets, trap alerts and underpriced players using weekly stat-generated market signals.",
+      canonical: `${DOMAIN}/fantasy/market-watch`,
+    };
+  }
+
+  if (p === "/fantasy/current-week") {
+    return {
+      title: "AFL Fantasy Current Round 2026 — Captain Picks, Must Buys & Traps | Neeko Sports Stats",
+      description:
+        "Current round AFL Fantasy cheat sheet with captain picks, value plays, trap alerts and weekly projection-based decision tools.",
+      canonical: `${DOMAIN}/fantasy/current-week`,
+    };
+  }
+
+  if (p === "/fantasy/captains") {
+    return {
+      title: "AFL Fantasy Captain Picks 2026 — Lock, Safe & POD Options | Neeko Sports Stats",
+      description:
+        "AFL Fantasy captain picks ranked by projection, ceiling, recent form and confidence for the current round.",
+      canonical: `${DOMAIN}/fantasy/captains`,
+    };
+  }
+
+  if (p === "/fantasy/edge-board") {
+    return {
+      title: "AFL Fantasy Edge Board 2026 — Trade Signals & Player Value | Neeko Sports Stats",
+      description:
+        "AFL Fantasy edge board showing weekly trade signals, value gaps, breakout candidates and avoid calls based on player statistics.",
+      canonical: `${DOMAIN}/fantasy/edge-board`,
+    };
+  }
+
+  if (p === "/stat-board") {
+    return {
+      title: "AFL Stat Board 2026 — Player, Team & Match Stats | Neeko Sports Stats",
+      description:
+        "Explore AFL player, team and match statistics for 2026. Compare recent form, hit rates, trends and match data in one Stat Board.",
+      canonical: `${DOMAIN}/stat-board`,
+    };
+  }
+
+  if (p === "/stat-board/players") {
+    return {
+      title: "AFL Player Stats 2026 — Stat Board | Neeko Sports Stats",
+      description:
+        "Detailed AFL player statistics for 2026. Filter by match, team, position and stat type to compare form, hit rates and scoring trends.",
+      canonical: `${DOMAIN}/stat-board/players`,
+    };
+  }
+
+  if (p === "/stat-board/teams") {
+    return {
+      title: "AFL Team Stats 2026 — Stat Board | Neeko Sports Stats",
+      description:
+        "Compare AFL team statistics for 2026 including scoring trends, recent form, match context and team performance indicators.",
+      canonical: `${DOMAIN}/stat-board/teams`,
+    };
+  }
+
+  if (p === "/stat-board/match-centre") {
+    return {
+      title: "AFL Match Centre 2026 — Team Matchups & Player Stats | Neeko Sports Stats",
+      description:
+        "AFL Match Centre for 2026 with team matchup data, player stat trends, projected totals and recent scoring context.",
+      canonical: `${DOMAIN}/stat-board/match-centre`,
     };
   }
 
@@ -117,55 +217,55 @@ function getPageMeta(pathname) {
 
   if (p === "/sports/afl/rankings") {
     return {
-      title: "AFL Fantasy Rankings 2026 — AI Player Projections | Neeko",
+      title: "AFL Fantasy Rankings 2026 — Player Projections & Value | Neeko Sports Stats",
       description:
-        "AI-powered AFL Fantasy player rankings with projected scores, value ratings, trade targets and buy/sell recommendations for 2026.",
-      canonical: `${DOMAIN}/sports/afl/rankings`,
+        "AFL Fantasy player rankings for 2026 with projected scores, value ratings, trends, form signals and weekly buy, hold and avoid calls.",
+      canonical: `${DOMAIN}/fantasy/rankings`,
     };
   }
 
   if (p === "/sports/afl/market-watch") {
     return {
-      title: "AFL Fantasy Market Watch — Price Movers & Trade Targets | Neeko",
+      title: "AFL Fantasy Market Watch 2026 — Price Movers & Value Targets | Neeko Sports Stats",
       description:
-        "Track AFL Fantasy price movements, buy targets, sell signals and breakout candidates in real time with Neeko's Market Watch.",
-      canonical: `${DOMAIN}/sports/afl/market-watch`,
+        "Track AFL Fantasy price movers, value targets, trap alerts and underpriced players using weekly stat-generated market signals.",
+      canonical: `${DOMAIN}/fantasy/market-watch`,
     };
   }
 
   if (p === "/sports/afl/edge-board") {
     return {
-      title: "AFL Fantasy Edge Board — Breakout & Trade Signals | Neeko",
+      title: "AFL Fantasy Edge Board 2026 — Trade Signals & Player Value | Neeko Sports Stats",
       description:
-        "AFL Fantasy trade signals, breakout players, and do-not-start alerts powered by Neeko's edge scoring model.",
-      canonical: `${DOMAIN}/sports/afl/edge-board`,
+        "AFL Fantasy edge board showing weekly trade signals, value gaps, breakout candidates and avoid calls based on player statistics.",
+      canonical: `${DOMAIN}/fantasy/edge-board`,
     };
   }
 
   if (p === "/sports/afl/current-round") {
     return {
-      title: "AFL Fantasy Current Round — Projections & Lineup Tips | Neeko",
+      title: "AFL Fantasy Current Round 2026 — Captain Picks, Must Buys & Traps | Neeko Sports Stats",
       description:
-        "AFL Fantasy projections, matchup analysis and lineup recommendations for the current round.",
-      canonical: `${DOMAIN}/sports/afl/current-round`,
+        "Current round AFL Fantasy cheat sheet with captain picks, value plays, trap alerts and weekly projection-based decision tools.",
+      canonical: `${DOMAIN}/fantasy/current-week`,
     };
   }
 
   if (p === "/sports/afl/start-sit") {
     return {
-      title: "AFL Fantasy Start/Sit Tool — Who To Play This Round | Neeko",
+      title: "AFL Fantasy Hub 2026 — Rankings, Captains & Market Watch | Neeko Sports Stats",
       description:
-        "AI-powered AFL Fantasy Start/Sit recommendations. Enter your two players and get a data-driven verdict for this round.",
-      canonical: `${DOMAIN}/sports/afl/start-sit`,
+        "AFL Fantasy rankings, captain picks, value targets and trap alerts for the current round. Stat-generated weekly decision tools from Neeko Sports Stats.",
+      canonical: `${DOMAIN}/fantasy`,
     };
   }
 
   if (p === "/sports/afl/captains") {
     return {
-      title: "AFL Fantasy Captain Picks — Lock, Safe & POD Options | Neeko",
+      title: "AFL Fantasy Captain Picks 2026 — Lock, Safe & POD Options | Neeko Sports Stats",
       description:
-        "AFL Fantasy captain picks this round — LOCK, SAFE and POD options ranked by Neeko's projection model, confidence, and matchup data.",
-      canonical: `${DOMAIN}/sports/afl/captains`,
+        "AFL Fantasy captain picks ranked by projection, ceiling, recent form and confidence for the current round.",
+      canonical: `${DOMAIN}/fantasy/captains`,
     };
   }
 
@@ -228,7 +328,7 @@ function getPageMeta(pathname) {
   }
 
   return {
-    title: "Neeko Sports Stats — AI AFL Fantasy Projections",
+    title: "Neeko Sports Stats — AFL Fantasy Rankings, Stats & Projections 2026",
     description: DEFAULT_DESCRIPTION,
     canonical: `${DOMAIN}${p}`,
   };
