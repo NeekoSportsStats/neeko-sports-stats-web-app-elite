@@ -7,7 +7,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const PROMPT_VERSION = "generate-team-ai-summaries-v16";
+const PROMPT_VERSION = "generate-team-ai-summaries-v17";
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 
 // ── Banned phrases ────────────────────────────────────────────────────────────
@@ -17,7 +17,7 @@ const BANNED_ALWAYS = [
   "trade in", "trade out", "acquire", "enticing opportunity",
   "bet", "wager", "gamble", "financial advice",
   "will score", "will win", "will rise", "will fall",
-  "move on",
+  "move on", "strong buy", "buy opportunity",
 ];
 
 function checkBanned(text: string): string[] {
@@ -51,35 +51,60 @@ interface TeamPayload {
 }
 
 function buildSystemPrompt(): string {
-  return `You are Neeko — an AFL fantasy data analyst. Your job is to describe a team's current fantasy profile in neutral, factual terms.
+  return `You are Neeko — an AFL statistics analyst. Your job is to describe a team's recent statistical profile and squad composition in neutral, factual terms.
+
+CORE FOCUS:
+Describe the team's actual scoring output, squad depth and statistical profile. This is a statistical summary, not a fantasy recommendation engine.
+
+PRIMARY topics (always cover where data is available):
+- Team scoring output: top projection, average projection vs season average — is the squad trending up or down?
+- Scoring depth: is output concentrated in a few players or spread across the squad?
+- Positional composition: MID/DEF/FWD/RUC balance — which lines are strongest or thinnest?
+- High-output contributors: the top-projecting player and their scoring profile
+- Squad consistency: number of players with positive vs negative model signals
+- Risk concentration: how many players are carrying injury, form decline or hard-sit signals?
+- Premium player depth: how are the squad's highest-priced players performing relative to projection?
+
+SECONDARY topics (include only as supporting context, not as main focus):
+- Model signal distribution (Start / Hold / Sit counts) — as a summary indicator of squad reliability
+- Value tier count — as a supplementary data point only
+
+WHAT NOT TO FOCUS ON:
+Do NOT make the analysis centre around:
+- breakeven (do not mention)
+- price movement or price change
+- whether to "trade in" or "trade out" players
+- fantasy ownership advice of any kind
+- which players represent "bargains" or "opportunities"
+- buy/sell/hold language aimed at the reader
 
 STYLE RULES:
 - Write 5–6 sentences minimum. Do not write fewer than 4 complete sentences.
 - Describe the team's profile as it currently stands. Do not instruct readers on what to do.
-- Preferred phrasings: "The squad profile shows...", "The current projection sits at...", "Across the roster...", "The positional mix includes...", "Recent form supports...", "The risk is elevated/moderate/low...", "The model signal is...", "Confidence is...", "The positive value profile here is...", "The negative value profile here is..."
+- Preferred phrasings:
+  "The squad profile shows..."
+  "Across the roster..."
+  "The positional mix includes..."
+  "The scoring output..."
+  "The top-end contributors..."
+  "Output is concentrated in / spread across..."
+  "The stat trend for the squad is..."
+  "The main statistical risk is..."
+  "The team profile is strongest through..."
 - Do not say players "will" perform a certain way.
 - Do not give trade, buy, or sell instructions of any kind.
-- Do not use: "must buy", "must sell", "lock", "lock in", "bargain", "guaranteed", "trade in", "trade out", "acquire", "enticing", "bet", "wager", "gamble", "financial advice", "move on"
-
-CONTENT GUIDE — cover as many of these as fit naturally:
-- Overall squad size and projection level (top and average)
-- Start / Hold / Sit distribution and what it signals about the squad's reliability
-- Positional depth — which positions are well-represented or thin
-- Premium depth — number of high-priced players and how they are projecting
-- Value tier — underpriced players projecting well relative to their price
-- Avoid / risk profile — players carrying injury or form risk this round
-- Team scoring balance — whether output is concentrated in a few or spread across the roster
+- Do not use: "must buy", "must sell", "lock", "bargain", "guaranteed", "trade in", "trade out", "acquire", "enticing", "bet", "wager", "gamble", "financial advice", "move on", "strong buy"
 
 OUTPUT FORMAT:
 Write a single paragraph of 5–6 sentences. No bullet points. No headings. No labels.
 
-After the paragraph, on a new line, output exactly one of these verdict lines (choose the most accurate):
-Elite fantasy team
-Strong fantasy team
-Reliable fantasy team
-Volatile fantasy team
-Risky fantasy team
-Avoid fantasy team`;
+After the paragraph, on a new line, output exactly one of these profile lines (choose the most accurate based on scoring output and consistency, not fantasy trade value):
+Deep scoring squad
+Strong scoring squad
+Balanced scoring squad
+Thin scoring depth
+Volatile scoring output
+Risk-heavy squad`;
 }
 
 function buildUserPrompt(payload: TeamPayload): string {
@@ -92,22 +117,22 @@ Context: ${matchContext}
 
 Squad data:
 - Squad size: ${payload.squad_size}
-- Top projection: ${payload.top_projection} pts (${payload.top_player_name ?? "unknown"}, priced at $${payload.top_player_price?.toLocaleString() ?? "N/A"})
-- Average projection: ${payload.avg_projection} pts
-- Season average: ${payload.avg_season_avg} pts
-
-Round signals:
-- Start: ${payload.start_count} | Hold: ${payload.hold_count} | Sit: ${payload.sit_count}
+- Top projected player: ${payload.top_player_name ?? "unknown"} (proj ${payload.top_projection} pts)
+- Average squad projection: ${payload.avg_projection} pts
+- Average season avg: ${payload.avg_season_avg} pts
 
 Positional depth:
 - MID: ${payload.mid_count} | DEF: ${payload.def_count} | FWD: ${payload.fwd_count} | RUC: ${payload.ruc_count}
 
-Value profile:
-- Premium players (>$700k): ${payload.premium_count} (avg proj: ${payload.premium_avg_proj} pts)
-- Value tier players: ${payload.value_count}
-- Avoid/risk flagged: ${payload.avoid_count}
+Model signal distribution:
+- Positive signals (Start): ${payload.start_count} | Neutral (Hold): ${payload.hold_count} | Negative (Sit): ${payload.sit_count}
 
-Describe the current fantasy profile of ${payload.team} based on the above data.`;
+Squad composition:
+- Premium players (>$700k): ${payload.premium_count} (avg proj: ${payload.premium_avg_proj} pts)
+- High-value output players: ${payload.value_count}
+- Risk/form concerns: ${payload.avoid_count}
+
+Describe the recent scoring profile and squad composition of ${payload.team} based on the above statistical data.`;
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
@@ -140,7 +165,7 @@ Deno.serve(async (req: Request) => {
 
     if (!forceRegenerate) {
       const { data: existingRows } = await supabase
-        .schema("afl")
+        .schema("afl" as any)
         .from("ai_team_summaries")
         .select("team, round_number, updated_at, prompt_version")
         .eq("season", 2026);
@@ -159,7 +184,7 @@ Deno.serve(async (req: Request) => {
 
     // ── Fetch team input data from rankings cache ─────────────────────────
     let query = supabase
-      .schema("public")
+      .schema("public" as any)
       .from("player_rankings_cache")
       .select(
         "team, position_group, projection, season_avg, price, value_score, action_canonical, is_injured, is_bye, games_played, player_name"
@@ -199,7 +224,7 @@ Deno.serve(async (req: Request) => {
 
     // ── Try to get opponent data ──────────────────────────────────────────
     const { data: matchRows } = await supabase
-      .schema("afl")
+      .schema("afl" as any)
       .from("v_ai_team_openai_inputs_2026_next_round")
       .select("team, opponent, round_number")
       .limit(36);
@@ -329,15 +354,15 @@ Deno.serve(async (req: Request) => {
           throw new Error(`[TeamAI] ${team}: output too short (${sentences.length} sentences)`);
         }
 
-        // ── Extract verdict line ─────────────────────────────────────────
-        const lines = rawContent.split("\n").map(l => l.trim()).filter(Boolean);
-        const verdictLine = lines.find(l =>
-          l.startsWith("Elite fantasy team") ||
-          l.startsWith("Strong fantasy team") ||
-          l.startsWith("Reliable fantasy team") ||
-          l.startsWith("Volatile fantasy team") ||
-          l.startsWith("Risky fantasy team") ||
-          l.startsWith("Avoid fantasy team")
+        // ── Extract profile verdict line ─────────────────────────────────
+        const lines = rawContent.split("\n").map((l: string) => l.trim()).filter(Boolean);
+        const verdictLine = lines.find((l: string) =>
+          l.startsWith("Deep scoring squad") ||
+          l.startsWith("Strong scoring squad") ||
+          l.startsWith("Balanced scoring squad") ||
+          l.startsWith("Thin scoring depth") ||
+          l.startsWith("Volatile scoring output") ||
+          l.startsWith("Risk-heavy squad")
         );
 
         let fantasy_verdict: string | null = null;
@@ -346,13 +371,13 @@ Deno.serve(async (req: Request) => {
         if (verdictLine) {
           fantasy_verdict = verdictLine;
           summary = lines
-            .filter(l => l !== verdictLine)
+            .filter((l: string) => l !== verdictLine)
             .join(" ")
             .trim();
         }
 
         const { error: upsertError } = await supabase
-          .schema("afl")
+          .schema("afl" as any)
           .from("ai_team_summaries")
           .upsert(
             {

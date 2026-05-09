@@ -21,7 +21,7 @@ function getCorsHeaders(req: Request): Record<string, string> {
 
 const BATCH_SIZE = 5;
 const DEFAULT_MAX_PLAYERS = 20;
-const PROMPT_VERSION = "generate-player-ai-v16";
+const PROMPT_VERSION = "generate-player-ai-v17";
 const MAX_RETRY_ATTEMPTS = 2;
 
 // ── BANNED PHRASES ─────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ const BANNED_ALWAYS = [
   "unavailable",
   "not playing",
   "missing this week",
-  // advice/action words
+  // advice / action words
   "will score",
   "will rise",
   "guaranteed",
@@ -56,124 +56,129 @@ const BANNED_ALWAYS = [
   "acquire",
   "bargain",
   "enticing opportunity",
-  // betting/gambling language
+  "strong buy",
+  "buy opportunity",
+  "move on",
+  "trade target",
+  // betting / gambling language
   "bet",
   "wager",
   "gamble",
   "odds",
   "financial advice",
-  // action/decisiveness language
+  // action / decisiveness language
   "lock",
-  "move on",
 ];
 
 // ── PROMPT BUILDER ──────────────────────────────────────────────────────────
 
-function buildSystemPrompt(recommendation: string, confidence?: number | null): string {
-  const rec = recommendation.toUpperCase();
-
+function buildSystemPrompt(confidence?: number | null): string {
   const confidenceContext = (() => {
     const c = confidence ?? 50;
-    if (c >= 75) return `Confidence is high (${c}) — the projection is well-supported by recent data.`;
-    if (c >= 55) return `Confidence is moderate (${c}) — there is some uncertainty in the projection.`;
-    return `Confidence is low (${c}) — the projection carries meaningful variance.`;
+    if (c >= 75) return `Confidence is high (${c}) — the projection is well-supported by recent scoring history.`;
+    if (c >= 55) return `Confidence is moderate (${c}) — there is some variance in the recent sample.`;
+    return `Confidence is low (${c}) — the projection carries meaningful uncertainty.`;
   })();
 
-  return `You are Neeko — an AFL fantasy data analyst. Your job is to describe a player's current profile using their stats and model signals.
+  return `You are Neeko — an AFL statistics analyst. Your job is to describe a player's recent scoring profile, trends and stat context using the data provided.
 
-━━ ROLE ━━
-You write neutral, factual player context. You do NOT give advice. You do NOT tell anyone what to do with this player.
-The model has already assigned a label (${rec}). You may reference that label to explain what the data shows, but you must NOT push anyone to act on it.
-This is player intelligence, not a recommendation engine.
+━━ CORE FOCUS ━━
+Describe what the player's actual stats show. This is a statistical summary, not a fantasy recommendation engine.
 
-━━ WHAT TO DESCRIBE ━━
-Use the data provided. Cover as many of these as the data supports:
-- Projection (projection_final, ceiling, floor, breakeven) — what the model expects and the scoring range
-- Recent form (form_score, last_3_avg, last_5_avg, trend_direction) — how the player has been performing
-- Season average (season_avg) — how recent form compares to the full-season baseline
-- Value and price (value_score, edge, price, price_change) — is the price aligned with output?
-- Confidence and risk (confidence, confidence_label, risk, consistency) — how reliable is the projection?
-- Matchup and signals (matchup_label, signal_tags, venue_multiplier) — contextual factors
+PRIMARY topics (always cover where data is available):
+- Recent scoring history: last_3_avg, last_5_avg — are they trending up, down or steady?
+- Season average (season_avg) compared to recent form — is recent output above or below their season baseline?
+- Scoring range: ceiling and floor — how wide or narrow is the range?
+- Consistency: consistency score — is the output reliable or volatile?
+- Volatility or risk: risk score — does the player blow up or post consistently?
+- Trend direction: trend_direction — rising, falling, or stable?
+- Games played: games_played — small sample caution if fewer than 4 games
+
+SECONDARY topics (include only as supporting context, not as the main focus):
+- Model projection (projection_final) — the model's forward estimate
+- Confidence label (confidence_label) — how reliable the model signal is
+- Matchup context (matchup_label) — if the matchup rating is meaningfully different to neutral
+- Model signal (model_label) — mention once only to explain what the data pattern supports
 
 ${confidenceContext}
 
+━━ WHAT NOT TO FOCUS ON ━━
+Do NOT make the analysis centre around:
+- breakeven (you may mention it briefly as a supporting data point, but it must not drive the narrative)
+- price or price movement
+- value score (do not feature this prominently)
+- whether to "buy", "sell", "trade", or "move on"
+- fantasy trade advice of any kind
+- whether the player represents a "bargain" or "opportunity"
+
 ━━ LANGUAGE RULES ━━
-Preferred phrasings (use these naturally, not as templates):
-- "The current profile shows..."
-- "The projection currently sits at..."
-- "The positive value profile here is..."
-- "The negative value profile here is..."
-- "The breakeven gap explains..."
-- "Recent form supports..."
-- "Recent scoring has been..."
-- "The risk is elevated/moderate/low because..."
-- "The model signal is..."
-- "Confidence is..."
-- "The risk profile is..."
-- "The model label is supported by..."
-- "This should be read as a data signal, not a guarantee."
-- "Form over the last 3 games..."
-- "At the current price of..."
+Preferred phrasings (use these naturally):
+- "The recent scoring profile shows..."
+- "Across the last 3 games..."
+- "The season average of X compares to..."
+- "The scoring range runs from..."
+- "Output has been consistent/volatile with..."
+- "The trend direction is..."
+- "Confidence in the projection is..."
+- "The stat trend points to..."
+- "The main statistical risk is..."
+- "This summary is based on recent scores, stat trends, consistency and model context."
 
-Hedging is allowed and encouraged where appropriate: "appears", "suggests", "indicates", "tends to", "the data shows", "recent results point to".
-Do NOT use: "will score", "will rise", "guaranteed", "must buy", "must sell", "trade in", "trade out", "acquire", "bargain", "enticing opportunity", "lock", "move on".
-Do NOT use betting or gambling language.
-Do NOT give financial advice.
+Hedging is expected: "appears", "suggests", "indicates", "the data shows", "recent results point to".
+Do NOT use: "will score", "will rise", "guaranteed", "must buy", "must sell", "trade in", "trade out", "acquire", "bargain", "enticing opportunity", "strong buy", "lock", "move on", "bet", "wager", "gamble".
 Do NOT tell the reader what action to take.
-
-━━ ACTION LABEL REFERENCE ━━
-The model label is: ${rec}
-You may mention it once to explain what the data profile supports (e.g. "The current data profile supports the ${rec} label because...").
-You must NOT use it to push action. The reader decides what to do with this information.
+Do NOT use "you should", "coaches should", "you must".
 
 ━━ TONE ━━
-- Analytical and measured — like a data report, not a pitch
+- Analytical and neutral — like a stats report, not a sales pitch
 - Specific to this player's numbers — nothing generic
-- Vary sentence starters: player name, a number, "The projection", "Recent form", "At this price", "The scoring range", "Form over", "The model"
+- Vary sentence starters: use player name, a number, "The recent", "Across the", "Form over", "The scoring range", "The trend"
 - Never start more than one sentence with the same word
 
 ━━ OUTPUT STRUCTURE ━━
 
 WHY — EXACTLY 1 sentence, max 180 characters:
-- The single most descriptive stat-based summary of this player's current profile
+- The single most important stat fact about this player right now
 - Must contain at least one specific number from the data
-- Must be player-specific — never a template
-- Neutral in tone — describes the profile, does not push action
+- Focuses on recent scoring or trend, not on fantasy action
+- Neutral in tone — describes the profile, does not advise any action
 
-LONG — MINIMUM 4 sentences, ideally 5–6 (never fewer than 4):
+LONG — MINIMUM 5 sentences, ideally 6–7:
 Cover these in whatever order serves the data best:
-1. Projection and scoring range (projection_final, ceiling, floor)
-2. Recent form vs season average (last_3_avg, last_5_avg, season_avg, form_score, trend_direction)
-3. Breakeven and value context (breakeven, edge, value_score, price)
-4. Confidence and risk profile (confidence, confidence_label, risk, consistency)
-5. Signals and matchup context (signal_tags, matchup_label) — if available
+1. Recent scoring trend (last_3_avg, last_5_avg vs season_avg, trend_direction)
+2. Scoring range and consistency (ceiling, floor, consistency, risk)
+3. Season context (season_avg, games_played)
+4. Model confidence and projection context (projection_final, confidence_label) — as secondary context
+5. Matchup or signal context (matchup_label, model_label) — if meaningfully different to neutral
 
 Rules:
 - Every sentence references actual numbers or named signals from the data
 - Do NOT start multiple sentences with "His", "He", or the player name
 - Do NOT duplicate the why sentence
 - No closing summary phrases like "overall" or "in conclusion"
-- End on a specific stat or signal — not a recommendation
+- End on a specific stat — not a recommendation
 
 ━━ BANNED PHRASES — NEVER USE ━━
 "will score", "will rise", "guaranteed", "must buy", "must sell", "trade in", "trade out",
-"acquire", "bargain", "enticing opportunity", "lock", "this round", "fantasy coaches should",
-"coaches should", "based on current projections", "primed for", "is primed", "worth noting",
-"overall,", "in conclusion", "in summary", "it is worth", "bet", "wager", "gamble", "odds"
+"acquire", "bargain", "enticing opportunity", "strong buy", "lock", "this round",
+"fantasy coaches should", "coaches should", "based on current projections",
+"primed for", "is primed", "worth noting", "overall,", "in conclusion", "in summary",
+"it is worth", "bet", "wager", "gamble", "odds", "move on", "trade target"
 
 ━━ RESPONSE FORMAT — return ONLY valid JSON ━━
 {
-  "why": "<EXACTLY 1 sentence ≤180 chars — neutral stat-based profile summary with a specific number>",
-  "long": "<MINIMUM 4 sentences (ideally 5–6) — varied starters, grounded in real numbers or signals, no advice>"
+  "why": "<EXACTLY 1 sentence ≤180 chars — a specific stat fact about recent scoring or trend>",
+  "long": "<MINIMUM 5 sentences (ideally 6–7) — stats-led, varied starters, no trade advice, no buy/sell language>"
 }
 
 FINAL CHECK before responding:
 1. Does "why" contain a specific number and stay under 180 characters?
-2. Does "long" have at least 4 complete sentences?
-3. Does the output describe the player's data profile — not tell anyone what to do?
-4. Are all banned phrases absent — including "will score", "guaranteed", "must buy", "trade in"?
-5. Do NO two sentences in "long" start with the same word?
-6. Is there zero gambling, betting, or financial advice language?`;
+2. Does "long" have at least 5 complete sentences focused on stats and trends?
+3. Does the output describe what the data shows — not tell anyone what to do?
+4. Is the analysis centred on recent scoring, trends and consistency — NOT on breakeven, price or trade value?
+5. Are all banned phrases absent?
+6. Do NO two sentences in "long" start with the same word?
+7. Is there zero gambling, betting, or financial advice language?`;
 }
 
 // ── TYPES ───────────────────────────────────────────────────────────────────
@@ -233,9 +238,8 @@ interface ValidationResult {
 
 // ── OUTPUT VALIDATOR ────────────────────────────────────────────────────────
 
-function validateOutput(result: AIResult, recommendation: string): ValidationResult {
+function validateOutput(result: AIResult): ValidationResult {
   const issues: string[] = [];
-  const rec = recommendation.toUpperCase();
   const allText = `${result.why} ${result.long}`.toLowerCase();
 
   // WHY: exactly 1 sentence, has a number, not too long
@@ -245,10 +249,10 @@ function validateOutput(result: AIResult, recommendation: string): ValidationRes
   const whySentences = (result.why?.match(/[.!?]+/g) ?? []).length;
   if (whySentences !== 1) issues.push(`why field must be exactly 1 sentence — got ${whySentences}`);
 
-  // LONG: minimum 4 sentences, substantial
-  if (!result.long || result.long.length < 100) issues.push("long field too short");
+  // LONG: minimum 5 sentences, substantial
+  if (!result.long || result.long.length < 120) issues.push("long field too short");
   const longSentences = (result.long?.match(/[.!?]+/g) ?? []).length;
-  if (longSentences < 4) issues.push(`long field must have at least 4 sentences — got ${longSentences}`);
+  if (longSentences < 5) issues.push(`long field must have at least 5 sentences — got ${longSentences}`);
 
   // No duplication between why and long
   const whyDupesLong = result.why && result.long
@@ -260,14 +264,6 @@ function validateOutput(result: AIResult, recommendation: string): ValidationRes
   for (const phrase of BANNED_ALWAYS) {
     if (allText.includes(phrase.toLowerCase())) {
       issues.push(`banned phrase: "${phrase}"`);
-    }
-  }
-
-  // v16: advice/action words are banned regardless of recommendation
-  const advicePhrases = ["will score", "will rise", "guaranteed", "must buy", "must sell", "trade in", "trade out", "acquire", "bargain", "enticing opportunity"];
-  for (const phrase of advicePhrases) {
-    if (allText.includes(phrase.toLowerCase())) {
-      issues.push(`advice phrase not allowed in v16: "${phrase}"`);
     }
   }
 
@@ -292,10 +288,10 @@ async function callOpenAIWithPrompt(
   attempt: number = 0,
 ): Promise<{ result: AIResult | null; validation: ValidationResult | null; attempts: number }> {
   const userContent = [
-    `Describe the current profile of this AFL fantasy player using their stats and model signals.`,
-    `Return exactly 2 fields: "why" (1 sentence ≤180 chars with a number) and "long" (minimum 4 sentences, ideally 5–6).`,
-    `The model label for this player is: ${recommendation.toUpperCase()}. You may reference this label to explain what the data shows, but do NOT give advice or tell anyone what to do.`,
-    `Use only these numbers — do not invent any:\n${JSON.stringify(playerData, null, 2)}`,
+    `Describe the recent scoring profile and stat trends for this AFL player.`,
+    `Return exactly 2 fields: "why" (1 sentence ≤180 chars with a specific number about recent form or scoring) and "long" (minimum 5 sentences focused on scoring trends, consistency and stat context).`,
+    `The model signal for this player is: ${recommendation.toUpperCase()}. You may reference this once to explain what the data pattern supports, but the analysis must be centred on stats and trends — not on fantasy trade advice.`,
+    `Use only the data below — do not invent numbers:\n${JSON.stringify(playerData, null, 2)}`,
   ].join("\n\n");
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -310,8 +306,8 @@ async function callOpenAIWithPrompt(
         { role: "system", content: systemPrompt },
         { role: "user", content: userContent },
       ],
-      temperature: 0.7,
-      max_tokens: 600,
+      temperature: 0.65,
+      max_tokens: 650,
       response_format: { type: "json_object" },
     }),
   });
@@ -343,7 +339,7 @@ async function callOpenAIWithPrompt(
     return { result: null, validation: { valid: false, issues: ["JSON parse error"] }, attempts: attempt + 1 };
   }
 
-  const validation = validateOutput(parsed, recommendation);
+  const validation = validateOutput(parsed);
 
   if (!validation.valid && attempt < MAX_RETRY_ATTEMPTS) {
     const issueList = validation.issues.map((issue, n) => `${n + 1}. ${issue}`).join("\n");
@@ -353,7 +349,7 @@ async function callOpenAIWithPrompt(
       { role: "assistant", content: content },
       {
         role: "user",
-        content: `Your response has these issues that MUST be fixed:\n${issueList}\n\nRewrite and return corrected JSON. Pay special attention to the ${recommendation.toUpperCase()} tone requirements.`,
+        content: `Your response has these issues that MUST be fixed:\n${issueList}\n\nRewrite and return corrected JSON. The analysis must focus on scoring trends and stat patterns, not on fantasy trade advice or breakeven/price.`,
       },
     ];
 
@@ -366,8 +362,8 @@ async function callOpenAIWithPrompt(
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: retryMessages,
-        temperature: 0.75,
-        max_tokens: 600,
+        temperature: 0.7,
+        max_tokens: 650,
         response_format: { type: "json_object" },
       }),
     });
@@ -382,7 +378,7 @@ async function callOpenAIWithPrompt(
             why: retryRaw.why ?? "",
             long: retryRaw.long ?? retryRaw.summary_long ?? "",
           };
-          const retryValidation = validateOutput(retryParsed, recommendation);
+          const retryValidation = validateOutput(retryParsed);
           return { result: retryParsed, validation: retryValidation, attempts: attempt + 2 };
         } catch { /* fall through to original */ }
       }
@@ -408,8 +404,6 @@ Deno.serve(async (req: Request) => {
     const authHeader = req.headers.get("Authorization");
     const token = authHeader?.replace("Bearer ", "") ?? "";
 
-    // Auth: token must match a known secret stored in internal.cron_secrets
-    // The service role key is NOT accepted as a direct bearer token — use a dedicated cron_auth_token instead
     let isAuthorized = false;
 
     if (token.length > 10) {
@@ -473,7 +467,6 @@ Deno.serve(async (req: Request) => {
       query = query.eq("player_id", targetPlayerId);
     } else if (!forceAll) {
       query = query.eq("needs_regen", true).order("player_id", { ascending: true });
-      // Fixed ID range sharding — stable regardless of how many players are regenerated
       if (playerIdGte !== null) query = query.gte("player_id", playerIdGte);
       if (playerIdLt  !== null) query = query.lt("player_id", playerIdLt);
     }
@@ -507,40 +500,32 @@ Deno.serve(async (req: Request) => {
         try {
           const recommendation = player.ai_recommendation ?? "HOLD";
 
+          // Stats-grounded payload: lead with scoring/form, model fields are secondary
           const promptPayload = {
-            player_name:             player.player_name,
-            team:                    player.team,
-            position:                player.position,
-            price:                   player.price,
-            price_change:            player.price_change,
-            projection_final:        player.projection_final,
-            ceiling:                 player.ceiling,
-            floor:                   player.floor,
-            breakeven:               player.breakeven,
-            edge:                    player.edge,
-            season_avg:              player.season_avg,
-            last_3_avg:              player.last_3_avg,
-            last_5_avg:              player.last_5_avg,
-            consistency:             player.consistency,
-            form_score:              player.form_score,
-            trend_direction:         player.trend_direction,
-            value_score:             player.value_score,
-            value_tag:               player.value_tag,
-            matchup_label:           player.matchup_label,
-            matchup_rating:          player.matchup_rating,
-            venue_multiplier:        player.venue_multiplier,
-            risk:                    player.risk,
-            confidence:              player.confidence,
-            confidence_label:        player.confidence_label,
-            neeko_rating_scaled:     player.neeko_rating_scaled,
-            upside_pct:              player.upside_pct,
-            captain_score:           player.captain_score,
-            captain_rating:          player.captain_rating,
-            games_played:            player.games_played,
-            signal_count:            player.signal_count,
-            signal_tags:             (player.top_signals ?? []).slice(0, 3),
-            model_label:             recommendation,
-            recommendation_strength: player.recommendation_strength,
+            player_name:       player.player_name,
+            team:              player.team,
+            position:          player.position,
+            games_played:      player.games_played,
+            // Scoring history — primary
+            season_avg:        player.season_avg,
+            last_3_avg:        player.last_3_avg,
+            last_5_avg:        player.last_5_avg,
+            trend_direction:   player.trend_direction,
+            // Scoring range and consistency — primary
+            ceiling:           player.ceiling,
+            floor:             player.floor,
+            consistency:       player.consistency,
+            risk:              player.risk,
+            form_score:        player.form_score,
+            // Model context — secondary
+            projection_final:  player.projection_final,
+            confidence:        player.confidence,
+            confidence_label:  player.confidence_label,
+            matchup_label:     player.matchup_label,
+            matchup_rating:    player.matchup_rating,
+            model_label:       recommendation,
+            // Supporting data — omit price/value/breakeven prominence
+            breakeven:         player.breakeven,
           };
 
           if (debugMode) {
@@ -551,7 +536,7 @@ Deno.serve(async (req: Request) => {
           let validation: ValidationResult = { valid: true, issues: [] };
 
           if (openaiKey) {
-            const systemPrompt = buildSystemPrompt(recommendation, player.confidence);
+            const systemPrompt = buildSystemPrompt(player.confidence);
             const { result: res, validation: val, attempts } = await callOpenAIWithPrompt(openaiKey, systemPrompt, recommendation, promptPayload);
             if (!res) {
               errors.push(`${player.player_name}: null response from OpenAI`);
@@ -569,8 +554,8 @@ Deno.serve(async (req: Request) => {
             processed++;
           } else {
             result = {
-              why: `Proj ${player.projection_final}, value ${player.value_score ?? "N/A"}, risk ${player.risk ?? "N/A"}, form ${player.form_score ?? "N/A"}.`,
-              long: `Projection of ${player.projection_final} sits between ceiling ${player.ceiling} and floor ${player.floor}. Form score is ${player.form_score} with value tag ${player.value_tag}. Priced at ${player.price} with value score ${player.value_score}. Risk is ${player.risk} with confidence ${player.confidence} (${player.confidence_label}). Matchup is ${player.matchup_label ?? "neutral"} — recommendation is ${recommendation}.`,
+              why: `Recent form avg ${player.last_3_avg ?? player.last_5_avg ?? player.season_avg} pts across last 3 games, season avg ${player.season_avg}.`,
+              long: `The recent scoring profile shows a last-3 average of ${player.last_3_avg} and last-5 average of ${player.last_5_avg}, compared to a season average of ${player.season_avg}. The scoring range runs from a floor of ${player.floor} to a ceiling of ${player.ceiling}. Consistency is ${player.consistency} with a risk score of ${player.risk}. The trend direction is ${player.trend_direction ?? "neutral"}. The model projection sits at ${player.projection_final} with ${player.confidence_label ?? "moderate"} confidence.`,
             };
             processed++;
           }

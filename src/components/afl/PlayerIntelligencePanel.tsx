@@ -9,9 +9,9 @@ interface Props {
   playerName: string;
   // Stat-based fallback values — shown when no AI text is available
   projection?: number | null;
-  breakeven?: number | null;
-  edgeScore?: number | null;
   avgLast3?: number | null;
+  avgLast5?: number | null;
+  seasonAvg?: number | null;
   confidenceLabel?: string | null;
   // Layout variant
   variant?: "card" | "inline";
@@ -25,9 +25,9 @@ export function PlayerIntelligencePanel({
   isPremium,
   playerName,
   projection,
-  breakeven,
-  edgeScore,
   avgLast3,
+  avgLast5,
+  seasonAvg,
   confidenceLabel,
   variant = "card",
   upgradeHref = "/billing",
@@ -64,7 +64,7 @@ export function PlayerIntelligencePanel({
             <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">Player Intelligence</p>
           </div>
           <p className="text-[11px] text-white/30 leading-relaxed mb-3">
-            In-depth analysis available for Neeko+ members — projection context, form trend, value profile and model signals.
+            In-depth scoring analysis available for Neeko+ members — recent form, scoring trends, consistency and stat context.
           </p>
           <a
             href={upgradeHref}
@@ -78,24 +78,29 @@ export function PlayerIntelligencePanel({
     );
   }
 
-  // Premium + no AI text — stat-generated fallback
+  // Premium + no AI text — polished stat-generated fallback
   if (!hasText) {
     const parts: string[] = [];
-    if (projection != null) parts.push(`projection ${Math.round(projection)}`);
-    if (breakeven != null) parts.push(`breakeven ${Math.round(breakeven)}`);
-    if (edgeScore != null) parts.push(`edge ${edgeScore > 0 ? "+" : ""}${edgeScore.toFixed(1)}`);
-    if (avgLast3 != null) parts.push(`recent form avg ${Math.round(avgLast3)}`);
+    if (avgLast3 != null) parts.push(`last-3 avg ${Math.round(avgLast3)} pts`);
+    else if (avgLast5 != null) parts.push(`last-5 avg ${Math.round(avgLast5)} pts`);
+    if (seasonAvg != null) parts.push(`season avg ${Math.round(seasonAvg)} pts`);
+    if (projection != null) parts.push(`model projection ${Math.round(projection)} pts`);
     if (confidenceLabel) parts.push(`confidence ${confidenceLabel.toLowerCase()}`);
 
     const fallback = parts.length > 0
-      ? `Player Intelligence is not available yet for ${playerName}. Current model data shows ${parts.join(", ")}.`
-      : `Player Intelligence is not available yet for ${playerName}.`;
+      ? `Scoring profile for ${playerName}: ${parts.join(", ")}. Full analysis will be available after the next data refresh.`
+      : `Scoring analysis for ${playerName} will be available after the next data refresh.`;
 
     return (
-      <div className={`flex items-start gap-1.5 ${variant === "card" ? "px-3 sm:px-5 pb-2.5 sm:pb-3" : ""}`}>
-        <Sparkles className="h-3 w-3 text-white/18 shrink-0 mt-0.5" aria-hidden />
-        <p className="text-[11px] text-white/25 italic leading-relaxed">{fallback}</p>
-      </div>
+      <section aria-label="player intelligence" className={variant === "card" ? "px-3 sm:px-5 pb-3 sm:pb-4" : ""}>
+        <div className="rounded-lg border border-white/8 bg-white/[0.018] px-4 py-3.5">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Sparkles className="h-3 w-3 text-white/20" aria-hidden />
+            <p className="text-[10px] font-semibold text-white/30 uppercase tracking-wider">Player Intelligence</p>
+          </div>
+          <p className="text-[11px] text-white/35 leading-relaxed italic">{fallback}</p>
+        </div>
+      </section>
     );
   }
 
@@ -118,7 +123,7 @@ export function PlayerIntelligencePanel({
         </div>
         <p className="text-[12px] text-white/60 leading-relaxed">{cleanAiText(displayText!)}</p>
         <p className="text-[9px] text-white/20 leading-relaxed italic mt-2">
-          Generated from current player stats, form, price context and model signals. Not a guarantee of future scoring.
+          Generated from recent scores, scoring trends, consistency and model context. Not a guarantee of future output.
         </p>
       </div>
     </section>

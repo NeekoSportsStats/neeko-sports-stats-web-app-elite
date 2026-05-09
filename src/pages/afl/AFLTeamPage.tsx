@@ -1479,10 +1479,13 @@ export default function AFLTeamPage() {
               topPlayerName: stats.topPlayer?.player_name ?? null,
               topProjection: stats.topProj,
               avgProjection: stats.avgProj,
+              avgSeasonAvg: stats.avgSeasonAvg,
               startCount: stats.startCt,
-              holdCount: stats.holdCt,
               sitCount: stats.sitCt,
-              premiumCount: stats.premiumCount,
+              midCount: players.filter(p => (p.position_group ?? '').toUpperCase().startsWith('MID')).length,
+              defCount: players.filter(p => (p.position_group ?? '').toUpperCase().startsWith('DEF')).length,
+              fwdCount: players.filter(p => (p.position_group ?? '').toUpperCase().startsWith('FWD')).length,
+              rucCount: players.filter(p => (p.position_group ?? '').toUpperCase() === 'RUC').length,
             }}
           />
 

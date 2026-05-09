@@ -343,8 +343,6 @@ export function ExpandedPlayerPanel({
         isPremium={isPremium}
         playerName={player.player_name}
         projection={player.projection}
-        breakeven={undefined}
-        edgeScore={undefined}
         avgLast3={player.last_3_avg ?? undefined}
         confidenceLabel={player.confidence_label}
         variant="card"

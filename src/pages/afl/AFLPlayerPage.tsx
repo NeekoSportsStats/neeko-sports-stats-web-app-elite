@@ -1272,9 +1272,9 @@ export default function AFLPlayerPage() {
                   isPremium={isPremium}
                   playerName={player.player_name}
                   projection={player.projection}
-                  breakeven={player.breakeven}
-                  edgeScore={player.edge_canonical}
                   avgLast3={player.avg_last_3}
+                  avgLast5={player.avg_last_5 ?? undefined}
+                  seasonAvg={player.season_avg ?? undefined}
                   confidenceLabel={player.confidence_label}
                   variant="inline"
                   upgradeHref="/billing"
