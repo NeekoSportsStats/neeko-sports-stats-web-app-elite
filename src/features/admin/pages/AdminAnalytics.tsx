@@ -651,13 +651,38 @@ function ConversionTab({
   if (!phAvailable) return <PHUnavailable />;
 
   const f = funnel;
-  const overallCvr = f?.page_views ? pct(f.checkout_success ?? 0, f.page_views) : "—";
-  const paywallCvr = f?.upgrade_clicks ? pct(f.checkout_success ?? 0, f.upgrade_clicks) : "—";
-  const checkoutCvr = f?.checkout_started ? pct(f.checkout_success ?? 0, f.checkout_started) : "—";
+
+  // Detect impossible funnel data — raw event counts can produce checkout_success > checkout_started
+  // when events are not session-scoped (e.g. webhook fires multiple times, returning users, etc.)
+  const funnelDataSuspect =
+    f !== null &&
+    f.checkout_started > 0 &&
+    f.checkout_success > f.checkout_started;
+
+  // Only compute conversion rates when the funnel looks structurally valid
+  const overallCvr   = f?.page_views && !funnelDataSuspect ? pct(f.checkout_success ?? 0, f.page_views) : "—";
+  const paywallCvr   = f?.upgrade_clicks && !funnelDataSuspect ? pct(f.checkout_success ?? 0, f.upgrade_clicks) : "—";
+  const checkoutCvr  = f?.checkout_started && !funnelDataSuspect ? pct(f.checkout_success ?? 0, f.checkout_started) : "—";
+  const abandonRate  = f?.checkout_started ? pct(f.checkout_cancelled ?? 0, f.checkout_started) : "—";
 
   return (
     <div className="space-y-6">
       {error && <ErrorBanner message={error} />}
+
+      {/* Always-visible disclaimer: these are raw PostHog event totals, not a deduplicated funnel */}
+      <div className="rounded-lg border border-sky-500/20 bg-sky-500/5 p-3">
+        <p className="text-xs text-sky-400">
+          <span className="font-semibold">Raw events only — not a true conversion funnel.</span>{" "}
+          Counts are cumulative PostHog event totals across all sessions and users in the period.
+          Rates shown where the funnel is structurally valid (each step &le; the previous step).
+          {funnelDataSuspect && (
+            <span className="ml-1 text-amber-400 font-semibold">
+              Funnel data is inconsistent (checkout_success &gt; checkout_started) — conversion rates hidden.
+              This usually means events are fired from different contexts (e.g. Stripe webhooks, return visits).
+            </span>
+          )}
+        </p>
+      </div>
 
       <div>
         <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Conversion Rates — Key Metrics (30d)</h3>
@@ -665,36 +690,36 @@ function ConversionTab({
           <KPICard label="Visitor → Paid" value={overallCvr} sub="page views to checkout success" color="green" />
           <KPICard label="Paywall → Paid" value={paywallCvr} sub="upgrade click to success" color="green" />
           <KPICard label="Checkout CVR" value={checkoutCvr} sub="started to success" color="green" />
-          <KPICard label="Abandon Rate" value={f?.checkout_started ? pct(f.checkout_cancelled ?? 0, f.checkout_started) : "—"} sub="started to cancelled" color="amber" />
+          <KPICard label="Abandon Rate" value={abandonRate} sub="started to cancelled" color="amber" />
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
         <div>
-          <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Main Conversion Funnel (30d)</h3>
+          <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Raw Event Counts — Main Funnel (30d)</h3>
           {loading && !f ? (
             <LoadingRows count={5} />
           ) : (
             <div className="rounded-md border border-border overflow-hidden bg-card">
               <FunnelStep label="Page Views" count={f?.page_views ?? 0} />
-              <FunnelStep label="Pricing Page Views" count={f?.pricing_views ?? 0} fromCount={f?.page_views} />
-              <FunnelStep label="Plan Selected" count={f?.plan_selected ?? 0} fromCount={f?.pricing_views} />
-              <FunnelStep label="Checkout Started" count={f?.checkout_started ?? 0} fromCount={f?.plan_selected} />
-              <FunnelStep label="Checkout Success" count={f?.checkout_success ?? 0} fromCount={f?.checkout_started} color="text-emerald-500" />
+              <FunnelStep label="Pricing Page Views" count={f?.pricing_views ?? 0} fromCount={!funnelDataSuspect ? f?.page_views : undefined} />
+              <FunnelStep label="Plan Selected" count={f?.plan_selected ?? 0} fromCount={!funnelDataSuspect ? f?.pricing_views : undefined} />
+              <FunnelStep label="Checkout Started" count={f?.checkout_started ?? 0} fromCount={!funnelDataSuspect ? f?.plan_selected : undefined} />
+              <FunnelStep label="Checkout Success" count={f?.checkout_success ?? 0} fromCount={!funnelDataSuspect ? f?.checkout_started : undefined} color="text-emerald-500" />
             </div>
           )}
         </div>
 
         <div>
-          <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Upgrade / Paywall Funnel (30d)</h3>
+          <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Raw Event Counts — Upgrade Funnel (30d)</h3>
           {loading && !f ? (
             <LoadingRows count={4} />
           ) : (
             <div className="rounded-md border border-border overflow-hidden bg-card">
               <FunnelStep label="Upgrade Click (Paywall)" count={f?.upgrade_clicks ?? 0} />
-              <FunnelStep label="Checkout Started" count={f?.checkout_started ?? 0} fromCount={f?.upgrade_clicks} />
-              <FunnelStep label="Checkout Success" count={f?.checkout_success ?? 0} fromCount={f?.checkout_started} color="text-emerald-500" />
-              <FunnelStep label="Checkout Cancelled" count={f?.checkout_cancelled ?? 0} fromCount={f?.checkout_started} color="text-red-500" />
+              <FunnelStep label="Checkout Started" count={f?.checkout_started ?? 0} fromCount={!funnelDataSuspect ? f?.upgrade_clicks : undefined} />
+              <FunnelStep label="Checkout Success" count={f?.checkout_success ?? 0} fromCount={!funnelDataSuspect ? f?.checkout_started : undefined} color="text-emerald-500" />
+              <FunnelStep label="Checkout Cancelled" count={f?.checkout_cancelled ?? 0} fromCount={!funnelDataSuspect ? f?.checkout_started : undefined} color="text-red-500" />
             </div>
           )}
         </div>

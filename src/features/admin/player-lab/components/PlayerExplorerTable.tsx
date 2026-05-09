@@ -44,10 +44,20 @@ export function PlayerExplorerTable() {
 
   const warnings: string[] = [];
   if (!loading && rows.length === 0) {
-    warnings.push("No player data loaded. Check v_player_lab_explorer view.");
+    warnings.push(
+      "Player Lab returned 0 rows. Possible causes: v_player_lab_explorer view is empty, " +
+      "RLS is blocking access, or player_rankings_cache has not been populated. " +
+      "Check: SELECT COUNT(*) FROM afl.player_rankings_cache;"
+    );
   }
   if (!loading && filtered.length === 0 && rows.length > 0) {
-    warnings.push("No players match current filters.");
+    const hints: string[] = [];
+    if (hideOut) hints.push(`'Hide OUT' is on (${rows.filter(r => r.status === "OUT").length} players hidden)`);
+    if (quickFilter !== "all") hints.push(`quick filter '${quickFilter}' is active`);
+    if (activeSignalFilters.length > 0) hints.push(`signal filters [${activeSignalFilters.join(", ")}] are active`);
+    warnings.push(
+      `No players match current filters. ${hints.length > 0 ? `Note: ${hints.join("; ")}.` : ""}`
+    );
   }
 
   const QUICK_FILTERS = [

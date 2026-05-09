@@ -266,6 +266,7 @@ export default function AdminNewCommandCenter() {
               <p className="text-[11px] text-muted-foreground">Master pipeline: ingest raw stats, transform, build projections, populate rankings cache, refresh market watch. Takes ~3–8 minutes.</p>
               <ActionGroup title={<span className="flex items-center gap-2">Run <RiskBadge level="recovery" /></span>}>
                 <ActionButton label="Run Full AFL Pipeline" command="run_full_pipeline" icon={Play} onComplete={fetchStatus} />
+                <p className="text-[10px] text-amber-400/80 flex items-center gap-1"><AlertTriangle className="h-3 w-3 shrink-0" /> Overwrites derived data (projections, cache, market watch). Takes 3–8 min — do not run mid-round.</p>
                 <AdminActionExplain
                   what="Runs the complete AFL data pipeline end-to-end: raw stat ingestion, transformation, projection engine, rankings cache, market watch snapshot."
                   which="fn_run_afl_pipeline, player_projections, player_rankings_cache, market_watch_snapshots"
@@ -445,6 +446,7 @@ export default function AdminNewCommandCenter() {
                   when="After a full pipeline run, or when AI coverage is low."
                 />
                 <ActionButton label="Run Full AI Neeko Pipeline" command="run_neeko_ai_pipeline" icon={Zap} onComplete={fetchStatus} />
+                <p className="text-[10px] text-amber-400/80 flex items-center gap-1"><AlertTriangle className="h-3 w-3 shrink-0" /> Long-running (5–20 min). Triggers OpenAI calls for all stale players — incurs API cost. Do not double-run.</p>
                 <AdminActionExplain
                   what="Runs the full Neeko AI pipeline: marks stale players, fires generate-player-ai, refreshes rankings cache and market watch."
                   which="fn_run_neeko_ai_pipeline, ai.player_ai_analysis, player_rankings_cache"
@@ -456,6 +458,7 @@ export default function AdminNewCommandCenter() {
 
               <ActionGroup title={<span className="flex items-center gap-2">Team AI <RiskBadge level="heavy" /></span>}>
                 <ActionButton label="Regenerate Team AI Summaries" command="run_team_ai" icon={Activity} onComplete={fetchStatus} />
+                <p className="text-[10px] text-red-400/80 flex items-center gap-1"><AlertTriangle className="h-3 w-3 shrink-0" /> Regenerates all 18 team summaries via OpenAI — significant API cost. Run weekly at most, after new round data is in.</p>
                 <AdminActionExplain
                   what="Calls generate-team-ai-summaries edge function to regenerate AI summaries for all 18 AFL teams. Summaries appear on individual Team pages only."
                   which="afl.ai_team_summaries, generate-team-ai-summaries edge function"
@@ -573,6 +576,7 @@ export default function AdminNewCommandCenter() {
               <p className="text-[11px] text-muted-foreground">Raw data ingestion from the AFL API. Use sparingly — the pipeline handles this automatically.</p>
               <ActionGroup title={<span className="flex items-center gap-2">Ingest <RiskBadge level="recovery" /></span>}>
                 <ActionButton label="Run Ingestion Pipeline" command="run_ingestion" icon={Activity} onComplete={fetchStatus} />
+                <p className="text-[10px] text-amber-400/80 flex items-center gap-1"><AlertTriangle className="h-3 w-3 shrink-0" /> Writes to raw stats tables. Only run when new game data is available — re-running on stale data has no effect but wastes time.</p>
                 <AdminActionExplain
                   what="Fetches latest AFL game and player stat data from the API and inserts into raw_2026_games and raw_2026_player_stats tables."
                   which="fn_run_ingestion_pipeline, raw_2026_games, raw_2026_player_stats"
