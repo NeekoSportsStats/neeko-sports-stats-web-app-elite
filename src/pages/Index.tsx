@@ -513,6 +513,8 @@ export default function Index() {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
+        paddingTop: 60,
+        boxSizing: "border-box",
       }}>
         {/* Background image */}
         <div style={{
@@ -528,11 +530,11 @@ export default function Index() {
         {/* Hero content */}
         <div style={{
           position: "relative", zIndex: 20,
-          width: "100%", maxWidth: 860,
-          padding: "0 clamp(20px, 5vw, 40px)",
+          width: "100%", maxWidth: 1100,
+          padding: "0 clamp(20px, 5vw, 48px)",
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
-          gap: 48,
+          gap: "clamp(32px, 4vw, 64px)",
           alignItems: "center",
         }}>
           {/* Left: copy */}
@@ -633,7 +635,7 @@ export default function Index() {
           HOW IT WORKS
       ════════════════════════════════════════════════════ */}
       <section className="scroll-reveal" style={{ background: "#05070A", padding: "clamp(20px, 2.5vw, 36px) clamp(20px, 5vw, 40px)" }}>
-        <div style={{ maxWidth: 860, margin: "0 auto" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 22 }}>
             <p style={{ margin: "0 0 6px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(34,197,94,0.75)" }}>How it works</p>
             <h2 style={{ margin: 0, fontSize: "clamp(18px, 1.8vw, 26px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.02em" }}>
@@ -681,7 +683,7 @@ export default function Index() {
           STAT LENSES
       ════════════════════════════════════════════════════ */}
       <section className="scroll-reveal" style={{ background: "#060809", padding: "clamp(16px, 2vw, 28px) clamp(20px, 5vw, 40px)" }}>
-        <div style={{ maxWidth: 860, margin: "0 auto" }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 20 }}>
             <p style={{ margin: "0 0 6px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(255,255,255,0.38)" }}>Stat lenses</p>
             <h2 style={{ margin: 0, fontSize: "clamp(18px, 1.8vw, 26px)", fontWeight: 900, color: "#f4f4f4", letterSpacing: "-0.02em" }}>

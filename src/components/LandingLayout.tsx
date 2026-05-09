@@ -36,7 +36,7 @@ export function LandingLayout() {
 
         {/* LEFT — Logo */}
         <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }}>
-          <img src="/logo.png" alt="Neeko" style={{ height: 80, width: "auto" }} />
+          <img src="/logo.png" alt="Neeko" style={{ height: 40, width: "auto" }} />
         </Link>
 
         {/* CENTER — Nav links — matches Layout.tsx exactly */}
@@ -100,7 +100,6 @@ export function LandingLayout() {
               border: "1px solid rgba(255,255,255,0.14)",
               letterSpacing: "0.01em",
               whiteSpace: "nowrap",
-              display: "none",
             }}>
               Sign In
             </Link>
@@ -144,7 +143,6 @@ export function LandingLayout() {
               color: "rgba(255,255,255,0.35)",
               background: "none", border: "none",
               cursor: "pointer", padding: "7px 10px",
-              display: "none",
             }}>
               Logout
             </button>
@@ -303,6 +301,9 @@ export function LandingLayout() {
           .landing-layout-header { display: none !important; }
           .landing-layout-content { padding-top: 0 !important; }
         }
+        /* Hide sign-in and logout below 1024px (hamburger drawer handles auth actions) */
+        .landing-sign-in { display: none; }
+        .landing-logout { display: none; }
         /* Match Layout.tsx: hide nav below 1024px (lg), show hamburger */
         @media (max-width: 1023px) {
           .landing-nav { display: none !important; }
