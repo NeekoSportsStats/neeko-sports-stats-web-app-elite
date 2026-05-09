@@ -33,7 +33,7 @@ const TOOLS = [
   {
     icon: <Star size={20} />,
     title: "Fantasy Hub",
-    desc: "Weekly fantasy decisions — must buys, captains, traps and value picks in one place.",
+    desc: "Weekly fantasy decisions — captains, traps, value targets and picks in one place.",
     to: "/fantasy",
     color: "#E0AE2D",
   },

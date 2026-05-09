@@ -38,7 +38,7 @@ export function CollapsibleSEO() {
                 <a href="/fantasy/current-week" className="text-[#F5C84C]/70 hover:text-[#F5C84C] underline underline-offset-2 transition-colors">
                   Current Week
                 </a>{" "}
-                for captain picks and must buys.
+                for captain picks and value targets.
               </p>
             </div>
           </div>

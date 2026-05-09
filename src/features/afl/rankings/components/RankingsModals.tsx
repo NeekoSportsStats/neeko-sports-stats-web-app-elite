@@ -28,6 +28,7 @@ import {
   normaliseConfidence,
 } from "./helpers";
 import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from "@/utils/aflEdgeSignal";
+import { buildStatGeneratedWhy } from "@/features/afl/fantasy/utils/buildStatGeneratedWhy";
 
 // ─── InfoTooltip ──────────────────────────────────────────────────────────────
 
@@ -114,7 +115,7 @@ export function NeekoRatingInfoModal({ onClose }: { onClose: () => void }) {
             {[
               ["Projection", "Expected fantasy score this round based on verified AFL data"],
               ["Matchup Difficulty", "How tough or favourable the opposition is"],
-              ["Role Security", "Likelihood of guaranteed game time and usage"],
+              ["Role Security", "Likelihood of consistent game time and usage"],
               ["Consistency", "Historical scoring reliability across the season"],
               ["Ceiling & Upside", "Potential to blow up and exceed projection"],
               ["Risk Level", "Chance of underperforming or being a trap pick"],
@@ -364,7 +365,7 @@ export function PlayerDetailModal({
             </div>
           )}
 
-          {/* 2. Signal card — label + WHY sentence */}
+          {/* 2. Signal card — label + WHY sentence (deterministic stat-generated only) */}
           {unlocked && row.signal && (
             <div
               className="rounded-lg border px-4 py-4"
@@ -374,9 +375,9 @@ export function PlayerDetailModal({
               <p className="text-base font-bold mb-2" style={{ color: recColor }}>
                 {formatEdgeSignalLabel(signalValue)}
               </p>
-              {row.why && (
-                <p className="text-sm text-white/70 leading-relaxed">{row.why}</p>
-              )}
+              <p className="text-sm text-white/70 leading-relaxed">
+                {buildStatGeneratedWhy(row, "ranking")}
+              </p>
             </div>
           )}
 

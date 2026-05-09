@@ -1322,7 +1322,7 @@ export default function AFLCurrentRoundPage() {
     <>
       <Helmet>
         <title>{pageTitle}</title>
-        <meta name="description" content="Discover the best AFL Fantasy players for this round — must buys, budget value, traps, and captain picks powered by AI projections." />
+        <meta name="description" content="Discover the best AFL Fantasy players for this round — captain picks, value targets, trap alerts and budget options powered by real AFL projections." />
         <link rel="canonical" href="https://neekostats.com.au/sports/afl/current-round" />
         <meta name="robots" content="index, follow" />
         <meta property="og:title" content={pageTitle} />

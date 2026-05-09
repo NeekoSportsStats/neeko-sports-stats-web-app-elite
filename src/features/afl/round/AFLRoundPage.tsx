@@ -173,9 +173,9 @@ export default function AFLRoundPage() {
             <div>
               <h3 className="text-sm font-semibold text-white/80 mb-2">How to use this page</h3>
               <ul className="space-y-2 text-sm text-white/50 leading-relaxed">
-                <li><strong className="text-white/70">Position picks</strong> — Browse top 10 projected players at MID, FWD, DEF, and RUC to lock in your best lineup.</li>
+                <li><strong className="text-white/70">Position picks</strong> — Browse top 10 projected players at MID, FWD, DEF, and RUC to set your best lineup.</li>
                 <li><strong className="text-white/70">Captain picks</strong> — The 5 players with the highest ceilings and strongest Neeko ratings. Double any of these for maximum upside.</li>
-                <li><strong className="text-white/70">Value trades</strong> — Players whose projection significantly exceeds their current price. Buy now before the market adjusts.</li>
+                <li><strong className="text-white/70">Value trades</strong> — Players whose projection significantly exceeds their current price — positive value profile before the market adjusts.</li>
                 <li><strong className="text-white/70">Trap picks</strong> — Players to fade this round due to overpricing, poor matchup, or declining projection.</li>
               </ul>
             </div>
