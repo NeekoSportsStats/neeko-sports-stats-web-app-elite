@@ -530,7 +530,7 @@ function MatchNarrativeSection({
         </p>
       ) : (
         <p className="text-[12px] text-white/30 italic">
-          AI match summary not yet available for this fixture.
+          Stats summary not yet available for this fixture.
         </p>
       )}
     </div>

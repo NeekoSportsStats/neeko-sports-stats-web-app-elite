@@ -469,7 +469,7 @@ function PlayerCard({ row, idx, isPremium, onTap, onUpgrade }: PlayerCardProps) 
         </div>
       ) : (
         <p className="pl-7 text-[11px] text-white/25 leading-snug">
-          AI insight locked —{" "}
+          Player Intelligence locked —{" "}
           <button
             onClick={(e) => { e.stopPropagation(); onUpgrade(); }}
             className="text-[#F5C84C]/50 hover:text-[#F5C84C]/80 transition-colors underline underline-offset-2"
@@ -550,7 +550,7 @@ export function MobileConversionWall({ onUpgrade }: { onUpgrade: () => void }) {
         </div>
         <div>
           <p className="text-base font-bold text-white leading-snug">Full rankings unlocked with Neeko+</p>
-          <p className="text-sm text-white/45 mt-1.5 leading-relaxed">AI analysis, value scores &amp; edge signals for every player</p>
+          <p className="text-sm text-white/45 mt-1.5 leading-relaxed">Player Intelligence, value scores &amp; edge signals for every player</p>
         </div>
         <button
           onClick={(e) => { e.stopPropagation(); onUpgrade(); }}

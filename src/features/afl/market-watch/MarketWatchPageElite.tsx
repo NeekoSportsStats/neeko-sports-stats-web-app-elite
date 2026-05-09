@@ -309,7 +309,7 @@ function LockCTA({ onUpgrade, hiddenCount }: { onUpgrade: () => void; hiddenCoun
           <Crown className="w-3.5 h-3.5" />
           Unlock {hiddenCount} more players — Neeko+
         </button>
-        <p className="text-[10px] text-white/25">Full table access, all positions, AI insights</p>
+        <p className="text-[10px] text-white/25">Full table access, all positions, player signals</p>
       </div>
     </div>
   );
@@ -585,18 +585,18 @@ export default function MarketWatchPageElite() {
     <>
       <Helmet>
         <title>{pageTitle}</title>
-        <meta name="description" content="AFL Fantasy Market Watch — AI-powered Target, Watch and Avoid signals sorted by value score. Find the best trade targets this round." />
+        <meta name="description" content="AFL Fantasy Market Watch — Target, Watch and Avoid signals sorted by value score and projection data. Find the best trade targets this round." />
         <link rel="canonical" href="https://neekostats.com.au/fantasy/market-watch" />
         <meta name="robots" content="index, follow" />
         <meta property="og:title" content={pageTitle} />
-        <meta property="og:description" content="AFL Fantasy Market Watch — AI-powered Target, Watch and Avoid signals sorted by value score. Find the best trade targets this round." />
+        <meta property="og:description" content="AFL Fantasy Market Watch — Target, Watch and Avoid signals sorted by value score and projection data. Find the best trade targets this round." />
         <meta property="og:url" content="https://neekostats.com.au/fantasy/market-watch" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
         <meta property="og:site_name" content="Neeko Sports Stats" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />
-        <meta name="twitter:description" content="AFL Fantasy Market Watch — AI-powered Target, Watch and Avoid signals sorted by value score. Find the best trade targets this round." />
+        <meta name="twitter:description" content="AFL Fantasy Market Watch — Target, Watch and Avoid signals sorted by value score and projection data. Find the best trade targets this round." />
         <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
       </Helmet>
 

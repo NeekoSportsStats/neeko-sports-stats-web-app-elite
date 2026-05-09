@@ -249,7 +249,7 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
           {/* TRUST MICRO COPY */}
           <div className="pt-4 border-t border-white/10">
             <p className="text-xs text-white/40 text-center leading-relaxed">
-              Model-driven insight based on projections, pricing and role data
+              Stats summary based on projections, pricing and role data
             </p>
           </div>
 

@@ -273,7 +273,7 @@ function UpgradePaywallModal({ onClose, openCount }: { onClose: () => void; open
         </p>
         <div className="space-y-2.5 text-left mb-6">
           {[
-            "Full AI analysis for every player",
+            "Player Intelligence for every pick",
             "3 additional captain options per round",
             "3 extra value and trap plays",
             "Confidence scores and edge ratings",
@@ -437,7 +437,7 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
           {isPremium ? (
             aiText ? (
               <div>
-                <p className={`text-[9px] font-bold uppercase tracking-widest mb-2 ${cfg.accentText} opacity-70`}>AI Analysis</p>
+                <p className={`text-[9px] font-bold uppercase tracking-widest mb-2 ${cfg.accentText} opacity-70`}>Player Intelligence</p>
                 <p className="text-[13px] text-white/75 leading-relaxed">{cleanAiText(aiText)}</p>
               </div>
             ) : (
@@ -445,7 +445,7 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
             )
           ) : (
             <div className="rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/[0.04] p-4">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-[#F5C84C]/50 mb-2">AI Analysis</p>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-[#F5C84C]/50 mb-2">Player Intelligence</p>
               <div className="flex items-center gap-2 mb-3 py-2">
                 <Lock size={12} className="text-[#F5C84C]/30 shrink-0" />
                 <p className="text-[12px] text-white/30">

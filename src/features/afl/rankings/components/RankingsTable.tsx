@@ -394,7 +394,7 @@ export function ConversionWallRow({ onUpgrade, colSpan = TOTAL_COLS }: { onUpgra
           <div>
             <p className="text-base font-bold text-white mb-1">Full rankings unlocked with Neeko+</p>
             <p className="text-sm text-white/40 max-w-sm leading-relaxed">
-              AI analysis, value scores &amp; edge signals for every player — updated weekly.
+              Player Intelligence, value scores &amp; edge signals for every player — updated weekly.
             </p>
           </div>
           <button

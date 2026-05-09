@@ -220,10 +220,10 @@ function InlineGateBlock({ onUpgrade }: { onUpgrade: () => void }) {
   return (
     <div className="border-t border-white/[0.04] px-4 py-5 flex flex-col items-center text-center gap-3">
       <p className="text-sm font-semibold text-white/70">
-        200+ players ranked with AI analysis
+        200+ players ranked with Player Intelligence
       </p>
       <p className="text-xs text-white/35">
-        Full projections, value scores &amp; weekly AI recommendations
+        Full projections, value scores &amp; weekly player signals
       </p>
       <button
         onClick={onUpgrade}
@@ -436,10 +436,10 @@ export default function AFLRankingsPage() {
   const rankingsHelmet = (
     <Helmet>
       <title>AFL Fantasy Rankings | Neeko Sports Stats</title>
-      <meta name="description" content="Complete AFL Fantasy rankings for 2026. AI-powered player projections, value scores, and recommendations. Updated weekly with the latest stats and analysis." />
+      <meta name="description" content="Complete AFL Fantasy rankings for 2026. Player projections, value scores, and weekly signals. Updated weekly with the latest stats and analysis." />
       <meta name="keywords" content="AFL Fantasy rankings, fantasy football, player rankings, projections, value picks, 2026 season, AFL stats, fantasy drafts" />
       <meta property="og:title" content="AFL Fantasy Rankings | Neeko Sports Stats" />
-      <meta property="og:description" content="Complete AFL Fantasy rankings for 2026. AI-powered projections, value analysis, and recommendations updated weekly." />
+      <meta property="og:description" content="Complete AFL Fantasy rankings for 2026. Projections, value analysis, and player signals updated weekly." />
       <meta property="og:type" content="website" />
       <meta property="og:url" content="https://neekostats.com.au/fantasy/rankings" />
       <meta property="og:site_name" content="Neeko Sports" />
@@ -447,7 +447,7 @@ export default function AFLRankingsPage() {
       <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content="AFL Fantasy Rankings | Neeko Sports Stats" />
-      <meta name="twitter:description" content="AI-powered AFL Fantasy rankings with projections, value scores, and recommendations." />
+      <meta name="twitter:description" content="AFL Fantasy rankings with projections, value scores, and player signals." />
       <link rel="canonical" href="https://neekostats.com.au/fantasy/rankings" />
       <meta name="robots" content="index, follow" />
       <meta name="author" content="Neeko Sports" />
@@ -456,7 +456,7 @@ export default function AFLRankingsPage() {
         "@context": "https://schema.org",
         "@type": "WebPage",
         "name": "AFL Fantasy Rankings",
-        "description": "Complete AFL Fantasy rankings for 2026. AI-powered player projections, value scores, and recommendations. Updated weekly with the latest stats and analysis.",
+        "description": "Complete AFL Fantasy rankings for 2026. Player projections, value scores, and weekly signals. Updated weekly with the latest stats and analysis.",
         "url": "https://neekostats.com.au/fantasy/rankings",
         "publisher": {
           "@type": "Organization",
