@@ -91,7 +91,7 @@ export function TeamIntelligencePanel({
           </p>
         )}
         <p className="text-[9px] text-white/20 leading-relaxed italic mt-2">
-          Generated from current squad data, projections, and model signals. Not a guarantee of future scoring.
+          Generated from current squad projections, form, price context and model signals. Not a guarantee of future scoring.
         </p>
       </section>
     );

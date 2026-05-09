@@ -813,6 +813,16 @@ function MobileExpandedTeamPanel({
 
       {/* Team Profile */}
       <TeamProfileSummary teamName={row.team_name} />
+      {teamPagePath(row.team_name) && (
+        <div className="px-0 pb-1">
+          <Link
+            to={teamPagePath(row.team_name)!}
+            className="text-xs text-white/40 hover:text-white/70 transition-colors underline underline-offset-2"
+          >
+            View full team analysis
+          </Link>
+        </div>
+      )}
 
       {/* Game log — horizontally scrollable on mobile */}
       <div>
@@ -966,6 +976,16 @@ function ExpandedTeamPanel({
 
       {/* Team Profile */}
       <TeamProfileSummary teamName={row.team_name} />
+      {teamPagePath(row.team_name) && (
+        <div className="px-0 pb-1">
+          <Link
+            to={teamPagePath(row.team_name)!}
+            className="text-xs text-white/40 hover:text-white/70 transition-colors underline underline-offset-2"
+          >
+            View full team analysis
+          </Link>
+        </div>
+      )}
 
       {/* Game log */}
       <div>
