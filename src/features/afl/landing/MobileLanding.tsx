@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import {
   ArrowRight, ChevronRight, ChartBar as BarChart2Icon, Target,
   Zap, Check, Menu, X, Crown, TrendingUp, TriangleAlert as AlertTriangle,
-  Star, TableProperties, Shield, Users, Share2, CircleHelp as HelpCircle,
+  Star, TableProperties, Shield, Users, CircleHelp as HelpCircle,
   FileText, Mail, LogIn,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
@@ -16,30 +16,24 @@ interface Props {
 
 // ── Left drawer ───────────────────────────────────────────────────────────────
 
-const DRAWER_LINKS = [
-  { label: "Stat Board",   to: "/stat-board/players", icon: TableProperties },
-  { label: "Fantasy Hub",  to: "/fantasy",            icon: Star            },
-  { label: "Players",      to: "/sports/afl/players", icon: Users           },
-  { label: "Teams",        to: "/sports/afl/teams",   icon: Shield          },
-  { label: "Neeko+",       to: "/neeko-plus",         icon: Crown, gold: true },
-];
+const DRAWER_MAIN = [
+  { label: "Stat Board",  to: "/stat-board/players", icon: TableProperties },
+  { label: "Fantasy Hub", to: "/fantasy",             icon: Star            },
+  { label: "Players",     to: "/sports/afl/players",  icon: Users           },
+  { label: "Teams",       to: "/sports/afl/teams",    icon: Shield          },
+  { label: "Neeko+",      to: "/neeko-plus",          icon: Crown, gold: true },
+] as const;
 
 const DRAWER_INFO = [
   { label: "About",    to: "/about",    icon: Users      },
   { label: "FAQ",      to: "/faq",      icon: HelpCircle },
-  { label: "Socials",  to: "/socials",  icon: Share2     },
   { label: "Policies", to: "/policies", icon: FileText   },
   { label: "Contact",  to: "/contact",  icon: Mail       },
-];
+] as const;
 
 function LeftDrawer({ open, onClose, isPremium }: { open: boolean; onClose: () => void; isPremium: boolean }) {
-  // Lock body scroll when open
   useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
@@ -50,11 +44,12 @@ function LeftDrawer({ open, onClose, isPremium }: { open: boolean; onClose: () =
         onClick={onClose}
         style={{
           position: "fixed", inset: 0, zIndex: 200,
-          background: "rgba(0,0,0,0.65)",
-          backdropFilter: "blur(2px)",
+          background: "rgba(0,0,0,0.70)",
+          backdropFilter: "blur(3px)",
+          WebkitBackdropFilter: "blur(3px)",
           opacity: open ? 1 : 0,
           pointerEvents: open ? "auto" : "none",
-          transition: "opacity 0.25s ease",
+          transition: "opacity 0.22s ease",
         }}
         aria-hidden="true"
       />
@@ -66,68 +61,116 @@ function LeftDrawer({ open, onClose, isPremium }: { open: boolean; onClose: () =
         aria-label="Navigation menu"
         style={{
           position: "fixed", top: 0, left: 0, bottom: 0,
-          width: 280, zIndex: 201,
-          background: "#0a0c10",
-          borderRight: "1px solid rgba(255,255,255,0.08)",
-          display: "flex", flexDirection: "column",
+          width: 272,
+          zIndex: 201,
+          background: "#080b0f",
+          borderRight: "1px solid rgba(255,255,255,0.09)",
+          display: "flex",
+          flexDirection: "column",
           transform: open ? "translateX(0)" : "translateX(-100%)",
-          transition: "transform 0.28s cubic-bezier(0.22,1,0.36,1)",
+          transition: "transform 0.26s cubic-bezier(0.22,1,0.36,1)",
           willChange: "transform",
-          overflowY: "auto",
+          // Safe-area insets for notched iPhones
+          paddingTop: "env(safe-area-inset-top, 0px)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}
       >
-        {/* Drawer header */}
+        {/* Header — logo + close */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "16px 20px",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          padding: "14px 16px 14px 20px",
+          borderBottom: "1px solid rgba(255,255,255,0.07)",
           flexShrink: 0,
         }}>
           <Link to="/" onClick={onClose} style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
-            <img src="/logo.png" alt="Neeko Sports" style={{ height: "3.2rem", width: "auto" }} />
+            <img src="/logo.png" alt="Neeko Sports" style={{ height: 36, width: "auto" }} />
           </Link>
           <button
             onClick={onClose}
             aria-label="Close menu"
             style={{
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)",
-              borderRadius: 8, padding: 8, color: "rgba(255,255,255,0.60)",
-              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              width: 36, height: 36,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              borderRadius: 9,
+              color: "rgba(255,255,255,0.55)",
+              cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              flexShrink: 0,
+              transition: "background 0.12s ease",
             }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.10)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)"; }}
           >
-            <X size={16} />
+            <X size={17} />
           </button>
         </div>
 
-        {/* Main nav */}
-        <nav style={{ padding: "16px 12px", flex: 1 }}>
-          <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.32em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", margin: "0 0 10px 8px" }}>
+        {/* Scrollable nav body */}
+        <nav style={{ flex: 1, overflowY: "auto", padding: "20px 12px 12px" }}>
+          {/* MAIN section */}
+          <p style={{
+            fontSize: 9, fontWeight: 900, letterSpacing: "0.30em",
+            textTransform: "uppercase", color: "rgba(255,255,255,0.22)",
+            margin: "0 0 8px 10px",
+          }}>
             Main
           </p>
-          {DRAWER_LINKS.filter(l => !(l.gold && isPremium)).map(({ label, to, icon: Icon, gold }) => (
+          {DRAWER_MAIN.filter(l => !(l.gold && isPremium)).map(({ label, to, icon: Icon, gold }) => (
             <Link
               key={to}
               to={to}
               onClick={onClose}
               style={{
-                display: "flex", alignItems: "center", gap: 12,
-                padding: "11px 12px", borderRadius: 10, marginBottom: 2,
+                display: "flex", alignItems: "center", gap: 13,
+                padding: "13px 12px", borderRadius: 11, marginBottom: 2,
                 textDecoration: "none",
-                color: gold ? "rgba(224,174,45,0.85)" : "rgba(255,255,255,0.72)",
-                fontSize: 14, fontWeight: 600,
-                transition: "background 0.12s ease",
+                color: gold ? "#E0AE2D" : "rgba(255,255,255,0.78)",
+                fontSize: 14.5, fontWeight: gold ? 800 : 600,
+                background: gold ? "rgba(224,174,45,0.07)" : "transparent",
+                border: gold ? "1px solid rgba(224,174,45,0.18)" : "1px solid transparent",
+                transition: "background 0.12s ease, border-color 0.12s ease",
+                minHeight: 48,
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+              onMouseEnter={e => {
+                const el = e.currentTarget as HTMLElement;
+                el.style.background = gold ? "rgba(224,174,45,0.12)" : "rgba(255,255,255,0.05)";
+              }}
+              onMouseLeave={e => {
+                const el = e.currentTarget as HTMLElement;
+                el.style.background = gold ? "rgba(224,174,45,0.07)" : "transparent";
+              }}
             >
-              <Icon size={16} style={{ color: gold ? "#E0AE2D" : "rgba(255,255,255,0.42)", flexShrink: 0 }} />
+              <Icon
+                size={17}
+                style={{ color: gold ? "#E0AE2D" : "rgba(255,255,255,0.38)", flexShrink: 0 }}
+              />
               {label}
+              {gold && (
+                <span style={{
+                  marginLeft: "auto",
+                  fontSize: 9, fontWeight: 900, letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  color: "#E0AE2D",
+                  background: "rgba(224,174,45,0.12)",
+                  border: "1px solid rgba(224,174,45,0.24)",
+                  padding: "2px 7px", borderRadius: 999,
+                }}>
+                  Upgrade
+                </span>
+              )}
             </Link>
           ))}
 
-          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "16px 0" }} />
+          {/* Divider */}
+          <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "16px 4px" }} />
 
-          <p style={{ fontSize: 9, fontWeight: 900, letterSpacing: "0.32em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", margin: "0 0 10px 8px" }}>
+          {/* INFO section */}
+          <p style={{
+            fontSize: 9, fontWeight: 900, letterSpacing: "0.30em",
+            textTransform: "uppercase", color: "rgba(255,255,255,0.22)",
+            margin: "0 0 8px 10px",
+          }}>
             Info
           </p>
           {DRAWER_INFO.map(({ label, to, icon: Icon }) => (
@@ -136,35 +179,47 @@ function LeftDrawer({ open, onClose, isPremium }: { open: boolean; onClose: () =
               to={to}
               onClick={onClose}
               style={{
-                display: "flex", alignItems: "center", gap: 12,
-                padding: "10px 12px", borderRadius: 10, marginBottom: 2,
+                display: "flex", alignItems: "center", gap: 13,
+                padding: "11px 12px", borderRadius: 11, marginBottom: 2,
                 textDecoration: "none",
-                color: "rgba(255,255,255,0.52)", fontSize: 13.5, fontWeight: 500,
+                color: "rgba(255,255,255,0.50)",
+                fontSize: 13.5, fontWeight: 500,
                 transition: "background 0.12s ease",
+                minHeight: 44,
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
             >
-              <Icon size={15} style={{ color: "rgba(255,255,255,0.32)", flexShrink: 0 }} />
+              <Icon size={15} style={{ color: "rgba(255,255,255,0.28)", flexShrink: 0 }} />
               {label}
             </Link>
           ))}
         </nav>
 
-        {/* Drawer footer */}
-        <div style={{ padding: "16px", borderTop: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
+        {/* Footer — Sign In */}
+        <div style={{
+          padding: "12px 16px 16px",
+          borderTop: "1px solid rgba(255,255,255,0.07)",
+          flexShrink: 0,
+        }}>
           <Link
             to="/auth"
             onClick={onClose}
             style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              padding: "11px 16px", borderRadius: 10,
-              background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)",
-              color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 600,
+              padding: "13px 16px", borderRadius: 11,
+              background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              color: "rgba(255,255,255,0.60)",
+              fontSize: 13.5, fontWeight: 600,
               textDecoration: "none",
+              minHeight: 48,
+              transition: "background 0.12s ease",
             }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.09)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
           >
-            <LogIn size={14} /> Sign In
+            <LogIn size={15} /> Sign In
           </Link>
         </div>
       </div>
