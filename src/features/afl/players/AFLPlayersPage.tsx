@@ -820,7 +820,7 @@ export default function AFLPlayersPage() {
             ].map(pos => (
               <Link
                 key={pos.slug}
-                to={`/sports/afl/positions/${pos.slug}`}
+                to="/sports/afl/players"
                 style={{
                   fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.35)",
                   textDecoration: "none", padding: "7px 14px", borderRadius: 7,

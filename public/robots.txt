@@ -23,6 +23,7 @@ Disallow: /create-password
 Disallow: /forgot-password
 Disallow: /reset-password
 Disallow: /pipeline-history
+Disallow: /neeko-plus-purchase
 Disallow: /socials
 Disallow: /functions/
 Disallow: /products/

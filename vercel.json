@@ -22,6 +22,7 @@
     }
   ],
   "redirects": [
+    { "source": "/sports/afl/positions/:position", "destination": "/sports/afl/players", "permanent": true },
     { "source": "/sports/afl/rankings",     "destination": "/fantasy/rankings",     "permanent": true },
     { "source": "/sports/afl/market-watch", "destination": "/fantasy/market-watch", "permanent": true },
     { "source": "/sports/afl/edge-board",   "destination": "/fantasy/edge-board",   "permanent": true },

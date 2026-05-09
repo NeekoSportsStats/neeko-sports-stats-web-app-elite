@@ -912,36 +912,21 @@ export default function AFLRoundEdgeBoard() {
   return (
     <>
       <Helmet>
-        <title>AFL Fantasy Edge Board 2026 | Captain Picks &amp; Trade Targets | Neeko</title>
-        <meta name="description" content="Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model." />
-        <meta name="robots" content="index, follow" />
-        <link rel="canonical" href="https://neekostats.com.au/fantasy/edge-board" />
-        <meta property="og:title" content="AFL Fantasy Edge Board 2026 | Captain Picks &amp; Trade Targets | Neeko" />
-        <meta property="og:description" content="Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model." />
+        {/* Not currently routed. Keep noindex unless restored intentionally. */}
+        <title>AFL Fantasy Market Watch 2026 — Price Movers & Value Targets | Neeko Sports Stats</title>
+        <meta name="description" content="Track AFL Fantasy price movers, value targets, trap alerts and underpriced players using weekly stat-generated market signals." />
+        <meta name="robots" content="noindex, nofollow" />
+        <link rel="canonical" href="https://neekostats.com.au/fantasy/market-watch" />
+        <meta property="og:title" content="AFL Fantasy Market Watch 2026 — Price Movers & Value Targets | Neeko Sports Stats" />
+        <meta property="og:description" content="Track AFL Fantasy price movers, value targets, trap alerts and underpriced players using weekly stat-generated market signals." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://neekostats.com.au/fantasy/edge-board" />
+        <meta property="og:url" content="https://neekostats.com.au/fantasy/market-watch" />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
         <meta property="og:site_name" content="Neeko Sports" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="AFL Fantasy Edge Board 2026 | Captain Picks &amp; Trade Targets | Neeko" />
-        <meta name="twitter:description" content="Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model." />
+        <meta name="twitter:title" content="AFL Fantasy Market Watch 2026 — Price Movers & Value Targets | Neeko Sports Stats" />
+        <meta name="twitter:description" content="Track AFL Fantasy price movers, value targets, trap alerts and underpriced players using weekly stat-generated market signals." />
         <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
-        <script type="application/ld+json">{JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "WebPage",
-          "name": "AFL Fantasy Edge Board 2026 | Captain Picks & Trade Targets",
-          "description": "Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model.",
-          "url": "https://neekostats.com.au/fantasy/edge-board",
-          "publisher": { "@type": "Organization", "name": "Neeko Sports", "url": "https://neekostats.com.au" },
-          "breadcrumb": {
-            "@type": "BreadcrumbList",
-            "itemListElement": [
-              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
-              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy", "item": "https://neekostats.com.au/fantasy" },
-              { "@type": "ListItem", "position": 3, "name": "Edge Board", "item": "https://neekostats.com.au/fantasy/edge-board" }
-            ]
-          }
-        })}</script>
       </Helmet>
 
       <div className="min-h-screen bg-[#0a0a0a] px-4 py-8 md:px-8">

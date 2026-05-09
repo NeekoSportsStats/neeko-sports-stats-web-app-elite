@@ -9,7 +9,6 @@ export const config = {
     "/fantasy/rankings",
     "/fantasy/market-watch",
     "/fantasy/current-week",
-    "/fantasy/edge-board",
     "/stat-board",
     "/stat-board/players",
     "/stat-board/teams",
@@ -23,7 +22,6 @@ export const config = {
     "/sports/afl/players",
     "/sports/afl/players/:slug*",
     "/sports/afl/teams/:team*",
-    "/sports/afl/positions/:position*",
     "/sports/afl/round/:roundNumber*",
   ],
 };
@@ -145,10 +143,11 @@ function getPageMeta(pathname) {
 
   if (p === "/fantasy/edge-board") {
     return {
-      title: "AFL Fantasy Edge Board 2026 — Trade Signals & Player Value | Neeko Sports Stats",
+      title: "AFL Fantasy Market Watch 2026 — Price Movers & Value Targets | Neeko Sports Stats",
       description:
-        "AFL Fantasy edge board showing weekly trade signals, value gaps, breakout candidates and avoid calls based on player statistics.",
-      canonical: `${DOMAIN}/fantasy/edge-board`,
+        "Track AFL Fantasy price movers, value targets, trap alerts and underpriced players using weekly stat-generated market signals.",
+      canonical: `${DOMAIN}/fantasy/market-watch`,
+      noindex: true,
     };
   }
 
@@ -235,10 +234,11 @@ function getPageMeta(pathname) {
 
   if (p === "/sports/afl/edge-board") {
     return {
-      title: "AFL Fantasy Edge Board 2026 — Trade Signals & Player Value | Neeko Sports Stats",
+      title: "AFL Fantasy Market Watch 2026 — Price Movers & Value Targets | Neeko Sports Stats",
       description:
-        "AFL Fantasy edge board showing weekly trade signals, value gaps, breakout candidates and avoid calls based on player statistics.",
-      canonical: `${DOMAIN}/fantasy/edge-board`,
+        "Track AFL Fantasy price movers, value targets, trap alerts and underpriced players using weekly stat-generated market signals.",
+      canonical: `${DOMAIN}/fantasy/market-watch`,
+      noindex: true,
     };
   }
 
@@ -304,16 +304,6 @@ function getPageMeta(pathname) {
     return {
       title: `${team} AFL Fantasy Players & Stats 2026 | Neeko`,
       description: `${team} AFL Fantasy player stats, projections, rankings and trade targets for the 2026 season.`,
-      canonical: `${DOMAIN}${p}`,
-    };
-  }
-
-  const positionMatch = p.match(/^\/sports\/afl\/positions\/([^/]+)$/);
-  if (positionMatch) {
-    const pos = slugToTitle(positionMatch[1]);
-    return {
-      title: `${pos} AFL Fantasy Rankings & Projections 2026 | Neeko`,
-      description: `Top AFL Fantasy ${pos} players ranked by AI projection for the 2026 season. Stats, prices and trade targets.`,
       canonical: `${DOMAIN}${p}`,
     };
   }
