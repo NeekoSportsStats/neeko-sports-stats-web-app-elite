@@ -142,12 +142,30 @@ Deno.serve(async (req: Request) => {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
 
+  // ── Auth guard ────────────────────────────────────────────────────────────
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const cronToken = Deno.env.get("CRON_AUTH_TOKEN") ?? "";
+
+  const validToken =
+    (serviceRoleKey && token === serviceRoleKey) ||
+    (cronToken && token === cronToken);
+
+  if (!validToken) {
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
   const executionStarted = new Date().toISOString();
 
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      serviceRoleKey
     );
 
     const openaiKey = Deno.env.get("OPENAI_API_KEY");
