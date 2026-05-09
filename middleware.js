@@ -289,11 +289,11 @@ function getPageMeta(pathname) {
 
   const playerMatch = p.match(/^\/sports\/afl\/players\/([^/]+)$/);
   if (playerMatch) {
-    const name = slugToTitle(playerMatch[1]);
     return {
-      title: `${name} AFL Fantasy Stats & Projections 2026 | Neeko`,
-      description: `${name} AFL Fantasy stats, projections, price history and trade analysis for the 2026 season. Powered by Neeko AI.`,
-      canonical: `${DOMAIN}${p}`,
+      title: "AFL Player Stats 2026 | Neeko Sports Stats",
+      description: DEFAULT_DESCRIPTION,
+      canonical: `${DOMAIN}/sports/afl/players`,
+      noindex: true,
     };
   }
 
@@ -335,9 +335,10 @@ function getPageMeta(pathname) {
 }
 
 function buildBotHTML(meta, pathname) {
-  const { title, description, canonical } = meta;
+  const { title, description, canonical, noindex } = meta;
   const escaped = (s) =>
     s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const robotsContent = noindex ? "noindex, follow" : "index, follow";
 
   return `<!doctype html>
 <html lang="en">
@@ -346,6 +347,7 @@ function buildBotHTML(meta, pathname) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${escaped(title)}</title>
   <meta name="description" content="${escaped(description)}" />
+  <meta name="robots" content="${robotsContent}" />
   <meta name="author" content="Neeko Sports Stats" />
   <link rel="canonical" href="${escaped(canonical)}" />
   <meta property="og:type" content="website" />
@@ -395,7 +397,7 @@ export default function middleware(request) {
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=86400",
       "X-Prerender": "true",
-      "X-Robots-Tag": "index, follow",
+      "X-Robots-Tag": meta.noindex ? "noindex, follow" : "index, follow",
     },
   });
 }
