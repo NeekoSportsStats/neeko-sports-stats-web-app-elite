@@ -22,6 +22,7 @@ import {
   FREE_FULL_ROWS,
   PREMIUM_INITIAL_ROWS,
 } from "./helpers";
+import { buildStatGeneratedWhy } from "@/features/afl/fantasy/utils/buildStatGeneratedWhy";
 
 // ─── Sparkline ─────────────────────────────────────────────────────────────────
 
@@ -240,20 +241,16 @@ function ExpandedSection({ row }: { row: RankingRow }) {
   const confPct = row.projection_confidence != null ? Math.round(row.projection_confidence) : null;
   const confLabel = row.confidence_label ?? null;
   const price = row.price != null ? fmtPrice(row.price) : null;
-  const aiText = row.why_long ?? row.why ?? null;
+  const statWhy = buildStatGeneratedWhy(row, "ranking");
 
   return (
     <div className="mt-3 rounded-xl border border-white/[0.08] bg-[#111] p-4 flex flex-col gap-3">
 
-      {/* AI analysis */}
-      {aiText ? (
-        <div>
-          <p className="text-[10px] text-white/30 uppercase tracking-wide font-semibold mb-1">AI Analysis</p>
-          <p className="text-[12px] text-white/55 leading-relaxed line-clamp-4">{aiText}</p>
-        </div>
-      ) : (
-        <p className="text-[11px] text-white/20 italic">AI analysis pending for this player.</p>
-      )}
+      {/* Stat reason */}
+      <div>
+        <p className="text-[10px] text-white/30 uppercase tracking-wide font-semibold mb-1">Why this call</p>
+        <p className="text-[12px] text-white/55 leading-relaxed line-clamp-4">{statWhy}</p>
+      </div>
 
       {/* Sparkline */}
       {(loading || history.length >= 3) && (
@@ -330,7 +327,7 @@ function PlayerCard({ row, idx, isPremium, onTap, onUpgrade }: PlayerCardProps) 
 
   const proj = row.projection;
   const valueScore = !row.is_bye && row.value_score != null ? row.value_score : null;
-  const whyText = row.why ?? getTrendWhyText(row);
+  const whyText = buildStatGeneratedWhy(row, "ranking");
 
   const trendScore = row.trend_score;
   const trendDisplay =

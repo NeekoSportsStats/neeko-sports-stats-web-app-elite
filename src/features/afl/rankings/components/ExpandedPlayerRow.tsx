@@ -21,6 +21,7 @@ import {
   fmtDecisionScore,
   getDecisionScoreColor,
 } from "./helpers";
+import { buildStatGeneratedWhy } from "@/features/afl/fantasy/utils/buildStatGeneratedWhy";
 
 // ─── Custom tooltip ────────────────────────────────────────────────────────────
 
@@ -240,7 +241,7 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
     : rawValue != null && rawValue < -5 ? "red"
     :                                    "neutral";
 
-  const aiText = row.why_long ?? row.why ?? null;
+  const statWhy = buildStatGeneratedWhy(row, "ranking");
 
   const confidence = row.projection_confidence != null ? Math.round(row.projection_confidence) : null;
   const price      = row.price != null ? fmtPrice(row.price) : null;
@@ -279,32 +280,13 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
               </div>
             )}
 
-            {/* 2. AI summary text */}
-            {aiText ? (
+            {/* 2. Stat reason */}
+            <div>
+              <p className="text-[10px] text-white/25 uppercase tracking-wider font-semibold mb-1">Why this call</p>
               <p className="text-[13px] text-white/50 leading-relaxed line-clamp-3">
-                {aiText}
+                {statWhy}
               </p>
-            ) : (
-              <p className="text-[13px] text-white/25 leading-relaxed">
-                Analysis not yet available for this player.
-              </p>
-            )}
-
-            {/* 2b. Premium reason signals */}
-            {(row.action_reason_1 || row.action_reason_2) && (
-              <div className="flex flex-col gap-1">
-                {row.action_reason_1 && (
-                  <p className="text-[11px] text-white/35 leading-snug">
-                    <span className="text-white/20 mr-1">&#x25BA;</span>{row.action_reason_1}
-                  </p>
-                )}
-                {row.action_reason_2 && (
-                  <p className="text-[11px] text-white/35 leading-snug">
-                    <span className="text-white/20 mr-1">&#x25BA;</span>{row.action_reason_2}
-                  </p>
-                )}
-              </div>
-            )}
+            </div>
 
             {/* 3. Full-width sparkline */}
             {(historyLoading || scoreCount >= 3) && (

@@ -24,6 +24,7 @@ import {
 import { getCaptainScore, getCaptainConfidence } from "@/features/afl/shared/data/captainScoring";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
 import { playerToSlug } from "@/lib/slugs";
+import { buildStatGeneratedWhy } from "@/features/afl/fantasy/utils/buildStatGeneratedWhy";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -132,83 +133,16 @@ function playerHref(p: CurrentRoundPlayer): string {
 
 // ── Deterministic reason generators ──────────────────────────────────────────
 
-function getCaptainReason(p: RankingRow, tier: "LOCK" | "SAFE" | "POD"): string | null {
-  const conf = (p.confidence_label ?? "").toUpperCase();
-  const proj = typeof p.projection === "number" ? p.projection : null;
-  const ceiling = typeof p.ceiling_estimate === "number" ? p.ceiling_estimate : null;
-  const captainRating = (p.captain_rating ?? "").toUpperCase();
-  const formScore = typeof p.form_score === "number" ? p.form_score : null;
-  const matchupLabel = (p.matchup_label ?? "").toLowerCase();
-
-  if (tier === "LOCK") {
-    if (conf === "HIGH" || conf === "VERY HIGH") return "High confidence captain option";
-    if (proj !== null && ceiling !== null && ceiling >= proj * 1.25) return "Strong ceiling profile this round";
-    if (captainRating === "ELITE" || captainRating === "PREMIUM") return "Elite captain rating";
-    return "Top projection this round";
-  }
-
-  if (tier === "SAFE") {
-    if (matchupLabel.includes("favourable") || matchupLabel.includes("favorable")) return "Favourable matchup this round";
-    if (conf === "HIGH" || conf === "MEDIUM") return "Consistent captain option";
-    if (formScore !== null && formScore >= 70) return "Strong recent form";
-    return "Reliable captain option";
-  }
-
-  // POD
-  if (ceiling !== null && proj !== null && ceiling >= proj * 1.3) return "High ceiling POD option";
-  if (matchupLabel.includes("favourable") || matchupLabel.includes("favorable")) return "POD with favourable matchup";
-  if (captainRating === "VALUE") return "Value POD captain play";
-  return "POD captain option";
+function getCaptainReason(p: RankingRow): string {
+  return buildStatGeneratedWhy(p, "captain");
 }
 
-function getBuyValueReason(p: RankingRow): string | null {
-  const valueScore = typeof p.value_score === "number" ? p.value_score : null;
-  const projection = typeof p.projection === "number" ? p.projection : null;
-  const breakeven = typeof p.breakeven === "number" ? p.breakeven : null;
-  const edge = typeof p.edge_canonical === "number" ? p.edge_canonical : null;
-  const action = (p.action_canonical ?? p.signal_tag ?? "").toUpperCase();
-  const formDelta = typeof p.form_delta === "number" ? p.form_delta : null;
-  const trendSignal = (p.trend_signal ?? "").toUpperCase();
-  const matchupLabel = (p.matchup_label ?? "").toLowerCase();
-  const pricePct = typeof p.price_change_pct === "number" ? p.price_change_pct : null;
-
-  if (action === "STRONG_START" || action === "START") return "Strong start signal this round";
-  if (valueScore !== null && valueScore > 3) return "High value score above price";
-  if (valueScore !== null && valueScore > 0) return "Positive value above current price";
-  if (edge !== null && edge > 10) return "Projected well above breakeven";
-  if (projection !== null && breakeven !== null && projection > breakeven + 5) return "Projected above breakeven";
-  if (trendSignal === "UP" || trendSignal === "STRONG_UP") return "Rising form trend";
-  if (formDelta !== null && formDelta > 5) return "Form improving this stretch";
-  if (pricePct !== null && pricePct < -5) return "Price drop creates entry opportunity";
-  if (matchupLabel.includes("favourable") || matchupLabel.includes("favorable")) return "Favourable matchup this round";
-  if (action === "BUY" || action === "VALUE") return "Value signal active";
-  return null;
+function getBuyValueReason(p: RankingRow): string {
+  return buildStatGeneratedWhy(p, "value_pick");
 }
 
-function getTrapFadeReason(p: RankingRow): string | null {
-  const edge = typeof p.edge_canonical === "number" ? p.edge_canonical : null;
-  const projection = typeof p.projection === "number" ? p.projection : null;
-  const breakeven = typeof p.breakeven === "number" ? p.breakeven : null;
-  const conf = (p.confidence_label ?? "").toUpperCase();
-  const action = (p.action_canonical ?? p.signal_tag ?? "").toUpperCase();
-  const riskRating = typeof p.risk_rating === "number" ? p.risk_rating : null;
-  const formDelta = typeof p.form_delta === "number" ? p.form_delta : null;
-  const trendSignal = (p.trend_signal ?? "").toUpperCase();
-  const matchupLabel = (p.matchup_label ?? "").toLowerCase();
-  const pricePct = typeof p.price_change_pct === "number" ? p.price_change_pct : null;
-
-  if (action === "STRONG_SIT") return "Strong sit signal — avoid this round";
-  if (edge !== null && edge < -10) return "Projected well below breakeven";
-  if (projection !== null && breakeven !== null && projection < breakeven - 5) return "Projected below breakeven";
-  if (riskRating !== null && riskRating >= 70) return "High risk rating active";
-  if (conf === "LOW") return "Low confidence warning";
-  if (trendSignal === "DOWN" || trendSignal === "STRONG_DOWN") return "Declining form trend";
-  if (formDelta !== null && formDelta < -5) return "Form declining this stretch";
-  if (pricePct !== null && pricePct > 8) return "Overpriced relative to projection";
-  if (matchupLabel.includes("tough") || matchupLabel.includes("difficult")) return "Tough matchup this round";
-  if (action === "SIT" || action === "FADE") return "Sit or fade signal active";
-  if (edge !== null && edge < 0) return "Negative edge versus baseline";
-  return null;
+function getTrapFadeReason(p: RankingRow): string {
+  return buildStatGeneratedWhy(p, "trap_alert");
 }
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
@@ -945,7 +879,7 @@ export default function CurrentWeekPage() {
                   void getCaptainConfidence(captScore);
                   const tier: "LOCK" | "SAFE" | "POD" =
                     i === 0 ? "LOCK" : i < 3 ? "SAFE" : "POD";
-                  const reason = getCaptainReason(p, tier);
+                  const reason = getCaptainReason(p);
 
                   // Premium chips: Ceiling, Form, Matchup — only if values exist
                   const premiumChips: Array<{ label: string; value: string; color?: string }> = [];

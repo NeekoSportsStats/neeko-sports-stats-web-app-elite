@@ -15,6 +15,7 @@ import {
 import { LockedCell } from "./RankingsModals";
 import { ExpandedPlayerRow } from "./ExpandedPlayerRow";
 import { PlayerStatusPill } from "./PlayerStatusPill";
+import { buildStatGeneratedWhy } from "@/features/afl/fantasy/utils/buildStatGeneratedWhy";
 
 // ─── Why text conflict resolution ─────────────────────────────────────────────
 // When AI why text contradicts the canonical signal direction, replace with
@@ -73,18 +74,6 @@ function buildDeterministicWhy(row: RankingRow, sentiment: "positive" | "negativ
   return getTrendWhyText(row);
 }
 
-function getConsistentWhyText(row: RankingRow): string {
-  const rawWhy = row.why;
-  const sentiment = getSignalSentiment(row);
-
-  if (!rawWhy) return buildDeterministicWhy(row, sentiment);
-
-  if (hasWhyConflict(rawWhy, sentiment)) {
-    return buildDeterministicWhy(row, sentiment);
-  }
-
-  return rawWhy;
-}
 
 // ─── Column widths ─────────────────────────────────────────────────────────────
 // Player | Action | Confidence | Why (flex) | Projection | Value | Trend | Form
@@ -255,7 +244,7 @@ export function TableHeader({ isPremium, sortKey, sortDir, onSortClick }: TableH
       <th className={`${TH} text-left text-white/40`} style={{ minWidth: 180 }}>Player</th>
       <th className={`${TH} text-white/40`} style={{ width: 72 }}>Action</th>
       <th className={`${TH} text-white/40`} style={{ width: 88 }}>Confidence</th>
-      <th className={`${TH} text-left text-white/35`} style={{ minWidth: 260 }}>Why</th>
+      <th className={`${TH} text-left text-white/35`} style={{ minWidth: 260 }}>Why this call</th>
       <SortableTh label="Proj" col="projection" width={80} />
       <SortableTh label="Value" col="value_score" width={72} />
       <th className={`${TH} text-white/40`} style={{ width: 80 }}>Trend</th>
@@ -291,7 +280,7 @@ export function TableRow({
   const isLocked = !isPremium && idx >= FREE_FULL_ROWS;
   const isTop3 = rank <= 3;
 
-  const whyText = getConsistentWhyText(row);
+  const whyText = buildStatGeneratedWhy(row, "ranking");
 
   const rowCls = [
     "border-b cursor-pointer hover:bg-white/[0.018] transition-colors duration-100 group",
@@ -347,7 +336,7 @@ export function TableRow({
         {/* Why */}
         <td className="px-3 py-3 text-left" style={{ minWidth: 260 }}>
           {isLocked ? (
-            <span className="text-[11px] text-white/15 italic">Unlock to view</span>
+            <span className="text-[11px] text-white/15 italic">Unlock Neeko+ to view the full stat reason, breakeven edge and player profile.</span>
           ) : (
             <span className="block text-[12px] text-white/45 leading-[1.55] line-clamp-2">
               {whyText}

@@ -1,3 +1,5 @@
+import { buildStatGeneratedWhy } from "@/features/afl/fantasy/utils/buildStatGeneratedWhy";
+
 export function fmtPrice(v: number | null | undefined): string {
   if (v == null || v === 0) return "—";
   const n = Number(v);
@@ -116,13 +118,7 @@ export function getValueRankColor(percentile: number): string {
 }
 
 export function generateSmartWhy(player: any): string {
-  const short = (player.why ?? '').trim();
-  if (short) return short;
-
-  const edge = Math.round(player.edge ?? 0);
-  const projection = Math.round(player.projection ?? 0);
-  const edgeStr = edge > 0 ? `+${edge}` : `${edge}`;
-  return `${edgeStr} edge · ${projection} pts projected`;
+  return buildStatGeneratedWhy(player, "market_watch");
 }
 
 export function getConsistencySignal(player: any): { label: string; color: string } | null {
