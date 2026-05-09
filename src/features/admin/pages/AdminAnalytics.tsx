@@ -250,7 +250,6 @@ function OverviewTab({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <KPICard label="Rankings Views" value={formatNum(counts30d["rankings_view"])} />
               <KPICard label="Edge Board Views" value={formatNum(counts30d["edge_board_view"])} />
-              <KPICard label="Start/Sit Views" value={formatNum(counts30d["start_sit_view"])} />
               <KPICard label="Market Watch Views" value={formatNum(counts30d["market_watch_view"])} />
             </div>
           </div>
@@ -287,7 +286,6 @@ function LiveActivityTab({
     "rankings_view",
     "edge_board_view",
     "market_watch_view",
-    "start_sit_view",
     "user_signed_up",
     "checkout_success",
   ];
@@ -583,7 +581,6 @@ function EngagementTab({
                 { match: /\/afl\/market-watch/, label: "Market Watch" },
                 { match: /\/afl\/players\//, label: "Player Pages" },
                 { match: /\/afl\/edge-board/, label: "Edge Board" },
-                { match: /\/afl\/start-sit/, label: "Start / Sit" },
                 { match: /\/(pricing|subscribe|neeko-plus)/, label: "Pricing" },
               ];
               const buckets = KEY_ROUTES.map(({ match, label }) => ({

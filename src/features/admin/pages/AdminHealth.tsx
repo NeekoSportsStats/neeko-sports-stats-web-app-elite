@@ -559,14 +559,6 @@ interface AIWorkerHealth {
   errors_last_hour: number | null;
 }
 
-interface StartSitCacheHealth {
-  cache_rows: number | null;
-  last_cache_update: string | null;
-  stale_rows: number | null;
-  seasons_cached: number | null;
-  rounds_cached: number | null;
-}
-
 interface PlayerIdentityIssue {
   player_id: number;
   name_variants: number;
@@ -707,7 +699,6 @@ export default function AdminHealth() {
   const [pipelineRuns, setPipelineRuns] = useState<PipelineRunRow[]>([]);
   const [pipelineHealth, setPipelineHealth] = useState<PipelineHealth | null>(null);
   const [aiWorker, setAiWorker] = useState<AIWorkerHealth | null>(null);
-  const [startSitCache, setStartSitCache] = useState<StartSitCacheHealth | null>(null);
   const [cmdStatus, setCmdStatus] = useState<CommandCenterStatus | null>(null);
   const [cronJobs, setCronJobs] = useState<CronJobRow[]>([]);
   const [identityIssues, setIdentityIssues] = useState<PlayerIdentityIssue[]>([]);
@@ -732,7 +723,6 @@ export default function AdminHealth() {
       if (Array.isArray(result.pipeline_run_detail)) setPipelineRuns(result.pipeline_run_detail as PipelineRunRow[]);
       if (result.pipeline_health) setPipelineHealth(result.pipeline_health as PipelineHealth);
       if (result.ai_worker_health) setAiWorker(result.ai_worker_health as AIWorkerHealth);
-      if (result.start_sit_cache_health) setStartSitCache(result.start_sit_cache_health as StartSitCacheHealth);
       if (result.status) setCmdStatus(result.status as CommandCenterStatus);
       if (Array.isArray(result.cron_jobs)) setCronJobs(result.cron_jobs as CronJobRow[]);
     } catch { /* silent */ } finally {
@@ -830,10 +820,6 @@ export default function AdminHealth() {
     : rankingsCacheRows > 0 ? "warn"
     : "loading";
 
-  const startSitStatus: StatusLevel = !startSitCache ? "loading"
-    : (startSitCache.cache_rows ?? 0) < 100 ? "warn"
-    : "ok";
-
   const liveRankingsRows = cmdStatus?.rankings_cache_rows ?? rankingsCacheRows;
   const rankingsConfidence = Math.min(100, Math.round((liveRankingsRows / 650) * 100));
 
@@ -844,12 +830,6 @@ export default function AdminHealth() {
   const mwConfidence = cmdStatus?.market_watch_last_refresh
     ? Math.min(100, Math.round(Math.max(0, 100 - ((Date.now() - new Date(cmdStatus.market_watch_last_refresh).getTime()) / 3_600_000) * 5)))
     : rankingsCacheRows > 0 ? 60 : 0;
-  const startSitConfidence = startSitCache ? (() => {
-    const rows = startSitCache.cache_rows ?? 0;
-    const stale = startSitCache.stale_rows ?? 0;
-    if (rows === 0) return 0;
-    return Math.min(100, Math.max(0, Math.round((rows / 500) * 100) - Math.min(40, Math.round((stale / rows) * 100))));
-  })() : rankingsCacheRows > 0 ? 50 : 0;
   const pipelineConfidence = pipelineHealth
     ? pipelineHealth.latest_status === "completed" ? 100
       : pipelineHealth.latest_status === "running" ? 60
@@ -1027,7 +1007,6 @@ export default function AdminHealth() {
               <ConfidenceBar pct={rankingsConfidence} label="Rankings Cache" note={`${cmdStatus?.rankings_cache_rows?.toLocaleString() ?? 0} of ~700 players cached`} />
               <ConfidenceBar pct={aiConfidence} label="AI Generation" note={`${cmdStatus?.ai_analysis_rows?.toLocaleString() ?? 0} analysed — ${cmdStatus?.ai_missing_players?.toLocaleString() ?? 0} missing`} />
               <ConfidenceBar pct={mwConfidence} label="Market Watch" note={cmdStatus?.market_watch_last_refresh ? `Last refresh ${fmtTs(cmdStatus.market_watch_last_refresh)}` : "Never refreshed"} />
-              <ConfidenceBar pct={startSitConfidence} label="Start / Sit Cache" note={`${startSitCache?.cache_rows?.toLocaleString() ?? 0} rows — ${startSitCache?.stale_rows ?? 0} stale`} />
             </div>
           )}
 

@@ -610,12 +610,6 @@ export default function AdminNewCommandCenter() {
               icon={RotateCcw}
             />
             <ConfirmDangerButton
-              label="Clear Start/Sit Cache"
-              command="clear_start_sit_cache"
-              description="Truncates the start_sit_cache table. The cache rebuilds automatically on next user request. Use if cached decisions look wrong."
-              icon={Trash2}
-            />
-            <ConfirmDangerButton
               label="Force Refresh All Views"
               command="refresh_all_views"
               description="Calls REFRESH MATERIALIZED VIEW on all materialized views (mv_player_projection, mv_edge_board). May cause brief read delays during refresh."

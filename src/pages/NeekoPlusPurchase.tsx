@@ -33,7 +33,7 @@ const FEATURE_GROUPS = [
     title: "Fantasy Decision Tools",
     features: [
       "Captain picks with confidence rating",
-      "Weekly start/sit recommendations",
+      "Weekly captain picks and value targets",
       "Breakout alerts before the market moves",
       "Trap warnings — avoid costly trade mistakes",
     ],

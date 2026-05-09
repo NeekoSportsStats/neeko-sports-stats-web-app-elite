@@ -67,7 +67,7 @@ function buildPlayersRows(players: RankingRow[]): RankingRow[] {
     .slice(0, 8);
 }
 
-function buildStartSitRows(players: RankingRow[]): RankingRow[] {
+function buildCurrentWeekRows(players: RankingRow[]): RankingRow[] {
   const eligible = players.filter(
     p => !p.is_injured && !p.is_bye && (p.projection ?? 0) > 0
   );
@@ -229,8 +229,8 @@ const TABS: TabConfig[] = [
     label: "Current Week",
     icon: <Zap size={14} />,
     heading: "Weekly Edge Board",
-    lensLabel: "LENS: START/SIT",
-    lensSubLabel: "Actionable start and sit decisions for this round",
+    lensLabel: "LENS: CURRENT WEEK",
+    lensSubLabel: "Captain picks, value targets and trap alerts for this round",
     desc: "Sorted by trend score — who to start, hold, or bench before lockout.",
     to: "/fantasy/current-week",
     ctaLabel: "View This Week",
@@ -571,7 +571,7 @@ export default function LandingProductProof({ rankingsPlayers, rankingsLoading, 
       "market-watch": buildMarketRows(rankingsPlayers),
       captains: buildCaptainsRows(rankingsPlayers),
       players: buildPlayersRows(rankingsPlayers),
-      "current-round": buildStartSitRows(rankingsPlayers),
+      "current-round": buildCurrentWeekRows(rankingsPlayers),
     };
     return dedupeAcrossViews(raw);
   }, [rankingsPlayers, rankingsLoading]);
