@@ -1,3 +1,16 @@
+// Sentences containing these patterns are stripped before display
+const DISPLAY_BANNED_PATTERNS: [RegExp, string][] = [
+  [/[^.!?]*edge gap between projection and breakeven[^.!?]*[.!?]/gi, ""],
+  [/[^.!?]*breakeven[^.!?]*gap[^.!?]*[.!?]/gi, ""],
+  [/[^.!?]*value gap[^.!?]*[.!?]/gi, ""],
+  [/[^.!?]*must buy[^.!?]*[.!?]/gi, ""],
+  [/[^.!?]*must sell[^.!?]*[.!?]/gi, ""],
+  [/[^.!?]*strong buy[^.!?]*[.!?]/gi, ""],
+  [/[^.!?]*lock in[^.!?]*[.!?]/gi, ""],
+  [/[^.!?]*trade (in|out)[^.!?]*[.!?]/gi, ""],
+  [/[^.!?]*buy opportunity[^.!?]*[.!?]/gi, ""],
+];
+
 const SNAKE_REPLACEMENTS: [RegExp, string][] = [
   [/value_score/g, "value score"],
   [/projection_final/g, "projection"],
@@ -20,6 +33,10 @@ export function cleanAiText(text: string | null | undefined): string {
   if (!text) return "";
 
   let out = text.trim();
+
+  for (const [pattern, replacement] of DISPLAY_BANNED_PATTERNS) {
+    out = out.replace(pattern, replacement);
+  }
 
   for (const [pattern, replacement] of SNAKE_REPLACEMENTS) {
     out = out.replace(pattern, replacement);

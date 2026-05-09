@@ -32,7 +32,9 @@ export function TeamIntelligencePanel({
   stats,
   upgradeHref = "/billing",
 }: Props) {
-  const hasSummary = !!intelligence?.summary;
+  const CURRENT_TEAM_VERSION = "generate-team-ai-summaries-v17";
+  const isCurrentVersion = intelligence?.prompt_version === CURRENT_TEAM_VERSION;
+  const hasSummary = !!intelligence?.summary && isCurrentVersion;
 
   // Loading state
   if (loading) {
@@ -102,36 +104,47 @@ export function TeamIntelligencePanel({
   }
 
   // Premium + no AI — polished stat-generated fallback
-  const parts: string[] = [];
-  if (stats?.topPlayerName && stats?.topProjection != null) {
-    parts.push(`top projected player is ${stats.topPlayerName} (${Math.round(stats.topProjection)} pts)`);
-  }
-  if (stats?.avgProjection != null) {
-    parts.push(`squad average projection ${Math.round(stats.avgProjection)} pts`);
-  }
-  if (stats?.avgSeasonAvg != null) {
-    parts.push(`season average ${Math.round(stats.avgSeasonAvg)} pts`);
+  const lines: string[] = [];
+
+  // Top scorer + squad projection line
+  if (stats?.topPlayerName && stats?.topProjection != null && stats?.avgProjection != null) {
+    lines.push(
+      `${teamName}'s squad is projecting an average of ${Math.round(stats.avgProjection)} pts this round, led by ${stats.topPlayerName} at ${Math.round(stats.topProjection)} pts.`
+    );
+  } else if (stats?.avgProjection != null) {
+    lines.push(`${teamName}'s squad is projecting an average of ${Math.round(stats.avgProjection)} pts this round.`);
+  } else if (stats?.topPlayerName && stats?.topProjection != null) {
+    lines.push(`${teamName}'s top projected contributor is ${stats.topPlayerName} at ${Math.round(stats.topProjection)} pts.`);
   }
 
+  // Season avg vs projection trend
+  if (stats?.avgProjection != null && stats?.avgSeasonAvg != null) {
+    const delta = Math.round(stats.avgProjection) - Math.round(stats.avgSeasonAvg);
+    const trendWord = delta > 3 ? "above" : delta < -3 ? "below" : "in line with";
+    lines.push(`Current squad projection is ${trendWord} their season average of ${Math.round(stats.avgSeasonAvg)} pts.`);
+  }
+
+  // Positional depth
   const posParts: string[] = [];
   if (stats?.midCount != null) posParts.push(`${stats.midCount} MID`);
   if (stats?.defCount != null) posParts.push(`${stats.defCount} DEF`);
   if (stats?.fwdCount != null) posParts.push(`${stats.fwdCount} FWD`);
   if (stats?.rucCount != null) posParts.push(`${stats.rucCount} RUC`);
-
-  const positionalLine = posParts.length > 0 ? ` Positional depth: ${posParts.join(", ")}.` : "";
-
-  const signalParts: string[] = [];
-  if (stats?.startCount != null && stats.startCount > 0) {
-    signalParts.push(`${stats.startCount} positive signal${stats.startCount !== 1 ? "s" : ""}`);
+  if (posParts.length > 0) {
+    lines.push(`Positional depth across the squad: ${posParts.join(", ")}.`);
   }
-  if (stats?.sitCount != null && stats.sitCount > 0) {
-    signalParts.push(`${stats.sitCount} negative signal${stats.sitCount !== 1 ? "s" : ""}`);
-  }
-  const signalLine = signalParts.length > 0 ? ` Model signals: ${signalParts.join(", ")}.` : "";
 
-  const fallback = parts.length > 0
-    ? `Current scoring profile for ${teamName}: ${parts.join(", ")}.${positionalLine}${signalLine} Full analysis will be available after the next data refresh.`
+  // Signal distribution
+  if (stats?.startCount != null && stats?.sitCount != null) {
+    lines.push(
+      `Model signals show ${stats.startCount} positive ${stats.startCount === 1 ? "indicator" : "indicators"} and ${stats.sitCount} negative ${stats.sitCount === 1 ? "indicator" : "indicators"} across the roster.`
+    );
+  }
+
+  lines.push("Full AI analysis will be available after the next data refresh.");
+
+  const fallback = lines.length > 0
+    ? lines.join(" ")
     : `Scoring analysis for ${teamName} will be available after the next data refresh.`;
 
   return (

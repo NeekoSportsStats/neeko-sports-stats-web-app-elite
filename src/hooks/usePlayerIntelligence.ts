@@ -6,6 +6,7 @@ export interface PlayerIntelligence {
   summary_short: string | null;
   summary_long: string | null;
   ai_generated_at: string | null;
+  prompt_version: string | null;
 }
 
 export function usePlayerIntelligence(playerId: number | null) {

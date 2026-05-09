@@ -32,8 +32,10 @@ export function PlayerIntelligencePanel({
   variant = "card",
   upgradeHref = "/billing",
 }: Props) {
-  const hasText = !!(intelligence?.summary_long || intelligence?.summary_short);
-  const displayText = intelligence?.summary_long ?? intelligence?.summary_short ?? null;
+  const CURRENT_PLAYER_VERSION = "generate-player-ai-v17";
+  const isCurrentVersion = intelligence?.prompt_version === CURRENT_PLAYER_VERSION;
+  const hasText = !!(intelligence?.summary_long || intelligence?.summary_short) && isCurrentVersion;
+  const displayText = hasText ? (intelligence?.summary_long ?? intelligence?.summary_short ?? null) : null;
 
   // Loading state
   if (loading) {
@@ -80,15 +82,35 @@ export function PlayerIntelligencePanel({
 
   // Premium + no AI text — polished stat-generated fallback
   if (!hasText) {
-    const parts: string[] = [];
-    if (avgLast3 != null) parts.push(`last-3 avg ${Math.round(avgLast3)} pts`);
-    else if (avgLast5 != null) parts.push(`last-5 avg ${Math.round(avgLast5)} pts`);
-    if (seasonAvg != null) parts.push(`season avg ${Math.round(seasonAvg)} pts`);
-    if (projection != null) parts.push(`model projection ${Math.round(projection)} pts`);
-    if (confidenceLabel) parts.push(`confidence ${confidenceLabel.toLowerCase()}`);
+    const lines: string[] = [];
 
-    const fallback = parts.length > 0
-      ? `Scoring profile for ${playerName}: ${parts.join(", ")}. Full analysis will be available after the next data refresh.`
+    // Recent form line
+    if (avgLast3 != null && seasonAvg != null) {
+      const delta = Math.round(avgLast3) - Math.round(seasonAvg);
+      const trendWord = delta > 4 ? "above" : delta < -4 ? "below" : "in line with";
+      lines.push(
+        `${playerName}'s last-3 average of ${Math.round(avgLast3)} pts is ${trendWord} their season average of ${Math.round(seasonAvg)} pts.`
+      );
+    } else if (avgLast3 != null) {
+      lines.push(`${playerName} is averaging ${Math.round(avgLast3)} pts over the last three rounds.`);
+    } else if (seasonAvg != null) {
+      lines.push(`${playerName} is averaging ${Math.round(seasonAvg)} pts across the season.`);
+    }
+
+    // Projection line
+    if (projection != null) {
+      lines.push(`The model projects ${Math.round(projection)} pts this round.`);
+    }
+
+    // Confidence line
+    if (confidenceLabel) {
+      lines.push(`Projection confidence is ${confidenceLabel.toLowerCase()}.`);
+    }
+
+    lines.push("Full AI analysis will be available after the next data refresh.");
+
+    const fallback = lines.length > 0
+      ? lines.join(" ")
       : `Scoring analysis for ${playerName} will be available after the next data refresh.`;
 
     return (

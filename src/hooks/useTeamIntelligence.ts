@@ -5,6 +5,7 @@ export interface TeamIntelligence {
   summary: string | null;
   fantasy_verdict: string | null;
   updated_at: string | null;
+  prompt_version: string | null;
 }
 
 const SEASON = 2026;
@@ -35,6 +36,7 @@ export function useTeamIntelligence(teamName: string | null) {
             summary: (r.summary as string | null) ?? null,
             fantasy_verdict: (r.fantasy_verdict as string | null) ?? null,
             updated_at: (r.updated_at as string | null) ?? null,
+            prompt_version: (r.prompt_version as string | null) ?? null,
           });
         } else {
           setIntelligence(null);
