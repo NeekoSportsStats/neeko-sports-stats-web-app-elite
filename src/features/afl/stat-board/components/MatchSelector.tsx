@@ -149,7 +149,7 @@ export function MatchSelector({ matches, selected, loading, onChange, hasFullAcc
           <div
             ref={listRef}
             className="overflow-y-auto overscroll-contain py-1.5"
-            style={{ maxHeight: "min(360px, calc(100vh - 180px))" }}
+            style={{ maxHeight: "min(360px, calc(100dvh - 180px))" }}
           >
             {groups.map((group) => (
               <div key={group.roundKey}>

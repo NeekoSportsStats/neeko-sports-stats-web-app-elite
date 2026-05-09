@@ -48,7 +48,7 @@ export default function StatBoardHubPage() {
         <meta name="description" content="Explore AFL player stats, team trends and match centre data. Filter by match, stat and threshold." />
       </Helmet>
 
-      <div style={{ minHeight: "100vh", background: "#05070A", color: "#fff" }}>
+      <div style={{ minHeight: "100dvh", background: "#05070A", color: "#fff" }}>
         <div style={{ maxWidth: 680, margin: "0 auto", padding: "clamp(36px,4.5vw,60px) clamp(16px,4vw,32px) clamp(40px,5vw,72px)" }}>
 
           {/* ── Hero ──────────────────────────────────────────────────────── */}

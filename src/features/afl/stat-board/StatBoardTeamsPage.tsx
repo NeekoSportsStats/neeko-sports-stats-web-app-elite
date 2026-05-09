@@ -193,8 +193,8 @@ export default function StatBoardTeamsPage() {
         />
       </Helmet>
 
-      <div className="min-h-screen bg-[#0a0a0a] text-white overflow-x-hidden" style={{ maxWidth: "100vw" }}>
-        <div className="mx-auto max-w-5xl px-4 pt-4 sm:pt-6 pb-20 min-w-0 overflow-x-hidden">
+      <div className="min-h-dvh bg-[#0a0a0a] text-white overflow-x-hidden" style={{ maxWidth: "100vw" }}>
+        <div className="mx-auto max-w-5xl px-4 pt-4 sm:pt-6 min-w-0 overflow-x-hidden" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}>
 
           {/* Breadcrumb */}
           <div className="mb-3 flex items-center gap-1.5 text-[11px] text-white/30">

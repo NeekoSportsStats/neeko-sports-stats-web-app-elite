@@ -186,7 +186,7 @@ export function ExpandedPlayerPanel({
         <div className="flex-1" />
 
         {/* Stats + actions group */}
-        <div className="flex items-center gap-2.5 sm:gap-4 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0 min-w-0">
           <div className="text-center">
             <p className="text-[8px] sm:text-[9px] text-white/22 uppercase tracking-wide leading-none mb-0.5 sm:mb-1">Avg</p>
             <p className={`text-[12px] sm:text-[13px] font-semibold tabular-nums leading-none ${fmt1(player.last_10_avg) === "—" ? "text-white/22" : "text-white/62"}`}>
@@ -230,16 +230,16 @@ export function ExpandedPlayerPanel({
                 — last {playedCount} {playedCount === 1 ? "game" : "games"}
               </span>
             </p>
-            <div className="flex items-center gap-3" aria-hidden>
-              <span className="flex items-center gap-1.5">
+            <div className="flex items-center flex-wrap gap-x-3 gap-y-1 justify-end" aria-hidden>
+              <span className="flex items-center gap-1.5 shrink-0">
                 <svg width="18" height="2" viewBox="0 0 18 2"><line x1="0" y1="1" x2="18" y2="1" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"/></svg>
                 <span className="text-[9px] text-white/28">Actual</span>
               </span>
-              <span className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1.5 shrink-0">
                 <svg width="18" height="2" viewBox="0 0 18 2"><line x1="0" y1="1" x2="18" y2="1" stroke="rgba(245,200,76,0.42)" strokeWidth="1" strokeDasharray="3 3" strokeLinecap="round"/></svg>
                 <span className="text-[9px] text-white/28">Thresholds</span>
               </span>
-              <span className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1.5 shrink-0">
                 <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" rx="1.5" fill="none" stroke="rgba(255,255,255,0.30)" strokeWidth="1.2" transform="rotate(45 5 5)"/></svg>
                 <span className="text-[9px] text-white/28">BYE/DNP</span>
               </span>

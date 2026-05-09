@@ -227,8 +227,8 @@ export default function StatBoardPlayersPage() {
         />
       )}
 
-      <div className="min-h-screen bg-[#0a0a0a] text-white">
-        <div className="stat-board-mobile-root mx-auto max-w-5xl px-4 pt-4 sm:pt-6 pb-20 min-w-0">
+      <div className="min-h-dvh bg-[#0a0a0a] text-white overflow-x-hidden">
+        <div className="stat-board-mobile-root mx-auto max-w-5xl px-4 pt-4 sm:pt-6 min-w-0 max-w-full" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}>
 
           {/* Page header */}
           <div className="mb-4 sm:mb-6">
