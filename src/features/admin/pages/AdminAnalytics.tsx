@@ -938,8 +938,8 @@ export default function AdminAnalytics() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Analytics</h1>
-          <p className="text-sm text-muted-foreground">Operator console — PostHog + Supabase truth</p>
+          <h1 className="text-2xl font-bold">Users & Billing</h1>
+          <p className="text-sm text-muted-foreground">Subscribers, billing, and activity analytics</p>
         </div>
         <div className="flex items-center gap-3">
           <FreshnessLabel loadedAt={loadedAt} />

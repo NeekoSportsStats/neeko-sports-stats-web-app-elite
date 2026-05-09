@@ -5,8 +5,7 @@ import {
   Users,
   Terminal,
   FlaskConical,
-  Megaphone,
-  ShieldCheck,
+  Settings2,
 } from "lucide-react";
 
 export interface AdminSection {
@@ -15,14 +14,15 @@ export interface AdminSection {
   icon: ElementType;
 }
 
+// Main Operator Console navigation — Marketing is intentionally hidden from
+// the nav bar (accessible via /admin/marketing directly for admins).
 export const ADMIN_SECTIONS: AdminSection[] = [
-  { path: "/admin/dashboard",       label: "Dashboard",       icon: LayoutDashboard },
-  { path: "/admin/health",          label: "Health",          icon: HeartPulse },
-  { path: "/admin/users",           label: "User Metrics",    icon: Users },
-  { path: "/admin/command",         label: "Command Center",  icon: Terminal },
-  { path: "/admin/player-lab",      label: "Player Lab",      icon: FlaskConical },
-  { path: "/admin/marketing",       label: "Marketing",       icon: Megaphone },
-  { path: "/admin/admin",           label: "Admin",           icon: ShieldCheck },
+  { path: "/admin/dashboard",      label: "Dashboard",        icon: LayoutDashboard },
+  { path: "/admin/health",         label: "Health",           icon: HeartPulse },
+  { path: "/admin/users",          label: "Users & Billing",  icon: Users },
+  { path: "/admin/command",        label: "Command Center",   icon: Terminal },
+  { path: "/admin/player-lab",     label: "Player Lab",       icon: FlaskConical },
+  { path: "/admin/internal-ops",   label: "Internal Ops",     icon: Settings2 },
 ];
 
 export const ADMIN_DEFAULT_PATH = "/admin/dashboard";

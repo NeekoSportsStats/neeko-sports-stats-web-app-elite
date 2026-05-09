@@ -31,7 +31,7 @@ import {
   AdminCommandPage,
   AdminPlayerLabPage,
   AdminMarketingPage,
-  AdminAdminPage,
+  AdminInternalOpsPage,
 } from "@/pages/Admin";
 
 const NeekoPlusPurchase = React.lazy(() => import("@/pages/NeekoPlusPurchase"));
@@ -163,8 +163,11 @@ function App() {
           <Route path="users" element={<AdminUserMetricsPage />} />
           <Route path="command" element={<AdminCommandPage />} />
           <Route path="player-lab" element={<AdminPlayerLabPage />} />
+          <Route path="internal-ops" element={<AdminInternalOpsPage />} />
+          {/* Marketing: hidden from main nav, accessible via direct URL for admins */}
           <Route path="marketing" element={<AdminMarketingPage />} />
-          <Route path="admin" element={<AdminAdminPage />} />
+          {/* Legacy route redirect — /admin/admin → /admin/internal-ops */}
+          <Route path="admin" element={<Navigate to="/admin/internal-ops" replace />} />
         </Route>
 
         <Route path="/pipeline-history" element={<RequireAdmin><S fallback={Generic}><PipelineHistory /></S></RequireAdmin>} />

@@ -11,10 +11,9 @@ type Tab = "tasks" | "todo" | "pipeline-history" | "logs" | "byes";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "tasks",            label: "Founder Tasks",     icon: ClipboardList },
-  { id: "todo",             label: "To Do",             icon: ListTodo },
   { id: "pipeline-history", label: "Pipeline History",  icon: ScrollText },
   { id: "byes",             label: "Bye Manager",       icon: CalendarOff },
-  { id: "logs",             label: "Internal Notes",    icon: BookOpen },
+  { id: "logs",             label: "Local Notes",       icon: BookOpen },
 ];
 
 function TabFallback() {
@@ -38,7 +37,7 @@ function InternalNotesTab() {
   return (
     <div>
       <AdminSectionIntro
-        description="Private scratch pad — notes are stored in browser localStorage, not the database. For short-term operator notes only."
+        description="Local notes (browser only) — stored in this device's localStorage, not the database. Clears if browser data is reset. Do not store credentials."
       />
       <textarea
         className="w-full h-96 rounded-lg border border-border bg-muted/10 p-4 text-sm font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-ring resize-y"
@@ -59,9 +58,9 @@ export default function AdminAdminHub() {
   return (
     <div>
       <div className="mb-5">
-        <h1 className="text-lg font-semibold">Admin</h1>
+        <h1 className="text-lg font-semibold">Internal Ops</h1>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Internal tasks, to-dos, pipeline history, and operator notes.
+          Internal tasks, pipeline history, and operator notes.
         </p>
       </div>
 
