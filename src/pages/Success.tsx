@@ -222,11 +222,6 @@ export default function Success() {
             </Button>
           </div>
 
-          {sessionId && (
-            <p className="text-xs text-center text-muted-foreground pt-4">
-              Session ID: {sessionId.slice(0, 20)}...
-            </p>
-          )}
         </CardContent>
       </Card>
     </div>

@@ -97,11 +97,11 @@ async function handleEvent(event: Stripe.Event) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        const planType = (session.metadata?.plan_type ?? session.metadata?.plan ?? 'unknown') as string;
+        const planType = (session.metadata?.plan_type ?? session.metadata?.plan ?? 'weekly') as 'weekly' | 'season';
         console.log(`stripe-webhook: checkout.session.completed — mode=${session.mode}, plan_type=${planType}`);
 
         if (session.mode === 'subscription' && session.customer && session.subscription) {
-          await syncSubscriptionFromStripe(session.subscription as string, 'weekly');
+          await syncSubscriptionFromStripe(session.subscription as string, planType);
         } else if (session.mode === 'payment' && session.customer) {
           await grantSeasonAccess(session.customer as string, session);
         }
@@ -152,6 +152,15 @@ async function handleEvent(event: Stripe.Event) {
         console.log(`stripe-webhook: invoice.payment_failed — invoice=${invoice.id}`);
         if (invoice.subscription) {
           await syncSubscriptionFromStripe(invoice.subscription as string, 'weekly');
+        }
+        break;
+      }
+
+      case 'charge.refunded': {
+        const charge = event.data.object as Stripe.Charge;
+        console.log(`stripe-webhook: charge.refunded — charge=${charge.id}, payment_intent=${charge.payment_intent}`);
+        if (charge.payment_intent) {
+          await revokeSeasonAccessForRefund(charge.payment_intent as string);
         }
         break;
       }
@@ -261,6 +270,45 @@ async function grantSeasonAccess(customerId: string, session: Stripe.Checkout.Se
 
   if (profileError) {
     console.warn('stripe-webhook: grantSeasonAccess profile update error (non-fatal):', profileError.message);
+  }
+}
+
+async function revokeSeasonAccessForRefund(paymentIntentId: string) {
+  console.log(`stripe-webhook: revokeSeasonAccessForRefund — payment_intent=${paymentIntentId}`);
+
+  try {
+    // Season pass records use stripe_subscription_id = 'season_{session_id}'
+    // We need to find the checkout session that matches this payment intent
+    const sessions = await stripe.checkout.sessions.list({
+      payment_intent: paymentIntentId,
+      limit: 1,
+    });
+
+    const session = sessions.data[0];
+    if (!session) {
+      console.warn(`stripe-webhook: no checkout session found for payment_intent=${paymentIntentId}`);
+      return;
+    }
+
+    const fakeSubId = `season_${session.id}`;
+    console.log(`stripe-webhook: revoking season access for subscription record=${fakeSubId}`);
+
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({
+        status: 'refunded',
+        current_period_end: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('stripe_subscription_id', fakeSubId);
+
+    if (error) {
+      console.error('stripe-webhook: revokeSeasonAccessForRefund update error:', error.message);
+    } else {
+      console.log(`stripe-webhook: season access revoked for session=${session.id}`);
+    }
+  } catch (err: any) {
+    console.error('stripe-webhook: revokeSeasonAccessForRefund error:', err?.message ?? err);
   }
 }
 
