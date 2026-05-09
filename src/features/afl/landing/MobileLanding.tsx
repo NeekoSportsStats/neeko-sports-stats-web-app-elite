@@ -547,7 +547,7 @@ export default function MobileLanding({ isPremium }: Props) {
               color: "#E0AE2D", fontWeight: 700, fontSize: 13.5,
               padding: "12px 20px", borderRadius: 11, textDecoration: "none", minHeight: 46,
             }}>
-              <Crown size={13} /> Unlock Full Season — ${NEEKO_PRICING.season.price}
+              <Crown size={13} /> Get Neeko+ — $59 Full Season
             </Link>
           </div>
 
@@ -706,29 +706,27 @@ export default function MobileLanding({ isPremium }: Props) {
           </h2>
         </div>
 
-        {/* Compact free vs premium comparison strip */}
-        <div style={{
-          display: "grid", gridTemplateColumns: "1fr 1fr",
-          gap: 0,
+        {/* Free vs Neeko+ comparison — 2-col ≥390px, stacked <390px */}
+        <div className="pricing-compare" style={{
           border: "1px solid rgba(255,255,255,0.08)",
           borderRadius: 12, overflow: "hidden",
           marginBottom: 12,
         }}>
-          <div style={{ padding: "12px 14px", background: "rgba(255,255,255,0.02)", borderRight: "1px solid rgba(255,255,255,0.07)" }}>
-            <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.40)", letterSpacing: "0.10em", textTransform: "uppercase" }}>Free</p>
+          <div className="pricing-col pricing-col-free" style={{ padding: "14px 16px", background: "rgba(255,255,255,0.02)" }}>
+            <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.40)", letterSpacing: "0.10em", textTransform: "uppercase" }}>Free</p>
             {FREE_ITEMS.map(item => (
-              <div key={item} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 5 }}>
-                <Check size={9} style={{ color: "#4ade80", flexShrink: 0, marginTop: 2 }} />
-                <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.52)", lineHeight: 1.35 }}>{item}</span>
+              <div key={item} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
+                <Check size={10} style={{ color: "#4ade80", flexShrink: 0, marginTop: 1 }} />
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.52)", lineHeight: 1.4 }}>{item}</span>
               </div>
             ))}
           </div>
-          <div style={{ padding: "12px 14px", background: "rgba(224,174,45,0.04)" }}>
-            <p style={{ margin: "0 0 6px", fontSize: 10, fontWeight: 800, color: "#E0AE2D", letterSpacing: "0.10em", textTransform: "uppercase" }}>Neeko+</p>
+          <div className="pricing-col pricing-col-premium" style={{ padding: "14px 16px", background: "rgba(224,174,45,0.04)" }}>
+            <p style={{ margin: "0 0 8px", fontSize: 10, fontWeight: 800, color: "#E0AE2D", letterSpacing: "0.10em", textTransform: "uppercase" }}>Neeko+</p>
             {PREMIUM_ITEMS.map(item => (
-              <div key={item} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 5 }}>
-                <Check size={9} style={{ color: "#E0AE2D", flexShrink: 0, marginTop: 2 }} />
-                <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.68)", lineHeight: 1.35 }}>{item}</span>
+              <div key={item} style={{ display: "flex", alignItems: "flex-start", gap: 6, marginBottom: 6 }}>
+                <Check size={10} style={{ color: "#E0AE2D", flexShrink: 0, marginTop: 1 }} />
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.68)", lineHeight: 1.4 }}>{item}</span>
               </div>
             ))}
           </div>
@@ -752,25 +750,28 @@ export default function MobileLanding({ isPremium }: Props) {
           </div>
 
           {/* Price row */}
-          <div style={{ marginBottom: 4 }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
+          <div style={{ marginBottom: 6 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
               <span style={{ fontSize: 34, fontWeight: 900, color: "#E0AE2D", letterSpacing: "-0.04em", lineHeight: 1 }}>${NEEKO_PRICING.season.price}</span>
-              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.38)" }}>AUD</span>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.38)" }}>AUD · one-time</span>
             </div>
-            <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.32)" }}>or ${NEEKO_PRICING.weekly.price}/week — pay as you go</p>
+            <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.35)" }}>
+              Season Pass · full 2026 season.
+            </p>
           </div>
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.38)", margin: "0 0 14px" }}>Season Pass · one-time · full 2026 season.</p>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", margin: "0 0 14px", fontStyle: "italic" }}>
+            Or ${NEEKO_PRICING.weekly.price}/week — pay as you go, cancel any time.
+          </p>
 
           <Link to="/neeko-plus" style={{
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            padding: "14px 16px", borderRadius: 11, minHeight: 50,
+            padding: "14px 16px", borderRadius: 11, minHeight: 50, width: "100%", boxSizing: "border-box",
             background: "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
-            color: "#130c00", fontSize: 14.5, fontWeight: 900,
+            color: "#130c00", fontSize: 15, fontWeight: 900,
             textDecoration: "none", letterSpacing: "0.01em",
             boxShadow: "0 4px 18px rgba(224,174,45,0.28)",
-            whiteSpace: "nowrap",
           }}>
-            Get Neeko+ — Full Season <ArrowRight size={14} />
+            Get Neeko+ — $59 Full Season <ArrowRight size={14} />
           </Link>
           <p style={{ textAlign: "center", fontSize: 10.5, color: "rgba(255,255,255,0.26)", margin: "8px 0 0" }}>
             One-time payment. No subscription.
@@ -800,10 +801,10 @@ export default function MobileLanding({ isPremium }: Props) {
           <Link to="/neeko-plus" style={{
             display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
             background: "rgba(224,174,45,0.08)", border: "1px solid rgba(224,174,45,0.22)",
-            color: "rgba(224,174,45,0.82)", fontWeight: 700, fontSize: 13.5,
-            padding: "12px 20px", borderRadius: 11, textDecoration: "none", minHeight: 46,
+            color: "rgba(224,174,45,0.88)", fontWeight: 700, fontSize: 14,
+            padding: "13px 20px", borderRadius: 11, textDecoration: "none", minHeight: 48,
           }}>
-            <Crown size={13} /> Get Neeko+ — ${NEEKO_PRICING.season.price} full season
+            <Crown size={13} /> Get Neeko+ — $59 Full Season
           </Link>
         </div>
       </section>
@@ -812,6 +813,15 @@ export default function MobileLanding({ isPremium }: Props) {
         @keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
         .live-dot { animation: livePulse 1.8s ease-in-out infinite; }
         @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+        /* Pricing comparison: stack on narrow, side-by-side on wider */
+        .pricing-compare { display: flex; flex-direction: column; }
+        .pricing-col-free { border-bottom: 1px solid rgba(255,255,255,0.07); }
+        @media (min-width: 390px) {
+          .pricing-compare { flex-direction: row; }
+          .pricing-col { flex: 1; min-width: 0; }
+          .pricing-col-free { border-bottom: none; border-right: 1px solid rgba(255,255,255,0.07); }
+        }
       `}</style>
     </div>
   );
