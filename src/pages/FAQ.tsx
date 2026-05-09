@@ -261,6 +261,7 @@ export default function FAQ() {
         <meta property="og:title" content="FAQ | Neeko Sports Stats" />
         <meta property="og:description" content="Answers about Neeko Sports Stats, Stat Board, Fantasy Hub, Neeko+, billing, privacy and account access." />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta name="robots" content="index, follow" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="FAQ | Neeko Sports Stats" />
         <meta name="twitter:description" content="Answers about Neeko Sports Stats, Stat Board, Fantasy Hub, Neeko+, billing, privacy and account access." />

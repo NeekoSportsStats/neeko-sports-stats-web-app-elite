@@ -101,6 +101,7 @@ export default function About() {
         <meta property="og:title" content="About Neeko Sports Stats | AFL Stats, Rankings &amp; Fantasy Intelligence" />
         <meta property="og:description" content="Learn how Neeko Sports Stats tracks AFL player data, projections, prices, rankings, team trends and fantasy signals to support smarter weekly decisions." />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta name="robots" content="index, follow" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="About Neeko Sports Stats | AFL Stats, Rankings &amp; Fantasy Intelligence" />
         <meta name="twitter:description" content="Learn how Neeko Sports Stats tracks AFL player data, projections, prices, rankings, team trends and fantasy signals to support smarter weekly decisions." />

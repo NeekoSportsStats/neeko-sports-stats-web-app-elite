@@ -922,7 +922,7 @@ export default function AFLRoundEdgeBoard() {
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://neekostats.com.au/fantasy/market-watch" />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
-        <meta property="og:site_name" content="Neeko Sports" />
+        <meta property="og:site_name" content="Neeko Sports Stats" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="AFL Fantasy Market Watch 2026 — Price Movers & Value Targets | Neeko Sports Stats" />
         <meta name="twitter:description" content="Track AFL Fantasy price movers, value targets, trap alerts and underpriced players using weekly stat-generated market signals." />

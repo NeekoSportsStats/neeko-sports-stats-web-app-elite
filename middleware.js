@@ -453,9 +453,9 @@ function getPageMeta(pathname) {
 
   if (p === "/sports/afl/teams") {
     return {
-      title: "AFL Fantasy Team Directory 2026 — All 18 Teams | Neeko Sports Stats",
+      title: "AFL Teams 2026 — Team Stats, Rosters & Player Profiles | Neeko Sports Stats",
       description:
-        "Browse all 18 AFL teams for 2026. Team rosters, player projections, fantasy signals and trade targets powered by Neeko Sports Stats.",
+        "Browse AFL teams for 2026 with team stats, player rosters, scoring profiles and links to individual player pages.",
       canonical: `${DOMAIN}/sports/afl/teams`,
     };
   }

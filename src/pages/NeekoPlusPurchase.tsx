@@ -558,6 +558,7 @@ const NeekoPlusPurchase = () => {
     "@type": "Product",
     "name": "Neeko+",
     "description": "Premium AFL stats intelligence. Full Stat Board, player rankings, player intelligence breakdowns, breakeven scores, captain signals, breakout alerts and trade targets.",
+    "image": "https://neekostats.com.au/og-default.png",
     "url": "https://neekostats.com.au/neeko-plus",
     "brand": { "@type": "Brand", "name": "Neeko Sports Stats" },
     "offers": [
@@ -598,6 +599,7 @@ const NeekoPlusPurchase = () => {
         <meta property="og:description" content={`Full AFL stats and fantasy edge. Season Pass $${NEEKO_PRICING.season.price} AUD — updated every round.`} />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
         <meta name="twitter:card" content="summary_large_image" />
+        <meta name="robots" content="index, follow" />
         <script type="application/ld+json">{JSON.stringify(productSchema)}</script>
       </Helmet>
 
