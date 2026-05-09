@@ -447,7 +447,7 @@ export default function MobileLanding({ isPremium }: Props) {
       <section style={{
         position: "relative",
         background: "linear-gradient(180deg, #09090b 0%, #080c0a 100%)",
-        padding: "32px 16px 28px",
+        padding: "24px 16px 20px",
         overflow: "hidden",
       }}>
         {/* Ambient glow */}
@@ -493,19 +493,19 @@ export default function MobileLanding({ isPremium }: Props) {
               color: "rgba(255,255,255,0.70)", fontWeight: 700, fontSize: 14,
               padding: "13px 20px", borderRadius: 11, textDecoration: "none", minHeight: 48,
             }}>
-              Unlock Full Round
+              Unlock Full Round with Neeko+
             </Link>
           </div>
 
           {/* Premium hook */}
-          <p style={{ textAlign: "center", fontSize: 11.5, color: "rgba(255,255,255,0.38)", lineHeight: 1.5, marginBottom: 24 }}>
+          <p style={{ textAlign: "center", fontSize: 11.5, color: "rgba(255,255,255,0.38)", lineHeight: 1.5, marginBottom: 16 }}>
             Free preview available.{" "}
-            <span style={{ color: "rgba(224,174,45,0.70)", fontWeight: 600 }}>Neeko+ unlocks every match and full history.</span>
+            <span style={{ color: "rgba(224,174,45,0.70)", fontWeight: 600 }}>Neeko+ unlocks every match, every player and full history.</span>
           </p>
 
           {/* Compact preview */}
-          <div style={{ marginBottom: 8 }}>
-            <p style={{ textAlign: "center", fontSize: 9, color: "rgba(255,255,255,0.28)", marginBottom: 10, letterSpacing: "0.10em", textTransform: "uppercase" }}>
+          <div style={{ marginBottom: 4 }}>
+            <p style={{ textAlign: "center", fontSize: 9, color: "rgba(255,255,255,0.28)", marginBottom: 8, letterSpacing: "0.10em", textTransform: "uppercase" }}>
               Disposals · 20+ threshold · current round
             </p>
             <MobileCompactPreview />
@@ -514,7 +514,7 @@ export default function MobileLanding({ isPremium }: Props) {
       </section>
 
       {/* ─── TRUST ROW ─── */}
-      <section style={{ background: "#0d0f0c", padding: "16px" }}>
+      <section style={{ background: "#0d0f0c", padding: "12px 16px" }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
           {[
             { icon: <Zap size={10} />, text: "Updated before lockout" },
@@ -535,7 +535,7 @@ export default function MobileLanding({ isPremium }: Props) {
       </section>
 
       {/* ─── HOW IT WORKS ─── */}
-      <section style={{ background: "#0c0e0b", padding: "28px 16px 32px" }}>
+      <section style={{ background: "#0c0e0b", padding: "22px 16px 24px" }}>
         <div style={{ textAlign: "center", marginBottom: 18 }}>
           <p style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(34,197,94,0.55)", marginBottom: 6 }}>How it works</p>
           <h2 style={{ fontSize: "1.2rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15, margin: 0 }}>
@@ -584,7 +584,7 @@ export default function MobileLanding({ isPremium }: Props) {
       </section>
 
       {/* ─── STAT LENSES ─── */}
-      <section style={{ background: "#09090b", padding: "28px 16px 32px" }}>
+      <section style={{ background: "#09090b", padding: "22px 16px 24px" }}>
         <div style={{ textAlign: "center", marginBottom: 18 }}>
           <p style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(255,255,255,0.32)", marginBottom: 6 }}>Stats available</p>
           <h2 style={{ fontSize: "1.2rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15, margin: 0 }}>
@@ -635,15 +635,15 @@ export default function MobileLanding({ isPremium }: Props) {
       <section style={{
         background: "#0c0e0b",
         backgroundImage: "radial-gradient(circle at 50% 0%, rgba(255,180,50,0.04), transparent 55%)",
-        padding: "28px 16px 32px",
+        padding: "22px 16px 24px",
       }}>
         <div style={{ textAlign: "center", marginBottom: 18 }}>
           <p style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(244,197,66,0.60)", marginBottom: 6 }}>Fantasy Hub</p>
           <h2 style={{ fontSize: "1.2rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#E8E8E8", lineHeight: 1.15, margin: "0 0 6px" }}>
-            Need fantasy-specific calls?
+            Make smarter fantasy decisions.
           </h2>
           <p style={{ fontSize: 12.5, color: "rgba(255,255,255,0.42)", lineHeight: 1.5, margin: "0 auto", maxWidth: 280 }}>
-            Must Buys, Trap Alerts, Captain Picks and Rankings — updated before every lockout.
+            Must Buys, Trap Alerts, Captain Picks and Rankings — all updated before every lockout.
           </p>
         </div>
 
@@ -702,7 +702,7 @@ export default function MobileLanding({ isPremium }: Props) {
       </section>
 
       {/* ─── FREE vs NEEKO+ ─── */}
-      <section style={{ background: "#09090b", padding: "28px 16px 32px" }}>
+      <section style={{ background: "#09090b", padding: "22px 16px 24px" }}>
         <div style={{ textAlign: "center", marginBottom: 18 }}>
           <p style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(224,174,45,0.60)", marginBottom: 6 }}>Pricing</p>
           <h2 style={{ fontSize: "1.2rem", fontWeight: 900, letterSpacing: "-0.025em", color: "#F0F0F0", lineHeight: 1.15, margin: 0 }}>
@@ -759,25 +759,24 @@ export default function MobileLanding({ isPremium }: Props) {
           </div>
 
           <div style={{ marginBottom: 14 }}>
-            <p style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: "0.32em", textTransform: "uppercase", color: "rgba(224,174,45,0.65)", margin: "0 0 8px" }}>Neeko+</p>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 8 }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
-                  <span style={{ fontSize: 28, fontWeight: 900, color: "#E0AE2D", letterSpacing: "-0.03em" }}>${NEEKO_PRICING.season.price}</span>
-                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.38)" }}>AUD</span>
-                </div>
-                <p style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", margin: "2px 0 0" }}>Season Pass — one-time</p>
+            <p style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: "0.32em", textTransform: "uppercase", color: "rgba(224,174,45,0.65)", margin: "0 0 10px" }}>Neeko+</p>
+            {/* Primary — Season Pass */}
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                <span style={{ fontSize: 36, fontWeight: 900, color: "#E0AE2D", letterSpacing: "-0.04em", lineHeight: 1 }}>${NEEKO_PRICING.season.price}</span>
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.40)" }}>AUD</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center" }}>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)" }}>or</span>
-              </div>
-              <div>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
-                  <span style={{ fontSize: 22, fontWeight: 900, color: "rgba(255,255,255,0.55)", letterSpacing: "-0.03em" }}>${NEEKO_PRICING.weekly.price}</span>
-                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>AUD/week</span>
-                </div>
-                <p style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", margin: "2px 0 0" }}>Weekly plan</p>
-              </div>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.42)", margin: "3px 0 0" }}>Season Pass — one-time payment. Full {new Date().getFullYear()} season.</p>
+            </div>
+            {/* Secondary — Weekly */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "8px 12px", borderRadius: 8,
+              background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)",
+            }}>
+              <span style={{ fontSize: 16, fontWeight: 800, color: "rgba(255,255,255,0.50)", letterSpacing: "-0.02em" }}>${NEEKO_PRICING.weekly.price}</span>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.32)" }}>AUD/week</span>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.22)", marginLeft: "auto" }}>Weekly plan</span>
             </div>
           </div>
 
@@ -811,7 +810,7 @@ export default function MobileLanding({ isPremium }: Props) {
       {/* ─── FINAL CTA ─── */}
       <section style={{
         background: "linear-gradient(180deg, #09090b 0%, #050807 100%)",
-        padding: "40px 16px 56px",
+        padding: "28px 16px 40px",
         position: "relative", overflow: "hidden",
       }}>
         <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 70% 60% at 50% 60%, rgba(34,197,94,0.05) 0%, transparent 70%)", pointerEvents: "none" }} />
