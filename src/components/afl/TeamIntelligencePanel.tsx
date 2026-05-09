@@ -1,6 +1,7 @@
 import { Sparkles, Lock } from "lucide-react";
 import { cleanAiText } from "@/utils/cleanAiText";
 import type { TeamIntelligence } from "@/hooks/useTeamIntelligence";
+import { TEAM_AI_PROMPT_VERSION } from "@/constants/aiVersions";
 
 interface StatFallback {
   topPlayerName?: string | null;
@@ -32,7 +33,7 @@ export function TeamIntelligencePanel({
   stats,
   upgradeHref = "/billing",
 }: Props) {
-  const CURRENT_TEAM_VERSION = "generate-team-ai-summaries-v17";
+  const CURRENT_TEAM_VERSION = TEAM_AI_PROMPT_VERSION;
   const isCurrentVersion = intelligence?.prompt_version === CURRENT_TEAM_VERSION;
   const hasSummary = !!intelligence?.summary && isCurrentVersion;
 

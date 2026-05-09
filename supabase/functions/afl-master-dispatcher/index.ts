@@ -43,7 +43,10 @@ Deno.serve(async (req: Request) => {
     console.log(`[master-dispatcher] API call: ${apiUrl}`);
     console.log(`[master-dispatcher] season=${season} week_filter=${weekFilter ?? "ALL"}`);
 
-    const apiRes = await fetch(apiUrl, { headers: apiHeaders });
+    const apiRes = await fetch(apiUrl, {
+      headers: apiHeaders,
+      signal: AbortSignal.timeout(25000),
+    });
 
     if (!apiRes.ok) {
       throw new Error(`Provider API error: HTTP ${apiRes.status}`);

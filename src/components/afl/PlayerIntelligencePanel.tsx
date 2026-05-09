@@ -1,6 +1,7 @@
 import { Sparkles, Lock } from "lucide-react";
 import { cleanAiText } from "@/utils/cleanAiText";
 import type { PlayerIntelligence } from "@/hooks/usePlayerIntelligence";
+import { PLAYER_AI_PROMPT_VERSION } from "@/constants/aiVersions";
 
 interface Props {
   intelligence: PlayerIntelligence | null;
@@ -32,7 +33,7 @@ export function PlayerIntelligencePanel({
   variant = "card",
   upgradeHref = "/billing",
 }: Props) {
-  const CURRENT_PLAYER_VERSION = "generate-player-ai-v17";
+  const CURRENT_PLAYER_VERSION = PLAYER_AI_PROMPT_VERSION;
   const isCurrentVersion = intelligence?.prompt_version === CURRENT_PLAYER_VERSION;
   const hasText = !!(intelligence?.summary_long || intelligence?.summary_short) && isCurrentVersion;
   const displayText = hasText ? (intelligence?.summary_long ?? intelligence?.summary_short ?? null) : null;

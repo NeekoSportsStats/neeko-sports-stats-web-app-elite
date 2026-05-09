@@ -163,7 +163,10 @@ Deno.serve(async (req: Request) => {
         const url = `${apiBase}/games/statistics/players?id=${gameId}`;
         console.log(`[player-stats] Fetching game_id=${gameId} week=${weekNum}: ${url}`);
 
-        const apiRes = await fetch(url, { headers: apiHeaders });
+        const apiRes = await fetch(url, {
+          headers: apiHeaders,
+          signal: AbortSignal.timeout(25000),
+        });
 
         if (!apiRes.ok) {
           console.error(`[player-stats] API error for game ${gameId}: HTTP ${apiRes.status}`);
