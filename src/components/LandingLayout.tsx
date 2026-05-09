@@ -36,7 +36,7 @@ export function LandingLayout() {
 
         {/* LEFT — Logo */}
         <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }}>
-          <img src="/logo.png" alt="Neeko" style={{ height: 40, width: "auto" }} />
+          <img src="/logo.png" alt="Neeko" className="landing-logo" style={{ width: "auto", objectFit: "contain" }} />
         </Link>
 
         {/* CENTER — Nav links — matches Layout.tsx exactly */}
@@ -296,6 +296,11 @@ export function LandingLayout() {
 
       {/* ── RESPONSIVE STYLES ──────────────────────────────────────────── */}
       <style>{`
+        /* Landing logo — desktop prominent, tablet compact */
+        .landing-logo { height: 50px; }
+        @media (max-width: 1023px) {
+          .landing-logo { height: 40px; }
+        }
         /* Hide layout header on mobile where MobileLanding renders its own */
         @media (max-width: 767px) {
           .landing-layout-header { display: none !important; }
