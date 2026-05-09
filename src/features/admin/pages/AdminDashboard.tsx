@@ -206,7 +206,7 @@ function GlobalStatusBanner({ status, loading }: { status: CommandCenterStatus |
 
   const hasDegraded =
     (status.queue_pending ?? 0) > 200 ||
-    (status.ai_missing_players ?? 0) > 100 ||
+    (status.ai_missing_players ?? 0) > 100 ||  // eligible players only — excludes zero-game players
     !status.market_watch_last_refresh ||
     (status.cron_failed_count ?? 0) > 0;
 
@@ -320,7 +320,13 @@ export default function AdminDashboard() {
     {
       label: "AI Coverage",
       value: status ? `${status.ai_analysis_rows.toLocaleString()}` : "—",
-      sub: status ? `${status.ai_missing_players} missing` : "",
+      sub: status
+        ? status.ai_missing_players > 0
+          ? `${status.ai_missing_players} missing eligible`
+          : status.ai_players_excluded
+            ? `${status.ai_players_excluded} excluded (0 games)`
+            : "Full coverage"
+        : "",
       level: (status?.ai_missing_players ?? 999) > 100 ? "warn" as Level : "ok" as Level,
       route: "/admin/command",
     },

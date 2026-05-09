@@ -8,6 +8,7 @@ export interface CommandCenterStatus {
   pipeline_health: string;
   ai_analysis_rows: number;
   ai_missing_players: number;
+  ai_players_excluded: number | null;
   ai_last_updated: string | null;
   ai_last_generation: string | null;
   reco_rows: number;

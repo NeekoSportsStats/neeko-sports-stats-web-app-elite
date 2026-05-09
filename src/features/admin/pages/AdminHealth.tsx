@@ -1052,7 +1052,15 @@ export default function AdminHealth() {
               <h3 className="text-xs font-semibold text-foreground">Confidence by Stage</h3>
               <ConfidenceBar pct={pipelineConfidence} label="AFL Pipeline" note={pipelineHealth?.latest_status === "failed" ? `Last run failed — ${pipelineHealth.last_error ?? "unknown error"}` : pipelineHealth?.last_pipeline_run ? `Last run ${fmtTs(pipelineHealth.last_pipeline_run)}` : "No recent run"} />
               <ConfidenceBar pct={rankingsConfidence} label="Rankings Cache" note={`${cmdStatus?.rankings_cache_rows?.toLocaleString() ?? 0} of ~700 players cached`} />
-              <ConfidenceBar pct={aiConfidence} label="AI Generation" note={`${cmdStatus?.ai_analysis_rows?.toLocaleString() ?? 0} analysed — ${cmdStatus?.ai_missing_players?.toLocaleString() ?? 0} missing`} />
+              <ConfidenceBar pct={aiConfidence} label="AI Generation" note={
+                cmdStatus
+                  ? cmdStatus.ai_missing_players > 0
+                    ? `${cmdStatus.ai_analysis_rows.toLocaleString()} covered — ${cmdStatus.ai_missing_players} eligible missing`
+                    : cmdStatus.ai_players_excluded
+                      ? `${cmdStatus.ai_analysis_rows.toLocaleString()} covered — ${cmdStatus.ai_players_excluded} excluded (0 games)`
+                      : `${cmdStatus.ai_analysis_rows.toLocaleString()} covered — full eligible coverage`
+                  : "—"
+              } />
               <ConfidenceBar pct={mwConfidence} label="Market Watch" note={cmdStatus?.market_watch_last_refresh ? `Last refresh ${fmtTs(cmdStatus.market_watch_last_refresh)}` : "Never refreshed"} />
             </div>
           )}
@@ -1303,10 +1311,12 @@ export default function AdminHealth() {
             {/* Player AI */}
             {(() => {
               const p = aiHealthSummary?.player_ai;
+              // All counts are eligible-only (games_played > 0) — zero-game players are excluded
               const total = p?.total_rows ?? 0;
               const withSummary = p?.with_summary ?? 0;
               const missing = p?.missing ?? 0;
               const stale = p?.stale ?? 0;
+              const excluded = p?.excluded_from_ai ?? 0;
               const coverage = total > 0 ? Math.round((withSummary / total) * 100) : 0;
               const cardStatus: StatusLevel = pipelineLoading ? "loading"
                 : missing > 300 ? "error"
@@ -1314,15 +1324,18 @@ export default function AdminHealth() {
                 : "ok";
               return (
                 <HealthCard icon={Bot} title="Player AI" status={cardStatus} loading={pipelineLoading}>
-                  <StatRow label="Total rows" value={total.toLocaleString()} />
-                  <StatRow label="With summary" value={withSummary.toLocaleString()} highlight={withSummary >= 400 ? "good" : "warn"} />
-                  <StatRow label="Missing" value={missing.toLocaleString()} highlight={missing === 0 ? "good" : missing < 50 ? "warn" : "bad"} />
-                  <StatRow label="Stale" value={stale.toLocaleString()} highlight={stale === 0 ? "good" : stale < 100 ? "warn" : "bad"} />
+                  <StatRow label="Eligible players" value={total.toLocaleString()} />
+                  <StatRow label="Covered" value={withSummary.toLocaleString()} highlight={withSummary >= 400 ? "good" : "warn"} />
+                  <StatRow label="Missing eligible" value={missing.toLocaleString()} highlight={missing === 0 ? "good" : missing < 50 ? "warn" : "bad"} />
+                  <StatRow label="Stale / needs regen" value={stale.toLocaleString()} highlight={stale === 0 ? "good" : stale < 100 ? "warn" : "bad"} />
                   <StatRow label="Coverage" value={`${coverage}%`} highlight={coverage >= 80 ? "good" : coverage >= 50 ? "warn" : "bad"} />
+                  {excluded > 0 && (
+                    <StatRow label="Excluded (0 games)" value={excluded.toLocaleString()} />
+                  )}
                   <StatRow label="Last generated" value={fmtTs(p?.last_generated_at)} />
                   <StatRow label="Prompt version" value={p?.prompt_version ?? "—"} />
                   <p className="text-[10px] text-muted-foreground mt-2 pt-2 border-t border-border/30">
-                    Source: <span className="font-mono">ai.player_ai_analysis</span>. Generated daily at 15:05 UTC via the Neeko AI pipeline. Refreshed into rankings cache before the front end reads it.
+                    Counts eligible players only (games_played &gt; 0). Zero-game players are intentionally excluded from AI — they are not a coverage gap.
                   </p>
                 </HealthCard>
               );
