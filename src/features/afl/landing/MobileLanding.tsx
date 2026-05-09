@@ -89,7 +89,7 @@ function LeftDrawer({ open, onClose, isPremium }: { open: boolean; onClose: () =
             onClick={onClose}
             aria-label="Close menu"
             style={{
-              width: 36, height: 36,
+              width: 40, height: 40,
               background: "rgba(255,255,255,0.06)",
               border: "1px solid rgba(255,255,255,0.10)",
               borderRadius: 9,
@@ -545,7 +545,7 @@ export default function MobileLanding({ isPremium }: Props) {
               display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
               background: "rgba(224,174,45,0.09)", border: "1px solid rgba(224,174,45,0.24)",
               color: "#E0AE2D", fontWeight: 700, fontSize: 13.5,
-              padding: "12px 20px", borderRadius: 11, textDecoration: "none", minHeight: 46,
+              padding: "12px 20px", borderRadius: 11, textDecoration: "none", minHeight: 48,
             }}>
               <Crown size={13} /> Get Neeko+ — $59 Full Season
             </Link>
@@ -655,7 +655,7 @@ export default function MobileLanding({ isPremium }: Props) {
         background: "#0c0e0b",
         padding: "18px 16px 20px",
       }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12, gap: 8 }}>
           <div>
             <p style={{ fontSize: 8.5, fontWeight: 900, letterSpacing: "0.35em", textTransform: "uppercase", color: "rgba(244,197,66,0.60)", margin: "0 0 3px" }}>Fantasy Hub</p>
             <h2 style={{ fontSize: "1.1rem", fontWeight: 900, letterSpacing: "-0.022em", color: "#E8E8E8", lineHeight: 1.15, margin: 0 }}>
