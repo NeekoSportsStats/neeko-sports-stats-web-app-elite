@@ -11,14 +11,11 @@ import LandingTrust from "@/features/afl/landing/LandingTrust";
 import LandingPricing from "@/features/afl/landing/LandingPricing";
 import LandingFinalCTA from "@/features/afl/landing/LandingFinalCTA";
 import MobileLanding from "@/features/afl/landing/MobileLanding";
-import { classifyPlayers } from "@/features/afl/market-watch/engine";
-import type { MWPlayerRow } from "@/features/afl/market-watch/types";
 import { getCaptainScore, isCaptainEligible } from "@/features/afl/shared/data/captainScoring";
 import type { StatBoardPlayer, StatBoardMatch } from "@/features/afl/stat-board/types";
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 const DARK = "#05070A";
-const GOLD = "#F4C542";
 
 // ── Stat Board live preview ───────────────────────────────────────────────────
 
@@ -332,39 +329,6 @@ function SkeletonCard() {
   );
 }
 
-// ── RankingRow → MWPlayerRow ─────────────────────────────────────────────────
-function rankingToMW(r: RankingRow): MWPlayerRow {
-  const acRaw = (r.action_canonical ?? "").toLowerCase();
-  const displaySignal: "TARGET" | "WATCH" | "AVOID" =
-    acRaw === "start" || acRaw === "smash_start" || acRaw === "strong_start" ? "TARGET"
-    : acRaw === "sit" || acRaw === "hard_sit" ? "AVOID"
-    : "WATCH";
-  return {
-    player_id: Number(r.player_id ?? 0), player_name: r.player_name,
-    team: r.team ?? "", team_name: r.team_name ?? r.team ?? "",
-    position: r.position ?? "", price: r.price ?? 0,
-    prev_price: r.prev_price ?? null, price_change: r.price_change ?? null,
-    price_change_pct: r.price_change_pct ?? null, projection: r.projection ?? null,
-    season_avg: r.season_avg ?? null, last_3_avg: r.last_3_avg ?? null,
-    last_5_avg: null, games_played: r.games_played ?? null,
-    breakeven: r.breakeven ?? null, edge: r.edge ?? r.edge_canonical ?? null,
-    value_score: r.value_score ?? null, signal: r.signal ?? null,
-    signal_tag: r.signal_tag ?? null, signal_display: r.signal_display ?? null,
-    category: r.category ?? null, action: r.action ?? r.action_canonical ?? null,
-    action_canonical: r.action_canonical ?? null, action_display: r.action_display ?? null,
-    confidence_label: r.confidence_label ?? null, value_band: r.value_band ?? null,
-    decision_score: r.decision_score ?? null, action_reason_1: r.action_reason_1 ?? null,
-    action_reason_2: r.action_reason_2 ?? null, why: r.why ?? null,
-    why_long: r.why_long ?? null, matchup_label: r.matchup_label ?? null,
-    matchup_rating: null, matchup_multiplier: r.matchup_multiplier ?? null,
-    consistency: r.consistency ?? null, neeko_rating: r.neeko_rating ?? null,
-    status: r.status ?? null, manual_status: r.manual_status ?? null,
-    is_bye: r.is_bye ?? false, is_injured: r.is_injured ?? false,
-    cached_at: r.cached_at ?? null, display_signal: displaySignal,
-    access_tier: r.access_tier ?? "locked",
-  };
-}
-
 // ── Main component ────────────────────────────────────────────────────────────
 export default function Index() {
   const { isPremium } = useAuth();
@@ -401,21 +365,27 @@ export default function Index() {
   }, [loading]);
 
   useEffect(() => {
+    if (!supabase) { setLoading(false); return; }
     (async () => {
-      const [rankingsRes, roundRes] = await Promise.all([
-        supabase.rpc("get_rankings_safe", { p_user_id: null, p_is_bot: false, p_limit: 200 }),
-        supabase.rpc("get_latest_completed_round"),
-      ]);
-      if (rankingsRes.data) setPlayers((rankingsRes.data as Record<string, unknown>[]).map(mapRankingRow));
-      if (roundRes.data != null) {
-        const safeRound = roundRes.data > 0 ? roundRes.data : 6;
-        setCurrentRound(safeRound);
+      try {
+        const [rankingsRes, roundRes] = await Promise.all([
+          supabase.rpc("get_rankings_safe", { p_user_id: null, p_is_bot: false, p_limit: 200 }),
+          supabase.rpc("get_latest_completed_round"),
+        ]);
+        if (rankingsRes.data) setPlayers((rankingsRes.data as Record<string, unknown>[]).map(mapRankingRow));
+        if (roundRes.data != null) {
+          const safeRound = roundRes.data > 0 ? roundRes.data : 6;
+          setCurrentRound(safeRound);
+        }
+      } catch {
+        // silently fail — page shows empty/fallback states
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, []);
 
-  const { mustBuyP, trapP, captainP, breakoutP, topRows } = useMemo(() => {
+  const { mustBuyP, trapP, captainP, breakoutP } = useMemo(() => {
     const allWithProjection = players.filter(p => p.projection != null && !p.is_injured && !p.is_bye);
     const byProjectionDesc = [...allWithProjection].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0));
 
@@ -448,17 +418,7 @@ export default function Index() {
       ?? byProjectionDesc.filter(p => !usedIds2.has(p.player_id))[0]
       ?? byProjectionDesc[3] ?? null;
 
-    const topRows = players.filter(p => p.projection != null)
-      .sort((a, b) => (b.neeko_rating ?? b.projection ?? 0) - (a.neeko_rating ?? a.projection ?? 0))
-      .slice(0, 12);
-
-    return { mustBuyP, trapP, captainP, breakoutP, topRows };
-  }, [players]);
-
-  const mwData = useMemo(() => {
-    if (!players.length) return { buys: [], holds: [], sells: [] };
-    const classified = classifyPlayers(players.map(rankingToMW));
-    return { buys: classified.buys.slice(0, 5), holds: classified.holds.slice(0, 5), sells: classified.sells.slice(0, 5) };
+    return { mustBuyP, trapP, captainP, breakoutP };
   }, [players]);
 
   function confidenceOf(p: RankingRow | null): string | null {
@@ -508,14 +468,6 @@ export default function Index() {
       ctaLabel: "Open Fantasy Hub", ctaTo: "/fantasy",
     },
   ] : [];
-
-  const mobileCards = fantasyCards.map(c => ({
-    label: c.label, color: CARD_ACCENTS[c.accentIdx].color,
-    playerName: c.playerName, team: c.team, position: c.position,
-    projection: c.projection, seasonAvg: c.seasonAvg ?? null,
-    confidenceLabel: c.confidenceLabel ?? null,
-    reason: c.reason, ctaLabel: c.ctaLabel, ctaTo: c.ctaTo,
-  }));
 
   const trustItems = [
     { icon: <Zap size={12} />,      text: "Updated before every round lockout" },
