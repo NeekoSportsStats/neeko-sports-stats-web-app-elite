@@ -26,7 +26,7 @@
     { "source": "/sports/afl/market-watch", "destination": "/fantasy/market-watch", "permanent": true },
     { "source": "/sports/afl/edge-board",   "destination": "/fantasy/edge-board",   "permanent": true },
     { "source": "/sports/afl/current-round","destination": "/fantasy/current-week", "permanent": true },
-    { "source": "/sports/afl/captains",     "destination": "/fantasy/captains",     "permanent": true },
+    { "source": "/sports/afl/captains",     "destination": "/fantasy/current-week", "permanent": true },
     { "source": "/sports/afl/start-sit",    "destination": "/fantasy",              "permanent": true },
     { "source": "/products/:path*", "destination": "/404", "permanent": false },
     { "source": "/nba/:path*",      "destination": "/404", "permanent": false },

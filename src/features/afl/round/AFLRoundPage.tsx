@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
 import { TrendingUp, Star, TriangleAlert as AlertTriangle, Target, ArrowRight } from "lucide-react";
 import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from "@/utils/aflEdgeSignal";
+import { playerToSlug } from "@/lib/slugs";
 
 interface RoundPlayer {
   player_id: string;
@@ -215,7 +216,7 @@ export default function AFLRoundPage() {
                 {topCaptains.map((p, i) => (
                   <Link
                     key={p.player_id}
-                    to={`/sports/afl/players/${p.player_id}`}
+                    to={`/sports/afl/players/${playerToSlug(p.player_name, p.team)}`}
                     className="flex items-center gap-3 bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors"
                   >
                     <span className="text-xs text-white/20 w-4 shrink-0">{i + 1}</span>
@@ -267,7 +268,7 @@ export default function AFLRoundPage() {
                 {posPlayers.map((p, i) => (
                   <Link
                     key={p.player_id}
-                    to={`/sports/afl/players/${p.player_id}`}
+                    to={`/sports/afl/players/${playerToSlug(p.player_name, p.team)}`}
                     className="flex items-center gap-3 bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors"
                   >
                     <span className="text-xs text-white/20 w-4 shrink-0">{i + 1}</span>
@@ -308,7 +309,7 @@ export default function AFLRoundPage() {
                 {topValue.map((p, i) => (
                   <Link
                     key={p.player_id}
-                    to={`/sports/afl/players/${p.player_id}`}
+                    to={`/sports/afl/players/${playerToSlug(p.player_name, p.team)}`}
                     className="flex items-center gap-3 bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors"
                   >
                     <span className="text-xs text-white/20 w-4 shrink-0">{i + 1}</span>
@@ -350,7 +351,7 @@ export default function AFLRoundPage() {
                 {traps.map((p, i) => (
                   <Link
                     key={p.player_id}
-                    to={`/sports/afl/players/${p.player_id}`}
+                    to={`/sports/afl/players/${playerToSlug(p.player_name, p.team)}`}
                     className="flex items-center gap-3 bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors"
                   >
                     <span className="text-xs text-white/20 w-4 shrink-0">{i + 1}</span>

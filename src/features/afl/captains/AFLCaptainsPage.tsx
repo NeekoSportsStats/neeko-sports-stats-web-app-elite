@@ -407,11 +407,11 @@ export default function AFLCaptainsPage() {
       <Helmet>
         <title>{pageTitle}</title>
         <meta name="description" content="AFL Fantasy captain picks this round — LOCK, SAFE and POD options ranked by Neeko's projection model, confidence, and matchup data." />
-        <link rel="canonical" href="https://neekostats.com.au/fantasy/captains" />
-        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://neekostats.com.au/fantasy/current-week" />
+        <meta name="robots" content="noindex, nofollow" />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content="AFL Fantasy captain picks this round — LOCK, SAFE and POD options ranked by Neeko's projection model, confidence, and matchup data." />
-        <meta property="og:url" content="https://neekostats.com.au/fantasy/captains" />
+        <meta property="og:url" content="https://neekostats.com.au/fantasy/current-week" />
         <meta property="og:type" content="website" />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
         <meta property="og:site_name" content="Neeko Sports Stats" />

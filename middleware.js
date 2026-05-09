@@ -9,7 +9,6 @@ export const config = {
     "/fantasy/rankings",
     "/fantasy/market-watch",
     "/fantasy/current-week",
-    "/fantasy/captains",
     "/fantasy/edge-board",
     "/stat-board",
     "/stat-board/players",
@@ -136,10 +135,11 @@ function getPageMeta(pathname) {
 
   if (p === "/fantasy/captains") {
     return {
-      title: "AFL Fantasy Captain Picks 2026 — Lock, Safe & POD Options | Neeko Sports Stats",
+      title: "AFL Fantasy Current Round 2026 — Captain Picks, Must Buys & Traps | Neeko Sports Stats",
       description:
-        "AFL Fantasy captain picks ranked by projection, ceiling, recent form and confidence for the current round.",
-      canonical: `${DOMAIN}/fantasy/captains`,
+        "Current round AFL Fantasy cheat sheet with captain picks, value plays, trap alerts and weekly projection-based decision tools.",
+      canonical: `${DOMAIN}/fantasy/current-week`,
+      noindex: true,
     };
   }
 
@@ -262,10 +262,11 @@ function getPageMeta(pathname) {
 
   if (p === "/sports/afl/captains") {
     return {
-      title: "AFL Fantasy Captain Picks 2026 — Lock, Safe & POD Options | Neeko Sports Stats",
+      title: "AFL Fantasy Current Round 2026 — Captain Picks, Must Buys & Traps | Neeko Sports Stats",
       description:
-        "AFL Fantasy captain picks ranked by projection, ceiling, recent form and confidence for the current round.",
-      canonical: `${DOMAIN}/fantasy/captains`,
+        "Current round AFL Fantasy cheat sheet with captain picks, value plays, trap alerts and weekly projection-based decision tools.",
+      canonical: `${DOMAIN}/fantasy/current-week`,
+      noindex: true,
     };
   }
 
