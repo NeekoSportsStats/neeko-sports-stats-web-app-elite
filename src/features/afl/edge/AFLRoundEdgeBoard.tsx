@@ -766,9 +766,9 @@ function CollapsibleSEOGuide() {
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/30 mb-2">For this round</h3>
             <p className="text-[12px] text-white/45 leading-relaxed">
               Edge Board picks refresh weekly after price changes are applied. Use the{" "}
-              <a href="/sports/afl/current-round" className="text-white/60 underline underline-offset-2 hover:text-white transition-colors">Current Round</a>{" "}
+              <a href="/fantasy/current-week" className="text-white/60 underline underline-offset-2 hover:text-white transition-colors">Current Round</a>{" "}
               for the full player landscape, or the{" "}
-              <a href="/sports/afl/rankings" className="text-white/60 underline underline-offset-2 hover:text-white transition-colors">AFL Fantasy Rankings</a>{" "}
+              <a href="/fantasy/rankings" className="text-white/60 underline underline-offset-2 hover:text-white transition-colors">AFL Fantasy Rankings</a>{" "}
               for the complete player pool ordered by Neeko Rating.
             </p>
           </div>
@@ -1067,7 +1067,7 @@ export default function AFLRoundEdgeBoard() {
               <p className="text-[12px] text-white/40 mt-0.5">Browse all captain picks, value plays, and form analysis for every player.</p>
             </div>
             <a
-              href="/sports/afl/current-round"
+              href="/fantasy/current-week"
               className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-white/15 bg-white/[0.04] text-[12px] font-bold text-white/70 hover:text-white hover:border-white/25 hover:bg-white/[0.07] transition-all whitespace-nowrap"
             >
               View Full Round
