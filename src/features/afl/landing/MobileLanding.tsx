@@ -256,7 +256,7 @@ function MobileHeader({ onMenuOpen, isPremium }: { onMenuOpen: () => void; isPre
 
       {/* Logo */}
       <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", flex: 1 }}>
-        <img src="/logo.png" alt="Neeko Sports" style={{ height: 32, width: "auto" }} />
+        <img src="/logo.png" alt="Neeko Sports" style={{ height: 36, width: "auto", maxHeight: 36 }} />
       </Link>
 
       {/* Neeko+ CTA — only when not premium */}
@@ -265,14 +265,14 @@ function MobileHeader({ onMenuOpen, isPremium }: { onMenuOpen: () => void; isPre
           to="/neeko-plus"
           style={{
             display: "flex", alignItems: "center", gap: 5,
-            padding: "7px 11px", borderRadius: 8,
+            padding: "8px 12px", borderRadius: 8, height: 36,
             background: "linear-gradient(160deg,#fad52a 0%,#e8a800 100%)",
-            color: "#130c00", fontSize: 12, fontWeight: 900,
+            color: "#130c00", fontSize: 12.5, fontWeight: 900,
             textDecoration: "none", letterSpacing: "0.01em",
             flexShrink: 0,
           }}
         >
-          <Crown size={12} /> Neeko+
+          <Crown size={13} /> Neeko+
         </Link>
       )}
     </header>
@@ -442,7 +442,7 @@ function MobileCompactPreview() {
           letterSpacing: "0.02em",
         }}
       >
-        Open full Stat Board <ChevronRight size={11} />
+        Open Stat Board Free <ChevronRight size={11} />
       </Link>
     </div>
   );
@@ -525,12 +525,12 @@ export default function MobileLanding({ isPremium }: Props) {
           </h1>
 
           {/* Subcopy — single tight line */}
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, textAlign: "center", marginBottom: 16, maxWidth: 300, marginLeft: "auto", marginRight: "auto" }}>
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", lineHeight: 1.5, textAlign: "center", marginBottom: 12, maxWidth: 300, marginLeft: "auto", marginRight: "auto" }}>
             Pick a match, choose a stat, see form and hit rates in seconds.
           </p>
 
           {/* CTAs */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
             <Link to="/stat-board/players" style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               background: "linear-gradient(160deg, #22c55e 0%, #16a34a 100%)",
@@ -552,7 +552,7 @@ export default function MobileLanding({ isPremium }: Props) {
           </div>
 
           {/* Trust chips — inline, tight */}
-          <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap", marginBottom: 14 }}>
+          <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap", marginBottom: 10 }}>
             {[
               { icon: <Zap size={9} />, text: "Updated before lockout" },
               { icon: <Check size={9} />, text: "Free preview" },
