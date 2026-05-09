@@ -11,7 +11,7 @@ export default function LandingFinalCTA() {
   return (
     <section style={{
       background: "#05070A",
-      padding: "clamp(80px, 7vw, 140px) clamp(20px, 5vw, 40px)",
+      padding: "clamp(44px, 4.5vw, 80px) clamp(20px, 5vw, 40px)",
       position: "relative",
       overflow: "hidden",
     }}>

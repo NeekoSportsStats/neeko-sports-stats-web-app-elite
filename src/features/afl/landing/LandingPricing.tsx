@@ -4,11 +4,12 @@ import { Check, ArrowRight, Zap } from "lucide-react";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
 
 const FREE_FEATURES = [
-  { text: "$0 forever", included: true },
-  { text: "No card required", included: true },
-  { text: "First matches preview", included: true },
-  { text: "Disposals and goals", included: true },
-  { text: "Limited access", included: true },
+  { text: "$0 forever — no card required", included: true },
+  { text: "First matches preview each round", included: true },
+  { text: "Disposals and goals lenses", included: true },
+  { text: "Hit rates and form labels", included: true },
+  { text: "Full round and all matches — locked", included: false },
+  { text: "Full player history — locked", included: false },
 ];
 
 const PREMIUM_FEATURES = [
@@ -34,11 +35,11 @@ export default function LandingPricing() {
   return (
     <section style={{
       background: "#06080C",
-      padding: "clamp(44px, 5vw, 72px) clamp(20px, 5vw, 40px)",
+      padding: "clamp(32px, 3.5vw, 52px) clamp(20px, 5vw, 40px)",
     }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 36 }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
           <p style={{
             fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em",
             textTransform: "uppercase",
@@ -87,7 +88,7 @@ export default function LandingPricing() {
             display: "flex",
             flexDirection: "column",
           }}>
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 18 }}>
               <p style={{
                 fontSize: 9, fontWeight: 900, letterSpacing: "0.40em",
                 textTransform: "uppercase",
@@ -106,9 +107,6 @@ export default function LandingPricing() {
                 </span>
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)" }}>/forever</span>
               </div>
-              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.32)", marginTop: 5 }}>
-                No card required.
-              </p>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
@@ -116,23 +114,35 @@ export default function LandingPricing() {
                 <div key={text} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{
                     width: 18, height: 18, borderRadius: "50%",
-                    background: included ? "rgba(34,197,94,0.08)" : "transparent",
+                    background: included ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.03)",
                     border: `1px solid ${included ? "rgba(34,197,94,0.22)" : "rgba(255,255,255,0.08)"}`,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     flexShrink: 0,
                   }}>
-                    {included && <Check size={9} style={{ color: "#4ade80" }} />}
+                    {included
+                      ? <Check size={9} style={{ color: "#4ade80" }} />
+                      : <span style={{ fontSize: 11, color: "rgba(255,255,255,0.20)", lineHeight: 1 }}>—</span>
+                    }
                   </div>
                   <span style={{
                     fontSize: 13,
-                    color: included ? "rgba(255,255,255,0.68)" : "rgba(255,255,255,0.28)",
+                    color: included ? "rgba(255,255,255,0.65)" : "rgba(255,255,255,0.25)",
                     lineHeight: 1.4,
+                    textDecoration: included ? "none" : "none",
                   }}>
                     {text}
                   </span>
                 </div>
               ))}
             </div>
+
+            <p style={{
+              margin: "14px 0 0",
+              fontSize: 11, color: "rgba(255,255,255,0.28)",
+              lineHeight: 1.5, fontStyle: "italic",
+            }}>
+              Full round, all matches and full player history unlock with Neeko+.
+            </p>
 
             <Link
               to="/stat-board/players"

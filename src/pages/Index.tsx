@@ -598,7 +598,7 @@ export default function Index() {
             <p className="hero-sub" style={{ margin: "0 0 32px", fontSize: "clamp(13px, 1.05vw, 16px)", color: "rgba(255,255,255,0.78)", lineHeight: 1.65, fontWeight: 500, textShadow: "0 2px 8px rgba(0,0,0,0.40)" }}>
               Pick a match, choose a stat, and view recent form, hit rates, projections and trends in seconds.
             </p>
-            <div className="hero-ctas" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div className="hero-ctas" style={{ display: "flex", flexDirection: "row", flexWrap: "nowrap", gap: 10 }}>
               <Link
                 to="/stat-board/players"
                 style={{
@@ -606,7 +606,7 @@ export default function Index() {
                   background: "linear-gradient(160deg, #22c55e 0%, #16a34a 100%)",
                   color: "#f0fff4", fontWeight: 800,
                   fontSize: "clamp(13px, 0.95vw, 15px)",
-                  padding: "13px 26px", borderRadius: 9,
+                  padding: "13px 24px", borderRadius: 9,
                   textDecoration: "none", letterSpacing: "0.01em", whiteSpace: "nowrap",
                   boxShadow: "0 8px 26px rgba(34,197,94,0.32), 0 4px 12px rgba(0,0,0,0.5)",
                   transition: "all 0.2s ease",
@@ -624,7 +624,7 @@ export default function Index() {
                   border: "1px solid rgba(255,255,255,0.12)",
                   color: "rgba(255,255,255,0.72)", fontWeight: 600,
                   fontSize: "clamp(13px, 0.95vw, 15px)",
-                  padding: "13px 26px", borderRadius: 9,
+                  padding: "13px 24px", borderRadius: 9,
                   textDecoration: "none", whiteSpace: "nowrap",
                   transition: "all 0.2s ease",
                 }}
@@ -634,13 +634,20 @@ export default function Index() {
                 Unlock Full Round
               </Link>
             </div>
-            {/* Premium hook */}
-            <p className="hero-hook" style={{ margin: "12px 0 0", fontSize: 11, color: "rgba(255,255,255,0.42)", fontWeight: 500, lineHeight: 1.5 }}>
-              Free preview available.{" "}
-              <span style={{ color: "rgba(224,174,45,0.75)", fontWeight: 600 }}>Neeko+ unlocks every match, every player and full round history.</span>
-            </p>
+            {/* Premium hook chips */}
+            <div className="hero-hook" style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 14 }}>
+              {[
+                { label: "Free preview", color: "rgba(34,197,94,0.70)", bg: "rgba(34,197,94,0.08)", border: "rgba(34,197,94,0.20)" },
+                { label: "Full round with Neeko+", color: "rgba(224,174,45,0.80)", bg: "rgba(224,174,45,0.07)", border: "rgba(224,174,45,0.22)" },
+                { label: "600+ players tracked", color: "rgba(255,255,255,0.50)", bg: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.10)" },
+              ].map(({ label, color, bg, border }) => (
+                <span key={label} style={{ fontSize: 11, fontWeight: 600, color, background: bg, border: `1px solid ${border}`, padding: "3px 9px", borderRadius: 999, letterSpacing: "0.02em", whiteSpace: "nowrap" }}>
+                  {label}
+                </span>
+              ))}
+            </div>
             {/* Trust row */}
-            <div className="hero-trust" style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 28 }}>
+            <div className="hero-trust" style={{ display: "flex", flexWrap: "wrap", gap: 16, marginTop: 20 }}>
               {trustItems.map(({ icon, text }) => (
                 <div key={text} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "rgba(255,255,255,0.60)", fontWeight: 600, whiteSpace: "nowrap" }}>
                   <span style={{ color: "rgba(34,197,94,0.80)" }}>{icon}</span>
@@ -673,7 +680,7 @@ export default function Index() {
       {/* ════════════════════════════════════════════════════
           HOW IT WORKS
       ════════════════════════════════════════════════════ */}
-      <section className="scroll-reveal" style={{ background: "#05070A", padding: "clamp(28px, 3.5vw, 48px) clamp(20px, 5vw, 40px)" }}>
+      <section className="scroll-reveal" style={{ background: "#05070A", padding: "clamp(20px, 2.5vw, 36px) clamp(20px, 5vw, 40px)" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 22 }}>
             <p style={{ margin: "0 0 6px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(34,197,94,0.75)" }}>How it works</p>
@@ -721,7 +728,7 @@ export default function Index() {
       {/* ════════════════════════════════════════════════════
           STAT LENSES
       ════════════════════════════════════════════════════ */}
-      <section className="scroll-reveal" style={{ background: "#060809", padding: "clamp(24px, 3vw, 40px) clamp(20px, 5vw, 40px)" }}>
+      <section className="scroll-reveal" style={{ background: "#060809", padding: "clamp(16px, 2vw, 28px) clamp(20px, 5vw, 40px)" }}>
         <div style={{ maxWidth: 860, margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: 20 }}>
             <p style={{ margin: "0 0 6px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(255,255,255,0.38)" }}>Stat lenses</p>
@@ -777,7 +784,7 @@ export default function Index() {
       <section className="scroll-reveal" style={{
         background: "#05070A",
         backgroundImage: "radial-gradient(circle at 50% 0%, rgba(255,180,50,0.03), transparent 55%)",
-        padding: "clamp(28px, 3.5vw, 48px) clamp(20px, 5vw, 40px)",
+        padding: "clamp(20px, 2.5vw, 36px) clamp(20px, 5vw, 40px)",
       }}>
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ marginBottom: 20, textAlign: "center" }}>
@@ -785,10 +792,10 @@ export default function Index() {
               Fantasy Hub{currentRound != null ? ` — Round ${currentRound}` : ""}
             </p>
             <h2 style={{ margin: "0 0 7px", fontSize: "clamp(16px, 1.6vw, 22px)", fontWeight: 800, color: "#e8e8e8", letterSpacing: "-0.02em" }}>
-              Need fantasy-specific calls?
+              Fantasy decisions, in one place.
             </h2>
-            <p style={{ margin: "0 0 12px", fontSize: "clamp(11px, 0.78vw, 13px)", color: "rgba(255,255,255,0.45)", fontWeight: 500, lineHeight: 1.5, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
-              Must Buys, Trap Alerts, Captain Picks and live Rankings updated before every lockout — all in the Fantasy Hub.
+            <p style={{ margin: "0 0 12px", fontSize: "clamp(11px, 0.78vw, 13px)", color: "rgba(255,255,255,0.45)", fontWeight: 500, lineHeight: 1.55, maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
+              Use the Stat Board for trends and hit rates. Use Fantasy Hub for weekly AFL Fantasy decisions — Must Buys, Trap Alerts, Captain Picks and live Rankings.
             </p>
             <Link
               to="/fantasy"
@@ -841,10 +848,12 @@ export default function Index() {
         .scroll-reveal.revealed { opacity: 1; transform: translateY(0); }
         .skeleton-shimmer { background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%); background-size: 200% 100%; animation: shimmer 1.2s ease-in-out infinite; }
         @media (max-width: 900px) {
-          .hero-ctas { flex-direction: column !important; align-items: stretch !important; max-width: min(360px, 100%); }
-          .hero-ctas a { justify-content: center; }
           .edge-cards-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .how-grid { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 600px) {
+          .hero-ctas { flex-direction: column !important; align-items: stretch !important; max-width: min(340px, 100%); }
+          .hero-ctas a { justify-content: center; }
         }
         @media (max-width: 768px) {
           .hero-preview { display: none !important; }
