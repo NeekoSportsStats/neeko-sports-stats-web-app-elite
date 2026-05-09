@@ -476,11 +476,11 @@ export default function Index() {
 
   const helmet = (
     <Helmet>
-      <title>Neeko Sports Stats — AFL Fantasy Rankings, Stats &amp; Projections 2026</title>
-      <meta name="description" content="AFL Fantasy rankings, Stat Board, captain picks, price movers and weekly projections built to give fantasy coaches a data edge." />
+      <title>AFL Player Stat Trends, Hit Rates &amp; Projections | Neeko Sports Stats</title>
+      <meta name="description" content="View AFL player stat trends, hit rates and projections by match. Explore disposals, goals and fantasy insights with Neeko Sports Stats." />
       <link rel="canonical" href="https://neekostats.com.au/" />
-      <meta property="og:title" content="Neeko Sports Stats — AFL Fantasy Rankings, Stats & Projections 2026" />
-      <meta property="og:description" content="AFL Fantasy rankings, Stat Board, captain picks, price movers and weekly projections built to give fantasy coaches a data edge." />
+      <meta property="og:title" content="AFL Player Stat Trends, Hit Rates & Projections | Neeko Sports Stats" />
+      <meta property="og:description" content="View AFL player stat trends, hit rates and projections by match. Explore disposals, goals and fantasy insights." />
       <meta property="og:type" content="website" />
       <meta property="og:url" content="https://neekostats.com.au/" />
       <meta property="og:image" content="https://neekostats.com.au/og-default.png" />

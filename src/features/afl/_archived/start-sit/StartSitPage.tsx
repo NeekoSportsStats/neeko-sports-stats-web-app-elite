@@ -416,9 +416,8 @@ export default function StartSitPage() {
       <Helmet>
         <title>AFL Fantasy Start / Sit Tool 2026 | AI Player Comparison | Neeko</title>
         <meta name="description" content="Compare two AFL Fantasy players and get an instant AI-powered start or sit verdict with confidence scores, projections, and matchup context." />
-        {/* Not currently routed. Keep noindex unless restored intentionally. */}
-        <meta name="robots" content="noindex, nofollow" />
-        <link rel="canonical" href="https://neekostats.com.au/fantasy" />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://neekostats.com.au/sports/afl/start-sit" />
         <meta property="og:title" content="AFL Fantasy Start / Sit Tool 2026 | AI Player Comparison | Neeko" />
         <meta property="og:description" content="Compare two AFL Fantasy players and get an instant AI-powered start or sit verdict with confidence scores, projections, and matchup context." />
         <meta property="og:type" content="website" />

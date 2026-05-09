@@ -39,7 +39,6 @@ export default function FantasyHubPage() {
         <meta property="og:url" content="https://neekostats.com.au/fantasy" />
         <meta property="og:title" content="AFL Fantasy Hub | Neeko Sports Stats" />
         <meta name="twitter:title" content="AFL Fantasy Hub | Neeko Sports Stats" />
-        <meta name="robots" content="index, follow" />
       </Helmet>
 
       <div style={{ minHeight: "100vh", background: "#05070A", color: "#fff" }}>

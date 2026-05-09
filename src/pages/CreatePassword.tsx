@@ -1,13 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader as Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 
 const CreatePassword = () => {
   const [searchParams] = useSearchParams();
@@ -139,10 +138,6 @@ const CreatePassword = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-secondary/20 to-background">
-      <Helmet>
-        <title>Create Password | Neeko Sports Stats</title>
-        <meta name="robots" content="noindex, nofollow" />
-      </Helmet>
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Create Your Password</CardTitle>

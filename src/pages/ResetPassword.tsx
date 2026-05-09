@@ -1,6 +1,5 @@
 // src/pages/ResetPassword.tsx
 import { useState, useEffect, useRef } from "react";
-import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -155,10 +154,6 @@ const ResetPassword = () => {
 
   return (
     <div className="container max-w-md py-12 flex items-center justify-center min-h-[70vh]">
-      <Helmet>
-        <title>Reset Password | Neeko Sports Stats</title>
-        <meta name="robots" content="noindex, nofollow" />
-      </Helmet>
       <Card className="w-full">
         <CardHeader>
           <Button

@@ -1290,7 +1290,7 @@ export default function AFLTeamPage() {
         <meta property="og:description"  content={pageDescription} />
         <meta property="og:type"         content="website" />
         <meta property="og:url"          content={pageUrl} />
-        <meta property="og:site_name"    content="Neeko Sports Stats" />
+        <meta property="og:site_name"    content="Neeko Sports" />
         <link rel="canonical"            href={pageUrl} />
         <meta name="robots"              content="index, follow" />
         <meta name="twitter:card"        content="summary_large_image" />
@@ -1303,13 +1303,13 @@ export default function AFLTeamPage() {
           description: pageDescription,
           url: pageUrl,
           dateModified: new Date().toISOString().slice(0, 10),
-          publisher: { '@type': 'Organization', name: 'Neeko Sports Stats', url: 'https://neekostats.com.au' },
+          publisher: { '@type': 'Organization', name: 'Neeko Sports', url: 'https://neekostats.com.au' },
           breadcrumb: {
             '@type': 'BreadcrumbList',
             itemListElement: [
-              { '@type': 'ListItem', position: 1, name: 'Home',      item: 'https://neekostats.com.au' },
-              { '@type': 'ListItem', position: 2, name: 'AFL Teams', item: 'https://neekostats.com.au/sports/afl/teams' },
-              { '@type': 'ListItem', position: 3, name: teamName,    item: pageUrl },
+              { '@type': 'ListItem', position: 1, name: 'Home',         item: 'https://neekostats.com.au' },
+              { '@type': 'ListItem', position: 2, name: 'AFL Rankings', item: 'https://neekostats.com.au/fantasy/rankings' },
+              { '@type': 'ListItem', position: 3, name: teamName,       item: pageUrl },
             ],
           },
         })}</script>

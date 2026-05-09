@@ -417,7 +417,7 @@ export default function AFLRankingsPage() {
       <meta property="og:description" content="Complete AFL Fantasy rankings for 2026. Projections, value analysis, and player signals updated weekly." />
       <meta property="og:type" content="website" />
       <meta property="og:url" content="https://neekostats.com.au/fantasy/rankings" />
-      <meta property="og:site_name" content="Neeko Sports Stats" />
+      <meta property="og:site_name" content="Neeko Sports" />
       <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
       <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
       <meta name="twitter:card" content="summary_large_image" />
@@ -425,7 +425,7 @@ export default function AFLRankingsPage() {
       <meta name="twitter:description" content="AFL Fantasy rankings with projections, value scores, and player signals." />
       <link rel="canonical" href="https://neekostats.com.au/fantasy/rankings" />
       <meta name="robots" content="index, follow" />
-      <meta name="author" content="Neeko Sports Stats" />
+      <meta name="author" content="Neeko Sports" />
       <meta property="article:modified_time" content={new Date().toISOString()} />
       <script type="application/ld+json">{JSON.stringify({
         "@context": "https://schema.org",
@@ -435,7 +435,7 @@ export default function AFLRankingsPage() {
         "url": "https://neekostats.com.au/fantasy/rankings",
         "publisher": {
           "@type": "Organization",
-          "name": "Neeko Sports Stats",
+          "name": "Neeko Sports",
           "url": "https://neekostats.com.au"
         },
         "breadcrumb": {

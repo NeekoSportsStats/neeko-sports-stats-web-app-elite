@@ -19,7 +19,6 @@ export function usePlayerExplorer() {
   const [sortCol, setSortCol] = useState<string>("neeko_rating");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedId, setExpandedId] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -112,17 +111,13 @@ export function usePlayerExplorer() {
 
   async function updatePlayerStatus(playerId: number, status: string | null): Promise<void> {
     const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token;
-    if (!token) {
-      setError("Session expired. Please sign in again.");
-      return;
-    }
+    const token = session?.access_token ?? import.meta.env.VITE_SUPABASE_ANON_KEY;
     const res = await fetch(ADMIN_COMMAND_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
-        apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+        Apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({ command: "update_player_status", payload: { player_id: playerId, status } }),
     });
@@ -130,7 +125,6 @@ export function usePlayerExplorer() {
       const err = await res.json().catch(() => ({ error: res.statusText }));
       throw new Error(err.error ?? "Failed to update player status");
     }
-    setError(null);
     setRows(prev => prev.map(r =>
       r.player_id === playerId
         ? { ...r, manual_status: status, status: status ?? r.status }
@@ -139,7 +133,7 @@ export function usePlayerExplorer() {
   }
 
   return {
-    rows, signalsMap, edgeMap, loading, error, filtered,
+    rows, signalsMap, edgeMap, loading, filtered,
     search, setSearch,
     posFilter, setPosFilter,
     teamFilter, setTeamFilter,

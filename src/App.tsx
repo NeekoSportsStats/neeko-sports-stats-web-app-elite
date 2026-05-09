@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { track } from "@/lib/analytics";
+import { useCanonical } from "@/hooks/useCanonical";
 import { Layout } from "@/components/Layout";
 import { LandingLayout } from "@/components/LandingLayout";
 import { RequireAuth } from "@/components/RequireAuth";
@@ -65,6 +66,7 @@ const AFLRankingsPage      = React.lazy(() => import("@/features/afl/rankings/AF
 const AFLMarketWatch    = React.lazy(() => import("@/features/afl/market-watch/MarketWatchPageElite"));
 const AFLPlayerPage     = React.lazy(() => import("@/pages/afl/AFLPlayerPage"));
 const AFLTeamPage       = React.lazy(() => import("@/pages/afl/AFLTeamPage"));
+const AFLPositionPage   = React.lazy(() => import("@/pages/afl/AFLPositionPage"));
 const AFLRoundPage      = React.lazy(() => import("@/features/afl/round/AFLRoundPage"));
 const AFLPlayersPage         = React.lazy(() => import("@/features/afl/players/AFLPlayersPage"));
 const AFLTeamsDirectoryPage  = React.lazy(() => import("@/features/afl/teams/AFLTeamsDirectoryPage"));
@@ -88,6 +90,8 @@ const Generic = <GenericPageSkeleton />;
 
 function App() {
   const location = useLocation();
+
+  useCanonical();
 
   useEffect(() => {
     track("Page View", { path: location.pathname });
@@ -130,7 +134,7 @@ function App() {
         {/* SEO-ONLY ROUTES: Teams & Positions pages accessible via direct URL only, hidden from UX */}
         <Route path="/sports/afl/teams" element={<S fallback={Players}><AFLTeamsDirectoryPage /></S>} />
         <Route path="/sports/afl/teams/:team" element={<S fallback={Players}><AFLTeamPage /></S>} />
-        <Route path="/sports/afl/positions/:position" element={<Navigate to="/sports/afl/players" replace />} />
+        <Route path="/sports/afl/positions/:position" element={<S fallback={Players}><AFLPositionPage /></S>} />
 
         <Route path="/sports/afl/edge-board" element={<Navigate to="/fantasy/market-watch" replace />} />
         <Route path="/sports/afl/market-watch" element={<Navigate to="/fantasy/market-watch" replace />} />

@@ -766,9 +766,9 @@ function CollapsibleSEOGuide() {
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/30 mb-2">For this round</h3>
             <p className="text-[12px] text-white/45 leading-relaxed">
               Edge Board picks refresh weekly after price changes are applied. Use the{" "}
-              <a href="/fantasy/current-week" className="text-white/60 underline underline-offset-2 hover:text-white transition-colors">Current Round</a>{" "}
+              <a href="/sports/afl/current-round" className="text-white/60 underline underline-offset-2 hover:text-white transition-colors">Current Round</a>{" "}
               for the full player landscape, or the{" "}
-              <a href="/fantasy/rankings" className="text-white/60 underline underline-offset-2 hover:text-white transition-colors">AFL Fantasy Rankings</a>{" "}
+              <a href="/sports/afl/rankings" className="text-white/60 underline underline-offset-2 hover:text-white transition-colors">AFL Fantasy Rankings</a>{" "}
               for the complete player pool ordered by Neeko Rating.
             </p>
           </div>
@@ -912,21 +912,36 @@ export default function AFLRoundEdgeBoard() {
   return (
     <>
       <Helmet>
-        {/* Not currently routed. Keep noindex unless restored intentionally. */}
-        <title>AFL Fantasy Market Watch 2026 — Price Movers & Value Targets | Neeko Sports Stats</title>
-        <meta name="description" content="Track AFL Fantasy price movers, value targets, trap alerts and underpriced players using weekly stat-generated market signals." />
-        <meta name="robots" content="noindex, nofollow" />
-        <link rel="canonical" href="https://neekostats.com.au/fantasy/market-watch" />
-        <meta property="og:title" content="AFL Fantasy Market Watch 2026 — Price Movers & Value Targets | Neeko Sports Stats" />
-        <meta property="og:description" content="Track AFL Fantasy price movers, value targets, trap alerts and underpriced players using weekly stat-generated market signals." />
+        <title>AFL Fantasy Edge Board 2026 | Captain Picks &amp; Trade Targets | Neeko</title>
+        <meta name="description" content="Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model." />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://neekostats.com.au/sports/afl/edge-board" />
+        <meta property="og:title" content="AFL Fantasy Edge Board 2026 | Captain Picks &amp; Trade Targets | Neeko" />
+        <meta property="og:description" content="Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://neekostats.com.au/fantasy/market-watch" />
+        <meta property="og:url" content="https://neekostats.com.au/sports/afl/edge-board" />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
-        <meta property="og:site_name" content="Neeko Sports Stats" />
+        <meta property="og:site_name" content="Neeko Sports" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="AFL Fantasy Market Watch 2026 — Price Movers & Value Targets | Neeko Sports Stats" />
-        <meta name="twitter:description" content="Track AFL Fantasy price movers, value targets, trap alerts and underpriced players using weekly stat-generated market signals." />
+        <meta name="twitter:title" content="AFL Fantasy Edge Board 2026 | Captain Picks &amp; Trade Targets | Neeko" />
+        <meta name="twitter:description" content="Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model." />
         <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          "name": "AFL Fantasy Edge Board 2026 | Captain Picks & Trade Targets",
+          "description": "Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model.",
+          "url": "https://neekostats.com.au/sports/afl/edge-board",
+          "publisher": { "@type": "Organization", "name": "Neeko Sports", "url": "https://neekostats.com.au" },
+          "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
+              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy", "item": "https://neekostats.com.au/sports/afl" },
+              { "@type": "ListItem", "position": 3, "name": "Edge Board", "item": "https://neekostats.com.au/sports/afl/edge-board" }
+            ]
+          }
+        })}</script>
       </Helmet>
 
       <div className="min-h-screen bg-[#0a0a0a] px-4 py-8 md:px-8">
@@ -1067,7 +1082,7 @@ export default function AFLRoundEdgeBoard() {
               <p className="text-[12px] text-white/40 mt-0.5">Browse all captain picks, value plays, and form analysis for every player.</p>
             </div>
             <a
-              href="/fantasy/current-week"
+              href="/sports/afl/current-round"
               className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-white/15 bg-white/[0.04] text-[12px] font-bold text-white/70 hover:text-white hover:border-white/25 hover:bg-white/[0.07] transition-all whitespace-nowrap"
             >
               View Full Round

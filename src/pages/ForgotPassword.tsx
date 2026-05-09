@@ -1,6 +1,5 @@
 // src/pages/ForgotPassword.tsx
 import { useState } from "react";
-import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -49,10 +48,6 @@ export default function ForgotPassword() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Helmet>
-        <title>Forgot Password | Neeko Sports Stats</title>
-        <meta name="robots" content="noindex, nofollow" />
-      </Helmet>
       <Card className="w-full max-w-md p-8 space-y-6">
 
         <Button

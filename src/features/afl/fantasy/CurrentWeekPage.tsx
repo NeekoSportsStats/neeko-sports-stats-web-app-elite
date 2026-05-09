@@ -763,7 +763,6 @@ export default function CurrentWeekPage() {
         <meta property="og:url" content="https://neekostats.com.au/fantasy/current-week" />
         <meta property="og:title" content="AFL Fantasy Current Week Picks | Neeko Sports Stats" />
         <meta name="twitter:title" content="AFL Fantasy Current Week Picks | Neeko Sports Stats" />
-        <meta name="robots" content="index, follow" />
       </Helmet>
 
       <div className="min-h-screen bg-[#05070A] text-white overflow-x-hidden">

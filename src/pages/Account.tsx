@@ -1,6 +1,5 @@
 // src/pages/Account.tsx
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet-async";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
@@ -176,11 +175,6 @@ export default function Account() {
   };
 
   return (
-    <>
-      <Helmet>
-        <title>Account | Neeko Sports Stats</title>
-        <meta name="robots" content="noindex, nofollow" />
-      </Helmet>
     <div className="container mx-auto p-6 max-w-4xl">
       <Button variant="ghost" onClick={() => navigate("/")} className="mb-6">
         <ArrowLeft className="h-4 w-4 mr-2" />
@@ -366,6 +360,5 @@ export default function Account() {
         </Card>
       </div>
     </div>
-    </>
   );
 }

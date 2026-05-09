@@ -4,7 +4,6 @@ import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
 import { TrendingUp, Star, TriangleAlert as AlertTriangle, Target, ArrowRight } from "lucide-react";
 import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from "@/utils/aflEdgeSignal";
-import { playerToSlug } from "@/lib/slugs";
 
 interface RoundPlayer {
   player_id: string;
@@ -114,7 +113,7 @@ export default function AFLRoundPage() {
         <meta property="og:type" content="article" />
         <meta property="og:url" content={`https://neekostats.com.au/sports/afl/round/${roundNum || ""}`} />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
-        <meta property="og:site_name" content="Neeko Sports Stats" />
+        <meta property="og:site_name" content="Neeko Sports" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />
@@ -127,12 +126,12 @@ export default function AFLRoundPage() {
           "url": `https://neekostats.com.au/sports/afl/round/${roundNum || ""}`,
           "datePublished": "2026-03-13",
           "dateModified": new Date().toISOString().slice(0, 10),
-          "publisher": { "@type": "Organization", "name": "Neeko Sports Stats", "url": "https://neekostats.com.au" },
+          "publisher": { "@type": "Organization", "name": "Neeko Sports", "url": "https://neekostats.com.au" },
           "breadcrumb": {
             "@type": "BreadcrumbList",
             "itemListElement": [
               { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
-              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy", "item": "https://neekostats.com.au/fantasy" },
+              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy", "item": "https://neekostats.com.au/sports/afl" },
               { "@type": "ListItem", "position": 3, "name": `Round ${roundNum}`, "item": `https://neekostats.com.au/sports/afl/round/${roundNum}` }
             ]
           }
@@ -216,7 +215,7 @@ export default function AFLRoundPage() {
                 {topCaptains.map((p, i) => (
                   <Link
                     key={p.player_id}
-                    to={`/sports/afl/players/${playerToSlug(p.player_name, p.team)}`}
+                    to={`/sports/afl/players/${p.player_id}`}
                     className="flex items-center gap-3 bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors"
                   >
                     <span className="text-xs text-white/20 w-4 shrink-0">{i + 1}</span>
@@ -268,7 +267,7 @@ export default function AFLRoundPage() {
                 {posPlayers.map((p, i) => (
                   <Link
                     key={p.player_id}
-                    to={`/sports/afl/players/${playerToSlug(p.player_name, p.team)}`}
+                    to={`/sports/afl/players/${p.player_id}`}
                     className="flex items-center gap-3 bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors"
                   >
                     <span className="text-xs text-white/20 w-4 shrink-0">{i + 1}</span>
@@ -309,7 +308,7 @@ export default function AFLRoundPage() {
                 {topValue.map((p, i) => (
                   <Link
                     key={p.player_id}
-                    to={`/sports/afl/players/${playerToSlug(p.player_name, p.team)}`}
+                    to={`/sports/afl/players/${p.player_id}`}
                     className="flex items-center gap-3 bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors"
                   >
                     <span className="text-xs text-white/20 w-4 shrink-0">{i + 1}</span>
@@ -351,7 +350,7 @@ export default function AFLRoundPage() {
                 {traps.map((p, i) => (
                   <Link
                     key={p.player_id}
-                    to={`/sports/afl/players/${playerToSlug(p.player_name, p.team)}`}
+                    to={`/sports/afl/players/${p.player_id}`}
                     className="flex items-center gap-3 bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] rounded-xl px-4 py-3 transition-colors"
                   >
                     <span className="text-xs text-white/20 w-4 shrink-0">{i + 1}</span>

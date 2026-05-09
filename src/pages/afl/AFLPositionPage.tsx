@@ -106,9 +106,8 @@ export default function AFLPositionPage() {
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
         <meta property="og:site_name" content="Neeko Sports" />
-        {/* Positions page is not currently used. Keep noindex unless intentionally restored. */}
-        <link rel="canonical" href="https://neekostats.com.au/sports/afl/players" />
-        <meta name="robots" content="noindex, nofollow" />
+        <link rel="canonical" href={pageUrl} />
+        <meta name="robots" content="index, follow" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />

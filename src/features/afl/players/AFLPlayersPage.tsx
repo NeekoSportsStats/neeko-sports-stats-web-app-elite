@@ -267,7 +267,7 @@ export default function AFLPlayersPage() {
   }, [rows]);
 
   const pageUrl         = "https://neekostats.com.au/sports/afl/players";
-  const pageTitle       = "AFL Fantasy Player Directory 2026 | Neeko Sports Stats";
+  const pageTitle       = "AFL Fantasy Player Directory 2026 | Neeko Sports";
   const pageDescription = "Search every 2026 AFL Fantasy player by name, team or position. View basic player info for free, or unlock projections, signals and AI analysis with Neeko+.";
 
   const breadcrumbJsonLd = JSON.stringify({
@@ -312,7 +312,7 @@ export default function AFLPlayersPage() {
         <meta property="og:description" content={pageDescription} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={pageUrl} />
-        <meta property="og:site_name" content="Neeko Sports Stats" />
+        <meta property="og:site_name" content="Neeko Sports" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
@@ -820,7 +820,7 @@ export default function AFLPlayersPage() {
             ].map(pos => (
               <Link
                 key={pos.slug}
-                to="/sports/afl/players"
+                to={`/sports/afl/positions/${pos.slug}`}
                 style={{
                   fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.35)",
                   textDecoration: "none", padding: "7px 14px", borderRadius: 7,

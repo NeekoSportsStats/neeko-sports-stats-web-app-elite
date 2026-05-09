@@ -1323,9 +1323,8 @@ export default function AFLCurrentRoundPage() {
       <Helmet>
         <title>{pageTitle}</title>
         <meta name="description" content="Discover the best AFL Fantasy players for this round — captain picks, value targets, trap alerts and budget options powered by real AFL projections." />
-        {/* Not currently routed. Keep noindex unless restored intentionally. */}
-        <link rel="canonical" href="https://neekostats.com.au/fantasy/current-week" />
-        <meta name="robots" content="noindex, nofollow" />
+        <link rel="canonical" href="https://neekostats.com.au/sports/afl/current-round" />
+        <meta name="robots" content="index, follow" />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content="AI-powered AFL Fantasy picks for this round — captain options, value plays, trap alerts and full projections." />
         <meta property="og:url" content="https://neekostats.com.au/sports/afl/current-round" />

@@ -1,27 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-// Rate limit: max calls per user per 1-minute window
-const RATE_LIMIT_MAX = 5;
-const RATE_LIMIT_FUNCTION = "generate-content-post";
-
-const ALLOWED_ORIGINS = new Set([
-  "https://www.neekostats.com.au",
-  "https://neekostats.com.au",
-  "http://localhost:5173",
-  "http://localhost:3000",
-]);
-
-function getCorsHeaders(req: Request): Record<string, string> {
-  const origin = req.headers.get("origin") ?? "";
-  const allowedOrigin = ALLOWED_ORIGINS.has(origin) ? origin : "https://www.neekostats.com.au";
-  return {
-    "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
-    "Vary": "Origin",
-  };
-}
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
+};
 
 interface Top3Player {
   player_id: number;
@@ -914,8 +898,6 @@ function normaliseGeneratedPost(
 }
 
 Deno.serve(async (req: Request) => {
-  const corsHeaders = getCorsHeaders(req);
-
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders });
   }
@@ -924,63 +906,6 @@ Deno.serve(async (req: Request) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // ── 1. Auth: require Bearer JWT ──────────────────────────────────────────
-    const authHeader = req.headers.get("Authorization");
-    const token = authHeader?.replace("Bearer ", "").trim() ?? "";
-
-    if (!token) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const authClient = createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    });
-
-    const { data: { user }, error: userError } = await authClient.auth.getUser(token);
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // ── 2. Admin check ───────────────────────────────────────────────────────
-    const { data: profile } = await authClient
-      .from("profiles")
-      .select("is_admin")
-      .eq("id", user.id)
-      .maybeSingle();
-
-    if (profile?.is_admin !== true) {
-      return new Response(JSON.stringify({ error: "Forbidden: admin access required" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // ── 3. Durable rate limit (Supabase-backed, per user per minute) ─────────
-    const windowStart = new Date();
-    windowStart.setSeconds(0, 0); // truncate to minute
-
-    const { data: callCount, error: rlError } = await authClient.rpc("increment_rate_limit", {
-      p_user_id: user.id,
-      p_function_name: RATE_LIMIT_FUNCTION,
-      p_window_start: windowStart.toISOString(),
-    });
-
-    if (rlError) {
-      console.error("[generate-content-post] Rate limit RPC error:", rlError.message);
-    } else if ((callCount as number) > RATE_LIMIT_MAX) {
-      return new Response(
-        JSON.stringify({ error: "Rate limit exceeded. Maximum 5 generations per minute." }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    // ── 4. Build service-role clients for data access ────────────────────────
     const db = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
       global: { headers: { Authorization: `Bearer ${serviceKey}` } },
@@ -999,9 +924,8 @@ Deno.serve(async (req: Request) => {
       db: { schema: "ai" },
     });
 
-    // ── 5. Parse and validate body ───────────────────────────────────────────
     const body = await req.json().catch(() => ({}));
-    const postId = typeof body?.post_id === "string" ? body.post_id.trim() : null;
+    const postId = body?.post_id;
 
     if (!postId) {
       return new Response(

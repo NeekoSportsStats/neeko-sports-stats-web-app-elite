@@ -901,27 +901,20 @@ export default function AFLPlayerPage() {
 
   if (error || !player) {
     return (
-      <>
-        <Helmet>
-          <title>Player Not Found | Neeko Sports Stats</title>
-          <meta name="robots" content="noindex, nofollow" />
-          <link rel="canonical" href="https://neekostats.com.au/sports/afl/players" />
-        </Helmet>
-        <div className="min-h-dvh bg-[#080808] flex items-center justify-center px-4">
-          <div className="text-center max-w-sm">
-            <AlertCircle size={36} className="text-white/15 mx-auto mb-4" />
-            <h2 className="text-lg font-bold text-white mb-2">Player Not Found</h2>
-            <p className="text-white/35 mb-6 text-[13px]">Could not load data for: {playerName || slug}</p>
-            <button
-              onClick={() => navigate('/fantasy/rankings')}
-              className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-4 py-2 text-[13px] text-white/60 hover:text-white hover:bg-white/[0.08] transition-colors"
-            >
-              <ArrowLeft size={13} />
-              Back to Rankings
-            </button>
-          </div>
+      <div className="min-h-dvh bg-[#080808] flex items-center justify-center px-4">
+        <div className="text-center max-w-sm">
+          <AlertCircle size={36} className="text-white/15 mx-auto mb-4" />
+          <h2 className="text-lg font-bold text-white mb-2">Player Not Found</h2>
+          <p className="text-white/35 mb-6 text-[13px]">Could not load data for: {playerName || slug}</p>
+          <button
+            onClick={() => navigate('/fantasy/rankings')}
+            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.05] px-4 py-2 text-[13px] text-white/60 hover:text-white hover:bg-white/[0.08] transition-colors"
+          >
+            <ArrowLeft size={13} />
+            Back to Rankings
+          </button>
         </div>
-      </>
+      </div>
     );
   }
 

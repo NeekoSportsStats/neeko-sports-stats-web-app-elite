@@ -25,8 +25,8 @@ const TOOLS = [
   },
   {
     icon: <GitCompare size={20} />,
-    title: "Weekly Picks",
-    desc: "Captain picks, trap alerts and value calls — all in one weekly view.",
+    title: "Start / Sit",
+    desc: "Two players. One answer. Head-to-head decisions before every lockout.",
     to: "/fantasy/current-week",
     color: "#F87171",
   },

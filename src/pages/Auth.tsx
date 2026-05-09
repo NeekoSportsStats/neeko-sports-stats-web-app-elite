@@ -1,6 +1,5 @@
 // src/pages/Auth.tsx
 import { useEffect, useState } from "react";
-import { Helmet } from "react-helmet-async";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { supabase } from "@/lib/supabaseClient";
@@ -154,10 +153,6 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Helmet>
-        <title>Sign In | Neeko Sports Stats</title>
-        <meta name="robots" content="noindex, nofollow" />
-      </Helmet>
       <Card className="w-full max-w-md p-8 space-y-6">
         <Button
           onClick={() => navigate("/")}

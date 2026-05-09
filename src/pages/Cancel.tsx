@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Helmet } from "react-helmet-async";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Circle as XCircle } from "lucide-react";
@@ -20,10 +19,6 @@ const Cancel = () => {
 
   return (
     <div className="container max-w-2xl py-12 flex items-center justify-center min-h-[70vh]">
-      <Helmet>
-        <title>Checkout Cancelled | Neeko Sports Stats</title>
-        <meta name="robots" content="noindex, nofollow" />
-      </Helmet>
       <Card className="w-full">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">

@@ -9,41 +9,15 @@ const corsHeaders = {
 
 const BASE_URL = "https://neekostats.com.au";
 
-// Maps full team name -> first segment of team slug (the team prefix appended to player slugs)
-// Mirrors src/lib/slugs.ts playerToSlug() so sitemap URLs match app URLs exactly
-const TEAM_SLUG_PREFIX: Record<string, string> = {
-  "Adelaide Crows": "adelaide",
-  "Brisbane Lions": "brisbane",
-  "Carlton Blues": "carlton",
-  "Collingwood Magpies": "collingwood",
-  "Essendon Bombers": "essendon",
-  "Fremantle Dockers": "fremantle",
-  "Geelong Cats": "geelong",
-  "Gold Coast Suns": "gold",
-  "Greater Western Sydney Giants": "gws",
-  "Hawthorn Hawks": "hawthorn",
-  "Melbourne Demons": "melbourne",
-  "North Melbourne Kangaroos": "north",
-  "Port Adelaide Power": "port",
-  "Richmond Tigers": "richmond",
-  "St Kilda Saints": "st",
-  "Sydney Swans": "sydney",
-  "West Coast Eagles": "west",
-  "Western Bulldogs": "western",
-};
-
-function playerToSlug(playerName: string, teamName: string | null): string {
-  const nameSlug = playerName.toLowerCase().replace(/\s+/g, "-");
-  const teamPrefix = teamName ? (TEAM_SLUG_PREFIX[teamName] ?? null) : null;
-  return teamPrefix ? `${nameSlug}-${teamPrefix}` : nameSlug;
+function nameToSlug(name: string): string {
+  return name.toLowerCase().replace(/\s+/g, "-");
 }
 
 function isValidSlug(slug: string): boolean {
-  if (!slug || slug.length < 5) return false;
-  if (!/^[a-z][a-z-]+[a-z]$/.test(slug)) return false;
-  const parts = slug.split("-");
-  if (parts.length < 2) return false;
-  return parts.every((p) => /^[a-z]+$/.test(p));
+  if (!slug || slug.length < 3) return false;
+  if (!/^[a-z]/.test(slug)) return false;
+  if (!/[a-z0-9]$/.test(slug)) return false;
+  return true;
 }
 
 Deno.serve(async (req: Request) => {
@@ -60,7 +34,7 @@ Deno.serve(async (req: Request) => {
     const { data: players, error } = await supabase
       .schema("afl")
       .from("player_rankings_cache")
-      .select("player_name, team_name, cached_at")
+      .select("player_name, cached_at")
       .not("player_name", "is", null)
       .neq("player_name", "")
       .order("neeko_rating", { ascending: false })
@@ -73,7 +47,7 @@ Deno.serve(async (req: Request) => {
     const uniquePlayers = new Map<string, string>();
     for (const p of players ?? []) {
       if (!p.player_name || p.player_name.trim().length < 3) continue;
-      const slug = playerToSlug(p.player_name.trim(), p.team_name ?? null);
+      const slug = nameToSlug(p.player_name.trim());
       if (!isValidSlug(slug)) continue;
       if (!uniquePlayers.has(slug)) {
         uniquePlayers.set(slug, p.cached_at ?? new Date().toISOString());
