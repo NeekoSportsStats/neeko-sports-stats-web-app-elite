@@ -1,11 +1,11 @@
 import { useState, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { Sparkles, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { playerToSlug } from "@/lib/slugs";
-import { cleanAiText } from "@/utils/cleanAiText";
+import { PlayerIntelligencePanel } from "@/components/afl/PlayerIntelligencePanel";
+import type { PlayerIntelligence } from "@/hooks/usePlayerIntelligence";
 import type { StatBoardPlayer, StatBoardHistoryRow, StatLens, TimelineSlot } from "../types";
-import type { StatBoardPlayerAiInsight } from "../useStatBoard";
 
 interface Props {
   player: StatBoardPlayer;
@@ -15,8 +15,9 @@ interface Props {
   lens: StatLens;
   threshold: number;
   isLocked: boolean;
-  insight: StatBoardPlayerAiInsight | null;
-  insightLoading: boolean;
+  intelligence: PlayerIntelligence | null;
+  intelligenceLoading: boolean;
+  isPremium: boolean;
 }
 
 const DISPOSAL_THRESHOLDS = [15, 20, 25, 30];
@@ -40,8 +41,9 @@ export function ExpandedPlayerPanel({
   lens,
   threshold,
   isLocked,
-  insight,
-  insightLoading,
+  intelligence,
+  intelligenceLoading,
+  isPremium,
 }: Props) {
   if (isLocked) return null;
 
@@ -335,7 +337,19 @@ export function ExpandedPlayerPanel({
       )}
 
       {/* ── 5. AI Insight ─────────────────────────────────────────────────── */}
-      <AiInsightBlock insight={insight} loading={insightLoading} playerName={player.player_name} />
+      <PlayerIntelligencePanel
+        intelligence={intelligence}
+        loading={intelligenceLoading}
+        isPremium={isPremium}
+        playerName={player.player_name}
+        projection={player.projection}
+        breakeven={undefined}
+        edgeScore={undefined}
+        avgLast3={player.last_3_avg ?? undefined}
+        confidenceLabel={player.confidence_label}
+        variant="card"
+        upgradeHref="/billing"
+      />
 
       {/* ── 6. Full-width game log ────────────────────────────────────────── */}
       <GameLog
@@ -348,75 +362,6 @@ export function ExpandedPlayerPanel({
   );
 }
 
-// ── Player Intelligence block ─────────────────────────────────────────────
-
-function AiInsightBlock({
-  insight,
-  loading,
-  playerName,
-}: {
-  insight: StatBoardPlayerAiInsight | null;
-  loading: boolean;
-  playerName: string;
-}) {
-  const text = insight?.summary_long ?? insight?.summary_short ?? null;
-
-  // Loading skeleton
-  if (loading) {
-    return (
-      <section aria-label="player intelligence" aria-busy className="px-3 sm:px-5 pb-3 sm:pb-4">
-        <div className="rounded-lg border border-white/8 bg-white/[0.018] px-4 py-3.5">
-          <div className="flex items-center gap-1.5 mb-2.5">
-            <Sparkles className="h-3 w-3 text-white/25" aria-hidden />
-            <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider">Player Intelligence</p>
-          </div>
-          <div className="space-y-1.5">
-            <div className="h-2 w-full rounded bg-white/5 animate-pulse" />
-            <div className="h-2 w-[88%] rounded bg-white/5 animate-pulse" />
-            <div className="h-2 w-[68%] rounded bg-white/5 animate-pulse" />
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  // No content — compact single-line placeholder, no box chrome
-  if (!text) {
-    return (
-      <div className="px-3 sm:px-5 pb-2.5 sm:pb-3 flex items-center gap-1.5">
-        <Sparkles className="h-3 w-3 text-white/18 shrink-0" aria-hidden />
-        <p className="text-[11px] text-white/25 italic">
-          Player analysis not yet generated for {playerName}.
-        </p>
-      </div>
-    );
-  }
-
-  // Has content — full card
-  return (
-    <section aria-label="player intelligence" className="px-3 sm:px-5 pb-3 sm:pb-4">
-      <div className="rounded-lg border border-white/8 bg-white/[0.018] px-4 py-3.5">
-        <div className="flex items-center justify-between mb-2.5">
-          <div className="flex items-center gap-1.5">
-            <Sparkles className="h-3 w-3 text-white/30" aria-hidden />
-            <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
-              Player Intelligence
-            </p>
-          </div>
-          {insight?.ai_generated_at && (
-            <p className="text-[9px] text-white/18 tabular-nums">
-              Updated {new Date(insight.ai_generated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
-            </p>
-          )}
-        </div>
-        <p className="text-[12px] text-white/60 leading-relaxed">{cleanAiText(text)}</p>
-        <p className="text-[9px] text-white/20 leading-relaxed italic mt-2">
-          Generated from current player stats, form, price context and model signals. Not a guarantee of future scoring.
-        </p>
-      </div>
-    </section>
-  );
-}
 
 // ── Small UI atoms ────────────────────────────────────────────────────────────
 

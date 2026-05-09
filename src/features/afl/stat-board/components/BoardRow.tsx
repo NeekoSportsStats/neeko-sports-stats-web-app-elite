@@ -2,7 +2,9 @@ import { Fragment, memo } from "react";
 import { ChevronDown, ChevronUp, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { StatBoardPlayer, StatLens, TimelineSlot } from "../types";
-import { useStatBoardPlayerHistory, useStatBoardPlayerAiInsight } from "../useStatBoard";
+import { useStatBoardPlayerHistory } from "../useStatBoard";
+import { usePlayerIntelligence } from "@/hooks/usePlayerIntelligence";
+import { useAccessState } from "@/hooks/useAccessState";
 import { ExpandedPlayerPanel } from "./ExpandedPlayerPanel";
 
 interface Props {
@@ -31,7 +33,8 @@ function LazyExpandedContent({
   const isPlayerLocked = isMatchLocked && !player.is_free_match;
   const activePlayerId = isPlayerLocked ? null : player.player_id;
   const { history, loading: histLoading, error: histError } = useStatBoardPlayerHistory(activePlayerId);
-  const { insight, loading: insightLoading } = useStatBoardPlayerAiInsight(activePlayerId);
+  const { intelligence, loading: intelligenceLoading } = usePlayerIntelligence(activePlayerId);
+  const { isPremium } = useAccessState();
 
   if (isPlayerLocked) return <LockedExpandPanel playerName={player.player_name} />;
 
@@ -44,8 +47,9 @@ function LazyExpandedContent({
       lens={lens}
       threshold={defaultThreshold}
       isLocked={isPlayerLocked}
-      insight={insight}
-      insightLoading={insightLoading}
+      intelligence={intelligence}
+      intelligenceLoading={intelligenceLoading}
+      isPremium={isPremium}
     />
   );
 }

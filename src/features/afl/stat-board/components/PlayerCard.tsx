@@ -1,6 +1,8 @@
 import { Lock, ChevronDown, ChevronUp, TrendingUp } from "lucide-react";
 import type { StatBoardPlayer, StatLens } from "../types";
 import { useStatBoardPlayerHistory } from "../useStatBoard";
+import { usePlayerIntelligence } from "@/hooks/usePlayerIntelligence";
+import { useAccessState } from "@/hooks/useAccessState";
 import { ExpandedPlayerPanel } from "./ExpandedPlayerPanel";
 
 interface Props {
@@ -23,6 +25,10 @@ export function PlayerCard({
   const { history, loading: histLoading, error: histError } = useStatBoardPlayerHistory(
     isExpanded ? player.player_id : null
   );
+  const { intelligence, loading: intelligenceLoading } = usePlayerIntelligence(
+    isExpanded && !isLocked ? player.player_id : null
+  );
+  const { isPremium } = useAccessState();
 
   const thresholdKey = String(threshold);
   const hitData = player.all_threshold_hit_rates?.[thresholdKey];
@@ -176,7 +182,11 @@ export function PlayerCard({
           loading={histLoading}
           error={histError}
           lens={lens}
+          threshold={threshold}
           isLocked={isLocked}
+          intelligence={intelligence}
+          intelligenceLoading={intelligenceLoading}
+          isPremium={isPremium}
         />
       )}
     </div>

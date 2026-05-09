@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, ChevronRight, TrendingUp, TrendingDown, Minus, Zap, Lock, Users, ChartBar as BarChart2, CircleAlert as AlertCircle, ChevronDown, ChevronUp, Activity, Target, ChartBar as BarChart3, FlameKindling as Flame, Shield } from 'lucide-react';
+import { ArrowLeft, ChevronRight, TrendingUp, TrendingDown, Minus, Zap, Lock, Users, ChartBar as BarChart2, CircleAlert as AlertCircle, Activity, Target, ChartBar as BarChart3, FlameKindling as Flame, Shield } from 'lucide-react';
 import {
   slugToPlayerName, playerToSlug,
   POSITION_NAMES, TEAM_SLUG_TO_NAME,
@@ -10,12 +10,13 @@ import { getPlayerDetailSafe, getSimilarPlayersSafe } from '@/lib/playerAccess';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/lib/auth';
 import { useAccessState } from '@/hooks/useAccessState';
+import { usePlayerIntelligence } from '@/hooks/usePlayerIntelligence';
+import { PlayerIntelligencePanel } from '@/components/afl/PlayerIntelligencePanel';
 import { PlayerStatusPill } from '@/features/afl/rankings/components/PlayerStatusPill';
 import {
   getFormStyles, fmtPrice as fmtPriceHelper, fmtEdge, getEdgeColor,
 } from '@/features/afl/rankings/components/helpers';
 import { getTeamAccentColour } from '@/config/aflTeamColours';
-import { cleanAiText } from '@/utils/cleanAiText';
 
 const ScoreHistoryChart = lazy(() => import('@/features/afl/rankings/components/ScoreHistoryChart'));
 
@@ -46,9 +47,6 @@ interface PlayerData {
   avg_last_3: number | null;
   avg_last_5: number | null;
   season_avg: number | null;
-  why: string | null;
-  why_long: string | null;
-  ai_generated_at: string | null;
   neeko_rating: number | null;
   is_locked: boolean | null;
   floor_estimate: number | null;
@@ -344,16 +342,12 @@ function FantasyDecision({
   actionMeta,
   formLabel,
   bevsProj,
-  showFullAI,
-  onToggleAI,
 }: {
   player: PlayerData;
   isPremium: boolean;
   actionMeta: ReturnType<typeof getActionMeta>;
   formLabel: string;
   bevsProj: number | null;
-  showFullAI: boolean;
-  onToggleAI: () => void;
 }) {
   if (!isPremium) {
     return (
@@ -469,43 +463,6 @@ function FantasyDecision({
           </div>
         </div>
 
-        {/* Player Analysis */}
-        {(player.why || player.why_long) && (
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <p className="text-[7.5px] uppercase tracking-widest text-white/20 font-bold">Player Intelligence</p>
-              {player.ai_generated_at && (
-                <p className="text-[7.5px] text-white/15 tabular-nums">
-                  Updated {new Date(player.ai_generated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
-                </p>
-              )}
-            </div>
-            {player.why && (
-              <p className="text-[11px] text-white/50 leading-relaxed">{cleanAiText(player.why)}</p>
-            )}
-            {player.why_long && (
-              <>
-                <button
-                  onClick={onToggleAI}
-                  className="flex items-center gap-1 text-[9.5px] text-white/25 hover:text-white/50 transition-colors mt-0.5"
-                >
-                  {showFullAI ? <ChevronUp size={9} /> : <ChevronDown size={9} />}
-                  {showFullAI ? 'Show less' : 'Full analysis'}
-                </button>
-                {showFullAI && (
-                  <div className="border-t border-white/[0.05] pt-2 space-y-1.5">
-                    <p className="text-[10.5px] text-white/35 leading-relaxed">
-                      {cleanAiText(player.why_long)}
-                    </p>
-                    <p className="text-[8.5px] text-white/18 leading-relaxed italic">
-                      Generated from current player stats, form, price context and model signals. Not a guarantee of future scoring.
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -830,8 +787,9 @@ export default function AFLPlayerPage() {
   const [similar,      setSimilar]      = useState<SimilarPlayer[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState(false);
-  const [showFullAI,   setShowFullAI]   = useState(false);
   const [scoreStats,   setScoreStats]   = useState<ScoreStats | null>(null);
+
+  const { intelligence, loading: intelligenceLoading } = usePlayerIntelligence(player?.player_id ?? null);
 
   // ── Main data fetch ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -867,8 +825,6 @@ export default function AFLPlayerPage() {
           avg_last_3:       raw.avg_last_3 != null ? Number(raw.avg_last_3) : null,
           avg_last_5:       raw.avg_last_5 != null ? Number(raw.avg_last_5) : null,
           season_avg:       raw.season_avg != null ? Number(raw.season_avg) : null,
-          why:              raw.why ?? null,
-          why_long:         raw.why_long ?? null,
           neeko_rating:     raw.neeko_rating != null ? Number(raw.neeko_rating) : null,
           is_locked:        raw.is_locked != null ? Boolean(raw.is_locked) : null,
           floor_estimate:   raw.floor_estimate != null ? Number(raw.floor_estimate) : null,
@@ -1305,8 +1261,23 @@ export default function AFLPlayerPage() {
                   actionMeta={actionMeta}
                   formLabel={formLabel}
                   bevsProj={bevsProj}
-                  showFullAI={showFullAI}
-                  onToggleAI={() => setShowFullAI(v => !v)}
+                />
+              </div>
+
+              {/* Player Intelligence */}
+              <div>
+                <PlayerIntelligencePanel
+                  intelligence={intelligence}
+                  loading={intelligenceLoading}
+                  isPremium={isPremium}
+                  playerName={player.player_name}
+                  projection={player.projection}
+                  breakeven={player.breakeven}
+                  edgeScore={player.edge_canonical}
+                  avgLast3={player.avg_last_3}
+                  confidenceLabel={player.confidence_label}
+                  variant="inline"
+                  upgradeHref="/billing"
                 />
               </div>
 
