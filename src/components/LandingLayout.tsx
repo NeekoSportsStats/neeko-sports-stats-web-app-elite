@@ -185,14 +185,14 @@ export function LandingLayout() {
         className="landing-drawer"
         style={{
           position: "fixed",
-          top: 60, right: 0,
+          top: 60, left: 0,
           width: 240,
           background: "#0e1116",
           border: "1px solid rgba(255,255,255,0.10)",
-          borderRadius: "0 0 0 12px",
+          borderRadius: "0 0 12px 0",
           zIndex: 99,
           padding: "12px 0 20px",
-          transform: menuOpen ? "translateX(0)" : "translateX(100%)",
+          transform: menuOpen ? "translateX(0)" : "translateX(-100%)",
           transition: "transform 0.22s cubic-bezier(0.4,0,0.2,1)",
           display: "none",
         }}

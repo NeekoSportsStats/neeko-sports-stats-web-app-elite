@@ -14,7 +14,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
 
 const POLL_INTERVAL_MS = 2000;
-const POLL_MAX_ATTEMPTS = 15;
+const POLL_MAX_ATTEMPTS = 10;
 const REDIRECT_DELAY_MS = 1500;
 const REDIRECT_DESTINATION = "/fantasy/rankings";
 
@@ -24,6 +24,7 @@ export default function Success() {
   const navigate = useNavigate();
 
   const { loading, isPremium, refreshPremiumStatus, user } = useAuth();
+  const isMountedRef = useRef(true);
   const refreshTriggeredRef = useRef(false);
   const hasRedirectedRef = useRef(false);
   const pollCountRef = useRef(0);
@@ -33,10 +34,19 @@ export default function Success() {
   const [polling, setPolling] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
 
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+    };
+  }, []);
+
   const triggerRedirect = () => {
     if (hasRedirectedRef.current) return;
     hasRedirectedRef.current = true;
-    setRedirecting(true);
+    if (isMountedRef.current) setRedirecting(true);
     redirectTimerRef.current = setTimeout(() => {
       navigate(REDIRECT_DESTINATION, { replace: true });
     }, REDIRECT_DELAY_MS);
@@ -44,7 +54,7 @@ export default function Success() {
 
   useEffect(() => {
     const t = setTimeout(() => {
-      if (loading) {
+      if (loading && isMountedRef.current) {
         setAuthTimedOut(true);
       }
     }, 4000);
@@ -63,45 +73,46 @@ export default function Success() {
     track("checkout_success", { session_id: sessionId ?? undefined });
 
     const startPolling = async () => {
+      if (!isMountedRef.current) return;
       setPolling(true);
 
-      await supabase.auth.refreshSession().catch(() => {});
-      await refreshPremiumStatus().catch(() => {});
-
       const poll = async () => {
+        if (!isMountedRef.current) return;
         if (pollCountRef.current >= POLL_MAX_ATTEMPTS) {
-          setPolling(false);
+          if (isMountedRef.current) setPolling(false);
           return;
         }
         pollCountRef.current += 1;
-        await refreshPremiumStatus().catch(() => {});
 
-        const { data } = await supabase.rpc("get_access_state").catch(() => ({ data: null }));
-        if (data?.is_premium === true) {
-          setPolling(false);
-          triggerRedirect();
-          return;
+        try {
+          await refreshPremiumStatus();
+        } catch (_) {}
+
+        try {
+          const { data } = await supabase.rpc("get_access_state");
+          if (data?.is_premium === true) {
+            if (isMountedRef.current) setPolling(false);
+            triggerRedirect();
+            return;
+          }
+        } catch (_) {}
+
+        if (isMountedRef.current) {
+          pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS);
         }
-
-        pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS);
       };
 
       pollTimerRef.current = setTimeout(poll, POLL_INTERVAL_MS);
     };
 
     startPolling();
-
-    return () => {
-      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
-      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
-    };
   }, [loading, authTimedOut, user, refreshPremiumStatus, sessionId]);
 
   useEffect(() => {
     if (isPremium) {
       if (pollTimerRef.current) {
         clearTimeout(pollTimerRef.current);
-        setPolling(false);
+        if (isMountedRef.current) setPolling(false);
       }
       triggerRedirect();
     }
@@ -109,7 +120,7 @@ export default function Success() {
 
   if (loading && !authTimedOut) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/10 via-background to-background">
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "#0a0a0a" }}>
         <Card className="max-w-2xl w-full">
           <CardContent className="py-12">
             <div className="text-center space-y-4">
@@ -123,8 +134,27 @@ export default function Success() {
     );
   }
 
+  if (!user && !loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "#0a0a0a" }}>
+        <Card className="max-w-2xl w-full">
+          <CardContent className="py-12">
+            <div className="text-center space-y-4">
+              <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
+              <p className="text-lg font-semibold">Payment successful!</p>
+              <p className="text-sm text-muted-foreground">Please sign in to access your premium features.</p>
+              <Button asChild>
+                <a href="/auth">Sign In</a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-primary/10 via-background to-background">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "#0a0a0a" }}>
       <Card className="max-w-2xl w-full">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">

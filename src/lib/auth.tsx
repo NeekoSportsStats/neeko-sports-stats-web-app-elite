@@ -190,7 +190,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             }
 
             case "TOKEN_REFRESHED":
-              applySession(session, event);
+              // Only update the user object — do NOT re-fetch premium status on every token refresh
+              // to avoid hammering the auth endpoint and causing 429 errors.
+              if (session?.user && isMounted) {
+                setUser(session.user);
+              }
               break;
 
             case "USER_UPDATED":
