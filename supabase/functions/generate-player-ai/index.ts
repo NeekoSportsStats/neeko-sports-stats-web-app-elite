@@ -228,6 +228,7 @@ interface PlayerRow {
   top_signals: string[] | null;
   trend_direction: string | null;
   input_hash: string | null;
+  current_input_hash: string | null;
   needs_regen: boolean;
 }
 
@@ -464,7 +465,7 @@ Deno.serve(async (req: Request) => {
         "ai_recommendation", "recommendation_strength",
         "price_change", "price_change_pct",
         "signal_count", "top_signals", "trend_direction",
-        "input_hash", "needs_regen",
+        "input_hash", "current_input_hash", "needs_regen",
       ].join(","))
       .limit(limitPlayers);
 
@@ -574,7 +575,7 @@ Deno.serve(async (req: Request) => {
             p_summary_long:      result.long,
             p_color:             null,
             p_prompt_version:    PROMPT_VERSION,
-            p_input_hash:        player.input_hash ?? null,
+            p_input_hash:        player.current_input_hash ?? player.input_hash ?? null,
             p_stored_projection: player.projection_final ?? null,
             p_stored_price:      player.price ?? null,
           });
