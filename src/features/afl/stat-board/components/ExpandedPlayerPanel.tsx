@@ -351,6 +351,16 @@ export function ExpandedPlayerPanel({
         upgradeHref="/billing"
       />
 
+      {/* ── View full player analysis link ───────────────────────────────── */}
+      <div className="px-3 sm:px-5 pb-2 sm:pb-3">
+        <Link
+          to={`/sports/afl/players/${playerToSlug(player.player_name, player.team_name)}`}
+          className="text-xs text-white/40 hover:text-white/70 transition-colors underline underline-offset-2"
+        >
+          View full player analysis
+        </Link>
+      </div>
+
       {/* ── 6. Full-width game log ────────────────────────────────────────── */}
       <GameLog
         rows={gameLog}
