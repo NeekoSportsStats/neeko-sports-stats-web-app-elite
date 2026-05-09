@@ -10,7 +10,7 @@ const CARDS = [
   {
     icon: <Zap size={18} />,
     title: "Current Week",
-    copy: "Must buys, captain picks, trap alerts and weekly fantasy calls.",
+    copy: "Captain picks, trap alerts, value targets and weekly fantasy calls.",
     href: "/fantasy/current-week",
   },
   {

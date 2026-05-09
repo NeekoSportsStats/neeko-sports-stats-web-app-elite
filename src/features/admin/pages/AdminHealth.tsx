@@ -559,6 +559,44 @@ interface AIWorkerHealth {
   errors_last_hour: number | null;
 }
 
+interface AiHealthPlayerAi {
+  total_rows: number;
+  with_summary: number;
+  missing: number;
+  stale: number;
+  last_generated_at: string | null;
+  oldest_generated_at: string | null;
+  prompt_version: string | null;
+}
+
+interface AiHealthTeamAi {
+  total_rows: number;
+  unique_teams: number;
+  with_summary: number;
+  missing: number;
+  last_generated_at: string | null;
+  prompt_version: string | null;
+}
+
+interface AiHealthCronJob {
+  jobname: string;
+  schedule: string;
+  active: boolean;
+  last_run_at: string | null;
+  last_status: string | null;
+  health_status: string;
+  runs_7d: number;
+  success_7d: number;
+  fail_7d: number;
+}
+
+interface AiHealthSummary {
+  player_ai: AiHealthPlayerAi;
+  team_ai: AiHealthTeamAi;
+  cron_jobs: AiHealthCronJob[];
+  generated_at: string;
+}
+
 interface PlayerIdentityIssue {
   player_id: number;
   name_variants: number;
@@ -704,6 +742,7 @@ export default function AdminHealth() {
   const [identityIssues, setIdentityIssues] = useState<PlayerIdentityIssue[]>([]);
   const [identityLoading, setIdentityLoading] = useState(true);
   const [pipelineLoading, setPipelineLoading] = useState(true);
+  const [aiHealthSummary, setAiHealthSummary] = useState<AiHealthSummary | null>(null);
 
   const fetchIdentityIssues = useCallback(async () => {
     setIdentityLoading(true);
@@ -719,12 +758,21 @@ export default function AdminHealth() {
   const fetchPipelineData = useCallback(async () => {
     setPipelineLoading(true);
     try {
-      const result = await fetchAdminDashboardData("health");
-      if (Array.isArray(result.pipeline_run_detail)) setPipelineRuns(result.pipeline_run_detail as PipelineRunRow[]);
-      if (result.pipeline_health) setPipelineHealth(result.pipeline_health as PipelineHealth);
-      if (result.ai_worker_health) setAiWorker(result.ai_worker_health as AIWorkerHealth);
-      if (result.status) setCmdStatus(result.status as CommandCenterStatus);
-      if (Array.isArray(result.cron_jobs)) setCronJobs(result.cron_jobs as CronJobRow[]);
+      const [dashResult, aiHealthResult] = await Promise.allSettled([
+        fetchAdminDashboardData("health"),
+        supabase.rpc("get_ai_health_summary"),
+      ]);
+      if (dashResult.status === "fulfilled") {
+        const result = dashResult.value;
+        if (Array.isArray(result.pipeline_run_detail)) setPipelineRuns(result.pipeline_run_detail as PipelineRunRow[]);
+        if (result.pipeline_health) setPipelineHealth(result.pipeline_health as PipelineHealth);
+        if (result.ai_worker_health) setAiWorker(result.ai_worker_health as AIWorkerHealth);
+        if (result.status) setCmdStatus(result.status as CommandCenterStatus);
+        if (Array.isArray(result.cron_jobs)) setCronJobs(result.cron_jobs as CronJobRow[]);
+      }
+      if (aiHealthResult.status === "fulfilled" && aiHealthResult.value.data) {
+        setAiHealthSummary(aiHealthResult.value.data as AiHealthSummary);
+      }
     } catch { /* silent */ } finally {
       setPipelineLoading(false);
     }
@@ -1250,66 +1298,155 @@ export default function AdminHealth() {
       )}
 
       {tab === "ai" && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <HealthCard icon={Database} title="Rankings Cache" status={cacheStatus} loading={loading}>
-            <StatRow label="Cached players" value={(aiStats?.rankings_cache_rows ?? 0).toLocaleString()} highlight={(aiStats?.rankings_cache_rows ?? 0) >= 400 ? "good" : "warn"} />
-            <StatRow label="With AI analysis" value={(aiStats?.rankings_with_ai ?? 0).toLocaleString()} highlight={(aiStats?.rankings_with_ai ?? 0) >= 400 ? "good" : "warn"} />
-            <StatRow label="With recommendation" value={(aiStats?.rankings_with_reco ?? 0).toLocaleString()} highlight={(aiStats?.rankings_with_reco ?? 0) >= 400 ? "good" : "warn"} />
-            <StatRow label="Cache refreshed" value={formatDate(aiStats?.rankings_cache_refreshed_at ?? null)} />
-            <StatRow label="Projections" value={(aiStats?.projection_rows ?? 0).toLocaleString()} highlight={(aiStats?.projection_rows ?? 0) >= 400 ? "good" : "warn"} />
-            <StatRow label="Projections refreshed" value={formatDate(aiStats?.projection_refreshed_at ?? null)} />
-          </HealthCard>
-
-          <HealthCard
-            icon={Bot}
-            title="AI Queue"
-            status={(cmdStatus?.queue_failed ?? 0) > 10 ? "error" : (cmdStatus?.queue_pending ?? 0) > 200 ? "warn" : "ok"}
-            loading={pipelineLoading}
-          >
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {/* Player AI */}
             {(() => {
-              const pending = cmdStatus?.queue_pending ?? 0;
-              const failed = cmdStatus?.queue_failed ?? 0;
-              const jobs10m = aiWorker?.jobs_last_10m ?? 0;
-              const rate = jobs10m > 0 ? `${jobs10m} / 10 min` : "0 / 10 min";
-              const workerLastRun = aiWorker?.last_worker_run;
-              const minsAgo = workerLastRun
-                ? (Date.now() - new Date(workerLastRun).getTime()) / 60000
-                : null;
-              const noRecentGen = minsAgo !== null && minsAgo > 10 && pending > 0;
-              const backlogCritical = pending > 300;
+              const p = aiHealthSummary?.player_ai;
+              const total = p?.total_rows ?? 0;
+              const withSummary = p?.with_summary ?? 0;
+              const missing = p?.missing ?? 0;
+              const stale = p?.stale ?? 0;
+              const coverage = total > 0 ? Math.round((withSummary / total) * 100) : 0;
+              const cardStatus: StatusLevel = pipelineLoading ? "loading"
+                : missing > 300 ? "error"
+                : missing > 100 || stale > 100 ? "warn"
+                : "ok";
               return (
-                <>
-                  {backlogCritical && (
-                    <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-950/20 px-2.5 py-1.5 mb-3">
-                      <AlertTriangle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-                      <span className="text-[11px] text-amber-400 font-medium">Backlog critical — {pending} jobs queued</span>
-                    </div>
-                  )}
-                  {noRecentGen && (
-                    <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-950/20 px-2.5 py-1.5 mb-3">
-                      <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
-                      <span className="text-[11px] text-red-400 font-medium">No generation in 10+ min — worker may be stalled</span>
-                    </div>
-                  )}
-                  <StatRow label="Pending jobs" value={pending.toLocaleString()} highlight={pending > 300 ? "bad" : pending > 100 ? "warn" : "good"} />
-                  <StatRow label="Processing" value={cmdStatus?.queue_processing?.toLocaleString() ?? "—"} />
-                  <StatRow label="Completed" value={cmdStatus?.queue_complete?.toLocaleString() ?? "—"} highlight={(cmdStatus?.queue_complete ?? 0) > 0 ? "good" : undefined} />
-                  <StatRow label="Failed" value={failed.toLocaleString()} highlight={failed === 0 ? "good" : failed < 5 ? "warn" : "bad"} />
-                  <StatRow label="Throughput" value={rate} highlight={jobs10m > 0 ? "good" : pending > 0 ? "warn" : undefined} />
-                  <StatRow label="Worker last run" value={fmtTs(workerLastRun)} highlight={noRecentGen ? "bad" : "good"} />
-                  <StatRow label="Worker errors (1h)" value={aiWorker?.errors_last_hour?.toLocaleString() ?? "—"} highlight={(aiWorker?.errors_last_hour ?? 0) === 0 ? "good" : "bad"} />
-                </>
+                <HealthCard icon={Bot} title="Player AI" status={cardStatus} loading={pipelineLoading}>
+                  <StatRow label="Total rows" value={total.toLocaleString()} />
+                  <StatRow label="With summary" value={withSummary.toLocaleString()} highlight={withSummary >= 400 ? "good" : "warn"} />
+                  <StatRow label="Missing" value={missing.toLocaleString()} highlight={missing === 0 ? "good" : missing < 50 ? "warn" : "bad"} />
+                  <StatRow label="Stale" value={stale.toLocaleString()} highlight={stale === 0 ? "good" : stale < 100 ? "warn" : "bad"} />
+                  <StatRow label="Coverage" value={`${coverage}%`} highlight={coverage >= 80 ? "good" : coverage >= 50 ? "warn" : "bad"} />
+                  <StatRow label="Last generated" value={fmtTs(p?.last_generated_at)} />
+                  <StatRow label="Prompt version" value={p?.prompt_version ?? "—"} />
+                  <p className="text-[10px] text-muted-foreground mt-2 pt-2 border-t border-border/30">
+                    Source: <span className="font-mono">ai.player_ai_analysis</span>. Generated daily at 15:05 UTC via the Neeko AI pipeline. Refreshed into rankings cache before the front end reads it.
+                  </p>
+                </HealthCard>
               );
             })()}
-          </HealthCard>
 
-          <HealthCard icon={ShieldCheck} title="Command Logs" status={commandsStatus} loading={loading}>
-            <StatRow label="Total commands" value={(aiStats?.command_log_rows ?? 0).toLocaleString()} />
-            <StatRow label="Commands (24h)" value={aiStats?.commands_last_24h ?? "—"} />
-            <StatRow label="Success (24h)" value={aiStats?.commands_success_24h ?? "—"} highlight={(aiStats?.commands_success_24h ?? 0) > 0 ? "good" : undefined} />
-            <StatRow label="Errors (24h)" value={aiStats?.commands_error_24h ?? "—"} highlight={(aiStats?.commands_error_24h ?? 0) === 0 ? "good" : (aiStats?.commands_error_24h ?? 0) <= 3 ? "warn" : "bad"} />
-            <StatRow label="Last command" value={formatDate(aiStats?.last_command_at ?? null)} />
-          </HealthCard>
+            {/* Team AI */}
+            {(() => {
+              const t = aiHealthSummary?.team_ai;
+              const uniqueTeams = t?.unique_teams ?? 0;
+              const withSummary = t?.with_summary ?? 0;
+              const missing = t?.missing ?? 18;
+              const neverRun = uniqueTeams === 0;
+              const cardStatus: StatusLevel = pipelineLoading ? "loading"
+                : neverRun ? "error"
+                : missing > 5 ? "warn"
+                : "ok";
+              return (
+                <HealthCard icon={Activity} title="Team AI" status={cardStatus} loading={pipelineLoading}>
+                  {neverRun && !pipelineLoading && (
+                    <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-950/20 px-2.5 py-1.5 mb-3">
+                      <XCircle className="h-3.5 w-3.5 text-red-400 shrink-0" />
+                      <span className="text-[11px] text-red-400 font-medium">No team summaries generated yet — run Team AI to populate</span>
+                    </div>
+                  )}
+                  <StatRow label="Teams with AI" value={`${uniqueTeams} / 18`} highlight={uniqueTeams >= 18 ? "good" : uniqueTeams > 0 ? "warn" : "bad"} />
+                  <StatRow label="With summary" value={withSummary.toLocaleString()} highlight={withSummary >= 18 ? "good" : withSummary > 0 ? "warn" : "bad"} />
+                  <StatRow label="Missing" value={missing.toLocaleString()} highlight={missing === 0 ? "good" : missing < 5 ? "warn" : "bad"} />
+                  <StatRow label="Last generated" value={fmtTs(t?.last_generated_at)} />
+                  <StatRow label="Prompt version" value={t?.prompt_version ?? "—"} />
+                  <p className="text-[10px] text-muted-foreground mt-2 pt-2 border-t border-border/30">
+                    Source: <span className="font-mono">afl.ai_team_summaries</span>. Generated daily at 16:00 UTC via <span className="font-mono">generate-team-ai-summaries</span>. Used on Team pages only.
+                  </p>
+                </HealthCard>
+              );
+            })()}
+
+            {/* Command Logs */}
+            <HealthCard icon={ShieldCheck} title="Command Logs" status={commandsStatus} loading={loading}>
+              <StatRow label="Total commands" value={(aiStats?.command_log_rows ?? 0).toLocaleString()} />
+              <StatRow label="Commands (24h)" value={aiStats?.commands_last_24h ?? "—"} />
+              <StatRow label="Success (24h)" value={aiStats?.commands_success_24h ?? "—"} highlight={(aiStats?.commands_success_24h ?? 0) > 0 ? "good" : undefined} />
+              <StatRow label="Errors (24h)" value={aiStats?.commands_error_24h ?? "—"} highlight={(aiStats?.commands_error_24h ?? 0) === 0 ? "good" : (aiStats?.commands_error_24h ?? 0) <= 3 ? "warn" : "bad"} />
+              <StatRow label="Last command" value={formatDate(aiStats?.last_command_at ?? null)} />
+            </HealthCard>
+          </div>
+
+          {/* AI Cron Status */}
+          {(() => {
+            const aiCronJobs = (aiHealthSummary?.cron_jobs ?? []).filter(j =>
+              j.jobname.includes("ai") || j.jobname.includes("neeko")
+            );
+            const cronStatus: StatusLevel = pipelineLoading ? "loading"
+              : aiCronJobs.some(j => j.health_status === "failing") ? "error"
+              : aiCronJobs.some(j => j.health_status === "never_run" || !j.active) ? "warn"
+              : "ok";
+            return (
+              <Card className={`border ${cronStatus === "ok" ? "border-emerald-900/60" : cronStatus === "warn" ? "border-amber-900/60" : cronStatus === "error" ? "border-red-900/60" : "border-border"}`}>
+                <CardHeader className="pb-3 pt-4 px-5">
+                  <CardTitle className="flex items-center justify-between text-sm font-semibold">
+                    <div className="flex items-center gap-2">
+                      <span className="w-7 h-7 rounded-md bg-muted flex items-center justify-center shrink-0">
+                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                      </span>
+                      AI Cron Schedule
+                    </div>
+                    {pipelineLoading ? <RefreshCw className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : <SectionIcon status={cronStatus} />}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-5 pb-5">
+                  {pipelineLoading ? (
+                    <div className="space-y-2">{[1,2].map(i => <div key={i} className="h-8 rounded bg-muted animate-pulse" />)}</div>
+                  ) : aiCronJobs.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2">No AI cron jobs found. Ensure the cron schedule is configured.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="border-b border-border/40">
+                            <th className="text-left py-2 pr-3 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Job</th>
+                            <th className="text-left py-2 pr-3 text-[10px] font-medium text-muted-foreground uppercase tracking-wide hidden sm:table-cell">Schedule</th>
+                            <th className="text-left py-2 pr-3 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Status</th>
+                            <th className="text-left py-2 pr-3 text-[10px] font-medium text-muted-foreground uppercase tracking-wide hidden md:table-cell">Last Run</th>
+                            <th className="text-right py-2 pr-3 text-[10px] font-medium text-muted-foreground uppercase tracking-wide w-16">7d runs</th>
+                            <th className="text-right py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wide w-16">7d fail</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {aiCronJobs.map(job => {
+                            const jobHealth: StatusLevel = !job.active ? "warn"
+                              : job.health_status === "healthy" ? "ok"
+                              : job.health_status === "failing" ? "error"
+                              : job.health_status === "never_run" ? "warn"
+                              : "warn";
+                            return (
+                              <tr key={job.jobname} className="border-b border-border/20 last:border-0 hover:bg-muted/10 transition-colors">
+                                <td className="py-2 pr-3 font-mono text-[11px] text-foreground">{job.jobname}</td>
+                                <td className="py-2 pr-3 font-mono text-[11px] text-muted-foreground hidden sm:table-cell">{job.schedule}</td>
+                                <td className="py-2 pr-3">
+                                  <StatusChip level={jobHealth} label={job.active ? (job.health_status ?? "unknown") : "paused"} />
+                                </td>
+                                <td className="py-2 pr-3 hidden md:table-cell">
+                                  <span className="text-muted-foreground">{job.last_run_at ? fmtTs(job.last_run_at) : "—"}</span>
+                                  {job.last_status && (
+                                    <span className={`ml-2 text-[10px] font-semibold ${job.last_status === "succeeded" ? "text-emerald-400" : job.last_status === "failed" ? "text-red-400" : "text-muted-foreground"}`}>
+                                      {job.last_status}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2 pr-3 text-right tabular-nums text-muted-foreground">{job.runs_7d}</td>
+                                <td className={`py-2 text-right tabular-nums font-semibold ${job.fail_7d > 0 ? "text-red-400" : "text-emerald-400"}`}>{job.fail_7d}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                      <p className="text-[10px] text-muted-foreground mt-3 pt-2 border-t border-border/30">
+                        AI pipeline order (UTC): 14:00 ingestion → 14:30 Neeko pipeline → 15:05 Player AI → 16:00 Team AI → 17:00 accuracy. Player AI and Team AI run via cron — no live AI generation occurs in the browser.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
         </div>
       )}
 

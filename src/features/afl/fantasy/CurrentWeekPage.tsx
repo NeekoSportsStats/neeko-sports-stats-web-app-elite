@@ -757,7 +757,7 @@ export default function CurrentWeekPage() {
         <title>AFL Fantasy Current Week Picks | Neeko Sports Stats</title>
         <meta
           name="description"
-          content="AFL Fantasy weekly calls — captain picks, buy and value picks, and trap alerts for the current round."
+          content="AFL Fantasy weekly calls — captain picks, value targets, and trap alerts for the current round."
         />
         <link rel="canonical" href="https://neekostats.com.au/fantasy/current-week" />
         <meta property="og:url" content="https://neekostats.com.au/fantasy/current-week" />
@@ -917,9 +917,9 @@ export default function CurrentWeekPage() {
 
               {/* 2. Buy / Value Picks */}
               <Section
-                title="Buy / Value Picks"
-                description="Players exceeding their breakeven with strong projected upside — trade targets and holds."
-                premiumDescription="Players showing strong value, start or buy signals this round."
+                title="Value Picks"
+                description="Players exceeding their breakeven with strong projected upside — value targets and holds."
+                premiumDescription="Players showing strong value and positive model signals this round."
                 accentBar="bg-emerald-500/50"
                 headerIcon={<TrendingUp className="h-4 w-4 text-emerald-400/80" aria-hidden />}
                 players={data.buyValuePicks}

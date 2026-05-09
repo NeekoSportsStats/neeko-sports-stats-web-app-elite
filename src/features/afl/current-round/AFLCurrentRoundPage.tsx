@@ -472,7 +472,7 @@ function MustBuysSection({
       style={{ border: `1px solid ${accentColor}28`, background: `linear-gradient(145deg, ${accentColor}05 0%, transparent 55%)` }}
     >
       <SectionHeader
-        title="Must Buys"
+        title="Top Targets"
         subtitle="Who to target this round"
         icon={<TrendingUp className="w-3.5 h-3.5" />}
         accentColor={accentColor}
@@ -1160,7 +1160,7 @@ function CollapsibleSEO({ roundLabel, roundNum }: { roundLabel: string; roundNum
           <div className="space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-wider text-white/20">How Each Section Works</p>
             <ul className="space-y-2 text-[11px] text-white/30 leading-relaxed">
-              <li><strong className="text-white/50">Must Buys</strong> — SMASH_START or START signal + positive edge. Only players with at least 1 game played.</li>
+              <li><strong className="text-white/50">Top Targets</strong> — SMASH_START or START signal + positive edge. Only players with at least 1 game played.</li>
               <li><strong className="text-white/50">Budget Upside</strong> — Under $350k with positive signal. Genuine upside, not just cheap filler.</li>
               <li><strong className="text-white/50">Overpriced / Risk</strong> — SIT or HARD_SIT signal only. Ranked by edge ascending (worst first).</li>
               <li><strong className="text-white/50">Captain Picks</strong> — Highest projection players with non-negative signal. No SIT players here.</li>
@@ -1388,7 +1388,7 @@ export default function AFLCurrentRoundPage() {
           {/* ── HERO CARDS ─────────────────────────────────────────── */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <HeroCard
-              label="Must Buy"
+              label="Top Target"
               question="Who should I target?"
               icon={<TrendingUp className="w-3.5 h-3.5" />}
               accentColor="#4ade80"
@@ -1482,7 +1482,7 @@ export default function AFLCurrentRoundPage() {
             {/* OVERPRICED / RISK */}
             <CompactSectionCard
               title="Overpriced / Risk"
-              subtitle="Who to move on from this week"
+              subtitle="Hard Sit / risk profile this week"
               icon={<ShieldAlert className="w-3.5 h-3.5" />}
               accentColor="#f87171"
               players={riskPicks}

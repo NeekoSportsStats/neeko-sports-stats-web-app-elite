@@ -306,7 +306,7 @@ function DesktopLockedRow({ index, tier }: { index: number; tier: DisplaySignal 
 
 function CategoryHeader({ tier, lockedCount, isMobile }: { tier: DisplaySignal; lockedCount: number; isMobile?: boolean }) {
   const config = {
-    TARGET: { label: "Target Buys",  dot: "bg-green-400",  text: "text-green-400/80",  note: "Best underpriced picks" },
+    TARGET: { label: "Top Targets",  dot: "bg-green-400",  text: "text-green-400/80",  note: "Best underpriced picks" },
     WATCH:  { label: "Watch List",   dot: "bg-yellow-300", text: "text-yellow-300/80", note: "Monitor for moves" },
     AVOID:  { label: "Traps",        dot: "bg-red-400",    text: "text-red-400/80",    note: lockedCount > 0 ? "Premium traps hidden" : "Overpriced to avoid" },
   };

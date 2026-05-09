@@ -20,7 +20,7 @@ const PREMIUM_FEATURES = [
   "Player trends and projections",
   "Hit rates and consistency labels",
   "Fantasy Hub included",
-  "Must Buys, Trap Alerts, Captain Picks",
+  "Top Targets, Trap Alerts, Captain Picks",
   "Full player and team history",
 ];
 

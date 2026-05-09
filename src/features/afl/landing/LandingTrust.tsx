@@ -34,7 +34,7 @@ const FEATURES = [
   {
     icon: <Star size={20} />,
     label: "Fantasy Hub included",
-    sub: "Must Buys, Trap Alerts, Captain Picks and Rankings — all accessible from one subscription.",
+    sub: "Top Targets, Trap Alerts, Captain Picks and Rankings — all accessible from one subscription.",
     color: "#E8855A",
   },
 ];

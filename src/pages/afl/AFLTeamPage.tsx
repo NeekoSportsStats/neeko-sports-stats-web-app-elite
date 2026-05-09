@@ -1277,7 +1277,7 @@ export default function AFLTeamPage() {
 
   const shortName   = teamName.split(' ')[0];
   const pageTitle   = `${teamName} — AFL Fantasy Intelligence 2026 | Neeko`;
-  const pageDescription = `${teamName} squad analysis for AFL Fantasy 2026. Projected scores, breakeven targets, and buy/sell signals for all ${stats.totalPlayers} players — updated each round. ${stats.startCt} Start signal${stats.startCt !== 1 ? 's' : ''} active.`;
+  const pageDescription = `${teamName} squad analysis for AFL Fantasy 2026. Projected scores, breakeven targets, and model signals for all ${stats.totalPlayers} players — updated each round. ${stats.startCt} Start signal${stats.startCt !== 1 ? 's' : ''} active.`;
   const pageUrl     = `https://neekostats.com.au/sports/afl/teams/${team}`;
 
   return (
@@ -1285,7 +1285,7 @@ export default function AFLTeamPage() {
       <Helmet>
         <title>{pageTitle}</title>
         <meta name="description"         content={pageDescription} />
-        <meta name="keywords"            content={`${teamName}, AFL Fantasy, AFL Fantasy 2026, ${teamName} players, fantasy projections, buy sell hold, captain picks, ${teamName} fantasy tips 2026, ${shortName} AFL Fantasy`} />
+        <meta name="keywords"            content={`${teamName}, AFL Fantasy, AFL Fantasy 2026, ${teamName} players, fantasy projections, start sit hold, captain picks, ${teamName} fantasy tips 2026, ${shortName} AFL Fantasy`} />
         <meta property="og:title"        content={pageTitle} />
         <meta property="og:description"  content={pageDescription} />
         <meta property="og:type"         content="website" />

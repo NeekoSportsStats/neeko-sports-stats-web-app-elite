@@ -129,6 +129,9 @@ Deno.serve(async (req: Request) => {
       .select("*")
       .maybeSingle();
 
+    // Comprehensive AI health summary (player AI + team AI + cron)
+    const { data: aiHealthSummary } = await supabase.rpc("get_ai_health_summary");
+
     // Snapshots list
     const { data: snapshots } = await supabase
       .schema("admin" as never)
@@ -148,6 +151,7 @@ Deno.serve(async (req: Request) => {
 
       // AI / data
       ai_coverage: aiCoverage,
+      ai_health_summary: aiHealthSummary ?? null,
       snapshots: snapshots ?? [],
       snapshot_breakdown: snapshotBreakdown,
 

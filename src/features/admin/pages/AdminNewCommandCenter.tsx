@@ -426,8 +426,8 @@ export default function AdminNewCommandCenter() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-[11px] text-muted-foreground">Run AI generation pipelines to produce player analyses and team summaries via the generate-player-ai and generate-team-ai-summaries edge functions.</p>
-              <ActionGroup title={<span className="flex items-center gap-2">Generate <RiskBadge level="recovery" /></span>}>
+              <p className="text-[11px] text-muted-foreground">AI generation produces Player analyses and Team summaries only. Rankings, Market Watch, Match Centre and Fantasy Hub read from cached AI output — they do not generate AI themselves.</p>
+              <ActionGroup title={<span className="flex items-center gap-2">Player AI <RiskBadge level="recovery" /></span>}>
                 <ActionButton label="Run AI Worker (1 batch)" command="run_ai_worker" icon={Bot} onComplete={fetchStatus} />
                 <AdminActionExplain
                   what="Processes one batch of queued player AI jobs — calls generate-player-ai edge function for players needing analysis."
@@ -438,22 +438,30 @@ export default function AdminNewCommandCenter() {
                 />
                 <ActionButton label="Enqueue All Players for AI" command="enqueue_all_ai" icon={Play} onComplete={fetchStatus} />
                 <AdminActionExplain
-                  what="Marks all players with missing or stale AI analysis so the ai_regen_wave_5min cron picks them up for regeneration."
+                  what="Marks all players with missing or stale AI analysis so the next AI wave picks them up for regeneration."
                   which="ai.player_ai_analysis, player_rankings_cache"
                   duration="5–15s"
                   risk="low"
                   when="After a full pipeline run, or when AI coverage is low."
                 />
-              </ActionGroup>
-
-              <ActionGroup title={<span className="flex items-center gap-2">AI Rankings <RiskBadge level="heavy" /></span>}>
                 <ActionButton label="Run Full AI Neeko Pipeline" command="run_neeko_ai_pipeline" icon={Zap} onComplete={fetchStatus} />
                 <AdminActionExplain
                   what="Runs the full Neeko AI pipeline: marks stale players, fires generate-player-ai, refreshes rankings cache and market watch."
                   which="fn_run_neeko_ai_pipeline, ai.player_ai_analysis, player_rankings_cache"
                   duration="5–20 minutes"
                   risk="medium"
-                  when="After a full pipeline run when you want to regenerate all AI content end-to-end."
+                  when="After a full pipeline run when you want to regenerate all player AI content end-to-end."
+                />
+              </ActionGroup>
+
+              <ActionGroup title={<span className="flex items-center gap-2">Team AI <RiskBadge level="heavy" /></span>}>
+                <ActionButton label="Regenerate Team AI Summaries" command="run_team_ai" icon={Activity} onComplete={fetchStatus} />
+                <AdminActionExplain
+                  what="Calls generate-team-ai-summaries edge function to regenerate AI summaries for all 18 AFL teams. Summaries appear on individual Team pages only."
+                  which="afl.ai_team_summaries, generate-team-ai-summaries edge function"
+                  duration="2–5 minutes"
+                  risk="medium"
+                  when="After a full pipeline run, round changeover, or when team summaries look stale."
                 />
               </ActionGroup>
 

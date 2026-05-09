@@ -433,6 +433,23 @@ Deno.serve(async (req: Request) => {
       if (error) throw error;
       return ok(data);
 
+    } else if (command === "run_team_ai") {
+      const teamAiUrl = `${supabaseUrl}/functions/v1/generate-team-ai-summaries`;
+      const teamAiRes = await fetch(teamAiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({ trigger: "manual_admin" }),
+      });
+      if (!teamAiRes.ok) {
+        const errText = await teamAiRes.text().catch(() => "unknown");
+        throw new Error(`generate-team-ai-summaries failed: ${teamAiRes.status} ${errText}`);
+      }
+      const teamAiData = await teamAiRes.json().catch(() => ({}));
+      return ok(teamAiData);
+
     } else {
       return err(`Unknown command: ${command}`);
     }

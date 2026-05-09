@@ -306,7 +306,7 @@ export function MarketDataTable({ players, onPlayerClick, isPremium }: MarketDat
               Deeper player analysis, all value signals, and filters — with Neeko+
             </p>
             <p className="text-xs text-white/35 mb-6 mt-1.5">
-              Updated weekly — edges disappear fast
+              Updated weekly with the latest projection data
             </p>
             <a
               href="/neeko-plus"

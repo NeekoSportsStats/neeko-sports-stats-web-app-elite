@@ -436,12 +436,12 @@ export default function Index() {
 
   const fantasyCards: CardProps[] = allHeroReady ? [
     {
-      label: "Must Buy", icon: <TrendingUp size={11} />, accentIdx: 0,
+      label: "Top Target", icon: <TrendingUp size={11} />, accentIdx: 0,
       playerName: mustBuyP!.player_name, team: mustBuyP!.team ?? "", position: mustBuyP!.position,
       projection: mustBuyP!.projection, seasonAvg: mustBuyP!.last_5_avg ?? mustBuyP!.season_avg ?? null,
       confidenceLabel: confidenceOf(mustBuyP),
       reason: "Projected well above price — one of the best value plays this week.",
-      ctaLabel: "View Must Buys", ctaTo: "/fantasy",
+      ctaLabel: "View Top Targets", ctaTo: "/fantasy",
     },
     {
       label: "Trap Alert", icon: <AlertTriangle size={11} />, accentIdx: 1,
@@ -749,7 +749,7 @@ export default function Index() {
               Fantasy decisions, in one place.
             </h2>
             <p style={{ margin: "0 0 12px", fontSize: "clamp(11px, 0.78vw, 13px)", color: "rgba(255,255,255,0.45)", fontWeight: 500, lineHeight: 1.55, maxWidth: 520, marginLeft: "auto", marginRight: "auto" }}>
-              Use the Stat Board for trends and hit rates. Use Fantasy Hub for weekly AFL Fantasy decisions — Must Buys, Trap Alerts, Captain Picks and live Rankings.
+              Use the Stat Board for trends and hit rates. Use Fantasy Hub for weekly AFL Fantasy decisions — Top Targets, Trap Alerts, Captain Picks and live Rankings.
             </p>
             <Link
               to="/fantasy"

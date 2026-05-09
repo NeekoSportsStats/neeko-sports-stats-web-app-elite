@@ -335,10 +335,10 @@ function CollapsibleSEO() {
       >
         <div className="px-4 pb-5 pt-3 space-y-3">
           <p className="text-[12px] text-white/40 leading-relaxed">
-            Market Watch surfaces players with clear trade signals based on Neeko's projection model, value scoring, and trend engine. Every player is scored against their breakeven and season context to determine a BUY, HOLD, or AVOID rating.
+            Market Watch surfaces players with clear trade signals based on Neeko's projection model, value scoring, and trend engine. Every player is scored against their breakeven and season context to determine a Start, Hold, or Avoid rating.
           </p>
           <ul className="space-y-2 text-[12px] text-white/35 leading-relaxed">
-            <li><strong className="text-white/55">Top Targets</strong> — Strong buy signals: projecting above breakeven with positive edge and value score above 1.0.</li>
+            <li><strong className="text-white/55">Top Targets</strong> — Strong Start signals: projecting above breakeven with positive edge and value score above 1.0.</li>
             <li><strong className="text-white/55">Solid Options</strong> — Hold-rated players. Performing to expectation but no urgent trade action needed.</li>
             <li><strong className="text-white/55">Risk / Avoid</strong> — Players projecting below breakeven or showing form decline. Consider trading out.</li>
           </ul>
@@ -962,7 +962,7 @@ export default function MarketWatchPageElite() {
                   {isPremium ? `${allPlayers.length} players` : `${FREE_BUY_LIMIT + FREE_AVOID_LIMIT} of ${allPlayers.length} players`}
                 </span>
                 <div className="flex items-center gap-3">
-                  <span className="text-[10px] text-green-400/60">{buys.length} buy</span>
+                  <span className="text-[10px] text-green-400/60">{buys.length} start</span>
                   <span className="text-[10px] text-white/20">{holds.length} hold</span>
                   <span className="text-[10px] text-red-400/60">{sells.length} avoid</span>
                 </div>
@@ -988,7 +988,7 @@ export default function MarketWatchPageElite() {
                 />
               </div>
               <span className="text-[10px] text-white/25 shrink-0">
-                {buys.length} buy · {holds.length} hold · {sells.length} avoid
+                {buys.length} start · {holds.length} hold · {sells.length} avoid
               </span>
             </div>
           )}

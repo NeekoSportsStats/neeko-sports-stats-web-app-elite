@@ -12,14 +12,14 @@ const TOOLS = [
   {
     icon: <TrendingUp size={20} />,
     title: "Market Watch",
-    desc: "Trade signals, price gaps, and breakeven data in one view. Know who to move on.",
+    desc: "Trade signals, price gaps, and breakeven data in one view. Spot value and risk at a glance.",
     to: "/fantasy/market-watch",
     color: "#22C55E",
   },
   {
     icon: <Zap size={20} />,
     title: "Current Week",
-    desc: "Must buys, trap alerts, captain picks and value calls — all in one weekly view.",
+    desc: "Captain picks, trap alerts and value calls — all in one weekly view.",
     to: "/fantasy/current-week",
     color: "#E8855A",
   },

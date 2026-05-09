@@ -483,7 +483,7 @@ const PREMIUM_ITEMS = [
   "Full player and team stats",
   "Full Match Centre",
   "Fantasy Hub included",
-  "Must Buys + Trap Alerts",
+  "Top Targets + Trap Alerts",
   "Full player history",
 ];
 
@@ -675,7 +675,7 @@ export default function MobileLanding({ isPremium }: Props) {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
           {[
-            { label: "Must Buy",     icon: <TrendingUp size={11} />,    color: "#22c55e", desc: "Best value plays." },
+            { label: "Top Target",   icon: <TrendingUp size={11} />,    color: "#22c55e", desc: "Best value plays." },
             { label: "Trap Alert",   icon: <AlertTriangle size={11} />, color: "#f87171", desc: "Avoid these players." },
             { label: "Captain Pick", icon: <Star size={11} />,          color: "#E0AE2D", desc: "Top scoring projection." },
             { label: "Value Pick",   icon: <Zap size={11} />,           color: "#E8855A", desc: "Priced below output." },
