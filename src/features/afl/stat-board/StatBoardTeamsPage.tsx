@@ -191,6 +191,8 @@ export default function StatBoardTeamsPage() {
           name="description"
           content="View every AFL team's scoring trends, hit rates and projections for the round. Full round team board with stat lens filtering."
         />
+        <link rel="canonical" href="https://neekostats.com.au/stat-board/teams" />
+        <meta name="robots" content="index, follow" />
       </Helmet>
 
       <div className="min-h-dvh bg-[#0a0a0a] text-white overflow-x-hidden">

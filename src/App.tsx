@@ -1,7 +1,6 @@
 import React, { Suspense, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { track } from "@/lib/analytics";
-import { useCanonical } from "@/hooks/useCanonical";
 import { Layout } from "@/components/Layout";
 import { LandingLayout } from "@/components/LandingLayout";
 import { RequireAuth } from "@/components/RequireAuth";
@@ -90,8 +89,6 @@ const Generic = <GenericPageSkeleton />;
 
 function App() {
   const location = useLocation();
-
-  useCanonical();
 
   useEffect(() => {
     track("Page View", { path: location.pathname });

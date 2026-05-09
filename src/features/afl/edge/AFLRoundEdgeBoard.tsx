@@ -915,11 +915,11 @@ export default function AFLRoundEdgeBoard() {
         <title>AFL Fantasy Edge Board 2026 | Captain Picks &amp; Trade Targets | Neeko</title>
         <meta name="description" content="Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model." />
         <meta name="robots" content="index, follow" />
-        <link rel="canonical" href="https://neekostats.com.au/sports/afl/edge-board" />
+        <link rel="canonical" href="https://neekostats.com.au/fantasy/edge-board" />
         <meta property="og:title" content="AFL Fantasy Edge Board 2026 | Captain Picks &amp; Trade Targets | Neeko" />
         <meta property="og:description" content="Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model." />
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://neekostats.com.au/sports/afl/edge-board" />
+        <meta property="og:url" content="https://neekostats.com.au/fantasy/edge-board" />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
         <meta property="og:site_name" content="Neeko Sports" />
         <meta name="twitter:card" content="summary_large_image" />
@@ -931,14 +931,14 @@ export default function AFLRoundEdgeBoard() {
           "@type": "WebPage",
           "name": "AFL Fantasy Edge Board 2026 | Captain Picks & Trade Targets",
           "description": "Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model.",
-          "url": "https://neekostats.com.au/sports/afl/edge-board",
+          "url": "https://neekostats.com.au/fantasy/edge-board",
           "publisher": { "@type": "Organization", "name": "Neeko Sports", "url": "https://neekostats.com.au" },
           "breadcrumb": {
             "@type": "BreadcrumbList",
             "itemListElement": [
               { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au" },
-              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy", "item": "https://neekostats.com.au/sports/afl" },
-              { "@type": "ListItem", "position": 3, "name": "Edge Board", "item": "https://neekostats.com.au/sports/afl/edge-board" }
+              { "@type": "ListItem", "position": 2, "name": "AFL Fantasy", "item": "https://neekostats.com.au/fantasy" },
+              { "@type": "ListItem", "position": 3, "name": "Edge Board", "item": "https://neekostats.com.au/fantasy/edge-board" }
             ]
           }
         })}</script>

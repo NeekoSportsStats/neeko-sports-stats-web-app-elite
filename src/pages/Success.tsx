@@ -1,5 +1,6 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { track } from "@/lib/analytics";
 import { Button } from "@/components/ui/button";
 import {
@@ -121,6 +122,7 @@ export default function Success() {
   if (loading && !authTimedOut) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "#0a0a0a" }}>
+        <Helmet><title>Payment Successful | Neeko Sports Stats</title><meta name="robots" content="noindex, nofollow" /></Helmet>
         <Card className="max-w-2xl w-full">
           <CardContent className="py-12">
             <div className="text-center space-y-4">
@@ -137,6 +139,7 @@ export default function Success() {
   if (!user && !loading) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "#0a0a0a" }}>
+        <Helmet><title>Payment Successful | Neeko Sports Stats</title><meta name="robots" content="noindex, nofollow" /></Helmet>
         <Card className="max-w-2xl w-full">
           <CardContent className="py-12">
             <div className="text-center space-y-4">
@@ -155,6 +158,7 @@ export default function Success() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "#0a0a0a" }}>
+      <Helmet><title>Payment Successful | Neeko Sports Stats</title><meta name="robots" content="noindex, nofollow" /></Helmet>
       <Card className="max-w-2xl w-full">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">

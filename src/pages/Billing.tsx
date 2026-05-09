@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabaseClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -123,6 +124,10 @@ const Billing = () => {
 
   return (
     <div className="container max-w-4xl py-12">
+      <Helmet>
+        <title>Billing | Neeko Sports Stats</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2">Billing & Subscription</h1>
         <p className="text-muted-foreground">
