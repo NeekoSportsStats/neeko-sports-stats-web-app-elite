@@ -841,7 +841,7 @@ export default function Index() {
         .scroll-reveal.revealed { opacity: 1; transform: translateY(0); }
         .skeleton-shimmer { background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%); background-size: 200% 100%; animation: shimmer 1.2s ease-in-out infinite; }
         @media (max-width: 900px) {
-          .hero-ctas { flex-direction: column !important; align-items: stretch !important; max-width: 360px; }
+          .hero-ctas { flex-direction: column !important; align-items: stretch !important; max-width: min(360px, 100%); }
           .hero-ctas a { justify-content: center; }
           .edge-cards-grid { grid-template-columns: repeat(2, 1fr) !important; }
           .how-grid { grid-template-columns: 1fr !important; }

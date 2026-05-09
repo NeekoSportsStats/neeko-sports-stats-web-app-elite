@@ -19,7 +19,7 @@ export function LandingLayout() {
     <div style={{ position: "relative", minHeight: "100vh", background: "#0a0a0a" }}>
 
       {/* ── STICKY HEADER ──────────────────────────────────────────────── */}
-      <header style={{
+      <header className="landing-layout-header" style={{
         position: "fixed",
         top: 0, left: 0, right: 0,
         zIndex: 100,
@@ -246,7 +246,7 @@ export function LandingLayout() {
       </div>
 
       {/* ── PAGE CONTENT ───────────────────────────────────────────────── */}
-      <div style={{ paddingTop: 60 }}>
+      <div className="landing-layout-content" style={{ paddingTop: 60 }}>
         <Outlet />
       </div>
 
@@ -298,6 +298,11 @@ export function LandingLayout() {
 
       {/* ── RESPONSIVE STYLES ──────────────────────────────────────────── */}
       <style>{`
+        /* Hide layout header on mobile where MobileLanding renders its own */
+        @media (max-width: 767px) {
+          .landing-layout-header { display: none !important; }
+          .landing-layout-content { padding-top: 0 !important; }
+        }
         /* Match Layout.tsx: hide nav below 1024px (lg), show hamburger */
         @media (max-width: 1023px) {
           .landing-nav { display: none !important; }

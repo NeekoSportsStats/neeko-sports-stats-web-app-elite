@@ -224,7 +224,7 @@ export default function LandingPricing() {
                   }}
                 >
                   <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.25em", color: hoveredPlan !== "weekly" ? "rgba(224,174,45,0.70)" : "rgba(255,255,255,0.25)", textTransform: "uppercase", marginBottom: 4 }}>
-                    Season Pass
+                    Season Pass — one-time
                   </div>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
                     <span style={{ fontSize: 22, fontWeight: 900, color: hoveredPlan !== "weekly" ? "#E0AE2D" : "rgba(255,255,255,0.45)", letterSpacing: "-0.03em" }}>
