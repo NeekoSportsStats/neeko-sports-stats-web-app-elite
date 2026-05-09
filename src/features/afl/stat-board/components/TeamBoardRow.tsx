@@ -695,8 +695,8 @@ function TeamProfileSummary({ teamName }: { teamName: string }) {
 
   if (loading) {
     return (
-      <section aria-label="team profile" className="rounded-lg border border-white/[0.08] bg-white/[0.018] px-4 py-3.5">
-        <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-2.5">Team Profile</p>
+      <section aria-label="team intelligence" className="rounded-lg border border-white/[0.08] bg-white/[0.018] px-4 py-3.5">
+        <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-2.5">Team Intelligence</p>
         <div className="space-y-1.5">
           <div className="h-2 w-full rounded bg-white/5 animate-pulse" />
           <div className="h-2 w-[85%] rounded bg-white/5 animate-pulse" />
@@ -706,15 +706,31 @@ function TeamProfileSummary({ teamName }: { teamName: string }) {
     );
   }
 
-  if (!data?.summary) return null;
+  if (!data?.summary) {
+    return (
+      <section aria-label="team intelligence">
+        <div className="rounded-lg border border-white/[0.08] bg-white/[0.018] px-4 py-3.5">
+          <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-2">Team Intelligence</p>
+          <p className="text-[11px] text-white/30 leading-relaxed italic">
+            Team intelligence is updating after the latest data refresh.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
-    <section aria-label="team profile">
+    <section aria-label="team intelligence">
       <div className="rounded-lg border border-white/[0.08] bg-white/[0.018] px-4 py-3.5">
-        <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Team Profile</p>
+        <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Team Intelligence</p>
         <p className="text-[12px] text-white/60 leading-relaxed">{data.summary}</p>
         {data.fantasy_verdict && (
           <p className="text-[11px] text-white/40 leading-relaxed mt-2 pt-2 border-t border-white/5">{data.fantasy_verdict}</p>
+        )}
+        {data.updated_at && (
+          <p className="text-[9px] text-white/20 mt-2 tabular-nums">
+            Updated {new Date(data.updated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+          </p>
         )}
       </div>
     </section>

@@ -1467,19 +1467,39 @@ export default function AFLTeamPage() {
           </div>
 
           {/* ══════════════════════════════════════════
-              TEAM PROFILE (pre-generated AI)
+              TEAM INTELLIGENCE (pre-generated AI)
           ══════════════════════════════════════════ */}
-          {teamAiSummary?.summary && (
-            <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-5 py-4">
-              <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-3">Team Profile</p>
-              <p className="text-[13px] text-white/60 leading-relaxed">{teamAiSummary.summary}</p>
-              {teamAiSummary.fantasy_verdict && (
-                <p className="text-[12px] text-white/40 leading-relaxed mt-3 pt-3 border-t border-white/[0.06]">
-                  {teamAiSummary.fantasy_verdict}
+          <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-5 py-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider">Team Intelligence</p>
+              {isPremium && teamAiSummary?.updated_at && (
+                <p className="text-[9px] text-white/20 tabular-nums">
+                  Updated {new Date(teamAiSummary.updated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
                 </p>
               )}
             </div>
-          )}
+            {!isPremium ? (
+              <p className="text-[12px] text-white/35 leading-relaxed">
+                Unlock Neeko+ to view full team intelligence, depth profile and squad signal summary.
+              </p>
+            ) : teamAiSummary?.summary ? (
+              <>
+                <p className="text-[13px] text-white/60 leading-relaxed">{teamAiSummary.summary}</p>
+                {teamAiSummary.fantasy_verdict && (
+                  <p className="text-[11px] text-white/40 leading-relaxed mt-3 pt-3 border-t border-white/[0.06]">
+                    {teamAiSummary.fantasy_verdict}
+                  </p>
+                )}
+                <p className="text-[9px] text-white/18 leading-relaxed italic mt-2">
+                  Generated from current squad data, projections, and model signals. Not a guarantee of future scoring.
+                </p>
+              </>
+            ) : (
+              <p className="text-[12px] text-white/30 leading-relaxed italic">
+                Team intelligence is updating after the latest data refresh.
+              </p>
+            )}
+          </div>
 
           {/* ══════════════════════════════════════════
               TEAM ANALYTICS
