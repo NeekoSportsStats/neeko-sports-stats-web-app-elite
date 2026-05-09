@@ -203,6 +203,10 @@ export default function StatBoardPlayersPage() {
           name="description"
           content="Compare every AFL player's recent trends, hit rates and projections by match. Filter by disposals and goals."
         />
+        <link rel="canonical" href="https://neekostats.com.au/stat-board/players" />
+        <meta property="og:url" content="https://neekostats.com.au/stat-board/players" />
+        <meta property="og:title" content="AFL Player Stat Board | Neeko Sports Stats" />
+        <meta name="twitter:title" content="AFL Player Stat Board | Neeko Sports Stats" />
       </Helmet>
 
       {/* Sticky controls bar — rendered as a sibling of the scroll body, not inside an overflow parent.

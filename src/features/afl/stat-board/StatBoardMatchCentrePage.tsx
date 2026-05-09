@@ -1147,6 +1147,10 @@ export default function StatBoardMatchCentrePage() {
           name="description"
           content="Compare every AFL game by projected score, recent team scoring profile, matchup context and trend confidence."
         />
+        <link rel="canonical" href="https://neekostats.com.au/stat-board/match-centre" />
+        <meta property="og:url" content="https://neekostats.com.au/stat-board/match-centre" />
+        <meta property="og:title" content="AFL Match Centre | Neeko Sports Stats" />
+        <meta name="twitter:title" content="AFL Match Centre | Neeko Sports Stats" />
       </Helmet>
 
       <div className="min-h-dvh bg-[#05070A] text-white overflow-x-hidden">

@@ -46,6 +46,10 @@ export default function StatBoardHubPage() {
       <Helmet>
         <title>AFL Stat Board | Neeko Sports Stats</title>
         <meta name="description" content="Explore AFL player stats, team trends and match centre data. Filter by match, stat and threshold." />
+        <link rel="canonical" href="https://neekostats.com.au/stat-board" />
+        <meta property="og:url" content="https://neekostats.com.au/stat-board" />
+        <meta property="og:title" content="AFL Stat Board | Neeko Sports Stats" />
+        <meta name="twitter:title" content="AFL Stat Board | Neeko Sports Stats" />
       </Helmet>
 
       <div style={{ minHeight: "100dvh", background: "#05070A", color: "#fff" }}>
