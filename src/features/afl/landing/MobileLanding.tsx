@@ -246,9 +246,9 @@ function MobileHeader({ onMenuOpen, isPremium }: { onMenuOpen: () => void; isPre
         aria-label="Open navigation menu"
         style={{
           background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)",
-          borderRadius: 8, padding: "7px 8px", color: "rgba(255,255,255,0.70)",
+          borderRadius: 8, color: "rgba(255,255,255,0.70)",
           cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0,
+          flexShrink: 0, width: 40, height: 40,
         }}
       >
         <Menu size={18} />
@@ -256,7 +256,7 @@ function MobileHeader({ onMenuOpen, isPremium }: { onMenuOpen: () => void; isPre
 
       {/* Logo */}
       <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", flex: 1 }}>
-        <img src="/logo.png" alt="Neeko Sports" style={{ height: "3.5rem", width: "auto" }} />
+        <img src="/logo.png" alt="Neeko Sports" style={{ height: 32, width: "auto" }} />
       </Link>
 
       {/* Neeko+ CTA — only when not premium */}
@@ -483,7 +483,7 @@ const PREMIUM_ITEMS = [
   "Full player and team stats",
   "Full Match Centre",
   "Fantasy Hub included",
-  "Must Buys, Trap Alerts, Captains",
+  "Must Buys + Trap Alerts",
   "Full player history",
 ];
 
@@ -752,22 +752,25 @@ export default function MobileLanding({ isPremium }: Props) {
           </div>
 
           {/* Price row */}
-          <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 4 }}>
-            <span style={{ fontSize: 34, fontWeight: 900, color: "#E0AE2D", letterSpacing: "-0.04em", lineHeight: 1 }}>${NEEKO_PRICING.season.price}</span>
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.38)" }}>AUD</span>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.30)", marginLeft: 4 }}>or ${NEEKO_PRICING.weekly.price}/week</span>
+          <div style={{ marginBottom: 4 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
+              <span style={{ fontSize: 34, fontWeight: 900, color: "#E0AE2D", letterSpacing: "-0.04em", lineHeight: 1 }}>${NEEKO_PRICING.season.price}</span>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.38)" }}>AUD</span>
+            </div>
+            <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.32)" }}>or ${NEEKO_PRICING.weekly.price}/week — pay as you go</p>
           </div>
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.38)", margin: "0 0 14px" }}>Season Pass — one-time. Full 2026 season.</p>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.38)", margin: "0 0 14px" }}>Season Pass · one-time · full 2026 season.</p>
 
           <Link to="/neeko-plus" style={{
             display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            padding: "14px 20px", borderRadius: 11, minHeight: 50,
+            padding: "14px 16px", borderRadius: 11, minHeight: 50,
             background: "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
-            color: "#130c00", fontSize: 15, fontWeight: 900,
+            color: "#130c00", fontSize: 14.5, fontWeight: 900,
             textDecoration: "none", letterSpacing: "0.01em",
             boxShadow: "0 4px 18px rgba(224,174,45,0.28)",
+            whiteSpace: "nowrap",
           }}>
-            Get Neeko+ — Full Season Access <ArrowRight size={14} />
+            Get Neeko+ — Full Season <ArrowRight size={14} />
           </Link>
           <p style={{ textAlign: "center", fontSize: 10.5, color: "rgba(255,255,255,0.26)", margin: "8px 0 0" }}>
             One-time payment. No subscription.
@@ -778,7 +781,7 @@ export default function MobileLanding({ isPremium }: Props) {
       {/* ─── FINAL CTA ─── */}
       <section style={{
         background: "#050807",
-        padding: "20px 16px 32px",
+        padding: `20px 16px max(32px, calc(16px + env(safe-area-inset-bottom, 0px)))`,
         borderTop: "1px solid rgba(255,255,255,0.05)",
       }}>
         <p style={{ textAlign: "center", fontSize: 12.5, color: "rgba(255,255,255,0.35)", lineHeight: 1.5, marginBottom: 14 }}>
