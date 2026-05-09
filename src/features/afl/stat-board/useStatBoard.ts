@@ -139,6 +139,7 @@ export interface StatBoardPlayerAiInsight {
   player_id: number;
   summary_short: string | null;
   summary_long: string | null;
+  ai_generated_at: string | null;
   // recommendation_short and recommendation_color are fantasy-framing fields
   // from the rankings cache — they are intentionally excluded from stat board.
 }

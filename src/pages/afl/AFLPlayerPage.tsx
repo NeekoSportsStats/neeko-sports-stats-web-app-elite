@@ -15,6 +15,7 @@ import {
   getFormStyles, fmtPrice as fmtPriceHelper, fmtEdge, getEdgeColor,
 } from '@/features/afl/rankings/components/helpers';
 import { getTeamAccentColour } from '@/config/aflTeamColours';
+import { cleanAiText } from '@/utils/cleanAiText';
 
 const ScoreHistoryChart = lazy(() => import('@/features/afl/rankings/components/ScoreHistoryChart'));
 
@@ -47,6 +48,7 @@ interface PlayerData {
   season_avg: number | null;
   why: string | null;
   why_long: string | null;
+  ai_generated_at: string | null;
   neeko_rating: number | null;
   is_locked: boolean | null;
   floor_estimate: number | null;
@@ -467,27 +469,20 @@ function FantasyDecision({
           </div>
         </div>
 
-        {/* AI summary — short only, with optional expand */}
-        {(player.why || player.action_reason_1) && (
+        {/* Player Analysis */}
+        {(player.why || player.why_long) && (
           <div className="space-y-1.5">
-            <p className="text-[7.5px] uppercase tracking-widest text-white/20 font-bold">AI Summary</p>
-            {player.why && (
-              <p className="text-[11px] text-white/50 leading-relaxed">{player.why}</p>
-            )}
-            <div className="space-y-1">
-              {player.action_reason_1 && (
-                <div className="flex items-start gap-1.5">
-                  <div className="w-1 h-1 rounded-full shrink-0 mt-1.5" style={{ background: `${actionMeta.color}70` }} />
-                  <span className="text-[10px] text-white/38 leading-snug">{player.action_reason_1}</span>
-                </div>
-              )}
-              {player.action_reason_2 && (
-                <div className="flex items-start gap-1.5">
-                  <div className="w-1 h-1 rounded-full bg-white/16 shrink-0 mt-1.5" />
-                  <span className="text-[10px] text-white/28 leading-snug">{player.action_reason_2}</span>
-                </div>
+            <div className="flex items-center justify-between">
+              <p className="text-[7.5px] uppercase tracking-widest text-white/20 font-bold">Player Analysis</p>
+              {player.ai_generated_at && (
+                <p className="text-[7.5px] text-white/15 tabular-nums">
+                  Updated {new Date(player.ai_generated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+                </p>
               )}
             </div>
+            {player.why && (
+              <p className="text-[11px] text-white/50 leading-relaxed">{cleanAiText(player.why)}</p>
+            )}
             {player.why_long && (
               <>
                 <button
@@ -498,9 +493,14 @@ function FantasyDecision({
                   {showFullAI ? 'Show less' : 'Full analysis'}
                 </button>
                 {showFullAI && (
-                  <p className="text-[10.5px] text-white/35 leading-relaxed border-t border-white/[0.05] pt-2">
-                    {player.why_long}
-                  </p>
+                  <div className="border-t border-white/[0.05] pt-2 space-y-1.5">
+                    <p className="text-[10.5px] text-white/35 leading-relaxed">
+                      {cleanAiText(player.why_long)}
+                    </p>
+                    <p className="text-[8.5px] text-white/18 leading-relaxed italic">
+                      Generated from current player stats, form, price context and model signals. Not a guarantee of future scoring.
+                    </p>
+                  </div>
                 )}
               </>
             )}
