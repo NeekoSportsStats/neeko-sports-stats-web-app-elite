@@ -9,6 +9,7 @@ import { getTeamAccentColour } from '@/config/aflTeamColours';
 import { PlayerStatusPill } from '@/features/afl/rankings/components/PlayerStatusPill';
 import { fmtEdge, getEdgeColor } from '@/features/afl/rankings/components/helpers';
 import { useAccessState } from '@/hooks/useAccessState';
+import { useStatBoardTeamAiSummary } from '@/features/afl/stat-board/useStatBoardTeams';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip,
   Cell, ReferenceLine,
@@ -1083,6 +1084,8 @@ export default function AFLTeamPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  const { data: teamAiSummary } = useStatBoardTeamAiSummary(teamName || null);
+
   useEffect(() => {
     if (!teamName) { setError(true); setLoading(false); return; }
     (async () => {
@@ -1462,6 +1465,21 @@ export default function AFLTeamPage() {
               )}
             </div>
           </div>
+
+          {/* ══════════════════════════════════════════
+              TEAM PROFILE (pre-generated AI)
+          ══════════════════════════════════════════ */}
+          {teamAiSummary?.summary && (
+            <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-5 py-4">
+              <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-3">Team Profile</p>
+              <p className="text-[13px] text-white/60 leading-relaxed">{teamAiSummary.summary}</p>
+              {teamAiSummary.fantasy_verdict && (
+                <p className="text-[12px] text-white/40 leading-relaxed mt-3 pt-3 border-t border-white/[0.06]">
+                  {teamAiSummary.fantasy_verdict}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* ══════════════════════════════════════════
               TEAM ANALYTICS

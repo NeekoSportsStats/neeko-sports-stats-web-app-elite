@@ -3,7 +3,6 @@ import { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } fro
 import { X, Crown, Lock, Info, ExternalLink } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { nameToSlug } from "@/lib/slugs";
-import { supabase } from "@/lib/supabaseClient";
 
 const ScoreHistoryChart = lazy(() => import("./ScoreHistoryChart"));
 
@@ -182,7 +181,7 @@ export function UpgradeModal({ onClose }: { onClose: () => void }) {
               "Full Value and Projection rankings",
               "Breakout players before price rises",
               "Trap players to avoid this round",
-              "Weekly AI trade and captain insights",
+              "Weekly captain and player profile insights",
               "Complete matchup and ceiling analysis",
             ].map((f) => (
               <div key={f} className="flex items-center gap-2.5">
@@ -259,36 +258,12 @@ export function PlayerDetailModal({
   const isFreeFullTier = isFreeTop5 || (!isPremium && tier === "full");
   const canSeeAI = isPremium || isFreeFullTier;
 
-  const [fetchedSummaryLong, setFetchedSummaryLong] = useState<string | null>(null);
-  const [loadingAI, setLoadingAI] = useState(false);
-
-  useEffect(() => {
-    if (!canSeeAI || !row.player_id) return;
-    if (row.long) return;
-    let cancelled = false;
-    setLoadingAI(true);
-    supabase
-      .schema("ai" as never)
-      .from("player_ai_analysis")
-      .select("summary_long")
-      .eq("player_id", row.player_id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled) {
-          setFetchedSummaryLong((data as any)?.summary_long ?? null);
-          setLoadingAI(false);
-        }
-      });
-    return () => { cancelled = true; };
-  }, [row.player_id, row.long, canSeeAI]);
-
   const aiAnalysis = useMemo(() => {
     if (!canSeeAI) return null;
-    const analysis = row.long ?? fetchedSummaryLong ?? null;
-    const captain_recommendation = row.captain_rating ?? null;
+    const analysis = row.long ?? null;
     if (!analysis) return null;
-    return { analysis, captain_recommendation };
-  }, [row.long, fetchedSummaryLong, row.captain_rating, canSeeAI]);
+    return { analysis };
+  }, [row.long, canSeeAI]);
 
   useBodyScrollLock(true);
   void rank;
@@ -403,7 +378,7 @@ export function PlayerDetailModal({
               className="rounded-lg border px-4 py-4"
               style={{ background: `${recColor}18`, borderColor: `${recColor}40` }}
             >
-              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">AI Signal</p>
+              <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1.5">Signal</p>
               <p className="text-base font-bold mb-2" style={{ color: recColor }}>
                 {formatEdgeSignalLabel(signalValue)}
               </p>
@@ -521,22 +496,22 @@ export function PlayerDetailModal({
             )}
           </div>
 
-          {/* 7. AI Analysis — only renders when there is text or loading */}
+          {/* 7. Player Analysis — only renders when there is text */}
           {canSeeAI && (() => {
             const aiCtx = { riskRating: row.risk_rating ?? null, confidence: row.projection_confidence ?? null };
             const rawExtended = (row as Record<string, unknown>).long as string | null ?? aiAnalysis?.analysis ?? null;
             const extendedText = sharpenAIText(rawExtended, aiCtx);
-            const hasText = !loadingAI && !!extendedText && extendedText !== "Model analysis is currently generating.";
+            const hasText = !!extendedText && extendedText !== "Model analysis is currently generating.";
             const isStale = isAITextStale(rawExtended, {
               projection: row.projection,
               ceiling_estimate: row.ceiling_estimate,
               floor_estimate: row.floor_estimate,
             });
 
-            if (!hasText && !loadingAI) return null;
+            if (!hasText) return null;
 
             const TRUNCATE_CHARS = 300;
-            const isTruncated = !isPremium && hasText && extendedText!.length > TRUNCATE_CHARS;
+            const isTruncated = !isPremium && extendedText!.length > TRUNCATE_CHARS;
             const truncateBase = isTruncated ? extendedText!.slice(0, TRUNCATE_CHARS) : extendedText!;
             const lastSpace = isTruncated ? truncateBase.lastIndexOf(" ") : -1;
             const displayText = isTruncated
@@ -546,21 +521,13 @@ export function PlayerDetailModal({
             return (
               <>
                 <div className="rounded-lg border border-white/5 bg-white/[0.03] px-4 py-4">
-                  <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold mb-2">AI Analysis</p>
-                  {loadingAI ? (
-                    <div className="space-y-2">
-                      <div className="h-3 w-full animate-pulse rounded bg-white/5" />
-                      <div className="h-3 w-4/5 animate-pulse rounded bg-white/5" />
-                      <div className="h-3 w-3/5 animate-pulse rounded bg-white/5" />
-                    </div>
-                  ) : (
-                    <div className="relative">
-                      <p className="text-sm text-white/65 leading-relaxed">{displayText}</p>
-                      {isTruncated && (
-                        <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-[#111111] to-transparent pointer-events-none" />
-                      )}
-                    </div>
-                  )}
+                  <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold mb-2">Player Analysis</p>
+                  <div className="relative">
+                    <p className="text-sm text-white/65 leading-relaxed">{displayText}</p>
+                    {isTruncated && (
+                      <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-[#111111] to-transparent pointer-events-none" />
+                    )}
+                  </div>
                   {hasText && isStale && isPremium && (
                     <p className="mt-3 text-[10px] text-white/25 italic border-t border-white/5 pt-2">
                       Analysis generated prior to latest projection update.
@@ -586,12 +553,6 @@ export function PlayerDetailModal({
                   </div>
                 )}
 
-                {isPremium && aiAnalysis?.captain_recommendation && (
-                  <div className="rounded-lg border border-white/5 bg-white/[0.03] px-4 py-3">
-                    <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Captain Verdict</p>
-                    <p className="text-sm text-white/70 leading-relaxed italic">{sharpenAIText(aiAnalysis.captain_recommendation, aiCtx)}</p>
-                  </div>
-                )}
               </>
             );
           })()}

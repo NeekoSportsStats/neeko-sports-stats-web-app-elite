@@ -76,7 +76,6 @@ const StatBoardTeamsPage        = React.lazy(() => import("@/features/afl/stat-b
 const StatBoardMatchCentrePage  = React.lazy(() => import("@/features/afl/stat-board/StatBoardMatchCentrePage"));
 const FantasyHubPage       = React.lazy(() => import("@/features/afl/fantasy/FantasyHubPage"));
 const CurrentWeekPage      = React.lazy(() => import("@/features/afl/fantasy/CurrentWeekPage"));
-const StartSitPage         = React.lazy(() => import("@/features/afl/start-sit/StartSitPage"));
 
 /* =========================
    Suspense helpers
@@ -138,12 +137,10 @@ function App() {
         <Route path="/sports/afl/positions/:position" element={<S fallback={Players}><AFLPositionPage /></S>} />
 
         <Route path="/sports/afl/edge-board" element={<Navigate to="/fantasy/market-watch" replace />} />
-        <Route path="/sports/afl/start-sit" element={<Navigate to="/fantasy/start-sit" replace />} />
         <Route path="/sports/afl/market-watch" element={<Navigate to="/fantasy/market-watch" replace />} />
         <Route path="/sports/afl/round/:roundNumber" element={<S fallback={Players}><AFLRoundPage /></S>} />
         <Route path="/fantasy" element={<S fallback={Players}><FantasyHubPage /></S>} />
         <Route path="/fantasy/current-week" element={<S fallback={Players}><CurrentWeekPage /></S>} />
-        <Route path="/fantasy/start-sit" element={<S fallback={Players}><StartSitPage /></S>} />
         <Route path="/fantasy/rankings" element={<S fallback={Players}><AFLRankingsPage /></S>} />
         <Route path="/fantasy/market-watch" element={<S fallback={AI}><AFLMarketWatch /></S>} />
         <Route path="/stat-board" element={<S fallback={Generic}><StatBoardHubPage /></S>} />

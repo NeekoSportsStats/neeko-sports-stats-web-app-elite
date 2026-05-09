@@ -8,7 +8,42 @@ import type {
   TeamStatLens,
 } from "./teamTypes";
 
+export interface TeamAiSummaryResult {
+  summary: string | null;
+  fantasy_verdict: string | null;
+  updated_at: string | null;
+}
+
 const SEASON = 2026;
+
+// ── Team AI Summary ───────────────────────────────────────────────────────────
+
+export function useStatBoardTeamAiSummary(teamName: string | null) {
+  const [data, setData] = useState<TeamAiSummaryResult | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!teamName || !supabase) return;
+    setLoading(true);
+    supabase
+      .rpc("get_team_ai_summary", { p_team: teamName, p_season: SEASON })
+      .maybeSingle()
+      .then(({ data: row }) => {
+        if (row) {
+          setData({
+            summary: (row as Record<string, unknown>).summary as string | null ?? null,
+            fantasy_verdict: (row as Record<string, unknown>).fantasy_verdict as string | null ?? null,
+            updated_at: (row as Record<string, unknown>).updated_at as string | null ?? null,
+          });
+        } else {
+          setData(null);
+        }
+        setLoading(false);
+      });
+  }, [teamName]);
+
+  return { data, loading };
+}
 
 // ── Team Matches ──────────────────────────────────────────────────────────────
 
