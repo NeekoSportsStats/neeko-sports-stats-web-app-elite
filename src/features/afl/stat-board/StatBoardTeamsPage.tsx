@@ -193,8 +193,8 @@ export default function StatBoardTeamsPage() {
         />
       </Helmet>
 
-      <div className="min-h-dvh bg-[#0a0a0a] text-white overflow-x-hidden" style={{ maxWidth: "100vw" }}>
-        <div className="mx-auto max-w-5xl px-4 pt-4 sm:pt-6 min-w-0 overflow-x-hidden" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}>
+      <div className="min-h-dvh bg-[#0a0a0a] text-white overflow-x-hidden">
+        <div className="mx-auto w-full max-w-[1360px] px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 min-w-0" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}>
 
           {/* Breadcrumb */}
           <div className="mb-3 flex items-center gap-1.5 text-[11px] text-white/30">
@@ -774,7 +774,7 @@ function MatchFilterDropdown({ matches, selected, loading, onChange, hasFullAcce
             <div className="flex-1 h-px bg-white/[0.06]" />
           </div>
 
-          <div className="overflow-y-auto overscroll-contain pb-1.5" style={{ maxHeight: "min(320px, calc(100vh - 200px))" }}>
+          <div className="overflow-y-auto overscroll-contain pb-1.5" style={{ maxHeight: "min(320px, calc(100dvh - 200px))" }}>
             {matches.map((m) => {
               const isSel = selected === m.match_id;
               const teams = parseMatchLabel(m.match_label);

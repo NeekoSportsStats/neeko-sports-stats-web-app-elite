@@ -1237,8 +1237,8 @@ export default function AFLTeamPage() {
   // ── Loading state ──────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#080808]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+      <div className="min-h-dvh bg-[#080808]">
+        <div className="mx-auto w-full max-w-[1120px] px-4 sm:px-6 lg:px-8 py-6 space-y-4">
           <div className="h-4 w-16 rounded bg-white/[0.05] animate-pulse" />
           <div className="h-44 rounded-2xl bg-white/[0.04] animate-pulse" />
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -1258,7 +1258,7 @@ export default function AFLTeamPage() {
   // ── Error state ────────────────────────────────────────────────────────────
   if (error || !teamName) {
     return (
-      <div className="min-h-screen bg-[#080808] flex items-center justify-center px-4">
+      <div className="min-h-dvh bg-[#080808] flex items-center justify-center px-4">
         <div className="text-center max-w-md">
           <AlertCircle size={40} className="text-white/20 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">Team Not Found</h2>
@@ -1315,8 +1315,8 @@ export default function AFLTeamPage() {
         })}</script>
       </Helmet>
 
-      <div className="min-h-screen bg-[#080808]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-7">
+      <div className="min-h-dvh bg-[#080808]">
+        <div className="mx-auto w-full max-w-[1120px] px-4 sm:px-6 lg:px-8 py-6 space-y-7">
 
           {/* Back nav */}
           <button

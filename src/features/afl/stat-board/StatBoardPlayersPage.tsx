@@ -228,7 +228,7 @@ export default function StatBoardPlayersPage() {
       )}
 
       <div className="min-h-dvh bg-[#0a0a0a] text-white overflow-x-hidden">
-        <div className="stat-board-mobile-root mx-auto max-w-5xl px-4 pt-4 sm:pt-6 min-w-0 max-w-full" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}>
+        <div className="mx-auto w-full max-w-[1360px] px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 min-w-0" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}>
 
           {/* Page header */}
           <div className="mb-4 sm:mb-6">
@@ -485,7 +485,7 @@ function StickyControlsBar({
       className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#0a0a0a]"
       style={{ maxWidth: "100vw" }}
     >
-      <div className="mx-auto max-w-5xl px-4 py-2.5 flex flex-wrap items-center gap-2">
+      <div className="mx-auto w-full max-w-[1360px] px-4 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center gap-2">
 
         {/* Match selector (compact) */}
         <div className="shrink-0">

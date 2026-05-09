@@ -1150,7 +1150,7 @@ export default function StatBoardMatchCentrePage() {
       </Helmet>
 
       <div className="min-h-dvh bg-[#05070A] text-white overflow-x-hidden">
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 pt-7 sm:pt-10" style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}>
+        <div className="mx-auto w-full max-w-[1120px] px-4 sm:px-6 lg:px-8 pt-7 sm:pt-10" style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}>
 
           {/* ── Breadcrumb ──────────────────────────────────────────────── */}
           <nav className="flex items-center gap-1.5 mb-5 text-[11px] text-white/28 font-medium">

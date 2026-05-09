@@ -752,8 +752,8 @@ function StatisticalProfile({
 
 function LoadingSkeleton() {
   return (
-    <div className="min-h-screen bg-[#080808]">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+    <div className="min-h-dvh bg-[#080808]">
+      <div className="mx-auto w-full max-w-[1120px] px-4 sm:px-6 lg:px-8 py-6 space-y-4">
         <div className="h-4 w-16 rounded bg-white/[0.05] animate-pulse" />
         <div className="h-44 rounded-2xl bg-white/[0.04] animate-pulse" />
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
@@ -901,7 +901,7 @@ export default function AFLPlayerPage() {
 
   if (error || !player) {
     return (
-      <div className="min-h-screen bg-[#080808] flex items-center justify-center px-4">
+      <div className="min-h-dvh bg-[#080808] flex items-center justify-center px-4">
         <div className="text-center max-w-sm">
           <AlertCircle size={36} className="text-white/15 mx-auto mb-4" />
           <h2 className="text-lg font-bold text-white mb-2">Player Not Found</h2>
@@ -979,8 +979,8 @@ export default function AFLPlayerPage() {
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
-      <div className="min-h-screen bg-[#080808]">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <div className="min-h-dvh bg-[#080808]">
+        <div className="mx-auto w-full max-w-[1120px] px-4 sm:px-6 lg:px-8 py-6">
 
           {/* Back nav */}
           <button
