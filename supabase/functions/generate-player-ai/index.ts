@@ -204,7 +204,7 @@ interface PlayerRow {
   confidence_label: string | null;
   consistency: number | null;
   value_score: number | null;
-  value_tag: string | null;
+  value_signal: string | null;
   best_value_score: number | null;
   matchup_rating: string | null;
   matchup_label: string | null;
@@ -407,19 +407,24 @@ Deno.serve(async (req: Request) => {
     let isAuthorized = false;
 
     if (token.length > 10) {
-      try {
-        const adminClient = createClient(supabaseUrl, serviceRoleKey);
-        const { data: secrets } = await adminClient
-          .schema("internal" as any)
-          .from("cron_secrets")
-          .select("value")
-          .in("key", ["cron_auth_token", "supabase_secret_key"]);
-        if (secrets?.some((row: { value: string }) => row.value === token)) {
-          isAuthorized = true;
+      // Fast path: accept the service role key directly (always available as env var)
+      if (token === serviceRoleKey) {
+        isAuthorized = true;
+        console.log("[generate-player-ai] auth check — matched service role key");
+      } else {
+        // Fallback: validate via SECURITY DEFINER RPC (avoids internal schema JS client issues)
+        try {
+          const adminClient = createClient(supabaseUrl, serviceRoleKey);
+          const { data: valid, error: rpcErr } = await adminClient.rpc("validate_cron_token", { p_token: token });
+          if (rpcErr) {
+            console.error("[generate-player-ai] validate_cron_token rpc error:", rpcErr.message);
+          } else {
+            isAuthorized = valid === true;
+          }
+          console.log("[generate-player-ai] auth check — DB RPC matched:", isAuthorized);
+        } catch (e) {
+          console.error("[generate-player-ai] auth check failed:", e instanceof Error ? e.message : String(e));
         }
-        console.log("[generate-player-ai] auth check — matched:", isAuthorized, "secrets_found:", secrets?.length ?? 0);
-      } catch (e) {
-        console.error("[generate-player-ai] auth DB lookup failed:", e instanceof Error ? e.message : String(e));
       }
     }
 
@@ -450,7 +455,7 @@ Deno.serve(async (req: Request) => {
         "price", "projection_final", "ceiling", "floor",
         "breakeven", "edge",
         "risk", "confidence", "confidence_label", "consistency",
-        "value_score", "value_tag", "best_value_score",
+        "value_score", "value_signal", "best_value_score",
         "matchup_rating", "matchup_label", "venue_multiplier",
         "form_score", "season_avg", "last_3_avg", "last_5_avg",
         "neeko_rating", "neeko_rating_scaled",

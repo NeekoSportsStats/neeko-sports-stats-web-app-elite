@@ -183,13 +183,14 @@ Deno.serve(async (req: Request) => {
     }
 
     // ── Fetch team input data from rankings cache ─────────────────────────
+    // Note: player_rankings_cache has no `season` column and no `is_injured` column.
+    // Use `manual_status` and `is_available` to determine availability instead.
     let query = supabase
       .schema("public" as any)
       .from("player_rankings_cache")
       .select(
-        "team, position_group, projection, season_avg, price, value_score, action_canonical, is_injured, is_bye, games_played, player_name"
+        "team, position_group, projection, season_avg, price, value_score, action_canonical, manual_status, is_available, is_bye, games_played, player_name"
       )
-      .eq("season", 2026)
       .not("team", "is", null);
 
     if (targetTeam) {
@@ -287,7 +288,8 @@ Deno.serve(async (req: Request) => {
         const valueCount = players.filter(p => (Number(p.value_score) || 0) >= 6).length;
         const avoidCount = players.filter(p => {
           const ac = (p.action_canonical ?? "").toUpperCase();
-          return ac === "HARD_SIT" || p.is_injured || p.is_bye;
+          const isInjured = p.manual_status === "injured" || p.is_available === false;
+          return ac === "HARD_SIT" || isInjured || p.is_bye;
         }).length;
 
         const posCount = (pg: string) =>
