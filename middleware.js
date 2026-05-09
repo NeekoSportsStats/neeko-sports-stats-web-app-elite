@@ -182,9 +182,21 @@ function isStructurallyValidPlayerSlug(slug) {
  * Returns { found: bool, playerName: string|null, team: string|null }
  */
 async function lookupPlayerSlug(slug) {
-  const supabaseUrl = "https://zbomenuickrogthnsozb.supabase.co";
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.VITE_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    "";
   const anonKey =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpib21lbnVpY2tyb2d0aG5zb3piIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI5NDMyMDAsImV4cCI6MjA3ODUxOTIwMH0.FWV-l7SyltEkMGv76dKD30GDbOyvKvYJ7BBMIQgX8VE";
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    "";
+
+  // If env vars are not configured, skip the DB lookup and fall back to structural check only
+  if (!supabaseUrl || !anonKey) {
+    return { found: null, playerName: playerNameFromSlug(slug), team: null };
+  }
 
   // Derive the player name fragment from the slug to query by name
   // Strip known team prefix from the end, then query ilike
