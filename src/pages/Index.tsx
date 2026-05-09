@@ -373,9 +373,8 @@ export default function Index() {
           supabase.rpc("get_latest_completed_round"),
         ]);
         if (rankingsRes.data) setPlayers((rankingsRes.data as Record<string, unknown>[]).map(mapRankingRow));
-        if (roundRes.data != null) {
-          const safeRound = roundRes.data > 0 ? roundRes.data : 6;
-          setCurrentRound(safeRound);
+        if (typeof roundRes.data === 'number') {
+          setCurrentRound(roundRes.data);
         }
       } catch {
         // silently fail — page shows empty/fallback states
