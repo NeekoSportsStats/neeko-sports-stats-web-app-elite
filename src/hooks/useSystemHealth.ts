@@ -115,6 +115,7 @@ function ageInMins(ts: string | null | undefined): number | null {
 // admin-health spreads get_operator_console_state() which returns:
 //   { system, pipeline, ai, data, business, logs, snapshot, generated_at }
 // Plus adds at top level:
+//   current_round (from get_current_afl_round_safe),
 //   pipeline_run_detail, recent_runs, pipeline_steps, ai_coverage,
 //   ai_health_summary, snapshots, snapshot_breakdown, intelligence,
 //   signal_distribution, confidence_histogram, cron
@@ -156,8 +157,9 @@ function mapResponseToSystemHealth(raw: Record<string, unknown>): SystemHealthDa
   const failedSteps24h     = (pipelineState.failed_steps_24h as number) ?? 0;
   const recentRuns7d       = (pipelineState.recent_runs_7d   as number) ?? (logsState.recent_runs_7d as number) ?? 0;
 
-  // ── Latest round from ai_health_summary or data ──────────────────────────
-  const latestRound = (aiHealthSummary.latest_ingested_round as number) ?? null;
+  // ── Latest round — read from top-level current_round added by admin-health
+  // admin-health calls get_current_afl_round_safe() and surfaces it as current_round
+  const latestRound = (raw.current_round as number) ?? null;
 
   const pipeline: PipelineData = {
     last_run_id:     (lastRun.id       as string) ?? null,

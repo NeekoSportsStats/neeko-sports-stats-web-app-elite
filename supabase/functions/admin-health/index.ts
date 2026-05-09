@@ -132,6 +132,12 @@ Deno.serve(async (req: Request) => {
     // Comprehensive AI health summary (player AI + team AI + cron)
     const { data: aiHealthSummary } = await supabase.rpc("get_ai_health_summary");
 
+    // Canonical current AFL round
+    const { data: roundRows } = await supabase
+      .rpc("get_current_afl_round_safe", { p_season: 2026 });
+    const roundRow = Array.isArray(roundRows) ? roundRows[0] : null;
+    const currentRound: number | null = roundRow?.current_round ?? null;
+
     // Snapshots list
     const { data: snapshots } = await supabase
       .schema("admin" as never)
@@ -143,6 +149,9 @@ Deno.serve(async (req: Request) => {
     const response = {
       // Canonical state — single source of truth for all counts
       ...state,
+
+      // Canonical current round
+      current_round: currentRound,
 
       // Pipeline tabs
       pipeline_run_detail: pipelineRunDetail,
