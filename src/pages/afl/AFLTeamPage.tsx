@@ -9,7 +9,8 @@ import { getTeamAccentColour } from '@/config/aflTeamColours';
 import { PlayerStatusPill } from '@/features/afl/rankings/components/PlayerStatusPill';
 import { fmtEdge, getEdgeColor } from '@/features/afl/rankings/components/helpers';
 import { useAccessState } from '@/hooks/useAccessState';
-import { useStatBoardTeamAiSummary } from '@/features/afl/stat-board/useStatBoardTeams';
+import { useTeamIntelligence } from '@/hooks/useTeamIntelligence';
+import { TeamIntelligencePanel } from '@/components/afl/TeamIntelligencePanel';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip,
   Cell, ReferenceLine,
@@ -1084,7 +1085,7 @@ export default function AFLTeamPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const { data: teamAiSummary } = useStatBoardTeamAiSummary(teamName || null);
+  const { intelligence: teamIntelligence, loading: teamIntelligenceLoading } = useTeamIntelligence(teamName || null);
 
   useEffect(() => {
     if (!teamName) { setError(true); setLoading(false); return; }
@@ -1469,37 +1470,21 @@ export default function AFLTeamPage() {
           {/* ══════════════════════════════════════════
               TEAM INTELLIGENCE (pre-generated AI)
           ══════════════════════════════════════════ */}
-          <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-5 py-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider">Team Intelligence</p>
-              {isPremium && teamAiSummary?.updated_at && (
-                <p className="text-[9px] text-white/20 tabular-nums">
-                  Updated {new Date(teamAiSummary.updated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
-                </p>
-              )}
-            </div>
-            {!isPremium ? (
-              <p className="text-[12px] text-white/35 leading-relaxed">
-                Unlock Neeko+ to view full team intelligence, depth profile and squad signal summary.
-              </p>
-            ) : teamAiSummary?.summary ? (
-              <>
-                <p className="text-[13px] text-white/60 leading-relaxed">{teamAiSummary.summary}</p>
-                {teamAiSummary.fantasy_verdict && (
-                  <p className="text-[11px] text-white/40 leading-relaxed mt-3 pt-3 border-t border-white/[0.06]">
-                    {teamAiSummary.fantasy_verdict}
-                  </p>
-                )}
-                <p className="text-[9px] text-white/18 leading-relaxed italic mt-2">
-                  Generated from current squad data, projections, and model signals. Not a guarantee of future scoring.
-                </p>
-              </>
-            ) : (
-              <p className="text-[12px] text-white/30 leading-relaxed italic">
-                Team intelligence is updating after the latest data refresh.
-              </p>
-            )}
-          </div>
+          <TeamIntelligencePanel
+            intelligence={teamIntelligence}
+            loading={teamIntelligenceLoading}
+            isPremium={isPremium}
+            teamName={teamName ?? ''}
+            stats={{
+              topPlayerName: stats.topPlayer?.player_name ?? null,
+              topProjection: stats.topProj,
+              avgProjection: stats.avgProj,
+              startCount: stats.startCt,
+              holdCount: stats.holdCt,
+              sitCount: stats.sitCt,
+              premiumCount: stats.premiumCount,
+            }}
+          />
 
           {/* ══════════════════════════════════════════
               TEAM ANALYTICS

@@ -4,7 +4,10 @@ import { useNavigate, Link } from "react-router-dom";
 import { TEAM_SLUGS } from "@/lib/slugs";
 import type { StatBoardTeamRow, StatBoardTeamGameLog, TeamStatLens } from "../teamTypes";
 import { teamLensUnit, teamThresholdsForLens } from "../teamTypes";
-import { useStatBoardTeamGameLog, useStatBoardTeamAiSummary } from "../useStatBoardTeams";
+import { useStatBoardTeamGameLog } from "../useStatBoardTeams";
+import { useTeamIntelligence } from "@/hooks/useTeamIntelligence";
+import { useAccessState } from "@/hooks/useAccessState";
+import { TeamIntelligencePanel } from "@/components/afl/TeamIntelligencePanel";
 
 // ── Team page URL helper ──────────────────────────────────────────────────────
 
@@ -688,52 +691,19 @@ export const LockedFixtureBlock = memo(function LockedFixtureBlock({
   );
 });
 
-// ── Team AI Summary (real pre-generated content from afl.ai_team_summaries) ───
+// ── Team AI Summary (shared TeamIntelligencePanel with premium gating) ────────
 
 function TeamProfileSummary({ teamName }: { teamName: string }) {
-  const { data, loading } = useStatBoardTeamAiSummary(teamName);
-
-  if (loading) {
-    return (
-      <section aria-label="team intelligence" className="rounded-lg border border-white/[0.08] bg-white/[0.018] px-4 py-3.5">
-        <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-2.5">Team Intelligence</p>
-        <div className="space-y-1.5">
-          <div className="h-2 w-full rounded bg-white/5 animate-pulse" />
-          <div className="h-2 w-[85%] rounded bg-white/5 animate-pulse" />
-          <div className="h-2 w-[70%] rounded bg-white/5 animate-pulse" />
-        </div>
-      </section>
-    );
-  }
-
-  if (!data?.summary) {
-    return (
-      <section aria-label="team intelligence">
-        <div className="rounded-lg border border-white/[0.08] bg-white/[0.018] px-4 py-3.5">
-          <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-2">Team Intelligence</p>
-          <p className="text-[11px] text-white/30 leading-relaxed italic">
-            Team intelligence is updating after the latest data refresh.
-          </p>
-        </div>
-      </section>
-    );
-  }
+  const { intelligence, loading } = useTeamIntelligence(teamName);
+  const { isPremium } = useAccessState();
 
   return (
-    <section aria-label="team intelligence">
-      <div className="rounded-lg border border-white/[0.08] bg-white/[0.018] px-4 py-3.5">
-        <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider mb-2">Team Intelligence</p>
-        <p className="text-[12px] text-white/60 leading-relaxed">{data.summary}</p>
-        {data.fantasy_verdict && (
-          <p className="text-[11px] text-white/40 leading-relaxed mt-2 pt-2 border-t border-white/5">{data.fantasy_verdict}</p>
-        )}
-        {data.updated_at && (
-          <p className="text-[9px] text-white/20 mt-2 tabular-nums">
-            Updated {new Date(data.updated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
-          </p>
-        )}
-      </div>
-    </section>
+    <TeamIntelligencePanel
+      intelligence={intelligence}
+      loading={loading}
+      isPremium={isPremium}
+      teamName={teamName}
+    />
   );
 }
 
