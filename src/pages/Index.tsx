@@ -370,11 +370,12 @@ export default function Index() {
       try {
         const [rankingsRes, roundRes] = await Promise.all([
           supabase.rpc("get_rankings_safe", { p_user_id: null, p_is_bot: false, p_limit: 200 }),
-          supabase.rpc("get_latest_completed_round"),
+          supabase.rpc("get_current_afl_round_safe", { p_season: 2026 }),
         ]);
         if (rankingsRes.data) setPlayers((rankingsRes.data as Record<string, unknown>[]).map(mapRankingRow));
-        if (typeof roundRes.data === 'number') {
-          setCurrentRound(roundRes.data);
+        const roundRow = Array.isArray(roundRes.data) ? roundRes.data[0] : null;
+        if (roundRow && typeof roundRow.current_round === 'number' && roundRow.current_round > 0) {
+          setCurrentRound(roundRow.current_round);
         }
       } catch {
         // silently fail — page shows empty/fallback states
@@ -742,7 +743,7 @@ export default function Index() {
         <div style={{ maxWidth: 1100, margin: "0 auto" }}>
           <div style={{ marginBottom: 20, textAlign: "center" }}>
             <p style={{ margin: "0 0 5px", fontSize: 9.5, fontWeight: 900, letterSpacing: "0.44em", textTransform: "uppercase", color: "rgba(244,197,66,0.65)" }}>
-              Fantasy Hub{currentRound != null ? ` — Round ${currentRound}` : ""}
+              {currentRound != null ? `Fantasy Hub — Round ${currentRound}` : "Fantasy Hub — Current Round"}
             </p>
             <h2 style={{ margin: "0 0 7px", fontSize: "clamp(16px, 1.6vw, 22px)", fontWeight: 800, color: "#e8e8e8", letterSpacing: "-0.02em" }}>
               Fantasy decisions, in one place.
