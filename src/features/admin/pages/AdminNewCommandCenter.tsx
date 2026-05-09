@@ -286,8 +286,8 @@ export default function AdminNewCommandCenter() {
               <ActionGroup title={<span className="flex items-center gap-2">Rankings <RiskBadge level="safe" /></span>}>
                 <ActionButton label="Refresh Rankings Cache" command="refresh_rankings" icon={Database} onComplete={fetchStatus} />
                 <AdminActionExplain
-                  what="Rebuilds the player_rankings_cache table from the projection engine (mv_player_projection) and AI analysis tables."
-                  which="player_rankings_cache, mv_player_projection, ai_rankings_player_recos"
+                  what="Rebuilds the player_rankings_cache table from the projection engine (mv_player_projection) and player AI analysis."
+                  which="player_rankings_cache, mv_player_projection, ai.player_ai_analysis"
                   duration="15–45s"
                   risk="low"
                   when="After AI generation completes, or if rankings look stale on the front end."
@@ -426,20 +426,20 @@ export default function AdminNewCommandCenter() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-[11px] text-muted-foreground">Run AI generation pipelines to produce player analyses, recommendations, and summaries via OpenAI.</p>
+              <p className="text-[11px] text-muted-foreground">Run AI generation pipelines to produce player analyses and team summaries via the generate-player-ai and generate-team-ai-summaries edge functions.</p>
               <ActionGroup title={<span className="flex items-center gap-2">Generate <RiskBadge level="recovery" /></span>}>
                 <ActionButton label="Run AI Worker (1 batch)" command="run_ai_worker" icon={Bot} onComplete={fetchStatus} />
                 <AdminActionExplain
-                  what="Processes one batch of queued AI jobs — calls OpenAI for pending player analysis entries in the ai_generation_queue table."
-                  which="ai_generation_queue, ai_rankings_player_recos, generate-ai-worker edge function"
+                  what="Processes one batch of queued player AI jobs — calls generate-player-ai edge function for players needing analysis."
+                  which="ai.player_ai_analysis, player_rankings_cache, generate-player-ai edge function"
                   duration="30–90s"
                   risk="low"
-                  when="When the queue has pending jobs and you want to manually trigger a batch."
+                  when="When AI coverage is low and you want to manually trigger a batch."
                 />
                 <ActionButton label="Enqueue All Players for AI" command="enqueue_all_ai" icon={Play} onComplete={fetchStatus} />
                 <AdminActionExplain
-                  what="Enqueues all players who are missing or have stale AI analysis into the generation queue. Does not call OpenAI yet — just fills the queue."
-                  which="ai_generation_queue, fn_enqueue_ranking_reco_jobs"
+                  what="Marks all players with missing or stale AI analysis so the ai_regen_wave_5min cron picks them up for regeneration."
+                  which="ai.player_ai_analysis, player_rankings_cache"
                   duration="5–15s"
                   risk="low"
                   when="After a full pipeline run, or when AI coverage is low."
@@ -449,8 +449,8 @@ export default function AdminNewCommandCenter() {
               <ActionGroup title={<span className="flex items-center gap-2">AI Rankings <RiskBadge level="heavy" /></span>}>
                 <ActionButton label="Run Full AI Neeko Pipeline" command="run_neeko_ai_pipeline" icon={Zap} onComplete={fetchStatus} />
                 <AdminActionExplain
-                  what="Runs the full Neeko AI pipeline: enqueues players, drains the AI generation queue, refreshes rankings cache and market watch."
-                  which="fn_run_neeko_ai_pipeline, ai_generation_queue, player_rankings_cache"
+                  what="Runs the full Neeko AI pipeline: marks stale players, fires generate-player-ai, refreshes rankings cache and market watch."
+                  which="fn_run_neeko_ai_pipeline, ai.player_ai_analysis, player_rankings_cache"
                   duration="5–20 minutes"
                   risk="medium"
                   when="After a full pipeline run when you want to regenerate all AI content end-to-end."
@@ -600,7 +600,7 @@ export default function AdminNewCommandCenter() {
             <ConfirmDangerButton
               label="Clear Failed AI Queue Jobs"
               command="clear_failed_ai_jobs"
-              description="Removes all failed entries from ai_generation_queue. Players will be re-queued on the next pipeline run. Safe to run when queue is stuck."
+              description="Clears failed AI jobs from the generation queue. Players missing analysis will be picked up on the next ai_regen_wave_5min cycle."
               icon={Trash2}
             />
             <ConfirmDangerButton

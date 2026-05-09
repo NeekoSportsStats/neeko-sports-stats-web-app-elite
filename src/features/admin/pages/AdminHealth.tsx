@@ -838,14 +838,13 @@ export default function AdminHealth() {
     : pipeline?.status === "complete" || pipeline?.status === "completed" ? 100
     : rankingsCacheRows > 0 ? 60 : 0;
   const overallConfidence = (pipelineLoading || loading) ? 0
-    : Math.round((rankingsConfidence + aiConfidence + mwConfidence + startSitConfidence + pipelineConfidence) / 5);
+    : Math.round((rankingsConfidence + aiConfidence + mwConfidence + pipelineConfidence) / 4);
 
   const flowNodes: FlowNode[] = [
     { id: "pipeline", label: "AFL Pipeline", sublabel: "Ingests & transforms", icon: Activity, status: pipelineRunStatus, confidence: pipelineConfidence, action: { label: "Run now", key: "pipeline" } },
     { id: "rankings", label: "Rankings Cache", sublabel: "Projection engine", icon: Database, status: rankingsCacheStatus, confidence: rankingsConfidence, action: { label: "Refresh", key: "rankings" } },
     { id: "ai", label: "AI Generation", sublabel: "Analysis & recos", icon: Bot, status: (cmdStatus?.queue_failed ?? 0) > 10 ? "error" : (cmdStatus?.queue_pending ?? 0) > 200 ? "warn" : "ok", confidence: aiConfidence },
     { id: "market", label: "Market Watch", sublabel: "Price signals", icon: TrendingUp, status: mwStatus, confidence: mwConfidence, action: { label: "Refresh", key: "mw" } },
-    { id: "startsit", label: "Start / Sit", sublabel: "Matchup cache", icon: Zap, status: startSitStatus, confidence: startSitConfidence },
   ];
 
   function handleFlowAction(key: string) {
