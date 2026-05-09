@@ -751,15 +751,15 @@ function CollapsibleSEOGuide() {
           <div>
             <h2 className="text-sm font-semibold text-white mb-2">How to Use the AFL Fantasy Edge Board</h2>
             <p className="text-[12px] text-white/50 leading-relaxed">
-              The Edge Board is Neeko's most concentrated AFL Fantasy decision tool. Each week the projection model scans the full player pool and surfaces three high-conviction plays: the must have value pick, the best breakout target, and the player to fade. These aren't suggestions — they're the model's strongest signals for the upcoming round.
+              The Edge Board is Neeko's most concentrated AFL Fantasy decision tool. Each week the projection model scans the full player pool and surfaces three categories: the strongest value profile, the best breakout target, and the player to avoid. These represent the model's strongest signals for the upcoming round.
             </p>
           </div>
           <div>
             <h3 className="text-[11px] font-bold uppercase tracking-wider text-white/30 mb-2.5">What each section means</h3>
             <ul className="space-y-2.5 text-[12px] text-white/45 leading-relaxed">
-              <li><strong className="text-white/65">Must Have Value</strong> — Players where projection significantly exceeds their breakeven. Strong trade-in targets and high-confidence starts.</li>
-              <li><strong className="text-white/65">Breakout Watch</strong> — Underpriced relative to their output potential. High-upside targets worth monitoring or starting this round.</li>
-              <li><strong className="text-white/65">Do Not Start</strong> — Overpriced given their projected return. Consider benching or trading out before lockout.</li>
+              <li><strong className="text-white/65">Must Have Value</strong> — Players where projection significantly exceeds their price baseline. High-confidence start profile with value-positive output.</li>
+              <li><strong className="text-white/65">Breakout Watch</strong> — Players with strong upside potential relative to current pricing. Worth monitoring or starting this round based on output trends.</li>
+              <li><strong className="text-white/65">Do Not Start</strong> — Players where projection falls short relative to price. Model flags these as avoidance candidates this round.</li>
             </ul>
           </div>
           <div>

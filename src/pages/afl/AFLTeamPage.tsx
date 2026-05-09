@@ -337,7 +337,7 @@ function ActionMixChart({
     { label: 'Start',     count: startCt,              color: '#34d399', desc: 'Projection clears breakeven target' },
     { label: 'Hold',      count: holdCt - hardSitCt,   color: 'rgba(255,255,255,0.25)', desc: 'No decisive signal — monitor' },
     { label: 'Sit',       count: sitCt,                color: '#fb923c', desc: 'Projection falls below breakeven' },
-    { label: 'Hard Sit',  count: hardSitCt,            color: '#ef4444', desc: 'Strong avoidance — consider trading' },
+    { label: 'Hard Sit',  count: hardSitCt,            color: '#ef4444', desc: 'Strong avoidance signal' },
   ].filter(s => s.count > 0);
 
   // SVG donut via stroke-dasharray
@@ -915,7 +915,7 @@ function RosterSection({
                   </p>
                 </div>
                 <p className="text-[10px] text-white/32 leading-relaxed max-w-[280px] mx-auto">
-                  Upgrade for the complete roster — breakeven targets, edge ratings, and value signals for every player.
+                  Upgrade for the complete roster — projection model, scoring range, value signals and player intelligence.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
                   <Link
@@ -971,7 +971,7 @@ function PremiumCTA({ teamName }: { teamName: string }) {
         Full {teamName} squad
       </h3>
       <p className="text-[11px] text-white/40 mb-4 leading-relaxed">
-        Unlock breakeven scores, edge ratings, value signals, and AI analysis for every player.
+        Unlock projection model, scoring range, value signals and player intelligence for every player.
       </p>
       <div className="flex flex-col sm:flex-row gap-2 justify-center">
         <Link
@@ -1356,7 +1356,7 @@ export default function AFLTeamPage() {
                     {teamName}
                   </h1>
                   <p className="text-[12px] text-white/42 mt-1.5 leading-snug max-w-sm">
-                    Scoring projections, breakeven targets, and round signals for the full {shortName} squad — refreshed weekly.
+                    Recent scoring profile, player depth, role balance, form trends and squad output — refreshed weekly.
                   </p>
                 </div>
                 {/* accent badge */}

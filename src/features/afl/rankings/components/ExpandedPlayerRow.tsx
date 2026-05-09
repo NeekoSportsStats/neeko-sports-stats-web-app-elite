@@ -222,10 +222,10 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
 
   const edgeLabel = rawValue != null && valueSign != null
     ? `${valueSign} vs Baseline — ${
-        rawValue >= 15 ? "strong underpriced play"
-        : rawValue >= 5 ? "moderate edge"
-        : rawValue >= -5 ? "near breakeven"
-        : "price risk"
+        rawValue >= 15 ? "positive projection profile"
+        : rawValue >= 5 ? "above-baseline profile"
+        : rawValue >= -5 ? "near-baseline profile"
+        : "below-baseline profile"
       }`
     : null;
 

@@ -46,7 +46,7 @@ export interface StatWhyPlayer {
 // ─── Locked-row message ────────────────────────────────────────────────────────
 
 export const LOCKED_WHY_TEXT =
-  "Unlock Neeko+ to view the full stat reason, breakeven edge and player profile.";
+  "Unlock Neeko+ to view the full stat reason and player profile.";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -128,7 +128,7 @@ function buildRanking(p: StatWhyPlayer, act: string): string {
     if (pr != null) {
       return `Projects ${pr} — model rates this as a strong start this round. ${ts_ != null && ts_ > 0 ? `Trend score of +${ts_.toFixed(0)} supports positive momentum.` : "Confidence and signal point upward."}`;
     }
-    return "Strong positive edge across projection, trend and value signals. Model rates this as a must-start this round.";
+    return "Strong positive edge across projection, trend and value signals. Model rates this as a top-start candidate this round.";
   }
 
   if (act === "START") {
@@ -266,7 +266,7 @@ function buildMustBuy(p: StatWhyPlayer): string {
     return `Projects ${pr} with a ${edgeSign(eg)}-point edge over breakeven — one of the strongest value positions this round. ${l3_ != null ? `Last 3 avg of ${l3_} confirms consistent form.` : "Projection, value and trend all point upward."}`;
   }
   if (vs_ != null && vs_ >= 3 && pr != null) {
-    return `Value score of ${vs_.toFixed(1)} combined with a projection of ${pr} makes this a high-conviction play. ${ts_ != null && ts_ > 0 ? `Trend score of +${ts_.toFixed(0)} further supports the case.` : be_ != null ? `Projects ${pr} against a breakeven of ${be_}.` : "Model flags this as a top-value option this round."}`;
+    return `Value score of ${vs_.toFixed(1)} combined with a projection of ${pr} points to a strong output profile. ${ts_ != null && ts_ > 0 ? `Trend score of +${ts_.toFixed(0)} further supports the case.` : be_ != null ? `Projects ${pr} against a breakeven of ${be_}.` : "Model flags this as a top-value option this round."}`;
   }
   if (pr != null && l3_ != null && ts_ != null && ts_ > 5) {
     return `Projects ${pr} with a trend score of +${ts_.toFixed(0)} — form is building. ${l3_ != null ? `Last 3 avg of ${l3_} supports continued output.` : "Model rates this as a strong week to target."}`;

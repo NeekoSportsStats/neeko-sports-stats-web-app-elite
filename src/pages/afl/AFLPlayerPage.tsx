@@ -357,7 +357,7 @@ function FantasyDecision({
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold text-white/55 leading-snug">
-            Unlock projection, breakeven, edge and AI reasoning with Neeko+.
+            Unlock projection model, scoring range, confidence profile and player intelligence with Neeko+.
           </p>
         </div>
         <Link
