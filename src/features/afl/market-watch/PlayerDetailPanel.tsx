@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
 import { DerivedPlayer } from "./engine";
 import { formatPrice } from "@/utils/formatPrice";
-import { cleanAiText } from "@/utils/cleanAiText";
 import { useAuth } from "@/lib/auth";
 import { signalFromField } from "@/utils/aflEdgeSignal";
 import {
@@ -45,12 +44,6 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
   const consistencySignal = getConsistencySignal(player);
 
   const whyText = generateSmartWhy(player);
-
-  const extendedText = player.why_long
-    ? cleanAiText(player.why_long)
-    : null;
-
-  const formattedExtended = extendedText ? formatExtendedAnalysis(extendedText) : null;
 
   const upside = calculateUpside(player);
   const risk = calculateRisk(player);
@@ -209,22 +202,6 @@ export function PlayerDetailPanel({ player, onClose, allPlayers }: PlayerDetailP
               </div>
             </div>
           </div>
-
-          {/* EXTENDED ANALYSIS - IMPROVED READABILITY */}
-          {formattedExtended && (
-            <div>
-              <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-3">
-                Extended Analysis
-              </h3>
-              <div className="p-4 bg-white/[0.02] border border-white/10 rounded-lg space-y-3">
-                {formattedExtended.map((paragraph, i) => (
-                  <p key={i} className="text-sm text-white/70 leading-relaxed">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* ADVANCED METRICS - COLLAPSIBLE */}
           {(player.edge != null || player.neeko_rating) && (
@@ -443,22 +420,3 @@ function formatWhyText(text: string): React.ReactNode {
   });
 }
 
-function formatExtendedAnalysis(text: string): string[] {
-  const sentences = text.split(/(?<=[.!?])\s+/);
-
-  const paragraphs: string[] = [];
-  let current = '';
-
-  for (let i = 0; i < sentences.length; i++) {
-    current += sentences[i] + ' ';
-
-    if ((i + 1) % 2 === 0 || i === sentences.length - 1) {
-      if (current.trim()) {
-        paragraphs.push(current.trim());
-      }
-      current = '';
-    }
-  }
-
-  return paragraphs.slice(0, 3);
-}

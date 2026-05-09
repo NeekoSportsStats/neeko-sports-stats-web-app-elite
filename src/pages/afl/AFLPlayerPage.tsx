@@ -473,7 +473,7 @@ function FantasyDecision({
         {(player.why || player.why_long) && (
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <p className="text-[7.5px] uppercase tracking-widest text-white/20 font-bold">Player Analysis</p>
+              <p className="text-[7.5px] uppercase tracking-widest text-white/20 font-bold">Player Intelligence</p>
               {player.ai_generated_at && (
                 <p className="text-[7.5px] text-white/15 tabular-nums">
                   Updated {new Date(player.ai_generated_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}

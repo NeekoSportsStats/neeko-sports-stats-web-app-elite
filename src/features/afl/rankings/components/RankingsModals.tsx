@@ -25,7 +25,6 @@ import {
   getConsistencyBadge, getConfidenceColor, getConfidenceLabel, getConfidenceLabelColor,
   getValueScoreColor,
   getFormColor, getMatchupColor, getUpsideColor, getRiskColor,
-  sharpenAIText, isAITextStale,
   normaliseConfidence,
 } from "./helpers";
 import { signalFromField, formatEdgeSignalLabel, getEdgeSignalColor } from "@/utils/aflEdgeSignal";
@@ -258,13 +257,6 @@ export function PlayerDetailModal({
   const isFreeFullTier = isFreeTop5 || (!isPremium && tier === "full");
   const canSeeAI = isPremium || isFreeFullTier;
 
-  const aiAnalysis = useMemo(() => {
-    if (!canSeeAI) return null;
-    const analysis = row.long ?? null;
-    if (!analysis) return null;
-    return { analysis };
-  }, [row.long, canSeeAI]);
-
   useBodyScrollLock(true);
   void rank;
   const unlocked = isPremium || isUnlocked || isFreeFullTier;
@@ -496,68 +488,7 @@ export function PlayerDetailModal({
             )}
           </div>
 
-          {/* 7. Player Analysis — only renders when there is text */}
-          {canSeeAI && (() => {
-            const aiCtx = { riskRating: row.risk_rating ?? null, confidence: row.projection_confidence ?? null };
-            const rawExtended = (row as Record<string, unknown>).long as string | null ?? aiAnalysis?.analysis ?? null;
-            const extendedText = sharpenAIText(rawExtended, aiCtx);
-            const hasText = !!extendedText && extendedText !== "Model analysis is currently generating.";
-            const isStale = isAITextStale(rawExtended, {
-              projection: row.projection,
-              ceiling_estimate: row.ceiling_estimate,
-              floor_estimate: row.floor_estimate,
-            });
-
-            if (!hasText) return null;
-
-            const TRUNCATE_CHARS = 300;
-            const isTruncated = !isPremium && extendedText!.length > TRUNCATE_CHARS;
-            const truncateBase = isTruncated ? extendedText!.slice(0, TRUNCATE_CHARS) : extendedText!;
-            const lastSpace = isTruncated ? truncateBase.lastIndexOf(" ") : -1;
-            const displayText = isTruncated
-              ? (lastSpace > 0 ? truncateBase.slice(0, lastSpace) : truncateBase)
-              : extendedText;
-
-            return (
-              <>
-                <div className="rounded-lg border border-white/5 bg-white/[0.03] px-4 py-4">
-                  <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold mb-2">Player Analysis</p>
-                  <div className="relative">
-                    <p className="text-sm text-white/65 leading-relaxed">{displayText}</p>
-                    {isTruncated && (
-                      <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-[#111111] to-transparent pointer-events-none" />
-                    )}
-                  </div>
-                  {hasText && isStale && isPremium && (
-                    <p className="mt-3 text-[10px] text-white/25 italic border-t border-white/5 pt-2">
-                      Analysis generated prior to latest projection update.
-                    </p>
-                  )}
-                </div>
-
-                {isTruncated && (
-                  <div className="rounded-lg border border-white/8 bg-white/[0.02] px-4 py-3 flex items-start gap-3">
-                    <Lock size={13} className="text-[#F5C84C]/50 shrink-0 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[11px] text-white/40 leading-snug mb-2">
-                        Unlock full breakdown including matchup, role impact, and projection edge
-                      </p>
-                      <a
-                        href="/neeko-plus"
-                        className="inline-flex items-center gap-1.5 bg-[#F5C84C] text-black font-semibold rounded-lg hover:brightness-110 transition-all px-3 py-1.5 text-[11px]"
-                      >
-                        <Crown size={11} />
-                        Unlock full analysis
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-              </>
-            );
-          })()}
-
-          {/* 8. Last 10 Games — visible for all free 1–8 */}
+          {/* 7. Last 10 Games — visible for all free 1–8 */}
           {canSeeAI && (
             <div className="rounded-lg bg-white/[0.03] border border-white/5 px-4 py-4 overflow-hidden">
               <div className="flex items-baseline justify-between mb-3">

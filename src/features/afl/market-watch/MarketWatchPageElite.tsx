@@ -65,8 +65,8 @@ function rankingToMW(r: RankingRow): MWPlayerRow {
     signal_display: r.signal_display ?? null,
     category: r.category ?? null,
     action: r.action ?? r.action_canonical ?? null,
-    why: r.why ?? null,
-    why_long: r.why_long ?? null,
+    why: null,
+    why_long: null,
     matchup_label: r.matchup_label ?? null,
     matchup_rating: null,
     matchup_multiplier: r.matchup_multiplier ?? null,
@@ -216,8 +216,6 @@ function PlayerTableRow({
 
   const confLabel = player.confidence_label ?? null;
 
-  const why = player.why ?? null;
-
   return (
     <button
       onClick={onClick}
@@ -234,7 +232,6 @@ function PlayerTableRow({
         <div className="text-[10px] text-white/30 mt-px leading-relaxed">
           {player.team}
           {player.price ? ` · ${fmtPrice(player.price)}` : ""}
-          {why ? ` · ${why.length > 60 ? why.slice(0, 60) + "…" : why}` : ""}
         </div>
       </div>
 
@@ -522,8 +519,8 @@ export default function MarketWatchPageElite() {
       signal_display: p.signal_display,
       category: p.category,
       action: p.action,
-      why: p.why,
-      why_long: p.why_long,
+      why: null,
+      why_long: null,
       matchup_label: p.matchup_label,
       matchup_multiplier: p.matchup_multiplier,
       consistency: p.consistency,

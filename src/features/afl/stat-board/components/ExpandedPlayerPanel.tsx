@@ -348,7 +348,7 @@ export function ExpandedPlayerPanel({
   );
 }
 
-// ── Player Analysis block ─────────────────────────────────────────────
+// ── Player Intelligence block ─────────────────────────────────────────────
 
 function AiInsightBlock({
   insight,
@@ -364,11 +364,11 @@ function AiInsightBlock({
   // Loading skeleton
   if (loading) {
     return (
-      <section aria-label="player analysis" aria-busy className="px-3 sm:px-5 pb-3 sm:pb-4">
+      <section aria-label="player intelligence" aria-busy className="px-3 sm:px-5 pb-3 sm:pb-4">
         <div className="rounded-lg border border-white/8 bg-white/[0.018] px-4 py-3.5">
           <div className="flex items-center gap-1.5 mb-2.5">
             <Sparkles className="h-3 w-3 text-white/25" aria-hidden />
-            <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider">Player Analysis</p>
+            <p className="text-[10px] font-semibold text-white/35 uppercase tracking-wider">Player Intelligence</p>
           </div>
           <div className="space-y-1.5">
             <div className="h-2 w-full rounded bg-white/5 animate-pulse" />
@@ -394,13 +394,13 @@ function AiInsightBlock({
 
   // Has content — full card
   return (
-    <section aria-label="player analysis" className="px-3 sm:px-5 pb-3 sm:pb-4">
+    <section aria-label="player intelligence" className="px-3 sm:px-5 pb-3 sm:pb-4">
       <div className="rounded-lg border border-white/8 bg-white/[0.018] px-4 py-3.5">
         <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-1.5">
             <Sparkles className="h-3 w-3 text-white/30" aria-hidden />
             <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider">
-              Player Analysis
+              Player Intelligence
             </p>
           </div>
           {insight?.ai_generated_at && (

@@ -24,7 +24,7 @@ const FEATURE_GROUPS = [
     title: "Rankings & Projections",
     features: [
       "Full rankings for all 600+ players",
-      "AI-powered weekly projections",
+      "Model-powered weekly projections",
       "Value tiers — who's priced wrong",
       "Breakeven scores and price movement",
     ],
@@ -43,7 +43,7 @@ const FEATURE_GROUPS = [
     features: [
       "Market Watch — live value gap signals",
       "Trade targets ranked by opportunity",
-      "Full AI player breakdown per round",
+      "Full player intelligence breakdown per round",
       "Trend and form signals every week",
     ],
   },
@@ -557,7 +557,7 @@ const NeekoPlusPurchase = () => {
     "@context": "https://schema.org",
     "@type": "Product",
     "name": "Neeko+",
-    "description": "Premium AFL stats intelligence. Full Stat Board, player rankings, AI breakdowns, breakeven scores, captain signals, breakout alerts and trade targets.",
+    "description": "Premium AFL stats intelligence. Full Stat Board, player rankings, player intelligence breakdowns, breakeven scores, captain signals, breakout alerts and trade targets.",
     "url": "https://neekostats.com.au/neeko-plus",
     "brand": { "@type": "Brand", "name": "Neeko Sports Stats" },
     "offers": [
@@ -984,7 +984,7 @@ const NeekoPlusPurchase = () => {
                 "Full player pool — all 600+",
                 "Full projections and breakevens",
                 "Full Stat Board, Market Watch and Player/Team intelligence",
-                "AI summaries, trends, signals and decision tools",
+                "Player intelligence, trends, signals and decision tools",
               ].map((item) => (
                 <div key={item} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
                   <div style={{

@@ -62,6 +62,9 @@ const BANNED_ALWAYS = [
   "gamble",
   "odds",
   "financial advice",
+  // action/decisiveness language
+  "lock",
+  "move on",
 ];
 
 // ── PROMPT BUILDER ──────────────────────────────────────────────────────────
@@ -97,9 +100,15 @@ ${confidenceContext}
 ━━ LANGUAGE RULES ━━
 Preferred phrasings (use these naturally, not as templates):
 - "The current profile shows..."
-- "The projection sits at..."
+- "The projection currently sits at..."
+- "The positive value profile here is..."
+- "The negative value profile here is..."
 - "The breakeven gap explains..."
+- "Recent form supports..."
 - "Recent scoring has been..."
+- "The risk is elevated/moderate/low because..."
+- "The model signal is..."
+- "Confidence is..."
 - "The risk profile is..."
 - "The model label is supported by..."
 - "This should be read as a data signal, not a guarantee."
@@ -107,7 +116,7 @@ Preferred phrasings (use these naturally, not as templates):
 - "At the current price of..."
 
 Hedging is allowed and encouraged where appropriate: "appears", "suggests", "indicates", "tends to", "the data shows", "recent results point to".
-Do NOT use: "will score", "will rise", "guaranteed", "must buy", "must sell", "trade in", "trade out", "acquire", "bargain", "enticing opportunity", "lock".
+Do NOT use: "will score", "will rise", "guaranteed", "must buy", "must sell", "trade in", "trade out", "acquire", "bargain", "enticing opportunity", "lock", "move on".
 Do NOT use betting or gambling language.
 Do NOT give financial advice.
 Do NOT tell the reader what action to take.

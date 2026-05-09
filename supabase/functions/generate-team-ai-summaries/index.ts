@@ -13,10 +13,11 @@ const SIX_HOURS_MS = 6 * 60 * 60 * 1000;
 // ── Banned phrases ────────────────────────────────────────────────────────────
 
 const BANNED_ALWAYS = [
-  "must buy", "must sell", "lock in", "bargain", "guaranteed",
+  "must buy", "must sell", "lock in", "lock", "bargain", "guaranteed",
   "trade in", "trade out", "acquire", "enticing opportunity",
   "bet", "wager", "gamble", "financial advice",
   "will score", "will win", "will rise", "will fall",
+  "move on",
 ];
 
 function checkBanned(text: string): string[] {
@@ -55,10 +56,10 @@ function buildSystemPrompt(): string {
 STYLE RULES:
 - Write 5–6 sentences minimum. Do not write fewer than 4 complete sentences.
 - Describe the team's profile as it currently stands. Do not instruct readers on what to do.
-- Preferred phrasings: "The squad profile shows...", "The current projection sits at...", "Across the roster...", "The positional mix includes..."
+- Preferred phrasings: "The squad profile shows...", "The current projection sits at...", "Across the roster...", "The positional mix includes...", "Recent form supports...", "The risk is elevated/moderate/low...", "The model signal is...", "Confidence is...", "The positive value profile here is...", "The negative value profile here is..."
 - Do not say players "will" perform a certain way.
 - Do not give trade, buy, or sell instructions of any kind.
-- Do not use: "must buy", "must sell", "lock in", "bargain", "guaranteed", "trade in", "trade out", "acquire", "enticing", "bet", "wager", "gamble", "financial advice"
+- Do not use: "must buy", "must sell", "lock", "lock in", "bargain", "guaranteed", "trade in", "trade out", "acquire", "enticing", "bet", "wager", "gamble", "financial advice", "move on"
 
 CONTENT GUIDE — cover as many of these as fit naturally:
 - Overall squad size and projection level (top and average)

@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Helmet } from "react-helmet-async";
-import { cleanAiText } from "@/utils/cleanAiText";
 import { signalFromField, formatEdgeSignalLabel, getEdgeSignalStyles } from "@/utils/aflEdgeSignal";
 import { createPortal } from "react-dom";
 import {
@@ -355,8 +354,6 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
   if (valueBandKF) keyFactors.push(`Value: ${valueBandKF}`);
   else if (decisionScoreKF != null) keyFactors.push(`Edge Score: ${fmtValueScore(decisionScoreKF)}`);
 
-  const aiText: string | null = null;
-
   return createPortal(
     <div className="fixed inset-0 z-[9998] flex items-end sm:items-center justify-center p-0 sm:p-6" onClick={onClose}>
       <div className="absolute inset-0 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150" />
@@ -433,34 +430,6 @@ function PlayerAnalysisModal({ row, section, isPremium, onClose, onUpgrade }: Pl
               ))}
             </ul>
           </div>
-
-          {isPremium ? (
-            aiText ? (
-              <div>
-                <p className={`text-[9px] font-bold uppercase tracking-widest mb-2 ${cfg.accentText} opacity-70`}>Player Intelligence</p>
-                <p className="text-[13px] text-white/75 leading-relaxed">{cleanAiText(aiText)}</p>
-              </div>
-            ) : (
-              <p className="text-sm text-white/30 italic">No analysis available yet.</p>
-            )
-          ) : (
-            <div className="rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/[0.04] p-4">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-[#F5C84C]/50 mb-2">Player Intelligence</p>
-              <div className="flex items-center gap-2 mb-3 py-2">
-                <Lock size={12} className="text-[#F5C84C]/30 shrink-0" />
-                <p className="text-[12px] text-white/30">
-                  Full analysis unlocked with Neeko+ — ceiling modelling, matchup delta, role signals &amp; price outlook.
-                </p>
-              </div>
-              <button
-                onClick={onUpgrade}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-[#F5C84C]/10 border border-[#F5C84C]/25 text-[12px] font-bold text-[#F5C84C]/80 hover:text-[#F5C84C] hover:border-[#F5C84C]/45 hover:bg-[#F5C84C]/15 transition-all"
-              >
-                <Lock size={10} />
-                Unlock with Neeko+
-              </button>
-            </div>
-          )}
 
           {keyFactors.length > 0 && (
             <div>

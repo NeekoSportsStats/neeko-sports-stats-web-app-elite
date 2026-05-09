@@ -265,22 +265,6 @@ export default function AFLRankingsPage() {
     return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
   }, [searchTerm]);
 
-  async function fetchAIForRow(row: RankingRow): Promise<Partial<RankingRow>> {
-    if (!row.player_id || !row.player_name) return {};
-    const { data } = await supabase
-      .rpc("get_player_detail_safe", {
-        p_player_name: row.player_name,
-        p_user_id: user?.id ?? null,
-      });
-    if (!data || !data[0]) return {};
-    const d = data[0] as any;
-    return {
-      why:       d.why ?? null,
-      why_long:  d.why_long ?? null,
-      cached_at: d.cached_at ?? null,
-    };
-  }
-
   const fetchRankings = useCallback(async (force = false) => {
     const userId = user?.id ?? null;
     const tier = isPremium ? "premium" : "free";
@@ -364,7 +348,7 @@ export default function AFLRankingsPage() {
     }
   }
 
-  async function openRow(row: RankingRow, rank: number, tier: RowTier, isUnlocked: boolean) {
+  function openRow(row: RankingRow, rank: number, tier: RowTier, isUnlocked: boolean) {
     setSelected({ row, rank, tier, isUnlocked });
     track("player_modal_open", {
       player_name: row.player_name,
@@ -374,15 +358,6 @@ export default function AFLRankingsPage() {
       is_unlocked: isUnlocked,
       source:      "rankings",
     });
-    if (isUnlocked) {
-      const needsAI = !row.why && !row.why_long;
-      if (needsAI) {
-        const aiData = await fetchAIForRow(row);
-        if (Object.keys(aiData).length > 0) {
-          setSelected((prev) => prev ? { ...prev, row: { ...prev.row, ...aiData } } : prev);
-        }
-      }
-    }
   }
 
   function handleSearchSelect(row: RankingRow) {
