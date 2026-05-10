@@ -2415,21 +2415,152 @@ function CrossGameShortlists({
   );
 }
 
+// ─── Team / Match Angles — Stat Type ─────────────────────────────────────────
+
+type TeamStatType =
+  | "total-points" | "disposals" | "goals" | "tackles"
+  | "marks" | "kicks" | "handballs" | "clearances"
+  | "hitouts" | "inside-50s" | "rebound-50s" | "scoring-shots" | "fantasy";
+
+interface TeamStatTypeCfg {
+  value: TeamStatType;
+  label: string;
+  unit: string;
+  // which CIData collection provides this stat
+  source: "teamScore" | "teamDisposals" | "teamGoals" | "unavailable";
+  // field accessor helpers
+  getTeamL3: (r: StatBoardTeamRow) => number | null;
+  getTeamL5: (r: StatBoardTeamRow) => number | null;
+  getTeamSeason: (r: StatBoardTeamRow) => number | null;
+  getOppConcededL5: (r: StatBoardTeamRow) => number | null;
+  getOppConcededSeason: (r: StatBoardTeamRow) => number | null;
+  getProjection: (r: StatBoardTeamRow) => number | null;
+  // angle label
+  angleHigh: string;
+  angleLow: string;
+}
+
+const TEAM_STAT_TYPES: TeamStatTypeCfg[] = [
+  {
+    value: "total-points",
+    label: "Total Points",
+    unit: "pts",
+    source: "teamScore",
+    getTeamL3: r => r.recent_avg_l3,
+    getTeamL5: r => r.recent_avg_l5,
+    getTeamSeason: r => r.season_avg,
+    getOppConcededL5: r => r.opponent_points_conceded_l5 ?? r.opponent_conceded_l5,
+    getOppConcededSeason: r => r.opponent_points_conceded_season ?? r.opponent_conceded_season,
+    getProjection: r => r.projected_team_score ?? r.projection,
+    angleHigh: "High scoring environment",
+    angleLow: "Low scoring environment",
+  },
+  {
+    value: "disposals",
+    label: "Disposals",
+    unit: "disp",
+    source: "teamDisposals",
+    getTeamL3: r => r.recent_avg_l3,
+    getTeamL5: r => r.recent_avg_l5,
+    getTeamSeason: r => r.season_avg,
+    getOppConcededL5: r => r.opponent_conceded_l5,
+    getOppConcededSeason: r => r.opponent_conceded_season,
+    getProjection: r => r.projection,
+    angleHigh: "High disposal environment",
+    angleLow: "Low disposal environment",
+  },
+  {
+    value: "goals",
+    label: "Goals",
+    unit: "goals",
+    source: "teamGoals",
+    getTeamL3: r => r.recent_avg_l3,
+    getTeamL5: r => r.recent_avg_l5,
+    getTeamSeason: r => r.season_avg,
+    getOppConcededL5: r => r.opponent_conceded_l5,
+    getOppConcededSeason: r => r.opponent_conceded_season,
+    getProjection: r => r.projection,
+    angleHigh: "High goal-scoring environment",
+    angleLow: "Low goal-scoring environment",
+  },
+  {
+    value: "scoring-shots",
+    label: "Scoring Shots",
+    unit: "shots",
+    source: "teamScore",
+    getTeamL3: r => r.recent_scoring_shots_avg ?? null,
+    getTeamL5: r => r.recent_scoring_shots_avg ?? null,
+    getTeamSeason: r => r.season_avg,
+    getOppConcededL5: r => r.opponent_conceded_l5,
+    getOppConcededSeason: r => r.opponent_conceded_season,
+    getProjection: r => null,
+    angleHigh: "High scoring shots environment",
+    angleLow: "Low scoring shots environment",
+  },
+  // Stats that come from player disposal data at team level — present as "unavailable"
+  // because the team row RPC only provides score/goals/disposals lenses
+  { value: "tackles",    label: "Tackles",    unit: "tkl",  source: "unavailable", getTeamL3: () => null, getTeamL5: () => null, getTeamSeason: () => null, getOppConcededL5: () => null, getOppConcededSeason: () => null, getProjection: () => null, angleHigh: "High tackle count", angleLow: "Low tackle count" },
+  { value: "marks",      label: "Marks",      unit: "mrk",  source: "unavailable", getTeamL3: () => null, getTeamL5: () => null, getTeamSeason: () => null, getOppConcededL5: () => null, getOppConcededSeason: () => null, getProjection: () => null, angleHigh: "High mark count", angleLow: "Low mark count" },
+  { value: "kicks",      label: "Kicks",      unit: "kck",  source: "unavailable", getTeamL3: () => null, getTeamL5: () => null, getTeamSeason: () => null, getOppConcededL5: () => null, getOppConcededSeason: () => null, getProjection: () => null, angleHigh: "Kick-heavy environment", angleLow: "Low kick environment" },
+  { value: "handballs",  label: "Handballs",  unit: "hb",   source: "unavailable", getTeamL3: () => null, getTeamL5: () => null, getTeamSeason: () => null, getOppConcededL5: () => null, getOppConcededSeason: () => null, getProjection: () => null, angleHigh: "High handball count", angleLow: "Low handball count" },
+  { value: "clearances", label: "Clearances", unit: "clr",  source: "unavailable", getTeamL3: () => null, getTeamL5: () => null, getTeamSeason: () => null, getOppConcededL5: () => null, getOppConcededSeason: () => null, getProjection: () => null, angleHigh: "High clearance count", angleLow: "Low clearance count" },
+  { value: "hitouts",    label: "Hitouts",    unit: "ho",   source: "unavailable", getTeamL3: () => null, getTeamL5: () => null, getTeamSeason: () => null, getOppConcededL5: () => null, getOppConcededSeason: () => null, getProjection: () => null, angleHigh: "High hitout count", angleLow: "Low hitout count" },
+  { value: "inside-50s", label: "Inside 50s", unit: "i50",  source: "unavailable", getTeamL3: () => null, getTeamL5: () => null, getTeamSeason: () => null, getOppConcededL5: () => null, getOppConcededSeason: () => null, getProjection: () => null, angleHigh: "High inside 50 count", angleLow: "Low inside 50 count" },
+  { value: "rebound-50s",label: "Rebound 50s",unit: "r50",  source: "unavailable", getTeamL3: () => null, getTeamL5: () => null, getTeamSeason: () => null, getOppConcededL5: () => null, getOppConcededSeason: () => null, getProjection: () => null, angleHigh: "High rebound 50 count", angleLow: "Low rebound count" },
+  { value: "fantasy",    label: "Fantasy Score",unit: "pts",source: "unavailable", getTeamL3: () => null, getTeamL5: () => null, getTeamSeason: () => null, getOppConcededL5: () => null, getOppConcededSeason: () => null, getProjection: () => null, angleHigh: "High fantasy environment", angleLow: "Low fantasy environment" },
+];
+
+function getTeamStatRows(data: CIData, statType: TeamStatType): StatBoardTeamRow[] {
+  const cfg = TEAM_STAT_TYPES.find(t => t.value === statType);
+  if (!cfg || cfg.source === "unavailable") return [];
+  if (cfg.source === "teamScore") return data.teamScore;
+  if (cfg.source === "teamGoals") return data.teamGoals;
+  return data.teamDisposals;
+}
+
+function deriveAngleLabel(
+  teamL5: number | null,
+  teamSeason: number | null,
+  oppConcL5: number | null,
+  oppConcSeason: number | null,
+  cfg: TeamStatTypeCfg,
+): string {
+  if (!teamL5 && !teamSeason) return "Data thin / sample warning";
+  const trendUp = teamL5 != null && teamSeason != null && teamL5 > teamSeason * 1.05;
+  const trendDown = teamL5 != null && teamSeason != null && teamL5 < teamSeason * 0.95;
+  const oppSoftL5 = oppConcL5 != null && teamSeason != null && oppConcL5 > teamSeason * 1.05;
+  const oppHardL5 = oppConcL5 != null && teamSeason != null && oppConcL5 < teamSeason * 0.95;
+
+  if (trendUp && oppSoftL5) return cfg.angleHigh;
+  if (trendDown && oppHardL5) return cfg.angleLow;
+  if (oppSoftL5) return "Opponent concedes above average";
+  if (oppHardL5) return "Opponent concedes below average";
+  if (trendUp) return "Team trending above season average";
+  if (trendDown) return "Team trending below season average";
+  return "Stable / neutral matchup";
+}
+
 // ─── Team / Match Angles Tab ──────────────────────────────────────────────────
 
 function TeamMatchAngles({
-  data, mode, selectedTargetGame, targetGameOptions,
+  data, mode, selectedTargetGame, targetGameOptions, statType, onStatTypeChange,
 }: {
   data: CIData;
   mode: ContentMode;
   selectedTargetGame: string;
   targetGameOptions: TargetGameOption[];
+  statType: TeamStatType;
+  onStatTypeChange: (v: TeamStatType) => void;
 }) {
   const [teamFilter, setTeamFilter] = useState("");
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
 
   const activeTGO = selectedTargetGame !== "all"
     ? targetGameOptions.find(o => o.key === selectedTargetGame) ?? null
     : null;
+
+  const statCfg = TEAM_STAT_TYPES.find(t => t.value === statType)!;
+  const isUnavailable = statCfg.source === "unavailable";
 
   // Reset team filter if no longer valid for TGO
   useEffect(() => {
@@ -2440,84 +2571,332 @@ function TeamMatchAngles({
     return [...new Set(data.teamTargets.map(t => t.team_name))].sort();
   }, [data.teamTargets]);
 
+  // Stat rows for the selected lens
+  const statRows = useMemo(() => getTeamStatRows(data, statType), [data, statType]);
+
+  // Build enriched team rows (after all filters)
   const teamRows = useMemo(() => {
     return data.teamTargets
       .filter(tt => {
         if (mode === "played-this-round") return tt.has_played_current_round;
         if (mode === "not-yet-played") return !tt.has_played_current_round;
-        // Apply shared target game filter
         if (activeTGO && tt.team_id !== activeTGO.homeTeamId && tt.team_id !== activeTGO.awayTeamId) return false;
-        // Apply per-tab team filter
         if (teamFilter && tt.team_name !== teamFilter) return false;
         return true;
       })
       .map(tt => {
         const target = resolveTarget(tt, mode);
-        const teamRow = data.teamDisposals.find(t => t.team_id === tt.team_id);
-        return { tt, target, teamRow };
+        const statRow = statRows.find(r => r.team_id === tt.team_id) ?? null;
+        const teamL3 = statRow ? statCfg.getTeamL3(statRow) : null;
+        const teamL5 = statRow ? statCfg.getTeamL5(statRow) : null;
+        const teamSeason = statRow ? statCfg.getTeamSeason(statRow) : null;
+        const oppConcL5 = statRow ? statCfg.getOppConcededL5(statRow) : null;
+        const oppConcSeason = statRow ? statCfg.getOppConcededSeason(statRow) : null;
+        const projection = statRow ? statCfg.getProjection(statRow) : null;
+        const angle = !isUnavailable
+          ? deriveAngleLabel(teamL5, teamSeason, oppConcL5, oppConcSeason, statCfg)
+          : "—";
+        const envLabel = (statRow as StatBoardTeamRow & { scoring_environment_label?: string | null })?.scoring_environment_label ?? null;
+        return { tt, target, statRow, teamL3, teamL5, teamSeason, oppConcL5, oppConcSeason, projection, angle, envLabel };
       });
-  }, [data, mode, activeTGO, teamFilter]);
+  }, [data, mode, activeTGO, teamFilter, statRows, statCfg, isUnavailable]);
+
+  // Group by target game for matchup cards
+  const matchupGroups = useMemo(() => {
+    const seen = new Set<string>();
+    const groups: Array<{
+      key: string;
+      tgo: TargetGameOption | null;
+      label: string;
+      rows: typeof teamRows;
+    }> = [];
+
+    for (const row of teamRows) {
+      const opponentId = row.target.isNextUp ? row.tt.next_opponent_id : row.tt.current_opponent_id;
+      if (!opponentId) continue;
+      const [lo, hi] = [row.tt.team_id, opponentId].sort((a, b) => a - b);
+      const key = `tg-${lo}-${hi}-R${row.target.round}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const tgo = targetGameOptions.find(o => o.key === key) ?? null;
+      const opponent = data.teamTargets.find(t => t.team_id === opponentId);
+      const label = tgo?.label ?? `R${row.target.round} · ${row.tt.team_name} v ${opponent?.team_name ?? "?"}`;
+      const groupRows = teamRows.filter(r => {
+        const oppId = r.target.isNextUp ? r.tt.next_opponent_id : r.tt.current_opponent_id;
+        if (!oppId) return false;
+        const [l, h] = [r.tt.team_id, oppId].sort((a, b) => a - b);
+        return `tg-${l}-${h}-R${r.target.round}` === key;
+      });
+      groups.push({ key, tgo, label, rows: groupRows });
+    }
+    return groups;
+  }, [teamRows, targetGameOptions, data.teamTargets]);
+
+  // Summary metrics
+  const maxTeamL5 = useMemo(() => Math.max(0, ...teamRows.map(r => r.teamL5 ?? 0)), [teamRows]);
+  const maxOppConc = useMemo(() => Math.max(0, ...teamRows.map(r => r.oppConcL5 ?? 0)), [teamRows]);
+  const bestAngleRow = useMemo(() => {
+    return teamRows
+      .filter(r => r.teamL5 != null && r.oppConcL5 != null)
+      .sort((a, b) => {
+        const aScore = (a.teamL5 ?? 0) + (a.oppConcL5 ?? 0);
+        const bScore = (b.teamL5 ?? 0) + (b.oppConcL5 ?? 0);
+        return bScore - aScore;
+      })[0] ?? null;
+  }, [teamRows]);
+
+  const invalidTeam = activeTGO && teamFilter && !isTeamInTGO(teamFilter, activeTGO);
 
   return (
     <div className="space-y-4">
-      {/* Team filter */}
-      <div className="flex flex-wrap gap-3 items-start bg-zinc-900/50 border border-zinc-800 rounded-lg p-3">
-        <TabTeamFilter teams={allTeams} value={teamFilter} onChange={setTeamFilter} activeTGO={activeTGO} />
+      {/* ── Filters ── */}
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 space-y-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <TabTeamFilter teams={allTeams} value={teamFilter} onChange={setTeamFilter} activeTGO={activeTGO} />
+          <Sel
+            label="Stat Type"
+            value={statType}
+            onChange={v => onStatTypeChange(v as TeamStatType)}
+            options={TEAM_STAT_TYPES.map(t => ({
+              value: t.value,
+              label: t.source === "unavailable" ? `${t.label} (not available)` : t.label,
+            }))}
+          />
+        </div>
+        {isUnavailable && (
+          <div className="text-[11px] text-amber-400/80 bg-amber-950/20 border border-amber-600/20 rounded px-3 py-2">
+            <span className="font-semibold">{statCfg.label}</span> is not available in the current stat source.
+            The team RPC provides Score, Disposals, and Goals lenses only. Select one of those for full data.
+          </div>
+        )}
       </div>
 
-      {/* Invalid team + TGO combination */}
-      {activeTGO && teamFilter && !isTeamInTGO(teamFilter, activeTGO) ? (
-        <InvalidTeamGameState teamName={teamFilter} tgo={activeTGO} onResetTeam={() => setTeamFilter("")} />
+      {/* ── Invalid team/TGO ── */}
+      {invalidTeam ? (
+        <InvalidTeamGameState teamName={teamFilter} tgo={activeTGO!} onResetTeam={() => setTeamFilter("")} />
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <SCard label="Teams Next-Up" value={String(data.teamsNextUp)} sub="completed current game" />
-            <SCard label="Teams Current Round" value={String(data.teamsCurrentRound)} sub="yet to play" />
-            <SCard label="Target Rounds" value={data.targetRounds.join(", ") || "—"} sub="rounds represented" />
-            <SCard label="Current Round" value={data.roundLabel} sub={data.roundInfo?.round_status ?? data.roundSource} />
+          {/* ── Summary cards ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <SCard label="Target Games" value={String(matchupGroups.length)} sub="matchups shown" />
+            <SCard label="Teams Shown" value={String(teamRows.length)} sub="after filters" />
+            <SCard label="Stat Type" value={statCfg.label} sub={isUnavailable ? "not available" : statCfg.source.replace("team", "")} />
+            <SCard
+              label={`Highest Team L5 (${statCfg.unit})`}
+              value={maxTeamL5 > 0 ? maxTeamL5.toFixed(1) : "—"}
+              sub={teamRows.find(r => r.teamL5 === maxTeamL5 && maxTeamL5 > 0)?.tt.team_name ?? ""}
+            />
+            <SCard
+              label={`Highest Opp Conceded L5 (${statCfg.unit})`}
+              value={maxOppConc > 0 ? maxOppConc.toFixed(1) : "—"}
+              sub={teamRows.find(r => r.oppConcL5 === maxOppConc && maxOppConc > 0)?.tt.team_name ?? ""}
+            />
+            <SCard
+              label="Best Matchup Angle"
+              value={bestAngleRow?.tt.team_name ?? "—"}
+              sub={bestAngleRow?.angle ?? ""}
+            />
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-[11px]">
-              <thead>
-                <tr className="border-b border-zinc-800 text-zinc-500 font-medium">
-                  <th className="text-left py-1.5 px-2">Team</th>
-                  <th className="text-left py-1.5 px-2">Cur Game Status</th>
-                  <th className="text-left py-1.5 px-2">Target Mode</th>
-                  <th className="text-left py-1.5 px-2">Target Opponent</th>
-                  <th className="text-left py-1.5 px-2">Target Round</th>
-                  <th className="text-left py-1.5 px-2">Target Date</th>
-                  <th className="text-right py-1.5 px-2">Opp Conceded L5</th>
-                  <th className="text-right py-1.5 px-2">Team Avg L5</th>
-                  <th className="text-right py-1.5 px-2">Projection</th>
-                </tr>
-              </thead>
-              <tbody>
-                {teamRows.map(({ tt, target, teamRow }) => (
-                  <tr key={tt.team_id} className={`border-b border-zinc-900 hover:bg-zinc-900/30 ${target.isNextUp ? "bg-emerald-950/10" : ""}`}>
-                    <td className="py-1.5 px-2 font-medium text-zinc-200">{tt.team_name}</td>
-                    <td className="py-1.5 px-2">
-                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${isCompletedStatus(tt.current_game_status) ? "bg-emerald-950/50 text-emerald-300" : "bg-zinc-800 text-zinc-400"}`}>
-                        {tt.current_game_status}
-                      </span>
-                    </td>
-                    <td className="py-1.5 px-2"><TargetBadgeChip badge={target.badge} /></td>
-                    <td className={`py-1.5 px-2 font-medium ${target.isNextUp ? "text-emerald-300" : "text-zinc-300"}`}>{target.opponent}</td>
-                    <td className="py-1.5 px-2 text-zinc-400">R{target.round}</td>
-                    <td className="py-1.5 px-2 text-zinc-500 text-[10px]">{target.gameDate ? fmtDate(target.gameDate) : "—"}</td>
-                    <td className="py-1.5 px-2 text-right font-mono text-zinc-300">{teamRow?.opponent_conceded_l5?.toFixed(1) ?? "—"}</td>
-                    <td className="py-1.5 px-2 text-right font-mono text-zinc-400">{teamRow?.recent_avg_l5?.toFixed(1) ?? "—"}</td>
-                    <td className="py-1.5 px-2 text-right font-mono text-zinc-300">{teamRow?.projection?.toFixed(0) ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/* ── Matchup Cards ── */}
+          {matchupGroups.length > 0 ? (
+            <div className="space-y-3">
+              {matchupGroups.map(g => {
+                const rowA = g.rows[0];
+                if (!rowA) return null;
+                const tgoMode = g.tgo?.mode ?? (rowA.target.isNextUp ? "next-up" : "current-round");
+                const modeCls =
+                  tgoMode === "next-up" ? "border-emerald-600/20 bg-emerald-950/10" :
+                  tgoMode === "partial-next-up" ? "border-amber-600/20 bg-amber-950/10" :
+                  "border-zinc-800 bg-zinc-900/20";
 
-          {/* Upcoming next-up opponent note */}
+                return (
+                  <div key={g.key} className={`border rounded-xl p-4 space-y-3 ${modeCls}`}>
+                    {/* Card header */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[13px] font-semibold text-zinc-200">{g.label}</span>
+                      <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${
+                        tgoMode === "next-up" ? "bg-emerald-950/70 text-emerald-300 border-emerald-600/40" :
+                        tgoMode === "partial-next-up" ? "bg-amber-950/70 text-amber-300 border-amber-600/40" :
+                        "bg-zinc-800 text-zinc-400 border-zinc-700"
+                      }`}>{tgoMode}</span>
+                      <span className="ml-auto text-[10px] text-zinc-500">{statCfg.label} · {statCfg.unit}</span>
+                    </div>
+
+                    {/* Two-team comparison */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {g.rows.map(row => {
+                        const hasStat = row.teamL5 != null || row.teamSeason != null;
+                        return (
+                          <div key={row.tt.team_id} className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[12px] font-semibold text-zinc-200">{row.tt.team_name}</span>
+                              <TargetBadgeChip badge={row.target.badge} />
+                            </div>
+                            <div className="text-[10px] text-zinc-500">vs {row.target.opponent} · R{row.target.round}</div>
+
+                            {!hasStat && isUnavailable ? (
+                              <div className="text-[10px] text-amber-400/70">
+                                Stat not available in current source.
+                              </div>
+                            ) : !hasStat ? (
+                              <div className="text-[10px] text-zinc-600">No {statCfg.label.toLowerCase()} data for this team.</div>
+                            ) : (
+                              <div className="grid grid-cols-3 gap-2 text-[10px]">
+                                <div className="space-y-0.5">
+                                  <div className="text-zinc-600 uppercase tracking-wide text-[9px]">Team L3</div>
+                                  <div className="font-mono text-zinc-300">{row.teamL3?.toFixed(1) ?? "—"}</div>
+                                </div>
+                                <div className="space-y-0.5">
+                                  <div className="text-zinc-600 uppercase tracking-wide text-[9px]">Team L5</div>
+                                  <div className="font-mono text-zinc-100 font-semibold">{row.teamL5?.toFixed(1) ?? "—"}</div>
+                                </div>
+                                <div className="space-y-0.5">
+                                  <div className="text-zinc-600 uppercase tracking-wide text-[9px]">Season</div>
+                                  <div className="font-mono text-zinc-400">{row.teamSeason?.toFixed(1) ?? "—"}</div>
+                                </div>
+                                <div className="space-y-0.5">
+                                  <div className="text-zinc-600 uppercase tracking-wide text-[9px]">Opp L5</div>
+                                  <div className={`font-mono ${row.oppConcL5 != null && row.teamSeason != null && row.oppConcL5 > row.teamSeason * 1.05 ? "text-emerald-300" : row.oppConcL5 != null && row.teamSeason != null && row.oppConcL5 < row.teamSeason * 0.95 ? "text-red-400" : "text-zinc-400"}`}>
+                                    {row.oppConcL5?.toFixed(1) ?? "—"}
+                                  </div>
+                                </div>
+                                <div className="space-y-0.5">
+                                  <div className="text-zinc-600 uppercase tracking-wide text-[9px]">Opp Season</div>
+                                  <div className="font-mono text-zinc-500">{row.oppConcSeason?.toFixed(1) ?? "—"}</div>
+                                </div>
+                                <div className="space-y-0.5">
+                                  <div className="text-zinc-600 uppercase tracking-wide text-[9px]">Projection</div>
+                                  <div className="font-mono text-zinc-300">{row.projection?.toFixed(0) ?? "—"}</div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Angle label */}
+                            {!isUnavailable && (
+                              <div className={`text-[10px] font-medium px-2 py-1 rounded border ${
+                                row.angle.includes("High") || row.angle.includes("above") || row.angle.includes("soft")
+                                  ? "bg-emerald-950/40 text-emerald-300 border-emerald-600/30"
+                                  : row.angle.includes("Low") || row.angle.includes("below") || row.angle.includes("hard")
+                                  ? "bg-red-950/30 text-red-400 border-red-600/20"
+                                  : row.angle.includes("warning")
+                                  ? "bg-amber-950/30 text-amber-400 border-amber-600/20"
+                                  : "bg-zinc-800/60 text-zinc-400 border-zinc-700"
+                              }`}>
+                                {row.angle}
+                              </div>
+                            )}
+                            {row.envLabel && (
+                              <div className="text-[9px] text-zinc-600 italic">{row.envLabel}</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="py-10 text-center text-zinc-500 text-sm border border-zinc-800 rounded-lg">
+              No matchups match the current filters.
+            </div>
+          )}
+
+          {/* ── Comparison Table ── */}
+          {teamRows.length > 0 && (
+            <details className="border border-zinc-800 rounded-lg">
+              <summary className="px-4 py-2.5 text-[12px] font-medium text-zinc-400 cursor-pointer hover:text-zinc-200 flex items-center gap-2">
+                <span>Full Comparison Table</span>
+                <span className="text-[10px] text-zinc-600">({teamRows.length} rows)</span>
+              </summary>
+              <div className="overflow-x-auto">
+                <table className="w-full text-[11px]">
+                  <thead>
+                    <tr className="border-b border-zinc-800 text-zinc-500 font-medium">
+                      <th className="text-left py-1.5 px-2">Team</th>
+                      <th className="text-left py-1.5 px-2">Opponent</th>
+                      <th className="text-left py-1.5 px-2">Target Game</th>
+                      <th className="text-left py-1.5 px-2">Mode</th>
+                      <th className="text-right py-1.5 px-2">Team L5</th>
+                      <th className="text-right py-1.5 px-2">Team Season</th>
+                      <th className="text-right py-1.5 px-2">Opp L5</th>
+                      <th className="text-right py-1.5 px-2">Opp Season</th>
+                      <th className="text-right py-1.5 px-2">Projection</th>
+                      <th className="text-left py-1.5 px-2">Angle</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {teamRows.map(({ tt, target, teamL5, teamSeason, oppConcL5, oppConcSeason, projection, angle }) => (
+                      <tr key={tt.team_id} className={`border-b border-zinc-900 hover:bg-zinc-900/30 ${target.isNextUp ? "bg-emerald-950/10" : ""}`}>
+                        <td className="py-1.5 px-2 font-medium text-zinc-200">{tt.team_name}</td>
+                        <td className={`py-1.5 px-2 ${target.isNextUp ? "text-emerald-300" : "text-zinc-300"}`}>{target.opponent}</td>
+                        <td className="py-1.5 px-2 text-zinc-500 text-[10px]">R{target.round}</td>
+                        <td className="py-1.5 px-2"><TargetBadgeChip badge={target.badge} /></td>
+                        <td className="py-1.5 px-2 text-right font-mono text-zinc-200">{teamL5?.toFixed(1) ?? "—"}</td>
+                        <td className="py-1.5 px-2 text-right font-mono text-zinc-400">{teamSeason?.toFixed(1) ?? "—"}</td>
+                        <td className={`py-1.5 px-2 text-right font-mono ${oppConcL5 != null && teamSeason != null && oppConcL5 > teamSeason * 1.05 ? "text-emerald-300" : oppConcL5 != null && teamSeason != null && oppConcL5 < teamSeason * 0.95 ? "text-red-400" : "text-zinc-400"}`}>
+                          {oppConcL5?.toFixed(1) ?? "—"}
+                        </td>
+                        <td className="py-1.5 px-2 text-right font-mono text-zinc-500">{oppConcSeason?.toFixed(1) ?? "—"}</td>
+                        <td className="py-1.5 px-2 text-right font-mono text-zinc-300">{projection?.toFixed(0) ?? "—"}</td>
+                        <td className="py-1.5 px-2 text-zinc-400 text-[10px] max-w-[140px] truncate" title={angle}>{angle}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          )}
+
+          {/* ── Diagnostics (collapsible) ── */}
+          <details className="border border-zinc-800 rounded-lg" open={showDiagnostics}>
+            <summary
+              className="px-4 py-2.5 text-[12px] font-medium text-zinc-500 cursor-pointer hover:text-zinc-300 flex items-center gap-2"
+              onClick={() => setShowDiagnostics(p => !p)}
+            >
+              <Database className="h-3.5 w-3.5" />
+              Team / Match Angles Diagnostics
+            </summary>
+            <div className="p-4 space-y-2 text-[11px] text-zinc-400">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                <div><span className="text-zinc-600">Selected Target Game:</span> {activeTGO ? activeTGO.label : "All Target Games"}</div>
+                <div><span className="text-zinc-600">Selected Team:</span> {teamFilter || "All Teams"}</div>
+                <div><span className="text-zinc-600">Selected Stat Type:</span> {statCfg.label}</div>
+                <div><span className="text-zinc-600">Stat Source:</span> {statCfg.source}</div>
+                <div><span className="text-zinc-600">Stat rows loaded:</span> {statRows.length}</div>
+                <div><span className="text-zinc-600">Team targets loaded:</span> {data.teamTargets.length}</div>
+                <div><span className="text-zinc-600">Teams after TGO filter:</span> {data.teamTargets.filter(tt => !activeTGO || tt.team_id === activeTGO.homeTeamId || tt.team_id === activeTGO.awayTeamId).length}</div>
+                <div><span className="text-zinc-600">Teams after team filter:</span> {teamRows.length}</div>
+                <div><span className="text-zinc-600">Rows with stat data:</span> {teamRows.filter(r => r.teamL5 != null || r.teamSeason != null).length}</div>
+                <div><span className="text-zinc-600">Target games represented:</span> {matchupGroups.length}</div>
+              </div>
+              {isUnavailable && (
+                <div className="mt-3 p-3 bg-amber-950/20 border border-amber-600/20 rounded text-amber-400/80">
+                  <div className="font-semibold mb-1">Why no data for {statCfg.label}?</div>
+                  <div>The team RPC (get_stat_board_team_rows) only provides three lenses: score, disposals, goals.</div>
+                  <div className="mt-1">Available stat types: Total Points (score lens), Disposals (disposals lens), Goals (goals lens), Scoring Shots (score lens).</div>
+                </div>
+              )}
+              {!isUnavailable && statRows.length === 0 && (
+                <div className="mt-3 p-3 bg-red-950/20 border border-red-600/20 rounded text-red-400/80">
+                  <div className="font-semibold mb-1">No {statCfg.label} data loaded</div>
+                  <div>Stat rows array is empty. Check that get_stat_board_team_rows returned data for the {statCfg.source} source.</div>
+                </div>
+              )}
+              {!isUnavailable && statRows.length > 0 && teamRows.filter(r => r.teamL5 != null).length === 0 && (
+                <div className="mt-3 p-3 bg-amber-950/20 border border-amber-600/20 rounded text-amber-400/80">
+                  <div className="font-semibold mb-1">Stat rows loaded but no L5 data</div>
+                  <div>recent_avg_l5 is null for all rows. This may mean insufficient game history or the field isn't populated for this lens.</div>
+                </div>
+              )}
+            </div>
+          </details>
+
+          {/* Note */}
           {teamRows.some(r => r.target.isNextUp) && (
             <div className="text-[10px] text-zinc-600 border-t border-zinc-900 pt-2">
-              Next-up rows show the teams' NEXT scheduled opponent (future fixture). Opponent concession data reflects that opponent's current stats and may still update if the opponent has not played their current game.
+              Next-up rows show the teams' NEXT scheduled opponent (future fixture). Opponent concession data reflects that opponent's current stats and may update once they've played their game.
             </div>
           )}
         </>
@@ -2537,13 +2916,65 @@ const POST_TIMING_OPTIONS = [
   { value: "mixed",        label: "Mixed posts" },
 ];
 
+const TEAM_STAT_POST_IDEAS: Record<TeamStatType, { title: string; ideas: string[] }> = {
+  "total-points": {
+    title: "Total Points Environments",
+    ideas: [
+      "Highest total points environments this round",
+      "Teams running hot on the scoreboard",
+      "Opponents conceding big scores lately",
+      "Next-up scoring environments to watch",
+      "Best high-scoring matchups based on L5 data",
+    ],
+  },
+  "disposals": {
+    title: "Disposal Environment Angles",
+    ideas: [
+      "Teams pumping out disposals in recent games",
+      "Opponents conceding high disposal counts L5",
+      "Disposal-heavy matchups this round",
+      "Disposal environment angle for the week",
+      "Which teams are winning the disposal battle?",
+    ],
+  },
+  "goals": {
+    title: "Goals Environment Angles",
+    ideas: [
+      "Teams averaging goals above season rate L5",
+      "Opponents conceding most goals L5",
+      "Goal-heavy matchups to target this round",
+      "Best forward structure matchup angle",
+      "Teams running hot in the forward 50 lately",
+    ],
+  },
+  "scoring-shots": {
+    title: "Scoring Shots Environment Angles",
+    ideas: [
+      "Teams generating the most scoring shots L5",
+      "High scoring shot volume matchups this round",
+      "Opponents leaking scoring shots lately",
+      "Scoring shots environment angle for the week",
+    ],
+  },
+  "tackles": { title: "Tackles Environment Angles", ideas: ["Tackles data not available in team stat source — use player-level data instead"] },
+  "marks": { title: "Marks Environment Angles", ideas: ["Marks data not available in team stat source — use player-level data instead"] },
+  "kicks": { title: "Kicks Environment Angles", ideas: ["Kicks data not available in team stat source — use player-level data instead"] },
+  "handballs": { title: "Handballs Environment Angles", ideas: ["Handballs data not available in team stat source — use player-level data instead"] },
+  "clearances": { title: "Clearances Environment Angles", ideas: ["Clearances data not available in team stat source — use player-level data instead"] },
+  "hitouts": { title: "Hitouts Environment Angles", ideas: ["Hitouts data not available in team stat source — use player-level data instead"] },
+  "inside-50s": { title: "Inside 50s Environment Angles", ideas: ["Inside 50s data not available in team stat source — use player-level data instead"] },
+  "rebound-50s": { title: "Rebound 50s Environment Angles", ideas: ["Rebound 50s data not available in team stat source — use player-level data instead"] },
+  "fantasy": { title: "Fantasy Environment Angles", ideas: ["Fantasy data not available in team stat source — use player-level data instead"] },
+};
+
 function PostIdeas({
-  posts, data, selectedTargetGame, targetGameOptions,
+  posts, data, selectedTargetGame, targetGameOptions, teamStatType,
 }: {
   posts: PostTemplate[];
   data: CIData;
   selectedTargetGame: string;
   targetGameOptions: TargetGameOption[];
+  teamStatType: TeamStatType;
 }) {
   const [formatFilter, setFormatFilter] = useState<PostFormat | "all">("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -2681,6 +3112,35 @@ function PostIdeas({
           </div>
         )}
       </div>
+
+      {/* ── Team Scoring Environments section (driven by Team/Match Angles stat type) ── */}
+      {(() => {
+        const cfg = TEAM_STAT_POST_IDEAS[teamStatType];
+        const statTypeCfg = TEAM_STAT_TYPES.find(t => t.value === teamStatType);
+        const isAvail = statTypeCfg?.source !== "unavailable";
+        return (
+          <div className="border border-zinc-800 rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="h-3.5 w-3.5 text-amber-400" />
+              <span className="text-[12px] font-semibold text-zinc-300">{cfg.title}</span>
+              <span className="text-[10px] text-zinc-600 ml-auto">From Team / Match Angles — {statTypeCfg?.label}</span>
+            </div>
+            {!isAvail && (
+              <div className="text-[10px] text-amber-400/70 bg-amber-950/20 border border-amber-600/20 rounded px-2.5 py-1.5">
+                This stat type is not available in the team RPC. Switch to Total Points, Disposals, Goals, or Scoring Shots for full data.
+              </div>
+            )}
+            <ul className="space-y-1.5">
+              {cfg.ideas.map((idea, i) => (
+                <li key={i} className="flex items-start gap-2 text-[11px] text-zinc-300">
+                  <ArrowRight className="h-3 w-3 text-zinc-600 shrink-0 mt-0.5" />
+                  <span>{idea}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -2840,6 +3300,7 @@ export default function AdminContentIntel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedTargetGame, setSelectedTargetGame] = useState<string>("all");
+  const [teamStatType, setTeamStatType] = useState<TeamStatType>("total-points");
   const loadedAtRef = useRef<Date | null>(null);
 
   const fetchAll = useCallback(async () => {
@@ -2998,6 +3459,7 @@ export default function AdminContentIntel() {
             <TeamMatchAngles
               data={data} mode={contentMode}
               selectedTargetGame={selectedTargetGame} targetGameOptions={targetGameOptions}
+              statType={teamStatType} onStatTypeChange={setTeamStatType}
             />
           )}
           {activeTab === "Same-Game Shortlists" && (
@@ -3016,6 +3478,7 @@ export default function AdminContentIntel() {
             <PostIdeas
               posts={allPosts} data={data}
               selectedTargetGame={selectedTargetGame} targetGameOptions={targetGameOptions}
+              teamStatType={teamStatType}
             />
           )}
           {activeTab === "Freshness" && (
