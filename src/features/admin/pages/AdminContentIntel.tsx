@@ -2,60 +2,44 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import {
   RefreshCw, Copy, Check, TrendingUp, Target, Zap, FileText,
-  TriangleAlert as AlertTriangle, Sword, Lightbulb, Filter,
-  ChevronDown, ChevronUp, ChartBar as BarChart, ArrowUpRight,
-  Clock, Database, ChevronRight,
+  TriangleAlert as AlertTriangle, Filter, ChevronDown, ChevronUp,
+  Clock, Database, X, Search,
 } from "lucide-react";
 import { AdminPageHeader } from "@/features/admin/shared/AdminPageHeader";
 import type { StatBoardPlayer, StatBoardMatch, ThresholdHitRate } from "@/features/afl/stat-board/types";
 import type { StatBoardTeamRow } from "@/features/afl/stat-board/teamTypes";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const STALE_MS = 5 * 60 * 1000;
+const SEASON = 2026;
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type StatFamily =
   | "disposals" | "goals" | "fantasy" | "tackles" | "marks"
-  | "clearances" | "inside50s" | "rebounds50s" | "hitouts";
+  | "kicks" | "handballs" | "clearances" | "hitouts";
 
 type HitProfile =
   | "all" | "perfect" | "missed-once" | "missed-twice"
-  | "at-least-80" | "at-least-70" | "trending-up" | "fade";
+  | "at-least-80" | "at-least-70" | "at-least-60" | "fade" | "volatile"
+  | "projection-supported" | "matchup-supported";
 
-type SampleWindow = "last5" | "last8" | "last10" | "season";
-type MinSample = 3 | 5 | 8;
-type SortBy = "hitrate" | "projection" | "l5avg" | "l10avg" | "seasonavg" | "confidence" | "diff";
+type SampleWindow = "last3" | "last5" | "last8" | "last10";
+type MinSample = 3 | 5 | 8 | 0;
+type SortBy = "hitrate" | "projection" | "l5avg" | "l10avg" | "seasonavg" | "confidence" | "diff" | "matchup";
 
-type AngleTag =
-  | "Safe" | "High Confidence" | "Volatile Upside" | "Fade"
-  | "Matchup Attack" | "Captain" | "Value" | "Market Check"
-  | "Team Concession" | "Current Round" | "Consistency";
+type MarketCheckLevel = "high" | "medium" | "low";
+type MarketCheckStatus = "not-checked" | "market-exists" | "no-market" | "price-not-good" | "added-to-list" | "posted";
 
-type PostFormat = "tiktok" | "instagram" | "reddit" | "twitter";
+type PostFormat = "tiktok" | "instagram" | "reddit" | "twitter" | "caption";
 
-// Market-check grouping labels (Part 9)
-type MarketLabel =
-  | "Near-perfect trend"
-  | "Strong trend"
-  | "Missed once"
-  | "Missed twice"
-  | "Fade angle"
-  | "Volatile"
-  | "Matchup-supported"
-  | "Projection-supported"
-  | "Market-check"
-  | "Worth reviewing";
+type GroupBucket =
+  | "elite-perfect" | "missed-once" | "missed-twice"
+  | "strong-70" | "projection-supported" | "matchup-supported"
+  | "fade" | "volatile";
 
-interface PostTemplate {
-  id: string;
-  format: PostFormat;
-  angleTag: AngleTag;
-  title: string;
-  hook: string;
-  bullets: string[];
-  cta: string;
-}
-
-// Round info from get_current_afl_round_safe
 interface RoundInfo {
   current_round: number;
   round_label: string;
@@ -69,7 +53,6 @@ interface RoundInfo {
   reason: string;
 }
 
-// Source freshness tracking (Part 8)
 interface SourceFreshness {
   rankingsCachedAt: string | null;
   statBoardRowCount: number;
@@ -78,6 +61,61 @@ interface SourceFreshness {
   teamRowCount: number;
   generatedAt: Date;
   roundSource: "get_current_afl_round_safe" | "stat_board_week_fallback";
+}
+
+interface ResearchRow {
+  player_id: number;
+  player_name: string;
+  team_name: string;
+  opponent_team_name: string;
+  match_label: string;
+  position_group: string | null;
+  statFamily: StatFamily;
+  threshold: number;
+  hits: number;
+  games: number;
+  rate: number; // 0-100
+  l3avg: number | null;
+  l5avg: number | null;
+  l10avg: number | null;
+  seasonAvg: number | null;
+  projection: number | null;
+  confidence_label: string | null;
+  bucket: GroupBucket;
+  reason: string;
+  marketCheckLevel: MarketCheckLevel;
+  opponentConcededL5: number | null;
+  opponentConcededSeason: number | null;
+  stddev: number | null;
+  min10: number | null;
+  max10: number | null;
+}
+
+interface MarketCheckItem {
+  id: string;
+  player_name: string;
+  team_name: string;
+  opponent_team_name: string;
+  match_label: string;
+  statFamily: StatFamily;
+  threshold: number;
+  hits: number;
+  games: number;
+  rate: number;
+  reason: string;
+  marketCheckLevel: MarketCheckLevel;
+  status: MarketCheckStatus;
+}
+
+interface PostTemplate {
+  id: string;
+  format: PostFormat;
+  category: string;
+  title: string;
+  hook: string;
+  bullets: string[];
+  cta: string;
+  sourceCount: number;
 }
 
 interface ContentIntelData {
@@ -89,1781 +127,1550 @@ interface ContentIntelData {
   goalPlayers: StatBoardPlayer[];
   teamDisposals: StatBoardTeamRow[];
   teamGoals: StatBoardTeamRow[];
+  teamScore: StatBoardTeamRow[];
   rankings: RankingRow[];
   freshness: SourceFreshness;
   loadedAt: Date;
 }
 
-type MainTab = "mining" | "fantasy" | "match" | "posts";
+// ─── Stat family config ───────────────────────────────────────────────────────
 
-// ─── Stat family config ──────────────────────────────────────────────────────
+const STAT_FAMILIES: { value: StatFamily; label: string; lens: "disposals" | "goals" | null; thresholds: number[] }[] = [
+  { value: "disposals", label: "Disposals", lens: "disposals", thresholds: [10, 15, 20, 25, 30, 35] },
+  { value: "goals", label: "Goals", lens: "goals", thresholds: [1, 2, 3, 4, 5] },
+  { value: "fantasy", label: "Fantasy Score", lens: "disposals", thresholds: [50, 60, 70, 80, 90, 100, 110, 120] },
+  { value: "tackles", label: "Tackles", lens: "disposals", thresholds: [2, 3, 5, 7, 10] },
+  { value: "marks", label: "Marks", lens: "disposals", thresholds: [3, 5, 7, 10, 12] },
+  { value: "kicks", label: "Kicks", lens: "disposals", thresholds: [10, 15, 20, 25] },
+  { value: "handballs", label: "Handballs", lens: "disposals", thresholds: [10, 15, 20] },
+  { value: "clearances", label: "Clearances", lens: "disposals", thresholds: [3, 5, 7, 10] },
+  { value: "hitouts", label: "Hitouts", lens: "disposals", thresholds: [10, 20, 30, 40] },
+];
 
-interface StatFamilyConfig {
-  label: string;
-  thresholds: number[];
-  defaultThreshold: number;
-  unit: string;
-  dataKey: "disposalPlayers" | "goalPlayers";
-  rpcLens: "disposals" | "goals";
-  hasLiveData: boolean;
+const SAMPLE_WINDOWS: { value: SampleWindow; label: string; count: number }[] = [
+  { value: "last3", label: "Last 3", count: 3 },
+  { value: "last5", label: "Last 5", count: 5 },
+  { value: "last8", label: "Last 8", count: 8 },
+  { value: "last10", label: "Last 10", count: 10 },
+];
+
+const HIT_PROFILES: { value: HitProfile; label: string }[] = [
+  { value: "all", label: "All profiles" },
+  { value: "perfect", label: "Perfect / No misses" },
+  { value: "missed-once", label: "Missed Once" },
+  { value: "missed-twice", label: "Missed Twice" },
+  { value: "at-least-80", label: "80%+" },
+  { value: "at-least-70", label: "70%+" },
+  { value: "at-least-60", label: "60%+" },
+  { value: "fade", label: "Fade / Under" },
+  { value: "volatile", label: "Volatile" },
+  { value: "projection-supported", label: "Projection-supported" },
+  { value: "matchup-supported", label: "Matchup-supported" },
+];
+
+const SORT_OPTIONS: { value: SortBy; label: string }[] = [
+  { value: "hitrate", label: "Hit Rate" },
+  { value: "l5avg", label: "Recent Average (L5)" },
+  { value: "l10avg", label: "Recent Average (L10)" },
+  { value: "projection", label: "Projection" },
+  { value: "diff", label: "Avg vs Threshold" },
+  { value: "confidence", label: "Confidence" },
+  { value: "matchup", label: "Matchup Strength" },
+];
+
+// ─── Helper functions ─────────────────────────────────────────────────────────
+
+function fmtTimestamp(d: Date): string {
+  return d.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true }).toLowerCase();
 }
 
-const STAT_FAMILIES: Record<StatFamily, StatFamilyConfig> = {
-  disposals:   { label: "Disposals",    thresholds: [10,15,20,25,30],    defaultThreshold: 20, unit: "disp",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: true },
-  goals:       { label: "Goals",        thresholds: [1,2,3,4,5],         defaultThreshold: 1,  unit: "goals", dataKey: "goalPlayers",     rpcLens: "goals",     hasLiveData: true },
-  fantasy:     { label: "Fantasy Score",thresholds: [60,70,80,90,100,110,120], defaultThreshold: 80, unit: "pts", dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
-  tackles:     { label: "Tackles",      thresholds: [3,5,7,10],          defaultThreshold: 5,  unit: "tck",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
-  marks:       { label: "Marks",        thresholds: [5,7,10],            defaultThreshold: 5,  unit: "mrk",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
-  clearances:  { label: "Clearances",   thresholds: [3,5,7,10],          defaultThreshold: 5,  unit: "clr",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
-  inside50s:   { label: "Inside 50s",   thresholds: [3,5,7,10],          defaultThreshold: 5,  unit: "i50",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
-  rebounds50s: { label: "Rebounds 50s", thresholds: [2,4,6,8],           defaultThreshold: 4,  unit: "r50",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
-  hitouts:     { label: "Hitouts",      thresholds: [20,30,40,50],       defaultThreshold: 30, unit: "hit",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
-};
+function fmtAge(from: Date): string {
+  const mins = Math.floor((Date.now() - from.getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins === 1) return "1 min ago";
+  return `${mins} mins ago`;
+}
 
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-
-// Rate from RPC is stored as 0–100 integer (e.g. rate=100 means 100%), not 0.0–1.0 float
 function rateToFraction(rate: number): number {
   return rate > 1 ? rate / 100 : rate;
 }
 
-function fmtPct(rate: number): string {
-  return `${Math.round(rateToFraction(rate) * 100)}%`;
+function getStatValue(player: StatBoardPlayer, family: StatFamily, threshold: number): { hits: number; games: number; rate: number } | null {
+  const rates = player.all_threshold_hit_rates;
+  if (!rates) return null;
+
+  // Map stat family to threshold key in the JSON
+  // For disposals/goals lens, the threshold keys are the numeric thresholds
+  const key = String(threshold);
+  const entry = rates[key] as ThresholdHitRate | undefined;
+  if (!entry) return null;
+
+  return { hits: entry.hits, games: entry.games, rate: entry.rate };
 }
 
-function fmtRate(hits: number, games: number): string {
-  return `${hits}/${games}`;
+function getAvgForFamily(player: StatBoardPlayer, family: StatFamily): { l3: number | null; l5: number | null; l10: number | null; season: number | null } {
+  // For disposals and goals lens, the averages from the RPC are the averages for that lens stat
+  // The player rows from disposals lens = disposal averages; goals lens = goal averages
+  // For other families (tackles, marks, etc.) we can't get per-family averages from the player RPC directly
+  // We use the generic averages which reflect the selected lens
+  return {
+    l3: player.last_3_avg ?? null,
+    l5: player.last_5_avg ?? null,
+    l10: player.last_10_avg ?? null,
+    season: player.season_avg ?? null,
+  };
 }
 
-function hitRateBg(rate: number): string {
-  const f = rateToFraction(rate);
-  if (f >= 0.85) return "text-emerald-400";
-  if (f >= 0.65) return "text-amber-400";
-  return "text-zinc-400";
-}
-
-function confidenceColor(label: string | null): string {
-  if (label === "HIGH")   return "text-emerald-400";
-  if (label === "MEDIUM") return "text-amber-400";
-  return "text-zinc-400";
-}
-
-// Part 9 — market-check grouping label from hit rate + supporting signals
-function getMarketLabel(
-  hits: number,
-  games: number,
-  rate: number,
-  projection: number | null,
-  threshold: number,
+function classifyBucket(
+  hits: number, games: number, rate: number,
+  projection: number | null, threshold: number,
   opponentConceded: number | null,
-): MarketLabel {
+  stddev: number | null, l10avg: number | null
+): GroupBucket {
   const frac = rateToFraction(rate);
   const misses = games - hits;
 
-  if (frac === 1.0 && games >= 6) return "Near-perfect trend";
-  if (frac >= 0.85) return "Strong trend";
-  if (misses === 1) return "Missed once";
-  if (misses === 2) return "Missed twice";
-  if (frac < 0.40 && games >= 5) return "Fade angle";
-  if (frac >= 0.70 && projection != null && projection > threshold * 1.2) return "Projection-supported";
-  if (frac >= 0.60 && opponentConceded != null && opponentConceded > threshold * 12) return "Matchup-supported";
-  if (frac < 0.50) return "Market-check";
-  return "Worth reviewing";
+  if (frac >= 1.0 && games >= 3) return "elite-perfect";
+  if (misses === 1 && games >= 3) return "missed-once";
+  if (misses === 2 && games >= 3) return "missed-twice";
+  if (frac < 0.40 && games >= 4) return "fade";
+
+  const isVolatile = stddev != null && l10avg != null && stddev > l10avg * 0.4;
+  if (isVolatile && frac >= 0.5) return "volatile";
+
+  if (projection != null && projection > threshold * 1.15 && frac >= 0.6) return "projection-supported";
+  if (opponentConceded != null && opponentConceded > threshold * 10 && frac >= 0.55) return "matchup-supported";
+
+  return "strong-70";
 }
 
-function marketLabelCls(label: MarketLabel): string {
-  switch (label) {
-    case "Near-perfect trend":   return "bg-emerald-950/60 text-emerald-300 border-emerald-500/30";
-    case "Strong trend":         return "bg-emerald-950/40 text-emerald-400 border-emerald-600/30";
-    case "Missed once":          return "bg-amber-950/40 text-amber-300 border-amber-500/30";
-    case "Missed twice":         return "bg-amber-950/60 text-amber-400 border-amber-500/30";
-    case "Fade angle":           return "bg-red-950/60 text-red-400 border-red-500/30";
-    case "Volatile":             return "bg-orange-950/60 text-orange-400 border-orange-500/30";
-    case "Projection-supported": return "bg-sky-950/60 text-sky-400 border-sky-500/30";
-    case "Matchup-supported":    return "bg-teal-950/60 text-teal-400 border-teal-500/30";
-    case "Market-check":         return "bg-zinc-900 text-zinc-400 border-zinc-600/30";
-    case "Worth reviewing":      return "bg-zinc-900/60 text-zinc-500 border-zinc-700/30";
-  }
-}
-
-function buildAngleTagCls(tag: AngleTag): string {
-  switch (tag) {
-    case "Safe":            return "bg-emerald-950/60 text-emerald-400 border-emerald-500/30";
-    case "High Confidence": return "bg-emerald-950/40 text-emerald-300 border-emerald-600/30";
-    case "Volatile Upside": return "bg-amber-950/60 text-amber-400 border-amber-500/30";
-    case "Fade":            return "bg-red-950/60 text-red-400 border-red-500/30";
-    case "Matchup Attack":  return "bg-sky-950/60 text-sky-400 border-sky-500/30";
-    case "Captain":         return "bg-yellow-950/60 text-yellow-400 border-yellow-500/30";
-    case "Value":           return "bg-teal-950/60 text-teal-400 border-teal-500/30";
-    case "Market Check":    return "bg-zinc-900 text-zinc-400 border-zinc-600/30";
-    case "Team Concession": return "bg-orange-950/60 text-orange-400 border-orange-500/30";
-    case "Current Round":   return "bg-blue-950/60 text-blue-400 border-blue-500/30";
-    case "Consistency":     return "bg-violet-950/60 text-violet-400 border-violet-500/30";
-  }
-}
-
-function fmtTimestamp(d: Date | string | null): string {
-  if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true });
-}
-
-function fmtAge(d: Date | string | null): string {
-  if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  const diffMs = Date.now() - date.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return "just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `${diffH}h ago`;
-  return `${Math.floor(diffH / 24)}d ago`;
-}
-
-// ─── Small shared components ───────────────────────────────────────────────────
-
-function EmptyState({ message, detail }: { message: string; detail?: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-8 text-center">
-      <AlertTriangle className="h-4 w-4 text-amber-500 mb-2" />
-      <p className="text-xs font-medium text-muted-foreground">{message}</p>
-      {detail && <p className="text-[11px] text-muted-foreground/60 mt-1 max-w-xs">{detail}</p>}
-    </div>
-  );
-}
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  function handleCopy() {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    });
-  }
-  return (
-    <button
-      onClick={handleCopy}
-      className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors shrink-0"
-    >
-      {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-      {copied ? "Copied" : "Copy"}
-    </button>
-  );
-}
-
-function SummaryCard({ label, value, sub, accent }: {
-  label: string; value: string; sub?: string; accent?: string;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card/50 px-4 py-3">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
-      <p className={`text-lg font-semibold mt-0.5 leading-tight ${accent ?? ""}`}>{value}</p>
-      {sub && <p className="text-[11px] text-muted-foreground mt-0.5">{sub}</p>}
-    </div>
-  );
-}
-
-function Section({ title, count, children }: { title: string; count?: number; children: React.ReactNode }) {
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border/40">
-        <h3 className="text-[13px] font-semibold text-foreground">{title}</h3>
-        {count != null && (
-          <span className="text-[10px] text-muted-foreground bg-muted/40 border border-border/40 rounded px-1.5 py-0.5 font-mono">
-            {count}
-          </span>
-        )}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-// ─── Source Freshness Panel (Part 8) ──────────────────────────────────────────
-
-function FreshnessPanel({ data }: { data: ContentIntelData }) {
-  const [open, setOpen] = useState(false);
-  const f = data.freshness;
-  const ri = data.roundInfo;
-
-  return (
-    <div className="rounded-lg border border-border/40 bg-muted/5 mb-5">
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-2.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <span className="flex items-center gap-1.5">
-          <Database className="h-3 w-3" />
-          Source freshness — rankings cached {fmtAge(f.rankingsCachedAt)} · content generated {fmtAge(f.generatedAt)}
-        </span>
-        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-      </button>
-      {open && (
-        <div className="border-t border-border/40 px-4 py-3 grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-[11px]">
-          <div>
-            <span className="text-muted-foreground">Round source:</span>{" "}
-            <span className="text-foreground font-mono">{f.roundSource}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Current round:</span>{" "}
-            <span className="text-foreground font-semibold">Round {data.currentRound}</span>
-            {ri && <span className="text-muted-foreground ml-1">({ri.round_status})</span>}
-          </div>
-          {ri && (
-            <>
-              <div>
-                <span className="text-muted-foreground">Games this round:</span>{" "}
-                <span className="text-foreground">{ri.total_games} total · {ri.completed_games} done · {ri.in_progress_games} live</span>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Should rollover:</span>{" "}
-                <span className={ri.should_rollover ? "text-amber-400" : "text-emerald-400"}>{ri.should_rollover ? "Yes" : "No"}</span>
-              </div>
-            </>
-          )}
-          <div>
-            <span className="text-muted-foreground">Rankings cached at:</span>{" "}
-            <span className="text-foreground">{f.rankingsCachedAt ? fmtTimestamp(f.rankingsCachedAt) : "unknown"}</span>
-            {f.rankingsCachedAt && <span className="text-muted-foreground ml-1">({fmtAge(f.rankingsCachedAt)})</span>}
-          </div>
-          <div>
-            <span className="text-muted-foreground">Rankings rows:</span>{" "}
-            <span className="text-foreground">{f.rankingsRowCount}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Stat board players:</span>{" "}
-            <span className="text-foreground">{f.statBoardRowCount} disposal · goal rows loaded</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Match rows:</span>{" "}
-            <span className="text-foreground">{f.matchRowCount}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Team rows:</span>{" "}
-            <span className="text-foreground">{f.teamRowCount}</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Post ideas derived from:</span>{" "}
-            <span className="text-foreground">live rows (regenerated on each load/refetch)</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Content Intel generated:</span>{" "}
-            <span className="text-foreground">{fmtTimestamp(f.generatedAt)} ({fmtAge(f.generatedAt)})</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Refetch interval:</span>{" "}
-            <span className="text-foreground">Every 5 min while page is open</span>
-          </div>
-          <div>
-            <span className="text-muted-foreground">Window focus refetch:</span>{" "}
-            <span className="text-foreground">Yes, if data &gt; 5 min stale</span>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Player mining table ──────────────────────────────────────────────────────
-
-interface MiningRow {
-  player_name: string;
-  team_name: string;
-  opponent_team_name: string;
-  hits: number;
-  games: number;
-  rate: number; // 0–100
-  l5avg: number | null;
-  l10avg: number | null;
-  seasonAvg: number | null;
-  projection: number | null;
-  confidence_label: string | null;
-  reason: string;
-  marketLabel: MarketLabel;
-}
-
-function buildMiningReason(
-  family: StatFamily, threshold: number, hits: number, games: number,
-  rate: number, l10avg: number | null, proj: number | null,
+function buildReason(
+  player_name: string, threshold: number, family: StatFamily, hits: number, games: number,
+  l10avg: number | null, projection: number | null, opponent: string, bucket: GroupBucket
 ): string {
-  const cfg = STAT_FAMILIES[family];
-  const frac = rateToFraction(rate);
-  const pct = Math.round(frac * 100);
-  const threshStr = `${threshold}+ ${cfg.label.toLowerCase()}`;
-  const avg10 = l10avg != null ? l10avg.toFixed(1) : null;
-  const projStr = proj != null ? Math.round(proj) : null;
+  const familyLabel = STAT_FAMILIES.find(f => f.value === family)?.label ?? family;
+  const pct = Math.round((hits / Math.max(games, 1)) * 100);
 
-  let s = `${hits}/${games} above ${threshStr}`;
-  if (avg10) s += `, L10 avg ${avg10}`;
-  if (projStr) s += `, proj ${projStr}`;
-  if (pct === 100 && games >= 5) s = `Perfect (${games}/${games}) — ` + s;
-  else if (pct >= 90) s = `Near-perfect — ` + s;
-  return s;
+  if (bucket === "elite-perfect") {
+    return `${hits}/${games} over ${threshold}+ ${familyLabel} in recent sample (100%). ${l10avg != null ? `L10 avg ${l10avg.toFixed(1)}.` : ""} Playing ${opponent}.`;
+  }
+  if (bucket === "missed-once") {
+    return `${hits}/${games} over ${threshold}+ ${familyLabel} — missed exactly once. ${l10avg != null ? `L10 avg ${l10avg.toFixed(1)}.` : ""} Playing ${opponent}.`;
+  }
+  if (bucket === "missed-twice") {
+    return `${hits}/${games} over ${threshold}+ ${familyLabel} — missed twice. ${l10avg != null ? `L10 avg ${l10avg.toFixed(1)}.` : ""} Playing ${opponent}.`;
+  }
+  if (bucket === "fade") {
+    return `${hits}/${games} over ${threshold}+ ${familyLabel} (${pct}%). ${l10avg != null ? `L10 avg ${l10avg.toFixed(1)}.` : ""} Treat as a market-check fade angle vs ${opponent}.`;
+  }
+  if (bucket === "projection-supported") {
+    return `${hits}/${games} over ${threshold}+ ${familyLabel}. ${projection != null ? `Projected ${projection.toFixed(0)}.` : ""} Projection supports vs ${opponent}.`;
+  }
+  if (bucket === "matchup-supported") {
+    return `${hits}/${games} over ${threshold}+ ${familyLabel}. Opponent ${opponent} concession profile supports this angle.`;
+  }
+  return `${hits}/${games} over ${threshold}+ ${familyLabel} (${pct}%). ${l10avg != null ? `L10 avg ${l10avg.toFixed(1)}.` : ""} Playing ${opponent}.`;
 }
 
-function getMiningRows(
+function getMarketCheckLevel(bucket: GroupBucket, frac: number): MarketCheckLevel {
+  if (bucket === "elite-perfect") return "high";
+  if (bucket === "missed-once") return "high";
+  if (bucket === "missed-twice") return "medium";
+  if (bucket === "projection-supported") return "high";
+  if (bucket === "matchup-supported") return "medium";
+  if (bucket === "fade") return "medium"; // fade check
+  if (frac >= 0.7) return "medium";
+  return "low";
+}
+
+function filterByHitProfile(row: ResearchRow, profile: HitProfile): boolean {
+  const frac = rateToFraction(row.rate);
+  const misses = row.games - row.hits;
+  switch (profile) {
+    case "all": return true;
+    case "perfect": return misses === 0 && row.games >= 3;
+    case "missed-once": return misses === 1;
+    case "missed-twice": return misses === 2;
+    case "at-least-80": return frac >= 0.80;
+    case "at-least-70": return frac >= 0.70;
+    case "at-least-60": return frac >= 0.60;
+    case "fade": return frac < 0.40 && row.games >= 4;
+    case "volatile": return row.bucket === "volatile";
+    case "projection-supported": return row.bucket === "projection-supported";
+    case "matchup-supported": return row.bucket === "matchup-supported";
+    default: return true;
+  }
+}
+
+// Build research rows from player data for a given stat family and threshold
+function buildResearchRows(
   players: StatBoardPlayer[],
-  threshold: number,
-  profile: HitProfile,
-  minSample: MinSample,
-  sortBy: SortBy,
   family: StatFamily,
-): MiningRow[] {
-  const key = `${threshold}`;
-  const rows: MiningRow[] = [];
+  threshold: number,
+  sampleWindow: SampleWindow,
+  minSample: MinSample,
+): ResearchRow[] {
+  const rows: ResearchRow[] = [];
 
   for (const p of players) {
-    const hr: ThresholdHitRate | undefined = p.all_threshold_hit_rates?.[key];
-    if (!hr || hr.games < minSample) continue;
+    const hitData = getStatValue(p, family, threshold);
+    if (!hitData) continue;
+    const { hits, games, rate } = hitData;
+    if (minSample > 0 && games < minSample) continue;
+    if (games === 0) continue;
 
-    const frac = rateToFraction(hr.rate);
-    const misses = hr.games - hr.hits;
+    const avgs = getAvgForFamily(p, family);
+    const frac = rateToFraction(rate);
+    const misses = games - hits;
 
-    let include = false;
-    switch (profile) {
-      case "all":          include = true; break;
-      case "perfect":      include = frac === 1.0; break;
-      case "missed-once":  include = misses === 1; break;
-      case "missed-twice": include = misses === 2; break;
-      case "at-least-80":  include = frac >= 0.80; break;
-      case "at-least-70":  include = frac >= 0.70; break;
-      case "trending-up": {
-        const l5 = p.last_5_avg ?? 0;
-        const l10 = p.last_10_avg ?? 0;
-        include = l5 > threshold && l5 > l10;
-        break;
-      }
-      case "fade": include = frac < 0.40 && hr.games >= 5; break;
-    }
-
-    if (!include) continue;
+    // Get opponent concession from team rows if available — we'll leave null here
+    // as team data is separate. Will join later if needed.
+    const bucket = classifyBucket(hits, games, rate, p.projection, threshold, null, p.stddev_last_10, avgs.l10);
+    const reason = buildReason(p.player_name, threshold, family, hits, games, avgs.l10, p.projection, p.opponent_team_name, bucket);
+    const marketCheckLevel = getMarketCheckLevel(bucket, frac);
 
     rows.push({
+      player_id: p.player_id,
       player_name: p.player_name,
       team_name: p.team_name,
       opponent_team_name: p.opponent_team_name,
-      hits: hr.hits,
-      games: hr.games,
-      rate: hr.rate,
-      l5avg: p.last_5_avg,
-      l10avg: p.last_10_avg,
-      seasonAvg: p.season_avg,
+      match_label: p.match_label,
+      position_group: p.position_group,
+      statFamily: family,
+      threshold,
+      hits,
+      games,
+      rate,
+      l3avg: avgs.l3,
+      l5avg: avgs.l5,
+      l10avg: avgs.l10,
+      seasonAvg: avgs.season,
       projection: p.projection,
       confidence_label: p.confidence_label,
-      reason: buildMiningReason(family, threshold, hr.hits, hr.games, hr.rate, p.last_10_avg, p.projection),
-      marketLabel: getMarketLabel(hr.hits, hr.games, hr.rate, p.projection, threshold, null),
+      bucket,
+      reason,
+      marketCheckLevel,
+      opponentConcededL5: null,
+      opponentConcededSeason: null,
+      stddev: p.stddev_last_10,
+      min10: p.min_last_10,
+      max10: p.max_last_10,
     });
   }
-
-  rows.sort((a, b) => {
-    switch (sortBy) {
-      case "hitrate":    return rateToFraction(b.rate) - rateToFraction(a.rate) || b.hits - a.hits;
-      case "projection": return (b.projection ?? 0) - (a.projection ?? 0);
-      case "l5avg":      return (b.l5avg ?? 0) - (a.l5avg ?? 0);
-      case "l10avg":     return (b.l10avg ?? 0) - (a.l10avg ?? 0);
-      case "seasonavg":  return (b.seasonAvg ?? 0) - (a.seasonAvg ?? 0);
-      case "confidence": {
-        const w = (l: string | null) => l === "HIGH" ? 3 : l === "MEDIUM" ? 2 : 1;
-        return w(b.confidence_label) - w(a.confidence_label);
-      }
-      case "diff": {
-        const da = (a.projection ?? 0) - threshold;
-        const db = (b.projection ?? 0) - threshold;
-        return db - da;
-      }
-      default: return 0;
-    }
-  });
 
   return rows;
 }
 
-function MarketLabelBadge({ label }: { label: MarketLabel }) {
-  return (
-    <span className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold border ${marketLabelCls(label)}`}>
-      {label}
-    </span>
-  );
-}
-
-function MiningTable({ rows, threshold, family, profile }: {
-  rows: MiningRow[];
-  threshold: number;
-  family: StatFamily;
-  profile: HitProfile;
-}) {
-  const cfg = STAT_FAMILIES[family];
-  const isFade = profile === "fade";
-
-  if (rows.length === 0) {
-    return (
-      <EmptyState
-        message={`No players match this filter (${threshold}+ ${cfg.label.toLowerCase()}, ${profile})`}
-        detail="Try adjusting the threshold, profile, or minimum sample."
-      />
-    );
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b border-border text-muted-foreground text-left">
-            <th className="pb-1.5 pr-3 font-medium">Player</th>
-            <th className="pb-1.5 pr-3 font-medium">Team</th>
-            <th className="pb-1.5 pr-3 font-medium">vs</th>
-            <th className="pb-1.5 pr-3 font-medium text-right">Record</th>
-            <th className="pb-1.5 pr-3 font-medium text-right">Rate%</th>
-            <th className="pb-1.5 pr-3 font-medium text-right">L5</th>
-            <th className="pb-1.5 pr-3 font-medium text-right">L10</th>
-            <th className="pb-1.5 pr-3 font-medium text-right">Ssn</th>
-            <th className="pb-1.5 pr-3 font-medium text-right">Proj</th>
-            <th className="pb-1.5 pr-3 font-medium">Label</th>
-            <th className="pb-1.5 font-medium">Conf</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-b border-border/30 hover:bg-muted/10 transition-colors">
-              <td className="py-1.5 pr-3">
-                <div className="font-medium text-foreground whitespace-nowrap">{r.player_name}</div>
-                <div className="text-[10px] text-muted-foreground/70 mt-0.5 max-w-[200px] leading-snug">{r.reason}</div>
-              </td>
-              <td className="py-1.5 pr-3 text-muted-foreground whitespace-nowrap">{r.team_name}</td>
-              <td className="py-1.5 pr-3 text-muted-foreground whitespace-nowrap">{r.opponent_team_name}</td>
-              <td className={`py-1.5 pr-3 text-right font-mono font-semibold whitespace-nowrap ${isFade ? "text-red-400" : hitRateBg(r.rate)}`}>
-                {fmtRate(r.hits, r.games)}
-              </td>
-              <td className={`py-1.5 pr-3 text-right font-semibold whitespace-nowrap ${isFade ? "text-red-400" : hitRateBg(r.rate)}`}>
-                {fmtPct(r.rate)}
-              </td>
-              <td className="py-1.5 pr-3 text-right text-muted-foreground">{r.l5avg != null ? r.l5avg.toFixed(1) : "—"}</td>
-              <td className="py-1.5 pr-3 text-right text-muted-foreground">{r.l10avg != null ? r.l10avg.toFixed(1) : "—"}</td>
-              <td className="py-1.5 pr-3 text-right text-muted-foreground">{r.seasonAvg != null ? r.seasonAvg.toFixed(1) : "—"}</td>
-              <td className="py-1.5 pr-3 text-right text-muted-foreground">{r.projection != null ? Math.round(r.projection) : "—"}</td>
-              <td className="py-1.5 pr-3"><MarketLabelBadge label={r.marketLabel} /></td>
-              <td className="py-1.5">
-                <span className={`text-[10px] font-semibold ${confidenceColor(r.confidence_label)}`}>
-                  {r.confidence_label ?? "—"}
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ─── Content Mining Tab ───────────────────────────────────────────────────────
-
-interface MiningFilters {
-  family: StatFamily;
-  threshold: number;
-  profile: HitProfile;
-  window: SampleWindow;
-  minSample: MinSample;
-  sortBy: SortBy;
-}
-
-const PRESET_CHIPS: Array<{ label: string; family: StatFamily; threshold: number; profile: HitProfile }> = [
-  { label: "20+ Disp",    family: "disposals", threshold: 20, profile: "all" },
-  { label: "25+ Disp",    family: "disposals", threshold: 25, profile: "all" },
-  { label: "30+ Disp",    family: "disposals", threshold: 30, profile: "all" },
-  { label: "2+ Goals",    family: "goals",     threshold: 2,  profile: "all" },
-  { label: "Perfect 20+", family: "disposals", threshold: 20, profile: "perfect" },
-  { label: "Perfect 1G+", family: "goals",     threshold: 1,  profile: "perfect" },
-  { label: "Fade Angles", family: "disposals", threshold: 20, profile: "fade" },
-  { label: "Missed Once", family: "disposals", threshold: 20, profile: "missed-once" },
-];
-
-function ContentMiningTab({ data }: { data: ContentIntelData }) {
-  const [filters, setFilters] = useState<MiningFilters>({
-    family: "disposals", threshold: 20, profile: "all",
-    window: "last10", minSample: 3, sortBy: "hitrate",
+// Sort rows
+function sortRows(rows: ResearchRow[], sortBy: SortBy): ResearchRow[] {
+  return [...rows].sort((a, b) => {
+    switch (sortBy) {
+      case "hitrate": return rateToFraction(b.rate) - rateToFraction(a.rate);
+      case "l5avg": return (b.l5avg ?? 0) - (a.l5avg ?? 0);
+      case "l10avg": return (b.l10avg ?? 0) - (a.l10avg ?? 0);
+      case "projection": return (b.projection ?? 0) - (a.projection ?? 0);
+      case "diff": {
+        const aD = (a.l10avg ?? 0) - a.threshold;
+        const bD = (b.l10avg ?? 0) - b.threshold;
+        return bD - aD;
+      }
+      case "confidence": {
+        const rank = (c: string | null) => c === "HIGH" ? 3 : c === "MEDIUM" ? 2 : 1;
+        return rank(b.confidence_label) - rank(a.confidence_label);
+      }
+      default: return rateToFraction(b.rate) - rateToFraction(a.rate);
+    }
   });
-  const [showFilters, setShowFilters] = useState(true);
-
-  function update<K extends keyof MiningFilters>(key: K, val: MiningFilters[K]) {
-    setFilters(prev => ({ ...prev, [key]: val }));
-  }
-
-  function applyPreset(p: typeof PRESET_CHIPS[0]) {
-    const cfg = STAT_FAMILIES[p.family];
-    setFilters(prev => ({
-      ...prev, family: p.family, threshold: p.threshold, profile: p.profile, minSample: 3,
-    }));
-    if (!cfg.thresholds.includes(p.threshold)) update("threshold", cfg.defaultThreshold);
-  }
-
-  const cfg = STAT_FAMILIES[filters.family];
-  const sourcePlayers = filters.family === "goals" ? data.goalPlayers : data.disposalPlayers;
-  const safeThreshold = cfg.thresholds.includes(filters.threshold) ? filters.threshold : cfg.defaultThreshold;
-
-  // All result groups derived live from current data
-  const eliteRows   = cfg.hasLiveData ? getMiningRows(sourcePlayers, safeThreshold, "perfect",      filters.minSample, filters.sortBy, filters.family) : [];
-  const missedOnce  = cfg.hasLiveData ? getMiningRows(sourcePlayers, safeThreshold, "missed-once",  filters.minSample, filters.sortBy, filters.family) : [];
-  const missedTwice = cfg.hasLiveData ? getMiningRows(sourcePlayers, safeThreshold, "missed-twice", filters.minSample, filters.sortBy, filters.family) : [];
-  const fadeRows    = cfg.hasLiveData ? getMiningRows(sourcePlayers, safeThreshold, "fade",         filters.minSample, filters.sortBy, filters.family) : [];
-  const allRows     = cfg.hasLiveData ? getMiningRows(sourcePlayers, safeThreshold, filters.profile, filters.minSample, filters.sortBy, filters.family) : [];
-
-  const familyLabel = `${safeThreshold}+ ${cfg.label.toLowerCase()}`;
-
-  return (
-    <div className="space-y-5">
-      {/* Preset chips */}
-      <div className="flex flex-wrap gap-1.5">
-        {PRESET_CHIPS.map(chip => (
-          <button
-            key={chip.label}
-            onClick={() => applyPreset(chip)}
-            className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-colors ${
-              filters.family === chip.family && filters.threshold === chip.threshold && filters.profile === chip.profile
-                ? "bg-foreground/10 text-foreground border-border"
-                : "text-muted-foreground border-border/40 hover:text-foreground hover:border-border"
-            }`}
-          >
-            {chip.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Filter bar */}
-      <div className="rounded-lg border border-border/60 bg-muted/5">
-        <button
-          onClick={() => setShowFilters(s => !s)}
-          className="w-full flex items-center justify-between px-4 py-2.5 text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <span className="flex items-center gap-1.5">
-            <Filter className="h-3.5 w-3.5" />
-            Filters — {familyLabel}, {filters.profile}, min {filters.minSample} games, sort by {filters.sortBy}
-          </span>
-          {showFilters ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-        </button>
-
-        {showFilters && (
-          <div className="px-4 pb-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 border-t border-border/40 pt-3">
-            <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block mb-1">Stat Family</label>
-              <select
-                value={filters.family}
-                onChange={e => {
-                  const newFamily = e.target.value as StatFamily;
-                  const newCfg = STAT_FAMILIES[newFamily];
-                  update("family", newFamily);
-                  if (!newCfg.thresholds.includes(filters.threshold)) update("threshold", newCfg.defaultThreshold);
-                }}
-                className="w-full text-xs bg-background border border-border/60 rounded px-2 py-1.5 text-foreground focus:outline-none"
-              >
-                {(Object.entries(STAT_FAMILIES) as [StatFamily, StatFamilyConfig][]).map(([key, c]) => (
-                  <option key={key} value={key} disabled={!c.hasLiveData}>
-                    {c.label}{!c.hasLiveData ? " (coming)" : ""}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block mb-1">Threshold</label>
-              <select
-                value={safeThreshold}
-                onChange={e => update("threshold", Number(e.target.value))}
-                className="w-full text-xs bg-background border border-border/60 rounded px-2 py-1.5 text-foreground focus:outline-none"
-              >
-                {cfg.thresholds.map(t => <option key={t} value={t}>{t}+ {cfg.unit}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block mb-1">Hit Profile</label>
-              <select
-                value={filters.profile}
-                onChange={e => update("profile", e.target.value as HitProfile)}
-                className="w-full text-xs bg-background border border-border/60 rounded px-2 py-1.5 text-foreground focus:outline-none"
-              >
-                <option value="all">All</option>
-                <option value="perfect">Perfect (0 misses)</option>
-                <option value="missed-once">Missed Once</option>
-                <option value="missed-twice">Missed Twice</option>
-                <option value="at-least-80">At Least 80%</option>
-                <option value="at-least-70">At Least 70%</option>
-                <option value="trending-up">Trending Up</option>
-                <option value="fade">Fade / Under Angles</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block mb-1">Min Sample</label>
-              <select
-                value={filters.minSample}
-                onChange={e => update("minSample", Number(e.target.value) as MinSample)}
-                className="w-full text-xs bg-background border border-border/60 rounded px-2 py-1.5 text-foreground focus:outline-none"
-              >
-                <option value={3}>3+ games</option>
-                <option value={5}>5+ games</option>
-                <option value={8}>8+ games</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block mb-1">Sort By</label>
-              <select
-                value={filters.sortBy}
-                onChange={e => update("sortBy", e.target.value as SortBy)}
-                className="w-full text-xs bg-background border border-border/60 rounded px-2 py-1.5 text-foreground focus:outline-none"
-              >
-                <option value="hitrate">Hit Rate</option>
-                <option value="projection">Projection</option>
-                <option value="l5avg">L5 Avg</option>
-                <option value="l10avg">L10 Avg</option>
-                <option value="seasonavg">Season Avg</option>
-                <option value="confidence">Confidence</option>
-                <option value="diff">Diff vs Threshold</option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={() => setFilters({ family: "disposals", threshold: 20, profile: "all", window: "last10", minSample: 3, sortBy: "hitrate" })}
-                className="text-[11px] text-muted-foreground hover:text-foreground border border-border/40 rounded px-2 py-1.5 transition-colors"
-              >
-                Reset
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* No live data warning */}
-      {!cfg.hasLiveData && (
-        <div className="rounded-lg border border-amber-500/20 bg-amber-950/10 px-4 py-3 text-xs text-amber-400">
-          Live hit-rate data for {cfg.label} is not yet available in the Stat Board RPC. Use Disposals or Goals for live mining.
-        </div>
-      )}
-
-      {/* Results */}
-      {cfg.hasLiveData && (
-        filters.profile === "all" ? (
-          <div className="space-y-8">
-            <Section title="Near-Perfect / Perfect (0 misses)" count={eliteRows.length}>
-              <MiningTable rows={eliteRows} threshold={safeThreshold} family={filters.family} profile="perfect" />
-            </Section>
-            <Section title="Missed Once" count={missedOnce.length}>
-              <MiningTable rows={missedOnce} threshold={safeThreshold} family={filters.family} profile="missed-once" />
-            </Section>
-            <Section title="Missed Twice" count={missedTwice.length}>
-              <MiningTable rows={missedTwice} threshold={safeThreshold} family={filters.family} profile="missed-twice" />
-            </Section>
-            <Section title="Fade / Under Angles (Frequently Misses)" count={fadeRows.length}>
-              <p className="text-[11px] text-muted-foreground mb-3">
-                Players frequently missing this threshold. Data only, not advice.
-              </p>
-              <MiningTable rows={fadeRows} threshold={safeThreshold} family={filters.family} profile="fade" />
-            </Section>
-          </div>
-        ) : (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[12px] font-medium text-foreground">
-                {allRows.length} players — {familyLabel} / {filters.profile}
-              </span>
-              {allRows.length > 0 && (
-                <CopyButton text={allRows.map(r =>
-                  `${r.player_name} (${r.team_name} vs ${r.opponent_team_name}): ${fmtRate(r.hits, r.games)} [${fmtPct(r.rate)}] — ${r.reason}`
-                ).join("\n")} />
-              )}
-            </div>
-            <MiningTable rows={allRows} threshold={safeThreshold} family={filters.family} profile={filters.profile} />
-          </div>
-        )
-      )}
-    </div>
-  );
 }
 
-// ─── Fantasy tab ──────────────────────────────────────────────────────────────
+// ─── Post template builder ────────────────────────────────────────────────────
 
-function FantasyTab({ rankings }: { rankings: RankingRow[] }) {
-  const available = rankings.filter(r => !r.is_injured && !r.is_bye && r.is_available !== false);
-
-  if (available.length === 0) {
-    return (
-      <EmptyState
-        message="No available rankings data"
-        detail="Rankings may still be loading, or all players are on bye/injured. Check that the rankings cache is populated and get_rankings_safe is returning rows."
-      />
-    );
-  }
-
-  const topProj = [...available]
-    .filter(r => r.projection != null)
-    .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
-    .slice(0, 10);
-
-  const bestValue = [...available]
-    .filter(r => (r.value_score ?? 0) > 10)
-    .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
-    .slice(0, 8);
-
-  const captains = [...available]
-    .filter(r => r.captain_score != null && r.projection != null)
-    .sort((a, b) => (b.captain_score ?? 0) - (a.captain_score ?? 0))
-    .slice(0, 8);
-
-  const traps = [...available]
-    .filter(r => {
-      const proj = r.projection ?? 0;
-      const be = r.breakeven ?? 9999;
-      return proj > 0 && proj < be && (r.edge ?? 0) < -5;
-    })
-    .sort((a, b) => (a.edge ?? 0) - (b.edge ?? 0))
-    .slice(0, 8);
-
-  const priceMovers = [...available]
-    .filter(r => r.edge != null && r.breakeven != null && r.price != null)
-    .sort((a, b) => Math.abs(b.edge ?? 0) - Math.abs(a.edge ?? 0))
-    .slice(0, 8);
-
-  const highConf = [...available]
-    .filter(r => r.confidence_label === "HIGH" && r.projection != null)
-    .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
-    .slice(0, 8);
-
-  return (
-    <div className="space-y-8">
-      <FantasySubSection title="Top Projected Scorers" icon={TrendingUp} rows={topProj} />
-      <FantasySubSection title="High Confidence Picks" icon={BarChart} rows={highConf} />
-      <FantasySubSection title="Best Value Picks" icon={Target} rows={bestValue} />
-      <FantasySubSection title="Captain Picks" icon={Sword} rows={captains} />
-      <FantasySubSection title="Biggest Price Movers (by Edge)" icon={ArrowUpRight} rows={priceMovers} />
-      <FantasySubSection title="Trap / Fade Alerts" icon={AlertTriangle} rows={traps} warn />
-    </div>
-  );
-}
-
-function FantasySubSection({ title, icon: Icon, rows, warn }: {
-  title: string; icon: React.ElementType; rows: RankingRow[]; warn?: boolean;
-}) {
-  if (rows.length === 0) {
-    return (
-      <div>
-        <div className="flex items-center gap-2 mb-2">
-          <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-          <h3 className="text-[13px] font-semibold">{title}</h3>
-        </div>
-        <EmptyState message={`No ${title.toLowerCase()} data`} detail="May require more rows in rankings cache." />
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div className="flex items-center gap-2 mb-3 pb-2 border-b border-border/40">
-        <Icon className={`h-3.5 w-3.5 ${warn ? "text-amber-400" : "text-muted-foreground"}`} />
-        <h3 className="text-[13px] font-semibold">{title}</h3>
-        <span className="text-[10px] text-muted-foreground bg-muted/40 border border-border/40 rounded px-1.5 py-0.5">{rows.length}</span>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="border-b border-border text-muted-foreground text-left">
-              <th className="pb-1.5 pr-3 font-medium">Player</th>
-              <th className="pb-1.5 pr-2 font-medium">Pos</th>
-              <th className="pb-1.5 pr-2 font-medium text-right">Proj</th>
-              <th className="pb-1.5 pr-2 font-medium text-right">BE</th>
-              <th className="pb-1.5 pr-2 font-medium text-right">Edge</th>
-              <th className="pb-1.5 pr-2 font-medium text-right">L5</th>
-              <th className="pb-1.5 pr-2 font-medium text-right">Ssn</th>
-              <th className="pb-1.5 pr-3 font-medium">Signal</th>
-              <th className="pb-1.5 font-medium">Conf</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={r.player_id ?? i} className="border-b border-border/30 hover:bg-muted/10 transition-colors">
-                <td className="py-1.5 pr-3 whitespace-nowrap">
-                  <div className="font-medium text-foreground">{r.player_name}</div>
-                  <div className="text-[10px] text-muted-foreground">{r.team}</div>
-                </td>
-                <td className="py-1.5 pr-2 text-muted-foreground">{r.position ?? "—"}</td>
-                <td className="py-1.5 pr-2 text-right font-semibold text-foreground">{r.projection != null ? Math.round(r.projection) : "—"}</td>
-                <td className="py-1.5 pr-2 text-right text-muted-foreground">{r.breakeven != null ? Math.round(r.breakeven) : "—"}</td>
-                <td className={`py-1.5 pr-2 text-right font-semibold ${(r.edge ?? 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                  {r.edge != null ? `${r.edge >= 0 ? "+" : ""}${Math.round(r.edge)}` : "—"}
-                </td>
-                <td className="py-1.5 pr-2 text-right text-muted-foreground">{r.last_5_avg != null ? Math.round(r.last_5_avg) : "—"}</td>
-                <td className="py-1.5 pr-2 text-right text-muted-foreground">{r.season_avg != null ? Math.round(r.season_avg) : "—"}</td>
-                <td className="py-1.5 pr-3">
-                  <span className="text-[10px] font-semibold text-sky-400">{r.signal_display ?? r.signal ?? "—"}</span>
-                </td>
-                <td className="py-1.5">
-                  <span className={`text-[10px] font-semibold ${confidenceColor(r.confidence_label)}`}>
-                    {r.confidence_label ?? "—"}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ─── Match Angles tab ─────────────────────────────────────────────────────────
-
-function MatchAnglesTab({ teamDisposals, teamGoals }: {
-  teamDisposals: StatBoardTeamRow[];
-  teamGoals: StatBoardTeamRow[];
-}) {
-  const seenMatch = new Set<number>();
-  const matchEnvs = [...teamDisposals]
-    .filter(t => t.projected_combined_score != null)
-    .sort((a, b) => (b.projected_combined_score ?? 0) - (a.projected_combined_score ?? 0))
-    .filter(t => { if (seenMatch.has(t.match_id)) return false; seenMatch.add(t.match_id); return true; })
-    .slice(0, 9);
-
-  const byDispConceded = [...teamDisposals]
-    .filter(t => t.opponent_conceded_l5 != null)
-    .sort((a, b) => (b.opponent_conceded_l5 ?? 0) - (a.opponent_conceded_l5 ?? 0))
-    .slice(0, 8);
-
-  const byGoalsConceded = [...teamGoals]
-    .filter(t => t.opponent_conceded_l5 != null)
-    .sort((a, b) => (b.opponent_conceded_l5 ?? 0) - (a.opponent_conceded_l5 ?? 0))
-    .slice(0, 8);
-
-  if (teamDisposals.length === 0 && teamGoals.length === 0) {
-    return (
-      <EmptyState
-        message="No team match data loaded"
-        detail="get_stat_board_team_rows returned no data. Team match data may not be available for this round yet."
-      />
-    );
-  }
-
-  return (
-    <div className="space-y-8">
-      <Section title="Match Environments by Projected Score">
-        {matchEnvs.length === 0 ? (
-          <div className="rounded-lg border border-border/40 bg-muted/5 px-4 py-3 text-[11px] text-muted-foreground">
-            Projected match score data not available for this round yet. Disposal concession data below is still usable.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border text-muted-foreground text-left">
-                  <th className="pb-1.5 pr-4 font-medium">Match</th>
-                  <th className="pb-1.5 pr-3 font-medium text-right">Proj combined</th>
-                  <th className="pb-1.5 pr-3 font-medium text-right">L5 comb avg</th>
-                  <th className="pb-1.5 font-medium">Environment</th>
-                </tr>
-              </thead>
-              <tbody>
-                {matchEnvs.map(t => (
-                  <tr key={t.match_id} className="border-b border-border/30 hover:bg-muted/10 transition-colors">
-                    <td className="py-1.5 pr-4 font-medium text-foreground whitespace-nowrap">{t.match_label}</td>
-                    <td className="py-1.5 pr-3 text-right font-semibold text-foreground">
-                      {t.projected_combined_score != null ? Math.round(t.projected_combined_score) : "—"}
-                    </td>
-                    <td className="py-1.5 pr-3 text-right text-muted-foreground">
-                      {t.recent_combined_score_avg_l5 != null ? t.recent_combined_score_avg_l5.toFixed(0) : "—"}
-                    </td>
-                    <td className="py-1.5">
-                      <span className={`text-[11px] font-medium ${
-                        (t.projected_combined_score ?? 0) >= 180 ? "text-emerald-400"
-                        : (t.projected_combined_score ?? 0) >= 150 ? "text-amber-400"
-                        : "text-zinc-400"
-                      }`}>
-                        {t.scoring_environment_label ?? "—"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Section>
-
-      <Section title="Teams Conceding Most Disposals (L5)" count={byDispConceded.length}>
-        <p className="text-[11px] text-muted-foreground mb-3">Target players from the opposing team.</p>
-        {byDispConceded.length === 0 ? (
-          <EmptyState message="No disposal conceded data available" detail="Requires team disposals data for current round." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border text-muted-foreground text-left">
-                  <th className="pb-1.5 pr-4 font-medium">Team (conceding)</th>
-                  <th className="pb-1.5 pr-4 font-medium">vs (attack)</th>
-                  <th className="pb-1.5 pr-3 font-medium text-right">L5 conceded avg</th>
-                  <th className="pb-1.5 pr-3 font-medium text-right">Season avg</th>
-                  <th className="pb-1.5 font-medium">Label</th>
-                </tr>
-              </thead>
-              <tbody>
-                {byDispConceded.map((t, i) => {
-                  const label = getMarketLabel(0, 0, 0, null, 20, t.opponent_conceded_l5);
-                  const isHot = (t.opponent_conceded_l5 ?? 0) >= 380;
-                  return (
-                    <tr key={i} className="border-b border-border/30 hover:bg-muted/10 transition-colors">
-                      <td className="py-1.5 pr-4 font-medium text-foreground whitespace-nowrap">{t.opponent_team_name}</td>
-                      <td className="py-1.5 pr-4 text-muted-foreground whitespace-nowrap">{t.team_name}</td>
-                      <td className={`py-1.5 pr-3 text-right font-semibold ${isHot ? "text-emerald-400" : "text-foreground"}`}>
-                        {t.opponent_conceded_l5 != null ? t.opponent_conceded_l5.toFixed(0) : "—"}
-                      </td>
-                      <td className="py-1.5 pr-3 text-right text-muted-foreground">
-                        {t.opponent_conceded_season != null ? t.opponent_conceded_season.toFixed(0) : "—"}
-                      </td>
-                      <td className="py-1.5">
-                        <span className="text-[10px] text-sky-400">Target {t.team_name} mids</span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Section>
-
-      <Section title="Teams Conceding Most Goals (L5)" count={byGoalsConceded.length}>
-        <p className="text-[11px] text-muted-foreground mb-3">Forward targeting opportunity.</p>
-        {byGoalsConceded.length === 0 ? (
-          <EmptyState message="No goals conceded data available" detail="Requires team goals data for current round." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border text-muted-foreground text-left">
-                  <th className="pb-1.5 pr-4 font-medium">Team (conceding)</th>
-                  <th className="pb-1.5 pr-4 font-medium">vs (attack)</th>
-                  <th className="pb-1.5 pr-3 font-medium text-right">L5 conceded avg</th>
-                  <th className="pb-1.5 pr-3 font-medium text-right">Season avg</th>
-                </tr>
-              </thead>
-              <tbody>
-                {byGoalsConceded.map((t, i) => (
-                  <tr key={i} className="border-b border-border/30 hover:bg-muted/10 transition-colors">
-                    <td className="py-1.5 pr-4 font-medium text-foreground whitespace-nowrap">{t.opponent_team_name}</td>
-                    <td className="py-1.5 pr-4 text-muted-foreground whitespace-nowrap">{t.team_name}</td>
-                    <td className={`py-1.5 pr-3 text-right font-semibold ${(t.opponent_conceded_l5 ?? 0) >= 10 ? "text-emerald-400" : "text-foreground"}`}>
-                      {t.opponent_conceded_l5 != null ? t.opponent_conceded_l5.toFixed(1) : "—"}
-                    </td>
-                    <td className="py-1.5 pr-3 text-right text-muted-foreground">
-                      {t.opponent_conceded_season != null ? t.opponent_conceded_season.toFixed(1) : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Section>
-    </div>
-  );
-}
-
-// ─── Post Ideas tab ───────────────────────────────────────────────────────────
-
-function AngleTagBadge({ tag }: { tag: AngleTag }) {
-  return (
-    <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-semibold border ${buildAngleTagCls(tag)}`}>
-      {tag}
-    </span>
-  );
-}
-
-function PostFormatBadge({ format }: { format: PostFormat }) {
-  const cfg: Record<PostFormat, { label: string; cls: string }> = {
-    tiktok:    { label: "TikTok / Reel", cls: "bg-pink-950/40 text-pink-400 border-pink-500/20" },
-    instagram: { label: "Instagram",     cls: "bg-amber-950/40 text-amber-400 border-amber-500/20" },
-    reddit:    { label: "Reddit",        cls: "bg-orange-950/40 text-orange-400 border-orange-500/20" },
-    twitter:   { label: "X / Twitter",   cls: "bg-sky-950/40 text-sky-400 border-sky-500/20" },
-  };
-  const { label, cls } = cfg[format];
-  return (
-    <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-semibold border ${cls}`}>{label}</span>
-  );
-}
-
-function PostCard({ post }: { post: PostTemplate }) {
-  const fullText = post.format === "reddit"
-    ? `${post.title}\n\n${post.hook}\n\n${post.cta}`
-    : `${post.hook}\n\n${post.bullets.map(b => `• ${b}`).join("\n")}\n\n${post.cta}`;
-
-  return (
-    <div className="rounded-lg border border-border bg-card/50 p-4 space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1.5 flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <AngleTagBadge tag={post.angleTag} />
-            <PostFormatBadge format={post.format} />
-          </div>
-          <h4 className="text-sm font-semibold leading-snug">{post.title}</h4>
-        </div>
-        <CopyButton text={fullText} />
-      </div>
-      <div className="space-y-2">
-        <div>
-          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-0.5">Hook</p>
-          <p className="text-xs text-foreground">{post.hook}</p>
-        </div>
-        {post.bullets.length > 0 && (
-          <div>
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-0.5">Body</p>
-            <ul className="space-y-0.5">
-              {post.bullets.map((b, i) => (
-                <li key={i} className="text-xs text-foreground flex gap-1.5">
-                  <span className="text-muted-foreground shrink-0">•</span>
-                  <span>{b}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <div>
-          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-0.5">CTA</p>
-          <p className="text-xs text-foreground">{post.cta}</p>
-        </div>
-      </div>
-      <div className="border-t border-border/40 pt-2">
-        <textarea
-          readOnly
-          className="w-full h-16 text-xs font-mono text-muted-foreground bg-muted/10 rounded border border-border/40 p-2 resize-none focus:outline-none"
-          value={fullText}
-        />
-      </div>
-    </div>
-  );
-}
-
-// Post ideas are generated deterministically from live data — NOT stored statically.
-// If any underlying player changes, the post changes on next fetch.
-function buildPostTemplates(data: ContentIntelData): PostTemplate[] {
+function buildPostTemplates(data: ContentIntelData | null): PostTemplate[] {
+  if (!data) return [];
+  const { disposalPlayers, goalPlayers, rankings, roundLabel } = data;
   const posts: PostTemplate[] = [];
-  const rl = data.roundLabel; // e.g. "Round 9" — derived from live RPC
 
-  function dispPlayers(threshold: number, minRate: number, minGames: number) {
-    return data.disposalPlayers
-      .filter(p => {
-        const hr = p.all_threshold_hit_rates?.[`${threshold}`];
-        return hr && hr.games >= minGames && rateToFraction(hr.rate) >= minRate;
-      })
-      .sort((a, b) => {
-        const ra = rateToFraction(a.all_threshold_hit_rates![`${threshold}`].rate);
-        const rb = rateToFraction(b.all_threshold_hit_rates![`${threshold}`].rate);
-        return rb - ra;
-      });
+  // Helper: pick top N players for a family/threshold
+  function topFor(family: StatFamily, threshold: number, limit: number): ResearchRow[] {
+    const src = family === "goals" ? goalPlayers : disposalPlayers;
+    const rows = buildResearchRows(src, family, threshold, "last10", 3);
+    return sortRows(rows.filter(r => r.bucket !== "fade"), "hitrate").slice(0, limit);
   }
 
-  function goalPlayers(threshold: number, minRate: number, minGames: number) {
-    return data.goalPlayers
-      .filter(p => {
-        const hr = p.all_threshold_hit_rates?.[`${threshold}`];
-        return hr && hr.games >= minGames && rateToFraction(hr.rate) >= minRate;
-      })
-      .sort((a, b) => {
-        const ra = rateToFraction(a.all_threshold_hit_rates![`${threshold}`].rate);
-        const rb = rateToFraction(b.all_threshold_hit_rates![`${threshold}`].rate);
-        return rb - ra;
-      });
+  function topFade(family: StatFamily, threshold: number, limit: number): ResearchRow[] {
+    const src = family === "goals" ? goalPlayers : disposalPlayers;
+    const rows = buildResearchRows(src, family, threshold, "last10", 3);
+    return sortRows(rows.filter(r => r.bucket === "fade"), "hitrate").slice(0, limit);
   }
 
-  // ── Disposals ────────────────────────────────────────────────────────────────
-  const elite20 = dispPlayers(20, 0.75, 5).slice(0, 5);
-  if (elite20.length >= 3) {
-    const bullets = elite20.map(p => {
-      const hr = p.all_threshold_hit_rates!["20"];
-      return `${p.player_name} (${p.team_name} vs ${p.opponent_team_name}): ${fmtRate(hr.hits, hr.games)} [${fmtPct(hr.rate)}], L10 avg ${p.last_10_avg?.toFixed(1) ?? "—"}`;
+  const thresholds: [StatFamily, number, string][] = [
+    ["disposals", 15, "15+ Disposals"],
+    ["disposals", 20, "20+ Disposals"],
+    ["disposals", 25, "25+ Disposals"],
+    ["disposals", 30, "30+ Disposals"],
+    ["goals", 1, "1+ Goals"],
+    ["goals", 2, "2+ Goals"],
+    ["goals", 3, "3+ Goals"],
+  ];
+
+  for (const [family, threshold, label] of thresholds) {
+    const top = topFor(family, threshold, 5);
+    if (top.length === 0) continue;
+    const bullets = top.map(r =>
+      `${r.player_name} (${r.team_name}) — ${r.hits}/${r.games} over ${threshold}+ ${label.split("+")[1].trim()}, L5 avg ${r.l5avg?.toFixed(1) ?? "N/A"}`
+    );
+    posts.push({
+      id: `${family}-${threshold}-tiktok`,
+      format: "tiktok",
+      category: label,
+      title: `AFL ${roundLabel}: Players with strong ${label} trends`,
+      hook: `These players have been consistently hitting ${label} in recent games. Here's the stat rundown.`,
+      bullets,
+      cta: `Check the full stat board at Neeko Sports Stats.`,
+      sourceCount: top.length,
     });
     posts.push({
-      id: "disp-20-tiktok", format: "tiktok", angleTag: "Safe",
-      title: `${elite20.length} players locked in for 20+ disposals — ${rl}`,
-      hook: "These midfielders have been automatic for 20+ disposals. Here's who to target.",
-      bullets, cta: "Full Stat Board at Neeko Sports Stats.",
-    });
-    posts.push({
-      id: "disp-20-instagram", format: "instagram", angleTag: "Safe",
-      title: `20+ Disposal Machines — ${rl}`,
-      hook: "Swipe for the players hitting 20+ disposals most consistently right now.",
-      bullets, cta: "Full breakdown at Neeko Sports Stats — link in bio.",
-    });
-    posts.push({
-      id: "disp-20-reddit", format: "reddit", angleTag: "Safe",
-      title: `[${rl}] Players with strong 20+ disposal hit rates`,
-      hook: `Going into ${rl}, here are the players most consistently hitting 20+ disposals:\n\n${bullets.map(b => `- ${b}`).join("\n")}\n\nData from Neeko Sports Stats Stat Board.`,
-      bullets: [], cta: "More thresholds and full breakdown on the Stat Board.",
+      id: `${family}-${threshold}-reddit`,
+      format: "reddit",
+      category: label,
+      title: `${roundLabel} ${label} stat trends — players worth reviewing`,
+      hook: `Based on recent AFL form data, here are players who have been consistently hitting ${label}.`,
+      bullets,
+      cta: `Full stat board at Neeko Sports Stats for deeper research.`,
+      sourceCount: top.length,
     });
   }
 
-  const elite25 = dispPlayers(25, 0.70, 4).slice(0, 4);
-  if (elite25.length >= 2) {
-    const bullets = elite25.map(p => {
-      const hr = p.all_threshold_hit_rates!["25"];
-      return `${p.player_name}: ${fmtRate(hr.hits, hr.games)} for 25+ [${fmtPct(hr.rate)}]`;
-    });
+  // Missed once pack
+  const missedOnce = sortRows(
+    buildResearchRows(disposalPlayers, "disposals", 20, "last10", 3).filter(r => r.bucket === "missed-once"),
+    "l10avg"
+  ).slice(0, 5);
+  if (missedOnce.length > 0) {
     posts.push({
-      id: "disp-25-twitter", format: "twitter", angleTag: "High Confidence",
-      title: `25+ disposal trend players — ${rl}`,
-      hook: `Strong 25+ disposal hit rates going into ${rl}:`,
-      bullets, cta: "Full Stat Board @ Neeko Sports Stats",
-    });
-    posts.push({
-      id: "disp-25-instagram", format: "instagram", angleTag: "High Confidence",
-      title: `25+ Disposal Elites — ${rl}`,
-      hook: "Who's been a machine for 25+ disposals? These names keep delivering.",
-      bullets, cta: "Check the full breakdown at Neeko Sports Stats.",
+      id: "missed-once-20plus",
+      format: "instagram",
+      category: "Missed Once",
+      title: `AFL ${roundLabel}: Players who've only missed 20+ disposals once`,
+      hook: `Near-perfect disposal records — these players have only missed the 20 disposal mark once in their last sample.`,
+      bullets: missedOnce.map(r => `${r.player_name} (${r.team_name}) — ${r.hits}/${r.games}, L5 avg ${r.l5avg?.toFixed(1) ?? "N/A"}, vs ${r.opponent_team_name}`),
+      cta: `Full analysis at Neeko Sports Stats.`,
+      sourceCount: missedOnce.length,
     });
   }
 
-  const elite30 = dispPlayers(30, 0.55, 4).slice(0, 4);
-  if (elite30.length >= 2) {
-    const bullets = elite30.map(p => {
-      const hr = p.all_threshold_hit_rates!["30"];
-      return `${p.player_name} (${p.team_name}): ${fmtRate(hr.hits, hr.games)} for 30+ [${fmtPct(hr.rate)}]`;
-    });
+  // Fade angles
+  const fadePacks: [StatFamily, number][] = [["disposals", 20], ["goals", 2]];
+  for (const [family, threshold] of fadePacks) {
+    const fades = topFade(family, threshold, 5);
+    if (fades.length === 0) continue;
+    const label = `${threshold}+ ${STAT_FAMILIES.find(f => f.value === family)?.label ?? family}`;
     posts.push({
-      id: "disp-30-twitter", format: "twitter", angleTag: "Volatile Upside",
-      title: `Players hitting 30+ disposals at high rates — ${rl}`,
-      hook: "If you're targeting elite disposal volume, these names deserve attention:",
-      bullets, cta: "Full data at Neeko Sports Stats",
+      id: `fade-${family}-${threshold}`,
+      format: "twitter",
+      category: "Fade Angles",
+      title: `AFL ${roundLabel}: Under-performers on ${label}`,
+      hook: `These players have been below the ${label} mark recently. Worth reviewing as fade angles.`,
+      bullets: fades.map(r => `${r.player_name} (${r.team_name}) — ${r.hits}/${r.games} over ${threshold}, avg ${r.l10avg?.toFixed(1) ?? "N/A"}, vs ${r.opponent_team_name}`),
+      cta: `Stat research at Neeko Sports Stats.`,
+      sourceCount: fades.length,
     });
   }
 
-  // ── Goals ────────────────────────────────────────────────────────────────────
-  const g1 = goalPlayers(1, 0.75, 5).slice(0, 6);
-  if (g1.length >= 3) {
-    const bullets = g1.map(p => {
-      const hr = p.all_threshold_hit_rates!["1"];
-      return `${p.player_name} (${p.team_name} vs ${p.opponent_team_name}): ${fmtRate(hr.hits, hr.games)} for 1+ goals [${fmtPct(hr.rate)}]`;
-    });
-    posts.push({
-      id: "goals-1-tiktok", format: "tiktok", angleTag: "Safe",
-      title: `Forwards with consistent goal-scoring trends — ${rl}`,
-      hook: "These forwards have been kicking goals at a high rate recently. Here's the shortlist.",
-      bullets, cta: "Full Stat Board at Neeko Sports Stats.",
-    });
-    posts.push({
-      id: "goals-1-twitter", format: "twitter", angleTag: "Safe",
-      title: `1+ goal trend forwards — ${rl}`,
-      hook: `Forwards with strong 1+ goal hit rates this week:`,
-      bullets: bullets.slice(0, 4), cta: "Full data @ Neeko Sports Stats",
-    });
-  }
-
-  const g2 = goalPlayers(2, 0.55, 4).slice(0, 5);
-  if (g2.length >= 2) {
-    const bullets = g2.map(p => {
-      const hr = p.all_threshold_hit_rates!["2"];
-      return `${p.player_name} (${p.team_name}): ${fmtRate(hr.hits, hr.games)} for 2+ goals [${fmtPct(hr.rate)}]`;
-    });
-    posts.push({
-      id: "goals-2-instagram", format: "instagram", angleTag: "High Confidence",
-      title: `2+ Goal Trend Forwards — ${rl}`,
-      hook: "Who's been a consistent multiple-goal scorer? Swipe for the data.",
-      bullets, cta: "Full Stat Board at Neeko Sports Stats — link in bio.",
-    });
-    posts.push({
-      id: "goals-2-reddit", format: "reddit", angleTag: "High Confidence",
-      title: `[${rl}] Players with strong 2+ goal hit rates`,
-      hook: `Here are the forwards consistently hitting 2+ goals going into ${rl}:\n\n${bullets.map(b => `- ${b}`).join("\n")}\n\nData from Neeko Sports Stats.`,
-      bullets: [], cta: "More breakdowns at Neeko Sports Stats.",
-    });
-  }
-
-  const g3 = goalPlayers(3, 0.40, 4).slice(0, 4);
-  if (g3.length >= 2) {
-    const bullets = g3.map(p => {
-      const hr = p.all_threshold_hit_rates!["3"];
-      return `${p.player_name}: ${fmtRate(hr.hits, hr.games)} for 3+ [${fmtPct(hr.rate)}]`;
-    });
-    posts.push({
-      id: "goals-3-twitter", format: "twitter", angleTag: "Volatile Upside",
-      title: `3+ goal bag merchants — ${rl}`,
-      hook: "Forwards who've been bagging 3+ goals recently:",
-      bullets, cta: "More data at Neeko Sports Stats",
-    });
-  }
-
-  // ── Fantasy ──────────────────────────────────────────────────────────────────
-  const fantasyTop = data.rankings
-    .filter(r => !r.is_injured && !r.is_bye && r.projection != null && r.confidence_label === "HIGH")
+  // Fantasy projections from rankings
+  const topFantasy = [...rankings]
+    .filter(r => r.projection != null && !r.is_injured && !r.is_bye)
     .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
-    .slice(0, 6);
-
-  if (fantasyTop.length >= 3) {
-    const bullets = fantasyTop.map(r =>
-      `${r.player_name} (${r.team}): Proj ${Math.round(r.projection!)} — ${r.signal_display ?? r.signal ?? "START"}`
-    );
+    .slice(0, 8);
+  if (topFantasy.length > 0) {
     posts.push({
-      id: "fantasy-top-instagram", format: "instagram", angleTag: "High Confidence",
-      title: `AFL Fantasy top projections — ${rl}`,
-      hook: "Who are the model's top projected scorers this round? Here are the high-confidence picks.",
-      bullets, cta: "Full Fantasy rankings at Neeko Sports Stats — link in bio.",
-    });
-    posts.push({
-      id: "fantasy-top-twitter", format: "twitter", angleTag: "High Confidence",
-      title: `AFL Fantasy high-confidence projections — ${rl}`,
-      hook: `Top projected scores going into ${rl}:`,
-      bullets: bullets.slice(0, 4), cta: "Full rankings @ Neeko Sports Stats",
-    });
-    posts.push({
-      id: "fantasy-top-tiktok", format: "tiktok", angleTag: "High Confidence",
-      title: `Fantasy beast mode picks — ${rl}`,
-      hook: "These AFL Fantasy players are the model's highest confidence picks this round.",
-      bullets, cta: "Check projections and rankings at Neeko Sports Stats.",
+      id: "fantasy-projections",
+      format: "instagram",
+      category: "Fantasy Projections",
+      title: `AFL ${roundLabel}: Top projected fantasy scorers`,
+      hook: `Fantasy projections for this round's top performers.`,
+      bullets: topFantasy.map(r => `${r.player_name} (${r.team ?? ""}) — projected ${r.projection?.toFixed(0)} pts`),
+      cta: `Full rankings at Neeko Sports Stats.`,
+      sourceCount: topFantasy.length,
     });
   }
 
-  // ── Captain ──────────────────────────────────────────────────────────────────
-  const captains = data.rankings
-    .filter(r => !r.is_injured && !r.is_bye && r.captain_score != null && r.projection != null)
-    .sort((a, b) => (b.captain_score ?? 0) - (a.captain_score ?? 0))
-    .slice(0, 5);
-
-  if (captains.length >= 3) {
-    const bullets = captains.map(r =>
-      `${r.player_name} (${r.team}): ${r.captain_rating ?? "Strong"} captain, proj ${Math.round(r.projection!)}`
-    );
+  // Tackle trends
+  const tackles = sortRows(
+    buildResearchRows(disposalPlayers, "tackles", 5, "last10", 3).filter(r => r.bucket !== "fade"),
+    "hitrate"
+  ).slice(0, 5);
+  if (tackles.length > 0) {
     posts.push({
-      id: "captain-tiktok", format: "tiktok", angleTag: "Captain",
-      title: `AFL Fantasy captain picks — ${rl}`,
-      hook: "The model's top captain options going into this round. Lock one in.",
-      bullets, cta: "Full captain analysis at Neeko Sports Stats.",
-    });
-    posts.push({
-      id: "captain-reddit", format: "reddit", angleTag: "Captain",
-      title: `[${rl}] AFL Fantasy captain rankings`,
-      hook: `Here are the model's top-rated captain options for ${rl}:\n\n${bullets.map(b => `- ${b}`).join("\n")}\n\nBased on projection, ceiling, and consistency scores from Neeko Sports Stats.`,
-      bullets: [], cta: "Full captain breakdown at Neeko Sports Stats.",
+      id: "tackle-trends",
+      format: "caption",
+      category: "Tackle Trends",
+      title: `AFL ${roundLabel}: 5+ tackle trends`,
+      hook: `Tackle machine alert — these players are consistently laying 5+ tackles.`,
+      bullets: tackles.map(r => `${r.player_name} — ${r.hits}/${r.games} over 5+ tackles`),
+      cta: `Neeko Sports Stats.`,
+      sourceCount: tackles.length,
     });
   }
 
-  // ── Value ────────────────────────────────────────────────────────────────────
-  const valuePicks = data.rankings
-    .filter(r => !r.is_injured && !r.is_bye && (r.value_score ?? 0) > 15)
-    .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
-    .slice(0, 5);
-
-  if (valuePicks.length >= 2) {
-    const bullets = valuePicks.map(r =>
-      `${r.player_name} (${r.team}): Proj ${Math.round(r.projection ?? 0)}, BE ${Math.round(r.breakeven ?? 0)}, +${Math.round(r.value_score!)} edge`
-    );
+  // Under-the-radar
+  const radar = sortRows(
+    buildResearchRows(disposalPlayers, "disposals", 20, "last10", 5)
+      .filter(r => r.bucket === "missed-once" || r.bucket === "elite-perfect")
+      .filter(r => r.position_group !== "MID"),
+    "hitrate"
+  ).slice(0, 5);
+  if (radar.length > 0) {
     posts.push({
-      id: "value-twitter", format: "twitter", angleTag: "Value",
-      title: `Best value picks — ${rl}`,
-      hook: "Players whose projection beats their breakeven by the widest margin:",
-      bullets, cta: "Full value rankings @ Neeko Sports Stats",
-    });
-    posts.push({
-      id: "value-instagram", format: "instagram", angleTag: "Value",
-      title: `AFL Fantasy Value Angles — ${rl}`,
-      hook: "Projection well above breakeven? These are the value plays the model likes this week.",
-      bullets, cta: "Full value analysis at Neeko Sports Stats — link in bio.",
-    });
-  }
-
-  // ── Trap / Fade ───────────────────────────────────────────────────────────────
-  const traps = data.rankings
-    .filter(r => {
-      const proj = r.projection ?? 0;
-      const be = r.breakeven ?? 9999;
-      return proj > 0 && proj < be;
-    })
-    .sort((a, b) => (a.edge ?? 0) - (b.edge ?? 0))
-    .slice(0, 5);
-
-  if (traps.length >= 2) {
-    const bullets = traps.map(r =>
-      `${r.player_name} (${r.team}): Proj ${Math.round(r.projection ?? 0)} vs BE ${Math.round(r.breakeven ?? 0)} — negative edge`
-    );
-    posts.push({
-      id: "trap-twitter", format: "twitter", angleTag: "Fade",
-      title: `AFL Fantasy trap check — ${rl}`,
-      hook: "Players the model has flagged as potential traps (proj below breakeven) — worth checking ownership:",
-      bullets: bullets.slice(0, 4), cta: "Full trap analysis @ Neeko Sports Stats",
-    });
-    posts.push({
-      id: "trap-instagram", format: "instagram", angleTag: "Fade",
-      title: `Market Check — Traps to Monitor — ${rl}`,
-      hook: "These players have projection below their breakeven. Worth checking before locking in.",
-      bullets, cta: "Full rankings and trap signals at Neeko Sports Stats.",
-    });
-  }
-
-  // ── Disposal fade ─────────────────────────────────────────────────────────────
-  const dispFade = data.disposalPlayers
-    .filter(p => {
-      const hr = p.all_threshold_hit_rates?.["20"];
-      return hr && rateToFraction(hr.rate) < 0.40 && hr.games >= 5 && (p.last_10_avg ?? 0) > 15;
-    })
-    .sort((a, b) => rateToFraction(a.all_threshold_hit_rates!["20"].rate) - rateToFraction(b.all_threshold_hit_rates!["20"].rate))
-    .slice(0, 4);
-
-  if (dispFade.length >= 2) {
-    const bullets = dispFade.map(p => {
-      const hr = p.all_threshold_hit_rates!["20"];
-      return `${p.player_name} (${p.team_name}): Only ${fmtPct(hr.rate)} for 20+ over ${hr.games} games despite ${p.last_10_avg?.toFixed(1)} avg`;
-    });
-    posts.push({
-      id: "disp-fade-twitter", format: "twitter", angleTag: "Fade",
-      title: `Disposal fade angles — ${rl}`,
-      hook: "Players with low hit rates at the 20+ disposal threshold — worth monitoring:",
-      bullets, cta: "Full Stat Board data @ Neeko Sports Stats",
-    });
-  }
-
-  // ── Matchup attack ────────────────────────────────────────────────────────────
-  const dispConcedTeams = [...data.teamDisposals]
-    .filter(t => t.opponent_conceded_l5 != null)
-    .sort((a, b) => (b.opponent_conceded_l5 ?? 0) - (a.opponent_conceded_l5 ?? 0))
-    .slice(0, 3);
-
-  if (dispConcedTeams.length >= 1) {
-    const bullets = dispConcedTeams.map(t =>
-      `${t.team_name} face ${t.opponent_team_name} — ${t.opponent_team_name} conceding ${t.opponent_conceded_l5?.toFixed(0)} avg disposals L5`
-    );
-    posts.push({
-      id: "matchup-disp-reddit", format: "reddit", angleTag: "Matchup Attack",
-      title: `[${rl}] Teams conceding most disposals — target their midfielders`,
-      hook: `Going into ${rl}, here are the teams conceding the most disposals over their last 5 games:\n\n${bullets.map(b => `- ${b}`).join("\n")}\n\nData from Neeko Sports Stats.`,
-      bullets: [], cta: "Full match angles at Neeko Sports Stats.",
-    });
-    posts.push({
-      id: "matchup-disp-twitter", format: "twitter", angleTag: "Matchup Attack",
-      title: `Disposal matchup attacks — ${rl}`,
-      hook: "Teams conceding big disposal numbers — target their opponents' midfielders:",
-      bullets, cta: "Full matchup analysis @ Neeko Sports Stats",
-    });
-  }
-
-  const goalConcedTeams = [...data.teamGoals]
-    .filter(t => t.opponent_conceded_l5 != null)
-    .sort((a, b) => (b.opponent_conceded_l5 ?? 0) - (a.opponent_conceded_l5 ?? 0))
-    .slice(0, 3);
-
-  if (goalConcedTeams.length >= 1) {
-    const bullets = goalConcedTeams.map(t =>
-      `${t.team_name} face ${t.opponent_team_name} — ${t.opponent_team_name} conceding ${t.opponent_conceded_l5?.toFixed(1)} goals/game L5`
-    );
-    posts.push({
-      id: "matchup-goals-instagram", format: "instagram", angleTag: "Team Concession",
-      title: `Goal concession matchup angles — ${rl}`,
-      hook: "These teams are leaking goals. Target their opponents' forwards.",
-      bullets, cta: "Full match angles at Neeko Sports Stats — link in bio.",
-    });
-  }
-
-  // ── Consistency ───────────────────────────────────────────────────────────────
-  const perfectDisp = data.disposalPlayers
-    .filter(p => {
-      const hr = p.all_threshold_hit_rates?.["20"];
-      return hr && rateToFraction(hr.rate) === 1.0 && hr.games >= 6;
-    })
-    .sort((a, b) => b.all_threshold_hit_rates!["20"].games - a.all_threshold_hit_rates!["20"].games)
-    .slice(0, 5);
-
-  if (perfectDisp.length >= 2) {
-    const bullets = perfectDisp.map(p => {
-      const hr = p.all_threshold_hit_rates!["20"];
-      return `${p.player_name} (${p.team_name}): ${hr.games}/${hr.games} — perfect, ${p.last_10_avg?.toFixed(1)} avg`;
-    });
-    posts.push({
-      id: "consistency-tiktok", format: "tiktok", angleTag: "Consistency",
-      title: `Perfect 20+ disposal records — ${rl}`,
-      hook: "These players have not missed 20 disposals once in their recorded games this season.",
-      bullets, cta: "Full Stat Board at Neeko Sports Stats.",
-    });
-    posts.push({
-      id: "consistency-reddit", format: "reddit", angleTag: "Consistency",
-      title: `[${rl}] Players with perfect 20+ disposal hit rates`,
-      hook: `Zero misses — the most consistent disposal performers:\n\n${bullets.map(b => `- ${b}`).join("\n")}\n\nData from Neeko Sports Stats.`,
-      bullets: [], cta: "Full consistency breakdown at Neeko Sports Stats.",
-    });
-  }
-
-  // ── Current round spotlight ───────────────────────────────────────────────────
-  if (data.matches.length > 0) {
-    const roundMatchLabels = data.matches.slice(0, 5).map(m => m.match_label);
-    posts.push({
-      id: "round-spotlight-twitter", format: "twitter", angleTag: "Current Round",
-      title: `${rl} — matchups and angles`,
-      hook: `${rl} kicks off with ${data.matches.length} games. Matches to watch:`,
-      bullets: roundMatchLabels, cta: "Full Stat Board and fantasy rankings @ Neeko Sports Stats",
-    });
-    posts.push({
-      id: "round-spotlight-tiktok", format: "tiktok", angleTag: "Current Round",
-      title: `Round ${data.currentRound} AFL Fantasy preview`,
-      hook: `Round ${data.currentRound} is here — quick guide to the must-watch matchups and top fantasy targets.`,
-      bullets: roundMatchLabels.slice(0, 4), cta: "Full round preview at Neeko Sports Stats.",
-    });
-  }
-
-  // ── Market check ──────────────────────────────────────────────────────────────
-  const marketChecks = data.rankings
-    .filter(r => !r.is_injured && !r.is_bye && r.price != null && r.prev_price != null)
-    .filter(r => Math.abs(r.price_change ?? 0) > 30000)
-    .sort((a, b) => Math.abs(b.price_change ?? 0) - Math.abs(a.price_change ?? 0))
-    .slice(0, 5);
-
-  if (marketChecks.length >= 2) {
-    const bullets = marketChecks.map(r =>
-      `${r.player_name} (${r.team}): ${(r.price_change ?? 0) > 0 ? "+" : ""}$${Math.round((r.price_change ?? 0) / 1000)}k — now $${Math.round((r.price ?? 0) / 1000)}k`
-    );
-    posts.push({
-      id: "market-check-twitter", format: "twitter", angleTag: "Market Check",
-      title: `AFL Fantasy price movers — ${rl}`,
-      hook: `Biggest price changes going into ${rl}:`,
-      bullets, cta: "Full price and value tracking @ Neeko Sports Stats",
+      id: "radar-players",
+      format: "tiktok",
+      category: "Under the Radar",
+      title: `AFL ${roundLabel}: Under-the-radar players with strong disposal trends`,
+      hook: `Non-midfielders with standout disposal numbers. Often overlooked but statistically reliable.`,
+      bullets: radar.map(r => `${r.player_name} (${r.team_name}, ${r.position_group ?? "?"}) — ${r.hits}/${r.games} over 20+`),
+      cta: `Full stat board at Neeko Sports Stats.`,
+      sourceCount: radar.length,
     });
   }
 
   return posts;
 }
 
-type PostAngleFilter = "all" | AngleTag;
+// ─── Fetch all data ───────────────────────────────────────────────────────────
 
-function PostIdeasTab({ data }: { data: ContentIntelData }) {
-  const [angleFilter, setAngleFilter] = useState<PostAngleFilter>("all");
+async function fetchContentIntel(): Promise<ContentIntelData> {
+  // Step 1: Canonical round
+  let roundInfo: RoundInfo | null = null;
+  let currentRound = 0;
+  let roundSource: SourceFreshness["roundSource"] = "get_current_afl_round_safe";
 
-  // Posts are always re-derived from live data (useMemo tied to data object)
-  const allPosts = useMemo(() => buildPostTemplates(data), [data]);
-  const tags = useMemo(() => Array.from(new Set(allPosts.map(p => p.angleTag))), [allPosts]);
+  const roundRes = await supabase.rpc("get_current_afl_round_safe", { p_season: SEASON });
+  if (!roundRes.error && roundRes.data && roundRes.data.length > 0) {
+    roundInfo = roundRes.data[0] as RoundInfo;
+    currentRound = roundInfo.current_round;
+  }
 
-  const filtered = angleFilter === "all"
-    ? allPosts
-    : allPosts.filter(p => p.angleTag === angleFilter);
+  // Step 2: All current-round matches
+  const matchRes = await supabase.rpc("get_stat_board_matches", { p_season: SEASON, p_round: currentRound || null });
+  const matches: StatBoardMatch[] = matchRes.data ?? [];
 
+  // Fallback round from stat board if canonical RPC failed
+  if (currentRound === 0 && matches.length > 0) {
+    currentRound = (matches[0] as StatBoardMatch).week ?? 0;
+    roundSource = "stat_board_week_fallback";
+  }
+
+  const roundLabel = currentRound > 0 ? `Round ${currentRound}` : "Current Round";
+
+  // Step 3: All disposal players for current round (no match filter = all matches)
+  const disposalRes = await supabase.rpc("get_stat_board_players", {
+    p_season: SEASON,
+    p_round: currentRound || null,
+    p_match_id: null,
+    p_lens: "disposals",
+    p_threshold: 20,
+    p_position_group: null,
+    p_team_id: null,
+    p_search: null,
+    p_limit: 500,
+    p_offset: 0,
+  });
+  const disposalPlayers: StatBoardPlayer[] = disposalRes.data ?? [];
+
+  // Step 4: All goal players for current round
+  const goalRes = await supabase.rpc("get_stat_board_players", {
+    p_season: SEASON,
+    p_round: currentRound || null,
+    p_match_id: null,
+    p_lens: "goals",
+    p_threshold: 1,
+    p_position_group: null,
+    p_team_id: null,
+    p_search: null,
+    p_limit: 500,
+    p_offset: 0,
+  });
+  const goalPlayers: StatBoardPlayer[] = goalRes.data ?? [];
+
+  // Step 5: Team disposal concession rows
+  const teamDispRes = await supabase.rpc("get_stat_board_team_rows", {
+    p_season: SEASON,
+    p_round: currentRound || null,
+    p_match_id: null,
+    p_lens: "disposals",
+  });
+  const teamDisposals: StatBoardTeamRow[] = teamDispRes.data ?? [];
+
+  // Step 6: Team goals concession rows
+  const teamGoalRes = await supabase.rpc("get_stat_board_team_rows", {
+    p_season: SEASON,
+    p_round: currentRound || null,
+    p_match_id: null,
+    p_lens: "goals",
+  });
+  const teamGoals: StatBoardTeamRow[] = teamGoalRes.data ?? [];
+
+  // Step 7: Team score rows
+  const teamScoreRes = await supabase.rpc("get_stat_board_team_rows", {
+    p_season: SEASON,
+    p_round: currentRound || null,
+    p_match_id: null,
+    p_lens: "score",
+  });
+  const teamScore: StatBoardTeamRow[] = teamScoreRes.data ?? [];
+
+  // Step 8: Rankings for fantasy angles
+  const rankRes = await supabase.rpc("get_rankings_safe", { p_user_id: null, p_is_bot: false, p_limit: 500 });
+  const rankings: RankingRow[] = rankRes.data ?? [];
+
+  // Freshness
+  const rankingsCachedAt = rankings.find(r => r.cached_at)?.cached_at ?? null;
+
+  const freshness: SourceFreshness = {
+    rankingsCachedAt,
+    statBoardRowCount: disposalPlayers.length + goalPlayers.length,
+    rankingsRowCount: rankings.length,
+    matchRowCount: matches.length,
+    teamRowCount: teamDisposals.length + teamGoals.length,
+    generatedAt: new Date(),
+    roundSource,
+  };
+
+  return {
+    roundInfo,
+    currentRound,
+    roundLabel,
+    matches,
+    disposalPlayers,
+    goalPlayers,
+    teamDisposals,
+    teamGoals,
+    teamScore,
+    rankings,
+    freshness,
+    loadedAt: new Date(),
+  };
+}
+
+// ─── UI Components ────────────────────────────────────────────────────────────
+
+function BucketBadge({ bucket }: { bucket: GroupBucket }) {
+  const cfg: Record<GroupBucket, { label: string; cls: string }> = {
+    "elite-perfect": { label: "Perfect", cls: "bg-emerald-950/60 text-emerald-300 border-emerald-600/30" },
+    "missed-once": { label: "Missed Once", cls: "bg-sky-950/60 text-sky-300 border-sky-600/30" },
+    "missed-twice": { label: "Missed Twice", cls: "bg-blue-950/60 text-blue-300 border-blue-600/30" },
+    "strong-70": { label: "Strong 70%+", cls: "bg-zinc-900 text-zinc-300 border-zinc-600/30" },
+    "projection-supported": { label: "Projection ↑", cls: "bg-amber-950/60 text-amber-300 border-amber-600/30" },
+    "matchup-supported": { label: "Matchup ↑", cls: "bg-teal-950/60 text-teal-300 border-teal-600/30" },
+    "fade": { label: "Fade", cls: "bg-red-950/60 text-red-300 border-red-600/30" },
+    "volatile": { label: "Volatile", cls: "bg-orange-950/60 text-orange-300 border-orange-600/30" },
+  };
+  const { label, cls } = cfg[bucket];
   return (
-    <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          {allPosts.length} post packs generated live from {data.freshness.statBoardRowCount} stat board rows + {data.freshness.rankingsRowCount} rankings rows.
-          Refreshed {fmtAge(data.loadedAt)}.
-        </p>
-        <span className="text-[11px] text-muted-foreground">Showing {filtered.length}</span>
-      </div>
+    <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold border ${cls}`}>
+      {label}
+    </span>
+  );
+}
 
-      {/* Angle tag filter */}
-      <div className="flex flex-wrap gap-1.5">
-        <button
-          onClick={() => setAngleFilter("all")}
-          className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-colors ${
-            angleFilter === "all" ? "bg-foreground/10 text-foreground border-border" : "text-muted-foreground border-border/40 hover:text-foreground"
-          }`}
-        >
-          All ({allPosts.length})
-        </button>
-        {tags.map(tag => {
-          const count = allPosts.filter(p => p.angleTag === tag).length;
-          return (
-            <button
-              key={tag}
-              onClick={() => setAngleFilter(tag)}
-              className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-colors ${
-                angleFilter === tag ? buildAngleTagCls(tag) : "text-muted-foreground border-border/40 hover:text-foreground"
-              }`}
-            >
-              {tag} ({count})
-            </button>
-          );
-        })}
-      </div>
+function MarketCheckBadge({ level }: { level: MarketCheckLevel }) {
+  const cls = level === "high"
+    ? "bg-emerald-950/60 text-emerald-300 border-emerald-600/30"
+    : level === "medium"
+    ? "bg-amber-950/60 text-amber-300 border-amber-600/30"
+    : "bg-zinc-900 text-zinc-400 border-zinc-700/30";
+  return (
+    <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold border ${cls}`}>
+      {level === "high" ? "High" : level === "medium" ? "Medium" : "Low"}
+    </span>
+  );
+}
 
-      {filtered.length === 0 ? (
-        <EmptyState
-          message="Not enough data to generate posts in this category"
-          detail="Stat Board data must include at least 3 players with 5+ game trends."
-        />
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {filtered.map(post => <PostCard key={post.id} post={post} />)}
+function ConfBadge({ label }: { label: string | null }) {
+  if (!label) return null;
+  const cls = label === "HIGH"
+    ? "text-emerald-400"
+    : label === "MEDIUM"
+    ? "text-amber-400"
+    : "text-zinc-500";
+  return <span className={`text-[10px] font-medium ${cls}`}>{label}</span>;
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+      className="p-1 rounded hover:bg-zinc-700/50 text-zinc-500 hover:text-zinc-300 transition-colors"
+    >
+      {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+    </button>
+  );
+}
+
+// Freshness panel
+function FreshnessPanel({ data, loadedAt }: { data: ContentIntelData; loadedAt: Date }) {
+  const [open, setOpen] = useState(false);
+  const age = rankingsCachedAtAge(data.freshness.rankingsCachedAt);
+  return (
+    <div className="border border-zinc-800 rounded-lg overflow-hidden mb-4">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-3 py-2 text-[11px] text-zinc-400 hover:text-zinc-300 hover:bg-zinc-900/50 transition-colors"
+      >
+        <span className="flex items-center gap-1.5">
+          <Database className="h-3 w-3" />
+          Source freshness debug
+        </span>
+        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+      </button>
+      {open && (
+        <div className="px-3 pb-3 bg-zinc-950/50 grid grid-cols-2 gap-x-6 gap-y-1 text-[11px]">
+          <FRow label="Round source" value={data.freshness.roundSource} />
+          <FRow label="Current round" value={String(data.currentRound || "unknown")} />
+          <FRow label="Round status" value={data.roundInfo?.round_status ?? "—"} />
+          <FRow label="Total games" value={String(data.roundInfo?.total_games ?? "—")} />
+          <FRow label="Completed games" value={String(data.roundInfo?.completed_games ?? "—")} />
+          <FRow label="Live games" value={String(data.roundInfo?.in_progress_games ?? "—")} />
+          <FRow label="Should rollover" value={data.roundInfo?.should_rollover ? "yes" : "no"} />
+          <FRow label="Rankings cached_at" value={data.freshness.rankingsCachedAt ? new Date(data.freshness.rankingsCachedAt).toLocaleString("en-AU") : "—"} />
+          <FRow label="Rankings age" value={age} />
+          <FRow label="Rankings rows" value={String(data.freshness.rankingsRowCount)} />
+          <FRow label="Player stat rows" value={String(data.freshness.statBoardRowCount)} />
+          <FRow label="Match rows" value={String(data.freshness.matchRowCount)} />
+          <FRow label="Team rows" value={String(data.freshness.teamRowCount)} />
+          <FRow label="Post derivation" value="Live useMemo — no storage" />
+          <FRow label="Generated at" value={fmtTimestamp(data.freshness.generatedAt)} />
+          <FRow label="Refetch interval" value="5 min" />
+          <FRow label="Focus refetch" value="If older than 5 min" />
         </div>
       )}
     </div>
   );
 }
 
-// ─── Main page ─────────────────────────────────────────────────────────────────
+function FRow({ label, value }: { label: string; value: string }) {
+  return (
+    <>
+      <span className="text-zinc-500 pt-1">{label}</span>
+      <span className="text-zinc-300 pt-1 font-mono">{value}</span>
+    </>
+  );
+}
 
-const STALE_MS = 5 * 60 * 1000; // 5 minutes
+function rankingsCachedAtAge(cachedAt: string | null): string {
+  if (!cachedAt) return "—";
+  const mins = Math.floor((Date.now() - new Date(cachedAt).getTime()) / 60000);
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.floor(mins / 60);
+  return `${hrs}h ${mins % 60}m ago`;
+}
+
+// Select component
+function Sel({ label, value, onChange, options }: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <label className="text-[10px] text-zinc-500 uppercase tracking-wide">{label}</label>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-[12px] text-zinc-200 focus:outline-none focus:border-zinc-500"
+      >
+        {options.map(o => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+// ─── Main Research Board ──────────────────────────────────────────────────────
+
+function ResearchBoard({ data }: { data: ContentIntelData }) {
+  const [statFamily, setStatFamily] = useState<StatFamily>("disposals");
+  const [threshold, setThreshold] = useState(20);
+  const [hitProfile, setHitProfile] = useState<HitProfile>("all");
+  const [sampleWindow, setSampleWindow] = useState<SampleWindow>("last10");
+  const [minSample, setMinSample] = useState<MinSample>(3);
+  const [sortBy, setSortBy] = useState<SortBy>("hitrate");
+  const [selectedMatch, setSelectedMatch] = useState<number | null>(null);
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
+  const [selectedOpponent, setSelectedOpponent] = useState<string | null>(null);
+  const [positionFilter, setPositionFilter] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+
+  // Get config for selected family
+  const familyCfg = STAT_FAMILIES.find(f => f.value === statFamily)!;
+  const thresholds = familyCfg.thresholds;
+
+  // Ensure threshold is valid for family
+  useEffect(() => {
+    if (!thresholds.includes(threshold)) {
+      setThreshold(thresholds[Math.floor(thresholds.length / 2)] ?? thresholds[0]);
+    }
+  }, [statFamily]);
+
+  // Source players based on family
+  const sourcePlayers = statFamily === "goals" ? data.goalPlayers : data.disposalPlayers;
+
+  // Filter by match
+  const matchFilteredPlayers = useMemo(() => {
+    if (selectedMatch == null) return sourcePlayers;
+    return sourcePlayers.filter(p => p.match_id === selectedMatch);
+  }, [sourcePlayers, selectedMatch]);
+
+  // Build research rows
+  const allRows = useMemo(() => {
+    return buildResearchRows(matchFilteredPlayers, statFamily, threshold, sampleWindow, minSample);
+  }, [matchFilteredPlayers, statFamily, threshold, sampleWindow, minSample]);
+
+  // Apply filters
+  const filteredRows = useMemo(() => {
+    let rows = allRows;
+    if (selectedTeam) rows = rows.filter(r => r.team_name === selectedTeam);
+    if (selectedOpponent) rows = rows.filter(r => r.opponent_team_name === selectedOpponent);
+    if (positionFilter) rows = rows.filter(r => r.position_group === positionFilter);
+    if (search) {
+      const q = search.toLowerCase();
+      rows = rows.filter(r => r.player_name.toLowerCase().includes(q) || r.team_name.toLowerCase().includes(q));
+    }
+    rows = rows.filter(r => filterByHitProfile(r, hitProfile));
+    return sortRows(rows, sortBy);
+  }, [allRows, selectedTeam, selectedOpponent, positionFilter, search, hitProfile, sortBy]);
+
+  // Group into buckets
+  const grouped = useMemo(() => {
+    const buckets: Record<GroupBucket, ResearchRow[]> = {
+      "elite-perfect": [],
+      "missed-once": [],
+      "missed-twice": [],
+      "strong-70": [],
+      "projection-supported": [],
+      "matchup-supported": [],
+      "fade": [],
+      "volatile": [],
+    };
+    for (const r of filteredRows) {
+      buckets[r.bucket].push(r);
+    }
+    return buckets;
+  }, [filteredRows]);
+
+  // Teams list for filters
+  const teams = useMemo(() => {
+    const set = new Set(sourcePlayers.map(p => p.team_name));
+    return Array.from(set).sort();
+  }, [sourcePlayers]);
+
+  const opponents = useMemo(() => {
+    const set = new Set(sourcePlayers.map(p => p.opponent_team_name));
+    return Array.from(set).sort();
+  }, [sourcePlayers]);
+
+  // Preset chips
+  const presets: { label: string; family: StatFamily; threshold: number; profile: HitProfile }[] = [
+    { label: "15+ Disp", family: "disposals", threshold: 15, profile: "all" },
+    { label: "20+ Disp", family: "disposals", threshold: 20, profile: "all" },
+    { label: "25+ Disp", family: "disposals", threshold: 25, profile: "all" },
+    { label: "30+ Disp", family: "disposals", threshold: 30, profile: "all" },
+    { label: "1+ Goals", family: "goals", threshold: 1, profile: "all" },
+    { label: "2+ Goals", family: "goals", threshold: 2, profile: "all" },
+    { label: "3+ Goals", family: "goals", threshold: 3, profile: "all" },
+    { label: "80+ Fantasy", family: "fantasy", threshold: 80, profile: "all" },
+    { label: "100+ Fantasy", family: "fantasy", threshold: 100, profile: "all" },
+    { label: "5+ Tackles", family: "tackles", threshold: 5, profile: "all" },
+    { label: "Missed Once", family: statFamily, threshold, profile: "missed-once" },
+    { label: "Fade Angles", family: statFamily, threshold, profile: "fade" },
+  ];
+
+  const BUCKET_ORDER: GroupBucket[] = [
+    "elite-perfect", "missed-once", "missed-twice", "strong-70",
+    "projection-supported", "matchup-supported", "volatile", "fade",
+  ];
+
+  const BUCKET_LABELS: Record<GroupBucket, string> = {
+    "elite-perfect": "Elite / Perfect",
+    "missed-once": "Missed Once",
+    "missed-twice": "Missed Twice",
+    "strong-70": "Strong 70%+",
+    "projection-supported": "Projection-Supported",
+    "matchup-supported": "Matchup-Supported",
+    "fade": "Fade / Under Angles",
+    "volatile": "Volatile Upside",
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Preset chips */}
+      <div className="flex flex-wrap gap-1.5">
+        {presets.map(p => (
+          <button
+            key={`${p.family}-${p.threshold}-${p.profile}`}
+            onClick={() => { setStatFamily(p.family); setThreshold(p.threshold); setHitProfile(p.profile); }}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors
+              ${statFamily === p.family && threshold === p.threshold && hitProfile === p.profile
+                ? "bg-zinc-200 text-zinc-900 border-zinc-300"
+                : "bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-zinc-500"}`}
+          >
+            {p.label}
+          </button>
+        ))}
+        <button
+          onClick={() => { setStatFamily("disposals"); setThreshold(20); setHitProfile("all"); setSampleWindow("last10"); setMinSample(3); setSortBy("hitrate"); setSelectedMatch(null); setSelectedTeam(null); setSelectedOpponent(null); setPositionFilter(null); setSearch(""); }}
+          className="px-2.5 py-1 rounded-full text-[11px] font-medium border bg-zinc-900 text-zinc-500 border-zinc-700 hover:border-zinc-500 hover:text-zinc-300 transition-colors"
+        >
+          Reset
+        </button>
+      </div>
+
+      {/* Filter bar */}
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <Sel
+            label="Match"
+            value={selectedMatch == null ? "all" : String(selectedMatch)}
+            onChange={v => setSelectedMatch(v === "all" ? null : Number(v))}
+            options={[
+              { value: "all", label: "All Matches" },
+              ...data.matches.map(m => ({ value: String(m.match_id), label: m.match_label })),
+            ]}
+          />
+          <Sel
+            label="Team"
+            value={selectedTeam ?? "all"}
+            onChange={v => setSelectedTeam(v === "all" ? null : v)}
+            options={[{ value: "all", label: "All Teams" }, ...teams.map(t => ({ value: t, label: t }))]}
+          />
+          <Sel
+            label="Opponent"
+            value={selectedOpponent ?? "all"}
+            onChange={v => setSelectedOpponent(v === "all" ? null : v)}
+            options={[{ value: "all", label: "All Opponents" }, ...opponents.map(t => ({ value: t, label: t }))]}
+          />
+          <Sel
+            label="Position"
+            value={positionFilter ?? "all"}
+            onChange={v => setPositionFilter(v === "all" ? null : v)}
+            options={[
+              { value: "all", label: "All Positions" },
+              { value: "MID", label: "Mids" },
+              { value: "DEF", label: "Defenders" },
+              { value: "FWD", label: "Forwards" },
+              { value: "RUC", label: "Rucks" },
+            ]}
+          />
+          <Sel
+            label="Stat Family"
+            value={statFamily}
+            onChange={v => setStatFamily(v as StatFamily)}
+            options={STAT_FAMILIES.map(f => ({ value: f.value, label: f.label }))}
+          />
+          <Sel
+            label="Threshold"
+            value={String(threshold)}
+            onChange={v => setThreshold(Number(v))}
+            options={thresholds.map(t => ({ value: String(t), label: `${t}+` }))}
+          />
+          <Sel
+            label="Sample"
+            value={sampleWindow}
+            onChange={v => setSampleWindow(v as SampleWindow)}
+            options={SAMPLE_WINDOWS.map(s => ({ value: s.value, label: s.label }))}
+          />
+          <Sel
+            label="Min Games"
+            value={String(minSample)}
+            onChange={v => setMinSample(Number(v) as MinSample)}
+            options={[
+              { value: "0", label: "Any" },
+              { value: "3", label: "3+" },
+              { value: "5", label: "5+" },
+              { value: "8", label: "8+" },
+            ]}
+          />
+          <Sel
+            label="Hit Profile"
+            value={hitProfile}
+            onChange={v => setHitProfile(v as HitProfile)}
+            options={HIT_PROFILES}
+          />
+          <Sel
+            label="Sort By"
+            value={sortBy}
+            onChange={v => setSortBy(v as SortBy)}
+            options={SORT_OPTIONS}
+          />
+        </div>
+        <div className="mt-3 flex items-center gap-2">
+          <Search className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search player or team…"
+            className="flex-1 bg-transparent border-0 text-[12px] text-zinc-300 placeholder-zinc-600 focus:outline-none"
+          />
+          {search && <button onClick={() => setSearch("")}><X className="h-3 w-3 text-zinc-500" /></button>}
+        </div>
+      </div>
+
+      {/* Summary */}
+      <div className="text-[11px] text-zinc-500">
+        Showing <span className="text-zinc-300 font-medium">{filteredRows.length}</span> players
+        with <span className="text-zinc-300">{threshold}+ {familyCfg.label}</span>
+        {selectedMatch != null && <> in {data.matches.find(m => m.match_id === selectedMatch)?.match_label}</>}
+        {selectedMatch == null && <> across all {data.matches.length} {data.roundLabel} match{data.matches.length !== 1 ? "es" : ""}</>}
+      </div>
+
+      {filteredRows.length === 0 && (
+        <div className="py-10 text-center text-zinc-500 text-sm border border-zinc-800 rounded-lg">
+          No players match the current filters.
+          {hitProfile === "perfect" && " Try 'All profiles' to see near-miss players."}
+        </div>
+      )}
+
+      {/* Grouped results */}
+      {BUCKET_ORDER.map(bucket => {
+        const rows = grouped[bucket];
+        if (rows.length === 0) return null;
+        return (
+          <div key={bucket} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <h3 className="text-[12px] font-semibold text-zinc-300">{BUCKET_LABELS[bucket]}</h3>
+              <span className="text-[10px] text-zinc-600 bg-zinc-900 px-1.5 py-0.5 rounded">{rows.length}</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="border-b border-zinc-800">
+                    <th className="text-left py-1.5 px-2 text-zinc-500 font-medium">Player</th>
+                    <th className="text-left py-1.5 px-2 text-zinc-500 font-medium">Team</th>
+                    <th className="text-left py-1.5 px-2 text-zinc-500 font-medium">Opp</th>
+                    <th className="text-left py-1.5 px-2 text-zinc-500 font-medium">Pos</th>
+                    <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">Record</th>
+                    <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">Rate</th>
+                    <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">L3</th>
+                    <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">L5</th>
+                    <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">L10</th>
+                    <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">Proj</th>
+                    <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">Conf</th>
+                    <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">MCQ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map(row => (
+                    <tr key={`${row.player_id}-${row.threshold}`} className="border-b border-zinc-900 hover:bg-zinc-900/30">
+                      <td className="py-1.5 px-2 font-medium text-zinc-200">{row.player_name}</td>
+                      <td className="py-1.5 px-2 text-zinc-400">{row.team_name}</td>
+                      <td className="py-1.5 px-2 text-zinc-400">{row.opponent_team_name}</td>
+                      <td className="py-1.5 px-2 text-zinc-500">{row.position_group ?? "—"}</td>
+                      <td className="py-1.5 px-2 text-right font-mono text-zinc-300">{row.hits}/{row.games}</td>
+                      <td className="py-1.5 px-2 text-right font-mono text-zinc-200">{Math.round(rateToFraction(row.rate) * 100)}%</td>
+                      <td className="py-1.5 px-2 text-right font-mono text-zinc-400">{row.l3avg?.toFixed(1) ?? "—"}</td>
+                      <td className="py-1.5 px-2 text-right font-mono text-zinc-400">{row.l5avg?.toFixed(1) ?? "—"}</td>
+                      <td className="py-1.5 px-2 text-right font-mono text-zinc-400">{row.l10avg?.toFixed(1) ?? "—"}</td>
+                      <td className="py-1.5 px-2 text-right font-mono text-zinc-300">{row.projection?.toFixed(0) ?? "—"}</td>
+                      <td className="py-1.5 px-2 text-right"><ConfBadge label={row.confidence_label} /></td>
+                      <td className="py-1.5 px-2 text-right"><MarketCheckBadge level={row.marketCheckLevel} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Team Angles ──────────────────────────────────────────────────────────────
+
+function TeamAngles({ data }: { data: ContentIntelData }) {
+  const [lens, setLens] = useState<"disposals" | "goals" | "score">("disposals");
+
+  const teamRows = lens === "disposals" ? data.teamDisposals
+    : lens === "goals" ? data.teamGoals
+    : data.teamScore;
+
+  const sorted = useMemo(() => {
+    return [...teamRows].sort((a, b) => {
+      const av = (a.opponent_conceded_l5 ?? a.opponent_conceded_season ?? 0);
+      const bv = (b.opponent_conceded_l5 ?? b.opponent_conceded_season ?? 0);
+      return bv - av;
+    });
+  }, [teamRows]);
+
+  const lensLabel = lens === "disposals" ? "Disposals" : lens === "goals" ? "Goals" : "Score";
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        {(["disposals", "goals", "score"] as const).map(l => (
+          <button
+            key={l}
+            onClick={() => setLens(l)}
+            className={`px-3 py-1.5 rounded text-[11px] font-medium transition-colors border
+              ${lens === l ? "bg-zinc-200 text-zinc-900 border-zinc-300" : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-500"}`}
+          >
+            {l === "disposals" ? "Disposals" : l === "goals" ? "Goals" : "Score"}
+          </button>
+        ))}
+      </div>
+
+      {sorted.length === 0 ? (
+        <div className="py-8 text-center text-zinc-500 text-sm border border-zinc-800 rounded-lg">
+          No team concession data available for this round.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[11px]">
+            <thead>
+              <tr className="border-b border-zinc-800">
+                <th className="text-left py-1.5 px-2 text-zinc-500 font-medium">Team</th>
+                <th className="text-left py-1.5 px-2 text-zinc-500 font-medium">Opponent</th>
+                <th className="text-left py-1.5 px-2 text-zinc-500 font-medium">H/A</th>
+                <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">Conc L5</th>
+                <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">Conc Ssn</th>
+                <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">Own L5 avg</th>
+                <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">Own Ssn avg</th>
+                <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">Proj</th>
+                <th className="text-left py-1.5 px-2 text-zinc-500 font-medium">Angle</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((row, i) => {
+                const concL5 = row.opponent_conceded_l5;
+                const concSsn = row.opponent_conceded_season;
+                const isHighConcession = concL5 != null && concSsn != null && concL5 > concSsn * 1.05;
+                return (
+                  <tr key={i} className="border-b border-zinc-900 hover:bg-zinc-900/30">
+                    <td className="py-1.5 px-2 font-medium text-zinc-200">{row.team_name}</td>
+                    <td className="py-1.5 px-2 text-zinc-400">{row.opponent_team_name}</td>
+                    <td className="py-1.5 px-2 text-zinc-500">{row.is_home ? "H" : "A"}</td>
+                    <td className={`py-1.5 px-2 text-right font-mono ${isHighConcession ? "text-amber-300" : "text-zinc-400"}`}>
+                      {concL5?.toFixed(1) ?? "—"}
+                    </td>
+                    <td className="py-1.5 px-2 text-right font-mono text-zinc-400">{concSsn?.toFixed(1) ?? "—"}</td>
+                    <td className="py-1.5 px-2 text-right font-mono text-zinc-400">{row.recent_avg_l5?.toFixed(1) ?? "—"}</td>
+                    <td className="py-1.5 px-2 text-right font-mono text-zinc-400">{row.season_avg?.toFixed(1) ?? "—"}</td>
+                    <td className="py-1.5 px-2 text-right font-mono text-zinc-300">{row.projection?.toFixed(1) ?? "—"}</td>
+                    <td className="py-1.5 px-2">
+                      {isHighConcession && (
+                        <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold border bg-amber-950/60 text-amber-300 border-amber-600/30">
+                          Concession ↑
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <p className="text-[10px] text-zinc-600">
+        Concession = average {lensLabel} allowed to opponents. Higher = opposition players may find more of this stat.
+        All current-round matches shown.
+      </p>
+    </div>
+  );
+}
+
+// ─── Market Check Queue ───────────────────────────────────────────────────────
+
+function MarketCheckQueue({ data }: { data: ContentIntelData }) {
+  const [statuses, setStatuses] = useState<Record<string, MarketCheckStatus>>({});
+  const [levelFilter, setLevelFilter] = useState<MarketCheckLevel | "all">("all");
+
+  const items = useMemo((): MarketCheckItem[] => {
+    const rows: MarketCheckItem[] = [];
+    const configs: [StatFamily, number][] = [
+      ["disposals", 15], ["disposals", 20], ["disposals", 25], ["disposals", 30],
+      ["goals", 1], ["goals", 2], ["goals", 3],
+    ];
+    for (const [family, threshold] of configs) {
+      const src = family === "goals" ? data.goalPlayers : data.disposalPlayers;
+      const built = buildResearchRows(src, family, threshold, "last10", 3);
+      for (const r of built) {
+        if (r.marketCheckLevel === "low" && r.bucket !== "fade") continue;
+        const id = `${r.player_id}-${family}-${threshold}`;
+        rows.push({
+          id,
+          player_name: r.player_name,
+          team_name: r.team_name,
+          opponent_team_name: r.opponent_team_name,
+          match_label: r.match_label,
+          statFamily: family,
+          threshold,
+          hits: r.hits,
+          games: r.games,
+          rate: r.rate,
+          reason: r.reason,
+          marketCheckLevel: r.marketCheckLevel,
+          status: statuses[id] ?? "not-checked",
+        });
+      }
+    }
+    // Deduplicate by player+family+threshold
+    const seen = new Set<string>();
+    return rows.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; });
+  }, [data, statuses]);
+
+  const filtered = useMemo(() => {
+    return items.filter(i => levelFilter === "all" || i.marketCheckLevel === levelFilter);
+  }, [items, levelFilter]);
+
+  const STATUS_OPTS: { value: MarketCheckStatus; label: string }[] = [
+    { value: "not-checked", label: "Not checked" },
+    { value: "market-exists", label: "Market exists" },
+    { value: "no-market", label: "No market" },
+    { value: "price-not-good", label: "Price not good" },
+    { value: "added-to-list", label: "Added to list" },
+    { value: "posted", label: "Posted" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 p-2 bg-zinc-900/40 border border-zinc-800 rounded text-[10px] text-zinc-500">
+        Private browser-only workflow state. Status resets on page refresh. No gambling data is stored.
+      </div>
+
+      <div className="flex gap-2 flex-wrap">
+        {(["all", "high", "medium", "low"] as const).map(l => (
+          <button
+            key={l}
+            onClick={() => setLevelFilter(l)}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors
+              ${levelFilter === l ? "bg-zinc-200 text-zinc-900 border-zinc-300" : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-500"}`}
+          >
+            {l === "all" ? "All" : l.charAt(0).toUpperCase() + l.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      <div className="text-[11px] text-zinc-500">{filtered.length} angles worth checking</div>
+
+      {filtered.length === 0 && (
+        <div className="py-8 text-center text-zinc-500 text-sm border border-zinc-800 rounded-lg">
+          No market-check angles found for current data.
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {filtered.map(item => {
+          const frac = rateToFraction(item.rate);
+          return (
+            <div key={item.id} className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <span className="font-semibold text-zinc-200 text-[12px]">{item.player_name}</span>
+                    <span className="text-zinc-500 text-[11px]">{item.team_name} vs {item.opponent_team_name}</span>
+                    <MarketCheckBadge level={item.marketCheckLevel} />
+                    <span className="text-[10px] text-zinc-500 border border-zinc-700 rounded px-1.5 py-0.5">
+                      {item.threshold}+ {STAT_FAMILIES.find(f => f.value === item.statFamily)?.label}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-zinc-400 mb-1">
+                    {item.hits}/{item.games} — {Math.round(frac * 100)}% hit rate
+                  </div>
+                  <div className="text-[10px] text-zinc-500">{item.reason}</div>
+                </div>
+                <select
+                  value={statuses[item.id] ?? "not-checked"}
+                  onChange={e => setStatuses(s => ({ ...s, [item.id]: e.target.value as MarketCheckStatus }))}
+                  className="shrink-0 bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-[10px] text-zinc-300 focus:outline-none"
+                >
+                  {STATUS_OPTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Fantasy Angles ───────────────────────────────────────────────────────────
+
+function FantasyAngles({ data }: { data: ContentIntelData }) {
+  const { rankings } = data;
+
+  const active = rankings.filter(r => !r.is_injured && !r.is_bye && r.projection != null);
+
+  const topProjected = useMemo(() =>
+    [...active].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0)).slice(0, 10),
+    [active]
+  );
+
+  const bestValue = useMemo(() =>
+    [...active].filter(r => r.value_score != null).sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0)).slice(0, 10),
+    [active]
+  );
+
+  const highConf = useMemo(() =>
+    [...active].filter(r => r.confidence_label === "HIGH").sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0)).slice(0, 10),
+    [active]
+  );
+
+  const trapPlayers = useMemo(() =>
+    [...rankings].filter(r => r.action_canonical === "sell" || r.recommendation_color === "red").sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0)).slice(0, 10),
+    [rankings]
+  );
+
+  const formRisers = useMemo(() =>
+    [...active].filter(r => r.form_delta != null && r.form_delta > 0).sort((a, b) => (b.form_delta ?? 0) - (a.form_delta ?? 0)).slice(0, 10),
+    [active]
+  );
+
+  const formFallers = useMemo(() =>
+    [...active].filter(r => r.form_delta != null && r.form_delta < 0).sort((a, b) => (a.form_delta ?? 0) - (b.form_delta ?? 0)).slice(0, 10),
+    [active]
+  );
+
+  function PlayerTable({ players, label, cols }: {
+    players: RankingRow[];
+    label: string;
+    cols?: ("projection" | "value_score" | "form_delta" | "confidence_label")[];
+  }) {
+    const show = cols ?? ["projection"];
+    return (
+      <div>
+        <h3 className="text-[12px] font-semibold text-zinc-300 mb-2">{label}</h3>
+        {players.length === 0 ? (
+          <p className="text-[11px] text-zinc-500 py-3 border border-zinc-800 rounded text-center">No data available.</p>
+        ) : (
+          <table className="w-full text-[11px]">
+            <thead>
+              <tr className="border-b border-zinc-800">
+                <th className="text-left py-1.5 px-2 text-zinc-500 font-medium">Player</th>
+                <th className="text-left py-1.5 px-2 text-zinc-500 font-medium">Team</th>
+                <th className="text-left py-1.5 px-2 text-zinc-500 font-medium">Pos</th>
+                {show.includes("projection") && <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">Proj</th>}
+                {show.includes("value_score") && <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">Value</th>}
+                {show.includes("form_delta") && <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">Form Δ</th>}
+                {show.includes("confidence_label") && <th className="text-right py-1.5 px-2 text-zinc-500 font-medium">Conf</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {players.map(p => (
+                <tr key={p.player_id} className="border-b border-zinc-900 hover:bg-zinc-900/30">
+                  <td className="py-1.5 px-2 font-medium text-zinc-200">{p.player_name}</td>
+                  <td className="py-1.5 px-2 text-zinc-400">{p.team ?? "—"}</td>
+                  <td className="py-1.5 px-2 text-zinc-500">{p.position ?? "—"}</td>
+                  {show.includes("projection") && <td className="py-1.5 px-2 text-right font-mono text-zinc-300">{p.projection?.toFixed(0) ?? "—"}</td>}
+                  {show.includes("value_score") && <td className="py-1.5 px-2 text-right font-mono text-zinc-300">{p.value_score?.toFixed(1) ?? "—"}</td>}
+                  {show.includes("form_delta") && (
+                    <td className={`py-1.5 px-2 text-right font-mono ${(p.form_delta ?? 0) > 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      {p.form_delta != null ? `${p.form_delta > 0 ? "+" : ""}${p.form_delta.toFixed(1)}` : "—"}
+                    </td>
+                  )}
+                  {show.includes("confidence_label") && <td className="py-1.5 px-2 text-right"><ConfBadge label={p.confidence_label} /></td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {rankings.length === 0 && (
+        <div className="py-8 text-center text-zinc-500 text-sm border border-zinc-800 rounded-lg">
+          No rankings data loaded.
+        </div>
+      )}
+      <PlayerTable players={topProjected} label="Top Projected Scorers" cols={["projection", "confidence_label"]} />
+      <PlayerTable players={bestValue} label="Best Value Players" cols={["projection", "value_score"]} />
+      <PlayerTable players={highConf} label="High Confidence Players" cols={["projection", "confidence_label"]} />
+      <PlayerTable players={trapPlayers} label="Trap / Fade Fantasy Players" cols={["projection", "confidence_label"]} />
+      <PlayerTable players={formRisers} label="Form Risers" cols={["projection", "form_delta"]} />
+      <PlayerTable players={formFallers} label="Form Fallers" cols={["projection", "form_delta"]} />
+    </div>
+  );
+}
+
+// ─── Post Ideas ───────────────────────────────────────────────────────────────
+
+function PostIdeas({ posts }: { posts: PostTemplate[] }) {
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [formatFilter, setFormatFilter] = useState<PostFormat | "all">("all");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const categories = useMemo(() => {
+    const cats = new Set(posts.map(p => p.category));
+    return ["All", ...Array.from(cats)];
+  }, [posts]);
+
+  const filtered = useMemo(() => {
+    return posts.filter(p =>
+      (categoryFilter === "All" || p.category === categoryFilter) &&
+      (formatFilter === "all" || p.format === formatFilter)
+    );
+  }, [posts, categoryFilter, formatFilter]);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-1.5">
+        {categories.map(c => (
+          <button
+            key={c}
+            onClick={() => setCategoryFilter(c)}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors
+              ${categoryFilter === c ? "bg-zinc-200 text-zinc-900 border-zinc-300" : "bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-zinc-500"}`}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex gap-2">
+        {(["all", "tiktok", "instagram", "reddit", "twitter", "caption"] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => setFormatFilter(f)}
+            className={`px-2 py-1 rounded text-[10px] font-medium border transition-colors
+              ${formatFilter === f ? "bg-zinc-700 text-zinc-200 border-zinc-500" : "bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700"}`}
+          >
+            {f === "all" ? "All formats" : f.charAt(0).toUpperCase() + f.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      <div className="text-[11px] text-zinc-500">{filtered.length} post packs — derived from {posts.reduce((s, p) => s + p.sourceCount, 0)} live data rows</div>
+
+      {filtered.length === 0 && (
+        <div className="py-8 text-center text-zinc-500 text-sm border border-zinc-800 rounded-lg">
+          No posts generated. Insufficient live data for current filters.
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {filtered.map(post => {
+          const isExpanded = expandedId === post.id;
+          const fullText = `${post.title}\n\n${post.hook}\n\n${post.bullets.map(b => `• ${b}`).join("\n")}\n\n${post.cta}`;
+          return (
+            <div key={post.id} className="border border-zinc-800 rounded-lg overflow-hidden">
+              <button
+                onClick={() => setExpandedId(isExpanded ? null : post.id)}
+                className="w-full flex items-center justify-between px-4 py-3 hover:bg-zinc-900/50 transition-colors text-left"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500 border border-zinc-700 rounded px-1.5 py-0.5 shrink-0">
+                    {post.format}
+                  </span>
+                  <span className="text-[11px] font-medium text-zinc-300 truncate">{post.title}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] text-zinc-600">{post.sourceCount} rows</span>
+                  {isExpanded ? <ChevronUp className="h-3 w-3 text-zinc-500" /> : <ChevronDown className="h-3 w-3 text-zinc-500" />}
+                </div>
+              </button>
+              {isExpanded && (
+                <div className="px-4 pb-4 border-t border-zinc-800 pt-3 space-y-3">
+                  <div>
+                    <p className="text-[10px] text-zinc-500 mb-1">Hook</p>
+                    <p className="text-[12px] text-zinc-300">{post.hook}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-zinc-500 mb-1">Content bullets</p>
+                    <ul className="space-y-1">
+                      {post.bullets.map((b, i) => (
+                        <li key={i} className="text-[11px] text-zinc-400 flex gap-2">
+                          <span className="text-zinc-600 shrink-0">•</span>{b}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-zinc-500 mb-1">CTA</p>
+                    <p className="text-[11px] text-zinc-400">{post.cta}</p>
+                  </div>
+                  <div className="flex justify-end">
+                    <CopyButton text={fullText} />
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
+const TABS = ["Research Board", "Team Angles", "Fantasy Angles", "Market Check", "Post Ideas", "Freshness"] as const;
+type Tab = typeof TABS[number];
 
 export default function AdminContentIntel() {
-  const [tab, setTab] = useState<MainTab>("mining");
+  const [activeTab, setActiveTab] = useState<Tab>("Research Board");
   const [data, setData] = useState<ContentIntelData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loadedAtRef = useRef<Date | null>(null);
 
   const fetchAll = useCallback(async () => {
-    if (!supabase) { setError("Supabase not initialised"); setLoading(false); return; }
     setLoading(true);
     setError(null);
-
     try {
-      // Step 1 — Canonical round from public.get_current_afl_round_safe()
-      // This is the authoritative source — never hardcoded, never browser-date-based
-      let roundInfo: RoundInfo | null = null;
-      let currentRound = 0;
-      let roundSource: SourceFreshness["roundSource"] = "get_current_afl_round_safe";
-
-      const roundRes = await supabase.rpc("get_current_afl_round_safe", { p_season: 2026 });
-      if (!roundRes.error && roundRes.data && roundRes.data.length > 0) {
-        roundInfo = roundRes.data[0] as RoundInfo;
-        currentRound = roundInfo.current_round;
-      }
-
-      // Step 2 — Fetch all data concurrently
-      const [matchesRes, dispRes, goalRes, rankingsRes, teamDispRes, teamGoalRes] = await Promise.allSettled([
-        supabase.rpc("get_stat_board_matches", { p_season: 2026, p_round: currentRound > 0 ? currentRound : null }),
-        supabase.rpc("get_stat_board_players", {
-          p_season: 2026,
-          p_round: currentRound > 0 ? currentRound : null,
-          p_match_id: null,
-          p_lens: "disposals",
-          p_threshold: 20,
-          p_position_group: null,
-          p_team_id: null,
-          p_search: null,
-          p_limit: 500,
-          p_offset: 0,
-        }),
-        supabase.rpc("get_stat_board_players", {
-          p_season: 2026,
-          p_round: currentRound > 0 ? currentRound : null,
-          p_match_id: null,
-          p_lens: "goals",
-          p_threshold: 1,
-          p_position_group: null,
-          p_team_id: null,
-          p_search: null,
-          p_limit: 500,
-          p_offset: 0,
-        }),
-        // get_rankings_safe: only p_user_id, p_is_bot, p_limit — no other params
-        supabase.rpc("get_rankings_safe", { p_user_id: null, p_is_bot: false, p_limit: 500 }),
-        supabase.rpc("get_stat_board_team_rows", {
-          p_season: 2026,
-          p_round: currentRound > 0 ? currentRound : null,
-          p_match_id: null,
-          p_lens: "disposals",
-        }),
-        supabase.rpc("get_stat_board_team_rows", {
-          p_season: 2026,
-          p_round: currentRound > 0 ? currentRound : null,
-          p_match_id: null,
-          p_lens: "goals",
-        }),
-      ]);
-
-      const matches: StatBoardMatch[] = matchesRes.status === "fulfilled" ? ((matchesRes.value.data as StatBoardMatch[]) ?? []) : [];
-      const disposalPlayers: StatBoardPlayer[] = dispRes.status === "fulfilled" ? ((dispRes.value.data as StatBoardPlayer[]) ?? []) : [];
-      const goalPlayers: StatBoardPlayer[] = goalRes.status === "fulfilled" ? ((goalRes.value.data as StatBoardPlayer[]) ?? []) : [];
-      const rankings: RankingRow[] = rankingsRes.status === "fulfilled" ? ((rankingsRes.value.data as RankingRow[]) ?? []) : [];
-      const teamDisposals: StatBoardTeamRow[] = teamDispRes.status === "fulfilled" ? ((teamDispRes.value.data as StatBoardTeamRow[]) ?? []) : [];
-      const teamGoals: StatBoardTeamRow[] = teamGoalRes.status === "fulfilled" ? ((teamGoalRes.value.data as StatBoardTeamRow[]) ?? []) : [];
-
-      // Fallback round from stat board matches if RPC returned nothing
-      if (currentRound === 0 && matches.length > 0) {
-        currentRound = matches[0].week ?? 0;
-        roundSource = "stat_board_week_fallback";
-      }
-
-      const roundLabel = currentRound > 0 ? `Round ${currentRound}` : "Current Round";
-
-      // Freshness: get latest rankings cached_at
-      const rankingsCachedAt = rankings.length > 0
-        ? (rankings.find(r => r.cached_at)?.cached_at ?? null)
-        : null;
-
-      const generatedAt = new Date();
-      loadedAtRef.current = generatedAt;
-
-      // Log partial errors
-      const errs: string[] = [];
-      if (dispRes.status === "rejected")     errs.push(`disposal players: ${dispRes.reason}`);
-      if (goalRes.status === "rejected")     errs.push(`goal players: ${goalRes.reason}`);
-      if (rankingsRes.status === "rejected") errs.push(`rankings: ${rankingsRes.reason}`);
-      if (errs.length > 0) console.warn("[ContentIntel] Partial fetch errors:", errs);
-
-      setData({
-        roundInfo,
-        currentRound,
-        roundLabel,
-        matches,
-        disposalPlayers,
-        goalPlayers,
-        teamDisposals,
-        teamGoals,
-        rankings,
-        freshness: {
-          rankingsCachedAt,
-          statBoardRowCount: disposalPlayers.length + goalPlayers.length,
-          rankingsRowCount: rankings.length,
-          matchRowCount: matches.length,
-          teamRowCount: teamDisposals.length + teamGoals.length,
-          generatedAt,
-          roundSource,
-        },
-        loadedAt: generatedAt,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
+      const result = await fetchContentIntel();
+      setData(result);
+      loadedAtRef.current = result.loadedAt;
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setLoading(false);
     }
   }, []);
 
   // Initial load
-  useEffect(() => {
-    fetchAll();
-  }, [fetchAll]);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  // Part 3 — Interval refetch every 5 minutes while page is open
+  // Interval refetch every 5 minutes
   useEffect(() => {
-    const interval = setInterval(() => {
-      fetchAll();
-    }, STALE_MS);
+    const interval = setInterval(() => { fetchAll(); }, STALE_MS);
     return () => clearInterval(interval);
   }, [fetchAll]);
 
-  // Part 3 — Refetch on window focus if data is stale (> 5 min)
+  // Window focus refetch if stale
   useEffect(() => {
     function onFocus() {
       if (!loadedAtRef.current) return;
-      const ageMs = Date.now() - loadedAtRef.current.getTime();
-      if (ageMs > STALE_MS) fetchAll();
+      if (Date.now() - loadedAtRef.current.getTime() > STALE_MS) fetchAll();
     }
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [fetchAll]);
 
-  const TABS: { id: MainTab; label: string; icon: React.ElementType }[] = [
-    { id: "mining",  label: "Content Mining",  icon: Filter },
-    { id: "fantasy", label: "Fantasy Angles",  icon: TrendingUp },
-    { id: "match",   label: "Match Angles",    icon: Zap },
-    { id: "posts",   label: "Post Ideas",      icon: FileText },
-  ];
-
-  const miningTotal = data
-    ? data.disposalPlayers.filter(p => {
-        const hr = p.all_threshold_hit_rates?.["20"];
-        return hr && hr.games >= 3 && rateToFraction(hr.rate) >= 0.65;
-      }).length
-    : 0;
-
-  const fantasyTotal = data
-    ? data.rankings.filter(r => !r.is_injured && !r.is_bye && r.projection != null).length
-    : 0;
+  // Post ideas regenerated from live data via useMemo
+  const allPosts = useMemo(() => buildPostTemplates(data), [data]);
 
   const statusLine = data
     ? `Generated from live stats · ${data.roundLabel} · refreshed ${fmtTimestamp(data.loadedAt)}`
     : null;
 
   return (
-    <div>
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-6">
       <AdminPageHeader
-        icon={Lightbulb}
         title="Content Intel"
-        description="Content mining tool — live AFL stat angles, fantasy signals, and post generation. Stats only, no AI."
-        badge="Stats Only — No AI"
-        loading={loading}
-        actions={
-          <button
-            onClick={fetchAll}
-            disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-muted-foreground hover:text-foreground border border-border/50 hover:border-border transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </button>
-        }
+        subtitle="Private stat research tool — current round stat angles and market-check workflow"
       />
 
-      {/* Freshness status line */}
-      {statusLine && !loading && (
-        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-4">
+      {/* Status bar */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
           <Clock className="h-3 w-3" />
-          {statusLine}
+          {loading ? "Refreshing…" : statusLine ?? "Loading…"}
           {data?.roundInfo && (
             <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
-              data.roundInfo.round_status === "active" ? "bg-emerald-950/40 text-emerald-400 border-emerald-600/30"
-              : "bg-zinc-900 text-zinc-400 border-zinc-700/30"
+              data.roundInfo.round_status === "active"
+                ? "bg-emerald-950/40 text-emerald-400 border-emerald-600/30"
+                : "bg-zinc-900 text-zinc-400 border-zinc-700/30"
             }`}>
               {data.roundInfo.round_status}
             </span>
           )}
         </div>
-      )}
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-        <SummaryCard
-          label="Current Round"
-          value={loading ? "Loading…" : data?.currentRound ? `Round ${data.currentRound}` : "Unavailable"}
-          sub={data?.roundInfo ? `${data.roundInfo.total_games} games · ${data.roundInfo.completed_games} done` : data?.matches.length ? `${data.matches.length} matches` : undefined}
-          accent={data?.currentRound ? "text-sky-400" : undefined}
-        />
-        <SummaryCard
-          label="Stat Board Players"
-          value={loading ? "—" : `${data?.disposalPlayers.length ?? 0}`}
-          sub="Disposal lens loaded"
-        />
-        <SummaryCard
-          label="Mining Angles"
-          value={loading ? "—" : `${miningTotal}`}
-          sub="65%+ hit rate, 20+ disp"
-        />
-        <SummaryCard
-          label="Fantasy Picks"
-          value={loading ? "—" : `${fantasyTotal}`}
-          sub="Available ranked players"
-        />
+        <button
+          onClick={fetchAll}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-medium bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 transition-colors disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </button>
       </div>
 
+      {/* Summary cards */}
+      {data && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <SCard
+            label="Round"
+            value={data.currentRound ? `Round ${data.currentRound}` : "—"}
+            sub={data.roundInfo ? `${data.roundInfo.total_games} games · ${data.roundInfo.completed_games} done` : ""}
+          />
+          <SCard
+            label="Matches loaded"
+            value={String(data.matches.length)}
+            sub={data.matches.slice(0, 3).map(m => m.match_label).join(", ") || "—"}
+          />
+          <SCard
+            label="Player stat rows"
+            value={String(data.freshness.statBoardRowCount)}
+            sub={`Disposals + Goals`}
+          />
+          <SCard
+            label="Rankings loaded"
+            value={String(data.freshness.rankingsRowCount)}
+            sub={data.freshness.rankingsCachedAt ? `Cached ${fmtAge(new Date(data.freshness.rankingsCachedAt))}` : ""}
+          />
+        </div>
+      )}
+
       {error && (
-        <div className="mb-4 rounded-lg border border-red-500/20 bg-red-950/10 px-4 py-3 text-xs text-red-400">
+        <div className="flex items-center gap-2 mb-4 p-3 bg-red-950/30 border border-red-800/30 rounded text-[12px] text-red-400">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
           {error}
         </div>
       )}
 
-      {/* Source freshness panel (Part 8) */}
-      {data && !loading && <FreshnessPanel data={data} />}
-
-      {/* Tab bar */}
-      <div className="flex gap-0.5 border-b border-border/40 mb-5 overflow-x-auto -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
-        {TABS.map(({ id, label, icon: Icon }) => (
+      {/* Tab bar — underline indicator style */}
+      <div className="flex gap-0 mb-6 border-b border-zinc-800">
+        {TABS.map(tab => (
           <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`relative flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium whitespace-nowrap transition-colors ${
-              tab === id ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`relative px-4 py-2.5 text-[12px] font-medium transition-colors ${
+              activeTab === tab ? "text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
             }`}
           >
-            <Icon className="h-3.5 w-3.5 shrink-0" />
-            {label}
-            {tab === id && <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t bg-foreground" />}
+            {tab}
+            {activeTab === tab && (
+              <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t bg-zinc-100" />
+            )}
           </button>
         ))}
       </div>
 
-      {loading && (
-        <div className="flex items-center justify-center py-16">
-          <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
-          <span className="ml-2 text-sm text-muted-foreground">Loading live data…</span>
+      {/* Tab content */}
+      {!data && !loading && !error && (
+        <div className="py-20 text-center text-zinc-500">Loading data…</div>
+      )}
+      {!data && loading && (
+        <div className="py-20 text-center text-zinc-500">Fetching live stats…</div>
+      )}
+
+      {data && (
+        <div>
+          {activeTab === "Research Board" && <ResearchBoard data={data} />}
+          {activeTab === "Team Angles" && <TeamAngles data={data} />}
+          {activeTab === "Fantasy Angles" && <FantasyAngles data={data} />}
+          {activeTab === "Market Check" && <MarketCheckQueue data={data} />}
+          {activeTab === "Post Ideas" && <PostIdeas posts={allPosts} />}
+          {activeTab === "Freshness" && <FreshnessPanel data={data} loadedAt={data.loadedAt} />}
         </div>
       )}
+    </div>
+  );
+}
 
-      {!loading && data && (
-        <>
-          {tab === "mining"  && <ContentMiningTab data={data} />}
-          {tab === "fantasy" && <FantasyTab rankings={data.rankings} />}
-          {tab === "match"   && <MatchAnglesTab teamDisposals={data.teamDisposals} teamGoals={data.teamGoals} />}
-          {tab === "posts"   && <PostIdeasTab data={data} />}
-        </>
-      )}
-
-      {!loading && !data && !error && (
-        <EmptyState message="No data loaded" detail="Click Refresh to load live data." />
-      )}
+function SCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3">
+      <div className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">{label}</div>
+      <div className="text-[18px] font-semibold text-zinc-100">{value}</div>
+      <div className="text-[10px] text-zinc-500 truncate mt-0.5">{sub}</div>
     </div>
   );
 }
