@@ -4,6 +4,7 @@ import {
   HeartPulse,
   Users,
   Terminal,
+  Lightbulb,
   FlaskConical,
   Settings2,
 } from "lucide-react";
@@ -21,6 +22,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { path: "/admin/health",         label: "Health",           icon: HeartPulse },
   { path: "/admin/users",          label: "Users & Billing",  icon: Users },
   { path: "/admin/command",        label: "Command Center",   icon: Terminal },
+  { path: "/admin/content-intel",  label: "Content Intel",    icon: Lightbulb },
   { path: "/admin/player-lab",     label: "Player Lab",       icon: FlaskConical },
   { path: "/admin/internal-ops",   label: "Internal Ops",     icon: Settings2 },
 ];

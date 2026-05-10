@@ -103,6 +103,7 @@ export const AdminDashboardPage    = lazy(() => import("@/features/admin/pages/A
 export const AdminHealthPage       = lazy(() => import("@/features/admin/pages/AdminHealth"));
 export const AdminUserMetricsPage  = lazy(() => import("@/features/admin/pages/AdminAnalytics"));
 export const AdminCommandPage      = lazy(() => import("@/features/admin/pages/AdminNewCommandCenter"));
+export const AdminContentIntelPage = lazy(() => import("@/features/admin/pages/AdminContentIntel"));
 export const AdminPlayerLabPage    = lazy(() => import("@/features/admin/pages/AdminPlayerLab"));
 export const AdminMarketingPage    = lazy(() => import("@/features/admin/pages/AdminMarketing"));
 export const AdminInternalOpsPage  = lazy(() => import("@/features/admin/pages/AdminAdminHub"));
