@@ -256,6 +256,9 @@ interface CIData {
   teamsCurrentRound: number;        // count of teams in current-round mode
   latestPlayerStatAt: string | null;
   latestTeamStatAt: string | null;
+  fetchCallsMade: number;           // how many RPC calls were made for player data
+  sourceTeamCount: number;          // unique teams in player source pool
+  sourceGameCount: number;          // unique match_ids in player source pool
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -365,18 +368,31 @@ const TARGET_BADGE_META: Record<TargetBadge, { label: string; cls: string }> = {
   "no-fixture":     { label: "No Fixture",   cls: "bg-zinc-900 text-zinc-600 border-zinc-700" },
 };
 
-// Extract hit data for a stat family + threshold
+// Extract hit data for a stat family + threshold.
+// The RPC's all_threshold_hit_rates only includes fixed keys (15/20/25/30 for disposals,
+// 1/2/3/4 for goals). For thresholds not in that set (e.g. 10+ disposals), we compute
+// directly from last_10_values so no player is silently dropped.
 function hitData(
   player: StatBoardPlayer,
   _family: StatFamily,
   threshold: number,
 ): { hits: number; games: number; rate: number } | null {
   const rates = player.all_threshold_hit_rates;
-  if (!rates) return null;
   const key = String(threshold);
-  const entry = rates[key] as ThresholdHitRate | undefined;
-  if (!entry || entry.games === 0) return null;
-  return { hits: entry.hits, games: entry.games, rate: entry.rate };
+  const entry = rates?.[key] as ThresholdHitRate | undefined;
+
+  // Threshold key exists in RPC output — use it directly
+  if (entry && entry.games > 0) {
+    return { hits: entry.hits, games: entry.games, rate: entry.rate };
+  }
+
+  // Threshold key missing — compute from raw values array if available
+  const vals = player.last_10_values;
+  if (!vals || vals.length === 0) return null;
+  const hits = vals.filter(v => v >= threshold).length;
+  const games = vals.length;
+  if (games === 0) return null;
+  return { hits, games, rate: Math.round((hits / games) * 100) };
 }
 
 function playerAvgs(p: StatBoardPlayer) {
@@ -561,24 +577,74 @@ async function fetchCIData(): Promise<CIData> {
   }
   const roundLabel = currentRound > 0 ? `Round ${currentRound}` : "Current Round";
 
-  // 4. All disposal-lens players — use low threshold (5) so we get ALL players
-  //    whose all_threshold_hit_rates covers any threshold (10, 15, 20, 25+).
-  //    The RPC filters server-side by p_threshold; a high value like 20 would
-  //    exclude players who only hit 10-15 disposals, making "10+ Disposals" empty.
-  const dpRes = await supabase.rpc("get_stat_board_players", {
-    p_season: SEASON, p_round: currentRound || null, p_match_id: null,
-    p_lens: "disposals", p_threshold: 5, p_position_group: null,
-    p_team_id: null, p_search: null, p_limit: 1000, p_offset: 0,
-  });
-  const disposalPlayers: StatBoardPlayer[] = dpRes.data ?? [];
+  // 4 & 5. Collect all target match_ids.
+  //
+  // CRITICAL: get_stat_board_players with p_match_id=null defaults to the first
+  // fixture of the round (match_order=1), returning only 2 teams. We must call
+  // once per match_id to get every team's players.
+  //
+  // Sources:
+  //   a) current-round game IDs from the matches list
+  //   b) next-up game IDs from teamTargets (teams that have already played)
+  const currentRoundMatchIds = matches.map(m => m.match_id);
+  const nextUpMatchIds = teamTargets
+    .filter(t => t.has_played_current_round && t.next_game_id)
+    .map(t => t.next_game_id as number);
+  const allMatchIds = [...new Set([...currentRoundMatchIds, ...nextUpMatchIds])];
 
-  // 5. All goal-lens players
-  const gpRes = await supabase.rpc("get_stat_board_players", {
-    p_season: SEASON, p_round: currentRound || null, p_match_id: null,
-    p_lens: "goals", p_threshold: 1, p_position_group: null,
-    p_team_id: null, p_search: null, p_limit: 800, p_offset: 0,
-  });
-  const goalPlayers: StatBoardPlayer[] = gpRes.data ?? [];
+  // Fall back to round-based single call if no match IDs could be resolved
+  const matchIdsToFetch = allMatchIds.length > 0 ? allMatchIds : [null as unknown as number];
+  const fetchCallsMade = matchIdsToFetch.length * 2; // disposals + goals
+
+  const [dpResults, gpResults] = await Promise.all([
+    Promise.all(matchIdsToFetch.map(mid =>
+      supabase.rpc("get_stat_board_players", {
+        p_season: SEASON,
+        p_round: null,
+        p_match_id: mid,
+        p_lens: "disposals",
+        p_threshold: 5,
+        p_position_group: null,
+        p_team_id: null,
+        p_search: null,
+        p_limit: 300,
+        p_offset: 0,
+      })
+    )),
+    Promise.all(matchIdsToFetch.map(mid =>
+      supabase.rpc("get_stat_board_players", {
+        p_season: SEASON,
+        p_round: null,
+        p_match_id: mid,
+        p_lens: "goals",
+        p_threshold: 1,
+        p_position_group: null,
+        p_team_id: null,
+        p_search: null,
+        p_limit: 300,
+        p_offset: 0,
+      })
+    )),
+  ]);
+
+  // Flatten and dedupe by player_id — keep first occurrence (current-round before next-up)
+  const seenDisp = new Set<number>();
+  const disposalPlayers: StatBoardPlayer[] = dpResults
+    .flatMap(r => r.data ?? [])
+    .filter(p => {
+      if (seenDisp.has(p.player_id)) return false;
+      seenDisp.add(p.player_id);
+      return true;
+    });
+
+  const seenGoal = new Set<number>();
+  const goalPlayers: StatBoardPlayer[] = gpResults
+    .flatMap(r => r.data ?? [])
+    .filter(p => {
+      if (seenGoal.has(p.player_id)) return false;
+      seenGoal.add(p.player_id);
+      return true;
+    });
 
   // 6. Team concession rows
   const [tdRes, tgRes, tsRes] = await Promise.all([
@@ -600,6 +666,9 @@ async function fetchCIData(): Promise<CIData> {
     ? ((tdRes.data ?? [])[0] as unknown as Record<string, unknown>)["updated_at"] as string ?? null
     : null;
 
+  const sourceTeamCount = new Set(disposalPlayers.map(p => p.team_id)).size;
+  const sourceGameCount = new Set(disposalPlayers.map(p => p.match_id)).size;
+
   return {
     roundInfo, currentRound, roundLabel, matches,
     disposalPlayers, goalPlayers,
@@ -614,6 +683,9 @@ async function fetchCIData(): Promise<CIData> {
     teamsCurrentRound,
     latestPlayerStatAt,
     latestTeamStatAt,
+    fetchCallsMade,
+    sourceTeamCount,
+    sourceGameCount,
   };
 }
 
@@ -1234,6 +1306,7 @@ function NextUpBanner({ data, mode }: { data: CIData; mode: ContentMode }) {
 function DiagnosticPanel({
   srcTotal, afterBuildRows, afterGameFilter, afterFilters,
   threshold, cfg, mode, gameFilter, teamFilter, profile, search,
+  fetchCallsMade, sourceTeamCount, sourceGameCount,
 }: {
   srcTotal: number;
   afterBuildRows: number;
@@ -1246,12 +1319,18 @@ function DiagnosticPanel({
   teamFilter: string;
   profile: HitProfile;
   search: string;
+  fetchCallsMade: number;
+  sourceTeamCount: number;
+  sourceGameCount: number;
 }) {
   const [open, setOpen] = useState(false);
 
+  const sourceBugWarning = sourceTeamCount <= 2 && gameFilter === "all" && srcTotal > 0;
+
   const stages = [
-    { label: "Source players loaded", count: srcTotal, note: `get_stat_board_players (${cfg.lens} lens, p_threshold:5)` },
-    { label: `With ${threshold}+ ${cfg.label} data (all_threshold_hit_rates)`, count: afterBuildRows, note: `buildRows() with threshold=${threshold}` },
+    { label: "Fetch calls made", count: fetchCallsMade, note: `${sourceGameCount} games · ${sourceTeamCount} teams in source pool` },
+    { label: "Source players loaded", count: srcTotal, note: `get_stat_board_players (${cfg.lens} lens, p_threshold:5, per match_id)` },
+    { label: `With ${threshold}+ ${cfg.label} data`, count: afterBuildRows, note: `buildRows() — RPC key or computed from last_10_values` },
     ...(afterGameFilter !== null ? [{ label: `After game filter (${gameFilter})`, count: afterGameFilter, note: "filtered by targetMatchLabel" }] : []),
     ...(teamFilter ? [{ label: `After team filter`, count: afterFilters, note: `team = ${teamFilter}` }] : []),
     ...(profile !== "all" ? [{ label: `After hit profile (${profile})`, count: afterFilters, note: "" }] : []),
@@ -1267,11 +1346,17 @@ function DiagnosticPanel({
       >
         <Database className="h-3 w-3 shrink-0" />
         <span className="font-medium">Pipeline diagnostic</span>
-        <span className="ml-2 font-mono text-zinc-400">{srcTotal} src → {afterBuildRows} matched → {afterFilters} displayed</span>
+        <span className="ml-2 font-mono text-zinc-400">{srcTotal} src ({sourceTeamCount} teams) → {afterBuildRows} matched → {afterFilters} displayed</span>
+        {sourceBugWarning && <AlertTriangle className="h-3 w-3 text-red-400 shrink-0" />}
         <span className="ml-auto">{open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}</span>
       </button>
       {open && (
         <div className="border-t border-zinc-800 px-3 py-2 space-y-1">
+          {sourceBugWarning && (
+            <div className="text-[11px] text-red-300 bg-red-950/20 border border-red-600/20 rounded px-2 py-1.5 mb-2">
+              SOURCE BUG: Only {sourceTeamCount} teams in source pool with all-games filter. Expected ~18 teams. Match IDs may not have resolved correctly — check fetchCIData round/match detection.
+            </div>
+          )}
           {stages.map((s, i) => (
             <div key={i} className="flex items-center gap-3 text-[11px]">
               <span className="text-zinc-600 w-4 shrink-0 text-right font-mono">{i + 1}.</span>
@@ -1284,7 +1369,7 @@ function DiagnosticPanel({
           ))}
           {afterBuildRows === 0 && srcTotal > 0 && (
             <div className="mt-2 text-[11px] text-amber-300 bg-amber-950/20 border border-amber-600/20 rounded px-2 py-1.5">
-              Players loaded but none have {threshold}+ {cfg.label} hit data. The RPC's all_threshold_hit_rates may not include this threshold, or all players have 0 games at this threshold.
+              Players loaded but none have {threshold}+ {cfg.label} data. If last_10_values is null for all players, check stat ingestion.
             </div>
           )}
           {srcTotal === 0 && (
@@ -1495,6 +1580,9 @@ function PlayerStatAngles({
         teamFilter={teamFilter}
         profile={profile}
         search={search}
+        fetchCallsMade={data.fetchCallsMade}
+        sourceTeamCount={data.sourceTeamCount}
+        sourceGameCount={data.sourceGameCount}
       />
 
       {filtered.length === 0 && (
