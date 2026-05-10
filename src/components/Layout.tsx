@@ -34,7 +34,7 @@ export function Layout() {
                 <img
                   src="/logo.png"
                   alt="Neeko Sports Logo"
-                  className="h-[5rem] w-auto -my-3"
+                  className="h-8 sm:h-9 w-auto object-contain"
                 />
               </Link>
 

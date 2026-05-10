@@ -1018,13 +1018,16 @@ export default function AdminHealth() {
         </div>
       </div>
 
-      <div className="border-b border-border">
-        <div className="flex items-center gap-0">
+      <div
+        className="overflow-x-auto touch-pan-x overscroll-x-contain"
+        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+      >
+        <div className="flex items-center gap-0 border-b border-border w-max min-w-full">
           {tabs.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors min-h-[44px] ${
                 tab === t.id
                   ? "border-foreground text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground"

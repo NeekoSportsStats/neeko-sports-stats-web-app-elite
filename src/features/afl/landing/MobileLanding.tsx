@@ -565,7 +565,7 @@ export default function MobileLanding({ isPremium }: Props) {
   const { user, loading: authLoading, signOut } = useAuth();
 
   return (
-    <div style={{ background: "#09090b", overflowX: "hidden", minHeight: "100vh" }}>
+    <div style={{ background: "#09090b", overflowX: "hidden", minHeight: "100dvh" }}>
 
       <LeftDrawer
         open={drawerOpen}
@@ -580,11 +580,17 @@ export default function MobileLanding({ isPremium }: Props) {
       {/* ─── HERO ─── */}
       <section style={{
         position: "relative",
-        background: "linear-gradient(180deg, #09090b 0%, #080c0a 100%)",
-        padding: "20px 16px 18px",
+        padding: "24px 16px 20px",
         overflow: "hidden",
+        backgroundImage: `
+          linear-gradient(to bottom, rgba(0,0,0,0.70) 0%, rgba(6,10,8,0.88) 60%, rgba(9,9,11,1) 100%),
+          url('/images/Fantasy_sports_war_room_setup.png')
+        `,
+        backgroundSize: "cover",
+        backgroundPosition: "center top",
+        backgroundRepeat: "no-repeat",
       }}>
-        <div style={{ position: "absolute", top: -60, left: "50%", transform: "translateX(-50%)", width: 300, height: 180, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,197,94,0.07) 0%, transparent 70%)", pointerEvents: "none" }} />
+        <div style={{ position: "absolute", top: -40, left: "50%", transform: "translateX(-50%)", width: 280, height: 160, borderRadius: "50%", background: "radial-gradient(circle, rgba(34,197,94,0.06) 0%, transparent 70%)", pointerEvents: "none" }} />
 
         <div style={{ position: "relative", zIndex: 2 }}>
           {/* Eyebrow */}

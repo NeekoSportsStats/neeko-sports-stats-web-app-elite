@@ -39,12 +39,13 @@ export default function AdminMarketing() {
         <h1 className="text-lg font-semibold">Marketing</h1>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto mb-1 pb-0.5" style={{ scrollbarWidth: "none" }}>
+      <div className="overflow-x-auto touch-pan-x overscroll-x-contain mb-1" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
+        <div className="flex gap-1 pb-0.5 w-max min-w-full">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 text-xs font-medium whitespace-nowrap rounded-md transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 text-xs font-medium whitespace-nowrap rounded-md transition-colors min-h-[44px] ${
               tab === id
                 ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -54,6 +55,7 @@ export default function AdminMarketing() {
             {label}
           </button>
         ))}
+        </div>
       </div>
 
       <p className="text-xs text-muted-foreground mb-6 px-1">{activeTab.description}</p>
