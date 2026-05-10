@@ -561,11 +561,14 @@ async function fetchCIData(): Promise<CIData> {
   }
   const roundLabel = currentRound > 0 ? `Round ${currentRound}` : "Current Round";
 
-  // 4. All disposal-lens players (no match filter = all games this round)
+  // 4. All disposal-lens players — use low threshold (5) so we get ALL players
+  //    whose all_threshold_hit_rates covers any threshold (10, 15, 20, 25+).
+  //    The RPC filters server-side by p_threshold; a high value like 20 would
+  //    exclude players who only hit 10-15 disposals, making "10+ Disposals" empty.
   const dpRes = await supabase.rpc("get_stat_board_players", {
     p_season: SEASON, p_round: currentRound || null, p_match_id: null,
-    p_lens: "disposals", p_threshold: 20, p_position_group: null,
-    p_team_id: null, p_search: null, p_limit: 600, p_offset: 0,
+    p_lens: "disposals", p_threshold: 5, p_position_group: null,
+    p_team_id: null, p_search: null, p_limit: 1000, p_offset: 0,
   });
   const disposalPlayers: StatBoardPlayer[] = dpRes.data ?? [];
 
@@ -573,7 +576,7 @@ async function fetchCIData(): Promise<CIData> {
   const gpRes = await supabase.rpc("get_stat_board_players", {
     p_season: SEASON, p_round: currentRound || null, p_match_id: null,
     p_lens: "goals", p_threshold: 1, p_position_group: null,
-    p_team_id: null, p_search: null, p_limit: 600, p_offset: 0,
+    p_team_id: null, p_search: null, p_limit: 800, p_offset: 0,
   });
   const goalPlayers: StatBoardPlayer[] = gpRes.data ?? [];
 
@@ -1226,6 +1229,126 @@ function NextUpBanner({ data, mode }: { data: CIData; mode: ContentMode }) {
   );
 }
 
+// ─── Diagnostic Panel ─────────────────────────────────────────────────────────
+
+function DiagnosticPanel({
+  srcTotal, afterBuildRows, afterGameFilter, afterFilters,
+  threshold, cfg, mode, gameFilter, teamFilter, profile, search,
+}: {
+  srcTotal: number;
+  afterBuildRows: number;
+  afterGameFilter: number | null;
+  afterFilters: number;
+  threshold: number;
+  cfg: FamilyCfg;
+  mode: ContentMode;
+  gameFilter: string;
+  teamFilter: string;
+  profile: HitProfile;
+  search: string;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const stages = [
+    { label: "Source players loaded", count: srcTotal, note: `get_stat_board_players (${cfg.lens} lens, p_threshold:5)` },
+    { label: `With ${threshold}+ ${cfg.label} data (all_threshold_hit_rates)`, count: afterBuildRows, note: `buildRows() with threshold=${threshold}` },
+    ...(afterGameFilter !== null ? [{ label: `After game filter (${gameFilter})`, count: afterGameFilter, note: "filtered by targetMatchLabel" }] : []),
+    ...(teamFilter ? [{ label: `After team filter`, count: afterFilters, note: `team = ${teamFilter}` }] : []),
+    ...(profile !== "all" ? [{ label: `After hit profile (${profile})`, count: afterFilters, note: "" }] : []),
+    ...(search ? [{ label: `After search (${search})`, count: afterFilters, note: "" }] : []),
+    { label: "Final displayed", count: afterFilters, note: `mode: ${mode}` },
+  ];
+
+  return (
+    <div className="border border-zinc-800 rounded-lg overflow-hidden">
+      <button
+        onClick={() => setOpen(p => !p)}
+        className="w-full flex items-center gap-2 px-3 py-2 text-[11px] text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900/30 transition-colors"
+      >
+        <Database className="h-3 w-3 shrink-0" />
+        <span className="font-medium">Pipeline diagnostic</span>
+        <span className="ml-2 font-mono text-zinc-400">{srcTotal} src → {afterBuildRows} matched → {afterFilters} displayed</span>
+        <span className="ml-auto">{open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}</span>
+      </button>
+      {open && (
+        <div className="border-t border-zinc-800 px-3 py-2 space-y-1">
+          {stages.map((s, i) => (
+            <div key={i} className="flex items-center gap-3 text-[11px]">
+              <span className="text-zinc-600 w-4 shrink-0 text-right font-mono">{i + 1}.</span>
+              <span className="text-zinc-400 min-w-0 flex-1">{s.label}</span>
+              <span className={`font-mono font-semibold shrink-0 ${s.count === 0 ? "text-red-400" : s.count < 5 ? "text-amber-400" : "text-emerald-400"}`}>
+                {s.count}
+              </span>
+              {s.note && <span className="text-zinc-700 text-[10px] shrink-0 hidden sm:block">{s.note}</span>}
+            </div>
+          ))}
+          {afterBuildRows === 0 && srcTotal > 0 && (
+            <div className="mt-2 text-[11px] text-amber-300 bg-amber-950/20 border border-amber-600/20 rounded px-2 py-1.5">
+              Players loaded but none have {threshold}+ {cfg.label} hit data. The RPC's all_threshold_hit_rates may not include this threshold, or all players have 0 games at this threshold.
+            </div>
+          )}
+          {srcTotal === 0 && (
+            <div className="mt-2 text-[11px] text-red-300 bg-red-950/20 border border-red-600/20 rounded px-2 py-1.5">
+              No players loaded from the stat board. Check round detection or refresh the data.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Empty State — Angles ─────────────────────────────────────────────────────
+
+function EmptyStateAngles({
+  srcTotal, allRows, threshold, cfg, profile, gameFilter, teamFilter, search, onReset,
+}: {
+  srcTotal: number;
+  allRows: ResearchRow[];
+  threshold: number;
+  cfg: FamilyCfg;
+  profile: HitProfile;
+  gameFilter: string;
+  teamFilter: string;
+  search: string;
+  onReset: () => void;
+}) {
+  let cause = "No players match the current filters.";
+  let hint = "";
+
+  if (srcTotal === 0) {
+    cause = "No player data loaded.";
+    hint = "Refresh the page — the stat board may not have data for this round yet.";
+  } else if (allRows.length === 0) {
+    cause = `No players have ${threshold}+ ${cfg.label} data in their history.`;
+    hint = `Try a lower threshold (e.g. ${Math.max(cfg.thresholds[0], threshold - (cfg.thresholds[1] - cfg.thresholds[0]))}+) or switch to a different stat family.`;
+  } else if (gameFilter !== "all") {
+    cause = `No players visible after the game filter (${gameFilter}).`;
+    hint = "The selected game may have no players at this threshold. Try 'All Games'.";
+  } else if (teamFilter) {
+    cause = `No players from ${teamFilter} at ${threshold}+ ${cfg.label}.`;
+    hint = "Try 'All Teams' or a lower threshold.";
+  } else if (profile !== "all") {
+    cause = `No players with the '${profile}' hit profile at ${threshold}+.`;
+    hint = "Try 'All profiles' to see all players at this threshold.";
+  } else if (search) {
+    cause = `No players match "${search}".`;
+    hint = "Clear the search to see all players.";
+  }
+
+  return (
+    <div className="py-8 text-center border border-zinc-800 rounded-lg space-y-2">
+      <AlertTriangle className="h-6 w-6 mx-auto text-amber-500/60" />
+      <div className="text-[13px] font-medium text-zinc-300">{cause}</div>
+      {hint && <div className="text-[11px] text-zinc-500 max-w-sm mx-auto">{hint}</div>}
+      <button onClick={onReset}
+        className="mt-2 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px] border border-zinc-700 transition-colors">
+        Reset all filters
+      </button>
+    </div>
+  );
+}
+
 // ─── Player Stat Angles Tab ───────────────────────────────────────────────────
 
 function PlayerStatAngles({
@@ -1236,7 +1359,7 @@ function PlayerStatAngles({
   const [profile, setProfile] = useState<HitProfile>("all");
   const [minSample, setMinSample] = useState<number>(3);
   const [sortBy, setSortBy] = useState<SortBy>("hitrate");
-  const [matchFilter, setMatchFilter] = useState<number | null>(null);
+  const [gameFilter, setGameFilter] = useState<string>("all");
   const [teamFilter, setTeamFilter] = useState<string>("");
   const [oppFilter, setOppFilter] = useState<string>("");
   const [posFilter, setPosFilter] = useState<string>("");
@@ -1251,17 +1374,31 @@ function PlayerStatAngles({
 
   const srcPlayers = family === "goals" ? data.goalPlayers : data.disposalPlayers;
 
-  const matchFiltered = useMemo(() =>
-    matchFilter == null ? srcPlayers : srcPlayers.filter(p => p.match_id === matchFilter),
-    [srcPlayers, matchFilter]);
-
+  // Build the full set of rows first (across all games), then apply game filter.
+  // This is the correct order: load full pool → build rows → filter.
   const allRows = useMemo(() => {
-    const raw = buildRows(matchFiltered, family, threshold, minSample, concessionMap, data.teamTargets, mode);
+    const raw = buildRows(srcPlayers, family, threshold, minSample, concessionMap, data.teamTargets, mode);
     return applyModeFilter(raw, mode);
-  }, [matchFiltered, family, threshold, minSample, concessionMap, data.teamTargets, mode]);
+  }, [srcPlayers, family, threshold, minSample, concessionMap, data.teamTargets, mode]);
+
+  // Game filter options: current-round match labels + next-up target match labels
+  const gameOptions = useMemo(() => {
+    const opts: { value: string; label: string }[] = [{ value: "all", label: "All Games" }];
+    const seen = new Set<string>();
+    for (const row of allRows) {
+      const key = row.targetMatchLabel;
+      if (!seen.has(key)) {
+        seen.add(key);
+        opts.push({ value: key, label: row.targetMatchLabel });
+      }
+    }
+    return opts;
+  }, [allRows]);
 
   const filtered = useMemo(() => {
     let rows = allRows;
+    // Game filter: by targetMatchLabel (covers both current-round and next-up games)
+    if (gameFilter !== "all") rows = rows.filter(r => r.targetMatchLabel === gameFilter);
     if (teamFilter) rows = rows.filter(r => r.team_name === teamFilter);
     if (oppFilter) rows = rows.filter(r => r.targetOpponent === oppFilter || r.opponent_team_name === oppFilter);
     if (posFilter) rows = rows.filter(r => r.position_group === posFilter);
@@ -1273,7 +1410,7 @@ function PlayerStatAngles({
     }
     rows = rows.filter(r => filterByProfile(r, profile));
     return sortRows(rows, sortBy);
-  }, [allRows, teamFilter, oppFilter, posFilter, search, profile, sortBy, targetFilter]);
+  }, [allRows, gameFilter, teamFilter, oppFilter, posFilter, search, profile, sortBy, targetFilter]);
 
   const grouped = useMemo(() => {
     const g: Record<GroupBucket, ResearchRow[]> = {
@@ -1310,7 +1447,7 @@ function PlayerStatAngles({
             active={family === p.fam && threshold === p.thr && profile === p.prof}
             onClick={() => { setFamily(p.fam); setThreshold(p.thr); setProfile(p.prof); }} />
         ))}
-        <button onClick={() => { setFamily("disposals"); setThreshold(20); setProfile("all"); setMinSample(3); setSortBy("hitrate"); setMatchFilter(null); setTeamFilter(""); setOppFilter(""); setPosFilter(""); setSearch(""); setTargetFilter("all"); }}
+        <button onClick={() => { setFamily("disposals"); setThreshold(20); setProfile("all"); setMinSample(3); setSortBy("hitrate"); setGameFilter("all"); setTeamFilter(""); setOppFilter(""); setPosFilter(""); setSearch(""); setTargetFilter("all"); }}
           className="px-2.5 py-1 rounded-full text-[11px] font-medium border bg-zinc-900 text-zinc-500 border-zinc-700 hover:border-zinc-500 transition-colors">
           Reset
         </button>
@@ -1318,9 +1455,9 @@ function PlayerStatAngles({
 
       <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 space-y-3">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <Sel label="Game" value={matchFilter == null ? "all" : String(matchFilter)}
-            onChange={v => setMatchFilter(v === "all" ? null : Number(v))}
-            options={[{ value: "all", label: "All Games" }, ...data.matches.map(m => ({ value: String(m.match_id), label: m.match_label }))]} />
+          <Sel label="Game" value={gameFilter}
+            onChange={v => setGameFilter(v)}
+            options={gameOptions} />
           <Sel label="Team" value={teamFilter || "all"} onChange={v => setTeamFilter(v === "all" ? "" : v)}
             options={[{ value: "all", label: "All Teams" }, ...teams.map(t => ({ value: t, label: t }))]} />
           <Sel label="Target Opp" value={oppFilter || "all"} onChange={v => setOppFilter(v === "all" ? "" : v)}
@@ -1345,16 +1482,33 @@ function PlayerStatAngles({
         </div>
       </div>
 
-      <div className="text-[11px] text-zinc-500">
-        <span className="text-zinc-300 font-medium">{filtered.length}</span> players with {threshold}+ {cfg.label}
-        {" — "}{filtered.filter(r => r.isNextUp).length} next-up, {filtered.filter(r => !r.isNextUp).length} current-round
-      </div>
+      {/* Diagnostic pipeline counts — admin insight panel */}
+      <DiagnosticPanel
+        srcTotal={srcPlayers.length}
+        afterBuildRows={allRows.length}
+        afterGameFilter={gameFilter !== "all" ? allRows.filter(r => r.targetMatchLabel === gameFilter).length : null}
+        afterFilters={filtered.length}
+        threshold={threshold}
+        cfg={cfg}
+        mode={mode}
+        gameFilter={gameFilter}
+        teamFilter={teamFilter}
+        profile={profile}
+        search={search}
+      />
 
       {filtered.length === 0 && (
-        <div className="py-10 text-center text-zinc-500 text-sm border border-zinc-800 rounded-lg">
-          No players match the current filters.
-          {profile === "perfect" && <div className="mt-1 text-[11px]">Try 'All profiles' to see near-miss players.</div>}
-        </div>
+        <EmptyStateAngles
+          srcTotal={srcPlayers.length}
+          allRows={allRows}
+          threshold={threshold}
+          cfg={cfg}
+          profile={profile}
+          gameFilter={gameFilter}
+          teamFilter={teamFilter}
+          search={search}
+          onReset={() => { setGameFilter("all"); setTeamFilter(""); setOppFilter(""); setPosFilter(""); setSearch(""); setProfile("all"); setTargetFilter("all"); }}
+        />
       )}
 
       {BUCKET_ORDER.map(bucket => {
