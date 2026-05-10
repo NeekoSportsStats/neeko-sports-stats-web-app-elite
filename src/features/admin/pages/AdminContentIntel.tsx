@@ -1608,6 +1608,75 @@ function EmptyStateAngles({
   );
 }
 
+// ─── Invalid Team + Target Game State ─────────────────────────────────────────
+
+function InvalidTeamGameState({
+  teamName,
+  tgo,
+  onResetTeam,
+}: {
+  teamName: string;
+  tgo: TargetGameOption;
+  onResetTeam: () => void;
+}) {
+  return (
+    <div className="py-10 text-center border border-amber-600/20 bg-amber-950/10 rounded-xl space-y-3">
+      <AlertTriangle className="h-6 w-6 mx-auto text-amber-400/70" />
+      <div className="text-[13px] font-semibold text-zinc-200">
+        {teamName} is not part of {tgo.homeTeamName} v {tgo.awayTeamName}
+      </div>
+      <div className="text-[11px] text-zinc-500 max-w-sm mx-auto">
+        The selected Target Game is R{tgo.round} · {tgo.homeTeamName} v {tgo.awayTeamName}.
+        {teamName} does not play in this matchup.
+        Either clear the Team filter or select a different Target Game.
+      </div>
+      <button
+        onClick={onResetTeam}
+        className="mt-1 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px] border border-zinc-700 transition-colors"
+      >
+        Reset Team filter
+      </button>
+    </div>
+  );
+}
+
+// ─── Shared Tab Team Filter ────────────────────────────────────────────────────
+
+function TabTeamFilter({
+  teams,
+  value,
+  onChange,
+  activeTGO,
+}: {
+  teams: string[];
+  value: string;
+  onChange: (v: string) => void;
+  activeTGO: TargetGameOption | null;
+}) {
+  const opts = activeTGO
+    ? [
+        { value: "all", label: "All Teams" },
+        { value: activeTGO.homeTeamName, label: activeTGO.homeTeamName },
+        { value: activeTGO.awayTeamName, label: activeTGO.awayTeamName },
+      ]
+    : [{ value: "all", label: "All Teams" }, ...teams.map(t => ({ value: t, label: t }))];
+
+  return (
+    <Sel
+      label="Team"
+      value={value || "all"}
+      onChange={v => onChange(v === "all" ? "" : v)}
+      options={opts}
+    />
+  );
+}
+
+// Helper: is the selected team part of the active TGO?
+function isTeamInTGO(teamName: string, tgo: TargetGameOption | null): boolean {
+  if (!tgo || !teamName) return true;
+  return teamName === tgo.homeTeamName || teamName === tgo.awayTeamName;
+}
+
 // ─── Player Stat Angles Tab ───────────────────────────────────────────────────
 
 function PlayerStatAngles({
@@ -1720,10 +1789,18 @@ function PlayerStatAngles({
         </div>
       )}
 
+      {/* Invalid Team + Target Game combination */}
+      {activeTGO && teamFilter && !isTeamInTGO(teamFilter, activeTGO) && (
+        <InvalidTeamGameState
+          teamName={teamFilter}
+          tgo={activeTGO}
+          onResetTeam={() => setTeamFilter("")}
+        />
+      )}
+
       <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 space-y-3">
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          <Sel label="Team" value={teamFilter || "all"} onChange={v => setTeamFilter(v === "all" ? "" : v)}
-            options={[{ value: "all", label: "All Teams" }, ...teams.map(t => ({ value: t, label: t }))]} />
+          <TabTeamFilter teams={teams} value={teamFilter} onChange={setTeamFilter} activeTGO={activeTGO} />
           <Sel label="Target Opp" value={oppFilter || "all"} onChange={v => setOppFilter(v === "all" ? "" : v)}
             options={[{ value: "all", label: "All Opponents" }, ...opps.map(t => ({ value: t, label: t }))]} />
           <Sel label="Position" value={posFilter || "all"} onChange={v => setPosFilter(v === "all" ? "" : v)}
@@ -1861,10 +1938,22 @@ function SameGameShortlists({
 }) {
   const [includeFade, setIncludeFade] = useState(false);
   const [minHitProfile, setMinHitProfile] = useState<"all" | "at-least-70" | "perfect">("all");
+  const [teamFilter, setTeamFilter] = useState("");
 
   const activeTGO = selectedTargetGame !== "all"
     ? targetGameOptions.find(o => o.key === selectedTargetGame) ?? null
     : null;
+
+  // Reset team filter if it's no longer valid for the new TGO
+  useEffect(() => {
+    if (teamFilter && !isTeamInTGO(teamFilter, activeTGO)) setTeamFilter("");
+  }, [activeTGO]);
+
+  // All teams available after TGO filter
+  const availableTeams = useMemo(() => {
+    if (activeTGO) return [activeTGO.homeTeamName, activeTGO.awayTeamName];
+    return [...new Set(data.teamTargets.map(t => t.team_name))].sort();
+  }, [data.teamTargets, activeTGO]);
 
   // Build target-game groups: group players by their TARGET game (not just current match)
   // For next-up players, their match_id is current-round but we group by target
@@ -1958,7 +2047,12 @@ function SameGameShortlists({
         </label>
         <Sel label="Min profile" value={minHitProfile} onChange={v => setMinHitProfile(v as typeof minHitProfile)}
           options={[{ value: "all", label: "All" }, { value: "at-least-70", label: "70%+" }, { value: "perfect", label: "Perfect only" }]} />
+        <TabTeamFilter teams={availableTeams} value={teamFilter} onChange={setTeamFilter} activeTGO={activeTGO} />
       </div>
+
+      {activeTGO && teamFilter && !isTeamInTGO(teamFilter, activeTGO) && (
+        <InvalidTeamGameState teamName={teamFilter} tgo={activeTGO} onResetTeam={() => setTeamFilter("")} />
+      )}
 
       {targetGroups.length === 0 && (
         <div className="py-10 text-center text-zinc-500 text-sm border border-zinc-800 rounded-lg">
@@ -1971,6 +2065,11 @@ function SameGameShortlists({
           const teamAConceded = concessionMap.get(g.teamBId);
           const teamBConceded = concessionMap.get(g.teamAId);
           const isPartialNextUp = g.isNextUp && (!g.teamAPlayed || !g.teamBPlayed);
+          // Apply team filter within the card
+          const teamRowFilter = (r: ResearchRow) => !teamFilter || r.team_name === teamFilter;
+          const cardDispRows = g.dispRows.filter(teamRowFilter);
+          const cardGoalRows = g.goalRows.filter(teamRowFilter);
+          const cardFadeRows = g.fadeRows.filter(teamRowFilter);
 
           return (
             <div key={g.key} className={`border rounded-xl p-4 space-y-3 ${g.isNextUp ? "border-emerald-600/30 bg-emerald-950/10" : "border-zinc-800 bg-zinc-900/20"}`}>
@@ -1999,11 +2098,11 @@ function SameGameShortlists({
                 </div>
               </div>
 
-              {g.dispRows.length > 0 && (
+              {cardDispRows.length > 0 && (
                 <div>
                   <div className="text-[11px] font-semibold text-zinc-400 mb-1.5">20+ Disposal Angles</div>
                   <div className="space-y-1">
-                    {g.dispRows.map(r => (
+                    {cardDispRows.map(r => (
                       <div key={r.player_id} className="flex items-center gap-2 text-[11px]">
                         <BucketBadge bucket={r.bucket} />
                         <span className="font-medium text-zinc-200">{r.player_name}</span>
@@ -2016,11 +2115,11 @@ function SameGameShortlists({
                 </div>
               )}
 
-              {g.goalRows.length > 0 && (
+              {cardGoalRows.length > 0 && (
                 <div>
                   <div className="text-[11px] font-semibold text-zinc-400 mb-1.5">1+ Goal Angles</div>
                   <div className="space-y-1">
-                    {g.goalRows.map(r => (
+                    {cardGoalRows.map(r => (
                       <div key={r.player_id} className="flex items-center gap-2 text-[11px]">
                         <BucketBadge bucket={r.bucket} />
                         <span className="font-medium text-zinc-200">{r.player_name}</span>
@@ -2032,11 +2131,11 @@ function SameGameShortlists({
                 </div>
               )}
 
-              {includeFade && g.fadeRows.length > 0 && (
+              {includeFade && cardFadeRows.length > 0 && (
                 <div>
                   <div className="text-[11px] font-semibold text-red-400/70 mb-1.5">Fade Angles (20+ disposals)</div>
                   <div className="space-y-1">
-                    {g.fadeRows.map(r => (
+                    {cardFadeRows.map(r => (
                       <div key={r.player_id} className="flex items-center gap-2 text-[11px]">
                         <BucketBadge bucket={r.bucket} />
                         <span className="font-medium text-zinc-300">{r.player_name}</span>
@@ -2089,10 +2188,20 @@ function CrossGameShortlists({
   const [includeNextUp, setIncludeNextUp] = useState(true);
   const [includeCurrent, setIncludeCurrent] = useState(true);
   const [onlyFreshStats, setOnlyFreshStats] = useState(false);
+  const [teamFilter, setTeamFilter] = useState("");
 
   const activeTGO = selectedTargetGame !== "all"
     ? targetGameOptions.find(o => o.key === selectedTargetGame) ?? null
     : null;
+
+  // Reset team filter when TGO changes and team is no longer valid
+  useEffect(() => {
+    if (teamFilter && !isTeamInTGO(teamFilter, activeTGO)) setTeamFilter("");
+  }, [activeTGO]);
+
+  const allTeams = useMemo(() => {
+    return [...new Set(data.teamTargets.map(t => t.team_name))].sort();
+  }, [data.teamTargets]);
 
   const setStatus = (key: string, s: CrossListStatus) => setStatuses(p => ({ ...p, [key]: s }));
   const setNote = (key: string, n: string) => setNotes(p => ({ ...p, [key]: n }));
@@ -2103,8 +2212,10 @@ function CrossGameShortlists({
       ? (r: ResearchRow) => r.team_id === activeTGO.homeTeamId || r.team_id === activeTGO.awayTeamId
       : () => true;
 
+    const teamRowFilter = (r: ResearchRow) => !teamFilter || r.team_name === teamFilter;
+
     const modeGameFilter = (r: ResearchRow) =>
-      (includeNextUp || !r.isNextUp) && (includeCurrent || r.isNextUp) && tgoFilter(r);
+      (includeNextUp || !r.isNextUp) && (includeCurrent || r.isNextUp) && tgoFilter(r) && teamRowFilter(r);
 
     const allDisp = applyModeFilter(
       buildRows(data.disposalPlayers, "disposals", 15, 5, concessionMap, data.teamTargets, mode),
@@ -2186,7 +2297,7 @@ function CrossGameShortlists({
         angleTag: "Hitouts · Strong",
         rows: sortRows(
           applyModeFilter(buildRows(data.disposalPlayers, "hitouts", 20, 3, concessionMap, data.teamTargets, mode), mode)
-            .filter(r => (includeNextUp || !r.isNextUp) && (includeCurrent || r.isNextUp) && r.bucket !== "fade"),
+            .filter(r => (includeNextUp || !r.isNextUp) && (includeCurrent || r.isNextUp) && (!activeTGO || r.team_id === activeTGO.homeTeamId || r.team_id === activeTGO.awayTeamId) && (!teamFilter || r.team_name === teamFilter) && r.bucket !== "fade"),
           "hitrate",
         ).slice(0, 8),
       },
@@ -2197,7 +2308,7 @@ function CrossGameShortlists({
         rows: sortRows(allDisp.filter(r => r.bucket === "elite-perfect" || r.bucket === "missed-once"), "hitrate").slice(0, 12),
       },
     ].filter(sl => sl.rows.length > 0);
-  }, [data, concessionMap, mode, includeNextUp, includeCurrent, activeTGO]);
+  }, [data, concessionMap, mode, includeNextUp, includeCurrent, activeTGO, teamFilter]);
 
   return (
     <div className="space-y-4">
@@ -2205,12 +2316,30 @@ function CrossGameShortlists({
         Private browser-only workflow state. Status and notes reset on page refresh. No odds. No betting data.
       </div>
 
+      {/* When a specific game is selected, cross-game shortlists are scoped to that game */}
       {activeTGO && (
-        <div className="text-[11px] text-sky-300 bg-sky-950/20 border border-sky-600/20 rounded px-3 py-2 flex items-center gap-2">
-          <span className="font-semibold">Game filter active:</span>
-          {activeTGO.homeTeamName} v {activeTGO.awayTeamName} (R{activeTGO.round}) — showing players from these two teams only. Cross-game shortlists still list all qualifying players from the selected game.
+        <div className="border border-sky-600/20 bg-sky-950/10 rounded-xl px-4 py-3 space-y-1.5">
+          <div className="flex items-center gap-2 text-[12px] font-semibold text-sky-300">
+            <Lightbulb className="h-3.5 w-3.5 shrink-0" />
+            Cross-game shortlist scoped to: R{activeTGO.round} · {activeTGO.homeTeamName} v {activeTGO.awayTeamName}
+          </div>
+          <div className="text-[11px] text-zinc-400 leading-relaxed">
+            Cross-game shortlists normally compare players across all games. When a specific Target Game is selected, only players from these two teams appear here.
+            For full cross-round comparison, set Target Game back to <span className="text-zinc-300 font-medium">All Target Games</span>.
+            To focus on multi-player angles within just this game, use <span className="text-zinc-300 font-medium">Same-Game Shortlists</span>.
+          </div>
         </div>
       )}
+
+      {/* Team filter (separate from TGO filter) */}
+      <div className="flex flex-wrap gap-4 items-center bg-zinc-900/50 border border-zinc-800 rounded-lg p-3">
+        <div className="shrink-0">
+          <TabTeamFilter teams={allTeams} value={teamFilter} onChange={setTeamFilter} activeTGO={activeTGO} />
+        </div>
+        {activeTGO && teamFilter && !isTeamInTGO(teamFilter, activeTGO) && (
+          <InvalidTeamGameState teamName={teamFilter} tgo={activeTGO} onResetTeam={() => setTeamFilter("")} />
+        )}
+      </div>
 
       <div className="flex flex-wrap gap-4 items-center bg-zinc-900/50 border border-zinc-800 rounded-lg p-3">
         <label className="flex items-center gap-2 text-[12px] text-zinc-400 cursor-pointer">
@@ -2296,9 +2425,20 @@ function TeamMatchAngles({
   selectedTargetGame: string;
   targetGameOptions: TargetGameOption[];
 }) {
+  const [teamFilter, setTeamFilter] = useState("");
+
   const activeTGO = selectedTargetGame !== "all"
     ? targetGameOptions.find(o => o.key === selectedTargetGame) ?? null
     : null;
+
+  // Reset team filter if no longer valid for TGO
+  useEffect(() => {
+    if (teamFilter && !isTeamInTGO(teamFilter, activeTGO)) setTeamFilter("");
+  }, [activeTGO]);
+
+  const allTeams = useMemo(() => {
+    return [...new Set(data.teamTargets.map(t => t.team_name))].sort();
+  }, [data.teamTargets]);
 
   const teamRows = useMemo(() => {
     return data.teamTargets
@@ -2306,7 +2446,9 @@ function TeamMatchAngles({
         if (mode === "played-this-round") return tt.has_played_current_round;
         if (mode === "not-yet-played") return !tt.has_played_current_round;
         // Apply shared target game filter
-        if (activeTGO) return tt.team_id === activeTGO.homeTeamId || tt.team_id === activeTGO.awayTeamId;
+        if (activeTGO && tt.team_id !== activeTGO.homeTeamId && tt.team_id !== activeTGO.awayTeamId) return false;
+        // Apply per-tab team filter
+        if (teamFilter && tt.team_name !== teamFilter) return false;
         return true;
       })
       .map(tt => {
@@ -2314,59 +2456,71 @@ function TeamMatchAngles({
         const teamRow = data.teamDisposals.find(t => t.team_id === tt.team_id);
         return { tt, target, teamRow };
       });
-  }, [data, mode, activeTGO]);
+  }, [data, mode, activeTGO, teamFilter]);
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <SCard label="Teams Next-Up" value={String(data.teamsNextUp)} sub="completed current game" />
-        <SCard label="Teams Current Round" value={String(data.teamsCurrentRound)} sub="yet to play" />
-        <SCard label="Target Rounds" value={data.targetRounds.join(", ") || "—"} sub="rounds represented" />
-        <SCard label="Current Round" value={data.roundLabel} sub={data.roundInfo?.round_status ?? data.roundSource} />
+      {/* Team filter */}
+      <div className="flex flex-wrap gap-3 items-start bg-zinc-900/50 border border-zinc-800 rounded-lg p-3">
+        <TabTeamFilter teams={allTeams} value={teamFilter} onChange={setTeamFilter} activeTGO={activeTGO} />
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-[11px]">
-          <thead>
-            <tr className="border-b border-zinc-800 text-zinc-500 font-medium">
-              <th className="text-left py-1.5 px-2">Team</th>
-              <th className="text-left py-1.5 px-2">Cur Game Status</th>
-              <th className="text-left py-1.5 px-2">Target Mode</th>
-              <th className="text-left py-1.5 px-2">Target Opponent</th>
-              <th className="text-left py-1.5 px-2">Target Round</th>
-              <th className="text-left py-1.5 px-2">Target Date</th>
-              <th className="text-right py-1.5 px-2">Opp Conceded L5</th>
-              <th className="text-right py-1.5 px-2">Team Avg L5</th>
-              <th className="text-right py-1.5 px-2">Projection</th>
-            </tr>
-          </thead>
-          <tbody>
-            {teamRows.map(({ tt, target, teamRow }) => (
-              <tr key={tt.team_id} className={`border-b border-zinc-900 hover:bg-zinc-900/30 ${target.isNextUp ? "bg-emerald-950/10" : ""}`}>
-                <td className="py-1.5 px-2 font-medium text-zinc-200">{tt.team_name}</td>
-                <td className="py-1.5 px-2">
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${isCompletedStatus(tt.current_game_status) ? "bg-emerald-950/50 text-emerald-300" : "bg-zinc-800 text-zinc-400"}`}>
-                    {tt.current_game_status}
-                  </span>
-                </td>
-                <td className="py-1.5 px-2"><TargetBadgeChip badge={target.badge} /></td>
-                <td className={`py-1.5 px-2 font-medium ${target.isNextUp ? "text-emerald-300" : "text-zinc-300"}`}>{target.opponent}</td>
-                <td className="py-1.5 px-2 text-zinc-400">R{target.round}</td>
-                <td className="py-1.5 px-2 text-zinc-500 text-[10px]">{target.gameDate ? fmtDate(target.gameDate) : "—"}</td>
-                <td className="py-1.5 px-2 text-right font-mono text-zinc-300">{teamRow?.opponent_conceded_l5?.toFixed(1) ?? "—"}</td>
-                <td className="py-1.5 px-2 text-right font-mono text-zinc-400">{teamRow?.recent_avg_l5?.toFixed(1) ?? "—"}</td>
-                <td className="py-1.5 px-2 text-right font-mono text-zinc-300">{teamRow?.projection?.toFixed(0) ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Invalid team + TGO combination */}
+      {activeTGO && teamFilter && !isTeamInTGO(teamFilter, activeTGO) ? (
+        <InvalidTeamGameState teamName={teamFilter} tgo={activeTGO} onResetTeam={() => setTeamFilter("")} />
+      ) : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <SCard label="Teams Next-Up" value={String(data.teamsNextUp)} sub="completed current game" />
+            <SCard label="Teams Current Round" value={String(data.teamsCurrentRound)} sub="yet to play" />
+            <SCard label="Target Rounds" value={data.targetRounds.join(", ") || "—"} sub="rounds represented" />
+            <SCard label="Current Round" value={data.roundLabel} sub={data.roundInfo?.round_status ?? data.roundSource} />
+          </div>
 
-      {/* Upcoming next-up opponent note */}
-      {teamRows.some(r => r.target.isNextUp) && (
-        <div className="text-[10px] text-zinc-600 border-t border-zinc-900 pt-2">
-          Next-up rows show the teams' NEXT scheduled opponent (future fixture). Opponent concession data reflects that opponent's current stats and may still update if the opponent has not played their current game.
-        </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-[11px]">
+              <thead>
+                <tr className="border-b border-zinc-800 text-zinc-500 font-medium">
+                  <th className="text-left py-1.5 px-2">Team</th>
+                  <th className="text-left py-1.5 px-2">Cur Game Status</th>
+                  <th className="text-left py-1.5 px-2">Target Mode</th>
+                  <th className="text-left py-1.5 px-2">Target Opponent</th>
+                  <th className="text-left py-1.5 px-2">Target Round</th>
+                  <th className="text-left py-1.5 px-2">Target Date</th>
+                  <th className="text-right py-1.5 px-2">Opp Conceded L5</th>
+                  <th className="text-right py-1.5 px-2">Team Avg L5</th>
+                  <th className="text-right py-1.5 px-2">Projection</th>
+                </tr>
+              </thead>
+              <tbody>
+                {teamRows.map(({ tt, target, teamRow }) => (
+                  <tr key={tt.team_id} className={`border-b border-zinc-900 hover:bg-zinc-900/30 ${target.isNextUp ? "bg-emerald-950/10" : ""}`}>
+                    <td className="py-1.5 px-2 font-medium text-zinc-200">{tt.team_name}</td>
+                    <td className="py-1.5 px-2">
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${isCompletedStatus(tt.current_game_status) ? "bg-emerald-950/50 text-emerald-300" : "bg-zinc-800 text-zinc-400"}`}>
+                        {tt.current_game_status}
+                      </span>
+                    </td>
+                    <td className="py-1.5 px-2"><TargetBadgeChip badge={target.badge} /></td>
+                    <td className={`py-1.5 px-2 font-medium ${target.isNextUp ? "text-emerald-300" : "text-zinc-300"}`}>{target.opponent}</td>
+                    <td className="py-1.5 px-2 text-zinc-400">R{target.round}</td>
+                    <td className="py-1.5 px-2 text-zinc-500 text-[10px]">{target.gameDate ? fmtDate(target.gameDate) : "—"}</td>
+                    <td className="py-1.5 px-2 text-right font-mono text-zinc-300">{teamRow?.opponent_conceded_l5?.toFixed(1) ?? "—"}</td>
+                    <td className="py-1.5 px-2 text-right font-mono text-zinc-400">{teamRow?.recent_avg_l5?.toFixed(1) ?? "—"}</td>
+                    <td className="py-1.5 px-2 text-right font-mono text-zinc-300">{teamRow?.projection?.toFixed(0) ?? "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Upcoming next-up opponent note */}
+          {teamRows.some(r => r.target.isNextUp) && (
+            <div className="text-[10px] text-zinc-600 border-t border-zinc-900 pt-2">
+              Next-up rows show the teams' NEXT scheduled opponent (future fixture). Opponent concession data reflects that opponent's current stats and may still update if the opponent has not played their current game.
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -2394,7 +2548,7 @@ function PostIdeas({
   const [formatFilter, setFormatFilter] = useState<PostFormat | "all">("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [timingFilter, setTimingFilter] = useState("all");
-  const [teamFilter, setTeamFilter] = useState("all");
+  const [teamFilter, setTeamFilter] = useState("");
   const [roundFilter, setRoundFilter] = useState("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -2403,15 +2557,20 @@ function PostIdeas({
     ? targetGameOptions.find(o => o.key === selectedTargetGame) ?? null
     : null;
 
+  // Reset team filter if no longer valid for TGO
+  useEffect(() => {
+    if (teamFilter && !isTeamInTGO(teamFilter, activeTGO)) setTeamFilter("");
+  }, [activeTGO]);
+
   const categories = useMemo(() => ["all", ...new Set(posts.map(p => p.category))], [posts]);
-  const allTeamNames = useMemo(() => ["all", ...new Set(posts.flatMap(p => p.teamNames))].sort(), [posts]);
+  const allTeamNames = useMemo(() => [...new Set(posts.flatMap(p => p.teamNames))].sort(), [posts]);
   const allRounds = useMemo(() => ["all", ...data.targetRounds.map(r => `Round ${r}`)], [data.targetRounds]);
 
   const filtered = useMemo(() => {
     return posts.filter(p => {
       if (formatFilter !== "all" && p.format !== formatFilter) return false;
       if (categoryFilter !== "all" && p.category !== categoryFilter) return false;
-      if (teamFilter !== "all" && !p.teamNames.includes(teamFilter)) return false;
+      if (teamFilter && !p.teamNames.includes(teamFilter)) return false;
       if (roundFilter !== "all") {
         const rn = parseInt(roundFilter.replace("Round ", ""));
         if (!isNaN(rn) && !p.targetRoundLabel.includes(`Round ${rn}`)) return false;
@@ -2460,10 +2619,14 @@ function PostIdeas({
           <Sel label="Game Timing" value={timingFilter} onChange={setTimingFilter} options={POST_TIMING_OPTIONS} />
           <Sel label="Target Round" value={roundFilter} onChange={setRoundFilter}
             options={allRounds.map(r => ({ value: r, label: r }))} />
-          <Sel label="Team" value={teamFilter} onChange={setTeamFilter}
-            options={allTeamNames.map(t => ({ value: t, label: t }))} />
+          <TabTeamFilter teams={allTeamNames} value={teamFilter} onChange={setTeamFilter} activeTGO={activeTGO} />
         </div>
       </div>
+
+      {/* Invalid team + TGO combination */}
+      {activeTGO && teamFilter && !isTeamInTGO(teamFilter, activeTGO) && (
+        <InvalidTeamGameState teamName={teamFilter} tgo={activeTGO} onResetTeam={() => setTeamFilter("")} />
+      )}
 
       <div className="text-[11px] text-zinc-500">
         <span className="text-zinc-300 font-medium">{filtered.length}</span> post ideas
