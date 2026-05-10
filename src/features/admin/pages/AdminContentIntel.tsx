@@ -1,6 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { RefreshCw, Copy, Check, TrendingUp, Target, Zap, FileText, TriangleAlert as AlertTriangle, Users, Sword, Lightbulb, Filter, ChevronDown, ChevronUp, ChartBar as BarChart, ArrowUpRight } from "lucide-react";
+import {
+  RefreshCw, Copy, Check, TrendingUp, Target, Zap, FileText,
+  TriangleAlert as AlertTriangle, Sword, Lightbulb, Filter,
+  ChevronDown, ChevronUp, ChartBar as BarChart, ArrowUpRight,
+  Clock, Database, ChevronRight,
+} from "lucide-react";
 import { AdminPageHeader } from "@/features/admin/shared/AdminPageHeader";
 import type { StatBoardPlayer, StatBoardMatch, ThresholdHitRate } from "@/features/afl/stat-board/types";
 import type { StatBoardTeamRow } from "@/features/afl/stat-board/teamTypes";
@@ -27,6 +32,19 @@ type AngleTag =
 
 type PostFormat = "tiktok" | "instagram" | "reddit" | "twitter";
 
+// Market-check grouping labels (Part 9)
+type MarketLabel =
+  | "Near-perfect trend"
+  | "Strong trend"
+  | "Missed once"
+  | "Missed twice"
+  | "Fade angle"
+  | "Volatile"
+  | "Matchup-supported"
+  | "Projection-supported"
+  | "Market-check"
+  | "Worth reviewing";
+
 interface PostTemplate {
   id: string;
   format: PostFormat;
@@ -37,21 +55,48 @@ interface PostTemplate {
   cta: string;
 }
 
+// Round info from get_current_afl_round_safe
+interface RoundInfo {
+  current_round: number;
+  round_label: string;
+  round_status: string;
+  total_games: number;
+  completed_games: number;
+  in_progress_games: number;
+  upcoming_games: number;
+  next_round: number;
+  should_rollover: boolean;
+  reason: string;
+}
+
+// Source freshness tracking (Part 8)
+interface SourceFreshness {
+  rankingsCachedAt: string | null;
+  statBoardRowCount: number;
+  rankingsRowCount: number;
+  matchRowCount: number;
+  teamRowCount: number;
+  generatedAt: Date;
+  roundSource: "get_current_afl_round_safe" | "stat_board_week_fallback";
+}
+
 interface ContentIntelData {
+  roundInfo: RoundInfo | null;
+  currentRound: number;
+  roundLabel: string;
   matches: StatBoardMatch[];
   disposalPlayers: StatBoardPlayer[];
   goalPlayers: StatBoardPlayer[];
   teamDisposals: StatBoardTeamRow[];
   teamGoals: StatBoardTeamRow[];
   rankings: RankingRow[];
-  currentRound: number;
-  roundLabel: string;
+  freshness: SourceFreshness;
   loadedAt: Date;
 }
 
 type MainTab = "mining" | "fantasy" | "match" | "posts";
 
-// ─── Stat family config ─────────────────────────────────────────────────────────
+// ─── Stat family config ──────────────────────────────────────────────────────
 
 interface StatFamilyConfig {
   label: string;
@@ -64,31 +109,30 @@ interface StatFamilyConfig {
 }
 
 const STAT_FAMILIES: Record<StatFamily, StatFamilyConfig> = {
-  disposals:   { label: "Disposals",       thresholds: [10, 15, 20, 25, 30], defaultThreshold: 20, unit: "disp",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: true },
-  goals:       { label: "Goals",           thresholds: [1, 2, 3, 4, 5],      defaultThreshold: 1,  unit: "goals", dataKey: "goalPlayers",     rpcLens: "goals",     hasLiveData: true },
-  fantasy:     { label: "Fantasy Score",   thresholds: [60, 70, 80, 90, 100, 110, 120], defaultThreshold: 80, unit: "pts", dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
-  tackles:     { label: "Tackles",         thresholds: [3, 5, 7, 10],        defaultThreshold: 5,  unit: "tck",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
-  marks:       { label: "Marks",           thresholds: [5, 7, 10],           defaultThreshold: 5,  unit: "mrk",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
-  clearances:  { label: "Clearances",      thresholds: [3, 5, 7, 10],        defaultThreshold: 5,  unit: "clr",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
-  inside50s:   { label: "Inside 50s",      thresholds: [3, 5, 7, 10],        defaultThreshold: 5,  unit: "i50",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
-  rebounds50s: { label: "Rebounds 50s",    thresholds: [2, 4, 6, 8],         defaultThreshold: 4,  unit: "r50",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
-  hitouts:     { label: "Hitouts",         thresholds: [20, 30, 40, 50],     defaultThreshold: 30, unit: "hit",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
+  disposals:   { label: "Disposals",    thresholds: [10,15,20,25,30],    defaultThreshold: 20, unit: "disp",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: true },
+  goals:       { label: "Goals",        thresholds: [1,2,3,4,5],         defaultThreshold: 1,  unit: "goals", dataKey: "goalPlayers",     rpcLens: "goals",     hasLiveData: true },
+  fantasy:     { label: "Fantasy Score",thresholds: [60,70,80,90,100,110,120], defaultThreshold: 80, unit: "pts", dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
+  tackles:     { label: "Tackles",      thresholds: [3,5,7,10],          defaultThreshold: 5,  unit: "tck",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
+  marks:       { label: "Marks",        thresholds: [5,7,10],            defaultThreshold: 5,  unit: "mrk",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
+  clearances:  { label: "Clearances",   thresholds: [3,5,7,10],          defaultThreshold: 5,  unit: "clr",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
+  inside50s:   { label: "Inside 50s",   thresholds: [3,5,7,10],          defaultThreshold: 5,  unit: "i50",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
+  rebounds50s: { label: "Rebounds 50s", thresholds: [2,4,6,8],           defaultThreshold: 4,  unit: "r50",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
+  hitouts:     { label: "Hitouts",      thresholds: [20,30,40,50],       defaultThreshold: 30, unit: "hit",  dataKey: "disposalPlayers", rpcLens: "disposals", hasLiveData: false },
 };
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmtRate(hits: number, games: number): string {
-  return `${hits}/${games}`;
-}
-
-// Rate from RPC is already 0–100 (integer), not 0.0–1.0
+// Rate from RPC is stored as 0–100 integer (e.g. rate=100 means 100%), not 0.0–1.0 float
 function rateToFraction(rate: number): number {
   return rate > 1 ? rate / 100 : rate;
 }
 
 function fmtPct(rate: number): string {
-  const fraction = rateToFraction(rate);
-  return `${Math.round(fraction * 100)}%`;
+  return `${Math.round(rateToFraction(rate) * 100)}%`;
+}
+
+function fmtRate(hits: number, games: number): string {
+  return `${hits}/${games}`;
 }
 
 function hitRateBg(rate: number): string {
@@ -99,25 +143,81 @@ function hitRateBg(rate: number): string {
 }
 
 function confidenceColor(label: string | null): string {
-  if (label === "HIGH") return "text-emerald-400";
+  if (label === "HIGH")   return "text-emerald-400";
   if (label === "MEDIUM") return "text-amber-400";
   return "text-zinc-400";
 }
 
+// Part 9 — market-check grouping label from hit rate + supporting signals
+function getMarketLabel(
+  hits: number,
+  games: number,
+  rate: number,
+  projection: number | null,
+  threshold: number,
+  opponentConceded: number | null,
+): MarketLabel {
+  const frac = rateToFraction(rate);
+  const misses = games - hits;
+
+  if (frac === 1.0 && games >= 6) return "Near-perfect trend";
+  if (frac >= 0.85) return "Strong trend";
+  if (misses === 1) return "Missed once";
+  if (misses === 2) return "Missed twice";
+  if (frac < 0.40 && games >= 5) return "Fade angle";
+  if (frac >= 0.70 && projection != null && projection > threshold * 1.2) return "Projection-supported";
+  if (frac >= 0.60 && opponentConceded != null && opponentConceded > threshold * 12) return "Matchup-supported";
+  if (frac < 0.50) return "Market-check";
+  return "Worth reviewing";
+}
+
+function marketLabelCls(label: MarketLabel): string {
+  switch (label) {
+    case "Near-perfect trend":   return "bg-emerald-950/60 text-emerald-300 border-emerald-500/30";
+    case "Strong trend":         return "bg-emerald-950/40 text-emerald-400 border-emerald-600/30";
+    case "Missed once":          return "bg-amber-950/40 text-amber-300 border-amber-500/30";
+    case "Missed twice":         return "bg-amber-950/60 text-amber-400 border-amber-500/30";
+    case "Fade angle":           return "bg-red-950/60 text-red-400 border-red-500/30";
+    case "Volatile":             return "bg-orange-950/60 text-orange-400 border-orange-500/30";
+    case "Projection-supported": return "bg-sky-950/60 text-sky-400 border-sky-500/30";
+    case "Matchup-supported":    return "bg-teal-950/60 text-teal-400 border-teal-500/30";
+    case "Market-check":         return "bg-zinc-900 text-zinc-400 border-zinc-600/30";
+    case "Worth reviewing":      return "bg-zinc-900/60 text-zinc-500 border-zinc-700/30";
+  }
+}
+
 function buildAngleTagCls(tag: AngleTag): string {
   switch (tag) {
-    case "Safe":           return "bg-emerald-950/60 text-emerald-400 border-emerald-500/30";
-    case "High Confidence":return "bg-emerald-950/40 text-emerald-300 border-emerald-600/30";
-    case "Volatile Upside":return "bg-amber-950/60 text-amber-400 border-amber-500/30";
-    case "Fade":           return "bg-red-950/60 text-red-400 border-red-500/30";
-    case "Matchup Attack": return "bg-sky-950/60 text-sky-400 border-sky-500/30";
-    case "Captain":        return "bg-yellow-950/60 text-yellow-400 border-yellow-500/30";
-    case "Value":          return "bg-teal-950/60 text-teal-400 border-teal-500/30";
-    case "Market Check":   return "bg-zinc-900 text-zinc-400 border-zinc-600/30";
-    case "Team Concession":return "bg-orange-950/60 text-orange-400 border-orange-500/30";
-    case "Current Round":  return "bg-blue-950/60 text-blue-400 border-blue-500/30";
-    case "Consistency":    return "bg-violet-950/60 text-violet-400 border-violet-500/30";
+    case "Safe":            return "bg-emerald-950/60 text-emerald-400 border-emerald-500/30";
+    case "High Confidence": return "bg-emerald-950/40 text-emerald-300 border-emerald-600/30";
+    case "Volatile Upside": return "bg-amber-950/60 text-amber-400 border-amber-500/30";
+    case "Fade":            return "bg-red-950/60 text-red-400 border-red-500/30";
+    case "Matchup Attack":  return "bg-sky-950/60 text-sky-400 border-sky-500/30";
+    case "Captain":         return "bg-yellow-950/60 text-yellow-400 border-yellow-500/30";
+    case "Value":           return "bg-teal-950/60 text-teal-400 border-teal-500/30";
+    case "Market Check":    return "bg-zinc-900 text-zinc-400 border-zinc-600/30";
+    case "Team Concession": return "bg-orange-950/60 text-orange-400 border-orange-500/30";
+    case "Current Round":   return "bg-blue-950/60 text-blue-400 border-blue-500/30";
+    case "Consistency":     return "bg-violet-950/60 text-violet-400 border-violet-500/30";
   }
+}
+
+function fmtTimestamp(d: Date | string | null): string {
+  if (!d) return "—";
+  const date = typeof d === "string" ? new Date(d) : d;
+  return date.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true });
+}
+
+function fmtAge(d: Date | string | null): string {
+  if (!d) return "—";
+  const date = typeof d === "string" ? new Date(d) : d;
+  const diffMs = Date.now() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH}h ago`;
+  return `${Math.floor(diffH / 24)}d ago`;
 }
 
 // ─── Small shared components ───────────────────────────────────────────────────
@@ -179,7 +279,92 @@ function Section({ title, count, children }: { title: string; count?: number; ch
   );
 }
 
-// ─── Player mining table ────────────────────────────────────────────────────────
+// ─── Source Freshness Panel (Part 8) ──────────────────────────────────────────
+
+function FreshnessPanel({ data }: { data: ContentIntelData }) {
+  const [open, setOpen] = useState(false);
+  const f = data.freshness;
+  const ri = data.roundInfo;
+
+  return (
+    <div className="rounded-lg border border-border/40 bg-muted/5 mb-5">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-4 py-2.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <span className="flex items-center gap-1.5">
+          <Database className="h-3 w-3" />
+          Source freshness — rankings cached {fmtAge(f.rankingsCachedAt)} · content generated {fmtAge(f.generatedAt)}
+        </span>
+        {open ? <ChevronUp className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+      </button>
+      {open && (
+        <div className="border-t border-border/40 px-4 py-3 grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-[11px]">
+          <div>
+            <span className="text-muted-foreground">Round source:</span>{" "}
+            <span className="text-foreground font-mono">{f.roundSource}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Current round:</span>{" "}
+            <span className="text-foreground font-semibold">Round {data.currentRound}</span>
+            {ri && <span className="text-muted-foreground ml-1">({ri.round_status})</span>}
+          </div>
+          {ri && (
+            <>
+              <div>
+                <span className="text-muted-foreground">Games this round:</span>{" "}
+                <span className="text-foreground">{ri.total_games} total · {ri.completed_games} done · {ri.in_progress_games} live</span>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Should rollover:</span>{" "}
+                <span className={ri.should_rollover ? "text-amber-400" : "text-emerald-400"}>{ri.should_rollover ? "Yes" : "No"}</span>
+              </div>
+            </>
+          )}
+          <div>
+            <span className="text-muted-foreground">Rankings cached at:</span>{" "}
+            <span className="text-foreground">{f.rankingsCachedAt ? fmtTimestamp(f.rankingsCachedAt) : "unknown"}</span>
+            {f.rankingsCachedAt && <span className="text-muted-foreground ml-1">({fmtAge(f.rankingsCachedAt)})</span>}
+          </div>
+          <div>
+            <span className="text-muted-foreground">Rankings rows:</span>{" "}
+            <span className="text-foreground">{f.rankingsRowCount}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Stat board players:</span>{" "}
+            <span className="text-foreground">{f.statBoardRowCount} disposal · goal rows loaded</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Match rows:</span>{" "}
+            <span className="text-foreground">{f.matchRowCount}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Team rows:</span>{" "}
+            <span className="text-foreground">{f.teamRowCount}</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Post ideas derived from:</span>{" "}
+            <span className="text-foreground">live rows (regenerated on each load/refetch)</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Content Intel generated:</span>{" "}
+            <span className="text-foreground">{fmtTimestamp(f.generatedAt)} ({fmtAge(f.generatedAt)})</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Refetch interval:</span>{" "}
+            <span className="text-foreground">Every 5 min while page is open</span>
+          </div>
+          <div>
+            <span className="text-muted-foreground">Window focus refetch:</span>{" "}
+            <span className="text-foreground">Yes, if data &gt; 5 min stale</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Player mining table ──────────────────────────────────────────────────────
 
 interface MiningRow {
   player_name: string;
@@ -194,24 +379,25 @@ interface MiningRow {
   projection: number | null;
   confidence_label: string | null;
   reason: string;
+  marketLabel: MarketLabel;
 }
 
 function buildMiningReason(
   family: StatFamily, threshold: number, hits: number, games: number,
   rate: number, l10avg: number | null, proj: number | null,
 ): string {
-  const familyCfg = STAT_FAMILIES[family];
+  const cfg = STAT_FAMILIES[family];
   const frac = rateToFraction(rate);
   const pct = Math.round(frac * 100);
-  const threshStr = `${threshold}+ ${familyCfg.label.toLowerCase()}`;
+  const threshStr = `${threshold}+ ${cfg.label.toLowerCase()}`;
   const avg10 = l10avg != null ? l10avg.toFixed(1) : null;
   const projStr = proj != null ? Math.round(proj) : null;
 
-  let s = `${hits}/${games} games above ${threshStr} threshold`;
+  let s = `${hits}/${games} above ${threshStr}`;
   if (avg10) s += `, L10 avg ${avg10}`;
-  if (projStr) s += `, projected ${projStr}`;
-  if (pct === 100 && games >= 5) s = `Perfect hit rate (${games}/${games}) — ` + s;
-  else if (pct >= 90) s = `Near-perfect hit rate — ` + s;
+  if (projStr) s += `, proj ${projStr}`;
+  if (pct === 100 && games >= 5) s = `Perfect (${games}/${games}) — ` + s;
+  else if (pct >= 90) s = `Near-perfect — ` + s;
   return s;
 }
 
@@ -235,13 +421,13 @@ function getMiningRows(
 
     let include = false;
     switch (profile) {
-      case "all":        include = true; break;
-      case "perfect":    include = frac === 1.0; break;
+      case "all":          include = true; break;
+      case "perfect":      include = frac === 1.0; break;
       case "missed-once":  include = misses === 1; break;
       case "missed-twice": include = misses === 2; break;
-      case "at-least-80": include = frac >= 0.80; break;
-      case "at-least-70": include = frac >= 0.70; break;
-      case "trending-up":  {
+      case "at-least-80":  include = frac >= 0.80; break;
+      case "at-least-70":  include = frac >= 0.70; break;
+      case "trending-up": {
         const l5 = p.last_5_avg ?? 0;
         const l10 = p.last_10_avg ?? 0;
         include = l5 > threshold && l5 > l10;
@@ -265,6 +451,7 @@ function getMiningRows(
       projection: p.projection,
       confidence_label: p.confidence_label,
       reason: buildMiningReason(family, threshold, hr.hits, hr.games, hr.rate, p.last_10_avg, p.projection),
+      marketLabel: getMarketLabel(hr.hits, hr.games, hr.rate, p.projection, threshold, null),
     });
   }
 
@@ -289,6 +476,14 @@ function getMiningRows(
   });
 
   return rows;
+}
+
+function MarketLabelBadge({ label }: { label: MarketLabel }) {
+  return (
+    <span className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold border ${marketLabelCls(label)}`}>
+      {label}
+    </span>
+  );
 }
 
 function MiningTable({ rows, threshold, family, profile }: {
@@ -318,11 +513,12 @@ function MiningTable({ rows, threshold, family, profile }: {
             <th className="pb-1.5 pr-3 font-medium">Team</th>
             <th className="pb-1.5 pr-3 font-medium">vs</th>
             <th className="pb-1.5 pr-3 font-medium text-right">Record</th>
-            <th className="pb-1.5 pr-3 font-medium text-right">Rate</th>
-            <th className="pb-1.5 pr-3 font-medium text-right">L5 avg</th>
-            <th className="pb-1.5 pr-3 font-medium text-right">L10 avg</th>
-            <th className="pb-1.5 pr-3 font-medium text-right">Ssn avg</th>
+            <th className="pb-1.5 pr-3 font-medium text-right">Rate%</th>
+            <th className="pb-1.5 pr-3 font-medium text-right">L5</th>
+            <th className="pb-1.5 pr-3 font-medium text-right">L10</th>
+            <th className="pb-1.5 pr-3 font-medium text-right">Ssn</th>
             <th className="pb-1.5 pr-3 font-medium text-right">Proj</th>
+            <th className="pb-1.5 pr-3 font-medium">Label</th>
             <th className="pb-1.5 font-medium">Conf</th>
           </tr>
         </thead>
@@ -345,6 +541,7 @@ function MiningTable({ rows, threshold, family, profile }: {
               <td className="py-1.5 pr-3 text-right text-muted-foreground">{r.l10avg != null ? r.l10avg.toFixed(1) : "—"}</td>
               <td className="py-1.5 pr-3 text-right text-muted-foreground">{r.seasonAvg != null ? r.seasonAvg.toFixed(1) : "—"}</td>
               <td className="py-1.5 pr-3 text-right text-muted-foreground">{r.projection != null ? Math.round(r.projection) : "—"}</td>
+              <td className="py-1.5 pr-3"><MarketLabelBadge label={r.marketLabel} /></td>
               <td className="py-1.5">
                 <span className={`text-[10px] font-semibold ${confidenceColor(r.confidence_label)}`}>
                   {r.confidence_label ?? "—"}
@@ -358,7 +555,7 @@ function MiningTable({ rows, threshold, family, profile }: {
   );
 }
 
-// ─── Content Mining Tab ─────────────────────────────────────────────────────────
+// ─── Content Mining Tab ───────────────────────────────────────────────────────
 
 interface MiningFilters {
   family: StatFamily;
@@ -370,10 +567,10 @@ interface MiningFilters {
 }
 
 const PRESET_CHIPS: Array<{ label: string; family: StatFamily; threshold: number; profile: HitProfile }> = [
-  { label: "20+ Disp",   family: "disposals", threshold: 20, profile: "all" },
-  { label: "25+ Disp",   family: "disposals", threshold: 25, profile: "all" },
-  { label: "30+ Disp",   family: "disposals", threshold: 30, profile: "all" },
-  { label: "2+ Goals",   family: "goals",     threshold: 2,  profile: "all" },
+  { label: "20+ Disp",    family: "disposals", threshold: 20, profile: "all" },
+  { label: "25+ Disp",    family: "disposals", threshold: 25, profile: "all" },
+  { label: "30+ Disp",    family: "disposals", threshold: 30, profile: "all" },
+  { label: "2+ Goals",    family: "goals",     threshold: 2,  profile: "all" },
   { label: "Perfect 20+", family: "disposals", threshold: 20, profile: "perfect" },
   { label: "Perfect 1G+", family: "goals",     threshold: 1,  profile: "perfect" },
   { label: "Fade Angles", family: "disposals", threshold: 20, profile: "fade" },
@@ -382,12 +579,8 @@ const PRESET_CHIPS: Array<{ label: string; family: StatFamily; threshold: number
 
 function ContentMiningTab({ data }: { data: ContentIntelData }) {
   const [filters, setFilters] = useState<MiningFilters>({
-    family: "disposals",
-    threshold: 20,
-    profile: "all",
-    window: "last10",
-    minSample: 3,
-    sortBy: "hitrate",
+    family: "disposals", threshold: 20, profile: "all",
+    window: "last10", minSample: 3, sortBy: "hitrate",
   });
   const [showFilters, setShowFilters] = useState(true);
 
@@ -398,33 +591,20 @@ function ContentMiningTab({ data }: { data: ContentIntelData }) {
   function applyPreset(p: typeof PRESET_CHIPS[0]) {
     const cfg = STAT_FAMILIES[p.family];
     setFilters(prev => ({
-      ...prev,
-      family: p.family,
-      threshold: p.threshold,
-      profile: p.profile,
-      minSample: 3,
+      ...prev, family: p.family, threshold: p.threshold, profile: p.profile, minSample: 3,
     }));
-    // Ensure threshold is valid for family
-    if (!cfg.thresholds.includes(p.threshold)) {
-      update("threshold", cfg.defaultThreshold);
-    }
+    if (!cfg.thresholds.includes(p.threshold)) update("threshold", cfg.defaultThreshold);
   }
 
   const cfg = STAT_FAMILIES[filters.family];
-
-  // Get source players
   const sourcePlayers = filters.family === "goals" ? data.goalPlayers : data.disposalPlayers;
+  const safeThreshold = cfg.thresholds.includes(filters.threshold) ? filters.threshold : cfg.defaultThreshold;
 
-  // Make sure threshold is valid for family
-  const safeThreshold = cfg.thresholds.includes(filters.threshold)
-    ? filters.threshold
-    : cfg.defaultThreshold;
-
-  // Build sections
-  const eliteRows   = cfg.hasLiveData ? getMiningRows(sourcePlayers, safeThreshold, "perfect",     filters.minSample, filters.sortBy, filters.family) : [];
-  const missedOnce  = cfg.hasLiveData ? getMiningRows(sourcePlayers, safeThreshold, "missed-once", filters.minSample, filters.sortBy, filters.family) : [];
-  const missedTwice = cfg.hasLiveData ? getMiningRows(sourcePlayers, safeThreshold, "missed-twice",filters.minSample, filters.sortBy, filters.family) : [];
-  const fadeRows    = cfg.hasLiveData ? getMiningRows(sourcePlayers, safeThreshold, "fade",        filters.minSample, filters.sortBy, filters.family) : [];
+  // All result groups derived live from current data
+  const eliteRows   = cfg.hasLiveData ? getMiningRows(sourcePlayers, safeThreshold, "perfect",      filters.minSample, filters.sortBy, filters.family) : [];
+  const missedOnce  = cfg.hasLiveData ? getMiningRows(sourcePlayers, safeThreshold, "missed-once",  filters.minSample, filters.sortBy, filters.family) : [];
+  const missedTwice = cfg.hasLiveData ? getMiningRows(sourcePlayers, safeThreshold, "missed-twice", filters.minSample, filters.sortBy, filters.family) : [];
+  const fadeRows    = cfg.hasLiveData ? getMiningRows(sourcePlayers, safeThreshold, "fade",         filters.minSample, filters.sortBy, filters.family) : [];
   const allRows     = cfg.hasLiveData ? getMiningRows(sourcePlayers, safeThreshold, filters.profile, filters.minSample, filters.sortBy, filters.family) : [];
 
   const familyLabel = `${safeThreshold}+ ${cfg.label.toLowerCase()}`;
@@ -463,7 +643,6 @@ function ContentMiningTab({ data }: { data: ContentIntelData }) {
 
         {showFilters && (
           <div className="px-4 pb-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 border-t border-border/40 pt-3">
-            {/* Stat family */}
             <div>
               <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block mb-1">Stat Family</label>
               <select
@@ -472,22 +651,17 @@ function ContentMiningTab({ data }: { data: ContentIntelData }) {
                   const newFamily = e.target.value as StatFamily;
                   const newCfg = STAT_FAMILIES[newFamily];
                   update("family", newFamily);
-                  if (!newCfg.thresholds.includes(filters.threshold)) {
-                    update("threshold", newCfg.defaultThreshold);
-                  }
+                  if (!newCfg.thresholds.includes(filters.threshold)) update("threshold", newCfg.defaultThreshold);
                 }}
                 className="w-full text-xs bg-background border border-border/60 rounded px-2 py-1.5 text-foreground focus:outline-none"
               >
-                {(Object.entries(STAT_FAMILIES) as [StatFamily, StatFamilyConfig][])
-                  .map(([key, c]) => (
-                    <option key={key} value={key} disabled={!c.hasLiveData}>
-                      {c.label}{!c.hasLiveData ? " (coming)" : ""}
-                    </option>
-                  ))}
+                {(Object.entries(STAT_FAMILIES) as [StatFamily, StatFamilyConfig][]).map(([key, c]) => (
+                  <option key={key} value={key} disabled={!c.hasLiveData}>
+                    {c.label}{!c.hasLiveData ? " (coming)" : ""}
+                  </option>
+                ))}
               </select>
             </div>
-
-            {/* Threshold */}
             <div>
               <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block mb-1">Threshold</label>
               <select
@@ -495,13 +669,9 @@ function ContentMiningTab({ data }: { data: ContentIntelData }) {
                 onChange={e => update("threshold", Number(e.target.value))}
                 className="w-full text-xs bg-background border border-border/60 rounded px-2 py-1.5 text-foreground focus:outline-none"
               >
-                {cfg.thresholds.map(t => (
-                  <option key={t} value={t}>{t}+ {cfg.unit}</option>
-                ))}
+                {cfg.thresholds.map(t => <option key={t} value={t}>{t}+ {cfg.unit}</option>)}
               </select>
             </div>
-
-            {/* Hit profile */}
             <div>
               <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block mb-1">Hit Profile</label>
               <select
@@ -519,8 +689,6 @@ function ContentMiningTab({ data }: { data: ContentIntelData }) {
                 <option value="fade">Fade / Under Angles</option>
               </select>
             </div>
-
-            {/* Min sample */}
             <div>
               <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block mb-1">Min Sample</label>
               <select
@@ -533,8 +701,6 @@ function ContentMiningTab({ data }: { data: ContentIntelData }) {
                 <option value={8}>8+ games</option>
               </select>
             </div>
-
-            {/* Sort by */}
             <div>
               <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide block mb-1">Sort By</label>
               <select
@@ -551,8 +717,6 @@ function ContentMiningTab({ data }: { data: ContentIntelData }) {
                 <option value="diff">Diff vs Threshold</option>
               </select>
             </div>
-
-            {/* Reset */}
             <div className="flex items-end">
               <button
                 onClick={() => setFilters({ family: "disposals", threshold: 20, profile: "all", window: "last10", minSample: 3, sortBy: "hitrate" })}
@@ -572,62 +736,56 @@ function ContentMiningTab({ data }: { data: ContentIntelData }) {
         </div>
       )}
 
-      {/* Results — custom profile view */}
+      {/* Results */}
       {cfg.hasLiveData && (
-        <>
-          {filters.profile === "all" ? (
-            // Show grouped sections when profile = all
-            <div className="space-y-8">
-              <Section title="Elite Hitters (Perfect / No Misses)" count={eliteRows.length}>
-                <MiningTable rows={eliteRows} threshold={safeThreshold} family={filters.family} profile="perfect" />
-              </Section>
-              <Section title="Missed Once" count={missedOnce.length}>
-                <MiningTable rows={missedOnce} threshold={safeThreshold} family={filters.family} profile="missed-once" />
-              </Section>
-              <Section title="Missed Twice" count={missedTwice.length}>
-                <MiningTable rows={missedTwice} threshold={safeThreshold} family={filters.family} profile="missed-twice" />
-              </Section>
-              <Section title="Fade / Under Angles (Frequently Misses)" count={fadeRows.length}>
-                <p className="text-[11px] text-muted-foreground mb-3">
-                  Players frequently missing this threshold — useful for fade / unders / market-check content. Data only, not advice.
-                </p>
-                <MiningTable rows={fadeRows} threshold={safeThreshold} family={filters.family} profile="fade" />
-              </Section>
+        filters.profile === "all" ? (
+          <div className="space-y-8">
+            <Section title="Near-Perfect / Perfect (0 misses)" count={eliteRows.length}>
+              <MiningTable rows={eliteRows} threshold={safeThreshold} family={filters.family} profile="perfect" />
+            </Section>
+            <Section title="Missed Once" count={missedOnce.length}>
+              <MiningTable rows={missedOnce} threshold={safeThreshold} family={filters.family} profile="missed-once" />
+            </Section>
+            <Section title="Missed Twice" count={missedTwice.length}>
+              <MiningTable rows={missedTwice} threshold={safeThreshold} family={filters.family} profile="missed-twice" />
+            </Section>
+            <Section title="Fade / Under Angles (Frequently Misses)" count={fadeRows.length}>
+              <p className="text-[11px] text-muted-foreground mb-3">
+                Players frequently missing this threshold. Data only, not advice.
+              </p>
+              <MiningTable rows={fadeRows} threshold={safeThreshold} family={filters.family} profile="fade" />
+            </Section>
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[12px] font-medium text-foreground">
+                {allRows.length} players — {familyLabel} / {filters.profile}
+              </span>
+              {allRows.length > 0 && (
+                <CopyButton text={allRows.map(r =>
+                  `${r.player_name} (${r.team_name} vs ${r.opponent_team_name}): ${fmtRate(r.hits, r.games)} [${fmtPct(r.rate)}] — ${r.reason}`
+                ).join("\n")} />
+              )}
             </div>
-          ) : (
-            // Show filtered single section
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-[12px] font-medium text-foreground">
-                  {allRows.length} players — {familyLabel} / {filters.profile}
-                </span>
-                {allRows.length > 0 && (
-                  <CopyButton text={allRows.map(r =>
-                    `${r.player_name} (${r.team_name} vs ${r.opponent_team_name}): ${fmtRate(r.hits, r.games)} [${fmtPct(r.rate)}] — ${r.reason}`
-                  ).join("\n")} />
-                )}
-              </div>
-              <MiningTable rows={allRows} threshold={safeThreshold} family={filters.family} profile={filters.profile} />
-            </div>
-          )}
-        </>
+            <MiningTable rows={allRows} threshold={safeThreshold} family={filters.family} profile={filters.profile} />
+          </div>
+        )
       )}
     </div>
   );
 }
 
-// ─── Fantasy tab ────────────────────────────────────────────────────────────────
+// ─── Fantasy tab ──────────────────────────────────────────────────────────────
 
 function FantasyTab({ rankings }: { rankings: RankingRow[] }) {
-  const available = rankings.filter(r =>
-    !r.is_injured && !r.is_bye && r.is_available !== false
-  );
+  const available = rankings.filter(r => !r.is_injured && !r.is_bye && r.is_available !== false);
 
   if (available.length === 0) {
     return (
       <EmptyState
         message="No available rankings data"
-        detail="Rankings may still be loading, or all players are on bye/injured. Check that the rankings cache is populated."
+        detail="Rankings may still be loading, or all players are on bye/injured. Check that the rankings cache is populated and get_rankings_safe is returning rows."
       />
     );
   }
@@ -638,8 +796,8 @@ function FantasyTab({ rankings }: { rankings: RankingRow[] }) {
     .slice(0, 10);
 
   const bestValue = [...available]
-    .filter(r => r.value_score != null && (r.value_score) > 10)
-    .sort((a, b) => ((b.value_score ?? 0) - (a.value_score ?? 0)))
+    .filter(r => (r.value_score ?? 0) > 10)
+    .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
     .slice(0, 8);
 
   const captains = [...available]
@@ -651,8 +809,7 @@ function FantasyTab({ rankings }: { rankings: RankingRow[] }) {
     .filter(r => {
       const proj = r.projection ?? 0;
       const be = r.breakeven ?? 9999;
-      const edge = r.edge ?? 0;
-      return proj > 0 && proj < be && edge < -5;
+      return proj > 0 && proj < be && (r.edge ?? 0) < -5;
     })
     .sort((a, b) => (a.edge ?? 0) - (b.edge ?? 0))
     .slice(0, 8);
@@ -662,7 +819,7 @@ function FantasyTab({ rankings }: { rankings: RankingRow[] }) {
     .sort((a, b) => Math.abs(b.edge ?? 0) - Math.abs(a.edge ?? 0))
     .slice(0, 8);
 
-  const highConfidence = [...available]
+  const highConf = [...available]
     .filter(r => r.confidence_label === "HIGH" && r.projection != null)
     .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
     .slice(0, 8);
@@ -670,18 +827,16 @@ function FantasyTab({ rankings }: { rankings: RankingRow[] }) {
   return (
     <div className="space-y-8">
       <FantasySubSection title="Top Projected Scorers" icon={TrendingUp} rows={topProj} />
-      <FantasySubSection title="High Confidence Picks" icon={BarChart} rows={highConfidence} />
+      <FantasySubSection title="High Confidence Picks" icon={BarChart} rows={highConf} />
       <FantasySubSection title="Best Value Picks" icon={Target} rows={bestValue} />
       <FantasySubSection title="Captain Picks" icon={Sword} rows={captains} />
-      <FantasySubSection title="Biggest Price Movers" icon={ArrowUpRight} rows={priceMovers} />
+      <FantasySubSection title="Biggest Price Movers (by Edge)" icon={ArrowUpRight} rows={priceMovers} />
       <FantasySubSection title="Trap / Fade Alerts" icon={AlertTriangle} rows={traps} warn />
     </div>
   );
 }
 
-function FantasySubSection({
-  title, icon: Icon, rows, warn,
-}: {
+function FantasySubSection({ title, icon: Icon, rows, warn }: {
   title: string; icon: React.ElementType; rows: RankingRow[]; warn?: boolean;
 }) {
   if (rows.length === 0) {
@@ -691,7 +846,7 @@ function FantasySubSection({
           <Icon className="h-3.5 w-3.5 text-muted-foreground" />
           <h3 className="text-[13px] font-semibold">{title}</h3>
         </div>
-        <EmptyState message={`No ${title.toLowerCase()} data`} detail="May require more data in rankings cache." />
+        <EmptyState message={`No ${title.toLowerCase()} data`} detail="May require more rows in rankings cache." />
       </div>
     );
   }
@@ -756,18 +911,14 @@ function MatchAnglesTab({ teamDisposals, teamGoals }: {
   teamDisposals: StatBoardTeamRow[];
   teamGoals: StatBoardTeamRow[];
 }) {
-  const byScore = [...teamDisposals]
-    .filter(t => t.projected_combined_score != null)
-    .sort((a, b) => (b.projected_combined_score ?? 0) - (a.projected_combined_score ?? 0));
-
   const seenMatch = new Set<number>();
-  const matchEnvs = byScore.filter(t => {
-    if (seenMatch.has(t.match_id)) return false;
-    seenMatch.add(t.match_id);
-    return true;
-  }).slice(0, 9);
+  const matchEnvs = [...teamDisposals]
+    .filter(t => t.projected_combined_score != null)
+    .sort((a, b) => (b.projected_combined_score ?? 0) - (a.projected_combined_score ?? 0))
+    .filter(t => { if (seenMatch.has(t.match_id)) return false; seenMatch.add(t.match_id); return true; })
+    .slice(0, 9);
 
-  const byDisposalsConceded = [...teamDisposals]
+  const byDispConceded = [...teamDisposals]
     .filter(t => t.opponent_conceded_l5 != null)
     .sort((a, b) => (b.opponent_conceded_l5 ?? 0) - (a.opponent_conceded_l5 ?? 0))
     .slice(0, 8);
@@ -777,9 +928,7 @@ function MatchAnglesTab({ teamDisposals, teamGoals }: {
     .sort((a, b) => (b.opponent_conceded_l5 ?? 0) - (a.opponent_conceded_l5 ?? 0))
     .slice(0, 8);
 
-  const hasAnyData = teamDisposals.length > 0 || teamGoals.length > 0;
-
-  if (!hasAnyData) {
+  if (teamDisposals.length === 0 && teamGoals.length === 0) {
     return (
       <EmptyState
         message="No team match data loaded"
@@ -790,9 +939,12 @@ function MatchAnglesTab({ teamDisposals, teamGoals }: {
 
   return (
     <div className="space-y-8">
-      {/* Match environments — only show if data exists */}
-      {matchEnvs.length > 0 ? (
-        <Section title="Match Environments by Projected Score">
+      <Section title="Match Environments by Projected Score">
+        {matchEnvs.length === 0 ? (
+          <div className="rounded-lg border border-border/40 bg-muted/5 px-4 py-3 text-[11px] text-muted-foreground">
+            Projected match score data not available for this round yet. Disposal concession data below is still usable.
+          </div>
+        ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -827,19 +979,12 @@ function MatchAnglesTab({ teamDisposals, teamGoals }: {
               </tbody>
             </table>
           </div>
-        </Section>
-      ) : (
-        <Section title="Match Environments by Projected Score">
-          <div className="rounded-lg border border-border/40 bg-muted/5 px-4 py-3 text-[11px] text-muted-foreground">
-            Projected match score data not available for this round. Disposal concession data below is still usable.
-          </div>
-        </Section>
-      )}
+        )}
+      </Section>
 
-      {/* Teams conceding disposals */}
-      <Section title="Teams Conceding Most Disposals (L5)" count={byDisposalsConceded.length}>
+      <Section title="Teams Conceding Most Disposals (L5)" count={byDispConceded.length}>
         <p className="text-[11px] text-muted-foreground mb-3">Target players from the opposing team.</p>
-        {byDisposalsConceded.length === 0 ? (
+        {byDispConceded.length === 0 ? (
           <EmptyState message="No disposal conceded data available" detail="Requires team disposals data for current round." />
         ) : (
           <div className="overflow-x-auto">
@@ -850,30 +995,35 @@ function MatchAnglesTab({ teamDisposals, teamGoals }: {
                   <th className="pb-1.5 pr-4 font-medium">vs (attack)</th>
                   <th className="pb-1.5 pr-3 font-medium text-right">L5 conceded avg</th>
                   <th className="pb-1.5 pr-3 font-medium text-right">Season avg</th>
-                  <th className="pb-1.5 font-medium">Angle</th>
+                  <th className="pb-1.5 font-medium">Label</th>
                 </tr>
               </thead>
               <tbody>
-                {byDisposalsConceded.map((t, i) => (
-                  <tr key={i} className="border-b border-border/30 hover:bg-muted/10 transition-colors">
-                    <td className="py-1.5 pr-4 font-medium text-foreground whitespace-nowrap">{t.opponent_team_name}</td>
-                    <td className="py-1.5 pr-4 text-muted-foreground whitespace-nowrap">{t.team_name}</td>
-                    <td className={`py-1.5 pr-3 text-right font-semibold ${(t.opponent_conceded_l5 ?? 0) >= 380 ? "text-emerald-400" : "text-foreground"}`}>
-                      {t.opponent_conceded_l5 != null ? t.opponent_conceded_l5.toFixed(0) : "—"}
-                    </td>
-                    <td className="py-1.5 pr-3 text-right text-muted-foreground">
-                      {t.opponent_conceded_season != null ? t.opponent_conceded_season.toFixed(0) : "—"}
-                    </td>
-                    <td className="py-1.5 text-[11px] text-sky-400">Target {t.team_name} mids</td>
-                  </tr>
-                ))}
+                {byDispConceded.map((t, i) => {
+                  const label = getMarketLabel(0, 0, 0, null, 20, t.opponent_conceded_l5);
+                  const isHot = (t.opponent_conceded_l5 ?? 0) >= 380;
+                  return (
+                    <tr key={i} className="border-b border-border/30 hover:bg-muted/10 transition-colors">
+                      <td className="py-1.5 pr-4 font-medium text-foreground whitespace-nowrap">{t.opponent_team_name}</td>
+                      <td className="py-1.5 pr-4 text-muted-foreground whitespace-nowrap">{t.team_name}</td>
+                      <td className={`py-1.5 pr-3 text-right font-semibold ${isHot ? "text-emerald-400" : "text-foreground"}`}>
+                        {t.opponent_conceded_l5 != null ? t.opponent_conceded_l5.toFixed(0) : "—"}
+                      </td>
+                      <td className="py-1.5 pr-3 text-right text-muted-foreground">
+                        {t.opponent_conceded_season != null ? t.opponent_conceded_season.toFixed(0) : "—"}
+                      </td>
+                      <td className="py-1.5">
+                        <span className="text-[10px] text-sky-400">Target {t.team_name} mids</span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </Section>
 
-      {/* Teams conceding goals */}
       <Section title="Teams Conceding Most Goals (L5)" count={byGoalsConceded.length}>
         <p className="text-[11px] text-muted-foreground mb-3">Forward targeting opportunity.</p>
         {byGoalsConceded.length === 0 ? (
@@ -911,7 +1061,7 @@ function MatchAnglesTab({ teamDisposals, teamGoals }: {
   );
 }
 
-// ─── Post Ideas tab ────────────────────────────────────────────────────────────
+// ─── Post Ideas tab ───────────────────────────────────────────────────────────
 
 function AngleTagBadge({ tag }: { tag: AngleTag }) {
   return (
@@ -951,7 +1101,6 @@ function PostCard({ post }: { post: PostTemplate }) {
         </div>
         <CopyButton text={fullText} />
       </div>
-
       <div className="space-y-2">
         <div>
           <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide mb-0.5">Hook</p>
@@ -975,7 +1124,6 @@ function PostCard({ post }: { post: PostTemplate }) {
           <p className="text-xs text-foreground">{post.cta}</p>
         </div>
       </div>
-
       <div className="border-t border-border/40 pt-2">
         <textarea
           readOnly
@@ -987,11 +1135,12 @@ function PostCard({ post }: { post: PostTemplate }) {
   );
 }
 
+// Post ideas are generated deterministically from live data — NOT stored statically.
+// If any underlying player changes, the post changes on next fetch.
 function buildPostTemplates(data: ContentIntelData): PostTemplate[] {
   const posts: PostTemplate[] = [];
-  const rl = data.roundLabel;
+  const rl = data.roundLabel; // e.g. "Round 9" — derived from live RPC
 
-  // Helper: get disposal players with threshold hit rate
   function dispPlayers(threshold: number, minRate: number, minGames: number) {
     return data.disposalPlayers
       .filter(p => {
@@ -1018,8 +1167,7 @@ function buildPostTemplates(data: ContentIntelData): PostTemplate[] {
       });
   }
 
-  // ── Disposals posts ────────────────────────────────────────────────────────
-
+  // ── Disposals ────────────────────────────────────────────────────────────────
   const elite20 = dispPlayers(20, 0.75, 5).slice(0, 5);
   if (elite20.length >= 3) {
     const bullets = elite20.map(p => {
@@ -1038,11 +1186,10 @@ function buildPostTemplates(data: ContentIntelData): PostTemplate[] {
       hook: "Swipe for the players hitting 20+ disposals most consistently right now.",
       bullets, cta: "Full breakdown at Neeko Sports Stats — link in bio.",
     });
-    const redditBody = bullets.map(b => `- ${b}`).join("\n");
     posts.push({
       id: "disp-20-reddit", format: "reddit", angleTag: "Safe",
       title: `[${rl}] Players with strong 20+ disposal hit rates`,
-      hook: `Going into ${rl}, here are the players most consistently hitting 20+ disposals over their recent games:\n\n${redditBody}\n\nData from Neeko Sports Stats Stat Board.`,
+      hook: `Going into ${rl}, here are the players most consistently hitting 20+ disposals:\n\n${bullets.map(b => `- ${b}`).join("\n")}\n\nData from Neeko Sports Stats Stat Board.`,
       bullets: [], cta: "More thresholds and full breakdown on the Stat Board.",
     });
   }
@@ -1076,13 +1223,12 @@ function buildPostTemplates(data: ContentIntelData): PostTemplate[] {
     posts.push({
       id: "disp-30-twitter", format: "twitter", angleTag: "Volatile Upside",
       title: `Players hitting 30+ disposals at high rates — ${rl}`,
-      hook: `If you're targeting elite disposal volume, these names deserve attention:`,
+      hook: "If you're targeting elite disposal volume, these names deserve attention:",
       bullets, cta: "Full data at Neeko Sports Stats",
     });
   }
 
-  // ── Goals posts ─────────────────────────────────────────────────────────────
-
+  // ── Goals ────────────────────────────────────────────────────────────────────
   const g1 = goalPlayers(1, 0.75, 5).slice(0, 6);
   if (g1.length >= 3) {
     const bullets = g1.map(p => {
@@ -1132,13 +1278,12 @@ function buildPostTemplates(data: ContentIntelData): PostTemplate[] {
     posts.push({
       id: "goals-3-twitter", format: "twitter", angleTag: "Volatile Upside",
       title: `3+ goal bag merchants — ${rl}`,
-      hook: `Forwards who've been bagging 3+ goals recently:`,
+      hook: "Forwards who've been bagging 3+ goals recently:",
       bullets, cta: "More data at Neeko Sports Stats",
     });
   }
 
-  // ── Fantasy posts ────────────────────────────────────────────────────────────
-
+  // ── Fantasy ──────────────────────────────────────────────────────────────────
   const fantasyTop = data.rankings
     .filter(r => !r.is_injured && !r.is_bye && r.projection != null && r.confidence_label === "HIGH")
     .sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0))
@@ -1168,8 +1313,7 @@ function buildPostTemplates(data: ContentIntelData): PostTemplate[] {
     });
   }
 
-  // ── Captain posts ───────────────────────────────────────────────────────────
-
+  // ── Captain ──────────────────────────────────────────────────────────────────
   const captains = data.rankings
     .filter(r => !r.is_injured && !r.is_bye && r.captain_score != null && r.projection != null)
     .sort((a, b) => (b.captain_score ?? 0) - (a.captain_score ?? 0))
@@ -1193,21 +1337,20 @@ function buildPostTemplates(data: ContentIntelData): PostTemplate[] {
     });
   }
 
-  // ── Value posts ──────────────────────────────────────────────────────────────
-
-  const valuePicksRaw = data.rankings
-    .filter(r => !r.is_injured && !r.is_bye && r.value_score != null && (r.value_score) > 15)
-    .sort((a, b) => ((b.value_score ?? 0) - (a.value_score ?? 0)))
+  // ── Value ────────────────────────────────────────────────────────────────────
+  const valuePicks = data.rankings
+    .filter(r => !r.is_injured && !r.is_bye && (r.value_score ?? 0) > 15)
+    .sort((a, b) => (b.value_score ?? 0) - (a.value_score ?? 0))
     .slice(0, 5);
 
-  if (valuePicksRaw.length >= 2) {
-    const bullets = valuePicksRaw.map(r =>
+  if (valuePicks.length >= 2) {
+    const bullets = valuePicks.map(r =>
       `${r.player_name} (${r.team}): Proj ${Math.round(r.projection ?? 0)}, BE ${Math.round(r.breakeven ?? 0)}, +${Math.round(r.value_score!)} edge`
     );
     posts.push({
       id: "value-twitter", format: "twitter", angleTag: "Value",
       title: `Best value picks — ${rl}`,
-      hook: `Players whose projection beats their breakeven by the widest margin:`,
+      hook: "Players whose projection beats their breakeven by the widest margin:",
       bullets, cta: "Full value rankings @ Neeko Sports Stats",
     });
     posts.push({
@@ -1218,15 +1361,14 @@ function buildPostTemplates(data: ContentIntelData): PostTemplate[] {
     });
   }
 
-  // ── Trap / fade posts ────────────────────────────────────────────────────────
-
+  // ── Trap / Fade ───────────────────────────────────────────────────────────────
   const traps = data.rankings
     .filter(r => {
       const proj = r.projection ?? 0;
       const be = r.breakeven ?? 9999;
       return proj > 0 && proj < be;
     })
-    .sort((a, b) => ((a.edge ?? 0) - (b.edge ?? 0)))
+    .sort((a, b) => (a.edge ?? 0) - (b.edge ?? 0))
     .slice(0, 5);
 
   if (traps.length >= 2) {
@@ -1247,8 +1389,7 @@ function buildPostTemplates(data: ContentIntelData): PostTemplate[] {
     });
   }
 
-  // ── Disposal fade angles ────────────────────────────────────────────────────
-
+  // ── Disposal fade ─────────────────────────────────────────────────────────────
   const dispFade = data.disposalPlayers
     .filter(p => {
       const hr = p.all_threshold_hit_rates?.["20"];
@@ -1260,18 +1401,17 @@ function buildPostTemplates(data: ContentIntelData): PostTemplate[] {
   if (dispFade.length >= 2) {
     const bullets = dispFade.map(p => {
       const hr = p.all_threshold_hit_rates!["20"];
-      return `${p.player_name} (${p.team_name}): Only ${fmtPct(hr.rate)} for 20+ disposals over ${hr.games} games despite ${p.last_10_avg?.toFixed(1)} avg`;
+      return `${p.player_name} (${p.team_name}): Only ${fmtPct(hr.rate)} for 20+ over ${hr.games} games despite ${p.last_10_avg?.toFixed(1)} avg`;
     });
     posts.push({
       id: "disp-fade-twitter", format: "twitter", angleTag: "Fade",
       title: `Disposal fade angles — ${rl}`,
-      hook: "Players with low hit rates at the 20+ disposal threshold — worth monitoring for unders content:",
+      hook: "Players with low hit rates at the 20+ disposal threshold — worth monitoring:",
       bullets, cta: "Full Stat Board data @ Neeko Sports Stats",
     });
   }
 
-  // ── Matchup attack posts ─────────────────────────────────────────────────────
-
+  // ── Matchup attack ────────────────────────────────────────────────────────────
   const dispConcedTeams = [...data.teamDisposals]
     .filter(t => t.opponent_conceded_l5 != null)
     .sort((a, b) => (b.opponent_conceded_l5 ?? 0) - (a.opponent_conceded_l5 ?? 0))
@@ -1284,7 +1424,7 @@ function buildPostTemplates(data: ContentIntelData): PostTemplate[] {
     posts.push({
       id: "matchup-disp-reddit", format: "reddit", angleTag: "Matchup Attack",
       title: `[${rl}] Teams conceding most disposals — target their midfielders`,
-      hook: `Going into ${rl}, here are the teams conceding the most disposals to opponents over their last 5 games:\n\n${bullets.map(b => `- ${b}`).join("\n")}\n\nData from Neeko Sports Stats.`,
+      hook: `Going into ${rl}, here are the teams conceding the most disposals over their last 5 games:\n\n${bullets.map(b => `- ${b}`).join("\n")}\n\nData from Neeko Sports Stats.`,
       bullets: [], cta: "Full match angles at Neeko Sports Stats.",
     });
     posts.push({
@@ -1312,64 +1452,61 @@ function buildPostTemplates(data: ContentIntelData): PostTemplate[] {
     });
   }
 
-  // ── Consistency posts ────────────────────────────────────────────────────────
-
+  // ── Consistency ───────────────────────────────────────────────────────────────
   const perfectDisp = data.disposalPlayers
     .filter(p => {
       const hr = p.all_threshold_hit_rates?.["20"];
       return hr && rateToFraction(hr.rate) === 1.0 && hr.games >= 6;
     })
-    .sort((a, b) => (b.all_threshold_hit_rates!["20"].games) - (a.all_threshold_hit_rates!["20"].games))
+    .sort((a, b) => b.all_threshold_hit_rates!["20"].games - a.all_threshold_hit_rates!["20"].games)
     .slice(0, 5);
 
   if (perfectDisp.length >= 2) {
     const bullets = perfectDisp.map(p => {
       const hr = p.all_threshold_hit_rates!["20"];
-      return `${p.player_name} (${p.team_name}): ${hr.games}/${hr.games} — perfect record, ${p.last_10_avg?.toFixed(1)} avg`;
+      return `${p.player_name} (${p.team_name}): ${hr.games}/${hr.games} — perfect, ${p.last_10_avg?.toFixed(1)} avg`;
     });
     posts.push({
       id: "consistency-tiktok", format: "tiktok", angleTag: "Consistency",
-      title: `Perfect 20+ disposal records this season — ${rl}`,
+      title: `Perfect 20+ disposal records — ${rl}`,
       hook: "These players have not missed 20 disposals once in their recorded games this season.",
       bullets, cta: "Full Stat Board at Neeko Sports Stats.",
     });
     posts.push({
       id: "consistency-reddit", format: "reddit", angleTag: "Consistency",
-      title: `[${rl}] Players with perfect 20+ disposal hit rates this season`,
-      hook: `The most consistent disposal performers right now — zero misses:\n\n${bullets.map(b => `- ${b}`).join("\n")}\n\nData from Neeko Sports Stats.`,
+      title: `[${rl}] Players with perfect 20+ disposal hit rates`,
+      hook: `Zero misses — the most consistent disposal performers:\n\n${bullets.map(b => `- ${b}`).join("\n")}\n\nData from Neeko Sports Stats.`,
       bullets: [], cta: "Full consistency breakdown at Neeko Sports Stats.",
     });
   }
 
-  // ── Current round spotlight post ─────────────────────────────────────────────
-
+  // ── Current round spotlight ───────────────────────────────────────────────────
   if (data.matches.length > 0) {
     const roundMatchLabels = data.matches.slice(0, 5).map(m => m.match_label);
     posts.push({
       id: "round-spotlight-twitter", format: "twitter", angleTag: "Current Round",
-      title: `${rl} — Round ${data.currentRound} matchups and angles`,
+      title: `${rl} — matchups and angles`,
       hook: `${rl} kicks off with ${data.matches.length} games. Matches to watch:`,
       bullets: roundMatchLabels, cta: "Full Stat Board and fantasy rankings @ Neeko Sports Stats",
     });
     posts.push({
       id: "round-spotlight-tiktok", format: "tiktok", angleTag: "Current Round",
       title: `Round ${data.currentRound} AFL Fantasy preview`,
-      hook: `Round ${data.currentRound} is here — here's your quick guide to the must-watch matchups and top fantasy targets.`,
+      hook: `Round ${data.currentRound} is here — quick guide to the must-watch matchups and top fantasy targets.`,
       bullets: roundMatchLabels.slice(0, 4), cta: "Full round preview at Neeko Sports Stats.",
     });
   }
 
-  // ── Market check ────────────────────────────────────────────────────────────
-
+  // ── Market check ──────────────────────────────────────────────────────────────
   const marketChecks = data.rankings
     .filter(r => !r.is_injured && !r.is_bye && r.price != null && r.prev_price != null)
-    .filter(r => Math.abs((r.price_change ?? 0)) > 30000)
+    .filter(r => Math.abs(r.price_change ?? 0) > 30000)
     .sort((a, b) => Math.abs(b.price_change ?? 0) - Math.abs(a.price_change ?? 0))
     .slice(0, 5);
 
   if (marketChecks.length >= 2) {
     const bullets = marketChecks.map(r =>
-      `${r.player_name} (${r.team}): ${(r.price_change ?? 0) > 0 ? "↑" : "↓"} $${Math.abs(Math.round((r.price_change ?? 0) / 1000))}k — now $${Math.round((r.price ?? 0) / 1000)}k`
+      `${r.player_name} (${r.team}): ${(r.price_change ?? 0) > 0 ? "+" : ""}$${Math.round((r.price_change ?? 0) / 1000)}k — now $${Math.round((r.price ?? 0) / 1000)}k`
     );
     posts.push({
       id: "market-check-twitter", format: "twitter", angleTag: "Market Check",
@@ -1386,8 +1523,10 @@ type PostAngleFilter = "all" | AngleTag;
 
 function PostIdeasTab({ data }: { data: ContentIntelData }) {
   const [angleFilter, setAngleFilter] = useState<PostAngleFilter>("all");
-  const allPosts = buildPostTemplates(data);
-  const tags = Array.from(new Set(allPosts.map(p => p.angleTag)));
+
+  // Posts are always re-derived from live data (useMemo tied to data object)
+  const allPosts = useMemo(() => buildPostTemplates(data), [data]);
+  const tags = useMemo(() => Array.from(new Set(allPosts.map(p => p.angleTag))), [allPosts]);
 
   const filtered = angleFilter === "all"
     ? allPosts
@@ -1397,7 +1536,8 @@ function PostIdeasTab({ data }: { data: ContentIntelData }) {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          {allPosts.length} post packs generated from live data. No AI — all stat-generated.
+          {allPosts.length} post packs generated live from {data.freshness.statBoardRowCount} stat board rows + {data.freshness.rankingsRowCount} rankings rows.
+          Refreshed {fmtAge(data.loadedAt)}.
         </p>
         <span className="text-[11px] text-muted-foreground">Showing {filtered.length}</span>
       </div>
@@ -1406,7 +1546,9 @@ function PostIdeasTab({ data }: { data: ContentIntelData }) {
       <div className="flex flex-wrap gap-1.5">
         <button
           onClick={() => setAngleFilter("all")}
-          className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-colors ${angleFilter === "all" ? "bg-foreground/10 text-foreground border-border" : "text-muted-foreground border-border/40 hover:text-foreground"}`}
+          className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-colors ${
+            angleFilter === "all" ? "bg-foreground/10 text-foreground border-border" : "text-muted-foreground border-border/40 hover:text-foreground"
+          }`}
         >
           All ({allPosts.length})
         </button>
@@ -1417,9 +1559,7 @@ function PostIdeasTab({ data }: { data: ContentIntelData }) {
               key={tag}
               onClick={() => setAngleFilter(tag)}
               className={`px-2.5 py-1 rounded text-[11px] font-medium border transition-colors ${
-                angleFilter === tag
-                  ? `${buildAngleTagCls(tag)}`
-                  : "text-muted-foreground border-border/40 hover:text-foreground"
+                angleFilter === tag ? buildAngleTagCls(tag) : "text-muted-foreground border-border/40 hover:text-foreground"
               }`}
             >
               {tag} ({count})
@@ -1442,14 +1582,16 @@ function PostIdeasTab({ data }: { data: ContentIntelData }) {
   );
 }
 
-// ─── Main page ──────────────────────────────────────────────────────────────────
+// ─── Main page ─────────────────────────────────────────────────────────────────
+
+const STALE_MS = 5 * 60 * 1000; // 5 minutes
 
 export default function AdminContentIntel() {
   const [tab, setTab] = useState<MainTab>("mining");
   const [data, setData] = useState<ContentIntelData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const loadedRef = useRef(false);
+  const loadedAtRef = useRef<Date | null>(null);
 
   const fetchAll = useCallback(async () => {
     if (!supabase) { setError("Supabase not initialised"); setLoading(false); return; }
@@ -1457,17 +1599,21 @@ export default function AdminContentIntel() {
     setError(null);
 
     try {
-      // Step 1: Get current round matches
-      const matchesRes = await supabase.rpc("get_stat_board_matches", {
-        p_season: 2026,
-        p_round: null,
-      });
-      const matches: StatBoardMatch[] = (matchesRes.data as StatBoardMatch[]) ?? [];
-      const currentRound = matches[0]?.week ?? 0;
-      const roundLabel = currentRound > 0 ? `Round ${currentRound}` : "Current Round";
+      // Step 1 — Canonical round from public.get_current_afl_round_safe()
+      // This is the authoritative source — never hardcoded, never browser-date-based
+      let roundInfo: RoundInfo | null = null;
+      let currentRound = 0;
+      let roundSource: SourceFreshness["roundSource"] = "get_current_afl_round_safe";
 
-      // Step 2: Fetch all data for current round concurrently
-      const [dispRes, goalRes, rankingsRes, teamDispRes, teamGoalRes] = await Promise.allSettled([
+      const roundRes = await supabase.rpc("get_current_afl_round_safe", { p_season: 2026 });
+      if (!roundRes.error && roundRes.data && roundRes.data.length > 0) {
+        roundInfo = roundRes.data[0] as RoundInfo;
+        currentRound = roundInfo.current_round;
+      }
+
+      // Step 2 — Fetch all data concurrently
+      const [matchesRes, dispRes, goalRes, rankingsRes, teamDispRes, teamGoalRes] = await Promise.allSettled([
+        supabase.rpc("get_stat_board_matches", { p_season: 2026, p_round: currentRound > 0 ? currentRound : null }),
         supabase.rpc("get_stat_board_players", {
           p_season: 2026,
           p_round: currentRound > 0 ? currentRound : null,
@@ -1492,11 +1638,8 @@ export default function AdminContentIntel() {
           p_limit: 500,
           p_offset: 0,
         }),
-        supabase.rpc("get_rankings_safe", {
-          p_user_id: null,
-          p_is_bot: false,
-          p_limit: 500,
-        }),
+        // get_rankings_safe: only p_user_id, p_is_bot, p_limit — no other params
+        supabase.rpc("get_rankings_safe", { p_user_id: null, p_is_bot: false, p_limit: 500 }),
         supabase.rpc("get_stat_board_team_rows", {
           p_season: 2026,
           p_round: currentRound > 0 ? currentRound : null,
@@ -1511,34 +1654,56 @@ export default function AdminContentIntel() {
         }),
       ]);
 
-      const disposalPlayers: StatBoardPlayer[] = dispRes.status === "fulfilled"
-        ? ((dispRes.value.data as StatBoardPlayer[]) ?? []) : [];
-      const goalPlayers: StatBoardPlayer[] = goalRes.status === "fulfilled"
-        ? ((goalRes.value.data as StatBoardPlayer[]) ?? []) : [];
-      const rankings: RankingRow[] = rankingsRes.status === "fulfilled"
-        ? ((rankingsRes.value.data as RankingRow[]) ?? []) : [];
-      const teamDisposals: StatBoardTeamRow[] = teamDispRes.status === "fulfilled"
-        ? ((teamDispRes.value.data as StatBoardTeamRow[]) ?? []) : [];
-      const teamGoals: StatBoardTeamRow[] = teamGoalRes.status === "fulfilled"
-        ? ((teamGoalRes.value.data as StatBoardTeamRow[]) ?? []) : [];
+      const matches: StatBoardMatch[] = matchesRes.status === "fulfilled" ? ((matchesRes.value.data as StatBoardMatch[]) ?? []) : [];
+      const disposalPlayers: StatBoardPlayer[] = dispRes.status === "fulfilled" ? ((dispRes.value.data as StatBoardPlayer[]) ?? []) : [];
+      const goalPlayers: StatBoardPlayer[] = goalRes.status === "fulfilled" ? ((goalRes.value.data as StatBoardPlayer[]) ?? []) : [];
+      const rankings: RankingRow[] = rankingsRes.status === "fulfilled" ? ((rankingsRes.value.data as RankingRow[]) ?? []) : [];
+      const teamDisposals: StatBoardTeamRow[] = teamDispRes.status === "fulfilled" ? ((teamDispRes.value.data as StatBoardTeamRow[]) ?? []) : [];
+      const teamGoals: StatBoardTeamRow[] = teamGoalRes.status === "fulfilled" ? ((teamGoalRes.value.data as StatBoardTeamRow[]) ?? []) : [];
 
-      // Diagnostics
+      // Fallback round from stat board matches if RPC returned nothing
+      if (currentRound === 0 && matches.length > 0) {
+        currentRound = matches[0].week ?? 0;
+        roundSource = "stat_board_week_fallback";
+      }
+
+      const roundLabel = currentRound > 0 ? `Round ${currentRound}` : "Current Round";
+
+      // Freshness: get latest rankings cached_at
+      const rankingsCachedAt = rankings.length > 0
+        ? (rankings.find(r => r.cached_at)?.cached_at ?? null)
+        : null;
+
+      const generatedAt = new Date();
+      loadedAtRef.current = generatedAt;
+
+      // Log partial errors
       const errs: string[] = [];
-      if (dispRes.status === "rejected") errs.push(`Disposal players: ${dispRes.reason}`);
-      if (goalRes.status === "rejected") errs.push(`Goal players: ${goalRes.reason}`);
-      if (rankingsRes.status === "rejected") errs.push(`Rankings: ${rankingsRes.reason}`);
+      if (dispRes.status === "rejected")     errs.push(`disposal players: ${dispRes.reason}`);
+      if (goalRes.status === "rejected")     errs.push(`goal players: ${goalRes.reason}`);
+      if (rankingsRes.status === "rejected") errs.push(`rankings: ${rankingsRes.reason}`);
       if (errs.length > 0) console.warn("[ContentIntel] Partial fetch errors:", errs);
 
       setData({
+        roundInfo,
+        currentRound,
+        roundLabel,
         matches,
         disposalPlayers,
         goalPlayers,
         teamDisposals,
         teamGoals,
         rankings,
-        currentRound,
-        roundLabel,
-        loadedAt: new Date(),
+        freshness: {
+          rankingsCachedAt,
+          statBoardRowCount: disposalPlayers.length + goalPlayers.length,
+          rankingsRowCount: rankings.length,
+          matchRowCount: matches.length,
+          teamRowCount: teamDisposals.length + teamGoals.length,
+          generatedAt,
+          roundSource,
+        },
+        loadedAt: generatedAt,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -1547,10 +1712,28 @@ export default function AdminContentIntel() {
     }
   }, []);
 
+  // Initial load
   useEffect(() => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
     fetchAll();
+  }, [fetchAll]);
+
+  // Part 3 — Interval refetch every 5 minutes while page is open
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchAll();
+    }, STALE_MS);
+    return () => clearInterval(interval);
+  }, [fetchAll]);
+
+  // Part 3 — Refetch on window focus if data is stale (> 5 min)
+  useEffect(() => {
+    function onFocus() {
+      if (!loadedAtRef.current) return;
+      const ageMs = Date.now() - loadedAtRef.current.getTime();
+      if (ageMs > STALE_MS) fetchAll();
+    }
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [fetchAll]);
 
   const TABS: { id: MainTab; label: string; icon: React.ElementType }[] = [
@@ -1570,6 +1753,10 @@ export default function AdminContentIntel() {
   const fantasyTotal = data
     ? data.rankings.filter(r => !r.is_injured && !r.is_bye && r.projection != null).length
     : 0;
+
+  const statusLine = data
+    ? `Generated from live stats · ${data.roundLabel} · refreshed ${fmtTimestamp(data.loadedAt)}`
+    : null;
 
   return (
     <div>
@@ -1591,26 +1778,42 @@ export default function AdminContentIntel() {
         }
       />
 
+      {/* Freshness status line */}
+      {statusLine && !loading && (
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-4">
+          <Clock className="h-3 w-3" />
+          {statusLine}
+          {data?.roundInfo && (
+            <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+              data.roundInfo.round_status === "active" ? "bg-emerald-950/40 text-emerald-400 border-emerald-600/30"
+              : "bg-zinc-900 text-zinc-400 border-zinc-700/30"
+            }`}>
+              {data.roundInfo.round_status}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
         <SummaryCard
           label="Current Round"
-          value={loading ? "Loading…" : data?.currentRound ? `Round ${data.currentRound}` : "—"}
-          sub={data ? `${data.matches.length} matches` : undefined}
+          value={loading ? "Loading…" : data?.currentRound ? `Round ${data.currentRound}` : "Unavailable"}
+          sub={data?.roundInfo ? `${data.roundInfo.total_games} games · ${data.roundInfo.completed_games} done` : data?.matches.length ? `${data.matches.length} matches` : undefined}
           accent={data?.currentRound ? "text-sky-400" : undefined}
         />
         <SummaryCard
-          label="Disposal players"
+          label="Stat Board Players"
           value={loading ? "—" : `${data?.disposalPlayers.length ?? 0}`}
-          sub="With hit-rate data"
+          sub="Disposal lens loaded"
         />
         <SummaryCard
-          label="Mining angles"
+          label="Mining Angles"
           value={loading ? "—" : `${miningTotal}`}
           sub="65%+ hit rate, 20+ disp"
         />
         <SummaryCard
-          label="Fantasy picks"
+          label="Fantasy Picks"
           value={loading ? "—" : `${fantasyTotal}`}
           sub="Available ranked players"
         />
@@ -1621,6 +1824,9 @@ export default function AdminContentIntel() {
           {error}
         </div>
       )}
+
+      {/* Source freshness panel (Part 8) */}
+      {data && !loading && <FreshnessPanel data={data} />}
 
       {/* Tab bar */}
       <div className="flex gap-0.5 border-b border-border/40 mb-5 overflow-x-auto -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
