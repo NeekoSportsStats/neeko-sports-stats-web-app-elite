@@ -30,23 +30,26 @@ export function AdminSectionIntro({
 }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="rounded-lg border border-border/50 bg-muted/20 px-4 py-3 mb-5">
-      {title && <p className="text-xs font-semibold text-foreground mb-0.5">{title}</p>}
-      <p className="text-xs text-muted-foreground">{description}</p>
-      {detail && (
-        <>
-          {expanded && (
-            <p className="text-xs text-muted-foreground mt-2 leading-relaxed border-t border-border/40 pt-2">{detail}</p>
-          )}
-          <button
-            onClick={() => setExpanded(v => !v)}
-            className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            {expanded ? "Less" : "More info"}
-          </button>
-        </>
-      )}
+    <div className="rounded-md border border-border/40 bg-muted/10 px-4 py-2.5 mb-4 flex items-start gap-2.5">
+      <Info className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        {title && <p className="text-[12px] font-semibold text-foreground mb-0.5">{title}</p>}
+        <p className="text-[11px] text-muted-foreground leading-relaxed">{description}</p>
+        {detail && (
+          <>
+            {expanded && (
+              <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed border-t border-border/30 pt-2">{detail}</p>
+            )}
+            <button
+              onClick={() => setExpanded(v => !v)}
+              className="mt-1.5 flex items-center gap-1 text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+            >
+              {expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              {expanded ? "Collapse" : "More detail"}
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -71,19 +74,19 @@ export function AdminActionExplain({
     <div className="mt-1 mb-2">
       <button
         onClick={() => setOpen(v => !v)}
-        className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+        className="flex items-center gap-1 text-[11px] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
       >
         <Info className="h-3 w-3 shrink-0" />
         What does this do?
         {open ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
       </button>
       {open && (
-        <div className="mt-2 rounded-md border border-border/50 bg-muted/30 px-3 py-2.5 space-y-1.5 text-[11px] text-muted-foreground">
-          <p><span className="text-foreground font-medium">What:</span> {what}</p>
-          {which && <p><span className="text-foreground font-medium">Tables/functions:</span> {which}</p>}
-          {duration && <p><span className="text-foreground font-medium">Expected time:</span> {duration}</p>}
-          {risk && <p><span className={`font-medium ${riskColor}`}>{riskLabel}:</span> {risk === "high" ? "This modifies production data — confirm before running." : risk === "medium" ? "Minor side effects possible — safe to retry." : "Safe to run anytime."}</p>}
-          {when && <p><span className="text-foreground font-medium">When to use:</span> {when}</p>}
+        <div className="mt-2 rounded-md border border-border/40 bg-muted/20 px-3 py-2.5 space-y-1 text-[11px] text-muted-foreground">
+          <p><span className="text-foreground/80 font-semibold">Action:</span> {what}</p>
+          {which && <p><span className="text-foreground/80 font-semibold">Affects:</span> {which}</p>}
+          {duration && <p><span className="text-foreground/80 font-semibold">Est. time:</span> {duration}</p>}
+          {risk && <p><span className={`font-semibold ${riskColor}`}>{riskLabel}:</span> {risk === "high" ? "Modifies production data — confirm before running." : risk === "medium" ? "Minor side effects possible — safe to retry." : "Safe to run anytime."}</p>}
+          {when && <p><span className="text-foreground/80 font-semibold">Use when:</span> {when}</p>}
         </div>
       )}
     </div>

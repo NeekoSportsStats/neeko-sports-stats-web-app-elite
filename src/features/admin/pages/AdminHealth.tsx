@@ -14,6 +14,7 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { formatDate } from "../shared/adminUtils";
 import { AdminSectionIntro } from "../shared/AdminExplain";
+import { AdminPageHeader } from "../shared/AdminPageHeader";
 import type { CommandCenterStatus } from "../shared/types";
 
 type StatusLevel = "ok" | "warn" | "error" | "loading" | "running";
@@ -970,26 +971,22 @@ export default function AdminHealth() {
 
   return (
     <div className="space-y-6">
-      <AdminSectionIntro
+      <AdminPageHeader
+        icon={Activity}
         title="System Health"
-        description="Read-only monitoring across all data and AI pipelines. Go to Command Center to take action."
-        detail="This page pulls from the admin-health edge function and multiple Supabase views: v_pipeline_health, v_ai_worker_health, v_command_center_status, and more. All checks are live — refresh at any time."
+        description="Read-only diagnostics across all data pipelines, AI systems, and infrastructure"
+        loading={isLoading}
+        lastUpdated={lastRefreshed ? lastRefreshed.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : undefined}
+        actions={
+          <div className="flex items-center gap-2">
+            <ConfidenceGauge score={overallConfidence} loading={isLoading} />
+            <Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={isLoading}>
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+        }
       />
-
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2 flex-wrap">
-          <ConfidenceGauge score={overallConfidence} loading={isLoading} />
-          {lastRefreshed && (
-            <span className="text-[11px] text-muted-foreground">
-              Updated {lastRefreshed.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
-            </span>
-          )}
-        </div>
-        <Button variant="outline" size="sm" onClick={handleRefreshAll} disabled={isLoading} className="shrink-0">
-          <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
-      </div>
 
       <SystemStatusSummary
         status={cmdStatus}

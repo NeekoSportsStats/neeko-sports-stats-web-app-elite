@@ -2,11 +2,12 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import {
   RefreshCw, DollarSign, Target, TrendingUp, Users,
-  Search, Check, X,
+  Search, Check, X, FlaskConical,
 } from "lucide-react";
 import { CreditCard as Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AdminSectionIntro } from "@/features/admin/shared/AdminExplain";
+import { AdminPageHeader } from "@/features/admin/shared/AdminPageHeader";
 import { FantasyPricesTab } from "@/features/admin/price-ingest/FantasyPricesTab";
 import { NameResolverTab } from "@/features/admin/price-ingest/NameResolverTab";
 import { PriceChangeDebugTab } from "@/features/admin/price-ingest/PriceChangeDebugTab";
@@ -323,25 +324,29 @@ export default function AdminPlayerLab() {
   const [tab, setTab] = useState<Tab>("explorer");
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Player Lab</h1>
-        <p className="text-muted-foreground text-sm mt-1">Intelligence terminal — projection debugging, signal analysis, accuracy diagnostics, and price inspection.</p>
-      </div>
+    <div className="space-y-5">
+      <AdminPageHeader
+        icon={FlaskConical}
+        title="Player Lab"
+        description="Intelligence terminal — projection debugging, signal analysis, accuracy diagnostics, and price inspection"
+      />
 
-      <div className="flex gap-1 border-b border-border">
+      <div className="flex gap-0.5 border-b border-border/40 mb-5 overflow-x-auto -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            className={`relative flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium whitespace-nowrap transition-colors ${
               tab === id
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon className="h-4 w-4" />
+            <Icon className="h-3.5 w-3.5 shrink-0" />
             {label}
+            {tab === id && (
+              <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t bg-foreground" />
+            )}
           </button>
         ))}
       </div>

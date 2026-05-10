@@ -1,6 +1,7 @@
 import { lazy, Suspense, useState } from "react";
-import { RefreshCw, ListTodo, ClipboardList, BookOpen, ScrollText, CalendarOff } from "lucide-react";
+import { RefreshCw, ListTodo, ClipboardList, BookOpen, ScrollText, CalendarOff, Settings2 } from "lucide-react";
 import { AdminSectionIntro } from "@/features/admin/shared/AdminExplain";
+import { AdminPageHeader } from "@/features/admin/shared/AdminPageHeader";
 
 const AdminTodoPage      = lazy(() => import("@/features/admin/pages/AdminTodo"));
 const AdminTasksPage     = lazy(() => import("@/features/admin/pages/AdminFounderTasks"));
@@ -57,26 +58,28 @@ export default function AdminAdminHub() {
 
   return (
     <div>
-      <div className="mb-5">
-        <h1 className="text-lg font-semibold">Internal Ops</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Internal tasks, pipeline history, and operator notes.
-        </p>
-      </div>
+      <AdminPageHeader
+        icon={Settings2}
+        title="Internal Ops"
+        description="Founder tasks, pipeline history, bye manager, and operator notes"
+      />
 
-      <div className="flex gap-1 border-b border-border mb-6 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+      <div className="flex gap-0.5 border-b border-border/40 mb-5 overflow-x-auto -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
+            className={`relative flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium whitespace-nowrap transition-colors ${
               tab === id
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
+                ? "text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Icon className="h-3.5 w-3.5" />
+            <Icon className="h-3.5 w-3.5 shrink-0" />
             {label}
+            {tab === id && (
+              <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t bg-foreground" />
+            )}
           </button>
         ))}
       </div>

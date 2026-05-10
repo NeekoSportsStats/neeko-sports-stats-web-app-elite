@@ -1,5 +1,4 @@
 import { RefreshCw, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Circle as XCircle } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function formatDate(ts: string | null): string {
   if (!ts) return "—";
@@ -21,7 +20,7 @@ export function formatMs(ms: number | null): string {
 export function StatusDot({ ok }: { ok: boolean }) {
   return (
     <span
-      className={`inline-block w-2 h-2 rounded-full mr-2 ${ok ? "bg-emerald-500" : "bg-red-500"}`}
+      className={`inline-block w-2 h-2 rounded-full mr-2 shrink-0 ${ok ? "bg-emerald-500" : "bg-red-500 animate-pulse"}`}
     />
   );
 }
@@ -37,17 +36,17 @@ export function StatRow({
 }) {
   const valueClass =
     highlight === "good"
-      ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+      ? "text-emerald-400 font-semibold"
       : highlight === "warn"
-        ? "text-amber-600 dark:text-amber-400 font-semibold"
+        ? "text-amber-400 font-semibold"
         : highlight === "bad"
-          ? "text-red-600 dark:text-red-400 font-semibold"
-          : "font-medium";
+          ? "text-red-400 font-semibold"
+          : "text-foreground font-medium";
 
   return (
-    <div className="flex justify-between items-center py-1.5 border-b border-border/40 last:border-0">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className={`text-sm ${valueClass}`}>{value}</span>
+    <div className="flex justify-between items-center py-1.5 border-b border-border/30 last:border-0 gap-4 min-h-0">
+      <span className="text-xs text-muted-foreground shrink-0">{label}</span>
+      <span className={`text-xs tabular-nums text-right ${valueClass}`}>{value ?? "—"}</span>
     </div>
   );
 }
@@ -58,43 +57,47 @@ export function SectionCard({
   status,
   children,
   loading,
+  description,
 }: {
   icon: React.ElementType;
   title: string;
   status?: "ok" | "warn" | "error" | "loading";
   children: React.ReactNode;
   loading?: boolean;
+  description?: string;
 }) {
   const statusIcon =
     status === "ok" ? (
-      <CheckCircle className="h-4 w-4 text-emerald-500" />
+      <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
     ) : status === "warn" ? (
-      <AlertTriangle className="h-4 w-4 text-amber-500" />
+      <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
     ) : status === "error" ? (
-      <XCircle className="h-4 w-4 text-red-500" />
+      <XCircle className="h-3.5 w-3.5 text-red-500" />
     ) : null;
 
   return (
-    <Card className="flex flex-col">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center justify-between text-base">
-          <span className="flex items-center gap-2">
-            <Icon className="h-4 w-4 text-muted-foreground" />
-            {title}
-          </span>
-          {statusIcon}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1">
+    <div className="rounded-lg border border-border/60 bg-card flex flex-col overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-border/40 bg-muted/20">
+        <div className="flex items-center gap-2 min-w-0">
+          <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+          <span className="text-[13px] font-semibold text-foreground truncate">{title}</span>
+          {description && (
+            <span className="text-[11px] text-muted-foreground/50 hidden md:block truncate ml-1">— {description}</span>
+          )}
+        </div>
+        {statusIcon}
+      </div>
+      <div className="flex-1 px-4 py-3">
         {loading ? (
-          <div className="flex items-center justify-center h-24">
-            <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+          <div className="flex items-center justify-center h-20 gap-2">
+            <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground/40" />
+            <span className="text-xs text-muted-foreground/40">Loading…</span>
           </div>
         ) : (
           children
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 

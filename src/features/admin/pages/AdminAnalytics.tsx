@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { RefreshCw, Users, TrendingUp, Activity, Target, ChartBar as BarChart3, CircleAlert as AlertCircle, Clock, Zap } from "lucide-react";
+import { AdminPageHeader } from "@/features/admin/shared/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -936,25 +937,27 @@ export default function AdminAnalytics() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Users & Billing</h1>
-          <p className="text-sm text-muted-foreground">Subscribers, billing, and activity analytics</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <FreshnessLabel loadedAt={loadedAt} />
-          {phAvailable && activeTab === "activity" && (
-            <div className="flex items-center gap-1.5 text-xs text-emerald-500">
-              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Auto-refresh 60s
-            </div>
-          )}
-          <Button variant="outline" size="sm" onClick={loadCurrentTab} disabled={isLoading}>
-            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
-        </div>
-      </div>
+      <AdminPageHeader
+        icon={Users}
+        title="Users & Billing"
+        description="Subscribers, billing, and activity analytics"
+        loading={isLoading}
+        actions={
+          <div className="flex items-center gap-2">
+            <FreshnessLabel loadedAt={loadedAt} />
+            {phAvailable && activeTab === "activity" && (
+              <div className="flex items-center gap-1.5 text-xs text-emerald-500">
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                Live
+              </div>
+            )}
+            <Button variant="outline" size="sm" onClick={loadCurrentTab} disabled={isLoading}>
+              <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+        }
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex flex-wrap h-auto gap-1">

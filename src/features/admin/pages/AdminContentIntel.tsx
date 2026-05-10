@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { RefreshCw, Copy, Check, TrendingUp, Target, Zap, FileText, TriangleAlert as AlertTriangle, ChartBar as BarChart2, Users, Sword } from "lucide-react";
+import { RefreshCw, Copy, Check, TrendingUp, Target, Zap, FileText, TriangleAlert as AlertTriangle, ChartBar as BarChart2, Users, Sword, Lightbulb } from "lucide-react";
+import { AdminPageHeader } from "@/features/admin/shared/AdminPageHeader";
 import type { StatBoardPlayer, StatBoardMatch, ThresholdHitRate } from "@/features/afl/stat-board/types";
 import type { StatBoardTeamRow } from "@/features/afl/stat-board/teamTypes";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
@@ -1164,23 +1165,23 @@ export default function AdminContentIntel() {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex items-start justify-between mb-5">
-        <div>
-          <h1 className="text-lg font-semibold">Content Intel</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Live posting angles from Stat Board, Fantasy Hub, and current-round data.
-          </p>
-        </div>
-        <button
-          onClick={fetchAll}
-          disabled={loading}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
-      </div>
+      <AdminPageHeader
+        icon={Lightbulb}
+        title="Content Intel"
+        description="Live posting angles from Stat Board, Fantasy Hub, and current-round data"
+        badge="Stats only — No AI"
+        loading={loading}
+        actions={
+          <button
+            onClick={fetchAll}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium text-muted-foreground hover:text-foreground border border-border/50 hover:border-border transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        }
+      />
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">

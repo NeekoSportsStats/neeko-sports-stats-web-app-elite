@@ -8,9 +8,10 @@ import { useToast } from "@/hooks/use-toast";
 import {
   RefreshCw, Activity, Database, Bot, TrendingUp, Zap, TriangleAlert as AlertTriangle,
   CircleCheck as CheckCircle, Circle as XCircle, DollarSign, Target, Trash2, RotateCcw,
-  Play, ChevronDown, ChevronUp,
+  Play, ChevronDown, ChevronUp, Terminal,
 } from "lucide-react";
 import { AdminSectionIntro, AdminActionExplain } from "../shared/AdminExplain";
+import { AdminPageHeader } from "../shared/AdminPageHeader";
 import type { CommandCenterStatus } from "../shared/types";
 
 type Tab = "pipeline" | "ai" | "data" | "danger";
@@ -202,10 +203,12 @@ export default function AdminNewCommandCenter() {
 
   return (
     <div className="space-y-6">
-      <AdminSectionIntro
+      <AdminPageHeader
+        icon={Terminal}
         title="Command Center"
-        description="All system actions in one place. Every button is explained — expand 'What does this do?' before running anything."
-        detail="Actions call the admin-command edge function, which proxies to Supabase RPCs. Commands run asynchronously — the page bar shows progress. Always check Health first to understand current system state before taking action."
+        description="System actions — pipeline runs, AI generation, data operations, and maintenance"
+        badge="Action required to proceed"
+        badgeVariant="warn"
       />
 
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -235,22 +238,23 @@ export default function AdminNewCommandCenter() {
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/30">HEAVY</span> Full AI regen — expensive, long-running, irreversible</span>
       </div>
 
-      <div className="border-b border-border">
-        <div className="flex items-center gap-0">
-          {tabs.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                t.id === "danger"
-                  ? tab === t.id ? "border-red-500 text-red-400" : "border-transparent text-red-400/60 hover:text-red-400"
-                  : tab === t.id ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex gap-0.5 border-b border-border/40 mb-5 overflow-x-auto -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`relative flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium whitespace-nowrap transition-colors ${
+              t.id === "danger"
+                ? tab === t.id ? "text-red-400" : "text-red-400/50 hover:text-red-400"
+                : tab === t.id ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t.label}
+            {tab === t.id && (
+              <span className={`absolute bottom-0 left-2 right-2 h-[2px] rounded-t ${t.id === "danger" ? "bg-red-500/60" : "bg-foreground"}`} />
+            )}
+          </button>
+        ))}
       </div>
 
       {tab === "pipeline" && (

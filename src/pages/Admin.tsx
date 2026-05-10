@@ -1,14 +1,15 @@
 import { lazy, Suspense } from "react";
 import { NavLink, Outlet, useNavigate, Navigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
-import { RefreshCw, Shield } from "lucide-react";
+import { RefreshCw, Shield, Dot } from "lucide-react";
 import { AdminUIStateProvider, useAdminUIState } from "@/features/admin/state/AdminUIStateContext";
 import { ADMIN_SECTIONS, ADMIN_DEFAULT_PATH } from "@/features/admin/config/adminSections";
 
 function TabLoadingFallback() {
   return (
-    <div className="flex items-center justify-center py-24">
-      <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
+    <div className="flex flex-col items-center justify-center py-32 gap-3">
+      <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground/50" />
+      <p className="text-xs text-muted-foreground/40 tracking-wide uppercase">Loading</p>
     </div>
   );
 }
@@ -17,14 +18,16 @@ function GlobalJobBar() {
   const { state } = useAdminUIState();
   if (!state.activeJobType) return null;
   return (
-    <div className="mb-5 rounded-lg border border-amber-500/20 bg-amber-950/10 px-4 py-2.5 flex items-center gap-3">
-      <RefreshCw className="h-3.5 w-3.5 animate-spin text-amber-400 shrink-0" />
+    <div className="mb-4 rounded-md border border-amber-500/25 bg-amber-950/15 px-4 py-3 flex items-center gap-3">
+      <div className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-amber-950/50 border border-amber-500/30">
+        <RefreshCw className="h-3 w-3 animate-spin text-amber-400" />
+      </div>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-xs font-medium text-amber-300 truncate">{state.activeJobLabel ?? "Job running…"}</span>
-          <span className="text-[11px] text-amber-500 ml-2 shrink-0 tabular-nums">{state.activeJobPct}%</span>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-semibold text-amber-300 truncate">{state.activeJobLabel ?? "Job running…"}</span>
+          <span className="text-[11px] text-amber-500/80 ml-2 shrink-0 tabular-nums font-mono">{state.activeJobPct}%</span>
         </div>
-        <div className="h-1 bg-amber-900/40 rounded-full overflow-hidden">
+        <div className="h-1 bg-amber-950/60 rounded-full overflow-hidden border border-amber-900/40">
           <div
             className="h-full rounded-full transition-all duration-500 bg-amber-500"
             style={{ width: `${state.activeJobPct}%` }}
@@ -40,22 +43,30 @@ function AdminShell() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen">
-      <div className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto max-w-7xl px-4">
-          <div className="flex items-center gap-4 h-14">
+    <div className="min-h-screen bg-background">
+      {/* Top bar */}
+      <div className="border-b border-border/60 bg-card/80 backdrop-blur-md sticky top-0 z-20 shadow-[0_1px_0_0_rgba(255,255,255,0.03)]">
+        <div className="container mx-auto max-w-[1400px] px-4 sm:px-6">
+          <div className="flex items-center gap-0 h-12">
+
+            {/* Brand */}
             <button
               onClick={() => navigate(ADMIN_DEFAULT_PATH)}
-              className="flex items-center gap-2 shrink-0 hover:opacity-80 transition-opacity"
+              className="flex items-center gap-2 shrink-0 pr-4 mr-1 hover:opacity-75 transition-opacity group"
             >
-              <Shield className="h-4 w-4 text-foreground" />
-              <span className="text-sm font-semibold tracking-tight">Operator Console</span>
+              <div className="flex items-center justify-center w-6 h-6 rounded bg-foreground/90 group-hover:bg-foreground transition-colors">
+                <Shield className="h-3.5 w-3.5 text-background" />
+              </div>
+              <span className="text-[13px] font-bold tracking-tight text-foreground hidden sm:block">
+                Neeko <span className="text-muted-foreground font-medium">Ops</span>
+              </span>
             </button>
 
-            <div className="h-4 w-px bg-border" />
+            <div className="h-4 w-px bg-border/50 mx-3 shrink-0" />
 
+            {/* Nav */}
             <nav
-              className="flex items-center gap-0 overflow-x-auto flex-1"
+              className="flex items-center gap-0.5 overflow-x-auto flex-1 -mx-1 px-1"
               style={{ scrollbarWidth: "none" }}
             >
               {ADMIN_SECTIONS.map(({ path, label, icon: Icon }) => (
@@ -63,25 +74,42 @@ function AdminShell() {
                   key={path}
                   to={path}
                   className={({ isActive }) =>
-                    `flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors mr-0.5 ${
+                    `relative flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] font-medium whitespace-nowrap transition-all ${
                       isActive
-                        ? "bg-foreground text-background"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        ? "bg-foreground/10 text-foreground ring-1 ring-border/50"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                     }`
                   }
                 >
-                  <Icon className="h-3.5 w-3.5 shrink-0" />
-                  {label}
+                  {({ isActive }) => (
+                    <>
+                      <Icon className={`h-3.5 w-3.5 shrink-0 transition-colors ${isActive ? "text-foreground" : "text-muted-foreground/70"}`} />
+                      {label}
+                      {isActive && (
+                        <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-t bg-foreground/40" />
+                      )}
+                    </>
+                  )}
                 </NavLink>
               ))}
             </nav>
 
-            <div className="shrink-0 text-[11px] text-muted-foreground hidden sm:block">{user?.email}</div>
+            {/* User email */}
+            {user?.email && (
+              <>
+                <div className="h-4 w-px bg-border/50 mx-3 shrink-0 hidden sm:block" />
+                <div className="shrink-0 hidden sm:flex items-center gap-1.5">
+                  <Dot className="h-3 w-3 text-emerald-500" />
+                  <span className="text-[11px] text-muted-foreground/70 font-mono truncate max-w-[160px]">{user.email}</span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto max-w-7xl px-4 py-6">
+      {/* Page content */}
+      <div className="container mx-auto max-w-[1400px] px-4 sm:px-6 py-6">
         <GlobalJobBar />
         <Suspense fallback={<TabLoadingFallback />}>
           <Outlet />

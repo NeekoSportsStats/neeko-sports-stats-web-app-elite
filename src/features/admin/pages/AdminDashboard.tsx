@@ -5,9 +5,10 @@ import { runCommand } from "@/hooks/useAdminCommand";
 import { useAdminUIState } from "@/features/admin/state/AdminUIStateContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshCw, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, Clock, ChevronRight, HeartPulse, Users, Terminal, FlaskConical, Megaphone, ShieldCheck, Play, Bot, ChartBar as BarChart2, Zap } from "lucide-react";
+import { RefreshCw, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, Clock, ChevronRight, HeartPulse, Users, Terminal, FlaskConical, Megaphone, ShieldCheck, Play, Bot, ChartBar as BarChart2, Zap, LayoutDashboard } from "lucide-react";
 import { formatDate } from "@/features/admin/shared/adminUtils";
 import { AdminSectionIntro } from "@/features/admin/shared/AdminExplain";
+import { AdminPageHeader } from "@/features/admin/shared/AdminPageHeader";
 import type { CommandCenterStatus } from "@/features/admin/shared/types";
 import { MultiDataFreshness } from "@/components/ui/DataFreshnessIndicator";
 
@@ -370,29 +371,23 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-bold tracking-tight">Dashboard</h1>
-            <StatusDot level={overallHealth} />
-          </div>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Operator summary — system health at a glance
-            {lastRefreshed && ` · ${lastRefreshed.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })}`}
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading}>
-          <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
-      </div>
+      <AdminPageHeader
+        icon={LayoutDashboard}
+        title="Dashboard"
+        description="Operator summary — system health at a glance"
+        badge={overallHealth === "ok" ? "All Systems OK" : overallHealth === "warn" ? "Attention Needed" : overallHealth === "error" ? "Action Required" : undefined}
+        badgeVariant={overallHealth === "ok" ? "ok" : overallHealth === "warn" ? "warn" : overallHealth === "error" ? "error" : "default"}
+        loading={loading}
+        lastUpdated={lastRefreshed ? lastRefreshed.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" }) : undefined}
+        actions={
+          <Button variant="outline" size="sm" onClick={fetchAll} disabled={loading}>
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        }
+      />
 
       <GlobalStatusBanner status={status} loading={loading} />
-
-      <AdminSectionIntro
-        description="Your 24-hour operator view. Shows system health at a glance, active alerts, and recent pipeline runs. Click any tile to navigate to the relevant section."
-        detail="Tiles turn amber when something needs attention and red when something is broken. Alerts appear below when action is required. Check Health for stage-by-stage pipeline details, or Command Center to trigger manual actions."
-      />
 
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
