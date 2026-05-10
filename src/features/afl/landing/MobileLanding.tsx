@@ -4,11 +4,12 @@ import {
   ArrowRight, ChevronRight, ChartBar as BarChart2Icon, Target,
   Zap, Check, Menu, X, Crown, TrendingUp, TriangleAlert as AlertTriangle,
   Star, TableProperties, Shield, Users, CircleHelp as HelpCircle,
-  FileText, Mail, LogIn,
+  FileText, Mail, LogIn, User, LogOut,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import type { StatBoardPlayer, StatBoardMatch } from "@/features/afl/stat-board/types";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
+import { useAuth } from "@/lib/auth";
 
 interface Props {
   isPremium: boolean;
@@ -31,7 +32,16 @@ const DRAWER_INFO = [
   { label: "Contact",  to: "/contact",  icon: Mail       },
 ] as const;
 
-function LeftDrawer({ open, onClose, isPremium }: { open: boolean; onClose: () => void; isPremium: boolean }) {
+function LeftDrawer({
+  open, onClose, isPremium, user, authLoading, signOut,
+}: {
+  open: boolean;
+  onClose: () => void;
+  isPremium: boolean;
+  user: ReturnType<typeof useAuth>["user"];
+  authLoading: boolean;
+  signOut: () => Promise<void>;
+}) {
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
@@ -196,31 +206,92 @@ function LeftDrawer({ open, onClose, isPremium }: { open: boolean; onClose: () =
           ))}
         </nav>
 
-        {/* Footer — Sign In */}
+        {/* Footer — auth actions */}
         <div style={{
           padding: "12px 16px 16px",
           borderTop: "1px solid rgba(255,255,255,0.07)",
           flexShrink: 0,
+          display: "flex",
+          flexDirection: "column",
+          gap: 8,
         }}>
-          <Link
-            to="/auth"
-            onClick={onClose}
-            style={{
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          {authLoading && (
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
               padding: "13px 16px", borderRadius: 11,
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.10)",
-              color: "rgba(255,255,255,0.60)",
-              fontSize: 13.5, fontWeight: 600,
-              textDecoration: "none",
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.07)",
+              color: "rgba(255,255,255,0.28)",
+              fontSize: 12.5, fontWeight: 500,
               minHeight: 48,
-              transition: "background 0.12s ease",
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.09)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
-          >
-            <LogIn size={15} /> Sign In
-          </Link>
+            }}>
+              Checking session…
+            </div>
+          )}
+
+          {!authLoading && !user && (
+            <Link
+              to="/auth"
+              onClick={onClose}
+              style={{
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                padding: "13px 16px", borderRadius: 11,
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.10)",
+                color: "rgba(255,255,255,0.60)",
+                fontSize: 13.5, fontWeight: 600,
+                textDecoration: "none",
+                minHeight: 48,
+                transition: "background 0.12s ease",
+              }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.09)"; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
+            >
+              <LogIn size={15} /> Sign In
+            </Link>
+          )}
+
+          {!authLoading && user && (
+            <>
+              <Link
+                to="/account"
+                onClick={onClose}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  padding: "13px 16px", borderRadius: 11,
+                  background: isPremium ? "rgba(224,174,45,0.08)" : "rgba(255,255,255,0.05)",
+                  border: isPremium ? "1px solid rgba(224,174,45,0.22)" : "1px solid rgba(255,255,255,0.10)",
+                  color: isPremium ? "#E0AE2D" : "rgba(255,255,255,0.75)",
+                  fontSize: 13.5, fontWeight: 600,
+                  textDecoration: "none",
+                  minHeight: 48,
+                  transition: "background 0.12s ease",
+                }}
+              >
+                {isPremium ? <Crown size={14} /> : <User size={14} />}
+                Account
+              </Link>
+              <button
+                onClick={() => { signOut(); onClose(); }}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  padding: "11px 16px", borderRadius: 11,
+                  background: "none",
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  color: "rgba(255,255,255,0.32)",
+                  fontSize: 12.5, fontWeight: 500,
+                  cursor: "pointer",
+                  minHeight: 44,
+                  transition: "background 0.12s ease",
+                  width: "100%",
+                }}
+                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "none"; }}
+              >
+                <LogOut size={13} /> Sign Out
+              </button>
+            </>
+          )}
         </div>
       </div>
     </>
@@ -491,11 +562,19 @@ const PREMIUM_ITEMS = [
 
 export default function MobileLanding({ isPremium }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { user, loading: authLoading, signOut } = useAuth();
 
   return (
     <div style={{ background: "#09090b", overflowX: "hidden", minHeight: "100vh" }}>
 
-      <LeftDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} isPremium={isPremium} />
+      <LeftDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        isPremium={isPremium}
+        user={user}
+        authLoading={authLoading}
+        signOut={signOut}
+      />
       <MobileHeader onMenuOpen={() => setDrawerOpen(true)} isPremium={isPremium} />
 
       {/* ─── HERO ─── */}
