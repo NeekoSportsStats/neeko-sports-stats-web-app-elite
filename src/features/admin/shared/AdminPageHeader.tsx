@@ -2,7 +2,7 @@ import type { ElementType } from "react";
 import { RefreshCw } from "lucide-react";
 
 interface AdminPageHeaderProps {
-  icon: ElementType;
+  icon?: ElementType;
   title: string;
   description?: string;
   badge?: string;
@@ -35,7 +35,7 @@ export function AdminPageHeader({
     <div className="flex items-start justify-between gap-4 mb-6 pb-4 border-b border-border/40">
       <div className="flex items-start gap-3 min-w-0">
         <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted/40 border border-border/50 shrink-0 mt-0.5">
-          <Icon className="h-4.5 w-4.5 text-foreground/80" style={{ width: "18px", height: "18px" }} />
+          {Icon && <Icon className="h-4.5 w-4.5 text-foreground/80" style={{ width: "18px", height: "18px" }} />}
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">

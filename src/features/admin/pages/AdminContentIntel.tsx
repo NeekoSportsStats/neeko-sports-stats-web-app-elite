@@ -13,7 +13,7 @@ import {
   useState, useEffect, useCallback, useRef, useMemo,
 } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { RefreshCw, Copy, Check, ChevronDown, ChevronUp, Clock, Database, X, Search, TriangleAlert as AlertTriangle, ArrowRight } from "lucide-react";
+import { RefreshCw, Copy, Check, ChevronDown, ChevronUp, Clock, Database, X, Search, TriangleAlert as AlertTriangle, ArrowRight, Lightbulb } from "lucide-react";
 import { AdminPageHeader } from "@/features/admin/shared/AdminPageHeader";
 import type {
   StatBoardPlayer, StatBoardMatch, ThresholdHitRate,
@@ -2174,6 +2174,7 @@ export default function AdminContentIntel() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 space-y-4">
       <AdminPageHeader
+        icon={Lightbulb}
         title="Content Intel"
         description="Private stat research · Smart Next-Up mode · No AI · No odds · Admin only"
       />
