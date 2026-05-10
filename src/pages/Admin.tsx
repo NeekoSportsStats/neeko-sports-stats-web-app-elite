@@ -43,38 +43,38 @@ function AdminShell() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background w-full max-w-full overflow-x-hidden">
       {/* Top bar */}
       <div className="border-b border-border/60 bg-card/80 backdrop-blur-md sticky top-0 z-20 shadow-[0_1px_0_0_rgba(255,255,255,0.03)]">
-        <div className="container mx-auto max-w-[1400px] px-4 sm:px-6">
-          <div className="flex items-center gap-0 h-12">
+        <div className="w-full max-w-[1400px] mx-auto">
+          <div className="flex items-center gap-0 h-12 min-w-0">
 
             {/* Brand */}
             <button
               onClick={() => navigate(ADMIN_DEFAULT_PATH)}
-              className="flex items-center gap-2 shrink-0 pr-4 mr-1 hover:opacity-75 transition-opacity group"
+              className="flex items-center gap-2 shrink-0 pl-3 pr-3 sm:pl-4 sm:pr-4 hover:opacity-75 transition-opacity group h-12"
             >
-              <div className="flex items-center justify-center w-6 h-6 rounded bg-foreground/90 group-hover:bg-foreground transition-colors">
+              <div className="flex items-center justify-center w-6 h-6 rounded bg-foreground/90 group-hover:bg-foreground transition-colors shrink-0">
                 <Shield className="h-3.5 w-3.5 text-background" />
               </div>
-              <span className="text-[13px] font-bold tracking-tight text-foreground hidden sm:block">
+              <span className="text-[13px] font-bold tracking-tight text-foreground hidden sm:block whitespace-nowrap">
                 Neeko <span className="text-muted-foreground font-medium">Ops</span>
               </span>
             </button>
 
-            <div className="h-4 w-px bg-border/50 mx-3 shrink-0" />
+            <div className="h-4 w-px bg-border/50 shrink-0" />
 
-            {/* Nav */}
+            {/* Nav — horizontal scroll, touch swipeable */}
             <nav
-              className="flex items-center gap-0.5 overflow-x-auto flex-1 -mx-1 px-1"
-              style={{ scrollbarWidth: "none" }}
+              className="flex items-center gap-0.5 flex-1 min-w-0 overflow-x-auto touch-pan-x overscroll-x-contain px-2"
+              style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
             >
               {ADMIN_SECTIONS.map(({ path, label, icon: Icon }) => (
                 <NavLink
                   key={path}
                   to={path}
                   className={({ isActive }) =>
-                    `relative flex items-center gap-1.5 px-3 py-1.5 rounded text-[12px] font-medium whitespace-nowrap transition-all ${
+                    `relative flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[12px] font-medium whitespace-nowrap transition-all min-h-[36px] ${
                       isActive
                         ? "bg-foreground/10 text-foreground ring-1 ring-border/50"
                         : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
@@ -86,7 +86,7 @@ function AdminShell() {
                       <Icon className={`h-3.5 w-3.5 shrink-0 transition-colors ${isActive ? "text-foreground" : "text-muted-foreground/70"}`} />
                       {label}
                       {isActive && (
-                        <span className="absolute bottom-0 left-3 right-3 h-[2px] rounded-t bg-foreground/40" />
+                        <span className="absolute bottom-0 left-2.5 right-2.5 h-[2px] rounded-t bg-foreground/40" />
                       )}
                     </>
                   )}
@@ -97,10 +97,10 @@ function AdminShell() {
             {/* User email */}
             {user?.email && (
               <>
-                <div className="h-4 w-px bg-border/50 mx-3 shrink-0 hidden sm:block" />
-                <div className="shrink-0 hidden sm:flex items-center gap-1.5">
+                <div className="h-4 w-px bg-border/50 mx-2 shrink-0 hidden md:block" />
+                <div className="shrink-0 hidden md:flex items-center gap-1.5 pr-4">
                   <Dot className="h-3 w-3 text-emerald-500" />
-                  <span className="text-[11px] text-muted-foreground/70 font-mono truncate max-w-[160px]">{user.email}</span>
+                  <span className="text-[11px] text-muted-foreground/70 font-mono truncate max-w-[140px]">{user.email}</span>
                 </div>
               </>
             )}
@@ -109,7 +109,7 @@ function AdminShell() {
       </div>
 
       {/* Page content */}
-      <div className="container mx-auto max-w-[1400px] px-4 sm:px-6 py-6">
+      <div className="w-full max-w-[1400px] mx-auto px-3 sm:px-4 lg:px-6 py-5 min-w-0 pb-[calc(96px+env(safe-area-inset-bottom,0px))]">
         <GlobalJobBar />
         <Suspense fallback={<TabLoadingFallback />}>
           <Outlet />

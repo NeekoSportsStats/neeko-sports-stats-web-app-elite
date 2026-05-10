@@ -202,7 +202,7 @@ export default function AdminNewCommandCenter() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 w-full min-w-0">
       <AdminPageHeader
         icon={Terminal}
         title="Command Center"
@@ -211,8 +211,8 @@ export default function AdminNewCommandCenter() {
         badgeVariant="warn"
       />
 
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex items-center justify-between flex-wrap gap-3 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
           {status && !loading && (
             <>
               <StatusDot ok={status.pipeline_health === "ok"} />
@@ -225,40 +225,44 @@ export default function AdminNewCommandCenter() {
             </>
           )}
         </div>
-        <Button variant="outline" size="sm" onClick={fetchStatus} disabled={loading}>
+        <Button variant="outline" size="sm" onClick={fetchStatus} disabled={loading} className="shrink-0">
           <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
           Refresh
         </Button>
       </div>
 
-      <div className="rounded-lg border border-border bg-muted/20 px-4 py-3 flex flex-wrap items-center gap-x-6 gap-y-2">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Action risk guide</span>
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">SAFE</span> Fast refresh — safe any time, no data at risk</span>
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30">RECOVERY</span> Pipeline re-run — may overwrite derived data</span>
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/30">HEAVY</span> Full AI regen — expensive, long-running, irreversible</span>
+      <div className="rounded-lg border border-border bg-muted/20 px-3 py-3 min-w-0">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Action risk guide</p>
+        <div className="flex flex-col gap-1.5">
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shrink-0">SAFE</span> Fast refresh — safe any time, no data at risk</span>
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 shrink-0">RECOVERY</span> Pipeline re-run — may overwrite derived data</span>
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/10 text-red-700 dark:text-red-300 border border-red-500/30 shrink-0">HEAVY</span> Full AI regen — expensive, long-running, irreversible</span>
+        </div>
       </div>
 
-      <div className="flex gap-0.5 border-b border-border/40 mb-5 overflow-x-auto -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
-        {tabs.map(t => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`relative flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium whitespace-nowrap transition-colors ${
-              t.id === "danger"
-                ? tab === t.id ? "text-red-400" : "text-red-400/50 hover:text-red-400"
-                : tab === t.id ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t.label}
-            {tab === t.id && (
-              <span className={`absolute bottom-0 left-2 right-2 h-[2px] rounded-t ${t.id === "danger" ? "bg-red-500/60" : "bg-foreground"}`} />
-            )}
-          </button>
-        ))}
+      <div className="overflow-x-auto touch-pan-x overscroll-x-contain -mx-3 sm:-mx-4 lg:-mx-6" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
+        <div className="flex gap-0.5 border-b border-border/40 px-3 sm:px-4 lg:px-6 w-max min-w-full">
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`relative flex items-center gap-1.5 px-3 py-3 text-[12px] font-medium whitespace-nowrap transition-colors min-h-[44px] ${
+                t.id === "danger"
+                  ? tab === t.id ? "text-red-400" : "text-red-400/50 hover:text-red-400"
+                  : tab === t.id ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.label}
+              {tab === t.id && (
+                <span className={`absolute bottom-0 left-2 right-2 h-[2px] rounded-t ${t.id === "danger" ? "bg-red-500/60" : "bg-foreground"}`} />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       {tab === "pipeline" && (
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 min-w-0">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold">
@@ -368,8 +372,8 @@ export default function AdminNewCommandCenter() {
               (status.ai_missing_players ?? 0) > 100 ? "bg-amber-950/10 border-amber-900/40" :
               "bg-emerald-950/10 border-emerald-900/30"
             }`}>
-              <div className="flex items-start justify-between gap-4 flex-wrap">
-                <div>
+              <div className="flex flex-col gap-3 min-w-0">
+                <div className="min-w-0">
                   <p className={`text-sm font-semibold ${
                     (status.ai_missing_players ?? 0) > 300 ? "text-red-400" :
                     (status.ai_missing_players ?? 0) > 100 ? "text-amber-400" :
@@ -384,25 +388,25 @@ export default function AdminNewCommandCenter() {
                     {status.ai_last_generation ? ` · Last run ${fmtTs(status.ai_last_generation)}` : ""}
                   </p>
                 </div>
-                <div className="flex gap-4 text-center">
-                  <div>
-                    <p className="text-lg font-bold tabular-nums">{status.ai_analysis_rows?.toLocaleString() ?? "—"}</p>
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <div className="rounded-md bg-muted/20 px-2 py-2">
+                    <p className="text-base font-bold tabular-nums">{status.ai_analysis_rows?.toLocaleString() ?? "—"}</p>
                     <p className="text-[10px] text-muted-foreground">Analysed</p>
                   </div>
-                  <div>
-                    <p className={`text-lg font-bold tabular-nums ${(status.ai_missing_players ?? 0) > 100 ? "text-amber-400" : ""} ${(status.ai_missing_players ?? 0) > 300 ? "text-red-400" : ""}`}>
+                  <div className="rounded-md bg-muted/20 px-2 py-2">
+                    <p className={`text-base font-bold tabular-nums ${(status.ai_missing_players ?? 0) > 100 ? "text-amber-400" : ""} ${(status.ai_missing_players ?? 0) > 300 ? "text-red-400" : ""}`}>
                       {status.ai_missing_players?.toLocaleString() ?? "—"}
                     </p>
                     <p className="text-[10px] text-muted-foreground">Missing</p>
                   </div>
-                  <div>
-                    <p className={`text-lg font-bold tabular-nums ${(status.queue_failed ?? 0) > 0 ? "text-red-400" : "text-emerald-400"}`}>
+                  <div className="rounded-md bg-muted/20 px-2 py-2">
+                    <p className={`text-base font-bold tabular-nums ${(status.queue_failed ?? 0) > 0 ? "text-red-400" : "text-emerald-400"}`}>
                       {status.queue_failed?.toLocaleString() ?? "—"}
                     </p>
-                    <p className="text-[10px] text-muted-foreground">Queue Failed</p>
+                    <p className="text-[10px] text-muted-foreground">Failed</p>
                   </div>
-                  <div>
-                    <p className="text-lg font-bold tabular-nums">{status.queue_pending?.toLocaleString() ?? "—"}</p>
+                  <div className="rounded-md bg-muted/20 px-2 py-2">
+                    <p className="text-base font-bold tabular-nums">{status.queue_pending?.toLocaleString() ?? "—"}</p>
                     <p className="text-[10px] text-muted-foreground">Pending</p>
                   </div>
                 </div>
@@ -422,8 +426,8 @@ export default function AdminNewCommandCenter() {
             </div>
           )}
 
-        <div className="grid gap-5 sm:grid-cols-2">
-          <Card>
+        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 min-w-0">
+          <Card className="min-w-0">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold">
                 <Bot className="h-4 w-4 text-muted-foreground" />
@@ -529,7 +533,7 @@ export default function AdminNewCommandCenter() {
       )}
 
       {tab === "data" && (
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-5 grid-cols-1 sm:grid-cols-2 min-w-0">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-sm font-semibold">
@@ -612,7 +616,7 @@ export default function AdminNewCommandCenter() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 min-w-0">
             <ConfirmDangerButton
               label="Clear Failed AI Queue Jobs"
               command="clear_failed_ai_jobs"

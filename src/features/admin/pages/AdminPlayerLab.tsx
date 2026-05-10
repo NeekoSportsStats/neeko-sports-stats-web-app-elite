@@ -296,18 +296,23 @@ function PricingTab() {
         description="Full price intelligence table with inline editing, delta tracking, and filters. Plus ingestion tools for new price data."
         detail="Full Price Table = v_player_price_full (current + historical delta). Price Ingest = paste AFL Fantasy CSV. Name Resolver = fix unmatched names. Player Matching = fantasy_player_market table."
       />
-      <div className="flex gap-2 mb-5 border-b border-border">
-        {PRICING_TABS.map(({ id, label }) => (
-          <button
-            key={id}
-            onClick={() => setSub(id)}
-            className={`px-3 py-2 text-xs font-medium transition-colors border-b-2 -mb-px ${
-              sub === id ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      <div
+        className="overflow-x-auto touch-pan-x overscroll-x-contain mb-5 -mx-1"
+        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+      >
+        <div className="flex gap-2 border-b border-border px-1 w-max min-w-full">
+          {PRICING_TABS.map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setSub(id)}
+              className={`px-3 py-2 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap min-h-[44px] ${
+                sub === id ? "border-foreground text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
       {sub === "full_table" && <PriceFullTable />}
       {sub === "ingest"     && <FantasyPricesTab />}
@@ -331,24 +336,29 @@ export default function AdminPlayerLab() {
         description="Intelligence terminal — projection debugging, signal analysis, accuracy diagnostics, and price inspection"
       />
 
-      <div className="flex gap-0.5 border-b border-border/40 mb-5 overflow-x-auto -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`relative flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium whitespace-nowrap transition-colors ${
-              tab === id
-                ? "text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Icon className="h-3.5 w-3.5 shrink-0" />
-            {label}
-            {tab === id && (
-              <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t bg-foreground" />
-            )}
-          </button>
-        ))}
+      <div
+        className="overflow-x-auto touch-pan-x overscroll-x-contain mb-5 -mx-1"
+        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+      >
+        <div className="flex gap-0.5 border-b border-border/40 px-1 w-max min-w-full">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`relative flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium whitespace-nowrap transition-colors min-h-[44px] ${
+                tab === id
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              {label}
+              {tab === id && (
+                <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t bg-foreground" />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div>

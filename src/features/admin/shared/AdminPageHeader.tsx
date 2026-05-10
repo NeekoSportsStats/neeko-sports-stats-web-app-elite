@@ -74,12 +74,16 @@ export function AdminTabBar({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-0.5 border-b border-border/40 mb-5 -mx-1 px-1 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+    <div
+      className="overflow-x-auto touch-pan-x overscroll-x-contain mb-5 -mx-1"
+      style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+    >
+      <div className="flex items-center gap-0.5 border-b border-border/40 px-1 w-max min-w-full">
       {tabs.map(({ id, label, icon: Icon }) => (
         <button
           key={id}
           onClick={() => onChange(id)}
-          className={`relative flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium whitespace-nowrap transition-colors ${
+          className={`relative flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium whitespace-nowrap transition-colors min-h-[44px] ${
             active === id
               ? "text-foreground"
               : "text-muted-foreground hover:text-foreground"
@@ -92,6 +96,7 @@ export function AdminTabBar({
           )}
         </button>
       ))}
+      </div>
     </div>
   );
 }

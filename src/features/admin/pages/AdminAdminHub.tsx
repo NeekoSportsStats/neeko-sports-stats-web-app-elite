@@ -64,24 +64,29 @@ export default function AdminAdminHub() {
         description="Founder tasks, pipeline history, bye manager, and operator notes"
       />
 
-      <div className="flex gap-0.5 border-b border-border/40 mb-5 overflow-x-auto -mx-1 px-1" style={{ scrollbarWidth: "none" }}>
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`relative flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium whitespace-nowrap transition-colors ${
-              tab === id
-                ? "text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Icon className="h-3.5 w-3.5 shrink-0" />
-            {label}
-            {tab === id && (
-              <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t bg-foreground" />
-            )}
-          </button>
-        ))}
+      <div
+        className="overflow-x-auto touch-pan-x overscroll-x-contain mb-5 -mx-1"
+        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+      >
+        <div className="flex gap-0.5 border-b border-border/40 px-1 w-max min-w-full">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`relative flex items-center gap-1.5 px-3 py-2 text-[12px] font-medium whitespace-nowrap transition-colors min-h-[44px] ${
+                tab === id
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              {label}
+              {tab === id && (
+                <span className="absolute bottom-0 left-2 right-2 h-[2px] rounded-t bg-foreground" />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
       <Suspense fallback={<TabFallback />}>

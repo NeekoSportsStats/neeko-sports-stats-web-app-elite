@@ -343,7 +343,7 @@ function LiveActivityTab({
       ) : filtered.length === 0 ? (
         <div className="py-12 text-center text-sm text-muted-foreground">No events match this filter.</div>
       ) : (
-        <div className="rounded-md border border-border overflow-hidden">
+        <div className="rounded-md border border-border overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border bg-muted/40">
@@ -408,7 +408,7 @@ function AcquisitionTab({
         ) : referrers.length === 0 ? (
           <p className="text-sm text-muted-foreground py-8 text-center">No referrer data available.</p>
         ) : (
-          <div className="rounded-md border border-border overflow-hidden">
+          <div className="rounded-md border border-border overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
@@ -442,7 +442,7 @@ function AcquisitionTab({
       {utms.length > 0 && (
         <div>
           <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">UTM Campaigns (30d)</h3>
-          <div className="rounded-md border border-border overflow-hidden">
+          <div className="rounded-md border border-border overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40">
@@ -537,7 +537,7 @@ function EngagementTab({
         ) : topPages.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">No page view data yet.</p>
         ) : (
-          <div className="rounded-md border border-border overflow-hidden">
+          <div className="rounded-md border border-border overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/40">

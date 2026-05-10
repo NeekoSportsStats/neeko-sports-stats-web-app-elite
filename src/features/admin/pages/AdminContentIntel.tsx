@@ -3370,7 +3370,7 @@ export default function AdminContentIntel() {
   );
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 space-y-4">
+    <div className="min-h-dvh bg-zinc-950 text-zinc-100 p-4 space-y-4 w-full max-w-full overflow-x-hidden min-w-0">
       <AdminPageHeader
         icon={Lightbulb}
         title="Content Intel"
@@ -3420,11 +3420,14 @@ export default function AdminContentIntel() {
       )}
 
       {/* Tabs */}
-      <div className="border-b border-zinc-800">
-        <div className="flex gap-0 overflow-x-auto">
+      <div
+        className="overflow-x-auto touch-pan-x overscroll-x-contain -mx-4"
+        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}
+      >
+        <div className="flex gap-0 border-b border-zinc-800 px-4 w-max min-w-full">
           {TABS.map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              className={`relative px-4 py-2.5 text-[12px] font-medium whitespace-nowrap transition-colors ${
+              className={`relative px-4 py-2.5 text-[12px] font-medium whitespace-nowrap transition-colors min-h-[44px] ${
                 activeTab === tab ? "text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
               }`}>
               {tab}
