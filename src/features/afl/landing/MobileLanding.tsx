@@ -640,70 +640,38 @@ function FreeRoundPreview() {
   );
 }
 
-// ── Team Total Outlook module ─────────────────────────────────────────────────
+// ── Match Outlook module ──────────────────────────────────────────────────────
 
-interface TeamOutlookMatch {
+interface MatchOutlookItem {
   matchLabel: string;
   tempoLabel: string | null;
-  homeTeam: string;
-  awayTeam: string;
-  homeScore: number | null;
-  awayScore: number | null;
 }
 
-function useTeamOutlook(): { matches: TeamOutlookMatch[]; loading: boolean } {
-  const [matches, setMatches] = useState<TeamOutlookMatch[]>([]);
+function useMatchOutlook(): { matches: MatchOutlookItem[]; loading: boolean } {
+  const [matches, setMatches] = useState<MatchOutlookItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!supabase) { setLoading(false); return; }
     supabase
-      .rpc("get_stat_board_match_centre_rows", {
-        p_season: 2026, p_round: null, p_lens: "score",
-        p_limit: 100, p_offset: 0, p_is_premium: false,
-      })
+      .rpc("get_stat_board_matches", { p_season: 2026, p_round: null })
       .then(({ data }) => {
-        const allRows = (data as Array<{
+        const rows = (data as Array<{
           match_id: number;
           match_label: string;
-          fixture_order: number;
-          is_locked: boolean;
-          is_home: boolean;
-          team_name: string;
-          home_team_name: string;
-          away_team_name: string;
-          projected_team_score: number | null;
-          scoring_environment_label: string | null;
+          is_free_match: boolean;
+          scoring_environment_label?: string | null;
         }> | null) ?? [];
 
-        // Only use the first 2 free fixtures (fixture_order <= 2)
-        const freeRows = allRows.filter(r => r.fixture_order <= 2 && !r.is_locked);
+        const free = rows
+          .filter(r => r.is_free_match)
+          .slice(0, 2)
+          .map(r => ({
+            matchLabel: r.match_label,
+            tempoLabel: r.scoring_environment_label ?? null,
+          }));
 
-        // Group by match_id — two rows per fixture (home + away)
-        const matchMap = new Map<number, TeamOutlookMatch>();
-        for (const row of freeRows) {
-          if (!matchMap.has(row.match_id)) {
-            matchMap.set(row.match_id, {
-              matchLabel: row.match_label,
-              tempoLabel: row.scoring_environment_label,
-              homeTeam: row.home_team_name,
-              awayTeam: row.away_team_name,
-              homeScore: null,
-              awayScore: null,
-            });
-          }
-          const entry = matchMap.get(row.match_id)!;
-          if (row.is_home) {
-            entry.homeScore = row.projected_team_score != null ? Math.round(row.projected_team_score) : null;
-          } else {
-            entry.awayScore = row.projected_team_score != null ? Math.round(row.projected_team_score) : null;
-          }
-          if (!entry.tempoLabel && row.scoring_environment_label) {
-            entry.tempoLabel = row.scoring_environment_label;
-          }
-        }
-
-        setMatches(Array.from(matchMap.values()));
+        setMatches(free);
         setLoading(false);
       });
   }, []);
@@ -712,10 +680,11 @@ function useTeamOutlook(): { matches: TeamOutlookMatch[]; loading: boolean } {
 }
 
 function TeamTotalOutlook() {
-  const { matches, loading } = useTeamOutlook();
+  const { matches, loading } = useMatchOutlook();
 
   return (
     <div style={{ borderRadius: 13, border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden", background: "rgba(5,8,11,0.97)" }}>
+      {/* Header */}
       <div style={{
         padding: "9px 14px",
         background: "rgba(255,255,255,0.025)",
@@ -723,61 +692,64 @@ function TeamTotalOutlook() {
         display: "flex", alignItems: "center", gap: 7,
       }}>
         <BarChart2Icon size={13} style={{ color: "rgba(255,255,255,0.40)", flexShrink: 0 }} />
-        <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.55)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Match Score Outlook</span>
+        <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.55)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Match Outlook</span>
       </div>
 
       {loading ? (
-        <div style={{ padding: "14px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
           {[0, 1].map(i => (
-            <div key={i} style={{ height: 52, borderRadius: 8, background: "rgba(255,255,255,0.025)", animation: "shimmer 1.4s ease-in-out infinite" }} />
+            <div key={i} style={{ height: 64, borderRadius: 8, background: "rgba(255,255,255,0.025)", animation: "shimmer 1.4s ease-in-out infinite" }} />
           ))}
         </div>
       ) : matches.length === 0 ? (
         <div style={{ padding: "16px 14px", textAlign: "center" }}>
-          <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.28)" }}>Team outlook data not yet available for this round.</p>
+          <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.28)" }}>Match data not yet available for this round.</p>
         </div>
       ) : (
-        <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ padding: "10px 14px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
           {matches.map((m, i) => (
             <div key={i} style={{
               background: "rgba(255,255,255,0.02)", borderRadius: 9,
-              padding: "10px 12px", border: "1px solid rgba(255,255,255,0.06)",
+              padding: "11px 13px", border: "1px solid rgba(255,255,255,0.06)",
             }}>
-              {/* Match label + tempo */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, gap: 8 }}>
-                <p style={{ margin: 0, fontSize: 11.5, fontWeight: 700, color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {m.matchLabel}
-                </p>
+              {/* Match name */}
+              <p style={{
+                margin: "0 0 7px", fontSize: 12.5, fontWeight: 700,
+                color: "rgba(255,255,255,0.75)",
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              }}>
+                {m.matchLabel}
+              </p>
+
+              {/* Meta row */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{
+                  fontSize: 10, color: "rgba(255,255,255,0.34)",
+                  letterSpacing: "0.02em",
+                }}>
+                  Stats available: Disposals · Goals
+                </span>
                 {m.tempoLabel && (
-                  <span style={{ fontSize: 9, color: "rgba(255,255,255,0.28)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                  <span style={{
+                    fontSize: 9, fontWeight: 600,
+                    color: "rgba(96,165,250,0.70)",
+                    background: "rgba(96,165,250,0.08)",
+                    border: "1px solid rgba(96,165,250,0.15)",
+                    borderRadius: 4, padding: "2px 7px",
+                    whiteSpace: "nowrap",
+                  }}>
                     {m.tempoLabel}
                   </span>
                 )}
               </div>
-              {/* Per-team rows */}
-              {[
-                { name: m.homeTeam, score: m.homeScore },
-                { name: m.awayTeam, score: m.awayScore },
-              ].map(({ name, score }) => (
-                <div key={name} style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "5px 0",
-                  borderTop: "1px solid rgba(255,255,255,0.04)",
-                  gap: 10,
-                }}>
-                  <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "#E4E4E4", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {name}
-                  </p>
-                  {score != null ? (
-                    <div style={{ textAlign: "right", flexShrink: 0 }}>
-                      <span style={{ fontSize: 14, fontWeight: 800, color: "#f5f5f5", fontVariantNumeric: "tabular-nums" }}>{score}</span>
-                      <span style={{ fontSize: 8, color: "rgba(255,255,255,0.26)", textTransform: "uppercase", letterSpacing: "0.06em", marginLeft: 4 }}>proj score</span>
-                    </div>
-                  ) : (
-                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.22)" }}>—</span>
-                  )}
-                </div>
-              ))}
+
+              {/* Free preview badge */}
+              <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 5 }}>
+                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", opacity: 0.85 }} />
+                <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(34,197,94,0.70)", letterSpacing: "0.02em" }}>
+                  Free preview available
+                </span>
+              </div>
             </div>
           ))}
         </div>
@@ -1235,7 +1207,7 @@ export default function MobileLanding({ isPremium }: Props) {
         <FreeRoundPreview />
       </section>
 
-      {/* ─── MATCH SCORE OUTLOOK ─── */}
+      {/* ─── MATCH OUTLOOK ─── */}
       <section style={{ padding: "36px 14px 0" }}>
         <TeamTotalOutlook />
       </section>
