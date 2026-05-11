@@ -77,11 +77,11 @@ function LeftDrawer({
       >
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "14px 16px 14px 20px",
+          padding: "10px 14px 10px 16px",
           borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0,
         }}>
             <Link to="/" onClick={onClose} style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
-            <img src="/logo.png" alt="Neeko Sports Stats" style={{ width: 130, height: "auto", objectFit: "contain", display: "block" }} />
+            <img src="/logo.png" alt="Neeko Sports Stats" style={{ width: 110, height: "auto", objectFit: "contain", display: "block" }} />
           </Link>
           <button
             onClick={onClose} aria-label="Close menu"
@@ -236,8 +236,8 @@ function MobileHeader({ onMenuOpen, isPremium }: { onMenuOpen: () => void; isPre
         <Menu size={20} />
       </button>
 
-      {/* Brand */}
-      <Link to="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", flex: 1, minWidth: 0 }}>
+      {/* Brand — centred with slight right bias to account for burger width vs Neeko+ width */}
+      <Link to="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", flex: 1, minWidth: 0, paddingLeft: 8 }}>
         <img src="/logo.png" alt="Neeko Sports Stats" style={{ width: 100, maxWidth: "100%", height: "auto", objectFit: "contain", display: "block" }} />
       </Link>
 
@@ -1095,9 +1095,9 @@ export default function MobileLanding({ isPremium }: Props) {
         signOut={signOut}
       />
 
-      {/* Sticky header + nav wrapper — mobile only */}
+      {/* Fixed header + nav wrapper — mobile only */}
       <div style={{
-        position: "sticky", top: 0, zIndex: 100,
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
         background: "rgba(7,10,14,0.96)",
         backdropFilter: "blur(14px)",
         WebkitBackdropFilter: "blur(14px)",
@@ -1108,9 +1108,11 @@ export default function MobileLanding({ isPremium }: Props) {
       </div>
 
       {/* ─── HERO ─── */}
+      {/* paddingTop offsets the fixed header: 62px MobileHeader + 40px ProductNav = 102px */}
       <section style={{
         position: "relative",
         padding: "32px 16px 36px",
+        paddingTop: "calc(102px + 32px)",
         overflow: "hidden",
         backgroundImage: `
           linear-gradient(to bottom, rgba(0,0,0,0.12) 0%, rgba(5,8,12,0.48) 55%, rgba(7,9,13,0.92) 100%),
