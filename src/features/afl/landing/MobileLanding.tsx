@@ -80,12 +80,9 @@ function LeftDrawer({
           padding: "14px 16px 14px 20px",
           borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0,
         }}>
-            <Link to="/" onClick={onClose} style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none" }}>
-            <img src="/logo.png" alt="" aria-hidden="true" style={{ height: 32, width: 32, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
-            <div>
-              <span style={{ display: "block", fontSize: 15, fontWeight: 900, letterSpacing: "-0.02em", color: "#f0f0f0", lineHeight: 1.1 }}>Neeko Sports</span>
-              <span style={{ display: "block", fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase" }}>Stats</span>
-            </div>
+            <Link to="/" onClick={onClose} style={{ textDecoration: "none" }}>
+            <span style={{ display: "block", fontSize: 15, fontWeight: 900, letterSpacing: "-0.02em", color: "#f0f0f0", lineHeight: 1.1 }}>Neeko Sports</span>
+            <span style={{ display: "block", fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase" }}>Stats</span>
           </Link>
           <button
             onClick={onClose} aria-label="Close menu"
@@ -242,11 +239,6 @@ function MobileHeader({ onMenuOpen, isPremium }: { onMenuOpen: () => void; isPre
 
       {/* Brand */}
       <Link to="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", flex: 1, minWidth: 0 }}>
-        <img
-          src="/logo.png"
-          alt="Neeko Sports"
-          style={{ height: 30, width: 30, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-        />
         <div style={{ minWidth: 0 }}>
           <span style={{
             display: "block",
