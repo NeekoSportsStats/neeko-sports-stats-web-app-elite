@@ -723,7 +723,7 @@ function TeamTotalOutlook() {
         display: "flex", alignItems: "center", gap: 7,
       }}>
         <BarChart2Icon size={13} style={{ color: "rgba(255,255,255,0.40)", flexShrink: 0 }} />
-        <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.55)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Team Total Outlook</span>
+        <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.55)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Match Score Outlook</span>
       </div>
 
       {loading ? (
@@ -771,7 +771,7 @@ function TeamTotalOutlook() {
                   {score != null ? (
                     <div style={{ textAlign: "right", flexShrink: 0 }}>
                       <span style={{ fontSize: 14, fontWeight: 800, color: "#f5f5f5", fontVariantNumeric: "tabular-nums" }}>{score}</span>
-                      <span style={{ fontSize: 8, color: "rgba(255,255,255,0.26)", textTransform: "uppercase", letterSpacing: "0.06em", marginLeft: 4 }}>proj pts</span>
+                      <span style={{ fontSize: 8, color: "rgba(255,255,255,0.26)", textTransform: "uppercase", letterSpacing: "0.06em", marginLeft: 4 }}>proj score</span>
                     </div>
                   ) : (
                     <span style={{ fontSize: 12, color: "rgba(255,255,255,0.22)" }}>—</span>
