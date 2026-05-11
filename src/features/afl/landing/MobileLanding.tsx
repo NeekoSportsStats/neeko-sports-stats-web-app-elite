@@ -1124,7 +1124,7 @@ export default function MobileLanding({ isPremium }: Props) {
       {/* ─── HERO ─── */}
       <section style={{
         position: "relative",
-        padding: "22px 16px 18px",
+        padding: "22px 16px 28px",
         overflow: "hidden",
         backgroundImage: `
           linear-gradient(to bottom, rgba(0,0,0,0.28) 0%, rgba(5,8,12,0.68) 52%, rgba(7,9,13,1) 100%),
@@ -1190,45 +1190,45 @@ export default function MobileLanding({ isPremium }: Props) {
       </section>
 
       {/* ─── FREE ROUND PREVIEW ─── */}
-      <section style={{ padding: "20px 14px 0" }}>
+      <section style={{ padding: "32px 14px 0" }}>
         <FreeRoundPreview />
       </section>
 
-      {/* ─── TEAM TOTAL OUTLOOK ─── */}
-      <section style={{ padding: "16px 14px 0" }}>
+      {/* ─── MATCH SCORE OUTLOOK ─── */}
+      <section style={{ padding: "36px 14px 0" }}>
         <TeamTotalOutlook />
       </section>
 
       {/* ─── LOCKED FULL ROUND ─── */}
       {allMatches.some(m => !m.is_free_match) && (
-        <section style={{ padding: "16px 14px 0" }}>
+        <section style={{ padding: "36px 14px 0" }}>
           <LockedFullRound allMatches={allMatches} />
         </section>
       )}
 
       {/* ─── FANTASY HUB ─── */}
-      <section style={{ padding: "20px 14px 0" }}>
+      <section style={{ padding: "40px 14px 0" }}>
         <FantasyHubTeaser />
       </section>
 
       {/* ─── EXPLORE PRODUCT TILES ─── */}
-      <section style={{ padding: "20px 14px 0" }}>
-        <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.35em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 12, textAlign: "center" }}>
+      <section style={{ padding: "40px 14px 0" }}>
+        <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.35em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 14, textAlign: "center" }}>
           Explore Neeko
         </p>
         <ExploreProductTiles />
       </section>
 
       {/* ─── PRICING ─── */}
-      <section style={{ padding: "24px 14px 0" }}>
+      <section style={{ padding: "40px 14px 0" }}>
         <PricingBlock />
       </section>
 
       {/* ─── FOOTER ─── */}
       <section style={{
-        padding: `20px 14px max(32px, calc(20px + env(safe-area-inset-bottom, 0px)))`,
+        padding: `32px 14px max(40px, calc(28px + env(safe-area-inset-bottom, 0px)))`,
         borderTop: "1px solid rgba(255,255,255,0.05)",
-        marginTop: 24,
+        marginTop: 32,
       }}>
         <p style={{ textAlign: "center", fontSize: 11.5, color: "rgba(255,255,255,0.22)", lineHeight: 1.5, margin: 0 }}>
           Free to start. Upgrade any time.
