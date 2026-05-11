@@ -77,11 +77,11 @@ function LeftDrawer({
       >
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "8px 14px 8px 16px",
+          padding: "6px 14px 6px 16px",
           borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0,
         }}>
             <Link to="/" onClick={onClose} style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
-            <img src="/logo.png" alt="Neeko Sports Stats" style={{ width: 128, height: "auto", objectFit: "contain", display: "block" }} />
+            <img src="/logo.png" alt="Neeko Sports Stats" style={{ width: 108, height: "auto", objectFit: "contain", display: "block" }} />
           </Link>
           <button
             onClick={onClose} aria-label="Close menu"
