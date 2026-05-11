@@ -220,45 +220,71 @@ function MobileHeader({ onMenuOpen, isPremium }: { onMenuOpen: () => void; isPre
   return (
     <header style={{
       display: "flex", alignItems: "center",
-      padding: "0 14px 0 12px", height: 56,
-      gap: 10,
+      padding: "0 14px 0 12px", height: 62,
+      gap: 12,
     }}>
+      {/* Burger */}
       <button
         onClick={onMenuOpen} aria-label="Open navigation menu"
         style={{
-          background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.11)",
-          borderRadius: 9, color: "rgba(255,255,255,0.72)",
+          background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)",
+          borderRadius: 10, color: "rgba(255,255,255,0.80)",
           cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0, width: 40, height: 40,
+          flexShrink: 0, width: 42, height: 42,
         }}
       >
-        <Menu size={18} />
+        <Menu size={20} />
       </button>
 
-      <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", flex: 1 }}>
-        <img src="/logo.png" alt="Neeko Sports" style={{ height: 38, width: "auto", maxHeight: 38 }} />
+      {/* Brand — logo + name text */}
+      <Link to="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", flex: 1, minWidth: 0 }}>
+        <img
+          src="/logo.png"
+          alt="Neeko Sports"
+          style={{ height: 46, width: "auto", maxHeight: 46, flexShrink: 0 }}
+        />
+        <div style={{ minWidth: 0 }}>
+          <span style={{
+            display: "block",
+            fontSize: 16, fontWeight: 900, letterSpacing: "-0.02em",
+            color: "#f0f0f0", lineHeight: 1.1,
+            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+          }}>
+            Neeko Sports
+          </span>
+          <span style={{
+            display: "block",
+            fontSize: 10, fontWeight: 600, letterSpacing: "0.04em",
+            color: "rgba(255,255,255,0.38)", lineHeight: 1.2,
+            textTransform: "uppercase",
+          }}>
+            Stats
+          </span>
+        </div>
       </Link>
 
+      {/* Neeko+ / Plus badge */}
       {!isPremium && (
         <Link to="/neeko-plus" style={{
-          display: "flex", alignItems: "center", gap: 5,
-          padding: "0 13px", height: 38, borderRadius: 9,
+          display: "flex", alignItems: "center", gap: 6,
+          padding: "0 14px", height: 40, borderRadius: 10,
           background: "linear-gradient(160deg,#fad52a 0%,#e09600 100%)",
-          color: "#130c00", fontSize: 12.5, fontWeight: 900,
+          color: "#130c00", fontSize: 13, fontWeight: 900,
           textDecoration: "none", letterSpacing: "0.01em", flexShrink: 0,
+          boxShadow: "0 2px 10px rgba(224,174,45,0.22)",
         }}>
-          <Crown size={13} /> Neeko+
+          <Crown size={14} /> Neeko+
         </Link>
       )}
       {isPremium && (
         <div style={{
-          display: "flex", alignItems: "center", gap: 5,
-          padding: "0 11px", height: 36, borderRadius: 9,
+          display: "flex", alignItems: "center", gap: 6,
+          padding: "0 12px", height: 38, borderRadius: 10,
           background: "rgba(224,174,45,0.10)",
-          border: "1px solid rgba(224,174,45,0.26)",
-          color: "#E0AE2D", fontSize: 11.5, fontWeight: 800, flexShrink: 0,
+          border: "1px solid rgba(224,174,45,0.28)",
+          color: "#E0AE2D", fontSize: 12, fontWeight: 800, flexShrink: 0,
         }}>
-          <Crown size={12} /> Plus
+          <Crown size={13} /> Plus
         </div>
       )}
     </header>
@@ -284,7 +310,7 @@ function ProductNav() {
     } as React.CSSProperties}>
       <div style={{
         display: "flex", alignItems: "center",
-        padding: "0 12px", gap: 2,
+        padding: "0 10px", gap: 0,
         width: "max-content", minWidth: "100%",
       }}>
         {PRODUCT_NAV.map(({ label, to, icon: Icon }) => (
@@ -292,14 +318,14 @@ function ProductNav() {
             key={to} to={to}
             style={{
               display: "flex", alignItems: "center", gap: 6,
-              padding: "0 12px", height: 40,
-              fontSize: 12.5, fontWeight: 600,
-              color: "rgba(255,255,255,0.55)",
+              padding: "0 13px", height: 42,
+              fontSize: 13, fontWeight: 600,
+              color: "rgba(255,255,255,0.60)",
               textDecoration: "none", whiteSpace: "nowrap",
               borderRadius: 7, transition: "color 0.12s, background 0.12s",
             }}
           >
-            <Icon size={13} style={{ flexShrink: 0, opacity: 0.65 }} />
+            <Icon size={14} style={{ flexShrink: 0, opacity: 0.70 }} />
             {label}
           </Link>
         ))}
