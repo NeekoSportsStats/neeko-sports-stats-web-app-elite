@@ -621,14 +621,17 @@ function FreeRoundPreview() {
 
 // ── Team Total Outlook module ─────────────────────────────────────────────────
 
-interface TeamOutlookRow {
+interface TeamOutlookMatch {
   matchLabel: string;
-  projectedTotal: number | null;
   tempoLabel: string | null;
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number | null;
+  awayScore: number | null;
 }
 
-function useTeamOutlook(): { rows: TeamOutlookRow[]; loading: boolean } {
-  const [rows, setRows] = useState<TeamOutlookRow[]>([]);
+function useTeamOutlook(): { matches: TeamOutlookMatch[]; loading: boolean } {
+  const [matches, setMatches] = useState<TeamOutlookMatch[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -644,6 +647,10 @@ function useTeamOutlook(): { rows: TeamOutlookRow[]; loading: boolean } {
           match_label: string;
           fixture_order: number;
           is_locked: boolean;
+          is_home: boolean;
+          team_name: string;
+          home_team_name: string;
+          away_team_name: string;
           projected_team_score: number | null;
           scoring_environment_label: string | null;
         }> | null) ?? [];
@@ -651,44 +658,40 @@ function useTeamOutlook(): { rows: TeamOutlookRow[]; loading: boolean } {
         // Only use the first 2 free fixtures (fixture_order <= 2)
         const freeRows = allRows.filter(r => r.fixture_order <= 2 && !r.is_locked);
 
-        // Group by match_id, sum projected_team_score for both sides
-        const matchMap = new Map<number, { matchLabel: string; scores: (number | null)[]; tempo: string | null }>();
+        // Group by match_id — two rows per fixture (home + away)
+        const matchMap = new Map<number, TeamOutlookMatch>();
         for (const row of freeRows) {
-          const existing = matchMap.get(row.match_id);
-          if (!existing) {
+          if (!matchMap.has(row.match_id)) {
             matchMap.set(row.match_id, {
               matchLabel: row.match_label,
-              scores: [row.projected_team_score],
-              tempo: row.scoring_environment_label,
+              tempoLabel: row.scoring_environment_label,
+              homeTeam: row.home_team_name,
+              awayTeam: row.away_team_name,
+              homeScore: null,
+              awayScore: null,
             });
+          }
+          const entry = matchMap.get(row.match_id)!;
+          if (row.is_home) {
+            entry.homeScore = row.projected_team_score != null ? Math.round(row.projected_team_score) : null;
           } else {
-            existing.scores.push(row.projected_team_score);
-            if (!existing.tempo && row.scoring_environment_label) {
-              existing.tempo = row.scoring_environment_label;
-            }
+            entry.awayScore = row.projected_team_score != null ? Math.round(row.projected_team_score) : null;
+          }
+          if (!entry.tempoLabel && row.scoring_environment_label) {
+            entry.tempoLabel = row.scoring_environment_label;
           }
         }
 
-        const result: TeamOutlookRow[] = Array.from(matchMap.values()).map(m => {
-          const validScores = m.scores.filter((s): s is number => s != null);
-          const total = validScores.length > 0 ? Math.round(validScores.reduce((a, b) => a + b, 0)) : null;
-          return {
-            matchLabel: m.matchLabel,
-            projectedTotal: total,
-            tempoLabel: m.tempo,
-          };
-        });
-
-        setRows(result);
+        setMatches(Array.from(matchMap.values()));
         setLoading(false);
       });
   }, []);
 
-  return { rows, loading };
+  return { matches, loading };
 }
 
 function TeamTotalOutlook() {
-  const { rows, loading } = useTeamOutlook();
+  const { matches, loading } = useTeamOutlook();
 
   return (
     <div style={{ borderRadius: 13, border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden", background: "rgba(5,8,11,0.97)" }}>
@@ -703,42 +706,57 @@ function TeamTotalOutlook() {
       </div>
 
       {loading ? (
-        <div style={{ padding: "18px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ padding: "14px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
           {[0, 1].map(i => (
-            <div key={i} style={{ height: 44, borderRadius: 8, background: "rgba(255,255,255,0.025)", animation: "shimmer 1.4s ease-in-out infinite" }} />
+            <div key={i} style={{ height: 52, borderRadius: 8, background: "rgba(255,255,255,0.025)", animation: "shimmer 1.4s ease-in-out infinite" }} />
           ))}
         </div>
-      ) : rows.length === 0 ? (
+      ) : matches.length === 0 ? (
         <div style={{ padding: "16px 14px", textAlign: "center" }}>
           <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.28)" }}>Team outlook data not yet available for this round.</p>
         </div>
       ) : (
         <div style={{ padding: "10px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
-          {rows.map((row, i) => (
+          {matches.map((m, i) => (
             <div key={i} style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
               background: "rgba(255,255,255,0.02)", borderRadius: 9,
               padding: "10px 12px", border: "1px solid rgba(255,255,255,0.06)",
-              gap: 10,
             }}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: "#E4E4E4", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {row.matchLabel}
+              {/* Match label + tempo */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, gap: 8 }}>
+                <p style={{ margin: 0, fontSize: 11.5, fontWeight: 700, color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {m.matchLabel}
                 </p>
-                {row.tempoLabel && (
-                  <p style={{ margin: "2px 0 0", fontSize: 10, color: "rgba(255,255,255,0.38)" }}>
-                    Tempo: {row.tempoLabel}
-                  </p>
+                {m.tempoLabel && (
+                  <span style={{ fontSize: 9, color: "rgba(255,255,255,0.28)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                    {m.tempoLabel}
+                  </span>
                 )}
               </div>
-              {row.projectedTotal != null && (
-                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <p style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "#f5f5f5", fontVariantNumeric: "tabular-nums" }}>
-                    {row.projectedTotal}
+              {/* Per-team rows */}
+              {[
+                { name: m.homeTeam, score: m.homeScore },
+                { name: m.awayTeam, score: m.awayScore },
+              ].map(({ name, score }) => (
+                <div key={name} style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "5px 0",
+                  borderTop: "1px solid rgba(255,255,255,0.04)",
+                  gap: 10,
+                }}>
+                  <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: "#E4E4E4", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {name}
                   </p>
-                  <p style={{ margin: "1px 0 0", fontSize: 7.5, color: "rgba(255,255,255,0.28)", textTransform: "uppercase", letterSpacing: "0.06em" }}>proj pts</p>
+                  {score != null ? (
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <span style={{ fontSize: 14, fontWeight: 800, color: "#f5f5f5", fontVariantNumeric: "tabular-nums" }}>{score}</span>
+                      <span style={{ fontSize: 8, color: "rgba(255,255,255,0.26)", textTransform: "uppercase", letterSpacing: "0.06em", marginLeft: 4 }}>proj pts</span>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.22)" }}>—</span>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
           ))}
         </div>
