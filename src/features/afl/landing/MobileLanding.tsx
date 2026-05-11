@@ -1127,7 +1127,7 @@ export default function MobileLanding({ isPremium }: Props) {
         padding: "22px 16px 18px",
         overflow: "hidden",
         backgroundImage: `
-          linear-gradient(to bottom, rgba(0,0,0,0.48) 0%, rgba(5,8,12,0.82) 55%, rgba(7,9,13,1) 100%),
+          linear-gradient(to bottom, rgba(0,0,0,0.28) 0%, rgba(5,8,12,0.68) 52%, rgba(7,9,13,1) 100%),
           url('/images/Fantasy_sports_war_room_setup.png')
         `,
         backgroundSize: "cover",
@@ -1135,9 +1135,9 @@ export default function MobileLanding({ isPremium }: Props) {
         backgroundRepeat: "no-repeat",
       }}>
         <div style={{
-          position: "absolute", top: -40, left: "50%", transform: "translateX(-50%)",
-          width: 260, height: 140, borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(34,197,94,0.05) 0%, transparent 70%)",
+          position: "absolute", bottom: 0, left: "50%", transform: "translateX(-50%)",
+          width: 200, height: 60, borderRadius: "50%",
+          background: "radial-gradient(ellipse, rgba(34,197,94,0.07) 0%, transparent 70%)",
           pointerEvents: "none",
         }} />
 
