@@ -343,15 +343,20 @@ function useFreeRoundData(): FreeRoundData {
 
 // ── Profile text helper ───────────────────────────────────────────────────────
 
+// Normalise a rate value to 0-1 regardless of whether the source is 0-1 or 0-100.
+function normaliseRate(rate: number): number {
+  return rate > 1 ? rate / 100 : rate;
+}
+
 function profileText(player: StatBoardPlayer): string {
   const { stat_lens, all_threshold_hit_rates, projection, hit_rate_last_10 } = player;
 
   if (stat_lens === "disposals") {
     const hr25 = all_threshold_hit_rates?.["25"];
     const hr20 = all_threshold_hit_rates?.["20"];
-    if (hr25 && hr25.rate >= 0.65) return "strong 25+ profile";
-    if (hr20 && hr20.rate >= 0.65) return "strong 20+ profile";
-    if (hr20 && hr20.rate >= 0.45) return "solid 20+ profile";
+    if (hr25 && normaliseRate(hr25.rate) >= 0.65) return "strong 25+ profile";
+    if (hr20 && normaliseRate(hr20.rate) >= 0.65) return "strong 20+ profile";
+    if (hr20 && normaliseRate(hr20.rate) >= 0.45) return "solid 20+ profile";
     return "disposal contributor";
   }
 
@@ -359,10 +364,10 @@ function profileText(player: StatBoardPlayer): string {
   const hr2 = all_threshold_hit_rates?.["2"];
   const hr1 = all_threshold_hit_rates?.["1"];
   if ((projection ?? 0) >= 1.8) return "2+ goal ceiling";
-  if (hr2 && hr2.rate >= 0.55) return "2+ goal upside";
-  if (hr1 && hr1.rate >= 0.70) return "anytime goal profile";
-  const hitRate = hit_rate_last_10 != null ? hit_rate_last_10 : (hr1?.rate ?? 0);
-  if (hitRate >= 0.50) return "consistent scorer";
+  if (hr2 && normaliseRate(hr2.rate) >= 0.55) return "2+ goal upside";
+  if (hr1 && normaliseRate(hr1.rate) >= 0.70) return "anytime goal profile";
+  const rawRate = hit_rate_last_10 != null ? hit_rate_last_10 : (hr1?.rate ?? 0);
+  if (normaliseRate(rawRate) >= 0.50) return "consistent scorer";
   return "goal threat";
 }
 
@@ -375,7 +380,11 @@ function PlayerPreviewRow({ player }: { player: StatBoardPlayer }) {
       ? (player.all_threshold_hit_rates?.["20"] ?? null)
       : (player.all_threshold_hit_rates?.["1"] ?? null);
   const hitFrac = hitData ? `${hitData.hits}/${hitData.games}` : null;
-  const hitPct = hitData?.rate != null ? Math.round(hitData.rate * 100) : null;
+  // rate may be 0-1 (fraction) or 0-100 (percent) depending on the RPC version.
+  // Normalise: if > 1, treat as already 0-100; otherwise multiply by 100.
+  const hitPct = hitData?.rate != null
+    ? Math.min(100, Math.round(hitData.rate > 1 ? hitData.rate : hitData.rate * 100))
+    : null;
   const proj = player.projection;
 
   const confColor =
