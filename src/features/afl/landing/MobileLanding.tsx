@@ -796,76 +796,117 @@ function LockedFullRound({ allMatches }: { allMatches: StatBoardMatch[] }) {
   const extraCount = allLocked.length - LOCKED_PREVIEW_MAX;
 
   return (
-    <div style={{ borderRadius: 13, border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden", background: "rgba(5,8,11,0.97)" }}>
+    <div style={{
+      borderRadius: 14,
+      border: "1px solid rgba(224,174,45,0.22)",
+      overflow: "hidden",
+      background: "rgba(5,8,11,0.98)",
+      boxShadow: "0 0 0 1px rgba(224,174,45,0.06) inset, 0 8px 32px rgba(0,0,0,0.30)",
+    }}>
+      {/* Gold top accent bar */}
+      <div style={{ height: 2, background: "linear-gradient(90deg, transparent 0%, rgba(224,174,45,0.55) 40%, rgba(224,174,45,0.55) 60%, transparent 100%)" }} />
+
       {/* Header */}
       <div style={{
-        padding: "9px 14px",
-        background: "rgba(255,255,255,0.025)",
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "14px 16px 12px",
+        background: "linear-gradient(180deg, rgba(224,174,45,0.06) 0%, transparent 100%)",
+        borderBottom: "1px solid rgba(224,174,45,0.10)",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <Lock size={12} style={{ color: "rgba(224,174,45,0.65)", flexShrink: 0 }} />
-          <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(224,174,45,0.75)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Unlock Every Match</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "center",
+            width: 26, height: 26, borderRadius: 7,
+            background: "rgba(224,174,45,0.12)",
+            border: "1px solid rgba(224,174,45,0.24)",
+            flexShrink: 0,
+          }}>
+            <Lock size={12} style={{ color: "rgba(224,174,45,0.90)" }} />
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 900, color: "rgba(224,174,45,0.92)", letterSpacing: "-0.01em" }}>
+            Unlock Every Match
+          </span>
+          <span style={{
+            marginLeft: "auto",
+            fontSize: 8, fontWeight: 800, color: "rgba(224,174,45,0.60)",
+            letterSpacing: "0.14em", textTransform: "uppercase",
+            background: "rgba(224,174,45,0.10)", border: "1px solid rgba(224,174,45,0.18)",
+            borderRadius: 4, padding: "2px 6px",
+          }}>
+            Neeko+
+          </span>
         </div>
-        <span style={{ fontSize: 8.5, color: "rgba(255,255,255,0.26)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Neeko+</span>
-      </div>
-
-      <div style={{ padding: "8px 14px 4px" }}>
-        <p style={{ margin: "0 0 10px", fontSize: 11.5, color: "rgba(255,255,255,0.36)", lineHeight: 1.5 }}>
+        <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>
           Free users get two match previews. Neeko+ unlocks the full round.
         </p>
+      </div>
 
-        {lockedMatches.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: extraCount > 0 ? 6 : 12 }}>
-            {lockedMatches.map(m => (
-              <div key={m.match_id} style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                background: "rgba(255,255,255,0.02)", borderRadius: 8,
-                padding: "9px 12px", border: "1px solid rgba(255,255,255,0.06)",
-                gap: 10,
+      {/* Locked match cards */}
+      {lockedMatches.length > 0 && (
+        <div style={{ padding: "12px 14px 0", display: "flex", flexDirection: "column", gap: 7 }}>
+          {lockedMatches.map(m => (
+            <div key={m.match_id} style={{
+              display: "flex", alignItems: "center",
+              background: "rgba(224,174,45,0.03)",
+              borderRadius: 9,
+              padding: "10px 12px",
+              border: "1px solid rgba(224,174,45,0.12)",
+              gap: 10,
+            }}>
+              {/* Lock badge */}
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: 30, height: 30, borderRadius: 8,
+                background: "rgba(224,174,45,0.08)",
+                border: "1px solid rgba(224,174,45,0.18)",
+                flexShrink: 0,
               }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.45)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {m.match_label}
-                  </p>
-                  <p style={{ margin: "2px 0 0", fontSize: 9.5, color: "rgba(255,255,255,0.22)" }}>
-                    Disposals · Goals · Team outlooks
-                  </p>
-                </div>
-                <div style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 28, height: 28, borderRadius: "50%",
-                  background: "rgba(224,174,45,0.08)",
-                  border: "1px solid rgba(224,174,45,0.18)",
-                  flexShrink: 0,
-                }}>
-                  <Lock size={11} style={{ color: "rgba(224,174,45,0.60)" }} />
-                </div>
+                <Lock size={12} style={{ color: "rgba(224,174,45,0.65)" }} />
               </div>
-            ))}
-            {extraCount > 0 && (
-              <p style={{
-                margin: "4px 0 6px", textAlign: "center",
-                fontSize: 10.5, color: "rgba(224,174,45,0.52)",
-                fontStyle: "italic",
-              }}>
-                + {extraCount} more match{extraCount > 1 ? "es" : ""} unlocked with Neeko+
-              </p>
-            )}
-          </div>
-        )}
+              {/* Match info */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{
+                  margin: 0, fontSize: 12.5, fontWeight: 700,
+                  color: "rgba(255,255,255,0.52)",
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>
+                  {m.match_label}
+                </p>
+                <p style={{ margin: "3px 0 0", fontSize: 9.5, color: "rgba(224,174,45,0.40)", letterSpacing: "0.02em" }}>
+                  Disposals · Goals · Match outlooks
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
+      {/* Extra matches pill */}
+      {extraCount > 0 && (
+        <div style={{ padding: "10px 14px 0", display: "flex", justifyContent: "center" }}>
+          <span style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            fontSize: 11, fontWeight: 700, color: "rgba(224,174,45,0.60)",
+            background: "rgba(224,174,45,0.07)",
+            border: "1px solid rgba(224,174,45,0.14)",
+            borderRadius: 20, padding: "5px 12px",
+          }}>
+            <Lock size={9} style={{ color: "rgba(224,174,45,0.50)" }} />
+            +{extraCount} more match{extraCount > 1 ? "es" : ""} unlocked with Neeko+
+          </span>
+        </div>
+      )}
+
+      {/* CTA */}
+      <div style={{ padding: "14px 14px 16px" }}>
         <Link to="/neeko-plus" style={{
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-          padding: "12px 16px", borderRadius: 11, minHeight: 46,
-          background: "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
-          color: "#130c00", fontSize: 13.5, fontWeight: 900,
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          padding: "14px 20px", borderRadius: 11, minHeight: 50,
+          background: "linear-gradient(155deg, #fad52a 0%, #e09600 100%)",
+          color: "#130c00", fontSize: 14, fontWeight: 900,
           textDecoration: "none", letterSpacing: "0.01em",
-          marginBottom: 12,
-          boxShadow: "0 4px 16px rgba(224,174,45,0.20)",
+          boxShadow: "0 4px 22px rgba(224,174,45,0.28), 0 1px 0 rgba(255,255,255,0.18) inset",
         }}>
-          Unlock Full Round <ArrowRight size={13} />
+          Unlock Full Round <ArrowRight size={14} />
         </Link>
       </div>
     </div>
