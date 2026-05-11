@@ -519,21 +519,22 @@ function FreeRoundPreview() {
       {matches.length >= 2 && (
         <div style={{
           display: "flex", borderBottom: "1px solid rgba(255,255,255,0.07)",
-          background: "rgba(255,255,255,0.02)",
+          background: "rgba(255,255,255,0.02)", gap: 0,
         }}>
           {matches.map((m, idx) => (
             <button
               key={m.match_id}
               onClick={() => setSelectedGameIdx(idx)}
               style={{
-                flex: 1, padding: "9px 10px",
-                background: "none", border: "none", cursor: "pointer",
+                flex: 1, padding: "11px 12px",
+                background: selectedGameIdx === idx ? "rgba(34,197,94,0.06)" : "none",
+                border: "none", cursor: "pointer",
                 borderBottom: selectedGameIdx === idx ? "2px solid #22c55e" : "2px solid transparent",
-                color: selectedGameIdx === idx ? "#f0f0f0" : "rgba(255,255,255,0.45)",
-                fontSize: 11.5, fontWeight: selectedGameIdx === idx ? 700 : 500,
+                color: selectedGameIdx === idx ? "#f0f0f0" : "rgba(255,255,255,0.42)",
+                fontSize: 12, fontWeight: selectedGameIdx === idx ? 700 : 500,
                 textAlign: "center", whiteSpace: "nowrap", overflow: "hidden",
-                textOverflow: "ellipsis", minHeight: 40,
-                transition: "color 0.12s, border-color 0.12s",
+                textOverflow: "ellipsis", minHeight: 44,
+                transition: "color 0.12s, border-color 0.12s, background 0.12s",
               }}
             >
               {m.match_label}
@@ -761,8 +762,12 @@ function TeamTotalOutlook() {
 
 // ── Locked full round module ──────────────────────────────────────────────────
 
+const LOCKED_PREVIEW_MAX = 4;
+
 function LockedFullRound({ allMatches }: { allMatches: StatBoardMatch[] }) {
-  const lockedMatches = allMatches.filter(m => !m.is_free_match).slice(0, 6);
+  const allLocked = allMatches.filter(m => !m.is_free_match);
+  const lockedMatches = allLocked.slice(0, LOCKED_PREVIEW_MAX);
+  const extraCount = allLocked.length - LOCKED_PREVIEW_MAX;
 
   return (
     <div style={{ borderRadius: 13, border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden", background: "rgba(5,8,11,0.97)" }}>
@@ -786,7 +791,7 @@ function LockedFullRound({ allMatches }: { allMatches: StatBoardMatch[] }) {
         </p>
 
         {lockedMatches.length > 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: extraCount > 0 ? 6 : 12 }}>
             {lockedMatches.map(m => (
               <div key={m.match_id} style={{
                 display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -813,6 +818,15 @@ function LockedFullRound({ allMatches }: { allMatches: StatBoardMatch[] }) {
                 </div>
               </div>
             ))}
+            {extraCount > 0 && (
+              <p style={{
+                margin: "4px 0 6px", textAlign: "center",
+                fontSize: 10.5, color: "rgba(224,174,45,0.52)",
+                fontStyle: "italic",
+              }}>
+                + {extraCount} more match{extraCount > 1 ? "es" : ""} unlocked with Neeko+
+              </p>
+            )}
           </div>
         )}
 
@@ -1150,45 +1164,45 @@ export default function MobileLanding({ isPremium }: Props) {
       </section>
 
       {/* ─── FREE ROUND PREVIEW ─── */}
-      <section style={{ padding: "16px 14px 0" }}>
+      <section style={{ padding: "20px 14px 0" }}>
         <FreeRoundPreview />
       </section>
 
       {/* ─── TEAM TOTAL OUTLOOK ─── */}
-      <section style={{ padding: "12px 14px 0" }}>
+      <section style={{ padding: "16px 14px 0" }}>
         <TeamTotalOutlook />
       </section>
 
       {/* ─── LOCKED FULL ROUND ─── */}
       {allMatches.some(m => !m.is_free_match) && (
-        <section style={{ padding: "12px 14px 0" }}>
+        <section style={{ padding: "16px 14px 0" }}>
           <LockedFullRound allMatches={allMatches} />
         </section>
       )}
 
       {/* ─── FANTASY HUB ─── */}
-      <section style={{ padding: "12px 14px 0" }}>
+      <section style={{ padding: "20px 14px 0" }}>
         <FantasyHubTeaser />
       </section>
 
       {/* ─── EXPLORE PRODUCT TILES ─── */}
-      <section style={{ padding: "16px 14px 0" }}>
-        <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.35em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 10, textAlign: "center" }}>
+      <section style={{ padding: "20px 14px 0" }}>
+        <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.35em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 12, textAlign: "center" }}>
           Explore Neeko
         </p>
         <ExploreProductTiles />
       </section>
 
       {/* ─── PRICING ─── */}
-      <section style={{ padding: "20px 14px 0" }}>
+      <section style={{ padding: "24px 14px 0" }}>
         <PricingBlock />
       </section>
 
       {/* ─── FOOTER ─── */}
       <section style={{
-        padding: `16px 14px max(28px, calc(16px + env(safe-area-inset-bottom, 0px)))`,
+        padding: `20px 14px max(32px, calc(20px + env(safe-area-inset-bottom, 0px)))`,
         borderTop: "1px solid rgba(255,255,255,0.05)",
-        marginTop: 20,
+        marginTop: 24,
       }}>
         <p style={{ textAlign: "center", fontSize: 11.5, color: "rgba(255,255,255,0.22)", lineHeight: 1.5, margin: 0 }}>
           Free to start. Upgrade any time.
