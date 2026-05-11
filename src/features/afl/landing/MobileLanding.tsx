@@ -80,8 +80,12 @@ function LeftDrawer({
           padding: "14px 16px 14px 20px",
           borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0,
         }}>
-          <Link to="/" onClick={onClose} style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
-            <img src="/logo.png" alt="Neeko Sports" style={{ height: 38, width: "auto" }} />
+            <Link to="/" onClick={onClose} style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none" }}>
+            <img src="/logo.png" alt="" aria-hidden="true" style={{ height: 32, width: 32, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+            <div>
+              <span style={{ display: "block", fontSize: 15, fontWeight: 900, letterSpacing: "-0.02em", color: "#f0f0f0", lineHeight: 1.1 }}>Neeko Sports</span>
+              <span style={{ display: "block", fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase" }}>Stats</span>
+            </div>
           </Link>
           <button
             onClick={onClose} aria-label="Close menu"
@@ -236,17 +240,17 @@ function MobileHeader({ onMenuOpen, isPremium }: { onMenuOpen: () => void; isPre
         <Menu size={20} />
       </button>
 
-      {/* Brand — logo + name text */}
-      <Link to="/" style={{ display: "flex", alignItems: "center", gap: 9, textDecoration: "none", flex: 1, minWidth: 0 }}>
+      {/* Brand */}
+      <Link to="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", flex: 1, minWidth: 0 }}>
         <img
           src="/logo.png"
           alt="Neeko Sports"
-          style={{ height: 46, width: "auto", maxHeight: 46, flexShrink: 0 }}
+          style={{ height: 30, width: 30, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
         />
         <div style={{ minWidth: 0 }}>
           <span style={{
             display: "block",
-            fontSize: 16, fontWeight: 900, letterSpacing: "-0.02em",
+            fontSize: 14, fontWeight: 900, letterSpacing: "-0.02em",
             color: "#f0f0f0", lineHeight: 1.1,
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
           }}>
@@ -254,8 +258,8 @@ function MobileHeader({ onMenuOpen, isPremium }: { onMenuOpen: () => void; isPre
           </span>
           <span style={{
             display: "block",
-            fontSize: 10, fontWeight: 600, letterSpacing: "0.04em",
-            color: "rgba(255,255,255,0.38)", lineHeight: 1.2,
+            fontSize: 9, fontWeight: 700, letterSpacing: "0.18em",
+            color: "rgba(255,255,255,0.35)", lineHeight: 1.2,
             textTransform: "uppercase",
           }}>
             Stats
@@ -303,33 +307,28 @@ const PRODUCT_NAV = [
 function ProductNav() {
   return (
     <div style={{
-      overflowX: "auto",
-      scrollbarWidth: "none",
-      WebkitOverflowScrolling: "touch",
       borderTop: "1px solid rgba(255,255,255,0.06)",
-    } as React.CSSProperties}>
-      <div style={{
-        display: "flex", alignItems: "center",
-        padding: "0 10px", gap: 0,
-        width: "max-content", minWidth: "100%",
-      }}>
-        {PRODUCT_NAV.map(({ label, to, icon: Icon }) => (
-          <Link
-            key={to} to={to}
-            style={{
-              display: "flex", alignItems: "center", gap: 6,
-              padding: "0 13px", height: 42,
-              fontSize: 13, fontWeight: 600,
-              color: "rgba(255,255,255,0.60)",
-              textDecoration: "none", whiteSpace: "nowrap",
-              borderRadius: 7, transition: "color 0.12s, background 0.12s",
-            }}
-          >
-            <Icon size={14} style={{ flexShrink: 0, opacity: 0.70 }} />
-            {label}
-          </Link>
-        ))}
-      </div>
+      display: "flex", alignItems: "center",
+      padding: "0 4px",
+    }}>
+      {PRODUCT_NAV.map(({ label, to, icon: Icon }) => (
+        <Link
+          key={to} to={to}
+          style={{
+            flex: 1,
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 5,
+            height: 40,
+            fontSize: 12, fontWeight: 600,
+            color: "rgba(255,255,255,0.58)",
+            textDecoration: "none", whiteSpace: "nowrap",
+            borderRadius: 6, transition: "color 0.12s, background 0.12s",
+            minWidth: 0,
+          }}
+        >
+          <Icon size={13} style={{ flexShrink: 0, opacity: 0.65 }} />
+          {label}
+        </Link>
+      ))}
     </div>
   );
 }
