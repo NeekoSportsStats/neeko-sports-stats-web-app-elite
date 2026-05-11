@@ -1087,7 +1087,7 @@ export default function MobileLanding({ isPremium }: Props) {
         padding: "22px 16px 18px",
         overflow: "hidden",
         backgroundImage: `
-          linear-gradient(to bottom, rgba(0,0,0,0.75) 0%, rgba(5,8,12,0.92) 55%, rgba(7,9,13,1) 100%),
+          linear-gradient(to bottom, rgba(0,0,0,0.48) 0%, rgba(5,8,12,0.82) 55%, rgba(7,9,13,1) 100%),
           url('/images/Fantasy_sports_war_room_setup.png')
         `,
         backgroundSize: "cover",
