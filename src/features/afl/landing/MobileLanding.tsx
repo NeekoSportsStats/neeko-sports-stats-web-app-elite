@@ -493,7 +493,7 @@ function FreeRoundPreview() {
     );
   }
 
-  const roundLabel = matches[0]?.round ?? null;
+  const weekNum = matches[0]?.week ?? null;
 
   return (
     <div style={{ borderRadius: 13, border: "1px solid rgba(34,197,94,0.22)", overflow: "hidden", background: "rgba(5,8,11,0.97)" }}>
@@ -509,8 +509,8 @@ function FreeRoundPreview() {
           <span className="live-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", display: "inline-block", flexShrink: 0 }} />
           <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(34,197,94,0.80)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Free Round Preview</span>
         </div>
-        {roundLabel && (
-          <span style={{ fontSize: 8.5, color: "rgba(255,255,255,0.28)", letterSpacing: "0.06em", textTransform: "uppercase" }}>{roundLabel}</span>
+        {weekNum != null && (
+          <span style={{ fontSize: 8.5, color: "rgba(255,255,255,0.28)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Week {weekNum}</span>
         )}
       </div>
 
