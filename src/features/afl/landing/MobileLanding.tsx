@@ -80,9 +80,8 @@ function LeftDrawer({
           padding: "14px 16px 14px 20px",
           borderBottom: "1px solid rgba(255,255,255,0.08)", flexShrink: 0,
         }}>
-            <Link to="/" onClick={onClose} style={{ textDecoration: "none" }}>
-            <span style={{ display: "block", fontSize: 15, fontWeight: 900, letterSpacing: "-0.02em", color: "#f0f0f0", lineHeight: 1.1 }}>Neeko Sports</span>
-            <span style={{ display: "block", fontSize: 9, fontWeight: 700, letterSpacing: "0.18em", color: "rgba(255,255,255,0.35)", textTransform: "uppercase" }}>Stats</span>
+            <Link to="/" onClick={onClose} style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+            <img src="/logo.png" alt="Neeko Sports Stats" style={{ width: 130, height: "auto", objectFit: "contain", display: "block" }} />
           </Link>
           <button
             onClick={onClose} aria-label="Close menu"
@@ -238,25 +237,8 @@ function MobileHeader({ onMenuOpen, isPremium }: { onMenuOpen: () => void; isPre
       </button>
 
       {/* Brand */}
-      <Link to="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", flex: 1, minWidth: 0 }}>
-        <div style={{ minWidth: 0 }}>
-          <span style={{
-            display: "block",
-            fontSize: 14, fontWeight: 900, letterSpacing: "-0.02em",
-            color: "#f0f0f0", lineHeight: 1.1,
-            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-          }}>
-            Neeko Sports
-          </span>
-          <span style={{
-            display: "block",
-            fontSize: 9, fontWeight: 700, letterSpacing: "0.18em",
-            color: "rgba(255,255,255,0.35)", lineHeight: 1.2,
-            textTransform: "uppercase",
-          }}>
-            Stats
-          </span>
-        </div>
+      <Link to="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", textDecoration: "none", flex: 1, minWidth: 0 }}>
+        <img src="/logo.png" alt="Neeko Sports Stats" style={{ width: 100, maxWidth: "100%", height: "auto", objectFit: "contain", display: "block" }} />
       </Link>
 
       {/* Neeko+ / Plus badge */}
