@@ -219,13 +219,8 @@ function LeftDrawer({
 function MobileHeader({ onMenuOpen, isPremium }: { onMenuOpen: () => void; isPremium: boolean }) {
   return (
     <header style={{
-      position: "sticky", top: 0, zIndex: 100,
       display: "flex", alignItems: "center",
       padding: "0 14px 0 12px", height: 56,
-      background: "rgba(7,10,14,0.96)",
-      backdropFilter: "blur(14px)",
-      WebkitBackdropFilter: "blur(14px)",
-      borderBottom: "1px solid rgba(255,255,255,0.08)",
       gap: 10,
     }}>
       <button
@@ -282,11 +277,10 @@ const PRODUCT_NAV = [
 function ProductNav() {
   return (
     <div style={{
-      background: "rgba(7,10,14,0.98)",
-      borderBottom: "1px solid rgba(255,255,255,0.07)",
       overflowX: "auto",
       scrollbarWidth: "none",
       WebkitOverflowScrolling: "touch",
+      borderTop: "1px solid rgba(255,255,255,0.06)",
     } as React.CSSProperties}>
       <div style={{
         display: "flex", alignItems: "center",
@@ -1075,8 +1069,17 @@ export default function MobileLanding({ isPremium }: Props) {
         signOut={signOut}
       />
 
-      <MobileHeader onMenuOpen={() => setDrawerOpen(true)} isPremium={isPremium} />
-      <ProductNav />
+      {/* Sticky header + nav wrapper — mobile only */}
+      <div style={{
+        position: "sticky", top: 0, zIndex: 100,
+        background: "rgba(7,10,14,0.96)",
+        backdropFilter: "blur(14px)",
+        WebkitBackdropFilter: "blur(14px)",
+        borderBottom: "1px solid rgba(255,255,255,0.09)",
+      }}>
+        <MobileHeader onMenuOpen={() => setDrawerOpen(true)} isPremium={isPremium} />
+        <ProductNav />
+      </div>
 
       {/* ─── HERO ─── */}
       <section style={{
