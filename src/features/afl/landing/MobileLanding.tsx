@@ -1139,7 +1139,7 @@ export default function MobileLanding({ isPremium }: Props) {
   const roundLabel = allMatches[0]?.round ?? null;
 
   return (
-    <div style={{ background: "#07090d", overflowX: "hidden", minHeight: "100dvh" }}>
+    <div style={{ background: "#07090d", minHeight: "100dvh" }}>
 
       <LeftDrawer
         open={drawerOpen}

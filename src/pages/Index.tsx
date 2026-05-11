@@ -492,7 +492,7 @@ export default function Index() {
 
   if (isMobile) {
     return (
-      <div style={{ background: "#0a0908", overflowX: "hidden" }}>
+      <div style={{ background: "#0a0908" }}>
         {helmet}
         <MobileLanding isPremium={isPremium} />
       </div>
