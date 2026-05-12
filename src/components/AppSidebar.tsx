@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Separator } from "@/components/ui/separator";
 
@@ -78,7 +78,6 @@ export function AppSidebar() {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
   const { isPremium } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const currentPath = location.pathname;
   const isExpanded = state === "expanded";
 
@@ -124,18 +123,10 @@ export function AppSidebar() {
     return isActive(url) && isExpanded;
   };
 
-  // Mobile tap logic:
-  //   First tap  → expand group (show children).
-  //   Second tap → navigate to hub page and close sidebar.
-  const handleParentClick = (key: string, url: string) => {
+  // Mobile tap logic: toggle expand/collapse only — never navigate.
+  const handleParentClick = (key: string, _url: string) => {
     if (!isMobile) return; // desktop uses NavLink directly
-    if (openGroup === key) {
-      navigate(url);
-      setOpenGroup(null);
-      closeSidebar();
-    } else {
-      setOpenGroup(key);
-    }
+    setOpenGroup(openGroup === key ? null : key);
   };
 
   return (
