@@ -662,34 +662,70 @@ function FreeRoundPreview() {
   );
 }
 
-// ── Free Game Access module ───────────────────────────────────────────────────
+// ── Team Projection Outlook module ───────────────────────────────────────────
 
-interface FreeGameItem {
+interface TeamProjectionGame {
   matchId: number;
   matchLabel: string;
+  homeTeamName: string;
+  awayTeamName: string;
+  homeProjection: number | null;
+  awayProjection: number | null;
 }
 
-function useFreeGames(): { games: FreeGameItem[]; loading: boolean } {
-  const [games, setGames] = useState<FreeGameItem[]>([]);
+function useTeamProjectionGames(): { games: TeamProjectionGame[]; loading: boolean } {
+  const [games, setGames] = useState<TeamProjectionGame[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!supabase) { setLoading(false); return; }
     supabase
-      .rpc("get_stat_board_matches", { p_season: 2026, p_round: null })
+      .rpc("get_stat_board_match_centre_rows", {
+        p_season: 2026,
+        p_round: null,
+        p_lens: "score",
+        p_limit: 200,
+        p_offset: 0,
+        p_is_premium: false,
+      })
       .then(({ data }) => {
         const rows = (data as Array<{
           match_id: number;
           match_label: string;
-          is_free_match: boolean;
+          home_team_name: string;
+          away_team_name: string;
+          is_home: boolean;
+          is_free_preview: boolean;
+          is_locked: boolean;
+          fixture_order: number;
+          projection: number | null;
         }> | null) ?? [];
 
-        setGames(
-          rows.filter(r => r.is_free_match).slice(0, 2).map(r => ({
-            matchId: r.match_id,
-            matchLabel: r.match_label,
-          }))
-        );
+        // Group into pairs keyed by match_id, filter to free previews only
+        const map = new Map<number, TeamProjectionGame>();
+        for (const row of rows) {
+          if (!row.is_free_preview) continue;
+          if (!map.has(row.match_id)) {
+            map.set(row.match_id, {
+              matchId: row.match_id,
+              matchLabel: row.match_label,
+              homeTeamName: row.home_team_name,
+              awayTeamName: row.away_team_name,
+              homeProjection: null,
+              awayProjection: null,
+            });
+          }
+          const g = map.get(row.match_id)!;
+          if (row.is_home) {
+            g.homeProjection = row.projection ?? null;
+          } else {
+            g.awayProjection = row.projection ?? null;
+          }
+        }
+
+        // Sort by fixture_order (use first row seen per match)
+        const ordered = Array.from(map.values()).slice(0, 2);
+        setGames(ordered);
         setLoading(false);
       });
   }, []);
@@ -698,7 +734,12 @@ function useFreeGames(): { games: FreeGameItem[]; loading: boolean } {
 }
 
 function TeamTotalOutlook() {
-  const { games, loading } = useFreeGames();
+  const { games, loading } = useTeamProjectionGames();
+
+  // Determine if any real projections came back
+  const hasProjections = games.some(
+    g => g.homeProjection != null || g.awayProjection != null
+  );
 
   return (
     <div style={{ borderRadius: 13, border: "1px solid rgba(255,255,255,0.10)", overflow: "hidden", background: "rgba(5,8,11,0.97)" }}>
@@ -712,7 +753,9 @@ function TeamTotalOutlook() {
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <UnlockIcon size={12} style={{ color: "rgba(34,197,94,0.60)", flexShrink: 0 }} />
-          <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(34,197,94,0.65)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Free Game Access</span>
+          <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(34,197,94,0.65)", letterSpacing: "0.18em", textTransform: "uppercase" }}>
+            {hasProjections ? "Team Projection Outlook" : "Free Game Access"}
+          </span>
         </div>
         <span style={{ fontSize: 8, fontWeight: 700, color: "rgba(255,255,255,0.30)", letterSpacing: "0.08em", textTransform: "uppercase" }}>2 games this week</span>
       </div>
@@ -720,7 +763,7 @@ function TeamTotalOutlook() {
       {loading ? (
         <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
           {[0, 1].map(i => (
-            <div key={i} style={{ height: 68, borderRadius: 9, background: "rgba(255,255,255,0.025)", animation: "shimmer 1.4s ease-in-out infinite" }} />
+            <div key={i} style={{ height: 72, borderRadius: 9, background: "rgba(255,255,255,0.025)", animation: "shimmer 1.4s ease-in-out infinite" }} />
           ))}
         </div>
       ) : games.length === 0 ? (
@@ -732,7 +775,7 @@ function TeamTotalOutlook() {
           {games.map(g => (
             <Link
               key={g.matchId}
-              to="/stat-board/players"
+              to="/stat-board/match-centre"
               style={{ textDecoration: "none", display: "block" }}
             >
               <div style={{
@@ -768,6 +811,39 @@ function TeamTotalOutlook() {
                     Free Preview
                   </span>
                 </div>
+
+                {/* Team projections — only when real data exists */}
+                {(g.homeProjection != null || g.awayProjection != null) && (
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <div style={{
+                      flex: 1, background: "rgba(255,255,255,0.03)",
+                      borderRadius: 7, padding: "7px 9px",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                    }}>
+                      <p style={{ margin: "0 0 2px", fontSize: 9, color: "rgba(255,255,255,0.38)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {g.homeTeamName}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 17, fontWeight: 900, color: "#f5f5f5", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+                        {g.homeProjection != null ? Math.round(g.homeProjection) : "—"}
+                      </p>
+                      <p style={{ margin: "2px 0 0", fontSize: 7.5, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.06em" }}>proj</p>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", color: "rgba(255,255,255,0.20)", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>v</div>
+                    <div style={{
+                      flex: 1, background: "rgba(255,255,255,0.03)",
+                      borderRadius: 7, padding: "7px 9px",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                    }}>
+                      <p style={{ margin: "0 0 2px", fontSize: 9, color: "rgba(255,255,255,0.38)", textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {g.awayTeamName}
+                      </p>
+                      <p style={{ margin: 0, fontSize: 17, fontWeight: 900, color: "#f5f5f5", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+                        {g.awayProjection != null ? Math.round(g.awayProjection) : "—"}
+                      </p>
+                      <p style={{ margin: "2px 0 0", fontSize: 7.5, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.06em" }}>proj</p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Stats available */}
                 <p style={{
