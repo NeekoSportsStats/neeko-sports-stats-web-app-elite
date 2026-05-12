@@ -415,10 +415,13 @@ export default function StatBoardTeamsPage() {
                       />
                     ))}
                     {lockedFixtures.length > 0 && (
-                      <MobileLockedFixturesBanner
-                        fixtures={lockedFixtures}
-                        onUnlockClick={() => navigate("/neeko-plus")}
-                      />
+                      <>
+                        <MobileConversionStrip onUnlockClick={() => navigate("/neeko-plus")} />
+                        <MobileLockedFixturesBanner
+                          fixtures={lockedFixtures}
+                          onUnlockClick={() => navigate("/neeko-plus")}
+                        />
+                      </>
                     )}
                   </>
                 );
@@ -549,6 +552,33 @@ function BoardSummaryStrip({
           {item}
         </React.Fragment>
       ))}
+    </div>
+  );
+}
+
+// ── Mobile conversion strip ───────────────────────────────────────────────────
+
+function MobileConversionStrip({ onUnlockClick }: { onUnlockClick: () => void }) {
+  return (
+    <div
+      className="rounded-xl border border-[#F5C84C]/22 bg-[#F5C84C]/[0.04]"
+      style={{ width: "100%", minWidth: 0, boxSizing: "border-box", padding: "10px 12px", display: "flex", alignItems: "center", gap: 10 }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p className="text-[12px] font-bold text-[#F5C84C]/85 leading-tight">
+          Unlock every team projection this week
+        </p>
+        <p className="text-[10px] text-white/35 mt-0.5 leading-relaxed">
+          Full round team score, goals, scoring shots and disposal outlooks.
+        </p>
+      </div>
+      <button
+        onClick={onUnlockClick}
+        className="shrink-0 rounded-lg bg-[#F5C84C]/15 border border-[#F5C84C]/30 text-[11px] font-bold text-[#F5C84C] hover:bg-[#F5C84C]/22 active:bg-[#F5C84C]/30 transition-colors"
+        style={{ padding: "7px 11px", whiteSpace: "nowrap" }}
+      >
+        Unlock Neeko+
+      </button>
     </div>
   );
 }
