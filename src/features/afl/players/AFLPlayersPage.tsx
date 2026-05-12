@@ -588,38 +588,69 @@ export default function AFLPlayersPage() {
         {/* ── Player table ───────────────────────────────────────────────── */}
         {!loading && !error && (
           <div style={{ overflow: "hidden", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", width: "100%", boxSizing: "border-box" }}>
-            {/*
-              Table strategy: Team and Pos columns are hidden on mobile via class="sm-col"
-              and shown as a sub-line under the player name instead.
-              This eliminates the need for minWidth / horizontal scroll.
-            */}
             <style>{`
+              /* ── Mobile: convert table rows to flex layout ── */
               @media (max-width: 539px) {
-                .plyr-col-team, .plyr-col-pos { display: none; }
-                .plyr-mobile-sub { display: block; }
-                /* On mobile switch to auto layout so hidden cols don't reserve space */
-                .plyr-table { table-layout: auto !important; }
+                /* Hide table structure so rows can be flex */
+                .plyr-table { display: block !important; width: 100% !important; }
+                .plyr-table thead { display: none !important; }
+                .plyr-table tbody { display: block !important; width: 100% !important; }
+                .plyr-table colgroup { display: none !important; }
+
+                /* Letter-header rows stay block/full-width */
+                .plyr-letter-row { display: block !important; width: 100% !important; }
+                .plyr-letter-cell { display: block !important; width: 100% !important; box-sizing: border-box !important; }
+
+                /* Player rows become flex */
+                .plyr-player-row {
+                  display: flex !important;
+                  align-items: center !important;
+                  width: 100% !important;
+                  box-sizing: border-box !important;
+                  padding: 8px 12px !important;
+                  gap: 8px !important;
+                }
+                /* Left: player name block — takes all remaining space */
+                .plyr-td-player {
+                  display: block !important;
+                  flex: 1 1 0% !important;
+                  min-width: 0 !important;
+                  padding: 0 !important;
+                }
+                /* Right: stats cluster — shrinks to content, never wraps */
+                .plyr-td-stats {
+                  display: flex !important;
+                  align-items: center !important;
+                  gap: 10px !important;
+                  flex-shrink: 0 !important;
+                  padding: 0 !important;
+                }
+                /* Hide desktop-only cells on mobile */
+                .plyr-col-team, .plyr-col-pos { display: none !important; }
+
+                /* CTA row */
+                .plyr-cta-row { display: block !important; width: 100% !important; }
+                .plyr-cta-cell { display: block !important; width: 100% !important; box-sizing: border-box !important; }
+
+                /* Empty state */
+                .plyr-empty-row { display: block !important; width: 100% !important; }
+                .plyr-empty-cell { display: block !important; width: 100% !important; box-sizing: border-box !important; }
               }
+              /* ── Desktop: mobile-only helpers hidden ── */
               @media (min-width: 540px) {
                 .plyr-mobile-sub { display: none; }
               }
             `}</style>
             <table className="plyr-table" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
               <colgroup>
-                {/* Player name — takes remaining space */}
                 <col style={{ width: "auto" }} />
-                {/* Team — hidden on mobile; col width ignored when table-layout:auto */}
                 <col className="plyr-col-team" style={{ width: 90 }} />
-                {/* Pos — hidden on mobile */}
                 <col className="plyr-col-pos" style={{ width: 44 }} />
-                {/* Price */}
                 <col style={{ width: 62 }} />
-                {/* Avg / Proj */}
                 <col style={{ width: 52 }} />
-                {/* Signal */}
                 <col style={{ width: 68 }} />
               </colgroup>
-              {/* Sticky header */}
+              {/* Sticky header — hidden on mobile via CSS */}
               <thead>
                 <tr style={{ background: "rgba(18,18,18,1)", borderBottom: "1px solid rgba(255,255,255,0.08)", position: "sticky", top: 0, zIndex: 2 }}>
                   <SortTh
@@ -641,8 +672,7 @@ export default function AFLPlayersPage() {
                   <th style={thStyle}>
                     {isPremium ? "Signal" : (
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        Signal
-                        <Lock size={10} style={{ color: "rgba(245,200,76,0.55)" }} />
+                        Signal <Lock size={10} style={{ color: "rgba(245,200,76,0.55)" }} />
                       </span>
                     )}
                   </th>
@@ -651,8 +681,8 @@ export default function AFLPlayersPage() {
 
               <tbody>
                 {filtered.length === 0 && (
-                  <tr>
-                    <td colSpan={6} style={{ padding: "32px 16px", textAlign: "center", color: "rgba(255,255,255,0.28)", fontSize: 13 }}>
+                  <tr className="plyr-empty-row">
+                    <td colSpan={6} className="plyr-empty-cell" style={{ padding: "32px 16px", textAlign: "center", color: "rgba(255,255,255,0.28)", fontSize: 13 }}>
                       No players match your filters.
                     </td>
                   </tr>
@@ -663,11 +693,13 @@ export default function AFLPlayersPage() {
                     return (
                       <tr
                         key={`header-${item.letter}`}
+                        className="plyr-letter-row"
                         ref={el => { letterRefs.current[item.letter] = el; }}
                         style={{ background: "rgba(255,255,255,0.02)" }}
                       >
                         <td
                           colSpan={6}
+                          className="plyr-letter-cell"
                           style={{
                             padding: "5px 12px 4px",
                             fontSize: 11,
@@ -689,10 +721,8 @@ export default function AFLPlayersPage() {
                   const slug      = playerToSlug(row.player_name, row.team_name ?? row.team);
                   const teamShort = AFL_TEAMS.find(t => t.dbName === (row.team_name ?? row.team))?.displayName
                                  ?? (row.team_name ?? row.team ?? "—");
-                  // Short team name for mobile sub-line (first word of team name)
                   const teamMini  = (row.team_name ?? row.team ?? "").split(" ")[0] || teamShort;
 
-                  // Signal vars only computed for premium users — never exposed to free path
                   const signalVal   = isPremium ? signalFromField(row.signal ?? null) : null;
                   const signalColor = isPremium && signalVal ? getEdgeSignalColor(signalVal) : "transparent";
                   const signalLabel = isPremium && signalVal ? formatEdgeSignalLabel(signalVal) : null;
@@ -700,6 +730,7 @@ export default function AFLPlayersPage() {
                   return (
                     <tr
                       key={row.player_id ?? `row-${idx}`}
+                      className="plyr-player-row"
                       style={{
                         borderBottom: "1px solid rgba(255,255,255,0.04)",
                         transition: "background 0.12s ease",
@@ -708,8 +739,8 @@ export default function AFLPlayersPage() {
                       onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
                       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                     >
-                      {/* Player name + mobile sub-line */}
-                      <td style={{ padding: "7px 8px 7px 12px" }}>
+                      {/* LEFT: Player name + sub-line */}
+                      <td className="plyr-td-player" style={{ padding: "7px 8px 7px 12px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                           <Link
                             to={`/sports/afl/players/${slug}`}
@@ -725,7 +756,6 @@ export default function AFLPlayersPage() {
                           </Link>
                           <PlayerStatusPill row={row} showUpcomingBye />
                         </div>
-                        {/* Sub-line visible on mobile only — shows team + pos when columns hidden */}
                         <div
                           className="plyr-mobile-sub"
                           style={{ marginTop: 2, fontSize: 10.5, color: "rgba(255,255,255,0.32)", fontWeight: 500 }}
@@ -734,30 +764,31 @@ export default function AFLPlayersPage() {
                         </div>
                       </td>
 
-                      {/* Team — hidden on mobile */}
+                      {/* Team — desktop only */}
                       <td style={{ padding: "7px 8px", whiteSpace: "nowrap" }} className="plyr-col-team">
                         <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.40)", fontWeight: 500 }}>
                           {teamShort}
                         </span>
                       </td>
 
-                      {/* Position — hidden on mobile */}
+                      {/* Position — desktop only */}
                       <td style={{ padding: "7px 8px" }} className="plyr-col-pos">
                         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", color: "rgba(255,255,255,0.38)" }}>
                           {row.position ?? "—"}
                         </span>
                       </td>
 
+                      {/* RIGHT stats cluster on mobile (Price / Avg+Proj / Signal) */}
                       {/* Price */}
-                      <td style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
+                      <td className="plyr-td-stats" style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
                         <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.62)" }}>
                           {fmtPrice(row.price)}
                         </span>
                       </td>
 
-                      {/* 5th col: 2026 Avg (free) or Projection (premium) */}
+                      {/* Avg / Proj */}
                       {isPremium ? (
-                        <td style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
+                        <td className="plyr-td-stats" style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
                           <span style={{
                             fontSize: 13, fontWeight: 700,
                             color: row.projection != null ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.25)",
@@ -766,15 +797,10 @@ export default function AFLPlayersPage() {
                           </span>
                         </td>
                       ) : (
-                        <td style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
+                        <td className="plyr-td-stats" style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
                           {row.season_avg != null ? (
                             <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.68)" }}>
                               {fmt(row.season_avg)}
-                              {row.games_played != null && (
-                                <span style={{ fontSize: 9.5, color: "rgba(255,255,255,0.28)", marginLeft: 3 }}>
-                                  ({row.games_played}g)
-                                </span>
-                              )}
                             </span>
                           ) : (
                             <span style={{ fontSize: 12, color: "rgba(255,255,255,0.22)" }}>—</span>
@@ -782,8 +808,8 @@ export default function AFLPlayersPage() {
                         </td>
                       )}
 
-                      {/* Signal — free users always see the locked state */}
-                      <td style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
+                      {/* Signal */}
+                      <td className="plyr-td-stats" style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
                         {isPremium ? (
                           signalLabel && row.signal != null ? (
                             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.03em", color: signalColor }}>
@@ -811,10 +837,10 @@ export default function AFLPlayersPage() {
                   );
                 })}
 
-                {/* Upgrade CTA row for free users */}
+                {/* Upgrade CTA row */}
                 {!isPremium && (
-                  <tr style={{ background: "rgba(245,200,76,0.03)" }}>
-                    <td colSpan={6} style={{ padding: "14px", textAlign: "center" }}>
+                  <tr className="plyr-cta-row" style={{ background: "rgba(245,200,76,0.03)" }}>
+                    <td colSpan={6} className="plyr-cta-cell" style={{ padding: "14px", textAlign: "center" }}>
                       <Link
                         to="/neeko-plus"
                         style={{
