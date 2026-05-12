@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, ChevronRight, TrendingUp, TrendingDown, Minus, Users, Zap, ChartBar as BarChart2, Star, CircleAlert as AlertCircle, Flame, Trophy, DollarSign, Lock, Activity, Target, Shield, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ChevronDown, TrendingUp, TrendingDown, Minus, Users, Zap, ChartBar as BarChart2, Star, CircleAlert as AlertCircle, Flame, Trophy, DollarSign, Lock, Activity, Target, Shield, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { nameToSlug, POSITION_NAMES, TEAM_SLUG_TO_NAME } from '@/lib/slugs';
 import { getTeamPlayersSafe } from '@/lib/playerAccess';
 import { useAuth } from '@/lib/auth';
@@ -100,6 +100,43 @@ function SectionLabel({ icon, title }: { icon: React.ReactNode; title: string })
   );
 }
 
+function CollapsibleSection({
+  icon, title, children, defaultOpen = false,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      <button
+        className="sm:hidden w-full flex items-center justify-between mb-3"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-white/25">{icon}</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.38em] text-white/30">{title}</span>
+          <div className="flex-1 h-px bg-white/[0.05]" />
+        </div>
+        <ChevronDown
+          size={13}
+          className="text-white/20 transition-transform duration-200 shrink-0 ml-2"
+          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        />
+      </button>
+      <div className="hidden sm:block">
+        <SectionLabel icon={icon} title={title} />
+      </div>
+      <div className={`sm:block ${open ? 'block' : 'hidden'}`}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 
 function ActionIcon({ action }: { action: string | null }) {
   const ac = (action ?? 'HOLD').toUpperCase();
@@ -180,7 +217,7 @@ function InsightCard({
   return (
     <Link
       to={`/sports/afl/players/${slug}`}
-      className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] p-4 hover:bg-white/[0.03] hover:border-white/[0.12] transition-all group flex flex-col gap-2.5"
+      className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] p-3 sm:p-4 hover:bg-white/[0.03] hover:border-white/[0.12] transition-all group flex flex-col gap-2"
     >
       {/* header */}
       <div className="flex items-center justify-between">
@@ -607,7 +644,7 @@ function LineDetailRows({
             <Link
               key={p.player_id ?? p.player_name}
               to={`/sports/afl/players/${nameToSlug(p.player_name)}`}
-              className="flex items-center gap-3 px-4 py-2.5 hover:bg-white/[0.03] transition-colors group"
+              className="flex items-center gap-3 px-3 py-2 sm:px-4 sm:py-2.5 hover:bg-white/[0.03] transition-colors group"
             >
               <ActionIcon action={p.action_canonical} />
               <div className="flex-1 min-w-0">
@@ -681,7 +718,7 @@ function RosterRow({ player, rank, isPremium }: { player: TeamPlayer; rank: numb
   return (
     <Link
       to={`/sports/afl/players/${slug}`}
-      className="flex items-center gap-3 rounded-xl bg-[#0d0d0d] border border-white/[0.05] hover:bg-white/[0.03] hover:border-white/[0.10] transition-all duration-150 px-4 py-3 group"
+      className="flex items-center gap-3 rounded-xl bg-[#0d0d0d] border border-white/[0.05] hover:bg-white/[0.03] hover:border-white/[0.10] transition-all duration-150 px-3 py-2.5 sm:px-4 sm:py-3 group"
     >
       {/* rank */}
       <span className={`${COL.rank} text-[9px] font-bold text-white/16 text-center tabular-nums`}>
@@ -1315,8 +1352,8 @@ export default function AFLTeamPage() {
         })}</script>
       </Helmet>
 
-      <div className="min-h-dvh bg-[#080808]">
-        <div className="mx-auto w-full max-w-[1120px] px-4 sm:px-6 lg:px-8 py-6 space-y-7">
+      <div className="min-h-dvh bg-[#080808] overflow-x-hidden">
+        <div className="mx-auto w-full max-w-[1120px] px-3 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-7">
 
           {/* Back nav */}
           <button
@@ -1344,32 +1381,32 @@ export default function AFLTeamPage() {
               style={{ background: `radial-gradient(ellipse at bottom right, ${accentSafe}08 0%, transparent 70%)` }}
             />
 
-            <div className="relative px-5 sm:px-8 pt-6 pb-0">
+            <div className="relative px-3 sm:px-8 pt-4 sm:pt-6 pb-0">
 
               {/* ── top row: eyebrow / title / badge ── */}
-              <div className="flex items-start justify-between gap-4 mb-5">
+              <div className="flex items-start justify-between gap-3 mb-3 sm:mb-5">
                 <div className="min-w-0">
-                  <p className="text-[9px] uppercase tracking-widest text-white/28 mb-2">
+                  <p className="text-[9px] uppercase tracking-widest text-white/28 mb-1.5 sm:mb-2">
                     AFL Fantasy 2026 · Squad Intelligence
                   </p>
-                  <h1 className="text-[28px] sm:text-[34px] font-black text-white leading-tight tracking-tight">
+                  <h1 className="text-[22px] sm:text-[34px] font-black text-white leading-tight tracking-tight">
                     {teamName}
                   </h1>
-                  <p className="text-[12px] text-white/42 mt-1.5 leading-snug max-w-sm">
+                  <p className="hidden sm:block text-[12px] text-white/42 mt-1.5 leading-snug max-w-sm">
                     Recent scoring profile, player depth, role balance, form trends and squad output — refreshed weekly.
                   </p>
                 </div>
                 {/* accent badge */}
                 <div
-                  className="flex items-center justify-center w-12 h-12 rounded-2xl shrink-0 mt-0.5"
+                  className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-2xl shrink-0 mt-0.5"
                   style={{ background: `${accentSafe}18`, border: `1.5px solid ${accentSafe}35` }}
                 >
-                  <Users size={22} style={{ color: accentSafe }} />
+                  <Users size={20} style={{ color: accentSafe }} />
                 </div>
               </div>
 
               {/* ── 6-metric stat grid ── */}
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-5">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 sm:gap-2 mb-3 sm:mb-5">
                 {[
                   { label: 'Squad Size',    value: stats.totalPlayers,  accent: undefined },
                   { label: 'Ceiling',       value: stats.topProj,       accent: '#34d399' },
@@ -1380,15 +1417,15 @@ export default function AFLTeamPage() {
                 ].map(({ label, value, accent }) => (
                   <div
                     key={label}
-                    className="flex flex-col gap-0.5 px-3 py-2.5 rounded-xl border border-white/[0.06] bg-black/25"
+                    className="flex flex-col gap-0.5 px-2 py-2 sm:px-3 sm:py-2.5 rounded-xl border border-white/[0.06] bg-black/25"
                   >
                     <span
-                      className="text-[18px] sm:text-[20px] font-black tabular-nums leading-none"
+                      className="text-[16px] sm:text-[20px] font-black tabular-nums leading-none"
                       style={accent ? { color: accent } : { color: 'rgba(255,255,255,0.82)' }}
                     >
                       {value}
                     </span>
-                    <span className="text-[8px] uppercase tracking-widest text-white/25 leading-tight">{label}</span>
+                    <span className="text-[7px] sm:text-[8px] uppercase tracking-widest text-white/25 leading-tight">{label}</span>
                   </div>
                 ))}
               </div>
@@ -1493,17 +1530,18 @@ export default function AFLTeamPage() {
               TEAM ANALYTICS
           ══════════════════════════════════════════ */}
           {players.length > 0 && (
-            <div>
-              <SectionLabel icon={<BarChart2 size={13} />} title="Scoring Profile" />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <CollapsibleSection icon={<BarChart2 size={13} />} title="Scoring Profile" defaultOpen={false}>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
 
                 {/* Left — scoring depth chart */}
-                <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-5 py-4">
-                  <RosterDepthChart players={players} accentColor={accentSafe} />
+                <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-3 sm:px-5 py-3 sm:py-4">
+                  <div className="max-h-[200px] sm:max-h-none overflow-hidden">
+                    <RosterDepthChart players={players} accentColor={accentSafe} />
+                  </div>
                 </div>
 
                 {/* Right — action mix */}
-                <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-5 py-4">
+                <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-3 sm:px-5 py-3 sm:py-4">
                   <ActionMixChart
                     startCt={stats.startCt}
                     holdCt={stats.holdCt}
@@ -1513,16 +1551,15 @@ export default function AFLTeamPage() {
                   />
                 </div>
               </div>
-            </div>
+            </CollapsibleSection>
           )}
 
           {/* ══════════════════════════════════════════
               TEAM INSIGHT CARDS
           ══════════════════════════════════════════ */}
           {players.length > 0 && (
-            <div>
-              <SectionLabel icon={<Flame size={13} />} title="Key Indicators" />
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <CollapsibleSection icon={<Flame size={13} />} title="Key Indicators" defaultOpen={true}>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
 
                 {/* 1 — Top projected */}
                 {stats.topPlayer && (
@@ -1650,7 +1687,7 @@ export default function AFLTeamPage() {
                 )}
 
                 {/* 6 — Premium count */}
-                <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] p-4 flex flex-col gap-3">
+                <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] p-3 sm:p-4 flex flex-col gap-2 sm:gap-3">
                   <div className="flex items-center gap-2">
                     <Activity size={14} className="text-white/30" />
                     <span className="text-[9px] uppercase tracking-widest text-white/30">Premium Depth</span>
@@ -1676,16 +1713,15 @@ export default function AFLTeamPage() {
                 </div>
 
               </div>
-            </div>
+            </CollapsibleSection>
           )}
 
           {/* ══════════════════════════════════════════
               SQUAD SIGNAL SUMMARY
           ══════════════════════════════════════════ */}
           {players.length > 0 && (
-            <div>
-              <SectionLabel icon={<Target size={13} />} title="Round Signals" />
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <CollapsibleSection icon={<Target size={13} />} title="Round Signals" defaultOpen={false}>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                 {/* Action breakdown */}
                 <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-4 py-3.5 space-y-3">
                   <p className="text-[9px] uppercase tracking-widest text-white/28 font-semibold">Signal Breakdown</p>
@@ -1773,18 +1809,18 @@ export default function AFLTeamPage() {
                   )}
                 </div>
               </div>
-            </div>
+            </CollapsibleSection>
           )}
 
           {/* ══════════════════════════════════════════
               SQUAD BREAKDOWN BY LINE
           ══════════════════════════════════════════ */}
           {players.length > 0 && (
-            <div className="space-y-4">
-              <SectionLabel icon={<Shield size={13} />} title="Line Breakdown" />
+            <CollapsibleSection icon={<Shield size={13} />} title="Line Breakdown" defaultOpen={false}>
+              <div className="space-y-3 sm:space-y-4">
 
               {/* Tier 1 — summary stat cards (one per line) */}
-              <div className={`grid gap-3 ${lineGroups.RUC.length > 0 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}>
+              <div className={`grid gap-2 sm:gap-3 ${lineGroups.RUC.length > 0 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}>
                 {(['MID', 'DEF', 'FWD'] as const).map(key => (
                   <LineSummaryCard
                     key={key}
@@ -1803,7 +1839,7 @@ export default function AFLTeamPage() {
               </div>
 
               {/* Tier 2 — detailed player rows per line */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3">
                 {(['MID', 'DEF', 'FWD', 'RUC'] as const).map(key =>
                   lineGroups[key].length > 0 ? (
                     <LineDetailRows
@@ -1816,7 +1852,8 @@ export default function AFLTeamPage() {
                   ) : null
                 )}
               </div>
-            </div>
+              </div>
+            </CollapsibleSection>
           )}
 
           {/* ══════════════════════════════════════════
