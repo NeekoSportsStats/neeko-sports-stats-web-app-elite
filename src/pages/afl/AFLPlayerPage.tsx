@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, lazy, Suspense } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, ChevronRight, TrendingUp, TrendingDown, Minus, Zap, Lock, Users, ChartBar as BarChart2, CircleAlert as AlertCircle, Activity, Target, ChartBar as BarChart3, FlameKindling as Flame, Shield } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ChevronDown, TrendingUp, TrendingDown, Minus, Zap, Lock, Users, ChartBar as BarChart2, CircleAlert as AlertCircle, Activity, Target, ChartBar as BarChart3, FlameKindling as Flame, Shield } from 'lucide-react';
 import {
   slugToPlayerName, playerToSlug,
   POSITION_NAMES, TEAM_SLUG_TO_NAME,
@@ -750,6 +750,51 @@ function StatisticalProfile({
   );
 }
 
+/** Mobile-collapsible section wrapper — collapses on mobile, always open on desktop */
+function CollapsibleSection({
+  icon,
+  title,
+  children,
+  defaultOpen = false,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      {/* Mobile: tappable header */}
+      <button
+        className="sm:hidden w-full flex items-center justify-between mb-2"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-white/25">{icon}</span>
+          <span className="text-[10px] font-bold uppercase tracking-[0.38em] text-white/30">{title}</span>
+        </div>
+        <ChevronDown
+          size={13}
+          className="text-white/20 transition-transform duration-200 shrink-0"
+          style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
+        />
+      </button>
+      {/* Desktop: always show non-interactive header */}
+      <div className="hidden sm:block">
+        <SectionLabel icon={icon} title={title} />
+      </div>
+      <div
+        className={`sm:block ${open ? 'block' : 'hidden'}`}
+        aria-hidden={!open}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function LoadingSkeleton() {
   return (
     <div className="min-h-dvh bg-[#080808]">
@@ -979,13 +1024,13 @@ export default function AFLPlayerPage() {
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 
-      <div className="min-h-dvh bg-[#080808]">
-        <div className="mx-auto w-full max-w-[1120px] px-4 sm:px-6 lg:px-8 py-6">
+      <div className="min-h-dvh bg-[#080808] overflow-x-hidden">
+        <div className="mx-auto w-full max-w-[1120px] px-3 sm:px-6 lg:px-8 py-3 sm:py-6">
 
           {/* Back nav */}
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center gap-1.5 text-white/28 hover:text-white/60 transition-colors text-[12px] mb-5"
+            className="flex items-center gap-1.5 text-white/28 hover:text-white/60 transition-colors text-[12px] mb-3 sm:mb-5"
           >
             <ArrowLeft size={13} />
             Back
@@ -995,7 +1040,7 @@ export default function AFLPlayerPage() {
               HERO — Player identity + key stats
           ══════════════════════════════════════════ */}
           <div
-            className="rounded-2xl border border-white/[0.07] relative overflow-hidden mb-5"
+            className="rounded-xl sm:rounded-2xl border border-white/[0.07] relative overflow-hidden mb-3 sm:mb-5"
             style={{ background: `linear-gradient(135deg, ${accent}0d 0%, #0c0c0c 65%)` }}
           >
             <div className="absolute top-0 left-0 right-0 h-[2px] pointer-events-none"
@@ -1003,9 +1048,9 @@ export default function AFLPlayerPage() {
             <div className="absolute inset-0 pointer-events-none"
               style={{ background: `radial-gradient(ellipse at top left, ${accent}0a 0%, transparent 55%)` }} />
 
-            <div className="relative px-5 pt-5 pb-4 sm:px-6">
+            <div className="relative px-3 pt-3 pb-3 sm:px-6 sm:pt-5 sm:pb-4">
               {/* Identity row */}
-              <div className="flex items-start justify-between gap-4 mb-4">
+              <div className="flex items-start justify-between gap-3 mb-3 sm:mb-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-2">
                     <span
@@ -1028,7 +1073,7 @@ export default function AFLPlayerPage() {
                       showUpcomingBye
                     />
                   </div>
-                  <h1 className="text-[24px] sm:text-[34px] font-black text-white leading-none tracking-tight mb-2">
+                  <h1 className="text-[20px] sm:text-[34px] font-black text-white leading-none tracking-tight mb-1.5 sm:mb-2">
                     {player.player_name}
                   </h1>
                   {/* Form label + delta — derived from real scoring, always visible if data present */}
@@ -1104,23 +1149,25 @@ export default function AFLPlayerPage() {
               Left (main): chart + scoring profile + position context
               Right (sidebar): Decision Centre + similar players + nav cards
           ══════════════════════════════════════════ */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_308px] gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_308px] gap-3 sm:gap-5">
 
             {/* ── MAIN COLUMN ─────────────────────────── */}
-            <div className="space-y-5 min-w-0">
+            <div className="space-y-4 sm:space-y-5 min-w-0 order-2 lg:order-1">
 
               {/* Scoring History */}
               <div>
                 <SectionLabel icon={<Activity size={13} />} title="Scoring History" />
                 <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] overflow-hidden px-3 pt-3 pb-2">
-                  <Suspense fallback={<div className="h-[190px] animate-pulse rounded-lg bg-white/[0.03]" />}>
-                    <ScoreHistoryChart
-                      playerName={player.player_name}
-                      playerId={String(player.player_id)}
-                      hideProjection={!isPremium}
-                      seasonAvg={player.season_avg}
-                    />
-                  </Suspense>
+                  <div className="max-h-[170px] sm:max-h-none overflow-hidden">
+                    <Suspense fallback={<div className="h-[160px] sm:h-[190px] animate-pulse rounded-lg bg-white/[0.03]" />}>
+                      <ScoreHistoryChart
+                        playerName={player.player_name}
+                        playerId={String(player.player_id)}
+                        hideProjection={!isPremium}
+                        seasonAvg={player.season_avg}
+                      />
+                    </Suspense>
+                  </div>
                 </div>
                 {!isPremium && (
                   <p className="text-[10px] text-white/20 mt-1.5 px-1 flex items-center gap-1.5">
@@ -1136,8 +1183,7 @@ export default function AFLPlayerPage() {
 
               {/* Statistical Profile */}
               {scoreStats != null && (
-                <div>
-                  <SectionLabel icon={<Flame size={13} />} title="Statistical Profile" />
+                <CollapsibleSection icon={<Flame size={13} />} title="Statistical Profile" defaultOpen={false}>
                   <StatisticalProfile
                     stats={scoreStats}
                     isPremium={isPremium}
@@ -1147,12 +1193,11 @@ export default function AFLPlayerPage() {
                       avg_last_5:  player.avg_last_5,
                     }}
                   />
-                </div>
+                </CollapsibleSection>
               )}
 
               {/* Scoring Profile */}
-              <div>
-                <SectionLabel icon={<BarChart3 size={13} />} title="Scoring Profile" />
+              <CollapsibleSection icon={<BarChart3 size={13} />} title="Scoring Profile" defaultOpen={false}>
                 <div className="space-y-3">
                   {/* Stat tiles */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1204,7 +1249,7 @@ export default function AFLPlayerPage() {
                     </div>
                   )}
                 </div>
-              </div>
+              </CollapsibleSection>
 
               {/* Related Links */}
               <div>
@@ -1250,7 +1295,7 @@ export default function AFLPlayerPage() {
             </div>
 
             {/* ── SIDEBAR COLUMN ──────────────────────── */}
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4 order-1 lg:order-2">
 
               {/* Decision Centre */}
               <div>
