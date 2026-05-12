@@ -1111,29 +1111,33 @@ export default function MobileLanding({ isPremium }: Props) {
       {/* paddingTop offsets the fixed header: 62px MobileHeader + 40px ProductNav = 102px */}
       <section style={{
         position: "relative",
-        padding: "32px 16px 36px",
-        paddingTop: "calc(102px + 32px)",
+        minHeight: "75vh",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-end",
+        paddingTop: "calc(102px + 20px)",
+        paddingBottom: 0,
         overflow: "hidden",
         backgroundImage: `
-          linear-gradient(to bottom, rgba(0,0,0,0.12) 0%, rgba(5,8,12,0.48) 55%, rgba(7,9,13,0.92) 100%),
+          linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(5,8,12,0.38) 45%, rgba(7,9,13,0.88) 80%, rgba(7,9,13,1.0) 100%),
           url('/images/Fantasy_sports_war_room_setup.png')
         `,
-        backgroundSize: "cover",
-        backgroundPosition: "center top",
+        backgroundSize: "110% auto",
+        backgroundPosition: "center center",
         backgroundRepeat: "no-repeat",
       }}>
 
-        <div style={{ position: "relative", zIndex: 2 }}>
+        <div style={{ position: "relative", zIndex: 2, padding: "0 16px 40px" }}>
           {roundLabel && (
-            <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(34,197,94,0.65)", marginBottom: 6, textAlign: "center" }}>
+            <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(34,197,94,0.65)", marginBottom: 10, textAlign: "center" }}>
               AFL · {roundLabel}
             </p>
           )}
 
           <h1 style={{
-            fontSize: "clamp(1.5rem, 7.5vw, 1.95rem)",
-            fontWeight: 900, lineHeight: 1.10, letterSpacing: "-0.030em",
-            color: "#ffffff", marginBottom: 8, textAlign: "center",
+            fontSize: "clamp(1.4rem, 7vw, 1.82rem)",
+            fontWeight: 900, lineHeight: 1.16, letterSpacing: "-0.028em",
+            color: "#ffffff", marginBottom: 12, textAlign: "center",
           }}>
             Find AFL players most likely to{" "}
             <span style={{ color: "#22c55e" }}>hit key stats</span>{" "}
@@ -1141,14 +1145,14 @@ export default function MobileLanding({ isPremium }: Props) {
           </h1>
 
           <p style={{
-            fontSize: 13, color: "rgba(255,255,255,0.50)", lineHeight: 1.5,
-            textAlign: "center", marginBottom: 16,
-            maxWidth: 290, marginLeft: "auto", marginRight: "auto",
+            fontSize: 13.5, color: "rgba(255,255,255,0.60)", lineHeight: 1.55,
+            textAlign: "center", marginBottom: 22,
+            maxWidth: 310, marginLeft: "auto", marginRight: "auto",
           }}>
             Pick a match, choose a stat, and instantly see projections, form and hit rates.
           </p>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
             <Link to="/stat-board/players" style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               background: "linear-gradient(160deg, #22c55e 0%, #16a34a 100%)",
@@ -1169,10 +1173,17 @@ export default function MobileLanding({ isPremium }: Props) {
             </Link>
           </div>
         </div>
+
+        {/* Fade into next section */}
+        <div style={{
+          position: "absolute", bottom: 0, left: 0, right: 0, height: 64,
+          background: "linear-gradient(to bottom, transparent 0%, #07090d 100%)",
+          zIndex: 3, pointerEvents: "none",
+        }} />
       </section>
 
       {/* ─── FREE ROUND PREVIEW ─── */}
-      <section style={{ padding: "36px 14px 0" }}>
+      <section style={{ padding: "28px 14px 0" }}>
         <FreeRoundPreview />
       </section>
 
