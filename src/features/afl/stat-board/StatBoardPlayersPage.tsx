@@ -524,10 +524,10 @@ export default function StatBoardPlayersPage() {
           }}
         >
 
-          {/* Page header */}
-          <div className="mb-4 sm:mb-6">
-            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white">AFL Player Stat Board</h1>
-            <p className="mt-1 text-sm text-white/50 max-w-xl leading-relaxed hidden sm:block">
+          {/* Page header — desktop only; mobile has the branded sticky header */}
+          <div className="mb-4 sm:mb-6 hidden sm:block">
+            <h1 className="text-xl font-bold tracking-tight text-white">AFL Player Stat Board</h1>
+            <p className="mt-1 text-sm text-white/50 max-w-xl leading-relaxed">
               Pick a match, choose a stat, and compare every player's recent trends, hit rates and projections.
             </p>
           </div>
@@ -548,20 +548,23 @@ export default function StatBoardPlayersPage() {
           )}
 
           {/* ── Inline controls (observed for sticky trigger) ─────────────────── */}
-          <div ref={controlsRef} className="mb-3 space-y-2">
+          <div ref={controlsRef} className="mb-3">
 
-            {/* Row 1: stat toggle + position filters */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Stat toggle */}
-              <div className="flex gap-0.5 rounded-lg bg-white/5 border border-white/8 p-0.5 shrink-0">
-                {(["disposals", "goals"] as StatLens[]).map((l) => (
+            {/* Mobile controls card */}
+            <div className="sm:hidden rounded-2xl border border-white/[0.08] bg-[#0d0f12] overflow-hidden">
+
+              {/* Row 1: Stat toggle */}
+              <div className="flex border-b border-white/[0.06]">
+                {(["disposals", "goals"] as StatLens[]).map((l, i) => (
                   <button
                     key={l}
                     onClick={() => handleLensChange(l)}
-                    className={`rounded-md px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                    className={`flex-1 py-3 text-[13px] font-semibold transition-colors ${
+                      i === 0 ? "border-r border-white/[0.06]" : ""
+                    } ${
                       lens === l
-                        ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30"
-                        : "text-white/50 hover:text-white/80"
+                        ? "text-emerald-400 bg-emerald-500/[0.08]"
+                        : "text-white/40"
                     }`}
                   >
                     {l === "disposals" ? "Disposals" : "Goals"}
@@ -569,78 +572,176 @@ export default function StatBoardPlayersPage() {
                 ))}
               </div>
 
-              {/* Divider */}
-              <div className="h-5 w-px bg-white/10 shrink-0 hidden sm:block" aria-hidden />
-
-              {/* Position filter */}
-              <div className="flex gap-0.5 shrink-0 flex-wrap">
-                {POSITION_OPTIONS.map(({ key, label }) => (
+              {/* Row 2: Position filters */}
+              <div className="flex border-b border-white/[0.06] overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+                {POSITION_OPTIONS.map(({ key, label }, i) => (
                   <button
                     key={key}
                     onClick={() => setPositionFilter(key)}
-                    className={`rounded-md px-2.5 py-1.5 text-[12px] font-semibold transition-colors ${
+                    className={`flex-1 py-2.5 text-[12px] font-semibold whitespace-nowrap transition-colors ${
+                      i < POSITION_OPTIONS.length - 1 ? "border-r border-white/[0.06]" : ""
+                    } ${
                       positionFilter === key
-                        ? "bg-white/15 text-white ring-1 ring-white/25"
-                        : "bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/70"
+                        ? "text-white bg-white/[0.08]"
+                        : "text-white/38"
                     }`}
                   >
                     {label}
                   </button>
                 ))}
               </div>
-            </div>
 
-            {/* Row 2: search + sort */}
-            <div className="flex items-center gap-2">
-              {/* Search — grows to fill available space */}
-              <div className="flex items-center flex-1 min-w-0 rounded-lg bg-white/5 border border-white/8 pl-2.5 pr-2 focus-within:border-white/22 transition-colors">
-                <Search className="h-3 w-3 text-white/25 pointer-events-none shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search player..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="flex-1 min-w-0 bg-transparent pl-1.5 pr-1 py-1.5 text-[12px] text-white placeholder:text-white/25 focus:outline-none"
-                />
-                {search && (
+              {/* Row 3: Search + Sort */}
+              <div className="flex items-center gap-0 border-b border-white/[0.06]">
+                {/* Search */}
+                <div className="flex items-center flex-1 min-w-0 pl-3.5 pr-2 py-0">
+                  <Search className="h-3.5 w-3.5 text-white/22 pointer-events-none shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search player…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="flex-1 min-w-0 bg-transparent pl-2 pr-1 py-3 text-[13px] text-white placeholder:text-white/22 focus:outline-none"
+                  />
+                  {search && (
+                    <button
+                      onClick={() => setSearch("")}
+                      className="text-white/22 hover:text-white/55 shrink-0 p-1"
+                      aria-label="Clear search"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                {/* Divider */}
+                <div className="w-px self-stretch bg-white/[0.06] shrink-0" aria-hidden />
+                {/* Sort */}
+                <div className="relative shrink-0">
                   <button
-                    onClick={() => setSearch("")}
-                    className="text-white/25 hover:text-white/55 shrink-0"
-                    aria-label="Clear search"
+                    onClick={() => setSortOpen((v) => !v)}
+                    className="flex items-center gap-1.5 px-3.5 py-3 text-[12px] font-medium text-white/50 whitespace-nowrap focus:outline-none"
+                    aria-haspopup="listbox"
+                    aria-expanded={sortOpen}
                   >
-                    <X className="h-3 w-3" />
+                    <span className="text-white/60">{sortButtonLabel(sortKey)}</span>
+                    <ChevronDown className={`h-3 w-3 text-white/28 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
                   </button>
-                )}
+                  {sortOpen && (
+                    <SortDropdown
+                      current={sortKey}
+                      options={sortOptions(lens)}
+                      onSelect={(k) => { setSortKey(k); setSortOpen(false); }}
+                      onClose={() => setSortOpen(false)}
+                    />
+                  )}
+                </div>
               </div>
 
-              {/* Sort dropdown — shrink-0, right-aligned dropdown */}
-              <div className="relative shrink-0">
-                <button
-                  onClick={() => setSortOpen((v) => !v)}
-                  className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/8 px-2.5 py-1.5 text-[12px] font-medium text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 whitespace-nowrap"
-                  aria-haspopup="listbox"
-                  aria-expanded={sortOpen}
-                >
-                  <span className="text-white/32 text-[11px] hidden sm:inline">Sort:</span>
-                  <span className="text-white/72">{sortButtonLabel(sortKey)}</span>
-                  <ChevronDown className={`h-3 w-3 text-white/30 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
-                </button>
+              {/* Row 4: Viewing context */}
+              {!playersLoading && selectedMatch && (
+                <div className="px-3.5 py-2.5 flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-semibold text-white/20 uppercase tracking-widest shrink-0">Viewing</span>
+                  <span className="text-[11px] text-white/40 truncate">{selectedMatch.match_label}</span>
+                  <span className="text-white/15 text-[10px]">·</span>
+                  <span className="text-[11px] text-white/30">{lens === "disposals" ? "Disposals" : "Goals"}</span>
+                  {players.length > 0 && (
+                    <>
+                      <span className="text-white/15 text-[10px]">·</span>
+                      <span className="text-[11px] text-white/25">{players.length} players</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
 
-                {sortOpen && (
-                  <SortDropdown
-                    current={sortKey}
-                    options={sortOptions(lens)}
-                    onSelect={(k) => { setSortKey(k); setSortOpen(false); }}
-                    onClose={() => setSortOpen(false)}
+            {/* Desktop controls — unchanged layout */}
+            <div className="hidden sm:block space-y-2">
+              {/* Row 1: stat toggle + position filters */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex gap-0.5 rounded-lg bg-white/5 border border-white/8 p-0.5 shrink-0">
+                  {(["disposals", "goals"] as StatLens[]).map((l) => (
+                    <button
+                      key={l}
+                      onClick={() => handleLensChange(l)}
+                      className={`rounded-md px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+                        lens === l
+                          ? "bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30"
+                          : "text-white/50 hover:text-white/80"
+                      }`}
+                    >
+                      {l === "disposals" ? "Disposals" : "Goals"}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="h-5 w-px bg-white/10 shrink-0" aria-hidden />
+
+                <div className="flex gap-0.5 shrink-0 flex-wrap">
+                  {POSITION_OPTIONS.map(({ key, label }) => (
+                    <button
+                      key={key}
+                      onClick={() => setPositionFilter(key)}
+                      className={`rounded-md px-2.5 py-1.5 text-[12px] font-semibold transition-colors ${
+                        positionFilter === key
+                          ? "bg-white/15 text-white ring-1 ring-white/25"
+                          : "bg-white/5 text-white/45 hover:bg-white/10 hover:text-white/70"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Row 2: search + sort */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center flex-1 min-w-0 rounded-lg bg-white/5 border border-white/8 pl-2.5 pr-2 focus-within:border-white/22 transition-colors">
+                  <Search className="h-3 w-3 text-white/25 pointer-events-none shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search player..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="flex-1 min-w-0 bg-transparent pl-1.5 pr-1 py-1.5 text-[12px] text-white placeholder:text-white/25 focus:outline-none"
                   />
-                )}
+                  {search && (
+                    <button
+                      onClick={() => setSearch("")}
+                      className="text-white/25 hover:text-white/55 shrink-0"
+                      aria-label="Clear search"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative shrink-0">
+                  <button
+                    onClick={() => setSortOpen((v) => !v)}
+                    className="flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/8 px-2.5 py-1.5 text-[12px] font-medium text-white/60 hover:text-white/80 hover:bg-white/8 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-white/30 whitespace-nowrap"
+                    aria-haspopup="listbox"
+                    aria-expanded={sortOpen}
+                  >
+                    <span className="text-white/32 text-[11px]">Sort:</span>
+                    <span className="text-white/72">{sortButtonLabel(sortKey)}</span>
+                    <ChevronDown className={`h-3 w-3 text-white/30 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
+                  </button>
+                  {sortOpen && (
+                    <SortDropdown
+                      current={sortKey}
+                      options={sortOptions(lens)}
+                      onSelect={(k) => { setSortKey(k); setSortOpen(false); }}
+                      onClose={() => setSortOpen(false)}
+                    />
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Context row */}
+          {/* Context row — desktop only (mobile uses the card row above) */}
           {!playersLoading && selectedMatch && (
-            <div className="mb-3 sm:mb-5 flex items-center gap-1.5 flex-wrap text-[12px] text-white/48">
+            <div className="mb-3 sm:mb-5 hidden sm:flex items-center gap-1.5 flex-wrap text-[12px] text-white/48">
               <span className="text-white/30 text-[11px]">Viewing:</span>
               {[
                 selectedMatch.match_label,
