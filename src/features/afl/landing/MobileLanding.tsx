@@ -472,7 +472,7 @@ function PlayerPreviewRow({ player }: { player: StatBoardPlayer }) {
           </span>
         </div>
 
-        {/* Hit rate pill */}
+        {/* Hit rate pill — fraction primary, percentage secondary */}
         <div style={{
           display: "flex", flexDirection: "column", alignItems: "center",
           background: hitPct != null && hitPct >= 70
@@ -487,9 +487,12 @@ function PlayerPreviewRow({ player }: { player: StatBoardPlayer }) {
             fontSize: 15, fontWeight: 900, lineHeight: 1,
             color: hitColor, fontVariantNumeric: "tabular-nums",
           }}>
-            {hitPct != null ? `${hitPct}%` : "—"}
+            {hitFrac ?? "—"}
           </span>
-          <span style={{ fontSize: 7, fontWeight: 700, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 2 }}>
+          <span style={{ fontSize: 7, fontWeight: 700, color: hitColor, opacity: 0.6, fontVariantNumeric: "tabular-nums", marginTop: 1 }}>
+            {hitPct != null ? `${hitPct}%` : ""}
+          </span>
+          <span style={{ fontSize: 7, fontWeight: 700, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 1 }}>
             {thresholdLabel} hit
           </span>
         </div>
