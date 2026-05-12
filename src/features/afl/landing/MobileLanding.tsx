@@ -1354,29 +1354,29 @@ export default function MobileLanding({ isPremium }: Props) {
       </section>
 
       {/* ─── FREE ROUND PREVIEW ─── */}
-      <section style={{ padding: "28px 14px 0" }}>
+      <section style={{ padding: "36px 14px 0" }}>
         <FreeRoundPreview />
       </section>
 
       {/* ─── FREE GAME ACCESS ─── */}
-      <section style={{ padding: "44px 14px 0" }}>
+      <section style={{ padding: "36px 14px 0" }}>
         <TeamTotalOutlook />
       </section>
 
       {/* ─── LOCKED FULL ROUND ─── */}
       {allMatches.some(m => !m.is_free_match) && (
-        <section style={{ padding: "44px 14px 0" }}>
+        <section style={{ padding: "36px 14px 0" }}>
           <LockedFullRound allMatches={allMatches} />
         </section>
       )}
 
       {/* ─── FANTASY HUB ─── */}
-      <section style={{ padding: "48px 14px 0" }}>
+      <section style={{ padding: "36px 14px 0" }}>
         <FantasyHubTeaser />
       </section>
 
       {/* ─── EXPLORE PRODUCT TILES ─── */}
-      <section style={{ padding: "48px 14px 0" }}>
+      <section style={{ padding: "36px 14px 0" }}>
         <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.35em", textTransform: "uppercase", color: "rgba(255,255,255,0.25)", marginBottom: 14, textAlign: "center" }}>
           Explore Neeko
         </p>
@@ -1384,15 +1384,15 @@ export default function MobileLanding({ isPremium }: Props) {
       </section>
 
       {/* ─── PRICING ─── */}
-      <section style={{ padding: "48px 14px 0" }}>
+      <section style={{ padding: "36px 14px 0" }}>
         <PricingBlock />
       </section>
 
       {/* ─── FOOTER ─── */}
       <section style={{
-        padding: `44px 14px max(48px, calc(36px + env(safe-area-inset-bottom, 0px)))`,
+        padding: `36px 14px max(36px, calc(24px + env(safe-area-inset-bottom, 0px)))`,
         borderTop: "1px solid rgba(255,255,255,0.05)",
-        marginTop: 40,
+        marginTop: 36,
       }}>
         <p style={{ textAlign: "center", fontSize: 11.5, color: "rgba(255,255,255,0.22)", lineHeight: 1.5, margin: 0 }}>
           Free to start. Upgrade any time.
