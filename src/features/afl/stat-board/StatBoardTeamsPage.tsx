@@ -437,15 +437,15 @@ function BoardSummaryStrip({
     ? null
     : roundLabel === "OR"
     ? "Opening Round"
-    : `Round ${roundLabel.replace("R", "")}`;
+    : `Week ${roundLabel.replace("R", "")}`;
 
   const items: React.ReactNode[] = [];
 
   if (roundDisplay) {
     items.push(
       <span key="round" className="flex items-center gap-1.5 whitespace-nowrap">
-        <span className="text-[10px] text-white/28 uppercase tracking-wide font-medium">Round</span>
-        <span className="text-[11px] font-semibold text-white/72">{roundDisplay.replace("Round ", "")}</span>
+        <span className="text-[10px] text-white/28 uppercase tracking-wide font-medium">Week</span>
+        <span className="text-[11px] font-semibold text-white/72">{roundDisplay.replace("Week ", "")}</span>
       </span>
     );
   }
