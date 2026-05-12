@@ -1115,17 +1115,17 @@ export default function MobileLanding({ isPremium }: Props) {
         position: "relative",
         paddingTop: "calc(102px + 28px)",
         paddingBottom: 160,
-        overflow: "hidden",
         backgroundImage: `url('/images/Fantasy_sports_war_room_setup.png')`,
         backgroundSize: "cover",
         backgroundPosition: "center center",
         backgroundRepeat: "no-repeat",
+        backgroundAttachment: "scroll",
       }}>
 
-        {/* Overlay — separate layer so we can control fade independently of image */}
+        {/* Overlay — fades late so image stays visible behind CTAs */}
         <div style={{
           position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
-          background: "linear-gradient(to bottom, rgba(0,0,0,0.10) 0%, rgba(5,8,12,0.40) 40%, rgba(7,9,13,0.82) 65%, rgba(7,9,13,0.97) 82%, #07090d 100%)",
+          background: "linear-gradient(to bottom, rgba(0,0,0,0.10) 0%, rgba(5,8,12,0.35) 35%, rgba(7,9,13,0.60) 60%, rgba(7,9,13,0.88) 78%, rgba(7,9,13,0.97) 90%, #07090d 100%)",
         }} />
 
         <div style={{ position: "relative", zIndex: 2, padding: "0 16px" }}>
