@@ -239,12 +239,14 @@ export default function StatBoardPlayersPage() {
         />
       )}
 
-      <div className="min-h-dvh bg-[#0a0a0a] text-white" style={{ overflowX: "clip" }}>
+      <div className="min-h-dvh bg-[#0a0a0a] text-white" style={{ overflowX: "hidden" }}>
         <div
           className="mx-auto w-full max-w-[1360px] px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 min-w-0"
           style={{
             paddingBottom: "calc(5rem + env(safe-area-inset-bottom))",
             paddingTop: isMobile ? "calc(62px + 1rem)" : undefined,
+            boxSizing: "border-box",
+            maxWidth: "100%",
           }}
         >
 
@@ -272,13 +274,13 @@ export default function StatBoardPlayersPage() {
           )}
 
           {/* ── Inline controls (observed for sticky trigger) ─────────────────── */}
-          <div ref={controlsRef} className="mb-3">
+          <div ref={controlsRef} className="mb-3" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
 
             {/* Mobile controls — compact pill style */}
-            <div className="sm:hidden space-y-2.5">
+            <div className="sm:hidden space-y-2.5" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
 
               {/* Row 1: Stat lens toggle pills */}
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5" style={{ width: "100%", minWidth: 0 }}>
                 {(["disposals", "goals"] as StatLens[]).map((l) => (
                   <button
                     key={l}
@@ -294,8 +296,11 @@ export default function StatBoardPlayersPage() {
                 ))}
               </div>
 
-              {/* Row 2: Position filter pills */}
-              <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+              {/* Row 2: Position filter pills — internal scroll only */}
+              <div
+                className="flex gap-1.5 overflow-x-auto"
+                style={{ scrollbarWidth: "none", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" }}
+              >
                 {POSITION_OPTIONS.map(({ key, label }) => (
                   <button
                     key={key}
@@ -312,13 +317,13 @@ export default function StatBoardPlayersPage() {
               </div>
 
               {/* Row 3: Search + Sort */}
-              <div className="flex items-center gap-2 min-w-0">
+              <div className="flex items-center gap-2" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
                 {/* Search */}
-                <div className="flex items-center flex-1 min-w-0 rounded-full border border-white/[0.08] bg-white/[0.04] pl-3 pr-2 py-1.5 gap-2">
+                <div className="flex items-center rounded-full border border-white/[0.08] bg-white/[0.04] pl-3 pr-2 py-1.5 gap-2" style={{ flex: "1 1 0", minWidth: 0 }}>
                   <Search className="h-3.5 w-3.5 text-white/22 pointer-events-none shrink-0" />
                   <input
                     type="text"
-                    placeholder="Search player…"
+                    placeholder="Search…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="flex-1 min-w-0 bg-transparent text-[13px] text-white placeholder:text-white/22 focus:outline-none"
@@ -337,12 +342,13 @@ export default function StatBoardPlayersPage() {
                 <div className="relative shrink-0">
                   <button
                     onClick={() => setSortOpen((v) => !v)}
-                    className="flex items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[12px] font-medium text-white/50 whitespace-nowrap hover:text-white/70 focus:outline-none transition-colors"
+                    className="flex items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-medium text-white/50 hover:text-white/70 focus:outline-none transition-colors"
                     aria-haspopup="listbox"
                     aria-expanded={sortOpen}
+                    style={{ maxWidth: 110, overflow: "hidden" }}
                   >
-                    <span>{sortButtonLabel(sortKey)}</span>
-                    <ChevronDown className={`h-3 w-3 text-white/28 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
+                    <span className="truncate">{sortButtonLabel(sortKey)}</span>
+                    <ChevronDown className={`h-3 w-3 text-white/28 transition-transform shrink-0 ${sortOpen ? "rotate-180" : ""}`} />
                   </button>
                   {sortOpen && (
                     <SortDropdown
@@ -357,15 +363,15 @@ export default function StatBoardPlayersPage() {
 
               {/* Row 4: Viewing context — subtle */}
               {!playersLoading && selectedMatch && (
-                <div className="flex items-center gap-1.5 flex-wrap px-0.5">
+                <div className="flex items-center gap-1.5 flex-wrap px-0.5" style={{ width: "100%", minWidth: 0, overflow: "hidden" }}>
                   <span className="text-[10px] font-semibold text-white/18 uppercase tracking-widest shrink-0">Viewing</span>
-                  <span className="text-[10px] text-white/35 truncate">{selectedMatch.match_label}</span>
-                  <span className="text-white/12 text-[10px]">·</span>
-                  <span className="text-[10px] text-white/28">{lens === "disposals" ? "Disposals" : "Goals"}</span>
+                  <span className="text-[10px] text-white/35 truncate min-w-0" style={{ flex: "1 1 0", minWidth: 0 }}>{selectedMatch.match_label}</span>
+                  <span className="text-white/12 text-[10px] shrink-0">·</span>
+                  <span className="text-[10px] text-white/28 shrink-0">{lens === "disposals" ? "Disposals" : "Goals"}</span>
                   {players.length > 0 && (
                     <>
-                      <span className="text-white/12 text-[10px]">·</span>
-                      <span className="text-[10px] text-white/22">{players.length} players</span>
+                      <span className="text-white/12 text-[10px] shrink-0">·</span>
+                      <span className="text-[10px] text-white/22 shrink-0">{players.length} players</span>
                     </>
                   )}
                 </div>
