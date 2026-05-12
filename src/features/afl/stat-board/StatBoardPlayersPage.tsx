@@ -550,21 +550,19 @@ export default function StatBoardPlayersPage() {
           {/* ── Inline controls (observed for sticky trigger) ─────────────────── */}
           <div ref={controlsRef} className="mb-3">
 
-            {/* Mobile controls card */}
-            <div className="sm:hidden rounded-2xl border border-white/[0.08] bg-[#0d0f12] overflow-hidden">
+            {/* Mobile controls — compact pill style */}
+            <div className="sm:hidden space-y-2.5">
 
-              {/* Row 1: Stat toggle */}
-              <div className="flex border-b border-white/[0.06]">
-                {(["disposals", "goals"] as StatLens[]).map((l, i) => (
+              {/* Row 1: Stat lens toggle pills */}
+              <div className="flex gap-1.5">
+                {(["disposals", "goals"] as StatLens[]).map((l) => (
                   <button
                     key={l}
                     onClick={() => handleLensChange(l)}
-                    className={`flex-1 py-3 text-[13px] font-semibold transition-colors ${
-                      i === 0 ? "border-r border-white/[0.06]" : ""
-                    } ${
+                    className={`px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-colors border ${
                       lens === l
-                        ? "text-emerald-400 bg-emerald-500/[0.08]"
-                        : "text-white/40"
+                        ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                        : "bg-white/[0.04] border-white/[0.08] text-white/42 hover:text-white/65"
                     }`}
                   >
                     {l === "disposals" ? "Disposals" : "Goals"}
@@ -572,18 +570,16 @@ export default function StatBoardPlayersPage() {
                 ))}
               </div>
 
-              {/* Row 2: Position filters */}
-              <div className="flex border-b border-white/[0.06] overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-                {POSITION_OPTIONS.map(({ key, label }, i) => (
+              {/* Row 2: Position filter pills */}
+              <div className="flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+                {POSITION_OPTIONS.map(({ key, label }) => (
                   <button
                     key={key}
                     onClick={() => setPositionFilter(key)}
-                    className={`flex-1 py-2.5 text-[12px] font-semibold whitespace-nowrap transition-colors ${
-                      i < POSITION_OPTIONS.length - 1 ? "border-r border-white/[0.06]" : ""
-                    } ${
+                    className={`px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap transition-colors border shrink-0 ${
                       positionFilter === key
-                        ? "text-white bg-white/[0.08]"
-                        : "text-white/38"
+                        ? "bg-white/12 border-white/20 text-white"
+                        : "bg-white/[0.04] border-white/[0.08] text-white/42 hover:text-white/65"
                     }`}
                   >
                     {label}
@@ -592,38 +588,36 @@ export default function StatBoardPlayersPage() {
               </div>
 
               {/* Row 3: Search + Sort */}
-              <div className="flex items-center gap-0 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2 min-w-0">
                 {/* Search */}
-                <div className="flex items-center flex-1 min-w-0 pl-3.5 pr-2 py-0">
+                <div className="flex items-center flex-1 min-w-0 rounded-full border border-white/[0.08] bg-white/[0.04] pl-3 pr-2 py-1.5 gap-2">
                   <Search className="h-3.5 w-3.5 text-white/22 pointer-events-none shrink-0" />
                   <input
                     type="text"
                     placeholder="Search player…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="flex-1 min-w-0 bg-transparent pl-2 pr-1 py-3 text-[13px] text-white placeholder:text-white/22 focus:outline-none"
+                    className="flex-1 min-w-0 bg-transparent text-[13px] text-white placeholder:text-white/22 focus:outline-none"
                   />
                   {search && (
                     <button
                       onClick={() => setSearch("")}
-                      className="text-white/22 hover:text-white/55 shrink-0 p-1"
+                      className="text-white/22 hover:text-white/55 shrink-0"
                       aria-label="Clear search"
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
-                {/* Divider */}
-                <div className="w-px self-stretch bg-white/[0.06] shrink-0" aria-hidden />
-                {/* Sort */}
+                {/* Sort pill */}
                 <div className="relative shrink-0">
                   <button
                     onClick={() => setSortOpen((v) => !v)}
-                    className="flex items-center gap-1.5 px-3.5 py-3 text-[12px] font-medium text-white/50 whitespace-nowrap focus:outline-none"
+                    className="flex items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[12px] font-medium text-white/50 whitespace-nowrap hover:text-white/70 focus:outline-none transition-colors"
                     aria-haspopup="listbox"
                     aria-expanded={sortOpen}
                   >
-                    <span className="text-white/60">{sortButtonLabel(sortKey)}</span>
+                    <span>{sortButtonLabel(sortKey)}</span>
                     <ChevronDown className={`h-3 w-3 text-white/28 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
                   </button>
                   {sortOpen && (
@@ -637,17 +631,17 @@ export default function StatBoardPlayersPage() {
                 </div>
               </div>
 
-              {/* Row 4: Viewing context */}
+              {/* Row 4: Viewing context — subtle */}
               {!playersLoading && selectedMatch && (
-                <div className="px-3.5 py-2.5 flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-semibold text-white/20 uppercase tracking-widest shrink-0">Viewing</span>
-                  <span className="text-[11px] text-white/40 truncate">{selectedMatch.match_label}</span>
-                  <span className="text-white/15 text-[10px]">·</span>
-                  <span className="text-[11px] text-white/30">{lens === "disposals" ? "Disposals" : "Goals"}</span>
+                <div className="flex items-center gap-1.5 flex-wrap px-0.5">
+                  <span className="text-[10px] font-semibold text-white/18 uppercase tracking-widest shrink-0">Viewing</span>
+                  <span className="text-[10px] text-white/35 truncate">{selectedMatch.match_label}</span>
+                  <span className="text-white/12 text-[10px]">·</span>
+                  <span className="text-[10px] text-white/28">{lens === "disposals" ? "Disposals" : "Goals"}</span>
                   {players.length > 0 && (
                     <>
-                      <span className="text-white/15 text-[10px]">·</span>
-                      <span className="text-[11px] text-white/25">{players.length} players</span>
+                      <span className="text-white/12 text-[10px]">·</span>
+                      <span className="text-[10px] text-white/22">{players.length} players</span>
                     </>
                   )}
                 </div>
