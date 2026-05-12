@@ -1157,17 +1157,18 @@ export default function AFLPlayerPage() {
               {/* Scoring History */}
               <div>
                 <SectionLabel icon={<Activity size={13} />} title="Scoring History" />
-                <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] overflow-hidden px-3 pt-3 pb-2">
-                  <div className="max-h-[170px] sm:max-h-none overflow-hidden">
-                    <Suspense fallback={<div className="h-[160px] sm:h-[190px] animate-pulse rounded-lg bg-white/[0.03]" />}>
-                      <ScoreHistoryChart
-                        playerName={player.player_name}
-                        playerId={String(player.player_id)}
-                        hideProjection={!isPremium}
-                        seasonAvg={player.season_avg}
-                      />
-                    </Suspense>
-                  </div>
+                <div
+                  className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-3 pt-3 pb-2"
+                  style={{ width: "100%", minWidth: 0, boxSizing: "border-box", overflowX: "hidden" }}
+                >
+                  <Suspense fallback={<div className="h-[160px] animate-pulse rounded-lg bg-white/[0.03]" />}>
+                    <ScoreHistoryChart
+                      playerName={player.player_name}
+                      playerId={String(player.player_id)}
+                      hideProjection={!isPremium}
+                      seasonAvg={player.season_avg}
+                    />
+                  </Suspense>
                 </div>
                 {!isPremium && (
                   <p className="text-[10px] text-white/20 mt-1.5 px-1 flex items-center gap-1.5">

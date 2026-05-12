@@ -57,36 +57,44 @@ function ChartTooltip({
     : null;
 
   return (
-    <div className="rounded-lg border border-white/10 bg-[#181818] px-3 py-2.5 shadow-xl min-w-[150px]">
-      <p className="text-[11px] text-white/40 font-medium mb-1.5">{label}</p>
+    <div style={{
+      borderRadius: 8,
+      border: "1px solid rgba(255,255,255,0.10)",
+      background: "#181818",
+      padding: "8px 10px",
+      boxShadow: "0 4px 16px rgba(0,0,0,0.5)",
+      maxWidth: 180,
+      minWidth: 0,
+      width: "max-content",
+      boxSizing: "border-box",
+    }}>
+      <p style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", fontWeight: 500, marginBottom: 5 }}>{label}</p>
 
       {actual != null && (
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-[11px] text-[#F5C84C]/80">Actual</span>
-          <span className="text-[12px] font-bold text-[#F5C84C] tabular-nums">{Math.round(actual)}</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <span style={{ fontSize: 10, color: "rgba(245,200,76,0.80)" }}>Actual</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#F5C84C", fontVariantNumeric: "tabular-nums" }}>{Math.round(actual)}</span>
         </div>
       )}
 
       {seasonAvg != null && (
-        <div className="flex items-center justify-between gap-3 mt-0.5">
-          <span className="text-[10px] text-white/30">Season avg</span>
-          <span className="text-[10px] text-white/45 tabular-nums">{Math.round(seasonAvg)}</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 2 }}>
+          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.28)" }}>Season avg</span>
+          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.42)", fontVariantNumeric: "tabular-nums" }}>{Math.round(seasonAvg)}</span>
         </div>
       )}
 
       {rolling3 != null && (
-        <div className="flex items-center justify-between gap-3 mt-0.5">
-          <span className="text-[10px] text-[#60a5fa]/70">Rolling avg (3)</span>
-          <span className="text-[10px] font-semibold text-[#60a5fa] tabular-nums">{Math.round(rolling3)}</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 2 }}>
+          <span style={{ fontSize: 9, color: "rgba(96,165,250,0.70)" }}>Roll avg</span>
+          <span style={{ fontSize: 9, fontWeight: 600, color: "#60a5fa", fontVariantNumeric: "tabular-nums" }}>{Math.round(rolling3)}</span>
         </div>
       )}
 
       {vsAvg != null && actual != null && (
-        <div className="flex items-center justify-between gap-3 mt-1 pt-1 border-t border-white/[0.07]">
-          <span className={`text-[10px] ${vsAvg >= 0 ? "text-emerald-400/60" : "text-red-400/60"}`}>
-            vs season avg
-          </span>
-          <span className={`text-[10px] font-semibold tabular-nums ${vsAvg >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 4, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+          <span style={{ fontSize: 9, color: vsAvg >= 0 ? "rgba(52,211,153,0.60)" : "rgba(248,113,113,0.60)" }}>vs avg</span>
+          <span style={{ fontSize: 9, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: vsAvg >= 0 ? "#34d399" : "#f87171" }}>
             {vsAvg >= 0 ? "+" : ""}{vsAvg}
           </span>
         </div>
@@ -94,38 +102,38 @@ function ChartTooltip({
 
       {!hideProjection && projected != null && (
         <>
-          <div className="flex items-center justify-between gap-3 mt-1 pt-1 border-t border-white/[0.07]">
-            <span className="text-[11px] text-[#3b82f6]/80">Projected</span>
-            <span className="text-[12px] font-semibold text-[#3b82f6] tabular-nums">{Math.round(projected)}</span>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 4, paddingTop: 4, borderTop: "1px solid rgba(255,255,255,0.07)" }}>
+            <span style={{ fontSize: 10, color: "rgba(59,130,246,0.80)" }}>Proj</span>
+            <span style={{ fontSize: 11, fontWeight: 600, color: "#3b82f6", fontVariantNumeric: "tabular-nums" }}>{Math.round(projected)}</span>
           </div>
           {diff != null && (
-            <div className="flex items-center justify-between gap-3 mt-0.5">
-              <span className={`text-[10px] ${isUnder ? "text-emerald-400/60" : "text-red-400/60"}`}>
-                {isUnder ? "Under (Good)" : "Over (Risk)"}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 2 }}>
+              <span style={{ fontSize: 9, color: isUnder ? "rgba(52,211,153,0.60)" : "rgba(248,113,113,0.60)" }}>
+                {isUnder ? "Under" : "Over"}
               </span>
-              <span className={`text-[10px] font-semibold tabular-nums ${isUnder ? "text-emerald-400" : "text-red-400"}`}>
+              <span style={{ fontSize: 9, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: isUnder ? "#34d399" : "#f87171" }}>
                 {diff >= 0 ? "+" : ""}{diff}
               </span>
             </div>
           )}
           {conf != null && (
-            <div className="flex items-center justify-between gap-3 mt-0.5">
-              <span className="text-[10px] text-white/28">Confidence</span>
-              <span className={`text-[10px] font-semibold tabular-nums ${conf >= 80 ? "text-emerald-400" : conf >= 60 ? "text-yellow-400" : "text-white/40"}`}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 2 }}>
+              <span style={{ fontSize: 9, color: "rgba(255,255,255,0.28)" }}>Conf</span>
+              <span style={{ fontSize: 9, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: conf >= 80 ? "#34d399" : conf >= 60 ? "#facc15" : "rgba(255,255,255,0.40)" }}>
                 {Math.round(conf)}%
               </span>
             </div>
           )}
           {assessment && (() => {
-            const colors: Record<string, string> = {
-              "HIGH CONFIDENCE HIT": "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-              "OVERCONFIDENT MISS":  "text-red-400 bg-red-500/10 border-red-500/20",
-              "LOW CONFIDENCE HIT":  "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
-              "EXPECTED MISS":       "text-white/40 bg-white/5 border-white/10",
+            const assessStyles: Record<string, React.CSSProperties> = {
+              "HIGH CONFIDENCE HIT": { color: "#34d399", background: "rgba(52,211,153,0.10)", border: "1px solid rgba(52,211,153,0.20)" },
+              "OVERCONFIDENT MISS":  { color: "#f87171", background: "rgba(248,113,113,0.10)", border: "1px solid rgba(248,113,113,0.20)" },
+              "LOW CONFIDENCE HIT":  { color: "#facc15", background: "rgba(250,204,21,0.10)", border: "1px solid rgba(250,204,21,0.20)" },
+              "EXPECTED MISS":       { color: "rgba(255,255,255,0.40)", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)" },
             };
             return (
-              <div className="mt-1.5 pt-1.5 border-t border-white/[0.06]">
-                <span className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-bold border ${colors[assessment] ?? ""}`}>
+              <div style={{ marginTop: 5, paddingTop: 5, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+                <span style={{ display: "inline-block", borderRadius: 4, padding: "1px 5px", fontSize: 8, fontWeight: 700, ...(assessStyles[assessment] ?? {}) }}>
                   {assessment}
                 </span>
               </div>
@@ -190,13 +198,38 @@ function ChartSummaryStrip({
   ];
 
   return (
-    <div className="flex items-center gap-0 divide-x divide-white/[0.06] rounded-lg border border-white/[0.06] bg-black/20 overflow-hidden mb-3">
-      {items.map(({ label, value }) => (
-        <div key={label} className="flex flex-col items-center justify-center py-2 px-3 gap-0.5 flex-1">
-          <span className="text-[13px] font-black tabular-nums leading-none">{value}</span>
-          <span className="text-[7.5px] uppercase tracking-widest text-white/22 font-medium text-center leading-tight mt-0.5">{label}</span>
-        </div>
-      ))}
+    <div style={{
+      overflowX: "auto",
+      scrollbarWidth: "none",
+      marginBottom: 10,
+      borderRadius: 8,
+      border: "1px solid rgba(255,255,255,0.06)",
+      background: "rgba(0,0,0,0.20)",
+      width: "100%",
+      boxSizing: "border-box",
+    }}>
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        minWidth: "max-content",
+        overflow: "hidden",
+      }}>
+        {items.map(({ label, value }, i) => (
+          <div key={label} style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "8px 12px",
+            gap: 2,
+            flex: "0 0 auto",
+            borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.06)" : "none",
+          }}>
+            <span style={{ fontSize: 13, fontWeight: 900, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{value}</span>
+            <span style={{ fontSize: 7.5, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.22)", fontWeight: 500, textAlign: "center", lineHeight: 1.2, marginTop: 2 }}>{label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -478,13 +511,13 @@ export default function ScoreHistoryChart({
   const tickInterval = chartData.length <= 6 ? 0 : 1;
 
   return (
-    <>
+    <div style={{ width: "100%", minWidth: 0, maxWidth: "100%", boxSizing: "border-box", overflowX: "hidden" }}>
       {/* Summary strip */}
       <ChartSummaryStrip actuals={actuals} seasonAvg={seasonAvg ?? null} stdDev={stdDev} />
 
       {/* Chart */}
-      <ResponsiveContainer width="100%" height={200}>
-        <ComposedChart data={chartData} margin={{ top: 4, right: 8, bottom: 2, left: -4 }}>
+      <ResponsiveContainer width="100%" height={185}>
+        <ComposedChart data={chartData} margin={{ top: 4, right: 6, bottom: 2, left: -8 }}>
           <defs>
             <linearGradient id="rollingFade" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="rgba(96,165,250,0.08)" />
@@ -494,19 +527,19 @@ export default function ScoreHistoryChart({
 
           <XAxis
             dataKey="round_label"
-            tick={{ fill: "rgba(255,255,255,0.32)", fontSize: 10, fontWeight: 500 }}
+            tick={{ fill: "rgba(255,255,255,0.32)", fontSize: 9, fontWeight: 500 }}
             axisLine={false}
             tickLine={false}
             interval={tickInterval}
           />
           <YAxis
             domain={[yMin, yMax]}
-            tick={{ fill: "rgba(255,255,255,0.28)", fontSize: 10 }}
+            tick={{ fill: "rgba(255,255,255,0.28)", fontSize: 9 }}
             axisLine={false}
             tickLine={false}
-            width={32}
+            width={28}
             tickFormatter={(v) => String(Math.round(v))}
-            tickCount={5}
+            tickCount={4}
           />
 
           <RechartsTooltip
@@ -664,6 +697,6 @@ export default function ScoreHistoryChart({
 
       {/* Confidence reliability panel — premium only */}
       {!hideProjection && <ConfidenceReliabilityPanel data={completedData} />}
-    </>
+    </div>
   );
 }
