@@ -197,8 +197,8 @@ export default function StatBoardTeamsPage() {
         <meta name="twitter:title" content="AFL Team Stat Board | Neeko Sports Stats" />
       </Helmet>
 
-      <div className="min-h-dvh bg-[#0a0a0a] text-white overflow-x-hidden">
-        <div className="mx-auto w-full max-w-[1360px] px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 min-w-0" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}>
+      <div className="min-h-dvh bg-[#0a0a0a] text-white overflow-x-hidden w-full">
+        <div className="mx-auto w-full max-w-[1360px] px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 min-w-0 overflow-hidden" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}>
 
           {/* Breadcrumb */}
           <div className="mb-3 flex items-center gap-1.5 text-[11px] text-white/30">
@@ -216,32 +216,34 @@ export default function StatBoardTeamsPage() {
           </div>
 
           {/* ── Mobile controls (< sm) ─────────────────────────────────────────── */}
-          <div className="sm:hidden mb-3 space-y-2">
+          <div className="sm:hidden mb-3 space-y-2 w-full min-w-0">
 
             {/* Row 1: match filter + sort side-by-side */}
-            <div className="flex items-center gap-2 min-w-0">
-              {matchesError ? (
-                <div className="text-xs text-red-400 border border-red-500/30 bg-red-500/10 rounded-lg px-3 py-2">
-                  Could not load matches
-                </div>
-              ) : (
-                <MatchFilterDropdown
-                  matches={matches}
-                  selected={matchFilter}
-                  loading={matchesLoading}
-                  onChange={handleMatchFilter}
-                  hasFullAccess={hasFullAccess}
-                />
-              )}
-              <div className="relative shrink-0 ml-auto">
+            <div className="flex items-center gap-2 min-w-0 w-full overflow-hidden">
+              <div className="flex-1 min-w-0 overflow-hidden">
+                {matchesError ? (
+                  <div className="text-xs text-red-400 border border-red-500/30 bg-red-500/10 rounded-lg px-3 py-2 truncate">
+                    Could not load matches
+                  </div>
+                ) : (
+                  <MatchFilterDropdown
+                    matches={matches}
+                    selected={matchFilter}
+                    loading={matchesLoading}
+                    onChange={handleMatchFilter}
+                    hasFullAccess={hasFullAccess}
+                  />
+                )}
+              </div>
+              <div className="relative shrink-0">
                 <button
                   onClick={() => setSortOpen((v) => !v)}
-                  className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.045] px-2.5 py-2 text-[12px] font-medium text-white/60 hover:text-white/80 transition-colors focus:outline-none whitespace-nowrap"
+                  className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.045] px-2.5 py-2 text-[12px] font-medium text-white/60 hover:text-white/80 transition-colors focus:outline-none"
                   aria-haspopup="listbox"
                   aria-expanded={sortOpen}
                 >
-                  <span className="text-white/55">{SORT_OPTIONS.find((o) => o.key === sortKey)?.label ?? "—"}</span>
-                  <ChevronDown className={`h-3 w-3 text-white/30 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
+                  <span className="text-white/55 max-w-[90px] truncate block">{SORT_OPTIONS.find((o) => o.key === sortKey)?.label ?? "—"}</span>
+                  <ChevronDown className={`h-3 w-3 text-white/30 transition-transform shrink-0 ${sortOpen ? "rotate-180" : ""}`} />
                 </button>
                 {sortOpen && (
                   <SortDropdown
@@ -253,13 +255,13 @@ export default function StatBoardTeamsPage() {
               </div>
             </div>
 
-            {/* Row 2: lens pills */}
-            <div className="flex gap-1.5">
+            {/* Row 2: lens pills — overflow-x scroll on very narrow screens */}
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar w-full" style={{ WebkitOverflowScrolling: "touch" }}>
               {LENSES.map((l) => (
                 <button
                   key={l}
                   onClick={() => handleLensChange(l)}
-                  className={`flex-1 rounded-full border py-1.5 text-[11.5px] font-semibold transition-colors ${
+                  className={`flex-1 min-w-0 rounded-full border py-1.5 text-[11px] font-semibold transition-colors whitespace-nowrap ${
                     lens === l
                       ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
                       : "bg-white/[0.04] border-white/[0.08] text-white/42 hover:text-white/65"
@@ -755,14 +757,14 @@ function MatchFilterDropdown({ matches, selected, loading, onChange, hasFullAcce
   return (
     <div
       ref={(el) => { containerRef.current = el; }}
-      className="relative shrink-0"
+      className="relative min-w-0 w-full sm:w-auto sm:shrink-0"
     >
       <button
         ref={(el) => { triggerRef.current = el; }}
         onClick={handleOpen}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition-all duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 whitespace-nowrap
+        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition-all duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 w-full sm:w-auto
           ${open
             ? "bg-white/8 border-white/18 text-white"
             : "bg-white/[0.045] border-white/10 text-white/80 hover:bg-white/7 hover:border-white/16 hover:text-white/95"
@@ -775,7 +777,7 @@ function MatchFilterDropdown({ matches, selected, loading, onChange, hasFullAcce
         ) : (
           <span className="h-1.5 w-1.5 rounded-full bg-white/20 shrink-0" />
         )}
-        <span className="text-[12.5px] font-semibold leading-none">{triggerText}</span>
+        <span className="text-[12.5px] font-semibold leading-none truncate min-w-0">{triggerText}</span>
         <ChevronDown
           className={`h-3.5 w-3.5 shrink-0 text-white/30 transition-transform duration-150 ml-1 ${open ? "rotate-180" : ""}`}
         />

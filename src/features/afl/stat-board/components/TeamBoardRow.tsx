@@ -1222,7 +1222,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
   const handleToggle = useCallback(() => onToggleExpand(), [onToggleExpand]);
 
   return (
-    <div className={`rounded-2xl border overflow-hidden w-full min-w-0 max-w-full ${
+    <div className={`rounded-2xl border overflow-hidden w-full min-w-0 max-w-full box-border ${
       isExpanded ? "border-emerald-500/25 bg-[#111]" : "border-white/10 bg-[#0d0d0d]"
     }`}>
       <button
@@ -1276,7 +1276,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
         </div>
 
         {/* Row 2: recent chips */}
-        <div className="mb-2">
+        <div className="mb-2 min-w-0 overflow-hidden">
           <RecentChips values={row.recent_values} lens={lens} />
         </div>
 
