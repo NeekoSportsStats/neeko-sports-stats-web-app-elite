@@ -469,22 +469,14 @@ function FantasyDecision({
 }
 
 /** SEO guide — player overview, 2026 outlook, internal links */
-function PlayerSEOBlock({ player, teamSlug }: {
+function PlayerSEOBlock({ player, teamSlug, isPremium }: {
   player: PlayerData;
   teamSlug: string | undefined;
+  isPremium: boolean;
 }) {
   const posName  = getPositionName(player.player_position);
   const posLabel = posName.replace(/s$/, '');
   const team     = player.team ?? 'their AFL club';
-  const lastName = player.player_name.split(' ').slice(-1)[0];
-
-  const formSentence = (() => {
-    if (player.avg_last_3 == null || player.season_avg == null) return null;
-    const d = player.avg_last_3 - player.season_avg;
-    if (d >= 6)  return `${lastName} is currently scoring above their season average — positive recent form.`;
-    if (d <= -6) return `${lastName} has dipped below their season average across the last 3 rounds.`;
-    return `${lastName}'s recent form is consistent with their season average.`;
-  })();
 
   return (
     <section className="border-t border-white/[0.05] pt-6 pb-2 space-y-5">
@@ -497,7 +489,6 @@ function PlayerSEOBlock({ player, teamSlug }: {
           <p>
             {player.player_name} is a {posLabel} for {team} in the 2026 AFL season.
             {player.season_avg != null && ` 2026 season average: ${Math.round(player.season_avg)} pts.`}
-            {formSentence && ` ${formSentence}`}
           </p>
         </div>
         <div>
@@ -505,8 +496,8 @@ function PlayerSEOBlock({ player, teamSlug }: {
           <p>
             {player.price != null && `Current fantasy price: ${fmtPriceHelper(player.price)}.`}
             {player.games_played != null && ` ${player.games_played} games played in 2026.`}
-            {player.avg_last_3 != null && ` Last 3 match average: ${Math.round(player.avg_last_3)} pts.`}
-            {player.avg_last_5 != null && ` Last 5 match average: ${Math.round(player.avg_last_5)} pts.`}
+            {isPremium && player.avg_last_3 != null && ` Last 3 match average: ${Math.round(player.avg_last_3)} pts.`}
+            {isPremium && player.avg_last_5 != null && ` Last 5 match average: ${Math.round(player.avg_last_5)} pts.`}
             {' '}Projections are modelled using recent form, opponent concession rates, and venue factors.
           </p>
         </div>
@@ -524,8 +515,6 @@ function PlayerSEOBlock({ player, teamSlug }: {
         {player.player_name} AFL Fantasy 2026 — {posLabel}, {team}.
         Price: {fmtPriceHelper(player.price)}.
         Season avg: {player.season_avg != null ? Math.round(player.season_avg) : 'TBC'}.
-        Last 3: {player.avg_last_3 != null ? Math.round(player.avg_last_3) : 'TBC'}.
-        Last 5: {player.avg_last_5 != null ? Math.round(player.avg_last_5) : 'TBC'}.
         {player.games_played != null ? ` ${player.games_played} games played.` : ''}
         Updated weekly by Neeko Sports.
       </p>
@@ -1137,8 +1126,8 @@ export default function AFLPlayerPage() {
                 const cells: { label: string; val: React.ReactNode }[] = [
                   { label: 'Price',          val: <span className="text-white/80">{fmtPriceHelper(player.price)}</span> },
                   { label: '2026 Avg',       val: <span className="text-white/82">{fmtAvg(player.season_avg)}</span> },
-                  { label: 'Last 3 Matches', val: <span className={delta3 != null ? (delta3 >= 0 ? 'text-emerald-400' : 'text-red-400/85') : 'text-white/65'}>{fmtAvg(player.avg_last_3)}</span> },
-                  ...(player.avg_last_5 != null ? [{ label: 'Last 5 Matches', val: <span className="text-white/60">{Math.round(player.avg_last_5)}</span> }] : []),
+                  ...(isPremium ? [{ label: 'Last 3 Matches', val: <span className={delta3 != null ? (delta3 >= 0 ? 'text-emerald-400' : 'text-red-400/85') : 'text-white/65'}>{fmtAvg(player.avg_last_3)}</span> }] : []),
+                  ...(isPremium && player.avg_last_5 != null ? [{ label: 'Last 5 Matches', val: <span className="text-white/60">{Math.round(player.avg_last_5)}</span> }] : []),
                   { label: '2026 Games',     val: <span className="text-white/50">{player.games_played ?? '—'}</span> },
                   ...(isPremium && scoreStats?.high != null ? [{ label: 'High (L10 Matches)', val: <span className="text-emerald-400/75">{Math.round(scoreStats.high)}</span> }] : []),
                   ...(isPremium && scoreStats?.low  != null ? [{ label: 'Low (L10 Matches)',  val: <span className="text-red-400/60">{Math.round(scoreStats.low)}</span> }] : []),
@@ -1336,7 +1325,7 @@ export default function AFLPlayerPage() {
 
               {/* SEO block — bottom of main column on desktop */}
               <div className="hidden lg:block">
-                <PlayerSEOBlock player={player} teamSlug={teamSlug} />
+                <PlayerSEOBlock player={player} teamSlug={teamSlug} isPremium={isPremium} />
               </div>
             </div>
 
@@ -1405,7 +1394,7 @@ export default function AFLPlayerPage() {
 
           {/* SEO block — shown below both columns on mobile */}
           <div className="lg:hidden mt-5">
-            <PlayerSEOBlock player={player} teamSlug={teamSlug} />
+            <PlayerSEOBlock player={player} teamSlug={teamSlug} isPremium={isPremium} />
           </div>
 
         </div>
