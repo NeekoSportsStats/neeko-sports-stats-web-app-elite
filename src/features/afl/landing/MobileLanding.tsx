@@ -1149,10 +1149,11 @@ export default function MobileLanding({ isPremium }: Props) {
       {/* Fixed header + nav wrapper — mobile only */}
       <div style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-        background: "rgba(7,10,14,0.96)",
-        backdropFilter: "blur(14px)",
-        WebkitBackdropFilter: "blur(14px)",
-        borderBottom: "1px solid rgba(255,255,255,0.09)",
+        background: "rgba(7,10,14,0.88)",
+        backdropFilter: "blur(20px) saturate(1.4)",
+        WebkitBackdropFilter: "blur(20px) saturate(1.4)",
+        borderBottom: "1px solid rgba(255,255,255,0.13)",
+        boxShadow: "0 1px 0 0 rgba(255,255,255,0.04), 0 4px 24px 0 rgba(0,0,0,0.55)",
       }}>
         <MobileHeader onMenuOpen={() => setDrawerOpen(true)} isPremium={isPremium} />
         <ProductNav />
