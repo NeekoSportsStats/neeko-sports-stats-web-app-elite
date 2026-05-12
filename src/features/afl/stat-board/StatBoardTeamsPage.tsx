@@ -713,8 +713,8 @@ const FixtureSection = memo(function FixtureSection({
 
   return (
     <div style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
-      {/* Fixture header */}
-      <div className="mb-2 flex items-center gap-2 flex-wrap" style={{ minWidth: 0 }}>
+      {/* Fixture header — hidden on mobile for unlocked fixtures (matchup card has its own header) */}
+      <div className={`mb-2 flex items-center gap-2 flex-wrap${isMobile && !isLocked ? " hidden" : ""}`} style={{ minWidth: 0 }}>
         <div className="flex items-center gap-2" style={{ minWidth: 0, overflow: "hidden", flex: "1 1 auto" }}>
           {isFree ? (
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500/65" aria-hidden />
@@ -794,20 +794,57 @@ const FixtureSection = memo(function FixtureSection({
           </div>
         )
       ) : isMobile ? (
-        <div className="flex flex-col gap-2 w-full min-w-0">
-          {rows.map((row) => {
+        /* Mobile grouped matchup card */
+        <div
+          className="rounded-2xl border border-white/10 bg-[#0d0d0d] overflow-hidden"
+          style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}
+        >
+          {/* Matchup card header */}
+          <div
+            className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.07] bg-white/[0.02]"
+            style={{ minWidth: 0 }}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/65 shrink-0" aria-hidden />
+            <span
+              className="text-[12px] font-bold text-white/85 leading-tight"
+              style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+            >
+              {teams ? `${teams.home} vs ${teams.away}` : matchLabel}
+            </span>
+            {!hasFullAccess && (
+              <span className="shrink-0 text-[8px] font-bold uppercase tracking-wide text-emerald-400/70 bg-emerald-500/8 border border-emerald-500/15 rounded px-1.5 py-0.5 leading-none">
+                FREE
+              </span>
+            )}
+            {dateStr && (
+              <span className="text-[10px] text-white/30 shrink-0">{dateStr}</span>
+            )}
+          </div>
+
+          {/* Team rows with "v" separator */}
+          {rows.map((row, idx) => {
             const key = `${row.match_id}-${row.team_id}`;
+            const isLast = idx === rows.length - 1;
             return (
-              <MobileTeamCard
-                key={key}
-                row={row}
-                lens={lens}
-                thresholds={thresholds}
-                isMatchLocked={false}
-                isExpanded={expandedTeamKey === key}
-                onToggleExpand={() => onToggleExpand(expandedTeamKey === key ? null : key)}
-                onUnlockClick={onUnlockClick}
-              />
+              <div key={key} style={{ minWidth: 0, overflow: "hidden" }}>
+                <MobileTeamCard
+                  row={row}
+                  lens={lens}
+                  thresholds={thresholds}
+                  isMatchLocked={false}
+                  isExpanded={expandedTeamKey === key}
+                  onToggleExpand={() => onToggleExpand(expandedTeamKey === key ? null : key)}
+                  onUnlockClick={onUnlockClick}
+                  isInFixtureCard
+                />
+                {!isLast && (
+                  <div className="flex items-center gap-2 px-3 py-[3px] bg-[#0a0a0a]">
+                    <div className="flex-1 h-px bg-white/[0.05]" />
+                    <span className="text-[9px] font-semibold text-white/20 uppercase tracking-widest shrink-0">v</span>
+                    <div className="flex-1 h-px bg-white/[0.05]" />
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>

@@ -545,6 +545,9 @@ export const LockedFixtureBlock = memo(function LockedFixtureBlock({
   if (isMobile) {
     const home = teamRows.find((r) => r.is_home);
     const away = teamRows.find((r) => !r.is_home);
+    const displayHome = home ?? teamRows[0] ?? null;
+    const displayAway = away ?? teamRows[1] ?? null;
+    const displayRows = [displayHome, displayAway].filter(Boolean) as typeof teamRows;
     const matchLabel = home && away
       ? `${away.team_name} vs ${home.team_name}`
       : teamRows[0]?.match_label ?? "Locked match";
@@ -554,30 +557,77 @@ export const LockedFixtureBlock = memo(function LockedFixtureBlock({
 
     return (
       <div
-        className="rounded-2xl border border-[#F5C84C]/15 bg-[#F5C84C]/[0.018]"
-        style={{ display: "grid", gridTemplateColumns: "auto minmax(0,1fr) auto", alignItems: "center", gap: 12, padding: "10px 12px", width: "100%", boxSizing: "border-box", minWidth: 0 }}
+        className="rounded-2xl border border-[#F5C84C]/18 bg-[#0d0d0d] overflow-hidden"
+        style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}
       >
-        {/* Lock icon */}
-        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", height: 28, width: 28, borderRadius: 8, background: "rgba(245,200,76,0.08)", border: "1px solid rgba(245,200,76,0.15)" }}>
-          <Lock className="h-3.5 w-3.5 text-[#F5C84C]/55" aria-hidden />
-        </div>
-
-        {/* Match info — takes remaining space, truncates */}
-        <div style={{ minWidth: 0, overflow: "hidden" }}>
-          <p className="text-[12px] font-semibold text-white/55 leading-tight" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{matchLabel}</p>
+        {/* Matchup card header */}
+        <div className="flex items-center gap-2 px-3 py-2 border-b border-[#F5C84C]/10 bg-[#F5C84C]/[0.02]" style={{ minWidth: 0 }}>
+          <Lock className="h-3 w-3 text-[#F5C84C]/45 shrink-0" aria-hidden />
+          <span
+            className="text-[12px] font-bold text-white/55 leading-tight"
+            style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+          >
+            {matchLabel}
+          </span>
+          <span className="shrink-0 text-[8px] font-bold uppercase tracking-wide text-[#F5C84C]/45 bg-[#F5C84C]/6 border border-[#F5C84C]/12 rounded px-1.5 py-0.5 leading-none">
+            Neeko+
+          </span>
           {gameDate && (
-            <p className="text-[10px] text-white/28 leading-none" style={{ marginTop: 2 }}>{gameDate}</p>
+            <span className="text-[10px] text-white/25 shrink-0">{gameDate}</span>
           )}
         </div>
 
-        {/* Unlock button — fixed, never shrinks */}
-        <button
-          onClick={onUnlockClick}
-          className="inline-flex items-center gap-1 rounded-lg bg-[#F5C84C]/12 border border-[#F5C84C]/25 text-[10px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/20 active:bg-[#F5C84C]/28 transition-colors"
-          style={{ flexShrink: 0, whiteSpace: "nowrap", padding: "6px 10px" }}
-        >
-          Unlock
-        </button>
+        {/* Blurred team rows */}
+        {displayRows.map((row, idx) => {
+          const isLast = idx === displayRows.length - 1;
+          return (
+            <div key={row.team_id}>
+              <div
+                className="px-3 py-2.5 blur-[2px] select-none pointer-events-none opacity-40"
+                style={{ minWidth: 0 }}
+                aria-hidden
+              >
+                <div className="flex items-center gap-2 mb-2" style={{ minWidth: 0 }}>
+                  <span className="text-[13px] font-bold text-white/80 leading-tight" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, minWidth: 0 }}>
+                    {row.team_name}
+                  </span>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <p className="text-[7px] text-white/25 uppercase tracking-wider leading-none" style={{ marginBottom: 2 }}>Proj</p>
+                    <span className="text-[15px] font-bold text-[#F5C84C] tabular-nums leading-none">
+                      {row.projection != null ? String(Math.round(Number(row.projection))) : "—"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-[3px] flex-wrap">
+                  {(row.recent_values ?? []).slice(-6).map((v, i) => (
+                    <span key={i} className="rounded bg-white/8 px-1 py-0.5 text-[9px] text-white/60 tabular-nums">{v}</span>
+                  ))}
+                </div>
+              </div>
+              {!isLast && (
+                <div className="flex items-center gap-2 px-3 py-[3px] bg-[#0a0a0a] border-y border-[#F5C84C]/8">
+                  <div className="flex-1 h-px bg-white/[0.04]" />
+                  <span className="text-[9px] font-semibold text-white/18 uppercase tracking-widest shrink-0">v</span>
+                  <div className="flex-1 h-px bg-white/[0.04]" />
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Unlock CTA */}
+        <div className="flex items-center justify-between gap-3 px-3 py-2.5 border-t border-[#F5C84C]/10 bg-[#F5C84C]/[0.015]">
+          <p className="text-[10px] text-white/30 leading-tight flex-1 min-w-0">
+            Neeko+ required — projections, hit rates &amp; trends
+          </p>
+          <button
+            onClick={onUnlockClick}
+            className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#F5C84C]/12 border border-[#F5C84C]/25 text-[10px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/20 active:bg-[#F5C84C]/28 transition-colors"
+            style={{ whiteSpace: "nowrap", padding: "6px 10px" }}
+          >
+            Unlock
+          </button>
+        </div>
       </div>
     );
   }
@@ -1209,6 +1259,7 @@ interface MobileTeamCardProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   onUnlockClick: () => void;
+  isInFixtureCard?: boolean;
 }
 
 export const MobileTeamCard = memo(function MobileTeamCard({
@@ -1219,6 +1270,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
   isExpanded,
   onToggleExpand,
   onUnlockClick,
+  isInFixtureCard = false,
 }: MobileTeamCardProps) {
   void isMatchLocked; // handled at fixture level by LockedFixtureBlock
   const conf = row.consistency_label ? CONF_STYLES[row.consistency_label] ?? CONF_STYLES.LOW : null;
@@ -1231,9 +1283,14 @@ export const MobileTeamCard = memo(function MobileTeamCard({
   // Build stat strip columns: Avg + up to 3 thresholds + Form
   const statCols = 2 + Math.min(thresholds.length, 3); // Avg + thresholds + Form
 
+  // When embedded in a parent fixture card, remove outer border/rounding
+  const outerClass = isInFixtureCard
+    ? `overflow-hidden ${isExpanded ? "bg-[#111]" : "bg-transparent"}`
+    : `rounded-2xl border overflow-hidden ${isExpanded ? "border-emerald-500/25 bg-[#111]" : "border-white/10 bg-[#0d0d0d]"}`;
+
   return (
     <div
-      className={`rounded-2xl border overflow-hidden ${isExpanded ? "border-emerald-500/25 bg-[#111]" : "border-white/10 bg-[#0d0d0d]"}`}
+      className={outerClass}
       style={{ width: "100%", minWidth: 0, maxWidth: "100%", boxSizing: "border-box" }}
     >
       <button
