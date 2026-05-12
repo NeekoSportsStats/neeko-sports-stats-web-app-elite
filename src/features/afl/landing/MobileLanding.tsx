@@ -797,7 +797,7 @@ function TeamTotalOutlook() {
 
 // ── Locked full round module ──────────────────────────────────────────────────
 
-const LOCKED_PREVIEW_MAX = 4;
+const LOCKED_PREVIEW_MAX = 3;
 
 function LockedFullRound({ allMatches }: { allMatches: StatBoardMatch[] }) {
   const allLocked = allMatches.filter(m => !m.is_free_match);
@@ -817,19 +817,19 @@ function LockedFullRound({ allMatches }: { allMatches: StatBoardMatch[] }) {
 
       {/* Header */}
       <div style={{
-        padding: "14px 16px 12px",
+        padding: "12px 14px 10px",
         background: "linear-gradient(180deg, rgba(224,174,45,0.06) 0%, transparent 100%)",
         borderBottom: "1px solid rgba(224,174,45,0.10)",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "center",
-            width: 26, height: 26, borderRadius: 7,
+            width: 24, height: 24, borderRadius: 7,
             background: "rgba(224,174,45,0.12)",
             border: "1px solid rgba(224,174,45,0.24)",
             flexShrink: 0,
           }}>
-            <Lock size={12} style={{ color: "rgba(224,174,45,0.90)" }} />
+            <Lock size={11} style={{ color: "rgba(224,174,45,0.90)" }} />
           </div>
           <span style={{ fontSize: 13, fontWeight: 900, color: "rgba(224,174,45,0.92)", letterSpacing: "-0.01em" }}>
             Unlock Every Match
@@ -844,44 +844,41 @@ function LockedFullRound({ allMatches }: { allMatches: StatBoardMatch[] }) {
             Neeko+
           </span>
         </div>
-        <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.38)", lineHeight: 1.5 }}>
-          Free users get two match previews. Neeko+ unlocks the full round.
-        </p>
       </div>
 
       {/* Locked match cards */}
       {lockedMatches.length > 0 && (
-        <div style={{ padding: "12px 14px 0", display: "flex", flexDirection: "column", gap: 7 }}>
+        <div style={{ padding: "10px 13px 0", display: "flex", flexDirection: "column", gap: 6 }}>
           {lockedMatches.map(m => (
             <div key={m.match_id} style={{
               display: "flex", alignItems: "center",
               background: "rgba(224,174,45,0.03)",
               borderRadius: 9,
-              padding: "10px 12px",
+              padding: "8px 11px",
               border: "1px solid rgba(224,174,45,0.12)",
-              gap: 10,
+              gap: 9,
             }}>
               {/* Lock badge */}
               <div style={{
                 display: "flex", alignItems: "center", justifyContent: "center",
-                width: 30, height: 30, borderRadius: 8,
+                width: 26, height: 26, borderRadius: 7,
                 background: "rgba(224,174,45,0.08)",
                 border: "1px solid rgba(224,174,45,0.18)",
                 flexShrink: 0,
               }}>
-                <Lock size={12} style={{ color: "rgba(224,174,45,0.65)" }} />
+                <Lock size={11} style={{ color: "rgba(224,174,45,0.65)" }} />
               </div>
               {/* Match info */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{
-                  margin: 0, fontSize: 12.5, fontWeight: 700,
+                  margin: 0, fontSize: 12, fontWeight: 700,
                   color: "rgba(255,255,255,0.52)",
                   whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                 }}>
                   {m.match_label}
                 </p>
-                <p style={{ margin: "3px 0 0", fontSize: 9.5, color: "rgba(224,174,45,0.40)", letterSpacing: "0.02em" }}>
-                  Disposals · Goals · Match outlooks
+                <p style={{ margin: "2px 0 0", fontSize: 9, color: "rgba(224,174,45,0.38)", letterSpacing: "0.02em" }}>
+                  Disposals · Goals · Full stats
                 </p>
               </div>
             </div>
@@ -891,25 +888,25 @@ function LockedFullRound({ allMatches }: { allMatches: StatBoardMatch[] }) {
 
       {/* Extra matches pill */}
       {extraCount > 0 && (
-        <div style={{ padding: "10px 14px 0", display: "flex", justifyContent: "center" }}>
+        <div style={{ padding: "8px 13px 0", display: "flex", justifyContent: "center" }}>
           <span style={{
             display: "inline-flex", alignItems: "center", gap: 5,
-            fontSize: 11, fontWeight: 700, color: "rgba(224,174,45,0.60)",
+            fontSize: 10.5, fontWeight: 700, color: "rgba(224,174,45,0.58)",
             background: "rgba(224,174,45,0.07)",
             border: "1px solid rgba(224,174,45,0.14)",
-            borderRadius: 20, padding: "5px 12px",
+            borderRadius: 20, padding: "4px 11px",
           }}>
             <Lock size={9} style={{ color: "rgba(224,174,45,0.50)" }} />
-            +{extraCount} more match{extraCount > 1 ? "es" : ""} unlocked with Neeko+
+            +{extraCount} more match{extraCount > 1 ? "es" : ""} with Neeko+
           </span>
         </div>
       )}
 
       {/* CTA */}
-      <div style={{ padding: "14px 14px 16px" }}>
+      <div style={{ padding: "12px 13px 14px" }}>
         <Link to="/neeko-plus" style={{
           display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-          padding: "14px 20px", borderRadius: 11, minHeight: 50,
+          padding: "13px 20px", borderRadius: 11, minHeight: 48,
           background: "linear-gradient(155deg, #fad52a 0%, #e09600 100%)",
           color: "#130c00", fontSize: 14, fontWeight: 900,
           textDecoration: "none", letterSpacing: "0.01em",
