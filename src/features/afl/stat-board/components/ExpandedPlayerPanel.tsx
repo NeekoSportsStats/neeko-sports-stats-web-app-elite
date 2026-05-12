@@ -159,10 +159,16 @@ export function ExpandedPlayerPanel({
     || Object.keys(hitRates).length > 0;
 
   return (
-    <div className="border-t border-white/8 bg-[#0c0c0c]">
+    <div
+      className="border-t border-white/8 bg-[#0c0c0c]"
+      style={{ width: "100%", minWidth: 0, maxWidth: "100%", boxSizing: "border-box", overflowX: "hidden" }}
+    >
 
       {/* ── 1. Compact context strip ────────────────────────────────────────── */}
-      <div className="px-3 sm:px-5 py-2 flex items-center gap-2 sm:gap-3 flex-wrap border-b border-white/[0.06] bg-white/[0.012]">
+      <div
+        className="px-3 sm:px-5 py-2 flex items-center gap-2 sm:gap-3 flex-wrap border-b border-white/[0.06] bg-white/[0.012]"
+        style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}
+      >
         {/* Metadata group — opponent + home/away + position */}
         <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 flex-wrap">
           {player.opponent_team_name ? (
@@ -183,10 +189,8 @@ export function ExpandedPlayerPanel({
           )}
         </div>
 
-        <div className="flex-1" />
-
         {/* Stats + actions group */}
-        <div className="flex items-center gap-2 sm:gap-4 shrink-0 min-w-0">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0 min-w-0 ml-auto flex-wrap">
           <div className="text-center">
             <p className="text-[8px] sm:text-[9px] text-white/22 uppercase tracking-wide leading-none mb-0.5 sm:mb-1">Avg</p>
             <p className={`text-[12px] sm:text-[13px] font-semibold tabular-nums leading-none ${fmt1(player.last_10_avg) === "—" ? "text-white/22" : "text-white/62"}`}>
@@ -222,7 +226,7 @@ export function ExpandedPlayerPanel({
 
       {/* ── 3. Full-width chart ───────────────────────────────────────────── */}
       {hasAnyData && chartSlots.some((s) => s.value != null) && (
-        <section aria-label="Recent results chart" className="px-3 sm:px-5 pt-2.5 pb-1.5 sm:pb-2">
+        <section aria-label="Recent results chart" className="px-3 sm:px-5 pt-2.5 pb-1.5 sm:pb-2" style={{ width: "100%", minWidth: 0, boxSizing: "border-box", overflowX: "hidden" }}>
           <div className="flex items-center justify-between mb-1.5 sm:mb-2">
             <p className="text-[10px] font-semibold text-white/38 uppercase tracking-wider">
               Recent
@@ -255,7 +259,7 @@ export function ExpandedPlayerPanel({
 
       {/* ── 4. Two-column summary row ─────────────────────────────────────── */}
       {hasPlayerStats && (
-        <div className="px-3 sm:px-5 pt-1 pb-3 sm:pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 items-start">
+        <div className="px-3 sm:px-5 pt-1 pb-3 sm:pb-4 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 items-start" style={{ width: "100%", minWidth: 0, boxSizing: "border-box", overflowX: "hidden" }}>
 
           <section aria-label="Stat averages">
             <p className="text-[9px] sm:text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-1.5 sm:mb-2">Averages</p>
@@ -491,8 +495,8 @@ function MultiThresholdChart({
 
   return (
     <div
-      className="w-full relative"
-      style={{ touchAction: isMobile ? "pan-y" : undefined }}
+      className="w-full relative min-w-0"
+      style={{ touchAction: isMobile ? "pan-y" : undefined, maxWidth: "100%", boxSizing: "border-box", overflowX: "hidden" }}
       onMouseLeave={() => {
         if (isMobile) return;
         if (moveRafRef.current !== null) { cancelAnimationFrame(moveRafRef.current); moveRafRef.current = null; }
@@ -984,7 +988,7 @@ function GameLog({
   const playedRowCount = rows.filter((r) => r.rowType === "played").length;
 
   return (
-    <section aria-label="Game-by-game log" className="px-3 sm:px-5 pb-3 sm:pb-4">
+    <section aria-label="Game-by-game log" className="px-3 sm:px-5 pb-3 sm:pb-4" style={{ width: "100%", minWidth: 0, boxSizing: "border-box", overflowX: "hidden" }}>
       <button
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center justify-between gap-2 mb-1.5 sm:mb-2 py-1 group rounded-md -mx-1 px-1 hover:bg-white/[0.03] transition-colors"

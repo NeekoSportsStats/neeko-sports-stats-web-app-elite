@@ -250,8 +250,8 @@ export default function StatBoardPlayersPage() {
           }}
         >
 
-          {/* Page header — desktop only; mobile has the branded sticky header */}
-          <div className="mb-4 sm:mb-6 hidden sm:block">
+          {/* Page header */}
+          <div className="mb-4 sm:mb-6">
             <h1 className="text-xl font-bold tracking-tight text-white">AFL Player Stat Board</h1>
             <p className="mt-1 text-sm text-white/50 max-w-xl leading-relaxed">
               Pick a match, choose a stat, and compare every player's recent trends, hit rates and projections.

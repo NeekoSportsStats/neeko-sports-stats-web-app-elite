@@ -267,6 +267,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
           ? "border-emerald-500/25 bg-[#111]"
           : "border-white/10 bg-[#0d0d0d]"
       }`}
+      style={{ maxWidth: "100%", boxSizing: "border-box", overflowX: "hidden" }}
     >
       {/* ── Card tap target ── */}
       <button
@@ -400,8 +401,16 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
       {/* ── Expanded detail — no animation, no transforms on mobile ── */}
       {isExpanded && !isPlayerLocked && (
         <div
-          className="mobile-expanded-panel border-t border-white/[0.08] bg-[#0c0c0c] border-l-[3px] border-l-emerald-500/30"
-          style={{ overscrollBehavior: "contain" }}
+          className="mobile-expanded-panel border-t border-white/[0.08] bg-[#0c0c0c]"
+          style={{
+            overscrollBehavior: "contain",
+            width: "100%",
+            minWidth: 0,
+            maxWidth: "100%",
+            boxSizing: "border-box",
+            overflowX: "hidden",
+            borderLeft: "3px solid rgba(34,197,94,0.30)",
+          }}
         >
           <LazyExpandedContent
             player={player}
