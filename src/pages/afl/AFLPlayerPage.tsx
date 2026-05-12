@@ -1025,7 +1025,7 @@ export default function AFLPlayerPage() {
       </Helmet>
 
       <div className="min-h-dvh bg-[#080808] overflow-x-hidden">
-        <div className="mx-auto w-full max-w-[1120px] px-3 sm:px-6 lg:px-8 py-3 sm:py-6">
+        <div className="mx-auto w-full max-w-[1120px] px-3 sm:px-6 lg:px-8 py-3 sm:py-6" style={{ minWidth: 0, boxSizing: "border-box" }}>
 
           {/* Back nav */}
           <button
@@ -1296,7 +1296,7 @@ export default function AFLPlayerPage() {
             </div>
 
             {/* ── SIDEBAR COLUMN ──────────────────────── */}
-            <div className="space-y-3 sm:space-y-4 order-1 lg:order-2">
+            <div className="space-y-3 sm:space-y-4 order-1 lg:order-2 min-w-0">
 
               {/* Decision Centre */}
               <div>
