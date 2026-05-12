@@ -797,7 +797,7 @@ export default function StatBoardPlayersPage() {
               onResetAll={() => { setPositionFilter("ALL"); setSearch(""); }}
             />
           ) : (
-            <div className="space-y-5 sm:space-y-8">
+            <div className="space-y-8">
               <TeamBoard
                 matchId={selectedMatch?.match_id ?? null}
                 teamName={selectedMatch?.home_team_name ?? "Home"}
@@ -1239,11 +1239,53 @@ const TeamBoard = memo(function TeamBoard({
     </div>
   );
 
+  // ── Mobile section header — stronger hierarchy ──
+  const mobileTeamHeader = (
+    <div className="mb-3">
+      {/* Top rule — visually separates this section from whatever came before */}
+      <div className="flex items-center gap-3 mb-3">
+        <div className="flex-1 h-px bg-white/[0.07]" aria-hidden />
+        <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-white/22 shrink-0">
+          {isHome === true ? "Home" : isHome === false ? "Away" : ""}
+        </span>
+        <div className="flex-1 h-px bg-white/[0.07]" aria-hidden />
+      </div>
+
+      {/* Team name row */}
+      <div className="flex items-end justify-between gap-3 min-w-0">
+        <div className="min-w-0">
+          <h2 className="text-[18px] font-extrabold text-white tracking-tight leading-none truncate">
+            {teamName}
+          </h2>
+          <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+            <span className="text-[11px] text-white/38 font-medium leading-none">
+              vs {opponentName}
+            </span>
+            {isHome === true && (
+              <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md px-1.5 py-0.5 leading-none whitespace-nowrap uppercase tracking-wide">
+                Home
+              </span>
+            )}
+            {isHome === false && (
+              <span className="text-[9px] font-bold text-white/40 bg-white/[0.06] border border-white/10 rounded-md px-1.5 py-0.5 leading-none whitespace-nowrap uppercase tracking-wide">
+                Away
+              </span>
+            )}
+          </div>
+        </div>
+
+        <span className="text-[11px] text-white/28 font-medium shrink-0 leading-none pb-0.5">
+          {headerCount}
+        </span>
+      </div>
+    </div>
+  );
+
   // ── Mobile layout — stacked cards ──
   if (isMobile) {
     return (
       <div className="w-full min-w-0">
-        {teamHeader}
+        {mobileTeamHeader}
         <div className="flex flex-col gap-2 w-full min-w-0">
           {visiblePlayers.map((player) => (
             <MobilePlayerCard
