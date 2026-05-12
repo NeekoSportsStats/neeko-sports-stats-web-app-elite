@@ -691,6 +691,34 @@ function TeamProfileSummary({ teamName }: { teamName: string }) {
 
 // ── Mobile expanded panel ─────────────────────────────────────────────────────
 
+function AccordionSection({
+  label,
+  children,
+  defaultOpen = false,
+}: {
+  label: React.ReactNode;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="px-3 border-t border-white/[0.05]">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between py-1.5 text-left focus:outline-none"
+        aria-expanded={open}
+      >
+        <span className="text-[9px] font-semibold text-white/28 uppercase tracking-wider">{label}</span>
+        <ChevronDown
+          className="h-3 w-3 text-white/20 transition-transform duration-150 shrink-0"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+        />
+      </button>
+      {open && <div className="pb-2">{children}</div>}
+    </div>
+  );
+}
+
 function MobileExpandedTeamPanel({
   row,
   lens,
@@ -699,14 +727,13 @@ function MobileExpandedTeamPanel({
   lens: TeamStatLens;
 }) {
   const { log, loading: logLoading } = useStatBoardTeamGameLog(row.team_id);
-  const [gameLogOpen, setGameLogOpen] = useState(false);
-  const [teamProfileOpen, setTeamProfileOpen] = useState(false);
 
   const unit = teamLensUnit(lens);
   const thresholds = teamThresholdsForLens(lens);
   const recentVals = (row.recent_values ?? []).map(Number).filter((n) => !isNaN(n));
   const proj = safeNum(row.projection);
   const conf = row.consistency_label ? CONF_STYLES[row.consistency_label] ?? CONF_STYLES.LOW : null;
+  const hasOpponent = row.opponent_conceded_l5 != null || row.opponent_conceded_season != null;
 
   const sortedLog = [...log].reverse();
   const gameContexts: TrendChartGameContext[] = recentVals.map((_, i) => {
@@ -716,9 +743,9 @@ function MobileExpandedTeamPanel({
   });
 
   return (
-    <div className="py-2 space-y-2 min-w-0 w-full overflow-hidden">
-      {/* Header */}
-      <div className="px-3 flex flex-wrap items-center gap-1.5">
+    <div className="pt-1.5 pb-1 min-w-0 w-full overflow-hidden">
+      {/* Header — consistency + projection, always visible */}
+      <div className="px-3 pb-1.5 flex flex-wrap items-center gap-1.5">
         {conf && (
           <span className={`flex items-center gap-1 text-[10px] ${conf.text}`}>
             <span className={`h-[5px] w-[5px] rounded-full ${conf.dot}`} aria-hidden />
@@ -733,11 +760,11 @@ function MobileExpandedTeamPanel({
         )}
       </div>
 
-      {/* Trend chart — constrained to card width */}
+      {/* Trend chart — always visible, capped height */}
       {recentVals.length >= 2 && (
-        <div className="px-3 min-w-0 overflow-hidden">
+        <div className="px-3 pb-1.5 min-w-0 overflow-hidden">
           <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1">
-            Recent Trend — {unit} <span className="normal-case font-normal text-white/20">(tap a point)</span>
+            Trend — {unit} <span className="normal-case font-normal text-white/18">(tap point)</span>
           </p>
           <div className="w-full overflow-hidden">
             <TrendChart
@@ -746,28 +773,17 @@ function MobileExpandedTeamPanel({
               lens={lens}
               gameContexts={logLoading ? undefined : gameContexts}
               isMobile={true}
-              height={80}
+              height={64}
             />
           </div>
         </div>
       )}
 
-      {/* Key metrics — 2 cols */}
-      <div className="px-3">
-        <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1">Metrics</p>
-        <div className="grid grid-cols-2 gap-1">
-          <StatCell label="L3 Avg"     value={safeNum(row.recent_avg_l3)}  unit={unit} />
-          <StatCell label="L5 Avg"     value={safeNum(row.recent_avg_l5)}  unit={unit} />
-          <StatCell label="Season Avg" value={safeNum(row.season_avg)}     unit={unit} />
-          <StatCell label="Games"      value={safeNum(row.recent_games_count)} />
-        </div>
-      </div>
-
-      {/* Hit rates */}
+      {/* Hit rates — always visible (primary signal) */}
       {thresholds.length > 0 && (
-        <div className="px-3">
+        <div className="px-3 pb-1.5 border-t border-white/[0.05] pt-1.5">
           <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1">Hit Rates</p>
-          <div className="rounded-xl border border-white/[0.07] bg-[#0a0a0a] px-3 py-1 min-w-0 overflow-hidden">
+          <div className="rounded-lg border border-white/[0.07] bg-[#0a0a0a] px-3 py-0.5 min-w-0 overflow-hidden">
             <table className="w-full table-fixed">
               <colgroup>
                 <col className="w-[40%]" />
@@ -790,68 +806,55 @@ function MobileExpandedTeamPanel({
         </div>
       )}
 
-      {/* Opponent context */}
-      {(row.opponent_conceded_l5 != null || row.opponent_conceded_season != null) && (
-        <div className="px-3">
-          <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1">
-            Opponent — {row.opponent_team_name}
-          </p>
-          <div className="grid grid-cols-2 gap-1">
+      {/* Metrics — collapsed by default */}
+      <AccordionSection label="Metrics">
+        <div className="grid grid-cols-2 gap-1 mt-1">
+          <StatCell label="L3 Avg"     value={safeNum(row.recent_avg_l3)}       unit={unit} />
+          <StatCell label="L5 Avg"     value={safeNum(row.recent_avg_l5)}       unit={unit} />
+          <StatCell label="Season Avg" value={safeNum(row.season_avg)}          unit={unit} />
+          <StatCell label="Games"      value={safeNum(row.recent_games_count)}  />
+        </div>
+      </AccordionSection>
+
+      {/* Opponent — collapsed by default */}
+      {hasOpponent && (
+        <AccordionSection label={`Opponent — ${row.opponent_team_name}`}>
+          <div className="grid grid-cols-2 gap-1 mt-1">
             <StatCell label="Conceded L5"     value={safeNum(row.opponent_conceded_l5)}     unit={unit} />
             <StatCell label="Conceded Season" value={safeNum(row.opponent_conceded_season)} unit={unit} />
           </div>
-        </div>
+        </AccordionSection>
       )}
 
       {/* Team Profile — collapsed by default */}
-      <div className="px-3">
-        <button
-          onClick={() => setTeamProfileOpen((o) => !o)}
-          className="w-full flex items-center justify-between py-1.5 text-left"
-          aria-expanded={teamProfileOpen}
-        >
-          <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider">Team Profile</p>
-          <ChevronDown
-            className="h-3 w-3 text-white/20 transition-transform duration-200 shrink-0"
-            style={{ transform: teamProfileOpen ? "rotate(180deg)" : "rotate(0deg)" }}
-          />
-        </button>
-        {teamProfileOpen && (
-          <div className="pb-1">
-            <TeamProfileSummary teamName={row.team_name} />
-            {teamPagePath(row.team_name) && (
-              <Link
-                to={teamPagePath(row.team_name)!}
-                className="text-xs text-white/40 hover:text-white/70 transition-colors underline underline-offset-2"
-              >
-                View full team analysis
-              </Link>
-            )}
-          </div>
-        )}
-      </div>
+      <AccordionSection label="Team Profile">
+        <div className="mt-1">
+          <TeamProfileSummary teamName={row.team_name} />
+          {teamPagePath(row.team_name) && (
+            <Link
+              to={teamPagePath(row.team_name)!}
+              className="text-xs text-white/40 hover:text-white/70 transition-colors underline underline-offset-2"
+            >
+              View full team analysis
+            </Link>
+          )}
+        </div>
+      </AccordionSection>
 
-      {/* Game log — collapsed by default on mobile */}
-      <div className="px-3">
-        <button
-          onClick={() => setGameLogOpen((o) => !o)}
-          className="w-full flex items-center justify-between py-1.5 text-left"
-          aria-expanded={gameLogOpen}
-        >
-          <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider">
-            Game Log {!logLoading && log.length > 0 && <span className="normal-case font-normal text-white/18">({log.length} games)</span>}
-          </p>
-          <ChevronDown
-            className="h-3 w-3 text-white/20 transition-transform duration-200 shrink-0"
-            style={{ transform: gameLogOpen ? "rotate(180deg)" : "rotate(0deg)" }}
-          />
-        </button>
-        {gameLogOpen && (
-          <div className="pb-1">
-            <GameLogTable log={log} lens={lens} loading={logLoading} />
-          </div>
-        )}
-      </div>
+      {/* Game log — collapsed by default */}
+      <AccordionSection
+        label={
+          <>
+            Game Log{!logLoading && log.length > 0 && (
+              <span className="ml-1 normal-case font-normal text-white/18">({log.length} games)</span>
+            )}
+          </>
+        }
+      >
+        <div className="mt-1">
+          <GameLogTable log={log} lens={lens} loading={logLoading} />
+        </div>
+      </AccordionSection>
     </div>
   );
 }
