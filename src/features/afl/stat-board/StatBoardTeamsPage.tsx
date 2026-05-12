@@ -216,33 +216,35 @@ export default function StatBoardTeamsPage() {
           </div>
 
           {/* ── Mobile controls (< sm) ─────────────────────────────────────────── */}
-          <div className="sm:hidden mb-3 space-y-2 w-full min-w-0">
+          <div className="sm:hidden mb-3 space-y-2" style={{ width: "100%", boxSizing: "border-box", minWidth: 0 }}>
 
-            {/* Row 1: match filter + sort side-by-side */}
-            <div className="flex items-center gap-2 min-w-0 w-full overflow-hidden">
-              <div className="flex-1 min-w-0 overflow-hidden">
-                {matchesError ? (
-                  <div className="text-xs text-red-400 border border-red-500/30 bg-red-500/10 rounded-lg px-3 py-2 truncate">
-                    Could not load matches
-                  </div>
-                ) : (
-                  <MatchFilterDropdown
-                    matches={matches}
-                    selected={matchFilter}
-                    loading={matchesLoading}
-                    onChange={handleMatchFilter}
-                    hasFullAccess={hasFullAccess}
-                  />
-                )}
-              </div>
-              <div className="relative shrink-0">
+            {/* Row 1: match filter (left, fills space) + sort button (right, fixed) */}
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8, width: "100%", boxSizing: "border-box" }}>
+              {/* Match filter — fills column, truncates internally */}
+              {matchesError ? (
+                <div className="text-xs text-red-400 border border-red-500/30 bg-red-500/10 rounded-lg px-3 py-2 truncate">
+                  Could not load matches
+                </div>
+              ) : (
+                <MatchFilterDropdown
+                  matches={matches}
+                  selected={matchFilter}
+                  loading={matchesLoading}
+                  onChange={handleMatchFilter}
+                  hasFullAccess={hasFullAccess}
+                />
+              )}
+              {/* Sort — stays at natural width, does not expand */}
+              <div className="relative" style={{ flexShrink: 0 }}>
                 <button
                   onClick={() => setSortOpen((v) => !v)}
                   className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.045] px-2.5 py-2 text-[12px] font-medium text-white/60 hover:text-white/80 transition-colors focus:outline-none"
                   aria-haspopup="listbox"
                   aria-expanded={sortOpen}
                 >
-                  <span className="text-white/55 max-w-[90px] truncate block">{SORT_OPTIONS.find((o) => o.key === sortKey)?.label ?? "—"}</span>
+                  <span style={{ display: "block", maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "rgba(255,255,255,0.55)" }}>
+                    {SORT_OPTIONS.find((o) => o.key === sortKey)?.label ?? "—"}
+                  </span>
                   <ChevronDown className={`h-3 w-3 text-white/30 transition-transform shrink-0 ${sortOpen ? "rotate-180" : ""}`} />
                 </button>
                 {sortOpen && (
@@ -255,21 +257,24 @@ export default function StatBoardTeamsPage() {
               </div>
             </div>
 
-            {/* Row 2: lens pills — overflow-x scroll on very narrow screens */}
-            <div className="flex gap-1.5 overflow-x-auto no-scrollbar w-full" style={{ WebkitOverflowScrolling: "touch" }}>
-              {LENSES.map((l) => (
-                <button
-                  key={l}
-                  onClick={() => handleLensChange(l)}
-                  className={`flex-1 min-w-0 rounded-full border py-1.5 text-[11px] font-semibold transition-colors whitespace-nowrap ${
-                    lens === l
-                      ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                      : "bg-white/[0.04] border-white/[0.08] text-white/42 hover:text-white/65"
-                  }`}
-                >
-                  {teamLensLabel(l)}
-                </button>
-              ))}
+            {/* Row 2: lens tabs — inner scroll so page never grows */}
+            <div style={{ width: "100%", overflowX: "auto", overflowY: "visible", WebkitOverflowScrolling: "touch" as React.CSSProperties["WebkitOverflowScrolling"] }} className="no-scrollbar">
+              <div style={{ display: "flex", gap: 6, width: "max-content", paddingRight: 4 }}>
+                {LENSES.map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => handleLensChange(l)}
+                    style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+                    className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                      lens === l
+                        ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                        : "bg-white/[0.04] border-white/[0.08] text-white/42 hover:text-white/65"
+                    }`}
+                  >
+                    {teamLensLabel(l)}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -561,16 +566,16 @@ const FixtureSection = memo(function FixtureSection({
   if (rows.length === 0) return null;
 
   return (
-    <div>
+    <div style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
       {/* Fixture header */}
-      <div className="mb-2 flex items-center gap-2 flex-wrap">
-        <div className="flex items-center gap-2 min-w-0">
+      <div className="mb-2 flex items-center gap-2 flex-wrap" style={{ minWidth: 0 }}>
+        <div className="flex items-center gap-2" style={{ minWidth: 0, overflow: "hidden", flex: "1 1 auto" }}>
           {isFree ? (
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500/65" aria-hidden />
           ) : isLocked ? (
             <Lock className="h-3 w-3 shrink-0 text-[#F5C84C]/50" aria-label="Neeko+ required" />
           ) : null}
-          <h2 className="text-[13.5px] font-bold text-white tracking-tight leading-none truncate">
+          <h2 className="text-[13.5px] font-bold text-white tracking-tight leading-none" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>
             {teams ? `${teams.home} vs ${teams.away}` : matchLabel}
           </h2>
           {isFree && !isLocked && !hasFullAccess && (
@@ -757,14 +762,16 @@ function MatchFilterDropdown({ matches, selected, loading, onChange, hasFullAcce
   return (
     <div
       ref={(el) => { containerRef.current = el; }}
-      className="relative min-w-0 w-full sm:w-auto sm:shrink-0"
+      className="relative"
+      style={{ minWidth: 0, width: "100%" }}
     >
       <button
         ref={(el) => { triggerRef.current = el; }}
         onClick={handleOpen}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition-all duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 w-full sm:w-auto
+        style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}
+        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition-all duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20
           ${open
             ? "bg-white/8 border-white/18 text-white"
             : "bg-white/[0.045] border-white/10 text-white/80 hover:bg-white/7 hover:border-white/16 hover:text-white/95"
@@ -777,7 +784,7 @@ function MatchFilterDropdown({ matches, selected, loading, onChange, hasFullAcce
         ) : (
           <span className="h-1.5 w-1.5 rounded-full bg-white/20 shrink-0" />
         )}
-        <span className="text-[12.5px] font-semibold leading-none truncate min-w-0">{triggerText}</span>
+        <span className="text-[12.5px] font-semibold leading-none truncate" style={{ minWidth: 0, flex: 1 }}>{triggerText}</span>
         <ChevronDown
           className={`h-3.5 w-3.5 shrink-0 text-white/30 transition-transform duration-150 ml-1 ${open ? "rotate-180" : ""}`}
         />

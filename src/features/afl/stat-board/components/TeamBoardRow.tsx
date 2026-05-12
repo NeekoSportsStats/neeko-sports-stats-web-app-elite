@@ -553,24 +553,28 @@ export const LockedFixtureBlock = memo(function LockedFixtureBlock({
       : null;
 
     return (
-      <div className="rounded-2xl border border-[#F5C84C]/15 bg-[#F5C84C]/[0.018] px-3 py-2.5 flex items-center gap-3 min-w-0 w-full">
+      <div
+        className="rounded-2xl border border-[#F5C84C]/15 bg-[#F5C84C]/[0.018]"
+        style={{ display: "grid", gridTemplateColumns: "auto minmax(0,1fr) auto", alignItems: "center", gap: 12, padding: "10px 12px", width: "100%", boxSizing: "border-box", minWidth: 0 }}
+      >
         {/* Lock icon */}
-        <div className="shrink-0 flex items-center justify-center h-7 w-7 rounded-lg bg-[#F5C84C]/8 border border-[#F5C84C]/15">
+        <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", height: 28, width: 28, borderRadius: 8, background: "rgba(245,200,76,0.08)", border: "1px solid rgba(245,200,76,0.15)" }}>
           <Lock className="h-3.5 w-3.5 text-[#F5C84C]/55" aria-hidden />
         </div>
 
-        {/* Match info */}
-        <div className="flex-1 min-w-0">
-          <p className="text-[12px] font-semibold text-white/55 leading-tight truncate">{matchLabel}</p>
+        {/* Match info — takes remaining space, truncates */}
+        <div style={{ minWidth: 0, overflow: "hidden" }}>
+          <p className="text-[12px] font-semibold text-white/55 leading-tight" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{matchLabel}</p>
           {gameDate && (
-            <p className="text-[10px] text-white/28 mt-0.5 leading-none">{gameDate}</p>
+            <p className="text-[10px] text-white/28 leading-none" style={{ marginTop: 2 }}>{gameDate}</p>
           )}
         </div>
 
-        {/* Unlock button */}
+        {/* Unlock button — fixed, never shrinks */}
         <button
           onClick={onUnlockClick}
-          className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#F5C84C]/12 border border-[#F5C84C]/25 px-2.5 py-1.5 text-[10px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/20 active:bg-[#F5C84C]/28 transition-colors whitespace-nowrap"
+          className="inline-flex items-center gap-1 rounded-lg bg-[#F5C84C]/12 border border-[#F5C84C]/25 text-[10px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/20 active:bg-[#F5C84C]/28 transition-colors"
+          style={{ flexShrink: 0, whiteSpace: "nowrap", padding: "6px 10px" }}
         >
           Unlock
         </button>
@@ -1221,19 +1225,24 @@ export const MobileTeamCard = memo(function MobileTeamCard({
 
   const handleToggle = useCallback(() => onToggleExpand(), [onToggleExpand]);
 
+  // Build stat strip columns: Avg + up to 3 thresholds + Form
+  const statCols = 2 + Math.min(thresholds.length, 3); // Avg + thresholds + Form
+
   return (
-    <div className={`rounded-2xl border overflow-hidden w-full min-w-0 max-w-full box-border ${
-      isExpanded ? "border-emerald-500/25 bg-[#111]" : "border-white/10 bg-[#0d0d0d]"
-    }`}>
+    <div
+      className={`rounded-2xl border overflow-hidden ${isExpanded ? "border-emerald-500/25 bg-[#111]" : "border-white/10 bg-[#0d0d0d]"}`}
+      style={{ width: "100%", minWidth: 0, maxWidth: "100%", boxSizing: "border-box" }}
+    >
       <button
         onClick={handleToggle}
         aria-expanded={isExpanded}
         aria-label={`${row.team_name} — ${isExpanded ? "collapse" : "expand"} detail`}
-        className="w-full text-left px-3 pt-3 pb-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60"
+        className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60"
+        style={{ width: "100%", minWidth: 0, boxSizing: "border-box", display: "block", padding: "12px 12px 10px" }}
       >
-        {/* Row 1: team name + projection + chevron */}
-        <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
-          <div className="flex-1 min-w-0">
+        {/* Row 1: team name (shrinks) + projection+chevron (fixed right) */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
             {(() => {
               const path = teamPagePath(row.team_name);
               const cls = `text-[13px] font-bold leading-tight ${isExpanded ? "text-white" : "text-white/90"}`;
@@ -1243,31 +1252,32 @@ export const MobileTeamCard = memo(function MobileTeamCard({
                   aria-label={`View ${row.team_name} team page`}
                   onClick={(e) => e.stopPropagation()}
                   className={`${cls} inline hover:underline decoration-white/30 underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/70 rounded-sm`}
+                  style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                 >
                   {row.team_name}
                 </Link>
               ) : (
-                <span className={cls}>{row.team_name}</span>
+                <span className={cls} style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{row.team_name}</span>
               );
             })()}
-            <div className="flex items-center gap-1 mt-0.5 min-w-0">
-              <span className="text-[10px] text-white/35 truncate">vs {row.opponent_team_name}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2, minWidth: 0, overflow: "hidden" }}>
+              <span className="text-[10px] text-white/35" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>vs {row.opponent_team_name}</span>
               {row.is_home
-                ? <span className="text-[8px] text-emerald-500/60 font-semibold bg-emerald-500/7 rounded px-1 py-0.5 leading-none shrink-0">H</span>
-                : <span className="text-[8px] text-white/28 bg-white/5 rounded px-1 py-0.5 leading-none shrink-0">A</span>}
+                ? <span className="text-[8px] text-emerald-500/60 font-semibold bg-emerald-500/7 rounded px-1 py-0.5 leading-none" style={{ flexShrink: 0 }}>H</span>
+                : <span className="text-[8px] text-white/28 bg-white/5 rounded px-1 py-0.5 leading-none" style={{ flexShrink: 0 }}>A</span>}
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <div className="text-right">
-              <p className="text-[7px] text-white/25 uppercase tracking-wider leading-none mb-0.5">Proj</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+            <div style={{ textAlign: "right" }}>
+              <p className="text-[7px] text-white/25 uppercase tracking-wider leading-none" style={{ marginBottom: 2 }}>Proj</p>
               {proj != null ? (
                 <span className="text-[17px] font-bold text-[#F5C84C] tabular-nums leading-none">{proj}</span>
               ) : (
                 <span className="text-[12px] text-white/22">—</span>
               )}
             </div>
-            <span className={`inline-flex items-center justify-center h-6 w-6 rounded-lg shrink-0 ${isExpanded ? "bg-white/10 text-white/75" : "text-white/28"}`}>
+            <span className={`inline-flex items-center justify-center rounded-lg ${isExpanded ? "bg-white/10 text-white/75" : "text-white/28"}`} style={{ height: 24, width: 24, flexShrink: 0 }}>
               {isExpanded
                 ? <ChevronUp className="h-3.5 w-3.5" aria-hidden />
                 : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
@@ -1276,21 +1286,32 @@ export const MobileTeamCard = memo(function MobileTeamCard({
         </div>
 
         {/* Row 2: recent chips */}
-        <div className="mb-2 min-w-0 overflow-hidden">
+        <div style={{ marginBottom: 8, minWidth: 0, overflow: "hidden" }}>
           <RecentChips values={row.recent_values} lens={lens} />
         </div>
 
-        {/* Row 3: stats strip — limit to 3 thresholds on mobile */}
-        <div className="flex items-stretch gap-0 border border-white/8 rounded-lg overflow-hidden w-full">
-          <div className="flex-1 px-1.5 py-1.5 border-r border-white/8 min-w-0">
-            <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">Avg</p>
+        {/* Row 3: stats grid — equal cols via CSS grid so no col can push layout wide */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: `repeat(${statCols}, minmax(0, 1fr))`,
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 8,
+            overflow: "hidden",
+            width: "100%",
+            boxSizing: "border-box",
+          }}
+        >
+          {/* Avg col */}
+          <div style={{ padding: "6px 6px", borderRight: "1px solid rgba(255,255,255,0.08)", minWidth: 0, overflow: "hidden" }}>
+            <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none" style={{ marginBottom: 2 }}>Avg</p>
             <p className={`text-[11px] font-semibold tabular-nums leading-none ${avg != null ? "text-white/68" : "text-white/22"}`}>
               {avg != null ? fmt(avg) : "—"}
             </p>
           </div>
 
           {thresholds.slice(0, 3).map((t, idx) => {
-            const isLast = idx === Math.min(thresholds.length, 3) - 1;
+            const isLastThresh = idx === Math.min(thresholds.length, 3) - 1;
             const data = row.all_threshold_hit_rates?.[String(t)];
             const rate = safeNum(data?.rate);
             const hits = safeNum(data?.hits);
@@ -1302,8 +1323,17 @@ export const MobileTeamCard = memo(function MobileTeamCard({
               : "text-white/32";
 
             return (
-              <div key={t} className={`flex-1 px-1 py-1.5 text-center min-w-0 ${isLast ? "" : "border-r border-white/8"}`}>
-                <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">{t}+</p>
+              <div
+                key={t}
+                style={{
+                  padding: "6px 4px",
+                  textAlign: "center",
+                  borderRight: isLastThresh ? "none" : "1px solid rgba(255,255,255,0.08)",
+                  minWidth: 0,
+                  overflow: "hidden",
+                }}
+              >
+                <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none" style={{ marginBottom: 2 }}>{t}+</p>
                 {hasData && rate != null ? (
                   <p className={`text-[10px] font-bold tabular-nums leading-none ${rateColor}`}>
                     {rate > 0 ? `${rate}%` : "0%"}
@@ -1315,12 +1345,13 @@ export const MobileTeamCard = memo(function MobileTeamCard({
             );
           })}
 
-          <div className="flex-1 px-1.5 py-1.5 border-l border-white/8 min-w-0">
-            <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">Form</p>
+          {/* Form col */}
+          <div style={{ padding: "6px 6px", borderLeft: "1px solid rgba(255,255,255,0.08)", minWidth: 0, overflow: "hidden" }}>
+            <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none" style={{ marginBottom: 2 }}>Form</p>
             {conf ? (
-              <div className="flex items-center gap-1">
-                <span className={`h-[5px] w-[5px] rounded-full shrink-0 ${conf.dot}`} aria-hidden />
-                <span className={`text-[9px] font-semibold leading-none ${conf.text}`}>{conf.label}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <span className={`rounded-full shrink-0 ${conf.dot}`} style={{ height: 5, width: 5 }} aria-hidden />
+                <span className={`text-[9px] font-semibold leading-none ${conf.text}`} style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{conf.label}</span>
               </div>
             ) : (
               <p className="text-[9px] text-white/20 leading-none">—</p>
