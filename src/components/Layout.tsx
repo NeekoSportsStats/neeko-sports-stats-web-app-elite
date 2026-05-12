@@ -1,5 +1,6 @@
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { MobileShell } from "@/components/MobileShell";
 import { Button } from "@/components/ui/button";
 import { Crown, LogOut, Star, Users, TableProperties, Shield } from "lucide-react";
 import { Link, Outlet, useLocation } from "react-router-dom";
@@ -18,66 +19,20 @@ export function Layout() {
 
   return (
     <SidebarProvider defaultOpen={false}>
+      {/* Mobile shell — only visible below lg breakpoint */}
+      <div className="lg:hidden">
+        <MobileShell />
+      </div>
+
       <div className="min-h-screen w-full bg-background flex">
-        <AppSidebar />
+        {/* Desktop sidebar — hidden on mobile */}
+        <div className="hidden lg:block">
+          <AppSidebar />
+        </div>
 
         <div className="flex-1 flex flex-col">
-          {/* HEADER */}
-          <header className="fixed top-0 left-0 right-0 z-40 w-full border-b border-white/[0.07] bg-[rgba(8,10,14,0.82)] backdrop-blur-[12px]">
-
-            {/* ── Mobile header (< lg) — burger left · logo centre · action right ── */}
-            <div className="flex lg:hidden h-[60px] items-center px-3 relative">
-
-              {/* LEFT — sidebar burger */}
-              <SidebarTrigger className="h-[34px] w-[34px] border border-white/[0.12] bg-white/[0.06] hover:bg-white/[0.10] rounded-lg shrink-0" />
-
-              {/* CENTRE — logo, absolutely positioned so it's truly centred */}
-              <Link
-                to="/"
-                className="absolute left-1/2 -translate-x-1/2 flex items-center hover:opacity-80 transition"
-                style={{ textDecoration: "none" }}
-              >
-                <img
-                  src="/logo.png"
-                  alt="Neeko Sports Logo"
-                  style={{ width: 90, height: "auto", objectFit: "contain", display: "block" }}
-                />
-              </Link>
-
-              {/* RIGHT — Neeko+ or crown */}
-              <div className="ml-auto shrink-0">
-                {isPremium ? (
-                  <Link to="/account" style={{
-                    display: "flex", alignItems: "center", gap: 5,
-                    fontSize: 12, fontWeight: 700,
-                    color: "#facc15",
-                    textDecoration: "none",
-                    border: "1px solid rgba(250,204,21,0.30)",
-                    padding: "6px 11px",
-                    borderRadius: 7,
-                    whiteSpace: "nowrap",
-                  }}>
-                    <Crown size={12} />
-                    <span>Account</span>
-                  </Link>
-                ) : location.pathname !== "/neeko-plus" ? (
-                  <Link to="/neeko-plus" style={{
-                    display: "flex", alignItems: "center", gap: 5,
-                    fontSize: 12, fontWeight: 800,
-                    color: "#130c00",
-                    textDecoration: "none",
-                    background: "linear-gradient(160deg,#fad52a 0%,#e8a800 100%)",
-                    padding: "6px 11px",
-                    borderRadius: 7,
-                    whiteSpace: "nowrap",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
-                  }}>
-                    <Crown size={12} />
-                    <span>Neeko+</span>
-                  </Link>
-                ) : null}
-              </div>
-            </div>
+          {/* HEADER — desktop only */}
+          <header className="hidden lg:block fixed top-0 left-0 right-0 z-40 w-full border-b border-white/[0.07] bg-[rgba(8,10,14,0.82)] backdrop-blur-[12px]">
 
             {/* ── Desktop header (≥ lg) — unchanged ── */}
             <div className="hidden lg:flex h-[60px] items-center px-6 gap-0">
@@ -172,8 +127,8 @@ export function Layout() {
 
           </header>
 
-          {/* BODY — pt-[60px] offsets the fixed header */}
-          <main className="flex-1 overflow-auto pt-[60px]">
+          {/* BODY — desktop: offset fixed 60px header; mobile: offset 102px shell */}
+          <main className="flex-1 overflow-auto pt-[102px] lg:pt-[60px]">
             <Outlet />
           </main>
         </div>
