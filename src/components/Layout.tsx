@@ -1,5 +1,3 @@
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
 import { MobileShell } from "@/components/MobileShell";
 import { DesktopHeader } from "@/components/DesktopHeader";
 import { DesktopSidebar, DesktopSidebarProvider } from "@/components/DesktopSidebar";
@@ -9,28 +7,22 @@ export function Layout() {
   return (
     <DesktopSidebarProvider>
       {/* ── Mobile shell (< lg / 1024px) ─────────────────────────────────── */}
-      {/* Rendered outside SidebarProvider so it never participates in the   */}
-      {/* flex row that SidebarProvider creates, eliminating the right-side   */}
-      {/* dead column bug on mobile.                                          */}
+      {/* position:fixed — no document flow impact, zero height in layout     */}
       <div className="lg:hidden">
         <MobileShell />
-        {/* AppSidebar: on mobile renders a Sheet (portal) — zero layout width */}
-        <SidebarProvider defaultOpen={false}>
-          <AppSidebar />
-        </SidebarProvider>
       </div>
 
-      {/* ── Desktop layout (≥ lg) ─────────────────────────────────────────── */}
+      {/* ── Desktop chrome (≥ lg) — position:fixed, no layout height ─────── */}
       <div className="hidden lg:block">
         <DesktopHeader />
         <DesktopSidebar />
       </div>
 
       {/* ── Page content ──────────────────────────────────────────────────── */}
-      {/*   Mobile (< lg):  full viewport width, 102px top padding            */}
-      {/*   Desktop (≥ lg): full width minus no sidebar reservation            */}
+      {/*   Mobile (< lg):  pt-[102px] clears the fixed double-row header     */}
+      {/*   Desktop (≥ lg): pt-[60px]  clears the fixed desktop header        */}
       <main
-        className="min-h-screen bg-background overflow-auto pt-[102px] lg:pt-[60px]"
+        className="min-h-screen bg-background pt-[102px] lg:pt-[60px]"
         style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}
       >
         <Outlet />
