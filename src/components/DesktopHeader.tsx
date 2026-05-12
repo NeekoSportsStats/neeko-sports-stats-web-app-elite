@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
-import { Crown, TableProperties, Star, Users, Shield } from "lucide-react";
+import { Crown, TableProperties, Star, Users, Shield, Menu } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useDesktopSidebar } from "@/components/DesktopSidebar";
 
 const NAV_LINKS = [
   { label: "Stat Board",  to: "/stat-board",          icon: TableProperties },
@@ -17,6 +18,7 @@ const NAV_LINKS = [
 export function DesktopHeader() {
   const { user, isPremium, signOut } = useAuth();
   const location = useLocation();
+  const { toggle } = useDesktopSidebar();
 
   return (
     <header
@@ -31,11 +33,41 @@ export function DesktopHeader() {
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
         borderBottom: "1px solid rgba(255,255,255,0.07)",
-        padding: "0 20px 0 16px",
+        padding: "0 20px 0 12px",
         gap: 0,
       }}
     >
-      {/* LEFT — Logo */}
+      {/* LEFT — Burger + Logo */}
+      <button
+        onClick={toggle}
+        aria-label="Open sidebar"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 34,
+          height: 34,
+          borderRadius: 7,
+          border: "none",
+          background: "transparent",
+          color: "rgba(255,255,255,0.50)",
+          cursor: "pointer",
+          flexShrink: 0,
+          marginRight: 6,
+          transition: "background 0.12s, color 0.12s",
+        }}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
+          (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.85)";
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLElement).style.background = "transparent";
+          (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.50)";
+        }}
+      >
+        <Menu size={18} />
+      </button>
+
       <Link
         to="/"
         style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }}
