@@ -377,10 +377,10 @@ function HitRateRow({
       <td className="py-1.5 pr-3 text-[11px] text-white/50 tabular-nums text-right whitespace-nowrap">
         {hasData ? `${hits}/${games}` : "—"}
       </td>
-      <td className="py-1.5 pr-3 w-28">
+      <td className="py-1.5 pr-2 min-w-0">
         {hasData && (
-          <div className="flex items-center gap-2">
-            <div className="flex-1 h-1.5 rounded-full bg-white/8 overflow-hidden">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex-1 h-1.5 rounded-full bg-white/8 overflow-hidden min-w-0">
               <div
                 className={`h-full rounded-full transition-all ${barColor}`}
                 style={{ width: `${Math.min(rate, 100)}%` }}
@@ -710,9 +710,9 @@ function MobileExpandedTeamPanel({
   });
 
   return (
-    <div className="px-3 py-3 space-y-3">
+    <div className="py-3 space-y-3 min-w-0 w-full overflow-hidden">
       {/* Header */}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="px-3 flex flex-wrap items-center gap-1.5">
         {conf && (
           <span className={`flex items-center gap-1 text-[10px] ${conf.text}`}>
             <span className={`h-[5px] w-[5px] rounded-full ${conf.dot}`} aria-hidden />
@@ -727,25 +727,27 @@ function MobileExpandedTeamPanel({
         )}
       </div>
 
-      {/* Trend chart — controlled height, tap-to-pin */}
+      {/* Trend chart — constrained to card width */}
       {recentVals.length >= 2 && (
-        <div>
+        <div className="px-3 min-w-0 overflow-hidden">
           <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">
             Recent Trend — {unit} <span className="normal-case font-normal text-white/20">(tap a point)</span>
           </p>
-          <TrendChart
-            values={recentVals}
-            thresholds={thresholds}
-            lens={lens}
-            gameContexts={logLoading ? undefined : gameContexts}
-            isMobile={true}
-            height={100}
-          />
+          <div className="w-full overflow-hidden">
+            <TrendChart
+              values={recentVals}
+              thresholds={thresholds}
+              lens={lens}
+              gameContexts={logLoading ? undefined : gameContexts}
+              isMobile={true}
+              height={100}
+            />
+          </div>
         </div>
       )}
 
-      {/* Key metrics — 2 cols on mobile */}
-      <div>
+      {/* Key metrics — 2 cols */}
+      <div className="px-3">
         <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">Metrics</p>
         <div className="grid grid-cols-2 gap-1.5">
           <StatCell label="L3 Avg"     value={safeNum(row.recent_avg_l3)}  unit={unit} />
@@ -757,10 +759,16 @@ function MobileExpandedTeamPanel({
 
       {/* Hit rates */}
       {thresholds.length > 0 && (
-        <div>
+        <div className="px-3">
           <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">Hit Rates</p>
-          <div className="rounded-xl border border-white/[0.07] bg-[#0a0a0a] px-3 py-1">
-            <table className="w-full">
+          <div className="rounded-xl border border-white/[0.07] bg-[#0a0a0a] px-3 py-1 min-w-0 overflow-hidden">
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col className="w-[40%]" />
+                <col className="w-[20%]" />
+                <col />
+                <col className="w-[18%]" />
+              </colgroup>
               <tbody>
                 {thresholds.map((t) => (
                   <HitRateRow
@@ -778,32 +786,34 @@ function MobileExpandedTeamPanel({
 
       {/* Opponent context */}
       {(row.opponent_conceded_l5 != null || row.opponent_conceded_season != null) && (
-        <div>
+        <div className="px-3">
           <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">
             Opponent — {row.opponent_team_name}
           </p>
           <div className="grid grid-cols-2 gap-1.5">
-            <StatCell label={`Conceded L5`}     value={safeNum(row.opponent_conceded_l5)}     unit={unit} />
-            <StatCell label={`Conceded Season`} value={safeNum(row.opponent_conceded_season)} unit={unit} />
+            <StatCell label="Conceded L5"     value={safeNum(row.opponent_conceded_l5)}     unit={unit} />
+            <StatCell label="Conceded Season" value={safeNum(row.opponent_conceded_season)} unit={unit} />
           </div>
         </div>
       )}
 
       {/* Team Profile */}
-      <TeamProfileSummary teamName={row.team_name} />
-      {teamPagePath(row.team_name) && (
-        <div className="px-0 pb-1">
-          <Link
-            to={teamPagePath(row.team_name)!}
-            className="text-xs text-white/40 hover:text-white/70 transition-colors underline underline-offset-2"
-          >
-            View full team analysis
-          </Link>
-        </div>
-      )}
+      <div className="px-3">
+        <TeamProfileSummary teamName={row.team_name} />
+        {teamPagePath(row.team_name) && (
+          <div className="pb-1">
+            <Link
+              to={teamPagePath(row.team_name)!}
+              className="text-xs text-white/40 hover:text-white/70 transition-colors underline underline-offset-2"
+            >
+              View full team analysis
+            </Link>
+          </div>
+        )}
+      </div>
 
-      {/* Game log — horizontally scrollable on mobile */}
-      <div>
+      {/* Game log — intentional horizontal scroll, isolated from page */}
+      <div className="px-3">
         <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">Game Log</p>
         <GameLogTable log={log} lens={lens} loading={logLoading} />
       </div>
@@ -1181,7 +1191,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
   const handleToggle = useCallback(() => onToggleExpand(), [onToggleExpand]);
 
   return (
-    <div className={`rounded-2xl border overflow-hidden w-full min-w-0 ${
+    <div className={`rounded-2xl border overflow-hidden w-full min-w-0 max-w-full ${
       isExpanded ? "border-emerald-500/25 bg-[#111]" : "border-white/10 bg-[#0d0d0d]"
     }`}>
       <button
@@ -1290,7 +1300,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
 
       {/* Expanded detail — use mobile-specific panel */}
       {isExpanded && (
-        <div className="border-t border-white/[0.08] bg-[#0c0c0c] border-l-[3px] border-l-emerald-500/30">
+        <div className="border-t border-white/[0.08] bg-[#0c0c0c] border-l-[3px] border-l-emerald-500/30 overflow-hidden min-w-0 w-full">
           <MobileExpandedTeamPanel row={row} lens={lens} />
         </div>
       )}
