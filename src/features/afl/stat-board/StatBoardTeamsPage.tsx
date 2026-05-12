@@ -130,6 +130,7 @@ export default function StatBoardTeamsPage() {
   const navigate = useNavigate();
 
   const { hasFullAccess } = useStatBoardAccess("teams");
+  const isMobile = useIsMobile();
 
   const { matches, loading: matchesLoading, error: matchesError } = useStatBoardTeamMatches();
 
@@ -379,19 +380,49 @@ export default function StatBoardTeamsPage() {
             </div>
           ) : (
             <div className="space-y-4 sm:space-y-8">
-              {fixtures.map((fixture, fixtureIndex) => (
-                <FixtureSection
-                  key={fixture.matchId}
-                  fixture={fixture}
-                  index={fixtureIndex}
-                  lens={lens}
-                  thresholds={thresholds}
-                  expandedTeamKey={expandedTeamKey}
-                  onToggleExpand={handleToggleExpand}
-                  onUnlockClick={() => navigate("/neeko-plus")}
-                  hasFullAccess={hasFullAccess}
-                />
-              ))}
+              {(() => {
+                if (!isMobile || hasFullAccess) {
+                  return fixtures.map((fixture, fixtureIndex) => (
+                    <FixtureSection
+                      key={fixture.matchId}
+                      fixture={fixture}
+                      index={fixtureIndex}
+                      lens={lens}
+                      thresholds={thresholds}
+                      expandedTeamKey={expandedTeamKey}
+                      onToggleExpand={handleToggleExpand}
+                      onUnlockClick={() => navigate("/neeko-plus")}
+                      hasFullAccess={hasFullAccess}
+                    />
+                  ));
+                }
+                // Mobile + free user: render free fixtures normally, collect locked into one banner
+                const freeFixtures = fixtures.filter((f) => !f.isLocked);
+                const lockedFixtures = fixtures.filter((f) => f.isLocked);
+                return (
+                  <>
+                    {freeFixtures.map((fixture, fixtureIndex) => (
+                      <FixtureSection
+                        key={fixture.matchId}
+                        fixture={fixture}
+                        index={fixtureIndex}
+                        lens={lens}
+                        thresholds={thresholds}
+                        expandedTeamKey={expandedTeamKey}
+                        onToggleExpand={handleToggleExpand}
+                        onUnlockClick={() => navigate("/neeko-plus")}
+                        hasFullAccess={hasFullAccess}
+                      />
+                    ))}
+                    {lockedFixtures.length > 0 && (
+                      <MobileLockedFixturesBanner
+                        fixtures={lockedFixtures}
+                        onUnlockClick={() => navigate("/neeko-plus")}
+                      />
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
 
@@ -518,6 +549,91 @@ function BoardSummaryStrip({
           {item}
         </React.Fragment>
       ))}
+    </div>
+  );
+}
+
+// ── Mobile locked fixtures banner ────────────────────────────────────────────
+
+interface MobileLockedFixturesBannerProps {
+  fixtures: FixtureGroup[];
+  onUnlockClick: () => void;
+}
+
+function MobileLockedFixturesBanner({ fixtures, onUnlockClick }: MobileLockedFixturesBannerProps) {
+  const MAX_ROWS = 3;
+  const visible = fixtures.slice(0, MAX_ROWS);
+  const overflow = fixtures.length - MAX_ROWS;
+
+  return (
+    <div
+      className="rounded-2xl border border-[#F5C84C]/15 bg-[#F5C84C]/[0.012]"
+      style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}
+    >
+      {/* Teaser rows */}
+      <div className="divide-y divide-[#F5C84C]/8">
+        {visible.map((fx) => {
+          const teams = parseMatchLabel(fx.matchLabel);
+          const label = teams ? `${teams.away} vs ${teams.home}` : fx.matchLabel;
+          const dateStr = fx.gameDate
+            ? new Date(fx.gameDate).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })
+            : null;
+          const homeProj = fx.homeRow?.projection != null ? Number(fx.homeRow.projection) : null;
+          const awayProj = fx.awayRow?.projection != null ? Number(fx.awayRow.projection) : null;
+          const hasProj = homeProj !== null || awayProj !== null;
+
+          return (
+            <div
+              key={fx.matchId}
+              style={{ display: "grid", gridTemplateColumns: "auto minmax(0,1fr) auto", alignItems: "center", gap: 10, padding: "9px 12px", boxSizing: "border-box", minWidth: 0 }}
+            >
+              <Lock className="h-3 w-3 text-[#F5C84C]/40 shrink-0" aria-hidden />
+              <div style={{ minWidth: 0, overflow: "hidden" }}>
+                <p className="text-[12px] font-semibold text-white/50 leading-tight" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {label}
+                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 2 }}>
+                  {dateStr && (
+                    <span className="text-[9px] text-white/25 leading-none">{dateStr}</span>
+                  )}
+                  {hasProj && (
+                    <span className="text-[9px] text-white/20 leading-none blur-[3px] select-none" aria-hidden>
+                      Proj: {homeProj ?? "—"} / {awayProj ?? "—"}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <span className="text-[8px] font-bold text-[#F5C84C]/40 bg-[#F5C84C]/6 border border-[#F5C84C]/12 rounded px-1.5 py-0.5 leading-none whitespace-nowrap" style={{ flexShrink: 0 }}>
+                Neeko+
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Overflow count */}
+      {overflow > 0 && (
+        <div className="px-3 py-1.5 border-t border-[#F5C84C]/8">
+          <p className="text-[10px] text-white/30 text-center">
+            +{overflow} more match{overflow > 1 ? "es" : ""} with Neeko+
+          </p>
+        </div>
+      )}
+
+      {/* Single CTA */}
+      <div className="px-3 pb-3 pt-2 border-t border-[#F5C84C]/8 flex items-center justify-between gap-3">
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <p className="text-[11px] font-semibold text-[#F5C84C]/70 leading-tight">Unlock full round</p>
+          <p className="text-[9px] text-white/28 mt-0.5 leading-relaxed">Projections, hit rates &amp; trends for every match</p>
+        </div>
+        <button
+          onClick={onUnlockClick}
+          className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#F5C84C]/15 border border-[#F5C84C]/30 text-[11px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/22 active:bg-[#F5C84C]/28 transition-colors"
+          style={{ padding: "7px 12px", whiteSpace: "nowrap" }}
+        >
+          Unlock Neeko+
+        </button>
+      </div>
     </div>
   );
 }
