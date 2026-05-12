@@ -1191,16 +1191,33 @@ function PricingBlock() {
           </span>
         </div>
 
-        <div style={{ marginBottom: 5 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
+        {/* Primary — season */}
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 1 }}>
             <span style={{ fontSize: 34, fontWeight: 900, color: "#E0AE2D", letterSpacing: "-0.04em", lineHeight: 1 }}>${NEEKO_PRICING.season.price}</span>
             <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.35)" }}>AUD · one-time</span>
           </div>
-          <p style={{ margin: 0, fontSize: 11, color: "rgba(255,255,255,0.32)" }}>Season Pass · full 2026 season.</p>
+          <p style={{ margin: 0, fontSize: 10.5, color: "rgba(255,255,255,0.38)" }}>Full season · best value</p>
         </div>
-        <p style={{ fontSize: 10.5, color: "rgba(255,255,255,0.26)", margin: "0 0 12px", fontStyle: "italic" }}>
-          Or ${NEEKO_PRICING.weekly.price}/week — pay as you go, cancel any time.
-        </p>
+
+        {/* Secondary — weekly */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.09)",
+          borderRadius: 8, padding: "8px 12px",
+          marginBottom: 13,
+        }}>
+          <div>
+            <span style={{ fontSize: 15, fontWeight: 800, color: "rgba(255,255,255,0.65)", letterSpacing: "-0.02em" }}>
+              ${NEEKO_PRICING.weekly.price}
+            </span>
+            <span style={{ fontSize: 10.5, color: "rgba(255,255,255,0.35)", marginLeft: 4 }}>/week</span>
+          </div>
+          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", fontStyle: "italic" }}>
+            Weekly · flexible option
+          </span>
+        </div>
 
         <Link to="/neeko-plus" style={{
           display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
