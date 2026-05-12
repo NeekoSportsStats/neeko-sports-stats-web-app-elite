@@ -409,8 +409,11 @@ export default function StatBoardPlayersPage() {
     setSelectedMatch(defaultMatch);
   }, [matches, selectedMatch, hasFullAccess, urlMatchId]);
 
-  // Sticky controls: show when controls div scrolls above viewport
+  // Sticky controls: show when controls div scrolls above viewport.
+  // On mobile the fixed header is 62px — disable the sticky bar entirely on mobile
+  // to avoid a two-sticky-element conflict and the resulting scroll flicker.
   useEffect(() => {
+    if (isMobile) { setStickyVisible(false); return; }
     const el = controlsRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(
@@ -419,7 +422,7 @@ export default function StatBoardPlayersPage() {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [isMobile]);
 
   function handleLensChange(newLens: StatLens) {
     setLens(newLens);
@@ -490,36 +493,34 @@ export default function StatBoardPlayersPage() {
         </>
       )}
 
-      {/* Sticky controls bar — rendered as a sibling of the scroll body, not inside an overflow parent.
-          On mobile it sits below the fixed header (top: 62px). */}
-      {stickyVisible && (
-        <div style={isMobile ? { position: "fixed", top: 62, left: 0, right: 0, zIndex: 90 } : undefined}>
-          <StickyControlsBar
-            matches={matches}
-            selectedMatch={selectedMatch}
-            matchesLoading={matchesLoading}
-            lens={lens}
-            positionFilter={positionFilter}
-            search={search}
-            sortKey={sortKey}
-            sortOpen={sortOpen}
-            hasFullAccess={hasFullAccess}
-            onMatchChange={handleMatchChange}
-            onLensChange={handleLensChange}
-            onPositionChange={setPositionFilter}
-            onSearchChange={setSearch}
-            onSortChange={setSortKey}
-            onSortOpenChange={setSortOpen}
-          />
-        </div>
+      {/* Sticky controls bar — desktop only. On mobile the inline controls stay in-flow
+          below the fixed header; no second sticky layer is needed or safe. */}
+      {stickyVisible && !isMobile && (
+        <StickyControlsBar
+          matches={matches}
+          selectedMatch={selectedMatch}
+          matchesLoading={matchesLoading}
+          lens={lens}
+          positionFilter={positionFilter}
+          search={search}
+          sortKey={sortKey}
+          sortOpen={sortOpen}
+          hasFullAccess={hasFullAccess}
+          onMatchChange={handleMatchChange}
+          onLensChange={handleLensChange}
+          onPositionChange={setPositionFilter}
+          onSearchChange={setSearch}
+          onSortChange={setSortKey}
+          onSortOpenChange={setSortOpen}
+        />
       )}
 
-      <div className="min-h-dvh bg-[#0a0a0a] text-white overflow-x-hidden">
+      <div className="min-h-dvh bg-[#0a0a0a] text-white" style={{ overflowX: "clip" }}>
         <div
           className="mx-auto w-full max-w-[1360px] px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 min-w-0"
           style={{
             paddingBottom: "calc(5rem + env(safe-area-inset-bottom))",
-            paddingTop: isMobile ? "calc(62px + 16px)" : undefined,
+            paddingTop: isMobile ? "calc(62px + 1rem)" : undefined,
           }}
         >
 
