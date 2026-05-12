@@ -20,7 +20,7 @@ export function LandingLayout() {
     <div style={{ position: "relative", minHeight: "100vh", background: "#0a0a0a" }}>
 
       {/* ── DESKTOP HEADER (≥ 1024px) — shared with app pages ──────────── */}
-      <DesktopHeader />
+      <DesktopHeader hideBurger />
 
       {/* ── MOBILE HEADER (< 1024px) ──────────────────────────────────── */}
       <header className="landing-mobile-header" style={{

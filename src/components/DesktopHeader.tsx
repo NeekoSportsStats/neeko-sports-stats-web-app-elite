@@ -15,7 +15,7 @@ const NAV_LINKS = [
  * Hidden below lg — mobile rendering is handled by MobileShell (app pages)
  * or the LandingLayout hamburger drawer (landing page).
  */
-export function DesktopHeader() {
+export function DesktopHeader({ hideBurger = false }: { hideBurger?: boolean }) {
   const { user, isPremium, signOut } = useAuth();
   const location = useLocation();
   const { toggle } = useDesktopSidebar();
@@ -38,35 +38,37 @@ export function DesktopHeader() {
       }}
     >
       {/* LEFT — Burger + Logo */}
-      <button
-        onClick={toggle}
-        aria-label="Open sidebar"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 34,
-          height: 34,
-          borderRadius: 7,
-          border: "none",
-          background: "transparent",
-          color: "rgba(255,255,255,0.50)",
-          cursor: "pointer",
-          flexShrink: 0,
-          marginRight: 6,
-          transition: "background 0.12s, color 0.12s",
-        }}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
-          (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.85)";
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLElement).style.background = "transparent";
-          (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.50)";
-        }}
-      >
-        <Menu size={18} />
-      </button>
+      {!hideBurger && (
+        <button
+          onClick={toggle}
+          aria-label="Open sidebar"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 34,
+            height: 34,
+            borderRadius: 7,
+            border: "none",
+            background: "transparent",
+            color: "rgba(255,255,255,0.50)",
+            cursor: "pointer",
+            flexShrink: 0,
+            marginRight: 6,
+            transition: "background 0.12s, color 0.12s",
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.07)";
+            (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.85)";
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.background = "transparent";
+            (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.50)";
+          }}
+        >
+          <Menu size={18} />
+        </button>
+      )}
 
       <Link
         to="/"
