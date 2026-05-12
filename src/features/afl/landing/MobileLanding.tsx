@@ -1114,10 +1114,10 @@ export default function MobileLanding({ isPremium }: Props) {
       <section style={{
         position: "relative",
         paddingTop: "calc(102px + 28px)",
-        paddingBottom: 52,
+        paddingBottom: 36,
         backgroundImage: `url('/images/Fantasy_sports_war_room_setup.png')`,
         backgroundSize: "cover",
-        backgroundPosition: "center 72%",
+        backgroundPosition: "center 78%",
         backgroundRepeat: "no-repeat",
         backgroundAttachment: "scroll",
       }}>
