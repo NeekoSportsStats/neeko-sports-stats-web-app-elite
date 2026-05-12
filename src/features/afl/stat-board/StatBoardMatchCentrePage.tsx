@@ -159,7 +159,7 @@ function isLowSample(row: MatchCentreRow | null): boolean {
 
 function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
-    <div className="flex items-center gap-2 mb-3">
+    <div className="flex items-center gap-2 mb-2 sm:mb-3">
       <span className="text-white/30">{icon}</span>
       <span className="text-[9.5px] font-[900] uppercase tracking-[0.15em] text-white/30">{title}</span>
       <div className="flex-1 h-px bg-white/[0.05]" />
@@ -181,11 +181,11 @@ function SnapshotCard({
   sub?: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-3.5 py-3">
-      <div className={`text-[15px] font-[800] tabular-nums leading-none mb-1.5 ${valueClass}`}>
+    <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-2.5 py-2.5 sm:px-3.5 sm:py-3">
+      <div className={`text-[13px] sm:text-[15px] font-[800] tabular-nums leading-none mb-1 sm:mb-1.5 ${valueClass}`}>
         {value}
       </div>
-      <div className="text-[10px] text-white/28 leading-snug">{label}</div>
+      <div className="text-[9.5px] sm:text-[10px] text-white/28 leading-snug">{label}</div>
       {sub && <div className="text-[9px] text-white/20 mt-0.5 leading-snug">{sub}</div>}
     </div>
   );
@@ -552,6 +552,10 @@ function ExpandedPanel({
   lens: TeamStatLens;
   uiLens: MatchCentreLens;
 }) {
+  const isMobile = useIsMobile();
+  const [contextOpen, setContextOpen] = useState(false);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+
   const home = abbreviateTeam(fixture.homeTeamName);
   const away = abbreviateTeam(fixture.awayTeamName);
   const total = projectedTotal(homeRow, awayRow);
@@ -572,9 +576,9 @@ function ExpandedPanel({
     <div className="divide-y divide-white/[0.05]">
 
       {/* 1 · Match Snapshot ─────────────────────────────────────────────── */}
-      <div className="px-4 py-4">
+      <div className="px-3 py-3 sm:px-4 sm:py-4">
         <SectionHeader icon={<Target className="h-3.5 w-3.5" />} title="Match Snapshot" />
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-2">
           <SnapshotCard
             label="Projected total"
             value={total != null ? fmt(total) : "—"}
@@ -599,35 +603,85 @@ function ExpandedPanel({
       </div>
 
       {/* 2 · Team Scoring Profile ─────────────────────────────────────── */}
-      <div className="px-4 py-4">
+      <div className="px-3 py-3 sm:px-4 sm:py-4">
         <SectionHeader icon={<TrendingUp className="h-3.5 w-3.5" />} title="Team Scoring Profile" />
-        <ComparisonTable
-          homeLabel={home}
-          awayLabel={away}
-          homeRow={homeRow}
-          awayRow={awayRow}
-          lens={comparisonLens}
-        />
+        <div className="overflow-x-auto">
+          <ComparisonTable
+            homeLabel={home}
+            awayLabel={away}
+            homeRow={homeRow}
+            awayRow={awayRow}
+            lens={comparisonLens}
+          />
+        </div>
       </div>
 
       {/* 3 · Match Context ────────────────────────────────────────────── */}
-      <div className="px-4 py-4">
-        <SectionHeader icon={<Zap className="h-3.5 w-3.5" />} title="Match Context" />
-        <StatEnvironmentSection homeRow={homeRow} awayRow={awayRow} />
+      <div className="px-3 py-3 sm:px-4 sm:py-4">
+        {isMobile ? (
+          <>
+            <button
+              onClick={() => setContextOpen((o) => !o)}
+              className="w-full flex items-center justify-between py-0.5 text-left"
+              aria-expanded={contextOpen}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-white/30"><Zap className="h-3.5 w-3.5" /></span>
+                <span className="text-[9.5px] font-[900] uppercase tracking-[0.15em] text-white/30">Match Context</span>
+              </div>
+              <ChevronDown
+                className="h-3 w-3 text-white/20 transition-transform duration-200 shrink-0"
+                style={{ transform: contextOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+              />
+            </button>
+            <div className="flex-1 h-px bg-white/[0.05] mt-1.5 mb-2" />
+            {contextOpen && (
+              <StatEnvironmentSection homeRow={homeRow} awayRow={awayRow} />
+            )}
+          </>
+        ) : (
+          <>
+            <SectionHeader icon={<Zap className="h-3.5 w-3.5" />} title="Match Context" />
+            <StatEnvironmentSection homeRow={homeRow} awayRow={awayRow} />
+          </>
+        )}
       </div>
 
       {/* 4 · Match Summary ────────────────────────────────────────────── */}
-      <div className="px-4 py-4">
-        <MatchNarrativeSection homeRow={homeRow} awayRow={awayRow} />
+      <div className="px-3 py-3 sm:px-4 sm:py-4">
+        {isMobile ? (
+          <>
+            <button
+              onClick={() => setSummaryOpen((o) => !o)}
+              className="w-full flex items-center justify-between py-0.5 text-left"
+              aria-expanded={summaryOpen}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-white/30"><TrendingUp className="h-3.5 w-3.5" /></span>
+                <span className="text-[9.5px] font-[900] uppercase tracking-[0.15em] text-white/30">Match Summary</span>
+              </div>
+              <ChevronDown
+                className="h-3 w-3 text-white/20 transition-transform duration-200 shrink-0"
+                style={{ transform: summaryOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+              />
+            </button>
+            <div className="flex-1 h-px bg-white/[0.05] mt-1.5 mb-2" />
+            {summaryOpen && (
+              <MatchNarrativeSection homeRow={homeRow} awayRow={awayRow} />
+            )}
+          </>
+        ) : (
+          <MatchNarrativeSection homeRow={homeRow} awayRow={awayRow} />
+        )}
       </div>
 
       {/* 5 · Drill Down ─────────────────────────────────────────────────── */}
-      <div className="px-4 py-4">
+      <div className="px-3 py-3 sm:px-4 sm:py-4">
         <SectionHeader icon={<ArrowUpRight className="h-3.5 w-3.5" />} title="Drill Down" />
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <Link
             to={`/stat-board/players?match_id=${fixture.matchId}`}
-            className="flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.03] px-4 py-3.5 sm:py-2.5 text-[13px] sm:text-[12px] font-semibold text-white/60 hover:text-white/88 hover:bg-white/[0.06] hover:border-white/[0.16] active:bg-white/[0.08] transition-all"
+            className="flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.03] px-4 py-2.5 sm:py-2.5 text-[13px] sm:text-[12px] font-semibold text-white/60 hover:text-white/88 hover:bg-white/[0.06] hover:border-white/[0.16] active:bg-white/[0.08] transition-all"
           >
             <Users className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" aria-hidden />
             Player Stats
@@ -635,7 +689,7 @@ function ExpandedPanel({
           </Link>
           <Link
             to={`/stat-board/teams?match_id=${fixture.matchId}`}
-            className="flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.03] px-4 py-3.5 sm:py-2.5 text-[13px] sm:text-[12px] font-semibold text-white/60 hover:text-white/88 hover:bg-white/[0.06] hover:border-white/[0.16] active:bg-white/[0.08] transition-all"
+            className="flex items-center gap-2 rounded-xl border border-white/[0.09] bg-white/[0.03] px-4 py-2.5 sm:py-2.5 text-[13px] sm:text-[12px] font-semibold text-white/60 hover:text-white/88 hover:bg-white/[0.06] hover:border-white/[0.16] active:bg-white/[0.08] transition-all"
           >
             <BarChart2 className="h-4 w-4 sm:h-3.5 sm:w-3.5 shrink-0" aria-hidden />
             Team Stats
@@ -686,12 +740,12 @@ function LockedFixture({
 
       {isMobile ? (
         /* Ghost score cards — mobile */
-        <div className="px-3 pt-3 pb-3 grid grid-cols-2 gap-2">
+        <div className="px-2.5 pt-2.5 pb-2.5 grid grid-cols-2 gap-1.5">
           {[home, away].map((team) => (
-            <div key={team} className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-3 py-3">
-              <div className="text-[10px] text-white/22 mb-2 truncate font-medium">{team}</div>
-              <div className="h-6 w-14 rounded bg-white/[0.05] mb-1.5" />
-              <div className="h-2.5 w-20 rounded bg-white/[0.035]" />
+            <div key={team} className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-2.5 py-2.5">
+              <div className="text-[10px] text-white/22 mb-1.5 truncate font-medium">{team}</div>
+              <div className="h-5 w-12 rounded bg-white/[0.05] mb-1" />
+              <div className="h-2.5 w-16 rounded bg-white/[0.035]" />
             </div>
           ))}
         </div>
@@ -712,13 +766,13 @@ function LockedFixture({
       )}
 
       {/* CTA */}
-      <div className="px-4 py-3.5 sm:py-3 border-t border-white/[0.05] flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="px-3 py-2.5 sm:px-4 sm:py-3 border-t border-white/[0.05] flex flex-col sm:flex-row sm:items-center gap-2.5">
         <p className="text-[11px] text-white/28 leading-snug flex-1">
           Unlock projected totals, margin lean, team trends and full match context.
         </p>
         <button
           onClick={onUpgrade}
-          className="w-full sm:w-auto shrink-0 text-[12px] sm:text-[11px] font-bold text-[#F5C84C] bg-[#F5C84C]/[0.09] border border-[#F5C84C]/22 rounded-xl px-4 py-3 sm:py-1.5 hover:bg-[#F5C84C]/[0.15] active:bg-[#F5C84C]/[0.20] transition-colors leading-none whitespace-nowrap"
+          className="w-full sm:w-auto shrink-0 text-[12px] sm:text-[11px] font-bold text-[#F5C84C] bg-[#F5C84C]/[0.09] border border-[#F5C84C]/22 rounded-xl px-4 py-2.5 sm:py-1.5 hover:bg-[#F5C84C]/[0.15] active:bg-[#F5C84C]/[0.20] transition-colors leading-none whitespace-nowrap"
         >
           Unlock Neeko+
         </button>
@@ -766,7 +820,7 @@ function UnlockedFixture({
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <button
         onClick={onToggle}
-        className="w-full px-4 py-3.5 sm:py-3 flex items-start justify-between gap-3 border-b border-white/[0.05] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 active:bg-white/[0.03] transition-colors"
+        className="w-full px-4 py-2.5 sm:py-3 flex items-start justify-between gap-3 border-b border-white/[0.05] text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20 active:bg-white/[0.03] transition-colors"
         aria-expanded={isExpanded}
       >
         <div className="min-w-0 flex-1">
@@ -798,37 +852,37 @@ function UnlockedFixture({
       {isMobile ? (
         <>
           {/* Score cards */}
-          <div className="px-3 pt-3 pb-2 grid grid-cols-2 gap-2">
+          <div className="px-2.5 pt-2.5 pb-2 grid grid-cols-2 gap-1.5">
             {homeRow ? (
-              <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3">
-                <div className="text-[10px] text-white/28 mb-2 truncate font-medium">{home}</div>
-                <div className={`text-[20px] font-[800] tabular-nums leading-none ${homeRow.projection != null ? "text-[#F5C84C]" : "text-white/28"}`}>
+              <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-2.5 py-2.5">
+                <div className="text-[10px] text-white/28 mb-1.5 truncate font-medium">{home}</div>
+                <div className={`text-[17px] font-[800] tabular-nums leading-none ${homeRow.projection != null ? "text-[#F5C84C]" : "text-white/28"}`}>
                   {fmt(homeRow.projection)}
                 </div>
-                <div className="text-[9px] text-white/22 mt-1.5">projected score</div>
+                <div className="text-[9px] text-white/22 mt-1">projected score</div>
               </div>
             ) : (
-              <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-3 py-3 flex items-center justify-center min-h-[72px]">
+              <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-2.5 py-2.5 flex items-center justify-center min-h-[64px]">
                 <span className="text-[12px] text-white/22">—</span>
               </div>
             )}
             {awayRow ? (
-              <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-3 py-3">
-                <div className="text-[10px] text-white/28 mb-2 truncate font-medium">{away}</div>
-                <div className={`text-[20px] font-[800] tabular-nums leading-none ${awayRow.projection != null ? "text-[#F5C84C]" : "text-white/28"}`}>
+              <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] px-2.5 py-2.5">
+                <div className="text-[10px] text-white/28 mb-1.5 truncate font-medium">{away}</div>
+                <div className={`text-[17px] font-[800] tabular-nums leading-none ${awayRow.projection != null ? "text-[#F5C84C]" : "text-white/28"}`}>
                   {fmt(awayRow.projection)}
                 </div>
-                <div className="text-[9px] text-white/22 mt-1.5">projected score</div>
+                <div className="text-[9px] text-white/22 mt-1">projected score</div>
               </div>
             ) : (
-              <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-3 py-3 flex items-center justify-center min-h-[72px]">
+              <div className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-2.5 py-2.5 flex items-center justify-center min-h-[64px]">
                 <span className="text-[12px] text-white/22">—</span>
               </div>
             )}
           </div>
 
           {/* Mobile chip strip — projected total, margin, confidence, env */}
-          <div className="px-3 pb-3 flex flex-wrap gap-1.5">
+          <div className="px-2.5 pb-2.5 flex flex-wrap gap-1">
             {total != null && (
               <div className="flex items-center gap-1 rounded-lg bg-white/[0.04] border border-white/[0.07] px-2.5 py-1.5">
                 <span className="text-[9px] text-white/28 font-semibold uppercase tracking-wide">Total</span>
@@ -936,7 +990,7 @@ function MatchFilterDropdown({
     <div className="relative w-full sm:w-auto sm:min-w-[200px]">
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`w-full flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-left transition-all duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20
+        className={`w-full flex items-center gap-2 rounded-xl border px-3 py-2 sm:px-3.5 sm:py-2.5 text-left transition-all duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20
           ${open
             ? "bg-white/[0.08] border-white/[0.18] text-white"
             : "bg-white/[0.04] border-white/[0.09] text-white/78 hover:bg-white/[0.07] hover:border-white/[0.15]"}`}
@@ -1018,7 +1072,7 @@ function SortDropdown({
     <div className="relative w-full sm:w-auto">
       <button
         onClick={() => setOpen((v) => !v)}
-        className={`w-full flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-left transition-all duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20
+        className={`w-full flex items-center gap-2 rounded-xl border px-3 py-2 sm:px-3.5 sm:py-2.5 text-left transition-all duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20
           ${open
             ? "bg-white/[0.08] border-white/[0.18] text-white"
             : "bg-white/[0.04] border-white/[0.09] text-white/78 hover:bg-white/[0.07] hover:border-white/[0.15]"}`}
@@ -1061,7 +1115,7 @@ function SummaryPill({
   hasFullAccess: boolean;
 }) {
   return (
-    <div className="flex items-center gap-x-3 gap-y-1 flex-wrap px-4 py-2.5 rounded-xl border border-white/[0.06] bg-white/[0.018] text-[10.5px] font-semibold text-white/30 uppercase tracking-wider">
+    <div className="flex items-center gap-x-3 gap-y-1 flex-wrap px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl border border-white/[0.06] bg-white/[0.018] text-[10.5px] font-semibold text-white/30 uppercase tracking-wider">
       {roundLabel && <span>{roundLabel}</span>}
       <span className="text-white/12">·</span>
       <span>{totalFixtures} {totalFixtures === 1 ? "Fixture" : "Fixtures"}</span>
@@ -1154,38 +1208,38 @@ export default function StatBoardMatchCentrePage() {
       </Helmet>
 
       <div className="min-h-dvh bg-[#05070A] text-white overflow-x-hidden">
-        <div className="mx-auto w-full max-w-[1120px] px-4 sm:px-6 lg:px-8 pt-7 sm:pt-10" style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}>
+        <div className="mx-auto w-full max-w-[1120px] px-3 sm:px-6 lg:px-8 pt-4 sm:pt-10" style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}>
 
           {/* ── Breadcrumb ──────────────────────────────────────────────── */}
-          <nav className="flex items-center gap-1.5 mb-5 text-[11px] text-white/28 font-medium">
+          <nav className="flex items-center gap-1.5 mb-3 sm:mb-5 text-[11px] text-white/28 font-medium">
             <Link to="/stat-board" className="hover:text-white/55 transition-colors">Stat Board</Link>
             <span className="text-white/15">/</span>
             <span className="text-white/50">Match Centre</span>
           </nav>
 
           {/* ── Header ─────────────────────────────────────────────────── */}
-          <div className="mb-6">
-            <p className="text-[9px] font-[900] tracking-[0.46em] uppercase text-emerald-500/60 mb-2.5">
+          <div className="mb-3 sm:mb-6">
+            <p className="text-[9px] font-[900] tracking-[0.46em] uppercase text-emerald-500/60 mb-2">
               Match Centre
             </p>
-            <h1 className="text-[clamp(1.45rem,4vw,2rem)] font-[900] tracking-tight text-[#F5F5F5] leading-[1.2] mb-2">
+            <h1 className="text-[clamp(1.3rem,4vw,2rem)] font-[900] tracking-tight text-[#F5F5F5] leading-[1.2] mb-1.5">
               AFL Match Centre
             </h1>
-            <p className="text-[clamp(12.5px,2vw,14px)] text-white/45 leading-[1.65] max-w-[500px]">
+            <p className="hidden sm:block text-[clamp(12.5px,2vw,14px)] text-white/45 leading-[1.65] max-w-[500px]">
               Scan every fixture by projected total, projected margin, scoring environment and trend confidence.
             </p>
           </div>
 
           {/* ── Controls ────────────────────────────────────────────────── */}
-          <div className="mb-5 space-y-2.5">
+          <div className="mb-3 sm:mb-5 space-y-2">
             {/* Lens tabs */}
-            <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 no-scrollbar">
-              <div className="flex items-center gap-1.5 min-w-max sm:flex-wrap sm:min-w-0">
+            <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 no-scrollbar">
+              <div className="flex items-center gap-1 sm:gap-1.5 min-w-max sm:flex-wrap sm:min-w-0">
                 {LENS_OPTIONS.map((l) => (
                   <button
                     key={l.key}
                     onClick={() => handleLensChange(l.key)}
-                    className={`px-3.5 py-2 rounded-xl text-[12px] font-semibold transition-all duration-100 leading-none whitespace-nowrap border
+                    className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-[11.5px] sm:text-[12px] font-semibold transition-all duration-100 leading-none whitespace-nowrap border
                       ${uiLens === l.key
                         ? "bg-white/[0.10] border-white/[0.18] text-white"
                         : "bg-white/[0.03] border-white/[0.06] text-white/45 hover:text-white/72 hover:bg-white/[0.06]"}`}
@@ -1268,7 +1322,7 @@ export default function StatBoardMatchCentrePage() {
 
           {/* ── Upgrade banner (free users with locked fixtures) ─────────── */}
           {!loading && !hasFullAccess && allFixtures.some((f) => f.isLocked) && (
-            <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-2xl border border-[#F5C84C]/18 bg-[#F5C84C]/[0.035] px-5 py-4">
+            <div className="mt-5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 rounded-2xl border border-[#F5C84C]/18 bg-[#F5C84C]/[0.035] px-3 py-3 sm:px-5 sm:py-4">
               <Lock className="h-4 w-4 text-[#F5C84C]/70 shrink-0 mt-0.5 sm:mt-0" aria-hidden />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-semibold text-[#F5C84C]/85 leading-snug">
