@@ -198,7 +198,7 @@ export default function StatBoardTeamsPage() {
       </Helmet>
 
       <div className="min-h-dvh bg-[#0a0a0a] text-white overflow-x-hidden">
-        <div className="mx-auto w-full max-w-[1360px] px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 min-w-0" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}>
+        <div className="mx-auto w-full max-w-[1360px] px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 min-w-0" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}>
 
           {/* Breadcrumb */}
           <div className="mb-3 flex items-center gap-1.5 text-[11px] text-white/30">
@@ -336,7 +336,7 @@ export default function StatBoardTeamsPage() {
 
           {/* Locked match banner (only when a specific locked match is filtered and user is not premium) */}
           {hasMatchFilter && isMatchLocked && !hasFullAccess && (
-            <div className="mb-4 flex items-start gap-3 rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/5 px-4 py-3.5">
+            <div className="mb-4 flex items-start gap-3 rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/5 px-3 py-2.5 sm:px-4 sm:py-3.5">
               <Lock className="h-4 w-4 shrink-0 text-[#F5C84C] mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-[#F5C84C] leading-snug">Unlock full round</p>
@@ -371,7 +371,7 @@ export default function StatBoardTeamsPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-6 sm:space-y-8">
+            <div className="space-y-4 sm:space-y-8">
               {fixtures.map((fixture, fixtureIndex) => (
                 <FixtureSection
                   key={fixture.matchId}

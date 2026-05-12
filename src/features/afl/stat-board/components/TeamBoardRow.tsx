@@ -400,9 +400,9 @@ function HitRateRow({
 
 function StatCell({ label, value, unit }: { label: string; value: number | null; unit?: string }) {
   return (
-    <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] px-3 py-2">
+    <div className="rounded-lg border border-white/[0.08] bg-white/[0.025] px-2 py-1.5">
       <p className="text-[9px] font-semibold text-white/30 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className="text-[14px] font-bold text-white/85 tabular-nums leading-tight">
+      <p className="text-[13px] font-bold text-white/85 tabular-nums leading-tight">
         {value != null ? (
           <>
             {value}
@@ -695,6 +695,8 @@ function MobileExpandedTeamPanel({
   lens: TeamStatLens;
 }) {
   const { log, loading: logLoading } = useStatBoardTeamGameLog(row.team_id);
+  const [gameLogOpen, setGameLogOpen] = useState(false);
+  const [teamProfileOpen, setTeamProfileOpen] = useState(false);
 
   const unit = teamLensUnit(lens);
   const thresholds = teamThresholdsForLens(lens);
@@ -710,7 +712,7 @@ function MobileExpandedTeamPanel({
   });
 
   return (
-    <div className="py-3 space-y-3 min-w-0 w-full overflow-hidden">
+    <div className="py-2 space-y-2 min-w-0 w-full overflow-hidden">
       {/* Header */}
       <div className="px-3 flex flex-wrap items-center gap-1.5">
         {conf && (
@@ -730,7 +732,7 @@ function MobileExpandedTeamPanel({
       {/* Trend chart — constrained to card width */}
       {recentVals.length >= 2 && (
         <div className="px-3 min-w-0 overflow-hidden">
-          <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">
+          <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1">
             Recent Trend — {unit} <span className="normal-case font-normal text-white/20">(tap a point)</span>
           </p>
           <div className="w-full overflow-hidden">
@@ -740,7 +742,7 @@ function MobileExpandedTeamPanel({
               lens={lens}
               gameContexts={logLoading ? undefined : gameContexts}
               isMobile={true}
-              height={100}
+              height={80}
             />
           </div>
         </div>
@@ -748,8 +750,8 @@ function MobileExpandedTeamPanel({
 
       {/* Key metrics — 2 cols */}
       <div className="px-3">
-        <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">Metrics</p>
-        <div className="grid grid-cols-2 gap-1.5">
+        <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1">Metrics</p>
+        <div className="grid grid-cols-2 gap-1">
           <StatCell label="L3 Avg"     value={safeNum(row.recent_avg_l3)}  unit={unit} />
           <StatCell label="L5 Avg"     value={safeNum(row.recent_avg_l5)}  unit={unit} />
           <StatCell label="Season Avg" value={safeNum(row.season_avg)}     unit={unit} />
@@ -760,7 +762,7 @@ function MobileExpandedTeamPanel({
       {/* Hit rates */}
       {thresholds.length > 0 && (
         <div className="px-3">
-          <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">Hit Rates</p>
+          <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1">Hit Rates</p>
           <div className="rounded-xl border border-white/[0.07] bg-[#0a0a0a] px-3 py-1 min-w-0 overflow-hidden">
             <table className="w-full table-fixed">
               <colgroup>
@@ -787,35 +789,64 @@ function MobileExpandedTeamPanel({
       {/* Opponent context */}
       {(row.opponent_conceded_l5 != null || row.opponent_conceded_season != null) && (
         <div className="px-3">
-          <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">
+          <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1">
             Opponent — {row.opponent_team_name}
           </p>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-2 gap-1">
             <StatCell label="Conceded L5"     value={safeNum(row.opponent_conceded_l5)}     unit={unit} />
             <StatCell label="Conceded Season" value={safeNum(row.opponent_conceded_season)} unit={unit} />
           </div>
         </div>
       )}
 
-      {/* Team Profile */}
+      {/* Team Profile — collapsed by default */}
       <div className="px-3">
-        <TeamProfileSummary teamName={row.team_name} />
-        {teamPagePath(row.team_name) && (
+        <button
+          onClick={() => setTeamProfileOpen((o) => !o)}
+          className="w-full flex items-center justify-between py-1.5 text-left"
+          aria-expanded={teamProfileOpen}
+        >
+          <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider">Team Profile</p>
+          <ChevronDown
+            className="h-3 w-3 text-white/20 transition-transform duration-200 shrink-0"
+            style={{ transform: teamProfileOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+          />
+        </button>
+        {teamProfileOpen && (
           <div className="pb-1">
-            <Link
-              to={teamPagePath(row.team_name)!}
-              className="text-xs text-white/40 hover:text-white/70 transition-colors underline underline-offset-2"
-            >
-              View full team analysis
-            </Link>
+            <TeamProfileSummary teamName={row.team_name} />
+            {teamPagePath(row.team_name) && (
+              <Link
+                to={teamPagePath(row.team_name)!}
+                className="text-xs text-white/40 hover:text-white/70 transition-colors underline underline-offset-2"
+              >
+                View full team analysis
+              </Link>
+            )}
           </div>
         )}
       </div>
 
-      {/* Game log — intentional horizontal scroll, isolated from page */}
+      {/* Game log — collapsed by default on mobile */}
       <div className="px-3">
-        <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider mb-1.5">Game Log</p>
-        <GameLogTable log={log} lens={lens} loading={logLoading} />
+        <button
+          onClick={() => setGameLogOpen((o) => !o)}
+          className="w-full flex items-center justify-between py-1.5 text-left"
+          aria-expanded={gameLogOpen}
+        >
+          <p className="text-[9px] font-semibold text-white/28 uppercase tracking-wider">
+            Game Log {!logLoading && log.length > 0 && <span className="normal-case font-normal text-white/18">({log.length} games)</span>}
+          </p>
+          <ChevronDown
+            className="h-3 w-3 text-white/20 transition-transform duration-200 shrink-0"
+            style={{ transform: gameLogOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+          />
+        </button>
+        {gameLogOpen && (
+          <div className="pb-1">
+            <GameLogTable log={log} lens={lens} loading={logLoading} />
+          </div>
+        )}
       </div>
     </div>
   );
