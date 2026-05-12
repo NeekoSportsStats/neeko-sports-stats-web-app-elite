@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Menu, X, Crown, Star, TableProperties, Shield, Users, CircleHelp as HelpCircle, FileText, Mail, LogIn, User, LogOut, ChevronDown, ChevronRight, ChartBar as BarChart2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 
@@ -84,7 +84,6 @@ function Drawer({
 }) {
   const { user, isPremium, signOut, loading: authLoading } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const currentPath = location.pathname;
 
   // Active group key derived from current route
@@ -116,16 +115,9 @@ function Drawer({
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
-  function handleParentTap(key: string, to: string) {
-    if (openGroup === key) {
-      // Second tap — navigate to hub
-      navigate(to);
-      setOpenGroup(null);
-      onClose();
-    } else {
-      // First tap — expand
-      setOpenGroup(key);
-    }
+  function handleParentTap(key: string, _to: string) {
+    // Toggle expand/collapse only — never navigate
+    setOpenGroup(openGroup === key ? null : key);
   }
 
   function handleChildTap() {
