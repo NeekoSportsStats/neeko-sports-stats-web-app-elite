@@ -27,7 +27,7 @@ export function Layout() {
         {/* ── Page content ──────────────────────────────────────────────────── */}
         {/*   Mobile (< lg):  full width, 102px top padding for mobile shell     */}
         {/*   Desktop (≥ lg): no permanent left margin — sidebar is a drawer     */}
-        <main className="min-h-screen bg-background overflow-auto pt-[102px] lg:pt-[60px]">
+        <main className="flex-1 min-w-0 min-h-screen bg-background overflow-auto pt-[102px] lg:pt-[60px]">
           <Outlet />
         </main>
       </SidebarProvider>
