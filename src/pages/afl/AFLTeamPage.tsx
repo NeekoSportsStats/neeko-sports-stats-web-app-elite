@@ -218,6 +218,7 @@ function InsightCard({
     <Link
       to={`/sports/afl/players/${slug}`}
       className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] p-3 sm:p-4 hover:bg-white/[0.03] hover:border-white/[0.12] transition-all group flex flex-col gap-2"
+      style={{ minWidth: 0, overflow: "hidden" }}
     >
       {/* header */}
       <div className="flex items-center justify-between">
@@ -299,13 +300,13 @@ function RosterDepthChart({
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <div>
+    <div style={{ width: "100%", minWidth: 0, maxWidth: "100%", boxSizing: "border-box", overflowX: "hidden" }}>
+      <div className="flex items-center justify-between mb-3" style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0 }}>
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/35">Projection Depth</p>
           <p className="text-[9px] text-white/22 mt-0.5">Top 15 by projected score · squad average ref</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0">
           <span className="flex items-center gap-1 text-[8px] text-white/30">
             <span className="w-2 h-2 rounded-sm inline-block" style={{ backgroundColor: accentColor, opacity: 0.9 }} />
             Start
@@ -320,8 +321,8 @@ function RosterDepthChart({
           </span>
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={200}>
-        <BarChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: -22 }} barSize={14} barGap={2}>
+      <ResponsiveContainer width="100%" height={185}>
+        <BarChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: -26 }} barSize={13} barGap={2}>
           <XAxis
             dataKey="name"
             tick={{ fill: 'rgba(255,255,255,0.28)', fontSize: 8 }}
@@ -329,9 +330,11 @@ function RosterDepthChart({
             axisLine={false}
           />
           <YAxis
+            width={28}
             tick={{ fill: 'rgba(255,255,255,0.22)', fontSize: 8 }}
             tickLine={false}
             axisLine={false}
+            tickCount={4}
             domain={[0, 'dataMax + 10']}
           />
           <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
@@ -401,7 +404,7 @@ function ActionMixChart({
         <p className="text-[9px] text-white/22 mt-0.5">Round action signals across the full squad</p>
       </div>
 
-      <div className="flex items-center gap-5">
+      <div className="flex items-center gap-4" style={{ minWidth: 0 }}>
         {/* SVG donut */}
         <div className="shrink-0">
           <svg width={size} height={size}>
@@ -436,7 +439,7 @@ function ActionMixChart({
         </div>
 
         {/* legend */}
-        <div className="flex-1 space-y-2.5">
+        <div className="flex-1 min-w-0 space-y-2.5">
           {rings.map((s) => (
             <div key={s.label}>
               <div className="flex items-center justify-between mb-0.5">
@@ -895,7 +898,7 @@ function RosterSection({
           <p className="text-[11px] text-white/25 mt-1">Check back after round data is processed.</p>
         </div>
       ) : (
-        <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] overflow-hidden">
+        <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] overflow-hidden" style={{ minWidth: 0, width: "100%", boxSizing: "border-box" }}>
           {/* column header row */}
           <div className="flex items-center gap-3 px-4 py-2 border-b border-white/[0.05]">
             {colHeaders.map((h, i) => (
@@ -1353,7 +1356,7 @@ export default function AFLTeamPage() {
       </Helmet>
 
       <div className="min-h-dvh bg-[#080808] overflow-x-hidden">
-        <div className="mx-auto w-full max-w-[1120px] px-3 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-7">
+        <div className="mx-auto w-full max-w-[1120px] px-3 sm:px-6 lg:px-8 py-3 sm:py-6 space-y-4 sm:space-y-7" style={{ minWidth: 0, boxSizing: "border-box" }}>
 
           {/* Back nav */}
           <button
@@ -1534,14 +1537,18 @@ export default function AFLTeamPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
 
                 {/* Left — scoring depth chart */}
-                <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-3 sm:px-5 py-3 sm:py-4">
-                  <div className="max-h-[200px] sm:max-h-none overflow-hidden">
-                    <RosterDepthChart players={players} accentColor={accentSafe} />
-                  </div>
+                <div
+                  className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-3 sm:px-5 py-3 sm:py-4"
+                  style={{ width: "100%", minWidth: 0, boxSizing: "border-box", overflowX: "hidden" }}
+                >
+                  <RosterDepthChart players={players} accentColor={accentSafe} />
                 </div>
 
                 {/* Right — action mix */}
-                <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-3 sm:px-5 py-3 sm:py-4">
+                <div
+                  className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-3 sm:px-5 py-3 sm:py-4"
+                  style={{ width: "100%", minWidth: 0, boxSizing: "border-box", overflowX: "hidden" }}
+                >
                   <ActionMixChart
                     startCt={stats.startCt}
                     holdCt={stats.holdCt}
@@ -1559,7 +1566,7 @@ export default function AFLTeamPage() {
           ══════════════════════════════════════════ */}
           {players.length > 0 && (
             <CollapsibleSection icon={<Flame size={13} />} title="Key Indicators" defaultOpen={true}>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3">
+              <div className="grid gap-2 sm:gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))" }}>
 
                 {/* 1 — Top projected */}
                 {stats.topPlayer && (
