@@ -325,8 +325,10 @@ export default function AFLTeamsDirectoryPage() {
         background: "#080808",
         padding: "clamp(14px, 3vw, 40px) clamp(12px, 3vw, 28px)",
         maxWidth: 1120,
+        width: "100%",
         margin: "0 auto",
         overflowX: "hidden",
+        boxSizing: "border-box",
       }}>
 
         {/* ── Page header ── */}
@@ -374,6 +376,8 @@ export default function AFLTeamsDirectoryPage() {
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
           gap: 8,
+          width: "100%",
+          boxSizing: "border-box",
         }}>
           {loading
             ? AFL_TEAMS.map(t => <SkeletonCard key={t.slug} />)
