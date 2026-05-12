@@ -1,11 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
-import {
-  ArrowRight, ChevronRight, ChartBar as BarChart2Icon, Target,
-  Zap, Check, Menu, X, Crown, TrendingUp, TriangleAlert as AlertTriangle,
-  Star, TableProperties, Shield, Users, CircleHelp as HelpCircle,
-  FileText, Mail, LogIn, User, LogOut, Lock,
-} from "lucide-react";
+import { ArrowRight, ChevronRight, ChartBar as BarChart2Icon, Target, Zap, Check, Menu, X, Crown, TrendingUp, TriangleAlert as AlertTriangle, Star, TableProperties, Shield, Users, CircleHelp as HelpCircle, FileText, Mail, LogIn, User, LogOut, Lock, Clock as UnlockIcon } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import type { StatBoardPlayer, StatBoardMatch, StatLens } from "@/features/afl/stat-board/types";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
@@ -664,15 +659,15 @@ function FreeRoundPreview() {
   );
 }
 
-// ── Match Outlook module ──────────────────────────────────────────────────────
+// ── Free Game Access module ───────────────────────────────────────────────────
 
-interface MatchOutlookItem {
+interface FreeGameItem {
+  matchId: number;
   matchLabel: string;
-  tempoLabel: string | null;
 }
 
-function useMatchOutlook(): { matches: MatchOutlookItem[]; loading: boolean } {
-  const [matches, setMatches] = useState<MatchOutlookItem[]>([]);
+function useFreeGames(): { games: FreeGameItem[]; loading: boolean } {
+  const [games, setGames] = useState<FreeGameItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -684,97 +679,115 @@ function useMatchOutlook(): { matches: MatchOutlookItem[]; loading: boolean } {
           match_id: number;
           match_label: string;
           is_free_match: boolean;
-          scoring_environment_label?: string | null;
         }> | null) ?? [];
 
-        const free = rows
-          .filter(r => r.is_free_match)
-          .slice(0, 2)
-          .map(r => ({
+        setGames(
+          rows.filter(r => r.is_free_match).slice(0, 2).map(r => ({
+            matchId: r.match_id,
             matchLabel: r.match_label,
-            tempoLabel: r.scoring_environment_label ?? null,
-          }));
-
-        setMatches(free);
+          }))
+        );
         setLoading(false);
       });
   }, []);
 
-  return { matches, loading };
+  return { games, loading };
 }
 
 function TeamTotalOutlook() {
-  const { matches, loading } = useMatchOutlook();
+  const { games, loading } = useFreeGames();
 
   return (
-    <div style={{ borderRadius: 13, border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden", background: "rgba(5,8,11,0.97)" }}>
+    <div style={{ borderRadius: 13, border: "1px solid rgba(34,197,94,0.18)", overflow: "hidden", background: "rgba(5,8,11,0.97)" }}>
+
       {/* Header */}
       <div style={{
         padding: "9px 14px",
-        background: "rgba(255,255,255,0.025)",
+        background: "rgba(34,197,94,0.04)",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
-        display: "flex", alignItems: "center", gap: 7,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
-        <BarChart2Icon size={13} style={{ color: "rgba(255,255,255,0.40)", flexShrink: 0 }} />
-        <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(255,255,255,0.55)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Match Outlook</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <UnlockIcon size={12} style={{ color: "rgba(34,197,94,0.70)", flexShrink: 0 }} />
+          <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(34,197,94,0.75)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Free Game Access</span>
+        </div>
+        <span style={{ fontSize: 8, fontWeight: 700, color: "rgba(34,197,94,0.55)", letterSpacing: "0.08em", textTransform: "uppercase" }}>2 games this week</span>
       </div>
 
       {loading ? (
         <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
           {[0, 1].map(i => (
-            <div key={i} style={{ height: 64, borderRadius: 8, background: "rgba(255,255,255,0.025)", animation: "shimmer 1.4s ease-in-out infinite" }} />
+            <div key={i} style={{ height: 68, borderRadius: 9, background: "rgba(255,255,255,0.025)", animation: "shimmer 1.4s ease-in-out infinite" }} />
           ))}
         </div>
-      ) : matches.length === 0 ? (
+      ) : games.length === 0 ? (
         <div style={{ padding: "16px 14px", textAlign: "center" }}>
-          <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.28)" }}>Match data not yet available for this round.</p>
+          <p style={{ margin: 0, fontSize: 11.5, color: "rgba(255,255,255,0.28)" }}>Free games available closer to lockout.</p>
         </div>
       ) : (
         <div style={{ padding: "10px 14px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-          {matches.map((m, i) => (
-            <div key={i} style={{
-              background: "rgba(255,255,255,0.02)", borderRadius: 9,
-              padding: "11px 13px", border: "1px solid rgba(255,255,255,0.06)",
-            }}>
-              {/* Match name */}
-              <p style={{
-                margin: "0 0 7px", fontSize: 12.5, fontWeight: 700,
-                color: "rgba(255,255,255,0.75)",
-                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+          {games.map(g => (
+            <Link
+              key={g.matchId}
+              to="/stat-board/players"
+              style={{ textDecoration: "none", display: "block" }}
+            >
+              <div style={{
+                background: "rgba(255,255,255,0.025)",
+                borderRadius: 10,
+                border: "1px solid rgba(34,197,94,0.14)",
+                padding: "12px 13px",
+                display: "flex", flexDirection: "column", gap: 8,
+                transition: "border-color 0.12s, background 0.12s",
               }}>
-                {m.matchLabel}
-              </p>
 
-              {/* Meta row */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                <span style={{
-                  fontSize: 10, color: "rgba(255,255,255,0.34)",
-                  letterSpacing: "0.02em",
-                }}>
-                  Stats available: Disposals · Goals
-                </span>
-                {m.tempoLabel && (
+                {/* Top row: match name + FREE PREVIEW badge */}
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                  <p style={{
+                    margin: 0, fontSize: 13, fontWeight: 700,
+                    color: "#f0f0f0",
+                    lineHeight: 1.3, flex: 1, minWidth: 0,
+                  }}>
+                    {g.matchLabel}
+                  </p>
                   <span style={{
-                    fontSize: 9, fontWeight: 600,
-                    color: "rgba(96,165,250,0.70)",
-                    background: "rgba(96,165,250,0.08)",
-                    border: "1px solid rgba(96,165,250,0.15)",
-                    borderRadius: 4, padding: "2px 7px",
+                    flexShrink: 0,
+                    fontSize: 8, fontWeight: 800,
+                    color: "#4ade80",
+                    background: "rgba(34,197,94,0.10)",
+                    border: "1px solid rgba(34,197,94,0.28)",
+                    borderRadius: 4,
+                    padding: "3px 7px",
+                    letterSpacing: "0.10em",
+                    textTransform: "uppercase",
                     whiteSpace: "nowrap",
                   }}>
-                    {m.tempoLabel}
+                    Free Preview
                   </span>
-                )}
-              </div>
+                </div>
 
-              {/* Free preview badge */}
-              <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 5 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", opacity: 0.85 }} />
-                <span style={{ fontSize: 10, fontWeight: 600, color: "rgba(34,197,94,0.70)", letterSpacing: "0.02em" }}>
-                  Free preview available
-                </span>
+                {/* Stats available */}
+                <p style={{
+                  margin: 0, fontSize: 10.5,
+                  color: "rgba(255,255,255,0.40)",
+                  letterSpacing: "0.01em",
+                }}>
+                  Stats available: <span style={{ color: "rgba(255,255,255,0.58)", fontWeight: 600 }}>Disposals · Goals</span>
+                </p>
+
+                {/* CTA row */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, color: "#4ade80",
+                    letterSpacing: "0.02em",
+                  }}>
+                    View Free Game
+                  </span>
+                  <ChevronRight size={13} style={{ color: "#4ade80", opacity: 0.75 }} />
+                </div>
+
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
@@ -1233,7 +1246,7 @@ export default function MobileLanding({ isPremium }: Props) {
         <FreeRoundPreview />
       </section>
 
-      {/* ─── MATCH OUTLOOK ─── */}
+      {/* ─── FREE GAME ACCESS ─── */}
       <section style={{ padding: "44px 14px 0" }}>
         <TeamTotalOutlook />
       </section>
