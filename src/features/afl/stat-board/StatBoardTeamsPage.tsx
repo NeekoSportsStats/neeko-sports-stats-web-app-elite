@@ -208,16 +208,71 @@ export default function StatBoardTeamsPage() {
           </div>
 
           {/* Page header */}
-          <div className="mb-4 sm:mb-5">
+          <div className="mb-3 sm:mb-5">
             <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white">AFL Team Stat Board</h1>
             <p className="mt-1 text-sm text-white/50 max-w-xl leading-relaxed hidden sm:block">
               View every team's scoring trends, hit rates and projections for the round.
             </p>
           </div>
 
-          {/* Controls row */}
-          <div className="mb-3 flex items-start gap-2 flex-wrap">
-            {/* Match filter dropdown */}
+          {/* ── Mobile controls (< sm) ─────────────────────────────────────────── */}
+          <div className="sm:hidden mb-3 space-y-2">
+
+            {/* Row 1: match filter + sort side-by-side */}
+            <div className="flex items-center gap-2 min-w-0">
+              {matchesError ? (
+                <div className="text-xs text-red-400 border border-red-500/30 bg-red-500/10 rounded-lg px-3 py-2">
+                  Could not load matches
+                </div>
+              ) : (
+                <MatchFilterDropdown
+                  matches={matches}
+                  selected={matchFilter}
+                  loading={matchesLoading}
+                  onChange={handleMatchFilter}
+                  hasFullAccess={hasFullAccess}
+                />
+              )}
+              <div className="relative shrink-0 ml-auto">
+                <button
+                  onClick={() => setSortOpen((v) => !v)}
+                  className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.045] px-2.5 py-2 text-[12px] font-medium text-white/60 hover:text-white/80 transition-colors focus:outline-none whitespace-nowrap"
+                  aria-haspopup="listbox"
+                  aria-expanded={sortOpen}
+                >
+                  <span className="text-white/55">{SORT_OPTIONS.find((o) => o.key === sortKey)?.label ?? "—"}</span>
+                  <ChevronDown className={`h-3 w-3 text-white/30 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
+                </button>
+                {sortOpen && (
+                  <SortDropdown
+                    current={sortKey}
+                    onSelect={(k) => { setSortKey(k); setSortOpen(false); }}
+                    onClose={() => setSortOpen(false)}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Row 2: lens pills */}
+            <div className="flex gap-1.5">
+              {LENSES.map((l) => (
+                <button
+                  key={l}
+                  onClick={() => handleLensChange(l)}
+                  className={`flex-1 rounded-full border py-1.5 text-[11.5px] font-semibold transition-colors ${
+                    lens === l
+                      ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
+                      : "bg-white/[0.04] border-white/[0.08] text-white/42 hover:text-white/65"
+                  }`}
+                >
+                  {teamLensLabel(l)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Desktop controls (≥ sm) — unchanged ──────────────────────────── */}
+          <div className="hidden sm:flex mb-3 items-start gap-2 flex-wrap">
             {matchesError ? (
               <div className="text-xs text-red-400 border border-red-500/30 bg-red-500/10 rounded-lg px-3 py-2">
                 Could not load matches
@@ -231,8 +286,6 @@ export default function StatBoardTeamsPage() {
                 hasFullAccess={hasFullAccess}
               />
             )}
-
-            {/* Lens tabs */}
             <div className="flex gap-0.5 rounded-lg bg-white/5 border border-white/8 p-0.5 flex-wrap">
               {LENSES.map((l) => (
                 <button
@@ -248,8 +301,6 @@ export default function StatBoardTeamsPage() {
                 </button>
               ))}
             </div>
-
-            {/* Sort */}
             <div className="relative ml-auto shrink-0">
               <button
                 onClick={() => setSortOpen((v) => !v)}
@@ -257,7 +308,7 @@ export default function StatBoardTeamsPage() {
                 aria-haspopup="listbox"
                 aria-expanded={sortOpen}
               >
-                <span className="text-white/30 text-[11px] hidden sm:inline">Sort:</span>
+                <span className="text-white/30 text-[11px]">Sort:</span>
                 <span className="text-white/72">{SORT_OPTIONS.find((o) => o.key === sortKey)?.label ?? "—"}</span>
                 <ChevronDown className={`h-3 w-3 text-white/30 transition-transform ${sortOpen ? "rotate-180" : ""}`} />
               </button>
