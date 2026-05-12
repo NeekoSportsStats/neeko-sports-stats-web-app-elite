@@ -543,59 +543,37 @@ export const LockedFixtureBlock = memo(function LockedFixtureBlock({
   const teamRows = [homeRow, awayRow].filter(Boolean) as StatBoardTeamRow[];
 
   if (isMobile) {
-    return (
-      <div className="rounded-2xl border border-[#F5C84C]/18 bg-[#F5C84C]/[0.025] overflow-hidden w-full min-w-0">
-        {/* Both teams stacked */}
-        {teamRows.map((row, idx) => (
-          <div
-            key={row.team_id}
-            className={`px-3 py-2.5 flex items-center gap-2 min-w-0 ${idx > 0 ? "border-t border-[#F5C84C]/10" : ""}`}
-          >
-            <div className="flex-1 min-w-0">
-              {(() => {
-                const path = teamPagePath(row.team_name);
-                return path ? (
-                  <Link
-                    to={path}
-                    aria-label={`View ${row.team_name} team page`}
-                    className="text-[13px] font-bold text-white/65 leading-tight block truncate hover:underline decoration-white/25 underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500/70 rounded-sm"
-                  >
-                    {row.team_name}
-                  </Link>
-                ) : (
-                  <span className="text-[13px] font-bold text-white/65 leading-tight block truncate">{row.team_name}</span>
-                );
-              })()}
-              <div className="flex items-center gap-1 mt-0.5 min-w-0">
-                <span className="text-[10px] text-white/28 truncate">vs {row.opponent_team_name}</span>
-                {row.is_home
-                  ? <span className="text-[8px] text-emerald-500/50 font-semibold bg-emerald-500/7 rounded px-1 py-0.5 leading-none shrink-0">H</span>
-                  : <span className="text-[8px] text-white/22 bg-white/5 rounded px-1 py-0.5 leading-none shrink-0">A</span>}
-              </div>
-            </div>
-            {/* Placeholder stat strip */}
-            <div className="flex items-center gap-1 shrink-0">
-              <span className="text-[9px] text-[#F5C84C]/35 font-medium">{unit}</span>
-              {[0, 1, 2].map((i) => (
-                <span key={i} className="rounded bg-[#F5C84C]/5 px-1.5 py-0.5 text-[10px] text-white/10 select-none blur-[3px]">00</span>
-              ))}
-            </div>
-          </div>
-        ))}
+    const home = teamRows.find((r) => r.is_home);
+    const away = teamRows.find((r) => !r.is_home);
+    const matchLabel = home && away
+      ? `${away.team_name} vs ${home.team_name}`
+      : teamRows[0]?.match_label ?? "Locked match";
+    const gameDate = teamRows[0]?.game_date
+      ? new Date(teamRows[0].game_date).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })
+      : null;
 
-        {/* Single CTA */}
-        <div className="px-3 py-3 border-t border-[#F5C84C]/10 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <Lock className="h-3 w-3 text-[#F5C84C]/45 shrink-0" aria-hidden />
-            <span className="text-[10px] text-white/30 leading-tight truncate">Neeko+ required to view stats</span>
-          </div>
-          <button
-            onClick={onUnlockClick}
-            className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#F5C84C]/12 border border-[#F5C84C]/25 px-2.5 py-1.5 text-[10px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/20 transition-colors whitespace-nowrap"
-          >
-            Unlock Neeko+
-          </button>
+    return (
+      <div className="rounded-2xl border border-[#F5C84C]/15 bg-[#F5C84C]/[0.018] px-3 py-2.5 flex items-center gap-3 min-w-0 w-full">
+        {/* Lock icon */}
+        <div className="shrink-0 flex items-center justify-center h-7 w-7 rounded-lg bg-[#F5C84C]/8 border border-[#F5C84C]/15">
+          <Lock className="h-3.5 w-3.5 text-[#F5C84C]/55" aria-hidden />
         </div>
+
+        {/* Match info */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[12px] font-semibold text-white/55 leading-tight truncate">{matchLabel}</p>
+          {gameDate && (
+            <p className="text-[10px] text-white/28 mt-0.5 leading-none">{gameDate}</p>
+          )}
+        </div>
+
+        {/* Unlock button */}
+        <button
+          onClick={onUnlockClick}
+          className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#F5C84C]/12 border border-[#F5C84C]/25 px-2.5 py-1.5 text-[10px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/20 active:bg-[#F5C84C]/28 transition-colors whitespace-nowrap"
+        >
+          Unlock
+        </button>
       </div>
     );
   }
