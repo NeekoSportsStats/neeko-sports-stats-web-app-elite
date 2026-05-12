@@ -24,22 +24,75 @@ export function Layout() {
         <div className="flex-1 flex flex-col">
           {/* HEADER */}
           <header className="fixed top-0 left-0 right-0 z-40 w-full border-b border-white/[0.07] bg-[rgba(8,10,14,0.82)] backdrop-blur-[12px]">
-            <div className="flex h-[60px] items-center px-4 sm:px-6 gap-0">
 
-              {/* Sidebar trigger — mobile only */}
-              <SidebarTrigger className="lg:hidden mr-2 h-8 w-8 border border-white/10 bg-white/5 hover:bg-white/10" />
+            {/* ── Mobile header (< lg) — burger left · logo centre · action right ── */}
+            <div className="flex lg:hidden h-[60px] items-center px-3 relative">
+
+              {/* LEFT — sidebar burger */}
+              <SidebarTrigger className="h-[34px] w-[34px] border border-white/[0.12] bg-white/[0.06] hover:bg-white/[0.10] rounded-lg shrink-0" />
+
+              {/* CENTRE — logo, absolutely positioned so it's truly centred */}
+              <Link
+                to="/"
+                className="absolute left-1/2 -translate-x-1/2 flex items-center hover:opacity-80 transition"
+                style={{ textDecoration: "none" }}
+              >
+                <img
+                  src="/logo.png"
+                  alt="Neeko Sports Logo"
+                  style={{ width: 90, height: "auto", objectFit: "contain", display: "block" }}
+                />
+              </Link>
+
+              {/* RIGHT — Neeko+ or crown */}
+              <div className="ml-auto shrink-0">
+                {isPremium ? (
+                  <Link to="/account" style={{
+                    display: "flex", alignItems: "center", gap: 5,
+                    fontSize: 12, fontWeight: 700,
+                    color: "#facc15",
+                    textDecoration: "none",
+                    border: "1px solid rgba(250,204,21,0.30)",
+                    padding: "6px 11px",
+                    borderRadius: 7,
+                    whiteSpace: "nowrap",
+                  }}>
+                    <Crown size={12} />
+                    <span>Account</span>
+                  </Link>
+                ) : location.pathname !== "/neeko-plus" ? (
+                  <Link to="/neeko-plus" style={{
+                    display: "flex", alignItems: "center", gap: 5,
+                    fontSize: 12, fontWeight: 800,
+                    color: "#130c00",
+                    textDecoration: "none",
+                    background: "linear-gradient(160deg,#fad52a 0%,#e8a800 100%)",
+                    padding: "6px 11px",
+                    borderRadius: 7,
+                    whiteSpace: "nowrap",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+                  }}>
+                    <Crown size={12} />
+                    <span>Neeko+</span>
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+
+            {/* ── Desktop header (≥ lg) — unchanged ── */}
+            <div className="hidden lg:flex h-[60px] items-center px-6 gap-0">
 
               {/* LOGO */}
               <Link to="/" className="flex items-center hover:opacity-80 transition shrink-0">
                 <img
                   src="/logo.png"
                   alt="Neeko Sports Logo"
-                  className="h-8 sm:h-9 w-auto object-contain"
+                  className="h-9 w-auto object-contain"
                 />
               </Link>
 
-              {/* CENTER NAV — desktop only, hidden on mobile (sidebar handles it) */}
-              <nav className="hidden lg:flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
+              {/* CENTER NAV */}
+              <nav className="flex items-center gap-1 absolute left-1/2 -translate-x-1/2">
                 {NAV_LINKS.map(({ label, to, icon: Icon }) => {
                   const active = location.pathname === to || location.pathname.startsWith(to + "/");
                   return (
@@ -83,30 +136,23 @@ export function Layout() {
               </nav>
 
               {/* RIGHT BUTTONS */}
-              <div className="flex items-center gap-1.5 lg:gap-2 ml-auto shrink-0">
-                {/* Sign In — shown when logged out */}
+              <div className="flex items-center gap-2 ml-auto shrink-0">
                 {!user && (
                   <Link to="/auth">
-                    <Button variant="outline" size="sm">
-                      Sign In
-                    </Button>
+                    <Button variant="outline" size="sm">Sign In</Button>
                   </Link>
                 )}
-
-                {/* Logout — shown when logged in */}
                 {user && (
-                  <Button variant="ghost" size="sm" onClick={signOut} className="gap-2 hidden sm:flex">
+                  <Button variant="ghost" size="sm" onClick={signOut} className="gap-2">
                     <LogOut className="h-4 w-4" />
-                    <span className="hidden sm:inline">Logout</span>
+                    <span>Logout</span>
                   </Button>
                 )}
-
-                {/* Account (premium) or Neeko+ upgrade */}
                 {isPremium ? (
                   <Link to="/account">
                     <Button variant="outline" size="sm" className="gap-2">
                       <Crown className="h-4 w-4 text-[#facc15]" />
-                      <span className="hidden sm:inline text-[#facc15]">Account</span>
+                      <span className="text-[#facc15]">Account</span>
                     </Button>
                   </Link>
                 ) : location.pathname !== "/neeko-plus" ? (
@@ -117,12 +163,13 @@ export function Layout() {
                       style={{ background: "linear-gradient(160deg,#fad52a 0%,#e8a800 100%)", border: "none" }}
                     >
                       <Crown className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Neeko+</span>
+                      Neeko+
                     </Button>
                   </Link>
                 ) : null}
               </div>
             </div>
+
           </header>
 
           {/* BODY — pt-[60px] offsets the fixed header */}
