@@ -1111,12 +1111,8 @@ export default function MobileLanding({ isPremium }: Props) {
       {/* paddingTop offsets the fixed header: 62px MobileHeader + 40px ProductNav = 102px */}
       <section style={{
         position: "relative",
-        minHeight: "75vh",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        paddingTop: "calc(102px + 8px)",
-        paddingBottom: 48,
+        paddingTop: "calc(102px + 28px)",
+        paddingBottom: 40,
         overflow: "hidden",
         backgroundImage: `
           linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(5,8,12,0.38) 45%, rgba(7,9,13,0.88) 80%, rgba(7,9,13,1.0) 100%),
