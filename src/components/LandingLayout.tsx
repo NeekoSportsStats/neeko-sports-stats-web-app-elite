@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Crown, Menu, X, TableProperties, Star, Users, Shield } from "lucide-react";
+import { DesktopHeader } from "@/components/DesktopHeader";
 
 const NAV_LINKS = [
   { label: "Stat Board",  to: "/stat-board",          icon: TableProperties },
@@ -18,8 +19,11 @@ export function LandingLayout() {
   return (
     <div style={{ position: "relative", minHeight: "100vh", background: "#0a0a0a" }}>
 
-      {/* ── STICKY HEADER ──────────────────────────────────────────────── */}
-      <header className="landing-layout-header" style={{
+      {/* ── DESKTOP HEADER (≥ 1024px) — shared with app pages ──────────── */}
+      <DesktopHeader />
+
+      {/* ── MOBILE HEADER (< 1024px) ──────────────────────────────────── */}
+      <header className="landing-mobile-header" style={{
         position: "fixed",
         top: 0, left: 0, right: 0,
         zIndex: 100,
@@ -28,83 +32,23 @@ export function LandingLayout() {
         backdropFilter: "blur(12px)",
         WebkitBackdropFilter: "blur(12px)",
         borderBottom: "1px solid rgba(255,255,255,0.07)",
-        display: "flex",
+        display: "none",
         alignItems: "center",
-        padding: "0 16px 0 8px",
+        padding: "0 16px 0 12px",
         gap: 0,
       }}>
-
-        {/* LEFT — Logo */}
+        {/* Logo */}
         <Link to="/" style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }}>
-          <img src="/logo.png" alt="Neeko" className="landing-logo" style={{ objectFit: "contain", display: "block" }} />
+          <img
+            src="/logo.png"
+            alt="Neeko Sports"
+            className="landing-mobile-logo"
+            style={{ objectFit: "contain", display: "block" }}
+          />
         </Link>
 
-        {/* CENTER — Nav links — matches Layout.tsx exactly */}
-        <nav className="landing-nav" style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-          position: "absolute",
-          left: "50%",
-          transform: "translateX(-50%)",
-        }}>
-          {NAV_LINKS.map(({ label, to, icon: Icon }) => {
-            const active = location.pathname === to || location.pathname.startsWith(to + "/");
-            return (
-              <Link
-                key={to}
-                to={to}
-                style={{
-                  display: "flex", alignItems: "center", gap: 5,
-                  fontSize: 12.5, fontWeight: active ? 700 : 500,
-                  color: active ? "#fff" : "rgba(255,255,255,0.58)",
-                  textDecoration: "none",
-                  padding: "6px 11px",
-                  borderRadius: 7,
-                  background: active ? "rgba(255,255,255,0.08)" : "transparent",
-                  border: active ? "1px solid rgba(255,255,255,0.10)" : "1px solid transparent",
-                  transition: "all 0.15s ease",
-                  whiteSpace: "nowrap",
-                  letterSpacing: "0.01em",
-                }}
-                onMouseEnter={e => {
-                  if (!active) {
-                    (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.88)";
-                    (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (!active) {
-                    (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.58)";
-                    (e.currentTarget as HTMLElement).style.background = "transparent";
-                  }
-                }}
-              >
-                <Icon size={13} style={{ opacity: 0.7 }} />
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* RIGHT — Auth buttons */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginLeft: "auto" }}>
-          {!user && (
-            <Link to="/auth" className="landing-sign-in" style={{
-              fontSize: 13, fontWeight: 600,
-              color: "rgba(255,255,255,0.80)",
-              textDecoration: "none",
-              padding: "7px 16px",
-              borderRadius: 7,
-              background: "rgba(255,255,255,0.07)",
-              border: "1px solid rgba(255,255,255,0.14)",
-              letterSpacing: "0.01em",
-              whiteSpace: "nowrap",
-            }}>
-              Sign In
-            </Link>
-          )}
-
+        {/* Right — CTA + hamburger */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto", flexShrink: 0 }}>
           {!isPremium && (
             <Link to="/neeko-plus" style={{
               display: "flex", alignItems: "center", gap: 6,
@@ -112,7 +56,7 @@ export function LandingLayout() {
               color: "#130c00",
               textDecoration: "none",
               background: "linear-gradient(160deg, #fad52a 0%, #e8a800 100%)",
-              padding: "7px 16px",
+              padding: "7px 14px",
               borderRadius: 7,
               letterSpacing: "0.01em",
               boxShadow: "0 2px 10px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.30)",
@@ -129,7 +73,7 @@ export function LandingLayout() {
               color: "#facc15",
               textDecoration: "none",
               border: "1px solid rgba(250,204,21,0.35)",
-              padding: "7px 16px",
+              padding: "7px 14px",
               borderRadius: 7,
               whiteSpace: "nowrap",
             }}>
@@ -137,23 +81,11 @@ export function LandingLayout() {
             </Link>
           )}
 
-          {user && (
-            <button onClick={signOut} className="landing-logout" style={{
-              fontSize: 12, fontWeight: 500,
-              color: "rgba(255,255,255,0.35)",
-              background: "none", border: "none",
-              cursor: "pointer", padding: "7px 10px",
-            }}>
-              Logout
-            </button>
-          )}
-
-          {/* Hamburger — mobile only */}
+          {/* Hamburger */}
           <button
             onClick={() => setMenuOpen(v => !v)}
-            className="landing-hamburger"
             style={{
-              display: "none",
+              display: "flex",
               alignItems: "center", justifyContent: "center",
               width: 36, height: 36,
               background: "rgba(255,255,255,0.07)",
@@ -161,6 +93,7 @@ export function LandingLayout() {
               borderRadius: 7,
               cursor: "pointer",
               color: "rgba(255,255,255,0.80)",
+              flexShrink: 0,
             }}
             aria-label="Toggle menu"
           >
@@ -296,31 +229,24 @@ export function LandingLayout() {
 
       {/* ── RESPONSIVE STYLES ──────────────────────────────────────────── */}
       <style>{`
-        /* Landing logo — width-driven so the full wordmark is readable */
-        .landing-logo { width: 155px; height: auto; }
+        /* Mobile header — hidden on desktop, shown below 1024px */
+        .landing-mobile-header { display: none !important; }
         @media (max-width: 1023px) {
-          .landing-logo { width: 120px; }
+          .landing-mobile-header { display: flex !important; }
         }
+        /* Mobile logo sizing */
+        .landing-mobile-logo { width: 110px; height: auto; }
         @media (max-width: 480px) {
-          .landing-logo { width: 90px; }
+          .landing-mobile-logo { width: 90px; }
         }
-        /* Hide layout header on mobile where MobileLanding renders its own */
+        /* On very small screens (<= 767px) hide desktop content top padding reset already handled by landing-layout-content pt-[60px] */
         @media (max-width: 767px) {
-          .landing-layout-header { display: none !important; }
-          .landing-layout-content { padding-top: 0 !important; }
+          .landing-layout-content { padding-top: 60px !important; }
         }
-        /* Hide sign-in and logout below 1024px (hamburger drawer handles auth actions) */
-        .landing-sign-in { display: none; }
-        .landing-logout { display: none; }
-        /* Match Layout.tsx: hide nav below 1024px (lg), show hamburger */
+        /* Mobile drawer — hidden on desktop */
+        .landing-drawer { display: none; }
         @media (max-width: 1023px) {
-          .landing-nav { display: none !important; }
-          .landing-hamburger { display: flex !important; }
           .landing-drawer { display: block !important; }
-        }
-        @media (min-width: 1024px) {
-          .landing-sign-in { display: flex !important; }
-          .landing-logout { display: block !important; }
         }
         @media (max-width: 600px) {
           footer > div {
