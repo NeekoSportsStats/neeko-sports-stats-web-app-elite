@@ -5,6 +5,9 @@ import { supabase } from "@/lib/supabaseClient";
 import type { StatBoardPlayer, StatBoardMatch, StatLens } from "@/features/afl/stat-board/types";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
 import { useAuth } from "@/lib/auth";
+import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
+import type { RankingRow } from "@/features/afl/rankings/components/types";
+import { getCaptainScore, isCaptainEligible } from "@/features/afl/shared/data/captainScoring";
 
 interface Props {
   isPremium: boolean;
@@ -921,9 +924,72 @@ function LockedFullRound({ allMatches }: { allMatches: StatBoardMatch[] }) {
 
 // ── Fantasy Hub teaser ────────────────────────────────────────────────────────
 
+interface FantasySlot {
+  label: string;
+  icon: React.ReactNode;
+  color: string;
+  playerName: string | null;
+  team: string | null;
+  projection: number | null;
+}
+
+function useFantasyHubPlayers(): { slots: FantasySlot[]; loading: boolean } {
+  const [slots, setSlots] = useState<FantasySlot[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!supabase) { setLoading(false); return; }
+    supabase
+      .rpc("get_rankings_safe", { p_user_id: null, p_is_bot: false, p_limit: 200 })
+      .then(({ data }) => {
+        const players: RankingRow[] = ((data as Record<string, unknown>[] | null) ?? []).map(mapRankingRow);
+        const active = players.filter(p => p.projection != null && !p.is_injured && !p.is_bye);
+        const byProj = [...active].sort((a, b) => (b.projection ?? 0) - (a.projection ?? 0));
+
+        const target =
+          active.filter(p => ["SMASH_START", "START"].includes((p.action_canonical ?? "").toUpperCase()))
+            .sort((a, b) => ((b.decision_score ?? 0) - (a.decision_score ?? 0)))[0]
+          ?? byProj[0] ?? null;
+
+        const trap =
+          active.filter(p => ["HARD_SIT", "SIT"].includes((p.action_canonical ?? "").toUpperCase()))
+            .filter(p => p.player_id !== target?.player_id)
+            .sort((a, b) => (a.projection ?? 0) - (b.projection ?? 0))[0]
+          ?? byProj[byProj.length - 1] ?? null;
+
+        const usedIds = new Set([target?.player_id, trap?.player_id].filter(Boolean));
+        const captain =
+          active.filter(p => !usedIds.has(p.player_id) && isCaptainEligible(p))
+            .sort((a, b) => (b.captain_score ?? getCaptainScore(b)) - (a.captain_score ?? getCaptainScore(a)))[0]
+          ?? byProj.find(p => !usedIds.has(p.player_id)) ?? null;
+
+        const usedIds2 = new Set([...usedIds, captain?.player_id].filter(Boolean));
+        const value =
+          active.filter(p => !usedIds2.has(p.player_id) && (p.category_canonical ?? "").toUpperCase() === "TARGET")
+            .sort((a, b) => ((b.decision_score ?? 0) - (a.decision_score ?? 0)))[0]
+          ?? byProj.find(p => !usedIds2.has(p.player_id)) ?? null;
+
+        setSlots([
+          { label: "Top Target",   icon: <TrendingUp size={11} />,    color: "#22c55e", playerName: target?.player_name ?? null,  team: target?.team ?? null,  projection: target?.projection ?? null },
+          { label: "Trap Alert",   icon: <AlertTriangle size={11} />, color: "#f87171", playerName: trap?.player_name ?? null,    team: trap?.team ?? null,    projection: trap?.projection ?? null },
+          { label: "Captain Pick", icon: <Star size={11} />,          color: "#E0AE2D", playerName: captain?.player_name ?? null, team: captain?.team ?? null, projection: captain?.projection ?? null },
+          { label: "Value Watch",  icon: <Zap size={11} />,           color: "#60a5fa", playerName: value?.player_name ?? null,   team: value?.team ?? null,   projection: value?.projection ?? null },
+        ]);
+        setLoading(false);
+      });
+  }, []);
+
+  return { slots, loading };
+}
+
 function FantasyHubTeaser() {
+  const { slots, loading } = useFantasyHubPlayers();
+  const hasData = !loading && slots.some(s => s.playerName);
+
   return (
     <div style={{ borderRadius: 13, border: "1px solid rgba(244,197,66,0.14)", overflow: "hidden", background: "rgba(5,8,11,0.97)" }}>
+
+      {/* Header */}
       <div style={{
         padding: "9px 14px",
         background: "rgba(244,197,66,0.04)",
@@ -934,44 +1000,76 @@ function FantasyHubTeaser() {
           <Star size={12} style={{ color: "rgba(244,197,66,0.70)", flexShrink: 0 }} />
           <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(244,197,66,0.72)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Fantasy Hub</span>
         </div>
-        <Link to="/fantasy" style={{
-          display: "flex", alignItems: "center", gap: 4,
-          fontSize: 11, fontWeight: 700, color: "rgba(244,197,66,0.70)",
-          textDecoration: "none", letterSpacing: "0.03em",
-        }}>
-          View all <ChevronRight size={10} />
-        </Link>
+        <span style={{ fontSize: 9.5, color: "rgba(255,255,255,0.30)", fontStyle: "italic" }}>This week's intel</span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, padding: "10px 12px 12px" }}>
-        {[
-          { label: "Top Target",   icon: <TrendingUp size={11} />,    color: "#22c55e", desc: "Best value plays." },
-          { label: "Trap Alert",   icon: <AlertTriangle size={11} />, color: "#f87171", desc: "Avoid these players." },
-          { label: "Captain Pick", icon: <Star size={11} />,          color: "#E0AE2D", desc: "Top scoring projection." },
-          { label: "Value Watch",  icon: <Zap size={11} />,           color: "#60a5fa", desc: "Priced below output." },
-        ].map(({ label, icon, color, desc }) => (
+      {/* Tiles grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, padding: "10px 12px 10px" }}>
+        {(hasData ? slots : [
+          { label: "Top Target",   icon: <TrendingUp size={11} />,    color: "#22c55e", playerName: null, team: null, projection: null },
+          { label: "Trap Alert",   icon: <AlertTriangle size={11} />, color: "#f87171", playerName: null, team: null, projection: null },
+          { label: "Captain Pick", icon: <Star size={11} />,          color: "#E0AE2D", playerName: null, team: null, projection: null },
+          { label: "Value Watch",  icon: <Zap size={11} />,           color: "#60a5fa", playerName: null, team: null, projection: null },
+        ]).map(({ label, icon, color, playerName, team, projection }) => (
           <div key={label} style={{
-            background: "rgba(255,255,255,0.025)", border: `1px solid ${color}18`,
+            background: "rgba(255,255,255,0.025)", border: `1px solid ${color}22`,
             borderRadius: 10, padding: "10px 10px",
             position: "relative", overflow: "hidden",
           }}>
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: color, opacity: 0.40 }} />
-            <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
+            {/* top accent line */}
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 2, background: color, opacity: 0.38 }} />
+
+            {/* label row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
               <span style={{ color, opacity: 0.80 }}>{icon}</span>
-              <span style={{ fontSize: 8.5, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color }}>{label}</span>
+              <span style={{ fontSize: 8, fontWeight: 800, letterSpacing: "0.12em", textTransform: "uppercase", color }}>{label}</span>
             </div>
-            <p style={{ margin: 0, fontSize: 10.5, color: "rgba(255,255,255,0.38)", lineHeight: 1.4 }}>{desc}</p>
+
+            {loading ? (
+              <>
+                <div style={{ height: 12, width: "75%", borderRadius: 3, background: "rgba(255,255,255,0.07)", marginBottom: 4, animation: "shimmer 1.4s ease-in-out infinite" }} />
+                <div style={{ height: 10, width: "45%", borderRadius: 3, background: "rgba(255,255,255,0.04)", animation: "shimmer 1.4s ease-in-out infinite" }} />
+              </>
+            ) : playerName ? (
+              <>
+                <p style={{
+                  margin: "0 0 2px", fontSize: 12, fontWeight: 700,
+                  color: "#f0f0f0",
+                  whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>
+                  {playerName}
+                </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  {team && (
+                    <span style={{ fontSize: 9.5, color: "rgba(255,255,255,0.38)", fontWeight: 500 }}>{team}</span>
+                  )}
+                  {projection != null && (
+                    <span style={{ fontSize: 9.5, fontWeight: 700, color, opacity: 0.85 }}>
+                      {Math.round(projection)} proj
+                    </span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p style={{ margin: 0, fontSize: 10, color: "rgba(255,255,255,0.32)", lineHeight: 1.4 }}>
+                {label === "Top Target"   ? "Best value plays this week."        :
+                 label === "Trap Alert"   ? "Players to avoid this round."       :
+                 label === "Captain Pick" ? "Highest scoring projection."        :
+                                           "Priced below their output."}
+              </p>
+            )}
           </div>
         ))}
       </div>
 
+      {/* CTA */}
       <div style={{ padding: "0 12px 12px" }}>
         <Link to="/fantasy" style={{
           display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
           padding: "10px 14px", borderRadius: 10, minHeight: 40,
           background: "rgba(244,197,66,0.07)",
-          border: "1px solid rgba(244,197,66,0.16)",
-          color: "rgba(244,197,66,0.80)", fontSize: 12.5, fontWeight: 700,
+          border: "1px solid rgba(244,197,66,0.18)",
+          color: "rgba(244,197,66,0.85)", fontSize: 12.5, fontWeight: 700,
           textDecoration: "none",
         }}>
           Open Fantasy Hub <ChevronRight size={11} />
