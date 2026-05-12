@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import {
   TrendingUp,
@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Search,
   X,
+  SlidersHorizontal,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
@@ -348,6 +349,274 @@ function CollapsibleSEO() {
   );
 }
 
+// ─── MOBILE FILTER DRAWER ────────────────────────────────────────────────────
+
+function MobileFilterDrawer({
+  open,
+  onClose,
+  isPremium,
+  selectedPosition,
+  setSelectedPosition,
+  priceMin,
+  setPriceMin,
+  priceMax,
+  setPriceMax,
+  searchQuery,
+  setSearchQuery,
+  onUpgrade,
+}: {
+  open: boolean;
+  onClose: () => void;
+  isPremium: boolean;
+  selectedPosition: string | null;
+  setSelectedPosition: (v: string | null) => void;
+  priceMin: number | null;
+  setPriceMin: (v: number | null) => void;
+  priceMax: number | null;
+  setPriceMax: (v: number | null) => void;
+  searchQuery: string;
+  setSearchQuery: (v: string) => void;
+  onUpgrade: () => void;
+}) {
+  // Lock body scroll while drawer is open
+  useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [open]);
+
+  const activeFiltersCount =
+    (selectedPosition ? 1 : 0) +
+    (priceMin != null ? 1 : 0) +
+    (priceMax != null ? 1 : 0) +
+    (searchQuery.length >= 2 ? 1 : 0);
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        aria-hidden="true"
+        style={{
+          position: "fixed", inset: 0, zIndex: 300,
+          background: "rgba(0,0,0,0.68)", backdropFilter: "blur(3px)",
+          WebkitBackdropFilter: "blur(3px)",
+          opacity: open ? 1 : 0,
+          pointerEvents: open ? "auto" : "none",
+          transition: "opacity 0.22s ease",
+        }}
+      />
+
+      {/* Sheet — slides up from bottom */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Market Watch filters"
+        style={{
+          position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 301,
+          background: "#0f0f0f",
+          borderTop: "1px solid rgba(255,255,255,0.09)",
+          borderRadius: "18px 18px 0 0",
+          transform: open ? "translateY(0)" : "translateY(100%)",
+          transition: "transform 0.28s cubic-bezier(0.22,1,0.36,1)",
+          willChange: "transform",
+          paddingBottom: "env(safe-area-inset-bottom, 16px)",
+          maxHeight: "80vh",
+          overflowY: "auto",
+        }}
+      >
+        {/* Handle */}
+        <div style={{ display: "flex", justifyContent: "center", padding: "10px 0 2px" }}>
+          <div style={{ width: 36, height: 4, borderRadius: 99, background: "rgba(255,255,255,0.12)" }} />
+        </div>
+
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 16px 12px" }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.80)" }}>
+            Filters
+            {activeFiltersCount > 0 && (
+              <span style={{
+                marginLeft: 8, fontSize: 10, fontWeight: 800, color: "#F5C84C",
+                background: "rgba(245,200,76,0.12)", border: "1px solid rgba(245,200,76,0.25)",
+                padding: "1px 7px", borderRadius: 99,
+              }}>
+                {activeFiltersCount}
+              </span>
+            )}
+          </span>
+          <button
+            onClick={onClose}
+            style={{
+              width: 32, height: 32, background: "rgba(255,255,255,0.05)",
+              border: "1px solid rgba(255,255,255,0.09)", borderRadius: 8,
+              color: "rgba(255,255,255,0.45)", cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >
+            <X size={15} />
+          </button>
+        </div>
+
+        <div style={{ padding: "0 16px 20px", display: "flex", flexDirection: "column", gap: 20 }}>
+
+          {/* Search */}
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 8 }}>
+              Search
+            </p>
+            {isPremium ? (
+              <div style={{ position: "relative" }}>
+                <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.25)", pointerEvents: "none" }} />
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search player..."
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)",
+                    borderRadius: 10, padding: "10px 32px 10px 32px",
+                    fontSize: 13, color: "rgba(255,255,255,0.75)", outline: "none",
+                  }}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.35)", display: "flex" }}
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+            ) : (
+              <button
+                onClick={onUpgrade}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 8,
+                  padding: "10px 14px", borderRadius: 10, cursor: "pointer",
+                  background: "rgba(245,200,76,0.04)", border: "1px solid rgba(245,200,76,0.18)",
+                  color: "rgba(245,200,76,0.60)", fontSize: 13,
+                }}
+              >
+                <Lock size={13} />
+                Search players — Neeko+ only
+              </button>
+            )}
+          </div>
+
+          {/* Position */}
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 8 }}>
+              Position
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              {POSITIONS.map((pos) => {
+                const isActive = selectedPosition === pos;
+                const locked = !isPremium;
+                return (
+                  <button
+                    key={pos}
+                    onClick={() => {
+                      if (locked) { onUpgrade(); return; }
+                      setSelectedPosition(isActive ? null : pos);
+                    }}
+                    style={{
+                      flex: 1, padding: "10px 0", borderRadius: 10, cursor: "pointer",
+                      fontSize: 12, fontWeight: 700, textTransform: "uppercase" as const,
+                      background: isActive ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.03)",
+                      border: `1px solid ${isActive ? "rgba(255,255,255,0.22)" : locked ? "rgba(245,200,76,0.12)" : "rgba(255,255,255,0.08)"}`,
+                      color: locked ? "rgba(255,255,255,0.35)" : isActive ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.45)",
+                    }}
+                  >
+                    {locked && <Lock size={10} style={{ display: "inline", marginRight: 3, color: "#F5C84C", opacity: 0.6 }} />}
+                    {pos}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Price range */}
+          <div>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)", marginBottom: 8 }}>
+              Price Range ($K)
+            </p>
+            {isPremium ? (
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  type="number"
+                  placeholder="Min"
+                  value={priceMin ?? ""}
+                  onChange={(e) => setPriceMin(e.target.value ? Number(e.target.value) : null)}
+                  style={{
+                    flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)",
+                    borderRadius: 10, padding: "10px 12px", fontSize: 13,
+                    color: "rgba(255,255,255,0.70)", outline: "none",
+                  }}
+                />
+                <span style={{ color: "rgba(255,255,255,0.22)", fontSize: 13 }}>—</span>
+                <input
+                  type="number"
+                  placeholder="Max"
+                  value={priceMax ?? ""}
+                  onChange={(e) => setPriceMax(e.target.value ? Number(e.target.value) : null)}
+                  style={{
+                    flex: 1, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)",
+                    borderRadius: 10, padding: "10px 12px", fontSize: 13,
+                    color: "rgba(255,255,255,0.70)", outline: "none",
+                  }}
+                />
+              </div>
+            ) : (
+              <button
+                onClick={onUpgrade}
+                style={{
+                  width: "100%", display: "flex", alignItems: "center", gap: 8,
+                  padding: "10px 14px", borderRadius: 10, cursor: "pointer",
+                  background: "rgba(245,200,76,0.04)", border: "1px solid rgba(245,200,76,0.18)",
+                  color: "rgba(245,200,76,0.60)", fontSize: 13,
+                }}
+              >
+                <Lock size={13} />
+                Price filters — Neeko+ only
+              </button>
+            )}
+          </div>
+
+          {/* Clear / Done */}
+          <div style={{ display: "flex", gap: 8 }}>
+            {activeFiltersCount > 0 && (
+              <button
+                onClick={() => {
+                  setSelectedPosition(null);
+                  setPriceMin(null);
+                  setPriceMax(null);
+                  setSearchQuery("");
+                }}
+                style={{
+                  flex: 1, padding: "12px 0", borderRadius: 12, cursor: "pointer",
+                  background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)",
+                  color: "rgba(255,255,255,0.50)", fontSize: 13, fontWeight: 600,
+                }}
+              >
+                Clear all
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              style={{
+                flex: 2, padding: "12px 0", borderRadius: 12, cursor: "pointer",
+                background: "rgba(245,200,76,0.12)", border: "1px solid rgba(245,200,76,0.28)",
+                color: "#F5C84C", fontSize: 13, fontWeight: 700,
+              }}
+            >
+              Show results
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
 
 export default function MarketWatchPageElite() {
@@ -365,6 +634,7 @@ export default function MarketWatchPageElite() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showFilterHint, setShowFilterHint] = useState(false);
   const [dataUpdatedAt, setDataUpdatedAt] = useState<string | null>(null);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
 
   const fetchData = useCallback(
     async (force = false) => {
@@ -666,7 +936,112 @@ export default function MarketWatchPageElite() {
           )}
 
           {/* ── FILTER BAR ──────────────────────────────────────────────────── */}
-          <div className="space-y-2">
+
+          {/* ── MOBILE FILTER BAR (< sm) ─── single row: tabs + filter button */}
+          <div className="sm:hidden">
+            <div className="flex items-center gap-1.5">
+              {/* Tab chips */}
+              <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto no-scrollbar">
+                {(["ALL", "BUY", "HOLD", "AVOID"] as TabFilter[]).map((tab) => {
+                  const isActive = activeTab === tab;
+                  const locked = !isPremium && tab !== "ALL";
+                  const color =
+                    tab === "BUY" ? "#4ade80"
+                    : tab === "AVOID" ? "#f87171"
+                    : tab === "HOLD" ? "rgba(255,255,255,0.4)"
+                    : "#F5C84C";
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => {
+                        if (locked) { setMobileFilterOpen(true); return; }
+                        setActiveTab(tab);
+                        track("market_watch_tab_change", { tab });
+                      }}
+                      className="shrink-0 text-[12px] font-semibold px-3 py-1.5 rounded-lg transition-all"
+                      style={{
+                        background: isActive ? `${color}15` : "rgba(255,255,255,0.03)",
+                        border: `1px solid ${isActive ? `${color}40` : "rgba(255,255,255,0.06)"}`,
+                        color: locked ? "rgba(255,255,255,0.30)" : isActive ? color : "rgba(255,255,255,0.45)",
+                        whiteSpace: "nowrap" as const,
+                      }}
+                    >
+                      {locked && <Lock className="inline-block w-2.5 h-2.5 mr-1 -mt-px text-[#F5C84C] opacity-60" />}
+                      {tab}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Filter button */}
+              {(() => {
+                const activeCount =
+                  (selectedPosition ? 1 : 0) +
+                  (priceMin != null ? 1 : 0) +
+                  (priceMax != null ? 1 : 0) +
+                  (searchQuery.length >= 2 ? 1 : 0);
+                return (
+                  <button
+                    onClick={() => setMobileFilterOpen(true)}
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all"
+                    style={{
+                      background: activeCount > 0 ? "rgba(245,200,76,0.10)" : "rgba(255,255,255,0.04)",
+                      border: `1px solid ${activeCount > 0 ? "rgba(245,200,76,0.28)" : "rgba(255,255,255,0.09)"}`,
+                      color: activeCount > 0 ? "#F5C84C" : "rgba(255,255,255,0.50)",
+                    }}
+                  >
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                    <span className="text-[12px] font-semibold">Filter</span>
+                    {activeCount > 0 && (
+                      <span className="text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
+                        style={{ background: "rgba(245,200,76,0.20)", color: "#F5C84C" }}>
+                        {activeCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })()}
+            </div>
+
+            {/* Active filter summary chips (mobile) */}
+            {(selectedPosition || priceMin != null || priceMax != null || searchQuery.length >= 2) && (
+              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                {selectedPosition && (
+                  <button
+                    onClick={() => setSelectedPosition(null)}
+                    className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded"
+                    style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.60)" }}
+                  >
+                    {selectedPosition} <X className="w-2.5 h-2.5" />
+                  </button>
+                )}
+                {searchQuery.length >= 2 && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded"
+                    style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.60)" }}
+                  >
+                    "{searchQuery}" <X className="w-2.5 h-2.5" />
+                  </button>
+                )}
+                {(priceMin != null || priceMax != null) && (
+                  <button
+                    onClick={() => { setPriceMin(null); setPriceMax(null); }}
+                    className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded"
+                    style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.60)" }}
+                  >
+                    {priceMin != null ? `$${priceMin}K` : ""}
+                    {priceMin != null && priceMax != null ? "–" : ""}
+                    {priceMax != null ? `$${priceMax}K` : ""}
+                    {" "}<X className="w-2.5 h-2.5" />
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── DESKTOP FILTER BAR (≥ sm) — unchanged ── */}
+          <div className="hidden sm:block space-y-2">
             {/* Tabs */}
             <div className="flex items-center gap-1.5 flex-wrap">
               {(["ALL", "BUY", "HOLD", "AVOID"] as TabFilter[]).map((tab) => {
@@ -702,7 +1077,6 @@ export default function MarketWatchPageElite() {
                         : isActive
                         ? color
                         : "rgba(255,255,255,0.45)",
-                      cursor: locked ? "pointer" : "pointer",
                     }}
                   >
                     {locked && <Lock className="inline-block w-2.5 h-2.5 mr-1 -mt-px text-[#F5C84C] opacity-60" />}
@@ -726,10 +1100,7 @@ export default function MarketWatchPageElite() {
                     <button
                       key={pos}
                       onClick={() => {
-                        if (locked) {
-                          setShowFilterHint(true);
-                          return;
-                        }
+                        if (locked) { setShowFilterHint(true); return; }
                         setSelectedPosition(isActive ? null : pos);
                       }}
                       title={locked ? "Unlock filters with Neeko+" : undefined}
@@ -747,7 +1118,7 @@ export default function MarketWatchPageElite() {
                 })}
               </div>
 
-              {/* Price range — locked for free users */}
+              {/* Price range */}
               {isPremium ? (
                 <div className="flex items-center gap-1.5 ml-1">
                   <input
@@ -769,13 +1140,8 @@ export default function MarketWatchPageElite() {
               ) : (
                 <button
                   onClick={() => setShowFilterHint(true)}
-                  title="Unlock filters with Neeko+"
                   className="flex items-center gap-1.5 ml-1 px-3 py-1 rounded-lg text-[11px] transition-all hover:bg-white/[0.04]"
-                  style={{
-                    border: "1px solid rgba(245,200,76,0.15)",
-                    background: "rgba(245,200,76,0.04)",
-                    color: "rgba(245,200,76,0.55)",
-                  }}
+                  style={{ border: "1px solid rgba(245,200,76,0.15)", background: "rgba(245,200,76,0.04)", color: "rgba(245,200,76,0.55)" }}
                 >
                   <Lock className="w-2.5 h-2.5" />
                   Price filters are Neeko+
@@ -793,10 +1159,7 @@ export default function MarketWatchPageElite() {
                     className="w-36 sm:w-44 bg-white/[0.04] border border-white/[0.08] rounded-lg pl-7 pr-7 py-1.5 text-[11px] text-white/70 placeholder-white/25 outline-none focus:border-white/20 transition-colors"
                   />
                   {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery("")}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-                    >
+                    <button onClick={() => setSearchQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
                       <X className="w-3 h-3" />
                     </button>
                   )}
@@ -804,14 +1167,8 @@ export default function MarketWatchPageElite() {
               ) : (
                 <button
                   onClick={() => setShowFilterHint(true)}
-                  title="Unlock filters with Neeko+"
                   className="relative ml-auto flex items-center gap-1.5 pl-7 pr-3 py-1.5 rounded-lg text-[11px] transition-all hover:bg-white/[0.04]"
-                  style={{
-                    border: "1px solid rgba(245,200,76,0.15)",
-                    background: "rgba(245,200,76,0.04)",
-                    color: "rgba(245,200,76,0.55)",
-                    width: "11rem",
-                  }}
+                  style={{ border: "1px solid rgba(245,200,76,0.15)", background: "rgba(245,200,76,0.04)", color: "rgba(245,200,76,0.55)", width: "11rem" }}
                 >
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 opacity-50" />
                   <Lock className="w-2.5 h-2.5 shrink-0" />
@@ -820,14 +1177,11 @@ export default function MarketWatchPageElite() {
               )}
             </div>
 
-            {/* Inline upgrade hint — shown when a locked control is clicked */}
+            {/* Inline upgrade hint */}
             {showFilterHint && !isPremium && (
               <div
                 className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-[12px]"
-                style={{
-                  background: "rgba(245,200,76,0.06)",
-                  border: "1px solid rgba(245,200,76,0.20)",
-                }}
+                style={{ background: "rgba(245,200,76,0.06)", border: "1px solid rgba(245,200,76,0.20)" }}
               >
                 <div className="flex items-center gap-2 text-[#F5C84C]/80">
                   <Crown className="w-3.5 h-3.5 shrink-0" />
@@ -837,18 +1191,11 @@ export default function MarketWatchPageElite() {
                   <button
                     onClick={() => setShowUpgradeModal(true)}
                     className="text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all hover:opacity-90"
-                    style={{
-                      background: "rgba(245,200,76,0.15)",
-                      border: "1px solid rgba(245,200,76,0.30)",
-                      color: "#F5C84C",
-                    }}
+                    style={{ background: "rgba(245,200,76,0.15)", border: "1px solid rgba(245,200,76,0.30)", color: "#F5C84C" }}
                   >
                     Upgrade
                   </button>
-                  <button
-                    onClick={() => setShowFilterHint(false)}
-                    className="text-white/25 hover:text-white/50 transition-colors"
-                  >
+                  <button onClick={() => setShowFilterHint(false)} className="text-white/25 hover:text-white/50 transition-colors">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -1013,6 +1360,20 @@ export default function MarketWatchPageElite() {
       {showUpgradeModal && (
         <UpgradeModal onClose={() => setShowUpgradeModal(false)} />
       )}
+      <MobileFilterDrawer
+        open={mobileFilterOpen}
+        onClose={() => setMobileFilterOpen(false)}
+        isPremium={isPremium}
+        selectedPosition={selectedPosition}
+        setSelectedPosition={setSelectedPosition}
+        priceMin={priceMin}
+        setPriceMin={setPriceMin}
+        priceMax={priceMax}
+        setPriceMax={setPriceMax}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onUpgrade={() => { setMobileFilterOpen(false); setShowUpgradeModal(true); }}
+      />
     </>
   );
 }
