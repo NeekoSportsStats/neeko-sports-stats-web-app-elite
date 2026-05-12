@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
-import { ArrowRight, ChevronRight, Target, Zap, Check, Crown, TrendingUp, TriangleAlert as AlertTriangle, Lock, Clock as UnlockIcon, ChartBar as BarChart2Icon, Star } from "lucide-react";
+import { ArrowRight, ChevronRight, Target, Zap, Check, Crown, TrendingUp, TriangleAlert as AlertTriangle, Lock, Clock as UnlockIcon, ChartBar as BarChart2Icon, Star, Users, Shield } from "lucide-react";
 import { MobileShell } from "@/components/MobileShell";
 import { supabase } from "@/lib/supabaseClient";
 import type { StatBoardPlayer, StatBoardMatch, StatLens } from "@/features/afl/stat-board/types";
