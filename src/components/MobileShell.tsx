@@ -57,7 +57,7 @@ const INFO_NAV = [
 ] as const;
 
 const PRODUCT_NAV = [
-  { label: "Stats Hub", to: "/stat-board/players", icon: BarChart2 },
+  { label: "Stats Hub", to: "/stat-board", icon: BarChart2 },
   { label: "Fantasy",   to: "/fantasy",            icon: Star      },
   { label: "Players",   to: "/sports/afl/players", icon: Users     },
   { label: "Teams",     to: "/sports/afl/teams",   icon: Shield    },
