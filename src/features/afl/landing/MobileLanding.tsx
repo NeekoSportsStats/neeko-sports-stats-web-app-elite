@@ -1109,19 +1109,24 @@ export default function MobileLanding({ isPremium }: Props) {
 
       {/* ─── HERO ─── */}
       {/* paddingTop offsets the fixed header: 62px MobileHeader + 40px ProductNav = 102px */}
+      {/* paddingBottom extends the image area below the content without adding blank space —
+          the content sits naturally, the image layer fills the extra height underneath */}
       <section style={{
         position: "relative",
         paddingTop: "calc(102px + 28px)",
-        paddingBottom: 40,
+        paddingBottom: 160,
         overflow: "hidden",
-        backgroundImage: `
-          linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(5,8,12,0.38) 45%, rgba(7,9,13,0.88) 80%, rgba(7,9,13,1.0) 100%),
-          url('/images/Fantasy_sports_war_room_setup.png')
-        `,
-        backgroundSize: "130% auto",
-        backgroundPosition: "center 30%",
+        backgroundImage: `url('/images/Fantasy_sports_war_room_setup.png')`,
+        backgroundSize: "cover",
+        backgroundPosition: "center center",
         backgroundRepeat: "no-repeat",
       }}>
+
+        {/* Overlay — separate layer so we can control fade independently of image */}
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
+          background: "linear-gradient(to bottom, rgba(0,0,0,0.10) 0%, rgba(5,8,12,0.40) 40%, rgba(7,9,13,0.82) 65%, rgba(7,9,13,0.97) 82%, #07090d 100%)",
+        }} />
 
         <div style={{ position: "relative", zIndex: 2, padding: "0 16px" }}>
           {roundLabel && (
@@ -1169,13 +1174,6 @@ export default function MobileLanding({ isPremium }: Props) {
             </Link>
           </div>
         </div>
-
-        {/* Fade into next section */}
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0, height: 64,
-          background: "linear-gradient(to bottom, transparent 0%, #07090d 100%)",
-          zIndex: 3, pointerEvents: "none",
-        }} />
       </section>
 
       {/* ─── FREE ROUND PREVIEW ─── */}
