@@ -129,18 +129,18 @@ function TeamCard({ team, stats }: { team: TeamMeta; stats?: TeamStats }) {
       }} />
 
       {/* Card body */}
-      <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+      <div style={{ padding: "10px 12px 12px", display: "flex", flexDirection: "column", gap: 7, flex: 1 }}>
 
         {/* Top row — name + abbr badge */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 6 }}>
           <div style={{ minWidth: 0 }}>
             <p style={{
               margin: 0,
-              fontSize: 13,
+              fontSize: 12.5,
               fontWeight: 700,
               color: hovered ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.76)",
               letterSpacing: "-0.01em",
-              lineHeight: 1.3,
+              lineHeight: 1.25,
               transition: "color 0.18s ease",
               wordBreak: "break-word",
             }}>
@@ -148,8 +148,8 @@ function TeamCard({ team, stats }: { team: TeamMeta; stats?: TeamStats }) {
             </p>
             {hasCount && (
               <p style={{
-                margin: "3px 0 0",
-                fontSize: 11,
+                margin: "2px 0 0",
+                fontSize: 10.5,
                 color: "rgba(255,255,255,0.30)",
                 fontWeight: 500,
               }}>
@@ -159,15 +159,15 @@ function TeamCard({ team, stats }: { team: TeamMeta; stats?: TeamStats }) {
           </div>
           <span style={{
             flexShrink: 0,
-            fontSize: 9,
+            fontSize: 8.5,
             fontWeight: 800,
-            letterSpacing: "0.12em",
+            letterSpacing: "0.10em",
             textTransform: "uppercase",
             color: hovered ? "rgba(255,255,255,0.50)" : "rgba(255,255,255,0.22)",
             background: "rgba(255,255,255,0.05)",
             border: "1px solid rgba(255,255,255,0.07)",
-            borderRadius: 5,
-            padding: "3px 7px",
+            borderRadius: 4,
+            padding: "2px 5px",
             transition: "color 0.18s ease",
             marginTop: 1,
             whiteSpace: "nowrap",
@@ -176,21 +176,21 @@ function TeamCard({ team, stats }: { team: TeamMeta; stats?: TeamStats }) {
           </span>
         </div>
 
-        {/* Position breakdown */}
+        {/* Position breakdown — grid of 2 cols on mobile, wrap on desktop */}
         {posCounts.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+          <div className="tdir-pos-grid" style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
             {posCounts.map(({ pos, n }) => (
               <span key={pos} style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 4,
-                padding: "3px 7px",
-                borderRadius: 5,
+                gap: 3,
+                padding: "2px 6px",
+                borderRadius: 4,
                 background: "rgba(255,255,255,0.04)",
                 border: "1px solid rgba(255,255,255,0.07)",
               }}>
                 <span style={{
-                  fontSize: 9,
+                  fontSize: 8.5,
                   fontWeight: 800,
                   letterSpacing: "0.09em",
                   textTransform: "uppercase",
@@ -199,7 +199,7 @@ function TeamCard({ team, stats }: { team: TeamMeta; stats?: TeamStats }) {
                   {pos}
                 </span>
                 <span style={{
-                  fontSize: 11,
+                  fontSize: 10.5,
                   fontWeight: 700,
                   color: "rgba(255,255,255,0.58)",
                 }}>
@@ -210,8 +210,8 @@ function TeamCard({ team, stats }: { team: TeamMeta; stats?: TeamStats }) {
           </div>
         )}
 
-        {/* CTA row */}
-        <div style={{
+        {/* CTA row — hidden on mobile */}
+        <div className="tdir-cta-row" style={{
           marginTop: "auto",
           display: "flex",
           alignItems: "center",
@@ -252,20 +252,20 @@ function SkeletonCard() {
       overflow: "hidden",
     }}>
       <div style={{ height: 3, background: "rgba(255,255,255,0.06)" }} />
-      <div style={{ padding: "14px 16px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+      <div style={{ padding: "10px 12px 12px", display: "flex", flexDirection: "column", gap: 7 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 6 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ height: 13, width: "72%", borderRadius: 4, background: "rgba(255,255,255,0.08)", animation: "nbpulse 1.5s ease-in-out infinite" }} />
-            <div style={{ height: 10, width: "30%", borderRadius: 3, background: "rgba(255,255,255,0.05)", marginTop: 5, animation: "nbpulse 1.5s ease-in-out infinite" }} />
+            <div style={{ height: 12, width: "72%", borderRadius: 4, background: "rgba(255,255,255,0.08)", animation: "nbpulse 1.5s ease-in-out infinite" }} />
+            <div style={{ height: 9, width: "30%", borderRadius: 3, background: "rgba(255,255,255,0.05)", marginTop: 4, animation: "nbpulse 1.5s ease-in-out infinite" }} />
           </div>
-          <div style={{ height: 20, width: 38, borderRadius: 5, background: "rgba(255,255,255,0.05)", animation: "nbpulse 1.5s ease-in-out infinite" }} />
+          <div style={{ height: 18, width: 32, borderRadius: 4, background: "rgba(255,255,255,0.05)", animation: "nbpulse 1.5s ease-in-out infinite" }} />
         </div>
-        <div style={{ display: "flex", gap: 4 }}>
-          {[34, 34, 32, 34].map((w, i) => (
-            <div key={i} style={{ height: 22, width: w, borderRadius: 5, background: "rgba(255,255,255,0.05)", animation: "nbpulse 1.5s ease-in-out infinite" }} />
+        <div style={{ display: "flex", gap: 3 }}>
+          {[30, 30, 28, 30].map((w, i) => (
+            <div key={i} style={{ height: 19, width: w, borderRadius: 4, background: "rgba(255,255,255,0.05)", animation: "nbpulse 1.5s ease-in-out infinite" }} />
           ))}
         </div>
-        <div style={{ height: 11, width: 60, borderRadius: 3, background: "rgba(255,255,255,0.04)", animation: "nbpulse 1.5s ease-in-out infinite" }} />
+        <div className="tdir-cta-row" style={{ height: 10, width: 55, borderRadius: 3, background: "rgba(255,255,255,0.04)", animation: "nbpulse 1.5s ease-in-out infinite" }} />
       </div>
     </div>
   );
@@ -323,15 +323,16 @@ export default function AFLTeamsDirectoryPage() {
       <div style={{
         minHeight: "100vh",
         background: "#080808",
-        padding: "clamp(20px, 3vw, 40px) clamp(12px, 3vw, 28px)",
+        padding: "clamp(14px, 3vw, 40px) clamp(12px, 3vw, 28px)",
         maxWidth: 1120,
         margin: "0 auto",
+        overflowX: "hidden",
       }}>
 
         {/* ── Page header ── */}
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
-            <Shield size={13} style={{ color: "rgba(255,255,255,0.22)" }} />
+        <div style={{ marginBottom: "clamp(16px, 3vw, 32px)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 6 }}>
+            <Shield size={12} style={{ color: "rgba(255,255,255,0.22)" }} />
             <span style={{
               fontSize: 10, fontWeight: 800, letterSpacing: "0.44em",
               textTransform: "uppercase", color: "rgba(255,255,255,0.22)",
@@ -340,7 +341,7 @@ export default function AFLTeamsDirectoryPage() {
             </span>
           </div>
           <h1 style={{
-            fontSize: "clamp(1.45rem, 3vw, 2rem)",
+            fontSize: "clamp(1.3rem, 3vw, 2rem)",
             fontWeight: 900,
             letterSpacing: "-0.035em",
             color: "#F0F0F0",
@@ -349,9 +350,9 @@ export default function AFLTeamsDirectoryPage() {
           }}>
             AFL Fantasy Team Directory
           </h1>
-          <p style={{
-            marginTop: 9,
-            fontSize: 13.5,
+          <p className="tdir-desc-hide" style={{
+            marginTop: 8,
+            fontSize: 13,
             color: "rgba(255,255,255,0.36)",
             lineHeight: 1.55,
             maxWidth: 560,
@@ -359,9 +360,9 @@ export default function AFLTeamsDirectoryPage() {
             Browse every AFL team, view roster counts and jump into team pages for player breakdowns, projections and fantasy signals.
           </p>
           {!loading && rows.length > 0 && (
-            <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 5 }}>
+            <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 5 }}>
               <Users size={11} style={{ color: "rgba(255,255,255,0.20)" }} />
-              <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.24)", fontWeight: 500 }}>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.24)", fontWeight: 500 }}>
                 {rows.length} players tracked across {AFL_TEAMS.length} teams
               </span>
             </div>
@@ -371,8 +372,8 @@ export default function AFLTeamsDirectoryPage() {
         {/* ── Grid ── */}
         <div style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-          gap: 10,
+          gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
+          gap: 8,
         }}>
           {loading
             ? AFL_TEAMS.map(t => <SkeletonCard key={t.slug} />)
@@ -392,6 +393,10 @@ export default function AFLTeamsDirectoryPage() {
         @keyframes nbpulse {
           0%, 100% { opacity: 0.65; }
           50%       { opacity: 0.30; }
+        }
+        @media (max-width: 539px) {
+          .tdir-desc-hide { display: none !important; }
+          .tdir-cta-row { display: none !important; }
         }
       `}</style>
     </>
