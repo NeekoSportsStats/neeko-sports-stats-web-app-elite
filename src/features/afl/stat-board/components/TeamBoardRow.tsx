@@ -47,7 +47,7 @@ function RecentChips({ values, lens }: { values: number[] | null; lens: TeamStat
     return (
       <div className="flex flex-wrap gap-[3px]">
         {[0, 1, 2, 3].map((i) => (
-          <span key={i} className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] text-white/20">—</span>
+          <span key={i} className="rounded bg-white/5 px-1 py-0.5 text-[9px] text-white/20">—</span>
         ))}
       </div>
     );
@@ -74,7 +74,7 @@ function RecentChips({ values, lens }: { values: number[] | null; lens: TeamStat
           <span
             key={i}
             title={`${v} ${unit}`}
-            className={`rounded px-1.5 py-0.5 text-[10px] font-semibold tabular-nums leading-none ${chipCls}`}
+            className={`rounded px-1 py-0.5 text-[9px] font-semibold tabular-nums leading-none ${chipCls}`}
           >
             {v}
           </span>
@@ -1238,10 +1238,10 @@ export const MobileTeamCard = memo(function MobileTeamCard({
         aria-expanded={isExpanded}
         aria-label={`${row.team_name} — ${isExpanded ? "collapse" : "expand"} detail`}
         className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60"
-        style={{ width: "100%", minWidth: 0, boxSizing: "border-box", display: "block", padding: "12px 12px 10px" }}
+        style={{ width: "100%", minWidth: 0, boxSizing: "border-box", display: "block", padding: "9px 10px 8px" }}
       >
         {/* Row 1: team name (shrinks) + projection+chevron (fixed right) */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5, minWidth: 0 }}>
           <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
             {(() => {
               const path = teamPagePath(row.team_name);
@@ -1272,7 +1272,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
             <div style={{ textAlign: "right" }}>
               <p className="text-[7px] text-white/25 uppercase tracking-wider leading-none" style={{ marginBottom: 2 }}>Proj</p>
               {proj != null ? (
-                <span className="text-[17px] font-bold text-[#F5C84C] tabular-nums leading-none">{proj}</span>
+                <span className="text-[15px] font-bold text-[#F5C84C] tabular-nums leading-none">{proj}</span>
               ) : (
                 <span className="text-[12px] text-white/22">—</span>
               )}
@@ -1286,7 +1286,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
         </div>
 
         {/* Row 2: recent chips */}
-        <div style={{ marginBottom: 8, minWidth: 0, overflow: "hidden" }}>
+        <div style={{ marginBottom: 6, minWidth: 0, overflow: "hidden" }}>
           <RecentChips values={row.recent_values} lens={lens} />
         </div>
 
@@ -1303,7 +1303,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
           }}
         >
           {/* Avg col */}
-          <div style={{ padding: "6px 6px", borderRight: "1px solid rgba(255,255,255,0.08)", minWidth: 0, overflow: "hidden" }}>
+          <div style={{ padding: "5px 5px", borderRight: "1px solid rgba(255,255,255,0.08)", minWidth: 0, overflow: "hidden" }}>
             <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none" style={{ marginBottom: 2 }}>Avg</p>
             <p className={`text-[11px] font-semibold tabular-nums leading-none ${avg != null ? "text-white/68" : "text-white/22"}`}>
               {avg != null ? fmt(avg) : "—"}
@@ -1326,7 +1326,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
               <div
                 key={t}
                 style={{
-                  padding: "6px 4px",
+                  padding: "5px 3px",
                   textAlign: "center",
                   borderRight: isLastThresh ? "none" : "1px solid rgba(255,255,255,0.08)",
                   minWidth: 0,
@@ -1346,7 +1346,7 @@ export const MobileTeamCard = memo(function MobileTeamCard({
           })}
 
           {/* Form col */}
-          <div style={{ padding: "6px 6px", borderLeft: "1px solid rgba(255,255,255,0.08)", minWidth: 0, overflow: "hidden" }}>
+          <div style={{ padding: "5px 5px", borderLeft: "1px solid rgba(255,255,255,0.08)", minWidth: 0, overflow: "hidden" }}>
             <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none" style={{ marginBottom: 2 }}>Form</p>
             {conf ? (
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
