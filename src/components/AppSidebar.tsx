@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -9,63 +10,112 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-import { Chrome as Home, Star, User, Crown, Users, Share2, CircleHelp as HelpCircle, FileText, Mail, TableProperties, Shield } from "lucide-react";
+import {
+  Chrome as Home,
+  Star,
+  User,
+  Crown,
+  Users,
+  Share2,
+  CircleHelp as HelpCircle,
+  FileText,
+  Mail,
+  TableProperties,
+  Shield,
+  ChevronDown,
+  ChevronRight,
+} from "lucide-react";
 
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { Separator } from "@/components/ui/separator";
 
-const STAT_BOARD_SUB_ITEMS = [
-  { title: "Player Stats", url: "/stat-board/players"      },
-  { title: "Team Stats",   url: "/stat-board/teams"        },
-  { title: "Match Centre", url: "/stat-board/match-centre" },
+// ── Nav structure ─────────────────────────────────────────────────────────────
+
+const EXPANDABLE_GROUPS = [
+  {
+    key:      "stat-board",
+    title:    "Stats Hub",
+    url:      "/stat-board",
+    icon:     TableProperties,
+    children: [
+      { title: "Player Stats",  url: "/stat-board/players"      },
+      { title: "Team Stats",    url: "/stat-board/teams"        },
+      { title: "Match Centre",  url: "/stat-board/match-centre" },
+    ],
+  },
+  {
+    key:      "fantasy",
+    title:    "Fantasy Hub",
+    url:      "/fantasy",
+    icon:     Star,
+    children: [
+      { title: "Current Week",  url: "/fantasy/current-week"  },
+      { title: "Rankings",      url: "/fantasy/rankings"      },
+      { title: "Market Watch",  url: "/fantasy/market-watch"  },
+    ],
+  },
 ] as const;
 
-const FANTASY_SUB_ITEMS = [
-  { title: "Current Week", url: "/fantasy/current-week" },
-  { title: "Rankings",     url: "/fantasy/rankings"     },
-  { title: "Market Watch", url: "/fantasy/market-watch" },
+const SIMPLE_NAV = [
+  { title: "Home",    url: "/",                   icon: Home,   exact: true },
+  { title: "Players", url: "/sports/afl/players", icon: User,   exact: false },
+  { title: "Teams",   url: "/sports/afl/teams",   icon: Shield, exact: false },
 ] as const;
+
+const INFO_NAV = [
+  { title: "About Us",   url: "/about",    icon: Users      },
+  { title: "Socials",    url: "/socials",  icon: Share2     },
+  { title: "FAQ",        url: "/faq",      icon: HelpCircle },
+  { title: "Policies",   url: "/policies", icon: FileText   },
+  { title: "Contact Us", url: "/contact",  icon: Mail       },
+] as const;
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export function AppSidebar() {
   const { isMobile, state, setOpenMobile } = useSidebar();
   const { isPremium } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const currentPath = location.pathname;
   const isExpanded = state === "expanded";
 
-  const handleLinkClick = () => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-  };
+  // Which expandable group is open on mobile (key string or null)
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
 
-  const isActive = (path: string) => {
-    if (path === "/") return currentPath === "/";
+  const isActive = (path: string, exact = false) => {
+    if (exact) return currentPath === path;
     return currentPath === path || currentPath.startsWith(path + "/");
   };
 
-  // Show Stat Board sub-items whenever the user is anywhere under /stat-board
-  // (including the hub page itself) and the sidebar is visible.
-  const showStatBoardSubs = isActive("/stat-board") && (isExpanded || isMobile);
-  const showFantasySubs   = isActive("/fantasy")    && (isExpanded || isMobile);
+  const closeSidebar = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
-  const mainNav = [
-    { title: "Home",        url: "/",                    icon: Home,           exact: true },
-    { title: "Stat Board",  url: "/stat-board",          icon: TableProperties             },
-    { title: "Fantasy Hub", url: "/fantasy",             icon: Star                        },
-    { title: "Players",     url: "/sports/afl/players",  icon: User                        },
-    { title: "Teams",       url: "/sports/afl/teams",    icon: Shield                      },
-  ];
+  // ── Desktop: sub-items always mirror route active state (unchanged behaviour)
+  // ── Mobile: controlled by openGroup state
 
-  const infoNav = [
-    { title: "About Us",   url: "/about",    icon: Users      },
-    { title: "Socials",    url: "/socials",  icon: Share2     },
-    { title: "FAQ",        url: "/faq",      icon: HelpCircle },
-    { title: "Policies",   url: "/policies", icon: FileText   },
-    { title: "Contact Us", url: "/contact",  icon: Mail       },
-  ];
+  const groupIsOpen = (key: string, url: string): boolean => {
+    if (isMobile) return openGroup === key;
+    // Desktop: expand when anywhere under the parent route
+    return isActive(url) && (isExpanded || isMobile);
+  };
+
+  const handleParentClick = (key: string, url: string) => {
+    if (isMobile) {
+      if (openGroup === key) {
+        // Already expanded — second tap navigates to hub page
+        navigate(url);
+        closeSidebar();
+      } else {
+        // First tap — expand this group, collapse others
+        setOpenGroup(key);
+      }
+    }
+    // Desktop: parent link navigates directly (normal NavLink behaviour)
+  };
 
   return (
     <Sidebar collapsible="offcanvas" className="z-50">
@@ -73,10 +123,10 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNav.map(({ title, url, icon: Icon, exact }) => {
-                const active = exact ? currentPath === url : isActive(url);
-                const isStatBoard  = title === "Stat Board";
-                const isFantasyHub = title === "Fantasy Hub";
+
+              {/* Simple top item: Home */}
+              {SIMPLE_NAV.filter(n => n.url === "/").map(({ title, url, icon: Icon, exact }) => {
+                const active = isActive(url, exact);
                 return (
                   <SidebarMenuItem key={title}>
                     <SidebarMenuButton asChild>
@@ -86,62 +136,89 @@ export function AppSidebar() {
                         className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/50 ${
                           active ? "bg-muted text-primary" : "text-foreground/70"
                         }`}
-                        onClick={handleLinkClick}
+                        onClick={closeSidebar}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
                         <span>{title}</span>
                       </NavLink>
                     </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
 
-                    {/* Stat Board sub-items — shown on any /stat-board/* route */}
-                    {isStatBoard && showStatBoardSubs && (
-                      <ul className="mt-0.5 mb-1 ml-7 space-y-0.5" role="group" aria-label="Stat Board sections">
-                        {STAT_BOARD_SUB_ITEMS.map((sub) => {
-                          const subActive = currentPath === sub.url;
-                          return (
-                            <li key={sub.title}>
-                              <NavLink
-                                to={sub.url}
-                                className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors hover:bg-muted/40 ${
-                                  subActive
-                                    ? "bg-muted/60 text-primary"
-                                    : "text-foreground/50 hover:text-foreground/80"
-                                }`}
-                                onClick={handleLinkClick}
-                              >
-                                <span
-                                  className={`h-1 w-1 rounded-full shrink-0 ${subActive ? "bg-primary" : "bg-foreground/20"}`}
-                                  aria-hidden
-                                />
-                                {sub.title}
-                              </NavLink>
-                            </li>
-                          );
-                        })}
-                      </ul>
+              {/* Expandable groups: Stats Hub, Fantasy Hub */}
+              {EXPANDABLE_GROUPS.map(({ key, title, url, icon: Icon, children }) => {
+                const parentActive = isActive(url);
+                const open = groupIsOpen(key, url);
+
+                return (
+                  <SidebarMenuItem key={key}>
+
+                    {/* Parent row */}
+                    {isMobile ? (
+                      // Mobile: button with expand/navigate double-tap logic
+                      <SidebarMenuButton asChild>
+                        <button
+                          onClick={() => handleParentClick(key, url)}
+                          className={`w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/50 ${
+                            parentActive ? "bg-muted text-primary" : "text-foreground/70"
+                          }`}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="flex-1 text-left">{title}</span>
+                          {open
+                            ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-foreground/40 transition-transform" />
+                            : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-foreground/30 transition-transform" />
+                          }
+                        </button>
+                      </SidebarMenuButton>
+                    ) : (
+                      // Desktop: normal NavLink
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={url}
+                          className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/50 ${
+                            parentActive ? "bg-muted text-primary" : "text-foreground/70"
+                          }`}
+                          onClick={closeSidebar}
+                        >
+                          <Icon className="h-4 w-4 shrink-0" />
+                          <span className="flex-1">{title}</span>
+                          {open
+                            ? <ChevronDown className="h-3.5 w-3.5 shrink-0 text-foreground/40" />
+                            : <ChevronRight className="h-3.5 w-3.5 shrink-0 text-foreground/25" />
+                          }
+                        </NavLink>
+                      </SidebarMenuButton>
                     )}
 
-                    {/* Fantasy Hub sub-items — shown on any /fantasy/* route */}
-                    {isFantasyHub && showFantasySubs && (
-                      <ul className="mt-0.5 mb-1 ml-7 space-y-0.5" role="group" aria-label="Fantasy Hub sections">
-                        {FANTASY_SUB_ITEMS.map((sub) => {
-                          const subActive = currentPath === sub.url;
+                    {/* Child links */}
+                    {open && (
+                      <ul
+                        className="mt-0.5 mb-1 ml-7 space-y-0.5"
+                        role="group"
+                        aria-label={`${title} sections`}
+                      >
+                        {children.map((child) => {
+                          const childActive = currentPath === child.url;
                           return (
-                            <li key={sub.title}>
+                            <li key={child.title}>
                               <NavLink
-                                to={sub.url}
-                                className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors hover:bg-muted/40 ${
-                                  subActive
+                                to={child.url}
+                                className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] font-medium transition-colors ${
+                                  childActive
                                     ? "bg-muted/60 text-primary"
-                                    : "text-foreground/50 hover:text-foreground/80"
+                                    : "text-foreground/50 hover:bg-muted/40 hover:text-foreground/80"
                                 }`}
-                                onClick={handleLinkClick}
+                                onClick={() => { setOpenGroup(null); closeSidebar(); }}
                               >
                                 <span
-                                  className={`h-1 w-1 rounded-full shrink-0 ${subActive ? "bg-primary" : "bg-foreground/20"}`}
+                                  className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                                    childActive ? "bg-primary" : "bg-foreground/18"
+                                  }`}
                                   aria-hidden
                                 />
-                                {sub.title}
+                                {child.title}
                               </NavLink>
                             </li>
                           );
@@ -152,6 +229,29 @@ export function AppSidebar() {
                 );
               })}
 
+              {/* Simple nav items: Players, Teams */}
+              {SIMPLE_NAV.filter(n => n.url !== "/").map(({ title, url, icon: Icon, exact }) => {
+                const active = isActive(url, exact);
+                return (
+                  <SidebarMenuItem key={title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={url}
+                        end={exact}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/50 ${
+                          active ? "bg-muted text-primary" : "text-foreground/70"
+                        }`}
+                        onClick={closeSidebar}
+                      >
+                        <Icon className="h-4 w-4 shrink-0" />
+                        <span>{title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+
+              {/* Neeko+ CTA */}
               {!isPremium && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
@@ -160,7 +260,7 @@ export function AppSidebar() {
                       className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/50 ${
                         isActive("/neeko-plus") ? "bg-muted text-primary" : "text-[#F5C84C]/80"
                       }`}
-                      onClick={handleLinkClick}
+                      onClick={closeSidebar}
                     >
                       <Crown className="h-4 w-4 shrink-0 text-[#F5C84C]" />
                       <span>Neeko+</span>
@@ -169,6 +269,7 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               )}
 
+              {/* Account */}
               <SidebarMenuItem>
                 <SidebarMenuButton asChild>
                   <NavLink
@@ -176,13 +277,14 @@ export function AppSidebar() {
                     className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/50 ${
                       isActive("/account") ? "bg-muted text-primary" : "text-foreground/70"
                     }`}
-                    onClick={handleLinkClick}
+                    onClick={closeSidebar}
                   >
                     <User className="h-4 w-4 shrink-0" />
                     <span>Account</span>
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -192,7 +294,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {infoNav.map(({ title, url, icon: Icon }) => (
+              {INFO_NAV.map(({ title, url, icon: Icon }) => (
                 <SidebarMenuItem key={title}>
                   <SidebarMenuButton asChild>
                     <NavLink
@@ -200,7 +302,7 @@ export function AppSidebar() {
                       className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted/50 ${
                         isActive(url) ? "bg-muted text-primary" : "text-foreground/60"
                       }`}
-                      onClick={handleLinkClick}
+                      onClick={closeSidebar}
                     >
                       <Icon className="h-4 w-4 shrink-0" />
                       <span>{title}</span>
@@ -211,6 +313,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
       </SidebarContent>
     </Sidebar>
   );
