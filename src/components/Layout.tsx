@@ -8,29 +8,33 @@ import { Outlet } from "react-router-dom";
 export function Layout() {
   return (
     <DesktopSidebarProvider>
-      <SidebarProvider defaultOpen={false}>
-        {/* ── Mobile shell (< lg / 1024px) — unchanged ─────────────────────── */}
-        <div className="lg:hidden">
-          <MobileShell />
-          {/* AppSidebar provides the drawer used by MobileShell's burger trigger */}
+      {/* ── Mobile shell (< lg / 1024px) ─────────────────────────────────── */}
+      {/* Rendered outside SidebarProvider so it never participates in the   */}
+      {/* flex row that SidebarProvider creates, eliminating the right-side   */}
+      {/* dead column bug on mobile.                                          */}
+      <div className="lg:hidden">
+        <MobileShell />
+        {/* AppSidebar: on mobile renders a Sheet (portal) — zero layout width */}
+        <SidebarProvider defaultOpen={false}>
           <AppSidebar />
-        </div>
+        </SidebarProvider>
+      </div>
 
-        {/* ── Desktop header (≥ lg) ─────────────────────────────────────────── */}
+      {/* ── Desktop layout (≥ lg) ─────────────────────────────────────────── */}
+      <div className="hidden lg:block">
         <DesktopHeader />
+        <DesktopSidebar />
+      </div>
 
-        {/* ── Desktop sidebar (≥ lg) ────────────────────────────────────────── */}
-        <div className="hidden lg:block">
-          <DesktopSidebar />
-        </div>
-
-        {/* ── Page content ──────────────────────────────────────────────────── */}
-        {/*   Mobile (< lg):  full width, 102px top padding for mobile shell     */}
-        {/*   Desktop (≥ lg): no permanent left margin — sidebar is a drawer     */}
-        <main className="flex-1 min-w-0 min-h-screen bg-background overflow-auto pt-[102px] lg:pt-[60px]">
-          <Outlet />
-        </main>
-      </SidebarProvider>
+      {/* ── Page content ──────────────────────────────────────────────────── */}
+      {/*   Mobile (< lg):  full viewport width, 102px top padding            */}
+      {/*   Desktop (≥ lg): full width minus no sidebar reservation            */}
+      <main
+        className="min-h-screen bg-background overflow-auto pt-[102px] lg:pt-[60px]"
+        style={{ width: "100%", maxWidth: "100%", minWidth: 0 }}
+      >
+        <Outlet />
+      </main>
     </DesktopSidebarProvider>
   );
 }
