@@ -264,10 +264,26 @@ function InsightCard({
 function RosterDepthChart({
   players,
   accentColor,
+  isPremium,
 }: {
   players: TeamPlayer[];
   accentColor: string;
+  isPremium: boolean;
 }) {
+  if (!isPremium) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+        <Lock size={16} className="text-amber-400/40" />
+        <div>
+          <p className="text-[11px] font-semibold text-white/40">Projection Depth Chart</p>
+          <p className="text-[10px] text-white/25 mt-0.5 leading-snug">Per-player projected scores and signals.</p>
+        </div>
+        <Link to="/upgrade" className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/90 hover:bg-amber-400 transition-colors px-3 py-1.5 text-[10px] font-black text-black">
+          <Zap size={9} /> Unlock
+        </Link>
+      </div>
+    );
+  }
   const data = players
     .slice(0, 15)
     .map((p, i) => {
@@ -369,10 +385,24 @@ function RosterDepthChart({
 // ─── Action mix donut chart ───────────────────────────────────────────────────
 
 function ActionMixChart({
-  startCt, holdCt, sitCt, hardSitCt, totalPlayers,
+  startCt, holdCt, sitCt, hardSitCt, totalPlayers, isPremium,
 }: {
-  startCt: number; holdCt: number; sitCt: number; hardSitCt: number; totalPlayers: number;
+  startCt: number; holdCt: number; sitCt: number; hardSitCt: number; totalPlayers: number; isPremium: boolean;
 }) {
+  if (!isPremium) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 gap-3 text-center">
+        <Lock size={16} className="text-amber-400/40" />
+        <div>
+          <p className="text-[11px] font-semibold text-white/40">Signal Distribution</p>
+          <p className="text-[10px] text-white/25 mt-0.5 leading-snug">Round action signals across the full squad.</p>
+        </div>
+        <Link to="/upgrade" className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/90 hover:bg-amber-400 transition-colors px-3 py-1.5 text-[10px] font-black text-black">
+          <Zap size={9} /> Unlock
+        </Link>
+      </div>
+    );
+  }
   const segments = [
     { label: 'Start',     count: startCt,              color: '#34d399', desc: 'Projection clears breakeven target' },
     { label: 'Hold',      count: holdCt - hardSitCt,   color: 'rgba(255,255,255,0.25)', desc: 'No decisive signal — monitor' },
@@ -463,13 +493,7 @@ function ActionMixChart({
         </div>
       </div>
 
-      {/* insight line */}
-      {startCt > 0 && (
-        <p className="text-[9px] text-white/30 leading-snug border-t border-white/[0.05] pt-3">
-          {startCt} of {totalPlayers} players ({Math.round((startCt / totalPlayers) * 100)}%) hold a Start signal this round.
-          {sitCt + hardSitCt > 0 && ` ${sitCt + hardSitCt} are rated Sit or Hard Sit.`}
-        </p>
-      )}
+      {/* insight line — signal counts are premium */}
     </div>
   );
 }
@@ -495,11 +519,12 @@ const LINE_META: Record<string, { label: string; abbr: string; icon: React.React
 };
 
 function LineSummaryCard({
-  lineKey, players, accentColor,
+  lineKey, players, accentColor, isPremium,
 }: {
   lineKey: string;
   players: TeamPlayer[];
   accentColor: string;
+  isPremium: boolean;
 }) {
   if (!players.length) return null;
   const meta     = LINE_META[lineKey] ?? { label: lineKey, abbr: lineKey, icon: null };
@@ -543,18 +568,22 @@ function LineSummaryCard({
       {/* ── 4 key metrics ── */}
       <div className="grid grid-cols-4 divide-x divide-white/[0.04] border-b border-white/[0.05]">
         {[
-          { label: 'Players', value: players.length,    color: undefined },
-          { label: 'Avg Proj', value: avgProj,          color: undefined },
-          { label: 'Start',   value: startCt,           color: startCt > 0 ? '#34d399' : undefined },
-          { label: 'Sit',     value: sitCt,             color: sitCt   > 0 ? '#fb923c' : undefined },
-        ].map(({ label, value, color }) => (
+          { label: 'Players', value: players.length, color: undefined, locked: false },
+          { label: 'Avg Proj', value: avgProj,        color: undefined, locked: !isPremium },
+          { label: 'Start',   value: startCt,         color: startCt > 0 ? '#34d399' : undefined, locked: !isPremium },
+          { label: 'Sit',     value: sitCt,           color: sitCt   > 0 ? '#fb923c' : undefined, locked: !isPremium },
+        ].map(({ label, value, color, locked }) => (
           <div key={label} className="flex flex-col items-center py-2.5 gap-0.5">
-            <span
-              className="text-[16px] font-black tabular-nums leading-none"
-              style={color ? { color } : { color: 'rgba(255,255,255,0.70)' }}
-            >
-              {value}
-            </span>
+            {locked ? (
+              <Lock size={10} className="text-amber-400/35 mb-0.5" />
+            ) : (
+              <span
+                className="text-[16px] font-black tabular-nums leading-none"
+                style={color ? { color } : { color: 'rgba(255,255,255,0.70)' }}
+              >
+                {value}
+              </span>
+            )}
             <span className="text-[7px] uppercase tracking-widest text-white/25 leading-tight text-center">{label}</span>
           </div>
         ))}
@@ -563,16 +592,24 @@ function LineSummaryCard({
       {/* ── signal bar ── */}
       <div className="px-4 py-2.5 border-b border-white/[0.04] space-y-1.5">
         <span className="text-[7px] uppercase tracking-widest text-white/22">Action signals</span>
-        <div className="flex h-1.5 rounded-full overflow-hidden gap-px">
-          {startPct > 0 && <div className="rounded-l-full" style={{ width: `${startPct}%`, backgroundColor: '#34d399' }} />}
-          {holdPct  > 0 && <div style={{ width: `${holdPct}%`,  backgroundColor: 'rgba(255,255,255,0.15)' }} />}
-          {sitPct   > 0 && <div className="rounded-r-full" style={{ width: `${sitPct}%`,   backgroundColor: '#fb923c' }} />}
-        </div>
-        <div className="flex items-center gap-3">
-          {startCt > 0 && <span className="text-[8px] text-emerald-400/70">{startCt} Start</span>}
-          <span className="text-[8px] text-white/25">{holdCt} Hold</span>
-          {sitCt > 0   && <span className="text-[8px] text-orange-400/70">{sitCt} Sit</span>}
-        </div>
+        {isPremium ? (
+          <>
+            <div className="flex h-1.5 rounded-full overflow-hidden gap-px">
+              {startPct > 0 && <div className="rounded-l-full" style={{ width: `${startPct}%`, backgroundColor: '#34d399' }} />}
+              {holdPct  > 0 && <div style={{ width: `${holdPct}%`,  backgroundColor: 'rgba(255,255,255,0.15)' }} />}
+              {sitPct   > 0 && <div className="rounded-r-full" style={{ width: `${sitPct}%`,   backgroundColor: '#fb923c' }} />}
+            </div>
+            <div className="flex items-center gap-3">
+              {startCt > 0 && <span className="text-[8px] text-emerald-400/70">{startCt} Start</span>}
+              <span className="text-[8px] text-white/25">{holdCt} Hold</span>
+              {sitCt > 0   && <span className="text-[8px] text-orange-400/70">{sitCt} Sit</span>}
+            </div>
+          </>
+        ) : (
+          <div className="h-1.5 rounded-full bg-white/[0.06] flex items-center justify-center">
+            <Lock size={8} className="text-amber-400/30" />
+          </div>
+        )}
       </div>
 
       {/* ── top player callout ── */}
@@ -592,12 +629,16 @@ function LineSummaryCard({
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <div className="text-right">
-              <p className="text-[15px] font-black tabular-nums leading-none" style={{ color: accentColor }}>
-                {fmtProj(topPlayer.projection)}
-              </p>
-              <p className="text-[7px] text-white/22 uppercase tracking-wide">proj</p>
-            </div>
+            {isPremium ? (
+              <div className="text-right">
+                <p className="text-[15px] font-black tabular-nums leading-none" style={{ color: accentColor }}>
+                  {fmtProj(topPlayer.projection)}
+                </p>
+                <p className="text-[7px] text-white/22 uppercase tracking-wide">proj</p>
+              </div>
+            ) : (
+              <LockedCell />
+            )}
             <ChevronRight size={11} className="text-white/12 group-hover:text-white/38 transition-colors" />
           </div>
         </Link>
@@ -649,7 +690,7 @@ function LineDetailRows({
               to={`/sports/afl/players/${nameToSlug(p.player_name)}`}
               className="flex items-center gap-3 px-3 py-2 sm:px-4 sm:py-2.5 hover:bg-white/[0.03] transition-colors group"
             >
-              <ActionIcon action={p.action_canonical} />
+              <ActionIcon action={isPremium ? p.action_canonical : null} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="text-[12px] font-semibold text-white/78 group-hover:text-white transition-colors truncate">
@@ -674,12 +715,18 @@ function LineDetailRows({
                       )
                     : <LockedField size="xs" />
                   }
-                  <MiniBar value={proj} max={maxProj} color={accentColor} />
+                  <MiniBar value={isPremium ? proj : 0} max={maxProj} color={accentColor} />
                 </div>
               </div>
               <div className="text-right shrink-0">
-                <span className="text-[13px] font-bold tabular-nums text-white/72">{fmtProj(p.projection)}</span>
-                <p className="text-[7px] text-white/20 uppercase tracking-wide">proj</p>
+                {isPremium ? (
+                  <>
+                    <span className="text-[13px] font-bold tabular-nums text-white/72">{fmtProj(p.projection)}</span>
+                    <p className="text-[7px] text-white/20 uppercase tracking-wide">proj</p>
+                  </>
+                ) : (
+                  <LockedCell />
+                )}
               </div>
             </Link>
           );
@@ -786,10 +833,16 @@ function RosterRow({ player, rank, isPremium }: { player: TeamPlayer; rank: numb
         }
       </div>
 
-      {/* projection — always visible */}
-      <div className={`${COL.proj} text-right`}>
-        <p className="text-[14px] font-bold tabular-nums text-white/78 leading-tight">{fmtProj(player.projection)}</p>
-        <p className="text-[7px] text-white/20 uppercase tracking-wider leading-tight mt-0.5">proj</p>
+      {/* projection — premium only */}
+      <div className={`${COL.proj} flex items-center justify-end`}>
+        {isPremium ? (
+          <div className="text-right">
+            <p className="text-[14px] font-bold tabular-nums text-white/78 leading-tight">{fmtProj(player.projection)}</p>
+            <p className="text-[7px] text-white/20 uppercase tracking-wider leading-tight mt-0.5">proj</p>
+          </div>
+        ) : (
+          <LockedCell />
+        )}
       </div>
 
       {/* action badge — premium; free gets locked pill */}
@@ -861,7 +914,7 @@ function RosterSection({
     { label: 'Price',                     className: `${COL.price} text-right` },
     { label: isPremium ? 'BE'     : '',   className: `${COL.be} text-right` },
     { label: isPremium ? 'Edge'   : '',   className: `${COL.edge} text-right` },
-    { label: 'Proj',                      className: `${COL.proj} text-right` },
+    { label: isPremium ? 'Proj' : '',      className: `${COL.proj} text-right` },
     { label: isPremium ? 'Signal' : '',   className: `${COL.signal} text-right` },
     { label: '',                          className: COL.chev },              // chevron spacer
   ];
@@ -1034,22 +1087,12 @@ function PremiumCTA({ teamName }: { teamName: string }) {
 
 // ─── Related links / SEO section ─────────────────────────────────────────────
 
-function TeamSEOBlock({ teamName, teamSlug, players }: { teamName: string; teamSlug: string; players: TeamPlayer[] }) {
+function TeamSEOBlock({ teamName, teamSlug, players, isPremium }: { teamName: string; teamSlug: string; players: TeamPlayer[]; isPremium: boolean }) {
   const shortName = teamName.split(' ')[0];
   const isHistoric = ['Adelaide', 'Hawthorn', 'Geelong', 'Richmond', 'Carlton', 'Collingwood'].includes(shortName);
 
-  const top5 = players
-    .slice(0, 5)
-    .map(p => `${p.player_name} (${p.position ?? '—'}, proj: ${fmtProj(p.projection)})`)
-    .join(', ');
-
+  const top5Names = players.slice(0, 5).map(p => p.player_name).join(', ');
   const topPlayer = players[0];
-  const topProj = topPlayer ? fmtProj(topPlayer.projection) : '—';
-  const startPlayers = players.filter(p => {
-    const ac = (p.action_canonical ?? '').toUpperCase();
-    return ac === 'START' || ac === 'SMASH_START';
-  });
-  const startNames = startPlayers.slice(0, 3).map(p => p.player_name).join(', ');
 
   return (
     <section className="border-t border-white/[0.05] pt-6 pb-4 space-y-4">
@@ -1060,25 +1103,18 @@ function TeamSEOBlock({ teamName, teamSlug, players }: { teamName: string; teamS
       <div className="space-y-3 text-[11px] text-white/26 leading-relaxed">
         <p>
           The {teamName} are one of the AFL's {isHistoric ? 'most historic' : 'competitive'} clubs.
-          This page tracks every {teamName} player's projected score, price, and signal for the 2026 AFL season.
-          {topPlayer && ` ${topPlayer.player_name} currently leads the squad with a projected ${topProj} points.`}
+          This page tracks every {teamName} player's fantasy value, price, and scoring profile for the 2026 AFL season.
+          {topPlayer && ` ${topPlayer.player_name} is the top-ranked player in the ${teamName} squad.`}
         </p>
 
         <p>
-          {teamName} players ranked by projected output: {top5}.
-          Projections are calculated using recent form, matchup difficulty, venue factors, and price efficiency —
+          Top {teamName} players by fantasy ranking: {top5Names}.
+          Rankings are calculated using recent form, matchup difficulty, venue factors, and price efficiency —
           updated weekly following each AFL round.
         </p>
 
-        {startNames && (
-          <p>
-            Current Start signals from the {teamName} squad: {startNames}.
-            Start signals identify players whose projected score exceeds their breakeven, indicating likely price growth.
-          </p>
-        )}
-
         <p>
-          Each player's projection is computed using Neeko's statistical model — combining season averages,
+          Each player's profile is computed using Neeko's statistical model — combining season averages,
           last-3-match form, opponent position concession rates, venue multipliers, and role stability signals.
           View the full{' '}
           <Link to="/fantasy/rankings" className="text-white/36 hover:text-white/55 transition-colors underline underline-offset-2 decoration-white/14">AFL Rankings</Link>
@@ -1091,9 +1127,9 @@ function TeamSEOBlock({ teamName, teamSlug, players }: { teamName: string; teamS
       </div>
 
       <p className="sr-only">
-        Complete {teamName} AFL player stats, projections, price analysis and recommendations
-        for the 2026 AFL season. Includes every {teamName} player with start/hold/sit signals, breakeven
-        scores, and value picks — updated weekly. Top {teamName} players: {top5}.
+        Complete {teamName} AFL player stats, price analysis and fantasy rankings
+        for the 2026 AFL season. Includes every {teamName} player with scoring profiles, price data
+        and squad depth — updated weekly. Top {teamName} players: {top5Names}.
       </p>
     </section>
   );
@@ -1411,23 +1447,29 @@ export default function AFLTeamPage() {
               {/* ── 6-metric stat grid ── */}
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5 sm:gap-2 mb-3 sm:mb-5">
                 {[
-                  { label: 'Squad Size',    value: stats.totalPlayers,  accent: undefined },
-                  { label: 'Ceiling',       value: stats.topProj,       accent: '#34d399' },
-                  { label: 'Avg Proj',      value: stats.avgProj,       accent: undefined },
-                  { label: 'Season Avg',    value: stats.avgSeasonAvg,  accent: undefined },
-                  { label: 'Start',         value: stats.startCt,       accent: stats.startCt > 0 ? '#34d399' : undefined },
-                  { label: 'Sit / Hold',    value: `${stats.sitCt} / ${stats.holdCt}`, accent: stats.sitCt > 3 ? '#fb923c' : undefined },
-                ].map(({ label, value, accent }) => (
+                  { label: 'Squad Size',    value: stats.totalPlayers,                          accent: undefined,                                        locked: false },
+                  { label: 'Ceiling',       value: stats.topProj,                               accent: '#34d399',                                        locked: !isPremium },
+                  { label: 'Avg Proj',      value: stats.avgProj,                               accent: undefined,                                        locked: !isPremium },
+                  { label: 'Season Avg',    value: stats.avgSeasonAvg,                          accent: undefined,                                        locked: false },
+                  { label: 'Start',         value: stats.startCt,                               accent: stats.startCt > 0 ? '#34d399' : undefined,        locked: !isPremium },
+                  { label: 'Sit / Hold',    value: `${stats.sitCt} / ${stats.holdCt}`,          accent: stats.sitCt > 3 ? '#fb923c' : undefined,          locked: !isPremium },
+                ].map(({ label, value, accent, locked }) => (
                   <div
                     key={label}
                     className="flex flex-col gap-0.5 px-2 py-2 sm:px-3 sm:py-2.5 rounded-xl border border-white/[0.06] bg-black/25"
                   >
-                    <span
-                      className="text-[16px] sm:text-[20px] font-black tabular-nums leading-none"
-                      style={accent ? { color: accent } : { color: 'rgba(255,255,255,0.82)' }}
-                    >
-                      {value}
-                    </span>
+                    {locked ? (
+                      <span className="flex items-center gap-1 text-[13px] sm:text-[16px] leading-none">
+                        <Lock size={11} className="text-amber-400/40 shrink-0" />
+                      </span>
+                    ) : (
+                      <span
+                        className="text-[16px] sm:text-[20px] font-black tabular-nums leading-none"
+                        style={accent ? { color: accent } : { color: 'rgba(255,255,255,0.82)' }}
+                      >
+                        {value}
+                      </span>
+                    )}
                     <span className="text-[7px] sm:text-[8px] uppercase tracking-widest text-white/25 leading-tight">{label}</span>
                   </div>
                 ))}
@@ -1465,10 +1507,16 @@ export default function AFLTeamPage() {
                           </p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="text-[13px] font-black tabular-nums leading-none" style={{ color: signalColor }}>
-                            {fmtProj(p.projection)}
-                          </p>
-                          <p className="text-[7px] text-white/22 uppercase tracking-wide">proj</p>
+                          {isPremium ? (
+                            <>
+                              <p className="text-[13px] font-black tabular-nums leading-none" style={{ color: signalColor }}>
+                                {fmtProj(p.projection)}
+                              </p>
+                              <p className="text-[7px] text-white/22 uppercase tracking-wide">proj</p>
+                            </>
+                          ) : (
+                            <Lock size={10} className="text-amber-400/35" />
+                          )}
                         </div>
                       </Link>
                     );
@@ -1541,7 +1589,7 @@ export default function AFLTeamPage() {
                   className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-3 sm:px-5 py-3 sm:py-4"
                   style={{ width: "100%", minWidth: 0, boxSizing: "border-box", overflowX: "hidden" }}
                 >
-                  <RosterDepthChart players={players} accentColor={accentSafe} />
+                  <RosterDepthChart players={players} accentColor={accentSafe} isPremium={isPremium} />
                 </div>
 
                 {/* Right — action mix */}
@@ -1555,6 +1603,7 @@ export default function AFLTeamPage() {
                     sitCt={stats.sitCt}
                     hardSitCt={stats.hardSitCt}
                     totalPlayers={stats.totalPlayers}
+                    isPremium={isPremium}
                   />
                 </div>
               </div>
@@ -1574,7 +1623,7 @@ export default function AFLTeamPage() {
                     icon={<Trophy size={14} />}
                     label="Squad Leader"
                     playerName={stats.topPlayer.player_name}
-                    stat={fmtProj(stats.topPlayer.projection)}
+                    stat={isPremium ? fmtProj(stats.topPlayer.projection) : null}
                     statLabel="projected pts"
                     sub={
                       stats.topPlayer.season_avg != null
@@ -1582,7 +1631,7 @@ export default function AFLTeamPage() {
                         : undefined
                     }
                     context={
-                      stats.topPlayer.last_3_avg != null
+                      isPremium && stats.topPlayer.last_3_avg != null
                         ? `Last 3 avg: ${fmtAvg(stats.topPlayer.last_3_avg)}`
                         : undefined
                     }
@@ -1661,7 +1710,7 @@ export default function AFLTeamPage() {
                         : 'No price change'
                     }
                     context={
-                      stats.mostExpensivePlayer.projection != null
+                      isPremium && stats.mostExpensivePlayer.projection != null
                         ? `Projected ${fmtProj(stats.mostExpensivePlayer.projection)} pts`
                         : undefined
                     }
@@ -1676,7 +1725,7 @@ export default function AFLTeamPage() {
                     icon={<Zap size={14} />}
                     label="Cash Cow"
                     playerName={stats.bestBudgetPlayer.player_name}
-                    stat={fmtProj(stats.bestBudgetPlayer.projection)}
+                    stat={isPremium ? fmtProj(stats.bestBudgetPlayer.projection) : null}
                     statLabel="projected pts"
                     sub={
                       stats.bestBudgetPlayer.price != null
@@ -1686,7 +1735,7 @@ export default function AFLTeamPage() {
                     context={
                       isPremium && stats.bestBudgetPlayer.breakeven != null
                         ? `BE: ${Math.round(stats.bestBudgetPlayer.breakeven)} — best u/$450k`
-                        : 'Best output under $450k'
+                        : isPremium ? 'Best output under $450k' : undefined
                     }
                     slug={nameToSlug(stats.bestBudgetPlayer.player_name)}
                     accentColor="#60a5fa"
@@ -1706,9 +1755,16 @@ export default function AFLTeamPage() {
                     <p className="text-[8px] uppercase tracking-widest text-white/25 mt-0.5">players priced over $700k</p>
                   </div>
                   <div className="space-y-1.5 mt-auto">
-                    <p className="text-[10px] text-white/45 leading-snug">
-                      Premium avg projection: <span className="text-white/65 font-semibold">{stats.premiumAvgProj} pts</span>
-                    </p>
+                    {isPremium ? (
+                      <p className="text-[10px] text-white/45 leading-snug">
+                        Premium avg projection: <span className="text-white/65 font-semibold">{stats.premiumAvgProj} pts</span>
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-white/30 leading-snug flex items-center gap-1">
+                        <Lock size={8} className="text-amber-400/35 shrink-0" />
+                        <span>Avg projection — Neeko+</span>
+                      </p>
+                    )}
                     <p className="text-[9px] text-white/28 leading-snug">
                       {stats.premiumCount === 0
                         ? `No ${shortName} players currently priced above $700k.`
@@ -1732,27 +1788,37 @@ export default function AFLTeamPage() {
                 {/* Action breakdown */}
                 <div className="rounded-xl border border-white/[0.07] bg-[#0d0d0d] px-4 py-3.5 space-y-3">
                   <p className="text-[9px] uppercase tracking-widest text-white/28 font-semibold">Signal Breakdown</p>
-                  <div className="space-y-2">
-                    {[
-                      { label: 'Start', count: stats.startCt, color: '#34d399' },
-                      { label: 'Hold',  count: stats.holdCt,  color: '#ffffff55' },
-                      { label: 'Sit',   count: stats.sitCt,   color: '#f97316' },
-                    ].map(({ label, count, color }) => (
-                      <div key={label} className="flex items-center gap-2.5">
-                        <span className="text-[10px] text-white/40 w-8 shrink-0">{label}</span>
-                        <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-                          <div
-                            className="h-full rounded-full"
-                            style={{
-                              width: `${stats.totalPlayers > 0 ? Math.round((count / stats.totalPlayers) * 100) : 0}%`,
-                              backgroundColor: color,
-                            }}
-                          />
+                  {isPremium ? (
+                    <div className="space-y-2">
+                      {[
+                        { label: 'Start', count: stats.startCt, color: '#34d399' },
+                        { label: 'Hold',  count: stats.holdCt,  color: '#ffffff55' },
+                        { label: 'Sit',   count: stats.sitCt,   color: '#f97316' },
+                      ].map(({ label, count, color }) => (
+                        <div key={label} className="flex items-center gap-2.5">
+                          <span className="text-[10px] text-white/40 w-8 shrink-0">{label}</span>
+                          <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                            <div
+                              className="h-full rounded-full"
+                              style={{
+                                width: `${stats.totalPlayers > 0 ? Math.round((count / stats.totalPlayers) * 100) : 0}%`,
+                                backgroundColor: color,
+                              }}
+                            />
+                          </div>
+                          <span className="text-[11px] font-semibold tabular-nums text-white/55 w-5 text-right shrink-0">{count}</span>
                         </div>
-                        <span className="text-[11px] font-semibold tabular-nums text-white/55 w-5 text-right shrink-0">{count}</span>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-4 gap-2 text-center">
+                      <Lock size={13} className="text-amber-400/35" />
+                      <p className="text-[10px] text-white/28">Unlock Start/Hold/Sit signals with Neeko+</p>
+                      <Link to="/upgrade" className="inline-flex items-center gap-1 rounded-lg bg-amber-500/90 hover:bg-amber-400 transition-colors px-2.5 py-1 text-[9px] font-black text-black">
+                        <Zap size={8} /> Unlock
+                      </Link>
+                    </div>
+                  )}
                 </div>
 
                 {/* Form summary */}
@@ -1777,20 +1843,30 @@ export default function AFLTeamPage() {
                         <div className="h-full rounded-full bg-sky-500/60" style={{ width: `${Math.min(100, stats.avgConsistency)}%` }} />
                       </div>
                     </div>
-                    <div>
-                      <div className="flex justify-between mb-0.5">
-                        <span className="text-[9px] text-white/32">Start %</span>
-                        <span className="text-[9px] font-semibold text-white/50">
-                          {stats.totalPlayers > 0 ? Math.round((stats.startCt / stats.totalPlayers) * 100) : 0}%
-                        </span>
+                    {isPremium ? (
+                      <div>
+                        <div className="flex justify-between mb-0.5">
+                          <span className="text-[9px] text-white/32">Start %</span>
+                          <span className="text-[9px] font-semibold text-white/50">
+                            {stats.totalPlayers > 0 ? Math.round((stats.startCt / stats.totalPlayers) * 100) : 0}%
+                          </span>
+                        </div>
+                        <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-emerald-500/70"
+                            style={{ width: `${stats.totalPlayers > 0 ? Math.round((stats.startCt / stats.totalPlayers) * 100) : 0}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-emerald-500/70"
-                          style={{ width: `${stats.totalPlayers > 0 ? Math.round((stats.startCt / stats.totalPlayers) * 100) : 0}%` }}
-                        />
+                    ) : (
+                      <div>
+                        <div className="flex justify-between mb-0.5">
+                          <span className="text-[9px] text-white/32">Start %</span>
+                          <Lock size={8} className="text-amber-400/35" />
+                        </div>
+                        <div className="h-1 rounded-full bg-white/[0.06]" />
                       </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -1834,6 +1910,7 @@ export default function AFLTeamPage() {
                     lineKey={key}
                     players={lineGroups[key]}
                     accentColor={accentSafe}
+                    isPremium={isPremium}
                   />
                 ))}
                 {lineGroups.RUC.length > 0 && (
@@ -1841,6 +1918,7 @@ export default function AFLTeamPage() {
                     lineKey="RUC"
                     players={lineGroups.RUC}
                     accentColor={accentSafe}
+                    isPremium={isPremium}
                   />
                 )}
               </div>
@@ -1902,7 +1980,7 @@ export default function AFLTeamPage() {
           {/* ══════════════════════════════════════════
               SEO BLOCK
           ══════════════════════════════════════════ */}
-          <TeamSEOBlock teamName={teamName} teamSlug={team ?? ''} players={players} />
+          <TeamSEOBlock teamName={teamName} teamSlug={team ?? ''} players={players} isPremium={isPremium} />
 
         </div>
       </div>
