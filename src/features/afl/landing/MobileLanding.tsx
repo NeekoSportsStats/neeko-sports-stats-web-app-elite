@@ -527,18 +527,18 @@ function FreeRoundPreview() {
   const weekNum = matches[0]?.week ?? null;
 
   return (
-    <div style={{ borderRadius: 13, border: "1px solid rgba(34,197,94,0.22)", overflow: "hidden", background: "rgba(5,8,11,0.97)" }}>
+    <div style={{ borderRadius: 13, border: "1px solid rgba(255,255,255,0.10)", overflow: "hidden", background: "rgba(5,8,11,0.97)" }}>
 
       {/* Module header */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "9px 14px",
-        background: "rgba(34,197,94,0.05)",
+        background: "rgba(255,255,255,0.025)",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <span className="live-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", display: "inline-block", flexShrink: 0 }} />
-          <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(34,197,94,0.80)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Free Round Preview</span>
+          <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(34,197,94,0.70)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Free Round Preview</span>
         </div>
         {weekNum != null && (
           <span style={{ fontSize: 8.5, color: "rgba(255,255,255,0.28)", letterSpacing: "0.06em", textTransform: "uppercase" }}>Week {weekNum}</span>
@@ -558,9 +558,9 @@ function FreeRoundPreview() {
                 onClick={() => setSelectedGameIdx(idx)}
                 style={{
                   flex: 1, padding: "10px 8px",
-                  background: selectedGameIdx === idx ? "rgba(34,197,94,0.06)" : "none",
+                  background: selectedGameIdx === idx ? "rgba(255,255,255,0.04)" : "none",
                   border: "none", cursor: "pointer",
-                  borderBottom: selectedGameIdx === idx ? "2px solid #22c55e" : "2px solid transparent",
+                  borderBottom: selectedGameIdx === idx ? "2px solid rgba(34,197,94,0.65)" : "2px solid transparent",
                   color: selectedGameIdx === idx ? "#f0f0f0" : "rgba(255,255,255,0.42)",
                   fontSize: 13, fontWeight: selectedGameIdx === idx ? 800 : 500,
                   textAlign: "center", whiteSpace: "nowrap",
@@ -577,7 +577,7 @@ function FreeRoundPreview() {
             <div style={{
               padding: "9px 14px",
               borderBottom: "1px solid rgba(255,255,255,0.06)",
-              background: "rgba(34,197,94,0.03)",
+              background: "transparent",
             }}>
               <span style={{
                 fontSize: 12, fontWeight: 600,
@@ -602,9 +602,9 @@ function FreeRoundPreview() {
             onClick={() => setLens(l)}
             style={{
               padding: "5px 14px", borderRadius: 7,
-              background: lens === l ? "rgba(34,197,94,0.14)" : "rgba(255,255,255,0.04)",
-              border: lens === l ? "1px solid rgba(34,197,94,0.32)" : "1px solid rgba(255,255,255,0.08)",
-              color: lens === l ? "#4ade80" : "rgba(255,255,255,0.45)",
+              background: lens === l ? "rgba(34,197,94,0.08)" : "rgba(255,255,255,0.04)",
+              border: lens === l ? "1px solid rgba(34,197,94,0.22)" : "1px solid rgba(255,255,255,0.08)",
+              color: lens === l ? "rgba(74,222,128,0.90)" : "rgba(255,255,255,0.45)",
               fontSize: 11.5, fontWeight: 700, cursor: "pointer",
               transition: "all 0.12s", minHeight: 32,
               textTransform: "capitalize",
@@ -615,7 +615,7 @@ function FreeRoundPreview() {
         ))}
         {playersLoading && (
           <div style={{ display: "flex", alignItems: "center", marginLeft: "auto" }}>
-            <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(34,197,94,0.30)", borderTopColor: "#22c55e", animation: "spin 0.7s linear infinite" }} />
+            <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.10)", borderTopColor: "rgba(34,197,94,0.65)", animation: "spin 0.7s linear infinite" }} />
           </div>
         )}
       </div>
@@ -650,9 +650,9 @@ function FreeRoundPreview() {
         style={{
           display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
           padding: "11px 14px",
-          fontSize: 12.5, fontWeight: 700, color: "#4ade80",
+          fontSize: 12.5, fontWeight: 700, color: "rgba(74,222,128,0.80)",
           textDecoration: "none",
-          background: "rgba(34,197,94,0.06)",
+          background: "rgba(255,255,255,0.025)",
           borderTop: "1px solid rgba(255,255,255,0.06)",
         }}
       >
@@ -701,20 +701,20 @@ function TeamTotalOutlook() {
   const { games, loading } = useFreeGames();
 
   return (
-    <div style={{ borderRadius: 13, border: "1px solid rgba(34,197,94,0.18)", overflow: "hidden", background: "rgba(5,8,11,0.97)" }}>
+    <div style={{ borderRadius: 13, border: "1px solid rgba(255,255,255,0.10)", overflow: "hidden", background: "rgba(5,8,11,0.97)" }}>
 
       {/* Header */}
       <div style={{
         padding: "9px 14px",
-        background: "rgba(34,197,94,0.04)",
+        background: "rgba(255,255,255,0.025)",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-          <UnlockIcon size={12} style={{ color: "rgba(34,197,94,0.70)", flexShrink: 0 }} />
-          <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(34,197,94,0.75)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Free Game Access</span>
+          <UnlockIcon size={12} style={{ color: "rgba(34,197,94,0.60)", flexShrink: 0 }} />
+          <span style={{ fontSize: 9, fontWeight: 900, color: "rgba(34,197,94,0.65)", letterSpacing: "0.18em", textTransform: "uppercase" }}>Free Game Access</span>
         </div>
-        <span style={{ fontSize: 8, fontWeight: 700, color: "rgba(34,197,94,0.55)", letterSpacing: "0.08em", textTransform: "uppercase" }}>2 games this week</span>
+        <span style={{ fontSize: 8, fontWeight: 700, color: "rgba(255,255,255,0.30)", letterSpacing: "0.08em", textTransform: "uppercase" }}>2 games this week</span>
       </div>
 
       {loading ? (
@@ -738,7 +738,7 @@ function TeamTotalOutlook() {
               <div style={{
                 background: "rgba(255,255,255,0.025)",
                 borderRadius: 10,
-                border: "1px solid rgba(34,197,94,0.14)",
+                border: "1px solid rgba(255,255,255,0.08)",
                 padding: "12px 13px",
                 display: "flex", flexDirection: "column", gap: 8,
                 transition: "border-color 0.12s, background 0.12s",
@@ -756,9 +756,9 @@ function TeamTotalOutlook() {
                   <span style={{
                     flexShrink: 0,
                     fontSize: 8, fontWeight: 800,
-                    color: "#4ade80",
-                    background: "rgba(34,197,94,0.10)",
-                    border: "1px solid rgba(34,197,94,0.28)",
+                    color: "rgba(74,222,128,0.75)",
+                    background: "rgba(34,197,94,0.07)",
+                    border: "1px solid rgba(34,197,94,0.18)",
                     borderRadius: 4,
                     padding: "3px 7px",
                     letterSpacing: "0.10em",
@@ -781,12 +781,12 @@ function TeamTotalOutlook() {
                 {/* CTA row */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <span style={{
-                    fontSize: 11, fontWeight: 700, color: "#4ade80",
+                    fontSize: 11, fontWeight: 700, color: "rgba(74,222,128,0.72)",
                     letterSpacing: "0.02em",
                   }}>
                     View Free Game
                   </span>
-                  <ChevronRight size={13} style={{ color: "#4ade80", opacity: 0.75 }} />
+                  <ChevronRight size={13} style={{ color: "rgba(74,222,128,0.60)" }} />
                 </div>
 
               </div>
@@ -1307,7 +1307,7 @@ export default function MobileLanding({ isPremium }: Props) {
 
         <div style={{ position: "relative", zIndex: 2, padding: "0 16px" }}>
           {roundLabel && (
-            <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(34,197,94,0.65)", marginBottom: 10, textAlign: "center" }}>
+            <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(34,197,94,0.48)", marginBottom: 10, textAlign: "center" }}>
               AFL · {roundLabel}
             </p>
           )}
@@ -1318,7 +1318,7 @@ export default function MobileLanding({ isPremium }: Props) {
             color: "#ffffff", marginBottom: 12, textAlign: "center",
           }}>
             Find AFL players most likely to{" "}
-            <span style={{ color: "#22c55e" }}>hit key stats</span>{" "}
+            <span style={{ color: "#34d96a" }}>hit key stats</span>{" "}
             this round.
           </h1>
 
@@ -1336,7 +1336,7 @@ export default function MobileLanding({ isPremium }: Props) {
               background: "linear-gradient(160deg, #22c55e 0%, #16a34a 100%)",
               color: "#f0fff4", fontWeight: 900, fontSize: 15,
               padding: "14px 20px", borderRadius: 11, textDecoration: "none",
-              boxShadow: "0 4px 18px rgba(34,197,94,0.32)", minHeight: 50,
+              boxShadow: "0 4px 18px rgba(34,197,94,0.20)", minHeight: 50,
               letterSpacing: "0.01em",
             }}>
               Open Stats Hub Free <ArrowRight size={15} />
