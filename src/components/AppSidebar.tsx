@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -75,15 +75,38 @@ const INFO_NAV = [
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function AppSidebar() {
-  const { isMobile, state, setOpenMobile } = useSidebar();
+  const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
   const { isPremium } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
   const isExpanded = state === "expanded";
 
-  // Which expandable group is open on mobile (key string or null)
-  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  // Derive the active group key from the current path so the correct
+  // group is pre-expanded when the sidebar first opens on that route.
+  const activeGroupKey = EXPANDABLE_GROUPS.find(g =>
+    currentPath === g.url || currentPath.startsWith(g.url + "/")
+  )?.key ?? null;
+
+  // Mobile: which group is currently expanded (null = none).
+  // Initialise to the active group so it opens pre-expanded on the current route.
+  const [openGroup, setOpenGroup] = useState<string | null>(activeGroupKey);
+
+  // Track previous openMobile value to detect sidebar opening.
+  const prevOpenMobile = useRef(openMobile);
+
+  // When the mobile sidebar opens, pre-expand the group matching the current route.
+  useEffect(() => {
+    if (isMobile && openMobile && !prevOpenMobile.current) {
+      setOpenGroup(activeGroupKey);
+    }
+    prevOpenMobile.current = openMobile;
+  }, [openMobile, isMobile, activeGroupKey]);
+
+  // When the route changes (e.g. back/forward), sync the active group.
+  useEffect(() => {
+    if (isMobile) setOpenGroup(activeGroupKey);
+  }, [currentPath, isMobile, activeGroupKey]);
 
   const isActive = (path: string, exact = false) => {
     if (exact) return currentPath === path;
@@ -94,27 +117,25 @@ export function AppSidebar() {
     if (isMobile) setOpenMobile(false);
   };
 
-  // ── Desktop: sub-items always mirror route active state (unchanged behaviour)
-  // ── Mobile: controlled by openGroup state
-
+  // Desktop: expand group when on a child route (route-driven, no state needed).
+  // Mobile: expand controlled by openGroup state (tap-driven).
   const groupIsOpen = (key: string, url: string): boolean => {
     if (isMobile) return openGroup === key;
-    // Desktop: expand when anywhere under the parent route
-    return isActive(url) && (isExpanded || isMobile);
+    return isActive(url) && isExpanded;
   };
 
+  // Mobile tap logic:
+  //   First tap  → expand group (show children).
+  //   Second tap → navigate to hub page and close sidebar.
   const handleParentClick = (key: string, url: string) => {
-    if (isMobile) {
-      if (openGroup === key) {
-        // Already expanded — second tap navigates to hub page
-        navigate(url);
-        closeSidebar();
-      } else {
-        // First tap — expand this group, collapse others
-        setOpenGroup(key);
-      }
+    if (!isMobile) return; // desktop uses NavLink directly
+    if (openGroup === key) {
+      navigate(url);
+      setOpenGroup(null);
+      closeSidebar();
+    } else {
+      setOpenGroup(key);
     }
-    // Desktop: parent link navigates directly (normal NavLink behaviour)
   };
 
   return (
