@@ -322,21 +322,22 @@ export default function AFLPlayersPage() {
       <div style={{
         minHeight: "100vh",
         background: "#080808",
-        padding: "clamp(20px, 3vw, 40px) clamp(12px, 3vw, 28px)",
+        padding: "clamp(14px, 3vw, 40px) clamp(12px, 3vw, 28px)",
         maxWidth: 1080,
         margin: "0 auto",
+        overflowX: "hidden",
       }}>
 
         {/* ── Page header ───────────────────────────────────────────────── */}
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <Users size={16} style={{ color: "rgba(255,255,255,0.30)" }} />
-            <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.42em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)" }}>
+        <div style={{ marginBottom: "clamp(14px, 3vw, 28px)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+            <Users size={14} style={{ color: "rgba(255,255,255,0.30)" }} />
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.42em", textTransform: "uppercase", color: "rgba(255,255,255,0.28)" }}>
               AFL Fantasy 2026
             </span>
           </div>
           <h1 style={{
-            fontSize: "clamp(1.5rem, 3vw, 2.1rem)",
+            fontSize: "clamp(1.3rem, 3vw, 2.1rem)",
             fontWeight: 900,
             letterSpacing: "-0.035em",
             color: "#F5F5F5",
@@ -345,9 +346,9 @@ export default function AFLPlayersPage() {
           }}>
             AFL Fantasy Player Directory
           </h1>
-          <p style={{
-            marginTop: 8,
-            fontSize: 13.5,
+          <p className="plyr-desc-hide" style={{
+            marginTop: 7,
+            fontSize: 13,
             color: "rgba(255,255,255,0.38)",
             lineHeight: 1.5,
             maxWidth: 580,
@@ -357,8 +358,8 @@ export default function AFLPlayersPage() {
         </div>
 
         {/* ── Teams grid ────────────────────────────────────────────────── */}
-        <section style={{ marginBottom: 28 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 10 }}>
+        <section style={{ marginBottom: "clamp(14px, 3vw, 28px)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
             <Shield size={11} style={{ color: "rgba(255,255,255,0.22)" }} />
             <h2 style={{ margin: 0, fontSize: 10.5, fontWeight: 700, letterSpacing: "0.36em", textTransform: "uppercase", color: "rgba(255,255,255,0.22)" }}>
               Browse by Team
@@ -366,8 +367,8 @@ export default function AFLPlayersPage() {
           </div>
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-            gap: 5,
+            gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
+            gap: 4,
           }}>
             {AFL_TEAMS.map(team => (
               <TeamCard
@@ -379,10 +380,10 @@ export default function AFLPlayersPage() {
           </div>
         </section>
 
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginBottom: 28 }} />
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", marginBottom: "clamp(14px, 3vw, 28px)" }} />
 
         {/* ── Player directory header ────────────────────────────────────── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <Users size={13} style={{ color: "rgba(255,255,255,0.30)" }} />
           <h2 style={{ margin: 0, fontSize: 11, fontWeight: 700, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(255,255,255,0.30)" }}>
             Player Directory
@@ -395,11 +396,11 @@ export default function AFLPlayersPage() {
         </div>
 
         {/* ── Filters row ───────────────────────────────────────────────── */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, alignItems: "center" }}>
-          {/* Search */}
-          <div style={{ position: "relative", flex: "1 1 200px", minWidth: 180, maxWidth: 320 }}>
-            <Search size={13} style={{
-              position: "absolute", left: 11, top: "50%",
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10, alignItems: "center" }}>
+          {/* Search — full width on mobile */}
+          <div style={{ position: "relative", flex: "1 1 160px", minWidth: 0, maxWidth: 320 }}>
+            <Search size={12} style={{
+              position: "absolute", left: 10, top: "50%",
               transform: "translateY(-50%)", color: "rgba(255,255,255,0.30)", pointerEvents: "none",
             }} />
             <input
@@ -409,9 +410,9 @@ export default function AFLPlayersPage() {
               onChange={e => setSearch(e.target.value)}
               placeholder="Search players..."
               style={{
-                width: "100%", paddingLeft: 32, paddingRight: 12, paddingTop: 8, paddingBottom: 8,
+                width: "100%", paddingLeft: 29, paddingRight: 10, paddingTop: 7, paddingBottom: 7,
                 background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)",
-                borderRadius: 8, fontSize: 13, color: "#fff", outline: "none", boxSizing: "border-box",
+                borderRadius: 8, fontSize: 12.5, color: "#fff", outline: "none", boxSizing: "border-box",
               }}
             />
           </div>
@@ -425,14 +426,14 @@ export default function AFLPlayersPage() {
                 appearance: "none", WebkitAppearance: "none",
                 background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)",
                 borderRadius: 8, color: position ? "#fff" : "rgba(255,255,255,0.45)",
-                fontSize: 12.5, fontWeight: 600, padding: "8px 30px 8px 12px", cursor: "pointer", outline: "none",
+                fontSize: 12, fontWeight: 600, padding: "7px 26px 7px 10px", cursor: "pointer", outline: "none",
               }}
             >
               {POSITIONS.map(p => (
                 <option key={p.code} value={p.code} style={{ background: "#111", color: "#fff" }}>{p.label}</option>
               ))}
             </select>
-            <ChevronDown size={12} style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)", pointerEvents: "none" }} />
+            <ChevronDown size={11} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)", pointerEvents: "none" }} />
           </div>
 
           {/* Team filter */}
@@ -444,8 +445,8 @@ export default function AFLPlayersPage() {
                 appearance: "none", WebkitAppearance: "none",
                 background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)",
                 borderRadius: 8, color: teamFilter ? "#fff" : "rgba(255,255,255,0.45)",
-                fontSize: 12.5, fontWeight: 600, padding: "8px 30px 8px 12px", cursor: "pointer",
-                outline: "none", maxWidth: 160,
+                fontSize: 12, fontWeight: 600, padding: "7px 26px 7px 10px", cursor: "pointer",
+                outline: "none", maxWidth: 140,
               }}
             >
               <option value="" style={{ background: "#111", color: "#fff" }}>All Teams</option>
@@ -453,7 +454,7 @@ export default function AFLPlayersPage() {
                 <option key={t.slug} value={t.dbName} style={{ background: "#111", color: "#fff" }}>{t.displayName}</option>
               ))}
             </select>
-            <ChevronDown size={12} style={{ position: "absolute", right: 9, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)", pointerEvents: "none" }} />
+            <ChevronDown size={11} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", color: "rgba(255,255,255,0.35)", pointerEvents: "none" }} />
           </div>
 
           {/* Clear filters */}
@@ -462,8 +463,8 @@ export default function AFLPlayersPage() {
               onClick={() => { setSearch(""); setPosition(""); setTeamFilter(""); }}
               style={{
                 background: "none", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 8,
-                color: "rgba(255,255,255,0.40)", fontSize: 12, fontWeight: 600,
-                padding: "8px 12px", cursor: "pointer", flexShrink: 0,
+                color: "rgba(255,255,255,0.40)", fontSize: 11.5, fontWeight: 600,
+                padding: "7px 10px", cursor: "pointer", flexShrink: 0,
               }}
             >
               Clear
@@ -477,14 +478,14 @@ export default function AFLPlayersPage() {
             overflowX: "auto",
             WebkitOverflowScrolling: "touch" as React.CSSProperties["WebkitOverflowScrolling"],
             scrollbarWidth: "none",
-            marginBottom: 14,
+            marginBottom: 10,
             paddingBottom: 2,
           }}>
             <div style={{
               display: "flex",
               gap: 2,
               minWidth: "max-content",
-              padding: "6px 0",
+              padding: "4px 0",
             }}>
               {ALPHABET.map(letter => {
                 const active = availableLetters.has(letter);
@@ -494,8 +495,8 @@ export default function AFLPlayersPage() {
                     onClick={() => active && handleLetterClick(letter)}
                     disabled={!active}
                     style={{
-                      width: 28,
-                      height: 28,
+                      width: 25,
+                      height: 25,
                       borderRadius: 6,
                       border: active
                         ? "1px solid rgba(255,255,255,0.12)"
@@ -535,11 +536,11 @@ export default function AFLPlayersPage() {
         {/* ── Freemium banner (free users) ─────────────────────────────── */}
         {!isPremium && !loading && totalCount > 0 && (
           <div style={{
-            display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+            display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 12px",
             borderRadius: 8, background: "rgba(245,200,76,0.06)", border: "1px solid rgba(245,200,76,0.18)",
-            marginBottom: 14,
+            marginBottom: 10,
           }}>
-            <Crown size={13} style={{ color: "#F5C84C", flexShrink: 0 }} />
+            <Crown size={12} style={{ color: "#F5C84C", flexShrink: 0, marginTop: 1 }} />
             <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.50)", lineHeight: 1.4 }}>
               Showing 2026 season averages.{" "}
               <Link to="/neeko-plus" style={{ color: "#F5C84C", textDecoration: "none", fontWeight: 700 }}>
@@ -603,7 +604,7 @@ export default function AFLPlayersPage() {
                     current={sortBy}
                     dir={sortDir}
                     onClick={handleSort}
-                    style={{ textAlign: "left", paddingLeft: 14 }}
+                    style={{ textAlign: "left", paddingLeft: 12 }}
                   />
                   <th style={thStyle} className="plyr-col-team">Team</th>
                   <th style={thStyle} className="plyr-col-pos">Pos</th>
@@ -644,7 +645,7 @@ export default function AFLPlayersPage() {
                         <td
                           colSpan={6}
                           style={{
-                            padding: "7px 14px 5px",
+                            padding: "5px 12px 4px",
                             fontSize: 11,
                             fontWeight: 800,
                             letterSpacing: "0.12em",
@@ -684,7 +685,7 @@ export default function AFLPlayersPage() {
                       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                     >
                       {/* Player name + mobile sub-line */}
-                      <td style={{ padding: "9px 10px 9px 14px" }}>
+                      <td style={{ padding: "7px 8px 7px 12px" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
                           <Link
                             to={`/sports/afl/players/${slug}`}
@@ -710,21 +711,21 @@ export default function AFLPlayersPage() {
                       </td>
 
                       {/* Team — hidden on mobile */}
-                      <td style={{ padding: "9px 10px", whiteSpace: "nowrap" }} className="plyr-col-team">
+                      <td style={{ padding: "7px 8px", whiteSpace: "nowrap" }} className="plyr-col-team">
                         <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.40)", fontWeight: 500 }}>
                           {teamShort}
                         </span>
                       </td>
 
                       {/* Position — hidden on mobile */}
-                      <td style={{ padding: "9px 10px" }} className="plyr-col-pos">
+                      <td style={{ padding: "7px 8px" }} className="plyr-col-pos">
                         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", color: "rgba(255,255,255,0.38)" }}>
                           {row.position ?? "—"}
                         </span>
                       </td>
 
                       {/* Price */}
-                      <td style={{ padding: "9px 10px", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
                         <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.62)" }}>
                           {fmtPrice(row.price)}
                         </span>
@@ -732,7 +733,7 @@ export default function AFLPlayersPage() {
 
                       {/* 5th col: 2026 Avg (free) or Projection (premium) */}
                       {isPremium ? (
-                        <td style={{ padding: "9px 10px", whiteSpace: "nowrap" }}>
+                        <td style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
                           <span style={{
                             fontSize: 13, fontWeight: 700,
                             color: row.projection != null ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.25)",
@@ -741,7 +742,7 @@ export default function AFLPlayersPage() {
                           </span>
                         </td>
                       ) : (
-                        <td style={{ padding: "9px 10px", whiteSpace: "nowrap" }}>
+                        <td style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
                           {row.season_avg != null ? (
                             <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.68)" }}>
                               {fmt(row.season_avg)}
@@ -758,7 +759,7 @@ export default function AFLPlayersPage() {
                       )}
 
                       {/* Signal — free users always see the locked state */}
-                      <td style={{ padding: "9px 10px", whiteSpace: "nowrap" }}>
+                      <td style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
                         {isPremium ? (
                           signalLabel && row.signal != null ? (
                             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.03em", color: signalColor }}>
@@ -811,7 +812,7 @@ export default function AFLPlayersPage() {
 
         {/* ── Position quick links ──────────────────────────────────────── */}
         {!loading && (
-          <div style={{ marginTop: 32, display: "flex", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ marginTop: 20, display: "flex", flexWrap: "wrap", gap: 6 }}>
             {[
               { label: "Defenders", slug: "def" },
               { label: "Midfielders", slug: "mid" },
@@ -823,7 +824,7 @@ export default function AFLPlayersPage() {
                 to={`/sports/afl/positions/${pos.slug}`}
                 style={{
                   fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.35)",
-                  textDecoration: "none", padding: "7px 14px", borderRadius: 7,
+                  textDecoration: "none", padding: "6px 12px", borderRadius: 7,
                   border: "1px solid rgba(255,255,255,0.08)", background: "rgba(255,255,255,0.03)",
                   transition: "all 0.15s ease", letterSpacing: "0.02em",
                 }}
@@ -850,6 +851,9 @@ export default function AFLPlayersPage() {
           0%, 100% { opacity: 0.6; }
           50% { opacity: 0.3; }
         }
+        @media (max-width: 539px) {
+          .plyr-desc-hide { display: none; }
+        }
       `}</style>
     </>
   );
@@ -858,7 +862,7 @@ export default function AFLPlayersPage() {
 // ─── Sort column header ──────────────────────────────────────────────────────
 
 const thStyle: React.CSSProperties = {
-  padding: "9px 12px",
+  padding: "8px 10px",
   fontSize: 10.5,
   fontWeight: 700,
   letterSpacing: "0.06em",
