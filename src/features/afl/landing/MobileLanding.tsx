@@ -404,73 +404,105 @@ function PlayerPreviewRow({ player }: { player: StatBoardPlayer }) {
       ? (player.all_threshold_hit_rates?.["20"] ?? null)
       : (player.all_threshold_hit_rates?.["1"] ?? null);
   const hitFrac = hitData ? `${hitData.hits}/${hitData.games}` : null;
-  // rate may be 0-1 (fraction) or 0-100 (percent) depending on the RPC version.
-  // Normalise: if > 1, treat as already 0-100; otherwise multiply by 100.
   const hitPct = hitData?.rate != null
     ? Math.min(100, Math.round(hitData.rate > 1 ? hitData.rate : hitData.rate * 100))
     : null;
   const proj = player.projection;
 
+  // Colour tiers for hit rate
+  const hitColor =
+    hitPct == null ? "rgba(255,255,255,0.30)"
+    : hitPct >= 70  ? "#4ade80"
+    : hitPct >= 50  ? "#fcd34d"
+    :                 "rgba(255,255,255,0.42)";
+
+  // Confidence dot
   const confColor =
-    player.confidence_label === "HIGH" ? "#4ade80"
+    player.confidence_label === "HIGH"   ? "#4ade80"
     : player.confidence_label === "MEDIUM" ? "#fcd34d"
-    : "rgba(255,255,255,0.38)";
+    : "rgba(255,255,255,0.22)";
+
+  const thresholdLabel = player.stat_lens === "disposals" ? "20+" : "1+";
 
   return (
     <div style={{
       display: "flex", alignItems: "center",
-      padding: "13px 14px", gap: 10,
+      padding: "11px 14px", gap: 10,
       borderBottom: "1px solid rgba(255,255,255,0.05)",
     }}>
-      {/* Name + profile */}
+
+      {/* Left: name + secondary line */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: "#f0f0f0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <p style={{
+          margin: 0, fontSize: 13.5, fontWeight: 800,
+          color: "#eeeef0",
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+          lineHeight: 1.2,
+        }}>
           {player.player_name}
         </p>
-        <p style={{ margin: "2px 0 0", fontSize: 10.5, color: "rgba(255,255,255,0.40)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-          {player.team_name} · <span style={{ color: "rgba(255,255,255,0.28)", fontStyle: "italic" }}>{profile}</span>
+        <p style={{
+          margin: "3px 0 0", fontSize: 10, lineHeight: 1.3,
+          color: "rgba(255,255,255,0.32)",
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+        }}>
+          {player.team_name}
+          {profile ? <span style={{ color: "rgba(255,255,255,0.20)", fontStyle: "italic" }}> · {profile}</span> : null}
         </p>
       </div>
 
-      {/* Projection */}
-      <div style={{ textAlign: "right", flexShrink: 0, minWidth: 34 }}>
-        <p style={{ margin: 0, fontSize: 16, fontWeight: 900, color: "#f5f5f5", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
-          {proj != null ? proj : "—"}
-        </p>
-        <p style={{ margin: "2px 0 0", fontSize: 7.5, color: "rgba(255,255,255,0.25)", textTransform: "uppercase", letterSpacing: "0.06em" }}>proj</p>
-      </div>
+      {/* Right: two bold stat signals */}
+      <div style={{ display: "flex", alignItems: "center", gap: 7, flexShrink: 0 }}>
 
-      {/* Hit rate */}
-      <div style={{ textAlign: "right", flexShrink: 0, minWidth: 36 }}>
-        {hitFrac ? (
-          <>
-            <p style={{ margin: 0, fontSize: 12.5, fontWeight: 700, color: hitPct != null && hitPct >= 70 ? "#4ade80" : "#f0f0f0", fontVariantNumeric: "tabular-nums" }}>
-              {hitFrac}
-            </p>
-            {hitPct != null && (
-              <p style={{ margin: "1px 0 0", fontSize: 9, color: hitPct >= 70 ? "#4ade80" : hitPct >= 50 ? "#fcd34d" : "rgba(255,255,255,0.35)", fontWeight: 600 }}>
-                {hitPct}%
-              </p>
-            )}
-          </>
-        ) : <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.22)" }}>—</p>}
-        <p style={{ margin: "1px 0 0", fontSize: 7.5, color: "rgba(255,255,255,0.24)", textTransform: "uppercase", letterSpacing: "0.06em" }}>hit</p>
-      </div>
-
-      {/* Confidence */}
-      <div style={{ flexShrink: 0, minWidth: 36, textAlign: "right" }}>
-        {player.confidence_label ? (
+        {/* Projection pill */}
+        <div style={{
+          display: "flex", flexDirection: "column", alignItems: "center",
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.09)",
+          borderRadius: 8, padding: "5px 9px", minWidth: 40,
+        }}>
           <span style={{
-            display: "inline-block",
-            fontSize: 8, fontWeight: 700, color: confColor,
-            background: `${confColor}15`,
-            border: `1px solid ${confColor}30`,
-            padding: "2px 5px", borderRadius: 999,
-            letterSpacing: "0.04em", textTransform: "uppercase",
+            fontSize: 18, fontWeight: 900, lineHeight: 1,
+            color: "#f5f5f5", fontVariantNumeric: "tabular-nums",
           }}>
-            {player.confidence_label === "HIGH" ? "High" : player.confidence_label === "MEDIUM" ? "Med" : "Low"}
+            {proj != null ? proj : "—"}
           </span>
-        ) : <span style={{ color: "rgba(255,255,255,0.18)", fontSize: 10 }}>—</span>}
+          <span style={{ fontSize: 7, fontWeight: 700, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 2 }}>
+            proj
+          </span>
+        </div>
+
+        {/* Hit rate pill */}
+        <div style={{
+          display: "flex", flexDirection: "column", alignItems: "center",
+          background: hitPct != null && hitPct >= 70
+            ? "rgba(74,222,128,0.06)"
+            : hitPct != null && hitPct >= 50
+              ? "rgba(252,211,77,0.06)"
+              : "rgba(255,255,255,0.03)",
+          border: `1px solid ${hitColor}30`,
+          borderRadius: 8, padding: "5px 9px", minWidth: 46,
+        }}>
+          <span style={{
+            fontSize: 15, fontWeight: 900, lineHeight: 1,
+            color: hitColor, fontVariantNumeric: "tabular-nums",
+          }}>
+            {hitPct != null ? `${hitPct}%` : "—"}
+          </span>
+          <span style={{ fontSize: 7, fontWeight: 700, color: "rgba(255,255,255,0.22)", textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 2 }}>
+            {thresholdLabel} hit
+          </span>
+        </div>
+
+        {/* Confidence dot */}
+        {player.confidence_label && (
+          <div style={{
+            width: 7, height: 7, borderRadius: "50%",
+            background: confColor, flexShrink: 0,
+            opacity: 0.75,
+          }} />
+        )}
+
       </div>
     </div>
   );
@@ -618,19 +650,6 @@ function FreeRoundPreview() {
             <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.10)", borderTopColor: "rgba(34,197,94,0.65)", animation: "spin 0.7s linear infinite" }} />
           </div>
         )}
-      </div>
-
-      {/* Column headers */}
-      <div style={{
-        display: "flex", alignItems: "center",
-        padding: "7px 14px", gap: 10,
-        background: "rgba(255,255,255,0.015)",
-        borderBottom: "1px solid rgba(255,255,255,0.04)",
-      }}>
-        <span style={{ flex: 1, fontSize: 7.5, color: "rgba(255,255,255,0.20)", textTransform: "uppercase", letterSpacing: "0.09em" }}>Player · Profile</span>
-        <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.20)", textTransform: "uppercase", letterSpacing: "0.09em", minWidth: 34, textAlign: "right" }}>Proj</span>
-        <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.20)", textTransform: "uppercase", letterSpacing: "0.09em", minWidth: 36, textAlign: "right" }}>Hit</span>
-        <span style={{ fontSize: 7.5, color: "rgba(255,255,255,0.20)", textTransform: "uppercase", letterSpacing: "0.09em", minWidth: 36, textAlign: "right" }}>Conf</span>
       </div>
 
       {/* Player rows */}
