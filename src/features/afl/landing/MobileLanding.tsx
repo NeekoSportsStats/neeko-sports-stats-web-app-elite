@@ -421,7 +421,7 @@ function PlayerPreviewRow({ player }: { player: StatBoardPlayer }) {
   return (
     <div style={{
       display: "flex", alignItems: "center",
-      padding: "11px 14px", gap: 10,
+      padding: "13px 14px", gap: 10,
       borderBottom: "1px solid rgba(255,255,255,0.05)",
     }}>
       {/* Name + profile */}
@@ -577,13 +577,13 @@ function FreeRoundPreview() {
           {/* Full selected match name */}
           {selectedMatch && (
             <div style={{
-              padding: "6px 14px",
-              borderBottom: "1px solid rgba(255,255,255,0.05)",
+              padding: "9px 14px",
+              borderBottom: "1px solid rgba(255,255,255,0.06)",
               background: "rgba(34,197,94,0.03)",
             }}>
               <span style={{
-                fontSize: 11, fontWeight: 600,
-                color: "rgba(255,255,255,0.55)",
+                fontSize: 12, fontWeight: 600,
+                color: "rgba(255,255,255,0.62)",
                 letterSpacing: "0.01em",
               }}>
                 {selectedMatch.match_label}
@@ -595,7 +595,7 @@ function FreeRoundPreview() {
 
       {/* Stat toggle */}
       <div style={{
-        display: "flex", gap: 6, padding: "8px 14px",
+        display: "flex", gap: 6, padding: "10px 14px",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
       }}>
         {(["disposals", "goals"] as StatLens[]).map(l => (
@@ -625,7 +625,7 @@ function FreeRoundPreview() {
       {/* Column headers */}
       <div style={{
         display: "flex", alignItems: "center",
-        padding: "5px 14px", gap: 10,
+        padding: "7px 14px", gap: 10,
         background: "rgba(255,255,255,0.015)",
         borderBottom: "1px solid rgba(255,255,255,0.04)",
       }}>
