@@ -198,25 +198,25 @@ export default function StatBoardTeamsPage() {
       </Helmet>
 
       <div className="min-h-dvh bg-[#0a0a0a] text-white overflow-x-hidden w-full">
-        <div className="mx-auto w-full max-w-[1360px] px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 min-w-0 overflow-hidden" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}>
+        <div className="mx-auto w-full max-w-[1360px] px-3 sm:px-6 lg:px-8 pt-2 sm:pt-6 min-w-0 overflow-hidden" style={{ paddingBottom: "calc(5rem + env(safe-area-inset-bottom))" }}>
 
           {/* Breadcrumb */}
-          <div className="mb-3 flex items-center gap-1.5 text-[11px] text-white/30">
+          <div className="mb-1.5 sm:mb-3 flex items-center gap-1.5 text-[11px] text-white/30">
             <Link to="/stat-board" className="hover:text-white/55 transition-colors">Stat Board</Link>
             <span>/</span>
             <span className="text-white/50">Team Stats</span>
           </div>
 
           {/* Page header */}
-          <div className="mb-3 sm:mb-5">
-            <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white">AFL Team Stat Board</h1>
+          <div className="mb-2 sm:mb-5">
+            <h1 className="text-base sm:text-xl font-bold tracking-tight text-white">AFL Team Stat Board</h1>
             <p className="mt-1 text-sm text-white/50 max-w-xl leading-relaxed hidden sm:block">
               View every team's scoring trends, hit rates and projections for the round.
             </p>
           </div>
 
           {/* ── Mobile controls (< sm) ─────────────────────────────────────────── */}
-          <div className="sm:hidden mb-3 space-y-2" style={{ width: "100%", boxSizing: "border-box", minWidth: 0 }}>
+          <div className="sm:hidden mb-2 space-y-1.5" style={{ width: "100%", boxSizing: "border-box", minWidth: 0 }}>
 
             {/* Row 1: match filter (left, fills space) + sort button (right, fixed) */}
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8, width: "100%", boxSizing: "border-box" }}>
@@ -238,7 +238,7 @@ export default function StatBoardTeamsPage() {
               <div className="relative" style={{ flexShrink: 0 }}>
                 <button
                   onClick={() => setSortOpen((v) => !v)}
-                  className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.045] px-2.5 py-2 text-[12px] font-medium text-white/60 hover:text-white/80 transition-colors focus:outline-none"
+                  className="flex items-center gap-1 rounded-xl border border-white/10 bg-white/[0.045] px-2.5 py-1.5 text-[12px] font-medium text-white/60 hover:text-white/80 transition-colors focus:outline-none"
                   aria-haspopup="listbox"
                   aria-expanded={sortOpen}
                 >
@@ -265,7 +265,7 @@ export default function StatBoardTeamsPage() {
                     key={l}
                     onClick={() => handleLensChange(l)}
                     style={{ whiteSpace: "nowrap", flexShrink: 0 }}
-                    className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                    className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors ${
                       lens === l
                         ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
                         : "bg-white/[0.04] border-white/[0.08] text-white/42 hover:text-white/65"
@@ -509,7 +509,7 @@ function BoardSummaryStrip({
   );
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-white/[0.07] bg-white/[0.025] px-3.5 py-2.5">
+    <div className="mb-2 sm:mb-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:gap-x-4 sm:gap-y-2 rounded-xl border border-white/[0.07] bg-white/[0.025] px-2.5 py-1.5 sm:px-3.5 sm:py-2.5">
       {items.map((item, idx) => (
         <React.Fragment key={idx}>
           {idx > 0 && (
@@ -771,7 +771,7 @@ function MatchFilterDropdown({ matches, selected, loading, onChange, hasFullAcce
         aria-haspopup="listbox"
         aria-expanded={open}
         style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}
-        className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-left transition-all duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20
+        className={`flex items-center gap-2 rounded-xl border px-3 py-1.5 text-left transition-all duration-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/20
           ${open
             ? "bg-white/8 border-white/18 text-white"
             : "bg-white/[0.045] border-white/10 text-white/80 hover:bg-white/7 hover:border-white/16 hover:text-white/95"
