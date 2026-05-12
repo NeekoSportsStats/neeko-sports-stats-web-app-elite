@@ -187,10 +187,10 @@ export default function StatBoardTeamsPage() {
   return (
     <>
       <Helmet>
-        <title>AFL Team Stat Board | Hit Rates &amp; Projections</title>
+        <title>AFL Team Stat Board | Team Score, Goals &amp; Projection Outlooks</title>
         <meta
           name="description"
-          content="View every AFL team's scoring trends, hit rates and projections for the round. Full round team board with stat lens filtering."
+          content="Full round team projection outlook covering team score, goals, scoring shots and disposals. Hit rates and trends for every AFL team this week."
         />
         <link rel="canonical" href="https://neekostats.com.au/stat-board/teams" />
         <meta property="og:url" content="https://neekostats.com.au/stat-board/teams" />
@@ -212,7 +212,7 @@ export default function StatBoardTeamsPage() {
           <div className="mb-2 sm:mb-5">
             <h1 className="text-base sm:text-xl font-bold tracking-tight text-white">AFL Team Stat Board</h1>
             <p className="mt-1 text-sm text-white/50 max-w-xl leading-relaxed hidden sm:block">
-              View every team's scoring trends, hit rates and projections for the round.
+              Full round team score, goals, scoring shots and disposal outlooks — hit rates and projections for every match.
             </p>
           </div>
 
@@ -347,9 +347,9 @@ export default function StatBoardTeamsPage() {
             <div className="mb-4 flex items-start gap-3 rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/5 px-3 py-2.5 sm:px-4 sm:py-3.5">
               <Lock className="h-4 w-4 shrink-0 text-[#F5C84C] mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-[#F5C84C] leading-snug">Unlock full round</p>
+                <p className="text-sm font-semibold text-[#F5C84C] leading-snug">Team projection outlook — Neeko+ required</p>
                 <p className="text-xs text-white/45 mt-0.5 leading-relaxed">
-                  First 2 matches free. Upgrade to Neeko+ to view every match, projection, hit rate and trend.
+                  First 2 matches are free. Upgrade to Neeko+ to unlock every match's team score, goals, scoring shots and disposal outlooks.
                 </p>
                 <button
                   onClick={() => navigate("/neeko-plus")}

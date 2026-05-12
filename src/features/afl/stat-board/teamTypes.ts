@@ -130,7 +130,7 @@ export function teamThresholdsForLens(lens: TeamStatLens): readonly number[] {
 
 export function teamLensLabel(lens: TeamStatLens): string {
   switch (lens) {
-    case "score":         return "Score";
+    case "score":         return "Team Score";
     case "goals":         return "Goals";
     case "scoring_shots": return "Scoring Shots";
     case "disposals":     return "Disposals";
