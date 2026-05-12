@@ -324,8 +324,10 @@ export default function AFLPlayersPage() {
         background: "#080808",
         padding: "clamp(14px, 3vw, 40px) clamp(12px, 3vw, 28px)",
         maxWidth: 1080,
+        width: "100%",
         margin: "0 auto",
         overflowX: "hidden",
+        boxSizing: "border-box",
       }}>
 
         {/* ── Page header ───────────────────────────────────────────────── */}
@@ -369,6 +371,8 @@ export default function AFLPlayersPage() {
             display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
             gap: 4,
+            width: "100%",
+            boxSizing: "border-box",
           }}>
             {AFL_TEAMS.map(team => (
               <TeamCard
@@ -418,7 +422,7 @@ export default function AFLPlayersPage() {
           </div>
 
           {/* Position filter */}
-          <div style={{ position: "relative", flexShrink: 0 }}>
+          <div style={{ position: "relative", flexShrink: 0, minWidth: 0 }}>
             <select
               value={position}
               onChange={e => setPosition(e.target.value)}
@@ -427,6 +431,7 @@ export default function AFLPlayersPage() {
                 background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)",
                 borderRadius: 8, color: position ? "#fff" : "rgba(255,255,255,0.45)",
                 fontSize: 12, fontWeight: 600, padding: "7px 26px 7px 10px", cursor: "pointer", outline: "none",
+                maxWidth: 140, minWidth: 0, boxSizing: "border-box",
               }}
             >
               {POSITIONS.map(p => (
@@ -437,7 +442,7 @@ export default function AFLPlayersPage() {
           </div>
 
           {/* Team filter */}
-          <div style={{ position: "relative", flexShrink: 0 }}>
+          <div style={{ position: "relative", flexShrink: 0, minWidth: 0 }}>
             <select
               value={teamFilter}
               onChange={e => setTeamFilter(e.target.value)}
@@ -446,7 +451,7 @@ export default function AFLPlayersPage() {
                 background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.10)",
                 borderRadius: 8, color: teamFilter ? "#fff" : "rgba(255,255,255,0.45)",
                 fontSize: 12, fontWeight: 600, padding: "7px 26px 7px 10px", cursor: "pointer",
-                outline: "none", maxWidth: 140,
+                outline: "none", maxWidth: 120, minWidth: 0, boxSizing: "border-box",
               }}
             >
               <option value="" style={{ background: "#111", color: "#fff" }}>All Teams</option>
@@ -480,6 +485,9 @@ export default function AFLPlayersPage() {
             scrollbarWidth: "none",
             marginBottom: 10,
             paddingBottom: 2,
+            width: "100%",
+            maxWidth: "100%",
+            boxSizing: "border-box",
           }}>
             <div style={{
               display: "flex",
@@ -579,7 +587,7 @@ export default function AFLPlayersPage() {
 
         {/* ── Player table ───────────────────────────────────────────────── */}
         {!loading && !error && (
-          <div style={{ overflow: "hidden", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ overflow: "hidden", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", width: "100%", boxSizing: "border-box" }}>
             {/*
               Table strategy: Team and Pos columns are hidden on mobile via class="sm-col"
               and shown as a sub-line under the player name instead.
@@ -594,7 +602,21 @@ export default function AFLPlayersPage() {
                 .plyr-mobile-sub { display: none; }
               }
             `}</style>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+              <colgroup>
+                {/* Player name — takes remaining space */}
+                <col style={{ width: "auto" }} />
+                {/* Team — hidden on mobile */}
+                <col className="plyr-col-team" style={{ width: 90 }} />
+                {/* Pos — hidden on mobile */}
+                <col className="plyr-col-pos" style={{ width: 44 }} />
+                {/* Price */}
+                <col style={{ width: 62 }} />
+                {/* Avg / Proj */}
+                <col style={{ width: 52 }} />
+                {/* Signal */}
+                <col style={{ width: 68 }} />
+              </colgroup>
               {/* Sticky header */}
               <thead>
                 <tr style={{ background: "rgba(18,18,18,1)", borderBottom: "1px solid rgba(255,255,255,0.08)", position: "sticky", top: 0, zIndex: 2 }}>
