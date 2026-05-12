@@ -334,6 +334,39 @@ function useFreeRoundData(): FreeRoundData {
   return { matches, loading };
 }
 
+// ── Short match label helper ─────────────────────────────────────────────────
+
+const TEAM_ABBREVS: Record<string, string> = {
+  "Adelaide Crows": "ADE", "Adelaide": "ADE",
+  "Brisbane Lions": "BRI", "Brisbane": "BRI",
+  "Carlton": "CAR",
+  "Collingwood": "COL",
+  "Essendon": "ESS",
+  "Fremantle": "FRE",
+  "Geelong Cats": "GEE", "Geelong": "GEE",
+  "Gold Coast Suns": "GCS", "Gold Coast": "GCS",
+  "GWS Giants": "GWS", "Greater Western Sydney": "GWS",
+  "Hawthorn": "HAW",
+  "Melbourne": "MEL",
+  "North Melbourne": "NME",
+  "Port Adelaide": "PTA",
+  "Richmond": "RIC",
+  "St Kilda": "STK",
+  "Sydney Swans": "SYD", "Sydney": "SYD",
+  "West Coast Eagles": "WCE", "West Coast": "WCE",
+  "Western Bulldogs": "WBD", "Footscray": "WBD",
+};
+
+function toShortMatchLabel(label: string): string {
+  // Handles "Team A v Team B" or "Team A vs Team B"
+  const sep = label.includes(" vs ") ? " vs " : " v ";
+  const parts = label.split(sep);
+  if (parts.length !== 2) return label;
+  const a = TEAM_ABBREVS[parts[0].trim()] ?? parts[0].trim().slice(0, 3).toUpperCase();
+  const b = TEAM_ABBREVS[parts[1].trim()] ?? parts[1].trim().slice(0, 3).toUpperCase();
+  return `${a} v ${b}`;
+}
+
 // ── Profile text helper ───────────────────────────────────────────────────────
 
 // Normalise a rate value to 0-1 regardless of whether the source is 0-1 or 0-100.
@@ -516,30 +549,48 @@ function FreeRoundPreview() {
 
       {/* Game selector */}
       {matches.length >= 2 && (
-        <div style={{
-          display: "flex", borderBottom: "1px solid rgba(255,255,255,0.07)",
-          background: "rgba(255,255,255,0.02)", gap: 0,
-        }}>
-          {matches.map((m, idx) => (
-            <button
-              key={m.match_id}
-              onClick={() => setSelectedGameIdx(idx)}
-              style={{
-                flex: 1, padding: "11px 12px",
-                background: selectedGameIdx === idx ? "rgba(34,197,94,0.06)" : "none",
-                border: "none", cursor: "pointer",
-                borderBottom: selectedGameIdx === idx ? "2px solid #22c55e" : "2px solid transparent",
-                color: selectedGameIdx === idx ? "#f0f0f0" : "rgba(255,255,255,0.42)",
-                fontSize: 12, fontWeight: selectedGameIdx === idx ? 700 : 500,
-                textAlign: "center", whiteSpace: "nowrap", overflow: "hidden",
-                textOverflow: "ellipsis", minHeight: 44,
-                transition: "color 0.12s, border-color 0.12s, background 0.12s",
-              }}
-            >
-              {m.match_label}
-            </button>
-          ))}
-        </div>
+        <>
+          <div style={{
+            display: "flex", borderBottom: "1px solid rgba(255,255,255,0.07)",
+            background: "rgba(255,255,255,0.02)", gap: 0,
+          }}>
+            {matches.map((m, idx) => (
+              <button
+                key={m.match_id}
+                onClick={() => setSelectedGameIdx(idx)}
+                style={{
+                  flex: 1, padding: "10px 8px",
+                  background: selectedGameIdx === idx ? "rgba(34,197,94,0.06)" : "none",
+                  border: "none", cursor: "pointer",
+                  borderBottom: selectedGameIdx === idx ? "2px solid #22c55e" : "2px solid transparent",
+                  color: selectedGameIdx === idx ? "#f0f0f0" : "rgba(255,255,255,0.42)",
+                  fontSize: 13, fontWeight: selectedGameIdx === idx ? 800 : 500,
+                  textAlign: "center", whiteSpace: "nowrap",
+                  minHeight: 44, letterSpacing: "0.04em",
+                  transition: "color 0.12s, border-color 0.12s, background 0.12s",
+                }}
+              >
+                {toShortMatchLabel(m.match_label)}
+              </button>
+            ))}
+          </div>
+          {/* Full selected match name */}
+          {selectedMatch && (
+            <div style={{
+              padding: "6px 14px",
+              borderBottom: "1px solid rgba(255,255,255,0.05)",
+              background: "rgba(34,197,94,0.03)",
+            }}>
+              <span style={{
+                fontSize: 11, fontWeight: 600,
+                color: "rgba(255,255,255,0.55)",
+                letterSpacing: "0.01em",
+              }}>
+                {selectedMatch.match_label}
+              </span>
+            </div>
+          )}
+        </>
       )}
 
       {/* Stat toggle */}
