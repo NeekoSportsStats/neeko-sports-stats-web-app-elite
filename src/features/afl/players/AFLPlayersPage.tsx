@@ -597,16 +597,18 @@ export default function AFLPlayersPage() {
               @media (max-width: 539px) {
                 .plyr-col-team, .plyr-col-pos { display: none; }
                 .plyr-mobile-sub { display: block; }
+                /* On mobile switch to auto layout so hidden cols don't reserve space */
+                .plyr-table { table-layout: auto !important; }
               }
               @media (min-width: 540px) {
                 .plyr-mobile-sub { display: none; }
               }
             `}</style>
-            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+            <table className="plyr-table" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
               <colgroup>
                 {/* Player name — takes remaining space */}
                 <col style={{ width: "auto" }} />
-                {/* Team — hidden on mobile */}
+                {/* Team — hidden on mobile; col width ignored when table-layout:auto */}
                 <col className="plyr-col-team" style={{ width: 90 }} />
                 {/* Pos — hidden on mobile */}
                 <col className="plyr-col-pos" style={{ width: 44 }} />
