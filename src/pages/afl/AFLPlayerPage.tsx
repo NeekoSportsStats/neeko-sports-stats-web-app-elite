@@ -625,41 +625,61 @@ function StatisticalProfile({
   return (
     <div className="space-y-3">
 
-      {/* Free tier: rate metrics grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <ProfileCard
-          label="80+ Score Rate"
-          value={`${stats.rate80plus}%`}
-          sub={`${stats.scores.filter(v => v >= 80).length} of ${n} matches`}
-          barValue={stats.rate80plus}
-          barColor="rgba(52,211,153,0.7)"
-          highlight={stats.rate80plus >= 50 ? 'positive' : stats.rate80plus >= 30 ? 'neutral' : 'negative'}
-        />
-        <ProfileCard
-          label="100+ Score Rate"
-          value={`${stats.rate100plus}%`}
-          sub={`${stats.scores.filter(v => v >= 100).length} of ${n} matches`}
-          barValue={stats.rate100plus}
-          barColor="rgba(52,211,153,0.6)"
-          highlight={stats.rate100plus >= 35 ? 'positive' : stats.rate100plus >= 15 ? 'neutral' : 'negative'}
-        />
-        <ProfileCard
-          label="Sub-60 Rate"
-          value={`${stats.rateBelow60}%`}
-          sub={`${stats.scores.filter(v => v < 60).length} of ${n} matches`}
-          barValue={stats.rateBelow60}
-          barColor="rgba(248,113,113,0.65)"
-          highlight={stats.rateBelow60 <= 15 ? 'positive' : stats.rateBelow60 <= 35 ? 'neutral' : 'negative'}
-        />
-        <ProfileCard
-          label="Consistency"
-          value={`${stats.consistency}%`}
-          sub="within ±15 of avg"
-          barValue={stats.consistency}
-          barColor="rgba(250,204,21,0.65)"
-          highlight={stats.consistency >= 65 ? 'positive' : stats.consistency >= 45 ? 'neutral' : 'negative'}
-        />
-      </div>
+      {/* Rate metrics grid — premium only */}
+      {isPremium ? (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <ProfileCard
+            label="80+ Score Rate"
+            value={`${stats.rate80plus}%`}
+            sub={`${stats.scores.filter(v => v >= 80).length} of ${n} matches`}
+            barValue={stats.rate80plus}
+            barColor="rgba(52,211,153,0.7)"
+            highlight={stats.rate80plus >= 50 ? 'positive' : stats.rate80plus >= 30 ? 'neutral' : 'negative'}
+          />
+          <ProfileCard
+            label="100+ Score Rate"
+            value={`${stats.rate100plus}%`}
+            sub={`${stats.scores.filter(v => v >= 100).length} of ${n} matches`}
+            barValue={stats.rate100plus}
+            barColor="rgba(52,211,153,0.6)"
+            highlight={stats.rate100plus >= 35 ? 'positive' : stats.rate100plus >= 15 ? 'neutral' : 'negative'}
+          />
+          <ProfileCard
+            label="Sub-60 Rate"
+            value={`${stats.rateBelow60}%`}
+            sub={`${stats.scores.filter(v => v < 60).length} of ${n} matches`}
+            barValue={stats.rateBelow60}
+            barColor="rgba(248,113,113,0.65)"
+            highlight={stats.rateBelow60 <= 15 ? 'positive' : stats.rateBelow60 <= 35 ? 'neutral' : 'negative'}
+          />
+          <ProfileCard
+            label="Consistency"
+            value={`${stats.consistency}%`}
+            sub="within ±15 of avg"
+            barValue={stats.consistency}
+            barColor="rgba(250,204,21,0.65)"
+            highlight={stats.consistency >= 65 ? 'positive' : stats.consistency >= 45 ? 'neutral' : 'negative'}
+          />
+        </div>
+      ) : (
+        <div className="rounded-xl border border-white/[0.06] bg-[#0c0c0c] px-4 py-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Lock size={11} className="text-amber-400/40 shrink-0" />
+            <div>
+              <p className="text-[11px] text-white/42 font-semibold">Hit Rate Cards</p>
+              <p className="text-[10px] text-white/25 leading-snug">
+                80+ rate, 100+ rate, sub-60 rate, and consistency score.
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/upgrade"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-amber-500/90 hover:bg-amber-400 transition-colors px-3 py-1.5 text-[10px] font-black text-black"
+          >
+            <Zap size={9} /> Unlock
+          </Link>
+        </div>
+      )}
 
       {/* Premium tier: extended metrics */}
       {isPremium ? (
@@ -1076,8 +1096,8 @@ export default function AFLPlayerPage() {
                   <h1 className="text-[20px] sm:text-[34px] font-black text-white leading-none tracking-tight mb-1.5 sm:mb-2">
                     {player.player_name}
                   </h1>
-                  {/* Form label + delta — derived from real scoring, always visible if data present */}
-                  {delta3 != null && (
+                  {/* Form label + delta — premium only */}
+                  {isPremium && delta3 != null && (
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide ${getFormStyles(formLabel)}`}>
                         {formLabel}
@@ -1120,8 +1140,8 @@ export default function AFLPlayerPage() {
                   { label: 'Last 3 Matches', val: <span className={delta3 != null ? (delta3 >= 0 ? 'text-emerald-400' : 'text-red-400/85') : 'text-white/65'}>{fmtAvg(player.avg_last_3)}</span> },
                   ...(player.avg_last_5 != null ? [{ label: 'Last 5 Matches', val: <span className="text-white/60">{Math.round(player.avg_last_5)}</span> }] : []),
                   { label: '2026 Games',     val: <span className="text-white/50">{player.games_played ?? '—'}</span> },
-                  ...(scoreStats?.high != null ? [{ label: 'High (L10 Matches)', val: <span className="text-emerald-400/75">{Math.round(scoreStats.high)}</span> }] : []),
-                  ...(scoreStats?.low  != null ? [{ label: 'Low (L10 Matches)',  val: <span className="text-red-400/60">{Math.round(scoreStats.low)}</span> }] : []),
+                  ...(isPremium && scoreStats?.high != null ? [{ label: 'High (L10 Matches)', val: <span className="text-emerald-400/75">{Math.round(scoreStats.high)}</span> }] : []),
+                  ...(isPremium && scoreStats?.low  != null ? [{ label: 'Low (L10 Matches)',  val: <span className="text-red-400/60">{Math.round(scoreStats.low)}</span> }] : []),
                 ];
                 return (
                   <div className="rounded-xl border border-white/[0.07] bg-black/20 overflow-hidden">
@@ -1167,6 +1187,7 @@ export default function AFLPlayerPage() {
                       playerId={String(player.player_id)}
                       hideProjection={!isPremium}
                       seasonAvg={player.season_avg}
+                      isPremium={isPremium}
                     />
                   </Suspense>
                 </div>
@@ -1221,15 +1242,22 @@ export default function AFLPlayerPage() {
                       value={<span className="text-white/65">{fmtAvg(player.avg_last_5)}</span>}
                       sub="5-match window"
                     />
-                    <StatTile
-                      label="High (Last 10)"
-                      value={<span className="text-white/55">{scoreStats?.high != null ? Math.round(scoreStats.high) : '—'}</span>}
-                      sub="last 10 matches"
-                    />
+                    {isPremium ? (
+                      <StatTile
+                        label="High (Last 10)"
+                        value={<span className="text-white/55">{scoreStats?.high != null ? Math.round(scoreStats.high) : '—'}</span>}
+                        sub="last 10 matches"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center rounded-xl border border-white/[0.06] bg-[#0c0c0c] px-2 py-3 gap-1 text-center">
+                        <Lock size={10} className="text-amber-400/35" />
+                        <span className="text-[8px] uppercase tracking-widest text-white/22 font-semibold leading-tight">High (Last 10)</span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Form trend bar */}
-                  {(player.avg_last_3 != null || player.avg_last_5 != null) && player.season_avg != null && (
+                  {/* Form trend bar — premium only */}
+                  {isPremium && (player.avg_last_3 != null || player.avg_last_5 != null) && player.season_avg != null && (
                     <div className="rounded-xl border border-white/[0.07] bg-[#0c0c0c] px-4 py-3 space-y-2">
                       <p className="text-[9px] uppercase tracking-widest text-white/25 font-semibold">Form Trend</p>
                       <FormBar avg3={player.avg_last_3} avg5={player.avg_last_5} seasonAvg={player.season_avg} />
@@ -1247,6 +1275,23 @@ export default function AFLPlayerPage() {
                           <span className="text-[9px] text-white/28">2026 avg</span>
                         </div>
                       </div>
+                    </div>
+                  )}
+                  {!isPremium && (
+                    <div className="rounded-xl border border-white/[0.06] bg-[#0c0c0c] px-4 py-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2.5">
+                        <Lock size={11} className="text-amber-400/40 shrink-0" />
+                        <div>
+                          <p className="text-[11px] text-white/42 font-semibold">Form Trend</p>
+                          <p className="text-[10px] text-white/25 leading-snug">Visual form trend vs season average.</p>
+                        </div>
+                      </div>
+                      <Link
+                        to="/upgrade"
+                        className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-amber-500/90 hover:bg-amber-400 transition-colors px-3 py-1.5 text-[10px] font-black text-black"
+                      >
+                        <Zap size={9} /> Unlock
+                      </Link>
                     </div>
                   )}
                 </div>

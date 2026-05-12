@@ -27,17 +27,18 @@ function getConfidenceAssessment(conf: number | null, error: number | null): Con
 // ─── Tooltip ─────────────────────────────────────────────────────────────────
 
 function ChartTooltip({
-  active, payload, label, hideProjection, seasonAvg,
+  active, payload, label, hideProjection, seasonAvg, isPremium,
 }: {
   active?: boolean;
   payload?: any[];
   label?: string;
   hideProjection?: boolean;
   seasonAvg?: number | null;
+  isPremium?: boolean;
 }) {
   if (!active || !payload?.length) return null;
 
-  const actual    = payload.find((p: any) => p.dataKey === "actual_score")?.value ?? null;
+  const actual    = isPremium ? (payload.find((p: any) => p.dataKey === "actual_score")?.value ?? null) : null;
   const projected = hideProjection ? null
     : (payload.find((p: any) => p.dataKey === "proj_past")?.value
       ?? payload.find((p: any) => p.dataKey === "proj_future")?.value
@@ -45,14 +46,14 @@ function ChartTooltip({
   const conf      = hideProjection ? null
     : payload.find((p: any) => p.dataKey === "proj_past" || p.dataKey === "proj_future")
       ?.payload?.projection_confidence ?? null;
-  const rolling3  = payload.find((p: any) => p.dataKey === "rolling3")?.value ?? null;
+  const rolling3  = isPremium ? (payload.find((p: any) => p.dataKey === "rolling3")?.value ?? null) : null;
 
   const diff      = actual != null && projected != null ? Math.round(actual - projected) : null;
   const error     = actual != null && projected != null ? Math.abs(actual - projected) : null;
   const isUnder   = diff != null && diff >= 0;
   const assessment = !hideProjection ? getConfidenceAssessment(conf, error) : null;
 
-  const vsAvg = (actual != null && seasonAvg != null)
+  const vsAvg = (isPremium && actual != null && seasonAvg != null)
     ? Math.round(actual - seasonAvg)
     : null;
 
@@ -70,14 +71,19 @@ function ChartTooltip({
     }}>
       <p style={{ fontSize: 10, color: "rgba(255,255,255,0.38)", fontWeight: 500, marginBottom: 5 }}>{label}</p>
 
-      {actual != null && (
+      {actual != null ? (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <span style={{ fontSize: 10, color: "rgba(245,200,76,0.80)" }}>Actual</span>
           <span style={{ fontSize: 11, fontWeight: 700, color: "#F5C84C", fontVariantNumeric: "tabular-nums" }}>{Math.round(actual)}</span>
         </div>
-      )}
+      ) : !isPremium ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2 }}>
+          <span style={{ fontSize: 9, color: "rgba(250,204,21,0.60)" }}>&#x1F512;</span>
+          <span style={{ fontSize: 9, color: "rgba(255,255,255,0.28)" }}>Premium</span>
+        </div>
+      ) : null}
 
-      {seasonAvg != null && (
+      {isPremium && seasonAvg != null && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 2 }}>
           <span style={{ fontSize: 9, color: "rgba(255,255,255,0.28)" }}>Season avg</span>
           <span style={{ fontSize: 9, color: "rgba(255,255,255,0.42)", fontVariantNumeric: "tabular-nums" }}>{Math.round(seasonAvg)}</span>
@@ -148,13 +154,15 @@ function ChartTooltip({
 // ─── Summary strip above chart ────────────────────────────────────────────────
 
 function ChartSummaryStrip({
-  actuals, seasonAvg, stdDev,
+  actuals, seasonAvg, stdDev, isPremium,
 }: {
   actuals: number[];
   seasonAvg: number | null;
   stdDev: number | null;
+  isPremium?: boolean;
 }) {
   if (actuals.length === 0) return null;
+  if (!isPremium) return null;
 
   const high = Math.max(...actuals);
   const low  = Math.min(...actuals);
@@ -341,11 +349,13 @@ export default function ScoreHistoryChart({
   playerId,
   hideProjection,
   seasonAvg,
+  isPremium,
 }: {
   playerName: string;
   playerId?: string | null;
   hideProjection?: boolean;
   seasonAvg?: number | null;
+  isPremium?: boolean;
 }) {
   const [data,    setData]    = useState<ChartDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -512,8 +522,8 @@ export default function ScoreHistoryChart({
 
   return (
     <div style={{ width: "100%", minWidth: 0, maxWidth: "100%", boxSizing: "border-box", overflowX: "hidden" }}>
-      {/* Summary strip */}
-      <ChartSummaryStrip actuals={actuals} seasonAvg={seasonAvg ?? null} stdDev={stdDev} />
+      {/* Summary strip — premium only */}
+      <ChartSummaryStrip actuals={actuals} seasonAvg={seasonAvg ?? null} stdDev={stdDev} isPremium={isPremium} />
 
       {/* Chart */}
       <ResponsiveContainer width="100%" height={185}>
@@ -547,6 +557,7 @@ export default function ScoreHistoryChart({
               <ChartTooltip
                 hideProjection={hideProjection}
                 seasonAvg={seasonAvg ?? null}
+                isPremium={isPremium}
               />
             }
           />
