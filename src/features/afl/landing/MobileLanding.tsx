@@ -1114,20 +1114,20 @@ export default function MobileLanding({ isPremium }: Props) {
         minHeight: "75vh",
         display: "flex",
         flexDirection: "column",
-        justifyContent: "flex-end",
-        paddingTop: "calc(102px + 20px)",
-        paddingBottom: 0,
+        justifyContent: "center",
+        paddingTop: "calc(102px + 8px)",
+        paddingBottom: 48,
         overflow: "hidden",
         backgroundImage: `
           linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(5,8,12,0.38) 45%, rgba(7,9,13,0.88) 80%, rgba(7,9,13,1.0) 100%),
           url('/images/Fantasy_sports_war_room_setup.png')
         `,
-        backgroundSize: "110% auto",
-        backgroundPosition: "center center",
+        backgroundSize: "130% auto",
+        backgroundPosition: "center 30%",
         backgroundRepeat: "no-repeat",
       }}>
 
-        <div style={{ position: "relative", zIndex: 2, padding: "0 16px 40px" }}>
+        <div style={{ position: "relative", zIndex: 2, padding: "0 16px" }}>
           {roundLabel && (
             <p style={{ fontSize: 8, fontWeight: 900, letterSpacing: "0.38em", textTransform: "uppercase", color: "rgba(34,197,94,0.65)", marginBottom: 10, textAlign: "center" }}>
               AFL · {roundLabel}
