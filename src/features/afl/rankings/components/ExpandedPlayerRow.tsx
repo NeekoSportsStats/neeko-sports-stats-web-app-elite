@@ -268,8 +268,8 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
 
   return (
     <tr className="border-b border-white/[0.04] bg-[#0c0c0c]">
-      <td colSpan={colSpan} className="px-4 pb-4 pt-0">
-        <div className="ml-10 rounded-xl border border-white/[0.07] bg-[#111] p-3">
+      <td colSpan={colSpan} className="px-2 sm:px-4 pb-3 sm:pb-4 pt-0">
+        <div className="sm:ml-10 rounded-xl border border-white/[0.07] bg-[#111] p-2.5 sm:p-3">
           <div className="flex flex-col gap-2">
 
             {/* 1. Edge headline */}
@@ -282,8 +282,8 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
 
             {/* 2. Stat reason */}
             <div>
-              <p className="text-[10px] text-white/25 uppercase tracking-wider font-semibold mb-1">Why this call</p>
-              <p className="text-[13px] text-white/50 leading-relaxed line-clamp-3">
+              <p className="text-[9px] sm:text-[10px] text-white/25 uppercase tracking-wider font-semibold mb-0.5 sm:mb-1">Why this call</p>
+              <p className="text-[11px] sm:text-[13px] text-white/50 leading-relaxed line-clamp-3">
                 {statWhy}
               </p>
             </div>
@@ -307,51 +307,52 @@ export function ExpandedPlayerRow({ row, colSpan, isPremium, onUpgrade }: Expand
               <p className="text-[11px] text-white/20 italic">No recent games</p>
             )}
 
-            {/* 4. Metrics row + CTA */}
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/[0.05] pt-3">
-              {row.confidence_label ? (
-                <div>
-                  <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Confidence</p>
-                  <span className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-semibold ${getCanonicalConfidenceStyles(row.confidence_label)}`}>
-                    {formatCanonicalConfidenceLabel(row.confidence_label)}
-                  </span>
-                </div>
-              ) : confidence != null ? (
-                <div>
-                  <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Confidence</p>
-                  <p className={`text-sm font-semibold tabular-nums ${confColor}`}>{confidence}%</p>
-                </div>
-              ) : null}
-              {row.value_band && (
-                <div>
-                  <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Value</p>
-                  <span className={`inline-block rounded-md border px-2 py-0.5 text-[11px] font-semibold ${getValueBandStyles(row.value_band)}`}>
-                    {row.value_band}
-                  </span>
-                </div>
-              )}
-              {row.decision_score != null && (
-                <div>
-                  <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Decision Score</p>
-                  <p className={`text-sm font-semibold tabular-nums ${getDecisionScoreColor(row.decision_score)}`}>
-                    {fmtDecisionScore(row.decision_score)}
-                  </p>
-                </div>
-              )}
-              {price != null && (
-                <div>
-                  <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Price</p>
-                  <p className="text-sm font-semibold text-white/80 tabular-nums">{price}</p>
-                </div>
-              )}
-              {rating != null && (
-                <div>
-                  <p className="text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Neeko Rating</p>
-                  <p className="text-sm font-semibold text-white/80 tabular-nums">{rating}</p>
-                </div>
-              )}
-
-              <div className={hasMetrics ? "ml-auto" : "w-full flex justify-end"}>
+            {/* 4. Metrics grid + CTA */}
+            <div className="border-t border-white/[0.05] pt-2.5">
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-3 sm:gap-x-5 gap-y-2 mb-2.5">
+                {row.confidence_label ? (
+                  <div>
+                    <p className="text-[9px] sm:text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Confidence</p>
+                    <span className={`inline-block rounded-md border px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold ${getCanonicalConfidenceStyles(row.confidence_label)}`}>
+                      {formatCanonicalConfidenceLabel(row.confidence_label)}
+                    </span>
+                  </div>
+                ) : confidence != null ? (
+                  <div>
+                    <p className="text-[9px] sm:text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Confidence</p>
+                    <p className={`text-[12px] sm:text-sm font-semibold tabular-nums ${confColor}`}>{confidence}%</p>
+                  </div>
+                ) : null}
+                {row.value_band && (
+                  <div>
+                    <p className="text-[9px] sm:text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Value</p>
+                    <span className={`inline-block rounded-md border px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold ${getValueBandStyles(row.value_band)}`}>
+                      {row.value_band}
+                    </span>
+                  </div>
+                )}
+                {row.decision_score != null && (
+                  <div>
+                    <p className="text-[9px] sm:text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Decision Score</p>
+                    <p className={`text-[12px] sm:text-sm font-semibold tabular-nums ${getDecisionScoreColor(row.decision_score)}`}>
+                      {fmtDecisionScore(row.decision_score)}
+                    </p>
+                  </div>
+                )}
+                {price != null && (
+                  <div>
+                    <p className="text-[9px] sm:text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Price</p>
+                    <p className="text-[12px] sm:text-sm font-semibold text-white/80 tabular-nums">{price}</p>
+                  </div>
+                )}
+                {rating != null && (
+                  <div>
+                    <p className="text-[9px] sm:text-[10px] text-white/25 uppercase tracking-wide mb-0.5">Neeko Rating</p>
+                    <p className="text-[12px] sm:text-sm font-semibold text-white/80 tabular-nums">{rating}</p>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end">
                 <button
                   onClick={handleViewPlayer}
                   className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/55 hover:border-white/20 hover:text-white/80 transition-colors"

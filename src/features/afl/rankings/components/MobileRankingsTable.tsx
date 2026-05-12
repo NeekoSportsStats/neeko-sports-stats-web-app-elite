@@ -244,63 +244,63 @@ function ExpandedSection({ row }: { row: RankingRow }) {
   const statWhy = buildStatGeneratedWhy(row, "ranking");
 
   return (
-    <div className="mt-3 rounded-xl border border-white/[0.08] bg-[#111] p-4 flex flex-col gap-3">
+    <div className="mt-2 rounded-xl border border-white/[0.08] bg-[#111] p-3 flex flex-col gap-2">
 
       {/* Stat reason */}
       <div>
-        <p className="text-[10px] text-white/30 uppercase tracking-wide font-semibold mb-1">Why this call</p>
-        <p className="text-[12px] text-white/55 leading-relaxed line-clamp-4">{statWhy}</p>
+        <p className="text-[9px] text-white/30 uppercase tracking-wide font-semibold mb-0.5">Why this call</p>
+        <p className="text-[11px] text-white/55 leading-relaxed line-clamp-3">{statWhy}</p>
       </div>
 
       {/* Sparkline */}
       {(loading || history.length >= 3) && (
-        <div className="border-t border-white/[0.05] pt-3">
-          <p className="text-[10px] text-white/25 uppercase tracking-wide font-semibold mb-2">
+        <div className="border-t border-white/[0.05] pt-2">
+          <p className="text-[9px] text-white/25 uppercase tracking-wide font-semibold mb-1">
             Last {loading ? "—" : history.length} games
           </p>
           {loading ? (
-            <div className="w-full rounded bg-white/[0.03] animate-pulse" style={{ height: 80 }} />
+            <div className="w-full rounded bg-white/[0.03] animate-pulse" style={{ height: 64 }} />
           ) : history.length >= 3 ? (
             <MobileSparkline points={history} valueScore={valueScore} />
           ) : null}
         </div>
       )}
       {!loading && history.length < 3 && (
-        <p className="text-[10px] text-white/20 italic border-t border-white/[0.05] pt-3">No recent games</p>
+        <p className="text-[9px] text-white/20 italic border-t border-white/[0.05] pt-2">No recent games</p>
       )}
 
-      {/* Metrics grid */}
-      <div className="grid grid-cols-3 gap-2 border-t border-white/[0.05] pt-3">
-        {confLabel != null && (
-          <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-white/30">Confidence</span>
-            <span className={`text-[12px] font-bold ${getCanonicalConfidenceStyles(confLabel).split(" ")[0]}`}>
-              {formatCanonicalConfidenceLabel(confLabel)}
-            </span>
-          </div>
-        )}
+      {/* Metrics grid — 2-col max on mobile */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-white/[0.05] pt-2">
         {proj != null && !row.is_bye && (
           <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-white/30">Projection</span>
-            <span className="text-[13px] font-bold text-[#F5C84C] tabular-nums">{proj}</span>
+            <span className="text-[9px] text-white/30">Projection</span>
+            <span className="text-[12px] font-bold text-[#F5C84C] tabular-nums">{proj}</span>
           </div>
         )}
         {be != null && !row.is_bye && (
           <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-white/30">Breakeven</span>
-            <span className="text-[13px] font-bold text-white/60 tabular-nums">{be}</span>
+            <span className="text-[9px] text-white/30">Breakeven</span>
+            <span className="text-[12px] font-bold text-white/60 tabular-nums">{be}</span>
+          </div>
+        )}
+        {confLabel != null && (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[9px] text-white/30">Confidence</span>
+            <span className={`text-[11px] font-bold ${getCanonicalConfidenceStyles(confLabel).split(" ")[0]}`}>
+              {formatCanonicalConfidenceLabel(confLabel)}
+            </span>
           </div>
         )}
         {price != null && (
           <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-white/30">Price</span>
-            <span className="text-[13px] font-bold text-white/60 tabular-nums">{price}</span>
+            <span className="text-[9px] text-white/30">Price</span>
+            <span className="text-[12px] font-bold text-white/60 tabular-nums">{price}</span>
           </div>
         )}
         {valueScore != null && (
           <div className="flex flex-col gap-0.5">
-            <span className="text-[10px] text-white/30">Value</span>
-            <span className={`text-[13px] font-bold tabular-nums ${getValueScoreColor(valueScore)}`}>
+            <span className="text-[9px] text-white/30">Value</span>
+            <span className={`text-[12px] font-bold tabular-nums ${getValueScoreColor(valueScore)}`}>
               {fmtValueScore(valueScore)}
             </span>
           </div>
@@ -364,7 +364,7 @@ function PlayerCard({ row, idx, isPremium, onTap, onUpgrade }: PlayerCardProps) 
 
   return (
     <div
-      className={`rounded-xl border bg-[#0e0e0e] p-4 flex flex-col gap-2.5 active:bg-white/[0.03] transition-colors cursor-pointer ${
+      className={`rounded-xl border bg-[#0e0e0e] px-3 py-3 flex flex-col gap-2 active:bg-white/[0.03] transition-colors cursor-pointer ${
         isTop3 ? "border-[#F5C84C]/15" : "border-white/[0.07]"
       }`}
       onClick={handleTap}
