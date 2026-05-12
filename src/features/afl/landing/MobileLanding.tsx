@@ -1393,9 +1393,9 @@ export default function MobileLanding({ isPremium }: Props) {
             fontWeight: 900, lineHeight: 1.16, letterSpacing: "-0.028em",
             color: "#ffffff", marginBottom: 12, textAlign: "center",
           }}>
-            Find AFL players most likely to{" "}
-            <span style={{ color: "#34d96a" }}>hit key stats</span>{" "}
-            this round.
+            Find AFL disposal and goal{" "}
+            <span style={{ color: "#34d96a" }}>edges</span>{" "}
+            this week.
           </h1>
 
           <p style={{
@@ -1403,7 +1403,7 @@ export default function MobileLanding({ isPremium }: Props) {
             textAlign: "center", marginBottom: 22,
             maxWidth: 310, marginLeft: "auto", marginRight: "auto",
           }}>
-            Pick a match, choose a stat, and instantly see projections, form and hit rates.
+            Pick a match, choose a stat, and see projections, form and hit rates before lockout.
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
