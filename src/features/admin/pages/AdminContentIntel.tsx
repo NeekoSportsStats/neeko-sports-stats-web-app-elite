@@ -219,6 +219,8 @@ interface ResearchRow {
 
 // ─── Post template ────────────────────────────────────────────────────────────
 
+type PostQuality = "high" | "medium" | "suppressed";
+
 interface PostTemplate {
   id: string;
   format: PostFormat;
@@ -234,6 +236,8 @@ interface PostTemplate {
   targetRoundLabel: string; // e.g. "Round 10 next-up angle" or "Round 9 still-to-play"
   hasNextUpPlayers: boolean;
   hasCurrentRoundPlayers: boolean;
+  quality: PostQuality;
+  suppressReason?: string;
 }
 
 // ─── Target Game Option ───────────────────────────────────────────────────────
@@ -804,6 +808,66 @@ async function fetchCIData(): Promise<CIData> {
   };
 }
 
+// ─── Post quality scoring ─────────────────────────────────────────────────────
+
+// For disposal rows: return true if the threshold is trivially low relative to player averages.
+// Suppress if threshold <= recentAvg - 8 OR threshold <= seasonAvg - 8
+function isDisposalThresholdTrivial(rows: ResearchRow[], threshold: number): boolean {
+  if (rows.length === 0) return false;
+  const trivialCount = rows.filter(r => {
+    const recent = r.l5avg ?? r.l3avg ?? null;
+    const season = r.seasonAvg ?? null;
+    const recentTrivial = recent != null && threshold <= recent - 8;
+    const seasonTrivial = season != null && threshold <= season - 8;
+    return recentTrivial || seasonTrivial;
+  }).length;
+  // Suppress the whole post if more than half the players make the threshold trivial
+  return trivialCount > rows.length / 2;
+}
+
+// Build a specific title using the top player's name + line + opponent
+function specificDisposalTitle(rows: ResearchRow[], threshold: number): string {
+  const top = rows[0];
+  if (!top) return `${threshold}+ disposal stat trends`;
+  const opp = top.targetOpponent ?? top.opponent_team_name ?? "Unknown";
+  const extra = rows.length > 1 ? ` + ${rows.length - 1} more` : "";
+  return `${top.player_name} ${threshold}+ disposal profile vs ${opp}${extra}`;
+}
+
+function scorePostQuality(
+  post: Omit<PostTemplate, "quality" | "suppressReason">,
+  family: StatFamily,
+  threshold: number,
+  rows: ResearchRow[],
+): { quality: PostQuality; suppressReason?: string } {
+  // Non-disposal families are always at least medium — they're specific by nature
+  if (family !== "disposals") return { quality: "medium" };
+
+  // Disposal quality checks
+  // 1. Meaningful threshold: 25+ is always worth showing
+  if (threshold >= 25) return { quality: "high" };
+
+  // 2. Check if threshold is trivially low vs player averages
+  if (isDisposalThresholdTrivial(rows, threshold)) {
+    return {
+      quality: "suppressed",
+      suppressReason: `${threshold}+ is trivially low for most players in this list (avg is 8+ above line)`,
+    };
+  }
+
+  // 3. Check bucket quality — elite/missed-once players at 20+ are high quality
+  const highBucketCount = rows.filter(r =>
+    r.bucket === "elite-perfect" || r.bucket === "missed-once" || r.bucket === "projection-supported" || r.bucket === "matchup-supported"
+  ).length;
+  if (threshold >= 20 && highBucketCount >= 2) return { quality: "high" };
+
+  // 4. 15-19 range is medium if not trivial
+  if (threshold >= 15) return { quality: "medium" };
+
+  // 5. Sub-15 is low quality for non-contextual angles
+  return { quality: "suppressed", suppressReason: `${threshold}+ disposal line is too low to be meaningful for most AFL midfielders` };
+}
+
 // ─── Post builder (Smart Next-Up aware) ──────────────────────────────────────
 
 function buildPosts(
@@ -857,8 +921,9 @@ function buildPosts(
   function makePost(
     id: string, format: PostFormat, category: string, angleTag: string,
     title: string, hook: string, rows: ResearchRow[], family: StatFamily, threshold: number,
+    qualityOverride?: PostQuality,
   ): PostTemplate {
-    return {
+    const basePost = {
       id, format, category, angleTag, title, hook,
       bullets: makeBullets(rows, family, threshold),
       cta: "Check the full stat board at Neeko Sports Stats.",
@@ -869,6 +934,11 @@ function buildPosts(
       hasNextUpPlayers: rows.some(r => r.isNextUp),
       hasCurrentRoundPlayers: rows.some(r => !r.isNextUp),
     };
+    if (qualityOverride != null) {
+      return { ...basePost, quality: qualityOverride };
+    }
+    const { quality, suppressReason } = scorePostQuality(basePost, family, threshold, rows);
+    return { ...basePost, quality, suppressReason };
   }
 
   // Disposal trends
@@ -879,15 +949,17 @@ function buildPosts(
   for (const [t, cat] of dispThresholds) {
     const rows = topRows("disposals", t, null, 6);
     if (rows.length === 0) continue;
+    // Build specific title using top player name + opponent
+    const specificTitle = specificDisposalTitle(rows, t);
     posts.push(makePost(`disp-${t}-tiktok`, "tiktok", cat, "Disposal Trend",
-      `AFL: Players with strong ${t}+ disposal trends`,
+      `AFL: ${specificTitle}`,
       `These players have been consistently clearing ${t}+ disposals in recent games.`,
       rows, "disposals", t));
     posts.push(makePost(`disp-${t}-instagram`, "instagram", cat, "Disposal Trend",
-      `${t}+ disposal stat trends`, `Disposal trends — players worth tracking.`, rows, "disposals", t));
+      specificTitle, `Disposal form check — ${t}+ line players worth tracking this round.`, rows, "disposals", t));
     if (t >= 20) {
       posts.push(makePost(`disp-${t}-reddit`, "reddit", cat, "Disposal Trend",
-        `${t}+ disposal stat angles — research shortlist`,
+        `${t}+ disposal research — ${rows[0]?.player_name ?? "top players"} leads the shortlist`,
         `Based on recent form data here are players consistently hitting ${t}+ disposals.`,
         rows, "disposals", t));
     }
@@ -2967,6 +3039,73 @@ const TEAM_STAT_POST_IDEAS: Record<TeamStatType, { title: string; ideas: string[
   "fantasy": { title: "Fantasy Environment Angles", ideas: ["Fantasy data not available in team stat source — use player-level data instead"] },
 };
 
+const QUALITY_META: Record<PostQuality, { label: string; cls: string }> = {
+  high:       { label: "High quality",   cls: "bg-emerald-950/60 text-emerald-300 border-emerald-600/30" },
+  medium:     { label: "Medium quality", cls: "bg-sky-950/60 text-sky-300 border-sky-600/30" },
+  suppressed: { label: "Low quality",    cls: "bg-zinc-800 text-zinc-500 border-zinc-700" },
+};
+
+function PostCard({
+  post, copiedId, expanded, onToggleExpand, onCopy, dimmed = false,
+}: {
+  post: PostTemplate;
+  copiedId: string | null;
+  expanded: Record<string, boolean>;
+  onToggleExpand: (id: string) => void;
+  onCopy: (post: PostTemplate) => void;
+  dimmed?: boolean;
+}) {
+  const qm = QUALITY_META[post.quality];
+  const borderCls = dimmed ? "border-zinc-800/50 bg-zinc-900/10 opacity-60" :
+    post.hasNextUpPlayers && post.hasCurrentRoundPlayers ? "border-teal-600/20 bg-teal-950/10" :
+    post.hasNextUpPlayers ? "border-emerald-600/20 bg-emerald-950/10" :
+    "border-zinc-800 bg-zinc-900/20";
+
+  return (
+    <div className={`border rounded-xl ${borderCls}`}>
+      <div className="flex items-start gap-2 p-3 cursor-pointer" onClick={() => onToggleExpand(post.id)}>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[12px] font-semibold text-zinc-200 truncate">{post.title}</span>
+            <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700 font-medium uppercase">{post.format}</span>
+            <span className={`text-[9px] px-1.5 py-0.5 rounded border font-medium ${qm.cls}`}>{qm.label}</span>
+            <span className="text-[9px] text-zinc-600">{post.category}</span>
+            {post.hasNextUpPlayers && <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-600/30">Next-Up</span>}
+            {post.hasCurrentRoundPlayers && !post.hasNextUpPlayers && <span className="text-[9px] px-1 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">Current Round</span>}
+            {post.hasCurrentRoundPlayers && post.hasNextUpPlayers && <span className="text-[9px] px-1 py-0.5 rounded bg-teal-950/60 text-teal-300 border border-teal-600/30">Mixed</span>}
+          </div>
+          <div className="text-[10px] text-zinc-500 mt-0.5">
+            {post.targetRoundLabel} · {post.sourceCount} source{post.sourceCount !== 1 ? "s" : ""}
+            {post.suppressReason && <span className="text-zinc-600"> · {post.suppressReason}</span>}
+          </div>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={e => { e.stopPropagation(); onCopy(post); }}
+            className="p-1.5 rounded hover:bg-zinc-700/50 text-zinc-500 hover:text-zinc-300 transition-colors">
+            {copiedId === post.id ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+          </button>
+          {expanded[post.id] ? <ChevronUp className="h-3.5 w-3.5 text-zinc-600" /> : <ChevronDown className="h-3.5 w-3.5 text-zinc-600" />}
+        </div>
+      </div>
+
+      {expanded[post.id] && (
+        <div className="px-3 pb-3 space-y-2 border-t border-zinc-800/50">
+          <p className="text-[11px] text-zinc-400 italic pt-2">{post.hook}</p>
+          <ul className="space-y-1">
+            {post.bullets.map((b, i) => (
+              <li key={i} className="flex items-start gap-2 text-[11px] text-zinc-300">
+                <span className="text-zinc-600 shrink-0 mt-0.5">•</span>
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-[10px] text-zinc-600 italic">{post.cta}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PostIdeas({
   posts, data, selectedTargetGame, targetGameOptions, teamStatType,
 }: {
@@ -2983,6 +3122,7 @@ function PostIdeas({
   const [roundFilter, setRoundFilter] = useState("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [showSuppressed, setShowSuppressed] = useState(false);
 
   const activeTGO = selectedTargetGame !== "all"
     ? targetGameOptions.find(o => o.key === selectedTargetGame) ?? null
@@ -2997,26 +3137,31 @@ function PostIdeas({
   const allTeamNames = useMemo(() => [...new Set(posts.flatMap(p => p.teamNames))].sort(), [posts]);
   const allRounds = useMemo(() => ["all", ...data.targetRounds.map(r => `Round ${r}`)], [data.targetRounds]);
 
+  function applyBaseFilters(p: PostTemplate): boolean {
+    if (formatFilter !== "all" && p.format !== formatFilter) return false;
+    if (categoryFilter !== "all" && p.category !== categoryFilter) return false;
+    if (teamFilter && !p.teamNames.includes(teamFilter)) return false;
+    if (roundFilter !== "all") {
+      const rn = parseInt(roundFilter.replace("Round ", ""));
+      if (!isNaN(rn) && !p.targetRoundLabel.includes(`Round ${rn}`)) return false;
+    }
+    if (timingFilter === "next-up" && !p.hasNextUpPlayers) return false;
+    if (timingFilter === "current-only" && !p.hasCurrentRoundPlayers) return false;
+    if (timingFilter === "mixed" && !(p.hasNextUpPlayers && p.hasCurrentRoundPlayers)) return false;
+    if (activeTGO) {
+      const hasHome = p.teamNames.includes(activeTGO.homeTeamName);
+      const hasAway = p.teamNames.includes(activeTGO.awayTeamName);
+      if (!hasHome && !hasAway) return false;
+    }
+    return p.bullets.length > 0;
+  }
+
   const filtered = useMemo(() => {
-    return posts.filter(p => {
-      if (formatFilter !== "all" && p.format !== formatFilter) return false;
-      if (categoryFilter !== "all" && p.category !== categoryFilter) return false;
-      if (teamFilter && !p.teamNames.includes(teamFilter)) return false;
-      if (roundFilter !== "all") {
-        const rn = parseInt(roundFilter.replace("Round ", ""));
-        if (!isNaN(rn) && !p.targetRoundLabel.includes(`Round ${rn}`)) return false;
-      }
-      if (timingFilter === "next-up" && !p.hasNextUpPlayers) return false;
-      if (timingFilter === "current-only" && !p.hasCurrentRoundPlayers) return false;
-      if (timingFilter === "mixed" && !(p.hasNextUpPlayers && p.hasCurrentRoundPlayers)) return false;
-      // Shared target game filter: only posts that include one of the selected game's teams
-      if (activeTGO) {
-        const hasHome = p.teamNames.includes(activeTGO.homeTeamName);
-        const hasAway = p.teamNames.includes(activeTGO.awayTeamName);
-        if (!hasHome && !hasAway) return false;
-      }
-      return p.bullets.length > 0;
-    });
+    return posts.filter(p => applyBaseFilters(p) && p.quality !== "suppressed");
+  }, [posts, formatFilter, categoryFilter, teamFilter, roundFilter, timingFilter, activeTGO]);
+
+  const suppressed = useMemo(() => {
+    return posts.filter(p => applyBaseFilters(p) && p.quality === "suppressed");
   }, [posts, formatFilter, categoryFilter, teamFilter, roundFilter, timingFilter, activeTGO]);
 
   function copyPost(post: PostTemplate) {
@@ -3061,49 +3206,15 @@ function PostIdeas({
 
       <div className="text-[11px] text-zinc-500">
         <span className="text-zinc-300 font-medium">{filtered.length}</span> post ideas
+        · {filtered.filter(p => p.quality === "high").length} high quality
+        · {filtered.filter(p => p.quality === "medium").length} medium quality
+        {suppressed.length > 0 && <span> · <span className="text-zinc-600">{suppressed.length} suppressed</span></span>}
         · {filtered.filter(p => p.hasNextUpPlayers).length} with next-up angles
-        · {filtered.filter(p => p.hasCurrentRoundPlayers && !p.hasNextUpPlayers).length} current-round only
       </div>
 
       <div className="space-y-3">
         {filtered.map(post => (
-          <div key={post.id} className={`border rounded-xl ${post.hasNextUpPlayers && post.hasCurrentRoundPlayers ? "border-teal-600/20 bg-teal-950/10" : post.hasNextUpPlayers ? "border-emerald-600/20 bg-emerald-950/10" : "border-zinc-800 bg-zinc-900/20"}`}>
-            <div className="flex items-start gap-2 p-3 cursor-pointer" onClick={() => setExpanded(p => ({ ...p, [post.id]: !p[post.id] }))}>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[12px] font-semibold text-zinc-200 truncate">{post.title}</span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700 font-medium uppercase">{post.format}</span>
-                  <span className="text-[9px] text-zinc-600">{post.category}</span>
-                  {post.hasNextUpPlayers && <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-600/30">Next-Up</span>}
-                  {post.hasCurrentRoundPlayers && !post.hasNextUpPlayers && <span className="text-[9px] px-1 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">Current Round</span>}
-                  {post.hasCurrentRoundPlayers && post.hasNextUpPlayers && <span className="text-[9px] px-1 py-0.5 rounded bg-teal-950/60 text-teal-300 border border-teal-600/30">Mixed</span>}
-                </div>
-                <div className="text-[10px] text-zinc-500 mt-0.5">{post.targetRoundLabel} · {post.sourceCount} source{post.sourceCount !== 1 ? "s" : ""}</div>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <button onClick={e => { e.stopPropagation(); copyPost(post); }}
-                  className="p-1.5 rounded hover:bg-zinc-700/50 text-zinc-500 hover:text-zinc-300 transition-colors">
-                  {copiedId === post.id ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-                </button>
-                {expanded[post.id] ? <ChevronUp className="h-3.5 w-3.5 text-zinc-600" /> : <ChevronDown className="h-3.5 w-3.5 text-zinc-600" />}
-              </div>
-            </div>
-
-            {expanded[post.id] && (
-              <div className="px-3 pb-3 space-y-2 border-t border-zinc-800/50">
-                <p className="text-[11px] text-zinc-400 italic pt-2">{post.hook}</p>
-                <ul className="space-y-1">
-                  {post.bullets.map((b, i) => (
-                    <li key={i} className="flex items-start gap-2 text-[11px] text-zinc-300">
-                      <span className="text-zinc-600 shrink-0 mt-0.5">•</span>
-                      <span>{b}</span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-[10px] text-zinc-600 italic">{post.cta}</p>
-              </div>
-            )}
-          </div>
+          <PostCard key={post.id} post={post} copiedId={copiedId} expanded={expanded} onToggleExpand={id => setExpanded(p => ({ ...p, [id]: !p[id] }))} onCopy={copyPost} />
         ))}
 
         {filtered.length === 0 && (
@@ -3112,6 +3223,28 @@ function PostIdeas({
           </div>
         )}
       </div>
+
+      {/* Suppressed posts */}
+      {suppressed.length > 0 && (
+        <div className="border border-zinc-800 rounded-lg">
+          <button
+            className="w-full px-4 py-2.5 flex items-center gap-2 text-[12px] text-zinc-500 hover:text-zinc-300 transition-colors"
+            onClick={() => setShowSuppressed(p => !p)}
+          >
+            {showSuppressed ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            <span className="font-medium">{suppressed.length} suppressed (low-value) ideas</span>
+            <span className="text-[10px] text-zinc-700 ml-1">— trivial disposal thresholds or sub-15 lines</span>
+          </button>
+          {showSuppressed && (
+            <div className="px-3 pb-3 space-y-2 border-t border-zinc-800/50">
+              <div className="text-[10px] text-zinc-600 pt-2 pb-1">These ideas were suppressed because the threshold is not meaningful relative to player averages.</div>
+              {suppressed.map(post => (
+                <PostCard key={post.id} post={post} copiedId={copiedId} expanded={expanded} onToggleExpand={id => setExpanded(p => ({ ...p, [id]: !p[id] }))} onCopy={copyPost} dimmed />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Team Scoring Environments section (driven by Team/Match Angles stat type) ── */}
       {(() => {
