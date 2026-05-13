@@ -32,6 +32,7 @@ import {
   AdminContentIntelPage,
   AdminPlayerLabPage,
   AdminMarketingPage,
+  AdminPlayerIdentityPage,
   AdminInternalOpsPage,
 } from "@/pages/Admin";
 
@@ -165,6 +166,7 @@ function App() {
           <Route path="command" element={<AdminCommandPage />} />
           <Route path="content-intel" element={<AdminContentIntelPage />} />
           <Route path="player-lab" element={<AdminPlayerLabPage />} />
+          <Route path="player-identity" element={<AdminPlayerIdentityPage />} />
           <Route path="internal-ops" element={<AdminInternalOpsPage />} />
           {/* Marketing: hidden from main nav, accessible via direct URL for admins */}
           <Route path="marketing" element={<AdminMarketingPage />} />
