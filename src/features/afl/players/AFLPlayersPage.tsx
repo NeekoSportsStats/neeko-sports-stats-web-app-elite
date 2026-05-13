@@ -587,7 +587,7 @@ export default function AFLPlayersPage() {
 
         {/* ── Player table ───────────────────────────────────────────────── */}
         {!loading && !error && (
-          <div style={{ overflow: "hidden", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", width: "100%", boxSizing: "border-box" }}>
+          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", width: "100%", boxSizing: "border-box" }}>
             <style>{`
               /* ── Mobile: convert table rows to flex layout ── */
               @media (max-width: 539px) {
@@ -640,15 +640,40 @@ export default function AFLPlayersPage() {
               @media (min-width: 540px) {
                 .plyr-mobile-sub { display: none; }
               }
+
+              /* ── Tablet (540–767px): hide team, keep pos ── */
+              @media (min-width: 540px) and (max-width: 767px) {
+                .plyr-col-team { display: none !important; }
+              }
             `}</style>
-            <table className="plyr-table" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+            {/*
+              tableLayout: fixed + explicit col widths give each column stable, non-collapsing width.
+              min-width on the table prevents the player column from being squeezed below a readable size.
+              The outer div has overflow-x: auto so the table can scroll horizontally on narrow viewports
+              instead of compressing all columns together.
+
+              Column sizing:
+                PLAYER  — minmax equivalent: fills remaining space, min 220px
+                TEAM    — 160px (fits longest team name "North Melbourne Kangaroos" truncated)
+                POS     — 52px  (3-char code, centered)
+                PRICE   — 90px  (e.g. "$1.042M", right-aligned)
+                PROJ    — 72px  (2–3 digit number, centered)
+                SIGNAL  — 96px  (label text like "MUST START", right-aligned)
+            */}
+            <table className="plyr-table" style={{ width: "100%", minWidth: 620, borderCollapse: "collapse", tableLayout: "fixed" }}>
               <colgroup>
-                <col style={{ width: "auto" }} />
-                <col className="plyr-col-team" style={{ width: 90 }} />
-                <col className="plyr-col-pos" style={{ width: 44 }} />
-                <col style={{ width: 62 }} />
-                <col style={{ width: 52 }} />
-                <col style={{ width: 68 }} />
+                {/* PLAYER — absorbs all remaining space after fixed columns */}
+                <col style={{ width: "auto", minWidth: 220 }} />
+                {/* TEAM — wide enough for long names with ellipsis */}
+                <col className="plyr-col-team" style={{ width: 160 }} />
+                {/* POS */}
+                <col className="plyr-col-pos" style={{ width: 52 }} />
+                {/* PRICE */}
+                <col style={{ width: 90 }} />
+                {/* PROJ / AVG */}
+                <col style={{ width: 72 }} />
+                {/* SIGNAL */}
+                <col style={{ width: 96 }} />
               </colgroup>
               {/* Sticky header — hidden on mobile via CSS */}
               <thead>
@@ -661,17 +686,17 @@ export default function AFLPlayersPage() {
                     onClick={handleSort}
                     style={{ textAlign: "left", paddingLeft: 12 }}
                   />
-                  <th style={thStyle} className="plyr-col-team">Team</th>
-                  <th style={thStyle} className="plyr-col-pos">Pos</th>
-                  <SortTh label="Price" col="price" current={sortBy} dir={sortDir} onClick={handleSort} />
+                  <th style={{ ...thStyle, overflow: "hidden" }} className="plyr-col-team">Team</th>
+                  <th style={{ ...thStyle, textAlign: "center" }} className="plyr-col-pos">Pos</th>
+                  <SortTh label="Price" col="price" current={sortBy} dir={sortDir} onClick={handleSort} style={{ textAlign: "right", paddingRight: 12 }} />
                   {isPremium ? (
-                    <SortTh label="Proj." col="projection" current={sortBy} dir={sortDir} onClick={handleSort} />
+                    <SortTh label="Proj." col="projection" current={sortBy} dir={sortDir} onClick={handleSort} style={{ textAlign: "right", paddingRight: 12 }} />
                   ) : (
-                    <th style={thStyle}>Avg</th>
+                    <th style={{ ...thStyle, textAlign: "right", paddingRight: 12 }}>Avg</th>
                   )}
-                  <th style={thStyle}>
+                  <th style={{ ...thStyle, textAlign: "right", paddingRight: 14 }}>
                     {isPremium ? "Signal" : (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: 4 }}>
                         Signal <Lock size={10} style={{ color: "rgba(245,200,76,0.55)" }} />
                       </span>
                     )}
@@ -740,14 +765,15 @@ export default function AFLPlayersPage() {
                       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                     >
                       {/* LEFT: Player name + sub-line */}
-                      <td className="plyr-td-player" style={{ padding: "7px 8px 7px 12px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                      <td className="plyr-td-player" style={{ padding: "7px 8px 7px 12px", overflow: "hidden" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, overflow: "hidden" }}>
                           <Link
                             to={`/sports/afl/players/${slug}`}
                             style={{
                               fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.88)",
                               textDecoration: "none", overflow: "hidden",
                               textOverflow: "ellipsis", whiteSpace: "nowrap", letterSpacing: "0.005em",
+                              flexShrink: 1, minWidth: 0,
                             }}
                             onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
                             onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.88)")}
@@ -764,31 +790,36 @@ export default function AFLPlayersPage() {
                         </div>
                       </td>
 
-                      {/* Team — desktop only */}
-                      <td style={{ padding: "7px 8px", whiteSpace: "nowrap" }} className="plyr-col-team">
-                        <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.40)", fontWeight: 500 }}>
+                      {/* Team — desktop only; ellipsis on overflow */}
+                      <td
+                        className="plyr-col-team"
+                        style={{ padding: "7px 8px", overflow: "hidden", maxWidth: 160 }}
+                      >
+                        <span style={{
+                          fontSize: 11.5, color: "rgba(255,255,255,0.40)", fontWeight: 500,
+                          display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
                           {teamShort}
                         </span>
                       </td>
 
-                      {/* Position — desktop only */}
-                      <td style={{ padding: "7px 8px" }} className="plyr-col-pos">
+                      {/* Position — centered, fixed width */}
+                      <td className="plyr-col-pos" style={{ padding: "7px 4px", textAlign: "center" }}>
                         <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", color: "rgba(255,255,255,0.38)" }}>
                           {row.position ?? "—"}
                         </span>
                       </td>
 
-                      {/* RIGHT stats cluster on mobile (Price / Avg+Proj / Signal) */}
-                      {/* Price */}
-                      <td className="plyr-td-stats" style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
+                      {/* Price — right-aligned, no wrap */}
+                      <td className="plyr-td-stats" style={{ padding: "7px 12px 7px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
                         <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.62)" }}>
                           {fmtPrice(row.price)}
                         </span>
                       </td>
 
-                      {/* Avg / Proj */}
+                      {/* Avg / Proj — right-aligned, no wrap */}
                       {isPremium ? (
-                        <td className="plyr-td-stats" style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
+                        <td className="plyr-td-stats" style={{ padding: "7px 12px 7px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
                           <span style={{
                             fontSize: 13, fontWeight: 700,
                             color: row.projection != null ? "rgba(255,255,255,0.88)" : "rgba(255,255,255,0.25)",
@@ -797,7 +828,7 @@ export default function AFLPlayersPage() {
                           </span>
                         </td>
                       ) : (
-                        <td className="plyr-td-stats" style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
+                        <td className="plyr-td-stats" style={{ padding: "7px 12px 7px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
                           {row.season_avg != null ? (
                             <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.68)" }}>
                               {fmt(row.season_avg)}
@@ -808,8 +839,8 @@ export default function AFLPlayersPage() {
                         </td>
                       )}
 
-                      {/* Signal */}
-                      <td className="plyr-td-stats" style={{ padding: "7px 8px", whiteSpace: "nowrap" }}>
+                      {/* Signal — right-aligned, no wrap */}
+                      <td className="plyr-td-stats" style={{ padding: "7px 14px 7px 8px", textAlign: "right", whiteSpace: "nowrap" }}>
                         {isPremium ? (
                           signalLabel && row.signal != null ? (
                             <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.03em", color: signalColor }}>
@@ -823,7 +854,7 @@ export default function AFLPlayersPage() {
                             to="/neeko-plus"
                             title="Unlock signals with Neeko+"
                             style={{
-                              display: "inline-flex", alignItems: "center", gap: 4,
+                              display: "inline-flex", alignItems: "center", justifyContent: "flex-end", gap: 4,
                               fontSize: 10, fontWeight: 600, color: "rgba(245,200,76,0.45)",
                               textDecoration: "none", letterSpacing: "0.02em",
                             }}
