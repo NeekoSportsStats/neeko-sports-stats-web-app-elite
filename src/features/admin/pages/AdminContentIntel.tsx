@@ -152,7 +152,7 @@ const BUCKET_ORDER: GroupBucket[] = [
   "projection-supported", "matchup-supported", "volatile", "fade",
 ];
 
-const BUCKET_META: Record<GroupBucket, { label: string; cls: string }> = {
+const BUCKET_META: Record<string, { label: string; cls: string }> = {
   "elite-perfect":        { label: "Elite / Perfect",      cls: "bg-emerald-950/60 text-emerald-300 border-emerald-600/30" },
   "missed-once":          { label: "Missed Once",           cls: "bg-sky-950/60 text-sky-300 border-sky-600/30" },
   "missed-twice":         { label: "Missed Twice",          cls: "bg-blue-950/60 text-blue-300 border-blue-600/30" },
@@ -161,6 +161,7 @@ const BUCKET_META: Record<GroupBucket, { label: string; cls: string }> = {
   "matchup-supported":    { label: "Matchup-Supported",    cls: "bg-teal-950/60 text-teal-300 border-teal-600/30" },
   "volatile":             { label: "Volatile Upside",       cls: "bg-orange-950/60 text-orange-300 border-orange-600/30" },
   "fade":                 { label: "Fade / Under",          cls: "bg-red-950/60 text-red-300 border-red-600/30" },
+  "default":              { label: "Unknown",               cls: "bg-zinc-800 text-zinc-500 border-zinc-700" },
 };
 
 // ─── RoundInfo ────────────────────────────────────────────────────────────────
@@ -478,13 +479,14 @@ function resolveTarget(
 }
 
 // Build target badge display
-const TARGET_BADGE_META: Record<TargetBadge, { label: string; cls: string }> = {
+const TARGET_BADGE_META: Record<string, { label: string; cls: string }> = {
   "current-round":  { label: "Current Round", cls: "bg-zinc-800 text-zinc-300 border-zinc-600" },
   "next-up":        { label: "Next-Up",       cls: "bg-emerald-950/70 text-emerald-300 border-emerald-600/40" },
   "played-updated": { label: "Played",        cls: "bg-sky-950/70 text-sky-300 border-sky-600/40" },
   "waiting-stats":  { label: "Waiting Stats", cls: "bg-amber-950/70 text-amber-300 border-amber-600/40" },
   "bye":            { label: "Bye",           cls: "bg-zinc-900 text-zinc-600 border-zinc-700" },
   "no-fixture":     { label: "No Fixture",   cls: "bg-zinc-900 text-zinc-600 border-zinc-700" },
+  "default":        { label: "Unknown",       cls: "bg-zinc-800 text-zinc-500 border-zinc-700" },
 };
 
 // Extract hit data for a stat family + threshold.
@@ -1383,12 +1385,12 @@ function Sel({ label, value, onChange, options }: {
 }
 
 function BucketBadge({ bucket }: { bucket: GroupBucket }) {
-  const m = BUCKET_META[bucket];
+  const m = BUCKET_META[bucket] ?? BUCKET_META.default;
   return <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold border ${m.cls}`}>{m.label}</span>;
 }
 
 function TargetBadgeChip({ badge }: { badge: TargetBadge }) {
-  const m = TARGET_BADGE_META[badge];
+  const m = TARGET_BADGE_META[badge] ?? TARGET_BADGE_META.default;
   return <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold border ${m.cls}`}>{m.label}</span>;
 }
 
@@ -3039,10 +3041,12 @@ const TEAM_STAT_POST_IDEAS: Record<TeamStatType, { title: string; ideas: string[
   "fantasy": { title: "Fantasy Environment Angles", ideas: ["Fantasy data not available in team stat source — use player-level data instead"] },
 };
 
-const QUALITY_META: Record<PostQuality, { label: string; cls: string }> = {
+const QUALITY_META: Record<string, { label: string; cls: string }> = {
   high:       { label: "High quality",   cls: "bg-emerald-950/60 text-emerald-300 border-emerald-600/30" },
   medium:     { label: "Medium quality", cls: "bg-sky-950/60 text-sky-300 border-sky-600/30" },
   suppressed: { label: "Low quality",    cls: "bg-zinc-800 text-zinc-500 border-zinc-700" },
+  low_quality: { label: "Low quality",  cls: "bg-zinc-800 text-zinc-500 border-zinc-700" },
+  default:    { label: "Unknown",        cls: "bg-zinc-800 text-zinc-500 border-zinc-700" },
 };
 
 function PostCard({
@@ -3055,7 +3059,7 @@ function PostCard({
   onCopy: (post: PostTemplate) => void;
   dimmed?: boolean;
 }) {
-  const qm = QUALITY_META[post.quality];
+  const qm = QUALITY_META[post.quality] ?? QUALITY_META.default;
   const borderCls = dimmed ? "border-zinc-800/50 bg-zinc-900/10 opacity-60" :
     post.hasNextUpPlayers && post.hasCurrentRoundPlayers ? "border-teal-600/20 bg-teal-950/10" :
     post.hasNextUpPlayers ? "border-emerald-600/20 bg-emerald-950/10" :
