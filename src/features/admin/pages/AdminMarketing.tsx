@@ -1,12 +1,19 @@
 import { lazy, Suspense, useState } from "react";
-import { RefreshCw, Zap, MessageSquare } from "lucide-react";
+import { RefreshCw, Zap, MessageSquare, Radio } from "lucide-react";
 
-const AdminContentEngine = lazy(() => import("@/features/admin/marketing/AdminContentEngine"));
-const RedditEngine       = lazy(() => import("@/features/admin/marketing/RedditEngine"));
+const AdminContentEngine         = lazy(() => import("@/features/admin/marketing/AdminContentEngine"));
+const RedditEngine               = lazy(() => import("@/features/admin/marketing/RedditEngine"));
+const MarketingCommandCentre     = lazy(() => import("@/features/admin/marketing/MarketingCommandCentre"));
 
-type Tab = "engine" | "reddit";
+type Tab = "command" | "engine" | "reddit";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType; description: string }[] = [
+  {
+    id: "command",
+    label: "Command Centre",
+    icon: Radio,
+    description: "Turn live stat angles into social posts. No odds. No betting tips. Admin only.",
+  },
   {
     id: "engine",
     label: "Content Engine",
@@ -30,7 +37,7 @@ function TabFallback() {
 }
 
 export default function AdminMarketing() {
-  const [tab, setTab] = useState<Tab>("engine");
+  const [tab, setTab] = useState<Tab>("command");
   const activeTab = TABS.find((t) => t.id === tab)!;
 
   return (
@@ -41,26 +48,27 @@ export default function AdminMarketing() {
 
       <div className="overflow-x-auto touch-pan-x overscroll-x-contain mb-1" style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
         <div className="flex gap-1 pb-0.5 w-max min-w-full">
-        {TABS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 text-xs font-medium whitespace-nowrap rounded-md transition-colors min-h-[44px] ${
-              tab === id
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-          >
-            <Icon className="h-3.5 w-3.5" />
-            {label}
-          </button>
-        ))}
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              onClick={() => setTab(id)}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-medium whitespace-nowrap rounded-md transition-colors min-h-[44px] ${
+                tab === id
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
       <p className="text-xs text-muted-foreground mb-6 px-1">{activeTab.description}</p>
 
       <Suspense fallback={<TabFallback />}>
+        {tab === "command" && <MarketingCommandCentre />}
         {tab === "engine" && <AdminContentEngine />}
         {tab === "reddit" && <RedditEngine />}
       </Suspense>
