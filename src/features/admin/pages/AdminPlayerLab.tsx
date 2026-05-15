@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import {
   RefreshCw, DollarSign, Target, TrendingUp, Users,
-  Search, Check, X, FlaskConical,
+  Search, Check, X, FlaskConical, Activity,
 } from "lucide-react";
 import { CreditCard as Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,18 +16,20 @@ import { FantasyPlayerMatchingTab } from "@/features/admin/price-ingest/FantasyP
 import { PlayerExplorerTable } from "../player-lab/components/PlayerExplorerTable";
 import { AccuracyTabContent } from "../player-lab/components/AccuracyTabContent";
 import { SignalsTabContent } from "../player-lab/components/SignalsTabContent";
+import { StatAccuracyTabContent } from "../player-lab/components/StatAccuracyTabContent";
 import { fmtNum, fmtPrice, RecoBadge, SortIcon, DataWarningBanner } from "../player-lab/components/SharedUI";
 import type { PriceRow, SortDir } from "../player-lab/types";
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
 
-type Tab = "explorer" | "accuracy" | "pricing" | "signals";
+type Tab = "explorer" | "accuracy" | "pricing" | "signals" | "stat_accuracy";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: "explorer", label: "Player Explorer", icon: Users },
-  { id: "accuracy", label: "Accuracy",        icon: Target },
-  { id: "pricing",  label: "Pricing",         icon: DollarSign },
-  { id: "signals",  label: "Signals",         icon: TrendingUp },
+  { id: "explorer",      label: "Player Explorer", icon: Users },
+  { id: "accuracy",      label: "Accuracy",        icon: Target },
+  { id: "stat_accuracy", label: "Stat Accuracy",   icon: Activity },
+  { id: "pricing",       label: "Pricing",         icon: DollarSign },
+  { id: "signals",       label: "Signals",         icon: TrendingUp },
 ];
 
 // ─── Price Full Table ─────────────────────────────────────────────────────────
@@ -362,10 +364,11 @@ export default function AdminPlayerLab() {
       </div>
 
       <div>
-        {tab === "explorer" && <PlayerExplorerTable />}
-        {tab === "accuracy" && <AccuracyTabContent />}
-        {tab === "pricing"  && <PricingTab />}
-        {tab === "signals"  && <SignalsTabContent />}
+        {tab === "explorer"      && <PlayerExplorerTable />}
+        {tab === "accuracy"      && <AccuracyTabContent />}
+        {tab === "stat_accuracy" && <StatAccuracyTabContent />}
+        {tab === "pricing"       && <PricingTab />}
+        {tab === "signals"       && <SignalsTabContent />}
       </div>
     </div>
   );
