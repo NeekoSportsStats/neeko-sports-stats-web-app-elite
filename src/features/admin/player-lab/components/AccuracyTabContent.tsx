@@ -8,6 +8,7 @@ import {
 } from "recharts";
 import { fmtNum, pctDirect, DataWarningBanner } from "./SharedUI";
 import { useAccuracy, type AccuracySubTab } from "../hooks/useAccuracy";
+import { ProjectionReviewTab } from "./ProjectionReviewTab";
 import { useState } from "react";
 
 const MAE_GOOD = 18, MAE_OK = 25;
@@ -25,15 +26,18 @@ function biasColor(bias: string) {
   return bias === "over_projected" ? "text-red-400" : bias === "under_projected" ? "text-emerald-400" : "text-muted-foreground";
 }
 
-const ACCURACY_SUBTABS: { id: AccuracySubTab; label: string }[] = [
-  { id: "overview",   label: "Overview + Charts" },
-  { id: "by_player",  label: "Player Accuracy" },
-  { id: "by_team",    label: "Team Accuracy" },
-  { id: "buckets",    label: "Error Buckets" },
+type ExtendedAccuracySubTab = AccuracySubTab | "projection_review";
+
+const ACCURACY_SUBTABS: { id: ExtendedAccuracySubTab; label: string }[] = [
+  { id: "overview",          label: "Overview + Charts" },
+  { id: "by_player",         label: "Player Accuracy" },
+  { id: "by_team",           label: "Team Accuracy" },
+  { id: "buckets",           label: "Error Buckets" },
+  { id: "projection_review", label: "Projection Review" },
 ];
 
 export function AccuracyTabContent() {
-  const [sub, setSub] = useState<AccuracySubTab>("overview");
+  const [sub, setSub] = useState<ExtendedAccuracySubTab>("overview");
   const {
     kpi, rounds, positions, teamRows,
     loading, fetchData,
@@ -68,9 +72,11 @@ export function AccuracyTabContent() {
         </Button>
       </div>
 
-      {loading ? (
+      {sub === "projection_review" && <ProjectionReviewTab />}
+
+      {sub !== "projection_review" && loading ? (
         <div className="flex items-center justify-center py-20"><RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-      ) : (
+      ) : sub !== "projection_review" ? (
         <>
           {sub === "overview" && (
             <div className="space-y-6">
@@ -314,8 +320,9 @@ export function AccuracyTabContent() {
               )}
             </div>
           )}
+
         </>
-      )}
+      ) : null}
     </div>
   );
 }
