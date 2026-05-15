@@ -245,7 +245,7 @@ export function ExpandedPlayerPanel({
               </span>
               <span className="flex items-center gap-1.5 shrink-0">
                 <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" rx="1.5" fill="none" stroke="rgba(255,255,255,0.30)" strokeWidth="1.2" transform="rotate(45 5 5)"/></svg>
-                <span className="text-[9px] text-white/28">BYE/DNP</span>
+                <span className="text-[9px] text-white/28">BYE/DNP/TBC</span>
               </span>
             </div>
           </div>
@@ -590,26 +590,31 @@ function MultiThresholdChart({
 
           if (slot.value == null) {
             const cy = PAD.top + chartH / 2;
-            const label = slot.rowType === "bye" ? "B" : "D";
+            const isUpcoming = slot.rowType === "upcoming";
+            const label = slot.rowType === "bye" ? "B" : isUpcoming ? "·" : "D";
+            const strokeColor = isUpcoming
+              ? "rgba(255,255,255,0.12)"
+              : isHov ? "rgba(255,255,255,0.50)" : "rgba(255,255,255,0.20)";
             return (
-              <g key={i} aria-label={`${slot.label}: ${slot.rowType.toUpperCase()}`}
-                opacity={isHov ? 0.85 : 0.40}>
+              <g key={i} aria-label={`${slot.label}: ${isUpcoming ? "Upcoming" : slot.rowType.toUpperCase()}`}
+                opacity={isHov ? 0.85 : isUpcoming ? 0.30 : 0.40}>
                 <line
                   x1={cx.toFixed(1)} y1={PAD.top.toFixed(1)}
                   x2={cx.toFixed(1)} y2={(PAD.top + chartH).toFixed(1)}
-                  stroke="rgba(255,255,255,0.07)"
+                  stroke={isUpcoming ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.07)"}
                   strokeWidth="1" strokeDasharray="3 4"
                 />
                 <rect
                   x={(cx - 5).toFixed(1)} y={(cy - 5).toFixed(1)}
                   width="10" height="10" rx="1.5"
-                  fill={isHov ? "rgba(255,255,255,0.10)" : "rgba(255,255,255,0.04)"}
-                  stroke={isHov ? "rgba(255,255,255,0.50)" : "rgba(255,255,255,0.20)"}
+                  fill={isHov ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)"}
+                  stroke={strokeColor}
                   strokeWidth="1"
+                  strokeDasharray={isUpcoming ? "2 2" : undefined}
                   transform={`rotate(45 ${cx.toFixed(1)} ${cy.toFixed(1)})`}
                 />
                 <text x={cx.toFixed(1)} y={(cy + 4).toFixed(1)}
-                  fontSize="7" fill="rgba(255,255,255,0.40)"
+                  fontSize="7" fill={isUpcoming ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.40)"}
                   textAnchor="middle" fontWeight="600">
                   {label}
                 </text>
@@ -761,8 +766,11 @@ function MobileChartTooltip({
   // Pin to left or right side based on slot position to avoid overflow
   const alignRight = slotIndex >= totalSlots / 2;
 
-  if (slot.rowType === "bye" || slot.rowType === "dnp") {
-    const label = slot.rowType === "bye" ? "BYE" : "DNP";
+  if (slot.rowType === "bye" || slot.rowType === "dnp" || slot.rowType === "upcoming") {
+    const label = slot.rowType === "bye" ? "BYE" : slot.rowType === "upcoming" ? "Upcoming" : "DNP";
+    const sublabel = slot.rowType === "upcoming" && slot.opponent && slot.opponent !== "—"
+      ? `vs ${slot.opponent}`
+      : undefined;
     return (
       <div
         className={`absolute top-1 ${alignRight ? "right-1" : "left-1"} z-20 rounded-lg border border-white/14 bg-[#1a1a1a] shadow-xl px-3 py-2.5`}
@@ -770,8 +778,9 @@ function MobileChartTooltip({
         style={{ pointerEvents: "auto", minWidth: 120, maxWidth: 160 }}
         onClick={onDismiss}
       >
-        <p className="text-[9px] text-white/30 font-medium uppercase tracking-wide leading-none mb-1">Week {slot.label}</p>
+        <p className="text-[9px] text-white/30 font-medium uppercase tracking-wide leading-none mb-1">{slot.label}</p>
         <p className="text-[13px] text-white/65 font-semibold leading-none">{label}</p>
+        {sublabel && <p className="text-[10px] text-white/35 mt-1">{sublabel}</p>}
         <p className="text-[9px] text-white/25 mt-1.5">tap to close</p>
       </div>
     );
@@ -852,9 +861,12 @@ function ChartTooltip({
   if (left + TOOLTIP_W + TOOLTIP_MARGIN > vw) left = vw - TOOLTIP_W - TOOLTIP_MARGIN;
   if (left < TOOLTIP_MARGIN) left = TOOLTIP_MARGIN;
 
-  if (slot.rowType === "bye" || slot.rowType === "dnp") {
-    const label = slot.rowType === "bye" ? "BYE" : "DNP";
-    const tipH = 56;
+  if (slot.rowType === "bye" || slot.rowType === "dnp" || slot.rowType === "upcoming") {
+    const label = slot.rowType === "bye" ? "BYE" : slot.rowType === "upcoming" ? "Upcoming" : "DNP";
+    const sublabel = slot.rowType === "upcoming" && slot.opponent && slot.opponent !== "—"
+      ? `vs ${slot.opponent}`
+      : undefined;
+    const tipH = sublabel ? 72 : 56;
     const top = cy - tipH - 10 < TOOLTIP_MARGIN ? cy + 14 : cy - tipH - 10;
 
     return (
@@ -870,8 +882,9 @@ function ChartTooltip({
         }}
         className="rounded-lg border border-white/14 bg-[#1a1a1a] shadow-2xl shadow-black/80 px-3 py-2.5"
       >
-        <p className="text-[9px] text-white/30 font-medium uppercase tracking-wide leading-none mb-1">Week {slot.label}</p>
+        <p className="text-[9px] text-white/30 font-medium uppercase tracking-wide leading-none mb-1">{slot.label}</p>
         <p className="text-[13px] text-white/65 font-semibold leading-none">{label}</p>
+        {sublabel && <p className="text-[10px] text-white/40 mt-1">{sublabel}</p>}
       </div>
     );
   }
@@ -1054,6 +1067,25 @@ function GameLog({
             {displayRows.map((row, idx) => {
               const roundLabel = abbreviateRound(row.round, row.week);
               const isLatest = idx === 0;
+
+              if (row.rowType === "upcoming") {
+                return (
+                  <tr
+                    key={`upcoming-${row.week}`}
+                    className="border-b border-white/5 last:border-0 opacity-40"
+                  >
+                    <td className="px-3 py-2 text-white/38 tabular-nums">{roundLabel}</td>
+                    <td colSpan={TOTAL_COLS - 1} className="px-3 py-2">
+                      <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white/4 text-white/35 border border-dotted border-white/14">
+                        Upcoming
+                      </span>
+                      {row.opponent && row.opponent !== "—" && (
+                        <span className="ml-2 text-white/25 text-[10px]">vs {row.opponent}</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              }
 
               if (row.rowType === "bye" || row.rowType === "dnp") {
                 const isBye = row.rowType === "bye";

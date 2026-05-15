@@ -586,6 +586,20 @@ function TimelineChips({
           );
         }
 
+        if (slot.type === "upcoming") {
+          return (
+            <span
+              key={i}
+              role="listitem"
+              aria-label={`Week ${slot.week}: Upcoming`}
+              title="Upcoming fixture"
+              className="h-[18px] min-w-[20px] px-0.5 rounded bg-white/3 text-[6.5px] font-bold text-white/30 flex items-center justify-center tracking-wide border border-dotted border-white/15"
+            >
+              —
+            </span>
+          );
+        }
+
         if (slot.type === "dnp") {
           return (
             <span

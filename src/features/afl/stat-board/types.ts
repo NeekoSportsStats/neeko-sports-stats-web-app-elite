@@ -23,7 +23,7 @@ export interface ThresholdHitRate {
   rate: number;
 }
 
-export type TimelineSlotType = "played" | "bye" | "dnp";
+export type TimelineSlotType = "played" | "bye" | "dnp" | "upcoming";
 
 export interface TimelineSlot {
   week: number;
