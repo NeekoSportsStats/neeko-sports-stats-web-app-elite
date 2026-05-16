@@ -109,21 +109,30 @@ export function ExpandedPlayerPanel({
     rowType: row.row_type,
   }));
 
-  // Build history chart slots, stripping any NYP rows that would clutter the actuals chart.
-  // The projected point is appended separately as the final slot below.
-  const historyChartSlots: ChartSlot[] = gameLog
-    .filter((g) => g.rowType !== "nyp")
-    .map((g) => ({
-      value: g.value,
-      label: g.week === 0 ? "OR" : `R${g.week}`,
-      rowType: g.rowType,
-      week: g.week,
-      opponent: g.opponent,
-    }));
+  // Build chart from ACTUALS ONLY — sorted ascending, last 10 completed games.
+  // BYE, DNP, and NYP rows are excluded from the chart entirely; they appear in the
+  // game log table only. This prevents scrambled x-axis labels from non-played weeks.
+  const playedSlots = gameLog.filter((g) => g.rowType === "played");
+  const playedCount = playedSlots.length;
+  const hasAnyData = playedCount > 0;
 
-  // Append projected slot as the final point if projection exists
+  // gameLog is already sorted ascending (oldest→newest after dedup sort).
+  // Take the last 10 played rows so the chart shows a clean chronological line.
+  const last10Played = playedSlots.slice(-10);
+
+  const actualChartSlots: ChartSlot[] = last10Played.map((g) => ({
+    value: g.value,
+    label: g.week === 0 ? "OR" : `R${g.week}`,
+    rowType: "played",
+    week: g.week,
+    opponent: g.opponent,
+  }));
+
+  // Projected point for the current target game — only shown when target game is not
+  // already in actuals (i.e., this round hasn't been played yet).
+  const targetWeekAlreadyPlayed = last10Played.some((g) => g.week === player.week);
   const projectedSlot: ChartSlot | null =
-    player.projection != null
+    player.projection != null && !targetWeekAlreadyPlayed
       ? {
           value: player.projection,
           label: player.week === 0 ? "OR" : `R${player.week}`,
@@ -133,30 +142,15 @@ export function ExpandedPlayerPanel({
         }
       : null;
 
-  const playedSlots = gameLog.filter((g) => g.rowType === "played");
-  const playedCount = playedSlots.length;
-  const hasAnyData = playedCount > 0;
-
-  // Build chart slots — fall back to player row data if history window has no played values.
-  // Always append the projected slot as the last point if available.
-  const historyHasPlayedValues = historyChartSlots.some((s) => s.value != null);
-
+  // Fall back to last_10_values from the player row when history RPC returned nothing.
+  // This can happen during the opening round before any history has been ingested.
   let baseChartSlots: ChartSlot[];
-  if (historyHasPlayedValues) {
-    baseChartSlots = historyChartSlots;
-  } else if (player.last_10_timeline && player.last_10_timeline.length > 0) {
-    baseChartSlots = (player.last_10_timeline as TimelineSlot[])
-      .filter((slot) => slot.type !== "nyp" && slot.type !== ("upcoming" as string))
-      .map((slot) => ({
-        value: slot.value,
-        label: slot.week === 0 ? "OR" : `R${slot.week}`,
-        rowType: slot.type as string,
-        week: slot.week,
-        opponent: "—",
-      }));
+  if (actualChartSlots.length > 0) {
+    baseChartSlots = actualChartSlots;
   } else if (player.last_10_values && player.last_10_values.length > 0) {
-    const reversed = [...player.last_10_values].reverse();
-    baseChartSlots = reversed.map((v, i) => ({
+    // last_10_values is stored newest-first in the DB; reverse to oldest-first for chart
+    const ascending = [...player.last_10_values].reverse();
+    baseChartSlots = ascending.map((v, i) => ({
       value: n(v),
       label: `G${i + 1}`,
       rowType: "played",
@@ -164,12 +158,12 @@ export function ExpandedPlayerPanel({
       opponent: "—",
     }));
   } else {
-    baseChartSlots = historyChartSlots;
+    baseChartSlots = [];
   }
 
-  // Append projected slot — only if there's at least one actual data point to connect to
+  // Append projected slot as the final point — only when base has at least one actual
   const chartSlots: ChartSlot[] =
-    projectedSlot && baseChartSlots.some((s) => s.value != null)
+    projectedSlot && baseChartSlots.length > 0
       ? [...baseChartSlots, projectedSlot]
       : baseChartSlots;
 

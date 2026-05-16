@@ -197,6 +197,7 @@ export interface StatBoardHistoryRow {
   hitouts: number | null;
   clearances: number | null;
   fantasy_score: number | null;
+  /** row_type from the RPC: 'played' | 'bye' | 'dnp' | 'nyp' */
   row_type: TimelineSlotType;
 }
 
