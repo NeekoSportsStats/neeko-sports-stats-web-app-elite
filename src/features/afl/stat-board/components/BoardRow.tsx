@@ -586,16 +586,16 @@ function TimelineChips({
           );
         }
 
-        if (slot.type === "upcoming") {
+        if (slot.type === "nyp") {
           return (
             <span
               key={i}
               role="listitem"
-              aria-label={`Week ${slot.week}: Upcoming`}
-              title="Upcoming fixture"
+              aria-label={`Week ${slot.week}: Not Yet Played`}
+              title="Not Yet Played"
               className="h-[18px] min-w-[20px] px-0.5 rounded bg-white/3 text-[6.5px] font-bold text-white/30 flex items-center justify-center tracking-wide border border-dotted border-white/15"
             >
-              —
+              NYP
             </span>
           );
         }

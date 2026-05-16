@@ -74,14 +74,20 @@ export function ExpandedPlayerPanel({
 
   // Sort history oldest→newest, then deduplicate by (week, row_type) to
   // prevent any duplicate BYE/DNP rows that can arise from the UNION ALL CTEs.
+  // Also normalise legacy 'upcoming' values from older cached data → 'nyp'.
   const sortedHistory = [...history].sort((a, b) => a.week - b.week);
   const seenKeys = new Set<string>();
-  const dedupedHistory = sortedHistory.filter((row) => {
-    const key = `${row.week}-${row.row_type}`;
-    if (seenKeys.has(key)) return false;
-    seenKeys.add(key);
-    return true;
-  });
+  const dedupedHistory = sortedHistory
+    .map((row) => ({
+      ...row,
+      row_type: row.row_type === ("upcoming" as string) ? "nyp" : row.row_type,
+    }))
+    .filter((row) => {
+      const key = `${row.week}-${row.row_type}`;
+      if (seenKeys.has(key)) return false;
+      seenKeys.add(key);
+      return true;
+    });
 
   const gameLog = dedupedHistory.map((row) => ({
     week: row.week,
@@ -103,35 +109,54 @@ export function ExpandedPlayerPanel({
     rowType: row.row_type,
   }));
 
-  const historyChartSlots: ChartSlot[] = gameLog.map((g) => ({
-    value: g.value,
-    label: g.week === 0 ? "OR" : `R${g.week}`,
-    rowType: g.rowType,
-    week: g.week,
-    opponent: g.opponent,
-  }));
+  // Build history chart slots, stripping any NYP rows that would clutter the actuals chart.
+  // The projected point is appended separately as the final slot below.
+  const historyChartSlots: ChartSlot[] = gameLog
+    .filter((g) => g.rowType !== "nyp")
+    .map((g) => ({
+      value: g.value,
+      label: g.week === 0 ? "OR" : `R${g.week}`,
+      rowType: g.rowType,
+      week: g.week,
+      opponent: g.opponent,
+    }));
+
+  // Append projected slot as the final point if projection exists
+  const projectedSlot: ChartSlot | null =
+    player.projection != null
+      ? {
+          value: player.projection,
+          label: player.week === 0 ? "OR" : `R${player.week}`,
+          rowType: "projected",
+          week: player.week,
+          opponent: player.opponent_team_name ?? "—",
+        }
+      : null;
 
   const playedSlots = gameLog.filter((g) => g.rowType === "played");
   const playedCount = playedSlots.length;
   const hasAnyData = playedCount > 0;
 
   // Build chart slots — fall back to player row data if history window has no played values.
+  // Always append the projected slot as the last point if available.
   const historyHasPlayedValues = historyChartSlots.some((s) => s.value != null);
 
-  let chartSlots: ChartSlot[];
+  let baseChartSlots: ChartSlot[];
   if (historyHasPlayedValues) {
-    chartSlots = historyChartSlots;
+    baseChartSlots = historyChartSlots;
   } else if (player.last_10_timeline && player.last_10_timeline.length > 0) {
-    chartSlots = (player.last_10_timeline as TimelineSlot[]).map((slot) => ({
-      value: slot.value,
-      label: slot.week === 0 ? "OR" : `R${slot.week}`,
-      rowType: slot.type,
-      week: slot.week,
-      opponent: "—",
-    }));
+    baseChartSlots = (player.last_10_timeline as TimelineSlot[])
+      .filter((slot) => slot.type !== "nyp" && slot.type !== ("upcoming" as string))
+      .map((slot) => ({
+        value: slot.value,
+        label: slot.week === 0 ? "OR" : `R${slot.week}`,
+        rowType: slot.type as string,
+        week: slot.week,
+        opponent: "—",
+      }));
   } else if (player.last_10_values && player.last_10_values.length > 0) {
     const reversed = [...player.last_10_values].reverse();
-    chartSlots = reversed.map((v, i) => ({
+    baseChartSlots = reversed.map((v, i) => ({
       value: n(v),
       label: `G${i + 1}`,
       rowType: "played",
@@ -139,8 +164,14 @@ export function ExpandedPlayerPanel({
       opponent: "—",
     }));
   } else {
-    chartSlots = historyChartSlots;
+    baseChartSlots = historyChartSlots;
   }
+
+  // Append projected slot — only if there's at least one actual data point to connect to
+  const chartSlots: ChartSlot[] =
+    projectedSlot && baseChartSlots.some((s) => s.value != null)
+      ? [...baseChartSlots, projectedSlot]
+      : baseChartSlots;
 
   const hitRates = player.all_threshold_hit_rates ?? {};
 
@@ -239,13 +270,19 @@ export function ExpandedPlayerPanel({
                 <svg width="18" height="2" viewBox="0 0 18 2"><line x1="0" y1="1" x2="18" y2="1" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"/></svg>
                 <span className="text-[9px] text-white/28">Actual</span>
               </span>
+              {projectedSlot && (
+                <span className="flex items-center gap-1.5 shrink-0">
+                  <svg width="18" height="2" viewBox="0 0 18 2"><line x1="0" y1="1" x2="18" y2="1" stroke="rgba(245,200,76,0.60)" strokeWidth="1.5" strokeDasharray="3 3" strokeLinecap="round"/></svg>
+                  <span className="text-[9px] text-white/28">Projected</span>
+                </span>
+              )}
               <span className="flex items-center gap-1.5 shrink-0">
                 <svg width="18" height="2" viewBox="0 0 18 2"><line x1="0" y1="1" x2="18" y2="1" stroke="rgba(245,200,76,0.42)" strokeWidth="1" strokeDasharray="3 3" strokeLinecap="round"/></svg>
                 <span className="text-[9px] text-white/28">Thresholds</span>
               </span>
               <span className="flex items-center gap-1.5 shrink-0">
                 <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" rx="1.5" fill="none" stroke="rgba(255,255,255,0.30)" strokeWidth="1.2" transform="rotate(45 5 5)"/></svg>
-                <span className="text-[9px] text-white/28">BYE/DNP/TBC</span>
+                <span className="text-[9px] text-white/28">BYE / DNP / NYP</span>
               </span>
             </div>
           </div>
@@ -435,7 +472,7 @@ function MultiThresholdChart({
   const chartH = H - PAD.top - PAD.bottom;
 
   const playedValues = slots
-    .filter((s) => s.value != null)
+    .filter((s) => s.value != null && s.rowType !== "projected")
     .map((s) => s.value as number);
 
   if (playedValues.length === 0) return null;
@@ -461,16 +498,27 @@ function MultiThresholdChart({
     return { y: PAD.top + frac * chartH, val: Math.round(minVal + (1 - frac) * range) };
   });
 
+  // Build line segments for actual data only (exclude projected)
   const segments: string[][] = [];
   let current: string[] = [];
   slots.forEach((slot, i) => {
-    if (slot.value != null) {
+    if (slot.value != null && slot.rowType !== "projected") {
       current.push(`${xOf(i).toFixed(1)},${yOf(slot.value).toFixed(1)}`);
     } else {
       if (current.length > 0) { segments.push(current); current = []; }
     }
   });
   if (current.length > 0) segments.push(current);
+
+  // Dotted line from last actual point to projected point
+  const lastActualSlot = [...slots].reverse().find((s) => s.value != null && s.rowType !== "projected");
+  const projSlot = slots.find((s) => s.rowType === "projected");
+  const lastActualIndex = lastActualSlot ? slots.lastIndexOf(lastActualSlot) : -1;
+  const projIndex = projSlot ? slots.indexOf(projSlot) : -1;
+  const projLinePath =
+    lastActualIndex >= 0 && projIndex >= 0 && lastActualSlot && projSlot
+      ? `M ${xOf(lastActualIndex).toFixed(1)},${yOf(lastActualSlot.value!).toFixed(1)} L ${xOf(projIndex).toFixed(1)},${yOf(projSlot.value!).toFixed(1)}`
+      : null;
 
   const areaSegment = segments[0];
   let areaPath = "";
@@ -584,24 +632,36 @@ function MultiThresholdChart({
           />
         ))}
 
+        {/* Dotted line from last actual to projected point */}
+        {projLinePath && (
+          <path
+            d={projLinePath}
+            fill="none"
+            stroke="rgba(245,200,76,0.55)"
+            strokeWidth="1.5"
+            strokeDasharray="4 4"
+            strokeLinecap="round"
+          />
+        )}
+
         {slots.map((slot, i) => {
           const cx = xOf(i);
           const isHov = hovered?.slotIndex === i;
 
           if (slot.value == null) {
             const cy = PAD.top + chartH / 2;
-            const isUpcoming = slot.rowType === "upcoming";
-            const label = slot.rowType === "bye" ? "B" : isUpcoming ? "·" : "D";
-            const strokeColor = isUpcoming
+            const isNyp = slot.rowType === "nyp";
+            const label = slot.rowType === "bye" ? "B" : isNyp ? "N" : "D";
+            const strokeColor = isNyp
               ? "rgba(255,255,255,0.12)"
               : isHov ? "rgba(255,255,255,0.50)" : "rgba(255,255,255,0.20)";
             return (
-              <g key={i} aria-label={`${slot.label}: ${isUpcoming ? "Upcoming" : slot.rowType.toUpperCase()}`}
-                opacity={isHov ? 0.85 : isUpcoming ? 0.30 : 0.40}>
+              <g key={i} aria-label={`${slot.label}: ${isNyp ? "NYP" : slot.rowType.toUpperCase()}`}
+                opacity={isHov ? 0.85 : isNyp ? 0.30 : 0.40}>
                 <line
                   x1={cx.toFixed(1)} y1={PAD.top.toFixed(1)}
                   x2={cx.toFixed(1)} y2={(PAD.top + chartH).toFixed(1)}
-                  stroke={isUpcoming ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.07)"}
+                  stroke={isNyp ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.07)"}
                   strokeWidth="1" strokeDasharray="3 4"
                 />
                 <rect
@@ -610,11 +670,11 @@ function MultiThresholdChart({
                   fill={isHov ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)"}
                   stroke={strokeColor}
                   strokeWidth="1"
-                  strokeDasharray={isUpcoming ? "2 2" : undefined}
+                  strokeDasharray={isNyp ? "2 2" : undefined}
                   transform={`rotate(45 ${cx.toFixed(1)} ${cy.toFixed(1)})`}
                 />
                 <text x={cx.toFixed(1)} y={(cy + 4).toFixed(1)}
-                  fontSize="7" fill={isUpcoming ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.40)"}
+                  fontSize="7" fill={isNyp ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.40)"}
                   textAnchor="middle" fontWeight="600">
                   {label}
                 </text>
@@ -622,9 +682,45 @@ function MultiThresholdChart({
             );
           }
 
-          const aboveMedian = slot.value > median;
+          const isProjected = slot.rowType === "projected";
+          const aboveMedian = !isProjected && slot.value > median;
           const isLatest = i === slots.length - 1;
           const r = isHov ? (isLatest ? 7 : 5.5) : (isLatest ? 5 : 3.5);
+
+          if (isProjected) {
+            // Projected point: amber/yellow, larger, with dotted ring
+            const projR = isHov ? 7 : 5.5;
+            return (
+              <g key={i} aria-label={`${slot.label}: Projected ${slot.value}`}>
+                <circle
+                  cx={cx.toFixed(1)} cy={yOf(slot.value).toFixed(1)}
+                  r={projR + 4}
+                  fill="rgba(245,200,76,0.08)"
+                />
+                <circle
+                  cx={cx.toFixed(1)} cy={yOf(slot.value).toFixed(1)}
+                  r={projR}
+                  fill="rgba(245,200,76,0.18)"
+                  stroke={isHov ? "rgba(245,200,76,0.90)" : "rgba(245,200,76,0.65)"}
+                  strokeWidth={isHov ? 2 : 1.5}
+                  strokeDasharray="3 2"
+                  style={isMobile ? undefined : { transition: "r 80ms ease" }}
+                />
+                <text
+                  x={cx.toFixed(1)} y={(yOf(slot.value) - projR - 5).toFixed(1)}
+                  fontSize="10" fill="rgba(245,200,76,0.82)"
+                  textAnchor="middle" fontWeight="700">
+                  {slot.value}
+                </text>
+                <text
+                  x={cx.toFixed(1)} y={(yOf(slot.value) - projR - 16).toFixed(1)}
+                  fontSize="7" fill="rgba(245,200,76,0.50)"
+                  textAnchor="middle" fontWeight="500">
+                  PROJ
+                </text>
+              </g>
+            );
+          }
 
           return (
             <g key={i} aria-label={`${slot.label}: ${slot.value}`}>
@@ -766,11 +862,34 @@ function MobileChartTooltip({
   // Pin to left or right side based on slot position to avoid overflow
   const alignRight = slotIndex >= totalSlots / 2;
 
-  if (slot.rowType === "bye" || slot.rowType === "dnp" || slot.rowType === "upcoming") {
-    const label = slot.rowType === "bye" ? "BYE" : slot.rowType === "upcoming" ? "Upcoming" : "DNP";
-    const sublabel = slot.rowType === "upcoming" && slot.opponent && slot.opponent !== "—"
+  if (slot.rowType === "projected") {
+    return (
+      <div
+        className={`absolute top-1 ${alignRight ? "right-1" : "left-1"} z-20 rounded-lg border border-[rgba(245,200,76,0.22)] bg-[#1a1a1a] shadow-xl px-3 py-2.5`}
+        role="tooltip"
+        style={{ pointerEvents: "auto", minWidth: 140, maxWidth: 170 }}
+        onClick={onDismiss}
+      >
+        <p className="text-[9px] text-white/30 font-medium uppercase tracking-wide leading-none mb-1">{slot.label}</p>
+        {slot.opponent && slot.opponent !== "—" && (
+          <p className="text-[10px] text-white/45 leading-none mb-1">vs {slot.opponent}</p>
+        )}
+        <p className="text-[13px] font-semibold leading-none" style={{ color: "rgba(245,200,76,0.85)" }}>
+          Projected: {slot.value}
+        </p>
+        <p className="text-[9px] text-white/25 mt-1.5">tap to close</p>
+      </div>
+    );
+  }
+
+  if (slot.rowType === "bye" || slot.rowType === "dnp" || slot.rowType === "nyp") {
+    const label = slot.rowType === "bye" ? "BYE" : slot.rowType === "nyp" ? "NYP" : "DNP";
+    const sublabel = slot.rowType === "nyp" && slot.opponent && slot.opponent !== "—"
+      ? `vs ${slot.opponent}`
+      : slot.rowType === "dnp" && slot.opponent && slot.opponent !== "—"
       ? `vs ${slot.opponent}`
       : undefined;
+    const description = slot.rowType === "nyp" ? "Not Yet Played" : slot.rowType === "dnp" ? "Did Not Play" : "BYE week";
     return (
       <div
         className={`absolute top-1 ${alignRight ? "right-1" : "left-1"} z-20 rounded-lg border border-white/14 bg-[#1a1a1a] shadow-xl px-3 py-2.5`}
@@ -780,7 +899,8 @@ function MobileChartTooltip({
       >
         <p className="text-[9px] text-white/30 font-medium uppercase tracking-wide leading-none mb-1">{slot.label}</p>
         <p className="text-[13px] text-white/65 font-semibold leading-none">{label}</p>
-        {sublabel && <p className="text-[10px] text-white/35 mt-1">{sublabel}</p>}
+        <p className="text-[10px] text-white/35 mt-0.5">{description}</p>
+        {sublabel && <p className="text-[10px] text-white/35 mt-0.5">{sublabel}</p>}
         <p className="text-[9px] text-white/25 mt-1.5">tap to close</p>
       </div>
     );
@@ -861,12 +981,41 @@ function ChartTooltip({
   if (left + TOOLTIP_W + TOOLTIP_MARGIN > vw) left = vw - TOOLTIP_W - TOOLTIP_MARGIN;
   if (left < TOOLTIP_MARGIN) left = TOOLTIP_MARGIN;
 
-  if (slot.rowType === "bye" || slot.rowType === "dnp" || slot.rowType === "upcoming") {
-    const label = slot.rowType === "bye" ? "BYE" : slot.rowType === "upcoming" ? "Upcoming" : "DNP";
-    const sublabel = slot.rowType === "upcoming" && slot.opponent && slot.opponent !== "—"
+  if (slot.rowType === "projected") {
+    const tipH = slot.opponent && slot.opponent !== "—" ? 76 : 60;
+    const top = cy - tipH - 10 < TOOLTIP_MARGIN ? cy + 14 : cy - tipH - 10;
+    return (
+      <div
+        role="tooltip"
+        style={{
+          position: "fixed",
+          left,
+          top,
+          width: TOOLTIP_W,
+          zIndex: 9999,
+          pointerEvents: "none",
+          border: "1px solid rgba(245,200,76,0.25)",
+        }}
+        className="rounded-lg bg-[#1a1a1a] shadow-2xl shadow-black/80 px-3 py-2.5"
+      >
+        <p className="text-[9px] text-white/30 font-medium uppercase tracking-wide leading-none mb-1">{slot.label}</p>
+        {slot.opponent && slot.opponent !== "—" && (
+          <p className="text-[10px] text-white/45 leading-none mb-1">vs {slot.opponent}</p>
+        )}
+        <p className="text-[14px] font-bold leading-none" style={{ color: "rgba(245,200,76,0.88)" }}>
+          Projected: {slot.value}
+        </p>
+      </div>
+    );
+  }
+
+  if (slot.rowType === "bye" || slot.rowType === "dnp" || slot.rowType === "nyp") {
+    const label = slot.rowType === "bye" ? "BYE" : slot.rowType === "nyp" ? "NYP" : "DNP";
+    const description = slot.rowType === "nyp" ? "Not Yet Played" : slot.rowType === "dnp" ? "Did Not Play" : "BYE week";
+    const sublabel = (slot.rowType === "nyp" || slot.rowType === "dnp") && slot.opponent && slot.opponent !== "—"
       ? `vs ${slot.opponent}`
       : undefined;
-    const tipH = sublabel ? 72 : 56;
+    const tipH = sublabel ? 82 : 68;
     const top = cy - tipH - 10 < TOOLTIP_MARGIN ? cy + 14 : cy - tipH - 10;
 
     return (
@@ -884,7 +1033,8 @@ function ChartTooltip({
       >
         <p className="text-[9px] text-white/30 font-medium uppercase tracking-wide leading-none mb-1">{slot.label}</p>
         <p className="text-[13px] text-white/65 font-semibold leading-none">{label}</p>
-        {sublabel && <p className="text-[10px] text-white/40 mt-1">{sublabel}</p>}
+        <p className="text-[10px] text-white/38 mt-0.5">{description}</p>
+        {sublabel && <p className="text-[10px] text-white/40 mt-0.5">{sublabel}</p>}
       </div>
     );
   }
@@ -1068,17 +1218,18 @@ function GameLog({
               const roundLabel = abbreviateRound(row.round, row.week);
               const isLatest = idx === 0;
 
-              if (row.rowType === "upcoming") {
+              if (row.rowType === "nyp") {
                 return (
                   <tr
-                    key={`upcoming-${row.week}`}
+                    key={`nyp-${row.week}`}
                     className="border-b border-white/5 last:border-0 opacity-40"
                   >
                     <td className="px-3 py-2 text-white/38 tabular-nums">{roundLabel}</td>
                     <td colSpan={TOTAL_COLS - 1} className="px-3 py-2">
                       <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white/4 text-white/35 border border-dotted border-white/14">
-                        Upcoming
+                        NYP
                       </span>
+                      <span className="ml-1.5 text-[10px] text-white/22">Not Yet Played</span>
                       {row.opponent && row.opponent !== "—" && (
                         <span className="ml-2 text-white/25 text-[10px]">vs {row.opponent}</span>
                       )}

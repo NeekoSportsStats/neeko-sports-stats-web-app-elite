@@ -23,7 +23,114 @@ export interface ThresholdHitRate {
   rate: number;
 }
 
-export type TimelineSlotType = "played" | "bye" | "dnp" | "upcoming";
+export type TimelineSlotType = "played" | "bye" | "dnp" | "nyp" | "live_pending";
+
+/** Canonical status enum used across all stat history rendering. */
+export type StatHistoryStatus = "actual" | "projected" | "nyp" | "dnp" | "bye" | "live_pending";
+
+export interface StatHistoryPoint {
+  status: StatHistoryStatus;
+  /** Short label shown in chips and chart x-axis (e.g. "NYP", "BYE", "DNP", or the value) */
+  displayLabel: string;
+  /** Value to plot on the chart (null for non-actual/non-projected) */
+  chartValue: number | null;
+  /** Raw actual stat value (null unless status === 'actual') */
+  actualValue: number | null;
+  /** Projected value (null unless status === 'projected') */
+  projectedValue: number | null;
+  /** Whether this point counts in averages/hit rates (only 'actual') */
+  countsInActuals: boolean;
+  /** Primary tooltip title */
+  tooltipTitle: string;
+  /** Tooltip subtitle / context line */
+  tooltipSubtitle: string | null;
+}
+
+export interface BuildStatHistoryPointArgs {
+  week: number;
+  round: string | null;
+  teamFixture: boolean;
+  /** 'FT' = finished, 'NS' = not started, null = no fixture */
+  gameStatus: "FT" | "NS" | null;
+  playerActual: number | null;
+  projectedValue: number | null;
+  isTargetGame: boolean;
+  opponentName?: string | null;
+}
+
+export function buildStatHistoryPoint(args: BuildStatHistoryPointArgs): StatHistoryPoint {
+  const { week, round, teamFixture, gameStatus, playerActual, projectedValue, isTargetGame, opponentName } = args;
+  const roundLabel = week === 0 ? "OR" : `R${week}`;
+  const oppText = opponentName && opponentName !== "—" ? `vs ${opponentName}` : null;
+
+  // Actual played game
+  if (playerActual !== null && gameStatus === "FT") {
+    return {
+      status: "actual",
+      displayLabel: String(playerActual),
+      chartValue: playerActual,
+      actualValue: playerActual,
+      projectedValue: null,
+      countsInActuals: true,
+      tooltipTitle: `${roundLabel}${oppText ? ` ${oppText}` : ""}`,
+      tooltipSubtitle: null,
+    };
+  }
+
+  // Projected (target game, no actual yet)
+  if (isTargetGame && projectedValue !== null) {
+    return {
+      status: "projected",
+      displayLabel: "PROJ",
+      chartValue: projectedValue,
+      actualValue: null,
+      projectedValue,
+      countsInActuals: false,
+      tooltipTitle: `${roundLabel}${oppText ? ` ${oppText}` : ""}`,
+      tooltipSubtitle: `Projected: ${projectedValue}`,
+    };
+  }
+
+  // NYP — team has fixture, game not finished
+  if (teamFixture && gameStatus !== "FT") {
+    return {
+      status: "nyp",
+      displayLabel: "NYP",
+      chartValue: null,
+      actualValue: null,
+      projectedValue: null,
+      countsInActuals: false,
+      tooltipTitle: `${roundLabel} — Not Yet Played`,
+      tooltipSubtitle: oppText,
+    };
+  }
+
+  // DNP — team's game finished but player has no stat row
+  if (teamFixture && gameStatus === "FT" && playerActual === null) {
+    return {
+      status: "dnp",
+      displayLabel: "DNP",
+      chartValue: null,
+      actualValue: null,
+      projectedValue: null,
+      countsInActuals: false,
+      tooltipTitle: `${roundLabel} — Did Not Play`,
+      tooltipSubtitle: oppText,
+    };
+  }
+
+  // BYE — no fixture at all
+  return {
+    status: "bye",
+    displayLabel: "BYE",
+    chartValue: null,
+    actualValue: null,
+    projectedValue: null,
+    countsInActuals: false,
+    tooltipTitle: `${round ?? roundLabel} — BYE`,
+    tooltipSubtitle: null,
+  };
+}
 
 export interface TimelineSlot {
   week: number;
