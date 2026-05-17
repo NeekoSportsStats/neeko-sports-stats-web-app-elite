@@ -36,7 +36,7 @@
       "destination": "https://zbomenuickrogthnsozb.supabase.co/functions/v1/:path*"
     },
     {
-      "source": "/((?!assets/|favicon\\.ico|robots\\.txt|sitemap\\.xml|sitemap-static\\.xml|logo\\.png|og-default\\.png|hero\\.jpg|placeholder\\.svg|hero-bg\\.svg).*)",
+      "source": "/((?!assets/|favicon\\.ico|favicon-16x16\\.png|favicon-32x32\\.png|apple-touch-icon\\.png|android-chrome-192x192\\.png|android-chrome-512x512\\.png|site\\.webmanifest|robots\\.txt|sitemap\\.xml|sitemap-static\\.xml|logo\\.png|og-default\\.png|hero\\.jpg|placeholder\\.svg|hero-bg\\.svg).*)",
       "destination": "/index.html"
     }
   ]
