@@ -11,6 +11,9 @@ User-agent: facebookexternalhit
 Allow: /
 
 User-agent: *
+Allow: /sitemap.xml
+Allow: /sitemap-static.xml
+Allow: /sitemap-players.xml
 Allow: /
 Disallow: /admin
 Disallow: /account

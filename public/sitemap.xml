@@ -4,13 +4,13 @@
   <!-- Static pages: core, teams, positions -->
   <sitemap>
     <loc>https://neekostats.com.au/sitemap-static.xml</loc>
-    <lastmod>2026-04-02</lastmod>
+    <lastmod>2026-05-17</lastmod>
   </sitemap>
 
   <!-- Dynamic player pages (~600): generated from live DB -->
   <sitemap>
-    <loc>https://neekostats.com.au/functions/v1/sitemap-players</loc>
-    <lastmod>2026-04-02</lastmod>
+    <loc>https://neekostats.com.au/sitemap-players.xml</loc>
+    <lastmod>2026-05-17</lastmod>
   </sitemap>
 
 </sitemapindex>
