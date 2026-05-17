@@ -15,6 +15,7 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { RefreshCw, Copy, Check, ChevronDown, ChevronUp, Clock, Database, X, Search, TriangleAlert as AlertTriangle, ArrowRight, Lightbulb } from "lucide-react";
 import { AdminPageHeader } from "@/features/admin/shared/AdminPageHeader";
+import { SocialPostPlanner } from "./SocialPostPlanner";
 import type {
   StatBoardPlayer, StatBoardMatch, ThresholdHitRate,
 } from "@/features/afl/stat-board/types";
@@ -3426,6 +3427,7 @@ const TABS = [
   "Same-Game Shortlists",
   "Cross-Game Shortlists",
   "Post Ideas",
+  "Social Post Planner",
   "Freshness",
 ] as const;
 type Tab = typeof TABS[number];
@@ -3620,6 +3622,9 @@ export default function AdminContentIntel() {
               selectedTargetGame={selectedTargetGame} targetGameOptions={targetGameOptions}
               teamStatType={teamStatType}
             />
+          )}
+          {activeTab === "Social Post Planner" && (
+            <SocialPostPlanner data={data} />
           )}
           {activeTab === "Freshness" && (
             <FreshnessView
