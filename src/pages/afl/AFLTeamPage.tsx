@@ -1366,12 +1366,16 @@ export default function AFLTeamPage() {
         <meta property="og:description"  content={pageDescription} />
         <meta property="og:type"         content="website" />
         <meta property="og:url"          content={pageUrl} />
-        <meta property="og:site_name"    content="Neeko Sports" />
+        <meta property="og:site_name"    content="Neeko Sports Stats" />
         <link rel="canonical"            href={pageUrl} />
         <meta name="robots"              content="index, follow" />
+        <meta property="og:image"         content="https://neekostats.com.au/og-default.png" />
+        <meta property="og:image:width"  content="1200" />
+        <meta property="og:image:height" content="630" />
         <meta name="twitter:card"        content="summary_large_image" />
         <meta name="twitter:title"       content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
+        <meta name="twitter:image"       content="https://neekostats.com.au/og-default.png" />
         <script type="application/ld+json">{JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'CollectionPage',

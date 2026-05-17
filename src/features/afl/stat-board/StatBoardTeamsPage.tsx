@@ -194,8 +194,39 @@ export default function StatBoardTeamsPage() {
         />
         <link rel="canonical" href="https://neekostats.com.au/stat-board/teams" />
         <meta property="og:url" content="https://neekostats.com.au/stat-board/teams" />
+        <meta property="og:type" content="website" />
         <meta property="og:title" content="AFL Team Stat Board | Neeko Sports Stats" />
+        <meta property="og:description" content="Full round team projection outlook covering team score, goals, scoring shots and disposals. Hit rates and trends for every AFL team this week." />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:site_name" content="Neeko Sports Stats" />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="AFL Team Stat Board | Neeko Sports Stats" />
+        <meta name="twitter:description" content="Full round team projection outlook covering team score, goals, scoring shots and disposals. Hit rates and trends for every AFL team this week." />
+        <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "WebPage",
+              "@id": "https://neekostats.com.au/stat-board/teams",
+              "url": "https://neekostats.com.au/stat-board/teams",
+              "name": "AFL Team Stat Board | Team Score, Goals & Projection Outlooks",
+              "description": "Full round team projection outlook covering team score, goals, scoring shots and disposals. Hit rates and trends for every AFL team this week.",
+              "inLanguage": "en-AU",
+              "isPartOf": { "@id": "https://neekostats.com.au/" },
+            },
+            {
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au/" },
+                { "@type": "ListItem", "position": 2, "name": "Stat Board", "item": "https://neekostats.com.au/stat-board" },
+                { "@type": "ListItem", "position": 3, "name": "Teams", "item": "https://neekostats.com.au/stat-board/teams" },
+              ],
+            },
+          ],
+        })}</script>
       </Helmet>
 
       <div className="min-h-dvh bg-[#0a0a0a] text-white overflow-x-hidden w-full">

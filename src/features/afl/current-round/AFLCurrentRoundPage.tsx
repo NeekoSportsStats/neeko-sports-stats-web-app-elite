@@ -1329,7 +1329,7 @@ export default function AFLCurrentRoundPage() {
         <meta property="og:description" content="AI-powered AFL Fantasy picks for this round — captain options, value plays, trap alerts and full projections." />
         <meta property="og:url" content="https://neekostats.com.au/sports/afl/current-round" />
         <meta property="og:type" content="website" />
-        <meta property="og:site_name" content="Neeko Sports" />
+        <meta property="og:site_name" content="Neeko Sports Stats" />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />

@@ -213,8 +213,39 @@ export default function StatBoardPlayersPage() {
         />
         <link rel="canonical" href="https://neekostats.com.au/stat-board/players" />
         <meta property="og:url" content="https://neekostats.com.au/stat-board/players" />
+        <meta property="og:type" content="website" />
         <meta property="og:title" content="AFL Player Stat Board | Neeko Sports Stats" />
+        <meta property="og:description" content="Compare every AFL player's recent trends, hit rates and projections by match. Filter by disposals and goals." />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:site_name" content="Neeko Sports Stats" />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="AFL Player Stat Board | Neeko Sports Stats" />
+        <meta name="twitter:description" content="Compare every AFL player's recent trends, hit rates and projections by match. Filter by disposals and goals." />
+        <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "WebPage",
+              "@id": "https://neekostats.com.au/stat-board/players",
+              "url": "https://neekostats.com.au/stat-board/players",
+              "name": "AFL Player Stat Board | Hit Rates & Projections",
+              "description": "Compare every AFL player's recent trends, hit rates and projections by match. Filter by disposals and goals.",
+              "inLanguage": "en-AU",
+              "isPartOf": { "@id": "https://neekostats.com.au/" },
+            },
+            {
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au/" },
+                { "@type": "ListItem", "position": 2, "name": "Stat Board", "item": "https://neekostats.com.au/stat-board" },
+                { "@type": "ListItem", "position": 3, "name": "Players", "item": "https://neekostats.com.au/stat-board/players" },
+              ],
+            },
+          ],
+        })}</script>
       </Helmet>
 
       {/* Sticky controls bar — desktop only. On mobile the inline controls stay in-flow

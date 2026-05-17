@@ -113,7 +113,7 @@ export default function AFLRoundPage() {
         <meta property="og:type" content="article" />
         <meta property="og:url" content={`https://neekostats.com.au/sports/afl/round/${roundNum || ""}`} />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
-        <meta property="og:site_name" content="Neeko Sports" />
+        <meta property="og:site_name" content="Neeko Sports Stats" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={title} />
         <meta name="twitter:description" content={description} />

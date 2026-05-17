@@ -921,7 +921,7 @@ export default function AFLRoundEdgeBoard() {
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://neekostats.com.au/sports/afl/edge-board" />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
-        <meta property="og:site_name" content="Neeko Sports" />
+        <meta property="og:site_name" content="Neeko Sports Stats" />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="AFL Fantasy Edge Board 2026 | Captain Picks &amp; Trade Targets | Neeko" />
         <meta name="twitter:description" content="Neeko's AFL Fantasy Edge Board gives you this week's captain lock, best value breakout picks, and who to fade — all powered by our projection model." />

@@ -37,8 +37,38 @@ export default function FantasyHubPage() {
         <meta name="description" content="AFL Fantasy Hub — captain picks, trap alerts, value targets and rankings in one decision-focused place." />
         <link rel="canonical" href="https://neekostats.com.au/fantasy" />
         <meta property="og:url" content="https://neekostats.com.au/fantasy" />
+        <meta property="og:type" content="website" />
         <meta property="og:title" content="AFL Fantasy Hub | Neeko Sports Stats" />
+        <meta property="og:description" content="AFL Fantasy Hub — captain picks, trap alerts, value targets and rankings in one decision-focused place." />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:site_name" content="Neeko Sports Stats" />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="AFL Fantasy Hub | Neeko Sports Stats" />
+        <meta name="twitter:description" content="AFL Fantasy Hub — captain picks, trap alerts, value targets and rankings in one decision-focused place." />
+        <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "WebPage",
+              "@id": "https://neekostats.com.au/fantasy",
+              "url": "https://neekostats.com.au/fantasy",
+              "name": "AFL Fantasy Hub | Neeko Sports Stats",
+              "description": "AFL Fantasy Hub — captain picks, trap alerts, value targets and rankings in one decision-focused place.",
+              "inLanguage": "en-AU",
+              "isPartOf": { "@id": "https://neekostats.com.au/" },
+            },
+            {
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au/" },
+                { "@type": "ListItem", "position": 2, "name": "Fantasy Hub", "item": "https://neekostats.com.au/fantasy" },
+              ],
+            },
+          ],
+        })}</script>
       </Helmet>
 
       <div style={{ minHeight: "100vh", background: "#05070A", color: "#fff" }}>

@@ -1026,10 +1026,14 @@ export default function AFLPlayerPage() {
         <meta property="og:url"          content={pageUrl} />
         <meta property="og:title"        content={pageTitle} />
         <meta property="og:description"  content={pageDescription} />
+        <meta property="og:image"         content="https://neekostats.com.au/og-default.png" />
+        <meta property="og:image:width"  content="1200" />
+        <meta property="og:image:height" content="630" />
         <meta property="og:site_name"    content="Neeko Sports Stats" />
-        <meta name="twitter:card"        content="summary" />
+        <meta name="twitter:card"        content="summary_large_image" />
         <meta name="twitter:title"       content={pageTitle} />
         <meta name="twitter:description" content={pageDescription} />
+        <meta name="twitter:image"       content="https://neekostats.com.au/og-default.png" />
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
 

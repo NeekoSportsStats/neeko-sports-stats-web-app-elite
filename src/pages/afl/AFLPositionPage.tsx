@@ -105,7 +105,7 @@ export default function AFLPositionPage() {
         <meta property="og:type" content="website" />
         <meta property="og:url" content={pageUrl} />
         <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
-        <meta property="og:site_name" content="Neeko Sports" />
+        <meta property="og:site_name" content="Neeko Sports Stats" />
         <link rel="canonical" href={pageUrl} />
         <meta name="robots" content="index, follow" />
         <meta name="twitter:card" content="summary_large_image" />

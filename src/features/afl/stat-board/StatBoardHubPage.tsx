@@ -48,8 +48,38 @@ export default function StatBoardHubPage() {
         <meta name="description" content="Explore AFL player stats, team trends and match centre data. Filter by match, stat and threshold." />
         <link rel="canonical" href="https://neekostats.com.au/stat-board" />
         <meta property="og:url" content="https://neekostats.com.au/stat-board" />
+        <meta property="og:type" content="website" />
         <meta property="og:title" content="AFL Stat Board | Neeko Sports Stats" />
+        <meta property="og:description" content="Explore AFL player stats, team trends and match centre data. Filter by match, stat and threshold." />
+        <meta property="og:image" content="https://neekostats.com.au/og-default.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:site_name" content="Neeko Sports Stats" />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="AFL Stat Board | Neeko Sports Stats" />
+        <meta name="twitter:description" content="Explore AFL player stats, team trends and match centre data. Filter by match, stat and threshold." />
+        <meta name="twitter:image" content="https://neekostats.com.au/og-default.png" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "WebPage",
+              "@id": "https://neekostats.com.au/stat-board",
+              "url": "https://neekostats.com.au/stat-board",
+              "name": "AFL Stat Board | Neeko Sports Stats",
+              "description": "Explore AFL player stats, team trends and match centre data. Filter by match, stat and threshold.",
+              "inLanguage": "en-AU",
+              "isPartOf": { "@id": "https://neekostats.com.au/" },
+            },
+            {
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://neekostats.com.au/" },
+                { "@type": "ListItem", "position": 2, "name": "Stat Board", "item": "https://neekostats.com.au/stat-board" },
+              ],
+            },
+          ],
+        })}</script>
       </Helmet>
 
       <div style={{ minHeight: "100dvh", background: "#05070A", color: "#fff" }}>
