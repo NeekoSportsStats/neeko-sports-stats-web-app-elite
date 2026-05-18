@@ -276,7 +276,7 @@ export function ExpandedPlayerPanel({
               </span>
               <span className="flex items-center gap-1.5 shrink-0">
                 <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" rx="1.5" fill="none" stroke="rgba(255,255,255,0.30)" strokeWidth="1.2" transform="rotate(45 5 5)"/></svg>
-                <span className="text-[9px] text-white/28">BYE / DNP / NYP</span>
+                <span className="text-[9px] text-white/28">BYE / DNP</span>
               </span>
             </div>
           </div>
@@ -643,19 +643,18 @@ function MultiThresholdChart({
           const isHov = hovered?.slotIndex === i;
 
           if (slot.value == null) {
+            // NYP slots are not rendered in the chart — they have no visual marker.
+            if (slot.rowType === "nyp") return null;
             const cy = PAD.top + chartH / 2;
-            const isNyp = slot.rowType === "nyp";
-            const label = slot.rowType === "bye" ? "B" : isNyp ? "N" : "D";
-            const strokeColor = isNyp
-              ? "rgba(255,255,255,0.12)"
-              : isHov ? "rgba(255,255,255,0.50)" : "rgba(255,255,255,0.20)";
+            const label = slot.rowType === "bye" ? "B" : "D";
+            const strokeColor = isHov ? "rgba(255,255,255,0.50)" : "rgba(255,255,255,0.20)";
             return (
-              <g key={i} aria-label={`${slot.label}: ${isNyp ? "NYP" : slot.rowType.toUpperCase()}`}
-                opacity={isHov ? 0.85 : isNyp ? 0.30 : 0.40}>
+              <g key={i} aria-label={`${slot.label}: ${slot.rowType.toUpperCase()}`}
+                opacity={isHov ? 0.85 : 0.40}>
                 <line
                   x1={cx.toFixed(1)} y1={PAD.top.toFixed(1)}
                   x2={cx.toFixed(1)} y2={(PAD.top + chartH).toFixed(1)}
-                  stroke={isNyp ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.07)"}
+                  stroke="rgba(255,255,255,0.07)"
                   strokeWidth="1" strokeDasharray="3 4"
                 />
                 <rect
@@ -664,11 +663,10 @@ function MultiThresholdChart({
                   fill={isHov ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)"}
                   stroke={strokeColor}
                   strokeWidth="1"
-                  strokeDasharray={isNyp ? "2 2" : undefined}
                   transform={`rotate(45 ${cx.toFixed(1)} ${cy.toFixed(1)})`}
                 />
                 <text x={cx.toFixed(1)} y={(cy + 4).toFixed(1)}
-                  fontSize="7" fill={isNyp ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.40)"}
+                  fontSize="7" fill="rgba(255,255,255,0.40)"
                   textAnchor="middle" fontWeight="600">
                   {label}
                 </text>
@@ -1213,23 +1211,8 @@ function GameLog({
               const isLatest = idx === 0;
 
               if (row.rowType === "nyp") {
-                return (
-                  <tr
-                    key={`nyp-${row.week}`}
-                    className="border-b border-white/5 last:border-0 opacity-40"
-                  >
-                    <td className="px-3 py-2 text-white/38 tabular-nums">{roundLabel}</td>
-                    <td colSpan={TOTAL_COLS - 1} className="px-3 py-2">
-                      <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded bg-white/4 text-white/35 border border-dotted border-white/14">
-                        NYP
-                      </span>
-                      <span className="ml-1.5 text-[10px] text-white/22">Not Yet Played</span>
-                      {row.opponent && row.opponent !== "—" && (
-                        <span className="ml-2 text-white/25 text-[10px]">vs {row.opponent}</span>
-                      )}
-                    </td>
-                  </tr>
-                );
+                // NYP rows are kept in the data model but not shown in the game log.
+                return null;
               }
 
               if (row.rowType === "bye" || row.rowType === "dnp") {
