@@ -40,7 +40,7 @@ const CONTENT_MODES: { value: ContentMode; label: string; desc: string }[] = [
   { value: "smart-next-up",     label: "Smart Next-Up",      desc: "Completed = next game · Unplayed = current game" },
   { value: "current-round",     label: "Current Round Only", desc: "All teams on current-round game" },
   { value: "next-round",        label: "Next Round Only",    desc: "All teams on next scheduled game" },
-  { value: "played-this-round", label: "Played This Round",  desc: "Only teams whose current game is complete" },
+  { value: "played-this-round", label: "Next-Up After Played", desc: "Teams who completed current game · start preparing next-up angles" },
   { value: "not-yet-played",    label: "Not Yet Played",     desc: "Only teams still waiting to play" },
 ];
 
@@ -3419,6 +3419,429 @@ function FreshnessView({
   );
 }
 
+// ─── Post-Game Review ─────────────────────────────────────────────────────────
+
+type PGRLens =
+  | "disposals" | "goals" | "marks" | "tackles"
+  | "kicks" | "handballs" | "clearances" | "hitouts" | "fantasy";
+
+type PGRResultFilter = "all" | "hit" | "missed" | "beat_proj" | "under_proj";
+
+interface PGRRow {
+  season: number;
+  round: number;
+  game_id: number;
+  game_label: string;
+  game_date: string;
+  home_team: string;
+  away_team: string;
+  player_id: number;
+  player_name: string;
+  team: string;
+  opponent: string;
+  player_position: string;
+  stat_family: string;
+  actual_value: number;
+  projected_value: number | null;
+  projection_delta: number | null;
+  threshold: number;
+  hit_threshold: boolean;
+  result_label: string;
+  recent_average: number | null;
+  l3_average: number | null;
+  l5_average: number | null;
+  season_average: number | null;
+  copy_bullet: string;
+  proof_caption_line: string;
+}
+
+const PGR_LENSES: { value: PGRLens; label: string }[] = [
+  { value: "disposals",   label: "Disposals" },
+  { value: "goals",       label: "Goals" },
+  { value: "marks",       label: "Marks" },
+  { value: "tackles",     label: "Tackles" },
+  { value: "kicks",       label: "Kicks" },
+  { value: "handballs",   label: "Handballs" },
+  { value: "clearances",  label: "Clearances" },
+  { value: "hitouts",     label: "Hitouts" },
+  { value: "fantasy",     label: "Fantasy Score" },
+];
+
+const PGR_RESULT_FILTERS: { value: PGRResultFilter; label: string }[] = [
+  { value: "all",        label: "All" },
+  { value: "hit",        label: "Hit Threshold" },
+  { value: "missed",     label: "Missed Threshold" },
+  { value: "beat_proj",  label: "Beat Projection" },
+  { value: "under_proj", label: "Under Projection" },
+];
+
+const RESULT_LABEL_COLORS: Record<string, string> = {
+  hit_beat_proj:    "text-emerald-400",
+  hit_under_proj:   "text-yellow-400",
+  hit:              "text-emerald-400",
+  missed_beat_proj: "text-blue-400",
+  missed:           "text-red-400",
+};
+
+const RESULT_LABEL_TEXT: Record<string, string> = {
+  hit_beat_proj:    "Hit + Beat Proj",
+  hit_under_proj:   "Hit, Under Proj",
+  hit:              "Hit",
+  missed_beat_proj: "Missed, Beat Proj",
+  missed:           "Missed",
+};
+
+function PostGameReview() {
+  const [lens, setLens] = useState<PGRLens>("disposals");
+  const [threshold, setThreshold] = useState(20);
+  const [resultFilter, setResultFilter] = useState<PGRResultFilter>("all");
+  const [teamFilter, setTeamFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [round, setRound] = useState<number | null>(null);
+  const [matchId, setMatchId] = useState<number | null>(null);
+
+  const [rows, setRows] = useState<PGRRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params: Record<string, unknown> = {
+        p_season: SEASON,
+        p_lens: lens,
+        p_threshold: threshold,
+        p_limit: 500,
+      };
+      if (round !== null) params.p_round = round;
+      if (matchId !== null) params.p_match_id = matchId;
+
+      const { data, error: rpcErr } = await supabase.rpc(
+        "get_content_intel_completed_game",
+        params,
+      );
+      if (rpcErr) throw new Error(rpcErr.message);
+      setRows((data as PGRRow[]) ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load data");
+    } finally {
+      setLoading(false);
+    }
+  }, [lens, threshold, round, matchId]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const allTeams = useMemo(() => {
+    const teams = new Set(rows.map(r => r.team));
+    return Array.from(teams).sort();
+  }, [rows]);
+
+  const matchOptions = useMemo(() => {
+    const seen = new Map<number, string>();
+    for (const r of rows) {
+      if (!seen.has(r.game_id)) seen.set(r.game_id, r.game_label);
+    }
+    return Array.from(seen.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [rows]);
+
+  const filteredRows = useMemo(() => {
+    let filtered = rows;
+
+    if (resultFilter !== "all") {
+      filtered = filtered.filter(r => {
+        if (resultFilter === "hit")        return r.hit_threshold;
+        if (resultFilter === "missed")     return !r.hit_threshold;
+        if (resultFilter === "beat_proj")  return r.projection_delta !== null && r.projection_delta >= 0;
+        if (resultFilter === "under_proj") return r.projection_delta !== null && r.projection_delta < 0;
+        return true;
+      });
+    }
+
+    if (teamFilter !== "all") {
+      filtered = filtered.filter(r => r.team === teamFilter);
+    }
+
+    if (matchId !== null) {
+      filtered = filtered.filter(r => r.game_id === matchId);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(r =>
+        r.player_name.toLowerCase().includes(q) ||
+        r.team.toLowerCase().includes(q),
+      );
+    }
+
+    return filtered;
+  }, [rows, resultFilter, teamFilter, matchId, searchQuery]);
+
+  const summaryStats = useMemo(() => {
+    const total = filteredRows.length;
+    const hits   = filteredRows.filter(r => r.hit_threshold).length;
+    const missed = total - hits;
+    const hitRate = total > 0 ? Math.round((hits / total) * 100) : 0;
+    return { total, hits, missed, hitRate };
+  }, [filteredRows]);
+
+  function copyText(text: string, key: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 1500);
+    });
+  }
+
+  return (
+    <div className="space-y-4 pt-4">
+      {/* Filter bar */}
+      <div className="flex flex-wrap gap-2 items-end">
+        {/* Lens */}
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Stat</span>
+          <select
+            value={lens}
+            onChange={e => { setLens(e.target.value as PGRLens); setMatchId(null); }}
+            className="bg-zinc-900 border border-zinc-700 text-zinc-200 text-[12px] rounded px-2 py-1.5 min-w-[120px]"
+          >
+            {PGR_LENSES.map(l => (
+              <option key={l.value} value={l.value}>{l.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Threshold */}
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Threshold</span>
+          <input
+            type="number"
+            value={threshold}
+            onChange={e => setThreshold(Number(e.target.value))}
+            className="bg-zinc-900 border border-zinc-700 text-zinc-200 text-[12px] rounded px-2 py-1.5 w-20"
+            min={1}
+            max={200}
+          />
+        </div>
+
+        {/* Round */}
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Round</span>
+          <select
+            value={round ?? ""}
+            onChange={e => { setRound(e.target.value === "" ? null : Number(e.target.value)); setMatchId(null); }}
+            className="bg-zinc-900 border border-zinc-700 text-zinc-200 text-[12px] rounded px-2 py-1.5 min-w-[100px]"
+          >
+            <option value="">Latest FT</option>
+            {Array.from({ length: 25 }, (_, i) => i + 1).map(r => (
+              <option key={r} value={r}>Round {r}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Match */}
+        {matchOptions.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Match</span>
+            <select
+              value={matchId ?? ""}
+              onChange={e => setMatchId(e.target.value === "" ? null : Number(e.target.value))}
+              className="bg-zinc-900 border border-zinc-700 text-zinc-200 text-[12px] rounded px-2 py-1.5 min-w-[180px]"
+            >
+              <option value="">All Matches</option>
+              {matchOptions.map(([id, label]) => (
+                <option key={id} value={id}>{label}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Team */}
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Team</span>
+          <select
+            value={teamFilter}
+            onChange={e => setTeamFilter(e.target.value)}
+            className="bg-zinc-900 border border-zinc-700 text-zinc-200 text-[12px] rounded px-2 py-1.5 min-w-[120px]"
+          >
+            <option value="all">All Teams</option>
+            {allTeams.map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Result filter */}
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Result</span>
+          <select
+            value={resultFilter}
+            onChange={e => setResultFilter(e.target.value as PGRResultFilter)}
+            className="bg-zinc-900 border border-zinc-700 text-zinc-200 text-[12px] rounded px-2 py-1.5 min-w-[150px]"
+          >
+            {PGR_RESULT_FILTERS.map(f => (
+              <option key={f.value} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Search */}
+        <div className="flex flex-col gap-1">
+          <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Search</span>
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Player / team…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="bg-zinc-900 border border-zinc-700 text-zinc-200 text-[12px] rounded pl-6 pr-2 py-1.5 w-40"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery("")} className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                <X className="h-3 w-3 text-zinc-500 hover:text-zinc-300" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Refresh */}
+        <button
+          onClick={fetchData}
+          disabled={loading}
+          className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 text-[12px] rounded px-3 py-1.5 transition-colors self-end"
+        >
+          <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+          Refresh
+        </button>
+      </div>
+
+      {/* Summary banner */}
+      {!loading && filteredRows.length > 0 && (
+        <div className="flex gap-4 bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 text-[12px]">
+          <span className="text-zinc-400">{summaryStats.total} players</span>
+          <span className="text-emerald-400 font-semibold">{summaryStats.hits} hit threshold</span>
+          <span className="text-red-400">{summaryStats.missed} missed</span>
+          <span className="text-zinc-500">Hit rate: <span className="text-zinc-300 font-semibold">{summaryStats.hitRate}%</span></span>
+          <span className="text-zinc-600">|</span>
+          <span className="text-zinc-500">Lens: <span className="text-zinc-300">{PGR_LENSES.find(l => l.value === lens)?.label}</span> ≥ {threshold}</span>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="bg-red-950/30 border border-red-600/20 rounded-lg p-3 text-[12px] text-red-300 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div className="py-16 text-center text-zinc-500">
+          <Database className="h-7 w-7 mx-auto mb-3 opacity-40 animate-pulse" />
+          <div className="text-[13px]">Loading completed game data…</div>
+        </div>
+      )}
+
+      {/* Empty */}
+      {!loading && !error && filteredRows.length === 0 && (
+        <div className="py-16 text-center text-zinc-600">
+          <div className="text-[13px]">No completed game data for selected filters.</div>
+          <div className="text-[11px] mt-1 text-zinc-700">Try selecting a specific round or adjusting the threshold.</div>
+        </div>
+      )}
+
+      {/* Table */}
+      {!loading && filteredRows.length > 0 && (
+        <div className="overflow-x-auto rounded-lg border border-zinc-800">
+          <table className="w-full text-[12px] text-left">
+            <thead>
+              <tr className="border-b border-zinc-800 bg-zinc-900/60">
+                <th className="px-3 py-2 text-zinc-500 font-medium whitespace-nowrap">Player</th>
+                <th className="px-3 py-2 text-zinc-500 font-medium whitespace-nowrap">Team</th>
+                <th className="px-3 py-2 text-zinc-500 font-medium whitespace-nowrap">Opp</th>
+                <th className="px-3 py-2 text-zinc-500 font-medium whitespace-nowrap">Match</th>
+                <th className="px-3 py-2 text-zinc-500 font-medium text-right whitespace-nowrap">Actual</th>
+                <th className="px-3 py-2 text-zinc-500 font-medium text-right whitespace-nowrap">Proj</th>
+                <th className="px-3 py-2 text-zinc-500 font-medium text-right whitespace-nowrap">Diff</th>
+                <th className="px-3 py-2 text-zinc-500 font-medium whitespace-nowrap">Result</th>
+                <th className="px-3 py-2 text-zinc-500 font-medium text-right whitespace-nowrap">Recent Avg</th>
+                <th className="px-3 py-2 text-zinc-500 font-medium text-right whitespace-nowrap">L5</th>
+                <th className="px-3 py-2 text-zinc-500 font-medium whitespace-nowrap">Copy</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRows.map((row, i) => {
+                const rowKey = `${row.player_id}-${row.game_id}`;
+                const diffColor = row.projection_delta === null
+                  ? "text-zinc-600"
+                  : row.projection_delta >= 0 ? "text-emerald-400" : "text-red-400";
+
+                return (
+                  <tr
+                    key={rowKey}
+                    className={`border-b border-zinc-800/60 ${i % 2 === 0 ? "bg-transparent" : "bg-zinc-900/20"} hover:bg-zinc-800/30 transition-colors`}
+                  >
+                    <td className="px-3 py-2 text-zinc-200 font-medium whitespace-nowrap">{row.player_name}</td>
+                    <td className="px-3 py-2 text-zinc-400 whitespace-nowrap">{row.team}</td>
+                    <td className="px-3 py-2 text-zinc-500 whitespace-nowrap">{row.opponent}</td>
+                    <td className="px-3 py-2 text-zinc-500 whitespace-nowrap max-w-[140px] truncate" title={row.game_label}>{row.game_label}</td>
+                    <td className={`px-3 py-2 text-right font-bold whitespace-nowrap ${row.hit_threshold ? "text-emerald-400" : "text-zinc-300"}`}>
+                      {row.actual_value}
+                    </td>
+                    <td className="px-3 py-2 text-right text-zinc-500 whitespace-nowrap">
+                      {row.projected_value !== null ? Math.round(row.projected_value) : "—"}
+                    </td>
+                    <td className={`px-3 py-2 text-right font-medium whitespace-nowrap ${diffColor}`}>
+                      {row.projection_delta !== null
+                        ? (row.projection_delta >= 0 ? "+" : "") + Math.round(row.projection_delta)
+                        : "—"}
+                    </td>
+                    <td className={`px-3 py-2 whitespace-nowrap font-medium ${RESULT_LABEL_COLORS[row.result_label] ?? "text-zinc-400"}`}>
+                      {RESULT_LABEL_TEXT[row.result_label] ?? row.result_label}
+                    </td>
+                    <td className="px-3 py-2 text-right text-zinc-500 whitespace-nowrap">
+                      {row.recent_average !== null ? Math.round(row.recent_average) : "—"}
+                    </td>
+                    <td className="px-3 py-2 text-right text-zinc-500 whitespace-nowrap">
+                      {row.l5_average !== null ? Math.round(row.l5_average) : "—"}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => copyText(row.copy_bullet, `bullet-${rowKey}`)}
+                          title="Copy stat line"
+                          className="flex items-center gap-1 text-[10px] bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 hover:text-zinc-200 rounded px-1.5 py-0.5 transition-colors"
+                        >
+                          {copiedKey === `bullet-${rowKey}` ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+                          Line
+                        </button>
+                        <button
+                          onClick={() => copyText(row.proof_caption_line, `caption-${rowKey}`)}
+                          title="Copy social caption"
+                          className="flex items-center gap-1 text-[10px] bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-400 hover:text-zinc-200 rounded px-1.5 py-0.5 transition-colors"
+                        >
+                          {copiedKey === `caption-${rowKey}` ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+                          Caption
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <div className="text-[10px] text-zinc-700 pt-1">
+        Admin only. Reads afl.player_games + afl.games_raw (FT). Round resolves to latest completed round if not specified. No betting language in copy outputs.
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const TABS = [
@@ -3429,6 +3852,7 @@ const TABS = [
   "Post Ideas",
   "Social Post Planner",
   "Freshness",
+  "Post-Game Review",
 ] as const;
 type Tab = typeof TABS[number];
 
@@ -3582,14 +4006,20 @@ export default function AdminContentIntel() {
       </div>
 
       {/* Tab Content */}
-      {!data && loading && (
+      {!data && loading && activeTab !== "Post-Game Review" && (
         <div className="py-20 text-center text-zinc-500">
           <Database className="h-8 w-8 mx-auto mb-3 opacity-40 animate-pulse" />
           <div className="text-sm">Loading stat data…</div>
         </div>
       )}
 
-      {data && (
+      {activeTab === "Post-Game Review" && (
+        <div className="pb-8">
+          <PostGameReview />
+        </div>
+      )}
+
+      {data && activeTab !== "Post-Game Review" && (
         <div className="pb-8">
           {activeTab === "Player Stat Angles" && (
             <PlayerStatAngles
