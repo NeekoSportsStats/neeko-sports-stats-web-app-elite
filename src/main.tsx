@@ -4,10 +4,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
 import { AuthProvider } from "@/lib/auth";
-import { initAnalytics } from "@/lib/analytics";
+import { initAnalytics, initGoogleAds } from "@/lib/analytics";
 import "./index.css";
 
 initAnalytics();
+initGoogleAds();
 
 const queryClient = new QueryClient();
 

@@ -514,7 +514,7 @@ const NeekoPlusPurchase = () => {
         return;
       }
 
-      track("start_checkout", { plan, source: "neeko_plus_page" });
+      track("neeko_plus_clicked", { plan, source: "neeko_plus_page" });
 
       const origin = window.location.origin;
 
@@ -541,6 +541,12 @@ const NeekoPlusPurchase = () => {
 
       const data = await res.json();
       if (!data.url) throw new Error("No checkout URL returned");
+
+      track("checkout_started", {
+        plan,
+        source: "neeko_plus_page",
+        stripe_session_id: data.sessionId ?? undefined,
+      });
 
       window.location.assign(data.url);
     } catch (err: any) {

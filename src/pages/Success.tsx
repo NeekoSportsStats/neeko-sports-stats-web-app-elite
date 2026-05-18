@@ -1,6 +1,7 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useEffect, useRef, useState } from "react";
-import { track } from "@/lib/analytics";
+import { track, trackGoogleAdsPurchase } from "@/lib/analytics";
+import { NEEKO_PRICING } from "@/config/neekoPricing";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -69,8 +70,22 @@ export default function Success() {
 
     refreshTriggeredRef.current = true;
 
-    track("subscription_started", { session_id: sessionId ?? undefined });
-    track("checkout_success", { session_id: sessionId ?? undefined });
+    const dedupeKey = sessionId ? `neeko_conversion_fired_${sessionId}` : null;
+    const alreadyFired = dedupeKey ? localStorage.getItem(dedupeKey) === "1" : false;
+    if (!alreadyFired) {
+      if (dedupeKey) localStorage.setItem(dedupeKey, "1");
+      track("subscription_activated", { session_id: sessionId ?? undefined });
+      const planParam = new URLSearchParams(window.location.search).get("plan");
+      const conversionValue = planParam === "weekly"
+        ? NEEKO_PRICING.weekly.price
+        : NEEKO_PRICING.season.price;
+      trackGoogleAdsPurchase({
+        transactionId: sessionId ?? crypto.randomUUID(),
+        value: conversionValue,
+        currency: "AUD",
+        plan: planParam ?? "season",
+      });
+    }
 
     const startPolling = async () => {
       if (!isMountedRef.current) return;

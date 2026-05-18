@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback, memo, useSyncExternalStore } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, memo, useSyncExternalStore, useDeferredValue } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Search, X, Lock, ChevronDown, ChevronUp } from "lucide-react";
@@ -180,13 +180,23 @@ export default function StatBoardPlayersPage() {
     setLens(newLens);
     setSortKey("projection");
     setExpandedPlayerId(null);
-    track("Stat Board Lens Change", { lens: newLens });
+    track("stat_board_filter_used", { filter_type: "lens", value: newLens });
   }
 
   function handleMatchChange(match: StatBoardMatch) {
     setSelectedMatch(match);
     setExpandedPlayerId(null);
     track("Stat Board Match Change", { match_id: match.match_id, match_label: match.match_label });
+  }
+
+  function handleSortChange(k: SortKey) {
+    setSortKey(k);
+    track("stat_board_sort_changed", { sort_key: k, lens });
+  }
+
+  function handlePositionChange(pos: PositionFilter) {
+    setPositionFilter(pos);
+    track("stat_board_filter_used", { filter_type: "position", value: pos });
   }
 
   const { homePlayers, awayPlayers } = useMemo(() => {
@@ -206,11 +216,16 @@ export default function StatBoardPlayersPage() {
   // Stable callback — prevents TeamBoard memo from busting on every render
   const handleToggleExpand = useCallback((id: number | null) => {
     setExpandedPlayerId(id);
+    if (id !== null) track("stat_board_player_expand", { player_id: id });
   }, []);
 
+  // Debounced search tracking via useDeferredValue
+  const deferredSearch = useDeferredValue(search);
   useEffect(() => {
-    track("Page View", { path: "/stat-board/players" });
-  }, []);
+    if (deferredSearch.trim().length >= 2) {
+      track("stat_board_search_used", { query_length: deferredSearch.trim().length });
+    }
+  }, [deferredSearch]);
 
   // Premium users see all matches unlocked; is_locked is a DB hint for free users only
   const isLocked = hasFullAccess ? false : (selectedMatch?.is_locked ?? false);
@@ -276,9 +291,9 @@ export default function StatBoardPlayersPage() {
           hasFullAccess={hasFullAccess}
           onMatchChange={handleMatchChange}
           onLensChange={handleLensChange}
-          onPositionChange={setPositionFilter}
+          onPositionChange={handlePositionChange}
           onSearchChange={setSearch}
-          onSortChange={setSortKey}
+          onSortChange={handleSortChange}
           onSortOpenChange={setSortOpen}
         />
       )}
@@ -348,7 +363,7 @@ export default function StatBoardPlayersPage() {
                 {POSITION_OPTIONS.map(({ key, label }) => (
                   <button
                     key={key}
-                    onClick={() => setPositionFilter(key)}
+                    onClick={() => handlePositionChange(key)}
                     className={`px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap transition-colors border shrink-0 ${
                       positionFilter === key
                         ? "bg-white/12 border-white/20 text-white"
@@ -398,7 +413,7 @@ export default function StatBoardPlayersPage() {
                     <SortDropdown
                       current={sortKey}
                       options={sortOptions(lens)}
-                      onSelect={(k) => { setSortKey(k); setSortOpen(false); }}
+                      onSelect={(k) => { handleSortChange(k); setSortOpen(false); }}
                       onClose={() => setSortOpen(false)}
                     />
                   )}
@@ -448,7 +463,7 @@ export default function StatBoardPlayersPage() {
                   {POSITION_OPTIONS.map(({ key, label }) => (
                     <button
                       key={key}
-                      onClick={() => setPositionFilter(key)}
+                      onClick={() => handlePositionChange(key)}
                       className={`rounded-md px-2.5 py-1.5 text-[12px] font-semibold transition-colors ${
                         positionFilter === key
                           ? "bg-white/15 text-white ring-1 ring-white/25"
@@ -498,7 +513,7 @@ export default function StatBoardPlayersPage() {
                     <SortDropdown
                       current={sortKey}
                       options={sortOptions(lens)}
-                      onSelect={(k) => { setSortKey(k); setSortOpen(false); }}
+                      onSelect={(k) => { handleSortChange(k); setSortOpen(false); }}
                       onClose={() => setSortOpen(false)}
                     />
                   )}
@@ -536,7 +551,7 @@ export default function StatBoardPlayersPage() {
                   First 2 matches free. Upgrade to Neeko+ to view every match, projection, hit rate and trend.
                 </p>
                 <button
-                  onClick={() => navigate("/neeko-plus")}
+                  onClick={() => { track("stat_board_upgrade_clicked", { source: "locked_match_banner" }); navigate("/neeko-plus"); }}
                   className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[#F5C84C]/15 border border-[#F5C84C]/30 px-3.5 py-1.5 text-[11px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/25 transition-colors"
                 >
                   Upgrade to Neeko+

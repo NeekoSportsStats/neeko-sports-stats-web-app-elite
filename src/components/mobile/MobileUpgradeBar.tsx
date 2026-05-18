@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Crown } from "lucide-react";
+import { track } from "@/lib/analytics";
 
 export default function MobileUpgradeBar() {
   return (
@@ -20,6 +21,7 @@ export default function MobileUpgradeBar() {
 
         <Link
           to="/neeko-plus"
+          onClick={() => track("neeko_plus_clicked", { source: "mobile_upgrade_bar" })}
           className="flex items-center gap-1.5 bg-[#F5C84C] text-black font-bold text-sm px-5 py-2.5 rounded-xl hover:brightness-110 active:scale-95 transition-all shrink-0 min-h-[44px]"
         >
           $5.99/wk

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, ArrowRight, Zap } from "lucide-react";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
+import { track } from "@/lib/analytics";
 
 const FREE_FEATURES = [
   { text: "$0 forever — no card required", included: true },
@@ -315,6 +316,7 @@ export default function LandingPricing() {
 
             <Link
               to="/neeko-plus"
+              onClick={() => track("neeko_plus_clicked", { source: "landing_pricing", plan: hoveredPlan === "weekly" ? "weekly" : "season" })}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 marginTop: 28,
