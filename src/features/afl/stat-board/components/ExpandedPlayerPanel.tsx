@@ -109,24 +109,36 @@ export function ExpandedPlayerPanel({
     rowType: row.row_type,
   }));
 
-  // Build chart from ACTUALS ONLY — sorted ascending, last 10 completed games.
-  // BYE, DNP, and NYP rows are excluded from the chart entirely; they appear in the
-  // game log table only. This prevents scrambled x-axis labels from non-played weeks.
+  // Build chart slots — actuals form the time window; BYE/DNP are interleaved as
+  // null-value markers at their correct chronological positions. NYP is excluded.
   const playedSlots = gameLog.filter((g) => g.rowType === "played");
   const playedCount = playedSlots.length;
   const hasAnyData = playedCount > 0;
 
   // gameLog is already sorted ascending (oldest→newest after dedup sort).
-  // Take the last 10 played rows so the chart shows a clean chronological line.
+  // Take the last 10 played rows to define the time window.
   const last10Played = playedSlots.slice(-10);
+  const windowStartWeek = last10Played.length > 0 ? last10Played[0].week : null;
 
-  const actualChartSlots: ChartSlot[] = last10Played.map((g) => ({
-    value: g.value,
-    label: g.week === 0 ? "OR" : `R${g.week}`,
-    rowType: "played",
-    week: g.week,
-    opponent: g.opponent,
-  }));
+  // Include BYE and DNP slots that fall within the last-10-played time window so
+  // gaps in the actual line are visually explained. NYP is not shown in the chart.
+  const actualChartSlots: ChartSlot[] = windowStartWeek != null
+    ? gameLog
+        .filter((g) => g.rowType !== "nyp" && g.week >= windowStartWeek)
+        .map((g) => ({
+          value: g.rowType === "played" ? g.value : null,
+          label: g.week === 0 ? "OR" : `R${g.week}`,
+          rowType: g.rowType,
+          week: g.week,
+          opponent: g.opponent,
+        }))
+    : last10Played.map((g) => ({
+        value: g.value,
+        label: g.week === 0 ? "OR" : `R${g.week}`,
+        rowType: "played",
+        week: g.week,
+        opponent: g.opponent,
+      }));
 
   // Projected point for the current target game — only shown when target game is not
   // already in actuals (i.e., this round hasn't been played yet).
@@ -276,7 +288,11 @@ export function ExpandedPlayerPanel({
               </span>
               <span className="flex items-center gap-1.5 shrink-0">
                 <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" rx="1.5" fill="none" stroke="rgba(255,255,255,0.30)" strokeWidth="1.2" transform="rotate(45 5 5)"/></svg>
-                <span className="text-[9px] text-white/28">BYE / DNP</span>
+                <span className="text-[9px] text-white/28">BYE</span>
+              </span>
+              <span className="flex items-center gap-1.5 shrink-0">
+                <svg width="10" height="10" viewBox="0 0 10 10"><rect x="1" y="1" width="8" height="8" rx="1.5" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.2" strokeDasharray="2 2" transform="rotate(45 5 5)"/></svg>
+                <span className="text-[9px] text-white/28">DNP</span>
               </span>
             </div>
           </div>
