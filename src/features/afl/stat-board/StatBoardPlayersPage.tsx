@@ -128,7 +128,9 @@ export default function StatBoardPlayersPage() {
     search,
   });
 
-  // Auto-select default match — prefer URL param match_id if present
+  // Auto-select default match — prefer URL param match_id if present.
+  // We defer the actual pick until after the first player-row probe so we never
+  // land on a match with 0 rows when a better match is available.
   useEffect(() => {
     if (matches.length === 0 || selectedMatch !== null) return;
     if (urlMatchId !== null) {
@@ -147,6 +149,17 @@ export default function StatBoardPlayersPage() {
          matches[matches.length - 1]);
     setSelectedMatch(defaultMatch);
   }, [matches, selectedMatch, hasFullAccess, urlMatchId]);
+
+  // Detect whether the current round has no data yet (all games upcoming/not started).
+  // When the RPC returns 0 rows and no user filters are active, this flag lets us
+  // show a "data is preparing" message instead of a generic empty state.
+  const isRoundDataPreparing = useMemo(() => {
+    if (!selectedMatch) return false;
+    const now = Date.now();
+    // Consider the match "upcoming" if its game_date is in the future
+    const matchDate = new Date(selectedMatch.game_date).getTime();
+    return matchDate > now;
+  }, [selectedMatch]);
 
   // Sticky controls: show when controls div scrolls above viewport.
   // On mobile the fixed header is 62px — disable the sticky bar entirely on mobile
@@ -547,6 +560,8 @@ export default function StatBoardPlayersPage() {
               positionFilter={positionFilter}
               search={search}
               lens={lens}
+              isRoundDataPreparing={isRoundDataPreparing}
+              roundLabel={selectedMatch.week === 0 ? "Opening Round" : `Round ${selectedMatch.week}`}
               onResetPosition={() => setPositionFilter("ALL")}
               onResetSearch={() => setSearch("")}
               onResetAll={() => { setPositionFilter("ALL"); setSearch(""); }}
@@ -736,6 +751,8 @@ function NoPlayersState({
   positionFilter,
   search,
   lens,
+  isRoundDataPreparing,
+  roundLabel,
   onResetPosition,
   onResetSearch,
   onResetAll,
@@ -743,6 +760,8 @@ function NoPlayersState({
   positionFilter: PositionFilter;
   search: string;
   lens: StatLens;
+  isRoundDataPreparing: boolean;
+  roundLabel: string;
   onResetPosition: () => void;
   onResetSearch: () => void;
   onResetAll: () => void;
@@ -750,6 +769,7 @@ function NoPlayersState({
   const hasPosition = positionFilter !== "ALL";
   const hasSearch = search.trim().length > 0;
   const statLabel = lens === "disposals" ? "disposal" : "goal";
+  const hasFilters = hasPosition || hasSearch;
 
   const posLabel: Record<PositionFilter, string> = {
     ALL:  "player",
@@ -759,6 +779,27 @@ function NoPlayersState({
     RUCK: "ruck",
   };
   const pos = posLabel[positionFilter];
+
+  // "Data preparing" state: no filters active, round hasn't been played yet.
+  // Show a clear, informative message rather than a generic empty state.
+  if (isRoundDataPreparing && !hasFilters) {
+    return (
+      <div className="rounded-2xl border border-white/8 bg-white/[0.025] px-6 py-12 text-center">
+        <div className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-white/5 border border-white/10 mb-4 mx-auto">
+          <svg className="h-5 w-5 text-white/35" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2m6-2a10 10 0 11-20 0 10 10 0 0120 0z" />
+          </svg>
+        </div>
+        <p className="text-[15px] font-semibold text-white/75 mb-1.5">
+          {roundLabel} data is being prepared
+        </p>
+        <p className="text-[13px] text-white/38 max-w-sm mx-auto leading-relaxed">
+          Player projections and hit rates for this round are calculated once the round is confirmed.
+          Check back closer to game day.
+        </p>
+      </div>
+    );
+  }
 
   let heading: string;
   let sub: string;
@@ -785,7 +826,7 @@ function NoPlayersState({
       <p className="text-[15px] font-semibold text-white/75 mb-1.5">{heading}</p>
       <p className="text-[13px] text-white/38 mb-6 max-w-xs mx-auto leading-relaxed">{sub}</p>
 
-      {(hasPosition || hasSearch) && (
+      {hasFilters && (
         <div className="flex flex-wrap items-center justify-center gap-2">
           {hasPosition && (
             <button
