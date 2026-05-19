@@ -124,7 +124,7 @@ export function ExpandedPlayerPanel({
   // gaps in the actual line are visually explained. NYP is not shown in the chart.
   const actualChartSlots: ChartSlot[] = windowStartWeek != null
     ? gameLog
-        .filter((g) => g.rowType !== "nyp" && g.week >= windowStartWeek)
+        .filter((g) => g.rowType !== "nyp" && g.week >= windowStartWeek && g.week <= player.week)
         .map((g) => ({
           value: g.rowType === "played" ? g.value : null,
           label: g.week === 0 ? "OR" : `R${g.week}`,
@@ -856,7 +856,7 @@ function MobileChartTooltip({
   slot,
   slotIndex,
   totalSlots,
-  allThresholds,
+  allThresholds: _allThresholds,
   lens,
   onDismiss,
 }: {
@@ -867,97 +867,63 @@ function MobileChartTooltip({
   lens: StatLens;
   onDismiss: () => void;
 }) {
-  // Pin to left or right side based on slot position to avoid overflow
   const alignRight = slotIndex >= totalSlots / 2;
+  const baseClass = `absolute top-1 ${alignRight ? "right-1" : "left-1"} z-20 rounded-lg bg-[#1c1c1c] shadow-xl px-2.5 py-2`;
 
   if (slot.rowType === "projected") {
     return (
       <div
-        className={`absolute top-1 ${alignRight ? "right-1" : "left-1"} z-20 rounded-lg border border-[rgba(245,200,76,0.22)] bg-[#1a1a1a] shadow-xl px-3 py-2.5`}
+        className={`${baseClass} border border-[rgba(245,200,76,0.22)]`}
         role="tooltip"
-        style={{ pointerEvents: "auto", minWidth: 140, maxWidth: 170 }}
+        style={{ pointerEvents: "auto", maxWidth: 160 }}
         onClick={onDismiss}
       >
-        <p className="text-[9px] text-white/30 font-medium uppercase tracking-wide leading-none mb-1">{slot.label}</p>
+        <p className="text-[9px] text-white/35 font-medium uppercase tracking-wide leading-none">{slot.label}</p>
         {slot.opponent && slot.opponent !== "—" && (
-          <p className="text-[10px] text-white/45 leading-none mb-1">vs {slot.opponent}</p>
+          <p className="text-[9px] text-white/40 leading-none mt-0.5">vs {slot.opponent}</p>
         )}
-        <p className="text-[13px] font-semibold leading-none" style={{ color: "rgba(245,200,76,0.85)" }}>
-          Projected: {slot.value}
+        <p className="text-[12px] font-semibold leading-none mt-1" style={{ color: "rgba(245,200,76,0.85)" }}>
+          Proj: {slot.value}
         </p>
-        <p className="text-[9px] text-white/25 mt-1.5">tap to close</p>
       </div>
     );
   }
 
   if (slot.rowType === "bye" || slot.rowType === "dnp" || slot.rowType === "nyp") {
-    const label = slot.rowType === "bye" ? "BYE" : slot.rowType === "nyp" ? "NYP" : "DNP";
-    const sublabel = slot.rowType === "nyp" && slot.opponent && slot.opponent !== "—"
-      ? `vs ${slot.opponent}`
-      : slot.rowType === "dnp" && slot.opponent && slot.opponent !== "—"
-      ? `vs ${slot.opponent}`
-      : undefined;
-    const description = slot.rowType === "nyp" ? "Not Yet Played" : slot.rowType === "dnp" ? "Did Not Play" : "BYE week";
+    const label = slot.rowType === "bye" ? "BYE" : slot.rowType === "dnp" ? "DNP" : "NYP";
     return (
       <div
-        className={`absolute top-1 ${alignRight ? "right-1" : "left-1"} z-20 rounded-lg border border-white/14 bg-[#1a1a1a] shadow-xl px-3 py-2.5`}
+        className={`${baseClass} border border-white/12`}
         role="tooltip"
-        style={{ pointerEvents: "auto", minWidth: 120, maxWidth: 160 }}
+        style={{ pointerEvents: "auto", maxWidth: 150 }}
         onClick={onDismiss}
       >
-        <p className="text-[9px] text-white/30 font-medium uppercase tracking-wide leading-none mb-1">{slot.label}</p>
-        <p className="text-[13px] text-white/65 font-semibold leading-none">{label}</p>
-        <p className="text-[10px] text-white/35 mt-0.5">{description}</p>
-        {sublabel && <p className="text-[10px] text-white/35 mt-0.5">{sublabel}</p>}
-        <p className="text-[9px] text-white/25 mt-1.5">tap to close</p>
+        <p className="text-[9px] text-white/35 font-medium uppercase tracking-wide leading-none">{slot.label}</p>
+        {slot.opponent && slot.opponent !== "—" && (
+          <p className="text-[9px] text-white/40 leading-none mt-0.5">vs {slot.opponent}</p>
+        )}
+        <p className="text-[12px] text-white/60 font-semibold leading-none mt-1">{label}</p>
       </div>
     );
   }
 
   const val = slot.value!;
-  const thresholdChecks = allThresholds.map((t) => ({ t, hit: val >= t }));
-  const hitCount = thresholdChecks.filter((c) => c.hit).length;
+  const unit = lens === "disposals" ? "disp" : "goals";
 
   return (
     <div
-      className={`absolute top-1 ${alignRight ? "right-1" : "left-1"} z-20 rounded-xl border border-white/12 bg-[#1c1c1c] shadow-xl overflow-hidden`}
+      className={`${baseClass} border border-white/12`}
       role="tooltip"
-      style={{ minWidth: 140, maxWidth: 170, pointerEvents: "auto" }}
+      style={{ pointerEvents: "auto", maxWidth: 160 }}
+      onClick={onDismiss}
     >
-      <div className="px-3 pt-2.5 pb-2">
-        <p className="text-[9px] text-white/30 font-medium uppercase tracking-wide leading-none mb-0.5">
-          Week {slot.label}
-        </p>
-        {slot.opponent && slot.opponent !== "—" && (
-          <p className="text-[10px] text-white/45 leading-none mb-1">vs {slot.opponent}</p>
-        )}
-        <div className="flex items-baseline gap-1.5 mt-1">
-          <span className="text-[20px] font-bold tabular-nums leading-none text-white/90">{val}</span>
-          <span className="text-[10px] text-white/30 leading-none">
-            {lens === "disposals" ? "disp" : "goals"}
-          </span>
-        </div>
-      </div>
-      <div className="h-px bg-white/[0.08]" />
-      <div className="px-3 py-1.5 space-y-1">
-        {thresholdChecks.map(({ t, hit }) => (
-          <div key={t} className="flex items-center justify-between gap-3">
-            <span className="text-[10px] text-white/45">{t}+</span>
-            <span className={`text-[10px] font-semibold ${hit ? "text-emerald-400" : "text-white/25"}`}>
-              {hit ? "Hit" : "Miss"}
-            </span>
-          </div>
-        ))}
-      </div>
-      <div className="px-3 pb-2 pt-1 flex items-center justify-between border-t border-white/[0.06]">
-        <p className="text-[9px] text-white/25">{hitCount}/{allThresholds.length} hit</p>
-        <button
-          className="text-[9px] text-white/40 underline underline-offset-2"
-          onClick={onDismiss}
-          aria-label="Dismiss tooltip"
-        >
-          close
-        </button>
+      <p className="text-[9px] text-white/35 font-medium uppercase tracking-wide leading-none">{slot.label}</p>
+      {slot.opponent && slot.opponent !== "—" && (
+        <p className="text-[9px] text-white/40 leading-none mt-0.5">vs {slot.opponent}</p>
+      )}
+      <div className="flex items-baseline gap-1 mt-1">
+        <span className="text-[17px] font-bold tabular-nums leading-none text-white/90">{val}</span>
+        <span className="text-[9px] text-white/30 leading-none">{unit}</span>
       </div>
     </div>
   );
