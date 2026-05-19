@@ -3444,6 +3444,7 @@ interface PGRRow {
   actual_value: number;
   projected_value: number | null;
   projection_delta: number | null;
+  projection_source: string;
   threshold: number;
   hit_threshold: boolean;
   result_label: string;
@@ -3476,19 +3477,17 @@ const PGR_RESULT_FILTERS: { value: PGRResultFilter; label: string }[] = [
 ];
 
 const RESULT_LABEL_COLORS: Record<string, string> = {
-  hit_beat_proj:    "text-emerald-400",
-  hit_under_proj:   "text-yellow-400",
-  hit:              "text-emerald-400",
-  missed_beat_proj: "text-blue-400",
-  missed:           "text-red-400",
+  beat_proj:  "text-emerald-400",
+  under_proj: "text-yellow-400",
+  hit:        "text-emerald-400",
+  missed:     "text-red-400",
 };
 
 const RESULT_LABEL_TEXT: Record<string, string> = {
-  hit_beat_proj:    "Hit + Beat Proj",
-  hit_under_proj:   "Hit, Under Proj",
-  hit:              "Hit",
-  missed_beat_proj: "Missed, Beat Proj",
-  missed:           "Missed",
+  beat_proj:  "Beat Proj",
+  under_proj: "Under Proj",
+  hit:        "Hit",
+  missed:     "Missed",
 };
 
 function PostGameReview() {
@@ -3602,7 +3601,7 @@ function PostGameReview() {
           <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Stat</span>
           <select
             value={lens}
-            onChange={e => { setLens(e.target.value as PGRLens); setMatchId(null); }}
+            onChange={e => { const l = e.target.value as PGRLens; setLens(l); setMatchId(null); if (l !== "fantasy" && (resultFilter === "beat_proj" || resultFilter === "under_proj")) setResultFilter("all"); }}
             className="bg-zinc-900 border border-zinc-700 text-zinc-200 text-[12px] rounded px-2 py-1.5 min-w-[120px]"
           >
             {PGR_LENSES.map(l => (
@@ -3679,9 +3678,15 @@ function PostGameReview() {
             onChange={e => setResultFilter(e.target.value as PGRResultFilter)}
             className="bg-zinc-900 border border-zinc-700 text-zinc-200 text-[12px] rounded px-2 py-1.5 min-w-[150px]"
           >
-            {PGR_RESULT_FILTERS.map(f => (
-              <option key={f.value} value={f.value}>{f.label}</option>
-            ))}
+            <option value="all">All</option>
+            <option value="hit">Hit Threshold</option>
+            <option value="missed">Missed Threshold</option>
+            {lens === "fantasy" && (
+              <>
+                <option value="beat_proj">Beat Projection</option>
+                <option value="under_proj">Under Projection</option>
+              </>
+            )}
           </select>
         </div>
 
@@ -3835,8 +3840,9 @@ function PostGameReview() {
         </div>
       )}
 
-      <div className="text-[10px] text-zinc-700 pt-1">
-        Admin only. Reads afl.player_games + afl.games_raw (FT). Round resolves to latest completed round if not specified. No betting language in copy outputs.
+      <div className="text-[10px] text-zinc-700 pt-1 space-y-0.5">
+        <div>Admin only. Reads afl.player_games + afl.games_raw (FT). Round resolves to latest completed round if not specified. No betting language in copy outputs.</div>
+        <div className="text-zinc-700">Projection comparison is only available for Fantasy Score lens — pre-game snapshot from player_projection_history. All other lenses show "—" for Proj/Diff columns (no stat-specific projections exist in the database).</div>
       </div>
     </div>
   );
