@@ -184,6 +184,51 @@ function isCompleted(match: StatBoardMatch): boolean {
   return new Date(match.game_date).getTime() < Date.now() - 3 * 60 * 60 * 1000; // 3h buffer
 }
 
+// ─── Best-threshold assignment ────────────────────────────────────────────────
+
+/**
+ * Returns the highest disposal threshold bucket a player genuinely belongs to.
+ * Uses L5 avg, season avg, and hit rates to determine.
+ * Hard rule: a player who qualifies for 30+ must NOT appear in a 20+ post.
+ */
+function bestDisposalThreshold(p: StatBoardPlayer): 30 | 25 | 20 | 15 | 10 {
+  const l5  = p.last_5_avg  ?? 0;
+  const sea = p.season_avg  ?? 0;
+  const hr30 = getHitRate(p, 30);
+  const hr25 = getHitRate(p, 25);
+  const hr20 = getHitRate(p, 20);
+  const hr15 = getHitRate(p, 15);
+
+  // 30+ bucket: L5 or season avg >= 29.5, OR hit rate at 30 is strong
+  if (l5 >= 29.5 || sea >= 29.5 || hr30 >= 0.45) return 30;
+
+  // 25+ bucket: L5 or season avg >= 24.5, OR strong hit rate at 25
+  if (l5 >= 24.5 || sea >= 24.5 || hr25 >= 0.55) return 25;
+
+  // 20+ bucket: L5 or season avg >= 19.5, OR strong hit rate at 20
+  if (l5 >= 19.5 || sea >= 19.5 || hr20 >= 0.60) return 20;
+
+  // 15+ bucket: L5 or season avg >= 14.5, OR hit rate at 15
+  if (l5 >= 14.5 || sea >= 14.5 || hr15 >= 0.60) return 15;
+
+  return 10;
+}
+
+/**
+ * Returns the highest goal threshold bucket a player genuinely belongs to.
+ */
+function bestGoalThreshold(p: StatBoardPlayer): 3 | 2 | 1 {
+  const hr3 = getHitRate(p, 3);
+  const hr2 = getHitRate(p, 2);
+  const hr1 = getHitRate(p, 1);
+  const l5  = p.last_5_avg ?? 0;
+
+  if (l5 >= 2.5 || hr3 >= 0.35) return 3;
+  if (l5 >= 1.5 || hr2 >= 0.45) return 2;
+  if (hr1 >= 0.50) return 1;
+  return 1;
+}
+
 // ─── Anti-duplication player selector ────────────────────────────────────────
 
 /**
@@ -281,7 +326,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
 
   const dispPool = [...data.disposalPlayers]
     .filter(p => getSeasonAvg(p) >= 13 && (p.games_played ?? 0) >= 3)
-    .sort((a, b) => getHitRate(b, 20) - getHitRate(a, 20) || getL5Avg(b) - getL5Avg(a));
+    .sort((a, b) => getL5Avg(b) - getL5Avg(a));
 
   const goalPool = [...data.goalPlayers]
     .filter(p => (p.games_played ?? 0) >= 3)
@@ -299,15 +344,38 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     .filter(t => (t.recent_games_count ?? 0) >= 3)
     .sort((a, b) => getTeamL5Avg(b) - getTeamL5Avg(a));
 
-  // ── Anti-dup disposal sets for weekly use ────────────────────────────────
-  const used25Ids = new Set<number>();
-  const top25 = selectDisposalPlayers(dispPool, 25, new Set(), 0.55, 5);
-  top25.forEach(p => used25Ids.add(p.player_id));
+  // ── Threshold-segmented disposal pools ───────────────────────────────────
+  // Each player belongs to exactly one bucket: their best/highest supported threshold.
+  // Hard rule: a player in pool30 must NOT appear in pool25/pool20/pool15.
+  const pool30 = dispPool
+    .filter(p => bestDisposalThreshold(p) === 30)
+    .sort((a, b) => getL5Avg(b) - getL5Avg(a));
 
-  const top20 = selectDisposalPlayers(dispPool, 20, used25Ids, 0.60, 5);
-  const used20Ids = new Set([...used25Ids, ...top20.map(p => p.player_id)]);
+  const pool25 = dispPool
+    .filter(p => bestDisposalThreshold(p) === 25)
+    .sort((a, b) => getHitRate(b, 25) - getHitRate(a, 25) || getL5Avg(b) - getL5Avg(a));
 
-  const top15 = selectDisposalPlayers(dispPool, 15, used20Ids, 0.65, 5);
+  const pool20 = dispPool
+    .filter(p => bestDisposalThreshold(p) === 20)
+    .sort((a, b) => getHitRate(b, 20) - getHitRate(a, 20) || getL5Avg(b) - getL5Avg(a));
+
+  const pool15 = dispPool
+    .filter(p => bestDisposalThreshold(p) === 15)
+    .sort((a, b) => getHitRate(b, 15) - getHitRate(a, 15) || getL5Avg(b) - getL5Avg(a));
+
+  // Combined high-volume pool (30+/25+) for elite posts
+  const poolElite = [...pool30, ...pool25]
+    .sort((a, b) => getL5Avg(b) - getL5Avg(a));
+
+  // Legacy compat: top25/top20/top15 now draw from segmented pools
+  const top25 = (pool25.length >= 3 ? pool25 : poolElite).slice(0, 5);
+  const top20 = (pool20.length >= 2 ? pool20 : pool25.slice(0, 5)).slice(0, 5);
+  const top15 = (pool15.length >= 2 ? pool15 : pool20.slice(0, 5)).slice(0, 5);
+
+  // ── Threshold-segmented goal pools ───────────────────────────────────────
+  const goalPool3 = goalPool.filter(p => bestGoalThreshold(p) === 3);
+  const goalPool2 = goalPool.filter(p => bestGoalThreshold(p) === 2);
+  const goalPool1 = goalPool.filter(p => bestGoalThreshold(p) === 1);
 
   // Helper for match label
   const firstUpcoming = upcomingMatches[0];
@@ -318,33 +386,77 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   // ── MONDAY ────────────────────────────────────────────────────────────────
 
   // Post 1 — Weekend proof / recap (Carousel)
+  // Uses threshold-correct pool: picks the most represented bucket (30+, 25+, or 20+)
   {
     const hasCompleted = completedMatches.length > 0;
-    const proofPlayers = dispPool.slice(0, 5);
+
+    // Choose the best-populated threshold pool for the proof post
+    const proofPool30 = pool30.slice(0, 5);
+    const proofPool25 = pool25.slice(0, 5);
+    const proofPool20 = pool20.slice(0, 5);
+
+    let proofPlayers: StatBoardPlayer[];
+    let proofThreshold: string;
+    let proofHook: string;
+
+    if (proofPool30.length >= 3) {
+      proofPlayers = proofPool30;
+      proofThreshold = "30+ Disposals";
+      proofHook = hasCompleted
+        ? `${rl} wrapped. Elite disposal form — here's how the big numbers held up.`
+        : `Elite disposal form heading into ${rl}. Who's been clearing 30+?`;
+    } else if (poolElite.length >= 3) {
+      proofPlayers = poolElite.slice(0, 5);
+      proofThreshold = "25–30+ Disposals";
+      proofHook = hasCompleted
+        ? `${rl} wrapped. High-volume disposal form — the 25+ and 30+ performers.`
+        : `High-volume disposal form heading into ${rl}.`;
+    } else if (proofPool20.length >= 3) {
+      proofPlayers = proofPool20;
+      proofThreshold = "20+ Disposals";
+      proofHook = hasCompleted
+        ? `${rl} wrapped. Here's how the disposal form held up across the weekend.`
+        : `${rl} is underway. Key 20+ disposal performers tracked.`;
+    } else {
+      proofPlayers = dispPool.slice(0, 5);
+      proofThreshold = "Disposal Form";
+      proofHook = hasCompleted
+        ? `${rl} wrapped. Here's how disposal form held up across the weekend.`
+        : `${rl} disposal form leaders.`;
+    }
+
+    // For proof posts, show threshold-matched hit rate
+    const thrNum = proofThreshold === "30+ Disposals" ? 30
+      : proofThreshold === "20+ Disposals" ? 20 : 25;
     const bullets = proofPlayers.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 20))} hit rate at 20+, L5 avg ${getL5Avg(p).toFixed(1)}`
+      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, thrNum))} hit rate at ${thrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
     );
-    const hook = hasCompleted
-      ? `${rl} wrapped. Here's how the disposal form held up across the weekend.`
-      : `${rl} is underway. Here's who's been clearing the lines in recent games.`;
+
+    // Title and category depend on whether we have completed data
+    const postTitle = hasCompleted
+      ? `${rl} — weekend ${proofThreshold.toLowerCase()} recap`
+      : `${rl} — ${proofThreshold.toLowerCase()} watchlist`;
+    const postCategory: PostCategory = hasCompleted ? "Proof Post" : "Round Wrap";
+    const postIntent: PostIntent = "recap";
+
     schedule.push(makePost({
       day: "Mon", postNumber: 1,
       type: "Carousel",
-      category: "Round Wrap", intent: "recap",
+      category: postCategory, intent: postIntent,
       statLens: "disposals", confidence: proofPlayers.length >= 3 ? "High" : "Fallback",
-      title: `${rl} — weekend disposal proof post`,
-      content: hook,
+      title: postTitle,
+      content: proofHook,
       statsShown: bullets,
-      onScreenText: "Did the stats deliver?",
-      caption: buildCaption(hook, bullets, 0),
-      hashtags: HASHTAG_SETS["Round Wrap"],
-      suggestedVisual: "Stat card grid — top 5 disposal players vs their L5 average and weekend result",
+      onScreenText: hasCompleted ? "Weekend disposal recap" : "Disposal watchlist",
+      caption: buildCaption(proofHook, bullets, 0),
+      hashtags: HASHTAG_SETS[postCategory],
+      suggestedVisual: `Stat card grid — top 5 ${proofThreshold.toLowerCase()} players vs their L5 average`,
       dataScope: hasCompleted ? "Completed weekend games" : `${rl} disposal player pool`,
       targetGame: hasCompleted ? "Weekend completed games" : null,
       targetGameStatus: hasCompleted ? "completed" : "any",
-      fallbackWarning: hasCompleted ? null : "Fallback: completed game stat results unavailable — using season/L5 data only",
+      fallbackWarning: hasCompleted ? null : "No completed game data — showing season/L5 form as watchlist preview instead of proof post.",
       players: proofPlayers,
-      thresholdLabel: "20+ Disposals",
+      thresholdLabel: proofThreshold,
     }));
   }
 
@@ -410,57 +522,102 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
 
   // ── TUESDAY ───────────────────────────────────────────────────────────────
 
-  // Post 1 — Top 5 for 25+ disposals (Image)
+  // Post 1 — Top 5 for 25+/30+ disposals (Image)
+  // Uses segmented pool: if pool30 is large enough, promote to 30+ post
   {
-    const players = top25.length >= 3 ? top25 : dispPool.slice(0, 5);
-    const isFallback = top25.length < 3;
-    const bullets = players.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 25))} at 25+, L5 avg ${getL5Avg(p).toFixed(1)}`
+    let tue1Players: StatBoardPlayer[];
+    let tue1Threshold: string;
+    let tue1ThrNum: number;
+    let tue1Title: string;
+    let tue1Hook: string;
+    let tue1Fallback: string | null = null;
+
+    if (pool30.length >= 3) {
+      tue1Players = pool30.slice(0, 5);
+      tue1Threshold = "30+ Disposals";
+      tue1ThrNum = 30;
+      tue1Title = `Top 5 for 30+ disposals — ${rl}`;
+      tue1Hook = `Elite disposal volume. Who's been clearing 30+ consistently heading into ${rl}?`;
+    } else if (pool25.length >= 3) {
+      tue1Players = pool25.slice(0, 5);
+      tue1Threshold = "25+ Disposals";
+      tue1ThrNum = 25;
+      tue1Title = `Top 5 for 25+ disposals — ${rl}`;
+      tue1Hook = `Top disposers heading into ${rl}. Who's been clearing 25+ consistently?`;
+    } else {
+      // Not enough 25+ or 30+ players — use combined elite pool
+      tue1Players = poolElite.length >= 2 ? poolElite.slice(0, 5) : dispPool.slice(0, 5);
+      tue1Threshold = "25–30+ Disposals";
+      tue1ThrNum = 25;
+      tue1Title = `High-volume disposal form — ${rl}`;
+      tue1Hook = `High-volume disposers heading into ${rl}. Numbers that matter.`;
+      tue1Fallback = pool25.length < 3 ? "Low 25+ candidate count — combined 25+/30+ pool used" : null;
+    }
+
+    const tue1Bullets = tue1Players.map(p =>
+      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, tue1ThrNum))} at ${tue1ThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
     );
-    const hook = `Top disposers heading into ${rl}. Who's been clearing 25+ consistently?`;
     schedule.push(makePost({
       day: "Tue", postNumber: 1,
       type: "Image",
       category: "Disposal Trend", intent: "cross_game_preview",
-      statLens: "disposals", confidence: isFallback ? "Fallback" : "High",
-      title: `Top 5 for 25+ disposals — ${rl}`,
-      content: hook,
-      statsShown: bullets,
-      onScreenText: "25+ disposal form",
-      caption: buildCaption(hook, bullets, 3),
+      statLens: "disposals", confidence: tue1Fallback ? "Fallback" : "High",
+      title: tue1Title,
+      content: tue1Hook,
+      statsShown: tue1Bullets,
+      onScreenText: `${tue1ThrNum}+ disposal form`,
+      caption: buildCaption(tue1Hook, tue1Bullets, 3),
       hashtags: HASHTAG_SETS["Disposal Trend"],
-      suggestedVisual: "5-player stat grid — name, team, 25+ hit rate, L5 avg",
+      suggestedVisual: `5-player stat grid — name, team, ${tue1ThrNum}+ hit rate, L5 avg`,
       dataScope: `${rl} cross-game disposal pool`,
       targetGame: upcomingGameLabel, targetGameStatus: upcomingGameLabel ? "upcoming" : "any",
-      fallbackWarning: isFallback ? "Fallback fill: not enough 25+ candidates — using 20+ top players" : null,
-      players, thresholdLabel: "25+ Disposals",
+      fallbackWarning: tue1Fallback,
+      players: tue1Players, thresholdLabel: tue1Threshold,
     }));
   }
 
-  // Post 2 — Top 5 for 20+ disposals (Image) — distinct from 25+ list
+  // Post 2 — Top 5 for 20+ disposals (Image) — only players whose best threshold is 20+
   {
-    const players = top20.length >= 3 ? top20 : selectDisposalPlayers(dispPool, 20, used25Ids, 0.50, 5);
-    const isFallback = top20.length < 2;
-    const bullets = players.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 20))} at 20+, L5 avg ${getL5Avg(p).toFixed(1)}`
+    // pool20 contains ONLY players whose highest supported line is 20+ (not 25+ or 30+)
+    let tue2Players: StatBoardPlayer[];
+    let isFallback = false;
+
+    if (pool20.length >= 3) {
+      tue2Players = pool20.slice(0, 5);
+    } else if (pool20.length >= 1) {
+      // Supplement with 15+ players if necessary but never with 25+/30+
+      tue2Players = [...pool20, ...pool15].slice(0, 5);
+      isFallback = true;
+    } else {
+      // No genuine 20+ players — downgrade to preview/watchlist instead
+      tue2Players = pool15.slice(0, 5);
+      isFallback = true;
+    }
+
+    const tue2ThrNum = pool20.length >= 2 ? 20 : 15;
+    const tue2Threshold = `${tue2ThrNum}+ Disposals`;
+    const hook = pool20.length >= 3
+      ? `Solid ${tue2ThrNum}+ disposal form — players whose most relevant content line sits around ${tue2ThrNum}+.`
+      : `Volume disposers in the ${tue2ThrNum}+ range heading into ${rl}.`;
+    const tue2Bullets = tue2Players.map(p =>
+      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, tue2ThrNum))} at ${tue2ThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
     );
-    const hook = `Strong 20+ disposal form — different names from the 25+ list. Volume disposers worth tracking.`;
     schedule.push(makePost({
       day: "Tue", postNumber: 2,
       type: "Image",
       category: "Disposal Trend", intent: "cross_game_preview",
-      statLens: "disposals", confidence: isFallback ? "Fallback" : "High",
-      title: `Top 5 for 20+ disposals — ${rl}`,
+      statLens: "disposals", confidence: isFallback ? "Medium" : "High",
+      title: `Top 5 for ${tue2ThrNum}+ disposals — ${rl}`,
       content: hook,
-      statsShown: bullets,
-      onScreenText: "20+ disposal form",
-      caption: buildCaption(hook, bullets, 4),
+      statsShown: tue2Bullets,
+      onScreenText: `${tue2ThrNum}+ disposal form`,
+      caption: buildCaption(hook, tue2Bullets, 4),
       hashtags: HASHTAG_SETS["Disposal Trend"],
-      suggestedVisual: "5-player stat grid — name, team, 20+ hit rate, L5 avg",
-      dataScope: `${rl} cross-game disposal pool (excludes 25+ list)`,
+      suggestedVisual: `5-player stat grid — name, team, ${tue2ThrNum}+ hit rate, L5 avg`,
+      dataScope: `${rl} cross-game disposal pool (${tue2ThrNum}+ tier only)`,
       targetGame: upcomingGameLabel, targetGameStatus: upcomingGameLabel ? "upcoming" : "any",
-      fallbackWarning: isFallback ? "Fallback fill used — not enough distinct 20+ candidates" : null,
-      players, thresholdLabel: "20+ Disposals",
+      fallbackWarning: isFallback ? `Low ${tue2ThrNum}+ candidate count — pool supplemented with adjacent tier` : null,
+      players: tue2Players, thresholdLabel: tue2Threshold,
     }));
   }
 
@@ -968,30 +1125,60 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   // Post 3 — Weekend recap / what the stats got right (Carousel)
   {
     const hasCompleted = completedMatches.length > 0;
-    const proofPlayers = dispPool.slice(0, 5);
-    const bullets = proofPlayers.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 20))} at 20+, L5 avg ${getL5Avg(p).toFixed(1)}, season avg ${getSeasonAvg(p).toFixed(1)}`
+
+    // Select threshold-correct proof players (same logic as Monday Post 1)
+    let sunProofPlayers: StatBoardPlayer[];
+    let sunProofThreshold: string;
+    let sunProofThrNum: number;
+
+    if (pool30.length >= 3) {
+      sunProofPlayers = pool30.slice(0, 5);
+      sunProofThreshold = "30+ Disposals";
+      sunProofThrNum = 30;
+    } else if (poolElite.length >= 3) {
+      sunProofPlayers = poolElite.slice(0, 5);
+      sunProofThreshold = "25–30+ Disposals";
+      sunProofThrNum = 25;
+    } else if (pool20.length >= 3) {
+      sunProofPlayers = pool20.slice(0, 5);
+      sunProofThreshold = "20+ Disposals";
+      sunProofThrNum = 20;
+    } else {
+      sunProofPlayers = dispPool.slice(0, 5);
+      sunProofThreshold = "Disposal Form";
+      sunProofThrNum = 20;
+    }
+
+    const bullets = sunProofPlayers.map(p =>
+      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, sunProofThrNum))} at ${sunProofThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}, season avg ${getSeasonAvg(p).toFixed(1)}`
     );
     const hook = hasCompleted
       ? `${rl} — what the stats got right. See the data, make your own call.`
       : `${rl} wrap-up. Form leaders from the round.`;
+
+    // Only label as "Proof Post" or "what the stats got right" when actual completed data exists
+    const sunCategory: PostCategory = hasCompleted ? "Proof Post" : "Round Wrap";
+    const sunTitle = hasCompleted
+      ? `${rl} — what the stats got right`
+      : `${rl} weekend watchlist`;
+
     schedule.push(makePost({
       day: "Sun", postNumber: 3,
       type: "Carousel",
-      category: hasCompleted ? "Proof Post" : "Round Wrap", intent: "recap",
+      category: sunCategory, intent: "recap",
       statLens: "disposals", confidence: hasCompleted ? "High" : "Medium",
-      title: hasCompleted ? `${rl} — what the stats got right` : `${rl} weekend recap`,
+      title: sunTitle,
       content: hook,
       statsShown: bullets,
-      onScreenText: hasCompleted ? "What the stats got right" : "Weekend wrap",
+      onScreenText: hasCompleted ? "What the stats got right" : "Weekend watchlist",
       caption: buildCaption(hook, bullets, 2),
-      hashtags: HASHTAG_SETS["Round Wrap"],
-      suggestedVisual: "Round recap carousel — top performers vs projected line",
+      hashtags: HASHTAG_SETS[sunCategory],
+      suggestedVisual: "Round recap carousel — top performers vs L5 average",
       dataScope: hasCompleted ? "Completed weekend games" : `${rl} round wrap`,
       targetGame: hasCompleted ? "Weekend completed games" : null,
       targetGameStatus: hasCompleted ? "completed" : "any",
-      fallbackWarning: hasCompleted ? null : "Fallback: completed game stat results unavailable — using season/L5 data only",
-      players: proofPlayers, thresholdLabel: "20+ Disposals",
+      fallbackWarning: hasCompleted ? null : "No completed game data — showing as watchlist preview. Do not label as proof/recap.",
+      players: sunProofPlayers, thresholdLabel: sunProofThreshold,
     }));
   }
 
@@ -1003,12 +1190,12 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     bkIdx++;
   }
 
-  // 1. 30+ disposal consistency
+  // 1. 30+ disposal consistency — only players whose best threshold is 30+
   {
-    const players = dispPool.filter(p => getHitRate(p, 30) >= 0.4).slice(0, 5);
+    const players = pool30.slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 30))} at 30+, L5 avg ${getL5Avg(p).toFixed(1)}`);
-      bkPost({ day: "Tue", type: "Image", category: "Disposal Trend", intent: "cross_game_preview", statLens: "disposals", confidence: "Medium", title: `Top 5 for 30+ disposals — ${rl}`, content: "Elite disposal volume. Who's been clearing 30+ consistently?", statsShown: bullets, onScreenText: "30+ disposal form", caption: buildCaption("Elite disposal volume. Who's been clearing 30+ consistently?", bullets, 0), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "5-player stat grid — 30+ hit rates", dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "30+ Disposals", postNumber: 1 });
+      bkPost({ day: "Tue", type: "Image", category: "Disposal Trend", intent: "cross_game_preview", statLens: "disposals", confidence: "High", title: `Top 5 for 30+ disposals — ${rl}`, content: "Elite disposal volume. Who's been clearing 30+ consistently?", statsShown: bullets, onScreenText: "30+ disposal form", caption: buildCaption("Elite disposal volume. Who's been clearing 30+ consistently?", bullets, 0), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "5-player stat grid — 30+ hit rates", dataScope: `${rl} cross-game pool (30+ tier only)`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "30+ Disposals", postNumber: 1 });
     }
   }
 
@@ -1043,30 +1230,30 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     }
   }
 
-  // 5. 1+ goals cross-round
+  // 5. 1+ goals cross-round — only players whose best goal threshold is 1
   {
-    const players = goalPool.slice(0, 5);
+    const players = (goalPool1.length >= 2 ? goalPool1 : goalPool).slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 1))} at 1+, L5 avg ${getL5Avg(p).toFixed(1)}`);
-      bkPost({ day: "Thu", type: "Image", category: "Goal Trend", intent: "cross_game_preview", statLens: "goals", confidence: "High", title: `Top 5 for 1+ goals — ${rl}`, content: "Goal form across the round. Who's been finding the big sticks regularly?", statsShown: bullets, onScreenText: "Goal form", caption: buildCaption("Goal form across the round.", bullets, 4), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "5-player goal form grid", dataScope: `${rl} cross-game goal pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "1+ Goals", postNumber: 1 });
+      bkPost({ day: "Thu", type: "Image", category: "Goal Trend", intent: "cross_game_preview", statLens: "goals", confidence: "High", title: `Top 5 for 1+ goals — ${rl}`, content: "Goal form across the round. Who's been finding the big sticks regularly?", statsShown: bullets, onScreenText: "Goal form", caption: buildCaption("Goal form across the round.", bullets, 4), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "5-player goal form grid", dataScope: `${rl} cross-game goal pool (1+ tier)`, targetGame: null, targetGameStatus: "any", fallbackWarning: goalPool1.length < 2 ? "Low 1+ only candidates — using full goal pool" : null, players, thresholdLabel: "1+ Goals", postNumber: 1 });
     }
   }
 
-  // 6. 2+ goals
+  // 6. 2+ goals — only players whose best threshold is 2+
   {
-    const players = goalPool.filter(p => getHitRate(p, 2) >= 0.45).slice(0, 5);
+    const players = (goalPool2.length >= 2 ? goalPool2 : goalPool.filter(p => getHitRate(p, 2) >= 0.45)).slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 2))} at 2+, L5 avg ${getL5Avg(p).toFixed(1)}`);
-      bkPost({ day: "Fri", type: "Image", category: "Goal Trend", intent: "cross_game_preview", statLens: "goals", confidence: "Medium", title: `Top 5 for 2+ goals — ${rl}`, content: "Multi-goal scorers with strong recent hit rates.", statsShown: bullets, onScreenText: "2+ goal form", caption: buildCaption("Multi-goal scorers with strong recent hit rates.", bullets, 5), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "5-player 2+ goal grid", dataScope: `${rl} cross-game goal pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "2+ Goals", postNumber: 1 });
+      bkPost({ day: "Fri", type: "Image", category: "Goal Trend", intent: "cross_game_preview", statLens: "goals", confidence: "Medium", title: `Top 5 for 2+ goals — ${rl}`, content: "Multi-goal scorers with strong recent hit rates.", statsShown: bullets, onScreenText: "2+ goal form", caption: buildCaption("Multi-goal scorers with strong recent hit rates.", bullets, 5), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "5-player 2+ goal grid", dataScope: `${rl} cross-game goal pool (2+ tier)`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "2+ Goals", postNumber: 1 });
     }
   }
 
-  // 7. 3+ goals (if enough candidates)
+  // 7. 3+ goals — only players whose best threshold is 3+
   {
-    const players = goalPool.filter(p => getHitRate(p, 3) >= 0.35).slice(0, 5);
+    const players = (goalPool3.length >= 2 ? goalPool3 : goalPool.filter(p => getHitRate(p, 3) >= 0.35)).slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 3))} at 3+, L5 avg ${getL5Avg(p).toFixed(1)}`);
-      bkPost({ day: "Sat", type: "Image", category: "Goal Trend", intent: "cross_game_preview", statLens: "goals", confidence: "Medium", title: `3+ goal scorers — ${rl}`, content: "Three-plus goal scorers with form worth noting.", statsShown: bullets, onScreenText: "3+ goals", caption: buildCaption("Three-plus goal scorers with form worth noting.", bullets, 0), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "Elite goal scorers stat card", dataScope: `${rl} cross-game goal pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "3+ Goals", postNumber: 1 });
+      bkPost({ day: "Sat", type: "Image", category: "Goal Trend", intent: "cross_game_preview", statLens: "goals", confidence: "Medium", title: `3+ goal scorers — ${rl}`, content: "Three-plus goal scorers with form worth noting.", statsShown: bullets, onScreenText: "3+ goals", caption: buildCaption("Three-plus goal scorers with form worth noting.", bullets, 0), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "Elite goal scorers stat card", dataScope: `${rl} cross-game goal pool (3+ tier)`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "3+ Goals", postNumber: 1 });
     }
   }
 
@@ -1198,28 +1385,36 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
 
   // 21. Weekend recap proof post
   {
-    const proofPlayers = dispPool.slice(0, 5);
     const hasCompleted = completedMatches.length > 0;
-    const bullets = proofPlayers.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 20))} at 20+, L5 avg ${getL5Avg(p).toFixed(1)}`
+    // Use threshold-correct pool (same logic as Monday Post 1 and Sunday Post 3)
+    const bkProofPlayers = pool30.length >= 3 ? pool30.slice(0, 5)
+      : poolElite.length >= 3 ? poolElite.slice(0, 5)
+      : pool20.length >= 3 ? pool20.slice(0, 5)
+      : dispPool.slice(0, 5);
+    const bkThrNum = pool30.length >= 3 ? 30 : poolElite.length >= 3 ? 25 : 20;
+    const bkThrLabel = `${bkThrNum}+ Disposals`;
+    const bullets = bkProofPlayers.map(p =>
+      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, bkThrNum))} at ${bkThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
     );
     bkPost({
-      day: "Mon", type: "Carousel", category: "Proof Post", intent: "recap",
+      day: "Mon", type: "Carousel",
+      category: hasCompleted ? "Proof Post" : "Round Wrap",
+      intent: "recap",
       statLens: "disposals", confidence: hasCompleted ? "High" : "Fallback",
-      title: `${rl} weekend proof post`,
+      title: hasCompleted ? `${rl} weekend ${bkThrLabel.toLowerCase()} proof post` : `${rl} ${bkThrLabel.toLowerCase()} watchlist`,
       content: hasCompleted
-        ? `${rl} wrapped. Checking the disposal form leaders — did the numbers deliver?`
-        : `${rl} disposal form recap — L5 averages and hit rates.`,
+        ? `${rl} wrapped. Checking the ${bkThrLabel.toLowerCase()} leaders — did the numbers deliver?`
+        : `${rl} disposal form recap — L5 averages and hit rates for ${bkThrLabel.toLowerCase()} performers.`,
       statsShown: bullets,
-      onScreenText: "Did the stats deliver?",
-      caption: buildCaption(hasCompleted ? `${rl} wrapped.` : `${rl} disposal form recap.`, bullets, 2),
-      hashtags: HASHTAG_SETS["Proof Post"],
-      suggestedVisual: "Weekend proof carousel — player vs projected line",
+      onScreenText: hasCompleted ? "Did the stats deliver?" : "Disposal watchlist",
+      caption: buildCaption(hasCompleted ? `${rl} wrapped.` : `${rl} disposal form.`, bullets, 2),
+      hashtags: HASHTAG_SETS[hasCompleted ? "Proof Post" : "Round Wrap"],
+      suggestedVisual: "Weekend proof carousel — player vs L5 average",
       dataScope: hasCompleted ? "Completed weekend games" : `${rl} round pool`,
       targetGame: hasCompleted ? "Weekend completed games" : null,
       targetGameStatus: hasCompleted ? "completed" : "any",
-      fallbackWarning: hasCompleted ? null : "Fallback: completed game results unavailable — using L5/season data only",
-      players: proofPlayers, thresholdLabel: "20+ Disposals", postNumber: 1,
+      fallbackWarning: hasCompleted ? null : "No completed game data — showing as watchlist. Do not label as proof/recap.",
+      players: bkProofPlayers, thresholdLabel: bkThrLabel, postNumber: 1,
     });
   }
 
