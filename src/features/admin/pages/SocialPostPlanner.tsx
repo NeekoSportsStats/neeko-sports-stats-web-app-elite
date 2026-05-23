@@ -4,84 +4,27 @@
  * All posts target TikTok + Instagram + Facebook simultaneously.
  */
 import { useState, useMemo, useCallback } from "react";
-import { Copy, Check, ChevronDown, ChevronUp, Calendar, Hash, Zap, TriangleAlert as AlertTriangle, Clock } from "lucide-react";
+import { Copy, Check, ChevronDown, ChevronUp, Calendar, Hash, Zap, TriangleAlert as AlertTriangle, Clock, Shield, Star } from "lucide-react";
 import type { StatBoardPlayer, StatBoardMatch } from "@/features/afl/stat-board/types";
 import type { StatBoardTeamRow } from "@/features/afl/stat-board/teamTypes";
+import { enrichPost } from "./social-planner/postEnrichment";
+import { buildEvergreenPool } from "./social-planner/evergreenPosts";
+import { usePostStatus, STATUS_LABELS, STATUS_OPTIONS } from "./social-planner/usePostStatus";
+import type {
+  SocialPost,
+  PostStatus,
+  CIDataSubset,
+  DayOfWeek,
+  PostType,
+  PostIntent,
+  PostCategory,
+  CopyTone,
+  StatLens,
+  ConfidenceLevel,
+} from "./social-planner/types";
 
-// ─── CIData subset ────────────────────────────────────────────────────────────
-
-export interface CIDataSubset {
-  currentRound: number;
-  roundLabel: string;
-  matches: StatBoardMatch[];
-  disposalPlayers: StatBoardPlayer[];
-  goalPlayers: StatBoardPlayer[];
-  teamDisposals: StatBoardTeamRow[];
-  teamGoals: StatBoardTeamRow[];
-  teamScore: StatBoardTeamRow[];
-  loadedAt: Date;
-  /** Player IDs to exclude from post candidate pools (injured/unavailable/suspended). */
-  unavailablePlayerIds?: Set<number>;
-}
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type DayOfWeek = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
-
-type PostType = "Image" | "Carousel" | "Short video";
-
-type PostIntent =
-  | "recap"
-  | "same_day_preview"
-  | "cross_game_preview"
-  | "pre_game"
-  | "evergreen_backup";
-
-type PostCategory =
-  | "Disposal Trend"
-  | "Goal Trend"
-  | "Tackle Trend"
-  | "Form Mover"
-  | "Team Total"
-  | "Matchup Angle"
-  | "Round Preview"
-  | "Round Wrap"
-  | "Proof Post";
-
-type CopyTone = "clean_stats" | "punchier_social" | "short_caption";
-
-type StatLens = "disposals" | "goals" | "tackles" | "fantasy" | "team-total";
-
-type ConfidenceLevel = "High" | "Medium" | "Fallback";
-
-interface SocialPost {
-  id: string;
-  day: DayOfWeek;
-  postNumber: 1 | 2 | 3;
-  postTime: string;
-  type: PostType;
-  category: PostCategory;
-  intent: PostIntent;
-  statLens: StatLens;
-  confidence: ConfidenceLevel;
-  title: string;
-  content: string;          // Hook / opening sentence
-  statsShown: string[];     // Bullet stat lines
-  onScreenText: string;     // Short text to overlay on the visual
-  caption: string;          // Full caption for the post
-  hashtags: string[];
-  suggestedVisual: string;
-  imageDescription: string;
-  dataScope: string;
-  targetGame: string | null;
-  targetGameStatus: "upcoming" | "completed" | "any" | null;
-  fallbackWarning: string | null;
-  playerNames: string[];
-  teamNames: string[];
-  thresholdLabel: string;
-  isBackup: boolean;
-  tone: CopyTone;
-}
+// Re-export CIDataSubset for AdminContentIntel compatibility
+export type { CIDataSubset };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -317,7 +260,7 @@ function buildCaption(hook: string, bullets: string[], signOffIdx = 0): string {
 
 // ─── Weekly plan generation ───────────────────────────────────────────────────
 
-function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: SocialPost[]; excludedCount: number } {
+function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: SocialPost[]; evergreen: SocialPost[]; excludedCount: number } {
   _postCounter = 0;
   const schedule: SocialPost[] = [];
   const backup: SocialPost[] = [];
@@ -1576,7 +1519,27 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     });
   }
 
-  return { schedule, backup, excludedCount };
+  // Enrich all posts with compliance, quality, timing, platform captions, etc.
+  const enriched = (posts: SocialPost[]) => posts.map(p => enrichPost(p, data.matches));
+
+  const evergreen = buildEvergreenPool({
+    currentRound: data.currentRound,
+    roundLabel: data.roundLabel,
+    matches: data.matches,
+    disposalPlayers: data.disposalPlayers,
+    goalPlayers: data.goalPlayers,
+    teamDisposals: data.teamDisposals,
+    teamGoals: data.teamGoals,
+    teamScore: data.teamScore,
+    loadedAt: data.loadedAt,
+  });
+
+  return {
+    schedule: enriched(schedule),
+    backup: enriched(backup),
+    evergreen,
+    excludedCount,
+  };
 }
 
 // ─── Copy utilities ───────────────────────────────────────────────────────────
@@ -1672,16 +1635,57 @@ function Field({ label, value }: { label: string; value: string }) {
   );
 }
 
+function QualityBadge({ quality }: { quality: SocialPost["quality"] }) {
+  if (!quality) return null;
+  const cls =
+    quality.label === "Premium" ? "bg-amber-950/60 text-amber-300 border-amber-600/30" :
+    quality.label === "Strong"  ? "bg-emerald-950/60 text-emerald-300 border-emerald-600/30" :
+    quality.label === "Good"    ? "bg-sky-950/60 text-sky-300 border-sky-600/30" :
+    "bg-zinc-800 text-zinc-500 border-zinc-700";
+  return (
+    <span className={`text-[9px] px-1.5 py-0.5 rounded border font-medium flex items-center gap-0.5 ${cls}`}>
+      <Star className="h-2 w-2" />
+      {quality.score} · {quality.label}
+    </span>
+  );
+}
+
+function ComplianceBadge({ compliance }: { compliance: SocialPost["compliance"] }) {
+  if (!compliance || compliance.status === "Clean") return null;
+  const cls = compliance.status === "Do not use"
+    ? "bg-red-950/60 text-red-400 border-red-700/40"
+    : "bg-amber-950/60 text-amber-400 border-amber-700/40";
+  return (
+    <span className={`text-[9px] px-1.5 py-0.5 rounded border font-medium flex items-center gap-0.5 ${cls}`}>
+      <Shield className="h-2 w-2" />
+      {compliance.status}
+    </span>
+  );
+}
+
 function SocialPostCard({
-  post, copiedId, onCopyField,
+  post, copiedId, onCopyField, roundLabel,
 }: {
   post: SocialPost;
   copiedId: string | null;
   onCopyField: (id: string, text: string) => void;
+  roundLabel: string;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [platformTab, setPlatformTab] = useState<"tiktok" | "instagram" | "facebook">("tiktok");
+  const { getEntry, setStatus, setNote } = usePostStatus(roundLabel);
+  const entry = getEntry(post.id);
 
   const copyKey = (suffix: string) => `${post.id}-${suffix}`;
+
+  const statusCls = (s: PostStatus) => {
+    if (s === "posted_tiktok" || s === "posted_instagram" || s === "posted_facebook") return "text-emerald-400";
+    if (s === "scheduled") return "text-sky-400";
+    if (s === "do_not_use") return "text-red-400";
+    if (s === "skipped") return "text-zinc-600";
+    if (s === "drafted" || s === "image_created") return "text-amber-400";
+    return "text-zinc-400";
+  };
 
   return (
     <div className={`border rounded-xl overflow-hidden ${post.isBackup ? "border-zinc-800/60 bg-zinc-900/20" : "border-zinc-800 bg-zinc-900/30"}`}>
@@ -1698,6 +1702,8 @@ function SocialPostCard({
             <TypeBadge type={post.type} />
             <IntentBadge intent={post.intent} />
             <ConfidenceBadge confidence={post.confidence} />
+            {post.quality && <QualityBadge quality={post.quality} />}
+            {post.compliance && post.compliance.status !== "Clean" && <ComplianceBadge compliance={post.compliance} />}
             {post.isBackup && (
               <span className="text-[9px] px-1.5 py-0.5 rounded border font-medium bg-zinc-900 text-zinc-600 border-zinc-800">Backup</span>
             )}
@@ -1706,10 +1712,21 @@ function SocialPostCard({
           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
             <Clock className="h-2.5 w-2.5 text-zinc-600 shrink-0" />
             <span className="text-[10px] text-zinc-500">{post.postTime}</span>
-            <span className="text-zinc-700">·</span>
-            <span className="text-[10px] text-zinc-500">TikTok + Instagram + Facebook</span>
+            {post.timing?.countdownText && (
+              <>
+                <span className="text-zinc-700">·</span>
+                <span className={`text-[10px] ${post.timing.urgency === "High" ? "text-amber-400" : post.timing.urgency === "Stale" ? "text-red-400" : "text-zinc-500"}`}>
+                  {post.timing.countdownText}
+                </span>
+              </>
+            )}
             <span className="text-zinc-700">·</span>
             <span className="text-[10px] text-zinc-500">{post.thresholdLabel}</span>
+            {entry.status !== "todo" && (
+              <span className={`text-[9px] font-medium ${statusCls(entry.status)}`}>
+                {STATUS_LABELS[entry.status]}
+              </span>
+            )}
             {post.fallbackWarning && (
               <AlertTriangle className="h-2.5 w-2.5 text-amber-500 shrink-0" />
             )}
@@ -1730,6 +1747,84 @@ function SocialPostCard({
       {/* Expanded detail */}
       {expanded && (
         <div className="border-t border-zinc-800/50 p-3 space-y-3">
+
+          {/* Workflow status + notes */}
+          <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-lg p-2.5 space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] text-zinc-500 font-medium shrink-0">Status</span>
+              <select
+                value={entry.status}
+                onChange={e => { e.stopPropagation(); setStatus(post.id, e.target.value as PostStatus); }}
+                onClick={e => e.stopPropagation()}
+                className={`bg-zinc-900 border border-zinc-700 text-[10px] rounded-md px-2 py-1 h-[26px] ${statusCls(entry.status)}`}
+              >
+                {STATUS_OPTIONS.map(s => (
+                  <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                ))}
+              </select>
+            </div>
+            <textarea
+              value={entry.note}
+              onChange={e => { e.stopPropagation(); setNote(post.id, e.target.value); }}
+              onClick={e => e.stopPropagation()}
+              placeholder="Admin notes (saved locally)…"
+              rows={2}
+              className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-md px-2 py-1.5 text-[10px] text-zinc-300 placeholder-zinc-600 resize-none"
+            />
+          </div>
+
+          {/* Quality + timing block */}
+          {(post.quality || post.timing) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {post.quality && (
+                <div className="bg-zinc-800/30 border border-zinc-700/40 rounded-lg p-2 space-y-1">
+                  <div className="text-[10px] text-zinc-500 font-medium">Quality</div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[13px] font-bold text-zinc-200">{post.quality.score}/100</span>
+                    <QualityBadge quality={post.quality} />
+                  </div>
+                  <div className="text-[10px] text-zinc-400">{post.quality.useReason}</div>
+                  {post.quality.useRecommendation !== "Use" && (
+                    <div className={`text-[10px] font-medium ${post.quality.useRecommendation === "Do not use" ? "text-red-400" : "text-amber-400"}`}>
+                      {post.quality.useRecommendation}
+                    </div>
+                  )}
+                </div>
+              )}
+              {post.timing && (
+                <div className="bg-zinc-800/30 border border-zinc-700/40 rounded-lg p-2 space-y-1">
+                  <div className="text-[10px] text-zinc-500 font-medium">Timing</div>
+                  {post.timing.countdownText && (
+                    <div className={`text-[12px] font-semibold ${post.timing.urgency === "High" ? "text-amber-400" : post.timing.urgency === "Stale" ? "text-red-400" : "text-zinc-300"}`}>
+                      {post.timing.countdownText}
+                    </div>
+                  )}
+                  <div className="text-[10px] text-zinc-300">{post.timing.recommendedWindowText}</div>
+                  <div className="text-[10px] text-zinc-500">{post.timing.recommendedTimingReason}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Compliance block */}
+          {post.compliance && (
+            <div className={`flex items-start gap-1.5 text-[10px] rounded-lg px-2.5 py-2 ${
+              post.compliance.status === "Clean"
+                ? "bg-emerald-950/20 border border-emerald-800/30 text-emerald-400"
+                : post.compliance.status === "Do not use"
+                ? "bg-red-950/20 border border-red-800/30 text-red-400"
+                : "bg-amber-950/20 border border-amber-800/30 text-amber-400"
+            }`}>
+              <Shield className="h-3 w-3 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-medium">{post.compliance.status}</span>
+                {post.compliance.flags.length > 0 && (
+                  <span className="ml-1 opacity-75">— {post.compliance.flags.join(", ")}</span>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Meta fields */}
           <div className="space-y-1.5">
             <Field label="Day" value={DAY_FULL[post.day]} />
@@ -1753,6 +1848,27 @@ function SocialPostCard({
             <Field label="Content" value={post.content} />
           </div>
 
+          {/* Hook options */}
+          {post.hookOptions && post.hookOptions.length > 0 && (
+            <div className="space-y-1">
+              <span className="text-[10px] text-zinc-500 font-medium">Hook options</span>
+              <div className="space-y-1">
+                {post.hookOptions.map((h, i) => (
+                  <div key={i} className="flex items-start gap-1.5 group">
+                    <span className="text-[10px] text-zinc-600 shrink-0 mt-0.5 w-3">{i + 1}.</span>
+                    <span className="text-[10px] text-zinc-400 flex-1">{h}</span>
+                    <button
+                      onClick={e => { e.stopPropagation(); onCopyField(copyKey(`hook-${i}`), h); }}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-zinc-600 hover:text-zinc-300 transition-all"
+                    >
+                      {copiedId === copyKey(`hook-${i}`) ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {post.statsShown.length > 0 && (
             <div className="space-y-1">
               <span className="text-[10px] text-zinc-500 font-medium">Stats shown</span>
@@ -1771,10 +1887,46 @@ function SocialPostCard({
             <Field label="On-screen text" value={post.onScreenText} />
           </div>
 
-          <div className="space-y-1">
-            <span className="text-[10px] text-zinc-500 font-medium">Caption</span>
-            <pre className="text-[11px] text-zinc-300 bg-zinc-800/40 rounded-lg p-2.5 whitespace-pre-wrap break-words font-sans leading-relaxed">{post.caption}</pre>
-          </div>
+          {/* Platform captions tabs */}
+          {post.platformCaptions && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-zinc-500 font-medium">Platform captions</span>
+                <div className="flex gap-0.5">
+                  {(["tiktok", "instagram", "facebook"] as const).map(p => (
+                    <button
+                      key={p}
+                      onClick={e => { e.stopPropagation(); setPlatformTab(p); }}
+                      className={`px-2 py-0.5 rounded text-[9px] font-medium transition-colors ${
+                        platformTab === p ? "bg-zinc-700 text-zinc-200" : "text-zinc-600 hover:text-zinc-400"
+                      }`}
+                    >
+                      {p === "tiktok" ? "TikTok" : p === "instagram" ? "Instagram" : "Facebook"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="relative">
+                <pre className="text-[11px] text-zinc-300 bg-zinc-800/40 rounded-lg p-2.5 whitespace-pre-wrap break-words font-sans leading-relaxed">
+                  {post.platformCaptions[platformTab]}
+                </pre>
+                <button
+                  onClick={e => { e.stopPropagation(); onCopyField(copyKey(`cap-${platformTab}`), post.platformCaptions![platformTab]); }}
+                  className="absolute top-2 right-2 p-1 rounded bg-zinc-700/60 text-zinc-400 hover:text-zinc-200 transition-colors"
+                >
+                  {copiedId === copyKey(`cap-${platformTab}`) ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Full caption fallback */}
+          {!post.platformCaptions && (
+            <div className="space-y-1">
+              <span className="text-[10px] text-zinc-500 font-medium">Caption</span>
+              <pre className="text-[11px] text-zinc-300 bg-zinc-800/40 rounded-lg p-2.5 whitespace-pre-wrap break-words font-sans leading-relaxed">{post.caption}</pre>
+            </div>
+          )}
 
           <div className="space-y-1">
             <span className="text-[10px] text-zinc-500 font-medium">Hashtags</span>
@@ -1785,10 +1937,83 @@ function SocialPostCard({
             </div>
           </div>
 
+          {/* Voiceover script */}
+          {post.voiceoverScript && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-zinc-500 font-medium">Voiceover script</span>
+                <button
+                  onClick={e => { e.stopPropagation(); onCopyField(copyKey("vo"), post.voiceoverScript!); }}
+                  className="p-1 rounded text-zinc-600 hover:text-zinc-300 transition-colors"
+                >
+                  {copiedId === copyKey("vo") ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+                </button>
+              </div>
+              <p className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded-lg px-2.5 py-2 leading-relaxed">{post.voiceoverScript}</p>
+            </div>
+          )}
+
+          {/* Carousel slides */}
+          {post.carouselSlides && post.carouselSlides.length > 0 && (
+            <div className="space-y-1">
+              <span className="text-[10px] text-zinc-500 font-medium">Carousel slides ({post.carouselSlides.length})</span>
+              <div className="space-y-1.5">
+                {post.carouselSlides.map((slide, i) => (
+                  <div key={i} className="bg-zinc-800/30 rounded-lg p-2 border border-zinc-700/40">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[9px] text-zinc-600 font-bold">Slide {slide.slideNumber}</span>
+                      <span className="text-[10px] text-zinc-300 font-medium">{slide.headline}</span>
+                    </div>
+                    <p className="text-[10px] text-zinc-400">{slide.body}</p>
+                    {slide.visualNote && <p className="text-[9px] text-zinc-600 mt-0.5 italic">{slide.visualNote}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Thumbnail options */}
+          {post.thumbnailOptions && post.thumbnailOptions.length > 0 && (
+            <div className="space-y-1">
+              <span className="text-[10px] text-zinc-500 font-medium">Thumbnail text options</span>
+              <div className="flex flex-wrap gap-1.5">
+                {post.thumbnailOptions.map((t, i) => (
+                  <button
+                    key={i}
+                    onClick={e => { e.stopPropagation(); onCopyField(copyKey(`thumb-${i}`), t); }}
+                    className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                      copiedId === copyKey(`thumb-${i}`)
+                        ? "bg-emerald-900/40 text-emerald-300 border-emerald-700/40"
+                        : "bg-zinc-800/60 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <Field label="Suggested visual" value={post.suggestedVisual} />
             {post.imageDescription && <Field label="Image description" value={post.imageDescription} />}
           </div>
+
+          {/* AI image prompt */}
+          {post.aiImagePrompt && (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-zinc-500 font-medium">AI image prompt</span>
+                <button
+                  onClick={e => { e.stopPropagation(); onCopyField(copyKey("aiprompt"), post.aiImagePrompt!); }}
+                  className="p-1 rounded text-zinc-600 hover:text-zinc-300 transition-colors"
+                >
+                  {copiedId === copyKey("aiprompt") ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+                </button>
+              </div>
+              <p className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded-lg px-2.5 py-2 leading-relaxed">{post.aiImagePrompt}</p>
+            </div>
+          )}
 
           {/* Copy buttons row */}
           <div className="flex flex-wrap gap-1.5 pt-1 border-t border-zinc-800/50">
@@ -1828,6 +2053,22 @@ function SocialPostCard({
                 label="Copy image description"
                 onClick={() => onCopyField(copyKey("imgdesc"), post.imageDescription)}
                 copied={copiedId === copyKey("imgdesc")}
+                small
+              />
+            )}
+            {post.aiImagePrompt && (
+              <CopyBtn
+                label="Copy AI prompt"
+                onClick={() => onCopyField(copyKey("aiprompt"), post.aiImagePrompt!)}
+                copied={copiedId === copyKey("aiprompt")}
+                small
+              />
+            )}
+            {post.voiceoverScript && (
+              <CopyBtn
+                label="Copy voiceover"
+                onClick={() => onCopyField(copyKey("vo"), post.voiceoverScript!)}
+                copied={copiedId === copyKey("vo")}
                 small
               />
             )}
@@ -1906,14 +2147,16 @@ function Sel({ label, value, onChange, options }: {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+type ActiveTab = DayOfWeek | "backup" | "evergreen";
+
 export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
-  const [activeDay, setActiveDay] = useState<DayOfWeek | "backup">("Mon");
+  const [activeDay, setActiveDay] = useState<ActiveTab>("Mon");
   const [typeFilter, setTypeFilter] = useState<PostType | "all">("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [toneFilter, setToneFilter] = useState<CopyTone | "all">("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const { schedule, backup, excludedCount } = useMemo(() => buildWeeklyPlan(data), [data]);
+  const { schedule, backup, evergreen, excludedCount } = useMemo(() => buildWeeklyPlan(data), [data]);
 
   const handleCopyField = useCallback((id: string, text: string) => {
     navigator.clipboard.writeText(text).catch(() => {});
@@ -1939,12 +2182,15 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
   }
 
   const isBackupTab = activeDay === "backup";
+  const isEvergreenTab = activeDay === "evergreen";
 
   const activePosts = useMemo(() => {
-    const base = isBackupTab ? backup : schedule.filter(p => p.day === activeDay);
+    const base = isBackupTab ? backup
+      : isEvergreenTab ? evergreen
+      : schedule.filter(p => p.day === activeDay);
     return applyFilters(base);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDay, schedule, backup, typeFilter, categoryFilter, toneFilter]);
+  }, [activeDay, schedule, backup, evergreen, typeFilter, categoryFilter, toneFilter]);
 
   const scheduledCountByDay = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -1952,7 +2198,7 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
     return counts;
   }, [schedule]);
 
-  const tabCls = (key: DayOfWeek | "backup") => {
+  const tabCls = (key: ActiveTab) => {
     const active = activeDay === key;
     return `relative px-3 py-2 text-[11.5px] font-medium whitespace-nowrap transition-colors min-h-[40px] ${
       active ? "text-zinc-100" : "text-zinc-500 hover:text-zinc-300"
@@ -1965,9 +2211,43 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
     "Round Preview", "Round Wrap", "Proof Post",
   ];
 
+  // Best posts today — top 3 by quality score
+  const bestToday = useMemo(() => {
+    return [...schedule]
+      .filter(p => p.quality)
+      .sort((a, b) => (b.quality?.score ?? 0) - (a.quality?.score ?? 0))
+      .slice(0, 3);
+  }, [schedule]);
+
   return (
     <div className="space-y-4 pt-4">
       <FreshnessPanel data={data} excludedCount={excludedCount} />
+
+      {/* Best posts this week */}
+      {bestToday.length > 0 && (
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <Star className="h-3.5 w-3.5 text-amber-400" />
+            <span className="text-[11px] text-zinc-400 font-semibold">Best posts this week</span>
+            <span className="text-[9px] text-zinc-600">— highest quality scores</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {bestToday.map(post => (
+              <button
+                key={post.id}
+                onClick={() => setActiveDay(post.day)}
+                className="text-left bg-zinc-800/40 border border-zinc-700/50 rounded-lg p-2 hover:border-zinc-500 transition-colors"
+              >
+                <div className="flex items-center gap-1 mb-1">
+                  <span className="text-[9px] text-zinc-500">{DAY_FULL[post.day]}</span>
+                  {post.quality && <QualityBadge quality={post.quality} />}
+                </div>
+                <p className="text-[11px] text-zinc-300 font-medium leading-snug line-clamp-2">{post.title}</p>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Day tabs */}
       <div
@@ -1988,7 +2268,7 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
           <button onClick={() => setActiveDay("backup")} className={tabCls("backup")}>
             <span className="flex items-center gap-1">
               <Hash className="h-3 w-3" />
-              <span className="hidden sm:inline">Backup Bank</span>
+              <span className="hidden sm:inline">Backup</span>
               <span className="sm:hidden">BK</span>
             </span>
             {backup.length > 0 && (
@@ -1996,52 +2276,65 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
             )}
             {activeDay === "backup" && <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-t bg-zinc-100" />}
           </button>
+          <button onClick={() => setActiveDay("evergreen")} className={tabCls("evergreen")}>
+            <span className="flex items-center gap-1">
+              <Zap className="h-3 w-3" />
+              <span className="hidden sm:inline">Evergreen</span>
+              <span className="sm:hidden">EG</span>
+            </span>
+            {evergreen.length > 0 && (
+              <span className="ml-1 text-[8.5px] bg-zinc-700 text-zinc-400 px-1 rounded">{evergreen.length}</span>
+            )}
+            {activeDay === "evergreen" && <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-t bg-zinc-100" />}
+          </button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 space-y-3">
-        <div className="flex flex-wrap gap-1.5">
-          {(["all", "Image", "Carousel", "Short video"] as (PostType | "all")[]).map(t => (
-            <button
-              key={t}
-              onClick={() => setTypeFilter(t)}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
-                typeFilter === t
-                  ? "bg-zinc-200 text-zinc-900 border-zinc-300"
-                  : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-zinc-300"
-              }`}
-            >
-              {t === "all" ? "All types" : t}
-            </button>
-          ))}
+      {/* Filters — hidden on evergreen tab (not relevant) */}
+      {!isEvergreenTab && (
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 space-y-3">
+          <div className="flex flex-wrap gap-1.5">
+            {(["all", "Image", "Carousel", "Short video"] as (PostType | "all")[]).map(t => (
+              <button
+                key={t}
+                onClick={() => setTypeFilter(t)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+                  typeFilter === t
+                    ? "bg-zinc-200 text-zinc-900 border-zinc-300"
+                    : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                {t === "all" ? "All types" : t}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 border-t border-zinc-800 pt-3">
+            <Sel
+              label="Category"
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              options={[
+                { value: "all", label: "All categories" },
+                ...CATEGORIES.map(c => ({ value: c, label: c })),
+              ]}
+            />
+            <Sel
+              label="Copy tone"
+              value={toneFilter}
+              onChange={v => setToneFilter(v as CopyTone | "all")}
+              options={[
+                { value: "all", label: "All tones" },
+                { value: "clean_stats", label: "Clean Stats" },
+                { value: "punchier_social", label: "Punchier Social" },
+                { value: "short_caption", label: "Short Caption" },
+              ]}
+            />
+          </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 border-t border-zinc-800 pt-3">
-          <Sel
-            label="Category"
-            value={categoryFilter}
-            onChange={setCategoryFilter}
-            options={[
-              { value: "all", label: "All categories" },
-              ...CATEGORIES.map(c => ({ value: c, label: c })),
-            ]}
-          />
-          <Sel
-            label="Copy tone"
-            value={toneFilter}
-            onChange={v => setToneFilter(v as CopyTone | "all")}
-            options={[
-              { value: "all", label: "All tones" },
-              { value: "clean_stats", label: "Clean Stats" },
-              { value: "punchier_social", label: "Punchier Social" },
-              { value: "short_caption", label: "Short Caption" },
-            ]}
-          />
-        </div>
-      </div>
+      )}
 
       {/* Day header with count + copy-all */}
-      {!isBackupTab && activeDay !== "backup" && (
+      {!isBackupTab && !isEvergreenTab && (
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 text-[11px] text-zinc-500">
             <Calendar className="h-3 w-3" />
@@ -2069,8 +2362,15 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
 
       {isBackupTab && (
         <div className="text-[11px] text-zinc-500">
-          <span className="text-zinc-300 font-medium">Backup Bank ({activePosts.length})</span>
+          <span className="text-zinc-300 font-medium">Backup Bank ({backup.length})</span>
           {" "} — unique posts available for any day
+        </div>
+      )}
+
+      {isEvergreenTab && (
+        <div className="text-[11px] text-zinc-500">
+          <span className="text-zinc-300 font-medium">Evergreen pool ({evergreen.length})</span>
+          {" "} — round-independent educational posts, no game data required
         </div>
       )}
 
@@ -2089,6 +2389,7 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
               post={post}
               copiedId={copiedId}
               onCopyField={handleCopyField}
+              roundLabel={data.roundLabel}
             />
           ))}
         </div>
