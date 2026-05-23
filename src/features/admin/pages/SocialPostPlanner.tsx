@@ -20,6 +20,8 @@ export interface CIDataSubset {
   teamGoals: StatBoardTeamRow[];
   teamScore: StatBoardTeamRow[];
   loadedAt: Date;
+  /** Player IDs to exclude from post candidate pools (injured/unavailable/suspended). */
+  unavailablePlayerIds?: Set<number>;
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -69,6 +71,7 @@ interface SocialPost {
   caption: string;          // Full caption for the post
   hashtags: string[];
   suggestedVisual: string;
+  imageDescription: string;
   dataScope: string;
   targetGame: string | null;
   targetGameStatus: "upcoming" | "completed" | "any" | null;
@@ -275,6 +278,7 @@ function makePost(args: {
   caption: string;
   hashtags: string[];
   suggestedVisual: string;
+  imageDescription: string;
   dataScope: string;
   targetGame: string | null;
   targetGameStatus: "upcoming" | "completed" | "any" | null;
@@ -288,7 +292,7 @@ function makePost(args: {
   const {
     day, postNumber, type, category, intent, statLens, confidence,
     title, content, statsShown, onScreenText, caption, hashtags,
-    suggestedVisual, dataScope, targetGame, targetGameStatus,
+    suggestedVisual, imageDescription, dataScope, targetGame, targetGameStatus,
     fallbackWarning, players, teams = [], thresholdLabel,
     isBackup = false, tone = "clean_stats",
   } = args;
@@ -297,7 +301,7 @@ function makePost(args: {
     day, postNumber, postTime: POST_TIMES[day][postNumber - 1],
     type, category, intent, statLens, confidence,
     title, content, statsShown, onScreenText, caption, hashtags,
-    suggestedVisual, dataScope, targetGame, targetGameStatus,
+    suggestedVisual, imageDescription, dataScope, targetGame, targetGameStatus,
     fallbackWarning,
     playerNames: players.map(p => p.player_name).filter(Boolean),
     teamNames: teams.filter(Boolean),
@@ -313,7 +317,7 @@ function buildCaption(hook: string, bullets: string[], signOffIdx = 0): string {
 
 // ─── Weekly plan generation ───────────────────────────────────────────────────
 
-function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: SocialPost[] } {
+function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: SocialPost[]; excludedCount: number } {
   _postCounter = 0;
   const schedule: SocialPost[] = [];
   const backup: SocialPost[] = [];
@@ -322,18 +326,27 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   const upcomingMatches = data.matches.filter(isUpcoming);
   const completedMatches = data.matches.filter(isCompleted);
 
+  // ── Unavailability filter ─────────────────────────────────────────────────
+  // Exclude injured/suspended/inactive players from all post candidate pools.
+  const unavailable = data.unavailablePlayerIds ?? new Set<number>();
+  const isAvailable = (p: StatBoardPlayer) => !unavailable.has(p.player_id);
+
   // ── Sorted player pools ───────────────────────────────────────────────────
 
   const dispPool = [...data.disposalPlayers]
-    .filter(p => getSeasonAvg(p) >= 13 && (p.games_played ?? 0) >= 3)
+    .filter(p => isAvailable(p) && getSeasonAvg(p) >= 13 && (p.games_played ?? 0) >= 3)
     .sort((a, b) => getL5Avg(b) - getL5Avg(a));
 
   const goalPool = [...data.goalPlayers]
-    .filter(p => (p.games_played ?? 0) >= 3)
+    .filter(p => isAvailable(p) && (p.games_played ?? 0) >= 3)
     .sort((a, b) => getHitRate(b, 1) - getHitRate(a, 1) || getL5Avg(b) - getL5Avg(a));
 
+  const excludedCount = [...data.disposalPlayers, ...data.goalPlayers]
+    .filter(p => unavailable.has(p.player_id))
+    .reduce((set, p) => (set.add(p.player_id), set), new Set<number>()).size;
+
   const formMovers = [...data.disposalPlayers]
-    .filter(isPositiveFormMover)
+    .filter(p => isAvailable(p) && isPositiveFormMover(p))
     .sort((a, b) => formDelta(b) - formDelta(a));
 
   const tacklePlayers = [...data.disposalPlayers]
@@ -451,6 +464,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(proofHook, bullets, 0),
       hashtags: HASHTAG_SETS[postCategory],
       suggestedVisual: `Stat card grid — top 5 ${proofThreshold.toLowerCase()} players vs their L5 average`,
+      imageDescription: `Carousel graphic. Each slide shows one player: name, team, ${proofThreshold} hit rate as a large number, L5 average. Clean dark background, AFL team colours. No betting language. ${proofPlayers.length} players total.`,
       dataScope: hasCompleted ? "Completed weekend games" : `${rl} disposal player pool`,
       targetGame: hasCompleted ? "Weekend completed games" : null,
       targetGameStatus: hasCompleted ? "completed" : "any",
@@ -484,6 +498,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hook, bullets, 1),
       hashtags: HASHTAG_SETS["Form Mover"],
       suggestedVisual: "Up-arrow graphic with player name, L5 avg, and delta vs season avg",
+      imageDescription: `Static image. Up-arrow visual. Each row: player name, team, L5 avg, and delta vs season avg (e.g. +4.2). ${pool.length} players. Dark background, green accent arrows for positive deltas.`,
       dataScope: `${rl} disposal player pool`,
       targetGame: null, targetGameStatus: "any",
       fallbackWarning: hasMover ? null : "Fallback: insufficient form mover candidates",
@@ -512,6 +527,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hook, bullets, 2),
       hashtags: HASHTAG_SETS["Team Total"],
       suggestedVisual: "Bar chart of top-scoring teams, L5 vs season average",
+      imageDescription: `Carousel. Each slide shows one team: name, logo placeholder, L5 average score, and season average score side by side. ${teams.length} teams. Clean layout, neutral dark background.`,
       dataScope: `${rl} team score rows`,
       targetGame: null, targetGameStatus: "any",
       fallbackWarning: hasTeams ? null : "Fallback: insufficient team score data",
@@ -569,6 +585,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(tue1Hook, tue1Bullets, 3),
       hashtags: HASHTAG_SETS["Disposal Trend"],
       suggestedVisual: `5-player stat grid — name, team, ${tue1ThrNum}+ hit rate, L5 avg`,
+      imageDescription: `Static image. 5-player stat grid. Threshold: ${tue1ThrNum}+ disposals. Each row: player name, team abbreviation, ${tue1ThrNum}+ hit rate percentage, L5 average. Dark background, stat values highlighted. No betting language.`,
       dataScope: `${rl} cross-game disposal pool`,
       targetGame: upcomingGameLabel, targetGameStatus: upcomingGameLabel ? "upcoming" : "any",
       fallbackWarning: tue1Fallback,
@@ -614,6 +631,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hook, tue2Bullets, 4),
       hashtags: HASHTAG_SETS["Disposal Trend"],
       suggestedVisual: `5-player stat grid — name, team, ${tue2ThrNum}+ hit rate, L5 avg`,
+      imageDescription: `Static image. 5-player stat grid. Threshold: ${tue2ThrNum}+ disposals. Each row: player name, team abbreviation, ${tue2ThrNum}+ hit rate, L5 average. These players sit in the ${tue2ThrNum}+ tier only — not the higher tiers. Dark background.`,
       dataScope: `${rl} cross-game disposal pool (${tue2ThrNum}+ tier only)`,
       targetGame: upcomingGameLabel, targetGameStatus: upcomingGameLabel ? "upcoming" : "any",
       fallbackWarning: isFallback ? `Low ${tue2ThrNum}+ candidate count — pool supplemented with adjacent tier` : null,
@@ -646,6 +664,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hook, bullets, 5),
       hashtags: HASHTAG_SETS["Disposal Trend"],
       suggestedVisual: "3-slide carousel — one slide per threshold tier (25+, 20+, 15+)",
+      imageDescription: `3-slide carousel. Slide 1: 25+ disposal tier — 3 player names with hit rates. Slide 2: 20+ disposal tier — 3 player names with hit rates. Slide 3: 15+ disposal tier — 3 player names with hit rates. Each slide has a tier label as headline. Dark background, consistent layout.`,
       dataScope: `${rl} cross-game disposal pool — all 3 tiers`,
       targetGame: null, targetGameStatus: "any",
       fallbackWarning: bullets.length < 2 ? "Fallback: insufficient tier data" : null,
@@ -655,29 +674,52 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
 
   // ── WEDNESDAY ─────────────────────────────────────────────────────────────
 
-  // Post 1 — Top 5 for 1+ goals (Image)
+  // Post 1 — Top goal scorers — threshold-aware (uses best threshold per pool)
   {
-    const players = goalPool.slice(0, 5);
-    const bullets = players.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 1))} at 1+, L5 avg ${getL5Avg(p).toFixed(1)}`
+    // Choose the most interesting threshold bucket with enough candidates
+    let wedGoalPlayers: StatBoardPlayer[];
+    let wedGoalThr: number;
+    let wedGoalLabel: string;
+
+    if (goalPool3.length >= 3) {
+      wedGoalPlayers = goalPool3.slice(0, 5);
+      wedGoalThr = 3;
+      wedGoalLabel = "3+ Goals";
+    } else if (goalPool2.length >= 3) {
+      wedGoalPlayers = goalPool2.slice(0, 5);
+      wedGoalThr = 2;
+      wedGoalLabel = "2+ Goals";
+    } else if (goalPool3.length + goalPool2.length >= 3) {
+      wedGoalPlayers = [...goalPool3, ...goalPool2].slice(0, 5);
+      wedGoalThr = 2;
+      wedGoalLabel = "2–3+ Goals";
+    } else {
+      wedGoalPlayers = goalPool.slice(0, 5);
+      wedGoalThr = 1;
+      wedGoalLabel = "1+ Goals";
+    }
+
+    const bullets = wedGoalPlayers.map(p =>
+      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, wedGoalThr))} at ${wedGoalThr}+, L5 avg ${getL5Avg(p).toFixed(1)}`
     );
-    const hook = `Top goal-scorers with strong recent form heading into ${rl}.`;
+    const hook = `Top goal-scorers at the ${wedGoalLabel} threshold heading into ${rl}.`;
     schedule.push(makePost({
       day: "Wed", postNumber: 1,
       type: "Image",
       category: "Goal Trend", intent: "cross_game_preview",
-      statLens: "goals", confidence: players.length >= 3 ? "High" : "Medium",
-      title: `Top 5 for 1+ goals — ${rl}`,
+      statLens: "goals", confidence: wedGoalPlayers.length >= 3 ? "High" : "Medium",
+      title: `Top 5 for ${wedGoalLabel} — ${rl}`,
       content: hook,
       statsShown: bullets,
-      onScreenText: "Goal form",
+      onScreenText: `${wedGoalLabel} form`,
       caption: buildCaption(hook, bullets, 0),
       hashtags: HASHTAG_SETS["Goal Trend"],
-      suggestedVisual: "5-player stat grid — name, team, 1+ goal hit rate, L5 avg",
-      dataScope: `${rl} cross-game goal pool`,
+      suggestedVisual: `5-player stat grid — name, team, ${wedGoalThr}+ goal hit rate, L5 avg`,
+      imageDescription: `Static image. 5-player stat grid. Threshold: ${wedGoalLabel}. Each row: player name, team, ${wedGoalThr}+ goal hit rate as percentage, L5 average. Dark background, clean layout. No betting language.`,
+      dataScope: `${rl} cross-game goal pool (${wedGoalLabel} tier)`,
       targetGame: null, targetGameStatus: "any",
-      fallbackWarning: players.length < 3 ? "Fallback: low goal player count" : null,
-      players, thresholdLabel: "1+ Goals",
+      fallbackWarning: wedGoalPlayers.length < 3 ? "Fallback: low goal player count" : null,
+      players: wedGoalPlayers, thresholdLabel: wedGoalLabel,
     }));
   }
 
@@ -704,6 +746,9 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hook, bullets, 1),
       hashtags: hasTackle ? HASHTAG_SETS["Tackle Trend"] : HASHTAG_SETS["Disposal Trend"],
       suggestedVisual: hasTackle ? "5-player tackle form grid" : "Disposal form grid",
+      imageDescription: hasTackle
+        ? `Carousel. ${players.length} slides — one player per slide. Shows name, team, 5+ tackle hit rate, and L5 disposal average. Dark background with tackle-focused design.`
+        : `Carousel. ${pool.length} players shown. Disposal form update graphic with name, team, L5 average. Clean layout, neutral dark background.`,
       dataScope: `${rl} cross-game player pool`,
       targetGame: null, targetGameStatus: "any",
       fallbackWarning: hasTackle ? null : "Fallback: insufficient tackle data — using disposal trend",
@@ -732,6 +777,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hook, bullets, 2),
       hashtags: HASHTAG_SETS["Round Preview"],
       suggestedVisual: "Mixed stat card — disposals section + goals section on one image",
+      imageDescription: `Static image split into two sections. Top section: top 3 disposal players (name, L5 average). Bottom section: top 2 goal scorers (name, L5 average). Headline: "${rl} at a glance". Dark background, two-column or stacked layout.`,
       dataScope: `${rl} mixed player pool`,
       targetGame: null, targetGameStatus: "any",
       fallbackWarning: null,
@@ -743,9 +789,12 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
 
   // Post 1 — Round stat watchlist (Carousel)
   {
+    // Use the best-populated threshold for the watchlist reference stat
+    const thu1ThrNum = pool30.length >= 3 ? 30 : pool25.length >= 3 ? 25 : 20;
+    const thu1ThrLabel = `${thu1ThrNum}+ Disposals`;
     const players = dispPool.slice(0, 6);
     const bullets = players.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, 20))} at 20+, season avg ${getSeasonAvg(p).toFixed(1)}`
+      `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, thu1ThrNum))} at ${thu1ThrNum}+, season avg ${getSeasonAvg(p).toFixed(1)}`
     );
     const hook = `${rl} stat watchlist. These names have the numbers. See the data, make your own call.`;
     schedule.push(makePost({
@@ -759,11 +808,12 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       onScreenText: "Stat watchlist",
       caption: buildCaption(hook, bullets, 3),
       hashtags: HASHTAG_SETS["Round Preview"],
-      suggestedVisual: "6-player watchlist card — name, team, L5 avg, 20+ hit rate",
+      suggestedVisual: `6-player watchlist card — name, team, L5 avg, ${thu1ThrNum}+ hit rate`,
+      imageDescription: `Carousel. 6-player watchlist. Each slide: player name, team, L5 average, ${thu1ThrNum}+ hit rate, season average. Headline: "${rl} Stat Watchlist". Dark background, clean stat rows.`,
       dataScope: `${rl} cross-game disposal pool`,
       targetGame: null, targetGameStatus: "any",
       fallbackWarning: null,
-      players, thresholdLabel: "20+ Disposals",
+      players, thresholdLabel: thu1ThrLabel,
     }));
   }
 
@@ -777,8 +827,13 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const gamePlayers = hasThuGame
       ? dispPool.filter(p => thuMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).slice(0, 5)
       : dispPool.slice(0, 5);
+    const thu2ThrNum = hasThuGame
+      ? (pool30.filter(p => thuMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 30
+        : pool25.filter(p => thuMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 25 : 20)
+      : (pool30.length >= 3 ? 30 : pool25.length >= 3 ? 25 : 20);
+    const thu2ThrLabel = `${thu2ThrNum}+ Disposals`;
     const bullets = gamePlayers.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, 20))} at 20+`
+      `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, thu2ThrNum))} at ${thu2ThrNum}+`
     );
     const gameLabel = hasThuGame ? thuMatches.map(m => `${m.home_team_name} v ${m.away_team_name}`).join(", ") : null;
     const hook = hasThuGame
@@ -796,11 +851,14 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hook, bullets, 4),
       hashtags: hasThuGame ? HASHTAG_SETS.gameday : HASHTAG_SETS["Round Preview"],
       suggestedVisual: hasThuGame ? "Game-specific stat card with team colours" : "Generic stat card",
+      imageDescription: hasThuGame
+        ? `Static image. Game-specific stat card for ${gameLabel ?? "Thursday game"}. ${gamePlayers.length} players: name, team, L5 average, ${thu2ThrNum}+ hit rate. Team colours as accents. Dark background.`
+        : `Static image. Cross-round disposal stat update. ${gamePlayers.length} players: name, team, L5 average. Clean layout, neutral dark background.`,
       dataScope: hasThuGame ? `Thursday upcoming games only` : `${rl} cross-game pool`,
       targetGame: gameLabel,
       targetGameStatus: hasThuGame ? "upcoming" : "any",
       fallbackWarning: hasThuGame ? null : "Fallback: no Thursday upcoming game found — using cross-game stats",
-      players: gamePlayers, thresholdLabel: "20+ Disposals",
+      players: gamePlayers, thresholdLabel: thu2ThrLabel,
     }));
   }
 
@@ -812,8 +870,13 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       ? dispPool.filter(p => thuMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).slice(0, 1)
       : dispPool.slice(0, 1);
     const player = spotlight[0];
+    const thu3ThrNum = (() => {
+      if (!player) return 20;
+      return bestDisposalThreshold(player) === 30 ? 30 : bestDisposalThreshold(player) === 25 ? 25 : 20;
+    })();
+    const thu3ThrLabel = `${thu3ThrNum}+ Disposals`;
     const bullet = player
-      ? `${player.player_name} (${player.team_name ?? ""}) — ${pct(getHitRate(player, 20))} at 20+, L5 avg ${getL5Avg(player).toFixed(1)}, season avg ${getSeasonAvg(player).toFixed(1)}`
+      ? `${player.player_name} (${player.team_name ?? ""}) — ${pct(getHitRate(player, thu3ThrNum))} at ${thu3ThrNum}+, L5 avg ${getL5Avg(player).toFixed(1)}, season avg ${getSeasonAvg(player).toFixed(1)}`
       : "Check the full board at Neeko Sports Stats.";
     const hook = player
       ? `One stat before the bounce. ${player.player_name} — the numbers laid out clearly.`
@@ -830,11 +893,14 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hook, [bullet], 5),
       hashtags: hasThuGame ? HASHTAG_SETS.gameday : HASHTAG_SETS.base,
       suggestedVisual: player ? `Full-screen stat card — ${player.player_name}, team colours, L5 avg` : "Generic round preview card",
+      imageDescription: player
+        ? `Short video or full-screen static. Single player spotlight: ${player.player_name} (${player.team_name ?? ""}). Large centre stat: L5 average ${getL5Avg(player).toFixed(1)}. Secondary: ${thu3ThrNum}+ hit rate ${pct(getHitRate(player, thu3ThrNum))}. Team colours as background accent. No betting language.`
+        : `Short video or static card. "One stat before bounce" template. Round label in top corner. Placeholder for player name and stat. Dark background, minimal text.`,
       dataScope: hasThuGame ? "Thursday upcoming game" : `${rl} cross-game pool`,
       targetGame: hasThuGame && thuMatches[0] ? `${thuMatches[0].home_team_name} v ${thuMatches[0].away_team_name}` : null,
       targetGameStatus: hasThuGame ? "upcoming" : "any",
       fallbackWarning: hasThuGame ? null : "Fallback: no Thursday game — using cross-round spotlight",
-      players: spotlight, thresholdLabel: "20+ Disposals",
+      players: spotlight, thresholdLabel: thu3ThrLabel,
     }));
   }
 
@@ -848,8 +914,13 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       ? dispPool.filter(p => friMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).slice(0, 5)
       : dispPool.slice(0, 5);
     const fallback = !hasFriGame;
+    const fri1ThrNum = hasFriGame
+      ? (pool30.filter(p => friMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 30
+        : pool25.filter(p => friMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 25 : 20)
+      : (pool30.length >= 3 ? 30 : pool25.length >= 3 ? 25 : 20);
+    const fri1ThrLabel = `${fri1ThrNum}+ Disposals`;
     const bullets = gamePlayers.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, 20))} at 20+`
+      `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, fri1ThrNum))} at ${fri1ThrNum}+`
     );
     const gameLabel = hasFriGame ? friMatches.map(m => `${m.home_team_name} v ${m.away_team_name}`).join(", ") : null;
     const hook = hasFriGame
@@ -867,10 +938,13 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hook, bullets, 0),
       hashtags: hasFriGame ? HASHTAG_SETS.gameday : HASHTAG_SETS["Round Preview"],
       suggestedVisual: hasFriGame ? "Game-specific carousel — player form for tonight's game" : "Weekend preview carousel",
+      imageDescription: hasFriGame
+        ? `Carousel. Game-specific. ${gameLabel ?? "Friday game"}. ${gamePlayers.length} players: name, team, L5 average, ${fri1ThrNum}+ hit rate. Team colours as accents. Each player gets one slide. Dark background.`
+        : `Carousel. Weekend preview. ${gamePlayers.length} players: name, team, L5 average. Clean layout, dark background.`,
       dataScope: hasFriGame ? "Friday upcoming games only" : `${rl} cross-game pool`,
       targetGame: gameLabel, targetGameStatus: hasFriGame ? "upcoming" : "any",
       fallbackWarning: fallback ? "Fallback: no Friday upcoming game found" : null,
-      players: gamePlayers, thresholdLabel: "20+ Disposals",
+      players: gamePlayers, thresholdLabel: fri1ThrLabel,
     }));
   }
 
@@ -881,9 +955,11 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       return d === 6 || d === 0; // Sat/Sun
     });
     const hasWeekend = weMatches.length > 0;
+    const fri2ThrNum = pool30.length >= 3 ? 30 : pool25.length >= 3 ? 25 : 20;
+    const fri2ThrLabel = `${fri2ThrNum}+ Disposals`;
     const players = dispPool.slice(0, 5);
     const bullets = players.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, season avg ${getSeasonAvg(p).toFixed(1)}`
+      `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, fri2ThrNum))} at ${fri2ThrNum}+`
     );
     const hook = hasWeekend
       ? `Weekend cross-game trends. ${weMatches.length} game${weMatches.length !== 1 ? "s" : ""} across the weekend — stat form to know.`
@@ -899,11 +975,12 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       onScreenText: "Weekend trends",
       caption: buildCaption(hook, bullets, 1),
       hashtags: HASHTAG_SETS["Disposal Trend"],
-      suggestedVisual: "5-player stat grid — weekend matchup context",
+      suggestedVisual: `5-player stat grid — weekend matchup context, ${fri2ThrNum}+ threshold`,
+      imageDescription: `Static image. 5-player grid showing weekend form leaders. Each row: player name, team, L5 average, ${fri2ThrNum}+ hit rate. Headline: "Weekend Disposal Trends". Dark background, clean layout.`,
       dataScope: hasWeekend ? "Saturday/Sunday upcoming games" : `${rl} cross-game pool`,
       targetGame: null, targetGameStatus: hasWeekend ? "upcoming" : "any",
       fallbackWarning: hasWeekend ? null : "Fallback: no Sat/Sun upcoming games found",
-      players, thresholdLabel: "20+ Disposals",
+      players, thresholdLabel: fri2ThrLabel,
     }));
   }
 
@@ -921,6 +998,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const hook = player
       ? `One to watch tonight. ${player.player_name} — goal form snapshot.`
       : `One stat to know before the weekend gets started.`;
+    const fri3GoalThr = player ? bestGoalThreshold(player) : 1;
     schedule.push(makePost({
       day: "Fri", postNumber: 3,
       type: POST_TYPES.Fri[2],
@@ -933,11 +1011,14 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hook, [bullet], 2),
       hashtags: hasFri ? HASHTAG_SETS.gameday : HASHTAG_SETS["Goal Trend"],
       suggestedVisual: player ? `Full-screen stat card — ${player.player_name}, goal form` : "Goal trend graphic",
+      imageDescription: player
+        ? `Short video or full-screen static. Single player: ${player.player_name} (${player.team_name ?? ""}). Large centre stat: ${fri3GoalThr}+ goal hit rate ${pct(getHitRate(player, fri3GoalThr))}. Secondary: L5 average ${getL5Avg(player).toFixed(1)}. Team colours as background accent. No betting language.`
+        : `Short video or static card. Goal spotlight template. Dark background, minimal design.`,
       dataScope: hasFri ? "Friday upcoming game" : `${rl} goal pool`,
       targetGame: hasFri && friMatches[0] ? `${friMatches[0].home_team_name} v ${friMatches[0].away_team_name}` : null,
       targetGameStatus: hasFri ? "upcoming" : "any",
       fallbackWarning: hasFri ? null : "Fallback: no Friday game — using cross-round goal spotlight",
-      players: spotlight, thresholdLabel: "1+ Goals",
+      players: spotlight, thresholdLabel: `${fri3GoalThr}+ Goals`,
     }));
   }
 
@@ -950,8 +1031,13 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const gamePlayers = hasSat
       ? dispPool.filter(p => satMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).slice(0, 6)
       : dispPool.slice(0, 6);
+    const sat1ThrNum = hasSat
+      ? (pool30.filter(p => satMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 30
+        : pool25.filter(p => satMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 25 : 20)
+      : (pool30.length >= 3 ? 30 : pool25.length >= 3 ? 25 : 20);
+    const sat1ThrLabel = `${sat1ThrNum}+ Disposals`;
     const bullets = gamePlayers.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, 20))} at 20+`
+      `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, sat1ThrNum))} at ${sat1ThrNum}+`
     );
     const hook = hasSat
       ? `Saturday AFL stat watch. ${satMatches.length} game${satMatches.length !== 1 ? "s" : ""} today — form players to track.`
@@ -968,11 +1054,14 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hook, bullets, 3),
       hashtags: HASHTAG_SETS.gameday,
       suggestedVisual: hasSat ? "Multi-game Saturday carousel — player form per game" : "Game day stat carousel",
+      imageDescription: hasSat
+        ? `Carousel. Saturday game day. ${gamePlayers.length} player slides. Each: player name, team, L5 average, ${sat1ThrNum}+ hit rate. Grouped by game where possible. Team colours as accents. Headline: "Saturday AFL Stat Watch".`
+        : `Carousel. Game day stat overview. ${gamePlayers.length} players: name, team, L5 average. Dark background.`,
       dataScope: hasSat ? "Saturday upcoming games only" : `${rl} cross-game pool`,
       targetGame: hasSat ? satMatches.map(m => `${m.home_team_name} v ${m.away_team_name}`).join(", ") : null,
       targetGameStatus: hasSat ? "upcoming" : "any",
       fallbackWarning: hasSat ? null : "Fallback: no Saturday upcoming games — using cross-round stats",
-      players: gamePlayers, thresholdLabel: "20+ Disposals",
+      players: gamePlayers, thresholdLabel: sat1ThrLabel,
     }));
   }
 
@@ -1004,6 +1093,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hook, bullets, 4),
       hashtags: HASHTAG_SETS["Disposal Trend"],
       suggestedVisual: "5-player grid — Saturday game context, 25+ hit rates",
+      imageDescription: `Static image. 5-player stat grid for Saturday games. Threshold: 25+ disposals. Each row: player name, team abbreviation, 25+ hit rate percentage, L5 average. Headline: "Top 5 for 25+ Today". Dark background, stat values highlighted. No betting language.`,
       dataScope: hasSat ? "Saturday upcoming games only" : `${rl} cross-game pool`,
       targetGame: null, targetGameStatus: hasSat ? "upcoming" : "any",
       fallbackWarning: isFallback ? "Fallback fill: not enough Saturday 25+ candidates" : null,
@@ -1045,6 +1135,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hook, bullets, 5),
       hashtags: HASHTAG_SETS["Team Total"],
       suggestedVisual: "Team scoring carousel — bar chart per team with L5 vs season avg",
+      imageDescription: `Carousel. ${teams.length} team slides. Each slide: team name, L5 average score, season average score side by side. ${hasSat ? "Saturday games only." : hasSun ? "Sunday games only." : "Cross-round team pool."} Clean layout, neutral dark background. No betting language.`,
       dataScope: hasSat ? "Saturday upcoming games" : hasSun ? "Sunday upcoming games" : `${rl} team pool`,
       targetGame: null, targetGameStatus: hasSat || hasSun ? "upcoming" : "any",
       fallbackWarning: fallbackMsg,
@@ -1062,12 +1153,19 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const gamePlayers = hasSun
       ? dispPool.filter(p => sunMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).slice(0, 5)
       : dispPool.slice(0, 5);
+    // Dynamic threshold based on who's playing on Sunday
+    const sun1ThrNum = hasSun
+      ? (pool30.filter(p => sunMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 30
+        : pool25.filter(p => sunMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 25 : 20)
+      : (pool30.length >= 3 ? 30 : pool25.length >= 3 ? 25 : 20);
+    const sun1ThrLabel = `${sun1ThrNum}+ Disposals`;
     const bullets = gamePlayers.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, 20))} at 20+`
+      `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, sun1ThrNum))} at ${sun1ThrNum}+`
     );
     const hook = hasSun
       ? `Sunday AFL stat watch. Forms to track across today's games.`
       : `${rl} Sunday wrap — form numbers from this round.`;
+    const gameLabel = hasSun ? sunMatches.map(m => `${m.home_team_name} v ${m.away_team_name}`).join(", ") : null;
     schedule.push(makePost({
       day: "Sun", postNumber: 1,
       type: "Carousel",
@@ -1080,45 +1178,76 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hook, bullets, 0),
       hashtags: HASHTAG_SETS.gameday,
       suggestedVisual: hasSun ? "Multi-game Sunday carousel" : "Round wrap carousel",
+      imageDescription: hasSun
+        ? `Carousel. Sunday game day. ${gamePlayers.length} player slides. Each: player name, team, L5 average, ${sun1ThrNum}+ hit rate. Grouped by game where possible. Team colours as accents. Headline: "Sunday AFL Stat Watch".`
+        : `Carousel. Round wrap overview. ${gamePlayers.length} players: name, team, L5 average. Headline: "${rl} Sunday Round-Up". Dark background, clean layout.`,
       dataScope: hasSun ? "Sunday upcoming games only" : `${rl} round wrap`,
-      targetGame: hasSun ? sunMatches.map(m => `${m.home_team_name} v ${m.away_team_name}`).join(", ") : null,
+      targetGame: gameLabel,
       targetGameStatus: hasSun ? "upcoming" : "completed",
       fallbackWarning: hasSun ? null : "Fallback: no Sunday upcoming games — using round wrap",
-      players: gamePlayers, thresholdLabel: "20+ Disposals",
+      players: gamePlayers, thresholdLabel: sun1ThrLabel,
     }));
   }
 
-  // Post 2 — Best Sunday goal trends (Image)
+  // Post 2 — Best Sunday goal trends (Image) — threshold-aware
   {
     const sunMatches = upcomingMatches.filter(m => new Date(m.game_date).getDay() === 0);
     const hasSun = sunMatches.length > 0;
     const sunTeamIds = new Set(hasSun ? sunMatches.flatMap(m => [m.home_team_id, m.away_team_id]) : []);
-    const players = hasSun
-      ? goalPool.filter(p => sunTeamIds.has(p.team_id)).slice(0, 5)
-      : goalPool.slice(0, 5);
-    const bullets = players.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 1))} at 1+ goals, L5 avg ${getL5Avg(p).toFixed(1)}`
+    const sunGoalPool = hasSun
+      ? goalPool.filter(p => sunTeamIds.has(p.team_id))
+      : goalPool;
+
+    // Choose the most interesting threshold with enough candidates from Sunday pool
+    let sun2GoalPlayers: StatBoardPlayer[];
+    let sun2GoalThr: number;
+    let sun2GoalLabel: string;
+
+    const sun2Pool3 = sunGoalPool.filter(p => bestGoalThreshold(p) === 3);
+    const sun2Pool2 = sunGoalPool.filter(p => bestGoalThreshold(p) === 2);
+
+    if (sun2Pool3.length >= 3) {
+      sun2GoalPlayers = sun2Pool3.slice(0, 5);
+      sun2GoalThr = 3;
+      sun2GoalLabel = "3+ Goals";
+    } else if (sun2Pool2.length >= 3) {
+      sun2GoalPlayers = sun2Pool2.slice(0, 5);
+      sun2GoalThr = 2;
+      sun2GoalLabel = "2+ Goals";
+    } else if (sun2Pool3.length + sun2Pool2.length >= 3) {
+      sun2GoalPlayers = [...sun2Pool3, ...sun2Pool2].slice(0, 5);
+      sun2GoalThr = 2;
+      sun2GoalLabel = "2–3+ Goals";
+    } else {
+      sun2GoalPlayers = sunGoalPool.slice(0, 5);
+      sun2GoalThr = 1;
+      sun2GoalLabel = "1+ Goals";
+    }
+
+    const bullets = sun2GoalPlayers.map(p =>
+      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, sun2GoalThr))} at ${sun2GoalThr}+ goals, L5 avg ${getL5Avg(p).toFixed(1)}`
     );
     const hook = hasSun
-      ? `Best Sunday goal scorers — form numbers heading into today's games.`
-      : `Top goal scorer form — ${rl} round-up.`;
+      ? `Best Sunday goal scorers at ${sun2GoalLabel} — form numbers heading into today's games.`
+      : `Top ${sun2GoalLabel} goal scorer form — ${rl} round-up.`;
     schedule.push(makePost({
       day: "Sun", postNumber: 2,
       type: "Image",
       category: "Goal Trend", intent: hasSun ? "same_day_preview" : "recap",
-      statLens: "goals", confidence: players.length >= 3 ? "High" : "Medium",
-      title: hasSun ? "Best Sunday goal trends" : `${rl} goal scorer form`,
+      statLens: "goals", confidence: sun2GoalPlayers.length >= 3 ? "High" : "Medium",
+      title: hasSun ? `Best Sunday ${sun2GoalLabel} goal trends` : `${rl} ${sun2GoalLabel} goal scorer form`,
       content: hook,
       statsShown: bullets,
-      onScreenText: "Goal form",
+      onScreenText: `${sun2GoalLabel} form`,
       caption: buildCaption(hook, bullets, 1),
       hashtags: HASHTAG_SETS["Goal Trend"],
-      suggestedVisual: hasSun ? "5-player goal form grid — Sunday games" : "Round goal wrap grid",
+      suggestedVisual: hasSun ? `5-player ${sun2GoalLabel} goal form grid — Sunday games` : "Round goal wrap grid",
+      imageDescription: `Static image. 5-player goal form grid. Threshold: ${sun2GoalLabel}. Each row: player name, team, ${sun2GoalThr}+ goal hit rate as percentage, L5 average. ${hasSun ? "Sunday games only." : "Cross-round goal wrap."} Dark background, clean layout. No betting language.`,
       dataScope: hasSun ? "Sunday upcoming games" : `${rl} goal pool`,
       targetGame: hasSun ? sunMatches.map(m => `${m.home_team_name} v ${m.away_team_name}`).join(", ") : null,
       targetGameStatus: hasSun ? "upcoming" : "any",
       fallbackWarning: hasSun ? null : "Fallback: no Sunday upcoming games",
-      players, thresholdLabel: "1+ Goals",
+      players: sun2GoalPlayers, thresholdLabel: sun2GoalLabel,
     }));
   }
 
@@ -1174,6 +1303,9 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hook, bullets, 2),
       hashtags: HASHTAG_SETS[sunCategory],
       suggestedVisual: "Round recap carousel — top performers vs L5 average",
+      imageDescription: hasCompleted
+        ? `Carousel. Weekend proof post. ${sunProofPlayers.length} player slides. Each: player name, team, ${sunProofThrNum}+ hit rate, L5 average. Headline: "${rl} — What the Stats Got Right". Dark background, proof-style layout. No betting language.`
+        : `Carousel. Weekend watchlist. ${sunProofPlayers.length} players: name, team, L5 average, season average. Headline: "${rl} Weekend Watchlist". Clean dark background, no proof/recap framing until games complete.`,
       dataScope: hasCompleted ? "Completed weekend games" : `${rl} round wrap`,
       targetGame: hasCompleted ? "Weekend completed games" : null,
       targetGameStatus: hasCompleted ? "completed" : "any",
@@ -1195,7 +1327,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const players = pool30.slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 30))} at 30+, L5 avg ${getL5Avg(p).toFixed(1)}`);
-      bkPost({ day: "Tue", type: "Image", category: "Disposal Trend", intent: "cross_game_preview", statLens: "disposals", confidence: "High", title: `Top 5 for 30+ disposals — ${rl}`, content: "Elite disposal volume. Who's been clearing 30+ consistently?", statsShown: bullets, onScreenText: "30+ disposal form", caption: buildCaption("Elite disposal volume. Who's been clearing 30+ consistently?", bullets, 0), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "5-player stat grid — 30+ hit rates", dataScope: `${rl} cross-game pool (30+ tier only)`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "30+ Disposals", postNumber: 1 });
+      bkPost({ day: "Tue", type: "Image", category: "Disposal Trend", intent: "cross_game_preview", statLens: "disposals", confidence: "High", title: `Top 5 for 30+ disposals — ${rl}`, content: "Elite disposal volume. Who's been clearing 30+ consistently?", statsShown: bullets, onScreenText: "30+ disposal form", caption: buildCaption("Elite disposal volume. Who's been clearing 30+ consistently?", bullets, 0), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "5-player stat grid — 30+ hit rates", imageDescription: `Static image. 5-player stat grid. Threshold: 30+ disposals. Each row: player name, team abbreviation, 30+ hit rate percentage, L5 average. Elite tier only — no lower-threshold players. Dark background, stat values highlighted. No betting language.`, dataScope: `${rl} cross-game pool (30+ tier only)`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "30+ Disposals", postNumber: 1 });
     }
   }
 
@@ -1206,7 +1338,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const players = dispPool.filter(p => satTeamIds.has(p.team_id) && getHitRate(p, 25) >= 0.5).slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 25))} at 25+, L5 avg ${getL5Avg(p).toFixed(1)}`);
-      bkPost({ day: "Sat", type: "Image", category: "Disposal Trend", intent: "same_day_preview", statLens: "disposals", confidence: "High", title: "Top 5 for 25+ disposals — Saturday games", content: "Saturday 25+ disposal form. Stats laid out clearly.", statsShown: bullets, onScreenText: "Saturday 25+ form", caption: buildCaption("Saturday 25+ disposal form.", bullets, 1), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "Saturday game-specific 5-player grid", dataScope: "Saturday games only", targetGame: null, targetGameStatus: "upcoming", fallbackWarning: null, players, thresholdLabel: "25+ Disposals", postNumber: 1 });
+      bkPost({ day: "Sat", type: "Image", category: "Disposal Trend", intent: "same_day_preview", statLens: "disposals", confidence: "High", title: "Top 5 for 25+ disposals — Saturday games", content: "Saturday 25+ disposal form. Stats laid out clearly.", statsShown: bullets, onScreenText: "Saturday 25+ form", caption: buildCaption("Saturday 25+ disposal form.", bullets, 1), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "Saturday game-specific 5-player grid", imageDescription: `Static image. 5-player stat grid for Saturday games. Threshold: 25+ disposals. Each row: player name, team, 25+ hit rate, L5 average. Headline: "Top 5 for 25+ Disposals — Saturday". Dark background. No betting language.`, dataScope: "Saturday games only", targetGame: null, targetGameStatus: "upcoming", fallbackWarning: null, players, thresholdLabel: "25+ Disposals", postNumber: 1 });
     }
   }
 
@@ -1217,7 +1349,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const players = dispPool.filter(p => sunTeamIds.has(p.team_id) && getHitRate(p, 20) >= 0.55).slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 20))} at 20+, L5 avg ${getL5Avg(p).toFixed(1)}`);
-      bkPost({ day: "Sun", type: "Image", category: "Disposal Trend", intent: "same_day_preview", statLens: "disposals", confidence: "High", title: "Top 5 for 20+ disposals — Sunday games", content: "Sunday disposal form. See the numbers, make your own call.", statsShown: bullets, onScreenText: "Sunday 20+ form", caption: buildCaption("Sunday disposal form.", bullets, 2), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "Sunday game-specific 5-player grid", dataScope: "Sunday games only", targetGame: null, targetGameStatus: "upcoming", fallbackWarning: null, players, thresholdLabel: "20+ Disposals", postNumber: 1 });
+      bkPost({ day: "Sun", type: "Image", category: "Disposal Trend", intent: "same_day_preview", statLens: "disposals", confidence: "High", title: "Top 5 for 20+ disposals — Sunday games", content: "Sunday disposal form. See the numbers, make your own call.", statsShown: bullets, onScreenText: "Sunday 20+ form", caption: buildCaption("Sunday disposal form.", bullets, 2), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "Sunday game-specific 5-player grid", imageDescription: `Static image. 5-player stat grid for Sunday games. Threshold: 20+ disposals. Each row: player name, team, 20+ hit rate, L5 average. Headline: "Sunday Disposal Form". Dark background. No betting language.`, dataScope: "Sunday games only", targetGame: null, targetGameStatus: "upcoming", fallbackWarning: null, players, thresholdLabel: "20+ Disposals", postNumber: 1 });
     }
   }
 
@@ -1226,7 +1358,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const players = top15.slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 15))} at 15+, L5 avg ${getL5Avg(p).toFixed(1)}`);
-      bkPost({ day: "Wed", type: "Image", category: "Disposal Trend", intent: "cross_game_preview", statLens: "disposals", confidence: "Medium", title: `15+ disposal form — different names`, content: "Volume disposers at the 15+ threshold — different names from the 20+ and 25+ lists.", statsShown: bullets, onScreenText: "15+ form", caption: buildCaption("15+ threshold form — different names from the 20+/25+ lists.", bullets, 3), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "5-player stat grid", dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "15+ Disposals", postNumber: 1 });
+      bkPost({ day: "Wed", type: "Image", category: "Disposal Trend", intent: "cross_game_preview", statLens: "disposals", confidence: "Medium", title: `15+ disposal form — different names`, content: "Volume disposers at the 15+ threshold — different names from the 20+ and 25+ lists.", statsShown: bullets, onScreenText: "15+ form", caption: buildCaption("15+ threshold form — different names from the 20+/25+ lists.", bullets, 3), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "5-player stat grid", imageDescription: `Static image. 5-player stat grid. Threshold: 15+ disposals. These players sit in the 15+ tier only — different names from 20+/25+ posts. Each row: player name, team, 15+ hit rate, L5 average. Dark background. No betting language.`, dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "15+ Disposals", postNumber: 1 });
     }
   }
 
@@ -1235,7 +1367,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const players = (goalPool1.length >= 2 ? goalPool1 : goalPool).slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 1))} at 1+, L5 avg ${getL5Avg(p).toFixed(1)}`);
-      bkPost({ day: "Thu", type: "Image", category: "Goal Trend", intent: "cross_game_preview", statLens: "goals", confidence: "High", title: `Top 5 for 1+ goals — ${rl}`, content: "Goal form across the round. Who's been finding the big sticks regularly?", statsShown: bullets, onScreenText: "Goal form", caption: buildCaption("Goal form across the round.", bullets, 4), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "5-player goal form grid", dataScope: `${rl} cross-game goal pool (1+ tier)`, targetGame: null, targetGameStatus: "any", fallbackWarning: goalPool1.length < 2 ? "Low 1+ only candidates — using full goal pool" : null, players, thresholdLabel: "1+ Goals", postNumber: 1 });
+      bkPost({ day: "Thu", type: "Image", category: "Goal Trend", intent: "cross_game_preview", statLens: "goals", confidence: "High", title: `Top 5 for 1+ goals — ${rl}`, content: "Goal form across the round. Who's been finding the big sticks regularly?", statsShown: bullets, onScreenText: "Goal form", caption: buildCaption("Goal form across the round.", bullets, 4), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "5-player goal form grid", imageDescription: `Static image. 5-player goal form grid. Threshold: 1+ goals. Each row: player name, team, 1+ goal hit rate as percentage, L5 average. Cross-round pool. Dark background. No betting language.`, dataScope: `${rl} cross-game goal pool (1+ tier)`, targetGame: null, targetGameStatus: "any", fallbackWarning: goalPool1.length < 2 ? "Low 1+ only candidates — using full goal pool" : null, players, thresholdLabel: "1+ Goals", postNumber: 1 });
     }
   }
 
@@ -1244,7 +1376,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const players = (goalPool2.length >= 2 ? goalPool2 : goalPool.filter(p => getHitRate(p, 2) >= 0.45)).slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 2))} at 2+, L5 avg ${getL5Avg(p).toFixed(1)}`);
-      bkPost({ day: "Fri", type: "Image", category: "Goal Trend", intent: "cross_game_preview", statLens: "goals", confidence: "Medium", title: `Top 5 for 2+ goals — ${rl}`, content: "Multi-goal scorers with strong recent hit rates.", statsShown: bullets, onScreenText: "2+ goal form", caption: buildCaption("Multi-goal scorers with strong recent hit rates.", bullets, 5), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "5-player 2+ goal grid", dataScope: `${rl} cross-game goal pool (2+ tier)`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "2+ Goals", postNumber: 1 });
+      bkPost({ day: "Fri", type: "Image", category: "Goal Trend", intent: "cross_game_preview", statLens: "goals", confidence: "Medium", title: `Top 5 for 2+ goals — ${rl}`, content: "Multi-goal scorers with strong recent hit rates.", statsShown: bullets, onScreenText: "2+ goal form", caption: buildCaption("Multi-goal scorers with strong recent hit rates.", bullets, 5), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "5-player 2+ goal grid", imageDescription: `Static image. 5-player goal form grid. Threshold: 2+ goals. Each row: player name, team, 2+ goal hit rate as percentage, L5 average. Multi-goal tier only. Dark background. No betting language.`, dataScope: `${rl} cross-game goal pool (2+ tier)`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "2+ Goals", postNumber: 1 });
     }
   }
 
@@ -1253,7 +1385,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const players = (goalPool3.length >= 2 ? goalPool3 : goalPool.filter(p => getHitRate(p, 3) >= 0.35)).slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 3))} at 3+, L5 avg ${getL5Avg(p).toFixed(1)}`);
-      bkPost({ day: "Sat", type: "Image", category: "Goal Trend", intent: "cross_game_preview", statLens: "goals", confidence: "Medium", title: `3+ goal scorers — ${rl}`, content: "Three-plus goal scorers with form worth noting.", statsShown: bullets, onScreenText: "3+ goals", caption: buildCaption("Three-plus goal scorers with form worth noting.", bullets, 0), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "Elite goal scorers stat card", dataScope: `${rl} cross-game goal pool (3+ tier)`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "3+ Goals", postNumber: 1 });
+      bkPost({ day: "Sat", type: "Image", category: "Goal Trend", intent: "cross_game_preview", statLens: "goals", confidence: "Medium", title: `3+ goal scorers — ${rl}`, content: "Three-plus goal scorers with form worth noting.", statsShown: bullets, onScreenText: "3+ goals", caption: buildCaption("Three-plus goal scorers with form worth noting.", bullets, 0), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "Elite goal scorers stat card", imageDescription: `Static image. 5-player goal form grid. Threshold: 3+ goals. Elite goal scorers only. Each row: player name, team, 3+ goal hit rate as percentage, L5 average. Dark background, clean layout. No betting language.`, dataScope: `${rl} cross-game goal pool (3+ tier)`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "3+ Goals", postNumber: 1 });
     }
   }
 
@@ -1264,7 +1396,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const players = goalPool.filter(p => teamIds.has(p.team_id)).slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 1))} at 1+ goals, L5 avg ${getL5Avg(p).toFixed(1)}`);
-      bkPost({ day: "Thu", type: "Carousel", category: "Goal Trend", intent: "same_day_preview", statLens: "goals", confidence: "High", title: "Thu/Fri game goal trends", content: "Goal form for this week's early games — Thu and Fri fixtures.", statsShown: bullets, onScreenText: "Early game goals", caption: buildCaption("Goal form for this week's early games.", bullets, 1), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "Thu/Fri game-specific goal form carousel", dataScope: "Thursday/Friday games", targetGame: null, targetGameStatus: "upcoming", fallbackWarning: thuFriMatches.length === 0 ? "Fallback: no Thu/Fri games found" : null, players, thresholdLabel: "1+ Goals", postNumber: 1 });
+      bkPost({ day: "Thu", type: "Carousel", category: "Goal Trend", intent: "same_day_preview", statLens: "goals", confidence: "High", title: "Thu/Fri game goal trends", content: "Goal form for this week's early games — Thu and Fri fixtures.", statsShown: bullets, onScreenText: "Early game goals", caption: buildCaption("Goal form for this week's early games.", bullets, 1), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "Thu/Fri game-specific goal form carousel", imageDescription: `Carousel. Thursday/Friday game goal trends. ${players.length} players, one per slide. Each: player name, team, 1+ goal hit rate, L5 average. Game-day framing. Dark background. No betting language.`, dataScope: "Thursday/Friday games", targetGame: null, targetGameStatus: "upcoming", fallbackWarning: thuFriMatches.length === 0 ? "Fallback: no Thu/Fri games found" : null, players, thresholdLabel: "1+ Goals", postNumber: 1 });
     }
   }
 
@@ -1275,7 +1407,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const players = dispPool.filter(p => teamIds.has(p.team_id)).slice(0, 6);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, 20))} at 20+`);
-      bkPost({ day: "Sat", type: "Carousel", category: "Disposal Trend", intent: "same_day_preview", statLens: "disposals", confidence: "High", title: "Saturday disposal trends", content: "Disposal form across Saturday's games. Stats laid out clearly.", statsShown: bullets, onScreenText: "Sat disposal form", caption: buildCaption("Disposal form across Saturday's games.", bullets, 2), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "Saturday game carousel — 6 players by disposal form", dataScope: "Saturday games only", targetGame: null, targetGameStatus: "upcoming", fallbackWarning: satMatches.length === 0 ? "Fallback: no Saturday games" : null, players, thresholdLabel: "20+ Disposals", postNumber: 1 });
+      bkPost({ day: "Sat", type: "Carousel", category: "Disposal Trend", intent: "same_day_preview", statLens: "disposals", confidence: "High", title: "Saturday disposal trends", content: "Disposal form across Saturday's games. Stats laid out clearly.", statsShown: bullets, onScreenText: "Sat disposal form", caption: buildCaption("Disposal form across Saturday's games.", bullets, 2), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "Saturday game carousel — 6 players by disposal form", imageDescription: `Carousel. Saturday game day. 6 players, one per slide. Each: player name, team, L5 average, 20+ hit rate. Saturday games only. Team colours as accents. Headline: "Saturday Disposal Trends". No betting language.`, dataScope: "Saturday games only", targetGame: null, targetGameStatus: "upcoming", fallbackWarning: satMatches.length === 0 ? "Fallback: no Saturday games" : null, players, thresholdLabel: "20+ Disposals", postNumber: 1 });
     }
   }
 
@@ -1286,7 +1418,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const players = goalPool.filter(p => teamIds.has(p.team_id)).slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 1))} at 1+ goals, L5 avg ${getL5Avg(p).toFixed(1)}`);
-      bkPost({ day: "Sun", type: "Image", category: "Goal Trend", intent: "same_day_preview", statLens: "goals", confidence: "High", title: "Sunday game goal trends", content: "Goal form across Sunday's games.", statsShown: bullets, onScreenText: "Sunday goals", caption: buildCaption("Goal form across Sunday's games.", bullets, 3), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "Sunday game goal form grid", dataScope: "Sunday games only", targetGame: null, targetGameStatus: "upcoming", fallbackWarning: sunMatches.length === 0 ? "Fallback: no Sunday games" : null, players, thresholdLabel: "1+ Goals", postNumber: 1 });
+      bkPost({ day: "Sun", type: "Image", category: "Goal Trend", intent: "same_day_preview", statLens: "goals", confidence: "High", title: "Sunday game goal trends", content: "Goal form across Sunday's games.", statsShown: bullets, onScreenText: "Sunday goals", caption: buildCaption("Goal form across Sunday's games.", bullets, 3), hashtags: HASHTAG_SETS["Goal Trend"], suggestedVisual: "Sunday game goal form grid", imageDescription: `Static image. 5-player goal form grid for Sunday games. Each row: player name, team, 1+ goal hit rate as percentage, L5 average. Sunday games only. Dark background. No betting language.`, dataScope: "Sunday games only", targetGame: null, targetGameStatus: "upcoming", fallbackWarning: sunMatches.length === 0 ? "Fallback: no Sunday games" : null, players, thresholdLabel: "1+ Goals", postNumber: 1 });
     }
   }
 
@@ -1295,7 +1427,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const players = tacklePlayers.slice(0, 6);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 5))} at 5+, L5 avg ${getL5Avg(p).toFixed(1)} disposals`);
-      bkPost({ day: "Wed", type: "Carousel", category: "Tackle Trend", intent: "cross_game_preview", statLens: "tackles", confidence: "High", title: `Top tackle form — ${rl}`, content: "Tackle machines worth tracking. Consistently hitting 5+ per game.", statsShown: bullets, onScreenText: "Tackle form", caption: buildCaption("Tackle machines worth tracking.", bullets, 4), hashtags: HASHTAG_SETS["Tackle Trend"], suggestedVisual: "6-player tackle form carousel", dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "5+ Tackles", postNumber: 1 });
+      bkPost({ day: "Wed", type: "Carousel", category: "Tackle Trend", intent: "cross_game_preview", statLens: "tackles", confidence: "High", title: `Top tackle form — ${rl}`, content: "Tackle machines worth tracking. Consistently hitting 5+ per game.", statsShown: bullets, onScreenText: "Tackle form", caption: buildCaption("Tackle machines worth tracking.", bullets, 4), hashtags: HASHTAG_SETS["Tackle Trend"], suggestedVisual: "6-player tackle form carousel", imageDescription: `Carousel. 6 players, one per slide. Each: player name, team, 5+ tackle hit rate as percentage, L5 disposal average. Headline: "Tackle Machines". Dark background, tackle-focused design. No betting language.`, dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "5+ Tackles", postNumber: 1 });
     }
   }
 
@@ -1304,7 +1436,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const markPlayers = dispPool.filter(p => getHitRate(p, 5) >= 0.45).slice(0, 5);
     if (markPlayers.length >= 2) {
       const bullets = markPlayers.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 5))} at 5+ (disposal proxy), L5 avg ${getL5Avg(p).toFixed(1)}`);
-      bkPost({ day: "Tue", type: "Image", category: "Matchup Angle", intent: "cross_game_preview", statLens: "disposals", confidence: "Medium", title: `Mark and contested possession form — ${rl}`, content: "Contested possession and marking form. Players winning the ball consistently.", statsShown: bullets, onScreenText: "Marking form", caption: buildCaption("Contested possession form.", bullets, 5), hashtags: HASHTAG_SETS["Matchup Angle"], suggestedVisual: "5-player contested stat grid", dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players: markPlayers, thresholdLabel: "Contested Form", postNumber: 1 });
+      bkPost({ day: "Tue", type: "Image", category: "Matchup Angle", intent: "cross_game_preview", statLens: "disposals", confidence: "Medium", title: `Mark and contested possession form — ${rl}`, content: "Contested possession and marking form. Players winning the ball consistently.", statsShown: bullets, onScreenText: "Marking form", caption: buildCaption("Contested possession form.", bullets, 5), hashtags: HASHTAG_SETS["Matchup Angle"], suggestedVisual: "5-player contested stat grid", imageDescription: `Static image. 5-player contested possession grid. Each row: player name, team, contested stat hit rate, L5 disposal average. Headline: "Marking and Contested Form". Dark background, clean layout. No betting language.`, dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players: markPlayers, thresholdLabel: "Contested Form", postNumber: 1 });
     }
   }
 
@@ -1313,7 +1445,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const fantasyPlayers = dispPool.filter(p => getSeasonAvg(p) >= 80 && (p.games_played ?? 0) >= 4).slice(0, 5);
     if (fantasyPlayers.length >= 2) {
       const bullets = fantasyPlayers.map(p => `${p.player_name} (${p.team_name ?? ""}) — season avg ${getSeasonAvg(p).toFixed(1)}, L5 avg ${getL5Avg(p).toFixed(1)}`);
-      bkPost({ day: "Wed", type: "Image", category: "Round Preview", intent: "cross_game_preview", statLens: "fantasy", confidence: "Medium", title: `Fantasy score form — ${rl}`, content: "Fantasy scoring form. Players tracking well across multiple stat categories.", statsShown: bullets, onScreenText: "Fantasy form", caption: buildCaption("Fantasy scoring form.", bullets, 0), hashtags: ["#AFL", "#AFLFantasy", "#AFLStats", "#AFL2026", "#NeekoSportsStats"], suggestedVisual: "5-player fantasy form grid — season vs L5 avg", dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players: fantasyPlayers, thresholdLabel: "Fantasy Form", postNumber: 1 });
+      bkPost({ day: "Wed", type: "Image", category: "Round Preview", intent: "cross_game_preview", statLens: "fantasy", confidence: "Medium", title: `Fantasy score form — ${rl}`, content: "Fantasy scoring form. Players tracking well across multiple stat categories.", statsShown: bullets, onScreenText: "Fantasy form", caption: buildCaption("Fantasy scoring form.", bullets, 0), hashtags: ["#AFL", "#AFLFantasy", "#AFLStats", "#AFL2026", "#NeekoSportsStats"], suggestedVisual: "5-player fantasy form grid — season vs L5 avg", imageDescription: `Static image. 5-player fantasy score form grid. Each row: player name, team, season average, L5 average. Headline: "Fantasy Score Form". Dark background, clean stat rows. No betting language.`, dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players: fantasyPlayers, thresholdLabel: "Fantasy Form", postNumber: 1 });
     }
   }
 
@@ -1325,7 +1457,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
         const d = formDelta(p);
         return `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${(p.last_5_avg ?? 0).toFixed(1)} (${d >= 0 ? "+" : ""}${d.toFixed(1)} vs season avg)`;
       });
-      bkPost({ day: "Tue", type: "Carousel", category: "Form Mover", intent: "cross_game_preview", statLens: "disposals", confidence: "High", title: `Form movers — ${rl} extended`, content: "Players tracking well above their season average this round. Form is real.", statsShown: bullets, onScreenText: "Form movers", caption: buildCaption("Form movers — tracking above season average.", bullets, 1), hashtags: HASHTAG_SETS["Form Mover"], suggestedVisual: "Form mover carousel — up-arrow visual, L5 vs season", dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: players.length < 3 ? "Fallback: low form mover count" : null, players, thresholdLabel: "Form Risers", postNumber: 1 });
+      bkPost({ day: "Tue", type: "Carousel", category: "Form Mover", intent: "cross_game_preview", statLens: "disposals", confidence: "High", title: `Form movers — ${rl} extended`, content: "Players tracking well above their season average this round. Form is real.", statsShown: bullets, onScreenText: "Form movers", caption: buildCaption("Form movers — tracking above season average.", bullets, 1), hashtags: HASHTAG_SETS["Form Mover"], suggestedVisual: "Form mover carousel — up-arrow visual, L5 vs season", imageDescription: `Carousel. ${players.length} form movers, one per slide. Each: player name, team, L5 average, delta vs season average (e.g. +4.2). Up-arrow visual accent for positive deltas. Headline: "Form Movers". Dark background, green accent for positive movement. No betting language.`, dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: players.length < 3 ? "Fallback: low form mover count" : null, players, thresholdLabel: "Form Risers", postNumber: 1 });
     }
   }
 
@@ -1334,7 +1466,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const players = dispPool.filter(p => (p.last_3_avg ?? 0) > (p.season_avg ?? 0) && (p.last_3_avg ?? 0) >= 20).slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} — L3 avg ${(p.last_3_avg ?? 0).toFixed(1)} vs season avg ${(p.season_avg ?? 0).toFixed(1)}`);
-      bkPost({ day: "Mon", type: "Image", category: "Form Mover", intent: "cross_game_preview", statLens: "disposals", confidence: "Medium", title: "Players above season avg — last 3 games", content: "Players whose last 3 game average beats their season average. In form right now.", statsShown: bullets, onScreenText: "Last 3 > season avg", caption: buildCaption("In form right now — last 3 above season avg.", bullets, 2), hashtags: HASHTAG_SETS["Form Mover"], suggestedVisual: "L3 vs season avg comparison graphic", dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "L3 vs Season Avg", postNumber: 1 });
+      bkPost({ day: "Mon", type: "Image", category: "Form Mover", intent: "cross_game_preview", statLens: "disposals", confidence: "Medium", title: "Players above season avg — last 3 games", content: "Players whose last 3 game average beats their season average. In form right now.", statsShown: bullets, onScreenText: "Last 3 > season avg", caption: buildCaption("In form right now — last 3 above season avg.", bullets, 2), hashtags: HASHTAG_SETS["Form Mover"], suggestedVisual: "L3 vs season avg comparison graphic", imageDescription: `Static image. 5-player comparison grid. Each row: player name, last 3 average, season average, with delta highlighted. Headline: "In Form Right Now — L3 Above Season Avg". Dark background, green accent for positive delta. No betting language.`, dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "L3 vs Season Avg", postNumber: 1 });
     }
   }
 
@@ -1343,7 +1475,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const players = dispPool.filter(p => (p.last_5_avg ?? 0) > (p.season_avg ?? 0) + 3 && (p.last_5_avg ?? 0) >= 18).slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} — L5 avg ${(p.last_5_avg ?? 0).toFixed(1)} vs season avg ${(p.season_avg ?? 0).toFixed(1)} (+${formDelta(p).toFixed(1)})`);
-      bkPost({ day: "Tue", type: "Image", category: "Form Mover", intent: "cross_game_preview", statLens: "disposals", confidence: "Medium", title: "Players above season avg — last 5 games", content: "5-game form window above season average. Consistent recent improvement.", statsShown: bullets, onScreenText: "Last 5 > season avg", caption: buildCaption("5-game form above season average.", bullets, 3), hashtags: HASHTAG_SETS["Form Mover"], suggestedVisual: "L5 vs season comparison graphic", dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "L5 vs Season Avg", postNumber: 1 });
+      bkPost({ day: "Tue", type: "Image", category: "Form Mover", intent: "cross_game_preview", statLens: "disposals", confidence: "Medium", title: "Players above season avg — last 5 games", content: "5-game form window above season average. Consistent recent improvement.", statsShown: bullets, onScreenText: "Last 5 > season avg", caption: buildCaption("5-game form above season average.", bullets, 3), hashtags: HASHTAG_SETS["Form Mover"], suggestedVisual: "L5 vs season comparison graphic", imageDescription: `Static image. 5-player comparison grid. Each row: player name, L5 average, season average, positive delta (e.g. +5.1). Headline: "5-Game Form Above Season Average". Dark background, green accent for improvement. No betting language.`, dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "L5 vs Season Avg", postNumber: 1 });
     }
   }
 
@@ -1352,7 +1484,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const players = dispPool.filter(p => p.confidence_label === "HIGH" && (p.last_5_avg ?? 0) >= 20).slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — HIGH consistency, L5 avg ${(p.last_5_avg ?? 0).toFixed(1)}, ${pct(getHitRate(p, 20))} at 20+`);
-      bkPost({ day: "Wed", type: "Carousel", category: "Disposal Trend", intent: "cross_game_preview", statLens: "disposals", confidence: "High", title: `Most consistent — last 5 games`, content: "High-consistency disposal players. Reliable form, tight variance.", statsShown: bullets, onScreenText: "High consistency", caption: buildCaption("High-consistency disposal players.", bullets, 4), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "Consistency tier graphic — HIGH badges", dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "High Consistency", postNumber: 1 });
+      bkPost({ day: "Wed", type: "Carousel", category: "Disposal Trend", intent: "cross_game_preview", statLens: "disposals", confidence: "High", title: `Most consistent — last 5 games`, content: "High-consistency disposal players. Reliable form, tight variance.", statsShown: bullets, onScreenText: "High consistency", caption: buildCaption("High-consistency disposal players.", bullets, 4), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "Consistency tier graphic — HIGH badges", imageDescription: `Carousel. ${players.length} player slides plus a title card. Title card: "Most Consistent — Last 5 Games". Each slide: player name, team abbreviation, HIGH consistency badge, L5 average, 20+ hit rate percentage. Dark background, tight layout. No betting language.`, dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players, thresholdLabel: "High Consistency", postNumber: 1 });
     }
   }
 
@@ -1361,7 +1493,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const teams = teamScoreRows.slice(0, 6);
     if (teams.length >= 2) {
       const bullets = teams.map(t => `${t.team_name ?? ""} — L5 avg ${getTeamL5Avg(t).toFixed(1)} pts (season avg ${getTeamSeasonAvg(t).toFixed(1)})`);
-      bkPost({ day: "Thu", type: "Carousel", category: "Team Total", intent: "cross_game_preview", statLens: "team-total", confidence: "High", title: `Team scoring trends — ${rl}`, content: "Which teams are running the most points through the season? Scoring environments explained.", statsShown: bullets, onScreenText: "Team scoring", caption: buildCaption("Team scoring trends.", bullets, 5), hashtags: HASHTAG_SETS["Team Total"], suggestedVisual: "Team scoring bar chart carousel", dataScope: `${rl} team pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players: [], teams: teams.map(t => t.team_name ?? ""), thresholdLabel: "Team Score", postNumber: 1 });
+      bkPost({ day: "Thu", type: "Carousel", category: "Team Total", intent: "cross_game_preview", statLens: "team-total", confidence: "High", title: `Team scoring trends — ${rl}`, content: "Which teams are running the most points through the season? Scoring environments explained.", statsShown: bullets, onScreenText: "Team scoring", caption: buildCaption("Team scoring trends.", bullets, 5), hashtags: HASHTAG_SETS["Team Total"], suggestedVisual: "Team scoring bar chart carousel", imageDescription: `Carousel. ${teams.length} team slides plus a title card. Title card: "Team Scoring Trends". Each slide: team name, team logo placeholder, L5 average score, season average score. Horizontal bar or stat row layout. Dark background, neutral colour palette. No betting language.`, dataScope: `${rl} team pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players: [], teams: teams.map(t => t.team_name ?? ""), thresholdLabel: "Team Score", postNumber: 1 });
     }
   }
 
@@ -1370,7 +1502,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const teamsDisp = [...(data.teamDisposals || [])].sort((a, b) => getTeamL5Avg(b) - getTeamL5Avg(a)).slice(0, 5);
     if (teamsDisp.length >= 2) {
       const bullets = teamsDisp.map(t => `${t.team_name ?? ""} — concedes L5 avg ${getTeamL5Avg(t).toFixed(1)} disposals against`);
-      bkPost({ day: "Fri", type: "Image", category: "Matchup Angle", intent: "cross_game_preview", statLens: "disposals", confidence: "Medium", title: `Disposal concession rates — ${rl}`, content: "Teams that concede the most disposals to opponents. Matchup context.", statsShown: bullets, onScreenText: "Conceded disposals", caption: buildCaption("Disposal concession matchup context.", bullets, 0), hashtags: HASHTAG_SETS["Matchup Angle"], suggestedVisual: "Team concession rate comparison graphic", dataScope: `${rl} team disposal rows`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players: [], teams: teamsDisp.map(t => t.team_name ?? ""), thresholdLabel: "Disposal Conceded", postNumber: 1 });
+      bkPost({ day: "Fri", type: "Image", category: "Matchup Angle", intent: "cross_game_preview", statLens: "disposals", confidence: "Medium", title: `Disposal concession rates — ${rl}`, content: "Teams that concede the most disposals to opponents. Matchup context.", statsShown: bullets, onScreenText: "Conceded disposals", caption: buildCaption("Disposal concession matchup context.", bullets, 0), hashtags: HASHTAG_SETS["Matchup Angle"], suggestedVisual: "Team concession rate comparison graphic", imageDescription: `Static image. ${teamsDisp.length}-team ranked list. Title: "Teams Conceding Most Disposals". Each row: team name, L5 average disposals conceded to opponents. Ranked top-to-bottom. Dark background, clean stat layout. No player names. No betting language.`, dataScope: `${rl} team disposal rows`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players: [], teams: teamsDisp.map(t => t.team_name ?? ""), thresholdLabel: "Disposal Conceded", postNumber: 1 });
     }
   }
 
@@ -1379,7 +1511,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const player = dispPool[0];
     if (player) {
       const bullet = `${player.player_name} (${player.team_name ?? ""}) — ${pct(getHitRate(player, 20))} at 20+, L5 avg ${getL5Avg(player).toFixed(1)}, season avg ${getSeasonAvg(player).toFixed(1)}`;
-      bkPost({ day: "Sat", type: "Short video", category: "Round Preview", intent: "pre_game", statLens: "disposals", confidence: "High", title: "One stat before bounce", content: "One stat. No fluff. Just the number.", statsShown: [bullet], onScreenText: `${player.player_name} — L5 avg ${getL5Avg(player).toFixed(1)}`, caption: buildCaption("One stat before bounce. See the data, make your own call.", [bullet], 1), hashtags: HASHTAG_SETS.gameday, suggestedVisual: "Single-player full-screen graphic — team colours, L5 avg", dataScope: `${rl} top disposal player`, targetGame: null, targetGameStatus: "upcoming", fallbackWarning: null, players: [player], thresholdLabel: "20+ Disposals", postNumber: 1 });
+      bkPost({ day: "Sat", type: "Short video", category: "Round Preview", intent: "pre_game", statLens: "disposals", confidence: "High", title: "One stat before bounce", content: "One stat. No fluff. Just the number.", statsShown: [bullet], onScreenText: `${player.player_name} — L5 avg ${getL5Avg(player).toFixed(1)}`, caption: buildCaption("One stat before bounce. See the data, make your own call.", [bullet], 1), hashtags: HASHTAG_SETS.gameday, suggestedVisual: "Single-player full-screen graphic — team colours, L5 avg", imageDescription: `Short video / static frame. Single player focus. Full-screen layout: player name large, team name below, L5 average centred in bold. 20+ hit rate shown as percentage bar. Team colours as background accent. No other players. No betting language.`, dataScope: `${rl} top disposal player`, targetGame: null, targetGameStatus: "upcoming", fallbackWarning: null, players: [player], thresholdLabel: "20+ Disposals", postNumber: 1 });
     }
   }
 
@@ -1410,6 +1542,9 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption(hasCompleted ? `${rl} wrapped.` : `${rl} disposal form.`, bullets, 2),
       hashtags: HASHTAG_SETS[hasCompleted ? "Proof Post" : "Round Wrap"],
       suggestedVisual: "Weekend proof carousel — player vs L5 average",
+      imageDescription: hasCompleted
+        ? `Carousel. ${bkProofPlayers.length} player slides. Title card: "${rl} — Did The Stats Deliver?". Each slide: player name, team, ${bkThrLabel} hit rate, actual game result vs L5 average. Dark background, green highlight for hit, red for miss. No betting language.`
+        : `Carousel. ${bkProofPlayers.length} player slides. Title card: "${rl} ${bkThrLabel} Watchlist". Each slide: player name, team, L5 average, ${bkThrLabel} hit rate percentage. Dark background, clean stat layout. No betting language.`,
       dataScope: hasCompleted ? "Completed weekend games" : `${rl} round pool`,
       targetGame: hasCompleted ? "Weekend completed games" : null,
       targetGameStatus: hasCompleted ? "completed" : "any",
@@ -1434,13 +1569,14 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       caption: buildCaption("Watchlist for next round.", bullets, 3),
       hashtags: HASHTAG_SETS["Round Preview"],
       suggestedVisual: "Watchlist carousel — 5 players with season and L5 stats",
+      imageDescription: `Carousel. ${players.length} player slides plus a title card. Title card: "Next Round Watchlist". Each slide: player name, team abbreviation, season average, L5 average, 20+ hit rate percentage. Dark background, watchlist badge accent. No betting language.`,
       dataScope: `${rl} cross-game pool`,
       targetGame: null, targetGameStatus: "any", fallbackWarning: null,
       players, thresholdLabel: "20+ Disposals", postNumber: 1,
     });
   }
 
-  return { schedule, backup };
+  return { schedule, backup, excludedCount };
 }
 
 // ─── Copy utilities ───────────────────────────────────────────────────────────
@@ -1470,6 +1606,10 @@ function buildFullPostText(post: SocialPost, includeHeader = true): string {
   lines.push(`Hashtags: ${post.hashtags.join(" ")}`);
   lines.push(``);
   lines.push(`Suggested visual: ${post.suggestedVisual}`);
+  if (post.imageDescription) {
+    lines.push(``);
+    lines.push(`Image description: ${post.imageDescription}`);
+  }
   return lines.join("\n");
 }
 
@@ -1647,6 +1787,7 @@ function SocialPostCard({
 
           <div className="space-y-1.5">
             <Field label="Suggested visual" value={post.suggestedVisual} />
+            {post.imageDescription && <Field label="Image description" value={post.imageDescription} />}
           </div>
 
           {/* Copy buttons row */}
@@ -1682,6 +1823,14 @@ function SocialPostCard({
                 small
               />
             )}
+            {post.imageDescription && (
+              <CopyBtn
+                label="Copy image description"
+                onClick={() => onCopyField(copyKey("imgdesc"), post.imageDescription)}
+                copied={copiedId === copyKey("imgdesc")}
+                small
+              />
+            )}
           </div>
         </div>
       )}
@@ -1691,7 +1840,7 @@ function SocialPostCard({
 
 // ─── Freshness panel ──────────────────────────────────────────────────────────
 
-function FreshnessPanel({ data }: { data: CIDataSubset }) {
+function FreshnessPanel({ data, excludedCount }: { data: CIDataSubset; excludedCount: number }) {
   const ageMin = Math.floor((Date.now() - data.loadedAt.getTime()) / 60000);
   const upcoming = data.matches.filter(isUpcoming).length;
   const completed = data.matches.filter(isCompleted).length;
@@ -1716,6 +1865,7 @@ function FreshnessPanel({ data }: { data: CIDataSubset }) {
           { label: "Disposal players", val: data.disposalPlayers.length,   warn: data.disposalPlayers.length === 0 },
           { label: "Goal players",     val: data.goalPlayers.length,        warn: data.goalPlayers.length === 0 },
           { label: "Team rows",        val: data.teamScore?.length ?? 0,    warn: (data.teamScore?.length ?? 0) === 0 },
+          { label: "Excluded players", val: excludedCount,                   warn: excludedCount > 0 },
           { label: "Fallback warnings",val: fallbackWarnings,               warn: fallbackWarnings > 0 },
         ].map(({ label, val, warn }) => (
           <div key={label} className="bg-zinc-800/50 rounded-lg p-2">
@@ -1763,7 +1913,7 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
   const [toneFilter, setToneFilter] = useState<CopyTone | "all">("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const { schedule, backup } = useMemo(() => buildWeeklyPlan(data), [data]);
+  const { schedule, backup, excludedCount } = useMemo(() => buildWeeklyPlan(data), [data]);
 
   const handleCopyField = useCallback((id: string, text: string) => {
     navigator.clipboard.writeText(text).catch(() => {});
@@ -1817,7 +1967,7 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
 
   return (
     <div className="space-y-4 pt-4">
-      <FreshnessPanel data={data} />
+      <FreshnessPanel data={data} excludedCount={excludedCount} />
 
       {/* Day tabs */}
       <div
