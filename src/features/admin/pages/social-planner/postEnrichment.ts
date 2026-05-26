@@ -297,11 +297,44 @@ export function buildPlatformCaptions(post: SocialPost, ctaLine: string): Platfo
 
 // ─── Voiceover script ─────────────────────────────────────────────────────────
 
+/**
+ * Converts a stat bullet like "Player — 7/10 at 30+, L5 avg 34.8"
+ * into natural voiceover language: "has cleared 30-plus disposals in 7 of their last 10, with an L5 average of 34.8".
+ */
+function toVoiceoverLine(bullet: string, statLens: string): string {
+  // Strip player name prefix (everything before " — ")
+  const dashIdx = bullet.indexOf(" — ");
+  const statPart = dashIdx >= 0 ? bullet.slice(dashIdx + 3) : bullet;
+
+  // Try to match "N/M at T+" pattern
+  const recordMatch = statPart.match(/(\d+)\/(\d+)\s+at\s+(\d+)\+/);
+  const l5Match = statPart.match(/L5 avg\s+([\d.]+)/);
+
+  if (recordMatch) {
+    const [, hits, sample, threshold] = recordMatch;
+    const statWord = statLens === "goals" ? "goal" : "disposal";
+    const statPlural = statLens === "goals" ? "goals" : "disposals";
+    const thresholdNum = parseInt(threshold, 10);
+    const thresholdText = thresholdNum === 1
+      ? `a ${statWord}`
+      : `${threshold}-plus ${statPlural}`;
+    const l5Text = l5Match ? `, with an L5 average of ${l5Match[1]}` : "";
+    return `has cleared ${thresholdText} in ${hits} of their last ${sample}${l5Text}`;
+  }
+
+  // Fallback: clean up and return as-is
+  return statPart.replace(/[()]/g, "").replace(/—/g, "-").trim();
+}
+
 export function buildVoiceoverScript(post: SocialPost): string {
   const intro = buildVoiceoverIntro(post);
   const statsLines = post.statsShown.slice(0, 5).map((s, i) => {
-    const clean = s.replace(/[()]/g, "").replace(/—/g, "-").trim();
-    return `${ordinal(i + 1)}, ${clean}.`;
+    // Extract player name for voiceover
+    const dashIdx = s.indexOf(" — ");
+    const playerName = dashIdx >= 0 ? s.slice(0, dashIdx).replace(/\(.*?\)/g, "").trim() : "";
+    const voiceoverStat = toVoiceoverLine(s, post.statLens ?? "disposals");
+    const line = playerName ? `${playerName} ${voiceoverStat}.` : `${voiceoverStat}.`;
+    return `${ordinal(i + 1)}, ${line}`;
   });
   const outro = `Full data on Neeko Sports Stats — link in bio.`;
   return [intro, ...statsLines, outro].join(" ");

@@ -261,6 +261,8 @@ export interface CandidateScore {
   score: number;
   /** Ready-to-display copy line */
   copyLine: string;
+  /** Raw last-10 stat values from DB (oldest→newest). */
+  last_10_values?: number[] | null;
 }
 
 /**
@@ -361,6 +363,7 @@ export function rankDisposalCandidatesForTeams(
       position_group: p.position_group ?? null,
       score,
       copyLine: buildDisposalCopyLine(p, ev),
+      last_10_values: p.last_10_values ?? null,
     });
   }
 
@@ -404,10 +407,36 @@ export function rankGoalCandidatesForTeams(
       position_group: p.position_group ?? null,
       score,
       copyLine: buildGoalCopyLine(p, ev),
+      last_10_values: p.last_10_values ?? null,
     });
   }
 
   return results.sort((a, b) => b.score - a.score);
+}
+
+// ─── Last-N value helpers ─────────────────────────────────────────────────────
+
+/**
+ * Extracts the last N actual stat values from a StatBoardPlayer.
+ * Returns values newest-first, skipping null/negative sentinel values (BYE/DNP/NYP).
+ */
+export function getLastNValues(p: StatBoardPlayer, count: number): number[] {
+  const raw = p.last_10_values;
+  if (!raw || raw.length === 0) return [];
+  return [...raw]
+    .reverse()
+    .filter((v): v is number => v !== null && v >= 0)
+    .slice(0, count);
+}
+
+/**
+ * Formats an array of stat values as a dot-separated strip.
+ * e.g. [35, 34, 36, 33, 36] → "35 · 34 · 36 · 33 · 36"
+ * Returns null if fewer than 2 values.
+ */
+export function formatLastNStrip(values: number[]): string | null {
+  if (values.length < 2) return null;
+  return values.map(v => String(v)).join(" · ");
 }
 
 // ─── Tier label helpers ───────────────────────────────────────────────────────

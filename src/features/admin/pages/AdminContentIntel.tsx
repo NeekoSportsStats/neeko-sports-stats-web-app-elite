@@ -23,6 +23,8 @@ import type { StatBoardTeamRow } from "@/features/afl/stat-board/teamTypes";
 import {
   selectBestDisposalLine,
   selectBestGoalLine,
+  getLastNValues,
+  formatLastNStrip,
 } from "./social-planner/statLineEngine";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -226,6 +228,8 @@ interface ResearchRow {
   targetGameDate: string | null;
   targetMatchLabel: string;     // display label
   isNextUp: boolean;
+  last_5_values: number[];
+  last_5_strip: string | null;
 }
 
 // ─── Post template ────────────────────────────────────────────────────────────
@@ -679,6 +683,8 @@ function buildRows(
       targetGameDate: target.gameDate,
       targetMatchLabel: target.matchLabel,
       isNextUp: target.isNextUp,
+      last_5_values: getLastNValues(p, 5),
+      last_5_strip: formatLastNStrip(getLastNValues(p, 5)),
     });
   }
   return rows;
@@ -2143,6 +2149,7 @@ function PlayerStatAngles({
                     <th className="text-right py-1.5 px-2">Proj</th>
                     <th className="text-right py-1.5 px-2">Δ</th>
                     <th className="text-right py-1.5 px-2">Conf</th>
+                    <th className="text-left py-1.5 px-2">Last 5</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2191,6 +2198,9 @@ function PlayerStatAngles({
                           {diff != null ? `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}` : "—"}
                         </td>
                         <td className="py-1.5 px-2 text-right"><ConfBadge label={row.confidence_label} /></td>
+                        <td className="py-1.5 px-2 font-mono text-[10px] text-zinc-500 whitespace-nowrap">
+                          {row.last_5_strip ?? "—"}
+                        </td>
                       </tr>
                     );
                   })}

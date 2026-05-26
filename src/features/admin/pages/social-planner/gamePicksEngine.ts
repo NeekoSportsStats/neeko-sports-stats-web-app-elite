@@ -14,6 +14,7 @@ import {
   rankGoalCandidatesForTeams,
   tierLabel,
   tierColor,
+  formatLastNStrip,
 } from "./statLineEngine";
 import type { CandidateScore, ConfidenceTier } from "./statLineEngine";
 
@@ -42,6 +43,10 @@ export interface GamePickPlayer {
   consistency_score: number;
   /** Short copy line ready for social post use. */
   copy_line: string;
+  /** Actual last 5 stat values, newest first. */
+  last_5_values: number[];
+  /** Formatted strip e.g. "35 · 34 · 36 · 33 · 36" or null if < 2 values. */
+  last_5_strip: string | null;
 }
 
 export interface GamePick {
@@ -60,7 +65,17 @@ export interface GamePick {
 
 // ─── Conversion helper ────────────────────────────────────────────────────────
 
+function last5FromCandidate(c: CandidateScore): number[] {
+  const raw = c.last_10_values;
+  if (!raw || raw.length === 0) return [];
+  return [...raw]
+    .reverse()
+    .filter((v): v is number => v !== null && v >= 0)
+    .slice(0, 5);
+}
+
 function toGamePickPlayer(c: CandidateScore): GamePickPlayer {
+  const last5 = last5FromCandidate(c);
   return {
     player_id: c.player_id,
     player_name: c.player_name,
@@ -79,6 +94,8 @@ function toGamePickPlayer(c: CandidateScore): GamePickPlayer {
     tier: c.tier,
     consistency_score: c.score,
     copy_line: c.copyLine,
+    last_5_values: last5,
+    last_5_strip: formatLastNStrip(last5),
   };
 }
 
@@ -191,7 +208,8 @@ export function formatGamePicksForCopy(game: GamePick, lens: GamePickLens): stri
 
   const lines: string[] = [`${game.match_label} — ${lens.charAt(0).toUpperCase() + lens.slice(1)} Picks`];
   for (const p of picks) {
-    lines.push(`• ${p.copy_line} [${p.tier} | Score: ${p.consistency_score}]`);
+    const strip = p.last_5_strip ? ` | Last 5: ${p.last_5_strip}` : "";
+    lines.push(`• ${p.copy_line} [${p.tier} | Score: ${p.consistency_score}${strip}]`);
   }
   return lines.join("\n");
 }
