@@ -4,7 +4,15 @@
  * All posts target TikTok + Instagram + Facebook simultaneously.
  */
 import { useState, useMemo, useCallback } from "react";
-import { Copy, Check, ChevronDown, ChevronUp, Calendar, Hash, Zap, TriangleAlert as AlertTriangle, Clock, Shield, Star } from "lucide-react";
+import { Copy, Check, ChevronDown, ChevronUp, Calendar, Hash, Zap, TriangleAlert as AlertTriangle, Clock, Shield, Star, Crosshair } from "lucide-react";
+import {
+  buildGamePicks,
+  filterPicksByConsistency,
+  consistencyLabel,
+  consistencyColor,
+  formatGamePicksForCopy,
+} from "./social-planner/gamePicksEngine";
+import type { GamePick, GamePickPlayer, ConsistencyTier, GamePickLens } from "./social-planner/gamePicksEngine";
 import type { StatBoardPlayer, StatBoardMatch } from "@/features/afl/stat-board/types";
 import type { StatBoardTeamRow } from "@/features/afl/stat-board/teamTypes";
 import { enrichPost } from "./social-planner/postEnrichment";
@@ -57,9 +65,8 @@ const POST_TYPES: Record<DayOfWeek, [PostType, PostType, PostType]> = {
   Sun: ["Carousel", "Image",   "Carousel"],
 };
 
-const HASHTAG_SETS: Record<PostCategory | "base" | "gameday", string[]> = {
+const HASHTAG_SETS: Record<PostCategory | "base", string[]> = {
   base:              ["#AFL", "#AFLStats", "#FootyStats", "#AFL2026", "#NeekoSportsStats"],
-  gameday:           ["#AFL", "#AFLStats", "#ThursdayFooty", "#SaturdayFooty", "#SundayFooty", "#NeekoSportsStats"],
   "Disposal Trend":  ["#AFL", "#AFLStats", "#Disposals", "#PlayerStats", "#AFL2026", "#NeekoSportsStats"],
   "Goal Trend":      ["#AFL", "#AFLGoals", "#AFLStats", "#FootyStats", "#AFL2026", "#NeekoSportsStats"],
   "Tackle Trend":    ["#AFL", "#Tackles", "#AFLStats", "#AFLFantasy", "#AFL2026", "#NeekoSportsStats"],
@@ -70,6 +77,14 @@ const HASHTAG_SETS: Record<PostCategory | "base" | "gameday", string[]> = {
   "Round Wrap":      ["#AFL", "#AFLStats", "#FootyStats", "#AFL2026", "#NeekoSportsStats"],
   "Proof Post":      ["#AFL", "#AFLStats", "#FootyStats", "#AFL2026", "#NeekoSportsStats"],
 };
+
+function gamedayHashtags(day: DayOfWeek): string[] {
+  const base = ["#AFL", "#AFLStats", "#NeekoSportsStats"];
+  if (day === "Thu") return [...base, "#ThursdayFooty"];
+  if (day === "Sat") return [...base, "#SaturdayFooty"];
+  if (day === "Sun") return [...base, "#SundayFooty"];
+  return base;
+}
 
 const SAFE_SIGN_OFFS = [
   "See the data. Make your own call.",
@@ -329,7 +344,8 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   const top15 = (pool15.length >= 2 ? pool15 : pool20.slice(0, 5)).slice(0, 5);
 
   // ── Threshold-segmented goal pools ───────────────────────────────────────
-  const goalPool3 = goalPool.filter(p => bestGoalThreshold(p) === 3);
+  // 3+ pool requires genuine multi-goal form: hit rate >= 50% or L5 avg >= 2.3
+  const goalPool3 = goalPool.filter(p => bestGoalThreshold(p) === 3 && (getHitRate(p, 3) >= 0.50 || getL5Avg(p) >= 2.3));
   const goalPool2 = goalPool.filter(p => bestGoalThreshold(p) === 2);
   const goalPool1 = goalPool.filter(p => bestGoalThreshold(p) === 1);
 
@@ -393,7 +409,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       ? `${rl} — weekend ${proofThreshold.toLowerCase()} recap`
       : `${rl} — ${proofThreshold.toLowerCase()} watchlist`;
     const postCategory: PostCategory = hasCompleted ? "Proof Post" : "Round Wrap";
-    const postIntent: PostIntent = "recap";
+    const postIntent: PostIntent = hasCompleted ? "recap" : "cross_game_preview";
 
     schedule.push(makePost({
       day: "Mon", postNumber: 1,
@@ -792,7 +808,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       statsShown: bullets,
       onScreenText: hasThuGame ? "Tonight's form" : "Stat update",
       caption: buildCaption(hook, bullets, 4),
-      hashtags: hasThuGame ? HASHTAG_SETS.gameday : HASHTAG_SETS["Round Preview"],
+      hashtags: hasThuGame ? gamedayHashtags("Thu") : HASHTAG_SETS["Round Preview"],
       suggestedVisual: hasThuGame ? "Game-specific stat card with team colours" : "Generic stat card",
       imageDescription: hasThuGame
         ? `Static image. Game-specific stat card for ${gameLabel ?? "Thursday game"}. ${gamePlayers.length} players: name, team, L5 average, ${thu2ThrNum}+ hit rate. Team colours as accents. Dark background.`
@@ -834,7 +850,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       statsShown: [bullet],
       onScreenText: player ? `${player.player_name} — L5 avg ${getL5Avg(player).toFixed(1)}` : "Stat spotlight",
       caption: buildCaption(hook, [bullet], 5),
-      hashtags: hasThuGame ? HASHTAG_SETS.gameday : HASHTAG_SETS.base,
+      hashtags: hasThuGame ? gamedayHashtags("Thu") : HASHTAG_SETS.base,
       suggestedVisual: player ? `Full-screen stat card — ${player.player_name}, team colours, L5 avg` : "Generic round preview card",
       imageDescription: player
         ? `Short video or full-screen static. Single player spotlight: ${player.player_name} (${player.team_name ?? ""}). Large centre stat: L5 average ${getL5Avg(player).toFixed(1)}. Secondary: ${thu3ThrNum}+ hit rate ${pct(getHitRate(player, thu3ThrNum))}. Team colours as background accent. No betting language.`
@@ -879,7 +895,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       statsShown: bullets,
       onScreenText: hasFriGame ? "Friday night form" : "Weekend preview",
       caption: buildCaption(hook, bullets, 0),
-      hashtags: hasFriGame ? HASHTAG_SETS.gameday : HASHTAG_SETS["Round Preview"],
+      hashtags: hasFriGame ? gamedayHashtags("Fri") : HASHTAG_SETS["Round Preview"],
       suggestedVisual: hasFriGame ? "Game-specific carousel — player form for tonight's game" : "Weekend preview carousel",
       imageDescription: hasFriGame
         ? `Carousel. Game-specific. ${gameLabel ?? "Friday game"}. ${gamePlayers.length} players: name, team, L5 average, ${fri1ThrNum}+ hit rate. Team colours as accents. Each player gets one slide. Dark background.`
@@ -952,7 +968,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       statsShown: [bullet],
       onScreenText: player ? `${player.player_name} — goal form` : "Goal spotlight",
       caption: buildCaption(hook, [bullet], 2),
-      hashtags: hasFri ? HASHTAG_SETS.gameday : HASHTAG_SETS["Goal Trend"],
+      hashtags: hasFri ? gamedayHashtags("Fri") : HASHTAG_SETS["Goal Trend"],
       suggestedVisual: player ? `Full-screen stat card — ${player.player_name}, goal form` : "Goal trend graphic",
       imageDescription: player
         ? `Short video or full-screen static. Single player: ${player.player_name} (${player.team_name ?? ""}). Large centre stat: ${fri3GoalThr}+ goal hit rate ${pct(getHitRate(player, fri3GoalThr))}. Secondary: L5 average ${getL5Avg(player).toFixed(1)}. Team colours as background accent. No betting language.`
@@ -995,7 +1011,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       statsShown: bullets,
       onScreenText: "Saturday stat watch",
       caption: buildCaption(hook, bullets, 3),
-      hashtags: HASHTAG_SETS.gameday,
+      hashtags: gamedayHashtags("Sat"),
       suggestedVisual: hasSat ? "Multi-game Saturday carousel — player form per game" : "Game day stat carousel",
       imageDescription: hasSat
         ? `Carousel. Saturday game day. ${gamePlayers.length} player slides. Each: player name, team, L5 average, ${sat1ThrNum}+ hit rate. Grouped by game where possible. Team colours as accents. Headline: "Saturday AFL Stat Watch".`
@@ -1119,7 +1135,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       statsShown: bullets,
       onScreenText: "Sunday stat watch",
       caption: buildCaption(hook, bullets, 0),
-      hashtags: HASHTAG_SETS.gameday,
+      hashtags: gamedayHashtags("Sun"),
       suggestedVisual: hasSun ? "Multi-game Sunday carousel" : "Round wrap carousel",
       imageDescription: hasSun
         ? `Carousel. Sunday game day. ${gamePlayers.length} player slides. Each: player name, team, L5 average, ${sun1ThrNum}+ hit rate. Grouped by game where possible. Team colours as accents. Headline: "Sunday AFL Stat Watch".`
@@ -1237,7 +1253,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     schedule.push(makePost({
       day: "Sun", postNumber: 3,
       type: "Carousel",
-      category: sunCategory, intent: "recap",
+      category: sunCategory, intent: hasCompleted ? "recap" : "cross_game_preview",
       statLens: "disposals", confidence: hasCompleted ? "High" : "Medium",
       title: sunTitle,
       content: hook,
@@ -1454,7 +1470,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const player = dispPool[0];
     if (player) {
       const bullet = `${player.player_name} (${player.team_name ?? ""}) — ${pct(getHitRate(player, 20))} at 20+, L5 avg ${getL5Avg(player).toFixed(1)}, season avg ${getSeasonAvg(player).toFixed(1)}`;
-      bkPost({ day: "Sat", type: "Short video", category: "Round Preview", intent: "pre_game", statLens: "disposals", confidence: "High", title: "One stat before bounce", content: "One stat. No fluff. Just the number.", statsShown: [bullet], onScreenText: `${player.player_name} — L5 avg ${getL5Avg(player).toFixed(1)}`, caption: buildCaption("One stat before bounce. See the data, make your own call.", [bullet], 1), hashtags: HASHTAG_SETS.gameday, suggestedVisual: "Single-player full-screen graphic — team colours, L5 avg", imageDescription: `Short video / static frame. Single player focus. Full-screen layout: player name large, team name below, L5 average centred in bold. 20+ hit rate shown as percentage bar. Team colours as background accent. No other players. No betting language.`, dataScope: `${rl} top disposal player`, targetGame: null, targetGameStatus: "upcoming", fallbackWarning: null, players: [player], thresholdLabel: "20+ Disposals", postNumber: 1 });
+      bkPost({ day: "Sat", type: "Short video", category: "Round Preview", intent: "pre_game", statLens: "disposals", confidence: "High", title: "One stat before bounce", content: "One stat. No fluff. Just the number.", statsShown: [bullet], onScreenText: `${player.player_name} — L5 avg ${getL5Avg(player).toFixed(1)}`, caption: buildCaption("One stat before bounce. See the data, make your own call.", [bullet], 1), hashtags: gamedayHashtags("Sat"), suggestedVisual: "Single-player full-screen graphic — team colours, L5 avg", imageDescription: `Short video / static frame. Single player focus. Full-screen layout: player name large, team name below, L5 average centred in bold. 20+ hit rate shown as percentage bar. Team colours as background accent. No other players. No betting language.`, dataScope: `${rl} top disposal player`, targetGame: null, targetGameStatus: "upcoming", fallbackWarning: null, players: [player], thresholdLabel: "20+ Disposals", postNumber: 1 });
     }
   }
 
@@ -1474,7 +1490,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     bkPost({
       day: "Mon", type: "Carousel",
       category: hasCompleted ? "Proof Post" : "Round Wrap",
-      intent: "recap",
+      intent: hasCompleted ? "recap" : "cross_game_preview",
       statLens: "disposals", confidence: hasCompleted ? "High" : "Fallback",
       title: hasCompleted ? `${rl} weekend ${bkThrLabel.toLowerCase()} proof post` : `${rl} ${bkThrLabel.toLowerCase()} watchlist`,
       content: hasCompleted
@@ -2145,9 +2161,275 @@ function Sel({ label, value, onChange, options }: {
   );
 }
 
+// ─── Game Picks Tab ───────────────────────────────────────────────────────────
+
+function GamePickRow({
+  pick,
+  copiedId,
+  onCopy,
+}: {
+  pick: GamePickPlayer;
+  copiedId: string | null;
+  onCopy: (id: string, text: string) => void;
+}) {
+  const copyId = `gp-${pick.player_id}`;
+  const copied = copiedId === copyId;
+
+  return (
+    <div className="flex items-start gap-2 py-1.5 border-b border-zinc-800/60 last:border-0">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[11.5px] text-zinc-200 font-medium">{pick.player_name}</span>
+          <span className="text-[10px] text-zinc-500">{pick.team_name}</span>
+          {pick.position_group && (
+            <span className="text-[9px] text-zinc-600 bg-zinc-800 px-1 rounded">{pick.position_group}</span>
+          )}
+          <span className={`text-[9px] font-semibold ${consistencyColor(pick.consistency_score)}`}>
+            {consistencyLabel(pick.consistency_score)} ({pick.consistency_score})
+          </span>
+        </div>
+        <div className="text-[10px] text-zinc-400 mt-0.5 flex flex-wrap gap-2">
+          <span>
+            <span className="text-zinc-300">{pick.threshold}+</span>
+            {" "}{Math.round(pick.hit_rate * 100)}% hit rate
+          </span>
+          {pick.l5_avg !== null && (
+            <span>L5: <span className="text-zinc-300">{pick.l5_avg.toFixed(1)}</span></span>
+          )}
+          {pick.season_avg !== null && (
+            <span>Avg: <span className="text-zinc-300">{pick.season_avg.toFixed(1)}</span></span>
+          )}
+          {pick.projection !== null && (
+            <span>Proj: <span className="text-zinc-300">{pick.projection.toFixed(0)}</span></span>
+          )}
+          <span className="text-zinc-600">{pick.games_played}g</span>
+        </div>
+      </div>
+      <button
+        onClick={() => onCopy(copyId, pick.copy_line)}
+        className={`shrink-0 flex items-center gap-1 px-2 py-1 rounded text-[10px] border transition-colors ${
+          copied
+            ? "bg-emerald-900/50 text-emerald-300 border-emerald-700/40"
+            : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-zinc-200"
+        }`}
+        title="Copy line"
+      >
+        {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+      </button>
+    </div>
+  );
+}
+
+function GamePickCard({
+  game,
+  lens,
+  tier,
+  search,
+  copiedId,
+  onCopy,
+}: {
+  game: GamePick;
+  lens: GamePickLens;
+  tier: ConsistencyTier;
+  search: string;
+  copiedId: string | null;
+  onCopy: (id: string, text: string) => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const rawPicks = lens === "disposals" ? game.disposal_picks : game.goal_picks;
+  const tieredPicks = filterPicksByConsistency(rawPicks, tier);
+  const filteredPicks = search.trim().length < 2
+    ? tieredPicks
+    : tieredPicks.filter(p =>
+        p.player_name.toLowerCase().includes(search.toLowerCase()) ||
+        p.team_name.toLowerCase().includes(search.toLowerCase()),
+      );
+
+  const copyAllId = `gp-all-${game.match_id}-${lens}`;
+  const copiedAll = copiedId === copyAllId;
+
+  return (
+    <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg overflow-hidden">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 hover:bg-zinc-800/40 transition-colors"
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[12px] text-zinc-200 font-semibold truncate">{game.match_label}</span>
+          <span className="text-[10px] text-zinc-500 shrink-0">{game.venue}</span>
+          {game.is_free_match && (
+            <span className="text-[9px] bg-amber-900/40 text-amber-400 border border-amber-700/30 px-1 rounded shrink-0">Free</span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-[10px] text-zinc-500">{filteredPicks.length} picks</span>
+          {open ? <ChevronUp className="h-3.5 w-3.5 text-zinc-500" /> : <ChevronDown className="h-3.5 w-3.5 text-zinc-500" />}
+        </div>
+      </button>
+
+      {open && (
+        <div className="px-3 pb-3 border-t border-zinc-800">
+          {filteredPicks.length === 0 ? (
+            <p className="text-[10px] text-zinc-600 py-2">No qualifying picks for this game with current filters.</p>
+          ) : (
+            <>
+              <div className="mt-2 space-y-0">
+                {filteredPicks.map(p => (
+                  <GamePickRow
+                    key={p.player_id}
+                    pick={p}
+                    copiedId={copiedId}
+                    onCopy={onCopy}
+                  />
+                ))}
+              </div>
+              <button
+                onClick={() => onCopy(copyAllId, formatGamePicksForCopy(game, lens))}
+                className={`mt-2 flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] border transition-colors ${
+                  copiedAll
+                    ? "bg-emerald-900/50 text-emerald-300 border-emerald-700/40"
+                    : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-zinc-200"
+                }`}
+              >
+                {copiedAll ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                Copy all {lens} picks for this game
+              </button>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GamePicksTabContent({
+  gamePicks,
+  lens,
+  onLensChange,
+  tier,
+  onTierChange,
+  search,
+  onSearchChange,
+  copiedId,
+  onCopy,
+  roundLabel,
+}: {
+  gamePicks: GamePick[];
+  lens: GamePickLens;
+  onLensChange: (l: GamePickLens) => void;
+  tier: ConsistencyTier;
+  onTierChange: (t: ConsistencyTier) => void;
+  search: string;
+  onSearchChange: (s: string) => void;
+  copiedId: string | null;
+  onCopy: (id: string, text: string) => void;
+  roundLabel: string;
+}) {
+  const totalPicks = gamePicks.reduce((acc, g) => {
+    const picks = lens === "disposals" ? g.disposal_picks : g.goal_picks;
+    return acc + filterPicksByConsistency(picks, tier).length;
+  }, 0);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+          <Crosshair className="h-3.5 w-3.5 text-zinc-400" />
+          <span className="text-zinc-300 font-medium">Game Picks</span>
+          <span>— {roundLabel} · {gamePicks.length} games · {totalPicks} picks</span>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 space-y-2.5">
+        {/* Lens toggle */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-zinc-500 w-16 shrink-0">Stat lens</span>
+          <div className="flex gap-1">
+            {(["disposals", "goals"] as GamePickLens[]).map(l => (
+              <button
+                key={l}
+                onClick={() => onLensChange(l)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+                  lens === l
+                    ? "bg-zinc-200 text-zinc-900 border-zinc-300"
+                    : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                {l.charAt(0).toUpperCase() + l.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tier filter */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-zinc-500 w-16 shrink-0">Confidence</span>
+          <div className="flex gap-1 flex-wrap">
+            {(["all", "high", "medium", "low"] as ConsistencyTier[]).map(t => (
+              <button
+                key={t}
+                onClick={() => onTierChange(t)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+                  tier === t
+                    ? "bg-zinc-200 text-zinc-900 border-zinc-300"
+                    : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                {t === "all" ? "All" : t.charAt(0).toUpperCase() + t.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-zinc-500 w-16 shrink-0">Search</span>
+          <input
+            type="text"
+            value={search}
+            onChange={e => onSearchChange(e.target.value)}
+            placeholder="Player or team name…"
+            className="flex-1 bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-[11px] text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
+          />
+          {search && (
+            <button
+              onClick={() => onSearchChange("")}
+              className="text-[10px] text-zinc-500 hover:text-zinc-300 px-1"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Game cards */}
+      {gamePicks.length === 0 ? (
+        <div className="py-8 text-center text-zinc-600 text-[12px]">
+          No match data loaded. Refresh on the Freshness tab first.
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {gamePicks.map(game => (
+            <GamePickCard
+              key={game.match_id}
+              game={game}
+              lens={lens}
+              tier={tier}
+              search={search}
+              copiedId={copiedId}
+              onCopy={onCopy}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
-type ActiveTab = DayOfWeek | "backup" | "evergreen";
+type ActiveTab = DayOfWeek | "backup" | "evergreen" | "game_picks";
 
 export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
   const [activeDay, setActiveDay] = useState<ActiveTab>("Mon");
@@ -2156,7 +2438,21 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
   const [toneFilter, setToneFilter] = useState<CopyTone | "all">("all");
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  const [gpLens, setGpLens] = useState<GamePickLens>("disposals");
+  const [gpTier, setGpTier] = useState<ConsistencyTier>("all");
+  const [gpSearch, setGpSearch] = useState("");
+
   const { schedule, backup, evergreen, excludedCount } = useMemo(() => buildWeeklyPlan(data), [data]);
+
+  const gamePicks = useMemo(
+    () => buildGamePicks(
+      data.matches,
+      data.disposalPlayers,
+      data.goalPlayers,
+      data.unavailablePlayerIds ?? new Set(),
+    ),
+    [data.matches, data.disposalPlayers, data.goalPlayers, data.unavailablePlayerIds],
+  );
 
   const handleCopyField = useCallback((id: string, text: string) => {
     navigator.clipboard.writeText(text).catch(() => {});
@@ -2183,14 +2479,16 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
 
   const isBackupTab = activeDay === "backup";
   const isEvergreenTab = activeDay === "evergreen";
+  const isGamePicksTab = activeDay === "game_picks";
 
   const activePosts = useMemo(() => {
     const base = isBackupTab ? backup
       : isEvergreenTab ? evergreen
+      : isGamePicksTab ? []
       : schedule.filter(p => p.day === activeDay);
     return applyFilters(base);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDay, schedule, backup, evergreen, typeFilter, categoryFilter, toneFilter]);
+  }, [activeDay, schedule, backup, evergreen, isGamePicksTab, typeFilter, categoryFilter, toneFilter]);
 
   const scheduledCountByDay = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -2287,11 +2585,22 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
             )}
             {activeDay === "evergreen" && <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-t bg-zinc-100" />}
           </button>
+          <button onClick={() => setActiveDay("game_picks")} className={tabCls("game_picks")}>
+            <span className="flex items-center gap-1">
+              <Crosshair className="h-3 w-3" />
+              <span className="hidden sm:inline">Game Picks</span>
+              <span className="sm:hidden">GP</span>
+            </span>
+            {gamePicks.length > 0 && (
+              <span className="ml-1 text-[8.5px] bg-zinc-700 text-zinc-400 px-1 rounded">{gamePicks.length}</span>
+            )}
+            {activeDay === "game_picks" && <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-t bg-zinc-100" />}
+          </button>
         </div>
       </div>
 
-      {/* Filters — hidden on evergreen tab (not relevant) */}
-      {!isEvergreenTab && (
+      {/* Filters — hidden on evergreen and game_picks tabs */}
+      {!isEvergreenTab && !isGamePicksTab && (
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 space-y-3">
           <div className="flex flex-wrap gap-1.5">
             {(["all", "Image", "Carousel", "Short video"] as (PostType | "all")[]).map(t => (
@@ -2334,7 +2643,7 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
       )}
 
       {/* Day header with count + copy-all */}
-      {!isBackupTab && !isEvergreenTab && (
+      {!isBackupTab && !isEvergreenTab && !isGamePicksTab && (
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 text-[11px] text-zinc-500">
             <Calendar className="h-3 w-3" />
@@ -2374,25 +2683,43 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
         </div>
       )}
 
-      {/* Post list */}
-      {activePosts.length === 0 ? (
-        <div className="py-8 text-center text-zinc-600 text-[12px]">
-          {data.disposalPlayers.length === 0
-            ? "No player data loaded. Refresh data on the Freshness tab first."
-            : "No posts match the current filters."}
-        </div>
-      ) : (
-        <div className="space-y-2.5">
-          {activePosts.map(post => (
-            <SocialPostCard
-              key={post.id}
-              post={post}
-              copiedId={copiedId}
-              onCopyField={handleCopyField}
-              roundLabel={data.roundLabel}
-            />
-          ))}
-        </div>
+      {/* Game Picks tab */}
+      {isGamePicksTab && (
+        <GamePicksTabContent
+          gamePicks={gamePicks}
+          lens={gpLens}
+          onLensChange={setGpLens}
+          tier={gpTier}
+          onTierChange={setGpTier}
+          search={gpSearch}
+          onSearchChange={setGpSearch}
+          copiedId={copiedId}
+          onCopy={(id, text) => { navigator.clipboard.writeText(text).catch(() => {}); setCopiedId(id); setTimeout(() => setCopiedId(null), 1800); }}
+          roundLabel={data.roundLabel}
+        />
+      )}
+
+      {/* Post list — hidden on game picks tab */}
+      {!isGamePicksTab && (
+        activePosts.length === 0 ? (
+          <div className="py-8 text-center text-zinc-600 text-[12px]">
+            {data.disposalPlayers.length === 0
+              ? "No player data loaded. Refresh data on the Freshness tab first."
+              : "No posts match the current filters."}
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {activePosts.map(post => (
+              <SocialPostCard
+                key={post.id}
+                post={post}
+                copiedId={copiedId}
+                onCopyField={handleCopyField}
+                roundLabel={data.roundLabel}
+              />
+            ))}
+          </div>
+        )
       )}
     </div>
   );
