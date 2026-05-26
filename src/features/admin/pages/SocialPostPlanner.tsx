@@ -159,7 +159,7 @@ function isCompleted(match: StatBoardMatch): boolean {
  * Hard rule: a player who qualifies for 30+ must NOT appear in a 20+ post.
  *
  * 30+: L5 ≥ 27.0 AND hr30 ≥ 0.70 (genuine 30+ tier only)
- * 25+: L5 ≥ 22.0 AND hr25 ≥ 0.70
+ * 25+: L5 ≥ 24.5 AND hr25 ≥ 0.70 AND does NOT qualify at 30+ tier
  * 20+: L5 ≥ 18.0 AND hr20 ≥ 0.55
  * 15+: L5 ≥ 13.0 AND hr15 ≥ 0.55
  */
@@ -175,8 +175,8 @@ function bestDisposalThreshold(p: StatBoardPlayer): 30 | 25 | 20 | 15 | 10 {
   // 30+: both volume and hit rate must be elite
   if (avgL5Sea >= 27.0 && hr30 >= 0.70) return 30;
 
-  // 25+: strong volume and consistent hit rate
-  if (avgL5Sea >= 22.0 && hr25 >= 0.70) return 25;
+  // 25+: strong L5 and hit rate, must NOT qualify as 30+ tier (already handled above)
+  if (avgL5Sea >= 24.5 && hr25 >= 0.70) return 25;
 
   // 20+: moderate volume with solid hit rate
   if (avgL5Sea >= 18.0 && hr20 >= 0.55) return 20;
@@ -2317,6 +2317,22 @@ function GamePickRow({
             <span className="text-zinc-300">{pick.threshold}+</span>
             {" "}<span className="text-zinc-300">{pick.hitRecord}</span>
             <span className="text-zinc-500"> ({pick.hitPct})</span>
+            {pick.publicContentTier !== null && pick.publicContentTier !== pick.threshold && (
+              <span className={`ml-1 px-1 rounded text-[9px] font-semibold ${
+                pick.publicContentTier === 30 ? "bg-orange-900/60 text-orange-300" :
+                pick.publicContentTier === 25 ? "bg-sky-900/60 text-sky-300" :
+                pick.publicContentTier === 20 ? "bg-zinc-700 text-zinc-300" :
+                "bg-zinc-800 text-zinc-400"
+              }`}>
+                post tier: {pick.publicContentTier}+
+              </span>
+            )}
+            {pick.publicContentTier === 30 && pick.threshold === 30 && (
+              <span className="ml-1 px-1 rounded text-[9px] font-semibold bg-orange-900/60 text-orange-300">30+ tier</span>
+            )}
+            {pick.publicContentTier === 25 && pick.threshold === 25 && (
+              <span className="ml-1 px-1 rounded text-[9px] font-semibold bg-sky-900/60 text-sky-300">25+ tier</span>
+            )}
           </span>
           {pick.l5_avg !== null && (
             <span>L5: <span className="text-zinc-300">{pick.l5_avg.toFixed(1)}</span></span>
@@ -2657,6 +2673,7 @@ function GamePickCard({
   pack,
   lens,
   tier,
+  show25TierOnly,
   search,
   copiedId,
   onCopy,
@@ -2665,13 +2682,17 @@ function GamePickCard({
   pack: GamePickMarketingPack | null;
   lens: GamePickLens;
   tier: ConsistencyTier;
+  show25TierOnly: boolean;
   search: string;
   copiedId: string | null;
   onCopy: (id: string, text: string) => void;
 }) {
   const [open, setOpen] = useState(true);
   const rawPicks = lens === "disposals" ? game.disposal_picks : game.goal_picks;
-  const tieredPicks = filterPicksByConsistency(rawPicks, tier);
+  let tieredPicks = filterPicksByConsistency(rawPicks, tier);
+  if (lens === "disposals" && show25TierOnly) {
+    tieredPicks = tieredPicks.filter(p => p.publicContentTier === 25);
+  }
   const filteredPicks = search.trim().length < 2
     ? tieredPicks
     : tieredPicks.filter(p =>
@@ -2768,9 +2789,21 @@ function GamePicksTabContent({
   onCopy: (id: string, text: string) => void;
   roundLabel: string;
 }) {
+  // When true, disposal view shows only players whose publicContentTier === 25
+  // (strict 25+ tier — excludes any 30+ tier players from disposal picks)
+  const [show25TierOnly, setShow25TierOnly] = useState(false);
+
+  function applyTierFilter(picks: GamePickPlayer[]): GamePickPlayer[] {
+    let result = filterPicksByConsistency(picks, tier);
+    if (lens === "disposals" && show25TierOnly) {
+      result = result.filter(p => p.publicContentTier === 25);
+    }
+    return result;
+  }
+
   const totalPicks = gamePicks.reduce((acc, g) => {
     const picks = lens === "disposals" ? g.disposal_picks : g.goal_picks;
-    return acc + filterPicksByConsistency(picks, tier).length;
+    return acc + applyTierFilter(picks).length;
   }, 0);
 
   return (
@@ -2844,6 +2877,26 @@ function GamePicksTabContent({
             </button>
           )}
         </div>
+
+        {/* 25+ tier filter — disposals only */}
+        {lens === "disposals" && (
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-500 w-16 shrink-0">Content tier</span>
+            <button
+              onClick={() => setShow25TierOnly(v => !v)}
+              className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+                show25TierOnly
+                  ? "bg-sky-900/70 text-sky-300 border-sky-700/60"
+                  : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              25+ tier only
+            </button>
+            {show25TierOnly && (
+              <span className="text-[10px] text-zinc-500">Hides 30+ tier players from disposal view</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Game cards */}
@@ -2860,6 +2913,7 @@ function GamePicksTabContent({
               pack={marketingPacks.find(p => p.game.match_id === game.match_id) ?? null}
               lens={lens}
               tier={tier}
+              show25TierOnly={show25TierOnly}
               search={search}
               copiedId={copiedId}
               onCopy={onCopy}

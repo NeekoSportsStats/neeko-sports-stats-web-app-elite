@@ -15,6 +15,7 @@ import {
   tierLabel,
   tierColor,
   formatLastNStrip,
+  getPublicDisposalContentTier,
 } from "./statLineEngine";
 import type { CandidateScore, ConfidenceTier } from "./statLineEngine";
 
@@ -47,6 +48,12 @@ export interface GamePickPlayer {
   last_5_values: number[];
   /** Formatted strip e.g. "35 · 34 · 36 · 33 · 36" or null if < 2 values. */
   last_5_strip: string | null;
+  /**
+   * Public content tier: the disposal threshold this player should be labelled
+   * under in social posts (30/25/20/15). Null means no qualifying tier.
+   * 25+ tier explicitly excludes players who qualify at 30+ threshold.
+   */
+  publicContentTier: 30 | 25 | 20 | 15 | null;
 }
 
 export interface GamePick {
@@ -96,6 +103,7 @@ function toGamePickPlayer(c: CandidateScore): GamePickPlayer {
     copy_line: c.copyLine,
     last_5_values: last5,
     last_5_strip: formatLastNStrip(last5),
+    publicContentTier: c.publicContentTier ?? null,
   };
 }
 

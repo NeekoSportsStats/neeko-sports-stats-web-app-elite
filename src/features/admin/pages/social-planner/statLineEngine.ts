@@ -100,8 +100,10 @@ export interface DisposalLineEval {
  *
  * 30+ High:   hr ≥ 0.80 AND L5 ≥ 29.0 AND sample ≥ 7
  * 30+ Medium: hr ≥ 0.70 AND L5 ≥ 27.0 AND sample ≥ 5
- * 25+ High:   hr ≥ 0.80 AND L5 ≥ 24.0 AND sample ≥ 7
- * 25+ Medium: hr ≥ 0.70 AND L5 ≥ 22.0 AND sample ≥ 5
+ * 25+ High:   hr ≥ 0.80 AND L5 ≥ 25.0 AND sample ≥ 7   (tightened from 24.0)
+ * 25+ Medium: hr ≥ 0.70 AND L5 ≥ 24.5 AND sample ≥ 7   (tightened from 22.0/5)
+ *             OR hr ≥ 0.70 AND L5 ≥ 24.5 AND sample ≥ 5  (small-sample with L5 support)
+ *   NOTE: A player qualifying at 30+ threshold is EXCLUDED from 25+ content tier.
  * 20+ High:   hr ≥ 0.75 AND L5 ≥ 19.0 AND sample ≥ 5
  * 20+ Medium: hr ≥ 0.60 AND L5 ≥ 18.0 AND sample ≥ 4
  * 15+ High:   hr ≥ 0.75 AND L5 ≥ 14.0 AND sample ≥ 5
@@ -112,6 +114,8 @@ export function evaluateDisposalLine(
   threshold: 30 | 25 | 20 | 15,
 ): DisposalLineEval {
   const rec = getRecentHitRecord(p, threshold);
+  // Used for 30+ exclusion guard when evaluating 25+ tier
+  const rec30 = threshold === 25 ? getRecentHitRecord(p, 30) : rec;
   const l5 = p.last_5_avg ?? p.season_avg ?? 0;
   const seasonAvg = p.season_avg ?? 0;
   const games = rec.sample;
@@ -122,8 +126,13 @@ export function evaluateDisposalLine(
     if (rec.rate >= 0.80 && l5 >= 29.0 && games >= 7) tier = "High";
     else if (rec.rate >= 0.70 && l5 >= 27.0 && games >= 5) tier = "Medium";
   } else if (threshold === 25) {
-    if (rec.rate >= 0.80 && l5 >= 24.0 && games >= 7) tier = "High";
-    else if (rec.rate >= 0.70 && l5 >= 22.0 && games >= 5) tier = "Medium";
+    // Exclude players who qualify at the 30+ tier — they belong to a higher content bucket.
+    const is30PlusTier = rec30.rate >= 0.70 && l5 >= 27.0 && rec30.sample >= 5;
+    if (!is30PlusTier) {
+      if (rec.rate >= 0.80 && l5 >= 25.0 && games >= 7) tier = "High";
+      else if (rec.rate >= 0.70 && l5 >= 24.5 && games >= 7) tier = "Medium";
+      else if (rec.rate >= 0.70 && l5 >= 24.5 && games >= 5) tier = "Medium";
+    }
   } else if (threshold === 20) {
     if (rec.rate >= 0.75 && l5 >= 19.0 && games >= 5) tier = "High";
     else if (rec.rate >= 0.60 && l5 >= 18.0 && games >= 4) tier = "Medium";
@@ -242,6 +251,30 @@ export function selectBestGoalLine(
   return null;
 }
 
+/**
+ * Returns the public disposal content tier for a player — the threshold that
+ * should be used when labelling them in social posts and marketing copy.
+ *
+ * Differs from selectBestDisposalLine() in that:
+ *   - 25+ explicitly excludes 30+ tier players (they go in a 30+ post instead)
+ *   - Uses the tightened 25+ thresholds (L5 ≥ 24.5 / 25.0)
+ *
+ * Returns the qualifying threshold (30/25/20/15) or null.
+ */
+export function getPublicDisposalContentTier(
+  p: StatBoardPlayer,
+): 30 | 25 | 20 | 15 | null {
+  const ev30 = evaluateDisposalLine(p, 30);
+  if (ev30.tier === "High" || ev30.tier === "Medium") return 30;
+  const ev25 = evaluateDisposalLine(p, 25);
+  if (ev25.tier === "High" || ev25.tier === "Medium") return 25;
+  const ev20 = evaluateDisposalLine(p, 20);
+  if (ev20.tier === "High" || ev20.tier === "Medium") return 20;
+  const ev15 = evaluateDisposalLine(p, 15);
+  if (ev15.tier === "High" || ev15.tier === "Medium" || ev15.tier === "Low") return 15;
+  return null;
+}
+
 // ─── Candidate scoring for Game Picks ────────────────────────────────────────
 
 export interface CandidateScore {
@@ -263,6 +296,11 @@ export interface CandidateScore {
   copyLine: string;
   /** Raw last-10 stat values from DB (oldest→newest). */
   last_10_values?: number[] | null;
+  /**
+   * Public content tier for this disposal candidate.
+   * 25+ explicitly excludes 30+ tier players.
+   */
+  publicContentTier?: 30 | 25 | 20 | 15 | null;
 }
 
 /**
@@ -364,6 +402,7 @@ export function rankDisposalCandidatesForTeams(
       score,
       copyLine: buildDisposalCopyLine(p, ev),
       last_10_values: p.last_10_values ?? null,
+      publicContentTier: getPublicDisposalContentTier(p),
     });
   }
 
