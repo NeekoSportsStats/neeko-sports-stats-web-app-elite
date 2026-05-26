@@ -15,6 +15,8 @@ import {
   tierColor,
 } from "./social-planner/gamePicksEngine";
 import type { GamePick, GamePickPlayer, ConsistencyTier, GamePickLens } from "./social-planner/gamePicksEngine";
+import { buildAllGamePickMarketingPacks } from "./social-planner/gamePickPostKit";
+import type { GamePickMarketingPack, GamePickPostKit } from "./social-planner/gamePickPostKit";
 import type { StatBoardPlayer, StatBoardMatch } from "@/features/afl/stat-board/types";
 import type { StatBoardTeamRow } from "@/features/afl/stat-board/teamTypes";
 import { enrichPost } from "./social-planner/postEnrichment";
@@ -2369,8 +2371,316 @@ function GamePickRow({
   );
 }
 
+// ─── Post Kit Panel ───────────────────────────────────────────────────────────
+
+function PostKitTab({
+  kit,
+  copiedId,
+  onCopy,
+}: {
+  kit: GamePickPostKit;
+  copiedId: string | null;
+  onCopy: (id: string, text: string) => void;
+}) {
+  const { post } = kit;
+  const cid = (suffix: string) => `${post.id}-${suffix}`;
+
+  return (
+    <div className="space-y-3 pt-2">
+      {/* Title + quality */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] text-zinc-200 font-semibold">{post.title}</span>
+        {post.quality && <QualityBadge quality={post.quality} />}
+        {post.compliance && post.compliance.status !== "Clean" && <ComplianceBadge compliance={post.compliance} />}
+        <ConfidenceBadge confidence={post.confidence} />
+      </div>
+
+      {/* Quality detail */}
+      {post.quality && (
+        <div className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded px-2.5 py-1.5">
+          <span className="font-medium text-zinc-300">{post.quality.score}/100 · {post.quality.label}</span>
+          {" — "}{post.quality.useReason}
+          {post.quality.useRecommendation !== "Use" && (
+            <span className={`ml-1 font-medium ${post.quality.useRecommendation === "Do not use" ? "text-red-400" : "text-amber-400"}`}>
+              · {post.quality.useRecommendation}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Fallback warning */}
+      {post.fallbackWarning && (
+        <div className="flex items-start gap-1.5 text-[10px] text-amber-400 bg-amber-950/20 border border-amber-800/30 rounded px-2 py-1.5">
+          <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+          <span>{post.fallbackWarning}</span>
+        </div>
+      )}
+
+      {/* Hook options */}
+      {post.hookOptions && post.hookOptions.length > 0 && (
+        <div className="space-y-1">
+          <span className="text-[10px] text-zinc-500 font-medium">Hook options</span>
+          <div className="space-y-1">
+            {post.hookOptions.map((h, i) => (
+              <div key={i} className="flex items-start gap-1.5 group">
+                <span className="text-[10px] text-zinc-600 shrink-0 mt-0.5 w-3">{i + 1}.</span>
+                <span className="text-[10px] text-zinc-400 flex-1">{h}</span>
+                <button
+                  onClick={() => onCopy(cid(`hook-${i}`), h)}
+                  className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-zinc-600 hover:text-zinc-300 transition-all"
+                >
+                  {copiedId === cid(`hook-${i}`) ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Stats shown */}
+      {post.statsShown.length > 0 && (
+        <div className="space-y-1">
+          <span className="text-[10px] text-zinc-500 font-medium">Stats shown</span>
+          <ul className="space-y-0.5">
+            {post.statsShown.map((s, i) => (
+              <li key={i} className="flex items-start gap-1.5 text-[10px] text-zinc-300">
+                <span className="text-zinc-600 shrink-0 mt-0.5">•</span>
+                <span>{s}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Platform captions */}
+      {post.platformCaptions && (
+        <div className="space-y-2">
+          <span className="text-[10px] text-zinc-500 font-medium">Platform captions</span>
+          {(["tiktok", "instagram", "facebook"] as const).map(platform => {
+            const caption = post.platformCaptions?.[platform];
+            if (!caption) return null;
+            return (
+              <div key={platform} className="bg-zinc-800/30 rounded p-2 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-semibold uppercase tracking-wide text-zinc-500">{platform}</span>
+                  <button
+                    onClick={() => onCopy(cid(`cap-${platform}`), caption)}
+                    className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+                  >
+                    {copiedId === cid(`cap-${platform}`) ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+                    Copy
+                  </button>
+                </div>
+                <p className="text-[10px] text-zinc-400 whitespace-pre-wrap">{caption}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Voiceover */}
+      {post.voiceoverScript && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-500 font-medium">Voiceover script</span>
+            <button
+              onClick={() => onCopy(cid("vo"), post.voiceoverScript!)}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+            >
+              {copiedId === cid("vo") ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+              Copy
+            </button>
+          </div>
+          <p className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded px-2 py-1.5 whitespace-pre-wrap">{post.voiceoverScript}</p>
+        </div>
+      )}
+
+      {/* Carousel slides */}
+      {post.carouselSlides && post.carouselSlides.length > 0 && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-500 font-medium">Carousel slides</span>
+            <button
+              onClick={() => onCopy(cid("slides"), post.carouselSlides!.join("\n\n"))}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+            >
+              {copiedId === cid("slides") ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+              Copy all
+            </button>
+          </div>
+          <div className="space-y-1">
+            {post.carouselSlides.map((slide, i) => (
+              <div key={i} className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded px-2 py-1">
+                <span className="text-zinc-600 mr-1.5">{i + 1}.</span>{slide}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* On-screen text */}
+      {post.onScreenText && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-500 font-medium">On-screen text</span>
+            <button
+              onClick={() => onCopy(cid("onscreen"), post.onScreenText)}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+            >
+              {copiedId === cid("onscreen") ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+              Copy
+            </button>
+          </div>
+          <p className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded px-2 py-1.5 whitespace-pre-wrap font-mono">{post.onScreenText}</p>
+        </div>
+      )}
+
+      {/* AI image prompt */}
+      {post.aiImagePrompt && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-500 font-medium">AI image prompt</span>
+            <button
+              onClick={() => onCopy(cid("img"), post.aiImagePrompt!)}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+            >
+              {copiedId === cid("img") ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+              Copy
+            </button>
+          </div>
+          <p className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded px-2 py-1.5 whitespace-pre-wrap">{post.aiImagePrompt}</p>
+        </div>
+      )}
+
+      {/* Suggested visual */}
+      {post.suggestedVisual && (
+        <div className="text-[10px] text-zinc-500">
+          <span className="font-medium text-zinc-400">Visual: </span>{post.suggestedVisual}
+        </div>
+      )}
+
+      {/* Hashtags */}
+      {post.hashtags.length > 0 && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button
+            onClick={() => onCopy(cid("tags"), post.hashtags.join(" "))}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors shrink-0"
+          >
+            {copiedId === cid("tags") ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+            Copy tags
+          </button>
+          <span className="text-[10px] text-zinc-600">{post.hashtags.join(" ")}</span>
+        </div>
+      )}
+
+      {/* Copy full post */}
+      <div className="pt-1">
+        <button
+          onClick={() => onCopy(cid("full"), buildFullPostText(post))}
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border transition-colors ${
+            copiedId === cid("full")
+              ? "bg-emerald-900/50 text-emerald-300 border-emerald-700/40"
+              : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:border-zinc-500 hover:text-zinc-100"
+          }`}
+        >
+          {copiedId === cid("full") ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          Copy full post
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function PostKitSection({
+  pack,
+  copiedId,
+  onCopy,
+}: {
+  pack: GamePickMarketingPack;
+  copiedId: string | null;
+  onCopy: (id: string, text: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [activeKit, setActiveKit] = useState(0);
+
+  const kitLabels: Record<string, string> = {
+    disposals: "Disposals",
+    goals: "Goals",
+    combined: "Combined",
+  };
+
+  return (
+    <div className="mt-2 border-t border-zinc-800/60 pt-2">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between gap-2 py-1 hover:opacity-80 transition-opacity"
+      >
+        <div className="flex items-center gap-2">
+          <Zap className="h-3 w-3 text-amber-400 shrink-0" />
+          <span className="text-[11px] font-semibold text-zinc-300">Post Kit</span>
+          {pack.kits.length > 0 ? (
+            <span className="text-[9px] bg-amber-900/40 text-amber-400 border border-amber-700/30 px-1.5 rounded">
+              {pack.kits.length} kit{pack.kits.length !== 1 ? "s" : ""}
+            </span>
+          ) : (
+            <span className="text-[9px] text-zinc-600">No kits</span>
+          )}
+          <span className="text-[10px] text-zinc-500 hidden sm:inline truncate">{pack.bestAngle}</span>
+        </div>
+        {open ? <ChevronUp className="h-3 w-3 text-zinc-600 shrink-0" /> : <ChevronDown className="h-3 w-3 text-zinc-600 shrink-0" />}
+      </button>
+
+      {open && (
+        <div className="mt-2 space-y-2">
+          {/* Best angle info */}
+          <div className="bg-zinc-800/20 rounded px-2.5 py-2 space-y-1">
+            <div className="text-[10px] text-zinc-300 font-medium">{pack.bestAngle}</div>
+            <div className="text-[10px] text-zinc-500">{pack.bestAngleReason}</div>
+          </div>
+
+          {pack.kits.length === 0 ? (
+            <div className="text-[10px] text-zinc-600 px-1">{pack.skipReason}</div>
+          ) : (
+            <>
+              {/* Kit tabs */}
+              {pack.kits.length > 1 && (
+                <div className="flex gap-1">
+                  {pack.kits.map((kit, i) => (
+                    <button
+                      key={kit.kitType}
+                      onClick={() => setActiveKit(i)}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+                        activeKit === i
+                          ? "bg-zinc-200 text-zinc-900 border-zinc-300"
+                          : "bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-zinc-300"
+                      }`}
+                    >
+                      {kitLabels[kit.kitType] ?? kit.kitType}
+                      <span className="ml-1 text-[9px] opacity-60">{kit.pickCount}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Active kit */}
+              {pack.kits[activeKit] && (
+                <PostKitTab
+                  kit={pack.kits[activeKit]}
+                  copiedId={copiedId}
+                  onCopy={onCopy}
+                />
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GamePickCard({
   game,
+  pack,
   lens,
   tier,
   search,
@@ -2378,6 +2688,7 @@ function GamePickCard({
   onCopy,
 }: {
   game: GamePick;
+  pack: GamePickMarketingPack | null;
   lens: GamePickLens;
   tier: ConsistencyTier;
   search: string;
@@ -2445,6 +2756,13 @@ function GamePickCard({
               </button>
             </>
           )}
+          {pack && (
+            <PostKitSection
+              pack={pack}
+              copiedId={copiedId}
+              onCopy={onCopy}
+            />
+          )}
         </div>
       )}
     </div>
@@ -2453,6 +2771,7 @@ function GamePickCard({
 
 function GamePicksTabContent({
   gamePicks,
+  marketingPacks,
   lens,
   onLensChange,
   tier,
@@ -2464,6 +2783,7 @@ function GamePicksTabContent({
   roundLabel,
 }: {
   gamePicks: GamePick[];
+  marketingPacks: GamePickMarketingPack[];
   lens: GamePickLens;
   onLensChange: (l: GamePickLens) => void;
   tier: ConsistencyTier;
@@ -2563,6 +2883,7 @@ function GamePicksTabContent({
             <GamePickCard
               key={game.match_id}
               game={game}
+              pack={marketingPacks.find(p => p.game.match_id === game.match_id) ?? null}
               lens={lens}
               tier={tier}
               search={search}
@@ -2601,6 +2922,11 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
       data.unavailablePlayerIds ?? new Set(),
     ),
     [data.matches, data.disposalPlayers, data.goalPlayers, data.unavailablePlayerIds],
+  );
+
+  const gamePickMarketingPacks = useMemo(
+    () => buildAllGamePickMarketingPacks(gamePicks, data.matches),
+    [gamePicks, data.matches],
   );
 
   const handleCopyField = useCallback((id: string, text: string) => {
@@ -2836,6 +3162,7 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
       {isGamePicksTab && (
         <GamePicksTabContent
           gamePicks={gamePicks}
+          marketingPacks={gamePickMarketingPacks}
           lens={gpLens}
           onLensChange={setGpLens}
           tier={gpTier}
