@@ -355,10 +355,18 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   const poolElite = [...pool30, ...pool25]
     .sort((a, b) => getL5Avg(b) - getL5Avg(a));
 
-  // Legacy compat: top25/top20/top15 now draw from segmented pools
+  // Legacy compat: top25/top20/top15 draw from strictly segmented pools.
+  // Hard rule: elite players (pool30/pool25) must NOT bleed into lower-tier posts.
   const top25 = (pool25.length >= 3 ? pool25 : poolElite).slice(0, 5);
-  const top20 = (pool20.length >= 2 ? pool20 : pool25.slice(0, 5)).slice(0, 5);
-  const top15 = (pool15.length >= 2 ? pool15 : pool20.slice(0, 5)).slice(0, 5);
+  // top20: ONLY from pool20 — never from pool25/pool30
+  const top20 = pool20.slice(0, 5);
+  // top15: ONLY from pool15 — fall back to pool20 only (not higher tiers)
+  const top15 = (pool15.length >= 2 ? pool15 : pool20).slice(0, 5);
+
+  // ── Weekly fingerprint — deduplicate cross-game 30+ disposal posts ─────────
+  // Allow only ONE global cross-game 30+ disposal post per week.
+  // Same-day (game-specific) 30+ posts are exempt from this limit.
+  let globalElitePostUsed = false;
 
   // ── Threshold-segmented goal pools ───────────────────────────────────────
   // 3+ pool: bestGoalThreshold already enforces hr≥0.40+sample≥5+L5≥2.0
@@ -464,21 +472,23 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const hook = hasMover
       ? `Players trending well above their season average. Form is real — the numbers back it up.`
       : `Recent disposal form leaders heading into the next round.`;
+    const hasMon2Completed = completedMatches.length > 0;
     schedule.push(makePost({
       day: "Mon", postNumber: 2,
       type: "Image",
-      category: "Form Mover", intent: "recap",
+      // Only use "recap" when actual completed game data exists
+      category: "Form Mover", intent: hasMon2Completed ? "recap" : "cross_game_preview",
       statLens: "disposals", confidence: hasMover ? "High" : "Medium",
-      title: `Positive form movers — ${rl}`,
+      title: hasMon2Completed ? `Positive form movers — ${rl} recap` : `Positive form movers — ${rl}`,
       content: hook,
       statsShown: bullets,
       onScreenText: "Form movers",
       caption: buildCaption(hook, bullets, 1),
       hashtags: HASHTAG_SETS["Form Mover"],
-      suggestedVisual: "Up-arrow graphic with player name, L5 avg, and delta vs season avg",
-      imageDescription: `Static image. Up-arrow visual. Each row: player name, team, L5 avg, and delta vs season avg (e.g. +4.2). ${pool.length} players. Dark background, green accent arrows for positive deltas.`,
-      dataScope: `${rl} disposal player pool`,
-      targetGame: null, targetGameStatus: "any",
+      suggestedVisual: `Up-arrow graphic with player name, L5 avg, and delta vs season avg`,
+      imageDescription: `Static image. Up-arrow visual. Each row: player name, team, L5 avg, and delta vs season avg (e.g. +4.2). ${pool.length} player${pool.length !== 1 ? "s" : ""}. Dark background, green accent arrows for positive deltas.`,
+      dataScope: hasMon2Completed ? "Completed weekend games" : `${rl} disposal player pool`,
+      targetGame: null, targetGameStatus: hasMon2Completed ? "completed" : "any",
       fallbackWarning: hasMover ? null : "Fallback: insufficient form mover candidates",
       players: pool,
       thresholdLabel: "Form Risers",
@@ -492,22 +502,26 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const bullets = hasTeams
       ? teams.map(t => `${t.team_name ?? ""} — L5 avg ${getTeamL5Avg(t).toFixed(1)} pts (season avg ${getTeamSeasonAvg(t).toFixed(1)})`)
       : ["Team scoring data not available for this round."];
-    const hook = `Team scoring trends from ${rl}. Who's running hot on the scoreboard?`;
+    const hasMon3Completed = completedMatches.length > 0;
+    const hook = hasMon3Completed
+      ? `Team scoring from ${rl}. Who ran hot on the scoreboard?`
+      : `Team scoring trends heading into ${rl}. Who's running hot?`;
     schedule.push(makePost({
       day: "Mon", postNumber: 3,
       type: "Carousel",
-      category: "Team Total", intent: "recap",
+      // Only use "recap" when actual completed game data exists
+      category: "Team Total", intent: hasMon3Completed ? "recap" : "cross_game_preview",
       statLens: "team-total", confidence: hasTeams ? "Medium" : "Fallback",
-      title: `${rl} team scoring recap`,
+      title: hasMon3Completed ? `${rl} team scoring recap` : `${rl} team scoring trends`,
       content: hook,
       statsShown: bullets,
       onScreenText: "Team scoring trends",
       caption: buildCaption(hook, bullets, 2),
       hashtags: HASHTAG_SETS["Team Total"],
       suggestedVisual: "Bar chart of top-scoring teams, L5 vs season average",
-      imageDescription: `Carousel. Each slide shows one team: name, logo placeholder, L5 average score, and season average score side by side. ${teams.length} teams. Clean layout, neutral dark background.`,
-      dataScope: `${rl} team score rows`,
-      targetGame: null, targetGameStatus: "any",
+      imageDescription: `Carousel. Each slide shows one team: name, logo placeholder, L5 average score, and season average score side by side. ${teams.length} team${teams.length !== 1 ? "s" : ""}. Clean layout, neutral dark background.`,
+      dataScope: hasMon3Completed ? "Completed weekend games" : `${rl} team score rows`,
+      targetGame: null, targetGameStatus: hasMon3Completed ? "completed" : "any",
       fallbackWarning: hasTeams ? null : "Fallback: insufficient team score data",
       players: [], teams: teams.map(t => t.team_name ?? "").filter(Boolean),
       thresholdLabel: "Team Score",
@@ -517,7 +531,8 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   // ── TUESDAY ───────────────────────────────────────────────────────────────
 
   // Post 1 — Top 5 for 25+/30+ disposals (Image)
-  // Uses segmented pool: if pool30 is large enough, promote to 30+ post
+  // Uses segmented pool: if pool30 is large enough, promote to 30+ post.
+  // This is the canonical global elite disposal post — marks fingerprint as used.
   {
     let tue1Players: StatBoardPlayer[];
     let tue1Threshold: string;
@@ -532,6 +547,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       tue1ThrNum = 30;
       tue1Title = `Top 5 for 30+ disposals — ${rl}`;
       tue1Hook = `Elite disposal volume. Who's been clearing 30+ consistently heading into ${rl}?`;
+      globalElitePostUsed = true; // mark fingerprint — only one global 30+ cross-game post per week
     } else if (pool25.length >= 3) {
       tue1Players = pool25.slice(0, 5);
       tue1Threshold = "25+ Disposals";
@@ -766,12 +782,33 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   // ── THURSDAY ──────────────────────────────────────────────────────────────
 
   // Post 1 — Round stat watchlist (Carousel)
+  // Uses threshold-correct pool — NOT dispPool which includes all tiers.
+  // If global elite fingerprint already used (Tue Post 1 was 30+), downgrade to 25+ watchlist.
   {
-    // Use the best-populated threshold for the watchlist reference stat
-    const thu1ThrNum = pool30.length >= 3 ? 30 : pool25.length >= 3 ? 25 : 20;
-    const thu1ThrLabel = `${thu1ThrNum}+ Disposals`;
-    const players = dispPool.slice(0, 6);
-    const bullets = players.map(p =>
+    let thu1ThrNum: number;
+    let thu1Players: StatBoardPlayer[];
+    let thu1ThrLabel: string;
+
+    if (!globalElitePostUsed && pool30.length >= 3) {
+      thu1ThrNum = 30;
+      thu1Players = pool30.slice(0, 6);
+      thu1ThrLabel = "30+ Disposals";
+      globalElitePostUsed = true;
+    } else if (pool25.length >= 3) {
+      thu1ThrNum = 25;
+      thu1Players = pool25.slice(0, 6);
+      thu1ThrLabel = "25+ Disposals";
+    } else if (poolElite.length >= 3) {
+      thu1ThrNum = 25;
+      thu1Players = poolElite.slice(0, 6);
+      thu1ThrLabel = "25–30+ Disposals";
+    } else {
+      thu1ThrNum = 20;
+      thu1Players = pool20.slice(0, 6);
+      thu1ThrLabel = "20+ Disposals";
+    }
+
+    const bullets = thu1Players.map(p =>
       `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, thu1ThrNum))} at ${thu1ThrNum}+, season avg ${getSeasonAvg(p).toFixed(1)}`
     );
     const hook = `${rl} stat watchlist. These names have the numbers. See the data, make your own call.`;
@@ -779,38 +816,56 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       day: "Thu", postNumber: 1,
       type: "Carousel",
       category: "Round Preview", intent: "cross_game_preview",
-      statLens: "disposals", confidence: players.length >= 3 ? "High" : "Medium",
+      statLens: "disposals", confidence: thu1Players.length >= 3 ? "High" : "Medium",
       title: `${rl} stat watchlist`,
       content: hook,
       statsShown: bullets,
       onScreenText: "Stat watchlist",
       caption: buildCaption(hook, bullets, 3),
       hashtags: HASHTAG_SETS["Round Preview"],
-      suggestedVisual: `6-player watchlist card — name, team, L5 avg, ${thu1ThrNum}+ hit rate`,
-      imageDescription: `Carousel. 6-player watchlist. Each slide: player name, team, L5 average, ${thu1ThrNum}+ hit rate, season average. Headline: "${rl} Stat Watchlist". Dark background, clean stat rows.`,
-      dataScope: `${rl} cross-game disposal pool`,
+      suggestedVisual: `${thu1Players.length}-player watchlist card — name, team, L5 avg, ${thu1ThrNum}+ hit rate`,
+      imageDescription: `Carousel. ${thu1Players.length}-player watchlist. Each slide: player name, team, L5 average, ${thu1ThrNum}+ hit rate, season average. Headline: "${rl} Stat Watchlist". Dark background, clean stat rows.`,
+      dataScope: `${rl} cross-game disposal pool (${thu1ThrLabel} tier)`,
       targetGame: null, targetGameStatus: "any",
-      fallbackWarning: null,
-      players, thresholdLabel: thu1ThrLabel,
+      fallbackWarning: globalElitePostUsed && pool30.length >= 3 && thu1ThrNum < 30 ? "Elite 30+ post already scheduled this week — using 25+ watchlist instead." : null,
+      players: thu1Players, thresholdLabel: thu1ThrLabel,
     }));
   }
 
   // Post 2 — Thursday game quick stats (Image) — only upcoming Thu games
+  // Game-day posts use threshold-segmented pools for players in tonight's games,
+  // and enforce ≥70% hit rate at the labelled threshold.
   {
     const thuMatches = upcomingMatches.filter(m => {
       const d = new Date(m.game_date);
       return d.getDay() === 4; // Thursday
     });
     const hasThuGame = thuMatches.length > 0;
-    const gamePlayers = hasThuGame
-      ? dispPool.filter(p => thuMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).slice(0, 5)
-      : dispPool.slice(0, 5);
+
+    // Determine threshold based on pool-segmented players ONLY in tonight's games
     const thu2ThrNum = hasThuGame
       ? (pool30.filter(p => thuMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 30
         : pool25.filter(p => thuMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 25 : 20)
       : (pool30.length >= 3 ? 30 : pool25.length >= 3 ? 25 : 20);
+
+    // For game-day posts: pull from the threshold-correct pool filtered by tonight's teams,
+    // and require ≥70% hit rate at the labelled threshold.
+    const thu2Pool = thu2ThrNum === 30 ? pool30 : thu2ThrNum === 25 ? pool25 : pool20;
+    const gamePlayers = hasThuGame
+      ? thu2Pool
+          .filter(p => thuMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)
+            && getHitRate(p, thu2ThrNum) >= 0.70)
+          .slice(0, 5)
+      : thu2Pool.filter(p => getHitRate(p, thu2ThrNum) >= 0.70).slice(0, 5);
+
+    // Fallback: if insufficient qualifying players, loosen to available from correct pool
+    const finalGamePlayers = gamePlayers.length >= 2 ? gamePlayers
+      : (hasThuGame
+          ? thu2Pool.filter(p => thuMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).slice(0, 5)
+          : thu2Pool.slice(0, 5));
+
     const thu2ThrLabel = `${thu2ThrNum}+ Disposals`;
-    const bullets = gamePlayers.map(p =>
+    const bullets = finalGamePlayers.map(p =>
       `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, thu2ThrNum))} at ${thu2ThrNum}+`
     );
     const gameLabel = hasThuGame ? thuMatches.map(m => `${m.home_team_name} v ${m.away_team_name}`).join(", ") : null;
@@ -821,7 +876,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       day: "Thu", postNumber: 2,
       type: "Image",
       category: "Round Preview", intent: hasThuGame ? "same_day_preview" : "cross_game_preview",
-      statLens: "disposals", confidence: gamePlayers.length >= 3 ? "High" : "Medium",
+      statLens: "disposals", confidence: finalGamePlayers.length >= 3 ? "High" : "Medium",
       title: hasThuGame ? `Thursday game quick stats` : `${rl} mid-week stats`,
       content: hook,
       statsShown: bullets,
@@ -830,13 +885,13 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       hashtags: hasThuGame ? gamedayHashtags("Thu") : HASHTAG_SETS["Round Preview"],
       suggestedVisual: hasThuGame ? "Game-specific stat card with team colours" : "Generic stat card",
       imageDescription: hasThuGame
-        ? `Static image. Game-specific stat card for ${gameLabel ?? "Thursday game"}. ${gamePlayers.length} players: name, team, L5 average, ${thu2ThrNum}+ hit rate. Team colours as accents. Dark background.`
-        : `Static image. Cross-round disposal stat update. ${gamePlayers.length} players: name, team, L5 average. Clean layout, neutral dark background.`,
+        ? `Static image. Game-specific stat card for ${gameLabel ?? "Thursday game"}. ${finalGamePlayers.length} player${finalGamePlayers.length !== 1 ? "s" : ""}: name, team, L5 average, ${thu2ThrNum}+ hit rate. Team colours as accents. Dark background.`
+        : `Static image. Cross-round disposal stat update. ${finalGamePlayers.length} player${finalGamePlayers.length !== 1 ? "s" : ""}: name, team, L5 average. Clean layout, neutral dark background.`,
       dataScope: hasThuGame ? `Thursday upcoming games only` : `${rl} cross-game pool`,
       targetGame: gameLabel,
       targetGameStatus: hasThuGame ? "upcoming" : "any",
       fallbackWarning: hasThuGame ? null : "Fallback: no Thursday upcoming game found — using cross-game stats",
-      players: gamePlayers, thresholdLabel: thu2ThrLabel,
+      players: finalGamePlayers, thresholdLabel: thu2ThrLabel,
     }));
   }
 
@@ -885,17 +940,32 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   // ── FRIDAY ────────────────────────────────────────────────────────────────
 
   // Post 1 — Friday night stat watch (Carousel) — only upcoming Fri games
+  // Uses threshold-correct pool filtered to tonight's teams, ≥70% hit rate enforced.
   {
     const friMatches = upcomingMatches.filter(m => new Date(m.game_date).getDay() === 5);
     const hasFriGame = friMatches.length > 0;
-    const gamePlayers = hasFriGame
-      ? dispPool.filter(p => friMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).slice(0, 5)
-      : dispPool.slice(0, 5);
     const fallback = !hasFriGame;
+
     const fri1ThrNum = hasFriGame
       ? (pool30.filter(p => friMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 30
         : pool25.filter(p => friMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 25 : 20)
       : (pool30.length >= 3 ? 30 : pool25.length >= 3 ? 25 : 20);
+    const fri1Pool = fri1ThrNum === 30 ? pool30 : fri1ThrNum === 25 ? pool25 : pool20;
+
+    let gamePlayers = hasFriGame
+      ? fri1Pool
+          .filter(p => friMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)
+            && getHitRate(p, fri1ThrNum) >= 0.70)
+          .slice(0, 5)
+      : fri1Pool.filter(p => getHitRate(p, fri1ThrNum) >= 0.70).slice(0, 5);
+
+    // Fallback to correct pool without hit-rate guard if insufficient
+    if (gamePlayers.length < 2) {
+      gamePlayers = hasFriGame
+        ? fri1Pool.filter(p => friMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).slice(0, 5)
+        : fri1Pool.slice(0, 5);
+    }
+
     const fri1ThrLabel = `${fri1ThrNum}+ Disposals`;
     const bullets = gamePlayers.map(p =>
       `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, fri1ThrNum))} at ${fri1ThrNum}+`
@@ -915,10 +985,10 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       onScreenText: hasFriGame ? "Friday night form" : "Weekend preview",
       caption: buildCaption(hook, bullets, 0),
       hashtags: hasFriGame ? gamedayHashtags("Fri") : HASHTAG_SETS["Round Preview"],
-      suggestedVisual: hasFriGame ? "Game-specific carousel — player form for tonight's game" : "Weekend preview carousel",
+      suggestedVisual: hasFriGame ? `Game-specific carousel — ${fri1ThrNum}+ player form for tonight's game` : "Weekend preview carousel",
       imageDescription: hasFriGame
-        ? `Carousel. Game-specific. ${gameLabel ?? "Friday game"}. ${gamePlayers.length} players: name, team, L5 average, ${fri1ThrNum}+ hit rate. Team colours as accents. Each player gets one slide. Dark background.`
-        : `Carousel. Weekend preview. ${gamePlayers.length} players: name, team, L5 average. Clean layout, dark background.`,
+        ? `Carousel. Game-specific. ${gameLabel ?? "Friday game"}. ${gamePlayers.length} player${gamePlayers.length !== 1 ? "s" : ""}: name, team, L5 average, ${fri1ThrNum}+ hit rate. Team colours as accents. Each player gets one slide. Dark background.`
+        : `Carousel. Weekend preview. ${gamePlayers.length} player${gamePlayers.length !== 1 ? "s" : ""}: name, team, L5 average. Clean layout, dark background.`,
       dataScope: hasFriGame ? "Friday upcoming games only" : `${rl} cross-game pool`,
       targetGame: gameLabel, targetGameStatus: hasFriGame ? "upcoming" : "any",
       fallbackWarning: fallback ? "Fallback: no Friday upcoming game found" : null,
@@ -927,15 +997,35 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   }
 
   // Post 2 — Weekend cross-game trends (Image)
+  // Respects fingerprint: if global elite post already scheduled this week, use 25+ instead of 30+.
+  // Players drawn from threshold-correct pool only (not full dispPool).
   {
     const weMatches = upcomingMatches.filter(m => {
       const d = new Date(m.game_date).getDay();
       return d === 6 || d === 0; // Sat/Sun
     });
     const hasWeekend = weMatches.length > 0;
-    const fri2ThrNum = pool30.length >= 3 ? 30 : pool25.length >= 3 ? 25 : 20;
+
+    // Respect fingerprint — if 30+ global post already used, offer 25+ instead
+    let fri2ThrNum: number;
+    let fri2Pool: StatBoardPlayer[];
+    if (!globalElitePostUsed && pool30.length >= 3) {
+      fri2ThrNum = 30;
+      fri2Pool = pool30;
+      globalElitePostUsed = true;
+    } else if (pool25.length >= 3) {
+      fri2ThrNum = 25;
+      fri2Pool = pool25;
+    } else if (poolElite.length >= 3) {
+      fri2ThrNum = 25;
+      fri2Pool = poolElite;
+    } else {
+      fri2ThrNum = 20;
+      fri2Pool = pool20;
+    }
+
     const fri2ThrLabel = `${fri2ThrNum}+ Disposals`;
-    const players = dispPool.slice(0, 5);
+    const players = fri2Pool.slice(0, 5);
     const bullets = players.map(p =>
       `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, fri2ThrNum))} at ${fri2ThrNum}+`
     );
@@ -953,8 +1043,8 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       onScreenText: "Weekend trends",
       caption: buildCaption(hook, bullets, 1),
       hashtags: HASHTAG_SETS["Disposal Trend"],
-      suggestedVisual: `5-player stat grid — weekend matchup context, ${fri2ThrNum}+ threshold`,
-      imageDescription: `Static image. 5-player grid showing weekend form leaders. Each row: player name, team, L5 average, ${fri2ThrNum}+ hit rate. Headline: "Weekend Disposal Trends". Dark background, clean layout.`,
+      suggestedVisual: `${players.length}-player stat grid — weekend matchup context, ${fri2ThrNum}+ threshold`,
+      imageDescription: `Static image. ${players.length}-player grid showing weekend form leaders. Each row: player name, team, L5 average, ${fri2ThrNum}+ hit rate. Headline: "Weekend Disposal Trends". Dark background, clean layout.`,
       dataScope: hasWeekend ? "Saturday/Sunday upcoming games" : `${rl} cross-game pool`,
       targetGame: null, targetGameStatus: hasWeekend ? "upcoming" : "any",
       fallbackWarning: hasWeekend ? null : "Fallback: no Sat/Sun upcoming games found",
@@ -1003,16 +1093,31 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   // ── SATURDAY ─────────────────────────────────────────────────────────────
 
   // Post 1 — Saturday AFL stat watch (Carousel)
+  // Uses threshold-correct pool filtered to today's teams, ≥70% hit rate enforced.
   {
     const satMatches = upcomingMatches.filter(m => new Date(m.game_date).getDay() === 6);
     const hasSat = satMatches.length > 0;
-    const gamePlayers = hasSat
-      ? dispPool.filter(p => satMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).slice(0, 6)
-      : dispPool.slice(0, 6);
+
     const sat1ThrNum = hasSat
       ? (pool30.filter(p => satMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 30
         : pool25.filter(p => satMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 25 : 20)
       : (pool30.length >= 3 ? 30 : pool25.length >= 3 ? 25 : 20);
+    const sat1Pool = sat1ThrNum === 30 ? pool30 : sat1ThrNum === 25 ? pool25 : pool20;
+
+    let gamePlayers = hasSat
+      ? sat1Pool
+          .filter(p => satMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)
+            && getHitRate(p, sat1ThrNum) >= 0.70)
+          .slice(0, 6)
+      : sat1Pool.filter(p => getHitRate(p, sat1ThrNum) >= 0.70).slice(0, 6);
+
+    // Fallback: loosen to correct pool without hit-rate guard if insufficient
+    if (gamePlayers.length < 2) {
+      gamePlayers = hasSat
+        ? sat1Pool.filter(p => satMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).slice(0, 6)
+        : sat1Pool.slice(0, 6);
+    }
+
     const sat1ThrLabel = `${sat1ThrNum}+ Disposals`;
     const bullets = gamePlayers.map(p =>
       `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, sat1ThrNum))} at ${sat1ThrNum}+`
@@ -1031,10 +1136,10 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       onScreenText: "Saturday stat watch",
       caption: buildCaption(hook, bullets, 3),
       hashtags: gamedayHashtags("Sat"),
-      suggestedVisual: hasSat ? "Multi-game Saturday carousel — player form per game" : "Game day stat carousel",
+      suggestedVisual: hasSat ? `Multi-game Saturday carousel — ${sat1ThrNum}+ player form per game` : "Game day stat carousel",
       imageDescription: hasSat
-        ? `Carousel. Saturday game day. ${gamePlayers.length} player slides. Each: player name, team, L5 average, ${sat1ThrNum}+ hit rate. Grouped by game where possible. Team colours as accents. Headline: "Saturday AFL Stat Watch".`
-        : `Carousel. Game day stat overview. ${gamePlayers.length} players: name, team, L5 average. Dark background.`,
+        ? `Carousel. Saturday game day. ${gamePlayers.length} player slide${gamePlayers.length !== 1 ? "s" : ""}. Each: player name, team, L5 average, ${sat1ThrNum}+ hit rate. Grouped by game where possible. Team colours as accents. Headline: "Saturday AFL Stat Watch".`
+        : `Carousel. Game day stat overview. ${gamePlayers.length} player${gamePlayers.length !== 1 ? "s" : ""}: name, team, L5 average. Dark background.`,
       dataScope: hasSat ? "Saturday upcoming games only" : `${rl} cross-game pool`,
       targetGame: hasSat ? satMatches.map(m => `${m.home_team_name} v ${m.away_team_name}`).join(", ") : null,
       targetGameStatus: hasSat ? "upcoming" : "any",
@@ -1047,13 +1152,19 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   {
     const satMatches = upcomingMatches.filter(m => new Date(m.game_date).getDay() === 6);
     const hasSat = satMatches.length > 0;
-    const satPlayerIds = new Set(
+    const satTeamIds2 = new Set(
       hasSat ? satMatches.flatMap(m => [m.home_team_id, m.away_team_id]) : []
     );
-    const satDispPool = hasSat
-      ? dispPool.filter(p => satPlayerIds.has(p.team_id))
-      : dispPool;
-    const players = selectDisposalPlayers(satDispPool, 25, new Set(), 0.5, 5);
+    // Use pool25 (strict tier) filtered to Saturday teams, ≥70% hit rate
+    let players = pool25
+      .filter(p => (hasSat ? satTeamIds2.has(p.team_id) : true) && getHitRate(p, 25) >= 0.70)
+      .slice(0, 5);
+    // Fallback: loosen hit-rate guard if insufficient
+    if (players.length < 2) {
+      players = pool25
+        .filter(p => hasSat ? satTeamIds2.has(p.team_id) : true)
+        .slice(0, 5);
+    }
     const isFallback = players.length < 3;
     const bullets = players.map(p =>
       `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 25))} at 25+, L5 avg ${getL5Avg(p).toFixed(1)}`
@@ -1070,8 +1181,8 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       onScreenText: "25+ today",
       caption: buildCaption(hook, bullets, 4),
       hashtags: HASHTAG_SETS["Disposal Trend"],
-      suggestedVisual: "5-player grid — Saturday game context, 25+ hit rates",
-      imageDescription: `Static image. 5-player stat grid for Saturday games. Threshold: 25+ disposals. Each row: player name, team abbreviation, 25+ hit rate percentage, L5 average. Headline: "Top 5 for 25+ Today". Dark background, stat values highlighted. No betting language.`,
+      suggestedVisual: `${players.length}-player grid — Saturday game context, 25+ hit rates`,
+      imageDescription: `Static image. ${players.length}-player stat grid for Saturday games. Threshold: 25+ disposals. Each row: player name, team abbreviation, 25+ hit rate percentage, L5 average. Headline: "Top 5 for 25+ Today". Dark background, stat values highlighted. No betting language.`,
       dataScope: hasSat ? "Saturday upcoming games only" : `${rl} cross-game pool`,
       targetGame: null, targetGameStatus: hasSat ? "upcoming" : "any",
       fallbackWarning: isFallback ? "Fallback fill: not enough Saturday 25+ candidates" : null,
@@ -1128,15 +1239,28 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   {
     const sunMatches = upcomingMatches.filter(m => new Date(m.game_date).getDay() === 0);
     const hasSun = sunMatches.length > 0;
-    const gamePlayers = hasSun
-      ? dispPool.filter(p => sunMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).slice(0, 5)
-      : dispPool.slice(0, 5);
-    // Dynamic threshold based on who's playing on Sunday
+
+    // Determine threshold using pool-segmented players in Sunday's teams
     const sun1ThrNum = hasSun
       ? (pool30.filter(p => sunMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 30
         : pool25.filter(p => sunMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).length >= 2 ? 25 : 20)
       : (pool30.length >= 3 ? 30 : pool25.length >= 3 ? 25 : 20);
+    const sun1Pool = sun1ThrNum === 30 ? pool30 : sun1ThrNum === 25 ? pool25 : pool20;
     const sun1ThrLabel = `${sun1ThrNum}+ Disposals`;
+
+    // Pull from threshold-correct pool, ≥70% hit rate enforced
+    let gamePlayers = hasSun
+      ? sun1Pool
+          .filter(p => sunMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)
+            && getHitRate(p, sun1ThrNum) >= 0.70)
+          .slice(0, 5)
+      : sun1Pool.filter(p => getHitRate(p, sun1ThrNum) >= 0.70).slice(0, 5);
+    // Fallback: loosen to correct pool without hit-rate guard if insufficient
+    if (gamePlayers.length < 2) {
+      gamePlayers = hasSun
+        ? sun1Pool.filter(p => sunMatches.some(m => m.home_team_id === p.team_id || m.away_team_id === p.team_id)).slice(0, 5)
+        : sun1Pool.slice(0, 5);
+    }
     const bullets = gamePlayers.map(p =>
       `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, sun1ThrNum))} at ${sun1ThrNum}+`
     );
@@ -1313,7 +1437,9 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   {
     const satMatches = data.matches.filter(m => new Date(m.game_date).getDay() === 6);
     const satTeamIds = new Set(satMatches.flatMap(m => [m.home_team_id, m.away_team_id]));
-    const players = dispPool.filter(p => satTeamIds.has(p.team_id) && getHitRate(p, 25) >= 0.5).slice(0, 5);
+    // Use pool25 (strict tier), ≥70% hit rate — no cross-tier leakage
+    let players = pool25.filter(p => satTeamIds.has(p.team_id) && getHitRate(p, 25) >= 0.70).slice(0, 5);
+    if (players.length < 2) players = pool25.filter(p => satTeamIds.has(p.team_id)).slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 25))} at 25+, L5 avg ${getL5Avg(p).toFixed(1)}`);
       bkPost({ day: "Sat", type: "Image", category: "Disposal Trend", intent: "same_day_preview", statLens: "disposals", confidence: "High", title: "Top 5 for 25+ disposals — Saturday games", content: "Saturday 25+ disposal form. Stats laid out clearly.", statsShown: bullets, onScreenText: "Saturday 25+ form", caption: buildCaption("Saturday 25+ disposal form.", bullets, 1), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "Saturday game-specific 5-player grid", imageDescription: `Static image. 5-player stat grid for Saturday games. Threshold: 25+ disposals. Each row: player name, team, 25+ hit rate, L5 average. Headline: "Top 5 for 25+ Disposals — Saturday". Dark background. No betting language.`, dataScope: "Saturday games only", targetGame: null, targetGameStatus: "upcoming", fallbackWarning: null, players, thresholdLabel: "25+ Disposals", postNumber: 1 });
@@ -1324,7 +1450,9 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   {
     const sunMatches = data.matches.filter(m => new Date(m.game_date).getDay() === 0);
     const sunTeamIds = new Set(sunMatches.flatMap(m => [m.home_team_id, m.away_team_id]));
-    const players = dispPool.filter(p => sunTeamIds.has(p.team_id) && getHitRate(p, 20) >= 0.55).slice(0, 5);
+    // Use pool20 (strict tier) — no 25+/30+ players leaking in
+    let players = pool20.filter(p => sunTeamIds.has(p.team_id) && getHitRate(p, 20) >= 0.70).slice(0, 5);
+    if (players.length < 2) players = pool20.filter(p => sunTeamIds.has(p.team_id)).slice(0, 5);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 20))} at 20+, L5 avg ${getL5Avg(p).toFixed(1)}`);
       bkPost({ day: "Sun", type: "Image", category: "Disposal Trend", intent: "same_day_preview", statLens: "disposals", confidence: "High", title: "Top 5 for 20+ disposals — Sunday games", content: "Sunday disposal form. See the numbers, make your own call.", statsShown: bullets, onScreenText: "Sunday 20+ form", caption: buildCaption("Sunday disposal form.", bullets, 2), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "Sunday game-specific 5-player grid", imageDescription: `Static image. 5-player stat grid for Sunday games. Threshold: 20+ disposals. Each row: player name, team, 20+ hit rate, L5 average. Headline: "Sunday Disposal Form". Dark background. No betting language.`, dataScope: "Sunday games only", targetGame: null, targetGameStatus: "upcoming", fallbackWarning: null, players, thresholdLabel: "20+ Disposals", postNumber: 1 });
@@ -1382,7 +1510,8 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   {
     const satMatches = data.matches.filter(m => new Date(m.game_date).getDay() === 6);
     const teamIds = new Set(satMatches.flatMap(m => [m.home_team_id, m.away_team_id]));
-    const players = dispPool.filter(p => teamIds.has(p.team_id)).slice(0, 6);
+    // Use pool20 to match the 20+ label — no 25+/30+ tier leakage
+    const players = pool20.filter(p => teamIds.has(p.team_id)).slice(0, 6);
     if (players.length >= 2) {
       const bullets = players.map(p => `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, 20))} at 20+`);
       bkPost({ day: "Sat", type: "Carousel", category: "Disposal Trend", intent: "same_day_preview", statLens: "disposals", confidence: "High", title: "Saturday disposal trends", content: "Disposal form across Saturday's games. Stats laid out clearly.", statsShown: bullets, onScreenText: "Sat disposal form", caption: buildCaption("Disposal form across Saturday's games.", bullets, 2), hashtags: HASHTAG_SETS["Disposal Trend"], suggestedVisual: "Saturday game carousel — 6 players by disposal form", imageDescription: `Carousel. Saturday game day. 6 players, one per slide. Each: player name, team, L5 average, 20+ hit rate. Saturday games only. Team colours as accents. Headline: "Saturday Disposal Trends". No betting language.`, dataScope: "Saturday games only", targetGame: null, targetGameStatus: "upcoming", fallbackWarning: satMatches.length === 0 ? "Fallback: no Saturday games" : null, players, thresholdLabel: "20+ Disposals", postNumber: 1 });
