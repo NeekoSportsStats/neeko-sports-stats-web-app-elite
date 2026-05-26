@@ -68,77 +68,147 @@ export function checkCompliance(post: SocialPost): ComplianceResult {
 
 // ─── Post quality score ───────────────────────────────────────────────────────
 
+/**
+ * Scores a post 0–100 across multiple independent dimensions.
+ * A post cannot score 100 unless it genuinely excels on all axes.
+ *
+ * Breakdown (max points per dimension):
+ *   Data confidence     25 pts — High/Medium/Fallback
+ *   Player pool depth   20 pts — 5+ players with real data
+ *   Threshold realism   15 pts — using stats against appropriate threshold
+ *   Game timing/intent  15 pts — specific upcoming game is most valuable
+ *   Data freshness      15 pts — no fallback warning, completed data preferred
+ *   Format/compliance   10 pts — Carousel > video > image; no compliance flags
+ *
+ * This means a Fallback post with only 2 players and no upcoming game maxes at ~45.
+ */
 export function scorePost(post: SocialPost): PostQuality {
   let score = 0;
   const reasons: string[] = [];
+  const deductions: string[] = [];
 
-  // Confidence (30 pts)
-  if (post.confidence === "High")          { score += 30; reasons.push("high confidence data"); }
-  else if (post.confidence === "Medium")   { score += 18; reasons.push("medium confidence data"); }
-  else                                     { score += 5;  reasons.push("fallback data only"); }
-
-  // Player pool depth (20 pts)
-  const n = post.playerNames.length;
-  if (n >= 5)      { score += 20; reasons.push("5+ players"); }
-  else if (n >= 4) { score += 16; }
-  else if (n >= 3) { score += 12; reasons.push("only 3 players — consider expanding"); }
-  else if (n >= 2) { score += 7;  reasons.push("only 2 players — minimal pool"); }
-  else if (n === 1){ score += 3;  reasons.push("single-player post"); }
-  else             {              reasons.push("no named players"); }
-
-  // Game specificity (20 pts)
-  if (post.targetGameStatus === "upcoming" && post.targetGame) {
-    score += 20; reasons.push("specific upcoming game");
-  } else if (post.targetGameStatus === "completed") {
-    score += 15; reasons.push("completed game data");
-  } else if (post.targetGameStatus === "any") {
-    score += 8;
+  // ── Data confidence (25 pts) ────────────────────────────────────────────────
+  if (post.confidence === "High") {
+    score += 25;
+    reasons.push("high-confidence data");
+  } else if (post.confidence === "Medium") {
+    score += 14;
+    reasons.push("medium-confidence data");
+  } else {
+    score += 3;
+    deductions.push("fallback data — low confidence");
   }
 
-  // No fallback warning (15 pts)
+  // ── Player pool depth (20 pts) ──────────────────────────────────────────────
+  const n = post.playerNames.length;
+  if (n >= 5)       { score += 20; reasons.push("5+ named players"); }
+  else if (n >= 4)  { score += 15; }
+  else if (n === 3) { score += 10; deductions.push("only 3 players"); }
+  else if (n === 2) { score += 5;  deductions.push("only 2 players"); }
+  else if (n === 1) { score += 2;  deductions.push("single-player post"); }
+  else              {              deductions.push("no named players"); }
+
+  // ── Threshold realism (15 pts) ──────────────────────────────────────────────
+  // Check that the threshold label and stat lens are consistent and meaningful.
+  // Team-total, mixed and evergreen posts get partial credit.
+  if (post.statLens === "disposals" || post.statLens === "goals") {
+    const hasRealThreshold =
+      post.thresholdLabel.match(/\d+\+/) ||
+      post.thresholdLabel.includes("Form Risers");
+    if (hasRealThreshold) {
+      score += 15;
+      reasons.push("real threshold stat line");
+    } else {
+      score += 7;
+    }
+  } else if (post.statLens === "team-total" || post.statLens === "tackles") {
+    score += 10;
+    reasons.push("team/tackle stat line");
+  } else {
+    score += 5;
+  }
+
+  // ── Game timing / intent (15 pts) ───────────────────────────────────────────
+  if (post.intent === "pre_game" && post.targetGame) {
+    score += 15; reasons.push("pre-game with specific match");
+  } else if (post.intent === "same_day_preview" && post.targetGame) {
+    score += 13; reasons.push("same-day preview");
+  } else if (post.intent === "recap" && post.targetGameStatus === "completed") {
+    score += 12; reasons.push("completed game recap");
+  } else if (post.intent === "cross_game_preview") {
+    score += 8;
+  } else if (post.intent === "evergreen_backup") {
+    score += 4;
+    deductions.push("evergreen/backup intent");
+  } else {
+    score += 6;
+  }
+
+  // ── Data freshness (15 pts) ─────────────────────────────────────────────────
   if (!post.fallbackWarning) {
     score += 15; reasons.push("no fallback warnings");
+  } else if (post.fallbackWarning.toLowerCase().includes("low") || post.fallbackWarning.toLowerCase().includes("insufficient")) {
+    score += 4;
+    deductions.push("fallback warning: " + post.fallbackWarning.slice(0, 60));
   } else {
-    reasons.push("has fallback warning");
+    score += 8;
+    deductions.push("minor fallback");
   }
 
-  // Post type bonus (10 pts)
-  if (post.type === "Carousel")     score += 10;
-  else if (post.type === "Short video") score += 8;
-  else                              score += 6;
+  // ── Format + compliance (10 pts) ────────────────────────────────────────────
+  if (post.type === "Carousel")     score += 6;
+  else if (post.type === "Short video") score += 5;
+  else                              score += 4; // Image
 
-  // Intent bonus (5 pts)
-  if (post.intent === "pre_game" || post.intent === "same_day_preview") {
-    score += 5; reasons.push("time-sensitive pre-game");
-  } else if (post.intent === "recap") {
-    score += 4;
-  } else {
-    score += 2;
+  // Compliance bonus (if already computed — only gives 0–4 bonus)
+  if (post.compliance?.status === "Clean") {
+    score += 4; reasons.push("clean compliance");
+  } else if (post.compliance?.status === "Needs review") {
+    deductions.push("compliance flag");
+  }
+
+  score = Math.min(100, score);
+
+  // ── Penalty: proof/recap with no completed data ─────────────────────────────
+  if (
+    (post.category === "Proof Post" || post.intent === "recap") &&
+    post.targetGameStatus !== "completed" &&
+    post.fallbackWarning
+  ) {
+    score = Math.max(0, score - 20);
+    deductions.push("proof/recap label without completed data");
+  }
+
+  // ── Penalty: weak pool (< 2 players) with fallback ─────────────────────────
+  if (post.playerNames.length < 2 && post.fallbackWarning) {
+    score = Math.max(0, score - 10);
   }
 
   score = Math.min(100, score);
 
   const label: ScoreLabel =
-    score >= 85 ? "Premium" :
-    score >= 65 ? "Strong"  :
-    score >= 45 ? "Good"    : "Review";
+    score >= 80 ? "Premium" :
+    score >= 60 ? "Strong"  :
+    score >= 40 ? "Good"    : "Review";
 
-  const useRecommendation =
-    post.fallbackWarning && post.playerNames.length < 2 ? "Do not use" :
-    score < 45 ? "Use with caution" :
+  const useRecommendation: "Use" | "Use with caution" | "Do not use" =
+    (post.compliance?.status === "Do not use") ? "Do not use" :
+    (post.fallbackWarning && post.playerNames.length < 2) ? "Do not use" :
+    score < 40 ? "Use with caution" :
     "Use";
 
+  const allReasons = [...reasons, ...deductions.map(d => `[!] ${d}`)];
   const useReason =
     useRecommendation === "Do not use"
-      ? "Insufficient player data or fallback warning active."
+      ? "Insufficient player data or compliance failure."
       : useRecommendation === "Use with caution"
-      ? "Low score — consider checking player availability or data freshness."
+      ? `Low score (${score}) — ${deductions[0] ?? "check data quality"}.`
       : reasons.slice(0, 3).join(", ") + ".";
 
   return {
     score,
     label,
-    reason: reasons.slice(0, 4).join("; "),
+    reason: allReasons.slice(0, 5).join("; "),
     useRecommendation,
     useReason,
   };

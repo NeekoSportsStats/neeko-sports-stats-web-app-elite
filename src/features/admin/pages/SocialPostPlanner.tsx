@@ -11,12 +11,15 @@ import {
   consistencyLabel,
   consistencyColor,
   formatGamePicksForCopy,
+  tierLabel,
+  tierColor,
 } from "./social-planner/gamePicksEngine";
 import type { GamePick, GamePickPlayer, ConsistencyTier, GamePickLens } from "./social-planner/gamePicksEngine";
 import type { StatBoardPlayer, StatBoardMatch } from "@/features/afl/stat-board/types";
 import type { StatBoardTeamRow } from "@/features/afl/stat-board/teamTypes";
 import { enrichPost } from "./social-planner/postEnrichment";
 import { buildEvergreenPool } from "./social-planner/evergreenPosts";
+import { normaliseRate, getRecentHitRecord } from "./social-planner/statLineEngine";
 import { usePostStatus, STATUS_LABELS, STATUS_OPTIONS } from "./social-planner/usePostStatus";
 import type {
   SocialPost,
@@ -107,7 +110,8 @@ function pct(rate: number): string {
 }
 
 function getHitRate(p: StatBoardPlayer, threshold: number): number {
-  return p.all_threshold_hit_rates?.[String(threshold)]?.rate ?? 0;
+  const raw = p.all_threshold_hit_rates?.[String(threshold)]?.rate ?? 0;
+  return normaliseRate(raw);
 }
 
 function getL5Avg(p: StatBoardPlayer): number {
@@ -149,44 +153,57 @@ function isCompleted(match: StatBoardMatch): boolean {
 
 /**
  * Returns the highest disposal threshold bucket a player genuinely belongs to.
- * Uses L5 avg, season avg, and hit rates to determine.
+ * Uses L5 avg AND hit rates — both conditions must be met for 30+/25+.
  * Hard rule: a player who qualifies for 30+ must NOT appear in a 20+ post.
+ *
+ * 30+: L5 ≥ 27.0 AND hr30 ≥ 0.70 (genuine 30+ tier only)
+ * 25+: L5 ≥ 22.0 AND hr25 ≥ 0.70
+ * 20+: L5 ≥ 18.0 AND hr20 ≥ 0.55
+ * 15+: L5 ≥ 13.0 AND hr15 ≥ 0.55
  */
 function bestDisposalThreshold(p: StatBoardPlayer): 30 | 25 | 20 | 15 | 10 {
   const l5  = p.last_5_avg  ?? 0;
   const sea = p.season_avg  ?? 0;
+  const avgL5Sea = l5 > 0 ? l5 : sea; // prefer L5, fall back to season
   const hr30 = getHitRate(p, 30);
   const hr25 = getHitRate(p, 25);
   const hr20 = getHitRate(p, 20);
   const hr15 = getHitRate(p, 15);
 
-  // 30+ bucket: L5 or season avg >= 29.5, OR hit rate at 30 is strong
-  if (l5 >= 29.5 || sea >= 29.5 || hr30 >= 0.45) return 30;
+  // 30+: both volume and hit rate must be elite
+  if (avgL5Sea >= 27.0 && hr30 >= 0.70) return 30;
 
-  // 25+ bucket: L5 or season avg >= 24.5, OR strong hit rate at 25
-  if (l5 >= 24.5 || sea >= 24.5 || hr25 >= 0.55) return 25;
+  // 25+: strong volume and consistent hit rate
+  if (avgL5Sea >= 22.0 && hr25 >= 0.70) return 25;
 
-  // 20+ bucket: L5 or season avg >= 19.5, OR strong hit rate at 20
-  if (l5 >= 19.5 || sea >= 19.5 || hr20 >= 0.60) return 20;
+  // 20+: moderate volume with solid hit rate
+  if (avgL5Sea >= 18.0 && hr20 >= 0.55) return 20;
 
-  // 15+ bucket: L5 or season avg >= 14.5, OR hit rate at 15
-  if (l5 >= 14.5 || sea >= 14.5 || hr15 >= 0.60) return 15;
+  // 15+: accessible tier
+  if (avgL5Sea >= 13.0 && hr15 >= 0.55) return 15;
 
   return 10;
 }
 
 /**
  * Returns the highest goal threshold bucket a player genuinely belongs to.
+ *
+ * 3+: hr3 ≥ 0.40 AND sample ≥ 5 AND L5 ≥ 2.0 (genuine multi-goal players only)
+ * 2+: hr2 ≥ 0.45 AND sample ≥ 5 AND L5 ≥ 1.3
+ * 1+: hr1 ≥ 0.55 AND sample ≥ 4 AND L5 ≥ 0.5
  */
 function bestGoalThreshold(p: StatBoardPlayer): 3 | 2 | 1 {
   const hr3 = getHitRate(p, 3);
   const hr2 = getHitRate(p, 2);
   const hr1 = getHitRate(p, 1);
   const l5  = p.last_5_avg ?? 0;
+  const rec3 = getRecentHitRecord(p, 3);
+  const rec2 = getRecentHitRecord(p, 2);
+  const rec1 = getRecentHitRecord(p, 1);
 
-  if (l5 >= 2.5 || hr3 >= 0.35) return 3;
-  if (l5 >= 1.5 || hr2 >= 0.45) return 2;
-  if (hr1 >= 0.50) return 1;
+  if (hr3 >= 0.40 && rec3.sample >= 5 && l5 >= 2.0) return 3;
+  if (hr2 >= 0.45 && rec2.sample >= 5 && l5 >= 1.3) return 2;
+  if (hr1 >= 0.55 && rec1.sample >= 4 && l5 >= 0.5) return 1;
   return 1;
 }
 
@@ -344,8 +361,10 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   const top15 = (pool15.length >= 2 ? pool15 : pool20.slice(0, 5)).slice(0, 5);
 
   // ── Threshold-segmented goal pools ───────────────────────────────────────
-  // 3+ pool requires genuine multi-goal form: hit rate >= 50% or L5 avg >= 2.3
-  const goalPool3 = goalPool.filter(p => bestGoalThreshold(p) === 3 && (getHitRate(p, 3) >= 0.50 || getL5Avg(p) >= 2.3));
+  // 3+ pool: bestGoalThreshold already enforces hr≥0.40+sample≥5+L5≥2.0
+  // Additionally require at least 3 qualifying players before using 3+ bucket
+  const goalPool3Raw = goalPool.filter(p => bestGoalThreshold(p) === 3);
+  const goalPool3 = goalPool3Raw.length >= 3 ? goalPool3Raw : [];
   const goalPool2 = goalPool.filter(p => bestGoalThreshold(p) === 2);
   const goalPool1 = goalPool.filter(p => bestGoalThreshold(p) === 1);
 
@@ -2184,14 +2203,15 @@ function GamePickRow({
           {pick.position_group && (
             <span className="text-[9px] text-zinc-600 bg-zinc-800 px-1 rounded">{pick.position_group}</span>
           )}
-          <span className={`text-[9px] font-semibold ${consistencyColor(pick.consistency_score)}`}>
-            {consistencyLabel(pick.consistency_score)} ({pick.consistency_score})
+          <span className={`text-[9px] font-semibold ${tierColor(pick.tier)}`}>
+            {tierLabel(pick.tier)} ({pick.consistency_score})
           </span>
         </div>
         <div className="text-[10px] text-zinc-400 mt-0.5 flex flex-wrap gap-2">
           <span>
             <span className="text-zinc-300">{pick.threshold}+</span>
-            {" "}{Math.round(pick.hit_rate * 100)}% hit rate
+            {" "}<span className="text-zinc-300">{pick.hitRecord}</span>
+            <span className="text-zinc-500"> ({pick.hitPct})</span>
           </span>
           {pick.l5_avg !== null && (
             <span>L5: <span className="text-zinc-300">{pick.l5_avg.toFixed(1)}</span></span>
