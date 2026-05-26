@@ -386,79 +386,53 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
 
   // ── MONDAY ────────────────────────────────────────────────────────────────
 
-  // Post 1 — Weekend proof / recap (Carousel)
-  // Uses threshold-correct pool: picks the most represented bucket (30+, 25+, or 20+)
+  // Post 1 — 25+ disposals watchlist (Carousel)
+  // TRUE 25+ post. Sourced exclusively from pool25 (players whose primary content
+  // tier is 25+). Players assigned to pool30 are NEVER included here.
+  // Falls back only to pool20 if pool25 is genuinely empty — never to pool30.
   {
-    const hasCompleted = completedMatches.length > 0;
+    // Strict 25+ pool — excludes anyone in pool30 by construction
+    const mon1Players = pool25.length >= 4
+      ? pool25.slice(0, 5)
+      : pool25.length >= 2
+      ? pool25.slice(0, pool25.length)
+      : pool20.slice(0, 4); // only fallback: pool20, never pool30
 
-    // Choose the best-populated threshold pool for the proof post
-    const proofPool30 = pool30.slice(0, 5);
-    const proofPool25 = pool25.slice(0, 5);
-    const proofPool20 = pool20.slice(0, 5);
+    const isFallback = pool25.length < 2;
+    const mon1ThrNum = pool25.length >= 2 ? 25 : 20;
+    const mon1ThrLabel = `${mon1ThrNum}+ Disposals`;
 
-    let proofPlayers: StatBoardPlayer[];
-    let proofThreshold: string;
-    let proofHook: string;
+    const mon1Hook = mon1ThrNum === 25
+      ? `Who's been clearing 25+ consistently heading into ${rl}?`
+      : `Volume disposal form heading into ${rl}.`;
 
-    if (proofPool30.length >= 3) {
-      proofPlayers = proofPool30;
-      proofThreshold = "30+ Disposals";
-      proofHook = hasCompleted
-        ? `${rl} wrapped. Elite disposal form — here's how the big numbers held up.`
-        : `Elite disposal form heading into ${rl}. Who's been clearing 30+?`;
-    } else if (poolElite.length >= 3) {
-      proofPlayers = poolElite.slice(0, 5);
-      proofThreshold = "25–30+ Disposals";
-      proofHook = hasCompleted
-        ? `${rl} wrapped. High-volume disposal form — the 25+ and 30+ performers.`
-        : `High-volume disposal form heading into ${rl}.`;
-    } else if (proofPool20.length >= 3) {
-      proofPlayers = proofPool20;
-      proofThreshold = "20+ Disposals";
-      proofHook = hasCompleted
-        ? `${rl} wrapped. Here's how the disposal form held up across the weekend.`
-        : `${rl} is underway. Key 20+ disposal performers tracked.`;
-    } else {
-      proofPlayers = dispPool.slice(0, 5);
-      proofThreshold = "Disposal Form";
-      proofHook = hasCompleted
-        ? `${rl} wrapped. Here's how disposal form held up across the weekend.`
-        : `${rl} disposal form leaders.`;
-    }
-
-    // For proof posts, show threshold-matched hit rate
-    const thrNum = proofThreshold === "30+ Disposals" ? 30
-      : proofThreshold === "20+ Disposals" ? 20 : 25;
-    const bullets = proofPlayers.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, thrNum))} hit rate at ${thrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
+    const mon1Bullets = mon1Players.map(p =>
+      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, mon1ThrNum))} at ${mon1ThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
     );
-
-    // Title and category depend on whether we have completed data
-    const postTitle = hasCompleted
-      ? `${rl} — weekend ${proofThreshold.toLowerCase()} recap`
-      : `${rl} — ${proofThreshold.toLowerCase()} watchlist`;
-    const postCategory: PostCategory = hasCompleted ? "Proof Post" : "Round Wrap";
-    const postIntent: PostIntent = hasCompleted ? "recap" : "cross_game_preview";
 
     schedule.push(makePost({
       day: "Mon", postNumber: 1,
       type: "Carousel",
-      category: postCategory, intent: postIntent,
-      statLens: "disposals", confidence: proofPlayers.length >= 3 ? "High" : "Fallback",
-      title: postTitle,
-      content: proofHook,
-      statsShown: bullets,
-      onScreenText: hasCompleted ? "Weekend disposal recap" : "Disposal watchlist",
-      caption: buildCaption(proofHook, bullets, 0),
-      hashtags: HASHTAG_SETS[postCategory],
-      suggestedVisual: `Stat card grid — top 5 ${proofThreshold.toLowerCase()} players vs their L5 average`,
-      imageDescription: `Carousel graphic. Each slide shows one player: name, team, ${proofThreshold} hit rate as a large number, L5 average. Clean dark background, AFL team colours. No betting language. ${proofPlayers.length} players total.`,
-      dataScope: hasCompleted ? "Completed weekend games" : `${rl} disposal player pool`,
-      targetGame: hasCompleted ? "Weekend completed games" : null,
-      targetGameStatus: hasCompleted ? "completed" : "any",
-      fallbackWarning: hasCompleted ? null : "No completed game data — showing season/L5 form as watchlist preview instead of proof post.",
-      players: proofPlayers,
-      thresholdLabel: proofThreshold,
+      category: "Disposal Trend", intent: "cross_game_preview",
+      statLens: "disposals", confidence: isFallback ? "Medium" : "High",
+      title: mon1ThrNum === 25
+        ? `${rl} — 25+ disposals watchlist`
+        : `${rl} — ${mon1ThrNum}+ disposals watchlist`,
+      content: mon1Hook,
+      statsShown: mon1Bullets,
+      onScreenText: `${mon1ThrNum}+ disposal form`,
+      caption: buildCaption(mon1Hook, mon1Bullets, 0),
+      hashtags: HASHTAG_SETS["Disposal Trend"],
+      suggestedVisual: `${mon1Players.length}-player stat grid — name, team, ${mon1ThrNum}+ hit rate, L5 avg`,
+      imageDescription: `Carousel. ${mon1Players.length} players, one per slide. Each slide: player name, team, ${mon1ThrNum}+ disposals hit rate as a percentage, L5 average. Dark background, AFL team colours as accents. Headline: "${rl} — 25+ Disposals Watchlist". No betting language.`,
+      dataScope: `${rl} 25+ disposal player pool`,
+      targetGame: null,
+      targetGameStatus: "any",
+      fallbackWarning: isFallback
+        ? `Low 25+ candidate count (${pool25.length}) — using ${mon1ThrNum}+ pool instead. Do not label as 25+ content.`
+        : null,
+      players: mon1Players,
+      thresholdLabel: mon1ThrLabel,
     }));
   }
 
