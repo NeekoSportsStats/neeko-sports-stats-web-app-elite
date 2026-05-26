@@ -20,6 +20,10 @@ import type {
   StatBoardPlayer, StatBoardMatch, ThresholdHitRate,
 } from "@/features/afl/stat-board/types";
 import type { StatBoardTeamRow } from "@/features/afl/stat-board/teamTypes";
+import {
+  selectBestDisposalLine,
+  selectBestGoalLine,
+} from "./social-planner/statLineEngine";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -210,6 +214,11 @@ interface ResearchRow {
   stddev: number | null;
   min10: number | null;
   max10: number | null;
+  // Marketing-tier fields
+  /** Best public content tier threshold (e.g. 30 means this player belongs in "30+ Disp") */
+  bestPublicTier: number | null;
+  /** True when sample < 7 games — show badge, suppress Elite/Perfect labelling */
+  isSmallSample: boolean;
   // Smart Next-Up enrichment
   targetBadge: TargetBadge;
   targetRound: number;
@@ -627,6 +636,17 @@ function buildRows(
 
     const reason = buildReason(p.player_name, threshold, cfg.label, hits, games, avgs.l10, p.projection, displayOpponent, bucket);
 
+    // Compute best public content tier for marketing-tier mode
+    let bestPublicTier: number | null = null;
+    if (family === "disposals") {
+      const best = selectBestDisposalLine(p);
+      bestPublicTier = best ? best.threshold : null;
+    } else if (family === "goals") {
+      const best = selectBestGoalLine(p);
+      bestPublicTier = best ? best.threshold : null;
+    }
+    const isSmallSample = games < 7;
+
     rows.push({
       player_id: p.player_id,
       player_name: p.player_name,
@@ -651,6 +671,8 @@ function buildRows(
       stddev: p.stddev_last_10,
       min10: p.min_last_10,
       max10: p.max_last_10,
+      bestPublicTier,
+      isSmallSample,
       targetBadge: target.badge,
       targetRound: target.round,
       targetOpponent: displayOpponent,
@@ -1752,7 +1774,89 @@ function isTeamInTGO(teamName: string, tgo: TargetGameOption | null): boolean {
   return teamName === tgo.homeTeamName || teamName === tgo.awayTeamName;
 }
 
+// ─── Player Stat Angles helpers ──────────────────────────────────────────────
+
+function getBestLineLabel(row: ResearchRow): string | null {
+  if (row.bestPublicTier === null) return null;
+  if (row.statFamily === "disposals") return `${row.bestPublicTier}+ Disp`;
+  if (row.statFamily === "goals")     return `${row.bestPublicTier}+ Goals`;
+  if (row.statFamily === "kicks")     return `${row.bestPublicTier}+ Kicks`;
+  if (row.statFamily === "handballs") return `${row.bestPublicTier}+ HBs`;
+  if (row.statFamily === "marks")     return `${row.bestPublicTier}+ Marks`;
+  if (row.statFamily === "tackles")   return `${row.bestPublicTier}+ Tackles`;
+  if (row.statFamily === "clearances")return `${row.bestPublicTier}+ Clears`;
+  if (row.statFamily === "hitouts")   return `${row.bestPublicTier}+ HOs`;
+  if (row.statFamily === "fantasy")   return `${row.bestPublicTier}+ Pts`;
+  return `${row.bestPublicTier}+`;
+}
+
+function HiddenTierSummary({
+  hiddenRows,
+  threshold,
+  family,
+}: {
+  hiddenRows: ResearchRow[];
+  threshold: number;
+  family: StatFamily;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const isDisposals = family === "disposals";
+  const isGoals = family === "goals";
+
+  const by30 = hiddenRows.filter(r => r.bestPublicTier === 30).length;
+  const by25 = hiddenRows.filter(r => r.bestPublicTier === 25).length;
+  const by3  = hiddenRows.filter(r => r.bestPublicTier === 3).length;
+  const by2  = hiddenRows.filter(r => r.bestPublicTier === 2).length;
+
+  const parts: string[] = [];
+  if (isDisposals) {
+    if (by30 > 0) parts.push(`${by30} belong to 30+`);
+    if (by25 > 0) parts.push(`${by25} belong to 25+`);
+    const other = hiddenRows.length - by30 - by25;
+    if (other > 0) parts.push(`${other} in a higher tier`);
+  } else if (isGoals) {
+    if (by3 > 0) parts.push(`${by3} belong to 3+`);
+    if (by2 > 0) parts.push(`${by2} belong to 2+`);
+    const other = hiddenRows.length - by3 - by2;
+    if (other > 0) parts.push(`${other} in a higher tier`);
+  } else {
+    parts.push(`all above ${threshold}+`);
+  }
+
+  return (
+    <div className="mb-3 rounded border border-amber-800/40 bg-amber-950/20 px-3 py-2 text-[11px]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-amber-300 font-medium">
+          {hiddenRows.length} higher-tier player{hiddenRows.length !== 1 ? "s" : ""} hidden from {threshold}+
+          {parts.length > 0 && <span className="text-amber-400/70"> — {parts.join(", ")}</span>}
+        </span>
+        <button
+          onClick={() => setExpanded(v => !v)}
+          className="text-amber-500 hover:text-amber-300 transition-colors text-[10px] flex items-center gap-0.5"
+        >
+          {expanded ? "Hide" : "Show"} {expanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+        </button>
+      </div>
+      {expanded && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {hiddenRows.map(r => {
+            const label = getBestLineLabel(r);
+            return (
+              <span key={r.player_id} className="px-2 py-0.5 rounded bg-amber-950/50 border border-amber-800/40 text-amber-200 text-[10px]">
+                {r.player_name}
+                {label && <span className="ml-1 text-amber-500">({label})</span>}
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Player Stat Angles Tab ───────────────────────────────────────────────────
+
+type ContentViewMode = "marketing-tier" | "raw-threshold";
 
 function PlayerStatAngles({
   data, concessionMap, mode, selectedTargetGame, targetGameOptions,
@@ -1773,6 +1877,7 @@ function PlayerStatAngles({
   const [posFilter, setPosFilter] = useState<string>("");
   const [search, setSearch] = useState("");
   const [targetFilter, setTargetFilter] = useState<"all" | "next-up" | "current-round">("all");
+  const [viewMode, setViewMode] = useState<ContentViewMode>("marketing-tier");
 
   const cfg = FAMILY_CFG.find(f => f.value === family)!;
 
@@ -1801,8 +1906,37 @@ function PlayerStatAngles({
     );
   }, [allRows, activeTGO]);
 
+  // In Marketing Tier mode, compute which rows are hidden because they belong to a higher tier
+  const hiddenHigherTier = useMemo(() => {
+    if (viewMode !== "marketing-tier") return { rows: [], by25: 0, by30: 0, byHigherGoal: 0 };
+    const isDisposals = family === "disposals";
+    const isGoals = family === "goals";
+    const hidden = afterTargetGame.filter(r => {
+      if (r.bestPublicTier === null) return false;
+      if (isDisposals && r.bestPublicTier > threshold) return true;
+      if (isGoals && r.bestPublicTier > threshold) return true;
+      return false;
+    });
+    return {
+      rows: hidden,
+      by25: hidden.filter(r => r.bestPublicTier === 25).length,
+      by30: hidden.filter(r => r.bestPublicTier === 30).length,
+      by2: hidden.filter(r => r.bestPublicTier === 2).length,
+      by3: hidden.filter(r => r.bestPublicTier === 3).length,
+    };
+  }, [afterTargetGame, viewMode, family, threshold]);
+
   const filtered = useMemo(() => {
     let rows = afterTargetGame;
+
+    // Marketing Tier mode: hide players whose best public tier is higher than selected threshold
+    if (viewMode === "marketing-tier") {
+      rows = rows.filter(r => {
+        if (r.bestPublicTier === null) return true; // no tier computed — keep (raw only)
+        return r.bestPublicTier <= threshold;
+      });
+    }
+
     if (teamFilter) rows = rows.filter(r => r.team_name === teamFilter);
     if (oppFilter) rows = rows.filter(r => r.targetOpponent === oppFilter || r.opponent_team_name === oppFilter);
     if (posFilter) rows = rows.filter(r => r.position_group === posFilter);
@@ -1814,7 +1948,7 @@ function PlayerStatAngles({
     }
     rows = rows.filter(r => filterByProfile(r, profile));
     return sortRows(rows, sortBy);
-  }, [afterTargetGame, teamFilter, oppFilter, posFilter, search, profile, sortBy, targetFilter]);
+  }, [afterTargetGame, teamFilter, oppFilter, posFilter, search, profile, sortBy, targetFilter, viewMode, threshold]);
 
   const grouped = useMemo(() => {
     const g: Record<GroupBucket, ResearchRow[]> = {
@@ -1845,16 +1979,49 @@ function PlayerStatAngles({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-1.5">
+      {/* Preset chips + mode toggle */}
+      <div className="flex flex-wrap items-center gap-1.5">
         {presets.map(p => (
           <Chip key={`${p.fam}-${p.thr}-${p.prof}`} label={p.label}
             active={family === p.fam && threshold === p.thr && profile === p.prof}
             onClick={() => { setFamily(p.fam); setThreshold(p.thr); setProfile(p.prof); }} />
         ))}
-        <button onClick={() => { setFamily("disposals"); setThreshold(20); setProfile("all"); setMinSample(3); setSortBy("hitrate"); setTeamFilter(""); setOppFilter(""); setPosFilter(""); setSearch(""); setTargetFilter("all"); }}
+        <button onClick={() => { setFamily("disposals"); setThreshold(20); setProfile("all"); setMinSample(3); setSortBy("hitrate"); setTeamFilter(""); setOppFilter(""); setPosFilter(""); setSearch(""); setTargetFilter("all"); setViewMode("marketing-tier"); }}
           className="px-2.5 py-1 rounded-full text-[11px] font-medium border bg-zinc-900 text-zinc-500 border-zinc-700 hover:border-zinc-500 transition-colors">
           Reset
         </button>
+        {/* Marketing Tier / Raw Threshold toggle */}
+        <div className="flex items-center gap-1 ml-auto">
+          <span className="text-[10px] text-zinc-500">Mode:</span>
+          <button
+            onClick={() => setViewMode("marketing-tier")}
+            className={`px-2.5 py-1 rounded-l text-[11px] font-medium border transition-colors ${
+              viewMode === "marketing-tier"
+                ? "bg-emerald-900/60 text-emerald-300 border-emerald-700"
+                : "bg-zinc-900 text-zinc-500 border-zinc-700 hover:border-zinc-500"
+            }`}>
+            Marketing Tier
+          </button>
+          <button
+            onClick={() => setViewMode("raw-threshold")}
+            className={`px-2.5 py-1 rounded-r text-[11px] font-medium border-t border-b border-r transition-colors ${
+              viewMode === "raw-threshold"
+                ? "bg-amber-900/60 text-amber-300 border-amber-700"
+                : "bg-zinc-900 text-zinc-500 border-zinc-700 hover:border-zinc-500"
+            }`}>
+            Raw Threshold
+          </button>
+        </div>
+      </div>
+      {/* Mode helper text */}
+      <div className={`text-[10px] px-2 py-1 rounded border ${
+        viewMode === "marketing-tier"
+          ? "text-emerald-500 border-emerald-900/50 bg-emerald-950/30"
+          : "text-amber-500 border-amber-900/50 bg-amber-950/30"
+      }`}>
+        {viewMode === "marketing-tier"
+          ? "Marketing Tier: hides players who belong in a higher stat line. Use for content creation."
+          : "Raw Threshold: shows everyone who technically clears this threshold, including higher-tier players."}
       </div>
 
       {activeTGO && (
@@ -1916,6 +2083,22 @@ function PlayerStatAngles({
         sourceGameCount={data.sourceGameCount}
       />
 
+      {/* Hidden higher-tier summary — only in Marketing Tier mode */}
+      {viewMode === "marketing-tier" && hiddenHigherTier.rows.length > 0 && (
+        <HiddenTierSummary
+          hiddenRows={hiddenHigherTier.rows}
+          threshold={threshold}
+          family={family}
+        />
+      )}
+
+      {/* Raw mode reminder */}
+      {viewMode === "raw-threshold" && (
+        <div className="text-[10px] text-amber-400 bg-amber-950/20 border border-amber-900/40 rounded px-3 py-2">
+          Raw Threshold mode — this copy includes players who may belong to higher tiers. Switch to Marketing Tier for clean content lists.
+        </div>
+      )}
+
       {filtered.length === 0 && (
         <EmptyStateAngles
           srcTotal={srcPlayers.length}
@@ -1945,6 +2128,7 @@ function PlayerStatAngles({
                   <tr className="border-b border-zinc-800 text-zinc-500 font-medium">
                     <th className="text-left py-1.5 px-2">Player</th>
                     <th className="text-left py-1.5 px-2">Team</th>
+                    <th className="text-left py-1.5 px-2">Best Line</th>
                     <th className="text-left py-1.5 px-2">Target Opp</th>
                     <th className="text-left py-1.5 px-2">Target Game</th>
                     <th className="text-left py-1.5 px-2">Mode</th>
@@ -1964,11 +2148,31 @@ function PlayerStatAngles({
                 <tbody>
                   {rows.map(row => {
                     const diff = row.l10avg != null ? row.l10avg - row.threshold : null;
+                    const bestLineLabel = getBestLineLabel(row);
+                    const bestLineMismatch = row.bestPublicTier !== null && row.bestPublicTier !== row.threshold;
                     return (
                       <tr key={`${row.player_id}-${row.threshold}`}
                         className={`border-b border-zinc-900 hover:bg-zinc-900/30 ${row.isNextUp ? "bg-emerald-950/10" : ""}`}>
-                        <td className="py-1.5 px-2 font-medium text-zinc-200 whitespace-nowrap">{row.player_name}</td>
+                        <td className="py-1.5 px-2 font-medium text-zinc-200 whitespace-nowrap">
+                          <span>{row.player_name}</span>
+                          {row.isSmallSample && (
+                            <span className="ml-1 px-1 py-0.5 rounded text-[9px] bg-orange-950/60 text-orange-400 border border-orange-800/40">
+                              Small sample
+                            </span>
+                          )}
+                        </td>
                         <td className="py-1.5 px-2 text-zinc-400 whitespace-nowrap">{row.team_name}</td>
+                        <td className="py-1.5 px-2 whitespace-nowrap">
+                          {bestLineLabel ? (
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${
+                              bestLineMismatch
+                                ? "bg-amber-950/50 text-amber-300 border-amber-700/50"
+                                : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                            }`}>
+                              {bestLineLabel}
+                            </span>
+                          ) : <span className="text-zinc-600">—</span>}
+                        </td>
                         <td className="py-1.5 px-2 whitespace-nowrap">
                           <span className={row.isNextUp ? "text-emerald-300 font-medium" : "text-zinc-400"}>{row.targetOpponent}</span>
                         </td>
