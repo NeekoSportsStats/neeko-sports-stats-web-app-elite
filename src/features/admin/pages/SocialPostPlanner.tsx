@@ -1714,8 +1714,11 @@ function SocialPostCard({
               {post.playerNames.length > 0 && (
                 <p className="text-[9px] text-zinc-500">players ({post.playerNames.length}): <span className="text-zinc-400">{post.playerNames.join(", ")}</span></p>
               )}
+              <p className="text-[9px] text-zinc-500">dataSource: <span className="text-zinc-400">get_stat_board_players RPC (same as public Stat Board)</span></p>
+              <p className="text-[9px] text-zinc-500">last_5_avg: <span className="text-zinc-400">DB scalar (SQL AVG, always authoritative)</span></p>
+              <p className="text-[9px] text-zinc-500">Last 5 strip: <span className="text-zinc-400">derived from last_10_values[0..4] (newest-first)</span></p>
               <p className="text-[9px] text-zinc-600 italic">
-                Note: last_5_avg is a DB pre-computed scalar; Last 5 strip is computed live from last_10_values. These may diverge if DB pipeline runs updated them at different times (MIXED_DATA_SOURCE).
+                Strip avg is cross-checked against last_5_avg; if they disagree by more than 0.5 pts the strip is suppressed and a warning is shown.
               </p>
             </div>
           </details>
@@ -1918,6 +1921,16 @@ function GamePickRow({
           )}
           <span className="text-zinc-600">{pick.games_played}g</span>
         </div>
+        {pick.last_5_strip && (
+          <div className="text-[9.5px] text-zinc-500 mt-0.5">
+            Last 5: <span className="text-zinc-400 font-mono">{pick.last_5_strip}</span>
+          </div>
+        )}
+        {pick.last5Warning && (
+          <div className="text-[9px] text-amber-500/80 mt-0.5 flex items-center gap-1">
+            <span>&#9888;</span> {pick.last5Warning}
+          </div>
+        )}
       </div>
       <button
         onClick={() => onCopy(copyId, pick.copy_line)}

@@ -14,12 +14,12 @@ import {
   rankGoalCandidatesForTeams,
   tierLabel,
   tierColor,
-  formatLastNStrip,
-  lastNFromValues,
+  resolveFreshLast5ForSocial,
   formatHitRecord,
   formatRateAsPercent,
 } from "./statLineEngine";
 import type { CandidateScore, ConfidenceTier } from "./statLineEngine";
+import type { StatBoardPlayer } from "@/features/afl/stat-board/types";
 
 // ─── Output types ─────────────────────────────────────────────────────────────
 
@@ -50,6 +50,8 @@ export interface GamePickPlayer {
   last_5_values: number[];
   /** Formatted strip e.g. "35 · 34 · 36 · 33 · 36" or null if < 2 values. */
   last_5_strip: string | null;
+  /** Non-null when the Last 5 strip was suppressed due to inconsistency with scalar avg. */
+  last5Warning: string | null;
   /**
    * Public content tier: the disposal threshold this player should be labelled
    * under in social posts (30/25/20/15). Null means no qualifying tier.
@@ -75,7 +77,14 @@ export interface GamePick {
 // ─── Conversion helper ────────────────────────────────────────────────────────
 
 function toGamePickPlayer(c: CandidateScore): GamePickPlayer {
-  const last5 = lastNFromValues(c.last_10_values, 5);
+  // Use the validated resolver — it cross-checks the strip avg against scalar l5_avg
+  // so stale array ordering bugs surface as a suppressed strip + warning rather than
+  // wrong data reaching posts or AI prompts.
+  const resolved = resolveFreshLast5ForSocial({
+    last_10_values: c.last_10_values ?? null,
+    last_5_avg: c.l5Avg,
+  } as Pick<StatBoardPlayer, "last_10_values" | "last_5_avg"> as StatBoardPlayer);
+
   return {
     player_id: c.player_id,
     player_name: c.player_name,
@@ -94,8 +103,9 @@ function toGamePickPlayer(c: CandidateScore): GamePickPlayer {
     tier: c.tier,
     consistency_score: c.score,
     copy_line: c.copyLine,
-    last_5_values: last5,
-    last_5_strip: formatLastNStrip(last5),
+    last_5_values: resolved.values,
+    last_5_strip: resolved.strip,
+    last5Warning: resolved.warning,
     publicContentTier: c.publicContentTier ?? null,
   };
 }

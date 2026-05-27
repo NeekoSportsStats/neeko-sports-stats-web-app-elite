@@ -456,7 +456,8 @@ export function rankGoalCandidatesForTeams(
 
 /**
  * Core last-N extractor operating on a raw values array.
- * Returns values newest-first, skipping null/negative sentinel values (BYE/DNP/NYP).
+ * The RPC delivers last_10_values newest-first (index 0 = most recent game).
+ * We filter null/negative sentinels (BYE/DNP/NYP) then take the first N.
  * Shared by getLastNValues and any consumer that holds last_10_values directly.
  */
 export function lastNFromValues(
@@ -465,7 +466,6 @@ export function lastNFromValues(
 ): number[] {
   if (!raw || raw.length === 0) return [];
   return [...raw]
-    .reverse()
     .filter((v): v is number => v !== null && v >= 0)
     .slice(0, count);
 }
@@ -690,6 +690,65 @@ export function validateL5Consistency(
     l5BelowThreshold,
     signalMismatch,
     warnings,
+  };
+}
+
+// ─── Fresh Last 5 resolver ────────────────────────────────────────────────────
+
+export interface Last5Resolution {
+  values: number[];
+  strip: string | null;
+  avg: number | null;
+  /** true when the strip avg agrees with last_5_avg to within 0.5 pts */
+  isConsistent: boolean;
+  /** Fallback reason if strip was rejected */
+  warning: string | null;
+}
+
+/**
+ * Resolves the freshest available Last 5 values for social post display.
+ *
+ * Invariant: last_10_values is newest-first from the RPC.
+ * Cross-checks the derived strip average against the scalar last_5_avg.
+ * If they disagree by more than 0.5 pts the strip is suppressed (values=[])
+ * and a warning is set — preventing stale array data from leaking into posts.
+ *
+ * The scalar last_5_avg is always used for averages because it is computed
+ * directly in SQL and is never affected by array ordering bugs.
+ */
+export function resolveFreshLast5ForSocial(p: StatBoardPlayer): Last5Resolution {
+  const rawValues = lastNFromValues(p.last_10_values, 5);
+  const scalarAvg = p.last_5_avg ?? null;
+
+  if (rawValues.length < 2) {
+    return {
+      values: rawValues,
+      strip: formatLastNStrip(rawValues),
+      avg: scalarAvg,
+      isConsistent: true,
+      warning: rawValues.length === 0 ? "No last_10_values data available." : null,
+    };
+  }
+
+  const stripAvg = rawValues.reduce((a, b) => a + b, 0) / rawValues.length;
+  const isConsistent = scalarAvg === null || Math.abs(stripAvg - scalarAvg) <= 0.5;
+
+  if (!isConsistent) {
+    return {
+      values: [],
+      strip: null,
+      avg: scalarAvg,
+      isConsistent: false,
+      warning: `Last 5 strip avg ${stripAvg.toFixed(1)} disagrees with scalar last_5_avg ${scalarAvg?.toFixed(1)} by more than 0.5 — strip suppressed.`,
+    };
+  }
+
+  return {
+    values: rawValues,
+    strip: formatLastNStrip(rawValues),
+    avg: scalarAvg ?? (rawValues.length > 0 ? stripAvg : null),
+    isConsistent: true,
+    warning: null,
   };
 }
 
