@@ -1145,7 +1145,115 @@ function buildFullPostText(post: SocialPost, includeHeader = true): string {
   return lines.join("\n");
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── renderSafeText ───────────────────────────────────────────────────────────
+
+/**
+ * Safely renders any value as a string suitable for display or clipboard.
+ * - string/number: rendered as-is
+ * - null/undefined: empty string
+ * - object with headline/body: renders those fields
+ * - other objects: stringified in a code block (admin warning logged)
+ */
+function renderSafeText(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  if (typeof value === "object") {
+    const v = value as Record<string, unknown>;
+    if (typeof v.headline === "string" || typeof v.body === "string") {
+      return [v.headline, v.body].filter(Boolean).join("\n");
+    }
+    console.warn("[Admin] renderSafeText: unexpected object value", value);
+    return `[Object: ${JSON.stringify(value)}]`;
+  }
+  return String(value);
+}
+
+// ─── validatePostKit ──────────────────────────────────────────────────────────
+
+interface PostKitValidation {
+  passed: boolean;
+  issues: string[];
+}
+
+/**
+ * Validates a post kit for content consistency and completeness.
+ * Returns a list of issues; passed === true means no issues found.
+ * Never throws — admin-only diagnostic function.
+ */
+function validatePostKit(post: SocialPost): PostKitValidation {
+  const issues: string[] = [];
+
+  // Title, content, voiceover must exist
+  if (!post.title) issues.push("Missing title");
+  if (!post.content) issues.push("Missing content");
+
+  // Stat lines must use X/Y and percentage format
+  for (const s of post.statsShown) {
+    if (!/\d+\/\d+/.test(s) && s.length > 10) {
+      issues.push(`Stat line missing X/Y format: "${s.slice(0, 60)}"`);
+    }
+  }
+
+  // Carousel posts must have carousel slides including cover and CTA
+  if (post.type === "Carousel") {
+    if (!post.carouselSlides || post.carouselSlides.length < 3) {
+      issues.push("Carousel post has fewer than 3 slides (cover + stat + CTA)");
+    }
+    if (post.carouselSlides && post.carouselSlides.length > 0) {
+      const last = post.carouselSlides[post.carouselSlides.length - 1];
+      if (!last.body?.toLowerCase().includes("neeko")) {
+        issues.push("Last carousel slide (CTA) missing Neeko branding");
+      }
+    }
+    // AI carousel prompt pack: slide count should match statsShown + cover + CTA
+    if (post.aiCarouselPromptPack) {
+      const expectedSlidePrompts = Math.min(post.statsShown.length, 6);
+      if (post.aiCarouselPromptPack.slidePrompts.length !== expectedSlidePrompts) {
+        issues.push(
+          `AI prompt pack has ${post.aiCarouselPromptPack.slidePrompts.length} stat slides but post has ${post.statsShown.length} stat lines`,
+        );
+      }
+      if (!post.aiCarouselPromptPack.coverPrompt) issues.push("AI prompt pack missing cover prompt");
+      if (!post.aiCarouselPromptPack.endPrompt) issues.push("AI prompt pack missing end/CTA prompt");
+    }
+  }
+
+  // Threshold label consistency: "Full Game Picks" label should not appear in stat line threshold descriptions
+  if (
+    post.thresholdLabel !== "Full Game Picks" &&
+    post.thresholdLabel !== "Mixed Stat Watch" &&
+    post.statsShown.some(s => {
+      const thrMatch = s.match(/at\s+(\d+)\+/);
+      if (!thrMatch) return false;
+      const thr = parseInt(thrMatch[1], 10);
+      const labelThr = parseInt(post.thresholdLabel, 10);
+      return !isNaN(labelThr) && thr !== labelThr;
+    })
+  ) {
+    issues.push(`Threshold mismatch: post label "${post.thresholdLabel}" but stat lines use different thresholds`);
+  }
+
+  // No betting language in key text fields
+  const bannedTerms = ["bet", "odds", "gamble", "wager", "tipster", "sgm", "banker"];
+  const scanFields = [post.title, post.content, post.caption, ...post.statsShown].join(" ").toLowerCase();
+  for (const term of bannedTerms) {
+    if (new RegExp(`\\b${term}\\b`).test(scanFields)) {
+      issues.push(`Betting language detected: "${term}"`);
+    }
+  }
+
+  // Voiceover stat family match: goal posts should say "kicked", disposal posts should say "cleared"
+  if (post.voiceoverScript) {
+    if (post.statLens === "goals" && post.voiceoverScript.includes("has cleared")) {
+      issues.push("Voiceover uses 'cleared' for a goals post — should use 'kicked'");
+    }
+  }
+
+  return { passed: issues.length === 0, issues };
+}
+
+// ─── Copy utilities ───────────────────────────────────────────────────────────
 
 function TypeBadge({ type }: { type: PostType }) {
   const cls =
@@ -1568,8 +1676,27 @@ function SocialPostCard({
             {post.imageDescription && <Field label="Image description" value={post.imageDescription} />}
           </div>
 
-          {/* AI image prompt */}
-          {post.aiImagePrompt && (
+          {/* AI carousel prompt pack (primary) */}
+          {post.aiCarouselPromptPack && (
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-zinc-500 font-medium">AI carousel prompt pack</span>
+                <button
+                  onClick={e => { e.stopPropagation(); onCopyField(copyKey("aipack"), post.aiCarouselPromptPack!.combinedPrompt); }}
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+                >
+                  {copiedId === copyKey("aipack") ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+                  Copy all slides
+                </button>
+              </div>
+              <pre className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded-lg px-2.5 py-2 whitespace-pre-wrap break-words font-sans leading-relaxed max-h-48 overflow-y-auto">
+                {renderSafeText(post.aiCarouselPromptPack.combinedPrompt)}
+              </pre>
+            </div>
+          )}
+
+          {/* AI cover prompt (fallback / single image) */}
+          {post.aiImagePrompt && !post.aiCarouselPromptPack && (
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] text-zinc-500 font-medium">AI image prompt</span>
@@ -1580,7 +1707,7 @@ function SocialPostCard({
                   {copiedId === copyKey("aiprompt") ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
                 </button>
               </div>
-              <p className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded-lg px-2.5 py-2 leading-relaxed">{post.aiImagePrompt}</p>
+              <p className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded-lg px-2.5 py-2 leading-relaxed">{renderSafeText(post.aiImagePrompt)}</p>
             </div>
           )}
 
@@ -1625,7 +1752,15 @@ function SocialPostCard({
                 small
               />
             )}
-            {post.aiImagePrompt && (
+            {post.aiCarouselPromptPack && (
+              <CopyBtn
+                label="Copy AI carousel prompt"
+                onClick={() => onCopyField(copyKey("aipack"), post.aiCarouselPromptPack!.combinedPrompt)}
+                copied={copiedId === copyKey("aipack")}
+                small
+              />
+            )}
+            {post.aiImagePrompt && !post.aiCarouselPromptPack && (
               <CopyBtn
                 label="Copy AI prompt"
                 onClick={() => onCopyField(copyKey("aiprompt"), post.aiImagePrompt!)}
@@ -1963,8 +2098,27 @@ function PostKitTab({
         </div>
       )}
 
-      {/* AI image prompt */}
-      {post.aiImagePrompt && (
+      {/* AI carousel prompt pack (primary) */}
+      {post.aiCarouselPromptPack && (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-zinc-500 font-medium">AI carousel prompt pack</span>
+            <button
+              onClick={() => onCopy(cid("aipack"), post.aiCarouselPromptPack!.combinedPrompt)}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+            >
+              {copiedId === cid("aipack") ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
+              Copy all slides
+            </button>
+          </div>
+          <pre className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded px-2 py-1.5 whitespace-pre-wrap max-h-48 overflow-y-auto font-sans">
+            {renderSafeText(post.aiCarouselPromptPack.combinedPrompt)}
+          </pre>
+        </div>
+      )}
+
+      {/* AI cover prompt (fallback / non-carousel) */}
+      {post.aiImagePrompt && !post.aiCarouselPromptPack && (
         <div className="space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-zinc-500 font-medium">AI image prompt</span>
@@ -1976,7 +2130,7 @@ function PostKitTab({
               Copy
             </button>
           </div>
-          <p className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded px-2 py-1.5 whitespace-pre-wrap">{post.aiImagePrompt}</p>
+          <p className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded px-2 py-1.5 whitespace-pre-wrap">{renderSafeText(post.aiImagePrompt)}</p>
         </div>
       )}
 
@@ -2018,6 +2172,19 @@ function PostKitTab({
       </div>
     </div>
   );
+}
+
+const KIT_TYPE_LABEL: Record<string, string> = {
+  disposals: "20+ Disposals",
+  goals: "1+ Goals",
+  combined: "Full Game Picks",
+};
+
+function buildAllKitsText(pack: GamePickMarketingPack): string {
+  return pack.kits.map((kit, i) => {
+    const label = KIT_TYPE_LABEL[kit.kitType] ?? kit.kitType;
+    return `--- POST ${i + 1}: ${label.toUpperCase()} ---\n\n${buildFullPostText(kit.post, false)}`;
+  }).join("\n\n");
 }
 
 function PostKitSection({
@@ -2066,6 +2233,21 @@ function PostKitSection({
             <div className="text-[10px] text-zinc-300 font-medium">{pack.bestAngle}</div>
             <div className="text-[10px] text-zinc-500">{pack.bestAngleReason}</div>
           </div>
+
+          {pack.kits.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onCopy(`gp-kit-all-${pack.game.match_id}`, buildAllKitsText(pack))}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border transition-colors ${
+                copiedId === `gp-kit-all-${pack.game.match_id}`
+                  ? "bg-emerald-900/50 text-emerald-300 border-emerald-700/40"
+                  : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:border-zinc-500 hover:text-zinc-100"
+              }`}
+            >
+              {copiedId === `gp-kit-all-${pack.game.match_id}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+              Copy all {pack.kits.length} post{pack.kits.length !== 1 ? "s" : ""} for this game
+            </button>
+          )}
 
           {pack.kits.length === 0 ? (
             <div className="text-[10px] text-zinc-600 px-1">{pack.skipReason}</div>
@@ -2449,6 +2631,26 @@ function GameDayTabContent({
         </span>
         <span className="text-[9px] text-amber-500/60">{dayHashtag}</span>
         <span className="text-[9px] text-zinc-700 ml-auto">Generated from {roundLabel} target games</span>
+        {totalPosts > 0 && (
+          <button
+            type="button"
+            onClick={() => onCopy(
+              `day-all-${day}`,
+              packs.flatMap(p => p.kits).map((kit, i) => {
+                const label = KIT_TYPE_LABEL[kit.kitType] ?? kit.kitType;
+                return `--- POST ${i + 1}: ${label.toUpperCase()} ---\n\n${buildFullPostText(kit.post, false)}`;
+              }).join("\n\n")
+            )}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border transition-colors ${
+              copiedId === `day-all-${day}`
+                ? "bg-emerald-900/50 text-emerald-300 border-emerald-700/40"
+                : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:border-zinc-500 hover:text-zinc-100"
+            }`}
+          >
+            {copiedId === `day-all-${day}` ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+            Copy all {totalPosts} posts for {dayFull}
+          </button>
+        )}
       </div>
 
       {/* Per-game groups */}

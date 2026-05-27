@@ -9,6 +9,7 @@ import type {
   ComplianceResult,
   PlatformCaptions,
   CarouselSlide,
+  AiCarouselPromptPack,
   PostAngle,
   ScoreLabel,
   UrgencyLevel,
@@ -299,44 +300,72 @@ export function buildPlatformCaptions(post: SocialPost, ctaLine: string): Platfo
 
 /**
  * Converts a stat bullet like "Player — 7/10 at 30+, L5 avg 34.8"
- * into natural voiceover language: "has cleared 30-plus disposals in 7 of their last 10, with an L5 average of 34.8".
+ * into natural voiceover language appropriate to the stat family.
+ * Disposals: "has cleared 30-plus disposals in 7 of their last 10"
+ * Goals:     "has kicked 1+ goal in 7 of their last 10"
  */
 function toVoiceoverLine(bullet: string, statLens: string): string {
-  // Strip player name prefix (everything before " — ")
   const dashIdx = bullet.indexOf(" — ");
   const statPart = dashIdx >= 0 ? bullet.slice(dashIdx + 3) : bullet;
 
-  // Try to match "N/M at T+" pattern
   const recordMatch = statPart.match(/(\d+)\/(\d+)\s+at\s+(\d+)\+/);
   const l5Match = statPart.match(/L5 avg\s+([\d.]+)/);
 
   if (recordMatch) {
     const [, hits, sample, threshold] = recordMatch;
-    const statWord = statLens === "goals" ? "goal" : "disposal";
-    const statPlural = statLens === "goals" ? "goals" : "disposals";
     const thresholdNum = parseInt(threshold, 10);
-    const thresholdText = thresholdNum === 1
-      ? `a ${statWord}`
-      : `${threshold}-plus ${statPlural}`;
     const l5Text = l5Match ? `, with an L5 average of ${l5Match[1]}` : "";
+
+    if (statLens === "goals") {
+      const goalDesc = thresholdNum === 1 ? "1+ goal" : `${threshold}+ goals`;
+      return `has kicked ${goalDesc} in ${hits} of their last ${sample}${l5Text}`;
+    }
+
+    const thresholdText = `${threshold}-plus disposals`;
     return `has cleared ${thresholdText} in ${hits} of their last ${sample}${l5Text}`;
   }
 
-  // Fallback: clean up and return as-is
   return statPart.replace(/[()]/g, "").replace(/—/g, "-").trim();
 }
 
 export function buildVoiceoverScript(post: SocialPost): string {
   const intro = buildVoiceoverIntro(post);
+  const outro = `Full data on Neeko Sports Stats — link in bio.`;
+
+  // Full Game Picks: sectioned disposal + goal script
+  if (post.thresholdLabel === "Full Game Picks" || post.category === "Round Preview") {
+    const dispLines: string[] = [];
+    const goalLines: string[] = [];
+    for (const s of post.statsShown.slice(0, 8)) {
+      const dashIdx = s.indexOf(" — ");
+      const playerName = dashIdx >= 0 ? s.slice(0, dashIdx).trim() : "";
+      // Classify by stat family: goal lines contain "at 1+", "at 2+", "at 3+" goals pattern
+      const isGoal = /at\s+\d+\+\s+goal/i.test(s) || (post.statLens === "goals");
+      const voiceoverStat = toVoiceoverLine(s, isGoal ? "goals" : "disposals");
+      const line = playerName ? `${playerName} ${voiceoverStat}.` : `${voiceoverStat}.`;
+      if (isGoal) goalLines.push(line);
+      else dispLines.push(line);
+    }
+    const parts: string[] = [intro];
+    if (dispLines.length > 0) {
+      parts.push("On the disposal side —");
+      dispLines.forEach((l, i) => parts.push(`${ordinal(i + 1)}, ${l}`));
+    }
+    if (goalLines.length > 0) {
+      parts.push("On the goal side —");
+      goalLines.forEach((l, i) => parts.push(`${ordinal(i + 1)}, ${l}`));
+    }
+    parts.push(outro);
+    return parts.join(" ");
+  }
+
   const statsLines = post.statsShown.slice(0, 5).map((s, i) => {
-    // Extract player name for voiceover
     const dashIdx = s.indexOf(" — ");
     const playerName = dashIdx >= 0 ? s.slice(0, dashIdx).replace(/\(.*?\)/g, "").trim() : "";
     const voiceoverStat = toVoiceoverLine(s, post.statLens ?? "disposals");
     const line = playerName ? `${playerName} ${voiceoverStat}.` : `${voiceoverStat}.`;
     return `${ordinal(i + 1)}, ${line}`;
   });
-  const outro = `Full data on Neeko Sports Stats — link in bio.`;
   return [intro, ...statsLines, outro].join(" ");
 }
 
@@ -439,15 +468,88 @@ export function buildThumbnailOptions(post: SocialPost): string[] {
   ].filter((v, i, a) => a.indexOf(v) === i).slice(0, 4);
 }
 
-// ─── AI image prompt ──────────────────────────────────────────────────────────
+// ─── AI carousel prompt pack ──────────────────────────────────────────────────
+
+const GLOBAL_STYLE =
+  "GLOBAL STYLE: Dark zinc/charcoal background. Clean white sans-serif typography. " +
+  "AFL aesthetic. Gold and neon-green stat number accents. " +
+  "Professional data-dashboard quality. Neeko Sports Stats branding — logo top centre. " +
+  "No betting logos. No gambling imagery. No bookmaker branding. No odds text.";
+
+function aiFormat(post: SocialPost): string {
+  if (post.type === "Carousel") return "1080x1350 Instagram carousel slide";
+  if (post.type === "Short video") return "1080x1920 TikTok/Reels vertical frame";
+  return "1080x1080 square social media graphic";
+}
+
+function buildCoverPrompt(post: SocialPost, format: string): string {
+  return (
+    `SLIDE 1 — COVER: ${format}. ` +
+    `Neeko Sports Stats branding. ` +
+    `Headline: "${post.title}". ` +
+    `Post angle: ${post.angle ?? post.thresholdLabel}. ` +
+    `Stat lens: ${post.statLens}. ` +
+    `Round label: ${post.dataScope}. ` +
+    `${post.imageDescription} ` +
+    `No betting language.`
+  );
+}
+
+function buildStatSlidePrompt(statLine: string, slideNum: number, post: SocialPost, format: string): string {
+  const dashIdx = statLine.indexOf(" — ");
+  const playerName = dashIdx >= 0 ? statLine.slice(0, dashIdx).trim() : `Player ${slideNum}`;
+  const statDetail = dashIdx >= 0 ? statLine.slice(dashIdx + 3) : statLine;
+
+  // Extract team from post.teamNames if only one team, else leave generic
+  const teamHint = post.teamNames.length === 1 ? ` (${post.teamNames[0]})` : "";
+
+  return (
+    `SLIDE ${slideNum} — PLAYER: ${format}. ` +
+    `Player name: ${playerName}${teamHint}. ` +
+    `Stat line: ${statDetail}. ` +
+    `Threshold: ${post.thresholdLabel}. ` +
+    `Show hit record, percentage, L5 avg, and Last 5 strip. ` +
+    `Confidence badge. Team colour accent. Gold highlight on key stat number. ` +
+    `No betting language.`
+  );
+}
+
+function buildEndPrompt(format: string): string {
+  return (
+    `FINAL SLIDE — CTA: ${format}. ` +
+    `Minimal design. Neeko Sports Stats logo centred. ` +
+    `Headline: "See the full board". ` +
+    `URL: NeekoSportsStats.com.au. ` +
+    `Subtext: "Link in bio". ` +
+    `No gambling language.`
+  );
+}
+
+export function buildAiCarouselPromptPack(post: SocialPost): AiCarouselPromptPack {
+  const format = aiFormat(post);
+  const coverPrompt = buildCoverPrompt(post, format);
+  const slidePrompts = post.statsShown.slice(0, 6).map((s, i) =>
+    buildStatSlidePrompt(s, i + 2, post, format),
+  );
+  const endPrompt = buildEndPrompt(format);
+
+  const allSlides = [
+    coverPrompt,
+    ...slidePrompts,
+    endPrompt,
+    GLOBAL_STYLE,
+  ];
+  const combinedPrompt = allSlides.join("\n\n");
+
+  return { format, coverPrompt, slidePrompts, endPrompt, combinedPrompt };
+}
 
 export function buildAiImagePrompt(post: SocialPost): string {
-  const format = post.type === "Carousel"
-    ? "1080x1350 Instagram carousel cover slide"
-    : post.type === "Short video"
-    ? "1080x1920 TikTok/Reels vertical frame"
-    : "1080x1080 square social media graphic";
-  const styleNote = "dark zinc/charcoal background, clean white sans-serif typography, AFL aesthetic, gold and neon-green stat number accents, professional data-dashboard quality, no betting logos, no gambling imagery, no bookmaker branding, no odds";
+  const format = aiFormat(post);
+  const styleNote =
+    "dark zinc/charcoal background, clean white sans-serif typography, AFL aesthetic, " +
+    "gold and neon-green stat number accents, professional data-dashboard quality, " +
+    "no betting logos, no gambling imagery, no bookmaker branding, no odds";
   return `Create a premium AFL sports analytics social media graphic for Neeko Sports Stats. Format: ${format}. Description: ${post.imageDescription} Style: ${styleNote}.`;
 }
 
@@ -485,6 +587,7 @@ export function enrichPost(
   const hookOptions = buildHookOptions(post);
   const thumbnailOptions = buildThumbnailOptions(post);
   const aiImagePrompt = buildAiImagePrompt(post);
+  const aiCarouselPromptPack = buildAiCarouselPromptPack(post);
   const angle = classifyAngle(post);
 
   return {
@@ -499,6 +602,7 @@ export function enrichPost(
     hookOptions,
     thumbnailOptions,
     aiImagePrompt,
+    aiCarouselPromptPack,
     angle,
   };
 }

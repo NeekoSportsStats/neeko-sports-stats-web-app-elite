@@ -130,6 +130,25 @@ export interface CarouselSlide {
   visualNote: string;
 }
 
+// ─── AI carousel prompt pack ──────────────────────────────────────────────────
+
+/**
+ * Structured AI image-generation prompts for a full carousel.
+ * One prompt per slide plus a combined copyable text block.
+ */
+export interface AiCarouselPromptPack {
+  /** Format spec: e.g. "1080x1350 Instagram carousel" */
+  format: string;
+  /** Cover / title slide prompt */
+  coverPrompt: string;
+  /** One prompt per stat player/section slide */
+  slidePrompts: string[];
+  /** CTA / end slide prompt */
+  endPrompt: string;
+  /** All prompts combined into a single copyable string, one slide per section */
+  combinedPrompt: string;
+}
+
 // ─── Compliance result ────────────────────────────────────────────────────────
 
 export interface ComplianceResult {
@@ -178,6 +197,7 @@ export interface SocialPost {
   suggestedVisual: string;
   imageDescription: string;
   aiImagePrompt: string;
+  aiCarouselPromptPack: AiCarouselPromptPack | null;
   platformCaptions: PlatformCaptions;
   voiceoverScript: string;
   carouselSlides: CarouselSlide[];

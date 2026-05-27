@@ -194,7 +194,7 @@ function build20PlusDisposalsPost(
     ? `Not enough genuine 20+ tier candidates for this game (${picks.length} found — strict tier only, no 25+/30+ players). Mark as Needs Review.`
     : picks.some(p => p.tier === "Low") ? "Some Low-tier candidates included. Review before publishing." : null;
 
-  const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "angle"> = {
+  const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "aiCarouselPromptPack" | "angle"> = {
     id: kitId(game.match_id, "disposals"),
     day: gameDayAbbrev(game.game_date),
     postNumber: 1,
@@ -287,7 +287,7 @@ function build1PlusGoalsPost(
     ? `Not enough genuine 1+ tier candidates for this game (${picks.length} found — strict 1+ only, no 2+/3+ players). Mark as Needs Review.`
     : picks.some(p => p.tier === "Low") ? "Some Low-tier candidates included. Review before publishing." : null;
 
-  const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "angle"> = {
+  const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "aiCarouselPromptPack" | "angle"> = {
     id: kitId(game.match_id, "goals"),
     day: gameDayAbbrev(game.game_date),
     postNumber: 2,
@@ -420,7 +420,7 @@ function buildFullGamePicksPost(
     ? `Thin combined pool — ${dSlice.length} disposal picks, ${gSlice.length} goal picks. Review before publishing.`
     : pickCount < 6 ? `Smaller than ideal combined pool (${pickCount} players). Normal if game has limited qualifying candidates.` : null;
 
-  const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "angle"> = {
+  const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "aiCarouselPromptPack" | "angle"> = {
     id: kitId(game.match_id, "combined"),
     day: gameDayAbbrev(game.game_date),
     postNumber: 3,
@@ -477,9 +477,15 @@ function calcBestAngle(
   const hasBothKits = totalDisp >= 2 && totalGoal >= 2;
 
   if (hasBothKits && dispScore + goalScore >= 10) {
+    // Check if all disposal picks share the same threshold for a more specific label
+    const thresholds = new Set(dispPicks.map(p => p.threshold));
+    const allSameDispThr = thresholds.size === 1;
     const topDispThr = dispPicks[0]?.threshold ?? 20;
+    const angleLabel = allSameDispThr && topDispThr >= 25
+      ? `Full Game Picks (${topDispThr}+ Disposals + Goals)`
+      : "Mixed Stat Watch";
     return {
-      angle: `Combined stat watch (${topDispThr}+ disposals + goals)`,
+      angle: angleLabel,
       reason: `${totalDisp} disposal candidates (${highDisp} High), ${totalGoal} goal candidates (${highGoal} High).`,
     };
   }
@@ -487,7 +493,7 @@ function calcBestAngle(
   if (dispScore >= goalScore && totalDisp >= 2) {
     const topDispThr = dispPicks[0]?.threshold ?? 20;
     return {
-      angle: `${topDispThr}+ disposal watch`,
+      angle: `${topDispThr}+ Disposal Watch`,
       reason: `${totalDisp} disposal candidates (${highDisp} High). Disposal pool is the stronger angle.`,
     };
   }
@@ -495,7 +501,7 @@ function calcBestAngle(
   if (totalGoal >= 2) {
     const topGoalThr = goalPicks[0]?.threshold ?? 1;
     return {
-      angle: `${topGoalThr}+ goal form watch`,
+      angle: `${topGoalThr}+ Goal Form Watch`,
       reason: `${totalGoal} goal candidates (${highGoal} High). Goal pool is the stronger angle.`,
     };
   }
