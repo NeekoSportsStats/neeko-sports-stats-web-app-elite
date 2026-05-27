@@ -1305,13 +1305,26 @@ function ComplianceBadge({ compliance }: { compliance: SocialPost["compliance"] 
   );
 }
 
+// ─── Admin debug metadata ─────────────────────────────────────────────────────
+
+interface PostDebugMeta {
+  round: string;
+  currentRound: number;
+  dataRefreshedAt: Date;
+  latestIncludedGameWeek: number | null;
+  matchCount: number;
+  disposalPlayerCount: number;
+  goalPlayerCount: number;
+}
+
 function SocialPostCard({
-  post, copiedId, onCopyField, roundLabel,
+  post, copiedId, onCopyField, roundLabel, debugMeta,
 }: {
   post: SocialPost;
   copiedId: string | null;
   onCopyField: (id: string, text: string) => void;
   roundLabel: string;
+  debugMeta: PostDebugMeta;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [platformTab, setPlatformTab] = useState<"tiktok" | "instagram" | "facebook">("tiktok");
@@ -1675,6 +1688,37 @@ function SocialPostCard({
               <p className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded-lg px-2.5 py-2 leading-relaxed">{renderSafeText(post.aiImagePrompt)}</p>
             </div>
           )}
+
+          {/* Admin debug metadata */}
+          <details className="group">
+            <summary className="text-[9px] text-zinc-600 cursor-pointer select-none hover:text-zinc-500 transition-colors list-none flex items-center gap-1">
+              <span className="group-open:hidden">▶</span>
+              <span className="hidden group-open:inline">▼</span>
+              Debug metadata
+            </summary>
+            <div className="mt-1.5 bg-zinc-900/60 border border-zinc-800/60 rounded-lg px-2.5 py-2 space-y-1 font-mono">
+              <p className="text-[9px] text-zinc-500">round: <span className="text-zinc-400">{debugMeta.round}</span> (round {debugMeta.currentRound})</p>
+              <p className="text-[9px] text-zinc-500">post.id: <span className="text-zinc-400">{post.id}</span></p>
+              <p className="text-[9px] text-zinc-500">post.thresholdLabel: <span className="text-zinc-400">{post.thresholdLabel}</span></p>
+              {post.targetGame && (
+                <p className="text-[9px] text-zinc-500">targetGame: <span className="text-zinc-400">{post.targetGame}</span> ({post.targetGameStatus})</p>
+              )}
+              <p className="text-[9px] text-zinc-500">dataRefreshedAt: <span className="text-zinc-400">{debugMeta.dataRefreshedAt.toISOString()}</span></p>
+              <p className="text-[9px] text-zinc-500">generatedAt (page load): <span className="text-zinc-400">{debugMeta.dataRefreshedAt.toISOString()}</span></p>
+              <p className="text-[9px] text-zinc-500">latestCompletedRound: <span className="text-zinc-400">{debugMeta.currentRound}</span></p>
+              {debugMeta.latestIncludedGameWeek !== null && (
+                <p className="text-[9px] text-zinc-500">latestIncludedGameWeek: <span className="text-zinc-400">{debugMeta.latestIncludedGameWeek}</span></p>
+              )}
+              <p className="text-[9px] text-zinc-500">matchesLoaded: <span className="text-zinc-400">{debugMeta.matchCount}</span></p>
+              <p className="text-[9px] text-zinc-500">disposalPlayers: <span className="text-zinc-400">{debugMeta.disposalPlayerCount}</span> · goalPlayers: <span className="text-zinc-400">{debugMeta.goalPlayerCount}</span></p>
+              {post.playerNames.length > 0 && (
+                <p className="text-[9px] text-zinc-500">players ({post.playerNames.length}): <span className="text-zinc-400">{post.playerNames.join(", ")}</span></p>
+              )}
+              <p className="text-[9px] text-zinc-600 italic">
+                Note: last_5_avg is a DB pre-computed scalar; Last 5 strip is computed live from last_10_values. These may diverge if DB pipeline runs updated them at different times (MIXED_DATA_SOURCE).
+              </p>
+            </div>
+          </details>
 
           {/* Copy buttons row */}
           <div className="flex flex-wrap gap-1.5 pt-1 border-t border-zinc-800/50">
@@ -2566,12 +2610,14 @@ function GameDayTabContent({
   copiedId,
   onCopy,
   roundLabel,
+  debugMeta,
 }: {
   day: "Thu" | "Fri" | "Sat" | "Sun";
   packs: GamePickMarketingPack[];
   copiedId: string | null;
   onCopy: (id: string, text: string) => void;
   roundLabel: string;
+  debugMeta: PostDebugMeta;
 }) {
   const dayFull = DAY_FULL[day];
   const dayHashtag = gamedayHashtags(day).find(t => t.includes("Footy")) ?? "";
@@ -2660,6 +2706,7 @@ function GameDayTabContent({
                   copiedId={copiedId}
                   onCopyField={onCopy}
                   roundLabel={roundLabel}
+                  debugMeta={debugMeta}
                 />
               </div>
             ))}
@@ -2785,6 +2832,20 @@ function SocialPostPlannerInner({ data }: { data: CIDataSubset }) {
     () => buildAllGamePickMarketingPacks(gamePicks, data.matches),
     [gamePicks, data.matches],
   );
+
+  const debugMeta = useMemo((): PostDebugMeta => {
+    const weeks = data.matches.map(m => m.week).filter((w): w is number => typeof w === "number");
+    const latestIncludedGameWeek = weeks.length > 0 ? Math.max(...weeks) : null;
+    return {
+      round: data.roundLabel,
+      currentRound: data.currentRound,
+      dataRefreshedAt: data.loadedAt,
+      latestIncludedGameWeek,
+      matchCount: data.matches.length,
+      disposalPlayerCount: data.disposalPlayers.length,
+      goalPlayerCount: data.goalPlayers.length,
+    };
+  }, [data.roundLabel, data.currentRound, data.loadedAt, data.matches, data.disposalPlayers.length, data.goalPlayers.length]);
 
   const handleCopyField = useCallback((id: string, text: string) => {
     navigator.clipboard.writeText(text).catch(() => {});
@@ -3080,6 +3141,7 @@ function SocialPostPlannerInner({ data }: { data: CIDataSubset }) {
           copiedId={copiedId}
           onCopy={(id, text) => { navigator.clipboard.writeText(text).catch(() => {}); setCopiedId(id); setTimeout(() => setCopiedId(null), 1800); }}
           roundLabel={data.roundLabel}
+          debugMeta={debugMeta}
         />
       )}
 
@@ -3100,6 +3162,7 @@ function SocialPostPlannerInner({ data }: { data: CIDataSubset }) {
                 copiedId={copiedId}
                 onCopyField={handleCopyField}
                 roundLabel={data.roundLabel}
+                debugMeta={debugMeta}
               />
             ))}
           </div>
