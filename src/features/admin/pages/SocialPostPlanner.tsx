@@ -892,10 +892,13 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
 
   // 20. One stat before bounce — generic
   {
-    const player = dispPool[0];
+    // Use the highest-tier available player and their correct threshold label
+    const player = pool30[0] ?? pool25[0] ?? pool20[0] ?? pool15[0];
     if (player) {
-      const bullet = formatPublicStatLine(player, 20);
-      bkPost({ day: "Sat", type: "Short video", category: "Round Preview", intent: "pre_game", statLens: "disposals", confidence: "High", title: "One stat before bounce", content: "One stat. No fluff. Just the number.", statsShown: [bullet], onScreenText: `${player.player_name} — L5 avg ${getL5Avg(player).toFixed(1)}`, caption: buildCaption("One stat before bounce. See the data, make your own call.", [bullet], 1), hashtags: gamedayHashtags("Sat"), suggestedVisual: "Single-player full-screen graphic — team colours, L5 avg", imageDescription: `Short video / static frame. Single player focus. Full-screen layout: player name large, team name below, L5 average centred in bold. 20+ hit rate shown as percentage bar. Team colours as background accent. No other players. No betting language.`, dataScope: `${rl} top disposal player`, targetGame: null, targetGameStatus: "upcoming", fallbackWarning: null, players: [player], thresholdLabel: "20+ Disposals", postNumber: 1 });
+      const thr = bestDisposalThreshold(player);
+      const bullet = formatPublicStatLine(player, thr);
+      const thrLabel = `${thr}+ Disposals`;
+      bkPost({ day: "Sat", type: "Short video", category: "Round Preview", intent: "pre_game", statLens: "disposals", confidence: "High", title: "One stat before bounce", content: "One stat. No fluff. Just the number.", statsShown: [bullet], onScreenText: `${player.player_name} — L5 avg ${getL5Avg(player).toFixed(1)}`, caption: buildCaption("One stat before bounce. See the data, make your own call.", [bullet], 1), hashtags: gamedayHashtags("Sat"), suggestedVisual: "Single-player full-screen graphic — team colours, L5 avg", imageDescription: `Short video / static frame. Single player focus. Full-screen layout: player name large, team name below, L5 average centred in bold. ${thr}+ hit rate shown as percentage bar. Team colours as background accent. No other players. No betting language.`, dataScope: `${rl} top disposal player`, targetGame: null, targetGameStatus: "upcoming", fallbackWarning: null, players: [player], thresholdLabel: thrLabel, postNumber: 1 });
     }
   }
 
@@ -937,7 +940,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
 
   // 22. Next round watchlist
   {
-    const players = dispPool.slice(0, 5);
+    const players = pool20.slice(0, 5);
     const bullets = players.map(p => formatPublicStatLine(p, 20));
     bkPost({
       day: "Sun", type: "Carousel", category: "Round Preview", intent: "evergreen_backup",
