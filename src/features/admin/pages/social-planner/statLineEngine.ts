@@ -492,3 +492,27 @@ export function tierColor(tier: ConfidenceTier): string {
   if (tier === "Low") return "text-orange-400";
   return "text-zinc-500";
 }
+
+// ─── Public stat-line formatter ───────────────────────────────────────────────
+
+/**
+ * Canonical stat bullet used in all weekly social posts.
+ * Format: "Player (Team) — 8/10 (80%) at 25+, L5 avg 27.8"
+ *
+ * Disposal thresholds: pass 15 | 20 | 25 | 30.
+ * Goal thresholds: pass 1 | 2 | 3 (outputs "1+ goal" / "2+ goals" / "3+ goals").
+ */
+export function formatPublicStatLine(
+  p: StatBoardPlayer,
+  threshold: number,
+): string {
+  const rec = getRecentHitRecord(p, threshold);
+  const record = rec.sample > 0 ? `${rec.hits}/${rec.sample}` : "—";
+  const pctStr = rec.sample > 0 ? ` (${Math.round(rec.rate * 100)}%)` : "";
+  const l5 = p.last_5_avg ?? p.season_avg ?? 0;
+  const isGoal = threshold <= 3;
+  const label = isGoal
+    ? threshold === 1 ? "1+ goal" : `${threshold}+ goals`
+    : `${threshold}+`;
+  return `${p.player_name} (${p.team_name ?? ""}) — ${record}${pctStr} at ${label}, L5 avg ${l5.toFixed(1)}`;
+}

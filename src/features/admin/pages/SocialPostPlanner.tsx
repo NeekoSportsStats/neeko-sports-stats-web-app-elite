@@ -22,7 +22,7 @@ import type { StatBoardPlayer, StatBoardMatch } from "@/features/afl/stat-board/
 import type { StatBoardTeamRow } from "@/features/afl/stat-board/teamTypes";
 import { enrichPost } from "./social-planner/postEnrichment";
 import { buildEvergreenPool } from "./social-planner/evergreenPosts";
-import { normaliseRate, getRecentHitRecord } from "./social-planner/statLineEngine";
+import { normaliseRate, getRecentHitRecord, formatPublicStatLine } from "./social-planner/statLineEngine";
 import { usePostStatus, STATUS_LABELS, STATUS_OPTIONS } from "./social-planner/usePostStatus";
 import type {
   SocialPost,
@@ -100,6 +100,26 @@ const SAFE_SIGN_OFFS = [
   "The numbers don't make the decision for you — they make it clearer.",
   "Full board at Neeko Sports Stats.",
 ];
+
+// ─── Weekly schedule spec (single source of truth) ───────────────────────────
+// Each entry defines what a given day/post slot must contain.
+// buildWeeklyPlan() must follow this spec — no divergence allowed.
+// Thu–Sun are fixture-driven (GamePickMarketingPack) — no entries here.
+
+const SOCIAL_WEEKLY_SCHEDULE = [
+  // Monday
+  { day: "Mon" as const, slot: 1, topic: "previous-week-proof",  statLens: "disposals" as const, category: "Round Wrap"    as const, type: "Carousel"    as const },
+  { day: "Mon" as const, slot: 2, topic: "20plus-disposals",     statLens: "disposals" as const, category: "Disposal Trend" as const, type: "Image"       as const },
+  { day: "Mon" as const, slot: 3, topic: "1plus-goals",          statLens: "goals"     as const, category: "Goal Trend"    as const, type: "Carousel"    as const },
+  // Tuesday
+  { day: "Tue" as const, slot: 1, topic: "25plus-disposals",     statLens: "disposals" as const, category: "Disposal Trend" as const, type: "Image"       as const },
+  { day: "Tue" as const, slot: 2, topic: "2plus-goals",          statLens: "goals"     as const, category: "Goal Trend"    as const, type: "Image"       as const },
+  { day: "Tue" as const, slot: 3, topic: "form-risers",          statLens: "disposals" as const, category: "Form Mover"   as const, type: "Carousel"    as const },
+  // Wednesday
+  { day: "Wed" as const, slot: 1, topic: "30plus-disposals",     statLens: "disposals" as const, category: "Disposal Trend" as const, type: "Image"       as const },
+  { day: "Wed" as const, slot: 2, topic: "3plus-goals-or-2plus", statLens: "goals"     as const, category: "Goal Trend"    as const, type: "Carousel"    as const },
+  { day: "Wed" as const, slot: 3, topic: "team-scoring-trends",  statLens: "team-total" as const, category: "Team Total"   as const, type: "Image"       as const },
+] as const;
 
 // ─── Utility helpers ──────────────────────────────────────────────────────────
 
@@ -398,9 +418,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
         : dispPool;
       const recapThrNum = pool20.length >= 3 ? 20 : poolElite.length >= 3 ? 25 : 20;
       const recapPlayers = recapPool.slice(0, 5);
-      const bullets = recapPlayers.map(p =>
-        `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, recapThrNum))} at ${recapThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
-      );
+      const bullets = recapPlayers.map(p => formatPublicStatLine(p, recapThrNum));
       const hook = `${rl} results in. Here's how the form numbers looked across the weekend.`;
       schedule.push(makePost({
         day: "Mon", postNumber: 1,
@@ -429,9 +447,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
         : pool15.slice(0, 5);
       const mon1ThrNum = pool20.length >= 2 ? 20 : 15;
       const hook = `${rl} preview — who's been clearing ${mon1ThrNum}+ disposals consistently?`;
-      const bullets = mon1Players.map(p =>
-        `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, mon1ThrNum))} at ${mon1ThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
-      );
+      const bullets = mon1Players.map(p => formatPublicStatLine(p, mon1ThrNum));
       schedule.push(makePost({
         day: "Mon", postNumber: 1,
         type: "Carousel",
@@ -463,9 +479,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const isFallback = pool20.length < 2;
     const mon2ThrNum = pool20.length >= 2 ? 20 : 15;
     const hook = `${rl} — players consistently clearing ${mon2ThrNum}+ disposals. Stats over gut feel.`;
-    const bullets = mon2Players.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, mon2ThrNum))} at ${mon2ThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
-    );
+    const bullets = mon2Players.map(p => formatPublicStatLine(p, mon2ThrNum));
     schedule.push(makePost({
       day: "Mon", postNumber: 2,
       type: "Image",
@@ -492,9 +506,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   {
     const mon3Players = (goalPool1.length >= 2 ? goalPool1 : goalPool).slice(0, 5);
     const hook = `${rl} — goal scorer form. Who's been finding the big sticks regularly?`;
-    const bullets = mon3Players.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 1))} at 1+ goals, L5 avg ${getL5Avg(p).toFixed(1)}`
-    );
+    const bullets = mon3Players.map(p => formatPublicStatLine(p, 1));
     schedule.push(makePost({
       day: "Mon", postNumber: 3,
       type: "Carousel",
@@ -527,9 +539,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const isFallback = pool25.length < 2;
     const tue1ThrNum = pool25.length >= 2 ? 25 : 20;
     const hook = `${rl} — who's been clearing ${tue1ThrNum}+ disposals consistently? Data from the last 5 games.`;
-    const tue1Bullets = tue1Players.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, tue1ThrNum))} at ${tue1ThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
-    );
+    const tue1Bullets = tue1Players.map(p => formatPublicStatLine(p, tue1ThrNum));
     schedule.push(makePost({
       day: "Tue", postNumber: 1,
       type: "Image",
@@ -556,9 +566,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   {
     const tue2Players = (goalPool2.length >= 2 ? goalPool2 : goalPool.filter(p => getHitRate(p, 2) >= 0.45)).slice(0, 5);
     const hook = `${rl} — multi-goal scorers with strong recent form. Hit rates from the last 5 games.`;
-    const bullets = tue2Players.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 2))} at 2+ goals, L5 avg ${getL5Avg(p).toFixed(1)}`
-    );
+    const bullets = tue2Players.map(p => formatPublicStatLine(p, 2));
     schedule.push(makePost({
       day: "Tue", postNumber: 2,
       type: "Image",
@@ -628,9 +636,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const hook = pool30.length >= 3
       ? `Elite disposal volume heading into ${rl}. Who's been clearing 30+ consistently?`
       : `High-volume disposers heading into ${rl}. Numbers that matter.`;
-    const bullets = wed1Players.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, wed1ThrNum))} at ${wed1ThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
-    );
+    const bullets = wed1Players.map(p => formatPublicStatLine(p, wed1ThrNum));
     schedule.push(makePost({
       day: "Wed", postNumber: 1,
       type: "Image",
@@ -678,9 +684,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     }
 
     const hook = `${rl} — ${wed2Label} goal scorer form. Consistent performers at the higher threshold.`;
-    const bullets = wed2Players.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, wed2Thr))} at ${wed2Thr}+, L5 avg ${getL5Avg(p).toFixed(1)}`
-    );
+    const bullets = wed2Players.map(p => formatPublicStatLine(p, wed2Thr));
     schedule.push(makePost({
       day: "Wed", postNumber: 2,
       type: "Carousel",
