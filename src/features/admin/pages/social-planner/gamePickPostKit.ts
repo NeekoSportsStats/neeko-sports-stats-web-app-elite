@@ -1,26 +1,22 @@
 /**
- * Game Pick Post Kit — converts a GamePick into ready-to-use SocialPost objects.
+ * Game Pick Post Kit — converts a GamePick into exactly 3 SocialPost objects.
  * Admin-only. No public exposure. No betting language.
  *
- * Each GamePick can produce up to three post kits:
- *   1. Disposals kit  (≥3 valid disposal picks required)
- *   2. Goals kit      (≥2 valid goal picks required)
- *   3. Combined kit   (≥4 total picks across both lenses required)
+ * Per-game structure (always exactly 3 posts):
+ *   Post 1 — 20+ Disposals   (players from that game only, 20+ threshold)
+ *   Post 2 — 1+ Goals        (players from that game only, 1+ threshold)
+ *   Post 3 — Full Game Picks (combined best-line disposal + goal picks)
+ *
+ * If a post has insufficient quality candidates, it is generated with a
+ * fallbackWarning so the planner shows it as "Needs Review" rather than hiding it.
  *
  * All enrichment (voiceover, carousel, AI prompt, platform captions, compliance,
- * quality score) is delegated to the shared enrichPost() helper from postEnrichment.ts,
- * so Game Picks produce identical output shape and quality signals as day posts.
+ * quality score) is delegated to the shared enrichPost() helper from postEnrichment.ts.
  */
 import type { GamePick, GamePickPlayer } from "./gamePicksEngine";
-import type { SocialPost } from "./types";
+import type { SocialPost, DayOfWeek } from "./types";
 import { enrichPost } from "./postEnrichment";
 import type { StatBoardMatch } from "@/features/afl/stat-board/types";
-
-// ─── Thresholds ───────────────────────────────────────────────────────────────
-
-const MIN_DISPOSAL_PICKS = 3;
-const MIN_GOAL_PICKS = 2;
-const MIN_COMBINED_PICKS = 4;
 
 // ─── Kit type ─────────────────────────────────────────────────────────────────
 
@@ -34,28 +30,32 @@ export interface GamePickPostKit {
 
 export interface GamePickMarketingPack {
   game: GamePick;
-  /** Best social angle label, e.g. "25+ disposal watch" */
+  /** Best social angle label */
   bestAngle: string;
   /** Reason for the best angle selection */
   bestAngleReason: string;
+  /** Always exactly 3 kits: [disposals, goals, combined] */
   kits: GamePickPostKit[];
-  /** Skip recommendation when no strong candidates exist */
+  /** null — we always generate all 3 posts; use fallbackWarning on individual kits instead */
   skipReason: string | null;
 }
 
-// ─── ID counter (scoped to this module) ──────────────────────────────────────
+// ─── ID helper ────────────────────────────────────────────────────────────────
 
-let _kitCounter = 0;
 function kitId(matchId: number, type: GamePickKitType): string {
-  return `gp-kit-${matchId}-${type}-${++_kitCounter}`;
+  return `gp-kit-${matchId}-${type}`;
 }
 
-// ─── Stat formatting ──────────────────────────────────────────────────────────
+// ─── Stat formatters ──────────────────────────────────────────────────────────
 
-/**
- * Public-safe stat line: "Jack Sinclair — 9/10 at 25+, L5 avg 27.8"
- * Uses actual hit record denominator — not forced "last 10".
- */
+/** Public line: "Jack Sinclair — 9/10 at 25+, L5 avg 27.8" */
+function formatPickLineShort(p: GamePickPlayer): string {
+  const record = p.hitRecord !== "—" ? `${p.hitRecord} at ${p.threshold}+` : `${p.threshold}+`;
+  const l5 = p.l5_avg !== null ? `, L5 avg ${p.l5_avg.toFixed(1)}` : "";
+  return `${p.player_name} — ${record}${l5}`;
+}
+
+/** Expanded line including Last 5 strip */
 function formatPickLine(p: GamePickPlayer): string {
   const record = p.hitRecord !== "—" ? `${p.hitRecord} at ${p.threshold}+` : `${p.threshold}+`;
   const l5 = p.l5_avg !== null ? `, L5 avg ${p.l5_avg.toFixed(1)}` : "";
@@ -63,14 +63,7 @@ function formatPickLine(p: GamePickPlayer): string {
   return `${p.player_name} — ${record}${l5}${l5strip}`;
 }
 
-/** Short line for captions (no Last 5 strip): "Jack Sinclair — 9/10 at 25+, L5 avg 27.8" */
-function formatPickLineShort(p: GamePickPlayer): string {
-  const record = p.hitRecord !== "—" ? `${p.hitRecord} at ${p.threshold}+` : `${p.threshold}+`;
-  const l5 = p.l5_avg !== null ? `, L5 avg ${p.l5_avg.toFixed(1)}` : "";
-  return `${p.player_name} — ${record}${l5}`;
-}
-
-/** Image prompt line (for AI image generation): include l5 strip */
+/** Image prompt line including team and Last 5 */
 function formatPickLineForImagePrompt(p: GamePickPlayer): string {
   const record = p.hitRecord !== "—" ? `${p.hitRecord} at ${p.threshold}+` : `${p.threshold}+`;
   const l5 = p.l5_avg !== null ? `, L5 avg ${p.l5_avg.toFixed(1)}` : "";
@@ -80,9 +73,9 @@ function formatPickLineForImagePrompt(p: GamePickPlayer): string {
 
 // ─── Hashtag helper ───────────────────────────────────────────────────────────
 
-function gamePickHashtags(kitType: GamePickKitType, gameDate: string): string[] {
+export function gamePickHashtags(kitType: GamePickKitType, gameDate: string): string[] {
   const base = ["#AFL", "#AFLStats", "#NeekoSportsStats"];
-  const day = new Date(gameDate).getDay(); // 0=Sun, 4=Thu, 5=Sat, 6=Sun
+  const day = new Date(gameDate).getDay();
   const dayTag =
     day === 4 ? "#ThursdayFooty" :
     day === 5 ? "#FridayFooty" :
@@ -105,6 +98,19 @@ function gamePickHashtags(kitType: GamePickKitType, gameDate: string): string[] 
   return tags;
 }
 
+// ─── Day helpers ──────────────────────────────────────────────────────────────
+
+const DOW_ABBREV: DayOfWeek[] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DOW_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Game day"];
+
+function gameDayAbbrev(gameDate: string): DayOfWeek {
+  return DOW_ABBREV[new Date(gameDate).getDay()];
+}
+
+function gameDayLabel(gameDate: string): string {
+  return DOW_FULL[new Date(gameDate).getDay()] ?? "Game day";
+}
+
 // ─── Caption builder ──────────────────────────────────────────────────────────
 
 const SIGN_OFFS = [
@@ -123,56 +129,83 @@ function buildPickCaption(hook: string, bullets: string[], signOffIdx = 0): stri
   return [hook, "", ...bullets.map(b => `• ${b}`), "", signOff(signOffIdx)].join("\n");
 }
 
-// ─── Disposal kit builder ─────────────────────────────────────────────────────
+// ─── Post 1: 20+ Disposals ───────────────────────────────────────────────────
 
-function buildDisposalsKit(
+/**
+ * Builds the 20+ Disposals post for a game.
+ *
+ * Uses players whose publicContentTier is 20 (i.e. they genuinely qualify at 20+
+ * but not at 25+/30+). If this pool is thin, falls back to any 20+ qualifier and
+ * sets a fallbackWarning.
+ *
+ * All players must be from the two teams in this game.
+ */
+function build20PlusDisposalsPost(
   game: GamePick,
-  picks: GamePickPlayer[],
+  allDispPicks: GamePickPlayer[],
   matches: StatBoardMatch[],
 ): GamePickPostKit {
   const matchLabel = game.match_label;
-  const bullets = picks.slice(0, 6).map(formatPickLineShort);
-  const statsShown = picks.slice(0, 6).map(formatPickLine);
-  const topThr = picks[0]?.threshold ?? 20;
-  const title = `${matchLabel} — disposal watch`;
-  const hook = `${matchLabel} disposal trends before bounce.`;
-  const caption = buildPickCaption(hook, bullets, 0);
-  const pickCount = picks.length;
+  const dayLabel = gameDayLabel(game.game_date);
+
+  // Prefer genuine 20-tier players (not 25+/30+)
+  let picks = allDispPicks.filter(p => p.publicContentTier === 20);
+
+  // If fewer than 2 strict-20 players, include all who qualify at any tier
+  if (picks.length < 2) {
+    picks = allDispPicks.filter(p => p.publicContentTier !== null);
+  }
+
+  picks = picks.slice(0, 5);
+
+  const hasEnough = picks.length >= 2;
+  const hasHighTier = picks.some(p => p.tier === "High");
+
+  const bullets = picks.map(formatPickLineShort);
+  const statsShown = picks.map(formatPickLine);
+
+  const title = `${matchLabel} — 20+ disposals`;
+  const hook = `${matchLabel} disposal watch — ${dayLabel}.`;
+  const caption = picks.length > 0
+    ? buildPickCaption(hook, bullets, 0)
+    : `${hook}\n\nInsufficient 20+ disposal candidates for this game.`;
 
   const hookOptions = [
     hook,
-    `These are the disposal profiles that stand out for ${matchLabel}.`,
-    `Before bounce, here are the numbers on the board for ${matchLabel}.`,
-    `${pickCount} disposal trends worth watching for ${matchLabel}.`,
-    `Recent-form data only — ${matchLabel} disposal watch.`,
+    `20+ disposal form for ${matchLabel}.`,
+    `${matchLabel} — disposal trends before bounce.`,
+    `Before bounce — ${picks.length} players with 20+ disposal form for ${matchLabel}.`,
+    `Recent-form data — ${matchLabel} 20+ disposal watch.`,
   ];
 
-  const suggestedVisual =
-    `${pickCount}-player disposal stat grid — name, team, ${topThr}+ record, L5 avg, Last 5 strip. Neeko brand.`;
+  const suggestedVisual = picks.length > 0
+    ? `${picks.length}-player stat grid — name, team, 20+ record, L5 avg, Last 5 strip. Dark. Neeko brand.`
+    : "Placeholder card — insufficient 20+ disposal candidates.";
 
-  const imageDescription =
-    `Dark AFL stats graphic for ${matchLabel}. ` +
-    `${pickCount} disposal player cards: ${picks.slice(0, 3).map(formatPickLineForImagePrompt).join("; ")}. ` +
-    `Green/gold accents for strong records. Neeko Sports Stats logo.`;
+  const imageDescription = picks.length > 0
+    ? `Create a dark premium AFL stat graphic for ${matchLabel} focused on 20+ disposals. ` +
+      `Show ${picks.length} player cards: ${picks.slice(0, 4).map(formatPickLineForImagePrompt).join("; ")}. ` +
+      `Use team colour accents. Neeko Sports Stats branding. No betting language.`
+    : `Placeholder dark AFL graphic — no strong 20+ disposal candidates for ${matchLabel}. Show team names only.`;
 
-  const onScreenText =
-    `${matchLabel}\n${picks.slice(0, 3).map(p => `${p.player_name} ${p.hitRecord} at ${p.threshold}+`).join("\n")}`;
+  const onScreenText = picks.length > 0
+    ? `${matchLabel}\n${picks.slice(0, 3).map(p => `${p.player_name} ${p.hitRecord} at ${p.threshold}+`).join("\n")}`
+    : `${matchLabel}\n20+ Disposals Watch`;
 
-  const playerNames = picks.map(p => p.player_name);
-  const teamNames = [...new Set(picks.map(p => p.team_name))];
-
-  const hasHighTier = picks.some(p => p.tier === "High");
+  const fallbackWarning = !hasEnough
+    ? `Not enough strong 20+ disposal candidates for this game (${picks.length} found). Mark as Needs Review.`
+    : picks.some(p => p.tier === "Low") ? "Some Low-tier candidates included. Review before publishing." : null;
 
   const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "angle"> = {
     id: kitId(game.match_id, "disposals"),
-    day: "Sat",
+    day: gameDayAbbrev(game.game_date),
     postNumber: 1,
-    postTime: "game day",
+    postTime: `${dayLabel} — pre-game`,
     type: "Carousel",
     category: "Disposal Trend",
     intent: "pre_game",
     statLens: "disposals",
-    confidence: hasHighTier ? "High" : "Medium",
+    confidence: hasHighTier ? "High" : picks.length >= 2 ? "Medium" : "Low",
     title,
     content: hook,
     statsShown,
@@ -181,72 +214,94 @@ function buildDisposalsKit(
     hashtags: gamePickHashtags("disposals", game.game_date),
     suggestedVisual,
     imageDescription,
-    dataScope: `${matchLabel} disposal pool`,
+    dataScope: `${matchLabel} disposal pool (20+ tier)`,
     targetGame: matchLabel,
     targetGameStatus: "upcoming",
-    fallbackWarning: pickCount < MIN_DISPOSAL_PICKS ? "Small disposal pool — fewer than 3 strong candidates." : null,
-    playerNames,
-    teamNames,
-    thresholdLabel: `${topThr}+ Disposals`,
+    fallbackWarning,
+    playerNames: picks.map(p => p.player_name),
+    teamNames: [...new Set(picks.map(p => p.team_name))],
+    thresholdLabel: "20+ Disposals",
     isBackup: false,
     tone: "clean_stats",
     hookOptions,
   };
 
   const enriched = enrichPost(rawPost as SocialPost, matches);
-  return { kitType: "disposals", post: enriched, pickCount };
+  return { kitType: "disposals", post: enriched, pickCount: picks.length };
 }
 
-// ─── Goals kit builder ────────────────────────────────────────────────────────
+// ─── Post 2: 1+ Goals ────────────────────────────────────────────────────────
 
-function buildGoalsKit(
+/**
+ * Builds the 1+ Goals post for a game.
+ *
+ * Always uses 1+ threshold (not upgraded to 2+ or 3+). Higher-threshold
+ * players can still appear in the combined Post 3.
+ */
+function build1PlusGoalsPost(
   game: GamePick,
-  picks: GamePickPlayer[],
+  allGoalPicks: GamePickPlayer[],
   matches: StatBoardMatch[],
 ): GamePickPostKit {
   const matchLabel = game.match_label;
-  const bullets = picks.slice(0, 5).map(formatPickLineShort);
-  const statsShown = picks.slice(0, 5).map(formatPickLine);
-  const topThr = picks[0]?.threshold ?? 1;
-  const title = `${matchLabel} — goal form watch`;
-  const hook = `${matchLabel} goal form trends before bounce.`;
-  const caption = buildPickCaption(hook, bullets, 1);
-  const pickCount = picks.length;
+  const dayLabel = gameDayLabel(game.game_date);
+
+  // For Post 2: keep players where threshold = 1 (genuine 1+ line)
+  // Fall back to any goal pick if 1+ pool is too thin
+  let picks = allGoalPicks.filter(p => p.threshold === 1);
+  if (picks.length < 2) {
+    picks = [...allGoalPicks];
+  }
+  picks = picks.slice(0, 5);
+
+  const hasEnough = picks.length >= 2;
+  const hasHighTier = picks.some(p => p.tier === "High");
+
+  const bullets = picks.map(formatPickLineShort);
+  const statsShown = picks.map(formatPickLine);
+
+  const title = `${matchLabel} — 1+ goals`;
+  const hook = `${matchLabel} goal form watch — ${dayLabel}.`;
+  const caption = picks.length > 0
+    ? buildPickCaption(hook, bullets, 1)
+    : `${hook}\n\nInsufficient 1+ goal candidates for this game.`;
 
   const hookOptions = [
     hook,
-    `Goal form data for ${matchLabel} — the profiles that stand out.`,
-    `${pickCount} goal trend players to watch in ${matchLabel}.`,
-    `Before bounce: ${matchLabel} goal form numbers.`,
-    `Recent-form data only — ${matchLabel} goal watch.`,
+    `1+ goal form data for ${matchLabel}.`,
+    `${matchLabel} — goal trends before bounce.`,
+    `Before bounce — ${picks.length} players with 1+ goal form for ${matchLabel}.`,
+    `Recent-form data — ${matchLabel} goal watch.`,
   ];
 
-  const suggestedVisual =
-    `${pickCount}-player goal form grid — name, team, goal record, L5 avg. Neeko brand.`;
+  const suggestedVisual = picks.length > 0
+    ? `${picks.length}-player goal form grid — name, team, 1+ goal record, L5 avg, Last 5 strip. Dark. Neeko brand.`
+    : "Placeholder card — insufficient 1+ goal candidates.";
 
-  const imageDescription =
-    `Dark AFL stats graphic for ${matchLabel} goal form. ` +
-    `${pickCount} goal player cards: ${picks.slice(0, 3).map(formatPickLineForImagePrompt).join("; ")}. ` +
-    `Gold/amber accents for goal records. Neeko Sports Stats logo.`;
+  const imageDescription = picks.length > 0
+    ? `Create a dark premium AFL stat graphic for ${matchLabel} focused on 1+ goals. ` +
+      `Show ${picks.length} player cards: ${picks.slice(0, 4).map(formatPickLineForImagePrompt).join("; ")}. ` +
+      `Use team colour accents. Neeko Sports Stats branding. No betting language.`
+    : `Placeholder dark AFL graphic — no strong 1+ goal candidates for ${matchLabel}. Show team names only.`;
 
-  const onScreenText =
-    `${matchLabel}\n${picks.slice(0, 3).map(p => `${p.player_name} ${p.hitRecord} at ${p.threshold}+ goals`).join("\n")}`;
+  const onScreenText = picks.length > 0
+    ? `${matchLabel}\n${picks.slice(0, 3).map(p => `${p.player_name} ${p.hitRecord} at ${p.threshold}+ goals`).join("\n")}`
+    : `${matchLabel}\n1+ Goals Watch`;
 
-  const playerNames = picks.map(p => p.player_name);
-  const teamNames = [...new Set(picks.map(p => p.team_name))];
-
-  const hasHighTier = picks.some(p => p.tier === "High");
+  const fallbackWarning = !hasEnough
+    ? `Not enough strong 1+ goal candidates for this game (${picks.length} found). Mark as Needs Review.`
+    : picks.some(p => p.tier === "Low") ? "Some Low-tier candidates included. Review before publishing." : null;
 
   const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "angle"> = {
     id: kitId(game.match_id, "goals"),
-    day: "Sat",
+    day: gameDayAbbrev(game.game_date),
     postNumber: 2,
-    postTime: "game day",
+    postTime: `${dayLabel} — pre-game`,
     type: "Carousel",
     category: "Goal Trend",
     intent: "pre_game",
     statLens: "goals",
-    confidence: hasHighTier ? "High" : "Medium",
+    confidence: hasHighTier ? "High" : picks.length >= 2 ? "Medium" : "Low",
     title,
     content: hook,
     statsShown,
@@ -255,35 +310,71 @@ function buildGoalsKit(
     hashtags: gamePickHashtags("goals", game.game_date),
     suggestedVisual,
     imageDescription,
-    dataScope: `${matchLabel} goal pool`,
+    dataScope: `${matchLabel} goal pool (1+ tier)`,
     targetGame: matchLabel,
     targetGameStatus: "upcoming",
-    fallbackWarning: pickCount < MIN_GOAL_PICKS ? "Small goal pool — fewer than 2 strong candidates." : null,
-    playerNames,
-    teamNames,
-    thresholdLabel: `${topThr}+ Goals`,
+    fallbackWarning,
+    playerNames: picks.map(p => p.player_name),
+    teamNames: [...new Set(picks.map(p => p.team_name))],
+    thresholdLabel: "1+ Goals",
     isBackup: false,
     tone: "clean_stats",
     hookOptions,
   };
 
   const enriched = enrichPost(rawPost as SocialPost, matches);
-  return { kitType: "goals", post: enriched, pickCount };
+  return { kitType: "goals", post: enriched, pickCount: picks.length };
 }
 
-// ─── Combined kit builder ─────────────────────────────────────────────────────
+// ─── Post 3: Full Game Picks (combined mixed-threshold) ───────────────────────
 
-function buildCombinedKit(
+/**
+ * Builds the Full Game Picks post for a game.
+ *
+ * Uses best-line logic across all disposal and goal candidates:
+ * - Disposals: 15+ / 20+ / 25+ / 30+ (each player at their best qualifying threshold)
+ * - Goals: 1+ / 2+ / 3+
+ *
+ * Target: 6–8 players total, approx even mix of disposals and goals.
+ * Prefers High, then Medium, then Low tier candidates.
+ */
+function buildFullGamePicksPost(
   game: GamePick,
-  dispPicks: GamePickPlayer[],
-  goalPicks: GamePickPlayer[],
+  allDispPicks: GamePickPlayer[],
+  allGoalPicks: GamePickPlayer[],
   matches: StatBoardMatch[],
 ): GamePickPostKit {
   const matchLabel = game.match_label;
-  const dSlice = dispPicks.slice(0, 3);
-  const gSlice = goalPicks.slice(0, 3);
+  const dayLabel = gameDayLabel(game.game_date);
+
+  const dispCandidates = allDispPicks.slice(0, 5);
+  const goalCandidates = allGoalPicks.slice(0, 5);
+
+  // Target 3–4 of each, but flex if one side is weak
+  let dSlice: GamePickPlayer[];
+  let gSlice: GamePickPlayer[];
+
+  if (dispCandidates.length >= 4 && goalCandidates.length >= 4) {
+    dSlice = dispCandidates.slice(0, 4);
+    gSlice = goalCandidates.slice(0, 4);
+  } else if (dispCandidates.length >= 4 && goalCandidates.length < 4) {
+    gSlice = goalCandidates.slice(0, Math.max(2, goalCandidates.length));
+    const dMax = Math.min(5, 8 - gSlice.length);
+    dSlice = dispCandidates.slice(0, dMax);
+  } else if (goalCandidates.length >= 4 && dispCandidates.length < 4) {
+    dSlice = dispCandidates.slice(0, Math.max(2, dispCandidates.length));
+    const gMax = Math.min(5, 8 - dSlice.length);
+    gSlice = goalCandidates.slice(0, gMax);
+  } else {
+    dSlice = dispCandidates.slice(0, Math.min(dispCandidates.length, 4));
+    gSlice = goalCandidates.slice(0, Math.min(goalCandidates.length, 4));
+  }
+
   const allPicks = [...dSlice, ...gSlice];
   const pickCount = allPicks.length;
+
+  const hasEnough = dSlice.length >= 2 && gSlice.length >= 2;
+  const hasHighTier = allPicks.some(p => p.tier === "High");
 
   const dispBullets = dSlice.map(formatPickLineShort);
   const goalBullets = gSlice.map(formatPickLineShort);
@@ -302,45 +393,48 @@ function buildCombinedKit(
     signOff(2),
   ].join("\n");
 
-  const title = `${matchLabel} — stat watch`;
+  const title = `${matchLabel} — full game picks`;
 
   const hookOptions = [
     hook,
-    `${matchLabel} — disposals and goals to watch tonight.`,
+    `${matchLabel} — disposals and goals to watch ${dayLabel.toLowerCase()}.`,
     `Both disposal and goal form data before bounce for ${matchLabel}.`,
     `${pickCount} player trends across disposals and goals — ${matchLabel}.`,
     `Before bounce — ${matchLabel} stat watch.`,
   ];
 
-  const topDispThr = dispPicks[0]?.threshold ?? 20;
+  const topDispThr = dSlice[0]?.threshold ?? 20;
 
-  const suggestedVisual =
-    `Split stat grid for ${matchLabel} — left side: ${dSlice.length} disposal picks, right side: ${gSlice.length} goal picks. Neeko brand.`;
+  const suggestedVisual = pickCount > 0
+    ? `Split stat grid for ${matchLabel} — left: ${dSlice.length} disposal picks, right: ${gSlice.length} goal picks. Dark. Neeko brand.`
+    : "Placeholder card — insufficient combined candidates.";
 
-  const imageDescription =
-    `Dark AFL stats graphic for ${matchLabel} stat watch. ` +
-    `Split into two sections. Disposals: ${dSlice.map(formatPickLineForImagePrompt).join("; ")}. ` +
-    `Goals: ${gSlice.map(formatPickLineForImagePrompt).join("; ")}. ` +
-    `Green accents for disposal records, amber for goals. Neeko Sports Stats logo.`;
+  const imageDescription = pickCount > 0
+    ? `Create a dark premium AFL stat-board graphic for ${matchLabel}. ` +
+      `Split into two sections: Disposals and Goals. ` +
+      `Disposals (${dSlice.length} players): ${dSlice.map(formatPickLineForImagePrompt).join("; ")}. ` +
+      `Goals (${gSlice.length} players): ${gSlice.map(formatPickLineForImagePrompt).join("; ")}. ` +
+      `Use green for High confidence, gold for Medium. Neeko Sports Stats branding. No betting language.`
+    : `Placeholder dark AFL graphic — insufficient combined candidates for ${matchLabel}. Show team names only.`;
 
-  const onScreenText =
-    `${matchLabel}\nDisposals: ${dSlice.map(p => p.player_name).join(", ")}\nGoals: ${gSlice.map(p => p.player_name).join(", ")}`;
+  const onScreenText = pickCount > 0
+    ? `${matchLabel}\nDisposals: ${dSlice.map(p => p.player_name).join(", ")}\nGoals: ${gSlice.map(p => p.player_name).join(", ")}`
+    : `${matchLabel}\nFull Game Picks`;
 
-  const playerNames = allPicks.map(p => p.player_name);
-  const teamNames = [...new Set(allPicks.map(p => p.team_name))];
-
-  const hasHighTier = allPicks.some(p => p.tier === "High");
+  const fallbackWarning = !hasEnough
+    ? `Thin combined pool — ${dSlice.length} disposal picks, ${gSlice.length} goal picks. Review before publishing.`
+    : pickCount < 6 ? `Smaller than ideal combined pool (${pickCount} players). Normal if game has limited qualifying candidates.` : null;
 
   const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "angle"> = {
     id: kitId(game.match_id, "combined"),
-    day: "Sat",
+    day: gameDayAbbrev(game.game_date),
     postNumber: 3,
-    postTime: "game day",
+    postTime: `${dayLabel} — pre-game`,
     type: "Carousel",
     category: "Round Preview",
     intent: "pre_game",
     statLens: "disposals",
-    confidence: hasHighTier ? "High" : "Medium",
+    confidence: hasHighTier ? "High" : pickCount >= 4 ? "Medium" : "Low",
     title,
     content: hook,
     statsShown,
@@ -349,13 +443,13 @@ function buildCombinedKit(
     hashtags: gamePickHashtags("combined", game.game_date),
     suggestedVisual,
     imageDescription,
-    dataScope: `${matchLabel} combined pool`,
+    dataScope: `${matchLabel} combined disposal + goal pool`,
     targetGame: matchLabel,
     targetGameStatus: "upcoming",
-    fallbackWarning: pickCount < MIN_COMBINED_PICKS ? "Combined pool under 4 players — consider disposals or goals kit only." : null,
-    playerNames,
-    teamNames,
-    thresholdLabel: `${topDispThr}+ + Goals Watch`,
+    fallbackWarning,
+    playerNames: allPicks.map(p => p.player_name),
+    teamNames: [...new Set(allPicks.map(p => p.team_name))],
+    thresholdLabel: `${topDispThr}+ Disposals + Goals`,
     isBackup: false,
     tone: "clean_stats",
     hookOptions,
@@ -378,94 +472,77 @@ function calcBestAngle(
 
   if (totalDisp === 0 && totalGoal === 0) {
     return {
-      angle: "Skip — not enough strong candidates",
-      reason: "No High or Medium tier players found for this game.",
+      angle: "Limited data",
+      reason: "No qualifying candidates found for this game.",
     };
   }
 
   const dispScore = totalDisp * 2 + highDisp * 3;
   const goalScore = totalGoal * 2 + highGoal * 3;
-  const hasBothKits = totalDisp >= MIN_DISPOSAL_PICKS && totalGoal >= MIN_GOAL_PICKS;
+  const hasBothKits = totalDisp >= 2 && totalGoal >= 2;
 
-  if (hasBothKits && dispScore + goalScore >= 14) {
+  if (hasBothKits && dispScore + goalScore >= 10) {
     const topDispThr = dispPicks[0]?.threshold ?? 20;
     return {
       angle: `Combined stat watch (${topDispThr}+ disposals + goals)`,
-      reason: `${totalDisp} disposal candidates (${highDisp} High), ${totalGoal} goal candidates (${highGoal} High). Strong combined pool.`,
+      reason: `${totalDisp} disposal candidates (${highDisp} High), ${totalGoal} goal candidates (${highGoal} High).`,
     };
   }
 
-  if (dispScore >= goalScore && totalDisp >= MIN_DISPOSAL_PICKS) {
+  if (dispScore >= goalScore && totalDisp >= 2) {
     const topDispThr = dispPicks[0]?.threshold ?? 20;
     return {
       angle: `${topDispThr}+ disposal watch`,
-      reason: `${totalDisp} disposal candidates (${highDisp} High tier). Disposal pool stronger than goals (${totalGoal} goal candidates).`,
+      reason: `${totalDisp} disposal candidates (${highDisp} High). Disposal pool is the stronger angle.`,
     };
   }
 
-  if (totalGoal >= MIN_GOAL_PICKS) {
+  if (totalGoal >= 2) {
     const topGoalThr = goalPicks[0]?.threshold ?? 1;
     return {
       angle: `${topGoalThr}+ goal form watch`,
-      reason: `${totalGoal} goal candidates (${highGoal} High tier). Goal pool is the stronger angle for this game.`,
-    };
-  }
-
-  if (totalDisp >= 1 || totalGoal >= 1) {
-    return {
-      angle: "Weak — small candidate pool",
-      reason: `Only ${totalDisp} disposal and ${totalGoal} goal candidates. Not enough for a strong post kit.`,
+      reason: `${totalGoal} goal candidates (${highGoal} High). Goal pool is the stronger angle.`,
     };
   }
 
   return {
-    angle: "Skip — not enough strong candidates",
-    reason: "No qualifying candidates for this game.",
+    angle: "Weak — small candidate pool",
+    reason: `Only ${totalDisp} disposal and ${totalGoal} goal candidates. Posts may need review.`,
   };
 }
 
-// ─── Main builder ─────────────────────────────────────────────────────────────
+// ─── Main pack builder ────────────────────────────────────────────────────────
 
 /**
  * Builds a GamePickMarketingPack for a single game.
- * Only generates kits when enough valid candidates exist.
+ * Always produces exactly 3 kits: [20+ Disposals, 1+ Goals, Full Game Picks].
+ * Thin pools produce posts with fallbackWarning set instead of being omitted.
  */
 export function buildGamePickMarketingPack(
   game: GamePick,
   matches: StatBoardMatch[],
 ): GamePickMarketingPack {
-  // Use only High+Medium tier picks for kits (Low is never used for public posts)
-  const dispPicks = game.disposal_picks.filter(p => p.tier === "High" || p.tier === "Medium");
-  const goalPicks = game.goal_picks.filter(p => p.tier === "High" || p.tier === "Medium");
+  // High+Medium for primary posts; Low is included as fallback with warning
+  const dispPicks = game.disposal_picks;
+  const goalPicks = game.goal_picks;
 
-  const { angle, reason } = calcBestAngle(dispPicks, goalPicks);
+  const { angle, reason } = calcBestAngle(
+    dispPicks.filter(p => p.tier === "High" || p.tier === "Medium"),
+    goalPicks.filter(p => p.tier === "High" || p.tier === "Medium"),
+  );
 
-  const kits: GamePickPostKit[] = [];
-
-  if (dispPicks.length >= MIN_DISPOSAL_PICKS) {
-    kits.push(buildDisposalsKit(game, dispPicks, matches));
-  }
-
-  if (goalPicks.length >= MIN_GOAL_PICKS) {
-    kits.push(buildGoalsKit(game, goalPicks, matches));
-  }
-
-  const totalPicks = dispPicks.length + goalPicks.length;
-  if (totalPicks >= MIN_COMBINED_PICKS && dispPicks.length >= 2 && goalPicks.length >= 2) {
-    kits.push(buildCombinedKit(game, dispPicks, goalPicks, matches));
-  }
-
-  const skipReason =
-    kits.length === 0
-      ? `Not enough strong candidates. (${dispPicks.length} disposal, ${goalPicks.length} goal)`
-      : null;
+  const kits: GamePickPostKit[] = [
+    build20PlusDisposalsPost(game, dispPicks, matches),
+    build1PlusGoalsPost(game, goalPicks, matches),
+    buildFullGamePicksPost(game, dispPicks, goalPicks, matches),
+  ];
 
   return {
     game,
     bestAngle: angle,
     bestAngleReason: reason,
     kits,
-    skipReason,
+    skipReason: null,
   };
 }
 

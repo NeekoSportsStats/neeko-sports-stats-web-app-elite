@@ -2398,11 +2398,12 @@ class SocialPostPlannerErrorBoundary extends Component<{ children: ReactNode }, 
 
 // ─── Game Day tab (Thu / Fri / Sat / Sun) ────────────────────────────────────
 
-const DAY_HASHTAG: Record<string, string> = {
-  Thu: "#ThursdayFooty",
-  Fri: "#FridayFooty",
-  Sat: "#SaturdayFooty",
-  Sun: "#SundayFooty",
+const GAME_DAY_DOW: Record<string, number> = { Thu: 4, Fri: 5, Sat: 6, Sun: 0 };
+
+const KIT_LABEL: Record<string, string> = {
+  disposals: "20+ Disposals",
+  goals: "1+ Goals",
+  combined: "Full Game Picks",
 };
 
 function GameDayTabContent({
@@ -2419,54 +2420,78 @@ function GameDayTabContent({
   roundLabel: string;
 }) {
   const dayFull = DAY_FULL[day];
-  const dayHashtag = DAY_HASHTAG[day];
+  const dayHashtag = gamedayHashtags(day).find(t => t.includes("Footy")) ?? "";
+  const totalPosts = packs.reduce((acc, p) => acc + p.kits.length, 0);
 
   if (packs.length === 0) {
     return (
       <div className="py-10 text-center space-y-2">
         <p className="text-zinc-500 text-[12px]">No games scheduled for {dayFull}.</p>
-        <p className="text-zinc-700 text-[11px]">Post kits are generated automatically when fixture data is loaded.</p>
+        <p className="text-zinc-700 text-[11px]">Posts generate automatically from fixture data each round.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5">
-      <div className="text-[11px] text-zinc-500 flex items-center gap-2">
-        <span className="text-zinc-300 font-medium">{dayFull} — {roundLabel}</span>
-        <span className="text-zinc-600">{packs.length} game{packs.length !== 1 ? "s" : ""}</span>
-        <span className="text-amber-500/70">{dayHashtag}</span>
+    <div className="space-y-6">
+      {/* Day header */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-zinc-300 font-semibold text-[12px]">{dayFull} — {roundLabel}</span>
+        <span className="text-[9px] bg-zinc-800 text-zinc-500 border border-zinc-700 px-1.5 py-0.5 rounded">
+          {packs.length} game{packs.length !== 1 ? "s" : ""} · {totalPosts} post{totalPosts !== 1 ? "s" : ""}
+        </span>
+        <span className="text-[9px] text-amber-500/60">{dayHashtag}</span>
+        <span className="text-[9px] text-zinc-700 ml-auto">Generated from {roundLabel} target games</span>
       </div>
-      <div className="space-y-3">
-        {packs.map(pack => (
-          <div
-            key={pack.game.match_id}
-            className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3"
-          >
-            <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] font-semibold text-zinc-200">{pack.game.match_label}</span>
-                {pack.game.is_free_match && (
-                  <span className="text-[8.5px] bg-emerald-900/40 text-emerald-400 border border-emerald-700/30 px-1.5 rounded">Free</span>
-                )}
-                {pack.kits.length > 0 ? (
-                  <span className="text-[8.5px] bg-amber-900/30 text-amber-400 border border-amber-700/30 px-1.5 rounded">
-                    {pack.kits.length} kit{pack.kits.length !== 1 ? "s" : ""}
-                  </span>
-                ) : (
-                  <span className="text-[8.5px] text-zinc-600">No kits</span>
-                )}
-              </div>
-              <span className="text-[10px] text-zinc-600">{pack.game.venue}</span>
-            </div>
-            {pack.skipReason ? (
-              <p className="text-[10px] text-zinc-600 italic">{pack.skipReason}</p>
-            ) : (
-              <PostKitSection pack={pack} copiedId={copiedId} onCopy={onCopy} />
+
+      {/* Per-game groups */}
+      {packs.map(pack => (
+        <div key={pack.game.match_id} className="space-y-2">
+          {/* Game header */}
+          <div className="flex items-center gap-2 px-1 flex-wrap">
+            <span className="text-[13px] font-bold text-zinc-100">{pack.game.match_label}</span>
+            {pack.game.is_free_match && (
+              <span className="text-[8.5px] bg-emerald-900/40 text-emerald-400 border border-emerald-700/30 px-1.5 rounded">Free</span>
+            )}
+            <span className="text-[9px] text-zinc-600">{pack.game.venue}</span>
+            {pack.bestAngle && (
+              <span className="text-[9px] text-zinc-600 italic ml-1">— {pack.bestAngle}</span>
             )}
           </div>
-        ))}
-      </div>
+
+          {/* 3 flat post cards */}
+          <div className="space-y-2 pl-1 border-l-2 border-zinc-800">
+            {pack.kits.map(kit => (
+              <div key={kit.post.id}>
+                {/* Kit type label pill above the card */}
+                <div className="mb-1 flex items-center gap-1.5">
+                  <span className={`text-[8.5px] font-semibold px-1.5 py-0.5 rounded border ${
+                    kit.kitType === "disposals"
+                      ? "bg-sky-950/40 text-sky-400 border-sky-800/40"
+                      : kit.kitType === "goals"
+                        ? "bg-amber-950/30 text-amber-400 border-amber-800/30"
+                        : "bg-emerald-950/30 text-emerald-400 border-emerald-800/30"
+                  }`}>
+                    {KIT_LABEL[kit.kitType]}
+                  </span>
+                  {kit.pickCount === 0 && (
+                    <span className="text-[8.5px] text-red-500">No picks</span>
+                  )}
+                  {kit.pickCount > 0 && kit.pickCount < 2 && (
+                    <span className="text-[8.5px] text-amber-500">Needs Review</span>
+                  )}
+                </div>
+                <SocialPostCard
+                  post={kit.post}
+                  copiedId={copiedId}
+                  onCopyField={onCopy}
+                  roundLabel={roundLabel}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -2616,8 +2641,6 @@ function SocialPostPlannerInner({ data }: { data: CIDataSubset }) {
   const isGameBankTab = activeDay === "game_bank";
   const isGameDayTab = activeDay === "Thu" || activeDay === "Fri" || activeDay === "Sat" || activeDay === "Sun";
 
-  // Day-of-week index for filtering game packs (Thu=4, Fri=5, Sat=6, Sun=0)
-  const GAME_DAY_DOW: Record<string, number> = { Thu: 4, Fri: 5, Sat: 6, Sun: 0 };
   const gameDayPacks = useMemo(() => {
     if (!isGameDayTab) return [];
     const dow = GAME_DAY_DOW[activeDay as string];
@@ -2625,7 +2648,6 @@ function SocialPostPlannerInner({ data }: { data: CIDataSubset }) {
       if (!pack.game.game_date) return false;
       return new Date(pack.game.game_date).getDay() === dow;
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeDay, isGameDayTab, gamePickMarketingPacks]);
 
   const activePosts = useMemo(() => {
@@ -2701,10 +2723,9 @@ function SocialPostPlannerInner({ data }: { data: CIDataSubset }) {
       >
         <div className="flex gap-0 border-b border-zinc-800 px-4 w-max min-w-full">
           {DAYS.map(day => {
-            const isGamDay = day === "Thu" || day === "Fri" || day === "Sat" || day === "Sun";
-            const gamDow = ({ Thu: 4, Fri: 5, Sat: 6, Sun: 0 } as Record<string, number>)[day];
+            const isGamDay = day in GAME_DAY_DOW;
             const gameCount = isGamDay
-              ? gamePickMarketingPacks.filter(p => p.game.game_date && new Date(p.game.game_date).getDay() === gamDow).length
+              ? gamePickMarketingPacks.filter(p => p.game.game_date && new Date(p.game.game_date).getDay() === GAME_DAY_DOW[day]).length
               : 0;
             const schedCount = scheduledCountByDay[day] ?? 0;
             const badgeCount = isGamDay ? gameCount : schedCount;
