@@ -114,8 +114,6 @@ export function evaluateDisposalLine(
   threshold: 30 | 25 | 20 | 15,
 ): DisposalLineEval {
   const rec = getRecentHitRecord(p, threshold);
-  // Used for 30+ exclusion guard when evaluating 25+ tier
-  const rec30 = threshold === 25 ? getRecentHitRecord(p, 30) : rec;
   const l5 = p.last_5_avg ?? p.season_avg ?? 0;
   const seasonAvg = p.season_avg ?? 0;
   const games = rec.sample;
@@ -127,10 +125,10 @@ export function evaluateDisposalLine(
     else if (rec.rate >= 0.70 && l5 >= 27.0 && games >= 5) tier = "Medium";
   } else if (threshold === 25) {
     // Exclude players who qualify at the 30+ tier — they belong to a higher content bucket.
+    const rec30 = getRecentHitRecord(p, 30);
     const is30PlusTier = rec30.rate >= 0.70 && l5 >= 27.0 && rec30.sample >= 5;
     if (!is30PlusTier) {
       if (rec.rate >= 0.80 && l5 >= 25.0 && games >= 7) tier = "High";
-      else if (rec.rate >= 0.70 && l5 >= 24.5 && games >= 7) tier = "Medium";
       else if (rec.rate >= 0.70 && l5 >= 24.5 && games >= 5) tier = "Medium";
     }
   } else if (threshold === 20) {
@@ -334,14 +332,12 @@ function scoreGoalCandidate(ev: GoalLineEval, proj: number | null): number {
 
   const hitRateScore = Math.max(0, Math.min((rec.rate - 0.35) / 0.65, 1)) * 40;
   const sampleScore = Math.min(rec.sample / 10, 1) * 20;
-  // L5 relative to threshold (goals scale is much smaller)
   const l5Score = threshold > 0 ? Math.min(l5 / threshold, 2) / 2 * 20 : 0;
-  const seasonScore = 0; // not used for goals — too noisy
   const projScore = proj !== null ? (proj >= threshold ? 10 : proj >= threshold * 0.7 ? 5 : 0) : 0;
 
   const tierBonus = ev.tier === "High" ? 5 : ev.tier === "Low" ? -5 : 0;
 
-  return Math.round(Math.min(100, Math.max(0, hitRateScore + sampleScore + l5Score + seasonScore + projScore + tierBonus)));
+  return Math.round(Math.min(100, Math.max(0, hitRateScore + sampleScore + l5Score + projScore + tierBonus)));
 }
 
 function buildDisposalCopyLine(p: StatBoardPlayer, ev: DisposalLineEval): string {
@@ -402,7 +398,10 @@ export function rankDisposalCandidatesForTeams(
       score,
       copyLine: buildDisposalCopyLine(p, ev),
       last_10_values: p.last_10_values ?? null,
-      publicContentTier: getPublicDisposalContentTier(p),
+      // Derive from selectBestDisposalLine's threshold — avoids a second full evaluation pass.
+      // ev.threshold is already the highest qualifying threshold, matching getPublicDisposalContentTier's
+      // cascade. Cast is safe: selectBestDisposalLine only returns 30|25|20|15 thresholds.
+      publicContentTier: ev.threshold as 30 | 25 | 20 | 15,
     });
   }
 

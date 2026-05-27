@@ -15,7 +15,6 @@ import {
   tierLabel,
   tierColor,
   formatLastNStrip,
-  getPublicDisposalContentTier,
 } from "./statLineEngine";
 import type { CandidateScore, ConfidenceTier } from "./statLineEngine";
 
@@ -75,10 +74,7 @@ export interface GamePick {
 function last5FromCandidate(c: CandidateScore): number[] {
   const raw = c.last_10_values;
   if (!raw || raw.length === 0) return [];
-  return [...raw]
-    .reverse()
-    .filter((v): v is number => v !== null && v >= 0)
-    .slice(0, 5);
+  return [...raw].reverse().filter((v): v is number => v !== null && v >= 0).slice(0, 5);
 }
 
 function toGamePickPlayer(c: CandidateScore): GamePickPlayer {

@@ -3,7 +3,8 @@
  * Admin-only. No public exposure.
  * All posts target TikTok + Instagram + Facebook simultaneously.
  */
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, Component } from "react";
+import type { ReactNode, ErrorInfo } from "react";
 import { Copy, Check, ChevronDown, ChevronUp, Calendar, Hash, Zap, TriangleAlert as AlertTriangle, Clock, Shield, Star, Crosshair } from "lucide-react";
 import {
   buildGamePicks,
@@ -1682,6 +1683,80 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   };
 }
 
+// ─── Carousel slide helpers ───────────────────────────────────────────────────
+
+/**
+ * Safely converts any carousel slide value into a well-typed CarouselSlide.
+ * Guards against object-as-JSX-child crashes (React error #31).
+ */
+function normaliseCarouselSlide(slide: unknown, index: number): CarouselSlide {
+  if (slide && typeof slide === "object") {
+    const s = slide as Partial<CarouselSlide>;
+    return {
+      slideNumber: Number(s.slideNumber ?? index + 1),
+      headline: String(s.headline ?? `Slide ${index + 1}`),
+      body: String(s.body ?? ""),
+      visualNote: s.visualNote ? String(s.visualNote) : "",
+    };
+  }
+  if (typeof slide === "string") {
+    return {
+      slideNumber: index + 1,
+      headline: `Slide ${index + 1}`,
+      body: slide,
+      visualNote: "",
+    };
+  }
+  return {
+    slideNumber: index + 1,
+    headline: `Slide ${index + 1}`,
+    body: "",
+    visualNote: "",
+  };
+}
+
+function formatCarouselSlideForCopy(slide: unknown, index = 0): string {
+  const s = normaliseCarouselSlide(slide, index);
+  return [
+    `Slide ${s.slideNumber}: ${s.headline}`,
+    s.body,
+    s.visualNote ? `Visual: ${s.visualNote}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/**
+ * Warns in console if a marketing pack has unexpected field shapes.
+ * Never throws — falls back silently.
+ */
+function validateMarketingPackShape(pack: unknown, label = "pack"): void {
+  if (!pack || typeof pack !== "object") {
+    console.warn(`[Admin] validateMarketingPackShape: ${label} is not an object`, pack);
+    return;
+  }
+  const p = pack as Record<string, unknown>;
+
+  if (p.post && typeof p.post === "object") {
+    const post = p.post as Record<string, unknown>;
+    if (post.carouselSlides !== undefined && !Array.isArray(post.carouselSlides)) {
+      console.warn(`[Admin] ${label}.post.carouselSlides is not an array`, post.carouselSlides);
+    }
+    if (post.hookOptions !== undefined && !Array.isArray(post.hookOptions)) {
+      console.warn(`[Admin] ${label}.post.hookOptions is not an array`, post.hookOptions);
+    }
+    if (post.hashtags !== undefined && !Array.isArray(post.hashtags)) {
+      console.warn(`[Admin] ${label}.post.hashtags is not an array`, post.hashtags);
+    }
+    if (post.aiImagePrompt !== undefined && typeof post.aiImagePrompt !== "string") {
+      console.warn(`[Admin] ${label}.post.aiImagePrompt is not a string`, post.aiImagePrompt);
+    }
+    if (post.voiceoverScript !== undefined && typeof post.voiceoverScript !== "string") {
+      console.warn(`[Admin] ${label}.post.voiceoverScript is not a string`, post.voiceoverScript);
+    }
+  }
+}
+
 // ─── Copy utilities ───────────────────────────────────────────────────────────
 
 function buildFullPostText(post: SocialPost, includeHeader = true): string {
@@ -2491,19 +2566,28 @@ function PostKitTab({
           <div className="flex items-center justify-between">
             <span className="text-[10px] text-zinc-500 font-medium">Carousel slides</span>
             <button
-              onClick={() => onCopy(cid("slides"), post.carouselSlides!.join("\n\n"))}
+              type="button"
+              onClick={() => onCopy(cid("slides"), post.carouselSlides!.map(formatCarouselSlideForCopy).join("\n\n"))}
               className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
             >
               {copiedId === cid("slides") ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
               Copy all
             </button>
           </div>
-          <div className="space-y-1">
-            {post.carouselSlides.map((slide, i) => (
-              <div key={i} className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded px-2 py-1">
-                <span className="text-zinc-600 mr-1.5">{i + 1}.</span>{slide}
-              </div>
-            ))}
+          <div className="space-y-1.5">
+            {post.carouselSlides.map((rawSlide, i) => {
+              const slide = normaliseCarouselSlide(rawSlide, i);
+              return (
+                <div key={i} className="text-[10px] text-zinc-400 bg-zinc-800/30 rounded px-2 py-1.5 space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[9px] text-zinc-600 font-bold">Slide {slide.slideNumber}</span>
+                    <span className="text-zinc-300 font-medium">{slide.headline}</span>
+                  </div>
+                  {slide.body && <p className="text-zinc-400">{slide.body}</p>}
+                  {slide.visualNote && <p className="text-[9px] text-zinc-600 italic">{slide.visualNote}</p>}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -2566,6 +2650,7 @@ function PostKitTab({
       {/* Copy full post */}
       <div className="pt-1">
         <button
+          type="button"
           onClick={() => onCopy(cid("full"), buildFullPostText(post))}
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-medium border transition-colors ${
             copiedId === cid("full")
@@ -2925,11 +3010,50 @@ function GamePicksTabContent({
   );
 }
 
+// ─── Error boundary ───────────────────────────────────────────────────────────
+
+interface EBState { error: Error | null }
+
+class SocialPostPlannerErrorBoundary extends Component<{ children: ReactNode }, EBState> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): EBState {
+    return { error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("[Admin] SocialPostPlanner crashed:", error, info.componentStack);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="rounded-lg border border-red-800/60 bg-red-950/30 p-6 text-center space-y-3">
+          <p className="text-red-400 font-medium text-sm">Admin content panel failed to render.</p>
+          <p className="text-red-600 text-xs font-mono">{String(this.state.error.message)}</p>
+          <p className="text-zinc-500 text-xs">Check console for details.</p>
+          <button
+            type="button"
+            onClick={() => this.setState({ error: null })}
+            className="px-3 py-1.5 rounded border border-zinc-700 bg-zinc-800 text-zinc-300 text-xs hover:border-zinc-500 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 type ActiveTab = DayOfWeek | "backup" | "evergreen" | "game_picks";
 
-export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
+function SocialPostPlannerInner({ data }: { data: CIDataSubset }) {
   const [activeDay, setActiveDay] = useState<ActiveTab>("Mon");
   const [typeFilter, setTypeFilter] = useState<PostType | "all">("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -3226,5 +3350,13 @@ export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
         )
       )}
     </div>
+  );
+}
+
+export function SocialPostPlanner({ data }: { data: CIDataSubset }) {
+  return (
+    <SocialPostPlannerErrorBoundary>
+      <SocialPostPlannerInner data={data} />
+    </SocialPostPlannerErrorBoundary>
   );
 }
