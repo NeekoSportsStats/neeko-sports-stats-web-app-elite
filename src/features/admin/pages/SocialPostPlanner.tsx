@@ -200,22 +200,23 @@ function bestDisposalThreshold(p: StatBoardPlayer): 30 | 25 | 20 | 15 | 10 {
   if (avgL5Sea >= 24.5 && hr25 >= 0.70) return 25;
 
   // 20+: moderate volume with solid hit rate
-  if (avgL5Sea >= 18.0 && hr20 >= 0.55) return 20;
+  if (avgL5Sea >= 18.0 && hr20 >= 0.70) return 20;
 
   // 15+: accessible tier
-  if (avgL5Sea >= 13.0 && hr15 >= 0.55) return 15;
+  if (avgL5Sea >= 13.0 && hr15 >= 0.70) return 15;
 
   return 10;
 }
 
 /**
  * Returns the highest goal threshold bucket a player genuinely belongs to.
+ * Returns null if no threshold qualifies — never defaults to 1.
  *
  * 3+: hr3 ≥ 0.40 AND sample ≥ 5 AND L5 ≥ 2.0 (genuine multi-goal players only)
- * 2+: hr2 ≥ 0.45 AND sample ≥ 5 AND L5 ≥ 1.3
- * 1+: hr1 ≥ 0.55 AND sample ≥ 4 AND L5 ≥ 0.5
+ * 2+: hr2 ≥ 0.50 AND sample ≥ 5 AND L5 ≥ 1.4
+ * 1+: hr1 ≥ 0.65 AND sample ≥ 4 AND L5 ≥ 0.8
  */
-function bestGoalThreshold(p: StatBoardPlayer): 3 | 2 | 1 {
+function bestGoalThreshold(p: StatBoardPlayer): 3 | 2 | 1 | null {
   const hr3 = getHitRate(p, 3);
   const hr2 = getHitRate(p, 2);
   const hr1 = getHitRate(p, 1);
@@ -225,9 +226,9 @@ function bestGoalThreshold(p: StatBoardPlayer): 3 | 2 | 1 {
   const rec1 = getRecentHitRecord(p, 1);
 
   if (hr3 >= 0.40 && rec3.sample >= 5 && l5 >= 2.0) return 3;
-  if (hr2 >= 0.45 && rec2.sample >= 5 && l5 >= 1.3) return 2;
-  if (hr1 >= 0.55 && rec1.sample >= 4 && l5 >= 0.5) return 1;
-  return 1;
+  if (hr2 >= 0.50 && rec2.sample >= 5 && l5 >= 1.4) return 2;
+  if (hr1 >= 0.65 && rec1.sample >= 4 && l5 >= 0.8) return 1;
+  return null;
 }
 
 // ─── Anti-duplication player selector ────────────────────────────────────────
@@ -595,8 +596,10 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const hasMover = movers.length >= 2;
     const pool = hasMover ? movers : dispPool.slice(0, 4);
     const bullets = pool.map(p => {
+      const l5 = p.last_5_avg ?? 0;
+      const sea = p.season_avg ?? 0;
       const d = formDelta(p);
-      return `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${(p.last_5_avg ?? 0).toFixed(1)} (${d >= 0 ? "+" : ""}${d.toFixed(1)} vs season avg ${(p.season_avg ?? 0).toFixed(1)})`;
+      return `${p.player_name} — L5 avg ${l5.toFixed(1)} vs season avg ${sea.toFixed(1)} (${d >= 0 ? "+" : ""}${d.toFixed(1)})`;
     });
     const hook = hasMover
       ? `Players trending well above their season average heading into ${rl}. Form is real — the numbers back it up.`

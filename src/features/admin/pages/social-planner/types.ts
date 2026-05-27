@@ -9,6 +9,34 @@ import type { StatBoardTeamRow } from "@/features/afl/stat-board/teamTypes";
 
 export type { StatBoardPlayer, StatBoardMatch, StatBoardTeamRow };
 
+// ─── Social stat line ─────────────────────────────────────────────────────────
+
+/**
+ * Normalised stat line for a single player used in social post copy.
+ * Created by assignDisposalMarketingTier() / assignGoalMarketingTier(),
+ * then consumed by post builders and formatters.
+ */
+export interface SocialStatLine {
+  playerId: number;
+  playerName: string;
+  teamName: string;
+  statFamily: "disposals" | "goals" | "team_score" | "form_mover";
+  threshold?: number;
+  thresholdLabel?: string;
+  hits?: number;
+  games?: number;
+  hitRate?: number;
+  l5Avg?: number;
+  seasonAvg?: number;
+  formDelta?: number;
+  projection?: number;
+  last5?: number[];
+  confidence?: "Premium" | "High" | "Medium" | "Low" | "Review";
+  score?: number;
+  assignedTier?: number | string;
+  warnings?: string[];
+}
+
 // ─── CIData subset ────────────────────────────────────────────────────────────
 
 export interface CIDataSubset {

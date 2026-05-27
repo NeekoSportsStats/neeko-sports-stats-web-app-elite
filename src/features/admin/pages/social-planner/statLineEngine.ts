@@ -516,3 +516,202 @@ export function formatPublicStatLine(
     : `${threshold}+`;
   return `${p.player_name} (${p.team_name ?? ""}) — ${record}${pctStr} at ${label}, L5 avg ${l5.toFixed(1)}`;
 }
+
+// ─── Marketing tier assignment ────────────────────────────────────────────────
+
+/**
+ * Assigns the single disposal marketing tier for a player: 30 | 25 | 20 | 15 | null.
+ *
+ * Strict rule: hr >= 0.70 required for all tiers.
+ * 25+ explicitly excludes players who qualify at 30+ (they belong in the 30+ post).
+ * Returns null if no tier qualifies.
+ *
+ * 30+: hr30 >= 0.70 AND L5 >= 29.0 AND sample >= 5
+ * 25+: hr25 >= 0.70 AND L5 >= 24.5 AND sample >= 5 AND NOT 30+ tier
+ * 20+: hr20 >= 0.70 AND L5 >= 19.0 AND sample >= 4
+ * 15+: hr15 >= 0.70 AND L5 >= 14.5 AND sample >= 4
+ */
+export function assignDisposalMarketingTier(
+  p: StatBoardPlayer,
+): 30 | 25 | 20 | 15 | null {
+  const l5 = p.last_5_avg ?? p.season_avg ?? 0;
+
+  const rec30 = getRecentHitRecord(p, 30);
+  if (rec30.rate >= 0.70 && l5 >= 29.0 && rec30.sample >= 5) return 30;
+
+  const rec25 = getRecentHitRecord(p, 25);
+  if (rec25.rate >= 0.70 && l5 >= 24.5 && rec25.sample >= 5) return 25;
+
+  const rec20 = getRecentHitRecord(p, 20);
+  if (rec20.rate >= 0.70 && l5 >= 19.0 && rec20.sample >= 4) return 20;
+
+  const rec15 = getRecentHitRecord(p, 15);
+  if (rec15.rate >= 0.70 && l5 >= 14.5 && rec15.sample >= 4) return 15;
+
+  return null;
+}
+
+/**
+ * Assigns the single goal marketing tier for a player: 3 | 2 | 1 | null.
+ *
+ * Returns null if no tier qualifies — never returns 1 as a catch-all default.
+ *
+ * 3+: hr3 >= 0.40 AND sample >= 5 AND L5 >= 2.0
+ * 2+: hr2 >= 0.50 AND sample >= 5 AND L5 >= 1.4
+ * 1+: hr1 >= 0.65 AND sample >= 4 AND L5 >= 0.8
+ */
+export function assignGoalMarketingTier(
+  p: StatBoardPlayer,
+): 3 | 2 | 1 | null {
+  const l5 = p.last_5_avg ?? p.season_avg ?? 0;
+
+  const rec3 = getRecentHitRecord(p, 3);
+  if (rec3.rate >= 0.40 && rec3.sample >= 5 && l5 >= 2.0) return 3;
+
+  const rec2 = getRecentHitRecord(p, 2);
+  if (rec2.rate >= 0.50 && rec2.sample >= 5 && l5 >= 1.4) return 2;
+
+  const rec1 = getRecentHitRecord(p, 1);
+  if (rec1.rate >= 0.65 && rec1.sample >= 4 && l5 >= 0.8) return 1;
+
+  return null;
+}
+
+// ─── Strict candidate helpers ─────────────────────────────────────────────────
+
+/**
+ * Returns all available players who are strictly assigned to the given disposal tier.
+ * Exact tier matching — a player at the 30+ tier will NOT appear in a 25+ result.
+ */
+export function getStrictDisposalCandidates(
+  players: StatBoardPlayer[],
+  tier: 30 | 25 | 20 | 15,
+  unavailablePlayerIds: Set<number> = new Set(),
+): StatBoardPlayer[] {
+  return players.filter(p => {
+    if (unavailablePlayerIds.has(p.player_id)) return false;
+    if ((p.games_played ?? 0) < 4) return false;
+    return assignDisposalMarketingTier(p) === tier;
+  });
+}
+
+/**
+ * Returns all available players who are strictly assigned to the given goal tier.
+ * Exact tier matching — a player at the 3+ tier will NOT appear in a 1+ result.
+ */
+export function getStrictGoalCandidates(
+  players: StatBoardPlayer[],
+  tier: 3 | 2 | 1,
+  unavailablePlayerIds: Set<number> = new Set(),
+): StatBoardPlayer[] {
+  return players.filter(p => {
+    if (unavailablePlayerIds.has(p.player_id)) return false;
+    if ((p.games_played ?? 0) < 3) return false;
+    return assignGoalMarketingTier(p) === tier;
+  });
+}
+
+/**
+ * Returns candidates across all disposal tiers combined, at their own best tier.
+ * This is the ONLY helper that intentionally mixes disposal thresholds.
+ * Used exclusively by the Full Game Picks (combined) post builder.
+ */
+export function getCombinedGamePickCandidates(
+  players: StatBoardPlayer[],
+  unavailablePlayerIds: Set<number> = new Set(),
+): Array<StatBoardPlayer & { assignedDisposalTier: 30 | 25 | 20 | 15 | null }> {
+  const result: Array<StatBoardPlayer & { assignedDisposalTier: 30 | 25 | 20 | 15 | null }> = [];
+  for (const p of players) {
+    if (unavailablePlayerIds.has(p.player_id)) continue;
+    if ((p.games_played ?? 0) < 4) continue;
+    const assignedDisposalTier = assignDisposalMarketingTier(p);
+    if (assignedDisposalTier !== null) result.push({ ...p, assignedDisposalTier });
+  }
+  return result;
+}
+
+// ─── L5 consistency validator ─────────────────────────────────────────────────
+
+export interface L5ValidationResult {
+  isConsistent: boolean;
+  l5Avg: number;
+  /** Hit rate at assigned tier threshold */
+  hitRateAtTier: number;
+  /** Flag: L5 avg is more than 15% below the threshold */
+  l5BelowThreshold: boolean;
+  /** Flag: hit rate and L5 give conflicting signals */
+  signalMismatch: boolean;
+  warnings: string[];
+}
+
+/**
+ * Validates L5 consistency for a disposal stat line.
+ * Catches cases where the hit record looks strong but L5 average is misleading,
+ * or where L5 and hit rate give conflicting signals.
+ */
+export function validateL5Consistency(
+  p: StatBoardPlayer,
+  threshold: number,
+): L5ValidationResult {
+  const rec = getRecentHitRecord(p, threshold);
+  const l5 = p.last_5_avg ?? p.season_avg ?? 0;
+  const warnings: string[] = [];
+
+  const l5BelowThreshold = l5 < threshold * 0.85;
+  const signalMismatch = rec.rate >= 0.70 && l5 < threshold * 0.80;
+
+  if (l5BelowThreshold) {
+    warnings.push(`L5 avg ${l5.toFixed(1)} is below ${(threshold * 0.85).toFixed(0)} (85% of ${threshold}+ threshold)`);
+  }
+  if (signalMismatch) {
+    warnings.push(`Hit rate (${Math.round(rec.rate * 100)}%) contradicts L5 avg ${l5.toFixed(1)} — may be driven by old data`);
+  }
+  if (rec.sample < 5) {
+    warnings.push(`Small sample size (${rec.sample} games) — lower confidence`);
+  }
+
+  return {
+    isConsistent: !l5BelowThreshold && !signalMismatch,
+    l5Avg: l5,
+    hitRateAtTier: rec.rate,
+    l5BelowThreshold,
+    signalMismatch,
+    warnings,
+  };
+}
+
+// ─── Availability guard ───────────────────────────────────────────────────────
+
+const EXCLUDED_LOCK_KEYWORDS = [
+  "injured",
+  "suspended",
+  "omitted",
+  "managed",
+  "inactive",
+  "test player",
+  "emergency",
+  "medical",
+  "withdrawn",
+  "delisted",
+  "traded",
+  "rookie_inactive",
+];
+
+/**
+ * Comprehensive availability check for social post candidate pools.
+ * Uses the lock_reason field on the player record as a proxy for exclusion.
+ *
+ * Primary mechanism: pass the unavailablePlayerIds set from CIDataSubset,
+ * which is populated from the admin's manual status overrides.
+ *
+ * Secondary: if a player has lock_reason set to an injury/suspension keyword,
+ * treat them as unavailable even if they're not in the set.
+ */
+export function isAvailableForSocial(
+  p: StatBoardPlayer,
+  unavailablePlayerIds?: Set<number>,
+): boolean {
+  if (unavailablePlayerIds?.has(p.player_id)) return false;
+  const lockReason = (p.lock_reason ?? "").toLowerCase();
+  return !lockReason || !EXCLUDED_LOCK_KEYWORDS.some(kw => lockReason.includes(kw));
+}

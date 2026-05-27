@@ -48,9 +48,12 @@ function kitId(matchId: number, type: GamePickKitType): string {
 
 // ─── Stat formatters ──────────────────────────────────────────────────────────
 
-/** Public line: "Jack Sinclair — 9/10 at 25+, L5 avg 27.8" */
+/** Public line: "Jack Sinclair — 9/10 (90%) at 25+, L5 avg 27.8" */
 function formatPickLineShort(p: GamePickPlayer): string {
-  const record = p.hitRecord !== "—" ? `${p.hitRecord} at ${p.threshold}+` : `${p.threshold}+`;
+  const hasRecord = p.hitRecord !== "—";
+  const record = hasRecord
+    ? `${p.hitRecord} (${Math.round(p.hitRate * 100)}%) at ${p.threshold}+`
+    : `${p.threshold}+`;
   const l5 = p.l5_avg !== null ? `, L5 avg ${p.l5_avg.toFixed(1)}` : "";
   return `${p.player_name} — ${record}${l5}`;
 }
@@ -148,15 +151,10 @@ function build20PlusDisposalsPost(
   const matchLabel = game.match_label;
   const dayLabel = gameDayLabel(game.game_date);
 
-  // Prefer genuine 20-tier players (not 25+/30+)
-  let picks = allDispPicks.filter(p => p.publicContentTier === 20);
-
-  // If fewer than 2 strict-20 players, include all who qualify at any tier
-  if (picks.length < 2) {
-    picks = allDispPicks.filter(p => p.publicContentTier !== null);
-  }
-
-  picks = picks.slice(0, 5);
+  // Strict: only genuine 20-tier players (not 25+/30+)
+  const picks = allDispPicks
+    .filter(p => p.publicContentTier === 20)
+    .slice(0, 5);
 
   const hasEnough = picks.length >= 2;
   const hasHighTier = picks.some(p => p.tier === "High");
@@ -193,7 +191,7 @@ function build20PlusDisposalsPost(
     : `${matchLabel}\n20+ Disposals Watch`;
 
   const fallbackWarning = !hasEnough
-    ? `Not enough strong 20+ disposal candidates for this game (${picks.length} found). Mark as Needs Review.`
+    ? `Not enough genuine 20+ tier candidates for this game (${picks.length} found — strict tier only, no 25+/30+ players). Mark as Needs Review.`
     : picks.some(p => p.tier === "Low") ? "Some Low-tier candidates included. Review before publishing." : null;
 
   const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "angle"> = {
@@ -246,13 +244,10 @@ function build1PlusGoalsPost(
   const matchLabel = game.match_label;
   const dayLabel = gameDayLabel(game.game_date);
 
-  // For Post 2: keep players where threshold = 1 (genuine 1+ line)
-  // Fall back to any goal pick if 1+ pool is too thin
-  let picks = allGoalPicks.filter(p => p.threshold === 1);
-  if (picks.length < 2) {
-    picks = [...allGoalPicks];
-  }
-  picks = picks.slice(0, 5);
+  // Strict: only players with genuine 1+ threshold — never 2+/3+ players
+  const picks = allGoalPicks
+    .filter(p => p.threshold === 1)
+    .slice(0, 5);
 
   const hasEnough = picks.length >= 2;
   const hasHighTier = picks.some(p => p.tier === "High");
@@ -289,7 +284,7 @@ function build1PlusGoalsPost(
     : `${matchLabel}\n1+ Goals Watch`;
 
   const fallbackWarning = !hasEnough
-    ? `Not enough strong 1+ goal candidates for this game (${picks.length} found). Mark as Needs Review.`
+    ? `Not enough genuine 1+ tier candidates for this game (${picks.length} found — strict 1+ only, no 2+/3+ players). Mark as Needs Review.`
     : picks.some(p => p.tier === "Low") ? "Some Low-tier candidates included. Review before publishing." : null;
 
   const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "angle"> = {
@@ -449,7 +444,7 @@ function buildFullGamePicksPost(
     fallbackWarning,
     playerNames: allPicks.map(p => p.player_name),
     teamNames: [...new Set(allPicks.map(p => p.team_name))],
-    thresholdLabel: `${topDispThr}+ Disposals + Goals`,
+    thresholdLabel: "Full Game Picks",
     isBackup: false,
     tone: "clean_stats",
     hookOptions,
