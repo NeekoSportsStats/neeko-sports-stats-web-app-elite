@@ -15,6 +15,9 @@ import {
   tierLabel,
   tierColor,
   formatLastNStrip,
+  lastNFromValues,
+  formatHitRecord,
+  formatRateAsPercent,
 } from "./statLineEngine";
 import type { CandidateScore, ConfidenceTier } from "./statLineEngine";
 
@@ -71,23 +74,17 @@ export interface GamePick {
 
 // ─── Conversion helper ────────────────────────────────────────────────────────
 
-function last5FromCandidate(c: CandidateScore): number[] {
-  const raw = c.last_10_values;
-  if (!raw || raw.length === 0) return [];
-  return [...raw].reverse().filter((v): v is number => v !== null && v >= 0).slice(0, 5);
-}
-
 function toGamePickPlayer(c: CandidateScore): GamePickPlayer {
-  const last5 = last5FromCandidate(c);
+  const last5 = lastNFromValues(c.last_10_values, 5);
   return {
     player_id: c.player_id,
     player_name: c.player_name,
     team_name: c.team_name,
     threshold: c.threshold,
     hitRecord: c.hitRecord.sample > 0
-      ? `${c.hitRecord.hits}/${c.hitRecord.sample}`
+      ? formatHitRecord(c.hitRecord.hits, c.hitRecord.sample)
       : "—",
-    hitPct: `${Math.round(c.hitRecord.rate * 100)}%`,
+    hitPct: formatRateAsPercent(c.hitRecord.rate),
     hitRate: c.hitRecord.rate,
     l5_avg: c.l5Avg,
     season_avg: c.seasonAvg,

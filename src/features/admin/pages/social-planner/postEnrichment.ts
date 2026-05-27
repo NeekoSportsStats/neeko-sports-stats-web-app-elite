@@ -287,13 +287,13 @@ export function buildPlatformCaptions(post: SocialPost, ctaLine: string): Platfo
   const tiktok = `${tiktokHook}\n\n${topHashtags}\n\n${ctaLine} Link in bio.`;
 
   // Instagram: full caption + all hashtags
-  const instragram = `${post.caption}\n\n${allHashtags}\n\n${ctaLine} Link in bio.`;
+  const instagram = `${post.caption}\n\n${allHashtags}\n\n${ctaLine} Link in bio.`;
 
   // Facebook: no hashtags, conversational close
   const fbBullets = post.statsShown.slice(0, 5).map(b => `• ${b}`).join("\n");
   const facebook = `${post.content}\n\n${fbBullets}\n\n${ctaLine}\n\nWhat do you think? Drop a comment.`;
 
-  return { tiktok, instagram: instragram, facebook };
+  return { tiktok, instagram, facebook };
 }
 
 // ─── Voiceover script ─────────────────────────────────────────────────────────
@@ -503,11 +503,15 @@ function buildStatSlidePrompt(statLine: string, slideNum: number, post: SocialPo
   // Extract team from post.teamNames if only one team, else leave generic
   const teamHint = post.teamNames.length === 1 ? ` (${post.teamNames[0]})` : "";
 
+  // Use per-player threshold from the stat line (e.g. "at 25+"), not the post-level label.
+  // This ensures mixed-threshold carousels show each player's correct threshold.
+  const thresholdLabel = statDetail.match(/at\s+(\d+\+(?:\s+goals?)?)/i)?.[1] ?? post.thresholdLabel;
+
   return (
     `SLIDE ${slideNum} — PLAYER: ${format}. ` +
     `Player name: ${playerName}${teamHint}. ` +
     `Stat line: ${statDetail}. ` +
-    `Threshold: ${post.thresholdLabel}. ` +
+    `Threshold: ${thresholdLabel}. ` +
     `Show hit record, percentage, L5 avg, and Last 5 strip. ` +
     `Confidence badge. Team colour accent. Gold highlight on key stat number. ` +
     `No betting language.`

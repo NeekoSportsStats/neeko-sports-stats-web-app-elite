@@ -104,7 +104,7 @@ export function gamePickHashtags(kitType: GamePickKitType, gameDate: string): st
 // ─── Day helpers ──────────────────────────────────────────────────────────────
 
 const DOW_ABBREV: DayOfWeek[] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const DOW_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Game day"];
+const DOW_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 function gameDayAbbrev(gameDate: string): DayOfWeek {
   return DOW_ABBREV[new Date(gameDate).getDay()];
@@ -397,8 +397,6 @@ function buildFullGamePicksPost(
     `${pickCount} player trends across disposals and goals — ${matchLabel}.`,
     `Before bounce — ${matchLabel} stat watch.`,
   ];
-
-  const topDispThr = dSlice[0]?.threshold ?? 20;
 
   const suggestedVisual = pickCount > 0
     ? `Split stat grid for ${matchLabel} — left: ${dSlice.length} disposal picks, right: ${gSlice.length} goal picks. Dark. Neeko brand.`

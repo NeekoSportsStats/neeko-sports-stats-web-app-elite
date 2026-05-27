@@ -455,16 +455,27 @@ export function rankGoalCandidatesForTeams(
 // ─── Last-N value helpers ─────────────────────────────────────────────────────
 
 /**
- * Extracts the last N actual stat values from a StatBoardPlayer.
+ * Core last-N extractor operating on a raw values array.
  * Returns values newest-first, skipping null/negative sentinel values (BYE/DNP/NYP).
+ * Shared by getLastNValues and any consumer that holds last_10_values directly.
  */
-export function getLastNValues(p: StatBoardPlayer, count: number): number[] {
-  const raw = p.last_10_values;
+export function lastNFromValues(
+  raw: (number | null)[] | null | undefined,
+  count: number,
+): number[] {
   if (!raw || raw.length === 0) return [];
   return [...raw]
     .reverse()
     .filter((v): v is number => v !== null && v >= 0)
     .slice(0, count);
+}
+
+/**
+ * Extracts the last N actual stat values from a StatBoardPlayer.
+ * Returns values newest-first, skipping null/negative sentinel values (BYE/DNP/NYP).
+ */
+export function getLastNValues(p: StatBoardPlayer, count: number): number[] {
+  return lastNFromValues(p.last_10_values, count);
 }
 
 /**
