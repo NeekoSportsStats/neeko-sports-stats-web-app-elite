@@ -5,7 +5,7 @@
  */
 import { useState, useMemo, useCallback, Component } from "react";
 import type { ReactNode, ErrorInfo } from "react";
-import { Copy, Check, ChevronDown, ChevronUp, Calendar, Hash, Zap, TriangleAlert as AlertTriangle, Clock, Shield, Star, Crosshair } from "lucide-react";
+import { Copy, Check, ChevronDown, ChevronUp, Calendar, Hash, Zap, TriangleAlert as AlertTriangle, Clock, Shield, Star, Crosshair, LayoutGrid } from "lucide-react";
 import {
   buildGamePicks,
   filterPicksByConsistency,
@@ -387,57 +387,201 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
 
   // ── MONDAY ────────────────────────────────────────────────────────────────
 
-  // Post 1 — 25+ disposals watchlist (Carousel)
-  // TRUE 25+ post. Sourced exclusively from pool25 (players whose primary content
-  // tier is 25+). Players assigned to pool30 are NEVER included here.
-  // Falls back only to pool20 if pool25 is genuinely empty — never to pool30.
+  // Post 1 — Previous week results (if completed games exist) else 20+ watchlist
   {
-    // Strict 25+ pool — excludes anyone in pool30 by construction
-    const mon1Players = pool25.length >= 4
-      ? pool25.slice(0, 5)
-      : pool25.length >= 2
-      ? pool25.slice(0, pool25.length)
-      : pool20.slice(0, 4); // only fallback: pool20, never pool30
+    const hasCompleted = completedMatches.length > 0;
 
-    const isFallback = pool25.length < 2;
-    const mon1ThrNum = pool25.length >= 2 ? 25 : 20;
-    const mon1ThrLabel = `${mon1ThrNum}+ Disposals`;
+    if (hasCompleted) {
+      // Recap framing — use the best available disposal pool for proof context
+      const recapPool = pool20.length >= 3 ? pool20
+        : poolElite.length >= 3 ? poolElite
+        : dispPool;
+      const recapThrNum = pool20.length >= 3 ? 20 : poolElite.length >= 3 ? 25 : 20;
+      const recapPlayers = recapPool.slice(0, 5);
+      const bullets = recapPlayers.map(p =>
+        `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, recapThrNum))} at ${recapThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
+      );
+      const hook = `${rl} results in. Here's how the form numbers looked across the weekend.`;
+      schedule.push(makePost({
+        day: "Mon", postNumber: 1,
+        type: "Carousel",
+        category: "Round Wrap", intent: "recap",
+        statLens: "disposals", confidence: "High",
+        title: `${rl} — previous round results`,
+        content: hook,
+        statsShown: bullets,
+        onScreenText: "Weekend results",
+        caption: buildCaption(hook, bullets, 0),
+        hashtags: HASHTAG_SETS["Round Wrap"],
+        suggestedVisual: `${recapPlayers.length}-player recap grid — name, team, ${recapThrNum}+ hit rate, L5 avg`,
+        imageDescription: `Carousel. ${recapPlayers.length} players, one per slide. Each slide: player name, team, ${recapThrNum}+ disposal hit rate, L5 average. Title card: "${rl} — Round Results". Dark background, AFL team colours as accents. No betting language.`,
+        dataScope: "Completed weekend games",
+        targetGame: null,
+        targetGameStatus: "completed",
+        fallbackWarning: null,
+        players: recapPlayers,
+        thresholdLabel: `${recapThrNum}+ Disposals`,
+      }));
+    } else {
+      // No completed games — show 20+ disposal watchlist instead
+      const mon1Players = pool20.length >= 3 ? pool20.slice(0, 5)
+        : pool20.length >= 1 ? [...pool20, ...pool15].slice(0, 5)
+        : pool15.slice(0, 5);
+      const mon1ThrNum = pool20.length >= 2 ? 20 : 15;
+      const hook = `${rl} preview — who's been clearing ${mon1ThrNum}+ disposals consistently?`;
+      const bullets = mon1Players.map(p =>
+        `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, mon1ThrNum))} at ${mon1ThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
+      );
+      schedule.push(makePost({
+        day: "Mon", postNumber: 1,
+        type: "Carousel",
+        category: "Disposal Trend", intent: "cross_game_preview",
+        statLens: "disposals", confidence: pool20.length >= 3 ? "High" : "Medium",
+        title: `${rl} — ${mon1ThrNum}+ disposals watchlist`,
+        content: hook,
+        statsShown: bullets,
+        onScreenText: `${mon1ThrNum}+ disposal form`,
+        caption: buildCaption(hook, bullets, 0),
+        hashtags: HASHTAG_SETS["Disposal Trend"],
+        suggestedVisual: `${mon1Players.length}-player stat grid — name, team, ${mon1ThrNum}+ hit rate, L5 avg`,
+        imageDescription: `Carousel. ${mon1Players.length} players, one per slide. Each slide: player name, team, ${mon1ThrNum}+ disposals hit rate as a percentage, L5 average. Dark background, AFL team colours as accents. Headline: "${rl} — ${mon1ThrNum}+ Disposals Watchlist". No betting language.`,
+        dataScope: `${rl} ${mon1ThrNum}+ disposal player pool`,
+        targetGame: null,
+        targetGameStatus: "any",
+        fallbackWarning: pool20.length < 2 ? `Low 20+ candidate count — using ${mon1ThrNum}+ pool instead` : null,
+        players: mon1Players,
+        thresholdLabel: `${mon1ThrNum}+ Disposals`,
+      }));
+    }
+  }
 
-    const mon1Hook = mon1ThrNum === 25
-      ? `Who's been clearing 25+ consistently heading into ${rl}?`
-      : `Volume disposal form heading into ${rl}.`;
-
-    const mon1Bullets = mon1Players.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, mon1ThrNum))} at ${mon1ThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
+  // Post 2 — Current week 20+ disposals (strict pool20 only)
+  {
+    const mon2Players = pool20.length >= 3 ? pool20.slice(0, 5)
+      : pool20.length >= 1 ? [...pool20, ...pool15].slice(0, 5)
+      : pool15.slice(0, 5);
+    const isFallback = pool20.length < 2;
+    const mon2ThrNum = pool20.length >= 2 ? 20 : 15;
+    const hook = `${rl} — players consistently clearing ${mon2ThrNum}+ disposals. Stats over gut feel.`;
+    const bullets = mon2Players.map(p =>
+      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, mon2ThrNum))} at ${mon2ThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
     );
-
     schedule.push(makePost({
-      day: "Mon", postNumber: 1,
-      type: "Carousel",
+      day: "Mon", postNumber: 2,
+      type: "Image",
       category: "Disposal Trend", intent: "cross_game_preview",
       statLens: "disposals", confidence: isFallback ? "Medium" : "High",
-      title: mon1ThrNum === 25
-        ? `${rl} — 25+ disposals watchlist`
-        : `${rl} — ${mon1ThrNum}+ disposals watchlist`,
-      content: mon1Hook,
-      statsShown: mon1Bullets,
-      onScreenText: `${mon1ThrNum}+ disposal form`,
-      caption: buildCaption(mon1Hook, mon1Bullets, 0),
+      title: `${rl} — ${mon2ThrNum}+ disposal form`,
+      content: hook,
+      statsShown: bullets,
+      onScreenText: `${mon2ThrNum}+ disposal form`,
+      caption: buildCaption(hook, bullets, 1),
       hashtags: HASHTAG_SETS["Disposal Trend"],
-      suggestedVisual: `${mon1Players.length}-player stat grid — name, team, ${mon1ThrNum}+ hit rate, L5 avg`,
-      imageDescription: `Carousel. ${mon1Players.length} players, one per slide. Each slide: player name, team, ${mon1ThrNum}+ disposals hit rate as a percentage, L5 average. Dark background, AFL team colours as accents. Headline: "${rl} — 25+ Disposals Watchlist". No betting language.`,
-      dataScope: `${rl} 25+ disposal player pool`,
+      suggestedVisual: `5-player stat grid — name, team, ${mon2ThrNum}+ hit rate, L5 avg`,
+      imageDescription: `Static image. 5-player stat grid. Threshold: ${mon2ThrNum}+ disposals. Each row: player name, team abbreviation, ${mon2ThrNum}+ hit rate percentage, L5 average. These players sit in the ${mon2ThrNum}+ tier only. Dark background, stat values highlighted. No betting language.`,
+      dataScope: `${rl} ${mon2ThrNum}+ disposal player pool (strict tier)`,
       targetGame: null,
       targetGameStatus: "any",
-      fallbackWarning: isFallback
-        ? `Low 25+ candidate count (${pool25.length}) — using ${mon1ThrNum}+ pool instead. Do not label as 25+ content.`
-        : null,
-      players: mon1Players,
-      thresholdLabel: mon1ThrLabel,
+      fallbackWarning: isFallback ? `Low 20+ candidate count — using ${mon2ThrNum}+ pool` : null,
+      players: mon2Players,
+      thresholdLabel: `${mon2ThrNum}+ Disposals`,
     }));
   }
 
-  // Post 2 — Positive form movers (Image)
+  // Post 3 — Current week 1+ goals
+  {
+    const mon3Players = (goalPool1.length >= 2 ? goalPool1 : goalPool).slice(0, 5);
+    const hook = `${rl} — goal scorer form. Who's been finding the big sticks regularly?`;
+    const bullets = mon3Players.map(p =>
+      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 1))} at 1+ goals, L5 avg ${getL5Avg(p).toFixed(1)}`
+    );
+    schedule.push(makePost({
+      day: "Mon", postNumber: 3,
+      type: "Carousel",
+      category: "Goal Trend", intent: "cross_game_preview",
+      statLens: "goals", confidence: mon3Players.length >= 3 ? "High" : "Medium",
+      title: `${rl} — 1+ goal scorer form`,
+      content: hook,
+      statsShown: bullets,
+      onScreenText: "Goal scorer form",
+      caption: buildCaption(hook, bullets, 2),
+      hashtags: HASHTAG_SETS["Goal Trend"],
+      suggestedVisual: `${mon3Players.length}-player goal form grid — name, team, 1+ hit rate, L5 avg`,
+      imageDescription: `Carousel. ${mon3Players.length} players, one per slide. Each: player name, team, 1+ goal hit rate as percentage, L5 average. Dark background, clean layout. No betting language.`,
+      dataScope: `${rl} 1+ goal player pool`,
+      targetGame: null,
+      targetGameStatus: "any",
+      fallbackWarning: goalPool1.length < 2 ? "Low 1+ only candidates — using full goal pool" : null,
+      players: mon3Players,
+      thresholdLabel: "1+ Goals",
+    }));
+  }
+
+  // ── TUESDAY ───────────────────────────────────────────────────────────────
+
+  // Post 1 — Current week 25+ disposals (strict pool25 only — never pool30)
+  {
+    const tue1Players = pool25.length >= 3 ? pool25.slice(0, 5)
+      : pool25.length >= 1 ? pool25.slice(0, pool25.length)
+      : pool20.slice(0, 5);
+    const isFallback = pool25.length < 2;
+    const tue1ThrNum = pool25.length >= 2 ? 25 : 20;
+    const hook = `${rl} — who's been clearing ${tue1ThrNum}+ disposals consistently? Data from the last 5 games.`;
+    const tue1Bullets = tue1Players.map(p =>
+      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, tue1ThrNum))} at ${tue1ThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
+    );
+    schedule.push(makePost({
+      day: "Tue", postNumber: 1,
+      type: "Image",
+      category: "Disposal Trend", intent: "cross_game_preview",
+      statLens: "disposals", confidence: isFallback ? "Medium" : "High",
+      title: `${rl} — ${tue1ThrNum}+ disposal form`,
+      content: hook,
+      statsShown: tue1Bullets,
+      onScreenText: `${tue1ThrNum}+ disposal form`,
+      caption: buildCaption(hook, tue1Bullets, 3),
+      hashtags: HASHTAG_SETS["Disposal Trend"],
+      suggestedVisual: `5-player stat grid — name, team, ${tue1ThrNum}+ hit rate, L5 avg`,
+      imageDescription: `Static image. 5-player stat grid. Threshold: ${tue1ThrNum}+ disposals. Each row: player name, team abbreviation, ${tue1ThrNum}+ hit rate percentage, L5 average. ${tue1ThrNum}+ tier players only. Dark background, stat values highlighted. No betting language.`,
+      dataScope: `${rl} ${tue1ThrNum}+ disposal pool (strict tier — no 30+ players)`,
+      targetGame: null,
+      targetGameStatus: "any",
+      fallbackWarning: isFallback ? `Low 25+ candidate count (${pool25.length}) — using ${tue1ThrNum}+ pool` : null,
+      players: tue1Players,
+      thresholdLabel: `${tue1ThrNum}+ Disposals`,
+    }));
+  }
+
+  // Post 2 — Current week 2+ goals
+  {
+    const tue2Players = (goalPool2.length >= 2 ? goalPool2 : goalPool.filter(p => getHitRate(p, 2) >= 0.45)).slice(0, 5);
+    const hook = `${rl} — multi-goal scorers with strong recent form. Hit rates from the last 5 games.`;
+    const bullets = tue2Players.map(p =>
+      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 2))} at 2+ goals, L5 avg ${getL5Avg(p).toFixed(1)}`
+    );
+    schedule.push(makePost({
+      day: "Tue", postNumber: 2,
+      type: "Image",
+      category: "Goal Trend", intent: "cross_game_preview",
+      statLens: "goals", confidence: tue2Players.length >= 3 ? "High" : "Medium",
+      title: `${rl} — 2+ goal scorer form`,
+      content: hook,
+      statsShown: bullets,
+      onScreenText: "2+ goal form",
+      caption: buildCaption(hook, bullets, 4),
+      hashtags: HASHTAG_SETS["Goal Trend"],
+      suggestedVisual: `5-player 2+ goal form grid — name, team, 2+ hit rate, L5 avg`,
+      imageDescription: `Static image. 5-player goal form grid. Threshold: 2+ goals. Each row: player name, team, 2+ goal hit rate as percentage, L5 average. Multi-goal tier players. Dark background. No betting language.`,
+      dataScope: `${rl} 2+ goal player pool`,
+      targetGame: null,
+      targetGameStatus: "any",
+      fallbackWarning: goalPool2.length < 2 ? "Low 2+ only candidates — using relaxed goal pool" : null,
+      players: tue2Players,
+      thresholdLabel: "2+ Goals",
+    }));
+  }
+
+  // Post 3 — Positive form movers
   {
     const movers = formMovers.slice(0, 5);
     const hasMover = movers.length >= 2;
@@ -447,312 +591,146 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       return `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${(p.last_5_avg ?? 0).toFixed(1)} (${d >= 0 ? "+" : ""}${d.toFixed(1)} vs season avg ${(p.season_avg ?? 0).toFixed(1)})`;
     });
     const hook = hasMover
-      ? `Players trending well above their season average. Form is real — the numbers back it up.`
-      : `Recent disposal form leaders heading into the next round.`;
-    const hasMon2Completed = completedMatches.length > 0;
+      ? `Players trending well above their season average heading into ${rl}. Form is real — the numbers back it up.`
+      : `Recent disposal form leaders heading into ${rl}.`;
     schedule.push(makePost({
-      day: "Mon", postNumber: 2,
-      type: "Image",
-      // Only use "recap" when actual completed game data exists
-      category: "Form Mover", intent: hasMon2Completed ? "recap" : "cross_game_preview",
+      day: "Tue", postNumber: 3,
+      type: "Carousel",
+      category: "Form Mover", intent: "cross_game_preview",
       statLens: "disposals", confidence: hasMover ? "High" : "Medium",
-      title: hasMon2Completed ? `Positive form movers — ${rl} recap` : `Positive form movers — ${rl}`,
+      title: `${rl} — positive form movers`,
       content: hook,
       statsShown: bullets,
       onScreenText: "Form movers",
-      caption: buildCaption(hook, bullets, 1),
+      caption: buildCaption(hook, bullets, 5),
       hashtags: HASHTAG_SETS["Form Mover"],
-      suggestedVisual: `Up-arrow graphic with player name, L5 avg, and delta vs season avg`,
-      imageDescription: `Static image. Up-arrow visual. Each row: player name, team, L5 avg, and delta vs season avg (e.g. +4.2). ${pool.length} player${pool.length !== 1 ? "s" : ""}. Dark background, green accent arrows for positive deltas.`,
-      dataScope: hasMon2Completed ? "Completed weekend games" : `${rl} disposal player pool`,
-      targetGame: null, targetGameStatus: hasMon2Completed ? "completed" : "any",
-      fallbackWarning: hasMover ? null : "Fallback: insufficient form mover candidates",
+      suggestedVisual: `${pool.length}-player up-arrow graphic — name, L5 avg, delta vs season avg`,
+      imageDescription: `Carousel. ${pool.length} players, one per slide. Each: player name, team, L5 average, delta vs season average (e.g. +4.2). Up-arrow visual accent for positive deltas. Headline: "${rl} — Form Movers". Dark background, green accents. No betting language.`,
+      dataScope: `${rl} disposal player pool — form movers`,
+      targetGame: null,
+      targetGameStatus: "any",
+      fallbackWarning: hasMover ? null : "Fallback: insufficient form mover candidates — using top disposal pool",
       players: pool,
       thresholdLabel: "Form Risers",
     }));
   }
 
-  // Post 3 — Weekend recap (Carousel)
+  // ── WEDNESDAY ─────────────────────────────────────────────────────────────
+
+  // Post 1 — Current week 30+ disposals (strict pool30 — marks elite fingerprint)
+  {
+    const wed1Players = pool30.length >= 3 ? pool30.slice(0, 5)
+      : poolElite.length >= 3 ? poolElite.slice(0, 5)
+      : pool25.slice(0, 5);
+    const wed1ThrNum = pool30.length >= 3 ? 30 : poolElite.length >= 3 ? 25 : 25;
+    const isFallback = pool30.length < 2;
+    if (pool30.length >= 3) globalElitePostUsed = true;
+    const hook = pool30.length >= 3
+      ? `Elite disposal volume heading into ${rl}. Who's been clearing 30+ consistently?`
+      : `High-volume disposers heading into ${rl}. Numbers that matter.`;
+    const bullets = wed1Players.map(p =>
+      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, wed1ThrNum))} at ${wed1ThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
+    );
+    schedule.push(makePost({
+      day: "Wed", postNumber: 1,
+      type: "Image",
+      category: "Disposal Trend", intent: "cross_game_preview",
+      statLens: "disposals", confidence: isFallback ? "Medium" : "High",
+      title: pool30.length >= 3 ? `${rl} — 30+ disposal form` : `${rl} — high-volume disposal form`,
+      content: hook,
+      statsShown: bullets,
+      onScreenText: `${wed1ThrNum}+ disposal form`,
+      caption: buildCaption(hook, bullets, 0),
+      hashtags: HASHTAG_SETS["Disposal Trend"],
+      suggestedVisual: `5-player stat grid — name, team, ${wed1ThrNum}+ hit rate, L5 avg`,
+      imageDescription: `Static image. 5-player stat grid. Threshold: ${wed1ThrNum}+ disposals. Elite tier. Each row: player name, team abbreviation, ${wed1ThrNum}+ hit rate percentage, L5 average. Dark background, stat values highlighted. No betting language.`,
+      dataScope: `${rl} ${wed1ThrNum}+ disposal pool (elite tier)`,
+      targetGame: null,
+      targetGameStatus: "any",
+      fallbackWarning: isFallback ? `Low 30+ candidate count (${pool30.length}) — using ${wed1ThrNum}+ pool` : null,
+      players: wed1Players,
+      thresholdLabel: `${wed1ThrNum}+ Disposals`,
+    }));
+  }
+
+  // Post 2 — Current week 3+ goals (fallback to 2+ if < 3 strong candidates)
+  {
+    let wed2Players: StatBoardPlayer[];
+    let wed2Thr: number;
+    let wed2Label: string;
+
+    if (goalPool3.length >= 3) {
+      wed2Players = goalPool3.slice(0, 5);
+      wed2Thr = 3;
+      wed2Label = "3+ Goals";
+    } else if (goalPool2.length >= 3) {
+      wed2Players = goalPool2.slice(0, 5);
+      wed2Thr = 2;
+      wed2Label = "2+ Goals";
+    } else if (goalPool3.length + goalPool2.length >= 2) {
+      wed2Players = [...goalPool3, ...goalPool2].slice(0, 5);
+      wed2Thr = 2;
+      wed2Label = "2–3+ Goals";
+    } else {
+      wed2Players = goalPool.slice(0, 5);
+      wed2Thr = 1;
+      wed2Label = "1+ Goals";
+    }
+
+    const hook = `${rl} — ${wed2Label} goal scorer form. Consistent performers at the higher threshold.`;
+    const bullets = wed2Players.map(p =>
+      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, wed2Thr))} at ${wed2Thr}+, L5 avg ${getL5Avg(p).toFixed(1)}`
+    );
+    schedule.push(makePost({
+      day: "Wed", postNumber: 2,
+      type: "Carousel",
+      category: "Goal Trend", intent: "cross_game_preview",
+      statLens: "goals", confidence: wed2Players.length >= 3 ? "High" : "Medium",
+      title: `${rl} — ${wed2Label} goal form`,
+      content: hook,
+      statsShown: bullets,
+      onScreenText: `${wed2Label} form`,
+      caption: buildCaption(hook, bullets, 1),
+      hashtags: HASHTAG_SETS["Goal Trend"],
+      suggestedVisual: `5-player ${wed2Label} goal form grid — name, team, ${wed2Thr}+ hit rate, L5 avg`,
+      imageDescription: `Carousel. ${wed2Players.length} players, one per slide. Each: player name, team, ${wed2Thr}+ goal hit rate as percentage, L5 average. Threshold: ${wed2Label}. Dark background, clean layout. No betting language.`,
+      dataScope: `${rl} ${wed2Label} goal player pool`,
+      targetGame: null,
+      targetGameStatus: "any",
+      fallbackWarning: goalPool3.length < 3 ? `Low 3+ goal candidate count (${goalPool3.length}) — using ${wed2Label} pool` : null,
+      players: wed2Players,
+      thresholdLabel: wed2Label,
+    }));
+  }
+
+  // Post 3 — Team scoring trends
   {
     const teams = teamScoreRows.slice(0, 5);
     const hasTeams = teams.length >= 2;
     const bullets = hasTeams
       ? teams.map(t => `${t.team_name ?? ""} — L5 avg ${getTeamL5Avg(t).toFixed(1)} pts (season avg ${getTeamSeasonAvg(t).toFixed(1)})`)
       : ["Team scoring data not available for this round."];
-    const hasMon3Completed = completedMatches.length > 0;
-    const hook = hasMon3Completed
-      ? `Team scoring from ${rl}. Who ran hot on the scoreboard?`
-      : `Team scoring trends heading into ${rl}. Who's running hot?`;
+    const hook = `${rl} — team scoring trends. Which teams are running the most points?`;
     schedule.push(makePost({
-      day: "Mon", postNumber: 3,
-      type: "Carousel",
-      // Only use "recap" when actual completed game data exists
-      category: "Team Total", intent: hasMon3Completed ? "recap" : "cross_game_preview",
+      day: "Wed", postNumber: 3,
+      type: "Image",
+      category: "Team Total", intent: "cross_game_preview",
       statLens: "team-total", confidence: hasTeams ? "Medium" : "Fallback",
-      title: hasMon3Completed ? `${rl} team scoring recap` : `${rl} team scoring trends`,
+      title: `${rl} — team scoring trends`,
       content: hook,
       statsShown: bullets,
       onScreenText: "Team scoring trends",
       caption: buildCaption(hook, bullets, 2),
       hashtags: HASHTAG_SETS["Team Total"],
-      suggestedVisual: "Bar chart of top-scoring teams, L5 vs season average",
-      imageDescription: `Carousel. Each slide shows one team: name, logo placeholder, L5 average score, and season average score side by side. ${teams.length} team${teams.length !== 1 ? "s" : ""}. Clean layout, neutral dark background.`,
-      dataScope: hasMon3Completed ? "Completed weekend games" : `${rl} team score rows`,
-      targetGame: null, targetGameStatus: hasMon3Completed ? "completed" : "any",
+      suggestedVisual: "Bar chart of top-scoring teams — L5 vs season average",
+      imageDescription: `Static image. ${teams.length} teams. Each row: team name, L5 average score, season average score side by side. Headline: "${rl} — Team Scoring Trends". Clean layout, neutral dark background. No betting language.`,
+      dataScope: `${rl} team score rows`,
+      targetGame: null,
+      targetGameStatus: "any",
       fallbackWarning: hasTeams ? null : "Fallback: insufficient team score data",
-      players: [], teams: teams.map(t => t.team_name ?? "").filter(Boolean),
+      players: [],
+      teams: teams.map(t => t.team_name ?? "").filter(Boolean),
       thresholdLabel: "Team Score",
-    }));
-  }
-
-  // ── TUESDAY ───────────────────────────────────────────────────────────────
-
-  // Post 1 — Top 5 for 25+/30+ disposals (Image)
-  // Uses segmented pool: if pool30 is large enough, promote to 30+ post.
-  // This is the canonical global elite disposal post — marks fingerprint as used.
-  {
-    let tue1Players: StatBoardPlayer[];
-    let tue1Threshold: string;
-    let tue1ThrNum: number;
-    let tue1Title: string;
-    let tue1Hook: string;
-    let tue1Fallback: string | null = null;
-
-    if (pool30.length >= 3) {
-      tue1Players = pool30.slice(0, 5);
-      tue1Threshold = "30+ Disposals";
-      tue1ThrNum = 30;
-      tue1Title = `Top 5 for 30+ disposals — ${rl}`;
-      tue1Hook = `Elite disposal volume. Who's been clearing 30+ consistently heading into ${rl}?`;
-      globalElitePostUsed = true; // mark fingerprint — only one global 30+ cross-game post per week
-    } else if (pool25.length >= 3) {
-      tue1Players = pool25.slice(0, 5);
-      tue1Threshold = "25+ Disposals";
-      tue1ThrNum = 25;
-      tue1Title = `Top 5 for 25+ disposals — ${rl}`;
-      tue1Hook = `Top disposers heading into ${rl}. Who's been clearing 25+ consistently?`;
-    } else {
-      // Not enough 25+ or 30+ players — use combined elite pool
-      tue1Players = poolElite.length >= 2 ? poolElite.slice(0, 5) : dispPool.slice(0, 5);
-      tue1Threshold = "25–30+ Disposals";
-      tue1ThrNum = 25;
-      tue1Title = `High-volume disposal form — ${rl}`;
-      tue1Hook = `High-volume disposers heading into ${rl}. Numbers that matter.`;
-      tue1Fallback = pool25.length < 3 ? "Low 25+ candidate count — combined 25+/30+ pool used" : null;
-    }
-
-    const tue1Bullets = tue1Players.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, tue1ThrNum))} at ${tue1ThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
-    );
-    schedule.push(makePost({
-      day: "Tue", postNumber: 1,
-      type: "Image",
-      category: "Disposal Trend", intent: "cross_game_preview",
-      statLens: "disposals", confidence: tue1Fallback ? "Fallback" : "High",
-      title: tue1Title,
-      content: tue1Hook,
-      statsShown: tue1Bullets,
-      onScreenText: `${tue1ThrNum}+ disposal form`,
-      caption: buildCaption(tue1Hook, tue1Bullets, 3),
-      hashtags: HASHTAG_SETS["Disposal Trend"],
-      suggestedVisual: `5-player stat grid — name, team, ${tue1ThrNum}+ hit rate, L5 avg`,
-      imageDescription: `Static image. 5-player stat grid. Threshold: ${tue1ThrNum}+ disposals. Each row: player name, team abbreviation, ${tue1ThrNum}+ hit rate percentage, L5 average. Dark background, stat values highlighted. No betting language.`,
-      dataScope: `${rl} cross-game disposal pool`,
-      targetGame: upcomingGameLabel, targetGameStatus: upcomingGameLabel ? "upcoming" : "any",
-      fallbackWarning: tue1Fallback,
-      players: tue1Players, thresholdLabel: tue1Threshold,
-    }));
-  }
-
-  // Post 2 — Top 5 for 20+ disposals (Image) — only players whose best threshold is 20+
-  {
-    // pool20 contains ONLY players whose highest supported line is 20+ (not 25+ or 30+)
-    let tue2Players: StatBoardPlayer[];
-    let isFallback = false;
-
-    if (pool20.length >= 3) {
-      tue2Players = pool20.slice(0, 5);
-    } else if (pool20.length >= 1) {
-      // Supplement with 15+ players if necessary but never with 25+/30+
-      tue2Players = [...pool20, ...pool15].slice(0, 5);
-      isFallback = true;
-    } else {
-      // No genuine 20+ players — downgrade to preview/watchlist instead
-      tue2Players = pool15.slice(0, 5);
-      isFallback = true;
-    }
-
-    const tue2ThrNum = pool20.length >= 2 ? 20 : 15;
-    const tue2Threshold = `${tue2ThrNum}+ Disposals`;
-    const hook = pool20.length >= 3
-      ? `Solid ${tue2ThrNum}+ disposal form — players whose most relevant content line sits around ${tue2ThrNum}+.`
-      : `Volume disposers in the ${tue2ThrNum}+ range heading into ${rl}.`;
-    const tue2Bullets = tue2Players.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, tue2ThrNum))} at ${tue2ThrNum}+, L5 avg ${getL5Avg(p).toFixed(1)}`
-    );
-    schedule.push(makePost({
-      day: "Tue", postNumber: 2,
-      type: "Image",
-      category: "Disposal Trend", intent: "cross_game_preview",
-      statLens: "disposals", confidence: isFallback ? "Medium" : "High",
-      title: `Top 5 for ${tue2ThrNum}+ disposals — ${rl}`,
-      content: hook,
-      statsShown: tue2Bullets,
-      onScreenText: `${tue2ThrNum}+ disposal form`,
-      caption: buildCaption(hook, tue2Bullets, 4),
-      hashtags: HASHTAG_SETS["Disposal Trend"],
-      suggestedVisual: `5-player stat grid — name, team, ${tue2ThrNum}+ hit rate, L5 avg`,
-      imageDescription: `Static image. 5-player stat grid. Threshold: ${tue2ThrNum}+ disposals. Each row: player name, team abbreviation, ${tue2ThrNum}+ hit rate, L5 average. These players sit in the ${tue2ThrNum}+ tier only — not the higher tiers. Dark background.`,
-      dataScope: `${rl} cross-game disposal pool (${tue2ThrNum}+ tier only)`,
-      targetGame: upcomingGameLabel, targetGameStatus: upcomingGameLabel ? "upcoming" : "any",
-      fallbackWarning: isFallback ? `Low ${tue2ThrNum}+ candidate count — pool supplemented with adjacent tier` : null,
-      players: tue2Players, thresholdLabel: tue2Threshold,
-    }));
-  }
-
-  // Post 3 — Disposal ladder (Carousel)
-  {
-    const tiers: Array<{ thr: number; label: string; players: StatBoardPlayer[] }> = [
-      { thr: 25, label: "25+", players: top25.slice(0, 3) },
-      { thr: 20, label: "20+", players: top20.slice(0, 3) },
-      { thr: 15, label: "15+", players: top15.slice(0, 3) },
-    ];
-    const bullets = tiers.flatMap(t =>
-      t.players.length > 0
-        ? [`${t.label}: ${t.players.map(p => `${p.player_name} ${pct(getHitRate(p, t.thr))}`).join(", ")}`]
-        : []
-    );
-    const hook = `Disposal ladder for ${rl} — 15+, 20+, 25+ tiers. Different names, different thresholds.`;
-    schedule.push(makePost({
-      day: "Tue", postNumber: 3,
-      type: "Carousel",
-      category: "Disposal Trend", intent: "cross_game_preview",
-      statLens: "disposals", confidence: bullets.length >= 2 ? "High" : "Medium",
-      title: `Disposal ladder — ${rl}`,
-      content: hook,
-      statsShown: bullets,
-      onScreenText: "Disposal tiers",
-      caption: buildCaption(hook, bullets, 5),
-      hashtags: HASHTAG_SETS["Disposal Trend"],
-      suggestedVisual: "3-slide carousel — one slide per threshold tier (25+, 20+, 15+)",
-      imageDescription: `3-slide carousel. Slide 1: 25+ disposal tier — 3 player names with hit rates. Slide 2: 20+ disposal tier — 3 player names with hit rates. Slide 3: 15+ disposal tier — 3 player names with hit rates. Each slide has a tier label as headline. Dark background, consistent layout.`,
-      dataScope: `${rl} cross-game disposal pool — all 3 tiers`,
-      targetGame: null, targetGameStatus: "any",
-      fallbackWarning: bullets.length < 2 ? "Fallback: insufficient tier data" : null,
-      players: [...top25, ...top20, ...top15], thresholdLabel: "15+/20+/25+ Disposals",
-    }));
-  }
-
-  // ── WEDNESDAY ─────────────────────────────────────────────────────────────
-
-  // Post 1 — Top goal scorers — threshold-aware (uses best threshold per pool)
-  {
-    // Choose the most interesting threshold bucket with enough candidates
-    let wedGoalPlayers: StatBoardPlayer[];
-    let wedGoalThr: number;
-    let wedGoalLabel: string;
-
-    if (goalPool3.length >= 3) {
-      wedGoalPlayers = goalPool3.slice(0, 5);
-      wedGoalThr = 3;
-      wedGoalLabel = "3+ Goals";
-    } else if (goalPool2.length >= 3) {
-      wedGoalPlayers = goalPool2.slice(0, 5);
-      wedGoalThr = 2;
-      wedGoalLabel = "2+ Goals";
-    } else if (goalPool3.length + goalPool2.length >= 3) {
-      wedGoalPlayers = [...goalPool3, ...goalPool2].slice(0, 5);
-      wedGoalThr = 2;
-      wedGoalLabel = "2–3+ Goals";
-    } else {
-      wedGoalPlayers = goalPool.slice(0, 5);
-      wedGoalThr = 1;
-      wedGoalLabel = "1+ Goals";
-    }
-
-    const bullets = wedGoalPlayers.map(p =>
-      `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, wedGoalThr))} at ${wedGoalThr}+, L5 avg ${getL5Avg(p).toFixed(1)}`
-    );
-    const hook = `Top goal-scorers at the ${wedGoalLabel} threshold heading into ${rl}.`;
-    schedule.push(makePost({
-      day: "Wed", postNumber: 1,
-      type: "Image",
-      category: "Goal Trend", intent: "cross_game_preview",
-      statLens: "goals", confidence: wedGoalPlayers.length >= 3 ? "High" : "Medium",
-      title: `Top 5 for ${wedGoalLabel} — ${rl}`,
-      content: hook,
-      statsShown: bullets,
-      onScreenText: `${wedGoalLabel} form`,
-      caption: buildCaption(hook, bullets, 0),
-      hashtags: HASHTAG_SETS["Goal Trend"],
-      suggestedVisual: `5-player stat grid — name, team, ${wedGoalThr}+ goal hit rate, L5 avg`,
-      imageDescription: `Static image. 5-player stat grid. Threshold: ${wedGoalLabel}. Each row: player name, team, ${wedGoalThr}+ goal hit rate as percentage, L5 average. Dark background, clean layout. No betting language.`,
-      dataScope: `${rl} cross-game goal pool (${wedGoalLabel} tier)`,
-      targetGame: null, targetGameStatus: "any",
-      fallbackWarning: wedGoalPlayers.length < 3 ? "Fallback: low goal player count" : null,
-      players: wedGoalPlayers, thresholdLabel: wedGoalLabel,
-    }));
-  }
-
-  // Post 2 — Top tackle trends (Carousel)
-  {
-    const players = tacklePlayers.slice(0, 5);
-    const hasTackle = players.length >= 3;
-    const pool = hasTackle ? players : dispPool.slice(0, 4);
-    const bullets = hasTackle
-      ? players.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 5))} at 5+ tackles, L5 avg ${getL5Avg(p).toFixed(1)} disposals`)
-      : pool.map(p => `${p.player_name} (${p.team_name ?? ""}) — L5 avg ${getL5Avg(p).toFixed(1)}, ${pct(getHitRate(p, 20))} at 20+`);
-    const hook = hasTackle
-      ? `Tackle machines heading into ${rl}. These players consistently hit 5+ per game.`
-      : `Mid-week stat update — disposal form for ${rl}.`;
-    schedule.push(makePost({
-      day: "Wed", postNumber: 2,
-      type: "Carousel",
-      category: hasTackle ? "Tackle Trend" : "Disposal Trend", intent: "cross_game_preview",
-      statLens: hasTackle ? "tackles" : "disposals", confidence: hasTackle ? "High" : "Fallback",
-      title: hasTackle ? `Top tackle trends — ${rl}` : `Disposal form update — ${rl}`,
-      content: hook,
-      statsShown: bullets,
-      onScreenText: hasTackle ? "Tackle form" : "Disposal form",
-      caption: buildCaption(hook, bullets, 1),
-      hashtags: hasTackle ? HASHTAG_SETS["Tackle Trend"] : HASHTAG_SETS["Disposal Trend"],
-      suggestedVisual: hasTackle ? "5-player tackle form grid" : "Disposal form grid",
-      imageDescription: hasTackle
-        ? `Carousel. ${players.length} slides — one player per slide. Shows name, team, 5+ tackle hit rate, and L5 disposal average. Dark background with tackle-focused design.`
-        : `Carousel. ${pool.length} players shown. Disposal form update graphic with name, team, L5 average. Clean layout, neutral dark background.`,
-      dataScope: `${rl} cross-game player pool`,
-      targetGame: null, targetGameStatus: "any",
-      fallbackWarning: hasTackle ? null : "Fallback: insufficient tackle data — using disposal trend",
-      players: hasTackle ? players : pool, thresholdLabel: hasTackle ? "5+ Tackles" : "20+ Disposals",
-    }));
-  }
-
-  // Post 3 — Round quick stats / mixed (Image)
-  {
-    const topDisp = dispPool.slice(0, 3);
-    const topGoal = goalPool.slice(0, 2);
-    const bullets = [
-      ...topDisp.map(p => `${p.player_name} — ${getL5Avg(p).toFixed(1)} disp L5 avg`),
-      ...topGoal.map(p => `${p.player_name} — ${getL5Avg(p).toFixed(1)} goals L5 avg`),
-    ];
-    const hook = `Quick stat snapshot for ${rl}. Disposals, goals — numbers that matter.`;
-    schedule.push(makePost({
-      day: "Wed", postNumber: 3,
-      type: "Image",
-      category: "Round Preview", intent: "cross_game_preview",
-      statLens: "disposals", confidence: bullets.length >= 3 ? "High" : "Medium",
-      title: `${rl} quick stats snapshot`,
-      content: hook,
-      statsShown: bullets,
-      onScreenText: "Round at a glance",
-      caption: buildCaption(hook, bullets, 2),
-      hashtags: HASHTAG_SETS["Round Preview"],
-      suggestedVisual: "Mixed stat card — disposals section + goals section on one image",
-      imageDescription: `Static image split into two sections. Top section: top 3 disposal players (name, L5 average). Bottom section: top 2 goal scorers (name, L5 average). Headline: "${rl} at a glance". Dark background, two-column or stacked layout.`,
-      dataScope: `${rl} mixed player pool`,
-      targetGame: null, targetGameStatus: "any",
-      fallbackWarning: null,
-      players: [...topDisp, ...topGoal], thresholdLabel: "Mixed Stats",
     }));
   }
 
@@ -3049,9 +3027,93 @@ class SocialPostPlannerErrorBoundary extends Component<{ children: ReactNode }, 
   }
 }
 
+// ─── Game Bank tab ────────────────────────────────────────────────────────────
+
+function GameBankTabContent({
+  packs,
+  copiedId,
+  onCopy,
+  roundLabel,
+}: {
+  packs: GamePickMarketingPack[];
+  copiedId: string | null;
+  onCopy: (id: string, text: string) => void;
+  roundLabel: string;
+}) {
+  if (packs.length === 0) {
+    return (
+      <div className="py-8 text-center text-zinc-600 text-[12px]">
+        No game marketing packs available. Check that matches are loaded.
+      </div>
+    );
+  }
+
+  // Group packs by game_date for day-labelled sections
+  const grouped = new Map<string, GamePickMarketingPack[]>();
+  for (const pack of packs) {
+    const date = pack.game.game_date ?? "TBC";
+    if (!grouped.has(date)) grouped.set(date, []);
+    grouped.get(date)!.push(pack);
+  }
+
+  const dayLabel = (dateStr: string): string => {
+    if (dateStr === "TBC") return "TBC";
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "short" });
+    } catch {
+      return dateStr;
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="text-[11px] text-zinc-500">
+        <span className="text-zinc-300 font-medium">Game Post Bank ({packs.length} games)</span>
+        {" "} — per-game marketing kits for {roundLabel}
+      </div>
+      {Array.from(grouped.entries()).map(([date, dayPacks]) => (
+        <div key={date} className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-3 w-3 text-zinc-500" />
+            <span className="text-[11px] font-semibold text-zinc-400">{dayLabel(date)}</span>
+            <span className="text-[9px] text-zinc-600">{dayPacks.length} game{dayPacks.length !== 1 ? "s" : ""}</span>
+          </div>
+          <div className="space-y-2 pl-1">
+            {dayPacks.map(pack => (
+              <div
+                key={pack.game.match_id}
+                className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-3"
+              >
+                <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[12px] font-semibold text-zinc-200">{pack.game.match_label}</span>
+                    {pack.game.is_free_match && (
+                      <span className="text-[8.5px] bg-emerald-900/40 text-emerald-400 border border-emerald-700/30 px-1.5 rounded">Free</span>
+                    )}
+                    {pack.kits.length > 0 ? (
+                      <span className="text-[8.5px] bg-amber-900/30 text-amber-400 border border-amber-700/30 px-1.5 rounded">
+                        {pack.kits.length} kit{pack.kits.length !== 1 ? "s" : ""}
+                      </span>
+                    ) : (
+                      <span className="text-[8.5px] text-zinc-600">No kits</span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-zinc-600">{pack.game.venue}</span>
+                </div>
+                <PostKitSection pack={pack} copiedId={copiedId} onCopy={onCopy} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
-type ActiveTab = DayOfWeek | "backup" | "evergreen" | "game_picks";
+type ActiveTab = DayOfWeek | "backup" | "evergreen" | "game_picks" | "game_bank";
 
 function SocialPostPlannerInner({ data }: { data: CIDataSubset }) {
   const [activeDay, setActiveDay] = useState<ActiveTab>("Mon");
@@ -3107,15 +3169,16 @@ function SocialPostPlannerInner({ data }: { data: CIDataSubset }) {
   const isBackupTab = activeDay === "backup";
   const isEvergreenTab = activeDay === "evergreen";
   const isGamePicksTab = activeDay === "game_picks";
+  const isGameBankTab = activeDay === "game_bank";
 
   const activePosts = useMemo(() => {
     const base = isBackupTab ? backup
       : isEvergreenTab ? evergreen
-      : isGamePicksTab ? []
+      : isGamePicksTab || isGameBankTab ? []
       : schedule.filter(p => p.day === activeDay);
     return applyFilters(base);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeDay, schedule, backup, evergreen, isGamePicksTab, typeFilter, categoryFilter, toneFilter]);
+  }, [activeDay, schedule, backup, evergreen, isGamePicksTab, isGameBankTab, typeFilter, categoryFilter, toneFilter]);
 
   const scheduledCountByDay = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -3223,11 +3286,22 @@ function SocialPostPlannerInner({ data }: { data: CIDataSubset }) {
             )}
             {activeDay === "game_picks" && <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-t bg-zinc-100" />}
           </button>
+          <button onClick={() => setActiveDay("game_bank")} className={tabCls("game_bank")}>
+            <span className="flex items-center gap-1">
+              <LayoutGrid className="h-3 w-3" />
+              <span className="hidden sm:inline">Game Bank</span>
+              <span className="sm:hidden">GB</span>
+            </span>
+            {gamePickMarketingPacks.length > 0 && (
+              <span className="ml-1 text-[8.5px] bg-zinc-700 text-zinc-400 px-1 rounded">{gamePickMarketingPacks.length}</span>
+            )}
+            {activeDay === "game_bank" && <span className="absolute bottom-0 left-1 right-1 h-[2px] rounded-t bg-zinc-100" />}
+          </button>
         </div>
       </div>
 
-      {/* Filters — hidden on evergreen and game_picks tabs */}
-      {!isEvergreenTab && !isGamePicksTab && (
+      {/* Filters — hidden on evergreen, game_picks, game_bank tabs */}
+      {!isEvergreenTab && !isGamePicksTab && !isGameBankTab && (
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 space-y-3">
           <div className="flex flex-wrap gap-1.5">
             {(["all", "Image", "Carousel", "Short video"] as (PostType | "all")[]).map(t => (
@@ -3270,7 +3344,7 @@ function SocialPostPlannerInner({ data }: { data: CIDataSubset }) {
       )}
 
       {/* Day header with count + copy-all */}
-      {!isBackupTab && !isEvergreenTab && !isGamePicksTab && (
+      {!isBackupTab && !isEvergreenTab && !isGamePicksTab && !isGameBankTab && (
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 text-[11px] text-zinc-500">
             <Calendar className="h-3 w-3" />
@@ -3327,8 +3401,18 @@ function SocialPostPlannerInner({ data }: { data: CIDataSubset }) {
         />
       )}
 
-      {/* Post list — hidden on game picks tab */}
-      {!isGamePicksTab && (
+      {/* Game Bank tab — per-game marketing kits grouped by day */}
+      {isGameBankTab && (
+        <GameBankTabContent
+          packs={gamePickMarketingPacks}
+          copiedId={copiedId}
+          onCopy={(id, text) => { navigator.clipboard.writeText(text).catch(() => {}); setCopiedId(id); setTimeout(() => setCopiedId(null), 1800); }}
+          roundLabel={data.roundLabel}
+        />
+      )}
+
+      {/* Post list — hidden on game picks and game bank tabs */}
+      {!isGamePicksTab && !isGameBankTab && (
         activePosts.length === 0 ? (
           <div className="py-8 text-center text-zinc-600 text-[12px]">
             {data.disposalPlayers.length === 0
