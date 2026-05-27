@@ -509,12 +509,14 @@ export function formatPublicStatLine(
   const rec = getRecentHitRecord(p, threshold);
   const record = rec.sample > 0 ? `${rec.hits}/${rec.sample}` : "—";
   const pctStr = rec.sample > 0 ? ` (${Math.round(rec.rate * 100)}%)` : "";
-  const l5 = p.last_5_avg ?? p.season_avg ?? 0;
+  const hasL5 = p.last_5_avg !== null && p.last_5_avg !== undefined;
+  const avg = hasL5 ? p.last_5_avg! : (p.season_avg ?? 0);
+  const avgLabel = hasL5 ? "L5 avg" : "sea avg";
   const isGoal = threshold <= 3;
   const label = isGoal
     ? threshold === 1 ? "1+ goal" : `${threshold}+ goals`
     : `${threshold}+`;
-  return `${p.player_name} (${p.team_name ?? ""}) — ${record}${pctStr} at ${label}, L5 avg ${l5.toFixed(1)}`;
+  return `${p.player_name} (${p.team_name ?? ""}) — ${record}${pctStr} at ${label}, ${avgLabel} ${avg.toFixed(1)}`;
 }
 
 // ─── Marketing tier assignment ────────────────────────────────────────────────

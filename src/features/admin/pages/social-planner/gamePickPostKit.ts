@@ -482,7 +482,7 @@ function calcBestAngle(
     const allSameDispThr = thresholds.size === 1;
     const topDispThr = dispPicks[0]?.threshold ?? 20;
     const angleLabel = allSameDispThr && topDispThr >= 25
-      ? `Full Game Picks (${topDispThr}+ Disposals + Goals)`
+      ? "Full Game Picks"
       : "Mixed Stat Watch";
     return {
       angle: angleLabel,

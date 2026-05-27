@@ -22,7 +22,10 @@ import type { StatBoardPlayer, StatBoardMatch } from "@/features/afl/stat-board/
 import type { StatBoardTeamRow } from "@/features/afl/stat-board/teamTypes";
 import { enrichPost } from "./social-planner/postEnrichment";
 import { buildEvergreenPool } from "./social-planner/evergreenPosts";
-import { normaliseRate, getRecentHitRecord, formatPublicStatLine } from "./social-planner/statLineEngine";
+import {
+  getRecentHitRecord, formatPublicStatLine, formatRateAsPercent,
+  assignDisposalMarketingTier, assignGoalMarketingTier,
+} from "./social-planner/statLineEngine";
 import { usePostStatus, STATUS_LABELS, STATUS_OPTIONS } from "./social-planner/usePostStatus";
 import type {
   SocialPost,
@@ -127,14 +130,8 @@ function signOff(idx = 0): string {
   return SAFE_SIGN_OFFS[idx % SAFE_SIGN_OFFS.length];
 }
 
-function pct(rate: number): string {
-  const v = rate > 1 ? rate : rate * 100;
-  return `${Math.round(v)}%`;
-}
-
 function getHitRate(p: StatBoardPlayer, threshold: number): number {
-  const raw = p.all_threshold_hit_rates?.[String(threshold)]?.rate ?? 0;
-  return normaliseRate(raw);
+  return getRecentHitRecord(p, threshold).rate;
 }
 
 function getL5Avg(p: StatBoardPlayer): number {
@@ -163,72 +160,22 @@ function getTeamSeasonAvg(t: StatBoardTeamRow): number {
   return t.season_avg ?? 0;
 }
 
-// Whether a match's game_date is in the future (upcoming/not played)
 function isUpcoming(match: StatBoardMatch): boolean {
   return new Date(match.game_date).getTime() > Date.now();
 }
 
 function isCompleted(match: StatBoardMatch): boolean {
-  return new Date(match.game_date).getTime() < Date.now() - 3 * 60 * 60 * 1000; // 3h buffer
+  return new Date(match.game_date).getTime() < Date.now() - 3 * 60 * 60 * 1000;
 }
 
 // ─── Best-threshold assignment ────────────────────────────────────────────────
 
-/**
- * Returns the highest disposal threshold bucket a player genuinely belongs to.
- * Uses L5 avg AND hit rates — both conditions must be met for 30+/25+.
- * Hard rule: a player who qualifies for 30+ must NOT appear in a 20+ post.
- *
- * 30+: L5 ≥ 27.0 AND hr30 ≥ 0.70 (genuine 30+ tier only)
- * 25+: L5 ≥ 24.5 AND hr25 ≥ 0.70 AND does NOT qualify at 30+ tier
- * 20+: L5 ≥ 18.0 AND hr20 ≥ 0.55
- * 15+: L5 ≥ 13.0 AND hr15 ≥ 0.55
- */
 function bestDisposalThreshold(p: StatBoardPlayer): 30 | 25 | 20 | 15 | 10 {
-  const l5  = p.last_5_avg  ?? 0;
-  const sea = p.season_avg  ?? 0;
-  const avgL5Sea = l5 > 0 ? l5 : sea; // prefer L5, fall back to season
-  const hr30 = getHitRate(p, 30);
-  const hr25 = getHitRate(p, 25);
-  const hr20 = getHitRate(p, 20);
-  const hr15 = getHitRate(p, 15);
-
-  // 30+: both volume and hit rate must be elite
-  if (avgL5Sea >= 27.0 && hr30 >= 0.70) return 30;
-
-  // 25+: strong L5 and hit rate, must NOT qualify as 30+ tier (already handled above)
-  if (avgL5Sea >= 24.5 && hr25 >= 0.70) return 25;
-
-  // 20+: moderate volume with solid hit rate
-  if (avgL5Sea >= 18.0 && hr20 >= 0.70) return 20;
-
-  // 15+: accessible tier
-  if (avgL5Sea >= 13.0 && hr15 >= 0.70) return 15;
-
-  return 10;
+  return assignDisposalMarketingTier(p) ?? 10;
 }
 
-/**
- * Returns the highest goal threshold bucket a player genuinely belongs to.
- * Returns null if no threshold qualifies — never defaults to 1.
- *
- * 3+: hr3 ≥ 0.40 AND sample ≥ 5 AND L5 ≥ 2.0 (genuine multi-goal players only)
- * 2+: hr2 ≥ 0.50 AND sample ≥ 5 AND L5 ≥ 1.4
- * 1+: hr1 ≥ 0.65 AND sample ≥ 4 AND L5 ≥ 0.8
- */
 function bestGoalThreshold(p: StatBoardPlayer): 3 | 2 | 1 | null {
-  const hr3 = getHitRate(p, 3);
-  const hr2 = getHitRate(p, 2);
-  const hr1 = getHitRate(p, 1);
-  const l5  = p.last_5_avg ?? 0;
-  const rec3 = getRecentHitRecord(p, 3);
-  const rec2 = getRecentHitRecord(p, 2);
-  const rec1 = getRecentHitRecord(p, 1);
-
-  if (hr3 >= 0.40 && rec3.sample >= 5 && l5 >= 2.0) return 3;
-  if (hr2 >= 0.50 && rec2.sample >= 5 && l5 >= 1.4) return 2;
-  if (hr1 >= 0.65 && rec1.sample >= 4 && l5 >= 0.8) return 1;
-  return null;
+  return assignGoalMarketingTier(p);
 }
 
 // ─── Anti-duplication player selector ────────────────────────────────────────
@@ -349,7 +296,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     .sort((a, b) => formDelta(b) - formDelta(a));
 
   const tacklePlayers = [...data.disposalPlayers]
-    .filter(p => getHitRate(p, 5) >= 0.5 && (p.games_played ?? 0) >= 3)
+    .filter(p => isAvailable(p) && getHitRate(p, 5) >= 0.5 && (p.games_played ?? 0) >= 3)
     .sort((a, b) => getHitRate(b, 5) - getHitRate(a, 5));
 
   const teamScoreRows = [...(data.teamScore || [])]
@@ -413,11 +360,13 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const hasCompleted = completedMatches.length > 0;
 
     if (hasCompleted) {
-      // Recap framing — use the best available disposal pool for proof context
-      const recapPool = pool20.length >= 3 ? pool20
-        : poolElite.length >= 3 ? poolElite
-        : dispPool;
-      const recapThrNum = pool20.length >= 3 ? 20 : poolElite.length >= 3 ? 25 : 20;
+      // Recap framing — only include players from teams that actually completed games.
+      // If no such players exist, this post must be marked Needs Review.
+      const completedTeamIds = new Set(completedMatches.flatMap(m => [m.home_team_id, m.away_team_id]));
+      const completedDispPlayers = pool20.filter(p => completedTeamIds.has(p.team_id));
+      const hasActuals = completedDispPlayers.length >= 2;
+      const recapPool = hasActuals ? completedDispPlayers : pool20.length >= 2 ? pool20 : dispPool;
+      const recapThrNum = 20;
       const recapPlayers = recapPool.slice(0, 5);
       const bullets = recapPlayers.map(p => formatPublicStatLine(p, recapThrNum));
       const hook = `${rl} results in. Here's how the form numbers looked across the weekend.`;
@@ -425,7 +374,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
         day: "Mon", postNumber: 1,
         type: "Carousel",
         category: "Round Wrap", intent: "recap",
-        statLens: "disposals", confidence: "High",
+        statLens: "disposals", confidence: hasActuals ? "High" : "Medium",
         title: `${rl} — previous round results`,
         content: hook,
         statsShown: bullets,
@@ -437,16 +386,14 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
         dataScope: "Completed weekend games",
         targetGame: null,
         targetGameStatus: "completed",
-        fallbackWarning: null,
+        fallbackWarning: hasActuals ? null : "No completed-game player data available — Needs Review. Do not publish as proof post.",
         players: recapPlayers,
         thresholdLabel: `${recapThrNum}+ Disposals`,
       }));
     } else {
-      // No completed games — show 20+ disposal watchlist instead
-      const mon1Players = pool20.length >= 3 ? pool20.slice(0, 5)
-        : pool20.length >= 1 ? [...pool20, ...pool15].slice(0, 5)
-        : pool15.slice(0, 5);
-      const mon1ThrNum = pool20.length >= 2 ? 20 : 15;
+      // No completed games — show 20+ disposal watchlist instead (strict pool20 only)
+      const mon1Players = pool20.slice(0, 5);
+      const mon1ThrNum = 20;
       const hook = `${rl} preview — who's been clearing ${mon1ThrNum}+ disposals consistently?`;
       const bullets = mon1Players.map(p => formatPublicStatLine(p, mon1ThrNum));
       schedule.push(makePost({
@@ -472,13 +419,11 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     }
   }
 
-  // Post 2 — Current week 20+ disposals (strict pool20 only)
+  // Post 2 — Current week 20+ disposals (strict pool20 only — never mix tiers)
   {
-    const mon2Players = pool20.length >= 3 ? pool20.slice(0, 5)
-      : pool20.length >= 1 ? [...pool20, ...pool15].slice(0, 5)
-      : pool15.slice(0, 5);
+    const mon2Players = pool20.slice(0, 5);
     const isFallback = pool20.length < 2;
-    const mon2ThrNum = pool20.length >= 2 ? 20 : 15;
+    const mon2ThrNum = 20;
     const hook = `${rl} — players consistently clearing ${mon2ThrNum}+ disposals. Stats over gut feel.`;
     const bullets = mon2Players.map(p => formatPublicStatLine(p, mon2ThrNum));
     schedule.push(makePost({
@@ -532,13 +477,11 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
 
   // ── TUESDAY ───────────────────────────────────────────────────────────────
 
-  // Post 1 — Current week 25+ disposals (strict pool25 only — never pool30)
+  // Post 1 — Current week 25+ disposals (strict pool25 only — never mix with pool20)
   {
-    const tue1Players = pool25.length >= 3 ? pool25.slice(0, 5)
-      : pool25.length >= 1 ? pool25.slice(0, pool25.length)
-      : pool20.slice(0, 5);
+    const tue1Players = pool25.slice(0, 5);
     const isFallback = pool25.length < 2;
-    const tue1ThrNum = pool25.length >= 2 ? 25 : 20;
+    const tue1ThrNum = 25;
     const hook = `${rl} — who's been clearing ${tue1ThrNum}+ disposals consistently? Data from the last 5 games.`;
     const tue1Bullets = tue1Players.map(p => formatPublicStatLine(p, tue1ThrNum));
     schedule.push(makePost({
@@ -590,11 +533,16 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     }));
   }
 
-  // Post 3 — Positive form movers
+  // Post 3 — Positive form movers (formDelta > 0 strictly required — no negative-delta fallback)
   {
     const movers = formMovers.slice(0, 5);
     const hasMover = movers.length >= 2;
-    const pool = hasMover ? movers : dispPool.slice(0, 4);
+    // If fewer than 2 positive-delta movers, relax delta threshold to 1+ only (still positive)
+    const relaxedMovers = hasMover ? movers : [...data.disposalPlayers]
+      .filter(p => isAvailable(p) && formDelta(p) > 0 && (p.last_5_avg ?? 0) >= 15)
+      .sort((a, b) => formDelta(b) - formDelta(a))
+      .slice(0, 4);
+    const pool = relaxedMovers.length >= 2 ? relaxedMovers : movers;
     const bullets = pool.map(p => {
       const l5 = p.last_5_avg ?? 0;
       const sea = p.season_avg ?? 0;
@@ -620,7 +568,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       dataScope: `${rl} disposal player pool — form movers`,
       targetGame: null,
       targetGameStatus: "any",
-      fallbackWarning: hasMover ? null : "Fallback: insufficient form mover candidates — using top disposal pool",
+      fallbackWarning: hasMover ? null : pool.length >= 2 ? "Low strict form-mover count — using relaxed positive-delta pool" : "Needs Review: insufficient positive-delta players",
       players: pool,
       thresholdLabel: "Form Risers",
     }));
@@ -628,24 +576,20 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
 
   // ── WEDNESDAY ─────────────────────────────────────────────────────────────
 
-  // Post 1 — Current week 30+ disposals (strict pool30 — marks elite fingerprint)
+  // Post 1 — Current week 30+ disposals (strict pool30 only — marks elite fingerprint)
   {
-    const wed1Players = pool30.length >= 3 ? pool30.slice(0, 5)
-      : poolElite.length >= 3 ? poolElite.slice(0, 5)
-      : pool25.slice(0, 5);
-    const wed1ThrNum = pool30.length >= 3 ? 30 : poolElite.length >= 3 ? 25 : 25;
+    const wed1Players = pool30.slice(0, 5);
+    const wed1ThrNum = 30;
     const isFallback = pool30.length < 2;
     if (pool30.length >= 3) globalElitePostUsed = true;
-    const hook = pool30.length >= 3
-      ? `Elite disposal volume heading into ${rl}. Who's been clearing 30+ consistently?`
-      : `High-volume disposers heading into ${rl}. Numbers that matter.`;
+    const hook = `Elite disposal volume heading into ${rl}. Who's been clearing 30+ consistently?`;
     const bullets = wed1Players.map(p => formatPublicStatLine(p, wed1ThrNum));
     schedule.push(makePost({
       day: "Wed", postNumber: 1,
       type: "Image",
       category: "Disposal Trend", intent: "cross_game_preview",
       statLens: "disposals", confidence: isFallback ? "Medium" : "High",
-      title: pool30.length >= 3 ? `${rl} — 30+ disposal form` : `${rl} — high-volume disposal form`,
+      title: `${rl} — 30+ disposal form`,
       content: hook,
       statsShown: bullets,
       onScreenText: `${wed1ThrNum}+ disposal form`,
@@ -656,7 +600,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       dataScope: `${rl} ${wed1ThrNum}+ disposal pool (elite tier)`,
       targetGame: null,
       targetGameStatus: "any",
-      fallbackWarning: isFallback ? `Low 30+ candidate count (${pool30.length}) — using ${wed1ThrNum}+ pool` : null,
+      fallbackWarning: isFallback ? `Low 30+ candidate count (${pool30.length}) — Needs Review` : null,
       players: wed1Players,
       thresholdLabel: `${wed1ThrNum}+ Disposals`,
     }));
@@ -676,14 +620,16 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       wed2Players = goalPool2.slice(0, 5);
       wed2Thr = 2;
       wed2Label = "2+ Goals";
-    } else if (goalPool3.length + goalPool2.length >= 2) {
-      wed2Players = [...goalPool3, ...goalPool2].slice(0, 5);
+    } else if (goalPool2.length >= 2) {
+      // Strict pool2 only — never mix with pool3
+      wed2Players = goalPool2.slice(0, 5);
       wed2Thr = 2;
-      wed2Label = "2–3+ Goals";
+      wed2Label = "2+ Goals";
     } else {
-      wed2Players = goalPool.slice(0, 5);
-      wed2Thr = 1;
-      wed2Label = "1+ Goals";
+      // Insufficient strict candidates — show whatever exists, mark Needs Review
+      wed2Players = goalPool2.length >= 1 ? goalPool2.slice(0, 5) : goalPool.slice(0, 5);
+      wed2Thr = goalPool2.length >= 1 ? 2 : 1;
+      wed2Label = goalPool2.length >= 1 ? "2+ Goals" : "1+ Goals";
     }
 
     const hook = `${rl} — ${wed2Label} goal scorer form. Consistent performers at the higher threshold.`;
@@ -873,7 +819,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   {
     const markPlayers = dispPool.filter(p => getHitRate(p, 5) >= 0.45).slice(0, 5);
     if (markPlayers.length >= 2) {
-      const bullets = markPlayers.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${pct(getHitRate(p, 5))} at 5+ (disposal proxy), L5 avg ${getL5Avg(p).toFixed(1)}`);
+      const bullets = markPlayers.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${formatRateAsPercent(getHitRate(p, 5))} at 5+ (disposal proxy), L5 avg ${getL5Avg(p).toFixed(1)}`);
       bkPost({ day: "Tue", type: "Image", category: "Matchup Angle", intent: "cross_game_preview", statLens: "disposals", confidence: "Medium", title: `Mark and contested possession form — ${rl}`, content: "Contested possession and marking form. Players winning the ball consistently.", statsShown: bullets, onScreenText: "Marking form", caption: buildCaption("Contested possession form.", bullets, 5), hashtags: HASHTAG_SETS["Matchup Angle"], suggestedVisual: "5-player contested stat grid", imageDescription: `Static image. 5-player contested possession grid. Each row: player name, team, contested stat hit rate, L5 disposal average. Headline: "Marking and Contested Form". Dark background, clean layout. No betting language.`, dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players: markPlayers, thresholdLabel: "Contested Form", postNumber: 1 });
     }
   }
@@ -1215,19 +1161,39 @@ function validatePostKit(post: SocialPost): PostKitValidation {
     }
   }
 
-  // Threshold label consistency: "Full Game Picks" label should not appear in stat line threshold descriptions
+  // Threshold label consistency: all stat lines must use the same threshold as the post label
   if (
     post.thresholdLabel !== "Full Game Picks" &&
     post.thresholdLabel !== "Mixed Stat Watch" &&
-    post.statsShown.some(s => {
-      const thrMatch = s.match(/at\s+(\d+)\+/);
-      if (!thrMatch) return false;
-      const thr = parseInt(thrMatch[1], 10);
-      const labelThr = parseInt(post.thresholdLabel, 10);
-      return !isNaN(labelThr) && thr !== labelThr;
-    })
+    post.thresholdLabel !== "Form Risers" &&
+    post.thresholdLabel !== "L3 vs Season Avg" &&
+    post.thresholdLabel !== "L5 vs Season Avg" &&
+    post.thresholdLabel !== "High Consistency" &&
+    post.thresholdLabel !== "Team Score" &&
+    post.thresholdLabel !== "Disposal Conceded" &&
+    post.thresholdLabel !== "Fantasy Form" &&
+    post.thresholdLabel !== "Contested Form"
   ) {
-    issues.push(`Threshold mismatch: post label "${post.thresholdLabel}" but stat lines use different thresholds`);
+    const labelThr = parseInt(post.thresholdLabel, 10);
+    if (!isNaN(labelThr)) {
+      const mismatchedLines = post.statsShown.filter(s => {
+        const thrMatch = s.match(/at\s+(\d+)\+/);
+        if (!thrMatch) return false;
+        const thr = parseInt(thrMatch[1], 10);
+        return thr !== labelThr;
+      });
+      if (mismatchedLines.length > 0) {
+        issues.push(
+          `Threshold mismatch: post label "${post.thresholdLabel}" but ${mismatchedLines.length} stat line(s) use a different threshold`,
+        );
+      }
+    }
+  }
+
+  // Per-player availability: playerNames should not include players marked unavailable
+  // (This is a post-generation check — availability was applied at pool construction time)
+  if (post.playerNames.length > 0 && post.fallbackWarning?.includes("Needs Review")) {
+    issues.push(`Post flagged Needs Review: ${post.fallbackWarning}`);
   }
 
   // No betting language in key text fields
