@@ -59,14 +59,26 @@ async function queryPostHog(
   return res.json();
 }
 
-async function getEventCounts(apiKey: string, projectId: string, host: string, days: number): Promise<Record<string, number>> {
+/** Builds the HogQL interval expression — hours-based for short ranges, days-based otherwise. */
+function intervalExpr(hours: number | null, days: number): string {
+  if (hours !== null) return `${hours} hour`;
+  return `${days} day`;
+}
+
+async function getEventCounts(
+  apiKey: string,
+  projectId: string,
+  host: string,
+  days: number,
+  hours: number | null = null,
+): Promise<Record<string, number>> {
   try {
     const result = await queryPostHog(apiKey, projectId, host, {
       kind: "HogQLQuery",
       query: `
         SELECT event, count() as cnt
         FROM events
-        WHERE timestamp >= now() - interval ${days} day
+        WHERE timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND NOT JSONExtractBool(properties, 'is_admin')
         GROUP BY event
         ORDER BY cnt DESC
@@ -111,7 +123,13 @@ async function getDailyActiveUsers(apiKey: string, projectId: string, host: stri
   }
 }
 
-async function getTopPages(apiKey: string, projectId: string, host: string, days: number): Promise<Array<{ page: string; views: number }>> {
+async function getTopPages(
+  apiKey: string,
+  projectId: string,
+  host: string,
+  days: number,
+  hours: number | null = null,
+): Promise<Array<{ page: string; views: number }>> {
   try {
     const result = await queryPostHog(apiKey, projectId, host, {
       kind: "HogQLQuery",
@@ -121,7 +139,7 @@ async function getTopPages(apiKey: string, projectId: string, host: string, days
           count() as views
         FROM events
         WHERE event = '$pageview'
-          AND timestamp >= now() - interval ${days} day
+          AND timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND NOT JSONExtractBool(properties, 'is_admin')
         GROUP BY page
         ORDER BY views DESC
@@ -171,8 +189,15 @@ async function getRecentActivity(apiKey: string, projectId: string, host: string
   }
 }
 
-async function getAcquisitionData(apiKey: string, projectId: string, host: string): Promise<Record<string, unknown>> {
+async function getAcquisitionData(
+  apiKey: string,
+  projectId: string,
+  host: string,
+  days: number = 30,
+  hours: number | null = null,
+): Promise<Record<string, unknown>> {
   try {
+    const interval = intervalExpr(hours, days);
     const [referrersResult, utmResult] = await Promise.allSettled([
       queryPostHog(apiKey, projectId, host, {
         kind: "HogQLQuery",
@@ -182,7 +207,7 @@ async function getAcquisitionData(apiKey: string, projectId: string, host: strin
             count() as sessions
           FROM events
           WHERE event = '$pageview'
-            AND timestamp >= now() - interval 30 day
+            AND timestamp >= now() - interval ${interval}
             AND NOT JSONExtractBool(properties, 'is_admin')
           GROUP BY referrer
           ORDER BY sessions DESC
@@ -199,7 +224,7 @@ async function getAcquisitionData(apiKey: string, projectId: string, host: strin
             count() as sessions
           FROM events
           WHERE event = '$pageview'
-            AND timestamp >= now() - interval 30 day
+            AND timestamp >= now() - interval ${interval}
             AND NOT JSONExtractBool(properties, 'is_admin')
             AND (properties.utm_source IS NOT NULL OR properties.utm_medium IS NOT NULL)
           GROUP BY source, medium, campaign
@@ -228,7 +253,13 @@ async function getAcquisitionData(apiKey: string, projectId: string, host: strin
   }
 }
 
-async function getFunnelData(apiKey: string, projectId: string, host: string, days: number): Promise<Record<string, unknown>> {
+async function getFunnelData(
+  apiKey: string,
+  projectId: string,
+  host: string,
+  days: number,
+  hours: number | null = null,
+): Promise<Record<string, unknown>> {
   try {
     const result = await queryPostHog(apiKey, projectId, host, {
       kind: "HogQLQuery",
@@ -243,7 +274,7 @@ async function getFunnelData(apiKey: string, projectId: string, host: string, da
           countIf(event = 'checkout_success') as checkout_success,
           countIf(event = 'checkout_cancelled') as checkout_cancelled
         FROM events
-        WHERE timestamp >= now() - interval ${days} day
+        WHERE timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND NOT JSONExtractBool(properties, 'is_admin')
         LIMIT 1
       `,
@@ -342,7 +373,13 @@ async function getActiveNow(apiKey: string, projectId: string, host: string): Pr
   }
 }
 
-async function getCtaPerformance(apiKey: string, projectId: string, host: string, days: number): Promise<Array<Record<string, unknown>>> {
+async function getCtaPerformance(
+  apiKey: string,
+  projectId: string,
+  host: string,
+  days: number,
+  hours: number | null = null,
+): Promise<Array<Record<string, unknown>>> {
   try {
     const result = await queryPostHog(apiKey, projectId, host, {
       kind: "HogQLQuery",
@@ -356,7 +393,7 @@ async function getCtaPerformance(apiKey: string, projectId: string, host: string
         FROM events
         WHERE event IN ('landing_cta_clicked', 'pricing_cta_clicked', 'neeko_plus_clicked',
                         'premium_gate_cta_clicked', 'locked_cell_clicked', 'marketing_cta_clicked')
-          AND timestamp >= now() - interval ${days} day
+          AND timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND NOT JSONExtractBool(properties, 'is_admin')
         GROUP BY event, button_text, section, source
         ORDER BY clicks DESC
@@ -376,7 +413,13 @@ async function getCtaPerformance(apiKey: string, projectId: string, host: string
   }
 }
 
-async function getDeviceBreakdown(apiKey: string, projectId: string, host: string, days: number): Promise<Array<Record<string, unknown>>> {
+async function getDeviceBreakdown(
+  apiKey: string,
+  projectId: string,
+  host: string,
+  days: number,
+  hours: number | null = null,
+): Promise<Array<Record<string, unknown>>> {
   try {
     const result = await queryPostHog(apiKey, projectId, host, {
       kind: "HogQLQuery",
@@ -389,7 +432,7 @@ async function getDeviceBreakdown(apiKey: string, projectId: string, host: strin
           uniq(distinct_id) as users
         FROM events
         WHERE event = '$pageview'
-          AND timestamp >= now() - interval ${days} day
+          AND timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND NOT JSONExtractBool(properties, 'is_admin')
         GROUP BY os, browser, device_type
         ORDER BY sessions DESC
@@ -409,7 +452,13 @@ async function getDeviceBreakdown(apiKey: string, projectId: string, host: strin
   }
 }
 
-async function getEngagedSessions(apiKey: string, projectId: string, host: string, days: number): Promise<Record<string, unknown>> {
+async function getEngagedSessions(
+  apiKey: string,
+  projectId: string,
+  host: string,
+  days: number,
+  hours: number | null = null,
+): Promise<Record<string, unknown>> {
   try {
     const result = await queryPostHog(apiKey, projectId, host, {
       kind: "HogQLQuery",
@@ -426,7 +475,7 @@ async function getEngagedSessions(apiKey: string, projectId: string, host: strin
             countIf(event IN ('landing_cta_clicked','pricing_cta_clicked','neeko_plus_clicked','premium_gate_cta_clicked')) > 0 as has_cta_click,
             countIf(event IN ('stat_board_filter_used','stat_board_player_expand','rankings_view','market_watch_view','edge_board_view')) > 0 as has_product_event
           FROM events
-          WHERE timestamp >= now() - interval ${days} day
+          WHERE timestamp >= now() - interval ${intervalExpr(hours, days)}
             AND NOT JSONExtractBool(properties, 'is_admin')
             AND session_id IS NOT NULL
           GROUP BY session_id
@@ -453,14 +502,71 @@ async function getEngagedSessions(apiKey: string, projectId: string, host: strin
   }
 }
 
-async function getMarketingInsights(apiKey: string, projectId: string, host: string, days: number): Promise<Record<string, unknown>> {
-  const [funnel, ctaPerf, devices, sessions, topPages, acquisition] = await Promise.allSettled([
-    getFunnelData(apiKey, projectId, host, days),
-    getCtaPerformance(apiKey, projectId, host, days),
-    getDeviceBreakdown(apiKey, projectId, host, days),
-    getEngagedSessions(apiKey, projectId, host, days),
-    getTopPages(apiKey, projectId, host, days),
-    getAcquisitionData(apiKey, projectId, host),
+async function getSessionReviewShortlist(
+  apiKey: string,
+  projectId: string,
+  host: string,
+  days: number,
+  hours: number | null = null,
+): Promise<Array<Record<string, unknown>>> {
+  try {
+    const result = await queryPostHog(apiKey, projectId, host, {
+      kind: "HogQLQuery",
+      query: `
+        SELECT
+          session_id,
+          countIf(event = '$pageview') as page_views,
+          countIf(event IN ('landing_cta_clicked','pricing_cta_clicked','neeko_plus_clicked','premium_gate_cta_clicked')) as cta_clicks,
+          countIf(event IN ('checkout_started')) as checkout_starts,
+          countIf(event IN ('stat_board_filter_used','stat_board_player_expand','rankings_view','market_watch_view','edge_board_view')) as product_events,
+          min(timestamp) as session_start,
+          max(timestamp) as session_end,
+          any(properties.$os) as os,
+          any(properties.$browser) as browser,
+          any(properties.$device_type) as device
+        FROM events
+        WHERE timestamp >= now() - interval ${intervalExpr(hours, days)}
+          AND NOT JSONExtractBool(properties, 'is_admin')
+          AND session_id IS NOT NULL
+        GROUP BY session_id
+        HAVING cta_clicks > 0 OR checkout_starts > 0 OR (page_views >= 3 AND product_events >= 2)
+        ORDER BY cta_clicks DESC, product_events DESC
+        LIMIT 25
+      `,
+    });
+    const rows = (result as any)?.results ?? [];
+    return rows.map((row: unknown[]) => ({
+      session_id: String(row[0] ?? "").slice(0, 16) + "...",
+      page_views: Number(row[1]) || 0,
+      cta_clicks: Number(row[2]) || 0,
+      checkout_starts: Number(row[3]) || 0,
+      product_events: Number(row[4]) || 0,
+      session_start: row[5],
+      session_end: row[6],
+      os: row[7],
+      browser: row[8],
+      device: row[9],
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function getMarketingInsights(
+  apiKey: string,
+  projectId: string,
+  host: string,
+  days: number,
+  hours: number | null = null,
+): Promise<Record<string, unknown>> {
+  const [funnel, ctaPerf, devices, sessions, topPages, acquisition, sessionReview] = await Promise.allSettled([
+    getFunnelData(apiKey, projectId, host, days, hours),
+    getCtaPerformance(apiKey, projectId, host, days, hours),
+    getDeviceBreakdown(apiKey, projectId, host, days, hours),
+    getEngagedSessions(apiKey, projectId, host, days, hours),
+    getTopPages(apiKey, projectId, host, days, hours),
+    getAcquisitionData(apiKey, projectId, host, days, hours),
+    getSessionReviewShortlist(apiKey, projectId, host, days, hours),
   ]);
 
   const funnelData = funnel.status === "fulfilled" ? funnel.value : {};
@@ -469,6 +575,7 @@ async function getMarketingInsights(apiKey: string, projectId: string, host: str
   const sessionData = sessions.status === "fulfilled" ? sessions.value : {};
   const pagesData = topPages.status === "fulfilled" ? topPages.value : [];
   const acqData = acquisition.status === "fulfilled" ? acquisition.value : {};
+  const sessionReviewData = sessionReview.status === "fulfilled" ? sessionReview.value : [];
 
   // Auto-generate behaviour insights
   const insights: string[] = [];
@@ -498,7 +605,8 @@ async function getMarketingInsights(apiKey: string, projectId: string, host: str
   const topCtaArr = Array.isArray(ctaData) ? ctaData : [];
   if (topCtaArr.length > 0) {
     const best = topCtaArr[0] as any;
-    insights.push(`Top CTA: "${best.button_text || best.event}" with ${best.clicks} clicks in ${days} days.`);
+    const rangeLabel = hours !== null ? `${hours}h` : `${days}d`;
+    insights.push(`Top CTA: "${best.button_text || best.event}" with ${best.clicks} clicks in last ${rangeLabel}.`);
   }
 
   // Recommended actions
@@ -520,9 +628,11 @@ async function getMarketingInsights(apiKey: string, projectId: string, host: str
     sessions: sessionData,
     top_pages: pagesData,
     acquisition: acqData,
+    session_review_shortlist: sessionReviewData,
     behaviour_insights: insights,
     recommended_actions: actions,
-    date_range_days: days,
+    date_range_days: hours !== null ? null : days,
+    date_range_hours: hours,
   };
 }
 
@@ -552,8 +662,13 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json().catch(() => ({}));
     const section = body?.section ?? "overview";
-    const days = Number(body?.days ?? 7);
-    const validDays = [1, 7, 14, 30].includes(days) ? days : 7;
+
+    // Support hours-based ranges (12, 24) and days-based ranges (1, 3, 7, 14, 30)
+    const rawHours = body?.hours !== undefined ? Number(body.hours) : null;
+    const rawDays = body?.days !== undefined ? Number(body.days) : 7;
+
+    const hours: number | null = rawHours !== null && [12, 24].includes(rawHours) ? rawHours : null;
+    const days: number = [1, 3, 7, 14, 30].includes(rawDays) ? rawDays : 7;
 
     const result: Record<string, unknown> = {
       posthog_available: posthogAvailable,
@@ -589,7 +704,7 @@ Deno.serve(async (req: Request) => {
     }
 
     if (section === "acquisition" || section === "all") {
-      const acquisition = await getAcquisitionData(posthogApiKey, posthogProjectId, posthogHost);
+      const acquisition = await getAcquisitionData(posthogApiKey, posthogProjectId, posthogHost, days, hours);
       result.acquisition = acquisition;
     }
 
@@ -606,12 +721,12 @@ Deno.serve(async (req: Request) => {
     }
 
     if (section === "funnels" || section === "conversion") {
-      const funnelData = await getFunnelData(posthogApiKey, posthogProjectId, posthogHost, validDays);
+      const funnelData = await getFunnelData(posthogApiKey, posthogProjectId, posthogHost, days, hours);
       result.funnel = funnelData;
     }
 
     if (section === "marketing") {
-      const insights = await getMarketingInsights(posthogApiKey, posthogProjectId, posthogHost, validDays);
+      const insights = await getMarketingInsights(posthogApiKey, posthogProjectId, posthogHost, days, hours);
       Object.assign(result, insights);
     }
 

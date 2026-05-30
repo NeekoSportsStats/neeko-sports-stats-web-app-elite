@@ -46,7 +46,13 @@ export async function fetchPostHogAnalytics(section: string = "overview"): Promi
   return callAdminFn("admin-posthog-analytics", { section });
 }
 
-export async function fetchMarketingInsights(days: number = 7): Promise<Record<string, unknown>> {
-  const validDays = [1, 7, 14, 30].includes(days) ? days : 7;
-  return callAdminFn("admin-posthog-analytics", { section: "marketing", days: validDays });
+export type MarketingInsightsRange = "12h" | "24h" | "3d" | "7d" | "14d" | "30d";
+
+export async function fetchMarketingInsights(range: MarketingInsightsRange = "7d"): Promise<Record<string, unknown>> {
+  if (range === "12h") return callAdminFn("admin-posthog-analytics", { section: "marketing", hours: 12 });
+  if (range === "24h") return callAdminFn("admin-posthog-analytics", { section: "marketing", hours: 24 });
+  if (range === "3d") return callAdminFn("admin-posthog-analytics", { section: "marketing", days: 3 });
+  if (range === "14d") return callAdminFn("admin-posthog-analytics", { section: "marketing", days: 14 });
+  if (range === "30d") return callAdminFn("admin-posthog-analytics", { section: "marketing", days: 30 });
+  return callAdminFn("admin-posthog-analytics", { section: "marketing", days: 7 });
 }
