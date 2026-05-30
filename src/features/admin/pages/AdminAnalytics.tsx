@@ -8,6 +8,7 @@ import { fetchAdminDashboardData, fetchPostHogAnalytics } from "@/lib/adminApi";
 import { SubscriberTable } from "@/features/admin/subscribers/SubscriberTable";
 
 const AdminMarketingInsights = lazy(() => import("@/features/admin/pages/AdminMarketingInsights"));
+const AdminGoogleAds = lazy(() => import("@/features/admin/pages/AdminGoogleAds"));
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -999,6 +1000,10 @@ export default function AdminAnalytics() {
             <BarChart2 className="h-3.5 w-3.5" />
             Marketing Analytics
           </TabsTrigger>
+          <TabsTrigger value="google-ads" className="flex items-center gap-1.5">
+            <BarChart2 className="h-3.5 w-3.5" />
+            Google Ads
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
@@ -1066,6 +1071,12 @@ export default function AdminAnalytics() {
         <TabsContent value="marketing-analytics" className="mt-6">
           <Suspense fallback={<div className="flex justify-center py-16"><RefreshCw className="h-5 w-5 animate-spin text-muted-foreground/50" /></div>}>
             <AdminMarketingInsights />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="google-ads" className="mt-6">
+          <Suspense fallback={<div className="flex justify-center py-16"><RefreshCw className="h-5 w-5 animate-spin text-muted-foreground/50" /></div>}>
+            <AdminGoogleAds />
           </Suspense>
         </TabsContent>
       </Tabs>

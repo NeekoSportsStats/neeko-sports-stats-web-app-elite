@@ -47,6 +47,11 @@ export async function fetchPostHogAnalytics(section: string = "overview"): Promi
 }
 
 export type MarketingInsightsRange = "12h" | "24h" | "3d" | "7d" | "14d" | "30d";
+export type AdsInsightsRange = "12h" | "24h" | "3d" | "7d" | "14d" | "30d";
+
+export async function fetchGoogleAdsInsights(range: AdsInsightsRange = "7d"): Promise<Record<string, unknown>> {
+  return callAdminFn("google-ads-insights-admin", { range });
+}
 
 export async function fetchMarketingInsights(range: MarketingInsightsRange = "7d"): Promise<Record<string, unknown>> {
   if (range === "12h") return callAdminFn("admin-posthog-analytics", { section: "marketing", hours: 12 });
