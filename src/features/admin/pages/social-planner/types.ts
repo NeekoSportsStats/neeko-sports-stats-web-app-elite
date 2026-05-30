@@ -11,6 +11,11 @@ export type { StatBoardPlayer, StatBoardMatch, StatBoardTeamRow };
 
 // ─── Social stat line ─────────────────────────────────────────────────────────
 
+/**
+ * Normalised stat line for a single player used in social post copy.
+ * Created by assignDisposalMarketingTier() / assignGoalMarketingTier(),
+ * then consumed by post builders and formatters.
+ */
 export interface SocialStatLine {
   playerId: number;
   playerName: string;
@@ -44,6 +49,7 @@ export interface CIDataSubset {
   teamGoals: StatBoardTeamRow[];
   teamScore: StatBoardTeamRow[];
   loadedAt: Date;
+  /** Player IDs to exclude from post candidate pools (injured/unavailable/suspended). */
   unavailablePlayerIds?: Set<number>;
 }
 
@@ -126,11 +132,20 @@ export interface CarouselSlide {
 
 // ─── AI carousel prompt pack ──────────────────────────────────────────────────
 
+/**
+ * Structured AI image-generation prompts for a full carousel.
+ * One prompt per slide plus a combined copyable text block.
+ */
 export interface AiCarouselPromptPack {
+  /** Format spec: e.g. "1080x1350 Instagram carousel" */
   format: string;
+  /** Cover / title slide prompt */
   coverPrompt: string;
+  /** One prompt per stat player/section slide */
   slidePrompts: string[];
+  /** CTA / end slide prompt */
   endPrompt: string;
+  /** All prompts combined into a single copyable string, one slide per section */
   combinedPrompt: string;
 }
 
@@ -158,15 +173,6 @@ export interface PostQuality {
   reason: string;
   useRecommendation: "Use" | "Use with caution" | "Do not use";
   useReason: string;
-}
-
-// ─── Post validation result ───────────────────────────────────────────────────
-
-export interface PostValidationResult {
-  isValid: boolean;
-  needsReview: boolean;
-  violations: string[];
-  warnings: string[];
 }
 
 // ─── Social post ─────────────────────────────────────────────────────────────
@@ -210,16 +216,4 @@ export interface SocialPost {
   thresholdLabel: string;
   isBackup: boolean;
   tone: CopyTone;
-  /**
-   * isMixedDisposalWatch: true when the post contains players from multiple disposal tiers.
-   * Required to prevent "20+ Disposals" label on posts with 25+/30+ players.
-   */
-  isMixedDisposalWatch?: boolean;
-  /**
-   * Per-player threshold mapping for posts that mix thresholds.
-   * Maps playerName -> their true disposal threshold shown in this post.
-   */
-  playerThresholds?: Record<string, number>;
-  /** Validation result — populated by validatePost() */
-  validation?: PostValidationResult;
 }

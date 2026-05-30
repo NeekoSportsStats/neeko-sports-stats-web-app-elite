@@ -4,8 +4,9 @@
  * Produces per-game pick cards for the Social Post Planner "Game Picks" tab.
  * No betting language. No public exposure. Data-driven copy only.
  *
- * Uses getPublicDisposalContentTier() as the canonical tier source.
- * All hit-rate display guaranteed to show correct percentages via statLineEngine.
+ * All hit-rate display uses statLineEngine which guarantees:
+ *   - Rates are normalised to 0–1 before any arithmetic
+ *   - Display always uses "7/10" and "70%", never "3000%"
  */
 import type { StatBoardPlayer, StatBoardMatch } from "@/features/afl/stat-board/types";
 import {
@@ -16,9 +17,9 @@ import {
   resolveFreshLast5ForSocial,
   formatHitRecord,
   formatRateAsPercent,
-  assignDisposalMarketingTier,
 } from "./statLineEngine";
 import type { CandidateScore, ConfidenceTier } from "./statLineEngine";
+import type { StatBoardPlayer } from "@/features/afl/stat-board/types";
 
 // ─── Output types ─────────────────────────────────────────────────────────────
 
@@ -54,7 +55,7 @@ export interface GamePickPlayer {
   /**
    * Public content tier: the disposal threshold this player should be labelled
    * under in social posts (30/25/20/15). Null means no qualifying tier.
-   * Uses getPublicDisposalContentTier() — form-first canonical logic.
+   * 25+ tier explicitly excludes players who qualify at 30+ threshold.
    */
   publicContentTier: 30 | 25 | 20 | 15 | null;
 }
@@ -76,7 +77,9 @@ export interface GamePick {
 // ─── Conversion helper ────────────────────────────────────────────────────────
 
 function toGamePickPlayer(c: CandidateScore): GamePickPlayer {
-  // Use validated resolver — cross-checks strip avg against scalar l5_avg
+  // Use the validated resolver — it cross-checks the strip avg against scalar l5_avg
+  // so stale array ordering bugs surface as a suppressed strip + warning rather than
+  // wrong data reaching posts or AI prompts.
   const resolved = resolveFreshLast5ForSocial({
     last_10_values: c.last_10_values ?? null,
     last_5_avg: c.l5Avg,
@@ -114,6 +117,12 @@ const MAX_PICKS_PER_GAME_GOAL = 6;
 
 // ─── Main builder ─────────────────────────────────────────────────────────────
 
+/**
+ * Builds per-game pick cards for every match in `matches`.
+ *
+ * Uses statLineEngine for all threshold selection and scoring — no inline
+ * hit-rate arithmetic that could produce "3000%" display values.
+ */
 export function buildGamePicks(
   matches: StatBoardMatch[],
   disposalPlayers: StatBoardPlayer[],
@@ -137,6 +146,8 @@ export function buildGamePicks(
       unavailablePlayerIds,
     );
 
+    // Filter out Low-tier picks from default view — keep High + Medium
+    // (UI can override with ConsistencyTier filter)
     const disposalPicks = disposalCandidates
       .filter(c => c.tier === "High" || c.tier === "Medium")
       .slice(0, MAX_PICKS_PER_GAME_DISPOSAL)
@@ -162,6 +173,7 @@ export function buildGamePicks(
     });
   }
 
+  // Free matches first, then preserve input order
   return result.sort((a, b) => {
     if (a.is_free_match !== b.is_free_match) return a.is_free_match ? -1 : 1;
     return 0;
@@ -182,6 +194,7 @@ export function filterPicksByConsistency(
   return picks.filter(p => p.tier === "Low");
 }
 
+/** Human-readable label for a pick's confidence tier. */
 export function consistencyLabel(score: number): string {
   if (score >= 70) return "Strong";
   if (score >= 50) return "Moderate";
@@ -196,8 +209,10 @@ export function consistencyColor(score: number): string {
   return "text-zinc-500";
 }
 
+// Re-export tier helpers for use in UI
 export { tierLabel, tierColor };
 
+/** Formats all picks for a game into a copyable plain-text block. */
 export function formatGamePicksForCopy(game: GamePick, lens: GamePickLens): string {
   const picks = lens === "disposals" ? game.disposal_picks : game.goal_picks;
   if (picks.length === 0) return `${game.match_label}\nNo qualifying ${lens} picks.`;
@@ -208,20 +223,4 @@ export function formatGamePicksForCopy(game: GamePick, lens: GamePickLens): stri
     lines.push(`• ${p.copy_line} [${p.tier} | Score: ${p.consistency_score}${strip}]`);
   }
   return lines.join("\n");
-}
-
-/**
- * Returns the disposal players from a game that qualify for the strict 20+ tier only.
- * Uses canonical getPublicDisposalContentTier — excludes 25+/30+ players.
- */
-export function getStrict20PlusPlayers(picks: GamePickPlayer[]): GamePickPlayer[] {
-  return picks.filter(p => p.publicContentTier === 20);
-}
-
-/**
- * Returns players at 25+ or 30+ tier from a game's disposal picks.
- * Used to fill thin 20+ posts as Mixed Disposal Watch.
- */
-export function getHigherTierDisposalPlayers(picks: GamePickPlayer[]): GamePickPlayer[] {
-  return picks.filter(p => p.publicContentTier === 25 || p.publicContentTier === 30);
 }

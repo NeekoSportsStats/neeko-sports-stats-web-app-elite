@@ -1,447 +1,612 @@
 /**
- * Post Enrichment — admin-only.
- *
- * Takes a partially-built SocialPost (from gamePickPostKit or weekly builders)
- * and fills: angle, aiImagePrompt, aiCarouselPromptPack, carouselSlides,
- * platformCaptions, voiceoverScript, thumbnailOptions, ctaLine, compliance,
- * quality, timing.
- *
- * Part 9 fix: aiCarouselPromptPack generates the full carousel:
- *   SLIDE 1 COVER + one prompt per player in statsShown + FINAL CTA + GLOBAL STYLE.
- *   Per-player prompts use each player's true threshold from playerThresholds map.
- *
- * Part 10 fix: voiceover and hook language for mixed posts uses
- *   "disposal trends to watch" — never "20+ disposals" for mixed posts.
- *   Goal watchlist-tier posts say "watchlist" not "consistent performers".
- *
- * Part 12 fix: carouselSlides are always structured CarouselSlide objects —
- *   never raw objects rendered directly as React children.
+ * Post enrichment — pure functions that augment a raw SocialPost.
+ * No React. No Supabase. No side effects.
  */
 import type {
   SocialPost,
-  AiCarouselPromptPack,
-  CarouselSlide,
-  ComplianceResult,
   PostQuality,
   PostTiming,
+  ComplianceResult,
   PlatformCaptions,
+  CarouselSlide,
+  AiCarouselPromptPack,
   PostAngle,
+  ScoreLabel,
+  UrgencyLevel,
 } from "./types";
-import type { StatBoardMatch } from "@/features/afl/stat-board/types";
 
-// ─── Angle resolver ───────────────────────────────────────────────────────────
+// ─── CTA rotation pool ────────────────────────────────────────────────────────
 
-function resolveAngle(post: Partial<SocialPost>): PostAngle {
-  const lens = post.statLens;
-  const isMixed = post.isMixedDisposalWatch;
-  if (lens === "disposals") return isMixed ? "Player spotlight" : "Disposal form";
-  if (lens === "goals") return "Goal trend";
-  if (lens === "team-total") return "Team stat edge";
-  if (lens === "fantasy") return "Fantasy watch";
-  return "Match preview";
-}
-
-// ─── AI image prompt ──────────────────────────────────────────────────────────
-
-function buildAiImagePrompt(post: Partial<SocialPost>): string {
-  const names = (post.playerNames ?? []).slice(0, 5).join(", ");
-  const label = post.thresholdLabel ?? "Stats";
-  const game = post.targetGame ?? "AFL";
-  return (
-    `Dark premium AFL stat graphic. ${game}. Topic: ${label}. ` +
-    `Players: ${names || "—"}. ` +
-    `Clean grid layout, team colour accents, white stat text, ` +
-    `Neeko Sports Stats logo bottom-right. No betting language. No odds.`
-  );
-}
-
-// ─── AI carousel prompt pack (Part 9) ────────────────────────────────────────
-
-/**
- * Generates a full carousel prompt pack:
- *   coverPrompt   — SLIDE 1 cover card
- *   slidePrompts  — one prompt per player (uses each player's TRUE threshold)
- *   endPrompt     — final CTA slide
- *   combinedPrompt — single unified brief for multi-slide tools
- *
- * Never produces a single-slide pack. Even thin posts get cover + at least one
- * player slide + CTA.
- */
-function buildAiCarouselPromptPack(post: Partial<SocialPost>): AiCarouselPromptPack {
-  const game = post.targetGame ?? "AFL";
-  const label = post.thresholdLabel ?? "Stats";
-  const isMixed = post.isMixedDisposalWatch ?? false;
-  const playerNames = post.playerNames ?? [];
-  const statsShown = post.statsShown ?? [];
-  const playerThresholds = post.playerThresholds ?? {};
-
-  // Resolve display label for cover — mixed posts must NOT say "20+ Disposals"
-  const coverLabel = isMixed ? "Disposal Watch" : label;
-
-  const coverPrompt =
-    `SLIDE 1 — COVER CARD: Dark premium background, bold headline: "${game} — ${coverLabel}". ` +
-    `Subtext: "Player form data". Neeko Sports Stats logo. No stats yet — this is the hook.`;
-
-  // One slide per player in statsShown
-  const slidePrompts = statsShown.map((statLine, i) => {
-    const playerName = playerNames[i] ?? `Player ${i + 1}`;
-    // Use the per-player threshold if available, else fall back to post-level label
-    const thr = playerThresholds[playerName];
-    const thrLabel = thr != null ? `${thr}+` : (isMixed ? "disposals" : label);
-    return (
-      `SLIDE ${i + 2} — PLAYER CARD: "${playerName}" — ${thrLabel}. ` +
-      `Stat line: "${statLine}". ` +
-      `Dark card, name prominent, stat line below, hit rate badge, team accent colour. ` +
-      `No betting language. Clean, data-driven.`
-    );
-  });
-
-  const endPrompt =
-    `SLIDE ${statsShown.length + 2} — CTA CARD: "Follow Neeko Sports Stats for weekly AFL data." ` +
-    `Dark background, clean branding. No stats. Call to action only.`;
-
-  const globalStyle =
-    `GLOBAL STYLE (apply to all slides): Dark background (#111 or #0d0d0d), ` +
-    `white text, team-specific accent colours, Neeko Sports Stats branding. ` +
-    `No gambling language. No odds. No "bet" or "tip" terminology. ` +
-    `Consistent font — bold for headlines, regular for stats. ` +
-    `Slide aspect ratio: 1:1 (Instagram) or 9:16 (TikTok / Stories).`;
-
-  const combinedPrompt = [
-    `Create a ${statsShown.length + 2}-slide carousel for ${game} — ${coverLabel}.`,
-    "",
-    coverPrompt,
-    ...slidePrompts,
-    endPrompt,
-    "",
-    globalStyle,
-  ].join("\n");
-
-  return {
-    format: `${statsShown.length + 2}-slide carousel`,
-    coverPrompt,
-    slidePrompts,
-    endPrompt,
-    combinedPrompt,
-  };
-}
-
-// ─── Carousel slides (Part 12) ────────────────────────────────────────────────
-
-/**
- * Builds structured CarouselSlide objects — never raw untyped objects.
- * React consumers MUST use slide.headline, slide.body, slide.visualNote — NOT {slide}.
- */
-function buildCarouselSlides(post: Partial<SocialPost>): CarouselSlide[] {
-  const game = post.targetGame ?? "AFL";
-  const label = post.thresholdLabel ?? "Stats";
-  const isMixed = post.isMixedDisposalWatch ?? false;
-  const coverLabel = isMixed ? "Disposal Watch" : label;
-  const playerNames = post.playerNames ?? [];
-  const statsShown = post.statsShown ?? [];
-  const playerThresholds = post.playerThresholds ?? {};
-
-  const slides: CarouselSlide[] = [];
-
-  // Slide 1 — Cover
-  slides.push({
-    slideNumber: 1,
-    headline: `${game} — ${coverLabel}`,
-    body: "Player form data — see the stats, make your own call.",
-    visualNote: "Dark background, bold headline, Neeko Sports Stats logo. No stats yet.",
-  });
-
-  // One slide per player
-  statsShown.forEach((statLine, i) => {
-    const playerName = playerNames[i] ?? `Player ${i + 1}`;
-    const thr = playerThresholds[playerName];
-    const thrLabel = thr != null ? `${thr}+` : (isMixed ? "disposals" : label);
-    slides.push({
-      slideNumber: i + 2,
-      headline: `${playerName} — ${thrLabel}`,
-      body: statLine,
-      visualNote: `Player card with name prominent, stat line, hit rate badge, team accent colour.`,
-    });
-  });
-
-  // Final CTA
-  slides.push({
-    slideNumber: statsShown.length + 2,
-    headline: "Follow Neeko Sports Stats",
-    body: "Weekly AFL data. No hype. See the data. Make your own call.",
-    visualNote: "Dark CTA card. Neeko branding. No stats.",
-  });
-
-  return slides;
-}
-
-// ─── Platform captions ────────────────────────────────────────────────────────
-
-function buildPlatformCaptions(post: Partial<SocialPost>): PlatformCaptions {
-  const base = post.caption ?? "";
-  const hashtags = (post.hashtags ?? []).join(" ");
-  const game = post.targetGame ?? "AFL";
-  const label = post.thresholdLabel ?? "stats";
-  const isMixed = post.isMixedDisposalWatch ?? false;
-
-  const watchLabel = isMixed ? "disposal watch" : label.toLowerCase();
-
-  const tiktok =
-    `${base}\n\n${hashtags} #AFLTikTok #FootyData`.trim();
-
-  const instagram =
-    `${base}\n\n${hashtags}`.trim();
-
-  const facebook =
-    `${game} — ${watchLabel} data for this week. ` +
-    `Scroll through each player's recent form before the game.\n\n` +
-    `${base}`.trim();
-
-  return { tiktok, instagram, facebook };
-}
-
-// ─── Voiceover script (Part 10) ───────────────────────────────────────────────
-
-/**
- * For mixed posts: uses "disposal trends to watch" — never "20+ disposals".
- * For goal watchlist posts (post.confidence === "Medium" on goals): uses "watchlist".
- * Never uses betting language.
- */
-function buildVoiceoverScript(post: Partial<SocialPost>): string {
-  const game = post.targetGame ?? "this match";
-  const lens = post.statLens;
-  const isMixed = post.isMixedDisposalWatch ?? false;
-  const playerNames = post.playerNames ?? [];
-  const n = playerNames.length;
-
-  const intro = `${game} — let's look at the data before bounce.`;
-
-  if (lens === "disposals") {
-    // Part 10: mixed posts use "disposal trends" not "20+ disposals"
-    const topicLabel = isMixed ? "disposal trends to watch" : "20+ disposal form";
-    const middle = n > 0
-      ? `Here are the ${n} players with strong ${topicLabel}: ${playerNames.slice(0, 3).join(", ")}${n > 3 ? ` and ${n - 3} more` : ""}.`
-      : `We have limited disposal candidates for this game.`;
-    return `${intro} ${middle} See the full data card. Numbers over guesswork.`;
-  }
-
-  if (lens === "goals") {
-    // Part 10: watchlist-tier goal posts say "watchlist" not "consistent performers"
-    const isWatchlist = post.confidence === "Medium" || (post.thresholdLabel ?? "").toLowerCase().includes("watch");
-    const topicLabel = isWatchlist ? "players to watch for goals" : "players with strong 1+ goal form";
-    const middle = n > 0
-      ? `${n} ${topicLabel}: ${playerNames.slice(0, 3).join(", ")}${n > 3 ? ` and more` : ""}.`
-      : `Limited goal candidates for this game.`;
-    return `${intro} ${middle} See the full stat breakdown. No hype — just data.`;
-  }
-
-  if (lens === "team-total") {
-    return `${intro} Team scoring data for ${game}. Season averages and recent form. Stats over gut feel.`;
-  }
-
-  // Combined / fallback
-  const middle = n > 0
-    ? `${n} players with strong recent form: ${playerNames.slice(0, 3).join(", ")}${n > 3 ? ` and more` : ""}.`
-    : `Limited data available for this game.`;
-  return `${intro} ${middle} Full stat board at Neeko Sports Stats.`;
-}
-
-// ─── Thumbnail options ────────────────────────────────────────────────────────
-
-function buildThumbnailOptions(post: Partial<SocialPost>): string[] {
-  const game = post.targetGame ?? "AFL";
-  const label = post.thresholdLabel ?? "Stats";
-  const isMixed = post.isMixedDisposalWatch ?? false;
-  const coverLabel = isMixed ? "Disposal Watch" : label;
-  const topPlayer = (post.playerNames ?? [])[0] ?? "Top Pick";
-
-  return [
-    `"${game}" bold top — "${coverLabel}" bold centre — dark background`,
-    `Player spotlight: "${topPlayer}" with stat badge — team colours`,
-    `"${coverLabel}" minimal text on dark — clean and modern`,
-    `Split screen: both teams, "Player Form Data" label`,
-    `Neeko Sports Stats logo card — "${game}" text only — curiosity hook`,
-  ];
-}
-
-// ─── CTA line ─────────────────────────────────────────────────────────────────
-
-function buildCtaLine(post: Partial<SocialPost>): string {
-  const lens = post.statLens;
-  if (lens === "disposals") return "Follow for weekly AFL disposal form data.";
-  if (lens === "goals") return "Follow for weekly AFL goal trend data.";
-  if (lens === "team-total") return "Follow for team scoring data every round.";
-  return "Follow Neeko Sports Stats — AFL data every round.";
-}
-
-// ─── Compliance check ─────────────────────────────────────────────────────────
-
-const BETTING_TERMS = [
-  "bet", "wager", "odds", "tip", "tip of", "punter", "bookmaker",
-  "market", "line", "value", "arb", "bankroll", "win/loss",
+const CTA_POOL = [
+  "See the full board before bounce.",
+  "Use the stats. Make your own call.",
+  "Full stat board live now.",
+  "Check every player trend in one place.",
+  "Numbers over guesswork.",
+  "Stats over gut feel.",
+  "All player trends in one board.",
+  "The data is there — you decide.",
+  "Full board at NeekoSportsStats.com.au.",
+  "See where every player sits before the game.",
 ];
 
-function buildCompliance(post: Partial<SocialPost>): ComplianceResult {
-  const textToCheck = [
-    post.caption ?? "",
-    post.content ?? "",
-    post.title ?? "",
-    post.voiceoverScript ?? "",
-    ...(post.statsShown ?? []),
-  ].join(" ").toLowerCase();
+export function pickCta(post: SocialPost): string {
+  // Deterministic rotation based on post ID numeric suffix
+  const n = parseInt(post.id.replace(/\D/g, "").slice(-2) || "0", 10);
+  return CTA_POOL[n % CTA_POOL.length];
+}
 
+// ─── Compliance checker ───────────────────────────────────────────────────────
+
+const BANNED_PATTERNS: Array<{ re: RegExp; reason: string }> = [
+  { re: /\bbet(s|ting|ted)?\b/gi,             reason: "contains 'bet'" },
+  { re: /\bodds\b/gi,                          reason: "contains 'odds'" },
+  { re: /\bgamble?\b|\bwager\b/gi,             reason: "gambling language" },
+  { re: /\b(same.?game.?multi|SGM)\b/gi,       reason: "SGM/multi language" },
+  { re: /\bbanker\b|\block\b\s+pick/gi,        reason: "lock/banker pick language" },
+  { re: /\bsure.?thing\b|\bguarantee\b/gi,     reason: "certainty language" },
+  { re: /\bcash.?out\b|\bpayout\b/gi,          reason: "cashout/payout language" },
+  { re: /\bpunt(ing)?\b/gi,                    reason: "punt language" },
+  { re: /\b(win|lose|losing)\b/gi,             reason: "win/lose outcome framing" },
+  { re: /\b(tip|tips|tipping)\b/gi,            reason: "tipping language" },
+  { re: /\b(best|top)\s+(pick|play|bet)\b/gi,  reason: "pick/play/bet framing" },
+  { re: /\bshould\s+(hit|get|score|kick)\b/gi, reason: "predictive 'should' language" },
+];
+
+export function checkCompliance(post: SocialPost): ComplianceResult {
+  const scanText = [post.content, post.caption, post.statsShown.join(" ")].join(" ");
   const flags: string[] = [];
-  for (const term of BETTING_TERMS) {
-    if (textToCheck.includes(term)) {
-      flags.push(`Potential betting term: "${term}"`);
-    }
+  for (const { re, reason } of BANNED_PATTERNS) {
+    re.lastIndex = 0;
+    if (re.test(scanText)) flags.push(reason);
+  }
+  const status =
+    flags.length === 0 ? "Clean" :
+    flags.length <= 2  ? "Needs review" :
+    "Do not use";
+  return { status, flags };
+}
+
+// ─── Post quality score ───────────────────────────────────────────────────────
+
+/**
+ * Scores a post 0–100 across multiple independent dimensions.
+ * A post cannot score 100 unless it genuinely excels on all axes.
+ *
+ * Breakdown (max points per dimension):
+ *   Data confidence     25 pts — High/Medium/Fallback
+ *   Player pool depth   20 pts — 5+ players with real data
+ *   Threshold realism   15 pts — using stats against appropriate threshold
+ *   Game timing/intent  15 pts — specific upcoming game is most valuable
+ *   Data freshness      15 pts — no fallback warning, completed data preferred
+ *   Format/compliance   10 pts — Carousel > video > image; no compliance flags
+ *
+ * This means a Fallback post with only 2 players and no upcoming game maxes at ~45.
+ */
+export function scorePost(post: SocialPost): PostQuality {
+  let score = 0;
+  const reasons: string[] = [];
+  const deductions: string[] = [];
+
+  // ── Data confidence (25 pts) ────────────────────────────────────────────────
+  if (post.confidence === "High") {
+    score += 25;
+    reasons.push("high-confidence data");
+  } else if (post.confidence === "Medium") {
+    score += 14;
+    reasons.push("medium-confidence data");
+  } else {
+    score += 3;
+    deductions.push("fallback data — low confidence");
   }
 
-  // Mixed post flagged if it says "20+" in the title but isMixed is true
-  if (post.isMixedDisposalWatch && (post.title ?? "").includes("20+")) {
-    flags.push(`Mixed post title contains "20+" — should say "Disposal Watch" or "Mixed Disposal Watch"`);
+  // ── Player pool depth (20 pts) ──────────────────────────────────────────────
+  const n = post.playerNames.length;
+  if (n >= 5)       { score += 20; reasons.push("5+ named players"); }
+  else if (n >= 4)  { score += 15; }
+  else if (n === 3) { score += 10; deductions.push("only 3 players"); }
+  else if (n === 2) { score += 5;  deductions.push("only 2 players"); }
+  else if (n === 1) { score += 2;  deductions.push("single-player post"); }
+  else              {              deductions.push("no named players"); }
+
+  // ── Threshold realism (15 pts) ──────────────────────────────────────────────
+  // Check that the threshold label and stat lens are consistent and meaningful.
+  // Team-total, mixed and evergreen posts get partial credit.
+  if (post.statLens === "disposals" || post.statLens === "goals") {
+    const hasRealThreshold =
+      post.thresholdLabel.match(/\d+\+/) ||
+      post.thresholdLabel.includes("Form Risers");
+    if (hasRealThreshold) {
+      score += 15;
+      reasons.push("real threshold stat line");
+    } else {
+      score += 7;
+    }
+  } else if (post.statLens === "team-total" || post.statLens === "tackles") {
+    score += 10;
+    reasons.push("team/tackle stat line");
+  } else {
+    score += 5;
   }
+
+  // ── Game timing / intent (15 pts) ───────────────────────────────────────────
+  if (post.intent === "pre_game" && post.targetGame) {
+    score += 15; reasons.push("pre-game with specific match");
+  } else if (post.intent === "same_day_preview" && post.targetGame) {
+    score += 13; reasons.push("same-day preview");
+  } else if (post.intent === "recap" && post.targetGameStatus === "completed") {
+    score += 12; reasons.push("completed game recap");
+  } else if (post.intent === "cross_game_preview") {
+    score += 8;
+  } else if (post.intent === "evergreen_backup") {
+    score += 4;
+    deductions.push("evergreen/backup intent");
+  } else {
+    score += 6;
+  }
+
+  // ── Data freshness (15 pts) ─────────────────────────────────────────────────
+  if (!post.fallbackWarning) {
+    score += 15; reasons.push("no fallback warnings");
+  } else if (post.fallbackWarning.toLowerCase().includes("low") || post.fallbackWarning.toLowerCase().includes("insufficient")) {
+    score += 4;
+    deductions.push("fallback warning: " + post.fallbackWarning.slice(0, 60));
+  } else {
+    score += 8;
+    deductions.push("minor fallback");
+  }
+
+  // ── Format + compliance (10 pts) ────────────────────────────────────────────
+  if (post.type === "Carousel")     score += 6;
+  else if (post.type === "Short video") score += 5;
+  else                              score += 4; // Image
+
+  // Compliance bonus (if already computed — only gives 0–4 bonus)
+  if (post.compliance?.status === "Clean") {
+    score += 4; reasons.push("clean compliance");
+  } else if (post.compliance?.status === "Needs review") {
+    deductions.push("compliance flag");
+  }
+
+  score = Math.min(100, score);
+
+  // ── Penalty: proof/recap with no completed data ─────────────────────────────
+  if (
+    (post.category === "Proof Post" || post.intent === "recap") &&
+    post.targetGameStatus !== "completed" &&
+    post.fallbackWarning
+  ) {
+    score = Math.max(0, score - 20);
+    deductions.push("proof/recap label without completed data");
+  }
+
+  // ── Penalty: weak pool (< 2 players) with fallback ─────────────────────────
+  if (post.playerNames.length < 2 && post.fallbackWarning) {
+    score = Math.max(0, score - 10);
+  }
+
+  score = Math.min(100, score);
+
+  const label: ScoreLabel =
+    score >= 80 ? "Premium" :
+    score >= 60 ? "Strong"  :
+    score >= 40 ? "Good"    : "Review";
+
+  const useRecommendation: "Use" | "Use with caution" | "Do not use" =
+    (post.compliance?.status === "Do not use") ? "Do not use" :
+    (post.fallbackWarning && post.playerNames.length < 2) ? "Do not use" :
+    score < 40 ? "Use with caution" :
+    "Use";
+
+  const allReasons = [...reasons, ...deductions.map(d => `[!] ${d}`)];
+  const useReason =
+    useRecommendation === "Do not use"
+      ? "Insufficient player data or compliance failure."
+      : useRecommendation === "Use with caution"
+      ? `Low score (${score}) — ${deductions[0] ?? "check data quality"}.`
+      : reasons.slice(0, 3).join(", ") + ".";
 
   return {
-    status: flags.length > 0 ? "Needs review" : "Clean",
-    flags,
+    score,
+    label,
+    reason: allReasons.slice(0, 5).join("; "),
+    useRecommendation,
+    useReason,
   };
 }
 
-// ─── Quality score ────────────────────────────────────────────────────────────
+// ─── Timing metadata ──────────────────────────────────────────────────────────
 
-function buildQuality(post: Partial<SocialPost>): PostQuality {
-  const n = (post.playerNames ?? []).length;
-  const confidence = post.confidence ?? "Fallback";
-  const hasHighTier = confidence === "High";
-  const isFallback = confidence === "Fallback";
+export function buildTiming(post: SocialPost, matches: { game_date: string }[]): import("./types").PostTiming {
+  const now = Date.now();
+  const upcomingMs = matches
+    .map(m => new Date(m.game_date).getTime())
+    .filter(t => t > now)
+    .sort((a, b) => a - b);
 
-  let score = 50;
-  if (hasHighTier) score += 20;
-  if (n >= 4) score += 15;
-  else if (n >= 2) score += 5;
-  if (n === 0) score -= 30;
-  if (isFallback) score -= 15;
-  score = Math.max(0, Math.min(100, score));
-
-  const label =
-    score >= 75 ? "Premium" :
-    score >= 55 ? "Strong" :
-    score >= 35 ? "Good" :
-    "Review";
-
-  const reason =
-    n === 0 ? "No qualifying players — fallback content only." :
-    hasHighTier ? `${n} players, High-tier confidence. Strong post.` :
-    `${n} players, ${confidence} confidence.`;
-
-  const useRecommendation =
-    score >= 55 ? "Use" :
-    score >= 35 ? "Use with caution" :
-    "Do not use";
-
-  const useReason =
-    score >= 55 ? "Sufficient data quality for publishing." :
-    score >= 35 ? "Review before publishing — thin or low-confidence data." :
-    "Insufficient data — do not publish.";
-
-  return { score, label, reason, useRecommendation, useReason };
-}
-
-// ─── Timing ───────────────────────────────────────────────────────────────────
-
-function buildTiming(
-  post: Partial<SocialPost>,
-  matches: StatBoardMatch[],
-): PostTiming {
-  const game = post.targetGame;
-  const match = game
-    ? matches.find(m => m.match_label === game || m.match_label?.includes(game))
-    : null;
-
-  const now = new Date();
+  const firstGameMs = upcomingMs[0] ?? null;
   let countdownText: string | null = null;
-  let urgency: "High" | "Medium" | "Low" | "Stale" | "None" = "None";
-  let recommendedWindowText = "Publish within 24h of game.";
-  let recommendedTimingReason = "Pre-game content performs best within 2 hours of bounce.";
+  let urgency: UrgencyLevel = "None";
+  let recommendedWindowText = "Any time";
+  let recommendedTimingReason = "No time-sensitive constraint.";
 
-  if (match?.game_date) {
-    const gameTime = new Date(match.game_date);
-    const diffMs = gameTime.getTime() - now.getTime();
-    const diffH = diffMs / (1000 * 60 * 60);
+  if (firstGameMs) {
+    const diffMs = firstGameMs - now;
+    const diffH = Math.floor(diffMs / 3600000);
+    const diffM = Math.floor((diffMs % 3600000) / 60000);
 
-    if (diffH < 0) {
+    if (diffMs <= 0) {
+      countdownText = "Game has started";
       urgency = "Stale";
-      countdownText = "Game has passed.";
-      recommendedWindowText = "Game already played.";
-      recommendedTimingReason = "Post-game recap still has value for 48h after bounce.";
-    } else if (diffH <= 2) {
+      recommendedWindowText = "Missed window";
+      recommendedTimingReason = "Game already underway — preview posts no longer appropriate.";
+    } else if (diffH < 1) {
+      countdownText = `${diffM}m until bounce`;
       urgency = "High";
-      countdownText = `< ${Math.ceil(diffH * 60)} min to bounce`;
-      recommendedWindowText = "Publish immediately.";
-      recommendedTimingReason = "Within 2h of bounce — peak engagement window.";
-    } else if (diffH <= 24) {
+      recommendedWindowText = "Post now";
+      recommendedTimingReason = "Less than 1 hour to bounce — post immediately.";
+    } else if (diffH < 2) {
+      countdownText = `${diffH}h ${diffM}m until bounce`;
       urgency = "High";
-      countdownText = `${Math.floor(diffH)}h to bounce`;
-      recommendedWindowText = "Publish today, before bounce.";
-      recommendedTimingReason = "Same-day pre-game. High engagement expected.";
-    } else if (diffH <= 72) {
+      recommendedWindowText = "Post in next 30–60 minutes";
+      recommendedTimingReason = "Within 2 hours of bounce — high-urgency window.";
+    } else if (diffH < 6) {
+      countdownText = `${diffH}h ${diffM}m until bounce`;
       urgency = "Medium";
-      countdownText = `${Math.ceil(diffH / 24)}d to game`;
-      recommendedWindowText = "Publish 1–2 days before game.";
-      recommendedTimingReason = "Preview window — build anticipation.";
+      recommendedWindowText = `Post 60–90 min before bounce (~${new Date(firstGameMs - 5400000).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit" })})`;
+      recommendedTimingReason = "Same-day game — ideal to post 60–90 min before first bounce.";
     } else {
+      countdownText = `${diffH}h until first game`;
       urgency = "Low";
-      countdownText = `${Math.ceil(diffH / 24)}d to game`;
-      recommendedWindowText = "Schedule for closer to game day.";
-      recommendedTimingReason = "Too early for pre-game content — hold.";
+      recommendedWindowText = "Morning of game day or eve";
+      recommendedTimingReason = "Next game is more than 6 hours away.";
     }
+  } else if (post.intent === "recap" || post.intent === "cross_game_preview") {
+    urgency = "Low";
+    recommendedWindowText = "Evening browsing window (7–9 PM)";
+    recommendedTimingReason = "Evergreen/cross-game content — post during peak engagement window.";
   }
 
   return { countdownText, urgency, recommendedWindowText, recommendedTimingReason };
 }
 
-// ─── Main enrichment function ─────────────────────────────────────────────────
+// ─── Platform captions ────────────────────────────────────────────────────────
+
+function firstNWords(text: string, n: number): string {
+  const words = text.split(/\s+/);
+  if (words.length <= n) return text;
+  return words.slice(0, n).join(" ") + "…";
+}
+
+export function buildPlatformCaptions(post: SocialPost, ctaLine: string): PlatformCaptions {
+  const topHashtags = post.hashtags.slice(0, 4).join(" ");
+  const allHashtags = post.hashtags.join(" ");
+
+  // TikTok: punchy, ≤150 chars hook + 2–3 hashtags + CTA
+  const tiktokHook = firstNWords(post.content, 18);
+  const tiktok = `${tiktokHook}\n\n${topHashtags}\n\n${ctaLine} Link in bio.`;
+
+  // Instagram: full caption + all hashtags
+  const instagram = `${post.caption}\n\n${allHashtags}\n\n${ctaLine} Link in bio.`;
+
+  // Facebook: no hashtags, conversational close
+  const fbBullets = post.statsShown.slice(0, 5).map(b => `• ${b}`).join("\n");
+  const facebook = `${post.content}\n\n${fbBullets}\n\n${ctaLine}\n\nWhat do you think? Drop a comment.`;
+
+  return { tiktok, instagram, facebook };
+}
+
+// ─── Voiceover script ─────────────────────────────────────────────────────────
 
 /**
- * Fills all computed fields on a partially-built SocialPost.
- * Input post should already have: id, day, postNumber, type, category, intent,
- * statLens, confidence, title, content, statsShown, onScreenText, caption,
- * hashtags, suggestedVisual, imageDescription, dataScope, targetGame,
- * targetGameStatus, fallbackWarning, playerNames, teamNames, thresholdLabel,
- * isBackup, tone, hookOptions.
+ * Converts a stat bullet like "Player — 7/10 at 30+, L5 avg 34.8"
+ * into natural voiceover language appropriate to the stat family.
+ * Disposals: "has cleared 30-plus disposals in 7 of their last 10"
+ * Goals:     "has kicked 1+ goal in 7 of their last 10"
  */
-export function enrichPost(post: SocialPost, matches: StatBoardMatch[]): SocialPost {
-  const angle = resolveAngle(post);
+function toVoiceoverLine(bullet: string, statLens: string): string {
+  const dashIdx = bullet.indexOf(" — ");
+  const statPart = dashIdx >= 0 ? bullet.slice(dashIdx + 3) : bullet;
+
+  const recordMatch = statPart.match(/(\d+)\/(\d+)\s+at\s+(\d+)\+/);
+  const l5Match = statPart.match(/L5 avg\s+([\d.]+)/);
+
+  if (recordMatch) {
+    const [, hits, sample, threshold] = recordMatch;
+    const thresholdNum = parseInt(threshold, 10);
+    const l5Text = l5Match ? `, with an L5 average of ${l5Match[1]}` : "";
+
+    if (statLens === "goals") {
+      const goalDesc = thresholdNum === 1 ? "1+ goal" : `${threshold}+ goals`;
+      return `has kicked ${goalDesc} in ${hits} of their last ${sample}${l5Text}`;
+    }
+
+    const thresholdText = `${threshold}-plus disposals`;
+    return `has cleared ${thresholdText} in ${hits} of their last ${sample}${l5Text}`;
+  }
+
+  return statPart.replace(/[()]/g, "").replace(/—/g, "-").trim();
+}
+
+export function buildVoiceoverScript(post: SocialPost): string {
+  const intro = buildVoiceoverIntro(post);
+  const outro = `Full data on Neeko Sports Stats — link in bio.`;
+
+  // Full Game Picks: sectioned disposal + goal script
+  if (post.thresholdLabel === "Full Game Picks" || post.category === "Round Preview") {
+    const dispLines: string[] = [];
+    const goalLines: string[] = [];
+    for (const s of post.statsShown.slice(0, 8)) {
+      const dashIdx = s.indexOf(" — ");
+      const playerName = dashIdx >= 0 ? s.slice(0, dashIdx).trim() : "";
+      // Classify by stat family: goal lines contain "at 1+", "at 2+", "at 3+" goals pattern
+      const isGoal = /at\s+\d+\+\s+goal/i.test(s) || (post.statLens === "goals");
+      const voiceoverStat = toVoiceoverLine(s, isGoal ? "goals" : "disposals");
+      const line = playerName ? `${playerName} ${voiceoverStat}.` : `${voiceoverStat}.`;
+      if (isGoal) goalLines.push(line);
+      else dispLines.push(line);
+    }
+    const parts: string[] = [intro];
+    if (dispLines.length > 0) {
+      parts.push("On the disposal side —");
+      dispLines.forEach((l, i) => parts.push(`${ordinal(i + 1)}, ${l}`));
+    }
+    if (goalLines.length > 0) {
+      parts.push("On the goal side —");
+      goalLines.forEach((l, i) => parts.push(`${ordinal(i + 1)}, ${l}`));
+    }
+    parts.push(outro);
+    return parts.join(" ");
+  }
+
+  const statsLines = post.statsShown.slice(0, 5).map((s, i) => {
+    const dashIdx = s.indexOf(" — ");
+    const playerName = dashIdx >= 0 ? s.slice(0, dashIdx).replace(/\(.*?\)/g, "").trim() : "";
+    const voiceoverStat = toVoiceoverLine(s, post.statLens ?? "disposals");
+    const line = playerName ? `${playerName} ${voiceoverStat}.` : `${voiceoverStat}.`;
+    return `${ordinal(i + 1)}, ${line}`;
+  });
+  return [intro, ...statsLines, outro].join(" ");
+}
+
+function buildVoiceoverIntro(post: SocialPost): string {
+  const n = post.playerNames.length;
+  if (post.statLens === "goals") {
+    return `Here ${n === 1 ? "is" : `are ${n}`} AFL ${n === 1 ? "player" : "players"} to watch for goals this week.`;
+  }
+  if (post.intent === "recap") {
+    return `Here's how the ${post.thresholdLabel.toLowerCase()} numbers held up from the weekend.`;
+  }
+  return `Here ${n === 1 ? "is" : `are ${n}`} AFL ${post.thresholdLabel.toLowerCase()} trends to watch.`;
+}
+
+function ordinal(n: number): string {
+  const s = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth"];
+  return s[n - 1] ?? `${n}.`;
+}
+
+// ─── Hook options ─────────────────────────────────────────────────────────────
+
+export function buildHookOptions(post: SocialPost): string[] {
+  const base = post.content;
+  const thr = post.thresholdLabel;
+  const n = post.playerNames.length;
+  const day = post.day;
+
+  const hooks = [
+    base,
+    `${n} AFL ${thr.toLowerCase()} trends worth watching${day === "Sat" || day === "Sun" ? " this weekend" : " this round"}.`,
+    `The form numbers are there — these ${n} players have been clearing the line.`,
+    `Before bounce, these are the names on the ${thr.toLowerCase()} board.`,
+    `Recent-form data only. No opinion, no guesswork — just the AFL numbers.`,
+  ];
+  return [...new Set(hooks)].slice(0, 5);
+}
+
+// ─── Carousel slides ──────────────────────────────────────────────────────────
+
+export function buildCarouselSlides(post: SocialPost): CarouselSlide[] {
+  if (post.type !== "Carousel" && post.type !== "Short video") {
+    // Single cover slide for non-carousel posts
+    return [{
+      slideNumber: 1,
+      headline: post.title,
+      body: post.content,
+      visualNote: post.suggestedVisual,
+    }];
+  }
+
+  const slides: CarouselSlide[] = [];
+
+  // Title / cover slide
+  slides.push({
+    slideNumber: 1,
+    headline: post.title,
+    body: post.content.length > 100 ? post.content.slice(0, 97) + "…" : post.content,
+    visualNote: `Cover card. ${post.suggestedVisual}. Neeko logo top centre.`,
+  });
+
+  // One slide per stat line
+  post.statsShown.slice(0, 6).forEach((statLine, i) => {
+    // Try to pull player name from start of stat line
+    const namePart = statLine.split(" —")[0].split(" (")[0].trim();
+    const bodyPart = statLine.includes(" — ") ? statLine.split(" — ").slice(1).join(" — ") : statLine;
+    slides.push({
+      slideNumber: i + 2,
+      headline: namePart || `Player ${i + 1}`,
+      body: bodyPart.length > 120 ? bodyPart.slice(0, 117) + "…" : bodyPart,
+      visualNote: `Stat card. Team colours accent. ${post.thresholdLabel} highlighted in gold.`,
+    });
+  });
+
+  // CTA slide
+  slides.push({
+    slideNumber: slides.length + 1,
+    headline: "See the full board",
+    body: "NeekoSportsStats.com.au",
+    visualNote: "CTA card. Minimal. Neeko logo centred. Link in bio reminder.",
+  });
+
+  return slides;
+}
+
+// ─── Thumbnail options ────────────────────────────────────────────────────────
+
+export function buildThumbnailOptions(post: SocialPost): string[] {
+  const thr = post.thresholdLabel;
+  const dayMap: Record<string, string> = {
+    Mon: "Monday", Tue: "Tuesday", Wed: "Wednesday", Thu: "Thursday",
+    Fri: "Friday", Sat: "Saturday", Sun: "Sunday",
+  };
+  const day = dayMap[post.day] ?? post.day;
+  return [
+    `${thr} watch — ${day}`,
+    `${post.playerNames.length} AFL trends before bounce`,
+    `Before bounce: ${thr.toLowerCase()}`,
+    `${day} AFL stat watch`,
+    post.title,
+  ].filter((v, i, a) => a.indexOf(v) === i).slice(0, 4);
+}
+
+// ─── AI carousel prompt pack ──────────────────────────────────────────────────
+
+const GLOBAL_STYLE =
+  "GLOBAL STYLE: Dark zinc/charcoal background. Clean white sans-serif typography. " +
+  "AFL aesthetic. Gold and neon-green stat number accents. " +
+  "Professional data-dashboard quality. Neeko Sports Stats branding — logo top centre. " +
+  "No betting logos. No gambling imagery. No bookmaker branding. No odds text.";
+
+function aiFormat(post: SocialPost): string {
+  if (post.type === "Carousel") return "1080x1350 Instagram carousel slide";
+  if (post.type === "Short video") return "1080x1920 TikTok/Reels vertical frame";
+  return "1080x1080 square social media graphic";
+}
+
+function buildCoverPrompt(post: SocialPost, format: string): string {
+  return (
+    `SLIDE 1 — COVER: ${format}. ` +
+    `Neeko Sports Stats branding. ` +
+    `Headline: "${post.title}". ` +
+    `Post angle: ${post.angle ?? post.thresholdLabel}. ` +
+    `Stat lens: ${post.statLens}. ` +
+    `Round label: ${post.dataScope}. ` +
+    `${post.imageDescription} ` +
+    `No betting language.`
+  );
+}
+
+function buildStatSlidePrompt(statLine: string, slideNum: number, post: SocialPost, format: string): string {
+  const dashIdx = statLine.indexOf(" — ");
+  const playerName = dashIdx >= 0 ? statLine.slice(0, dashIdx).trim() : `Player ${slideNum}`;
+  const statDetail = dashIdx >= 0 ? statLine.slice(dashIdx + 3) : statLine;
+
+  // Extract team from post.teamNames if only one team, else leave generic
+  const teamHint = post.teamNames.length === 1 ? ` (${post.teamNames[0]})` : "";
+
+  // Use per-player threshold from the stat line (e.g. "at 25+"), not the post-level label.
+  // This ensures mixed-threshold carousels show each player's correct threshold.
+  const thresholdLabel = statDetail.match(/at\s+(\d+\+(?:\s+goals?)?)/i)?.[1] ?? post.thresholdLabel;
+
+  return (
+    `SLIDE ${slideNum} — PLAYER: ${format}. ` +
+    `Player name: ${playerName}${teamHint}. ` +
+    `Stat line: ${statDetail}. ` +
+    `Threshold: ${thresholdLabel}. ` +
+    `Show hit record, percentage, L5 avg, and Last 5 strip. ` +
+    `Confidence badge. Team colour accent. Gold highlight on key stat number. ` +
+    `No betting language.`
+  );
+}
+
+function buildEndPrompt(format: string): string {
+  return (
+    `FINAL SLIDE — CTA: ${format}. ` +
+    `Minimal design. Neeko Sports Stats logo centred. ` +
+    `Headline: "See the full board". ` +
+    `URL: NeekoSportsStats.com.au. ` +
+    `Subtext: "Link in bio". ` +
+    `No gambling language.`
+  );
+}
+
+export function buildAiCarouselPromptPack(post: SocialPost): AiCarouselPromptPack {
+  const format = aiFormat(post);
+  const coverPrompt = buildCoverPrompt(post, format);
+  const slidePrompts = post.statsShown.slice(0, 6).map((s, i) =>
+    buildStatSlidePrompt(s, i + 2, post, format),
+  );
+  const endPrompt = buildEndPrompt(format);
+
+  const allSlides = [
+    coverPrompt,
+    ...slidePrompts,
+    endPrompt,
+    GLOBAL_STYLE,
+  ];
+  const combinedPrompt = allSlides.join("\n\n");
+
+  return { format, coverPrompt, slidePrompts, endPrompt, combinedPrompt };
+}
+
+export function buildAiImagePrompt(post: SocialPost): string {
+  const format = aiFormat(post);
+  const styleNote =
+    "dark zinc/charcoal background, clean white sans-serif typography, AFL aesthetic, " +
+    "gold and neon-green stat number accents, professional data-dashboard quality, " +
+    "no betting logos, no gambling imagery, no bookmaker branding, no odds";
+  return `Create a premium AFL sports analytics social media graphic for Neeko Sports Stats. Format: ${format}. Description: ${post.imageDescription} Style: ${styleNote}.`;
+}
+
+// ─── Angle classifier ────────────────────────────────────────────────────────
+
+export function classifyAngle(post: SocialPost): PostAngle {
+  if (post.category === "Education") return "Education";
+  if (post.isBackup && post.intent === "evergreen_backup") return "Evergreen";
+  if (post.category === "Proof Post" || post.intent === "recap") return "Proof recap";
+  if (post.category === "Goal Trend") return "Goal trend";
+  if (post.category === "Team Total" || post.category === "Matchup Angle") return "Team stat edge";
+  if (post.category === "Form Mover") return post.isBackup ? "Evergreen" : "Player spotlight";
+  if (post.category === "Round Preview" || post.category === "Round Wrap") return "Match preview";
+  if (post.statLens === "fantasy") return "Fantasy watch";
+  return "Disposal form";
+}
+
+// ─── Master enrichment entry point ───────────────────────────────────────────
+
+/**
+ * Enriches a SocialPost with all computed fields.
+ * Called inside makePost — no call-site changes needed.
+ */
+export function enrichPost(
+  post: SocialPost,
+  matches: { game_date: string }[],
+): SocialPost {
+  const compliance = checkCompliance(post);
+  const quality = scorePost(post);
+  const timing = buildTiming(post, matches);
+  const ctaLine = pickCta(post);
+  const platformCaptions = buildPlatformCaptions(post, ctaLine);
+  const voiceoverScript = buildVoiceoverScript(post);
+  const carouselSlides = buildCarouselSlides(post);
+  const hookOptions = buildHookOptions(post);
+  const thumbnailOptions = buildThumbnailOptions(post);
   const aiImagePrompt = buildAiImagePrompt(post);
   const aiCarouselPromptPack = buildAiCarouselPromptPack(post);
-  const carouselSlides = buildCarouselSlides(post);
-  const platformCaptions = buildPlatformCaptions(post);
-  const voiceoverScript = buildVoiceoverScript(post);
-  const thumbnailOptions = post.thumbnailOptions?.length
-    ? post.thumbnailOptions
-    : buildThumbnailOptions(post);
-  const ctaLine = buildCtaLine(post);
-  const timing = buildTiming(post, matches);
-  const quality = buildQuality(post);
-
-  // Build compliance after voiceover is set (so we can check it)
-  const withVoice = { ...post, voiceoverScript };
-  const compliance = buildCompliance(withVoice);
+  const angle = classifyAngle(post);
 
   return {
     ...post,
-    angle,
-    aiImagePrompt,
-    aiCarouselPromptPack,
-    carouselSlides,
+    compliance,
+    quality,
+    timing,
+    ctaLine,
     platformCaptions,
     voiceoverScript,
+    carouselSlides,
+    hookOptions,
     thumbnailOptions,
-    ctaLine,
-    timing,
-    quality,
-    compliance,
-    hookOptions: post.hookOptions ?? [],
+    aiImagePrompt,
+    aiCarouselPromptPack,
+    angle,
   };
 }
