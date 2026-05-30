@@ -140,18 +140,22 @@ function buildPickCaption(hook: string, bullets: string[], signOffIdx = 0): stri
   return [hook, "", ...bullets.map(b => `• ${b}`), "", signOff(signOffIdx)].join("\n");
 }
 
-// ─── Post 1: 20+ Disposals ───────────────────────────────────────────────────
+// ─── Post 1: Disposal post — strict 20+ or fallback ─────────────────────────
 
 /**
- * Builds the 20+ Disposals post for a game.
+ * Disposal post cascade for a single game.
  *
- * Uses players whose publicContentTier is 20 (i.e. they genuinely qualify at 20+
- * but not at 25+/30+). If this pool is thin, falls back to any 20+ qualifier and
- * sets a fallbackWarning.
+ * Tier 1 (normal): strict 20+ players ≥ 4 → "20+ Disposals" post.
+ * Tier 2 (fallback): strict 20+ count 2–3 → "Disposal Watch" (top up with 25+/30+ players).
+ * Tier 3 (thin): strict 20+ count 1 → "Disposal Watch" if 25+/30+ players exist, else "Player Spotlight".
+ * Tier 4 (empty): strict 20+ count 0 → "Disposal Watch" from 25+/30+ only, or "Do Not Post".
  *
- * All players must be from the two teams in this game.
+ * STRICT RULES:
+ * - "20+ Disposals" posts: only publicContentTier === 20 players.
+ * - "Disposal Watch" posts: each player keeps their TRUE threshold. No player is mis-labelled.
+ * - Never weaken a strict threshold pool globally.
  */
-function build20PlusDisposalsPost(
+function buildDisposalPost(
   game: GamePick,
   allDispPicks: GamePickPlayer[],
   matches: StatBoardMatch[],
@@ -159,65 +163,231 @@ function build20PlusDisposalsPost(
   const matchLabel = game.match_label;
   const dayLabel = gameDayLabel(game.game_date);
 
-  // Strict: only genuine 20-tier players (not 25+/30+)
-  const picks = allDispPicks
-    .filter(p => p.publicContentTier === 20)
-    .slice(0, 5);
+  // Strict 20+ pool — publicContentTier === 20 means the player qualifies at 20+
+  // but NOT at 25+/30+ (those are excluded by the content tier logic in statLineEngine).
+  const strict20 = allDispPicks.filter(p => p.publicContentTier === 20);
+  // Higher-line pool — 25+/30+ players (by their true qualifying tier)
+  const higher = allDispPicks.filter(p => p.publicContentTier === 25 || p.publicContentTier === 30);
 
+  if (strict20.length >= 4) {
+    return buildStrict20PlusPost(game, strict20.slice(0, 5), matchLabel, dayLabel, matches);
+  }
+
+  if (strict20.length >= 2) {
+    // Fill up to 5 total using higher-line players
+    const topHigher = higher.slice(0, Math.min(higher.length, 5 - strict20.length));
+    const mixedPicks = [...strict20, ...topHigher];
+    return buildDisposalWatchPost(game, mixedPicks, matchLabel, dayLabel, matches, strict20.length);
+  }
+
+  if (strict20.length === 1) {
+    if (higher.length >= 2) {
+      // Combine the one 20+ player with up to 4 higher-line players
+      const topHigher = higher.slice(0, Math.min(higher.length, 4));
+      const mixedPicks = [...strict20, ...topHigher];
+      return buildDisposalWatchPost(game, mixedPicks, matchLabel, dayLabel, matches, 1);
+    }
+    // Only one 20+ player and no higher-line support — Player Spotlight
+    return buildPlayerSpotlightPost(game, strict20[0], matchLabel, dayLabel, matches);
+  }
+
+  // Zero strict 20+ players
+  if (higher.length >= 3) {
+    return buildDisposalWatchPost(game, higher.slice(0, 5), matchLabel, dayLabel, matches, 0);
+  }
+
+  // Truly empty pool
+  return buildEmptyDisposalPost(game, matchLabel, dayLabel, matches);
+}
+
+// ─── Strict 20+ Disposals post ────────────────────────────────────────────────
+
+function buildStrict20PlusPost(
+  game: GamePick,
+  picks: GamePickPlayer[],
+  matchLabel: string,
+  dayLabel: string,
+  matches: StatBoardMatch[],
+): GamePickPostKit {
   const hasHighTier = picks.some(p => p.tier === "High");
-
   const bullets = picks.map(formatPickLineShort);
   const statsShown = picks.map(formatPickLine);
-
-  // Thin pool grading: 1-player = Do Not Post; 2-player = Disposal Spotlight (Needs Review); 3-player = Borderline/Review
-  const thinPoolWarning: string | null =
-    picks.length === 0
-      ? "No 20+ disposal candidates found. Do Not Post — skip or substitute."
-      : picks.length === 1
-      ? `Only 1 disposal candidate found (${picks[0].player_name}). Do Not Post — a single-player post is not standalone content.`
-      : picks.length === 2
-      ? `Thin pool — only 2 disposal candidates. Labelled as "Disposal Spotlight". Needs Review before publishing.`
-      : picks.length === 3
-      ? "Borderline pool — 3 disposal candidates. Review before publishing to ensure quality."
-      : null;
-
-  const title =
-    picks.length === 2
-      ? `${matchLabel} — disposal spotlight`
-      : `${matchLabel} — 20+ disposals`;
-
+  const title = `${matchLabel} — 20+ disposals`;
   const hook = `${matchLabel} disposal watch — ${dayLabel}.`;
-  const caption = picks.length > 0
-    ? buildPickCaption(hook, bullets, 0)
-    : `${hook}\n\nInsufficient 20+ disposal candidates for this game.`;
-
+  const caption = buildPickCaption(hook, bullets, 0);
   const hookOptions = [
     hook,
     `20+ disposal form for ${matchLabel}.`,
     `${matchLabel} — disposal trends before bounce.`,
-    `Before bounce — ${picks.length} players with 20+ disposal form for ${matchLabel}.`,
+    `${picks.length} players with 20+ disposal form for ${matchLabel}.`,
     `Recent-form data — ${matchLabel} 20+ disposal watch.`,
   ];
+  const suggestedVisual = `${picks.length}-player stat grid — name, team, 20+ record, L5 avg, Last 5 strip. Dark. Neeko brand.`;
+  const imageDescription =
+    `Create a dark premium AFL stat graphic for ${matchLabel} focused on 20+ disposals. ` +
+    `Show ${picks.length} player cards: ${picks.map(formatPickLineForImagePrompt).join("; ")}. ` +
+    `All players shown at 20+ threshold. Use team colour accents. Neeko Sports Stats branding. No betting language.`;
+  const onScreenText = `${matchLabel}\n${picks.slice(0, 3).map(p => `${p.player_name} ${p.hitRecord} at 20+`).join("\n")}`;
+  const fallbackWarning = picks.some(p => p.tier === "Low")
+    ? "Some Low-tier candidates included. Review before publishing."
+    : null;
+  const rawPost = buildDisposalRawPost({
+    game, matchLabel, dayLabel, picks, title, hook, caption, hookOptions,
+    suggestedVisual, imageDescription, onScreenText, fallbackWarning,
+    thresholdLabel: "20+ Disposals",
+    confidence: hasHighTier ? "High" : "Medium",
+    dataScope: `${matchLabel} disposal pool (strict 20+ tier)`,
+  });
+  return { kitType: "disposals", post: enrichPost(rawPost as SocialPost, matches), pickCount: picks.length };
+}
 
-  const suggestedVisual = picks.length > 0
-    ? `${picks.length}-player stat grid — name, team, 20+ record, L5 avg, Last 5 strip. Dark. Neeko brand.`
-    : "Placeholder card — insufficient 20+ disposal candidates.";
+// ─── Disposal Watch post (mixed thresholds) ───────────────────────────────────
 
-  const imageDescription = picks.length > 0
-    ? `Create a dark premium AFL stat graphic for ${matchLabel} focused on 20+ disposals. ` +
-      `Show ${picks.length} player cards: ${picks.map(formatPickLineForImagePrompt).join("; ")}. ` +
-      `Use team colour accents. Neeko Sports Stats branding. No betting language.`
-    : `Placeholder dark AFL graphic — no strong 20+ disposal candidates for ${matchLabel}. Show team names only.`;
+function buildDisposalWatchPost(
+  game: GamePick,
+  picks: GamePickPlayer[],
+  matchLabel: string,
+  dayLabel: string,
+  matches: StatBoardMatch[],
+  strict20Count: number,
+): GamePickPostKit {
+  const hasHighTier = picks.some(p => p.tier === "High");
+  const bullets = picks.map(formatPickLineShort);
+  const statsShown = picks.map(formatPickLine);
+  const title = `${matchLabel} — disposal watch`;
+  const hook = `${matchLabel} disposal trends before bounce — ${dayLabel}.`;
+  // Caption notes that thresholds are mixed — each player shows their true threshold
+  const captionHeader = [
+    hook,
+    "",
+    "A mix of disposal profiles — each player shown at their actual threshold.",
+  ];
+  const captionBody = bullets.map(b => `• ${b}`);
+  const caption = [...captionHeader, ...captionBody, "", signOff(0)].join("\n");
+  const hookOptions = [
+    hook,
+    `Disposal trends before bounce — ${matchLabel}.`,
+    `${picks.length} players with disposal form for ${matchLabel}.`,
+    `Each player shown with their actual threshold — ${matchLabel}.`,
+    `Before bounce — ${matchLabel} disposal form.`,
+  ];
+  const suggestedVisual = `${picks.length}-player disposal watch grid — name, team, actual threshold+, record, L5 avg. Mixed thresholds clearly labelled. Dark. Neeko brand.`;
+  const imageDescription =
+    `Create a dark premium AFL stat graphic for ${matchLabel} titled "Disposal Watch". ` +
+    `Show ${picks.length} player cards: ${picks.map(formatPickLineForImagePrompt).join("; ")}. ` +
+    `Each player is shown at their actual threshold (20+, 25+, or 30+). Do NOT show all players as 20+. ` +
+    `Use team colour accents. Neeko Sports Stats branding. No betting language.`;
+  const onScreenText = `${matchLabel}\nDisposal Watch\n${picks.slice(0, 3).map(p => `${p.player_name} ${p.hitRecord} at ${p.threshold}+`).join("\n")}`;
 
-  const onScreenText = picks.length > 0
-    ? `${matchLabel}\n${picks.slice(0, 3).map(p => `${p.player_name} ${p.hitRecord} at ${p.threshold}+`).join("\n")}`
-    : `${matchLabel}\n20+ Disposals Watch`;
+  const needsReview = picks.length < 4;
+  const thinNote = strict20Count <= 1
+    ? `Only ${strict20Count} strict 20+ player${strict20Count === 1 ? "" : "s"} — filled with higher-line (25+/30+) candidates.`
+    : `Only ${strict20Count} strict 20+ players — supplemented with higher-threshold candidates.`;
+  const fallbackWarning = needsReview
+    ? `${thinNote} Needs Review — ${picks.length} total players found.`
+    : thinNote;
 
-  const fallbackWarning =
-    thinPoolWarning ??
-    (picks.some(p => p.tier === "Low") ? "Some Low-tier candidates included. Review before publishing." : null);
+  const rawPost = buildDisposalRawPost({
+    game, matchLabel, dayLabel, picks, title, hook, caption, hookOptions,
+    suggestedVisual, imageDescription, onScreenText, fallbackWarning,
+    thresholdLabel: "Disposal Watch",
+    confidence: hasHighTier ? "High" : picks.length >= 3 ? "Medium" : "Low",
+    dataScope: `${matchLabel} disposal pool (mixed thresholds)`,
+  });
+  return { kitType: "disposals", post: enrichPost(rawPost as SocialPost, matches), pickCount: picks.length };
+}
 
-  const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "aiCarouselPromptPack" | "angle"> = {
+// ─── Player Spotlight post (single player) ────────────────────────────────────
+
+function buildPlayerSpotlightPost(
+  game: GamePick,
+  pick: GamePickPlayer,
+  matchLabel: string,
+  dayLabel: string,
+  matches: StatBoardMatch[],
+): GamePickPostKit {
+  const statsShown = [formatPickLine(pick)];
+  const title = `${matchLabel} — ${pick.player_name} disposal spotlight`;
+  const hook = `One stat before bounce — ${matchLabel}, ${dayLabel}.`;
+  const caption = [
+    hook,
+    "",
+    `• ${formatPickLineShort(pick)}`,
+    "",
+    signOff(0),
+  ].join("\n");
+  const hookOptions = [
+    hook,
+    `${pick.player_name} — disposal spotlight for ${matchLabel}.`,
+    `One stat before bounce — ${matchLabel}.`,
+    `${matchLabel} — single-player disposal stat to watch.`,
+    `Before bounce — ${pick.player_name} disposal form.`,
+  ];
+  const suggestedVisual = `Single-player stat card — ${pick.player_name}, ${pick.team_name}, ${pick.threshold}+ disposal record. Dark. Neeko brand.`;
+  const imageDescription =
+    `Create a dark premium AFL single-player stat card for ${matchLabel}. ` +
+    `One player: ${formatPickLineForImagePrompt(pick)}. ` +
+    `Threshold: ${pick.threshold}+. Show hit record, L5 avg, Last 5 strip. ` +
+    `This is a spotlight card — NOT a 5-player grid. Neeko Sports Stats branding. No betting language.`;
+  const onScreenText = `${matchLabel}\nOne Stat Before Bounce\n${pick.player_name} ${pick.hitRecord} at ${pick.threshold}+`;
+  const fallbackWarning = `Single-player disposal spotlight — Organic Only / Needs Review. Not suitable as a standard paid carousel ad.`;
+  const rawPost = buildDisposalRawPost({
+    game, matchLabel, dayLabel, picks: [pick], title, hook, caption, hookOptions,
+    suggestedVisual, imageDescription, onScreenText, fallbackWarning,
+    thresholdLabel: "Player Spotlight",
+    confidence: "Low",
+    dataScope: `${matchLabel} single-player spotlight`,
+  });
+  return { kitType: "disposals", post: enrichPost(rawPost as SocialPost, matches), pickCount: 1 };
+}
+
+// ─── Empty disposal post ─────────────────────────────────────────────────────
+
+function buildEmptyDisposalPost(
+  game: GamePick,
+  matchLabel: string,
+  dayLabel: string,
+  matches: StatBoardMatch[],
+): GamePickPostKit {
+  const hook = `${matchLabel} — disposal watch — ${dayLabel}.`;
+  const rawPost = buildDisposalRawPost({
+    game, matchLabel, dayLabel, picks: [], title: `${matchLabel} — disposal watch`,
+    hook, caption: `${hook}\n\nNo qualifying disposal candidates for this game.`,
+    hookOptions: [hook],
+    suggestedVisual: "Placeholder card — no qualifying disposal candidates.",
+    imageDescription: `Placeholder dark AFL graphic — no qualifying disposal candidates for ${matchLabel}. Show team names only.`,
+    onScreenText: `${matchLabel}\nNo qualifying disposal candidates`,
+    fallbackWarning: "Do Not Post — no qualifying disposal candidates found for this game.",
+    thresholdLabel: "Disposal Watch",
+    confidence: "Low",
+    dataScope: `${matchLabel} disposal pool (empty)`,
+  });
+  return { kitType: "disposals", post: enrichPost(rawPost as SocialPost, matches), pickCount: 0 };
+}
+
+// ─── Shared rawPost builder for all disposal post types ──────────────────────
+
+interface DisposalRawPostArgs {
+  game: GamePick;
+  matchLabel: string;
+  dayLabel: string;
+  picks: GamePickPlayer[];
+  title: string;
+  hook: string;
+  caption: string;
+  hookOptions: string[];
+  suggestedVisual: string;
+  imageDescription: string;
+  onScreenText: string;
+  fallbackWarning: string | null;
+  thresholdLabel: string;
+  confidence: "High" | "Medium" | "Low";
+  dataScope: string;
+}
+
+function buildDisposalRawPost(args: DisposalRawPostArgs): Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "aiCarouselPromptPack" | "angle"> {
+  const { game, matchLabel, dayLabel, picks } = args;
+  return {
     id: kitId(game.match_id, "disposals"),
     day: gameDayAbbrev(game.game_date),
     postNumber: 1,
@@ -226,7 +396,109 @@ function build20PlusDisposalsPost(
     category: "Disposal Trend",
     intent: "pre_game",
     statLens: "disposals",
-    confidence: hasHighTier ? "High" : picks.length >= 3 ? "Medium" : "Low",
+    confidence: args.confidence,
+    title: args.title,
+    content: args.hook,
+    statsShown: picks.map(formatPickLine),
+    onScreenText: args.onScreenText,
+    caption: args.caption,
+    hashtags: gamePickHashtags("disposals", game.game_date),
+    suggestedVisual: args.suggestedVisual,
+    imageDescription: args.imageDescription,
+    dataScope: args.dataScope,
+    targetGame: matchLabel,
+    targetGameStatus: "upcoming",
+    fallbackWarning: args.fallbackWarning,
+    playerNames: picks.map(p => p.player_name),
+    teamNames: [...new Set(picks.map(p => p.team_name))],
+    thresholdLabel: args.thresholdLabel,
+    isBackup: false,
+    tone: "clean_stats",
+    hookOptions: args.hookOptions,
+  };
+}
+
+// ─── Recent Form Hits post ────────────────────────────────────────────────────
+
+/**
+ * Builds a "Recent Form Hits" post for games with thin strict-threshold pools.
+ *
+ * Uses players with strong Last 5 form even if they don't qualify for the strict
+ * consistency tier. L10 hit rate may be as low as 65–70% if L5 form is strong.
+ *
+ * NEVER calls players "most consistent" or "locks".
+ * Copy always clarifies this is RECENT FORM ONLY.
+ */
+export function buildRecentFormHitsPost(
+  game: GamePick,
+  allDispPicks: GamePickPlayer[],
+  matches: StatBoardMatch[],
+): GamePickPostKit {
+  const matchLabel = game.match_label;
+  const dayLabel = gameDayLabel(game.game_date);
+
+  // Recent form candidates: include Medium and Low tier (not just High+Medium)
+  // but require at least moderate L5 form. Sorted by consistency_score descending.
+  const candidates = allDispPicks
+    .filter(p => p.hitRate >= 0.65 && (p.l5_avg ?? 0) >= 18)
+    .slice(0, 5);
+
+  const hasAnyCandidates = candidates.length > 0;
+  const statsShown = candidates.map(formatPickLine);
+  const bullets = candidates.map(formatPickLineShort);
+
+  const title = `${matchLabel} — recent form watch`;
+  const hook = `Recent form only — ${matchLabel}, ${dayLabel}.`;
+  const captionBody = hasAnyCandidates
+    ? [
+        hook,
+        "",
+        "Last 5 form — these players have been reaching the mark recently.",
+        "",
+        ...bullets.map(b => `• ${b}`),
+        "",
+        signOff(3),
+      ]
+    : [`${hook}\n\nNo recent form candidates found for this game.`];
+  const caption = captionBody.join("\n");
+  const hookOptions = [
+    hook,
+    `Recent form to watch — ${matchLabel}.`,
+    `These players have been hitting the stat in recent games — ${matchLabel}.`,
+    `Last 5 form data — ${matchLabel} disposal watch.`,
+    `Before bounce — recent form hits for ${matchLabel}.`,
+  ];
+  const suggestedVisual = candidates.length > 0
+    ? `${candidates.length}-player recent form grid — L5 strip prominent. Labelled "Recent Form Only". Dark. Neeko brand.`
+    : "Placeholder — no recent form candidates.";
+  const imageDescription = candidates.length > 0
+    ? `Create a dark AFL stat graphic for ${matchLabel} titled "Recent Form Hits" or "Last 5 Form Watch". ` +
+      `Show ${candidates.length} player cards: ${candidates.map(formatPickLineForImagePrompt).join("; ")}. ` +
+      `Make Last 5 strip the prominent stat. Label clearly as "Recent form — not season average". ` +
+      `Neeko Sports Stats branding. No betting language.`
+    : `Placeholder dark AFL graphic — no recent form candidates for ${matchLabel}.`;
+  const onScreenText = candidates.length > 0
+    ? `${matchLabel}\nRecent Form Watch\n${candidates.slice(0, 3).map(p => `${p.player_name} ${p.hitRecord}`).join("\n")}`
+    : `${matchLabel}\nRecent Form Watch`;
+
+  const reviewNote = candidates.some(p => p.hitRate < 0.70)
+    ? "Some players have L10 hit rate < 70% — included for strong L5 form only. Needs Review."
+    : null;
+  const fallbackWarning = [
+    "Recent form only — not season consistency. Organic / low-risk use only.",
+    reviewNote,
+  ].filter(Boolean).join(" ");
+
+  const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "aiCarouselPromptPack" | "angle"> = {
+    id: `${kitId(game.match_id, "disposals")}-rfh`,
+    day: gameDayAbbrev(game.game_date),
+    postNumber: 1,
+    postTime: `${dayLabel} — pre-game`,
+    type: "Carousel",
+    category: "Disposal Trend",
+    intent: "pre_game",
+    statLens: "disposals",
+    confidence: candidates.length >= 3 ? "Medium" : "Low",
     title,
     content: hook,
     statsShown,
@@ -235,20 +507,19 @@ function build20PlusDisposalsPost(
     hashtags: gamePickHashtags("disposals", game.game_date),
     suggestedVisual,
     imageDescription,
-    dataScope: `${matchLabel} disposal pool (20+ tier)`,
+    dataScope: `${matchLabel} recent form pool (L5 form watch)`,
     targetGame: matchLabel,
     targetGameStatus: "upcoming",
     fallbackWarning,
-    playerNames: picks.map(p => p.player_name),
-    teamNames: [...new Set(picks.map(p => p.team_name))],
-    thresholdLabel: "20+ Disposals",
+    playerNames: candidates.map(p => p.player_name),
+    teamNames: [...new Set(candidates.map(p => p.team_name))],
+    thresholdLabel: "Recent Form Hits",
     isBackup: false,
     tone: "clean_stats",
     hookOptions,
   };
 
-  const enriched = enrichPost(rawPost as SocialPost, matches);
-  return { kitType: "disposals", post: enriched, pickCount: picks.length };
+  return { kitType: "disposals", post: enrichPost(rawPost as SocialPost, matches), pickCount: candidates.length };
 }
 
 // ─── Post 2: 1+ Goals ────────────────────────────────────────────────────────
@@ -580,7 +851,7 @@ export function buildGamePickMarketingPack(
   );
 
   const kits: GamePickPostKit[] = [
-    build20PlusDisposalsPost(game, dispPicks, matches),
+    buildDisposalPost(game, dispPicks, matches),
     build1PlusGoalsPost(game, goalPicks, matches),
     buildFullGamePicksPost(game, dispPicks, goalPicks, matches),
   ];

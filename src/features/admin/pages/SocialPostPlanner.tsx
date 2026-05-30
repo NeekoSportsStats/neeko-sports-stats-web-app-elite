@@ -1179,18 +1179,14 @@ function validatePostKit(post: SocialPost): PostKitValidation {
   }
 
   // Threshold label consistency: all stat lines must use the same threshold as the post label
-  if (
-    post.thresholdLabel !== "Full Game Picks" &&
-    post.thresholdLabel !== "Mixed Stat Watch" &&
-    post.thresholdLabel !== "Form Risers" &&
-    post.thresholdLabel !== "L3 vs Season Avg" &&
-    post.thresholdLabel !== "L5 vs Season Avg" &&
-    post.thresholdLabel !== "High Consistency" &&
-    post.thresholdLabel !== "Team Score" &&
-    post.thresholdLabel !== "Disposal Conceded" &&
-    post.thresholdLabel !== "Fantasy Form" &&
-    post.thresholdLabel !== "Contested Form"
-  ) {
+  // (Mixed-threshold post types are excluded from this check — they intentionally span thresholds.)
+  const mixedThresholdLabels = new Set([
+    "Full Game Picks", "Mixed Stat Watch", "Form Risers",
+    "L3 vs Season Avg", "L5 vs Season Avg", "High Consistency",
+    "Team Score", "Disposal Conceded", "Fantasy Form", "Contested Form",
+    "Disposal Watch", "Player Spotlight", "Recent Form Hits",
+  ]);
+  if (!mixedThresholdLabels.has(post.thresholdLabel)) {
     const labelThr = parseInt(post.thresholdLabel, 10);
     if (!isNaN(labelThr)) {
       const mismatchedLines = asArray(post.statsShown).filter(s => {
@@ -1207,19 +1203,40 @@ function validatePostKit(post: SocialPost): PostKitValidation {
     }
   }
 
+  // Strict 20+ Disposals post must NOT contain higher-threshold players
+  if (post.thresholdLabel === "20+ Disposals") {
+    const higherThrLines = asArray(post.statsShown).filter(s => {
+      const thrMatch = s.match(/at\s+(\d+)\+/);
+      return thrMatch ? parseInt(thrMatch[1], 10) > 20 : false;
+    });
+    if (higherThrLines.length > 0) {
+      issues.push(`Do Not Post — "20+ Disposals" label but ${higherThrLines.length} player(s) have threshold > 20. Use "Disposal Watch" label instead.`);
+    }
+    if (post.playerNames.length < 4) {
+      issues.push(`Weak 20+ Disposals post — only ${post.playerNames.length} players. Should be Disposal Watch or Player Spotlight.`);
+    }
+  }
+
+  // Player Spotlight posts must be flagged as organic only
+  if (post.thresholdLabel === "Player Spotlight" && post.playerNames.length > 1) {
+    issues.push("Player Spotlight should have exactly 1 player — found multiple.");
+  }
+
   // Per-player availability: playerNames should not include players marked unavailable
   // (This is a post-generation check — availability was applied at pool construction time)
   if (post.playerNames.length > 0 && post.fallbackWarning?.includes("Needs Review")) {
     issues.push(`Post flagged Needs Review: ${post.fallbackWarning}`);
   }
 
-  // 1-player disposal post must not be published
+  // 1-player disposal post must not be a standard carousel ad
+  // (Player Spotlight is intentionally 1 player — excluded from this check)
   if (
     post.statLens === "disposals" &&
     post.playerNames.length === 1 &&
-    post.thresholdLabel !== "Full Game Picks"
+    post.thresholdLabel !== "Full Game Picks" &&
+    post.thresholdLabel !== "Player Spotlight"
   ) {
-    issues.push("Do Not Post — single-player disposal posts are not standalone content. Needs at least 2 players.");
+    issues.push("Do Not Post — single-player disposal posts are not standalone carousel ads. Should be labelled Player Spotlight.");
   }
 
   // No betting language in key text fields
