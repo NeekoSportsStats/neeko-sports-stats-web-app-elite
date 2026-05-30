@@ -87,6 +87,36 @@ interface InsightsData {
 
 type FreshnessStatus = "fresh" | "stale" | "unknown";
 
+// ─── Safe format helpers ──────────────────────────────────────────────────────
+
+function safeNumber(value: unknown, fallback = "Not available"): string {
+  if (value === null || value === undefined) return fallback;
+  const n = typeof value === "string" ? parseFloat(value) : (value as number);
+  if (typeof n !== "number" || !isFinite(n)) return fallback;
+  return n.toLocaleString();
+}
+
+function safePercent(value: unknown, fallback = "Not available"): string {
+  if (value === null || value === undefined) return fallback;
+  const n = typeof value === "string" ? parseFloat(value) : (value as number);
+  if (typeof n !== "number" || !isFinite(n)) return fallback;
+  return `${n.toFixed(1)}%`;
+}
+
+function safeInt(value: unknown): number {
+  if (value === null || value === undefined) return 0;
+  const n = typeof value === "string" ? parseFloat(value) : (value as number);
+  if (typeof n !== "number" || !isFinite(n)) return 0;
+  return n;
+}
+
+function safeText(value: unknown, fallback = "—"): string {
+  if (value === null || value === undefined) return fallback;
+  const s = String(value);
+  if (s === "[object Object]" || s === "") return fallback;
+  return s;
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DATE_RANGES: { label: string; value: MarketingInsightsRange; description: string }[] = [
@@ -98,10 +128,9 @@ const DATE_RANGES: { label: string; value: MarketingInsightsRange; description: 
   { label: "1mo", value: "30d", description: "Last 30 days" },
 ];
 
-/** Max age in ms before data is considered stale for copy operations */
 function maxAgeMs(range: MarketingInsightsRange): number {
-  if (range === "12h" || range === "24h") return 5 * 60 * 1000;  // 5 minutes
-  return 10 * 60 * 1000; // 10 minutes for 3d+
+  if (range === "12h" || range === "24h") return 5 * 60 * 1000;
+  return 10 * 60 * 1000;
 }
 
 function rangeLabelLong(range: MarketingInsightsRange): string {
@@ -145,16 +174,19 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
   // ── 1. Executive Summary
   lines.push(`## 1. Executive Summary`);
   if (funnel) {
-    lines.push(`- Page Views: ${funnel.page_views.toLocaleString()}`);
-    lines.push(`- CTA Clicks: ${funnel.cta_clicks.toLocaleString()}`);
-    lines.push(`- Checkout Starts: ${funnel.checkout_started.toLocaleString()}`);
-    lines.push(`- Purchases: ${funnel.checkout_success.toLocaleString()}`);
-    lines.push(`- Checkout Conversion: ${funnel.conversion_rate}%`);
+    lines.push(`- Page Views: ${safeNumber(funnel.page_views)}`);
+    lines.push(`- CTA Clicks: ${safeNumber(funnel.cta_clicks)}`);
+    lines.push(`- Checkout Starts: ${safeNumber(funnel.checkout_started)}`);
+    lines.push(`- Purchases: ${safeNumber(funnel.checkout_success)}`);
+    lines.push(`- Checkout Conversion: ${safePercent(funnel.conversion_rate)}`);
   }
   if (sessions) {
-    lines.push(`- Total Sessions: ${sessions.total_sessions.toLocaleString()}`);
-    lines.push(`- Engagement Rate: ${sessions.engagement_rate}%`);
-    lines.push(`- Sessions with CTA: ${sessions.sessions_with_cta.toLocaleString()}`);
+    lines.push(`- Total Sessions: ${safeNumber(sessions.total_sessions)}`);
+    lines.push(`- Engagement Rate: ${safePercent(sessions.engagement_rate)}`);
+    lines.push(`- Sessions with CTA: ${safeNumber(sessions.sessions_with_cta)}`);
+  }
+  if (!funnel && !sessions) {
+    lines.push(`No summary data available.`);
   }
   lines.push(``);
 
@@ -163,14 +195,14 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
   if (funnel) {
     lines.push(`| Stage | Count | Drop-off |`);
     lines.push(`|---|---|---|`);
-    lines.push(`| Page Views | ${funnel.page_views.toLocaleString()} | — |`);
-    lines.push(`| Gate Views | ${funnel.gate_views.toLocaleString()} | — |`);
-    lines.push(`| CTA Clicks | ${funnel.cta_clicks.toLocaleString()} | ${funnel.dropoffs?.views_to_cta ?? 0}% from views |`);
-    lines.push(`| Checkout Started | ${funnel.checkout_started.toLocaleString()} | ${funnel.dropoffs?.cta_to_checkout ?? 0}% from CTA |`);
-    lines.push(`| Checkout Success | ${funnel.checkout_success.toLocaleString()} | ${funnel.dropoffs?.checkout_to_success ?? 0}% from starts |`);
-    lines.push(`| Checkout Cancelled | ${funnel.checkout_cancelled.toLocaleString()} | — |`);
+    lines.push(`| Page Views | ${safeNumber(funnel.page_views)} | — |`);
+    lines.push(`| Gate Views | ${safeNumber(funnel.gate_views)} | — |`);
+    lines.push(`| CTA Clicks | ${safeNumber(funnel.cta_clicks)} | ${funnel.dropoffs?.views_to_cta ?? 0}% from views |`);
+    lines.push(`| Checkout Started | ${safeNumber(funnel.checkout_started)} | ${funnel.dropoffs?.cta_to_checkout ?? 0}% from CTA |`);
+    lines.push(`| Checkout Success | ${safeNumber(funnel.checkout_success)} | ${funnel.dropoffs?.checkout_to_success ?? 0}% from starts |`);
+    lines.push(`| Checkout Cancelled | ${safeNumber(funnel.checkout_cancelled)} | — |`);
     lines.push(``);
-    lines.push(`Landing CTA: ${funnel.landing_cta_clicks} | Pricing CTA: ${funnel.pricing_cta_clicks} | Neeko+ btn: ${funnel.neeko_plus_clicks}`);
+    lines.push(`Landing CTA: ${safeInt(funnel.landing_cta_clicks)} | Pricing CTA: ${safeInt(funnel.pricing_cta_clicks)} | Neeko+ btn: ${safeInt(funnel.neeko_plus_clicks)}`);
   } else {
     lines.push(`No funnel data.`);
   }
@@ -183,23 +215,23 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
     lines.push(`|---|---|---|`);
     topPages.slice(0, 15).forEach((p, i) => {
       const url = p.page ? p.page.replace(/https?:\/\/[^/]+/, "") || "/" : "/";
-      lines.push(`| ${i + 1} | ${url} | ${p.views.toLocaleString()} |`);
+      lines.push(`| ${i + 1} | ${url} | ${safeNumber(p.views)} |`);
     });
   } else {
     lines.push(`No page data.`);
   }
   lines.push(``);
 
-  // ── 4. Top Events
+  // ── 4. Top CTA Events
   lines.push(`## 4. Top CTA Events`);
-  const totalCtaClicks = cta.reduce((s, r) => s + r.clicks, 0);
+  const totalCtaClicks = cta.reduce((s, r) => s + safeInt(r.clicks), 0);
   lines.push(`Total CTA clicks: ${totalCtaClicks.toLocaleString()}`);
   if (cta.length > 0) {
     lines.push(``);
     lines.push(`| Event | Button | Section | Clicks |`);
     lines.push(`|---|---|---|---|`);
     cta.slice(0, 20).forEach(r => {
-      lines.push(`| ${r.event} | ${r.button_text || "—"} | ${r.section || "—"} | ${r.clicks} |`);
+      lines.push(`| ${safeText(r.event)} | ${safeText(r.button_text)} | ${safeText(r.section)} | ${safeInt(r.clicks)} |`);
     });
   }
   lines.push(``);
@@ -208,16 +240,18 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
   lines.push(`## 5. CTA Performance`);
   if (cta.length > 0) {
     const topCta = cta[0];
-    lines.push(`Top CTA: "${topCta.button_text || topCta.event}" — ${topCta.clicks} clicks`);
+    lines.push(`Top CTA: "${safeText(topCta.button_text || topCta.event)}" — ${safeInt(topCta.clicks)} clicks`);
     const ctaByEvent: Record<string, number> = {};
     for (const r of cta) {
-      ctaByEvent[r.event] = (ctaByEvent[r.event] ?? 0) + r.clicks;
+      ctaByEvent[r.event] = (ctaByEvent[r.event] ?? 0) + safeInt(r.clicks);
     }
     lines.push(``);
     lines.push(`By event type:`);
     Object.entries(ctaByEvent).sort((a, b) => b[1] - a[1]).forEach(([ev, n]) => {
       lines.push(`- ${ev}: ${n}`);
     });
+  } else {
+    lines.push(`No CTA data.`);
   }
   lines.push(``);
 
@@ -230,7 +264,7 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
     lines.push(`| Source | Medium | Campaign | Sessions |`);
     lines.push(`|---|---|---|---|`);
     utms.slice(0, 15).forEach(r => {
-      lines.push(`| ${r.source ?? "—"} | ${r.medium ?? "—"} | ${r.campaign ?? "—"} | ${r.sessions} |`);
+      lines.push(`| ${safeText(r.source)} | ${safeText(r.medium)} | ${safeText(r.campaign)} | ${safeInt(r.sessions)} |`);
     });
     lines.push(``);
   }
@@ -239,7 +273,7 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
     lines.push(`| Referrer | Sessions |`);
     lines.push(`|---|---|`);
     referrers.slice(0, 10).forEach(r => {
-      lines.push(`| ${r.referrer} | ${r.sessions} |`);
+      lines.push(`| ${safeText(r.referrer)} | ${safeInt(r.sessions)} |`);
     });
   }
   if (utms.length === 0 && referrers.length === 0) {
@@ -249,26 +283,35 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
 
   // ── 7. Device Breakdown
   lines.push(`## 7. Device Breakdown`);
-  const totalDeviceSessions = devices.reduce((s, d) => s + d.sessions, 0);
+  const totalDeviceSessions = devices.reduce((s, d) => s + safeInt(d.sessions), 0);
   const deviceTypes: Record<string, number> = {};
   for (const d of devices) {
     const key = (d.device_type || "unknown").toLowerCase();
-    deviceTypes[key] = (deviceTypes[key] ?? 0) + d.sessions;
+    deviceTypes[key] = (deviceTypes[key] ?? 0) + safeInt(d.sessions);
   }
-  Object.entries(deviceTypes).sort((a, b) => b[1] - a[1]).forEach(([type, n]) => {
-    const pct = totalDeviceSessions > 0 ? Math.round((n / totalDeviceSessions) * 100) : 0;
-    lines.push(`- ${type}: ${n.toLocaleString()} sessions (${pct}%)`);
-  });
+  if (Object.keys(deviceTypes).length > 0) {
+    Object.entries(deviceTypes).sort((a, b) => b[1] - a[1]).forEach(([type, n]) => {
+      const pct = totalDeviceSessions > 0 ? Math.round((n / totalDeviceSessions) * 100) : 0;
+      lines.push(`- ${type}: ${n.toLocaleString()} sessions (${pct}%)`);
+    });
+  } else {
+    lines.push(`No device data.`);
+  }
   lines.push(``);
   lines.push(`Top browsers:`);
   const browserTotals: Record<string, number> = {};
   for (const d of devices) {
     const b = d.browser || "Unknown";
-    browserTotals[b] = (browserTotals[b] ?? 0) + d.sessions;
+    browserTotals[b] = (browserTotals[b] ?? 0) + safeInt(d.sessions);
   }
-  Object.entries(browserTotals).sort((a, b) => b[1] - a[1]).slice(0, 6).forEach(([b, n]) => {
-    lines.push(`- ${b}: ${n.toLocaleString()}`);
-  });
+  const browserEntries = Object.entries(browserTotals).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  if (browserEntries.length > 0) {
+    browserEntries.forEach(([b, n]) => {
+      lines.push(`- ${b}: ${n.toLocaleString()}`);
+    });
+  } else {
+    lines.push(`No browser data.`);
+  }
   lines.push(``);
 
   // ── 8. Behaviour Notes
@@ -294,7 +337,7 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
     lines.push(`| Session | Pages | CTA | Checkout | Product Events | OS | Browser |`);
     lines.push(`|---|---|---|---|---|---|---|`);
     sessionReview.forEach(s => {
-      lines.push(`| ${s.session_id} | ${s.page_views} | ${s.cta_clicks} | ${s.checkout_starts} | ${s.product_events} | ${s.os ?? "—"} | ${s.browser ?? "—"} |`);
+      lines.push(`| ${safeText(s.session_id)} | ${safeInt(s.page_views)} | ${safeInt(s.cta_clicks)} | ${safeInt(s.checkout_starts)} | ${safeInt(s.product_events)} | ${safeText(s.os)} | ${safeText(s.browser)} |`);
     });
   } else {
     lines.push(`No high-intent sessions in this range.`);
@@ -320,24 +363,24 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
 
 function buildFunnelSection(data: InsightsData, range: MarketingInsightsRange): string {
   const funnel = data.funnel;
-  if (!funnel) return "No funnel data loaded.";
+  if (!funnel) return `No funnel data available for ${rangeLabelLong(range)}.`;
   return [
     `Funnel — ${rangeLabelLong(range)}`,
-    `Page Views: ${funnel.page_views.toLocaleString()}`,
-    `Gate Views: ${funnel.gate_views.toLocaleString()}`,
-    `CTA Clicks: ${funnel.cta_clicks.toLocaleString()} (${100 - (funnel.dropoffs?.views_to_cta ?? 0)}% of views)`,
-    `Checkout Started: ${funnel.checkout_started.toLocaleString()} (${100 - (funnel.dropoffs?.cta_to_checkout ?? 0)}% of CTAs)`,
-    `Checkout Success: ${funnel.checkout_success.toLocaleString()} (${funnel.conversion_rate}% of starts)`,
-    `Checkout Cancelled: ${funnel.checkout_cancelled.toLocaleString()}`,
+    `Page Views: ${safeNumber(funnel.page_views)}`,
+    `Gate Views: ${safeNumber(funnel.gate_views)}`,
+    `CTA Clicks: ${safeNumber(funnel.cta_clicks)} (${100 - safeInt(funnel.dropoffs?.views_to_cta)}% of views)`,
+    `Checkout Started: ${safeNumber(funnel.checkout_started)} (${100 - safeInt(funnel.dropoffs?.cta_to_checkout)}% of CTAs)`,
+    `Checkout Success: ${safeNumber(funnel.checkout_success)} (${safePercent(funnel.conversion_rate)} of starts)`,
+    `Checkout Cancelled: ${safeNumber(funnel.checkout_cancelled)}`,
   ].join("\n");
 }
 
 function buildCtaSection(data: InsightsData, range: MarketingInsightsRange): string {
   const cta = data.cta_performance ?? [];
-  if (cta.length === 0) return "No CTA data loaded.";
-  const total = cta.reduce((s, r) => s + r.clicks, 0);
+  if (cta.length === 0) return `No CTA data available for ${rangeLabelLong(range)}.`;
+  const total = cta.reduce((s, r) => s + safeInt(r.clicks), 0);
   const rows = cta.slice(0, 20).map(r =>
-    `${r.event} | "${r.button_text || "—"}" | ${r.section || "—"} | ${r.clicks} clicks`
+    `${safeText(r.event)} | "${safeText(r.button_text)}" | ${safeText(r.section)} | ${safeInt(r.clicks)} clicks`
   );
   return [`CTA Performance — ${rangeLabelLong(range)} | Total: ${total}`, ...rows].join("\n");
 }
@@ -348,11 +391,11 @@ function buildCampaignSection(data: InsightsData, range: MarketingInsightsRange)
   const rows: string[] = [`Campaign/Source — ${rangeLabelLong(range)}`];
   if (utms.length > 0) {
     rows.push("UTM Sources:");
-    utms.slice(0, 15).forEach(r => rows.push(`  ${r.source ?? "direct"} / ${r.medium ?? "—"} / ${r.campaign ?? "—"} — ${r.sessions} sessions`));
+    utms.slice(0, 15).forEach(r => rows.push(`  ${safeText(r.source, "direct")} / ${safeText(r.medium)} / ${safeText(r.campaign)} — ${safeInt(r.sessions)} sessions`));
   }
   if (referrers.length > 0) {
     rows.push("Referrers:");
-    referrers.slice(0, 10).forEach(r => rows.push(`  ${r.referrer} — ${r.sessions} sessions`));
+    referrers.slice(0, 10).forEach(r => rows.push(`  ${safeText(r.referrer)} — ${safeInt(r.sessions)} sessions`));
   }
   if (utms.length === 0 && referrers.length === 0) rows.push("No campaign data.");
   return rows.join("\n");
@@ -362,7 +405,7 @@ function buildSessionReviewSection(data: InsightsData, range: MarketingInsightsR
   const sessions = data.session_review_shortlist ?? [];
   if (sessions.length === 0) return `No high-intent sessions in ${rangeLabelLong(range)}.`;
   const rows = sessions.map(s =>
-    `${s.session_id} | ${s.page_views}pv | ${s.cta_clicks}cta | ${s.checkout_starts}checkout | ${s.product_events}prod | ${s.os ?? "—"} ${s.browser ?? "—"}`
+    `${safeText(s.session_id)} | ${safeInt(s.page_views)}pv | ${safeInt(s.cta_clicks)}cta | ${safeInt(s.checkout_starts)}checkout | ${safeInt(s.product_events)}prod | ${safeText(s.os)} ${safeText(s.browser)}`
   );
   return [`Session Review — ${rangeLabelLong(range)} (truncated IDs, no PII)`, ...rows].join("\n");
 }
@@ -372,17 +415,19 @@ function buildTrafficSection(data: InsightsData, range: MarketingInsightsRange):
   const sessions = data.sessions;
   const lines: string[] = [`Traffic Summary — ${rangeLabelLong(range)}`];
   if (sessions) {
-    lines.push(`Total Sessions: ${sessions.total_sessions.toLocaleString()}`);
-    lines.push(`Multi-page: ${sessions.multi_page_sessions.toLocaleString()}`);
-    lines.push(`With CTA: ${sessions.sessions_with_cta.toLocaleString()}`);
-    lines.push(`With Product: ${sessions.sessions_with_product.toLocaleString()}`);
-    lines.push(`Engagement Rate: ${sessions.engagement_rate}%`);
+    lines.push(`Total Sessions: ${safeNumber(sessions.total_sessions)}`);
+    lines.push(`Multi-page: ${safeNumber(sessions.multi_page_sessions)}`);
+    lines.push(`With CTA: ${safeNumber(sessions.sessions_with_cta)}`);
+    lines.push(`With Product: ${safeNumber(sessions.sessions_with_product)}`);
+    lines.push(`Engagement Rate: ${safePercent(sessions.engagement_rate)}`);
+  } else {
+    lines.push(`No session data available.`);
   }
   if (topPages.length > 0) {
     lines.push(`\nTop Pages:`);
     topPages.slice(0, 10).forEach((p, i) => {
       const url = p.page ? p.page.replace(/https?:\/\/[^/]+/, "") || "/" : "/";
-      lines.push(`  ${i + 1}. ${url} — ${p.views.toLocaleString()} views`);
+      lines.push(`  ${i + 1}. ${url} — ${safeNumber(p.views)} views`);
     });
   }
   return lines.join("\n");
@@ -390,10 +435,11 @@ function buildTrafficSection(data: InsightsData, range: MarketingInsightsRange):
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function CopyButton({ getText, label = "Copy", small = false }: { getText: () => string; label?: string; small?: boolean }) {
+function CopyButton({ getText, label = "Copy", small = false, disabled = false }: { getText: () => string; label?: string; small?: boolean; disabled?: boolean }) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
+    if (disabled) return;
     const text = getText();
     const ok = await copyToClipboard(text);
     if (ok) {
@@ -406,8 +452,9 @@ function CopyButton({ getText, label = "Copy", small = false }: { getText: () =>
     return (
       <button
         onClick={handleCopy}
+        disabled={disabled}
         title={copied ? "Copied!" : label}
-        className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors ${
+        className={`flex items-center gap-1 px-2 py-1 rounded text-[11px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
           copied
             ? "bg-emerald-500/20 text-emerald-400"
             : "bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -422,7 +469,8 @@ function CopyButton({ getText, label = "Copy", small = false }: { getText: () =>
   return (
     <button
       onClick={handleCopy}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium transition-colors ${
+      disabled={disabled}
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
         copied
           ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
           : "border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -465,11 +513,11 @@ function StatCard({
 
 function FunnelCard({ funnel, onCopy }: { funnel: FunnelData; onCopy?: () => string }) {
   const stages = [
-    { stage: "page_views", users: funnel.page_views },
-    { stage: "gate_views", users: funnel.gate_views },
-    { stage: "cta_clicks", users: funnel.cta_clicks },
-    { stage: "checkout_started", users: funnel.checkout_started },
-    { stage: "checkout_success", users: funnel.checkout_success },
+    { stage: "page_views", users: safeInt(funnel.page_views) },
+    { stage: "gate_views", users: safeInt(funnel.gate_views) },
+    { stage: "cta_clicks", users: safeInt(funnel.cta_clicks) },
+    { stage: "checkout_started", users: safeInt(funnel.checkout_started) },
+    { stage: "checkout_success", users: safeInt(funnel.checkout_success) },
   ];
   const top = stages[0]?.users ?? 0;
 
@@ -479,7 +527,7 @@ function FunnelCard({ funnel, onCopy }: { funnel: FunnelData; onCopy?: () => str
         <h3 className="text-sm font-semibold">Conversion Funnel</h3>
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded">
-            {(funnel.conversion_rate ?? 0).toFixed(1)}% overall
+            {safePercent(funnel.conversion_rate, "0.0%")} overall
           </span>
           {onCopy && <CopyButton getText={onCopy} small label="Copy" />}
         </div>
@@ -522,7 +570,7 @@ function FunnelCard({ funnel, onCopy }: { funnel: FunnelData; onCopy?: () => str
 }
 
 function DeviceBreakdown({ devices }: { devices: DeviceRow[] }) {
-  const total = devices.reduce((s, d) => s + (d.sessions ?? 0), 0);
+  const total = devices.reduce((s, d) => s + safeInt(d.sessions), 0);
   const types: { label: string; icon: React.ElementType; key: string }[] = [
     { label: "Desktop", icon: Monitor, key: "desktop" },
     { label: "Mobile", icon: Smartphone, key: "mobile" },
@@ -532,7 +580,7 @@ function DeviceBreakdown({ devices }: { devices: DeviceRow[] }) {
   const byType = types.map(({ label, icon, key }) => {
     const count = devices
       .filter(d => (d.device_type ?? "").toLowerCase().includes(key))
-      .reduce((s, d) => s + (d.sessions ?? 0), 0);
+      .reduce((s, d) => s + safeInt(d.sessions), 0);
     return { label, icon, count };
   });
 
@@ -559,12 +607,12 @@ function DeviceBreakdown({ devices }: { devices: DeviceRow[] }) {
         <div className="mt-4 border-t border-border/40 pt-3">
           <p className="text-xs text-muted-foreground mb-2 font-medium">Top Browsers</p>
           {devices
-            .sort((a, b) => b.sessions - a.sessions)
+            .sort((a, b) => safeInt(b.sessions) - safeInt(a.sessions))
             .slice(0, 4)
             .map((d, i) => (
               <div key={i} className="flex items-center justify-between py-0.5">
                 <span className="text-xs text-muted-foreground truncate">{d.browser || "Unknown"}</span>
-                <span className="text-xs font-mono tabular-nums">{d.sessions.toLocaleString()}</span>
+                <span className="text-xs font-mono tabular-nums">{safeInt(d.sessions).toLocaleString()}</span>
               </div>
             ))}
         </div>
@@ -634,7 +682,7 @@ export default function AdminMarketingInsights() {
     return age > maxAgeMs(dataRange) ? "stale" : "fresh";
   })();
 
-  const isDataReadyForRange = data && dataRange === selectedRange && freshnessStatus === "fresh";
+  const isDataReadyForRange = !!(data && dataRange === selectedRange && freshnessStatus === "fresh");
 
   const load = useCallback(async (range: MarketingInsightsRange) => {
     abortRef.current?.abort();
@@ -663,7 +711,9 @@ export default function AdminMarketingInsights() {
   const handleRefresh = () => load(selectedRange);
 
   const getAnalysisPack = () => {
+    if (loading) return "Data is loading. Please wait.";
     if (!data || !lastFetchedAt || !dataRange) return "No data loaded. Click Refresh first.";
+    if (!data.posthog_available) return "PostHog is not configured. No analytics data available.";
     if (freshnessStatus === "stale") return "Data is stale. Please refresh before copying.";
     if (dataRange !== selectedRange) return `Data loaded for ${rangeLabelLong(dataRange)}, not ${rangeLabelLong(selectedRange)}. Please refresh.`;
     return buildAnalysisPack(data, dataRange, lastFetchedAt);
@@ -679,13 +729,17 @@ export default function AdminMarketingInsights() {
   const insights = data?.behaviour_insights ?? [];
   const actions = data?.recommended_actions ?? [];
 
-  const engagementRate = sessions?.engagement_rate ?? 0;
-  const totalCtaClicks = cta.reduce((s, r) => s + (r.clicks ?? 0), 0);
+  const engagementRate = safeInt(sessions?.engagement_rate);
+  const totalCtaClicks = cta.reduce((s, r) => s + safeInt(r.clicks), 0);
 
-  const staleCopyWarning = !isDataReadyForRange && data
-    ? (dataRange !== selectedRange
-        ? `Data loaded for ${dataRange} — switch range to ${selectedRange} and refresh, or copy current data as-is`
-        : "Data is stale — refresh before copying for accuracy")
+  const copyDisabled = loading || !data || !data.posthog_available || !isDataReadyForRange;
+
+  const staleCopyWarning = !isDataReadyForRange && data && data.posthog_available
+    ? (loading
+        ? "Loading fresh data…"
+        : dataRange !== selectedRange
+          ? `Data loaded for ${dataRange} — refresh to load ${selectedRange}`
+          : "Data is stale — refresh before copying")
     : null;
 
   return (
@@ -706,7 +760,6 @@ export default function AdminMarketingInsights() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Date range selector */}
           <div className="flex items-center rounded-md border border-border/60 overflow-hidden">
             {DATE_RANGES.map(({ label, value }) => (
               <button
@@ -743,26 +796,32 @@ export default function AdminMarketingInsights() {
           <CopyButton
             getText={getAnalysisPack}
             label="Copy Full Analysis Pack"
+            disabled={copyDisabled}
           />
           <CopyButton
-            getText={() => data ? buildTrafficSection(data, dataRange ?? selectedRange) : "No data"}
+            getText={() => data ? buildTrafficSection(data, dataRange ?? selectedRange) : "No data available for this section in the selected date range."}
             label="Traffic Summary"
+            disabled={copyDisabled}
           />
           <CopyButton
-            getText={() => data && funnel ? buildFunnelSection(data, dataRange ?? selectedRange) : "No funnel data"}
+            getText={() => data && funnel ? buildFunnelSection(data, dataRange ?? selectedRange) : "No funnel data available for this section in the selected date range."}
             label="Funnel"
+            disabled={copyDisabled}
           />
           <CopyButton
-            getText={() => data ? buildCtaSection(data, dataRange ?? selectedRange) : "No data"}
+            getText={() => data ? buildCtaSection(data, dataRange ?? selectedRange) : "No data available for this section in the selected date range."}
             label="CTA"
+            disabled={copyDisabled}
           />
           <CopyButton
-            getText={() => data ? buildCampaignSection(data, dataRange ?? selectedRange) : "No data"}
+            getText={() => data ? buildCampaignSection(data, dataRange ?? selectedRange) : "No data available for this section in the selected date range."}
             label="Campaign"
+            disabled={copyDisabled}
           />
           <CopyButton
-            getText={() => data ? buildSessionReviewSection(data, dataRange ?? selectedRange) : "No data"}
+            getText={() => data ? buildSessionReviewSection(data, dataRange ?? selectedRange) : "No data available for this section in the selected date range."}
             label="Session Review"
+            disabled={copyDisabled}
           />
 
           {staleCopyWarning && (
@@ -811,28 +870,28 @@ export default function AdminMarketingInsights() {
       {data && !data.posthog_available && <SetupPanel />}
 
       {/* Dashboard */}
-      {data && data.posthog_available && (
+      {data && data.posthog_available && !loading && (
         <div className="flex flex-col gap-5">
           {/* Overview cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <StatCard
               label="Page Views"
-              value={(funnel?.page_views ?? 0).toLocaleString()}
+              value={safeNumber(funnel?.page_views, "0")}
               sub={`${rangeLabelLong(dataRange ?? selectedRange)}`}
               icon={TrendingUp}
               accent="bg-blue-500/10"
             />
             <StatCard
               label="Sessions"
-              value={(sessions?.total_sessions ?? 0).toLocaleString()}
-              sub={`${sessions?.multi_page_sessions ?? 0} multi-page`}
+              value={safeNumber(sessions?.total_sessions, "0")}
+              sub={`${safeInt(sessions?.multi_page_sessions)} multi-page`}
               icon={Users}
               accent="bg-blue-500/10"
             />
             <StatCard
               label="Engaged Sessions"
               value={`${engagementRate.toFixed(0)}%`}
-              sub={`${(sessions?.sessions_with_cta ?? 0).toLocaleString()} with CTA`}
+              sub={`${safeInt(sessions?.sessions_with_cta).toLocaleString()} with CTA`}
               icon={MousePointerClick}
               accent="bg-amber-500/10"
             />
@@ -845,15 +904,15 @@ export default function AdminMarketingInsights() {
             />
             <StatCard
               label="Checkout Starts"
-              value={(funnel?.checkout_started ?? 0).toLocaleString()}
+              value={safeNumber(funnel?.checkout_started, "0")}
               sub="Initiated checkout"
               icon={ShoppingCart}
               accent="bg-orange-500/10"
             />
             <StatCard
               label="Purchases"
-              value={(funnel?.checkout_success ?? 0).toLocaleString()}
-              sub={`${funnel?.conversion_rate ?? 0}% of starts`}
+              value={safeNumber(funnel?.checkout_success, "0")}
+              sub={`${safePercent(funnel?.conversion_rate, "0%")} of starts`}
               icon={CheckCircle2}
               accent="bg-emerald-500/10"
             />
@@ -876,9 +935,10 @@ export default function AdminMarketingInsights() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-semibold">CTA Performance</h3>
                 <CopyButton
-                  getText={() => data ? buildCtaSection(data, dataRange ?? selectedRange) : "No data"}
+                  getText={() => data ? buildCtaSection(data, dataRange ?? selectedRange) : "No data available for this section in the selected date range."}
                   small
                   label="Copy"
+                  disabled={copyDisabled}
                 />
               </div>
               <div className="overflow-x-auto">
@@ -893,14 +953,14 @@ export default function AdminMarketingInsights() {
                   </thead>
                   <tbody>
                     {cta
-                      .sort((a, b) => b.clicks - a.clicks)
+                      .sort((a, b) => safeInt(b.clicks) - safeInt(a.clicks))
                       .slice(0, 20)
                       .map((row, i) => (
                         <tr key={i} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
                           <td className="py-2 pr-4 max-w-[200px] truncate text-foreground/80">{row.button_text || "—"}</td>
                           <td className="py-2 pr-4 text-muted-foreground">{row.section || "—"}</td>
                           <td className="py-2 pr-4 text-muted-foreground/60 font-mono text-[11px]">{row.event}</td>
-                          <td className="py-2 text-right tabular-nums font-semibold">{row.clicks.toLocaleString()}</td>
+                          <td className="py-2 text-right tabular-nums font-semibold">{safeInt(row.clicks).toLocaleString()}</td>
                         </tr>
                       ))}
                   </tbody>
@@ -916,15 +976,16 @@ export default function AdminMarketingInsights() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold">Top Pages</h3>
                   <CopyButton
-                    getText={() => data ? buildTrafficSection(data, dataRange ?? selectedRange) : "No data"}
+                    getText={() => data ? buildTrafficSection(data, dataRange ?? selectedRange) : "No data available for this section in the selected date range."}
                     small
                     label="Copy"
+                    disabled={copyDisabled}
                   />
                 </div>
                 <div className="flex flex-col gap-1">
                   {topPages.slice(0, 10).map((page, i) => {
-                    const maxViews = topPages[0]?.views ?? 1;
-                    const pct = (page.views / maxViews) * 100;
+                    const maxViews = safeInt(topPages[0]?.views) || 1;
+                    const pct = (safeInt(page.views) / maxViews) * 100;
                     const url = page.page ? page.page.replace(/https?:\/\/[^/]+/, "") || "/" : "/";
                     return (
                       <div key={i} className="flex items-center gap-3 py-0.5">
@@ -937,7 +998,7 @@ export default function AdminMarketingInsights() {
                             <div className="h-full rounded bg-blue-400/50" style={{ width: `${pct}%` }} />
                           </div>
                         </div>
-                        <span className="text-xs tabular-nums font-mono shrink-0">{page.views.toLocaleString()}</span>
+                        <span className="text-xs tabular-nums font-mono shrink-0">{safeInt(page.views).toLocaleString()}</span>
                       </div>
                     );
                   })}
@@ -950,9 +1011,10 @@ export default function AdminMarketingInsights() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-semibold">Traffic Sources</h3>
                   <CopyButton
-                    getText={() => data ? buildCampaignSection(data, dataRange ?? selectedRange) : "No data"}
+                    getText={() => data ? buildCampaignSection(data, dataRange ?? selectedRange) : "No data available for this section in the selected date range."}
                     small
                     label="Copy"
+                    disabled={copyDisabled}
                   />
                 </div>
                 <div className="overflow-x-auto">
@@ -969,7 +1031,7 @@ export default function AdminMarketingInsights() {
                         <tr key={i} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
                           <td className="py-2 pr-3 text-foreground/80">{row.source || "direct"}</td>
                           <td className="py-2 pr-3 text-muted-foreground">{row.medium || "—"}</td>
-                          <td className="py-2 text-right tabular-nums font-semibold">{row.sessions.toLocaleString()}</td>
+                          <td className="py-2 text-right tabular-nums font-semibold">{safeInt(row.sessions).toLocaleString()}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -988,9 +1050,10 @@ export default function AdminMarketingInsights() {
                   <p className="text-[11px] text-muted-foreground/60 mt-0.5">High-intent sessions. Session IDs truncated — no PII.</p>
                 </div>
                 <CopyButton
-                  getText={() => data ? buildSessionReviewSection(data, dataRange ?? selectedRange) : "No data"}
+                  getText={() => data ? buildSessionReviewSection(data, dataRange ?? selectedRange) : "No data available for this section in the selected date range."}
                   small
                   label="Copy"
+                  disabled={copyDisabled}
                 />
               </div>
               <div className="overflow-x-auto">
@@ -1009,14 +1072,14 @@ export default function AdminMarketingInsights() {
                     {sessionReview.slice(0, 20).map((row, i) => (
                       <tr key={i} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
                         <td className="py-2 pr-3 font-mono text-[11px] text-muted-foreground/70">{row.session_id}</td>
-                        <td className="py-2 pr-3 text-right tabular-nums">{row.page_views}</td>
-                        <td className={`py-2 pr-3 text-right tabular-nums font-semibold ${row.cta_clicks > 0 ? "text-amber-400" : ""}`}>
-                          {row.cta_clicks}
+                        <td className="py-2 pr-3 text-right tabular-nums">{safeInt(row.page_views)}</td>
+                        <td className={`py-2 pr-3 text-right tabular-nums font-semibold ${safeInt(row.cta_clicks) > 0 ? "text-amber-400" : ""}`}>
+                          {safeInt(row.cta_clicks)}
                         </td>
-                        <td className={`py-2 pr-3 text-right tabular-nums font-semibold ${row.checkout_starts > 0 ? "text-emerald-400" : ""}`}>
-                          {row.checkout_starts}
+                        <td className={`py-2 pr-3 text-right tabular-nums font-semibold ${safeInt(row.checkout_starts) > 0 ? "text-emerald-400" : ""}`}>
+                          {safeInt(row.checkout_starts)}
                         </td>
-                        <td className="py-2 pr-3 text-right tabular-nums">{row.product_events}</td>
+                        <td className="py-2 pr-3 text-right tabular-nums">{safeInt(row.product_events)}</td>
                         <td className="py-2 text-muted-foreground text-[11px]">
                           {[row.device, row.browser].filter(Boolean).join(" / ") || "—"}
                         </td>
