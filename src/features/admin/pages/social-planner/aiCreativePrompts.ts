@@ -570,23 +570,230 @@ export function buildVideoPrompts(
   return videos;
 }
 
-// ─── Hook variations ──────────────────────────────────────────────────────────
+// ─── Feature 7: Structured hook variations ───────────────────────────────────
 
-export function buildHookVariations(post: SocialPost): string[] {
+export type HookStyle =
+  | "direct"
+  | "curiosity"
+  | "stat_driven"
+  | "challenge"
+  | "punchy";
+
+export interface HookItem {
+  style: HookStyle;
+  label: string;
+  text: string;
+}
+
+export interface HookRecommendedUse {
+  bestCaption: string;
+  bestVideoOpener: string;
+  bestOnScreen: string;
+  bestShort: string;
+}
+
+export interface PostHookPack {
+  postId: string;
+  postTitle: string;
+  hooks: HookItem[];
+  recommended: HookRecommendedUse;
+}
+
+function lensContext(post: SocialPost): {
+  lens: string;
+  statVerb: string;
+  statNoun: string;
+  actionNoun: string;
+} {
+  switch (post.statLens) {
+    case "goals":
+      return {
+        lens: "goals",
+        statVerb: "kicking goals",
+        statNoun: "goals",
+        actionNoun: "scoring",
+      };
+    case "tackles":
+      return {
+        lens: "tackles",
+        statVerb: "laying tackles",
+        statNoun: "tackles",
+        actionNoun: "tackling",
+      };
+    case "marks":
+      return {
+        lens: "marks",
+        statVerb: "taking marks",
+        statNoun: "marks",
+        actionNoun: "marking",
+      };
+    case "hitouts":
+      return {
+        lens: "hitouts",
+        statVerb: "winning hitouts",
+        statNoun: "hitouts",
+        actionNoun: "ruck work",
+      };
+    default:
+      return {
+        lens: "disposals",
+        statVerb: "moving the ball",
+        statNoun: "disposals",
+        actionNoun: "ball use",
+      };
+  }
+}
+
+export function buildPostHookPack(post: SocialPost): PostHookPack {
   const { players, threshold } = postContext(post);
   const firstPlayer = safeArr(post.playerNames)[0] ?? "this player";
-  const firstStat = safeArr(post.statsShown)[0] ?? `${threshold}`;
+  const secondPlayer = safeArr(post.playerNames)[1];
+  const playerList3 = safeArr(post.playerNames).slice(0, 3).join(", ");
+  const { statNoun, statVerb, actionNoun } = lensContext(post);
+  const isGoals = post.statLens === "goals";
+  const isFormMover = post.category === "Form Mover";
+  const isTeamTotal = post.category === "Team Total";
+  const isMatchup = post.category === "Matchup Angle";
+  const isProof = post.category === "Proof Post";
+  const teams = safeArr(post.teamNames);
+  const twoTeams = teams.length >= 2;
 
-  return [
-    `"${firstPlayer} has hit ${threshold} in their last 3 games. Here's why it matters."`,
-    `"${threshold} in AFL — these players are running hot right now."`,
-    `"Before you make any AFL fantasy decisions — check these numbers."`,
-    `"${firstStat} — and they're not alone. Full list below."`,
-    `"AFL stats you actually need this week. Not opinions. Data."`,
-    `"This week's ${threshold} watch — ${players.split(", ").slice(0, 3).join(", ")} all in the mix."`,
-    `"People sleep on ${threshold} data. These numbers are hard to ignore."`,
-    `"If you follow AFL stats, you need to see this week's ${threshold} board."`,
+  // ─── Hook 1: Direct ───────────────────────────────────────────────────────
+  let direct: string;
+  if (isGoals) {
+    direct = playerList3
+      ? `${playerList3} — all hitting ${threshold} in recent games.`
+      : `These players are hitting ${threshold} consistently right now.`;
+  } else if (isFormMover) {
+    direct = firstPlayer
+      ? `${firstPlayer} is trending up. The numbers back it.`
+      : `Form is moving. These are the names rising right now.`;
+  } else if (isTeamTotal && twoTeams) {
+    direct = `${teams[0]} vs ${teams[1]} — here's the ${statNoun} breakdown.`;
+  } else if (isMatchup) {
+    direct = firstPlayer
+      ? `${firstPlayer} faces a test this week. Here's what the data says.`
+      : `The matchup data is in. Here's what it looks like.`;
+  } else if (isProof) {
+    direct = `The prediction landed. Here's the stat line that backed it up.`;
+  } else {
+    direct = playerList3
+      ? `${playerList3} are all clearing ${threshold}.`
+      : `These are the AFL players clearing ${threshold} right now.`;
+  }
+
+  // ─── Hook 2: Curiosity ────────────────────────────────────────────────────
+  let curiosity: string;
+  if (isGoals) {
+    curiosity = secondPlayer
+      ? `Who's actually ${statVerb} consistently? ${firstPlayer} and ${secondPlayer} might surprise you.`
+      : `Who's actually ${statVerb} week after week? The list is shorter than you think.`;
+  } else if (isFormMover) {
+    curiosity = `Not many people are watching this trend yet. Here's why that'll change.`;
+  } else if (isTeamTotal && twoTeams) {
+    curiosity = `Which team is actually dominating ${statNoun}? The gap might surprise you.`;
+  } else if (isMatchup) {
+    curiosity = `You've probably heard the hype. Here's what the actual stats say about this matchup.`;
+  } else if (isProof) {
+    curiosity = `The numbers said it last week. Did you see it coming?`;
+  } else {
+    curiosity = secondPlayer
+      ? `You'd back ${firstPlayer} here — but what about ${secondPlayer}? Both worth a look.`
+      : `Who's quietly running one of the best ${actionNoun} numbers in the competition right now?`;
+  }
+
+  // ─── Hook 3: Stat-driven ──────────────────────────────────────────────────
+  let statDriven: string;
+  if (isGoals) {
+    statDriven = firstPlayer
+      ? `${firstPlayer} has cleared ${threshold} in their last few games. Hard to ignore that trend.`
+      : `${threshold} in recent games — these are the players hitting it most consistently.`;
+  } else if (isFormMover) {
+    statDriven = firstPlayer
+      ? `${firstPlayer}'s recent ${statNoun} numbers are moving fast. Here's the breakdown.`
+      : `The form data doesn't lie. These are the players whose ${statNoun} numbers are trending up.`;
+  } else if (isTeamTotal) {
+    statDriven = `Total ${statNoun} per game — this is how the teams actually compare.`;
+  } else {
+    statDriven = firstPlayer
+      ? `${firstPlayer} has been clearing ${threshold} in recent games. The form is real.`
+      : `${threshold} hit rate over the last few games — these are the names holding up.`;
+  }
+
+  // ─── Hook 4: Challenge / question ────────────────────────────────────────
+  let challenge: string;
+  if (isGoals) {
+    challenge = `Before you make your AFL picks this round — have you checked the ${statNoun} form?`;
+  } else if (isFormMover) {
+    challenge = `If you're still relying on last year's form, you're missing something. Check this.`;
+  } else if (isTeamTotal && twoTeams) {
+    challenge = `${teams[0]} or ${teams[1]}? The ${statNoun} data might change your read.`;
+  } else if (isMatchup) {
+    challenge = `Think you know how this matchup plays out? Look at the ${statNoun} numbers first.`;
+  } else {
+    challenge = `Before you lock in your AFL moves this week — check ${threshold} and see who's actually been consistent.`;
+  }
+
+  // ─── Hook 5: Punchy / scroll-stopper ─────────────────────────────────────
+  let punchy: string;
+  if (isGoals) {
+    punchy = `${threshold}. These names keep showing up.`;
+  } else if (isFormMover) {
+    punchy = `The form shift is real. Here's who's moving.`;
+  } else if (isTeamTotal) {
+    punchy = `${statNoun.charAt(0).toUpperCase() + statNoun.slice(1)} by team. The gap is bigger than you'd think.`;
+  } else if (isMatchup) {
+    punchy = `This matchup has some interesting numbers underneath it. Look closer.`;
+  } else if (isProof) {
+    punchy = `Called it. Here's the stat line.`;
+  } else {
+    punchy = `${threshold}. These are the names delivering it.`;
+  }
+
+  const hooks: HookItem[] = [
+    { style: "direct",      label: "Hook 1 — Direct",              text: direct     },
+    { style: "curiosity",   label: "Hook 2 — Curiosity",           text: curiosity  },
+    { style: "stat_driven", label: "Hook 3 — Stat-driven",         text: statDriven },
+    { style: "challenge",   label: "Hook 4 — Challenge / question", text: challenge  },
+    { style: "punchy",      label: "Hook 5 — Punchy / scroll-stop", text: punchy     },
   ];
+
+  // ─── Recommended use derivations ─────────────────────────────────────────
+  // Best caption opener — curiosity or direct (longer, sets up the post)
+  const bestCaption = curiosity;
+
+  // Best video opener — punchy (short, immediate impact)
+  const bestVideoOpener = punchy;
+
+  // Best on-screen hook — stat-driven (concrete, readable on graphic)
+  const bestOnScreen = statDriven;
+
+  // Best short hook — shortest of direct/punchy
+  const bestShort = direct.length <= punchy.length ? direct : punchy;
+
+  return {
+    postId: post.id,
+    postTitle: post.title,
+    hooks,
+    recommended: { bestCaption, bestVideoOpener, bestOnScreen, bestShort },
+  };
+}
+
+/** Legacy adapter — keeps hookVariations in AiCreativePromptPack working */
+export function buildHookVariations(post: SocialPost): string[] {
+  const pack = buildPostHookPack(post);
+  return pack.hooks.map(h => h.text);
+}
+
+export function copyAllHooks(hookPack: PostHookPack): string {
+  const lines = hookPack.hooks.map(h => `${h.label}:\n${h.text}`).join("\n\n");
+  const recs = [
+    `Best caption opener:\n${hookPack.recommended.bestCaption}`,
+    `Best video opener:\n${hookPack.recommended.bestVideoOpener}`,
+    `Best on-screen hook:\n${hookPack.recommended.bestOnScreen}`,
+    `Best short hook:\n${hookPack.recommended.bestShort}`,
+  ].join("\n\n");
+  return `=== HOOKS — ${hookPack.postTitle} ===\n\n${lines}\n\n--- RECOMMENDED USE ---\n\n${recs}`;
 }
 
 // ─── Master builder ───────────────────────────────────────────────────────────

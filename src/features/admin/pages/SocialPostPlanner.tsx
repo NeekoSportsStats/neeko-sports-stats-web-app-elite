@@ -47,14 +47,16 @@ import type {
 } from "./social-planner/types";
 import {
   buildAiCreativePromptPack,
+  buildPostHookPack,
   copyAllImagePrompts,
   copyAllCarouselPrompts,
   copyAllVideoPrompts,
   copyHooksOnly,
+  copyAllHooks,
   copyFullPack,
   CREATIVE_ASSET_ROLE_LABELS,
 } from "./social-planner/aiCreativePrompts";
-import type { CreativeAsset, CreativeAssetRole, AiCreativePromptPack } from "./social-planner/aiCreativePrompts";
+import type { CreativeAsset, CreativeAssetRole, AiCreativePromptPack, PostHookPack } from "./social-planner/aiCreativePrompts";
 
 // Re-export CIDataSubset for AdminContentIntel compatibility
 export type { CIDataSubset };
@@ -1641,6 +1643,126 @@ function ReplacementSuggestions({ post }: { post: SocialPost }) {
   );
 }
 
+// ─── Feature 7: Hook Variations Section ──────────────────────────────────────
+
+const HOOK_STYLE_COLORS: Record<string, string> = {
+  direct:      "text-sky-400",
+  curiosity:   "text-amber-400",
+  stat_driven: "text-emerald-400",
+  challenge:   "text-rose-400",
+  punchy:      "text-zinc-200",
+};
+
+function HookVariationsSection({ post }: { post: SocialPost }) {
+  const [open, setOpen] = useState(false);
+  const [copiedId, setCopied] = useState<string | null>(null);
+  const [regenerated, setRegenerated] = useState(0);
+
+  const hookPack = useMemo<PostHookPack>(
+    () => buildPostHookPack(post),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [post.id, regenerated],
+  );
+
+  function copyText(id: string, text: string) {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(id);
+    setTimeout(() => setCopied(c => (c === id ? null : c)), 1800);
+  }
+
+  function CpBtn({ id, text, label }: { id: string; text: string; label: string }) {
+    const done = copiedId === id;
+    return (
+      <button
+        onClick={() => copyText(id, text)}
+        className={`inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded border font-medium transition-colors ${
+          done
+            ? "bg-emerald-900/40 border-emerald-700/50 text-emerald-400"
+            : "bg-zinc-800/60 border-zinc-700/40 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600"
+        }`}
+      >
+        {done ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
+        {done ? "Copied" : label}
+      </button>
+    );
+  }
+
+  return (
+    <div className="bg-zinc-900/30 border border-zinc-800/60 rounded-lg overflow-hidden">
+      {/* Header */}
+      <button
+        className="w-full flex items-center justify-between px-3 py-2 hover:bg-zinc-800/30 transition-colors"
+        onClick={() => setOpen(o => !o)}
+      >
+        <div className="flex items-center gap-2">
+          <Zap className="h-3 w-3 text-amber-400/80" />
+          <span className="text-[11px] font-semibold text-zinc-300">Hook Variations</span>
+          <span className="text-[9px] text-zinc-600">5 hooks · caption · video · on-screen</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] text-zinc-600">{hookPack.hooks.length} hooks</span>
+          {open ? <ChevronUp className="h-3 w-3 text-zinc-500" /> : <ChevronDown className="h-3 w-3 text-zinc-500" />}
+        </div>
+      </button>
+
+      {open && (
+        <div className="px-3 pb-3 space-y-3">
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            <CpBtn id={`hooks-all-${post.id}`} text={copyAllHooks(hookPack)} label="Copy all hooks" />
+            <CpBtn id={`hook-short-${post.id}`} text={hookPack.recommended.bestShort} label="Copy short hook" />
+            <CpBtn id={`hook-spoken-${post.id}`} text={hookPack.recommended.bestVideoOpener} label="Copy spoken hook" />
+            <CpBtn id={`hook-screen-${post.id}`} text={hookPack.recommended.bestOnScreen} label="Copy on-screen hook" />
+            <button
+              onClick={() => setRegenerated(n => n + 1)}
+              className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded border font-medium transition-colors bg-zinc-800/60 border-zinc-700/40 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600"
+            >
+              Regenerate hooks
+            </button>
+          </div>
+
+          {/* Hooks list */}
+          <div className="space-y-1">
+            {hookPack.hooks.map((hook, i) => (
+              <div
+                key={i}
+                className="flex items-start gap-2 bg-zinc-800/30 border border-zinc-700/30 rounded px-2 py-1.5"
+              >
+                <div className="shrink-0 pt-0.5 w-[100px]">
+                  <span className={`text-[8.5px] font-semibold ${HOOK_STYLE_COLORS[hook.style] ?? "text-zinc-500"}`}>
+                    {hook.label}
+                  </span>
+                </div>
+                <p className="text-[10px] text-zinc-300 flex-1 leading-snug">{hook.text}</p>
+                <CpBtn id={`hook-${post.id}-${i}`} text={hook.text} label="Copy" />
+              </div>
+            ))}
+          </div>
+
+          {/* Recommended use */}
+          <div className="bg-zinc-800/20 border border-zinc-700/20 rounded-lg p-2 space-y-2">
+            <div className="text-[10px] font-semibold text-zinc-500">Recommended use</div>
+            <div className="space-y-1.5">
+              {[
+                { label: "Best caption opener",  key: "bestCaption" as const, copyId: `rcap-${post.id}` },
+                { label: "Best video opener",    key: "bestVideoOpener" as const, copyId: `rvid-${post.id}` },
+                { label: "Best on-screen hook",  key: "bestOnScreen" as const, copyId: `rscr-${post.id}` },
+                { label: "Best short hook",      key: "bestShort" as const, copyId: `rsht-${post.id}` },
+              ].map(({ label, key, copyId }) => (
+                <div key={key} className="flex items-start gap-2">
+                  <span className="text-[9px] text-zinc-600 shrink-0 w-[120px] pt-0.5">{label}</span>
+                  <p className="text-[9.5px] text-zinc-400 flex-1 leading-snug">{hookPack.recommended[key]}</p>
+                  <CpBtn id={copyId} text={hookPack.recommended[key]} label="Copy" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Feature 34: Creative Prompt Pack ────────────────────────────────────────
 
 type CreativePromptTab = "image" | "carousel" | "video" | "hooks";
@@ -2262,6 +2384,9 @@ function SocialPostCard({
 
           {/* Replacement suggestions — only for non-safe posts */}
           <ReplacementSuggestions post={post} />
+
+          {/* Hook Variations — Feature 7 */}
+          <HookVariationsSection post={post} />
 
           {/* Creative Prompt Pack — Feature 34 */}
           <CreativePromptPackSection post={post} />
