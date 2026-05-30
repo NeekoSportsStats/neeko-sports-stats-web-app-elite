@@ -393,6 +393,12 @@ interface CIData {
   fetchCallsMade: number;           // how many RPC calls were made for player data
   sourceTeamCount: number;          // unique teams in player source pool
   sourceGameCount: number;          // unique match_ids in player source pool
+  /** Player IDs from the latest fantasy upload that are unavailable (OUT / not available). */
+  unavailablePlayerIds: Set<number>;
+  /** ISO timestamp of the latest fantasy price record that provided status data. */
+  availabilityUploadedAt: string | null;
+  /** Total count of unavailable player IDs found in the price table. */
+  unavailableCount: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -803,6 +809,36 @@ async function fetchCIData(): Promise<CIData> {
     supabase.rpc("get_stat_board_team_rows", { p_season: SEASON, p_round: currentRound || null, p_match_id: null, p_lens: "score" }),
   ]);
 
+  // 7. Player availability — read from public.v_player_prices_latest view.
+  //    Rows with is_available = false OR status = 'OUT' are excluded from Social Planner pools.
+  //    This view has anon/authenticated SELECT grants and reflects the latest price upload immediately.
+  let unavailablePlayerIds = new Set<number>();
+  let availabilityUploadedAt: string | null = null;
+  let unavailableCount = 0;
+  try {
+    const availRes = await supabase
+      .from("v_player_prices_latest")
+      .select("player_id, is_available, status, updated_at")
+      .eq("season", SEASON);
+    if (!availRes.error && availRes.data) {
+      const rows = availRes.data as { player_id: number; is_available: boolean | null; status: string | null; updated_at: string | null }[];
+      // Build the excluded set: not available OR explicitly OUT
+      for (const r of rows) {
+        if (r.is_available === false || r.status === "OUT") {
+          unavailablePlayerIds.add(r.player_id);
+        }
+      }
+      unavailableCount = unavailablePlayerIds.size;
+      // Derive the latest upload timestamp from the most recent status record
+      const latestRow = rows
+        .filter(r => r.updated_at != null)
+        .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""))[0];
+      availabilityUploadedAt = latestRow?.updated_at ?? null;
+    }
+  } catch {
+    // Non-fatal — availability filtering disabled if query fails
+  }
+
   // Derive meta
   const targetRounds = [...new Set(teamTargets.map(t => t.has_played_current_round ? (t.next_game_round ?? currentRound) : t.current_round))].sort();
   const teamsNextUp = teamTargets.filter(t => t.has_played_current_round && t.next_game_id).length;
@@ -836,6 +872,9 @@ async function fetchCIData(): Promise<CIData> {
     fetchCallsMade,
     sourceTeamCount,
     sourceGameCount,
+    unavailablePlayerIds,
+    availabilityUploadedAt,
+    unavailableCount,
   };
 }
 
@@ -908,6 +947,7 @@ function buildPosts(
 ): PostTemplate[] {
   const posts: PostTemplate[] = [];
   const rl = data.roundLabel;
+  const unavailable = data.unavailablePlayerIds;
 
   function makeTargetRoundLabel(rows: ResearchRow[]): string {
     const nextUp = rows.filter(r => r.isNextUp);
@@ -923,7 +963,8 @@ function buildPosts(
     filterBucket?: GroupBucket | null,
     limit = 6,
   ): ResearchRow[] {
-    const src = family === "goals" ? data.goalPlayers : data.disposalPlayers;
+    const rawSrc = family === "goals" ? data.goalPlayers : data.disposalPlayers;
+    const src = unavailable.size > 0 ? rawSrc.filter(p => !unavailable.has(p.player_id)) : rawSrc;
     const rows = applyModeFilter(
       buildRows(src, family, threshold, 3, concessionMap, data.teamTargets, mode),
       mode,
@@ -933,7 +974,8 @@ function buildPosts(
   }
 
   function fadeRows(family: StatFamily, threshold: number, limit = 6): ResearchRow[] {
-    const src = family === "goals" ? data.goalPlayers : data.disposalPlayers;
+    const rawSrc = family === "goals" ? data.goalPlayers : data.disposalPlayers;
+    const src = unavailable.size > 0 ? rawSrc.filter(p => !unavailable.has(p.player_id)) : rawSrc;
     const rows = applyModeFilter(
       buildRows(src, family, threshold, 3, concessionMap, data.teamTargets, mode),
       mode,

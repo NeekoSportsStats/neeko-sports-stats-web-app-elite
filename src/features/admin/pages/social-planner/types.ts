@@ -51,6 +51,10 @@ export interface CIDataSubset {
   loadedAt: Date;
   /** Player IDs to exclude from post candidate pools (injured/unavailable/suspended). */
   unavailablePlayerIds?: Set<number>;
+  /** ISO timestamp of the latest fantasy price upload that produced status data. */
+  availabilityUploadedAt?: string | null;
+  /** Count of player IDs marked unavailable from the latest price upload. */
+  unavailableCount?: number;
 }
 
 // ─── Enum-style union types ───────────────────────────────────────────────────

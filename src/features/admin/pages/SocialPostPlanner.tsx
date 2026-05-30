@@ -1849,6 +1849,19 @@ function FreshnessPanel({ data, excludedCount }: { data: CIDataSubset; excludedC
     (data.goalPlayers.length === 0 ? 1 : 0) +
     (upcoming === 0 ? 1 : 0);
 
+  const unavailCount = data.unavailableCount ?? (data.unavailablePlayerIds?.size ?? 0);
+  const uploadedAt = data.availabilityUploadedAt;
+  const uploadAgeLabel = uploadedAt
+    ? (() => {
+        const diffMs = Date.now() - new Date(uploadedAt).getTime();
+        const diffH = Math.round(diffMs / 3600000);
+        if (diffH < 1) return "< 1h ago";
+        if (diffH < 24) return `${diffH}h ago`;
+        const diffD = Math.round(diffH / 24);
+        return `${diffD}d ago`;
+      })()
+    : null;
+
   return (
     <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-3 space-y-2.5">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -1873,6 +1886,49 @@ function FreshnessPanel({ data, excludedCount }: { data: CIDataSubset; excludedC
             <div className={`text-[13px] font-bold mt-0.5 ${warn ? "text-amber-400" : "text-zinc-200"}`}>{val}</div>
           </div>
         ))}
+      </div>
+      {/* Availability status from fantasy price upload */}
+      <div className="bg-zinc-800/40 border border-zinc-700/50 rounded-lg px-3 py-2 space-y-1">
+        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-zinc-400">
+          <AlertTriangle className="h-3 w-3 text-amber-400 shrink-0" />
+          Injury / Availability filter
+        </div>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-zinc-500">
+          <span>
+            Status source:{" "}
+            <span className={unavailCount > 0 ? "text-emerald-400" : "text-zinc-500"}>
+              {uploadedAt ? `fantasy price upload` : "no price upload found"}
+            </span>
+          </span>
+          {uploadedAt && (
+            <span>
+              Latest upload:{" "}
+              <span className="text-zinc-300">{uploadAgeLabel}</span>
+            </span>
+          )}
+          <span>
+            Unavailable in price table:{" "}
+            <span className={unavailCount > 0 ? "text-amber-400 font-bold" : "text-zinc-500"}>
+              {unavailCount} player{unavailCount !== 1 ? "s" : ""}
+            </span>
+          </span>
+          <span>
+            Excluded from posts:{" "}
+            <span className={excludedCount > 0 ? "text-amber-400 font-bold" : "text-zinc-500"}>
+              {excludedCount} player{excludedCount !== 1 ? "s" : ""}
+            </span>
+          </span>
+        </div>
+        {unavailCount === 0 && uploadedAt && (
+          <p className="text-[9.5px] text-zinc-600">
+            All players in the latest upload are marked available. If you expect exclusions, re-upload with updated status data.
+          </p>
+        )}
+        {!uploadedAt && (
+          <p className="text-[9.5px] text-amber-500/80">
+            No fantasy price upload detected for this season. Upload prices via the Price Ingest panel to enable injury filtering.
+          </p>
+        )}
       </div>
       {data.disposalPlayers.length === 0 && (
         <p className="text-[10px] text-amber-400 flex items-center gap-1">
