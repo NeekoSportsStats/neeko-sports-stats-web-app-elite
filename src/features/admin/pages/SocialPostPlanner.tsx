@@ -45,6 +45,16 @@ import type {
   ConfidenceLevel,
   PostInternalStatus,
 } from "./social-planner/types";
+import {
+  buildAiCreativePromptPack,
+  copyAllImagePrompts,
+  copyAllCarouselPrompts,
+  copyAllVideoPrompts,
+  copyHooksOnly,
+  copyFullPack,
+  CREATIVE_ASSET_ROLE_LABELS,
+} from "./social-planner/aiCreativePrompts";
+import type { CreativeAsset, CreativeAssetRole, AiCreativePromptPack } from "./social-planner/aiCreativePrompts";
 
 // Re-export CIDataSubset for AdminContentIntel compatibility
 export type { CIDataSubset };
@@ -1631,6 +1641,241 @@ function ReplacementSuggestions({ post }: { post: SocialPost }) {
   );
 }
 
+// ─── Feature 34: Creative Prompt Pack ────────────────────────────────────────
+
+type CreativePromptTab = "image" | "carousel" | "video" | "hooks";
+
+function CreativePromptPackSection({ post }: { post: SocialPost }) {
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<CreativePromptTab>("image");
+  const [assets, setAssets] = useState<CreativeAsset[]>([]);
+  const [copiedId, setCopied] = useState<string | null>(null);
+
+  const pack = useMemo<AiCreativePromptPack>(
+    () => buildAiCreativePromptPack(post, assets),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [post.id, assets],
+  );
+
+  function copyText(id: string, text: string) {
+    navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(id);
+    setTimeout(() => setCopied(c => (c === id ? null : c)), 1800);
+  }
+
+  function CopyBtn({ id, text, label }: { id: string; text: string; label?: string }) {
+    const done = copiedId === id;
+    return (
+      <button
+        onClick={() => copyText(id, text)}
+        className={`inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded border font-medium transition-colors ${
+          done
+            ? "bg-emerald-900/40 border-emerald-700/50 text-emerald-400"
+            : "bg-zinc-800/60 border-zinc-700/40 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600"
+        }`}
+      >
+        {done ? <Check className="h-2.5 w-2.5" /> : <Copy className="h-2.5 w-2.5" />}
+        {label ?? (done ? "Copied" : "Copy")}
+      </button>
+    );
+  }
+
+  function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>, role: CreativeAssetRole) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAssets(prev => {
+      const filtered = prev.filter(a => a.role !== role);
+      return [...filtered, { fileName: file.name, role }];
+    });
+    e.target.value = "";
+  }
+
+  function removeAsset(role: CreativeAssetRole) {
+    setAssets(prev => prev.filter(a => a.role !== role));
+  }
+
+  const ASSET_ROLES: CreativeAssetRole[] = [
+    "logo", "player_reference", "game_action_reference",
+    "style_reference", "background_reference",
+  ];
+
+  const TAB_LABELS: Record<CreativePromptTab, string> = {
+    image: "Image Prompts",
+    carousel: "Carousel",
+    video: "Video Prompts",
+    hooks: "Hook Variations",
+  };
+
+  return (
+    <div className="bg-zinc-900/30 border border-zinc-800/60 rounded-lg overflow-hidden">
+      {/* Header */}
+      <button
+        className="w-full flex items-center justify-between px-3 py-2 hover:bg-zinc-800/30 transition-colors"
+        onClick={() => setOpen(o => !o)}
+      >
+        <div className="flex items-center gap-2">
+          <LayoutGrid className="h-3 w-3 text-sky-400/80" />
+          <span className="text-[11px] font-semibold text-zinc-300">Creative Prompt Pack</span>
+          <span className="text-[9px] text-zinc-600">AI image · carousel · video · hooks</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[9px] text-zinc-600">
+            {pack.imagePrompts.length} image · {pack.carouselPromptPacks.length} carousel · {pack.videoPrompts.length} video · {pack.hookVariations.length} hooks
+          </span>
+          {open ? <ChevronUp className="h-3 w-3 text-zinc-500" /> : <ChevronDown className="h-3 w-3 text-zinc-500" />}
+        </div>
+      </button>
+
+      {open && (
+        <div className="px-3 pb-3 space-y-3">
+          {/* Top copy buttons */}
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            <CopyBtn id="cp-all" text={copyFullPack(pack)} label="Copy all" />
+            <CopyBtn id="cp-img" text={copyAllImagePrompts(pack)} label="Image prompts" />
+            <CopyBtn id="cp-car" text={copyAllCarouselPrompts(pack)} label="Carousel prompts" />
+            <CopyBtn id="cp-vid" text={copyAllVideoPrompts(pack)} label="Video prompts" />
+            <CopyBtn id="cp-hks" text={copyHooksOnly(pack)} label="Hooks only" />
+          </div>
+
+          {/* Creative asset upload */}
+          <div className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg p-2 space-y-2">
+            <div className="text-[10px] font-semibold text-zinc-400">Creative assets (optional)</div>
+            <div className="text-[9px] text-zinc-600">Upload reference files to include in prompts. No files sent externally — filenames only.</div>
+            <div className="flex flex-wrap gap-1.5">
+              {ASSET_ROLES.map(role => {
+                const existing = assets.find(a => a.role === role);
+                return (
+                  <div key={role} className="flex items-center gap-1">
+                    {existing ? (
+                      <div className="flex items-center gap-1 text-[9px] bg-sky-900/30 border border-sky-700/30 rounded px-1.5 py-0.5">
+                        <span className="text-sky-300 truncate max-w-[90px]">{existing.fileName}</span>
+                        <span className="text-zinc-500">({CREATIVE_ASSET_ROLE_LABELS[role]})</span>
+                        <button
+                          onClick={() => removeAsset(role)}
+                          className="text-zinc-500 hover:text-red-400 ml-0.5 font-bold"
+                        >
+                          x
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="cursor-pointer text-[9px] px-1.5 py-0.5 rounded border border-zinc-700/40 bg-zinc-800/40 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600 transition-colors">
+                        + {CREATIVE_ASSET_ROLE_LABELS[role]}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => handleFileUpload(e, role)}
+                        />
+                      </label>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex gap-1 border-b border-zinc-800">
+            {(Object.keys(TAB_LABELS) as CreativePromptTab[]).map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`text-[10px] px-2 py-1 font-medium transition-colors border-b-2 -mb-px ${
+                  tab === t
+                    ? "border-sky-500 text-sky-400"
+                    : "border-transparent text-zinc-500 hover:text-zinc-300"
+                }`}
+              >
+                {TAB_LABELS[t]}
+              </button>
+            ))}
+          </div>
+
+          {/* Image tab */}
+          {tab === "image" && (
+            <div className="space-y-2">
+              {pack.imagePrompts.map(p => (
+                <div key={p.id} className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg p-2 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-semibold text-zinc-300">{p.label}</span>
+                    <CopyBtn id={p.id} text={p.prompt} />
+                  </div>
+                  <p className="text-[9.5px] text-zinc-500 italic">{p.description}</p>
+                  <p className="text-[9.5px] text-zinc-400 leading-relaxed line-clamp-4">{p.prompt}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Carousel tab */}
+          {tab === "carousel" && (
+            <div className="space-y-3">
+              {pack.carouselPromptPacks.map(cp => (
+                <div key={cp.id} className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg p-2 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] font-semibold text-zinc-300">{cp.label}</span>
+                      <span className="text-[9px] text-zinc-600 ml-2">{cp.format}</span>
+                    </div>
+                    <CopyBtn id={`${cp.id}-combined`} text={cp.combinedPrompt} label="Copy all slides" />
+                  </div>
+                  <div className="space-y-1">
+                    {cp.slides.map((slide, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="text-[9px] text-zinc-600 shrink-0 w-14 pt-0.5">{slide.slideLabel}</span>
+                        <p className="text-[9.5px] text-zinc-400 leading-relaxed flex-1 line-clamp-2">{slide.prompt}</p>
+                        <CopyBtn id={`${cp.id}-slide-${i}`} text={slide.prompt} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Video tab */}
+          {tab === "video" && (
+            <div className="space-y-2">
+              {pack.videoPrompts.map(vp => (
+                <div key={vp.id} className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg p-2 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-semibold text-zinc-300">{vp.durationLabel}</span>
+                      <span className="text-[9px] text-zinc-600">{vp.creativeType}</span>
+                    </div>
+                    <CopyBtn id={vp.id} text={vp.prompt} />
+                  </div>
+                  <p className="text-[9.5px] text-zinc-400 leading-relaxed line-clamp-5">{vp.prompt}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Hooks tab */}
+          {tab === "hooks" && (
+            <div className="space-y-1">
+              {pack.hookVariations.map((hook, i) => (
+                <div key={i} className="flex items-start gap-2 bg-zinc-800/30 border border-zinc-700/30 rounded px-2 py-1.5">
+                  <span className="text-[9px] text-zinc-600 shrink-0 w-4 pt-0.5">{i + 1}.</span>
+                  <p className="text-[10px] text-zinc-300 flex-1 leading-snug">{hook}</p>
+                  <CopyBtn id={`hook-${post.id}-${i}`} text={hook} />
+                </div>
+              ))}
+              <div className="pt-1">
+                <CopyBtn
+                  id={`hooks-all-${post.id}`}
+                  text={pack.hookVariations.map((h, i) => `${i + 1}. ${h}`).join("\n")}
+                  label="Copy all hooks"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Availability badge ───────────────────────────────────────────────────────
 
 const UNAVAILABLE_STATUS_TERMS = [
@@ -2017,6 +2262,9 @@ function SocialPostCard({
 
           {/* Replacement suggestions — only for non-safe posts */}
           <ReplacementSuggestions post={post} />
+
+          {/* Creative Prompt Pack — Feature 34 */}
+          <CreativePromptPackSection post={post} />
 
           {/* Quality + timing block */}
           {(post.quality || post.timing) && (
