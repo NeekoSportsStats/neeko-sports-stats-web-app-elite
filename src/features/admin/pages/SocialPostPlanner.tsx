@@ -437,8 +437,8 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       onScreenText: `${mon2ThrNum}+ disposal form`,
       caption: buildCaption(hook, bullets, 1),
       hashtags: HASHTAG_SETS["Disposal Trend"],
-      suggestedVisual: `5-player stat grid — name, team, ${mon2ThrNum}+ hit rate, L5 avg`,
-      imageDescription: `Static image. 5-player stat grid. Threshold: ${mon2ThrNum}+ disposals. Each row: player name, team abbreviation, ${mon2ThrNum}+ hit rate percentage, L5 average. These players sit in the ${mon2ThrNum}+ tier only. Dark background, stat values highlighted. No betting language.`,
+      suggestedVisual: `${mon2Players.length}-player stat grid — name, team, ${mon2ThrNum}+ hit rate, L5 avg`,
+      imageDescription: `Static image. ${mon2Players.length}-player stat grid. Threshold: ${mon2ThrNum}+ disposals. Each row: player name, team abbreviation, ${mon2ThrNum}+ hit rate percentage, L5 average. These players sit in the ${mon2ThrNum}+ tier only. Dark background, stat values highlighted. No betting language.`,
       dataScope: `${rl} ${mon2ThrNum}+ disposal player pool (strict tier)`,
       targetGame: null,
       targetGameStatus: "any",
@@ -495,8 +495,8 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       onScreenText: `${tue1ThrNum}+ disposal form`,
       caption: buildCaption(hook, tue1Bullets, 3),
       hashtags: HASHTAG_SETS["Disposal Trend"],
-      suggestedVisual: `5-player stat grid — name, team, ${tue1ThrNum}+ hit rate, L5 avg`,
-      imageDescription: `Static image. 5-player stat grid. Threshold: ${tue1ThrNum}+ disposals. Each row: player name, team abbreviation, ${tue1ThrNum}+ hit rate percentage, L5 average. ${tue1ThrNum}+ tier players only. Dark background, stat values highlighted. No betting language.`,
+      suggestedVisual: `${tue1Players.length}-player stat grid — name, team, ${tue1ThrNum}+ hit rate, L5 avg`,
+      imageDescription: `Static image. ${tue1Players.length}-player stat grid. Threshold: ${tue1ThrNum}+ disposals. Each row: player name, team abbreviation, ${tue1ThrNum}+ hit rate percentage, L5 average. ${tue1ThrNum}+ tier players only. Dark background, stat values highlighted. No betting language.`,
       dataScope: `${rl} ${tue1ThrNum}+ disposal pool (strict tier — no 30+ players)`,
       targetGame: null,
       targetGameStatus: "any",
@@ -522,8 +522,8 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       onScreenText: "2+ goal form",
       caption: buildCaption(hook, bullets, 4),
       hashtags: HASHTAG_SETS["Goal Trend"],
-      suggestedVisual: `5-player 2+ goal form grid — name, team, 2+ hit rate, L5 avg`,
-      imageDescription: `Static image. 5-player goal form grid. Threshold: 2+ goals. Each row: player name, team, 2+ goal hit rate as percentage, L5 average. Multi-goal tier players. Dark background. No betting language.`,
+      suggestedVisual: `${tue2Players.length}-player 2+ goal form grid — name, team, 2+ hit rate, L5 avg`,
+      imageDescription: `Static image. ${tue2Players.length}-player goal form grid. Threshold: 2+ goals. Each row: player name, team, 2+ goal hit rate as percentage, L5 average. Multi-goal tier players. Dark background. No betting language.`,
       dataScope: `${rl} 2+ goal player pool`,
       targetGame: null,
       targetGameStatus: "any",
@@ -595,8 +595,8 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       onScreenText: `${wed1ThrNum}+ disposal form`,
       caption: buildCaption(hook, bullets, 0),
       hashtags: HASHTAG_SETS["Disposal Trend"],
-      suggestedVisual: `5-player stat grid — name, team, ${wed1ThrNum}+ hit rate, L5 avg`,
-      imageDescription: `Static image. 5-player stat grid. Threshold: ${wed1ThrNum}+ disposals. Elite tier. Each row: player name, team abbreviation, ${wed1ThrNum}+ hit rate percentage, L5 average. Dark background, stat values highlighted. No betting language.`,
+      suggestedVisual: `${wed1Players.length}-player stat grid — name, team, ${wed1ThrNum}+ hit rate, L5 avg`,
+      imageDescription: `Static image. ${wed1Players.length}-player stat grid. Threshold: ${wed1ThrNum}+ disposals. Elite tier. Each row: player name, team abbreviation, ${wed1ThrNum}+ hit rate percentage, L5 average. Dark background, stat values highlighted. No betting language.`,
       dataScope: `${rl} ${wed1ThrNum}+ disposal pool (elite tier)`,
       targetGame: null,
       targetGameStatus: "any",
@@ -645,7 +645,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       onScreenText: `${wed2Label} form`,
       caption: buildCaption(hook, bullets, 1),
       hashtags: HASHTAG_SETS["Goal Trend"],
-      suggestedVisual: `5-player ${wed2Label} goal form grid — name, team, ${wed2Thr}+ hit rate, L5 avg`,
+      suggestedVisual: `${wed2Players.length}-player ${wed2Label} goal form grid — name, team, ${wed2Thr}+ hit rate, L5 avg`,
       imageDescription: `Carousel. ${wed2Players.length} players, one per slide. Each: player name, team, ${wed2Thr}+ goal hit rate as percentage, L5 average. Threshold: ${wed2Label}. Dark background, clean layout. No betting language.`,
       dataScope: `${rl} ${wed2Label} goal player pool`,
       targetGame: null,
@@ -1931,6 +1931,16 @@ function GamePickRow({
             <span>&#9888;</span> {pick.last5Warning}
           </div>
         )}
+        {pick.adminWarnings && pick.adminWarnings.length > 0 && (
+          <div className="mt-0.5 space-y-0.5">
+            {pick.adminWarnings.map((w, i) => (
+              <div key={i} className="text-[9px] text-rose-400/80 flex items-start gap-1">
+                <span className="shrink-0">&#9888;</span>
+                <span>{w}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <button
         onClick={() => onCopy(copyId, pick.copy_line)}
@@ -2934,9 +2944,27 @@ function SocialPostPlannerInner({ data }: { data: CIDataSubset }) {
       .slice(0, 3);
   }, [schedule]);
 
+  // AFL standard round = 9 games; shorter rounds (byes, splits) are common.
+  // Flag when fewer than 7 games are loaded so the operator knows cross-game
+  // pool posts may be drawing from an incomplete dataset.
+  const AFL_EXPECTED_GAMES = 9;
+  const AFL_WARN_THRESHOLD = 7;
+  const loadedGames = data.matches.length;
+
   return (
     <div className="space-y-4 pt-4">
       <FreshnessPanel data={data} excludedCount={excludedCount} />
+
+      {/* Cross-game pool completeness warning — admin only */}
+      {loadedGames < AFL_WARN_THRESHOLD && (
+        <div className="bg-amber-950/40 border border-amber-700/50 rounded-lg px-3 py-2 flex items-start gap-2">
+          <span className="text-amber-400 text-[13px] leading-none mt-0.5 shrink-0">&#9888;</span>
+          <p className="text-[11px] text-amber-300/90 leading-snug">
+            <span className="font-semibold">Cross-game posts may be incomplete</span>
+            {" — "}only {loadedGames} of {AFL_EXPECTED_GAMES} target games loaded. Disposal and goal pools are built from this reduced set. Verify data before publishing round-wide posts.
+          </p>
+        </div>
+      )}
 
       {/* Best posts this week */}
       {bestToday.length > 0 && (

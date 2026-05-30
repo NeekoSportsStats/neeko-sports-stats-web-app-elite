@@ -93,10 +93,10 @@ function toGamePickPlayer(c: CandidateScore): GamePickPlayer {
   }
 
   if (c.l5Avg != null && c.l5Avg > 0 && resolved.values.length > 0) {
-    const anomalous = resolved.values.filter(v => v < c.l5Avg! * 0.4);
+    const anomalous = resolved.values.filter(v => v < c.l5Avg! * 0.5);
     if (anomalous.length > 0) {
       adminWarnings.push(
-        `Anomalous Last 5 value${anomalous.length > 1 ? "s" : ""}: ${anomalous.join(", ")} vs L5 avg ${c.l5Avg.toFixed(1)}. Verify raw data before publishing.`
+        `Review Last 5 outlier — possible injury/sub-affected game. (${anomalous.join(", ")} vs L5 avg ${c.l5Avg.toFixed(1)})`
       );
     }
   }
