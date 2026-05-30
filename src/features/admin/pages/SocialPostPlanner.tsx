@@ -43,6 +43,7 @@ import type {
   CopyTone,
   StatLens,
   ConfidenceLevel,
+  PostInternalStatus,
 } from "./social-planner/types";
 
 // Re-export CIDataSubset for AdminContentIntel compatibility
@@ -1348,6 +1349,524 @@ function ComplianceBadge({ compliance }: { compliance: SocialPost["compliance"] 
   );
 }
 
+// ─── Safe-to-Post Checklist ───────────────────────────────────────────────────
+
+type CheckItem = { label: string; pass: boolean; warn: boolean; note?: string };
+
+function buildSafeToPostChecklist(
+  post: SocialPost,
+  unavailablePlayerIds: Set<number>,
+): { items: CheckItem[]; overallStatus: PostInternalStatus } {
+  const items: CheckItem[] = [];
+  const internalStatus = post._internalStatus ?? post.quality?.internalStatus;
+
+  // 1. Player count
+  const playerCount = asArray(post.playerNames).length;
+  const isSpotlight = post.thresholdLabel === "Player Spotlight";
+  items.push({
+    label: "Player count",
+    pass: isSpotlight ? playerCount === 1 : playerCount >= 3,
+    warn: !isSpotlight && playerCount === 2,
+    note: isSpotlight
+      ? `${playerCount} player (spotlight)`
+      : `${playerCount} player${playerCount !== 1 ? "s" : ""} (3+ required for carousel)`,
+  });
+
+  // 2. Threshold match (not a mixed-threshold post)
+  const mixedThresholdLabels = new Set([
+    "Full Game Picks", "Mixed Stat Watch", "Form Risers", "L3 vs Season Avg",
+    "L5 vs Season Avg", "High Consistency", "Team Score", "Disposal Conceded",
+    "Fantasy Form", "Contested Form", "Disposal Watch", "Player Spotlight", "Recent Form Hits",
+  ]);
+  const hasMixedThreshold = mixedThresholdLabels.has(post.thresholdLabel);
+  const labelThr = !hasMixedThreshold ? parseInt(post.thresholdLabel, 10) : NaN;
+  const mismatchedLines = !isNaN(labelThr)
+    ? asArray(post.statsShown).filter(s => {
+        const m = s.match(/at\s+(\d+)\+/);
+        return m ? parseInt(m[1], 10) !== labelThr : false;
+      })
+    : [];
+  items.push({
+    label: "Threshold consistency",
+    pass: hasMixedThreshold || mismatchedLines.length === 0,
+    warn: false,
+    note: hasMixedThreshold
+      ? `Mixed (${post.thresholdLabel})`
+      : mismatchedLines.length > 0
+      ? `${mismatchedLines.length} stat line(s) mismatch threshold`
+      : `All lines at ${isNaN(labelThr) ? post.thresholdLabel : `${labelThr}+`}`,
+  });
+
+  // 3. No unavailable players (check by index position — playerNames are post-filtered)
+  const hasUnavailWarning = !!post.fallbackWarning?.toLowerCase().includes("unavailable") ||
+    !!post.fallbackWarning?.toLowerCase().includes("excluded");
+  items.push({
+    label: "No unavailable players",
+    pass: !hasUnavailWarning && unavailablePlayerIds.size === 0,
+    warn: hasUnavailWarning,
+    note: hasUnavailWarning
+      ? "Availability warning on post — verify player list"
+      : unavailablePlayerIds.size > 0
+      ? `${unavailablePlayerIds.size} unavailable in data (filtered at pool build)`
+      : "Passed",
+  });
+
+  // 4. No betting language
+  const bannedTerms = ["bet", "odds", "gamble", "wager", "tipster", "sgm", "banker", "clearing the line"];
+  const scanText = [post.title, post.content, post.caption, post.voiceoverScript ?? ""].join(" ").toLowerCase();
+  const bettingHit = bannedTerms.find(t => scanText.includes(t));
+  items.push({
+    label: "No betting language",
+    pass: !bettingHit,
+    warn: false,
+    note: bettingHit ? `"${bettingHit}" detected — do not post` : "Clean",
+  });
+
+  // 5. Compliance
+  items.push({
+    label: "Compliance",
+    pass: !post.compliance || post.compliance.status === "Clean",
+    warn: post.compliance?.status === "Needs review",
+    note: post.compliance?.status ?? "Clean",
+  });
+
+  // 6. Image description present
+  items.push({
+    label: "Image description",
+    pass: !!post.imageDescription,
+    warn: false,
+    note: post.imageDescription ? "Present" : "Missing",
+  });
+
+  // 7. AI carousel prompt (only required for Carousel type)
+  if (post.type === "Carousel") {
+    items.push({
+      label: "AI carousel prompt",
+      pass: !!post.aiCarouselPromptPack,
+      warn: false,
+      note: post.aiCarouselPromptPack
+        ? `${asArray(post.aiCarouselPromptPack.slidePrompts).length} slides`
+        : "Missing",
+    });
+  }
+
+  // 8. Voiceover family
+  if (post.voiceoverScript) {
+    const voLens = post.statLens;
+    const voGoalWrong = voLens === "goals" && /has (?:reached|cleared)/.test(post.voiceoverScript);
+    const voDispWrong = voLens === "disposals" && /has kicked/.test(post.voiceoverScript);
+    items.push({
+      label: "Voiceover family",
+      pass: !voGoalWrong && !voDispWrong,
+      warn: false,
+      note: voGoalWrong
+        ? "Uses disposal language for goals post"
+        : voDispWrong
+        ? "Uses goal language for disposals post"
+        : "Family matches stat lens",
+    });
+  }
+
+  // 9. CTA included
+  const ctaKeywords = ["neeko", "full board", "link in bio", "check out"];
+  const captionLower = (post.caption ?? "").toLowerCase();
+  const hasCta = ctaKeywords.some(k => captionLower.includes(k));
+  items.push({
+    label: "CTA included",
+    pass: hasCta,
+    warn: false,
+    note: hasCta ? "Present" : "No CTA / sign-off detected in caption",
+  });
+
+  // 10. Not thin (fallback warning present)
+  items.push({
+    label: "Not thin",
+    pass: !post.fallbackWarning || internalStatus === "Safe to Post",
+    warn: internalStatus === "Needs Review" || internalStatus === "Organic Only",
+    note: post.fallbackWarning ?? "OK",
+  });
+
+  // Derive overall status from internalStatus + item failures
+  const hardFails = items.filter(i => !i.pass && !i.warn);
+  const softWarns = items.filter(i => i.warn);
+  let overallStatus: PostInternalStatus =
+    internalStatus ?? (
+      hardFails.length > 0 ? "Do Not Use"
+      : softWarns.length > 0 ? "Needs Review"
+      : "Safe to Post"
+    );
+  if (internalStatus) overallStatus = internalStatus;
+
+  return { items, overallStatus };
+}
+
+function SafeToPostStatusBadge({ status }: { status: PostInternalStatus }) {
+  const cfg: Record<PostInternalStatus, { cls: string; label: string }> = {
+    "Safe to Post":       { cls: "bg-emerald-950/60 text-emerald-300 border-emerald-600/30", label: "Safe to Post" },
+    "Needs Review":       { cls: "bg-amber-950/60 text-amber-300 border-amber-600/30",       label: "Needs Review" },
+    "Organic Only":       { cls: "bg-sky-950/60 text-sky-300 border-sky-600/30",             label: "Organic Only" },
+    "Replacement Needed": { cls: "bg-amber-950/60 text-amber-400 border-amber-700/40",       label: "Replacement" },
+    "Do Not Use":         { cls: "bg-red-950/60 text-red-400 border-red-700/40",             label: "Do Not Post" },
+  };
+  const { cls, label } = cfg[status];
+  return (
+    <span className={`text-[9px] px-1.5 py-0.5 rounded border font-semibold ${cls}`}>{label}</span>
+  );
+}
+
+function SafeToPostChecklist({
+  post,
+  unavailablePlayerIds,
+}: {
+  post: SocialPost;
+  unavailablePlayerIds: Set<number>;
+}) {
+  const { items, overallStatus } = buildSafeToPostChecklist(post, unavailablePlayerIds);
+  const passCount = items.filter(i => i.pass).length;
+
+  return (
+    <div className="bg-zinc-900/40 border border-zinc-700/50 rounded-lg p-2.5 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[10px] text-zinc-400 font-semibold">Safe-to-Post Checklist</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[9px] text-zinc-600">{passCount}/{items.length} passed</span>
+          <SafeToPostStatusBadge status={overallStatus} />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+        {items.map(item => (
+          <div key={item.label} className="flex items-baseline gap-1.5">
+            <span className={`text-[10px] leading-none shrink-0 ${
+              item.pass ? "text-emerald-400" : item.warn ? "text-amber-400" : "text-red-400"
+            }`}>
+              {item.pass ? "+" : item.warn ? "!" : "x"}
+            </span>
+            <span className="text-[10px] text-zinc-400 font-medium shrink-0">{item.label}:</span>
+            <span className={`text-[9.5px] ${
+              item.pass ? "text-zinc-500" : item.warn ? "text-amber-400/80" : "text-red-400/80"
+            }`}>{item.note}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Replacement suggestions ──────────────────────────────────────────────────
+
+function getReplacementSuggestions(post: SocialPost): string[] {
+  const status = post._internalStatus ?? post.quality?.internalStatus;
+  if (!status || status === "Safe to Post") return [];
+  const suggestions: string[] = [];
+  const lens = post.statLens;
+
+  if (status === "Do Not Use") {
+    if (lens === "disposals") {
+      suggestions.push("Replace with a Goal Trend post if 3+ goal-scoring players meet their threshold this week.");
+      suggestions.push("Try a Team Total post (avg score vs opponent conceded) if team data is loaded.");
+      suggestions.push("Use the Evergreen backup pool — Education or Proof Recap posts require no live data.");
+    } else {
+      suggestions.push("Check the Backup bank for a round-independent post with sufficient player depth.");
+      suggestions.push("Use an Education post from the Evergreen pool — no game data required.");
+    }
+    return suggestions;
+  }
+
+  if (status === "Organic Only") {
+    suggestions.push("Spotlight posts are fine for organic reach — set status to 'Organic Only' before publishing.");
+    suggestions.push("Pair with a second carousel post that day to balance paid vs organic distribution.");
+    return suggestions;
+  }
+
+  if (status === "Replacement Needed") {
+    suggestions.push("A disposal candidate was replaced by a fallback angle — review the stat line manually.");
+    if (lens === "disposals") {
+      suggestions.push("Check Game Picks tab: a higher-tier player in the same game may substitute cleanly.");
+    }
+    suggestions.push("If the replacement angle is a goal or team post, ensure platform captions reflect that change.");
+    return suggestions;
+  }
+
+  if (status === "Needs Review") {
+    const playerCount = asArray(post.playerNames).length;
+    if (playerCount < 3) {
+      suggestions.push(`Only ${playerCount} player${playerCount !== 1 ? "s" : ""} — consider relabelling as Player Spotlight (organic only) or waiting for more data.`);
+    }
+    if (post.fallbackWarning) {
+      suggestions.push("Review fallback warning below — a player or tier requirement was not fully met.");
+    }
+    suggestions.push("Verify all players are available before publishing. Upgrade to carousel only if 4+ players pass.");
+    return suggestions;
+  }
+
+  return suggestions;
+}
+
+function ReplacementSuggestions({ post }: { post: SocialPost }) {
+  const suggestions = getReplacementSuggestions(post);
+  if (suggestions.length === 0) return null;
+  const status = post._internalStatus ?? post.quality?.internalStatus ?? "Needs Review";
+  const isHard = status === "Do Not Use";
+
+  return (
+    <div className={`rounded-lg px-2.5 py-2 space-y-1 ${
+      isHard
+        ? "bg-red-950/20 border border-red-800/30"
+        : "bg-amber-950/20 border border-amber-800/30"
+    }`}>
+      <div className={`text-[10px] font-semibold ${isHard ? "text-red-400" : "text-amber-400"}`}>
+        Replacement suggestions
+      </div>
+      <ul className="space-y-0.5">
+        {suggestions.map((s, i) => (
+          <li key={i} className={`text-[10px] flex items-start gap-1.5 ${
+            isHard ? "text-red-300/80" : "text-amber-300/80"
+          }`}>
+            <span className="shrink-0 mt-0.5">-</span>
+            <span>{s}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ─── Availability badge ───────────────────────────────────────────────────────
+
+const UNAVAILABLE_STATUS_TERMS = [
+  "injured", "injury", "out", "omitted", "suspended", "managed",
+  "unavailable", "not selected", "inactive", "dnp", "bye",
+  "long-term injury", "ruled out",
+];
+
+type AvailabilityStatus = "Passed" | "Needs review" | "Failed";
+
+function getAvailabilityBadgeStatus(
+  post: SocialPost,
+  availabilityUploadedAt: string | null | undefined,
+): AvailabilityStatus {
+  if (!availabilityUploadedAt) return "Needs review";
+  if (post.fallbackWarning) {
+    const fw = post.fallbackWarning.toLowerCase();
+    const hasUnavailTerm = UNAVAILABLE_STATUS_TERMS.some(t => fw.includes(t));
+    if (hasUnavailTerm) return "Failed";
+    if (fw.includes("excluded") || fw.includes("unavailable")) return "Failed";
+    // Needs Review just means thin pool, not necessarily unavailable
+    if (post._internalStatus === "Needs Review" || post._internalStatus === "Replacement Needed") return "Needs review";
+  }
+  return "Passed";
+}
+
+function AvailabilityBadge({
+  post,
+  availabilityUploadedAt,
+  unavailableCount,
+}: {
+  post: SocialPost;
+  availabilityUploadedAt: string | null | undefined;
+  unavailableCount: number;
+}) {
+  const status = getAvailabilityBadgeStatus(post, availabilityUploadedAt);
+  const cls =
+    status === "Passed"
+      ? "bg-emerald-950/60 text-emerald-300 border-emerald-600/30"
+      : status === "Needs review"
+      ? "bg-amber-950/60 text-amber-300 border-amber-600/30"
+      : "bg-red-950/60 text-red-400 border-red-700/40";
+
+  const uploadAgeLabel = availabilityUploadedAt
+    ? (() => {
+        const diffH = Math.round((Date.now() - new Date(availabilityUploadedAt).getTime()) / 3600000);
+        if (diffH < 1) return "< 1h ago";
+        if (diffH < 24) return `${diffH}h ago`;
+        return `${Math.round(diffH / 24)}d ago`;
+      })()
+    : null;
+
+  return (
+    <span className={`text-[9px] px-1.5 py-0.5 rounded border font-medium flex items-center gap-0.5 ${cls}`}
+      title={[
+        availabilityUploadedAt ? `Upload: ${uploadAgeLabel}` : "No price upload",
+        `${unavailableCount} unavailable in data`,
+        post.fallbackWarning ? `Warning: ${post.fallbackWarning}` : "",
+      ].filter(Boolean).join(" | ")}
+    >
+      <Shield className="h-2 w-2" />
+      {status === "Passed" ? "Avail: OK" : status === "Needs review" ? "Avail: Review" : "Avail: Failed"}
+    </span>
+  );
+}
+
+function AvailabilityDetail({
+  post,
+  availabilityUploadedAt,
+  unavailableCount,
+}: {
+  post: SocialPost;
+  availabilityUploadedAt: string | null | undefined;
+  unavailableCount: number;
+}) {
+  const status = getAvailabilityBadgeStatus(post, availabilityUploadedAt);
+  const uploadAgeLabel = availabilityUploadedAt
+    ? (() => {
+        const diffH = Math.round((Date.now() - new Date(availabilityUploadedAt).getTime()) / 3600000);
+        if (diffH < 1) return "< 1h ago";
+        if (diffH < 24) return `${diffH}h ago`;
+        return `${Math.round(diffH / 24)}d ago`;
+      })()
+    : null;
+
+  const borderCls =
+    status === "Passed"
+      ? "border-emerald-800/30 bg-emerald-950/10"
+      : status === "Needs review"
+      ? "border-amber-800/30 bg-amber-950/10"
+      : "border-red-800/30 bg-red-950/10";
+  const textCls =
+    status === "Passed" ? "text-emerald-400" : status === "Needs review" ? "text-amber-400" : "text-red-400";
+
+  return (
+    <div className={`rounded-lg px-2.5 py-2 space-y-1 border ${borderCls}`}>
+      <div className={`text-[10px] font-semibold ${textCls}`}>
+        Availability: {status}
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-[10px] text-zinc-500">
+        <span>
+          Data source:{" "}
+          <span className="text-zinc-400">
+            {availabilityUploadedAt ? "Fantasy price upload" : "No upload found"}
+          </span>
+        </span>
+        {uploadAgeLabel && (
+          <span>
+            Upload age: <span className="text-zinc-400">{uploadAgeLabel}</span>
+          </span>
+        )}
+        <span>
+          Unavailable in data:{" "}
+          <span className={unavailableCount > 0 ? "text-amber-400 font-bold" : "text-zinc-400"}>
+            {unavailableCount} player{unavailableCount !== 1 ? "s" : ""}
+          </span>
+        </span>
+        <span>
+          Post players: <span className="text-zinc-400">{asArray(post.playerNames).join(", ") || "—"}</span>
+        </span>
+      </div>
+      {post.fallbackWarning && (
+        <p className="text-[9.5px] text-amber-400/80">{post.fallbackWarning}</p>
+      )}
+      {!availabilityUploadedAt && (
+        <p className="text-[9.5px] text-amber-500/70">
+          No fantasy price upload detected. Upload prices via Price Ingest to enable injury filtering.
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Weekly campaign copy builder ─────────────────────────────────────────────
+
+function buildWeeklyCampaignText(
+  schedule: SocialPost[],
+  filter: "all" | "safe" | "review" | "donotpost",
+): string {
+  const filtered = schedule.filter(p => {
+    const s = p._internalStatus ?? p.quality?.internalStatus;
+    if (filter === "safe") return s === "Safe to Post";
+    if (filter === "review") return s === "Needs Review" || s === "Organic Only" || s === "Replacement Needed";
+    if (filter === "donotpost") return s === "Do Not Use";
+    return true;
+  });
+
+  if (filtered.length === 0) return "(No posts match this filter.)";
+
+  const byDay: Record<string, SocialPost[]> = {};
+  for (const post of filtered) {
+    if (!byDay[post.day]) byDay[post.day] = [];
+    byDay[post.day].push(post);
+  }
+
+  const lines: string[] = [];
+  lines.push(`WEEKLY CAMPAIGN — ${filter === "all" ? "All Posts" : filter === "safe" ? "Safe to Post Only" : filter === "review" ? "Needs Review" : "Do Not Post"}`);
+  lines.push(`Generated: ${new Date().toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" })}`);
+  lines.push("");
+
+  for (const day of DAYS) {
+    const posts = byDay[day];
+    if (!posts || posts.length === 0) continue;
+    lines.push(`${"=".repeat(60)}`);
+    lines.push(`${DAY_FULL[day].toUpperCase()}`);
+    lines.push(`${"=".repeat(60)}`);
+    for (const post of posts.sort((a, b) => a.postNumber - b.postNumber)) {
+      const status = post._internalStatus ?? post.quality?.internalStatus ?? "—";
+      lines.push("");
+      lines.push(`POST ${post.postNumber} — ${post.type} — ${post.postTime}`);
+      lines.push(`Status: ${status}`);
+      lines.push(`Title: ${post.title}`);
+      lines.push(`Platforms: TikTok + Instagram + Facebook`);
+      lines.push(`Threshold: ${post.thresholdLabel}`);
+      lines.push("");
+      lines.push(`Caption:`);
+      lines.push(post.caption ?? "");
+      lines.push("");
+      if (asArray(post.statsShown).length > 0) {
+        lines.push(`Stats:`);
+        asArray(post.statsShown).forEach(s => lines.push(`  • ${s}`));
+        lines.push("");
+      }
+      lines.push(`Hashtags: ${asArray(post.hashtags).join(" ")}`);
+      if (post.imageDescription) {
+        lines.push(`Image description: ${post.imageDescription}`);
+      }
+      if (post.aiCarouselPromptPack) {
+        lines.push(`AI carousel: ${post.aiCarouselPromptPack.coverPrompt ? "Cover + " : ""}${asArray(post.aiCarouselPromptPack.slidePrompts).length} slides + end`);
+      }
+      if (post.voiceoverScript) {
+        lines.push(`Voiceover: ${post.voiceoverScript}`);
+      }
+      if (post.fallbackWarning) {
+        lines.push(`[ADMIN WARNING] ${post.fallbackWarning}`);
+      }
+      if (post.quality?.useRecommendation !== "Use") {
+        lines.push(`[VERDICT] ${post.quality?.useRecommendation ?? "—"}: ${post.quality?.useReason ?? ""}`);
+      }
+      lines.push(`${"─".repeat(40)}`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function WeeklyCampaignCopyButtons({
+  schedule,
+  copiedId,
+  onCopy,
+}: {
+  schedule: SocialPost[];
+  copiedId: string | null;
+  onCopy: (id: string, text: string) => void;
+}) {
+  const buttons: { id: string; label: string; filter: "all" | "safe" | "review" | "donotpost" }[] = [
+    { id: "wk-all",        label: "Copy full week",        filter: "all" },
+    { id: "wk-safe",       label: "Copy safe posts only",  filter: "safe" },
+    { id: "wk-review",     label: "Copy posts to review",  filter: "review" },
+    { id: "wk-donotpost",  label: "Copy do-not-post list", filter: "donotpost" },
+  ];
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {buttons.map(({ id, label, filter }) => (
+        <CopyBtn
+          key={id}
+          label={label}
+          small
+          copied={copiedId === id}
+          onClick={() => onCopy(id, buildWeeklyCampaignText(schedule, filter))}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ─── Admin debug metadata ─────────────────────────────────────────────────────
 
 interface PostDebugMeta {
@@ -1362,12 +1881,16 @@ interface PostDebugMeta {
 
 function SocialPostCard({
   post, copiedId, onCopyField, roundLabel, debugMeta,
+  unavailablePlayerIds, availabilityUploadedAt, unavailableCount,
 }: {
   post: SocialPost;
   copiedId: string | null;
   onCopyField: (id: string, text: string) => void;
   roundLabel: string;
   debugMeta: PostDebugMeta;
+  unavailablePlayerIds: Set<number>;
+  availabilityUploadedAt: string | null | undefined;
+  unavailableCount: number;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [platformTab, setPlatformTab] = useState<"tiktok" | "instagram" | "facebook">("tiktok");
@@ -1402,6 +1925,14 @@ function SocialPostCard({
             <ConfidenceBadge confidence={post.confidence} />
             {post.quality && <QualityBadge quality={post.quality} />}
             {post.compliance && post.compliance.status !== "Clean" && <ComplianceBadge compliance={post.compliance} />}
+            <AvailabilityBadge
+              post={post}
+              availabilityUploadedAt={availabilityUploadedAt}
+              unavailableCount={unavailableCount}
+            />
+            {(post._internalStatus ?? post.quality?.internalStatus) && (
+              <SafeToPostStatusBadge status={(post._internalStatus ?? post.quality?.internalStatus)!} />
+            )}
             {post.isBackup && (
               <span className="text-[9px] px-1.5 py-0.5 rounded border font-medium bg-zinc-900 text-zinc-600 border-zinc-800">Backup</span>
             )}
@@ -1470,6 +2001,22 @@ function SocialPostCard({
               className="w-full bg-zinc-900/60 border border-zinc-700/50 rounded-md px-2 py-1.5 text-[10px] text-zinc-300 placeholder-zinc-600 resize-none"
             />
           </div>
+
+          {/* Safe-to-Post checklist */}
+          <SafeToPostChecklist
+            post={post}
+            unavailablePlayerIds={unavailablePlayerIds}
+          />
+
+          {/* Availability detail */}
+          <AvailabilityDetail
+            post={post}
+            availabilityUploadedAt={availabilityUploadedAt}
+            unavailableCount={unavailableCount}
+          />
+
+          {/* Replacement suggestions — only for non-safe posts */}
+          <ReplacementSuggestions post={post} />
 
           {/* Quality + timing block */}
           {(post.quality || post.timing) && (
@@ -2829,6 +3376,9 @@ function GameDayTabContent({
                   onCopyField={onCopy}
                   roundLabel={roundLabel}
                   debugMeta={debugMeta}
+                  unavailablePlayerIds={new Set()}
+                  availabilityUploadedAt={null}
+                  unavailableCount={0}
                 />
               </div>
             ))}
@@ -3053,6 +3603,19 @@ function SocialPostPlannerInner({ data }: { data: CIDataSubset }) {
   return (
     <div className="space-y-4 pt-4">
       <FreshnessPanel data={data} excludedCount={excludedCount} />
+
+      {/* Weekly campaign copy buttons */}
+      <div className="bg-zinc-900/40 border border-zinc-800 rounded-lg p-3 space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] text-zinc-400 font-semibold">Copy Weekly Campaign</span>
+          <span className="text-[9px] text-zinc-600">— grouped by day, all platforms</span>
+        </div>
+        <WeeklyCampaignCopyButtons
+          schedule={schedule}
+          copiedId={copiedId}
+          onCopy={(id, text) => { navigator.clipboard.writeText(text).catch(() => {}); setCopiedId(id); setTimeout(() => setCopiedId(null), 1800); }}
+        />
+      </div>
 
       {/* Cross-game pool completeness warning — admin only */}
       {loadedGames < AFL_WARN_THRESHOLD && (
@@ -3303,6 +3866,9 @@ function SocialPostPlannerInner({ data }: { data: CIDataSubset }) {
                 onCopyField={handleCopyField}
                 roundLabel={data.roundLabel}
                 debugMeta={debugMeta}
+                unavailablePlayerIds={data.unavailablePlayerIds ?? new Set()}
+                availabilityUploadedAt={data.availabilityUploadedAt}
+                unavailableCount={data.unavailableCount ?? (data.unavailablePlayerIds?.size ?? 0)}
               />
             ))}
           </div>
