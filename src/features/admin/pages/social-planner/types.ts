@@ -171,12 +171,29 @@ export interface PostTiming {
 
 // ─── Post quality ─────────────────────────────────────────────────────────────
 
+/**
+ * Internal status assigned by the fallback engine.
+ * Safe to Post        — strict tier, 4+ players, clean compliance
+ * Needs Review        — thin pool, mixed tiers, or a player was excluded due to availability
+ * Organic Only        — single-player spotlight or recent-form-only post; suitable for organic reach only
+ * Replacement Needed  — disposal slot was replaced by an alternative angle (goal/team/form)
+ * Do Not Use          — empty pool, no replacement found, or compliance failure
+ */
+export type PostInternalStatus =
+  | "Safe to Post"
+  | "Needs Review"
+  | "Organic Only"
+  | "Replacement Needed"
+  | "Do Not Use";
+
 export interface PostQuality {
   score: number;
   label: ScoreLabel;
   reason: string;
   useRecommendation: "Use" | "Use with caution" | "Do not use";
   useReason: string;
+  /** Internal admin-only status. Drives colour coding and admin warnings in the planner. */
+  internalStatus?: PostInternalStatus;
 }
 
 // ─── Social post ─────────────────────────────────────────────────────────────
@@ -220,4 +237,6 @@ export interface SocialPost {
   thresholdLabel: string;
   isBackup: boolean;
   tone: CopyTone;
+  /** Internal admin-only status set by the disposal fallback ladder. Drives scorePost mapping. */
+  _internalStatus?: PostInternalStatus;
 }

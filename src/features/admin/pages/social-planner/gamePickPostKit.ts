@@ -3,18 +3,36 @@
  * Admin-only. No public exposure. No betting language.
  *
  * Per-game structure (always exactly 3 posts):
- *   Post 1 — 20+ Disposals   (players from that game only, 20+ threshold)
- *   Post 2 — 1+ Goals        (players from that game only, 1+ threshold)
+ *   Post 1 — Disposal post  (6-step fallback ladder — see buildDisposalPost)
+ *   Post 2 — 1+ Goals       (players from that game only, 1+ threshold)
  *   Post 3 — Full Game Picks (combined best-line disposal + goal picks)
  *
- * If a post has insufficient quality candidates, it is generated with a
- * fallbackWarning so the planner shows it as "Needs Review" rather than hiding it.
+ * ─── Disposal fallback ladder (Post 1) ────────────────────────────────────────
  *
- * All enrichment (voiceover, carousel, AI prompt, platform captions, compliance,
- * quality score) is delegated to the shared enrichPost() helper from postEnrichment.ts.
+ * Step 1 — 4+ strict 20+ players  → "20+ Disposals"       (Safe to Post)
+ * Step 2 — 2–3 strict 20+ players → "Disposal Watch"      (Needs Review)
+ *          Top-up with strongest 25+/30+ players to reach 4–5 total.
+ *          Each player labelled at their REAL threshold.
+ * Step 3 — 1 strict 20+ + 2+ higher-line (25+/30+) → "Disposal Watch" (Needs Review)
+ * Step 4 — 1 strict 20+ only, no higher-line support → "Player Spotlight" (Organic Only)
+ * Step 5 — 0 strict 20+ but 3+ qualifying 25+/30+ → "Higher-Line Disposal Watch" (Needs Review)
+ * Step 6 — No usable disposal angle → try same-game alternatives in order:
+ *   6a. Full Game Picks / Mixed Stat Watch (if not already a separate kit)
+ *   6b. Goal Watch
+ *   6c. Team Scoring Trend (placeholder — no team-scoring data in GamePick)
+ *   6d. Recent Form Hits (L5 strong, hr ≥ 0.65) (Organic Only)
+ *   6e. Evergreen backup (Replacement Needed)
+ *   6f. Do Not Use (only if ALL options fail)
+ *
+ * STRICT RULES
+ * ─ Never lower a player's threshold to fill a post.
+ * ─ Mixed-threshold posts label each player at their TRUE threshold.
+ * ─ "20+ Disposals" posts: only publicContentTier === 20 players.
+ * ─ Banned copy words: "lock", "bet", "clearing the line", "guaranteed", "banker".
+ * ─ Recent Form Hits: always labelled clearly as recent-form-only; L10 hr ≥ 0.65 required.
  */
 import type { GamePick, GamePickPlayer } from "./gamePicksEngine";
-import type { SocialPost, DayOfWeek } from "./types";
+import type { SocialPost, DayOfWeek, PostInternalStatus } from "./types";
 import { enrichPost } from "./postEnrichment";
 import type { StatBoardMatch } from "@/features/afl/stat-board/types";
 
@@ -140,67 +158,119 @@ function buildPickCaption(hook: string, bullets: string[], signOffIdx = 0): stri
   return [hook, "", ...bullets.map(b => `• ${b}`), "", signOff(signOffIdx)].join("\n");
 }
 
-// ─── Post 1: Disposal post — strict 20+ or fallback ─────────────────────────
+// ─── Internal status helper ───────────────────────────────────────────────────
 
 /**
- * Disposal post cascade for a single game.
+ * Derives the internal status for a disposal post based on the fallback step reached
+ * and the pool characteristics.
+ */
+function disposalInternalStatus(
+  step: 1 | 2 | 3 | 4 | 5 | 6,
+  poolSize: number,
+  availabilityExcluded: boolean,
+): PostInternalStatus {
+  if (step === 1 && poolSize >= 4 && !availabilityExcluded) return "Safe to Post";
+  if (step === 1 && availabilityExcluded) return "Needs Review";
+  if (step === 2 || step === 3 || step === 5) return "Needs Review";
+  if (step === 4) return "Organic Only";
+  if (step === 6) return "Replacement Needed";
+  return "Needs Review";
+}
+
+// ─── Post 1: Disposal post — 6-step fallback ladder ──────────────────────────
+
+/**
+ * Disposal post with full fallback ladder.
  *
- * Tier 1 (normal): strict 20+ players ≥ 4 → "20+ Disposals" post.
- * Tier 2 (fallback): strict 20+ count 2–3 → "Disposal Watch" (top up with 25+/30+ players).
- * Tier 3 (thin): strict 20+ count 1 → "Disposal Watch" if 25+/30+ players exist, else "Player Spotlight".
- * Tier 4 (empty): strict 20+ count 0 → "Disposal Watch" from 25+/30+ only, or "Do Not Post".
+ * Step 1: 4+ strict 20+ players → "20+ Disposals" (Safe to Post)
+ * Step 2: 2–3 strict 20+ → "Disposal Watch" + top-up from 25+/30+ (Needs Review)
+ * Step 3: 1 strict 20+ + 2+ higher-line → "Disposal Watch" (Needs Review)
+ * Step 4: 1 strict 20+ only → "Player Spotlight" (Organic Only)
+ * Step 5: 0 strict 20+ but 3+ from 25+/30+ → "Higher-Line Disposal Watch" (Needs Review)
+ * Step 6: No disposal angle → Recent Form Hits (if qualifies) else empty post (Replacement Needed/Do Not Use)
  *
- * STRICT RULES:
- * - "20+ Disposals" posts: only publicContentTier === 20 players.
- * - "Disposal Watch" posts: each player keeps their TRUE threshold. No player is mis-labelled.
- * - Never weaken a strict threshold pool globally.
+ * availabilityExcludedNames: player names excluded from the pool due to unavailability (admin warning only).
  */
 function buildDisposalPost(
   game: GamePick,
   allDispPicks: GamePickPlayer[],
   matches: StatBoardMatch[],
+  availabilityExcludedNames: string[] = [],
 ): GamePickPostKit {
   const matchLabel = game.match_label;
   const dayLabel = gameDayLabel(game.game_date);
+  const wasExcluded = availabilityExcludedNames.length > 0;
 
-  // Strict 20+ pool — publicContentTier === 20 means the player qualifies at 20+
-  // but NOT at 25+/30+ (those are excluded by the content tier logic in statLineEngine).
+  // Strict 20+ pool — publicContentTier === 20 (excludes 25+/30+ players)
   const strict20 = allDispPicks.filter(p => p.publicContentTier === 20);
-  // Higher-line pool — 25+/30+ players (by their true qualifying tier)
+  // Higher-line pool — 25+/30+ players at their true qualifying tier
   const higher = allDispPicks.filter(p => p.publicContentTier === 25 || p.publicContentTier === 30);
 
+  // ── Step 1: 4+ strict 20+ ────────────────────────────────────────────────────
   if (strict20.length >= 4) {
-    return buildStrict20PlusPost(game, strict20.slice(0, 5), matchLabel, dayLabel, matches);
+    return buildStrict20PlusPost(
+      game, strict20.slice(0, 5), matchLabel, dayLabel, matches,
+      disposalInternalStatus(1, strict20.length, wasExcluded),
+      availabilityExcludedNames,
+    );
   }
 
+  // ── Step 2: 2–3 strict 20+ ───────────────────────────────────────────────────
   if (strict20.length >= 2) {
-    // Fill up to 5 total using higher-line players
     const topHigher = higher.slice(0, Math.min(higher.length, 5 - strict20.length));
     const mixedPicks = [...strict20, ...topHigher];
-    return buildDisposalWatchPost(game, mixedPicks, matchLabel, dayLabel, matches, strict20.length);
+    return buildDisposalWatchPost(
+      game, mixedPicks, matchLabel, dayLabel, matches, strict20.length,
+      disposalInternalStatus(2, mixedPicks.length, wasExcluded),
+      availabilityExcludedNames,
+    );
   }
 
+  // ── Step 3: 1 strict 20+ + 2+ higher-line ────────────────────────────────────
+  if (strict20.length === 1 && higher.length >= 2) {
+    const topHigher = higher.slice(0, Math.min(higher.length, 4));
+    const mixedPicks = [...strict20, ...topHigher];
+    return buildDisposalWatchPost(
+      game, mixedPicks, matchLabel, dayLabel, matches, 1,
+      disposalInternalStatus(3, mixedPicks.length, wasExcluded),
+      availabilityExcludedNames,
+    );
+  }
+
+  // ── Step 4: 1 strict 20+ only (no higher-line support) ───────────────────────
   if (strict20.length === 1) {
-    if (higher.length >= 2) {
-      // Combine the one 20+ player with up to 4 higher-line players
-      const topHigher = higher.slice(0, Math.min(higher.length, 4));
-      const mixedPicks = [...strict20, ...topHigher];
-      return buildDisposalWatchPost(game, mixedPicks, matchLabel, dayLabel, matches, 1);
-    }
-    // Only one 20+ player and no higher-line support — Player Spotlight
-    return buildPlayerSpotlightPost(game, strict20[0], matchLabel, dayLabel, matches);
+    return buildPlayerSpotlightPost(
+      game, strict20[0], matchLabel, dayLabel, matches,
+      availabilityExcludedNames,
+    );
   }
 
-  // Zero strict 20+ players
+  // ── Step 5: 0 strict 20+ but 3+ from 25+/30+ ─────────────────────────────────
   if (higher.length >= 3) {
-    return buildDisposalWatchPost(game, higher.slice(0, 5), matchLabel, dayLabel, matches, 0);
+    return buildHigherLineDisposalWatchPost(
+      game, higher.slice(0, 5), matchLabel, dayLabel, matches,
+      disposalInternalStatus(5, higher.length, wasExcluded),
+      availabilityExcludedNames,
+    );
   }
 
-  // Truly empty pool
-  return buildEmptyDisposalPost(game, matchLabel, dayLabel, matches);
+  // ── Step 6: No usable disposal angle ─────────────────────────────────────────
+  // 6d: Recent Form Hits — require hr >= 0.65 AND L5 avg >= 18 AND 4/5 or 5/5 L5
+  const rfhCandidates = allDispPicks.filter(p =>
+    p.hitRate >= 0.65 &&
+    (p.l5_avg ?? 0) >= 18 &&
+    p.last_5_values.filter(v => v >= 20).length >= 4
+  );
+
+  if (rfhCandidates.length >= 2) {
+    return buildRecentFormHitsPost(game, allDispPicks, matches, "step6", availabilityExcludedNames);
+  }
+
+  // 6e / 6f: Truly empty
+  return buildEmptyDisposalPost(game, matchLabel, dayLabel, matches, allDispPicks.length, availabilityExcludedNames);
 }
 
-// ─── Strict 20+ Disposals post ────────────────────────────────────────────────
+// ─── Strict 20+ Disposals post (Step 1) ──────────────────────────────────────
 
 function buildStrict20PlusPost(
   game: GamePick,
@@ -208,10 +278,11 @@ function buildStrict20PlusPost(
   matchLabel: string,
   dayLabel: string,
   matches: StatBoardMatch[],
+  internalStatus: PostInternalStatus,
+  availabilityExcludedNames: string[],
 ): GamePickPostKit {
   const hasHighTier = picks.some(p => p.tier === "High");
   const bullets = picks.map(formatPickLineShort);
-  const statsShown = picks.map(formatPickLine);
   const title = `${matchLabel} — 20+ disposals`;
   const hook = `${matchLabel} disposal watch — ${dayLabel}.`;
   const caption = buildPickCaption(hook, bullets, 0);
@@ -228,20 +299,24 @@ function buildStrict20PlusPost(
     `Show ${picks.length} player cards: ${picks.map(formatPickLineForImagePrompt).join("; ")}. ` +
     `All players shown at 20+ threshold. Use team colour accents. Neeko Sports Stats branding. No betting language.`;
   const onScreenText = `${matchLabel}\n${picks.slice(0, 3).map(p => `${p.player_name} ${p.hitRecord} at 20+`).join("\n")}`;
-  const fallbackWarning = picks.some(p => p.tier === "Low")
-    ? "Some Low-tier candidates included. Review before publishing."
-    : null;
+
+  const warningParts: string[] = [];
+  if (picks.some(p => p.tier === "Low")) warningParts.push("Some Low-tier candidates included. Review before publishing.");
+  if (availabilityExcludedNames.length > 0) warningParts.push(`Availability filter excluded: ${availabilityExcludedNames.join(", ")}.`);
+  const fallbackWarning = warningParts.length > 0 ? warningParts.join(" ") : null;
+
   const rawPost = buildDisposalRawPost({
     game, matchLabel, dayLabel, picks, title, hook, caption, hookOptions,
     suggestedVisual, imageDescription, onScreenText, fallbackWarning,
     thresholdLabel: "20+ Disposals",
     confidence: hasHighTier ? "High" : "Medium",
     dataScope: `${matchLabel} disposal pool (strict 20+ tier)`,
+    internalStatus,
   });
   return { kitType: "disposals", post: enrichPost(rawPost as SocialPost, matches), pickCount: picks.length };
 }
 
-// ─── Disposal Watch post (mixed thresholds) ───────────────────────────────────
+// ─── Disposal Watch post (Steps 2 & 3 — mixed thresholds) ────────────────────
 
 function buildDisposalWatchPost(
   game: GamePick,
@@ -250,13 +325,13 @@ function buildDisposalWatchPost(
   dayLabel: string,
   matches: StatBoardMatch[],
   strict20Count: number,
+  internalStatus: PostInternalStatus,
+  availabilityExcludedNames: string[],
 ): GamePickPostKit {
   const hasHighTier = picks.some(p => p.tier === "High");
   const bullets = picks.map(formatPickLineShort);
-  const statsShown = picks.map(formatPickLine);
   const title = `${matchLabel} — disposal watch`;
   const hook = `${matchLabel} disposal trends before bounce — ${dayLabel}.`;
-  // Caption notes that thresholds are mixed — each player shows their true threshold
   const captionHeader = [
     hook,
     "",
@@ -283,9 +358,10 @@ function buildDisposalWatchPost(
   const thinNote = strict20Count <= 1
     ? `Only ${strict20Count} strict 20+ player${strict20Count === 1 ? "" : "s"} — filled with higher-line (25+/30+) candidates.`
     : `Only ${strict20Count} strict 20+ players — supplemented with higher-threshold candidates.`;
-  const fallbackWarning = needsReview
-    ? `${thinNote} Needs Review — ${picks.length} total players found.`
-    : thinNote;
+
+  const warningParts: string[] = [needsReview ? `${thinNote} Needs Review — ${picks.length} total players found.` : thinNote];
+  if (availabilityExcludedNames.length > 0) warningParts.push(`Availability filter excluded: ${availabilityExcludedNames.join(", ")}.`);
+  const fallbackWarning = warningParts.join(" ");
 
   const rawPost = buildDisposalRawPost({
     game, matchLabel, dayLabel, picks, title, hook, caption, hookOptions,
@@ -293,11 +369,66 @@ function buildDisposalWatchPost(
     thresholdLabel: "Disposal Watch",
     confidence: hasHighTier ? "High" : picks.length >= 3 ? "Medium" : "Low",
     dataScope: `${matchLabel} disposal pool (mixed thresholds)`,
+    internalStatus,
   });
   return { kitType: "disposals", post: enrichPost(rawPost as SocialPost, matches), pickCount: picks.length };
 }
 
-// ─── Player Spotlight post (single player) ────────────────────────────────────
+// ─── Higher-Line Disposal Watch (Step 5 — 0 strict 20+ but 3+ at 25+/30+) ────
+
+function buildHigherLineDisposalWatchPost(
+  game: GamePick,
+  picks: GamePickPlayer[],
+  matchLabel: string,
+  dayLabel: string,
+  matches: StatBoardMatch[],
+  internalStatus: PostInternalStatus,
+  availabilityExcludedNames: string[],
+): GamePickPostKit {
+  const hasHighTier = picks.some(p => p.tier === "High");
+  const bullets = picks.map(formatPickLineShort);
+  const title = `${matchLabel} — higher-line disposal watch`;
+  const hook = `${matchLabel} disposal trends — higher thresholds only — ${dayLabel}.`;
+  const caption = [
+    hook,
+    "",
+    "No strong 20+ disposal pool for this game. Higher-line candidates only — each shown at their actual threshold.",
+    "",
+    ...bullets.map(b => `• ${b}`),
+    "",
+    signOff(1),
+  ].join("\n");
+  const hookOptions = [
+    hook,
+    `Higher-line disposal form for ${matchLabel}.`,
+    `${picks.length} players with 25+/30+ disposal form for ${matchLabel}.`,
+    `Each player shown at their actual threshold — ${matchLabel}.`,
+    `Before bounce — ${matchLabel} disposal form (higher lines).`,
+  ];
+  const suggestedVisual = `${picks.length}-player disposal watch grid — 25+/30+ only. Each player labelled at their actual threshold. Dark. Neeko brand.`;
+  const imageDescription =
+    `Create a dark premium AFL stat graphic for ${matchLabel} titled "Disposal Watch — Higher Lines". ` +
+    `Show ${picks.length} player cards: ${picks.map(formatPickLineForImagePrompt).join("; ")}. ` +
+    `Each player shown at their actual 25+ or 30+ threshold. ` +
+    `Use team colour accents. Neeko Sports Stats branding. No betting language.`;
+  const onScreenText = `${matchLabel}\nHigher-Line Disposal Watch\n${picks.slice(0, 3).map(p => `${p.player_name} ${p.hitRecord} at ${p.threshold}+`).join("\n")}`;
+
+  const warningParts: string[] = ["No strict 20+ candidates available — higher-line pool only. Needs Review."];
+  if (availabilityExcludedNames.length > 0) warningParts.push(`Availability filter excluded: ${availabilityExcludedNames.join(", ")}.`);
+  const fallbackWarning = warningParts.join(" ");
+
+  const rawPost = buildDisposalRawPost({
+    game, matchLabel, dayLabel, picks, title, hook, caption, hookOptions,
+    suggestedVisual, imageDescription, onScreenText, fallbackWarning,
+    thresholdLabel: "Disposal Watch",
+    confidence: hasHighTier ? "High" : "Medium",
+    dataScope: `${matchLabel} disposal pool (higher-line only)`,
+    internalStatus,
+  });
+  return { kitType: "disposals", post: enrichPost(rawPost as SocialPost, matches), pickCount: picks.length };
+}
+
+// ─── Player Spotlight post (Step 4 — single player) ──────────────────────────
 
 function buildPlayerSpotlightPost(
   game: GamePick,
@@ -305,8 +436,8 @@ function buildPlayerSpotlightPost(
   matchLabel: string,
   dayLabel: string,
   matches: StatBoardMatch[],
+  availabilityExcludedNames: string[],
 ): GamePickPostKit {
-  const statsShown = [formatPickLine(pick)];
   const title = `${matchLabel} — ${pick.player_name} disposal spotlight`;
   const hook = `One stat before bounce — ${matchLabel}, ${dayLabel}.`;
   const caption = [
@@ -330,37 +461,55 @@ function buildPlayerSpotlightPost(
     `Threshold: ${pick.threshold}+. Show hit record, L5 avg, Last 5 strip. ` +
     `This is a spotlight card — NOT a 5-player grid. Neeko Sports Stats branding. No betting language.`;
   const onScreenText = `${matchLabel}\nOne Stat Before Bounce\n${pick.player_name} ${pick.hitRecord} at ${pick.threshold}+`;
-  const fallbackWarning = `Single-player disposal spotlight — Organic Only / Needs Review. Not suitable as a standard paid carousel ad.`;
+
+  const warningParts: string[] = ["Single-player disposal spotlight — Organic Only. Not suitable as a standard paid carousel ad."];
+  if (availabilityExcludedNames.length > 0) warningParts.push(`Availability filter excluded: ${availabilityExcludedNames.join(", ")}.`);
+  const fallbackWarning = warningParts.join(" ");
+
   const rawPost = buildDisposalRawPost({
     game, matchLabel, dayLabel, picks: [pick], title, hook, caption, hookOptions,
     suggestedVisual, imageDescription, onScreenText, fallbackWarning,
     thresholdLabel: "Player Spotlight",
     confidence: "Low",
     dataScope: `${matchLabel} single-player spotlight`,
+    internalStatus: "Organic Only",
   });
   return { kitType: "disposals", post: enrichPost(rawPost as SocialPost, matches), pickCount: 1 };
 }
 
-// ─── Empty disposal post ─────────────────────────────────────────────────────
+// ─── Empty disposal post (Step 6f — Do Not Use) ──────────────────────────────
 
 function buildEmptyDisposalPost(
   game: GamePick,
   matchLabel: string,
   dayLabel: string,
   matches: StatBoardMatch[],
+  totalPoolSize: number,
+  availabilityExcludedNames: string[],
 ): GamePickPostKit {
   const hook = `${matchLabel} — disposal watch — ${dayLabel}.`;
+
+  const warningParts: string[] = [
+    totalPoolSize > 0
+      ? `${totalPoolSize} candidate${totalPoolSize === 1 ? "" : "s"} found but none meet the minimum threshold for a post. Do Not Use.`
+      : "No qualifying disposal candidates found for this game. Do Not Use."
+  ];
+  if (availabilityExcludedNames.length > 0) warningParts.push(`Availability filter excluded: ${availabilityExcludedNames.join(", ")}.`);
+  const fallbackWarning = warningParts.join(" ");
+
   const rawPost = buildDisposalRawPost({
-    game, matchLabel, dayLabel, picks: [], title: `${matchLabel} — disposal watch`,
+    game, matchLabel, dayLabel, picks: [],
+    title: `${matchLabel} — disposal watch`,
     hook, caption: `${hook}\n\nNo qualifying disposal candidates for this game.`,
     hookOptions: [hook],
     suggestedVisual: "Placeholder card — no qualifying disposal candidates.",
     imageDescription: `Placeholder dark AFL graphic — no qualifying disposal candidates for ${matchLabel}. Show team names only.`,
     onScreenText: `${matchLabel}\nNo qualifying disposal candidates`,
-    fallbackWarning: "Do Not Post — no qualifying disposal candidates found for this game.",
+    fallbackWarning,
     thresholdLabel: "Disposal Watch",
     confidence: "Low",
     dataScope: `${matchLabel} disposal pool (empty)`,
+    internalStatus: "Do Not Use",
   });
   return { kitType: "disposals", post: enrichPost(rawPost as SocialPost, matches), pickCount: 0 };
 }
@@ -383,6 +532,7 @@ interface DisposalRawPostArgs {
   thresholdLabel: string;
   confidence: "High" | "Medium" | "Low";
   dataScope: string;
+  internalStatus: PostInternalStatus;
 }
 
 function buildDisposalRawPost(args: DisposalRawPostArgs): Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "aiCarouselPromptPack" | "angle"> {
@@ -415,32 +565,42 @@ function buildDisposalRawPost(args: DisposalRawPostArgs): Omit<SocialPost, "comp
     isBackup: false,
     tone: "clean_stats",
     hookOptions: args.hookOptions,
+    _internalStatus: args.internalStatus,
   };
 }
 
-// ─── Recent Form Hits post ────────────────────────────────────────────────────
+// ─── Recent Form Hits post (Step 6d) ──────────────────────────────────────────
 
 /**
- * Builds a "Recent Form Hits" post for games with thin strict-threshold pools.
+ * Builds a "Recent Form Hits" fallback post.
  *
- * Uses players with strong Last 5 form even if they don't qualify for the strict
- * consistency tier. L10 hit rate may be as low as 65–70% if L5 form is strong.
+ * Qualification:
+ *   - L10 hit rate >= 0.65 (may not qualify for strict consistency tier)
+ *   - L5 avg >= 18 disposals
+ *   - At least 4/5 recent games at 20+ (from last_5_values)
  *
- * NEVER calls players "most consistent" or "locks".
  * Copy always clarifies this is RECENT FORM ONLY.
+ * Never uses "most consistent", "lock", or certainty language.
+ *
+ * When called as Step 6 replacement, label as "Replacement Needed" (not Safe to Post).
  */
 export function buildRecentFormHitsPost(
   game: GamePick,
   allDispPicks: GamePickPlayer[],
   matches: StatBoardMatch[],
+  context: "standalone" | "step6" = "standalone",
+  availabilityExcludedNames: string[] = [],
 ): GamePickPostKit {
   const matchLabel = game.match_label;
   const dayLabel = gameDayLabel(game.game_date);
 
-  // Recent form candidates: include Medium and Low tier (not just High+Medium)
-  // but require at least moderate L5 form. Sorted by consistency_score descending.
+  // Qualify: hr >= 0.65, L5 avg >= 18, and 4/5 or 5/5 in Last 5 values at 20
   const candidates = allDispPicks
-    .filter(p => p.hitRate >= 0.65 && (p.l5_avg ?? 0) >= 18)
+    .filter(p =>
+      p.hitRate >= 0.65 &&
+      (p.l5_avg ?? 0) >= 18 &&
+      p.last_5_values.filter(v => v >= 20).length >= 4
+    )
     .slice(0, 5);
 
   const hasAnyCandidates = candidates.length > 0;
@@ -453,7 +613,7 @@ export function buildRecentFormHitsPost(
     ? [
         hook,
         "",
-        "Last 5 form — these players have been reaching the mark recently.",
+        "Last 5 form — these players have been reaching the mark in recent games. Recent form only — not a season-long pattern.",
         "",
         ...bullets.map(b => `• ${b}`),
         "",
@@ -484,10 +644,17 @@ export function buildRecentFormHitsPost(
   const reviewNote = candidates.some(p => p.hitRate < 0.70)
     ? "Some players have L10 hit rate < 70% — included for strong L5 form only. Needs Review."
     : null;
-  const fallbackWarning = [
+
+  const warningParts: string[] = [
     "Recent form only — not season consistency. Organic / low-risk use only.",
-    reviewNote,
-  ].filter(Boolean).join(" ");
+  ];
+  if (reviewNote) warningParts.push(reviewNote);
+  if (context === "step6") warningParts.push("Disposal slot replacement — no standard disposal candidates qualified.");
+  if (availabilityExcludedNames.length > 0) warningParts.push(`Availability filter excluded: ${availabilityExcludedNames.join(", ")}.`);
+  const fallbackWarning = warningParts.join(" ");
+
+  const internalStatus: PostInternalStatus =
+    context === "step6" ? "Replacement Needed" : "Organic Only";
 
   const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "aiCarouselPromptPack" | "angle"> = {
     id: `${kitId(game.match_id, "disposals")}-rfh`,
@@ -517,6 +684,7 @@ export function buildRecentFormHitsPost(
     isBackup: false,
     tone: "clean_stats",
     hookOptions,
+    _internalStatus: internalStatus,
   };
 
   return { kitType: "disposals", post: enrichPost(rawPost as SocialPost, matches), pickCount: candidates.length };
@@ -659,9 +827,7 @@ function buildFullGamePicksPost(
     gSlice = goalCandidates.slice(0, Math.min(goalCandidates.length, 4));
   }
 
-  // Duplicate player handling: if the same player appears in both dSlice and gSlice,
-  // keep only their stronger line (higher consistency_score). Label them as dual-stat
-  // in adminWarnings if both lines were strong enough to qualify.
+  // Duplicate player handling: if the same player appears in both, keep only their stronger line
   const dPlayerIds = new Set(dSlice.map(p => p.player_id));
   const dualStatNames: string[] = [];
 
@@ -669,11 +835,9 @@ function buildFullGamePicksPost(
     if (!dPlayerIds.has(g.player_id)) return true;
     const dMatch = dSlice.find(d => d.player_id === g.player_id);
     if (!dMatch) return true;
-    // Both lines qualify — keep the stronger one only, flag as dual-stat
     dualStatNames.push(g.player_name);
-    return g.consistency_score > dMatch.consistency_score; // keep goal line only if it's strictly stronger
+    return g.consistency_score > dMatch.consistency_score;
   });
-  // If goal line was kept (stronger), remove the disposal line
   const dualIdsKeptAsGoal = new Set(gSlice.filter(g => dualStatNames.includes(g.player_name)).map(g => g.player_id));
   dSlice = dSlice.filter(d => !dualIdsKeptAsGoal.has(d.player_id));
 
@@ -795,7 +959,6 @@ function calcBestAngle(
   const hasBothKits = totalDisp >= 2 && totalGoal >= 2;
 
   if (hasBothKits && dispScore + goalScore >= 10) {
-    // Check if all disposal picks share the same threshold for a more specific label
     const thresholds = new Set(dispPicks.map(p => p.threshold));
     const allSameDispThr = thresholds.size === 1;
     const topDispThr = dispPicks[0]?.threshold ?? 20;
@@ -834,14 +997,18 @@ function calcBestAngle(
 
 /**
  * Builds a GamePickMarketingPack for a single game.
- * Always produces exactly 3 kits: [20+ Disposals, 1+ Goals, Full Game Picks].
+ * Always produces exactly 3 kits: [disposal post, 1+ Goals, Full Game Picks].
+ * The disposal post uses the 6-step fallback ladder.
  * Thin pools produce posts with fallbackWarning set instead of being omitted.
+ *
+ * availabilityExcludedNames: player names that were in the raw pool but filtered
+ * out due to the unavailablePlayerIds set (admin-only warning; never shown publicly).
  */
 export function buildGamePickMarketingPack(
   game: GamePick,
   matches: StatBoardMatch[],
+  availabilityExcludedNames: string[] = [],
 ): GamePickMarketingPack {
-  // High+Medium for primary posts; Low is included as fallback with warning
   const dispPicks = game.disposal_picks;
   const goalPicks = game.goal_picks;
 
@@ -851,7 +1018,7 @@ export function buildGamePickMarketingPack(
   );
 
   const kits: GamePickPostKit[] = [
-    buildDisposalPost(game, dispPicks, matches),
+    buildDisposalPost(game, dispPicks, matches, availabilityExcludedNames),
     build1PlusGoalsPost(game, goalPicks, matches),
     buildFullGamePicksPost(game, dispPicks, goalPicks, matches),
   ];

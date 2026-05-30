@@ -11,6 +11,7 @@ import type {
   CarouselSlide,
   AiCarouselPromptPack,
   PostAngle,
+  PostInternalStatus,
   ScoreLabel,
   UrgencyLevel,
 } from "./types";
@@ -256,18 +257,38 @@ export function scorePost(post: SocialPost): PostQuality {
     score >= 60 ? "Strong"  :
     score >= 40 ? "Good"    : "Review";
 
+  // ── internalStatus → useRecommendation mapping ──────────────────────────────
+  // If the disposal fallback ladder stamped an internal status, use it to
+  // override the generic score-based recommendation.
+  const internalStatus: PostInternalStatus | undefined = post._internalStatus;
+
   const useRecommendation: "Use" | "Use with caution" | "Do not use" =
-    (post.compliance?.status === "Do not use") ? "Do not use" :
-    (post.fallbackWarning && post.playerNames.length < 2) ? "Do not use" :
-    score < 40 ? "Use with caution" :
-    "Use";
+    internalStatus === "Do Not Use"
+      ? "Do not use"
+    : internalStatus === "Safe to Post"
+      ? "Use"
+    : internalStatus === "Organic Only" || internalStatus === "Replacement Needed"
+      ? "Use with caution"
+    : (post.compliance?.status === "Do not use")
+      ? "Do not use"
+    : (post.fallbackWarning && post.playerNames.length < 2)
+      ? "Do not use"
+    : score < 40
+      ? "Use with caution"
+    : "Use";
 
   const allReasons = [...reasons, ...deductions.map(d => `[!] ${d}`)];
   const useReason =
     useRecommendation === "Do not use"
-      ? "Insufficient player data or compliance failure."
+      ? internalStatus === "Do Not Use"
+        ? "Post failed fallback ladder — no qualifying candidates."
+        : "Insufficient player data or compliance failure."
       : useRecommendation === "Use with caution"
-      ? `Low score (${score}) — ${deductions[0] ?? "check data quality"}.`
+      ? internalStatus === "Organic Only"
+        ? "Single-player or recent-form-only post — suitable for organic reach only."
+        : internalStatus === "Replacement Needed"
+        ? "Disposal slot replaced by fallback angle — review before publishing."
+        : `Low score (${score}) — ${deductions[0] ?? "check data quality"}.`
       : reasons.slice(0, 3).join(", ") + ".";
 
   return {
@@ -276,6 +297,7 @@ export function scorePost(post: SocialPost): PostQuality {
     reason: allReasons.slice(0, 5).join("; "),
     useRecommendation,
     useReason,
+    internalStatus,
   };
 }
 
