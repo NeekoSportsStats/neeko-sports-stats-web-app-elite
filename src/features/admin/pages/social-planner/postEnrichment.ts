@@ -15,6 +15,13 @@ import type {
   UrgencyLevel,
 } from "./types";
 
+// ─── Safe array helper ────────────────────────────────────────────────────────
+
+/** Returns the value if it's a non-null array, otherwise []. Prevents .join() on undefined. */
+function safeArr<T>(v: T[] | null | undefined): T[] {
+  return Array.isArray(v) ? v : [];
+}
+
 // ─── CTA rotation pool ────────────────────────────────────────────────────────
 
 const CTA_POOL = [
@@ -54,7 +61,7 @@ const BANNED_PATTERNS: Array<{ re: RegExp; reason: string }> = [
 ];
 
 export function checkCompliance(post: SocialPost): ComplianceResult {
-  const scanText = [post.content, post.caption, post.statsShown.join(" ")].join(" ");
+  const scanText = [post.content, post.caption, safeArr(post.statsShown).join(" ")].join(" ");
   const flags: string[] = [];
   for (const { re, reason } of BANNED_PATTERNS) {
     re.lastIndex = 0;
@@ -279,8 +286,9 @@ function firstNWords(text: string, n: number): string {
 }
 
 export function buildPlatformCaptions(post: SocialPost, ctaLine: string): PlatformCaptions {
-  const topHashtags = post.hashtags.slice(0, 4).join(" ");
-  const allHashtags = post.hashtags.join(" ");
+  const hashtags = safeArr(post.hashtags);
+  const topHashtags = hashtags.slice(0, 4).join(" ");
+  const allHashtags = hashtags.join(" ");
 
   // TikTok: punchy, ≤150 chars hook + 2–3 hashtags + CTA
   const tiktokHook = firstNWords(post.content, 18);
@@ -290,7 +298,7 @@ export function buildPlatformCaptions(post: SocialPost, ctaLine: string): Platfo
   const instagram = `${post.caption}\n\n${allHashtags}\n\n${ctaLine} Link in bio.`;
 
   // Facebook: no hashtags, conversational close
-  const fbBullets = post.statsShown.slice(0, 5).map(b => `• ${b}`).join("\n");
+  const fbBullets = safeArr(post.statsShown).slice(0, 5).map(b => `• ${b}`).join("\n");
   const facebook = `${post.content}\n\n${fbBullets}\n\n${ctaLine}\n\nWhat do you think? Drop a comment.`;
 
   return { tiktok, instagram, facebook };
@@ -336,7 +344,7 @@ export function buildVoiceoverScript(post: SocialPost): string {
   if (post.thresholdLabel === "Full Game Picks" || post.category === "Round Preview") {
     const dispLines: string[] = [];
     const goalLines: string[] = [];
-    for (const s of post.statsShown.slice(0, 8)) {
+    for (const s of safeArr(post.statsShown).slice(0, 8)) {
       const dashIdx = s.indexOf(" — ");
       const playerName = dashIdx >= 0 ? s.slice(0, dashIdx).trim() : "";
       // Classify by stat family: goal lines contain "at 1+", "at 2+", "at 3+" goals pattern
@@ -359,7 +367,7 @@ export function buildVoiceoverScript(post: SocialPost): string {
     return parts.join(" ");
   }
 
-  const statsLines = post.statsShown.slice(0, 5).map((s, i) => {
+  const statsLines = safeArr(post.statsShown).slice(0, 5).map((s, i) => {
     const dashIdx = s.indexOf(" — ");
     const playerName = dashIdx >= 0 ? s.slice(0, dashIdx).replace(/\(.*?\)/g, "").trim() : "";
     const voiceoverStat = toVoiceoverLine(s, post.statLens ?? "disposals");
@@ -427,7 +435,7 @@ export function buildCarouselSlides(post: SocialPost): CarouselSlide[] {
   });
 
   // One slide per stat line
-  post.statsShown.slice(0, 6).forEach((statLine, i) => {
+  safeArr(post.statsShown).slice(0, 6).forEach((statLine, i) => {
     // Try to pull player name from start of stat line
     const namePart = statLine.split(" —")[0].split(" (")[0].trim();
     const bodyPart = statLine.includes(" — ") ? statLine.split(" — ").slice(1).join(" — ") : statLine;
@@ -532,7 +540,7 @@ function buildEndPrompt(format: string): string {
 export function buildAiCarouselPromptPack(post: SocialPost): AiCarouselPromptPack {
   const format = aiFormat(post);
   const coverPrompt = buildCoverPrompt(post, format);
-  const slidePrompts = post.statsShown.slice(0, 6).map((s, i) =>
+  const slidePrompts = safeArr(post.statsShown).slice(0, 6).map((s, i) =>
     buildStatSlidePrompt(s, i + 2, post, format),
   );
   const endPrompt = buildEndPrompt(format);
