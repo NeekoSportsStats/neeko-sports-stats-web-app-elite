@@ -1156,16 +1156,25 @@ function validatePostKit(post: SocialPost): PostKitValidation {
         issues.push("Last carousel slide (CTA) missing Neeko branding");
       }
     }
-    // AI carousel prompt pack: slide count should match statsShown + cover + CTA
+    // AI carousel prompt pack: slide count should match statsShown (no cap)
     if (post.aiCarouselPromptPack) {
-      const expectedSlidePrompts = Math.min(asArray(post.statsShown).length, 6);
+      const expectedSlidePrompts = asArray(post.statsShown).length;
       if (asArray(post.aiCarouselPromptPack.slidePrompts).length !== expectedSlidePrompts) {
         issues.push(
-          `AI prompt pack has ${asArray(post.aiCarouselPromptPack.slidePrompts).length} stat slides but post has ${asArray(post.statsShown).length} stat lines`,
+          `AI prompt pack has ${asArray(post.aiCarouselPromptPack.slidePrompts).length} stat slides but post has ${asArray(post.statsShown).length} stat lines — mismatch`,
         );
       }
       if (!post.aiCarouselPromptPack.coverPrompt) issues.push("AI prompt pack missing cover prompt");
       if (!post.aiCarouselPromptPack.endPrompt) issues.push("AI prompt pack missing end/CTA prompt");
+    }
+    // Carousel slide count must match: cover + N stat slides + CTA
+    if (post.carouselSlides && post.statsShown) {
+      const expectedTotal = asArray(post.statsShown).length + 2; // cover + stats + CTA
+      if (post.carouselSlides.length !== expectedTotal) {
+        issues.push(
+          `Carousel has ${post.carouselSlides.length} slides but expected ${expectedTotal} (cover + ${asArray(post.statsShown).length} stat + CTA)`,
+        );
+      }
     }
   }
 
@@ -1204,19 +1213,31 @@ function validatePostKit(post: SocialPost): PostKitValidation {
     issues.push(`Post flagged Needs Review: ${post.fallbackWarning}`);
   }
 
+  // 1-player disposal post must not be published
+  if (
+    post.statLens === "disposals" &&
+    post.playerNames.length === 1 &&
+    post.thresholdLabel !== "Full Game Picks"
+  ) {
+    issues.push("Do Not Post — single-player disposal posts are not standalone content. Needs at least 2 players.");
+  }
+
   // No betting language in key text fields
-  const bannedTerms = ["bet", "odds", "gamble", "wager", "tipster", "sgm", "banker"];
-  const scanFields = [post.title, post.content, post.caption, ...asArray(post.statsShown)].join(" ").toLowerCase();
+  const bannedTerms = ["bet", "odds", "gamble", "wager", "tipster", "sgm", "banker", "clearing the line"];
+  const scanFields = [post.title, post.content, post.caption, post.voiceoverScript ?? "", ...asArray(post.statsShown)].join(" ").toLowerCase();
   for (const term of bannedTerms) {
-    if (new RegExp(`\\b${term}\\b`).test(scanFields)) {
-      issues.push(`Betting language detected: "${term}"`);
+    if (scanFields.includes(term)) {
+      issues.push(`Betting-adjacent language detected: "${term}"`);
     }
   }
 
-  // Voiceover stat family match: goal posts should say "kicked", disposal posts should say "cleared"
+  // Voiceover stat family: goal posts must say "kicked", disposal posts must say "reached"
   if (post.voiceoverScript) {
-    if (post.statLens === "goals" && post.voiceoverScript.includes("has cleared")) {
-      issues.push("Voiceover uses 'cleared' for a goals post — should use 'kicked'");
+    if (post.statLens === "goals" && /has (?:reached|cleared)/.test(post.voiceoverScript)) {
+      issues.push("Voiceover uses disposal language ('reached'/'cleared') for a goals post — should use 'kicked'");
+    }
+    if (post.statLens === "disposals" && /has kicked/.test(post.voiceoverScript)) {
+      issues.push("Voiceover uses goal language ('kicked') for a disposals post — should use 'reached'");
     }
   }
 

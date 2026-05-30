@@ -47,7 +47,39 @@ export function ensureCompleteSocialPost(post: SocialPost): SocialPost {
   };
 }
 
-// ─── CTA rotation pool ────────────────────────────────────────────────────────
+// ─── Plural / singular helpers ────────────────────────────────────────────────
+
+/** Returns singular or plural form based on count. */
+function pluralize(count: number, singular: string, plural: string): string {
+  return count === 1 ? singular : plural;
+}
+
+/** Returns "{count} {noun}" with correct pluralisation. */
+function countLabel(count: number, noun: string, nounPlural?: string): string {
+  return `${count} ${pluralize(count, noun, nounPlural ?? noun + "s")}`;
+}
+
+// ─── Stat-family detection ────────────────────────────────────────────────────
+
+/**
+ * Detects whether a stat line is a goal line or a disposal line.
+ * A goal line contains "at 1+ goal", "at 2+ goals", etc. OR a low threshold
+ * pattern that matches goal scoring (threshold ≤ 5 in a goal-context).
+ * This is used per-line in Full Game Picks so mixed posts route each player
+ * to the correct voiceover family.
+ */
+function isGoalStatLine(statLine: string): boolean {
+  // Explicit goal label in the stat line text
+  if (/at\s+\d+\+\s+goals?/i.test(statLine)) return true;
+  // Goal lines from gamePickPostKit use "at 1+" without "goals" label —
+  // detect by checking if threshold is ≤ 5 AND the post-level format contains
+  // a known goal-range. We can also look for the hit-record at low thresholds.
+  // As a fallback: if "goal" appears anywhere in the stat line
+  if (/\bgoals?\b/i.test(statLine)) return true;
+  return false;
+}
+
+
 
 const CTA_POOL = [
   "See the full board before bounce.",
@@ -334,13 +366,17 @@ export function buildPlatformCaptions(post: SocialPost, ctaLine: string): Platfo
 /**
  * Converts a stat bullet like "Player — 7/10 at 30+, L5 avg 34.8"
  * into natural voiceover language appropriate to the stat family.
- * Disposals: "has cleared 30-plus disposals in 7 of their last 10"
+ * Disposals: "has reached 30-plus disposals in 7 of their last 10"
  * Goals:     "has kicked 1+ goal in 7 of their last 10"
+ *
+ * For Full Game Picks (mixed posts), statFamily must be passed explicitly
+ * per-line — do NOT rely on the post-level statLens.
  */
-function toVoiceoverLine(bullet: string, statLens: string): string {
+function toVoiceoverLine(bullet: string, statFamily: "disposals" | "goals"): string {
   const dashIdx = bullet.indexOf(" — ");
   const statPart = dashIdx >= 0 ? bullet.slice(dashIdx + 3) : bullet;
 
+  // Match "7/10 at 1+ goal" or "7/10 at 25+" style records
   const recordMatch = statPart.match(/(\d+)\/(\d+)\s+at\s+(\d+)\+/);
   const l5Match = statPart.match(/L5 avg\s+([\d.]+)/);
 
@@ -349,13 +385,13 @@ function toVoiceoverLine(bullet: string, statLens: string): string {
     const thresholdNum = parseInt(threshold, 10);
     const l5Text = l5Match ? `, with an L5 average of ${l5Match[1]}` : "";
 
-    if (statLens === "goals") {
+    if (statFamily === "goals") {
       const goalDesc = thresholdNum === 1 ? "1+ goal" : `${threshold}+ goals`;
       return `has kicked ${goalDesc} in ${hits} of their last ${sample}${l5Text}`;
     }
 
     const thresholdText = `${threshold}-plus disposals`;
-    return `has cleared ${thresholdText} in ${hits} of their last ${sample}${l5Text}`;
+    return `has reached ${thresholdText} in ${hits} of their last ${sample}${l5Text}`;
   }
 
   return statPart.replace(/[()]/g, "").replace(/—/g, "-").trim();
@@ -365,18 +401,19 @@ export function buildVoiceoverScript(post: SocialPost): string {
   const intro = buildVoiceoverIntro(post);
   const outro = `Full data on Neeko Sports Stats — link in bio.`;
 
-  // Full Game Picks: sectioned disposal + goal script
+  // Full Game Picks: sectioned disposal + goal script.
+  // Detect the stat family per-line from the stat text itself (goal lines now
+  // include "goal"/"goals" suffix thanks to formatPickLine in gamePickPostKit).
   if (post.thresholdLabel === "Full Game Picks" || post.category === "Round Preview") {
     const dispLines: string[] = [];
     const goalLines: string[] = [];
     for (const s of safeArr(post.statsShown).slice(0, 8)) {
       const dashIdx = s.indexOf(" — ");
       const playerName = dashIdx >= 0 ? s.slice(0, dashIdx).trim() : "";
-      // Classify by stat family: goal lines contain "at 1+", "at 2+", "at 3+" goals pattern
-      const isGoal = /at\s+\d+\+\s+goal/i.test(s) || (post.statLens === "goals");
-      const voiceoverStat = toVoiceoverLine(s, isGoal ? "goals" : "disposals");
+      const family = isGoalStatLine(s) ? "goals" : "disposals";
+      const voiceoverStat = toVoiceoverLine(s, family);
       const line = playerName ? `${playerName} ${voiceoverStat}.` : `${voiceoverStat}.`;
-      if (isGoal) goalLines.push(line);
+      if (family === "goals") goalLines.push(line);
       else dispLines.push(line);
     }
     const parts: string[] = [intro];
@@ -392,10 +429,11 @@ export function buildVoiceoverScript(post: SocialPost): string {
     return parts.join(" ");
   }
 
+  const statFamily = post.statLens === "goals" ? "goals" : "disposals";
   const statsLines = safeArr(post.statsShown).slice(0, 5).map((s, i) => {
     const dashIdx = s.indexOf(" — ");
     const playerName = dashIdx >= 0 ? s.slice(0, dashIdx).replace(/\(.*?\)/g, "").trim() : "";
-    const voiceoverStat = toVoiceoverLine(s, post.statLens ?? "disposals");
+    const voiceoverStat = toVoiceoverLine(s, statFamily);
     const line = playerName ? `${playerName} ${voiceoverStat}.` : `${voiceoverStat}.`;
     return `${ordinal(i + 1)}, ${line}`;
   });
@@ -404,17 +442,19 @@ export function buildVoiceoverScript(post: SocialPost): string {
 
 function buildVoiceoverIntro(post: SocialPost): string {
   const n = post.playerNames.length;
+  const nLabel = n === 1 ? "one" : String(n);
   if (post.statLens === "goals") {
-    return `Here ${n === 1 ? "is" : `are ${n}`} AFL ${n === 1 ? "player" : "players"} to watch for goals this week.`;
+    return `Here ${n === 1 ? "is" : "are"} ${nLabel} AFL ${pluralize(n, "player", "players")} to watch for goals this week.`;
   }
   if (post.intent === "recap") {
     return `Here's how the ${post.thresholdLabel.toLowerCase()} numbers held up from the weekend.`;
   }
-  return `Here ${n === 1 ? "is" : `are ${n}`} AFL ${post.thresholdLabel.toLowerCase()} trends to watch.`;
+  const trendNoun = pluralize(n, "trend", "trends");
+  return `Here ${n === 1 ? "is" : "are"} ${nLabel} AFL ${post.thresholdLabel.toLowerCase()} ${trendNoun} to watch.`;
 }
 
 function ordinal(n: number): string {
-  const s = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth"];
+  const s = ["First", "Second", "Third", "Fourth", "Fifth", "Sixth", "Seventh", "Eighth"];
   return s[n - 1] ?? `${n}.`;
 }
 
@@ -425,12 +465,16 @@ export function buildHookOptions(post: SocialPost): string[] {
   const thr = post.thresholdLabel;
   const n = post.playerNames.length;
   const day = post.day;
+  const roundRef = day === "Sat" || day === "Sun" ? "this weekend" : "this round";
+  const nLabel = n === 1 ? "one" : String(n);
+  const trendNoun = pluralize(n, "trend", "trends");
+  const playerNoun = pluralize(n, "player", "players");
 
   const hooks = [
     base,
-    `${n} AFL ${thr.toLowerCase()} trends worth watching${day === "Sat" || day === "Sun" ? " this weekend" : " this round"}.`,
-    `The form numbers are there — these ${n} players have been clearing the line.`,
-    `Before bounce, these are the names on the ${thr.toLowerCase()} board.`,
+    `${nLabel} AFL ${thr.toLowerCase()} ${trendNoun} worth watching ${roundRef}.`,
+    `The form numbers are there — ${n === 1 ? "this player has been" : `these ${n} ${playerNoun} have been`} reaching the mark consistently.`,
+    `Before bounce, ${n === 1 ? "this is the name" : `these are the names`} on the ${thr.toLowerCase()} board.`,
     `Recent-form data only. No opinion, no guesswork — just the AFL numbers.`,
   ];
   return [...new Set(hooks)].slice(0, 5);
@@ -459,16 +503,18 @@ export function buildCarouselSlides(post: SocialPost): CarouselSlide[] {
     visualNote: `Cover card. ${post.suggestedVisual}. Neeko logo top centre.`,
   });
 
-  // One slide per stat line
-  safeArr(post.statsShown).slice(0, 6).forEach((statLine, i) => {
-    // Try to pull player name from start of stat line
+  // One slide per stat line — no cap: Full Game Picks can have 8 players
+  safeArr(post.statsShown).forEach((statLine, i) => {
     const namePart = statLine.split(" —")[0].split(" (")[0].trim();
     const bodyPart = statLine.includes(" — ") ? statLine.split(" — ").slice(1).join(" — ") : statLine;
+    // Detect goal vs disposal stat family for per-slide visual note
+    const family = isGoalStatLine(statLine) ? "goals" : "disposals";
+    const accentNote = family === "goals" ? "Goal number in gold." : "Disposal count in gold.";
     slides.push({
       slideNumber: i + 2,
       headline: namePart || `Player ${i + 1}`,
       body: bodyPart.length > 120 ? bodyPart.slice(0, 117) + "…" : bodyPart,
-      visualNote: `Stat card. Team colours accent. ${post.thresholdLabel} highlighted in gold.`,
+      visualNote: `Stat card. Team colours accent. ${accentNote} ${post.thresholdLabel} label visible.`,
     });
   });
 
@@ -536,12 +582,15 @@ function buildStatSlidePrompt(statLine: string, slideNum: number, post: SocialPo
   // Extract team from post.teamNames if only one team, else leave generic
   const teamHint = post.teamNames.length === 1 ? ` (${post.teamNames[0]})` : "";
 
-  // Use per-player threshold from the stat line (e.g. "at 25+"), not the post-level label.
-  // This ensures mixed-threshold carousels show each player's correct threshold.
-  const thresholdLabel = statDetail.match(/at\s+(\d+\+(?:\s+goals?)?)/i)?.[1] ?? post.thresholdLabel;
+  // Detect stat family per-line so goal players are labelled correctly in the AI prompt
+  const family = isGoalStatLine(statLine) ? "goals" : "disposals";
+  const thresholdLabel = family === "goals"
+    ? (statDetail.match(/at\s+(\d+\+\s+goals?)/i)?.[1] ?? "1+ goal")
+    : (statDetail.match(/at\s+(\d+\+)/i)?.[1] ?? post.thresholdLabel);
+  const statTypeLabel = family === "goals" ? "GOAL" : "DISPOSAL";
 
   return (
-    `SLIDE ${slideNum} — PLAYER: ${format}. ` +
+    `SLIDE ${slideNum} — ${statTypeLabel} PLAYER: ${format}. ` +
     `Player name: ${playerName}${teamHint}. ` +
     `Stat line: ${statDetail}. ` +
     `Threshold: ${thresholdLabel}. ` +
@@ -565,7 +614,8 @@ function buildEndPrompt(format: string): string {
 export function buildAiCarouselPromptPack(post: SocialPost): AiCarouselPromptPack {
   const format = aiFormat(post);
   const coverPrompt = buildCoverPrompt(post, format);
-  const slidePrompts = safeArr(post.statsShown).slice(0, 6).map((s, i) =>
+  // No cap: include all stat lines so FGP with 8+ players gets correct slide count
+  const slidePrompts = safeArr(post.statsShown).map((s, i) =>
     buildStatSlidePrompt(s, i + 2, post, format),
   );
   const endPrompt = buildEndPrompt(format);

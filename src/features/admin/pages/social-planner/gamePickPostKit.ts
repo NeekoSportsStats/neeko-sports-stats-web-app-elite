@@ -51,16 +51,18 @@ function kitId(matchId: number, type: GamePickKitType): string {
 /** Public line: "Jack Sinclair — 9/10 (90%) at 25+, L5 avg 27.8" */
 function formatPickLineShort(p: GamePickPlayer): string {
   const hasRecord = p.hitRecord !== "—";
+  const goalSuffix = p.statFamily === "goals" ? ` ${pluralizeGoal(p.threshold)}` : "";
   const record = hasRecord
-    ? `${p.hitRecord} (${Math.round(p.hitRate * 100)}%) at ${p.threshold}+`
-    : `${p.threshold}+`;
+    ? `${p.hitRecord} (${Math.round(p.hitRate * 100)}%) at ${p.threshold}+${goalSuffix}`
+    : `${p.threshold}+${goalSuffix}`;
   const l5 = p.l5_avg !== null ? `, L5 avg ${p.l5_avg.toFixed(1)}` : "";
   return `${p.player_name} — ${record}${l5}`;
 }
 
 /** Expanded line including Last 5 strip */
 function formatPickLine(p: GamePickPlayer): string {
-  const record = p.hitRecord !== "—" ? `${p.hitRecord} at ${p.threshold}+` : `${p.threshold}+`;
+  const goalSuffix = p.statFamily === "goals" ? ` ${pluralizeGoal(p.threshold)}` : "";
+  const record = p.hitRecord !== "—" ? `${p.hitRecord} at ${p.threshold}+${goalSuffix}` : `${p.threshold}+${goalSuffix}`;
   const l5 = p.l5_avg !== null ? `, L5 avg ${p.l5_avg.toFixed(1)}` : "";
   const l5strip = p.last_5_strip ? `, Last 5: ${p.last_5_strip}` : "";
   return `${p.player_name} — ${record}${l5}${l5strip}`;
@@ -68,10 +70,16 @@ function formatPickLine(p: GamePickPlayer): string {
 
 /** Image prompt line including team and Last 5 */
 function formatPickLineForImagePrompt(p: GamePickPlayer): string {
-  const record = p.hitRecord !== "—" ? `${p.hitRecord} at ${p.threshold}+` : `${p.threshold}+`;
+  const goalSuffix = p.statFamily === "goals" ? ` ${pluralizeGoal(p.threshold)}` : "";
+  const record = p.hitRecord !== "—" ? `${p.hitRecord} at ${p.threshold}+${goalSuffix}` : `${p.threshold}+${goalSuffix}`;
   const l5 = p.l5_avg !== null ? `, L5 avg ${p.l5_avg.toFixed(1)}` : "";
   const strip = p.last_5_strip ? ` | Last 5: ${p.last_5_strip}` : "";
   return `${p.player_name} (${p.team_name}): ${record}${l5}${strip}`;
+}
+
+/** Returns "goal" or "goals" depending on threshold. */
+function pluralizeGoal(threshold: number): string {
+  return threshold === 1 ? "goal" : "goals";
 }
 
 // ─── Hashtag helper ───────────────────────────────────────────────────────────
@@ -156,13 +164,28 @@ function build20PlusDisposalsPost(
     .filter(p => p.publicContentTier === 20)
     .slice(0, 5);
 
-  const hasEnough = picks.length >= 2;
   const hasHighTier = picks.some(p => p.tier === "High");
 
   const bullets = picks.map(formatPickLineShort);
   const statsShown = picks.map(formatPickLine);
 
-  const title = `${matchLabel} — 20+ disposals`;
+  // Thin pool grading: 1-player = Do Not Post; 2-player = Disposal Spotlight (Needs Review); 3-player = Borderline/Review
+  const thinPoolWarning: string | null =
+    picks.length === 0
+      ? "No 20+ disposal candidates found. Do Not Post — skip or substitute."
+      : picks.length === 1
+      ? `Only 1 disposal candidate found (${picks[0].player_name}). Do Not Post — a single-player post is not standalone content.`
+      : picks.length === 2
+      ? `Thin pool — only 2 disposal candidates. Labelled as "Disposal Spotlight". Needs Review before publishing.`
+      : picks.length === 3
+      ? "Borderline pool — 3 disposal candidates. Review before publishing to ensure quality."
+      : null;
+
+  const title =
+    picks.length === 2
+      ? `${matchLabel} — disposal spotlight`
+      : `${matchLabel} — 20+ disposals`;
+
   const hook = `${matchLabel} disposal watch — ${dayLabel}.`;
   const caption = picks.length > 0
     ? buildPickCaption(hook, bullets, 0)
@@ -190,9 +213,9 @@ function build20PlusDisposalsPost(
     ? `${matchLabel}\n${picks.slice(0, 3).map(p => `${p.player_name} ${p.hitRecord} at ${p.threshold}+`).join("\n")}`
     : `${matchLabel}\n20+ Disposals Watch`;
 
-  const fallbackWarning = !hasEnough
-    ? `Not enough genuine 20+ tier candidates for this game (${picks.length} found — strict tier only, no 25+/30+ players). Mark as Needs Review.`
-    : picks.some(p => p.tier === "Low") ? "Some Low-tier candidates included. Review before publishing." : null;
+  const fallbackWarning =
+    thinPoolWarning ??
+    (picks.some(p => p.tier === "Low") ? "Some Low-tier candidates included. Review before publishing." : null);
 
   const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "aiCarouselPromptPack" | "angle"> = {
     id: kitId(game.match_id, "disposals"),
@@ -203,7 +226,7 @@ function build20PlusDisposalsPost(
     category: "Disposal Trend",
     intent: "pre_game",
     statLens: "disposals",
-    confidence: hasHighTier ? "High" : picks.length >= 2 ? "Medium" : "Low",
+    confidence: hasHighTier ? "High" : picks.length >= 3 ? "Medium" : "Low",
     title,
     content: hook,
     statsShown,
@@ -365,6 +388,24 @@ function buildFullGamePicksPost(
     gSlice = goalCandidates.slice(0, Math.min(goalCandidates.length, 4));
   }
 
+  // Duplicate player handling: if the same player appears in both dSlice and gSlice,
+  // keep only their stronger line (higher consistency_score). Label them as dual-stat
+  // in adminWarnings if both lines were strong enough to qualify.
+  const dPlayerIds = new Set(dSlice.map(p => p.player_id));
+  const dualStatNames: string[] = [];
+
+  gSlice = gSlice.filter(g => {
+    if (!dPlayerIds.has(g.player_id)) return true;
+    const dMatch = dSlice.find(d => d.player_id === g.player_id);
+    if (!dMatch) return true;
+    // Both lines qualify — keep the stronger one only, flag as dual-stat
+    dualStatNames.push(g.player_name);
+    return g.consistency_score > dMatch.consistency_score; // keep goal line only if it's strictly stronger
+  });
+  // If goal line was kept (stronger), remove the disposal line
+  const dualIdsKeptAsGoal = new Set(gSlice.filter(g => dualStatNames.includes(g.player_name)).map(g => g.player_id));
+  dSlice = dSlice.filter(d => !dualIdsKeptAsGoal.has(d.player_id));
+
   const allPicks = [...dSlice, ...gSlice];
   const pickCount = allPicks.length;
 
@@ -414,9 +455,18 @@ function buildFullGamePicksPost(
     ? `${matchLabel}\nDisposals: ${dSlice.map(p => p.player_name).join(", ")}\nGoals: ${gSlice.map(p => p.player_name).join(", ")}`
     : `${matchLabel}\nFull Game Picks`;
 
-  const fallbackWarning = !hasEnough
-    ? `Thin combined pool — ${dSlice.length} disposal picks, ${gSlice.length} goal picks. Review before publishing.`
-    : pickCount < 6 ? `Smaller than ideal combined pool (${pickCount} players). Normal if game has limited qualifying candidates.` : null;
+  const fallbackWarning: string | null = (() => {
+    const parts: string[] = [];
+    if (!hasEnough) {
+      parts.push(`Thin combined pool — ${dSlice.length} disposal picks, ${gSlice.length} goal picks. Review before publishing.`);
+    } else if (pickCount < 6) {
+      parts.push(`Smaller than ideal combined pool (${pickCount} players). Normal if game has limited qualifying candidates.`);
+    }
+    if (dualStatNames.length > 0) {
+      parts.push(`Dual-stat player${dualStatNames.length > 1 ? "s" : ""} detected — kept stronger line only: ${dualStatNames.join(", ")}.`);
+    }
+    return parts.length > 0 ? parts.join(" ") : null;
+  })();
 
   const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "aiCarouselPromptPack" | "angle"> = {
     id: kitId(game.match_id, "combined"),

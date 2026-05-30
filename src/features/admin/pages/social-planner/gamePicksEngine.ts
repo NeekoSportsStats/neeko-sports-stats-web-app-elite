@@ -29,6 +29,8 @@ export interface GamePickPlayer {
   player_name: string;
   team_name: string;
   threshold: number;
+  /** "disposals" or "goals" — used by post builders to route voiceover/copy correctly. */
+  statFamily: "disposals" | "goals";
   /** "7/10" style */
   hitRecord: string;
   /** "70%" style */
@@ -77,7 +79,7 @@ export interface GamePick {
 
 // ─── Conversion helper ────────────────────────────────────────────────────────
 
-function toGamePickPlayer(c: CandidateScore): GamePickPlayer {
+function toGamePickPlayer(c: CandidateScore, statFamily: "disposals" | "goals"): GamePickPlayer {
   // Use the validated resolver — it cross-checks the strip avg against scalar l5_avg
   // so stale array ordering bugs surface as a suppressed strip + warning rather than
   // wrong data reaching posts or AI prompts.
@@ -106,6 +108,7 @@ function toGamePickPlayer(c: CandidateScore): GamePickPlayer {
     player_name: c.player_name,
     team_name: c.team_name,
     threshold: c.threshold,
+    statFamily,
     hitRecord: c.hitRecord.sample > 0
       ? formatHitRecord(c.hitRecord.hits, c.hitRecord.sample)
       : "—",
@@ -168,12 +171,12 @@ export function buildGamePicks(
     const disposalPicks = disposalCandidates
       .filter(c => c.tier === "High" || c.tier === "Medium")
       .slice(0, MAX_PICKS_PER_GAME_DISPOSAL)
-      .map(toGamePickPlayer);
+      .map(c => toGamePickPlayer(c, "disposals"));
 
     const goalPicks = goalCandidates
       .filter(c => c.tier === "High" || c.tier === "Medium")
       .slice(0, MAX_PICKS_PER_GAME_GOAL)
-      .map(toGamePickPlayer);
+      .map(c => toGamePickPlayer(c, "goals"));
 
     result.push({
       match_id: match.match_id,
