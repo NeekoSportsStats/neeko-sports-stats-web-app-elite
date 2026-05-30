@@ -25,6 +25,22 @@ function isLocalhost(): boolean {
   );
 }
 
+/** Shared context appended to every event */
+function baseProperties(): Record<string, unknown> {
+  const attribution = (() => {
+    try {
+      const raw = localStorage.getItem("neeko_attribution");
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  })();
+  return {
+    session_id: getSessionId(),
+    page_path: typeof window !== "undefined" ? window.location.pathname : undefined,
+    is_admin: isAdminRoute(),
+    ...attribution,
+  };
+}
+
 /* =============================
    POSTHOG INIT
 ============================= */
@@ -154,15 +170,15 @@ export function captureAttribution() {
 }
 
 /* =============================
-   TRACK EVENT
+   TRACK EVENT (base)
 ============================= */
 export function track(event: string, properties?: Record<string, unknown>) {
   if (typeof window === "undefined") return;
 
   try {
     posthog.capture(event, {
+      ...baseProperties(),
       ...properties,
-      session_id: getSessionId(),
     });
   } catch {
     // non-critical
@@ -197,4 +213,97 @@ export function resetUser() {
   } catch {
     // non-critical
   }
+}
+
+/* =============================
+   MARKETING CLICK TRACKING
+============================= */
+export function trackMarketingClick(params: {
+  button_text: string;
+  source: string;
+  target_url?: string;
+  section?: string;
+  plan?: string;
+}) {
+  if (isAdminRoute()) return;
+  track("marketing_cta_clicked", params);
+}
+
+export function trackLandingCTA(params: {
+  button_text: string;
+  section: string;
+  target_url?: string;
+}) {
+  if (isAdminRoute()) return;
+  track("landing_cta_clicked", params);
+}
+
+export function trackPricingCTA(params: {
+  plan: string;
+  button_text: string;
+  source: string;
+}) {
+  if (isAdminRoute()) return;
+  track("pricing_cta_clicked", params);
+}
+
+export function trackNeekoPlus(params: {
+  source: string;
+  button_text?: string;
+  plan?: string;
+}) {
+  if (isAdminRoute()) return;
+  track("neeko_plus_clicked", params);
+}
+
+/* =============================
+   PRODUCT INTERACTION TRACKING
+============================= */
+export function trackProductInteraction(
+  event: string,
+  properties?: Record<string, unknown>,
+) {
+  if (isAdminRoute()) return;
+  track(event, properties);
+}
+
+export function trackGateInteraction(params: {
+  source: string;
+  page_path?: string;
+  section?: string;
+  action: "viewed" | "cta_clicked";
+}) {
+  if (isAdminRoute()) return;
+  const event = params.action === "viewed" ? "premium_gate_viewed" : "premium_gate_cta_clicked";
+  track(event, params);
+}
+
+export function trackLockedDataClick(params: {
+  source: string;
+  section?: string;
+  stat_lens?: string;
+}) {
+  if (isAdminRoute()) return;
+  track("locked_cell_clicked", params);
+}
+
+/* =============================
+   CHECKOUT TRACKING
+============================= */
+export function trackCheckoutEvent(
+  event: "checkout_started" | "checkout_redirected" | "checkout_success" | "checkout_cancelled" | "checkout_error",
+  properties?: Record<string, unknown>,
+) {
+  // Allow checkout_success even on admin routes (admin conversion test page)
+  track(event, properties);
+}
+
+/* =============================
+   ADMIN EVENT TRACKING
+============================= */
+export function trackAdminEvent(event: string, properties?: Record<string, unknown>) {
+  track(event, {
+    is_admin: true,
+    ...properties,
+  });
 }

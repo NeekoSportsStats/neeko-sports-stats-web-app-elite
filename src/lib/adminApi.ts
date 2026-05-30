@@ -45,3 +45,8 @@ export async function fetchPipelineSteps(runId: string): Promise<Record<string, 
 export async function fetchPostHogAnalytics(section: string = "overview"): Promise<Record<string, unknown>> {
   return callAdminFn("admin-posthog-analytics", { section });
 }
+
+export async function fetchMarketingInsights(days: number = 7): Promise<Record<string, unknown>> {
+  const validDays = [1, 7, 14, 30].includes(days) ? days : 7;
+  return callAdminFn("admin-posthog-analytics", { section: "marketing", days: validDays });
+}

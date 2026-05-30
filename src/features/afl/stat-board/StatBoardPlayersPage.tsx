@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef, useCallback, memo, useSyncExterna
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Search, X, Lock, ChevronDown, ChevronUp } from "lucide-react";
-import { track } from "@/lib/analytics";
+import { track, trackGateInteraction, trackLockedDataClick } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
 
 import {
@@ -230,6 +230,13 @@ export default function StatBoardPlayersPage() {
   // Premium users see all matches unlocked; is_locked is a DB hint for free users only
   const isLocked = hasFullAccess ? false : (selectedMatch?.is_locked ?? false);
   const navigate = useNavigate();
+
+  // Track gate view when a locked match is selected
+  useEffect(() => {
+    if (isLocked) {
+      trackGateInteraction({ source: "stat_board_players", section: "locked_match_banner", action: "viewed" });
+    }
+  }, [isLocked]);
 
   return (
     <>
@@ -551,7 +558,7 @@ export default function StatBoardPlayersPage() {
                   First 2 matches free. Upgrade to Neeko+ to view every match, projection, hit rate and trend.
                 </p>
                 <button
-                  onClick={() => { track("stat_board_upgrade_clicked", { source: "locked_match_banner" }); navigate("/neeko-plus"); }}
+                  onClick={() => { trackGateInteraction({ source: "stat_board_players", section: "locked_match_banner", action: "cta_clicked" }); navigate("/neeko-plus"); }}
                   className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[#F5C84C]/15 border border-[#F5C84C]/30 px-3.5 py-1.5 text-[11px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/25 transition-colors"
                 >
                   Upgrade to Neeko+

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, ArrowRight, Zap } from "lucide-react";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
-import { track } from "@/lib/analytics";
+import { trackPricingCTA, trackLandingCTA } from "@/lib/analytics";
 
 const FREE_FEATURES = [
   { text: "$0 forever — no card required", included: true },
@@ -147,6 +147,7 @@ export default function LandingPricing() {
 
             <Link
               to="/stat-board/players"
+              onClick={() => trackLandingCTA({ button_text: "Open Stat Board Free", section: "pricing", target_url: "/stat-board/players" })}
               onMouseEnter={() => setFreeCTAHovered(true)}
               onMouseLeave={() => setFreeCTAHovered(false)}
               style={{
@@ -316,7 +317,7 @@ export default function LandingPricing() {
 
             <Link
               to="/neeko-plus"
-              onClick={() => track("neeko_plus_clicked", { source: "landing_pricing", plan: hoveredPlan === "weekly" ? "weekly" : "season" })}
+              onClick={() => trackPricingCTA({ plan: hoveredPlan === "weekly" ? "weekly" : "season", button_text: "Get Neeko+ — Full Season Access", source: "landing_pricing" })}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 marginTop: 28,

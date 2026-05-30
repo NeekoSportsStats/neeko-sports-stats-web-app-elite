@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
-import { track } from "@/lib/analytics";
+import { trackNeekoPlus, trackCheckoutEvent, trackGateInteraction } from "@/lib/analytics";
 import { Check, Crown, Loader as Loader2, TrendingUp, Target, Zap, Shield, ArrowRight, Lock, Clock, ChartBar as BarChart2, Activity, ChartLine as LineChart, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { NEEKO_PRICING, NeekoPlan } from "@/config/neekoPricing";
@@ -472,7 +472,7 @@ const NeekoPlusPurchase = () => {
   const [previewRows, setPreviewRows] = useState<RankingRow[]>([]);
 
   useEffect(() => {
-    track("view_pricing_page", { source: "neeko_plus" });
+    trackGateInteraction({ source: "neeko_plus_page", action: "viewed" });
 
     supabase.rpc("get_latest_completed_round").then(({ data }) => {
       if (typeof data === "number") setCurrentRound(data);
@@ -514,7 +514,7 @@ const NeekoPlusPurchase = () => {
         return;
       }
 
-      track("neeko_plus_clicked", { plan, source: "neeko_plus_page" });
+      trackNeekoPlus({ source: "neeko_plus_page", plan, button_text: plan === "season" ? "Get Full Season Access" : "Start Weekly" });
 
       const origin = window.location.origin;
 
@@ -542,7 +542,7 @@ const NeekoPlusPurchase = () => {
       const data = await res.json();
       if (!data.url) throw new Error("No checkout URL returned");
 
-      track("checkout_started", {
+      trackCheckoutEvent("checkout_started", {
         plan,
         source: "neeko_plus_page",
         stripe_session_id: data.sessionId ?? undefined,

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import { trackLandingCTA } from "@/lib/analytics";
 
 export default function LandingFinalCTA() {
   const [primaryHovered, setPrimaryHovered] = useState(false);
@@ -61,6 +62,7 @@ export default function LandingFinalCTA() {
         }}>
           <Link
             to="/stat-board/players"
+            onClick={() => trackLandingCTA({ button_text: "Open Stat Board Free", section: "final_cta", target_url: "/stat-board/players" })}
             onMouseEnter={() => setPrimaryHovered(true)}
             onMouseLeave={() => { setPrimaryHovered(false); setPrimaryActive(false); }}
             onMouseDown={() => setPrimaryActive(true)}
@@ -88,6 +90,7 @@ export default function LandingFinalCTA() {
 
           <Link
             to="/neeko-plus"
+            onClick={() => trackLandingCTA({ button_text: "Unlock Full Round with Neeko+", section: "final_cta", target_url: "/neeko-plus" })}
             onMouseEnter={() => setSecondaryHovered(true)}
             onMouseLeave={() => { setSecondaryHovered(false); setSecondaryActive(false); }}
             onMouseDown={() => setSecondaryActive(true)}
