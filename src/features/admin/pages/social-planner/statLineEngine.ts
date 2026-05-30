@@ -452,6 +452,57 @@ export function rankGoalCandidatesForTeams(
   return results.sort((a, b) => b.score - a.score);
 }
 
+/**
+ * Ranks goal candidates for a game-day 1+ Goals post.
+ *
+ * Unlike rankGoalCandidatesForTeams (which uses each player's best/highest
+ * qualifying threshold), this evaluates every player specifically at the 1+
+ * threshold. Players who also qualify at 2+ or 3+ are NOT excluded — they are
+ * excellent 1+ scorers and should appear in the 1+ post.
+ *
+ * Scored by 1+ hit rate / sample depth / L5 avg relative to 1+ / projection.
+ */
+export function rankGoalCandidatesAt1Plus(
+  players: StatBoardPlayer[],
+  teamIds: Set<number>,
+  unavailablePlayerIds: Set<number>,
+): CandidateScore[] {
+  const seen = new Set<number>();
+  const results: CandidateScore[] = [];
+
+  for (const p of players) {
+    if (!teamIds.has(p.team_id)) continue;
+    if (unavailablePlayerIds.has(p.player_id)) continue;
+    if (seen.has(p.player_id)) continue;
+    if ((p.games_played ?? 0) < 4) continue;
+    seen.add(p.player_id);
+
+    const ev = evaluateGoalLine(p, 1);
+    if (!ev.qualifies) continue;
+
+    const score = scoreGoalCandidate(ev, p.projection ?? null);
+    results.push({
+      player_id: p.player_id,
+      player_name: p.player_name,
+      team_id: p.team_id,
+      team_name: p.team_name,
+      threshold: 1,
+      tier: ev.tier,
+      hitRecord: ev.hitRecord,
+      l5Avg: ev.l5Avg,
+      seasonAvg: p.season_avg ?? 0,
+      games: ev.games,
+      projection: p.projection ?? null,
+      position_group: p.position_group ?? null,
+      score,
+      copyLine: buildGoalCopyLine(p, ev),
+      last_10_values: p.last_10_values ?? null,
+    });
+  }
+
+  return results.sort((a, b) => b.score - a.score);
+}
+
 // ─── Last-N value helpers ─────────────────────────────────────────────────────
 
 /**

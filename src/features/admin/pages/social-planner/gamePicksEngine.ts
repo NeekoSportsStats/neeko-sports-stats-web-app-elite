@@ -12,6 +12,7 @@ import type { StatBoardPlayer, StatBoardMatch } from "@/features/afl/stat-board/
 import {
   rankDisposalCandidatesForTeams,
   rankGoalCandidatesForTeams,
+  rankGoalCandidatesAt1Plus,
   tierLabel,
   tierColor,
   resolveFreshLast5ForSocial,
@@ -75,6 +76,13 @@ export interface GamePick {
   is_free_match: boolean;
   disposal_picks: GamePickPlayer[];
   goal_picks: GamePickPlayer[];
+  /**
+   * All players who qualify at the 1+ goals threshold for this game,
+   * regardless of whether they also qualify at 2+ or 3+.
+   * Used by the game-day 1+ Goals post so high-tier scorers like Harry Sharp
+   * (who qualifies at 2+) are not excluded from the 1+ Goals post.
+   */
+  goal_picks_1plus: GamePickPlayer[];
 }
 
 // ─── Conversion helper ────────────────────────────────────────────────────────
@@ -166,6 +174,14 @@ export function buildGamePicks(
       unavailablePlayerIds,
     );
 
+    // 1+ Goals post pool: evaluates all players at 1+ threshold specifically.
+    // Includes 2+ and 3+ tier players — they are excellent 1+ scorers too.
+    const goalCandidates1Plus = rankGoalCandidatesAt1Plus(
+      goalPlayers,
+      teamIds,
+      unavailablePlayerIds,
+    );
+
     // Filter out Low-tier picks from default view — keep High + Medium
     // (UI can override with ConsistencyTier filter)
     const disposalPicks = disposalCandidates
@@ -175,6 +191,11 @@ export function buildGamePicks(
 
     const goalPicks = goalCandidates
       .filter(c => c.tier === "High" || c.tier === "Medium")
+      .slice(0, MAX_PICKS_PER_GAME_GOAL)
+      .map(c => toGamePickPlayer(c, "goals"));
+
+    const goalPicks1Plus = goalCandidates1Plus
+      .filter(c => c.tier === "High" || c.tier === "Medium" || c.tier === "Low")
       .slice(0, MAX_PICKS_PER_GAME_GOAL)
       .map(c => toGamePickPlayer(c, "goals"));
 
@@ -190,6 +211,7 @@ export function buildGamePicks(
       is_free_match: match.is_free_match,
       disposal_picks: disposalPicks,
       goal_picks: goalPicks,
+      goal_picks_1plus: goalPicks1Plus,
     });
   }
 

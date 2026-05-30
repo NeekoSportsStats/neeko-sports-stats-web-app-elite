@@ -695,8 +695,9 @@ export function buildRecentFormHitsPost(
 /**
  * Builds the 1+ Goals post for a game.
  *
- * Always uses 1+ threshold (not upgraded to 2+ or 3+). Higher-threshold
- * players can still appear in the combined Post 3.
+ * Uses goal_picks_1plus — all players evaluated at the 1+ threshold,
+ * including players who also qualify at 2+ or 3+. A player with 10/10 at
+ * 1+ goals is an excellent 1+ candidate regardless of their best-line tier.
  */
 function build1PlusGoalsPost(
   game: GamePick,
@@ -706,10 +707,10 @@ function build1PlusGoalsPost(
   const matchLabel = game.match_label;
   const dayLabel = gameDayLabel(game.game_date);
 
-  // Strict: only players with genuine 1+ threshold — never 2+/3+ players
-  const picks = allGoalPicks
-    .filter(p => p.threshold === 1)
-    .slice(0, 5);
+  // All qualifying 1+ goal players, already ranked by 1+ hit rate/score.
+  // No threshold filter needed — goal_picks_1plus already contains only
+  // players evaluated at threshold === 1.
+  const picks = allGoalPicks.slice(0, 5);
 
   const hasEnough = picks.length >= 2;
   const hasHighTier = picks.some(p => p.tier === "High");
@@ -746,7 +747,7 @@ function build1PlusGoalsPost(
     : `${matchLabel}\n1+ Goals Watch`;
 
   const fallbackWarning = !hasEnough
-    ? `Not enough genuine 1+ tier candidates for this game (${picks.length} found — strict 1+ only, no 2+/3+ players). Mark as Needs Review.`
+    ? `Not enough 1+ goal candidates for this game (${picks.length} found). Mark as Needs Review.`
     : picks.some(p => p.tier === "Low") ? "Some Low-tier candidates included. Review before publishing." : null;
 
   const rawPost: Omit<SocialPost, "compliance" | "quality" | "timing" | "ctaLine" | "platformCaptions" | "voiceoverScript" | "carouselSlides" | "hookOptions" | "thumbnailOptions" | "aiImagePrompt" | "aiCarouselPromptPack" | "angle"> = {
@@ -1019,7 +1020,7 @@ export function buildGamePickMarketingPack(
 
   const kits: GamePickPostKit[] = [
     buildDisposalPost(game, dispPicks, matches, availabilityExcludedNames),
-    build1PlusGoalsPost(game, goalPicks, matches),
+    build1PlusGoalsPost(game, game.goal_picks_1plus, matches),
     buildFullGamePicksPost(game, dispPicks, goalPicks, matches),
   ];
 
