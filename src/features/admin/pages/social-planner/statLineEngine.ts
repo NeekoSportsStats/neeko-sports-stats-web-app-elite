@@ -6,19 +6,18 @@
  * Key invariant: all internal rates are stored and returned as 0–1 decimals.
  * Raw values from the DB can arrive as either 0–1 or 0–100 — normaliseRate()
  * handles the conversion at the boundary.
+ *
+ * TIER SYSTEM (Part 2 canonical rules):
+ * - last_10_values is newest-first (index 0 = most recent game)
+ * - Tier logic uses L5 avg + hit rate + last 5 values (form-first)
+ * - Bailey Dale with Last 5 of 31·31·25·32·31 qualifies as 30+ not 20+
  */
 import type { StatBoardPlayer } from "@/features/afl/stat-board/types";
 
 // ─── Rate normalisation ───────────────────────────────────────────────────────
 
-/**
- * Normalises a raw hit-rate value to a 0–1 decimal.
- * DB RPCs sometimes return the rate as 0–100 (e.g. 70 for 70%),
- * sometimes as 0–1 (e.g. 0.70). This function handles both.
- */
 export function normaliseRate(raw: number | null | undefined): number {
   if (raw === null || raw === undefined) return 0;
-  // If value is > 1 it's already a percentage — divide by 100
   return raw > 1 ? raw / 100 : raw;
 }
 
@@ -31,10 +30,6 @@ export interface HitRecord {
   rate: number;
 }
 
-/**
- * Returns the hit record for a player at a given threshold.
- * Prefers all_threshold_hit_rates; falls back to hit_rate_last_10.
- */
 export function getRecentHitRecord(
   p: StatBoardPlayer,
   threshold: number,
@@ -47,7 +42,6 @@ export function getRecentHitRecord(
       rate: normaliseRate(entry.rate),
     };
   }
-  // Fallback: use hit_rate_last_10 with games_played as sample
   const rate = normaliseRate(p.hit_rate_last_10);
   const sample = p.games_played ?? 0;
   return {
@@ -59,19 +53,14 @@ export function getRecentHitRecord(
 
 // ─── Display formatters ───────────────────────────────────────────────────────
 
-/** Returns "7/10" style record string. */
 export function formatHitRecord(hits: number, sample: number): string {
   return `${hits}/${sample}`;
 }
 
-/** Returns "70%" style percentage string from a 0–1 decimal. */
 export function formatRateAsPercent(rate01: number): string {
   return `${Math.round(rate01 * 100)}%`;
 }
 
-/**
- * Returns both display strings from a HitRecord: { record: "7/10", pct: "70%" }.
- */
 export function formatRateFromHits(rec: HitRecord): { record: string; pct: string } {
   return {
     record: formatHitRecord(rec.hits, rec.sample),
@@ -82,6 +71,273 @@ export function formatRateFromHits(rec: HitRecord): { record: string; pct: strin
 // ─── Confidence tiers ─────────────────────────────────────────────────────────
 
 export type ConfidenceTier = "High" | "Medium" | "Low" | "None";
+
+// ─── Last-N value helpers ─────────────────────────────────────────────────────
+
+/**
+ * Core last-N extractor.
+ * last_10_values from the RPC is newest-first (index 0 = most recent game).
+ * We filter null/negative sentinels (BYE/DNP/NYP) then take the first N.
+ */
+export function lastNFromValues(
+  raw: (number | null)[] | null | undefined,
+  count: number,
+): number[] {
+  if (!raw || raw.length === 0) return [];
+  return [...raw]
+    .filter((v): v is number => v !== null && v >= 0)
+    .slice(0, count);
+}
+
+export function getLastNValues(p: StatBoardPlayer, count: number): number[] {
+  return lastNFromValues(p.last_10_values, count);
+}
+
+export function formatLastNStrip(values: number[]): string | null {
+  if (values.length < 2) return null;
+  return values.map(v => String(v)).join(" · ");
+}
+
+// ─── Fresh Last 5 resolver ────────────────────────────────────────────────────
+
+export interface Last5Resolution {
+  values: number[];
+  strip: string | null;
+  avg: number | null;
+  isConsistent: boolean;
+  warning: string | null;
+}
+
+/**
+ * Resolves the freshest available Last 5 values for social post display.
+ * Cross-checks strip avg against scalar last_5_avg (max 0.5 pt tolerance).
+ * Suppresses the strip if they disagree — prevents stale data leaking.
+ */
+export function resolveFreshLast5ForSocial(p: StatBoardPlayer): Last5Resolution {
+  const rawValues = lastNFromValues(p.last_10_values, 5);
+  const scalarAvg = p.last_5_avg ?? null;
+
+  if (rawValues.length < 2) {
+    return {
+      values: rawValues,
+      strip: formatLastNStrip(rawValues),
+      avg: scalarAvg,
+      isConsistent: true,
+      warning: rawValues.length === 0 ? "No last_10_values data available." : null,
+    };
+  }
+
+  const stripAvg = rawValues.reduce((a, b) => a + b, 0) / rawValues.length;
+  const isConsistent = scalarAvg === null || Math.abs(stripAvg - scalarAvg) <= 0.5;
+
+  if (!isConsistent) {
+    return {
+      values: [],
+      strip: null,
+      avg: scalarAvg,
+      isConsistent: false,
+      warning: `Last 5 strip avg ${stripAvg.toFixed(1)} disagrees with scalar last_5_avg ${scalarAvg?.toFixed(1)} by more than 0.5 — strip suppressed.`,
+    };
+  }
+
+  return {
+    values: rawValues,
+    strip: formatLastNStrip(rawValues),
+    avg: scalarAvg ?? (rawValues.length > 0 ? stripAvg : null),
+    isConsistent: true,
+    warning: null,
+  };
+}
+
+// ─── Tier reason ─────────────────────────────────────────────────────────────
+
+export interface TierAssignment {
+  tier: 30 | 25 | 20 | 15 | null;
+  tierReason: string;
+  confidence: "High" | "Medium" | "Low";
+  warning: string | null;
+}
+
+// ─── CANONICAL DISPOSAL TIER FUNCTION (Part 2) ───────────────────────────────
+
+/**
+ * CANONICAL public disposal content tier assignment.
+ *
+ * Uses form-first logic: recent L5 avg + last 5 values take priority.
+ * This means a player like Bailey Dale with Last 5 of 31·31·25·32·31
+ * and L5 avg 30.0 correctly qualifies as 30+, not 20+.
+ *
+ * Tier cascade (highest wins):
+ *
+ * 30+ tier:
+ *   A) L5 avg >= 29.5 AND at least 3 of last 5 are 30+
+ *   B) L10 30+ hit rate >= 60% AND L5 avg >= 29.0
+ *
+ * 25+ tier (only if not 30+):
+ *   A) L5 avg >= 24.5 AND at least 3 of last 5 are 25+
+ *   B) L10 25+ hit rate >= 65% AND L5 avg >= 24.0
+ *
+ * 20+ tier (only if not 25+/30+):
+ *   A) L5 avg >= 19.0 AND L10 20+ hit rate >= 70%
+ *   B) at least 4 of last 5 are 20+ AND L5 avg >= 19.0
+ *
+ * 15+ tier (only if not 20+/25+/30+):
+ *   L5 avg >= 14.5 AND L10 15+ hit rate >= 70%
+ *
+ * Returns null if no tier qualifies.
+ */
+export function getPublicDisposalContentTier(p: StatBoardPlayer): TierAssignment {
+  const l5 = p.last_5_avg ?? p.season_avg ?? 0;
+  const last5 = lastNFromValues(p.last_10_values, 5);
+
+  // Count how many of last 5 clear each threshold
+  const countAbove = (thr: number) => last5.filter(v => v >= thr).length;
+
+  const above30 = countAbove(30);
+  const above25 = countAbove(25);
+  const above20 = countAbove(20);
+
+  const rec30 = getRecentHitRecord(p, 30);
+  const rec25 = getRecentHitRecord(p, 25);
+  const rec20 = getRecentHitRecord(p, 20);
+  const rec15 = getRecentHitRecord(p, 15);
+
+  // ── 30+ ──────────────────────────────────────────────────────────────────
+  const q30_form = l5 >= 29.5 && above30 >= 3;
+  const q30_rate = rec30.rate >= 0.60 && l5 >= 29.0 && rec30.sample >= 5;
+
+  if (q30_form || q30_rate) {
+    const confidence = (l5 >= 30.0 && above30 >= 4) ? "High" : "Medium";
+    const reason = q30_form
+      ? `30+ tier: L5 avg ${l5.toFixed(1)} ≥ 29.5 and ${above30}/5 last games ≥ 30`
+      : `30+ tier: ${Math.round(rec30.rate * 100)}% at 30+ (L10), L5 avg ${l5.toFixed(1)}`;
+    return { tier: 30, tierReason: reason, confidence, warning: null };
+  }
+
+  // ── 25+ ──────────────────────────────────────────────────────────────────
+  const q25_form = l5 >= 24.5 && above25 >= 3;
+  const q25_rate = rec25.rate >= 0.65 && l5 >= 24.0 && rec25.sample >= 5;
+
+  if (q25_form || q25_rate) {
+    const confidence = (l5 >= 26.0 && above25 >= 4) ? "High" : "Medium";
+    const isBorderline = l5 < 25.5 && above25 === 3;
+    const reason = q25_form
+      ? `25+ tier: L5 avg ${l5.toFixed(1)} ≥ 24.5 and ${above25}/5 last games ≥ 25`
+      : `25+ tier: ${Math.round(rec25.rate * 100)}% at 25+ (L10), L5 avg ${l5.toFixed(1)}`;
+    return {
+      tier: 25,
+      tierReason: reason,
+      confidence,
+      warning: isBorderline ? `Borderline 25+ — only ${above25}/5 last games cleared 25, monitor form.` : null,
+    };
+  }
+
+  // ── 20+ ──────────────────────────────────────────────────────────────────
+  const q20_rate = rec20.rate >= 0.70 && l5 >= 19.0 && rec20.sample >= 4;
+  const q20_form = above20 >= 4 && l5 >= 19.0;
+
+  if (q20_rate || q20_form) {
+    const confidence = (rec20.rate >= 0.80 && l5 >= 21.0) ? "High" : "Medium";
+    const reason = q20_rate
+      ? `20+ tier: ${Math.round(rec20.rate * 100)}% at 20+ (L10), L5 avg ${l5.toFixed(1)}`
+      : `20+ tier: ${above20}/5 last games ≥ 20, L5 avg ${l5.toFixed(1)}`;
+    return { tier: 20, tierReason: reason, confidence, warning: null };
+  }
+
+  // ── 15+ ──────────────────────────────────────────────────────────────────
+  const q15 = rec15.rate >= 0.70 && l5 >= 14.5 && rec15.sample >= 4;
+  if (q15) {
+    return {
+      tier: 15,
+      tierReason: `15+ tier: ${Math.round(rec15.rate * 100)}% at 15+ (L10), L5 avg ${l5.toFixed(1)}`,
+      confidence: "Low",
+      warning: null,
+    };
+  }
+
+  return { tier: null, tierReason: "No disposal tier qualifies", confidence: "Low", warning: null };
+}
+
+// ─── CANONICAL GOAL TIER FUNCTION (Part 2) ───────────────────────────────────
+
+export interface GoalTierAssignment {
+  tier: 3 | 2 | 1 | null;
+  tierReason: string;
+  confidence: "High" | "Medium" | "Low";
+  isWatchlistOnly: boolean;
+  warning: string | null;
+}
+
+/**
+ * CANONICAL public goal content tier assignment.
+ *
+ * 3+ goals: L5 avg >= 2.0 AND 3+ hit rate >= 40% (labelled "watchlist" if 40–55%)
+ * 2+ goals: only if not 3+; L5 avg >= 1.4 AND 2+ hit rate >= 50%
+ * 1+ goal: only if not 2+/3+; 1+ hit rate >= 65%
+ *
+ * Returns null if no tier qualifies.
+ */
+export function getPublicGoalContentTier(p: StatBoardPlayer): GoalTierAssignment {
+  const l5 = p.last_5_avg ?? p.season_avg ?? 0;
+
+  const rec3 = getRecentHitRecord(p, 3);
+  const rec2 = getRecentHitRecord(p, 2);
+  const rec1 = getRecentHitRecord(p, 1);
+
+  // ── 3+ ───────────────────────────────────────────────────────────────────
+  if (rec3.rate >= 0.40 && rec3.sample >= 5 && l5 >= 2.0) {
+    const isWatchlist = rec3.rate < 0.55;
+    return {
+      tier: 3,
+      tierReason: `3+ goals: ${Math.round(rec3.rate * 100)}% at 3+ (L10), L5 avg ${l5.toFixed(1)}`,
+      confidence: rec3.rate >= 0.65 ? "High" : "Medium",
+      isWatchlistOnly: isWatchlist,
+      warning: isWatchlist ? `3+ rate only ${Math.round(rec3.rate * 100)}% — label as "3+ Goal Watchlist", not "consistent".` : null,
+    };
+  }
+
+  // ── 2+ ───────────────────────────────────────────────────────────────────
+  if (rec2.rate >= 0.50 && rec2.sample >= 5 && l5 >= 1.4) {
+    const isWatchlist = rec2.rate < 0.65;
+    return {
+      tier: 2,
+      tierReason: `2+ goals: ${Math.round(rec2.rate * 100)}% at 2+ (L10), L5 avg ${l5.toFixed(1)}`,
+      confidence: rec2.rate >= 0.70 ? "High" : "Medium",
+      isWatchlistOnly: isWatchlist,
+      warning: isWatchlist ? `2+ rate ${Math.round(rec2.rate * 100)}% — use watchlist framing.` : null,
+    };
+  }
+
+  // ── 1+ ───────────────────────────────────────────────────────────────────
+  if (rec1.rate >= 0.65 && rec1.sample >= 4) {
+    return {
+      tier: 1,
+      tierReason: `1+ goal: ${Math.round(rec1.rate * 100)}% at 1+ (L10)`,
+      confidence: rec1.rate >= 0.80 ? "High" : "Medium",
+      isWatchlistOnly: false,
+      warning: null,
+    };
+  }
+
+  return { tier: null, tierReason: "No goal tier qualifies", confidence: "Low", isWatchlistOnly: false, warning: null };
+}
+
+// ─── Legacy wrappers (used by weekly post builders) ───────────────────────────
+
+/**
+ * Legacy: Returns the disposal tier number only (for compatibility with existing post builders).
+ * Prefer getPublicDisposalContentTier() for new code.
+ */
+export function assignDisposalMarketingTier(p: StatBoardPlayer): 30 | 25 | 20 | 15 | null {
+  return getPublicDisposalContentTier(p).tier;
+}
+
+/**
+ * Legacy: Returns the goal tier number only.
+ */
+export function assignGoalMarketingTier(p: StatBoardPlayer): 3 | 2 | 1 | null {
+  return getPublicGoalContentTier(p).tier;
+}
 
 // ─── Disposal line evaluation ─────────────────────────────────────────────────
 
@@ -95,20 +351,6 @@ export interface DisposalLineEval {
   games: number;
 }
 
-/**
- * Evaluates whether a player qualifies at a specific disposal threshold.
- *
- * 30+ High:   hr ≥ 0.80 AND L5 ≥ 29.0 AND sample ≥ 7
- * 30+ Medium: hr ≥ 0.70 AND L5 ≥ 27.0 AND sample ≥ 5
- * 25+ High:   hr ≥ 0.80 AND L5 ≥ 25.0 AND sample ≥ 7   (tightened from 24.0)
- * 25+ Medium: hr ≥ 0.70 AND L5 ≥ 24.5 AND sample ≥ 7   (tightened from 22.0/5)
- *             OR hr ≥ 0.70 AND L5 ≥ 24.5 AND sample ≥ 5  (small-sample with L5 support)
- *   NOTE: A player qualifying at 30+ threshold is EXCLUDED from 25+ content tier.
- * 20+ High:   hr ≥ 0.75 AND L5 ≥ 19.0 AND sample ≥ 5
- * 20+ Medium: hr ≥ 0.60 AND L5 ≥ 18.0 AND sample ≥ 4
- * 15+ High:   hr ≥ 0.75 AND L5 ≥ 14.0 AND sample ≥ 5
- * 15+ Medium: hr ≥ 0.60 AND L5 ≥ 13.0 AND sample ≥ 4
- */
 export function evaluateDisposalLine(
   p: StatBoardPlayer,
   threshold: 30 | 25 | 20 | 15,
@@ -124,7 +366,6 @@ export function evaluateDisposalLine(
     if (rec.rate >= 0.80 && l5 >= 29.0 && games >= 7) tier = "High";
     else if (rec.rate >= 0.70 && l5 >= 27.0 && games >= 5) tier = "Medium";
   } else if (threshold === 25) {
-    // Exclude players who qualify at the 30+ tier — they belong to a higher content bucket.
     const rec30 = getRecentHitRecord(p, 30);
     const is30PlusTier = rec30.rate >= 0.70 && l5 >= 27.0 && rec30.sample >= 5;
     if (!is30PlusTier) {
@@ -134,24 +375,14 @@ export function evaluateDisposalLine(
   } else if (threshold === 20) {
     if (rec.rate >= 0.75 && l5 >= 19.0 && games >= 5) tier = "High";
     else if (rec.rate >= 0.60 && l5 >= 18.0 && games >= 4) tier = "Medium";
-    // Also accept Low-end players in the 20+ bucket for general use
     else if (rec.rate >= 0.45 && l5 >= 17.0 && games >= 3) tier = "Low";
   } else {
-    // 15+
     if (rec.rate >= 0.75 && l5 >= 14.0 && games >= 5) tier = "High";
     else if (rec.rate >= 0.60 && l5 >= 13.0 && games >= 4) tier = "Medium";
     else if (rec.rate >= 0.45 && l5 >= 12.0 && games >= 3) tier = "Low";
   }
 
-  return {
-    threshold,
-    qualifies: tier !== "None",
-    tier,
-    hitRecord: rec,
-    l5Avg: l5,
-    seasonAvg,
-    games,
-  };
+  return { threshold, qualifies: tier !== "None", tier, hitRecord: rec, l5Avg: l5, seasonAvg, games };
 }
 
 // ─── Goal line evaluation ─────────────────────────────────────────────────────
@@ -165,17 +396,6 @@ export interface GoalLineEval {
   games: number;
 }
 
-/**
- * Evaluates whether a player qualifies at a specific goal threshold.
- *
- * 3+ High:   hr ≥ 0.50 AND sample ≥ 7 AND L5 ≥ 2.2
- * 3+ Medium: hr ≥ 0.40 AND sample ≥ 5 AND L5 ≥ 2.0
- * 2+ High:   hr ≥ 0.60 AND sample ≥ 7 AND L5 ≥ 1.6
- * 2+ Medium: hr ≥ 0.45 AND sample ≥ 5 AND L5 ≥ 1.3
- * 1+ High:   hr ≥ 0.80 AND sample ≥ 5 AND L5 ≥ 0.8
- * 1+ Medium: hr ≥ 0.65 AND sample ≥ 5 AND L5 ≥ 0.6
- * 1+ Low:    hr ≥ 0.50 AND sample ≥ 4 AND L5 ≥ 0.4
- */
 export function evaluateGoalLine(
   p: StatBoardPlayer,
   threshold: 3 | 2 | 1,
@@ -193,84 +413,81 @@ export function evaluateGoalLine(
     if (rec.rate >= 0.60 && games >= 7 && l5 >= 1.6) tier = "High";
     else if (rec.rate >= 0.45 && games >= 5 && l5 >= 1.3) tier = "Medium";
   } else {
-    // 1+
     if (rec.rate >= 0.80 && games >= 5 && l5 >= 0.8) tier = "High";
     else if (rec.rate >= 0.65 && games >= 5 && l5 >= 0.6) tier = "Medium";
     else if (rec.rate >= 0.50 && games >= 4 && l5 >= 0.4) tier = "Low";
   }
 
-  return {
-    threshold,
-    qualifies: tier !== "None",
-    tier,
-    hitRecord: rec,
-    l5Avg: l5,
-    games,
-  };
+  return { threshold, qualifies: tier !== "None", tier, hitRecord: rec, l5Avg: l5, games };
 }
 
 // ─── Best-line selectors ──────────────────────────────────────────────────────
 
-/**
- * Selects the highest disposal threshold where the player genuinely qualifies
- * at Medium+ tier. Evaluated in descending order: 30 → 25 → 20 → 15.
- *
- * Returns null if no threshold qualifies (e.g. < 15 avg player).
- */
-export function selectBestDisposalLine(
-  p: StatBoardPlayer,
-): DisposalLineEval | null {
+export function selectBestDisposalLine(p: StatBoardPlayer): DisposalLineEval | null {
   const thresholds: Array<30 | 25 | 20 | 15> = [30, 25, 20, 15];
   for (const t of thresholds) {
     const ev = evaluateDisposalLine(p, t);
     if (ev.tier === "High" || ev.tier === "Medium") return ev;
   }
-  // Allow Low-tier 15+ as final fallback
   const ev15 = evaluateDisposalLine(p, 15);
   if (ev15.tier === "Low") return ev15;
   return null;
 }
 
-/**
- * Selects the highest goal threshold where the player qualifies at Medium+ tier.
- * 3+ → 2+ → 1+. Falls back to Low-tier 1+ if nothing else qualifies.
- */
-export function selectBestGoalLine(
-  p: StatBoardPlayer,
-): GoalLineEval | null {
+export function selectBestGoalLine(p: StatBoardPlayer): GoalLineEval | null {
   const thresholds: Array<3 | 2 | 1> = [3, 2, 1];
   for (const t of thresholds) {
     const ev = evaluateGoalLine(p, t);
     if (ev.tier === "High" || ev.tier === "Medium") return ev;
   }
-  // Low-tier 1+ fallback
   const ev1 = evaluateGoalLine(p, 1);
   if (ev1.tier === "Low") return ev1;
   return null;
 }
 
+// ─── Strict candidate helpers (use canonical tier) ───────────────────────────
+
 /**
- * Returns the public disposal content tier for a player — the threshold that
- * should be used when labelling them in social posts and marketing copy.
- *
- * Differs from selectBestDisposalLine() in that:
- *   - 25+ explicitly excludes 30+ tier players (they go in a 30+ post instead)
- *   - Uses the tightened 25+ thresholds (L5 ≥ 24.5 / 25.0)
- *
- * Returns the qualifying threshold (30/25/20/15) or null.
+ * Returns all available players strictly assigned to the given disposal tier.
+ * Uses getPublicDisposalContentTier() — the canonical form-first function.
+ * A player at the 30+ tier will NOT appear in a 25+ result.
  */
-export function getPublicDisposalContentTier(
-  p: StatBoardPlayer,
-): 30 | 25 | 20 | 15 | null {
-  const ev30 = evaluateDisposalLine(p, 30);
-  if (ev30.tier === "High" || ev30.tier === "Medium") return 30;
-  const ev25 = evaluateDisposalLine(p, 25);
-  if (ev25.tier === "High" || ev25.tier === "Medium") return 25;
-  const ev20 = evaluateDisposalLine(p, 20);
-  if (ev20.tier === "High" || ev20.tier === "Medium") return 20;
-  const ev15 = evaluateDisposalLine(p, 15);
-  if (ev15.tier === "High" || ev15.tier === "Medium" || ev15.tier === "Low") return 15;
-  return null;
+export function getStrictDisposalCandidates(
+  players: StatBoardPlayer[],
+  tier: 30 | 25 | 20 | 15,
+  unavailablePlayerIds: Set<number> = new Set(),
+): StatBoardPlayer[] {
+  return players.filter(p => {
+    if (unavailablePlayerIds.has(p.player_id)) return false;
+    if ((p.games_played ?? 0) < 4) return false;
+    return assignDisposalMarketingTier(p) === tier;
+  });
+}
+
+export function getStrictGoalCandidates(
+  players: StatBoardPlayer[],
+  tier: 3 | 2 | 1,
+  unavailablePlayerIds: Set<number> = new Set(),
+): StatBoardPlayer[] {
+  return players.filter(p => {
+    if (unavailablePlayerIds.has(p.player_id)) return false;
+    if ((p.games_played ?? 0) < 3) return false;
+    return assignGoalMarketingTier(p) === tier;
+  });
+}
+
+export function getCombinedGamePickCandidates(
+  players: StatBoardPlayer[],
+  unavailablePlayerIds: Set<number> = new Set(),
+): Array<StatBoardPlayer & { assignedDisposalTier: 30 | 25 | 20 | 15 | null }> {
+  const result: Array<StatBoardPlayer & { assignedDisposalTier: 30 | 25 | 20 | 15 | null }> = [];
+  for (const p of players) {
+    if (unavailablePlayerIds.has(p.player_id)) continue;
+    if ((p.games_played ?? 0) < 4) continue;
+    const assignedDisposalTier = assignDisposalMarketingTier(p);
+    if (assignedDisposalTier !== null) result.push({ ...p, assignedDisposalTier });
+  }
+  return result;
 }
 
 // ─── Candidate scoring for Game Picks ────────────────────────────────────────
@@ -288,31 +505,12 @@ export interface CandidateScore {
   games: number;
   projection: number | null;
   position_group: string | null;
-  /** 0–100 composite score */
   score: number;
-  /** Ready-to-display copy line */
   copyLine: string;
-  /** Raw last-10 stat values from DB (oldest→newest). */
   last_10_values?: number[] | null;
-  /**
-   * Public content tier for this disposal candidate.
-   * 25+ explicitly excludes 30+ tier players.
-   */
   publicContentTier?: 30 | 25 | 20 | 15 | null;
 }
 
-/**
- * Scores a disposal candidate (0–100).
- *
- * Components (all normalised to their max contribution):
- *   hitRate      40 pts — primary signal (scaled: 0.70→0, 1.0→40)
- *   sampleDepth  20 pts — min(sample/10, 1) * 20
- *   l5Support    20 pts — l5/threshold capped at 1.3x, scaled to 20
- *   seasonSupport 10 pts
- *   projSupport  10 pts — projection vs threshold
- *
- * High tier adds 5-point bonus. Medium tier gets 0 bonus. Low tier gets -5 deduction.
- */
 function scoreDisposalCandidate(ev: DisposalLineEval, proj: number | null): number {
   const { hitRecord: rec, l5Avg: l5, seasonAvg, threshold } = ev;
 
@@ -321,7 +519,6 @@ function scoreDisposalCandidate(ev: DisposalLineEval, proj: number | null): numb
   const l5Score = Math.min(l5 / threshold, 1.3) / 1.3 * 20;
   const seasonScore = Math.min(seasonAvg / threshold, 1.3) / 1.3 * 10;
   const projScore = proj !== null ? (proj >= threshold ? 10 : proj >= threshold * 0.85 ? 5 : 0) : 0;
-
   const tierBonus = ev.tier === "High" ? 5 : ev.tier === "Low" ? -5 : 0;
 
   return Math.round(Math.min(100, Math.max(0, hitRateScore + sampleScore + l5Score + seasonScore + projScore + tierBonus)));
@@ -334,7 +531,6 @@ function scoreGoalCandidate(ev: GoalLineEval, proj: number | null): number {
   const sampleScore = Math.min(rec.sample / 10, 1) * 20;
   const l5Score = threshold > 0 ? Math.min(l5 / threshold, 2) / 2 * 20 : 0;
   const projScore = proj !== null ? (proj >= threshold ? 10 : proj >= threshold * 0.7 ? 5 : 0) : 0;
-
   const tierBonus = ev.tier === "High" ? 5 : ev.tier === "Low" ? -5 : 0;
 
   return Math.round(Math.min(100, Math.max(0, hitRateScore + sampleScore + l5Score + projScore + tierBonus)));
@@ -359,10 +555,6 @@ function buildGoalCopyLine(p: StatBoardPlayer, ev: GoalLineEval): string {
   return `${p.player_name} (${p.team_name}) — ${parts.join(" | ")}`;
 }
 
-/**
- * Ranks all disposal candidates for a set of team IDs.
- * Only includes players with a qualifying Medium+ (or Low-fallback) best line.
- */
 export function rankDisposalCandidatesForTeams(
   players: StatBoardPlayer[],
   teamIds: Set<number>,
@@ -382,6 +574,9 @@ export function rankDisposalCandidatesForTeams(
     if (!ev) continue;
 
     const score = scoreDisposalCandidate(ev, p.projection ?? null);
+    // Use canonical tier for publicContentTier
+    const publicContentTier = assignDisposalMarketingTier(p);
+
     results.push({
       player_id: p.player_id,
       player_name: p.player_name,
@@ -398,19 +593,13 @@ export function rankDisposalCandidatesForTeams(
       score,
       copyLine: buildDisposalCopyLine(p, ev),
       last_10_values: p.last_10_values ?? null,
-      // Derive from selectBestDisposalLine's threshold — avoids a second full evaluation pass.
-      // ev.threshold is already the highest qualifying threshold, matching getPublicDisposalContentTier's
-      // cascade. Cast is safe: selectBestDisposalLine only returns 30|25|20|15 thresholds.
-      publicContentTier: ev.threshold as 30 | 25 | 20 | 15,
+      publicContentTier,
     });
   }
 
   return results.sort((a, b) => b.score - a.score);
 }
 
-/**
- * Ranks all goal candidates for a set of team IDs.
- */
 export function rankGoalCandidatesForTeams(
   players: StatBoardPlayer[],
   teamIds: Set<number>,
@@ -452,216 +641,17 @@ export function rankGoalCandidatesForTeams(
   return results.sort((a, b) => b.score - a.score);
 }
 
-// ─── Last-N value helpers ─────────────────────────────────────────────────────
-
-/**
- * Core last-N extractor operating on a raw values array.
- * The RPC delivers last_10_values newest-first (index 0 = most recent game).
- * We filter null/negative sentinels (BYE/DNP/NYP) then take the first N.
- * Shared by getLastNValues and any consumer that holds last_10_values directly.
- */
-export function lastNFromValues(
-  raw: (number | null)[] | null | undefined,
-  count: number,
-): number[] {
-  if (!raw || raw.length === 0) return [];
-  return [...raw]
-    .filter((v): v is number => v !== null && v >= 0)
-    .slice(0, count);
-}
-
-/**
- * Extracts the last N actual stat values from a StatBoardPlayer.
- * Returns values newest-first, skipping null/negative sentinel values (BYE/DNP/NYP).
- */
-export function getLastNValues(p: StatBoardPlayer, count: number): number[] {
-  return lastNFromValues(p.last_10_values, count);
-}
-
-/**
- * Formats an array of stat values as a dot-separated strip.
- * e.g. [35, 34, 36, 33, 36] → "35 · 34 · 36 · 33 · 36"
- * Returns null if fewer than 2 values.
- */
-export function formatLastNStrip(values: number[]): string | null {
-  if (values.length < 2) return null;
-  return values.map(v => String(v)).join(" · ");
-}
-
-// ─── Tier label helpers ───────────────────────────────────────────────────────
-
-export function tierLabel(tier: ConfidenceTier): string {
-  if (tier === "High") return "High";
-  if (tier === "Medium") return "Medium";
-  if (tier === "Low") return "Low";
-  return "Weak";
-}
-
-export function tierColor(tier: ConfidenceTier): string {
-  if (tier === "High") return "text-emerald-400";
-  if (tier === "Medium") return "text-yellow-400";
-  if (tier === "Low") return "text-orange-400";
-  return "text-zinc-500";
-}
-
-// ─── Public stat-line formatter ───────────────────────────────────────────────
-
-/**
- * Canonical stat bullet used in all weekly social posts.
- * Format: "Player (Team) — 8/10 (80%) at 25+, L5 avg 27.8"
- *
- * Disposal thresholds: pass 15 | 20 | 25 | 30.
- * Goal thresholds: pass 1 | 2 | 3 (outputs "1+ goal" / "2+ goals" / "3+ goals").
- */
-export function formatPublicStatLine(
-  p: StatBoardPlayer,
-  threshold: number,
-): string {
-  const rec = getRecentHitRecord(p, threshold);
-  const record = rec.sample > 0 ? `${rec.hits}/${rec.sample}` : "—";
-  const pctStr = rec.sample > 0 ? ` (${Math.round(rec.rate * 100)}%)` : "";
-  const hasL5 = p.last_5_avg !== null && p.last_5_avg !== undefined;
-  const avg = hasL5 ? p.last_5_avg! : (p.season_avg ?? 0);
-  const avgLabel = hasL5 ? "L5 avg" : "sea avg";
-  const isGoal = threshold <= 3;
-  const label = isGoal
-    ? threshold === 1 ? "1+ goal" : `${threshold}+ goals`
-    : `${threshold}+`;
-  return `${p.player_name} (${p.team_name ?? ""}) — ${record}${pctStr} at ${label}, ${avgLabel} ${avg.toFixed(1)}`;
-}
-
-// ─── Marketing tier assignment ────────────────────────────────────────────────
-
-/**
- * Assigns the single disposal marketing tier for a player: 30 | 25 | 20 | 15 | null.
- *
- * Strict rule: hr >= 0.70 required for all tiers.
- * 25+ explicitly excludes players who qualify at 30+ (they belong in the 30+ post).
- * Returns null if no tier qualifies.
- *
- * 30+: hr30 >= 0.70 AND L5 >= 29.0 AND sample >= 5
- * 25+: hr25 >= 0.70 AND L5 >= 24.5 AND sample >= 5 AND NOT 30+ tier
- * 20+: hr20 >= 0.70 AND L5 >= 19.0 AND sample >= 4
- * 15+: hr15 >= 0.70 AND L5 >= 14.5 AND sample >= 4
- */
-export function assignDisposalMarketingTier(
-  p: StatBoardPlayer,
-): 30 | 25 | 20 | 15 | null {
-  const l5 = p.last_5_avg ?? p.season_avg ?? 0;
-
-  const rec30 = getRecentHitRecord(p, 30);
-  if (rec30.rate >= 0.70 && l5 >= 29.0 && rec30.sample >= 5) return 30;
-
-  const rec25 = getRecentHitRecord(p, 25);
-  if (rec25.rate >= 0.70 && l5 >= 24.5 && rec25.sample >= 5) return 25;
-
-  const rec20 = getRecentHitRecord(p, 20);
-  if (rec20.rate >= 0.70 && l5 >= 19.0 && rec20.sample >= 4) return 20;
-
-  const rec15 = getRecentHitRecord(p, 15);
-  if (rec15.rate >= 0.70 && l5 >= 14.5 && rec15.sample >= 4) return 15;
-
-  return null;
-}
-
-/**
- * Assigns the single goal marketing tier for a player: 3 | 2 | 1 | null.
- *
- * Returns null if no tier qualifies — never returns 1 as a catch-all default.
- *
- * 3+: hr3 >= 0.40 AND sample >= 5 AND L5 >= 2.0
- * 2+: hr2 >= 0.50 AND sample >= 5 AND L5 >= 1.4
- * 1+: hr1 >= 0.65 AND sample >= 4 AND L5 >= 0.8
- */
-export function assignGoalMarketingTier(
-  p: StatBoardPlayer,
-): 3 | 2 | 1 | null {
-  const l5 = p.last_5_avg ?? p.season_avg ?? 0;
-
-  const rec3 = getRecentHitRecord(p, 3);
-  if (rec3.rate >= 0.40 && rec3.sample >= 5 && l5 >= 2.0) return 3;
-
-  const rec2 = getRecentHitRecord(p, 2);
-  if (rec2.rate >= 0.50 && rec2.sample >= 5 && l5 >= 1.4) return 2;
-
-  const rec1 = getRecentHitRecord(p, 1);
-  if (rec1.rate >= 0.65 && rec1.sample >= 4 && l5 >= 0.8) return 1;
-
-  return null;
-}
-
-// ─── Strict candidate helpers ─────────────────────────────────────────────────
-
-/**
- * Returns all available players who are strictly assigned to the given disposal tier.
- * Exact tier matching — a player at the 30+ tier will NOT appear in a 25+ result.
- */
-export function getStrictDisposalCandidates(
-  players: StatBoardPlayer[],
-  tier: 30 | 25 | 20 | 15,
-  unavailablePlayerIds: Set<number> = new Set(),
-): StatBoardPlayer[] {
-  return players.filter(p => {
-    if (unavailablePlayerIds.has(p.player_id)) return false;
-    if ((p.games_played ?? 0) < 4) return false;
-    return assignDisposalMarketingTier(p) === tier;
-  });
-}
-
-/**
- * Returns all available players who are strictly assigned to the given goal tier.
- * Exact tier matching — a player at the 3+ tier will NOT appear in a 1+ result.
- */
-export function getStrictGoalCandidates(
-  players: StatBoardPlayer[],
-  tier: 3 | 2 | 1,
-  unavailablePlayerIds: Set<number> = new Set(),
-): StatBoardPlayer[] {
-  return players.filter(p => {
-    if (unavailablePlayerIds.has(p.player_id)) return false;
-    if ((p.games_played ?? 0) < 3) return false;
-    return assignGoalMarketingTier(p) === tier;
-  });
-}
-
-/**
- * Returns candidates across all disposal tiers combined, at their own best tier.
- * This is the ONLY helper that intentionally mixes disposal thresholds.
- * Used exclusively by the Full Game Picks (combined) post builder.
- */
-export function getCombinedGamePickCandidates(
-  players: StatBoardPlayer[],
-  unavailablePlayerIds: Set<number> = new Set(),
-): Array<StatBoardPlayer & { assignedDisposalTier: 30 | 25 | 20 | 15 | null }> {
-  const result: Array<StatBoardPlayer & { assignedDisposalTier: 30 | 25 | 20 | 15 | null }> = [];
-  for (const p of players) {
-    if (unavailablePlayerIds.has(p.player_id)) continue;
-    if ((p.games_played ?? 0) < 4) continue;
-    const assignedDisposalTier = assignDisposalMarketingTier(p);
-    if (assignedDisposalTier !== null) result.push({ ...p, assignedDisposalTier });
-  }
-  return result;
-}
-
 // ─── L5 consistency validator ─────────────────────────────────────────────────
 
 export interface L5ValidationResult {
   isConsistent: boolean;
   l5Avg: number;
-  /** Hit rate at assigned tier threshold */
   hitRateAtTier: number;
-  /** Flag: L5 avg is more than 15% below the threshold */
   l5BelowThreshold: boolean;
-  /** Flag: hit rate and L5 give conflicting signals */
   signalMismatch: boolean;
   warnings: string[];
 }
 
-/**
- * Validates L5 consistency for a disposal stat line.
- * Catches cases where the hit record looks strong but L5 average is misleading,
- * or where L5 and hit rate give conflicting signals.
- */
 export function validateL5Consistency(
   p: StatBoardPlayer,
   threshold: number,
@@ -693,92 +683,108 @@ export function validateL5Consistency(
   };
 }
 
-// ─── Fresh Last 5 resolver ────────────────────────────────────────────────────
+// ─── Post validation (Part 13) ────────────────────────────────────────────────
 
-export interface Last5Resolution {
-  values: number[];
-  strip: string | null;
-  avg: number | null;
-  /** true when the strip avg agrees with last_5_avg to within 0.5 pts */
-  isConsistent: boolean;
-  /** Fallback reason if strip was rejected */
-  warning: string | null;
-}
+import type { SocialPost, PostValidationResult } from "./types";
 
 /**
- * Resolves the freshest available Last 5 values for social post display.
+ * Validates a SocialPost for tier consistency, player count accuracy, and
+ * voiceover language match.
  *
- * Invariant: last_10_values is newest-first from the RPC.
- * Cross-checks the derived strip average against the scalar last_5_avg.
- * If they disagree by more than 0.5 pts the strip is suppressed (values=[])
- * and a warning is set — preventing stale array data from leaking into posts.
- *
- * The scalar last_5_avg is always used for averages because it is computed
- * directly in SQL and is never affected by array ordering bugs.
+ * Rules:
+ * - Strict 20+ post: all statsShown must contain "at 20+" not "at 25+", "at 30+", or "at 15+"
+ * - Strict 25+ post: all statsShown must contain "at 25+" not "at 20+" or "at 30+"
+ * - Strict 30+ post: all statsShown must contain "at 30+"
+ * - Mixed Disposal Watch: allowed to mix thresholds, must be labelled mixed
+ * - Image description player count must match playerNames count
+ * - Full Game Picks: allowed to mix anything
  */
-export function resolveFreshLast5ForSocial(p: StatBoardPlayer): Last5Resolution {
-  const rawValues = lastNFromValues(p.last_10_values, 5);
-  const scalarAvg = p.last_5_avg ?? null;
+export function validatePost(post: SocialPost): PostValidationResult {
+  const violations: string[] = [];
+  const warnings: string[] = [];
 
-  if (rawValues.length < 2) {
-    return {
-      values: rawValues,
-      strip: formatLastNStrip(rawValues),
-      avg: scalarAvg,
-      isConsistent: true,
-      warning: rawValues.length === 0 ? "No last_10_values data available." : null,
-    };
+  const isFullGamePicks = post.thresholdLabel === "Full Game Picks" ||
+    post.thresholdLabel === "Mixed Stat Watch" ||
+    post.thresholdLabel === "Disposals + Goals";
+
+  const isMixed = post.isMixedDisposalWatch === true || post.thresholdLabel.toLowerCase().includes("watch");
+
+  // ── Strict tier checks ───────────────────────────────────────────────────
+  if (!isFullGamePicks && !isMixed) {
+    const thr = post.thresholdLabel.match(/(\d+)\+\s*Disposals?/i)?.[1];
+    if (thr && post.statLens === "disposals") {
+      const strictThr = parseInt(thr, 10);
+      const otherThr = [15, 20, 25, 30].filter(t => t !== strictThr);
+      for (const stat of post.statsShown) {
+        for (const bad of otherThr) {
+          if (stat.includes(`at ${bad}+`) && !stat.includes(`at ${bad}+ goals`)) {
+            violations.push(`Strict ${strictThr}+ post contains a player with "at ${bad}+" stat line: "${stat.slice(0, 60)}"`);
+          }
+        }
+      }
+    }
+
+    const goalThr = post.thresholdLabel.match(/(\d+)\+\s*Goals?/i)?.[1];
+    if (goalThr && post.statLens === "goals") {
+      const strictGoalThr = parseInt(goalThr, 10);
+      const otherGoal = [1, 2, 3].filter(t => t !== strictGoalThr);
+      for (const stat of post.statsShown) {
+        for (const bad of otherGoal) {
+          const pattern = bad === 1 ? "at 1+ goal" : `at ${bad}+ goals`;
+          if (stat.toLowerCase().includes(pattern)) {
+            violations.push(`Strict ${strictGoalThr}+ goal post contains "at ${bad}+" stat line`);
+          }
+        }
+      }
+    }
   }
 
-  const stripAvg = rawValues.reduce((a, b) => a + b, 0) / rawValues.length;
-  const isConsistent = scalarAvg === null || Math.abs(stripAvg - scalarAvg) <= 0.5;
-
-  if (!isConsistent) {
-    return {
-      values: [],
-      strip: null,
-      avg: scalarAvg,
-      isConsistent: false,
-      warning: `Last 5 strip avg ${stripAvg.toFixed(1)} disagrees with scalar last_5_avg ${scalarAvg?.toFixed(1)} by more than 0.5 — strip suppressed.`,
-    };
+  // ── Player count accuracy ─────────────────────────────────────────────────
+  const descMatch = post.imageDescription.match(/(\d+)-player/i);
+  if (descMatch) {
+    const descCount = parseInt(descMatch[1], 10);
+    if (descCount !== post.playerNames.length) {
+      violations.push(`imageDescription says "${descCount}-player" but playerNames has ${post.playerNames.length} players`);
+    }
+  }
+  const visualMatch = post.suggestedVisual.match(/(\d+)-player/i);
+  if (visualMatch) {
+    const visCount = parseInt(visualMatch[1], 10);
+    if (visCount !== post.playerNames.length) {
+      violations.push(`suggestedVisual says "${visCount}-player" but playerNames has ${post.playerNames.length} players`);
+    }
   }
 
-  return {
-    values: rawValues,
-    strip: formatLastNStrip(rawValues),
-    avg: scalarAvg ?? (rawValues.length > 0 ? stripAvg : null),
-    isConsistent: true,
-    warning: null,
-  };
+  // ── L5 consistency ────────────────────────────────────────────────────────
+  // (checked via resolveFreshLast5ForSocial at player level)
+
+  // ── Mixed disposal watch label ────────────────────────────────────────────
+  if (!isFullGamePicks && post.statLens === "disposals") {
+    const thresholds = new Set<number>();
+    for (const stat of post.statsShown) {
+      const m = stat.match(/at (\d+)\+/g);
+      if (m) m.forEach(t => {
+        const n = parseInt(t.replace('at ', '').replace('+', ''), 10);
+        if ([15, 20, 25, 30].includes(n)) thresholds.add(n);
+      });
+    }
+    if (thresholds.size > 1 && !isMixed) {
+      violations.push(`Post mixes disposal thresholds (${[...thresholds].join(', ')}+) but is not labelled as Mixed Disposal Watch`);
+    }
+  }
+
+  const needsReview = violations.length > 0;
+  return { isValid: violations.length === 0, needsReview, violations, warnings };
 }
 
 // ─── Availability guard ───────────────────────────────────────────────────────
 
 const EXCLUDED_LOCK_KEYWORDS = [
-  "injured",
-  "suspended",
-  "omitted",
-  "managed",
-  "inactive",
-  "test player",
-  "emergency",
-  "medical",
-  "withdrawn",
-  "delisted",
-  "traded",
-  "rookie_inactive",
+  "injured", "suspended", "omitted", "managed", "inactive",
+  "test player", "emergency", "medical", "withdrawn", "delisted",
+  "traded", "rookie_inactive",
 ];
 
-/**
- * Comprehensive availability check for social post candidate pools.
- * Uses the lock_reason field on the player record as a proxy for exclusion.
- *
- * Primary mechanism: pass the unavailablePlayerIds set from CIDataSubset,
- * which is populated from the admin's manual status overrides.
- *
- * Secondary: if a player has lock_reason set to an injury/suspension keyword,
- * treat them as unavailable even if they're not in the set.
- */
 export function isAvailableForSocial(
   p: StatBoardPlayer,
   unavailablePlayerIds?: Set<number>,
@@ -786,4 +792,39 @@ export function isAvailableForSocial(
   if (unavailablePlayerIds?.has(p.player_id)) return false;
   const lockReason = (p.lock_reason ?? "").toLowerCase();
   return !lockReason || !EXCLUDED_LOCK_KEYWORDS.some(kw => lockReason.includes(kw));
+}
+
+// ─── Tier label helpers ───────────────────────────────────────────────────────
+
+export function tierLabel(tier: ConfidenceTier): string {
+  if (tier === "High") return "High";
+  if (tier === "Medium") return "Medium";
+  if (tier === "Low") return "Low";
+  return "Weak";
+}
+
+export function tierColor(tier: ConfidenceTier): string {
+  if (tier === "High") return "text-emerald-400";
+  if (tier === "Medium") return "text-yellow-400";
+  if (tier === "Low") return "text-orange-400";
+  return "text-zinc-500";
+}
+
+// ─── Public stat-line formatter ───────────────────────────────────────────────
+
+export function formatPublicStatLine(
+  p: StatBoardPlayer,
+  threshold: number,
+): string {
+  const rec = getRecentHitRecord(p, threshold);
+  const record = rec.sample > 0 ? `${rec.hits}/${rec.sample}` : "—";
+  const pctStr = rec.sample > 0 ? ` (${Math.round(rec.rate * 100)}%)` : "";
+  const hasL5 = p.last_5_avg !== null && p.last_5_avg !== undefined;
+  const avg = hasL5 ? p.last_5_avg! : (p.season_avg ?? 0);
+  const avgLabel = hasL5 ? "L5 avg" : "sea avg";
+  const isGoal = threshold <= 3;
+  const label = isGoal
+    ? threshold === 1 ? "1+ goal" : `${threshold}+ goals`
+    : `${threshold}+`;
+  return `${p.player_name} (${p.team_name ?? ""}) — ${record}${pctStr} at ${label}, ${avgLabel} ${avg.toFixed(1)}`;
 }
