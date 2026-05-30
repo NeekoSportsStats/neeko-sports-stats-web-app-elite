@@ -80,7 +80,7 @@ export type PostCategory =
 
 export type CopyTone = "clean_stats" | "punchier_social" | "short_caption";
 
-export type StatLens = "disposals" | "goals" | "tackles" | "fantasy" | "team-total";
+export type StatLens = "disposals" | "goals" | "tackles" | "fantasy" | "team-total" | "mixed";
 
 export type ConfidenceLevel = "High" | "Medium" | "Fallback";
 

@@ -19,7 +19,6 @@ import {
   formatRateAsPercent,
 } from "./statLineEngine";
 import type { CandidateScore, ConfidenceTier } from "./statLineEngine";
-import type { StatBoardPlayer } from "@/features/afl/stat-board/types";
 
 // ─── Output types ─────────────────────────────────────────────────────────────
 
@@ -58,6 +57,8 @@ export interface GamePickPlayer {
    * 25+ tier explicitly excludes players who qualify at 30+ threshold.
    */
   publicContentTier: 30 | 25 | 20 | 15 | null;
+  /** Admin-only warnings: thin sample, anomalous recent values, etc. Never shown publicly. */
+  adminWarnings: string[];
 }
 
 export interface GamePick {
@@ -85,6 +86,21 @@ function toGamePickPlayer(c: CandidateScore): GamePickPlayer {
     last_5_avg: c.l5Avg,
   } as Pick<StatBoardPlayer, "last_10_values" | "last_5_avg"> as StatBoardPlayer);
 
+  const adminWarnings: string[] = [];
+
+  if (c.games < 5) {
+    adminWarnings.push(`Thin sample — only ${c.games} game${c.games === 1 ? "" : "s"} played. Treat with caution.`);
+  }
+
+  if (c.l5Avg != null && c.l5Avg > 0 && resolved.values.length > 0) {
+    const anomalous = resolved.values.filter(v => v < c.l5Avg! * 0.4);
+    if (anomalous.length > 0) {
+      adminWarnings.push(
+        `Anomalous Last 5 value${anomalous.length > 1 ? "s" : ""}: ${anomalous.join(", ")} vs L5 avg ${c.l5Avg.toFixed(1)}. Verify raw data before publishing.`
+      );
+    }
+  }
+
   return {
     player_id: c.player_id,
     player_name: c.player_name,
@@ -107,6 +123,7 @@ function toGamePickPlayer(c: CandidateScore): GamePickPlayer {
     last_5_strip: resolved.strip,
     last5Warning: resolved.warning,
     publicContentTier: c.publicContentTier ?? null,
+    adminWarnings,
   };
 }
 

@@ -182,7 +182,7 @@ function build20PlusDisposalsPost(
 
   const imageDescription = picks.length > 0
     ? `Create a dark premium AFL stat graphic for ${matchLabel} focused on 20+ disposals. ` +
-      `Show ${picks.length} player cards: ${picks.slice(0, 4).map(formatPickLineForImagePrompt).join("; ")}. ` +
+      `Show ${picks.length} player cards: ${picks.map(formatPickLineForImagePrompt).join("; ")}. ` +
       `Use team colour accents. Neeko Sports Stats branding. No betting language.`
     : `Placeholder dark AFL graphic — no strong 20+ disposal candidates for ${matchLabel}. Show team names only.`;
 
@@ -275,7 +275,7 @@ function build1PlusGoalsPost(
 
   const imageDescription = picks.length > 0
     ? `Create a dark premium AFL stat graphic for ${matchLabel} focused on 1+ goals. ` +
-      `Show ${picks.length} player cards: ${picks.slice(0, 4).map(formatPickLineForImagePrompt).join("; ")}. ` +
+      `Show ${picks.length} player cards: ${picks.map(formatPickLineForImagePrompt).join("; ")}. ` +
       `Use team colour accents. Neeko Sports Stats branding. No betting language.`
     : `Placeholder dark AFL graphic — no strong 1+ goal candidates for ${matchLabel}. Show team names only.`;
 
@@ -426,14 +426,7 @@ function buildFullGamePicksPost(
     type: "Carousel",
     category: "Round Preview",
     intent: "pre_game",
-    statLens: "disposals",
-    confidence: hasHighTier ? "High" : pickCount >= 4 ? "Medium" : "Low",
-    title,
-    content: hook,
-    statsShown,
-    onScreenText,
-    caption,
-    hashtags: gamePickHashtags("combined", game.game_date),
+    statLens: "mixed",
     suggestedVisual,
     imageDescription,
     dataScope: `${matchLabel} combined disposal + goal pool`,

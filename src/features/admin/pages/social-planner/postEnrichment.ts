@@ -47,7 +47,7 @@ const BANNED_PATTERNS: Array<{ re: RegExp; reason: string }> = [
   { re: /\bsure.?thing\b|\bguarantee\b/gi,     reason: "certainty language" },
   { re: /\bcash.?out\b|\bpayout\b/gi,          reason: "cashout/payout language" },
   { re: /\bpunt(ing)?\b/gi,                    reason: "punt language" },
-  { re: /\b(win|lose|losing)\b/gi,             reason: "win/lose outcome framing" },
+  { re: /\b(win|lose|losing)\s+(the\s+)?(bet|wager|multi|parlay|market|money)\b/gi, reason: "win/lose outcome framing (betting context)" },
   { re: /\b(tip|tips|tipping)\b/gi,            reason: "tipping language" },
   { re: /\b(best|top)\s+(pick|play|bet)\b/gi,  reason: "pick/play/bet framing" },
   { re: /\bshould\s+(hit|get|score|kick)\b/gi, reason: "predictive 'should' language" },
@@ -122,9 +122,9 @@ export function scorePost(post: SocialPost): PostQuality {
     } else {
       score += 7;
     }
-  } else if (post.statLens === "team-total" || post.statLens === "tackles") {
+  } else if (post.statLens === "team-total" || post.statLens === "tackles" || post.statLens === "mixed") {
     score += 10;
-    reasons.push("team/tackle stat line");
+    reasons.push("team/tackle/mixed stat line");
   } else {
     score += 5;
   }
