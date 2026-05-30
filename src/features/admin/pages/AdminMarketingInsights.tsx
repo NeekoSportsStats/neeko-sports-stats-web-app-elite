@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import {
   RefreshCw, TrendingUp, Users, MousePointerClick, ShoppingCart,
   CircleCheck as CheckCircle2, ArrowRight, CircleAlert as AlertCircle,
-  Monitor, Smartphone, Tablet, Info, Copy, ClipboardCheck, Clock,
+  Monitor, Smartphone, Tablet, Info, Copy, ClipboardCheck, Clock, Timer,
 } from "lucide-react";
 import { fetchMarketingInsights, type MarketingInsightsRange } from "@/lib/adminApi";
 
@@ -65,9 +65,38 @@ interface SessionReviewRow {
   checkout_starts: number;
   product_events: number;
   session_start: string;
+  session_end?: string;
   os: string;
   browser: string;
   device: string;
+}
+
+interface SessionDurationData {
+  available: boolean;
+  total_sessions?: number;
+  avg_duration_sec?: number;
+  median_duration_sec?: number;
+  longest_session_sec?: number;
+  shortest_meaningful_sec?: number;
+  under_10s?: number;
+  under_30s?: number;
+  s10_to_30s?: number;
+  s30_to_60s?: number;
+  s60_to_120s?: number;
+  s120_to_300s?: number;
+  over_60s?: number;
+  over_120s?: number;
+  over_300s?: number;
+  pct_under_10s?: number;
+  pct_over_60s?: number;
+  pct_over_120s?: number;
+}
+
+interface TimeOnPageRow {
+  page: string;
+  exits: number;
+  avg_time_sec: number | null;
+  pageviews: number;
 }
 
 interface InsightsData {
@@ -76,6 +105,8 @@ interface InsightsData {
   cta_performance?: CtaRow[];
   devices?: DeviceRow[];
   sessions?: SessionData;
+  session_duration?: SessionDurationData;
+  time_on_page?: TimeOnPageRow[];
   top_pages?: TopPage[];
   acquisition?: { utms: AcquisitionRow[]; referrers: Array<{ referrer: string; sessions: number }> };
   session_review_shortlist?: SessionReviewRow[];
@@ -117,6 +148,17 @@ function safeText(value: unknown, fallback = "—"): string {
   return s;
 }
 
+function safeDuration(seconds: unknown, fallback = "Not available"): string {
+  if (seconds === null || seconds === undefined) return fallback;
+  const n = typeof seconds === "string" ? parseFloat(seconds) : (seconds as number);
+  if (typeof n !== "number" || !isFinite(n) || n < 0) return fallback;
+  const s = Math.round(n);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return rem === 0 ? `${m}m` : `${m}m ${rem}s`;
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DATE_RANGES: { label: string; value: MarketingInsightsRange; description: string }[] = [
@@ -148,7 +190,69 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
+// ─── Time insights helpers ────────────────────────────────────────────────────
+
+function buildTimeInsights(sd: SessionDurationData, top: TimeOnPageRow[]): string[] {
+  if (!sd.available) return [];
+  const insights: string[] = [];
+  const pctUnder10 = safeInt(sd.pct_under_10s);
+  const pctOver120 = safeInt(sd.pct_over_120s);
+  const avg = safeInt(sd.avg_duration_sec);
+  if (pctUnder10 >= 40) {
+    insights.push(`${pctUnder10}% of sessions last under 10 seconds — likely bounces. Check landing page load speed, headline, and above-the-fold CTA.`);
+  } else if (pctUnder10 >= 20) {
+    insights.push(`${pctUnder10}% of sessions last under 10 seconds — some quick exits. Consider a stronger first impression or faster load.`);
+  }
+  if (avg >= 90 && pctOver120 < 15) {
+    insights.push(`Average session is ${safeDuration(avg)} but most sessions don't pass 2 minutes — a segment of power users may be skewing the average.`);
+  }
+  if (pctOver120 >= 25) {
+    insights.push(`${pctOver120}% of sessions last over 2 minutes — strong interest. Prioritise conversion optimisation for this cohort.`);
+  }
+  const topPage = top.find(p => p.avg_time_sec !== null && p.avg_time_sec > 0);
+  if (topPage) {
+    const url = topPage.page.replace(/https?:\/\/[^/]+/, "") || "/";
+    insights.push(`Best page by time: ${url} (avg ${safeDuration(topPage.avg_time_sec)}).`);
+  }
+  return insights;
+}
+
 // ─── Analysis pack builder ────────────────────────────────────────────────────
+
+function buildTimingSection(data: InsightsData, range: MarketingInsightsRange): string {
+  const sd = data.session_duration;
+  const top = data.time_on_page ?? [];
+  const lines: string[] = [`Time on Page / Session Duration — ${rangeLabelLong(range)}`];
+  if (!sd?.available) {
+    lines.push(`Session duration data not available for this range.`);
+  } else {
+    lines.push(`Average session: ${safeDuration(sd.avg_duration_sec)}`);
+    lines.push(`Median session: ${safeDuration(sd.median_duration_sec)}`);
+    lines.push(`Under 10s (bounce): ${safeNumber(sd.under_10s)} (${safeInt(sd.pct_under_10s)}%)`);
+    lines.push(`10–30s: ${safeNumber(sd.s10_to_30s)}`);
+    lines.push(`30–60s: ${safeNumber(sd.s30_to_60s)}`);
+    lines.push(`1–2 min: ${safeNumber(sd.s60_to_120s)}`);
+    lines.push(`2–5 min: ${safeNumber(sd.s120_to_300s)}`);
+    lines.push(`Over 5 min: ${safeNumber(sd.over_300s)}`);
+  }
+  if (top.length > 0) {
+    lines.push(`\nTop pages by time:`);
+    top
+      .filter(p => p.avg_time_sec !== null)
+      .sort((a, b) => safeInt(b.avg_time_sec) - safeInt(a.avg_time_sec))
+      .slice(0, 10)
+      .forEach(p => {
+        const url = p.page.replace(/https?:\/\/[^/]+/, "") || "/";
+        lines.push(`  ${url} — avg ${safeDuration(p.avg_time_sec)} (${safeInt(p.exits)} exits)`);
+      });
+  }
+  const obs = buildTimeInsights(sd ?? { available: false }, top);
+  if (obs.length > 0) {
+    lines.push(`\nObservations:`);
+    obs.forEach(o => lines.push(`  - ${o}`));
+  }
+  return lines.join("\n");
+}
 
 function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fetchedAt: Date): string {
   const rangeLabel = rangeLabelLong(range);
@@ -281,8 +385,13 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
   }
   lines.push(``);
 
-  // ── 7. Device Breakdown
-  lines.push(`## 7. Device Breakdown`);
+  // ── 7. Time on Page / Session Duration
+  lines.push(`## 7. Time on Page / Session Duration`);
+  lines.push(buildTimingSection(data, range));
+  lines.push(``);
+
+  // ── 8. Device Breakdown
+  lines.push(`## 8. Device Breakdown`);
   const totalDeviceSessions = devices.reduce((s, d) => s + safeInt(d.sessions), 0);
   const deviceTypes: Record<string, number> = {};
   for (const d of devices) {
@@ -314,8 +423,8 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
   }
   lines.push(``);
 
-  // ── 8. Behaviour Notes
-  lines.push(`## 8. Behaviour Notes`);
+  // ── 9. Behaviour Notes
+  lines.push(`## 9. Behaviour Notes`);
   if (insights.length > 0) {
     insights.forEach(i => lines.push(`- ${i}`));
   } else {
@@ -328,24 +437,29 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
   }
   lines.push(``);
 
-  // ── 9. Session Review Shortlist
-  lines.push(`## 9. Session Review Shortlist`);
+  // ── 10. Session Review Shortlist
+  lines.push(`## 10. Session Review Shortlist`);
   lines.push(`High-intent sessions (CTA clicks, checkout starts, or 3+ pages + 2+ product events).`);
   lines.push(`Session IDs truncated for privacy.`);
   if (sessionReview.length > 0) {
     lines.push(``);
-    lines.push(`| Session | Pages | CTA | Checkout | Product Events | OS | Browser |`);
-    lines.push(`|---|---|---|---|---|---|---|`);
+    lines.push(`| Session | Duration | Pages | CTA | Checkout | Product Events | OS | Browser |`);
+    lines.push(`|---|---|---|---|---|---|---|---|`);
     sessionReview.forEach(s => {
-      lines.push(`| ${safeText(s.session_id)} | ${safeInt(s.page_views)} | ${safeInt(s.cta_clicks)} | ${safeInt(s.checkout_starts)} | ${safeInt(s.product_events)} | ${safeText(s.os)} | ${safeText(s.browser)} |`);
+      let dur = "—";
+      if (s.session_end && s.session_start) {
+        const diffSec = (new Date(s.session_end).getTime() - new Date(s.session_start).getTime()) / 1000;
+        if (diffSec >= 0) dur = safeDuration(diffSec);
+      }
+      lines.push(`| ${safeText(s.session_id)} | ${dur} | ${safeInt(s.page_views)} | ${safeInt(s.cta_clicks)} | ${safeInt(s.checkout_starts)} | ${safeInt(s.product_events)} | ${safeText(s.os)} | ${safeText(s.browser)} |`);
     });
   } else {
     lines.push(`No high-intent sessions in this range.`);
   }
   lines.push(``);
 
-  // ── 10. Questions for ChatGPT
-  lines.push(`## 10. Questions for ChatGPT`);
+  // ── 11. Questions for ChatGPT
+  lines.push(`## 11. Questions for ChatGPT`);
   lines.push(`Based on the data above, please help answer:`);
   lines.push(``);
   lines.push(`1. What is the most likely reason for the CTA-to-checkout drop-off rate?`);
@@ -355,6 +469,11 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
   lines.push(`5. Does the device breakdown suggest any UX optimisation priorities (mobile vs desktop)?`);
   lines.push(`6. Based on the session review shortlist, what common behaviours can you spot among near-converters?`);
   lines.push(`7. What content or campaign would you recommend to increase top-of-funnel traffic?`);
+  lines.push(`8. What does the session duration distribution tell us about user intent and content depth?`);
+  lines.push(`9. Is the bounce rate (sessions under 10s) a concern — what likely causes it?`);
+  lines.push(`10. Which pages have the best time-on-page, and what does that suggest about content quality?`);
+  lines.push(`11. For the users spending 2+ minutes on site but not converting, what friction might explain that?`);
+  lines.push(`12. How should we prioritise: improving top-of-funnel volume vs improving mid-funnel conversion?`);
 
   return lines.join("\n");
 }
@@ -404,9 +523,14 @@ function buildCampaignSection(data: InsightsData, range: MarketingInsightsRange)
 function buildSessionReviewSection(data: InsightsData, range: MarketingInsightsRange): string {
   const sessions = data.session_review_shortlist ?? [];
   if (sessions.length === 0) return `No high-intent sessions in ${rangeLabelLong(range)}.`;
-  const rows = sessions.map(s =>
-    `${safeText(s.session_id)} | ${safeInt(s.page_views)}pv | ${safeInt(s.cta_clicks)}cta | ${safeInt(s.checkout_starts)}checkout | ${safeInt(s.product_events)}prod | ${safeText(s.os)} ${safeText(s.browser)}`
-  );
+  const rows = sessions.map(s => {
+    let dur = "—";
+    if (s.session_end && s.session_start) {
+      const diffSec = (new Date(s.session_end).getTime() - new Date(s.session_start).getTime()) / 1000;
+      if (diffSec >= 0) dur = safeDuration(diffSec);
+    }
+    return `${safeText(s.session_id)} | ${dur} | ${safeInt(s.page_views)}pv | ${safeInt(s.cta_clicks)}cta | ${safeInt(s.checkout_starts)}checkout | ${safeInt(s.product_events)}prod | ${safeText(s.os)} ${safeText(s.browser)}`;
+  });
   return [`Session Review — ${rangeLabelLong(range)} (truncated IDs, no PII)`, ...rows].join("\n");
 }
 
@@ -621,6 +745,119 @@ function DeviceBreakdown({ devices }: { devices: DeviceRow[] }) {
   );
 }
 
+function SessionDurationPanel({
+  sd,
+  top,
+  onCopy,
+  copyDisabled,
+}: {
+  sd: SessionDurationData;
+  top: TimeOnPageRow[];
+  onCopy: () => string;
+  copyDisabled: boolean;
+}) {
+  const total = safeInt(sd.total_sessions);
+  const buckets: { label: string; count: number; color: string }[] = [
+    { label: "Under 10s", count: safeInt(sd.under_10s), color: "bg-red-500/60" },
+    { label: "10–30s", count: safeInt(sd.s10_to_30s), color: "bg-amber-500/60" },
+    { label: "30–60s", count: safeInt(sd.s30_to_60s), color: "bg-yellow-400/60" },
+    { label: "1–2 min", count: safeInt(sd.s60_to_120s), color: "bg-emerald-400/60" },
+    { label: "2–5 min", count: safeInt(sd.s120_to_300s), color: "bg-emerald-500/70" },
+    { label: "Over 5 min", count: safeInt(sd.over_300s), color: "bg-emerald-600/70" },
+  ];
+  const maxBucket = Math.max(...buckets.map(b => b.count), 1);
+
+  const topByTime = top
+    .filter(p => p.avg_time_sec !== null && p.avg_time_sec > 0)
+    .sort((a, b) => safeInt(b.avg_time_sec) - safeInt(a.avg_time_sec))
+    .slice(0, 8);
+
+  return (
+    <div className="rounded-lg border border-border/60 bg-card p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold flex items-center gap-2">
+          <Timer className="h-4 w-4 text-muted-foreground" />
+          Session Duration
+        </h3>
+        <CopyButton getText={onCopy} small label="Copy" disabled={copyDisabled} />
+      </div>
+
+      {/* 4 summary stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <div className="rounded-md bg-muted/20 p-3">
+          <p className="text-[11px] text-muted-foreground font-medium mb-1">Avg Duration</p>
+          <p className="text-lg font-bold tabular-nums">{safeDuration(sd.avg_duration_sec)}</p>
+        </div>
+        <div className="rounded-md bg-muted/20 p-3">
+          <p className="text-[11px] text-muted-foreground font-medium mb-1">Median</p>
+          <p className="text-lg font-bold tabular-nums">{safeDuration(sd.median_duration_sec)}</p>
+        </div>
+        <div className="rounded-md bg-emerald-500/10 p-3">
+          <p className="text-[11px] text-muted-foreground font-medium mb-1">Engaged 60s+</p>
+          <p className="text-lg font-bold tabular-nums text-emerald-400">{safeInt(sd.pct_over_60s)}%</p>
+          <p className="text-[10px] text-muted-foreground/60">{safeNumber(sd.over_60s)} sessions</p>
+        </div>
+        <div className="rounded-md bg-red-500/10 p-3">
+          <p className="text-[11px] text-muted-foreground font-medium mb-1">Quick Bounces</p>
+          <p className="text-lg font-bold tabular-nums text-red-400">{safeInt(sd.pct_under_10s)}%</p>
+          <p className="text-[10px] text-muted-foreground/60">{safeNumber(sd.under_10s)} sessions</p>
+        </div>
+      </div>
+
+      {/* Engagement quality buckets */}
+      <div className="mb-5">
+        <p className="text-xs text-muted-foreground font-medium mb-3">Engagement Quality Distribution</p>
+        <div className="flex flex-col gap-2">
+          {buckets.map(b => {
+            const pct = total > 0 ? (b.count / total) * 100 : 0;
+            const barPct = maxBucket > 0 ? (b.count / maxBucket) * 100 : 0;
+            return (
+              <div key={b.label} className="flex items-center gap-3">
+                <span className="text-xs text-muted-foreground w-16 shrink-0">{b.label}</span>
+                <div className="flex-1 h-4 bg-muted/25 rounded overflow-hidden">
+                  <div className={`h-full rounded ${b.color} transition-all`} style={{ width: `${barPct}%` }} />
+                </div>
+                <span className="text-xs tabular-nums font-mono w-8 text-right">{pct.toFixed(0)}%</span>
+                <span className="text-xs text-muted-foreground/50 tabular-nums w-12 text-right">{b.count.toLocaleString()}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Top pages by time */}
+      {topByTime.length > 0 && (
+        <div>
+          <p className="text-xs text-muted-foreground font-medium mb-2">Top Pages by Time on Page</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border/40">
+                  <th className="text-left font-medium text-muted-foreground pb-2 pr-4">Page</th>
+                  <th className="text-right font-medium text-muted-foreground pb-2 pr-4">Avg Time</th>
+                  <th className="text-right font-medium text-muted-foreground pb-2">Exits</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topByTime.map((p, i) => {
+                  const url = p.page.replace(/https?:\/\/[^/]+/, "") || "/";
+                  return (
+                    <tr key={i} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
+                      <td className="py-1.5 pr-4 text-foreground/80 truncate max-w-[260px]">{url}</td>
+                      <td className="py-1.5 pr-4 text-right tabular-nums font-semibold text-emerald-400">{safeDuration(p.avg_time_sec)}</td>
+                      <td className="py-1.5 text-right tabular-nums text-muted-foreground">{safeInt(p.exits).toLocaleString()}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SetupPanel() {
   return (
     <div className="rounded-lg border border-amber-500/30 bg-amber-950/10 p-6 flex flex-col items-center gap-3 text-center">
@@ -728,6 +965,8 @@ export default function AdminMarketingInsights() {
   const sessionReview = data?.session_review_shortlist ?? [];
   const insights = data?.behaviour_insights ?? [];
   const actions = data?.recommended_actions ?? [];
+  const sessionDuration = data?.session_duration;
+  const timeOnPage = data?.time_on_page ?? [];
 
   const engagementRate = safeInt(sessions?.engagement_rate);
   const totalCtaClicks = cta.reduce((s, r) => s + safeInt(r.clicks), 0);
@@ -819,6 +1058,11 @@ export default function AdminMarketingInsights() {
             disabled={copyDisabled}
           />
           <CopyButton
+            getText={() => data ? buildTimingSection(data, dataRange ?? selectedRange) : "No data available for this section in the selected date range."}
+            label="Time on Page"
+            disabled={copyDisabled}
+          />
+          <CopyButton
             getText={() => data ? buildSessionReviewSection(data, dataRange ?? selectedRange) : "No data available for this section in the selected date range."}
             label="Session Review"
             disabled={copyDisabled}
@@ -872,7 +1116,7 @@ export default function AdminMarketingInsights() {
       {/* Dashboard */}
       {data && data.posthog_available && !loading && (
         <div className="flex flex-col gap-5">
-          {/* Overview cards */}
+          {/* Primary overview cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <StatCard
               label="Page Views"
@@ -889,18 +1133,18 @@ export default function AdminMarketingInsights() {
               accent="bg-blue-500/10"
             />
             <StatCard
-              label="Engaged Sessions"
-              value={`${engagementRate.toFixed(0)}%`}
-              sub={`${safeInt(sessions?.sessions_with_cta).toLocaleString()} with CTA`}
-              icon={MousePointerClick}
-              accent="bg-amber-500/10"
+              label="Avg Duration"
+              value={sessionDuration?.available ? safeDuration(sessionDuration.avg_duration_sec) : "—"}
+              sub={sessionDuration?.available ? `median ${safeDuration(sessionDuration.median_duration_sec)}` : "No data"}
+              icon={Timer}
+              accent="bg-sky-500/10"
             />
             <StatCard
-              label="CTA Clicks"
-              value={totalCtaClicks.toLocaleString()}
-              sub={`${cta.length} button types`}
-              icon={MousePointerClick}
-              accent="bg-amber-500/10"
+              label="Engaged 60s+"
+              value={sessionDuration?.available ? `${safeInt(sessionDuration.pct_over_60s)}%` : "—"}
+              sub={sessionDuration?.available ? `${safeNumber(sessionDuration.over_60s)} sessions` : "No data"}
+              icon={Clock}
+              accent="bg-emerald-500/10"
             />
             <StatCard
               label="Checkout Starts"
@@ -918,6 +1162,38 @@ export default function AdminMarketingInsights() {
             />
           </div>
 
+          {/* Secondary overview cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <StatCard
+              label="CTA Clicks"
+              value={totalCtaClicks.toLocaleString()}
+              sub={`${cta.length} button types`}
+              icon={MousePointerClick}
+              accent="bg-amber-500/10"
+            />
+            <StatCard
+              label="Engaged Sessions"
+              value={`${engagementRate.toFixed(0)}%`}
+              sub={`${safeInt(sessions?.sessions_with_cta).toLocaleString()} with CTA`}
+              icon={MousePointerClick}
+              accent="bg-amber-500/10"
+            />
+            <StatCard
+              label="Over 2 min"
+              value={sessionDuration?.available ? `${safeInt(sessionDuration.pct_over_120s)}%` : "—"}
+              sub={sessionDuration?.available ? `${safeNumber(sessionDuration.over_120s)} sessions` : "No data"}
+              icon={Timer}
+              accent="bg-emerald-500/10"
+            />
+            <StatCard
+              label="Quick Bounces"
+              value={sessionDuration?.available ? `${safeInt(sessionDuration.pct_under_10s)}%` : "—"}
+              sub={sessionDuration?.available ? `${safeNumber(sessionDuration.under_10s)} under 10s` : "No data"}
+              icon={TrendingUp}
+              accent="bg-red-500/10"
+            />
+          </div>
+
           {/* Funnel + Devices row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {funnel && (
@@ -928,6 +1204,16 @@ export default function AdminMarketingInsights() {
             )}
             {devices.length > 0 && <DeviceBreakdown devices={devices} />}
           </div>
+
+          {/* Session Duration Panel */}
+          {sessionDuration?.available && (
+            <SessionDurationPanel
+              sd={sessionDuration}
+              top={timeOnPage}
+              onCopy={() => data ? buildTimingSection(data, dataRange ?? selectedRange) : "No timing data available."}
+              copyDisabled={copyDisabled}
+            />
+          )}
 
           {/* CTA Performance */}
           {cta.length > 0 && (
@@ -1061,6 +1347,7 @@ export default function AdminMarketingInsights() {
                   <thead>
                     <tr className="border-b border-border/40">
                       <th className="text-left font-medium text-muted-foreground pb-2 pr-3">Session</th>
+                      <th className="text-right font-medium text-muted-foreground pb-2 pr-3">Duration</th>
                       <th className="text-right font-medium text-muted-foreground pb-2 pr-3">Pages</th>
                       <th className="text-right font-medium text-muted-foreground pb-2 pr-3">CTA</th>
                       <th className="text-right font-medium text-muted-foreground pb-2 pr-3">Checkout</th>
@@ -1069,22 +1356,30 @@ export default function AdminMarketingInsights() {
                     </tr>
                   </thead>
                   <tbody>
-                    {sessionReview.slice(0, 20).map((row, i) => (
-                      <tr key={i} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
-                        <td className="py-2 pr-3 font-mono text-[11px] text-muted-foreground/70">{row.session_id}</td>
-                        <td className="py-2 pr-3 text-right tabular-nums">{safeInt(row.page_views)}</td>
-                        <td className={`py-2 pr-3 text-right tabular-nums font-semibold ${safeInt(row.cta_clicks) > 0 ? "text-amber-400" : ""}`}>
-                          {safeInt(row.cta_clicks)}
-                        </td>
-                        <td className={`py-2 pr-3 text-right tabular-nums font-semibold ${safeInt(row.checkout_starts) > 0 ? "text-emerald-400" : ""}`}>
-                          {safeInt(row.checkout_starts)}
-                        </td>
-                        <td className="py-2 pr-3 text-right tabular-nums">{safeInt(row.product_events)}</td>
-                        <td className="py-2 text-muted-foreground text-[11px]">
-                          {[row.device, row.browser].filter(Boolean).join(" / ") || "—"}
-                        </td>
-                      </tr>
-                    ))}
+                    {sessionReview.slice(0, 20).map((row, i) => {
+                      let dur = "—";
+                      if (row.session_end && row.session_start) {
+                        const diffSec = (new Date(row.session_end).getTime() - new Date(row.session_start).getTime()) / 1000;
+                        if (diffSec >= 0) dur = safeDuration(diffSec);
+                      }
+                      return (
+                        <tr key={i} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
+                          <td className="py-2 pr-3 font-mono text-[11px] text-muted-foreground/70">{row.session_id}</td>
+                          <td className="py-2 pr-3 text-right tabular-nums text-sky-400 font-medium">{dur}</td>
+                          <td className="py-2 pr-3 text-right tabular-nums">{safeInt(row.page_views)}</td>
+                          <td className={`py-2 pr-3 text-right tabular-nums font-semibold ${safeInt(row.cta_clicks) > 0 ? "text-amber-400" : ""}`}>
+                            {safeInt(row.cta_clicks)}
+                          </td>
+                          <td className={`py-2 pr-3 text-right tabular-nums font-semibold ${safeInt(row.checkout_starts) > 0 ? "text-emerald-400" : ""}`}>
+                            {safeInt(row.checkout_starts)}
+                          </td>
+                          <td className="py-2 pr-3 text-right tabular-nums">{safeInt(row.product_events)}</td>
+                          <td className="py-2 text-muted-foreground text-[11px]">
+                            {[row.device, row.browser].filter(Boolean).join(" / ") || "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
