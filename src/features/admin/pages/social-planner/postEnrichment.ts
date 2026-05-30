@@ -22,6 +22,31 @@ function safeArr<T>(v: T[] | null | undefined): T[] {
   return Array.isArray(v) ? v : [];
 }
 
+// ─── Post normaliser ──────────────────────────────────────────────────────────
+
+/**
+ * Ensures every array field on a SocialPost has a safe default before rendering.
+ * Call this at the output boundary, after enrichPost(), to prevent .map()/.join()
+ * crashes if any field was accidentally omitted by a rawPost builder.
+ */
+export function ensureCompleteSocialPost(post: SocialPost): SocialPost {
+  return {
+    ...post,
+    statsShown:    safeArr(post.statsShown),
+    hashtags:      safeArr(post.hashtags),
+    playerNames:   safeArr(post.playerNames),
+    hookOptions:   safeArr(post.hookOptions),
+    thumbnailOptions: safeArr(post.thumbnailOptions),
+    carouselSlides:   safeArr(post.carouselSlides),
+    aiCarouselPromptPack: post.aiCarouselPromptPack
+      ? {
+          ...post.aiCarouselPromptPack,
+          slidePrompts: safeArr(post.aiCarouselPromptPack.slidePrompts),
+        }
+      : post.aiCarouselPromptPack,
+  };
+}
+
 // ─── CTA rotation pool ────────────────────────────────────────────────────────
 
 const CTA_POOL = [
@@ -602,7 +627,7 @@ export function enrichPost(
   const aiCarouselPromptPack = buildAiCarouselPromptPack(post);
   const angle = classifyAngle(post);
 
-  return {
+  return ensureCompleteSocialPost({
     ...post,
     compliance,
     quality,
@@ -616,5 +641,5 @@ export function enrichPost(
     aiImagePrompt,
     aiCarouselPromptPack,
     angle,
-  };
+  });
 }

@@ -22,6 +22,11 @@ import type { StatBoardPlayer, StatBoardMatch } from "@/features/afl/stat-board/
 import type { StatBoardTeamRow } from "@/features/afl/stat-board/teamTypes";
 import { enrichPost } from "./social-planner/postEnrichment";
 import { buildEvergreenPool } from "./social-planner/evergreenPosts";
+
+// Render-time safety helper — prevents .map()/.join()/.length crashes if a
+// post field was not populated (e.g. rawPost omit-cast, older cached data).
+const asArray = <T,>(value: T[] | null | undefined): T[] =>
+  Array.isArray(value) ? value : [];
 import {
   getRecentHitRecord, formatPublicStatLine, formatRateAsPercent,
   assignDisposalMarketingTier, assignGoalMarketingTier,
@@ -1070,9 +1075,9 @@ function buildFullPostText(post: SocialPost, includeHeader = true): string {
   }
   lines.push(`Content: ${post.content}`);
   lines.push(``);
-  if (post.statsShown.length > 0) {
+  if (asArray(post.statsShown).length > 0) {
     lines.push(`Stats shown:`);
-    post.statsShown.forEach(s => lines.push(`  • ${s}`));
+    asArray(post.statsShown).forEach(s => lines.push(`  • ${s}`));
     lines.push(``);
   }
   lines.push(`On-screen text: ${post.onScreenText}`);
@@ -1080,7 +1085,7 @@ function buildFullPostText(post: SocialPost, includeHeader = true): string {
   lines.push(`Caption:`);
   lines.push(post.caption);
   lines.push(``);
-  lines.push(`Hashtags: ${post.hashtags.join(" ")}`);
+  lines.push(`Hashtags: ${asArray(post.hashtags).join(" ")}`);
   lines.push(``);
   lines.push(`Suggested visual: ${post.suggestedVisual}`);
   if (post.imageDescription) {
@@ -1134,7 +1139,7 @@ function validatePostKit(post: SocialPost): PostKitValidation {
   if (!post.content) issues.push("Missing content");
 
   // Stat lines must use X/Y and percentage format
-  for (const s of post.statsShown) {
+  for (const s of asArray(post.statsShown)) {
     if (!/\d+\/\d+/.test(s) && s.length > 10) {
       issues.push(`Stat line missing X/Y format: "${s.slice(0, 60)}"`);
     }
@@ -1153,10 +1158,10 @@ function validatePostKit(post: SocialPost): PostKitValidation {
     }
     // AI carousel prompt pack: slide count should match statsShown + cover + CTA
     if (post.aiCarouselPromptPack) {
-      const expectedSlidePrompts = Math.min(post.statsShown.length, 6);
-      if (post.aiCarouselPromptPack.slidePrompts.length !== expectedSlidePrompts) {
+      const expectedSlidePrompts = Math.min(asArray(post.statsShown).length, 6);
+      if (asArray(post.aiCarouselPromptPack.slidePrompts).length !== expectedSlidePrompts) {
         issues.push(
-          `AI prompt pack has ${post.aiCarouselPromptPack.slidePrompts.length} stat slides but post has ${post.statsShown.length} stat lines`,
+          `AI prompt pack has ${asArray(post.aiCarouselPromptPack.slidePrompts).length} stat slides but post has ${asArray(post.statsShown).length} stat lines`,
         );
       }
       if (!post.aiCarouselPromptPack.coverPrompt) issues.push("AI prompt pack missing cover prompt");
@@ -1179,7 +1184,7 @@ function validatePostKit(post: SocialPost): PostKitValidation {
   ) {
     const labelThr = parseInt(post.thresholdLabel, 10);
     if (!isNaN(labelThr)) {
-      const mismatchedLines = post.statsShown.filter(s => {
+      const mismatchedLines = asArray(post.statsShown).filter(s => {
         const thrMatch = s.match(/at\s+(\d+)\+/);
         if (!thrMatch) return false;
         const thr = parseInt(thrMatch[1], 10);
@@ -1201,7 +1206,7 @@ function validatePostKit(post: SocialPost): PostKitValidation {
 
   // No betting language in key text fields
   const bannedTerms = ["bet", "odds", "gamble", "wager", "tipster", "sgm", "banker"];
-  const scanFields = [post.title, post.content, post.caption, ...post.statsShown].join(" ").toLowerCase();
+  const scanFields = [post.title, post.content, post.caption, ...asArray(post.statsShown)].join(" ").toLowerCase();
   for (const term of bannedTerms) {
     if (new RegExp(`\\b${term}\\b`).test(scanFields)) {
       issues.push(`Betting language detected: "${term}"`);
@@ -1524,11 +1529,11 @@ function SocialPostCard({
             </div>
           )}
 
-          {post.statsShown.length > 0 && (
+          {asArray(post.statsShown).length > 0 && (
             <div className="space-y-1">
               <span className="text-[10px] text-zinc-500 font-medium">Stats shown</span>
               <ul className="space-y-0.5">
-                {post.statsShown.map((s, i) => (
+                {asArray(post.statsShown).map((s, i) => (
                   <li key={i} className="flex items-start gap-1.5 text-[11px] text-zinc-300">
                     <span className="text-zinc-600 shrink-0 mt-0.5">•</span>
                     <span>{s}</span>
@@ -1586,7 +1591,7 @@ function SocialPostCard({
           <div className="space-y-1">
             <span className="text-[10px] text-zinc-500 font-medium">Hashtags</span>
             <div className="flex flex-wrap gap-1">
-              {post.hashtags.map(h => (
+              {asArray(post.hashtags).map(h => (
                 <span key={h} className="text-[10px] text-zinc-500 bg-zinc-800/60 px-1.5 py-0.5 rounded">{h}</span>
               ))}
             </div>
@@ -1738,7 +1743,7 @@ function SocialPostCard({
             />
             <CopyBtn
               label="Copy hashtags"
-              onClick={() => onCopyField(copyKey("hashtags"), post.hashtags.join(" "))}
+              onClick={() => onCopyField(copyKey("hashtags"), asArray(post.hashtags).join(" "))}
               copied={copiedId === copyKey("hashtags")}
               small
             />
@@ -1748,10 +1753,10 @@ function SocialPostCard({
               copied={copiedId === copyKey("onscreen")}
               small
             />
-            {post.statsShown.length > 0 && (
+            {asArray(post.statsShown).length > 0 && (
               <CopyBtn
                 label="Copy stat list"
-                onClick={() => onCopyField(copyKey("stats"), post.statsShown.map(s => `• ${s}`).join("\n"))}
+                onClick={() => onCopyField(copyKey("stats"), asArray(post.statsShown).map(s => `• ${s}`).join("\n"))}
                 copied={copiedId === copyKey("stats")}
                 small
               />
@@ -2024,11 +2029,11 @@ function PostKitTab({
       )}
 
       {/* Stats shown */}
-      {post.statsShown.length > 0 && (
+      {asArray(post.statsShown).length > 0 && (
         <div className="space-y-1">
           <span className="text-[10px] text-zinc-500 font-medium">Stats shown</span>
           <ul className="space-y-0.5">
-            {post.statsShown.map((s, i) => (
+            {asArray(post.statsShown).map((s, i) => (
               <li key={i} className="flex items-start gap-1.5 text-[10px] text-zinc-300">
                 <span className="text-zinc-600 shrink-0 mt-0.5">•</span>
                 <span>{s}</span>
@@ -2088,7 +2093,7 @@ function PostKitTab({
             <span className="text-[10px] text-zinc-500 font-medium">Carousel slides</span>
             <button
               type="button"
-              onClick={() => onCopy(cid("slides"), post.carouselSlides!.map(formatCarouselSlideForCopy).join("\n\n"))}
+              onClick={() => onCopy(cid("slides"), asArray(post.carouselSlides).map(formatCarouselSlideForCopy).join("\n\n"))}
               className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
             >
               {copiedId === cid("slides") ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
@@ -2174,16 +2179,16 @@ function PostKitTab({
       )}
 
       {/* Hashtags */}
-      {post.hashtags.length > 0 && (
+      {asArray(post.hashtags).length > 0 && (
         <div className="flex items-center gap-1.5 flex-wrap">
           <button
-            onClick={() => onCopy(cid("tags"), post.hashtags.join(" "))}
+            onClick={() => onCopy(cid("tags"), asArray(post.hashtags).join(" "))}
             className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] border border-zinc-700 bg-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors shrink-0"
           >
             {copiedId === cid("tags") ? <Check className="h-2.5 w-2.5 text-emerald-400" /> : <Copy className="h-2.5 w-2.5" />}
             Copy tags
           </button>
-          <span className="text-[10px] text-zinc-600">{post.hashtags.join(" ")}</span>
+          <span className="text-[10px] text-zinc-600">{asArray(post.hashtags).join(" ")}</span>
         </div>
       )}
 
