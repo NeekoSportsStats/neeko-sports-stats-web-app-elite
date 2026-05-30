@@ -1,11 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { RefreshCw, Users, TrendingUp, Activity, Target, ChartBar as BarChart3, CircleAlert as AlertCircle, Clock, Zap } from "lucide-react";
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
+import { RefreshCw, Users, TrendingUp, Activity, Target, ChartBar as BarChart3, CircleAlert as AlertCircle, Clock, Zap, ChartBar as BarChart2 } from "lucide-react";
 import { AdminPageHeader } from "@/features/admin/shared/AdminPageHeader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchAdminDashboardData, fetchPostHogAnalytics } from "@/lib/adminApi";
 import { SubscriberTable } from "@/features/admin/subscribers/SubscriberTable";
+
+const AdminMarketingInsights = lazy(() => import("@/features/admin/pages/AdminMarketingInsights"));
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -939,8 +941,8 @@ export default function AdminAnalytics() {
     <div className="space-y-6">
       <AdminPageHeader
         icon={Users}
-        title="Users & Billing"
-        description="Subscribers, billing, and activity analytics"
+        title="Users & Growth"
+        description="Subscribers, acquisition, engagement, conversion, billing, and user activity."
         loading={isLoading}
         actions={
           <div className="flex items-center gap-2">
@@ -992,6 +994,10 @@ export default function AdminAnalytics() {
                 {subMetrics?.active_subscriptions}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="marketing-analytics" className="flex items-center gap-1.5">
+            <BarChart2 className="h-3.5 w-3.5" />
+            Marketing Analytics
           </TabsTrigger>
         </TabsList>
 
@@ -1055,6 +1061,12 @@ export default function AdminAnalytics() {
             loading={subLoading}
             error={subError}
           />
+        </TabsContent>
+
+        <TabsContent value="marketing-analytics" className="mt-6">
+          <Suspense fallback={<div className="flex justify-center py-16"><RefreshCw className="h-5 w-5 animate-spin text-muted-foreground/50" /></div>}>
+            <AdminMarketingInsights />
+          </Suspense>
         </TabsContent>
       </Tabs>
     </div>

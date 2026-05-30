@@ -134,7 +134,6 @@ export const AdminCommandPage      = lazy(() => import("@/features/admin/pages/A
 export const AdminContentIntelPage = lazy(() => import("@/features/admin/pages/AdminContentIntel"));
 export const AdminPlayerLabPage    = lazy(() => import("@/features/admin/pages/AdminPlayerLab"));
 export const AdminMarketingPage      = lazy(() => import("@/features/admin/pages/AdminMarketing"));
-export const AdminMarketingInsightsPage = lazy(() => import("@/features/admin/pages/AdminMarketingInsights"));
 export const AdminPlayerIdentityPage = lazy(() => import("@/features/admin/pages/AdminPlayerIdentity"));
 export const AdminInternalOpsPage      = lazy(() => import("@/features/admin/pages/AdminAdminHub"));
 export const AdminConversionTestPage   = lazy(() => import("@/features/admin/pages/AdminConversionTest"));

@@ -32,7 +32,6 @@ import {
   AdminContentIntelPage,
   AdminPlayerLabPage,
   AdminMarketingPage,
-  AdminMarketingInsightsPage,
   AdminPlayerIdentityPage,
   AdminInternalOpsPage,
   AdminConversionTestPage,
@@ -176,7 +175,8 @@ function App() {
           <Route path="internal-ops" element={<AdminInternalOpsPage />} />
           {/* Marketing: hidden from main nav, accessible via direct URL for admins */}
           <Route path="marketing" element={<AdminMarketingPage />} />
-          <Route path="marketing-insights" element={<AdminMarketingInsightsPage />} />
+          {/* /admin/marketing-insights redirects to Users & Growth (Marketing Analytics tab) */}
+          <Route path="marketing-insights" element={<Navigate to="/admin/users" replace />} />
           {/* Conversion test: hidden from main nav, accessible via /admin/conversion-test */}
           <Route path="conversion-test" element={<AdminConversionTestPage />} />
           {/* Legacy route redirect — /admin/admin → /admin/internal-ops */}
