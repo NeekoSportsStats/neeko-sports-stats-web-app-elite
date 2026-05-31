@@ -381,6 +381,11 @@ async function getFunnelData(
           countIf(event = 'landing_cta_clicked') as landing_cta_clicks,
           countIf(event = 'pricing_cta_clicked') as pricing_cta_clicks,
           countIf(event = 'neeko_plus_clicked') as neeko_plus_clicks,
+          countIf(event IN (
+            'free_games_cta_clicked', 'unlock_all_games_clicked',
+            'unlock_this_matchup_clicked', 'stat_board_upgrade_clicked',
+            'mobile_sticky_cta_clicked', 'marketing_cta_clicked'
+          )) as product_cta_clicks,
           countIf(event = 'checkout_started') as checkout_started,
           countIf(event IN ('subscription_activated', 'checkout_success')) as checkout_success,
           countIf(event = 'checkout_cancelled') as checkout_cancelled
@@ -399,11 +404,12 @@ async function getFunnelData(
       const landingCtaClicks = Number(row[4]) || 0;
       const pricingCtaClicks = Number(row[5]) || 0;
       const neekoClicks = Number(row[6]) || 0;
-      const checkoutStarted = Number(row[7]) || 0;
-      const checkoutSuccess = Number(row[8]) || 0;
-      const checkoutCancelled = Number(row[9]) || 0;
+      const productCtaClicks = Number(row[7]) || 0;
+      const checkoutStarted = Number(row[8]) || 0;
+      const checkoutSuccess = Number(row[9]) || 0;
+      const checkoutCancelled = Number(row[10]) || 0;
 
-      const ctaClicks = landingCtaClicks + pricingCtaClicks + neekoClicks;
+      const ctaClicks = landingCtaClicks + pricingCtaClicks + neekoClicks + productCtaClicks;
       const conversionRate = checkoutStarted > 0
         ? Math.round((checkoutSuccess / checkoutStarted) * 100)
         : 0;
@@ -423,6 +429,7 @@ async function getFunnelData(
         landing_cta_clicks: landingCtaClicks,
         pricing_cta_clicks: pricingCtaClicks,
         neeko_plus_clicks: neekoClicks,
+        product_cta_clicks: productCtaClicks,
         cta_clicks: ctaClicks,
         checkout_started: checkoutStarted,
         checkout_success: checkoutSuccess,
@@ -534,8 +541,13 @@ async function getCtaPerformance(
           ${cleanPathExpr("properties.$current_url")} as clean_path,
           count() as clicks
         FROM events
-        WHERE event IN ('landing_cta_clicked', 'pricing_cta_clicked', 'neeko_plus_clicked',
-                        'premium_gate_cta_clicked', 'locked_cell_clicked', 'marketing_cta_clicked')
+        WHERE event IN (
+                        'landing_cta_clicked', 'pricing_cta_clicked', 'neeko_plus_clicked',
+                        'premium_gate_cta_clicked', 'locked_cell_clicked', 'marketing_cta_clicked',
+                        'free_games_cta_clicked', 'unlock_all_games_clicked',
+                        'unlock_this_matchup_clicked', 'stat_board_upgrade_clicked',
+                        'mobile_sticky_cta_clicked'
+                       )
           AND timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND ${adminExclusionWhere(includeAdmin)}
         GROUP BY event, button_text, section, source, clean_path
@@ -589,7 +601,7 @@ async function getDeviceBreakdown(
       os: String(row[0] ?? ""),
       browser: String(row[1] ?? ""),
       device_type: String(row[2] ?? ""),
-      sessions: Number(row[3]) || 0,
+      sessions: Number(row[3]) || 0,   // count of $pageview events, not unique sessions
       users: Number(row[4]) || 0,
     }));
   } catch {
@@ -618,7 +630,12 @@ async function getEngagedSessions(
           SELECT
             session_id,
             countIf(event = '$pageview') as pageview_count,
-            countIf(event IN ('landing_cta_clicked','pricing_cta_clicked','neeko_plus_clicked','premium_gate_cta_clicked')) > 0 as has_cta_click,
+            countIf(event IN (
+              'landing_cta_clicked','pricing_cta_clicked','neeko_plus_clicked',
+              'premium_gate_cta_clicked','free_games_cta_clicked','unlock_all_games_clicked',
+              'unlock_this_matchup_clicked','stat_board_upgrade_clicked','mobile_sticky_cta_clicked',
+              'marketing_cta_clicked'
+            )) > 0 as has_cta_click,
             countIf(event IN ('stat_board_filter_used','stat_board_player_expand','rankings_view','market_watch_view','edge_board_view')) > 0 as has_product_event
           FROM events
           WHERE timestamp >= now() - interval ${intervalExpr(hours, days)}
@@ -663,7 +680,12 @@ async function getSessionReviewShortlist(
         SELECT
           session_id,
           countIf(event = '$pageview') as page_views,
-          countIf(event IN ('landing_cta_clicked','pricing_cta_clicked','neeko_plus_clicked','premium_gate_cta_clicked')) as cta_clicks,
+          countIf(event IN (
+            'landing_cta_clicked','pricing_cta_clicked','neeko_plus_clicked',
+            'premium_gate_cta_clicked','free_games_cta_clicked','unlock_all_games_clicked',
+            'unlock_this_matchup_clicked','stat_board_upgrade_clicked','mobile_sticky_cta_clicked',
+            'marketing_cta_clicked'
+          )) as cta_clicks,
           countIf(event IN ('checkout_started')) as checkout_starts,
           countIf(event IN ('stat_board_filter_used','stat_board_player_expand','rankings_view','market_watch_view','edge_board_view')) as product_events,
           min(timestamp) as session_start,
@@ -914,6 +936,36 @@ async function getMarketingInsights(
     actions.push("Gate views exist but no locked cell clicks — verify trackLockedDataClick() is being called.");
   }
 
+  // Data integrity notes surfaced to the frontend
+  const dataNotes: string[] = [];
+  if (f.checkout_success > 0 && f.checkout_started === 0) {
+    dataNotes.push(
+      `Purchases (${f.checkout_success}) comes from PostHog "subscription_activated" events fired on the /success page. ` +
+      `Checkout Starts = 0 means no "checkout_started" events were recorded in this window — ` +
+      `these two counts may cover different time periods or the checkout_started event is not firing consistently.`
+    );
+  }
+  if (f.checkout_success > f.checkout_started && f.checkout_started > 0) {
+    dataNotes.push(
+      `Purchases (${f.checkout_success}) exceeds Checkout Starts (${f.checkout_started}). ` +
+      `This typically means returning subscribers fire "subscription_activated" again on re-login, ` +
+      `or checkout_started is being filtered out. Conversion rates are unreliable when this occurs.`
+    );
+  }
+  if (f.cta_clicks === 0 && f.page_views > 50) {
+    dataNotes.push(
+      `CTA Clicks = 0 despite ${f.page_views} page views. ` +
+      `Verify that CTA tracking functions (trackLandingCTA, trackFreeGamesCTA, trackUnlockAllGames, etc.) ` +
+      `are wired to buttons and not being suppressed by the admin route guard.`
+    );
+  }
+  if (f.gate_views === 0 && f.page_views > 50) {
+    dataNotes.push(
+      `Gate Views = 0. The "premium_gate_viewed" event is not firing. ` +
+      `Wire trackGateInteraction({ action: "viewed", ... }) to stat-board locked state renders.`
+    );
+  }
+
   return {
     funnel: funnelData,
     cta_performance: ctaData,
@@ -926,6 +978,7 @@ async function getMarketingInsights(
     time_on_page: topData,
     behaviour_insights: insights,
     recommended_actions: actions,
+    data_notes: dataNotes,
     date_range_days: hours !== null ? null : days,
     date_range_hours: hours,
     include_admin: includeAdmin,

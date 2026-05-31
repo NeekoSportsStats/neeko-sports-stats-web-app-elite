@@ -1,9 +1,9 @@
-import { useState, memo } from "react";
+import { useState, memo, useEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MobileUpgradeBar from "@/components/mobile/MobileUpgradeBar";
-import { trackFreeGamesCTA, trackStatBoardUpgrade } from "@/lib/analytics";
+import { trackFreeGamesCTA, trackStatBoardUpgrade, trackGateInteraction } from "@/lib/analytics";
 import {
   ChevronDown,
   ChevronUp,
@@ -1183,6 +1183,15 @@ export default function StatBoardMatchCentrePage() {
     error,
   } = useMatchCentreData();
 
+  const hasLockedFixtures = !loading && !hasFullAccess && allFixtures.some((f) => f.isLocked);
+
+  // Track gate view when locked fixtures are visible
+  useEffect(() => {
+    if (hasLockedFixtures) {
+      trackGateInteraction({ source: "stat_board_match_centre", section: "locked_fixtures_banner", action: "viewed" });
+    }
+  }, [hasLockedFixtures]);
+
   const [uiLens, setUiLens] = useState<MatchCentreLens>("overview");
   const [expandedMatchId, setExpandedMatchId] = useState<number | null>(null);
 
@@ -1386,7 +1395,7 @@ export default function StatBoardMatchCentrePage() {
           )}
 
           {/* ── Upgrade banner (free users with locked fixtures) ─────────── */}
-          {!loading && !hasFullAccess && allFixtures.some((f) => f.isLocked) && (
+          {hasLockedFixtures && (
             <div className="mt-5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 rounded-2xl border border-[#F5C84C]/18 bg-[#F5C84C]/[0.035] px-3 py-3 sm:px-5 sm:py-4">
               <Lock className="h-4 w-4 text-[#F5C84C]/70 shrink-0 mt-0.5 sm:mt-0" aria-hidden />
               <div className="flex-1 min-w-0">

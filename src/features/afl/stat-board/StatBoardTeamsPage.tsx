@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, memo, useSyncExternal
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronDown, Lock, Check } from "lucide-react";
-import { track, trackFreeGamesCTA, trackStatBoardUpgrade } from "@/lib/analytics";
+import { track, trackFreeGamesCTA, trackStatBoardUpgrade, trackGateInteraction } from "@/lib/analytics";
 import MobileUpgradeBar from "@/components/mobile/MobileUpgradeBar";
 
 import {
@@ -184,6 +184,13 @@ export default function StatBoardTeamsPage() {
 
   const hasMatchFilter = matchFilter !== null;
   const isMatchLocked = selectedMatchObj?.is_locked ?? false;
+
+  // Track gate view when a locked match is selected
+  useEffect(() => {
+    if (isMatchLocked && !hasFullAccess) {
+      trackGateInteraction({ source: "stat_board_teams", section: "locked_match_banner", action: "viewed" });
+    }
+  }, [isMatchLocked, hasFullAccess]);
 
   return (
     <>

@@ -14,6 +14,7 @@ interface FunnelData {
   landing_cta_clicks: number;
   pricing_cta_clicks: number;
   neeko_plus_clicks: number;
+  product_cta_clicks: number;
   cta_clicks: number;
   checkout_started: number;
   checkout_success: number;
@@ -112,6 +113,7 @@ interface InsightsData {
   session_review_shortlist?: SessionReviewRow[];
   behaviour_insights?: string[];
   recommended_actions?: string[];
+  data_notes?: string[];
   date_range_days?: number | null;
   date_range_hours?: number | null;
 }
@@ -267,6 +269,7 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
   const sessionReview = data.session_review_shortlist ?? [];
   const insights = data.behaviour_insights ?? [];
   const actions = data.recommended_actions ?? [];
+  const dataNotes = data.data_notes ?? [];
 
   const lines: string[] = [];
 
@@ -276,6 +279,14 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
   lines.push(`Path normalisation: query strings stripped from page paths (clean_page_path)`);
   lines.push(`Note: No emails or PII included.`);
   lines.push(``);
+
+  // ── 0. Data Integrity Warnings
+  if (dataNotes.length > 0) {
+    lines.push(`## DATA INTEGRITY WARNINGS`);
+    lines.push(`The following inconsistencies were detected in this dataset. Treat affected metrics with caution.`);
+    dataNotes.forEach(n => lines.push(`- ${n}`));
+    lines.push(``);
+  }
 
   // ── 1. Executive Summary
   lines.push(`## 1. Executive Summary`);
@@ -324,7 +335,8 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
     lines.push(`- Checkout → Success: ${rate(checkoutSuccess, checkoutStarts)}`);
     lines.push(`- View → Success (end-to-end): ${rate(checkoutSuccess, views)}`);
     lines.push(``);
-    lines.push(`Landing CTA: ${safeInt(funnel.landing_cta_clicks)} | Pricing CTA: ${safeInt(funnel.pricing_cta_clicks)} | Neeko+ btn: ${safeInt(funnel.neeko_plus_clicks)}`);
+    lines.push(`Landing CTA: ${safeInt(funnel.landing_cta_clicks)} | Pricing CTA: ${safeInt(funnel.pricing_cta_clicks)} | Neeko+ btn: ${safeInt(funnel.neeko_plus_clicks)} | Product CTAs (free-games/unlock/mobile): ${safeInt(funnel.product_cta_clicks)}`);
+    lines.push(`Note: "Purchases" = PostHog "subscription_activated" events fired on /success page. May differ from Stripe billing records.`);
   } else {
     lines.push(`No funnel data.`);
   }
@@ -729,7 +741,10 @@ function DeviceBreakdown({ devices }: { devices: DeviceRow[] }) {
 
   return (
     <div className="rounded-lg border border-border/60 bg-card p-5">
-      <h3 className="text-sm font-semibold mb-4">Device Breakdown</h3>
+      <div className="flex items-start justify-between mb-4 gap-2">
+        <h3 className="text-sm font-semibold">Device Breakdown</h3>
+        <span className="text-[10px] text-muted-foreground/50 text-right leading-tight">Count = pageview events<br/>not unique sessions</span>
+      </div>
       <div className="flex flex-col gap-3">
         {byType.map(({ label, icon: Icon, count }) => {
           const pct = total > 0 ? (count / total) * 100 : 0;
@@ -985,6 +1000,7 @@ export default function AdminMarketingInsights() {
   const sessionReview = data?.session_review_shortlist ?? [];
   const insights = data?.behaviour_insights ?? [];
   const actions = data?.recommended_actions ?? [];
+  const dataNotes = data?.data_notes ?? [];
   const sessionDuration = data?.session_duration;
   const timeOnPage = data?.time_on_page ?? [];
 
@@ -1152,6 +1168,19 @@ export default function AdminMarketingInsights() {
       {/* Dashboard */}
       {data && data.posthog_available && !loading && (
         <div className="flex flex-col gap-5">
+          {/* Data integrity warning panel */}
+          {dataNotes.length > 0 && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-950/10 p-4 flex flex-col gap-2">
+              <div className="flex items-center gap-2 mb-1">
+                <AlertCircle className="h-4 w-4 text-amber-400 shrink-0" />
+                <p className="text-xs font-semibold text-amber-300">Data Integrity Warnings</p>
+              </div>
+              {dataNotes.map((note, i) => (
+                <p key={i} className="text-xs text-amber-200/70 leading-relaxed">{note}</p>
+              ))}
+            </div>
+          )}
+
           {/* Primary overview cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <StatCard
