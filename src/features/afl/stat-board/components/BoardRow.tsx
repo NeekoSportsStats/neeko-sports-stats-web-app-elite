@@ -6,6 +6,7 @@ import { useStatBoardPlayerHistory } from "../useStatBoard";
 import { usePlayerIntelligence } from "@/hooks/usePlayerIntelligence";
 import { useAccessState } from "@/hooks/useAccessState";
 import { ExpandedPlayerPanel } from "./ExpandedPlayerPanel";
+import { trackLockedDataClick, trackGateInteraction } from "@/lib/analytics";
 
 interface Props {
   player: StatBoardPlayer;
@@ -74,6 +75,13 @@ export const BoardRow = memo(function BoardRow({
 
   const isPlayerLocked = isMatchLocked && !player.is_free_match;
 
+  function handleToggleExpand() {
+    if (isPlayerLocked) {
+      trackLockedDataClick({ source: "stat_board_players", section: "board_row" });
+    }
+    onToggleExpand();
+  }
+
   // Prefer the structured timeline (includes BYE/DNP slots); fall back to plain values
   const timeline: TimelineSlot[] | null = player.last_10_timeline ?? null;
   // last_10_values is newest-first from the RPC; reverse so index 0 = oldest, last = newest
@@ -100,12 +108,12 @@ export const BoardRow = memo(function BoardRow({
     <Fragment>
       {/* ── Main data row ── */}
       <tr
-        onClick={onToggleExpand}
+        onClick={handleToggleExpand}
         role="button"
         tabIndex={0}
         aria-expanded={isExpanded}
         aria-label={`${player.player_name} — ${isExpanded ? "collapse" : "expand"} detail`}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggleExpand(); } }}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleToggleExpand(); } }}
         className={`
           group cursor-pointer select-none transition-colors duration-100
           focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60
@@ -253,6 +261,13 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
 
   const isPlayerLocked = isMatchLocked && !player.is_free_match;
 
+  function handleToggleExpand() {
+    if (isPlayerLocked) {
+      trackLockedDataClick({ source: "stat_board_players", section: "mobile_card" });
+    }
+    onToggleExpand();
+  }
+
   const timeline: TimelineSlot[] | null = player.last_10_timeline ?? null;
   const last10 = [...(player.last_10_values ?? [])].reverse().slice(-10);
 
@@ -271,7 +286,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
     >
       {/* ── Card tap target ── */}
       <button
-        onClick={onToggleExpand}
+        onClick={handleToggleExpand}
         aria-expanded={isExpanded}
         aria-label={`${player.player_name} — ${isExpanded ? "collapse" : "expand"} detail`}
         className="w-full text-left px-3 pt-3 pb-2.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/60"
@@ -659,7 +674,10 @@ function LockedExpandPanel({ playerName }: { playerName: string }) {
         {playerName ? ` for ${playerName}` : ""}.
       </p>
       <button
-        onClick={() => navigate("/neeko-plus")}
+        onClick={() => {
+          trackGateInteraction({ source: "stat_board_players", section: "locked_expand_panel", action: "cta_clicked" });
+          navigate("/neeko-plus");
+        }}
         className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#F5C84C]/12 border border-[#F5C84C]/25 px-4 py-2 text-[12px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/20 transition-colors"
       >
         <Lock className="h-3 w-3" aria-hidden />

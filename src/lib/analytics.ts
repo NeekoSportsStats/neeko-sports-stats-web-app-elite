@@ -33,9 +33,11 @@ function baseProperties(): Record<string, unknown> {
       return raw ? JSON.parse(raw) : {};
     } catch { return {}; }
   })();
+  const pagePath = typeof window !== "undefined" ? window.location.pathname : undefined;
   return {
     session_id: getSessionId(),
-    page_path: typeof window !== "undefined" ? window.location.pathname : undefined,
+    page_path: pagePath,
+    clean_page_path: pagePath, // pathname has no query string; edge fn normalises $current_url
     is_admin: isAdminRoute(),
     ...attribution,
   };

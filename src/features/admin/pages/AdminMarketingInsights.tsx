@@ -254,7 +254,7 @@ function buildTimingSection(data: InsightsData, range: MarketingInsightsRange): 
   return lines.join("\n");
 }
 
-function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fetchedAt: Date): string {
+function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fetchedAt: Date, adminIncluded = false): string {
   const rangeLabel = rangeLabelLong(range);
   const fetchedStr = fetchedAt.toLocaleString("en-AU", { timeZoneName: "short" });
 
@@ -272,7 +272,9 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
 
   lines.push(`# Neeko Sports — Marketing Analytics Pack`);
   lines.push(`Date range: ${rangeLabel} | Fetched: ${fetchedStr}`);
-  lines.push(`Admin traffic excluded. No emails or PII included.`);
+  lines.push(`Admin traffic: ${adminIncluded ? "included" : "excluded (dual-layer: is_admin flag + /admin* path filter + localhost)"}`);
+  lines.push(`Path normalisation: query strings stripped from page paths (clean_page_path)`);
+  lines.push(`Note: No emails or PII included.`);
   lines.push(``);
 
   // ── 1. Executive Summary
@@ -297,6 +299,15 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
   // ── 2. Conversion Funnel
   lines.push(`## 2. Conversion Funnel`);
   if (funnel) {
+    const views = safeInt(funnel.page_views);
+    const gateViews = safeInt(funnel.gate_views);
+    const ctaClicks = safeInt(funnel.cta_clicks);
+    const checkoutStarts = safeInt(funnel.checkout_started);
+    const checkoutSuccess = safeInt(funnel.checkout_success);
+
+    const rate = (num: number, denom: number) =>
+      denom > 0 ? `${((num / denom) * 100).toFixed(1)}%` : "—";
+
     lines.push(`| Stage | Count | Drop-off |`);
     lines.push(`|---|---|---|`);
     lines.push(`| Page Views | ${safeNumber(funnel.page_views)} | — |`);
@@ -306,6 +317,13 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
     lines.push(`| Checkout Success | ${safeNumber(funnel.checkout_success)} | ${funnel.dropoffs?.checkout_to_success ?? 0}% from starts |`);
     lines.push(`| Checkout Cancelled | ${safeNumber(funnel.checkout_cancelled)} | — |`);
     lines.push(``);
+    lines.push(`Conversion Rates:`);
+    lines.push(`- View → Gate: ${rate(gateViews, views)}`);
+    lines.push(`- View → CTA: ${rate(ctaClicks, views)}`);
+    lines.push(`- CTA → Checkout: ${rate(checkoutStarts, ctaClicks)}`);
+    lines.push(`- Checkout → Success: ${rate(checkoutSuccess, checkoutStarts)}`);
+    lines.push(`- View → Success (end-to-end): ${rate(checkoutSuccess, views)}`);
+    lines.push(``);
     lines.push(`Landing CTA: ${safeInt(funnel.landing_cta_clicks)} | Pricing CTA: ${safeInt(funnel.pricing_cta_clicks)} | Neeko+ btn: ${safeInt(funnel.neeko_plus_clicks)}`);
   } else {
     lines.push(`No funnel data.`);
@@ -314,11 +332,12 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
 
   // ── 3. Top Pages
   lines.push(`## 3. Top Pages`);
+  lines.push(`(Paths are query-string-free — grouped by clean_page_path)`);
   if (topPages.length > 0) {
-    lines.push(`| # | Page | Views |`);
+    lines.push(`| # | Page (clean path) | Views |`);
     lines.push(`|---|---|---|`);
     topPages.slice(0, 15).forEach((p, i) => {
-      const url = p.page ? p.page.replace(/https?:\/\/[^/]+/, "") || "/" : "/";
+      const url = p.page ? p.page.replace(/https?:\/\/[^/]+/, "").split("?")[0].split("#")[0] || "/" : "/";
       lines.push(`| ${i + 1} | ${url} | ${safeNumber(p.views)} |`);
     });
   } else {
@@ -911,6 +930,7 @@ export default function AdminMarketingInsights() {
   const [data, setData] = useState<InsightsData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null);
+  const [includeAdmin, setIncludeAdmin] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const freshnessStatus: FreshnessStatus = (() => {
@@ -921,13 +941,13 @@ export default function AdminMarketingInsights() {
 
   const isDataReadyForRange = !!(data && dataRange === selectedRange && freshnessStatus === "fresh");
 
-  const load = useCallback(async (range: MarketingInsightsRange) => {
+  const load = useCallback(async (range: MarketingInsightsRange, withAdmin = false) => {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
     setLoading(true);
     setError(null);
     try {
-      const result = await fetchMarketingInsights(range) as InsightsData;
+      const result = await fetchMarketingInsights(range, withAdmin) as InsightsData;
       setData(result);
       setDataRange(range);
       setLastFetchedAt(new Date());
@@ -942,10 +962,10 @@ export default function AdminMarketingInsights() {
 
   const handleRangeChange = (range: MarketingInsightsRange) => {
     setSelectedRange(range);
-    load(range);
+    load(range, includeAdmin);
   };
 
-  const handleRefresh = () => load(selectedRange);
+  const handleRefresh = () => load(selectedRange, includeAdmin);
 
   const getAnalysisPack = () => {
     if (loading) return "Data is loading. Please wait.";
@@ -953,7 +973,7 @@ export default function AdminMarketingInsights() {
     if (!data.posthog_available) return "PostHog is not configured. No analytics data available.";
     if (freshnessStatus === "stale") return "Data is stale. Please refresh before copying.";
     if (dataRange !== selectedRange) return `Data loaded for ${rangeLabelLong(dataRange)}, not ${rangeLabelLong(selectedRange)}. Please refresh.`;
-    return buildAnalysisPack(data, dataRange, lastFetchedAt);
+    return buildAnalysisPack(data, dataRange, lastFetchedAt, includeAdmin);
   };
 
   const funnel = data?.funnel;
@@ -1015,6 +1035,22 @@ export default function AdminMarketingInsights() {
               </button>
             ))}
           </div>
+
+          <button
+            onClick={() => {
+              const next = !includeAdmin;
+              setIncludeAdmin(next);
+              load(selectedRange, next);
+            }}
+            title={includeAdmin ? "Admin traffic included — click to exclude" : "Admin traffic excluded — click to include"}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium transition-colors ${
+              includeAdmin
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/15"
+                : "border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            }`}
+          >
+            {includeAdmin ? "Admin: On" : "Admin: Off"}
+          </button>
 
           <button
             onClick={handleRefresh}

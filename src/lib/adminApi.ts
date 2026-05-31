@@ -53,11 +53,12 @@ export async function fetchGoogleAdsInsights(range: AdsInsightsRange = "7d"): Pr
   return callAdminFn("google-ads-insights-admin", { range });
 }
 
-export async function fetchMarketingInsights(range: MarketingInsightsRange = "7d"): Promise<Record<string, unknown>> {
-  if (range === "12h") return callAdminFn("admin-posthog-analytics", { section: "marketing", hours: 12 });
-  if (range === "24h") return callAdminFn("admin-posthog-analytics", { section: "marketing", hours: 24 });
-  if (range === "3d") return callAdminFn("admin-posthog-analytics", { section: "marketing", days: 3 });
-  if (range === "14d") return callAdminFn("admin-posthog-analytics", { section: "marketing", days: 14 });
-  if (range === "30d") return callAdminFn("admin-posthog-analytics", { section: "marketing", days: 30 });
-  return callAdminFn("admin-posthog-analytics", { section: "marketing", days: 7 });
+export async function fetchMarketingInsights(range: MarketingInsightsRange = "7d", includeAdmin = false): Promise<Record<string, unknown>> {
+  const extra = includeAdmin ? { include_admin: true } : {};
+  if (range === "12h") return callAdminFn("admin-posthog-analytics", { section: "marketing", hours: 12, ...extra });
+  if (range === "24h") return callAdminFn("admin-posthog-analytics", { section: "marketing", hours: 24, ...extra });
+  if (range === "3d") return callAdminFn("admin-posthog-analytics", { section: "marketing", days: 3, ...extra });
+  if (range === "14d") return callAdminFn("admin-posthog-analytics", { section: "marketing", days: 14, ...extra });
+  if (range === "30d") return callAdminFn("admin-posthog-analytics", { section: "marketing", days: 30, ...extra });
+  return callAdminFn("admin-posthog-analytics", { section: "marketing", days: 7, ...extra });
 }

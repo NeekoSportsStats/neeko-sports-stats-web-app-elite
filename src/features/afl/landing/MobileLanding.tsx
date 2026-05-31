@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { ArrowRight, ChevronRight, Target, Zap, Check, Crown, TrendingUp, TriangleAlert as AlertTriangle, Lock, Clock as UnlockIcon, ChartBar as BarChart2Icon, Star, Users, Shield } from "lucide-react";
 import { MobileShell } from "@/components/MobileShell";
+import { trackLandingCTA, trackNeekoPlus } from "@/lib/analytics";
 import { supabase } from "@/lib/supabaseClient";
 import type { StatBoardPlayer, StatBoardMatch, StatLens } from "@/features/afl/stat-board/types";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
@@ -728,7 +729,7 @@ function LockedFullRound({ allMatches }: { allMatches: StatBoardMatch[] }) {
 
       {/* CTA */}
       <div style={{ padding: "12px 13px 14px" }}>
-        <Link to="/neeko-plus" style={{
+        <Link to="/neeko-plus" onClick={() => trackNeekoPlus({ source: "locked_round_module", button_text: "Unlock Full Round" })} style={{
           display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           padding: "13px 20px", borderRadius: 11, minHeight: 48,
           background: "linear-gradient(155deg, #fad52a 0%, #e09600 100%)",
@@ -1040,7 +1041,7 @@ function PricingBlock() {
           </span>
         </div>
 
-        <Link to="/neeko-plus" style={{
+        <Link to="/neeko-plus" onClick={() => trackNeekoPlus({ source: "pricing_block", button_text: "Unlock Neeko+" })} style={{
           display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           padding: "13px 16px", borderRadius: 11, minHeight: 48, width: "100%", boxSizing: "border-box",
           background: "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
@@ -1050,7 +1051,7 @@ function PricingBlock() {
         }}>
           Unlock Neeko+ <ArrowRight size={13} />
         </Link>
-        <Link to="/stat-board/players" style={{
+        <Link to="/stat-board/players" onClick={() => trackLandingCTA({ button_text: "Keep using free preview", section: "pricing_block", target_url: "/stat-board/players" })} style={{
           display: "flex", alignItems: "center", justifyContent: "center",
           padding: "10px 16px", marginTop: 8,
           fontSize: 11.5, color: "rgba(255,255,255,0.30)", fontWeight: 500,
@@ -1130,7 +1131,7 @@ export default function MobileLanding({ isPremium: _isPremium }: Props) {
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-            <Link to="/stat-board/players" style={{
+            <Link to="/stat-board/players" onClick={() => trackLandingCTA({ button_text: "Open Stats Hub Free", section: "hero", target_url: "/stat-board/players" })} style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               background: "linear-gradient(160deg, #22c55e 0%, #16a34a 100%)",
               color: "#f0fff4", fontWeight: 900, fontSize: 15,
@@ -1140,7 +1141,7 @@ export default function MobileLanding({ isPremium: _isPremium }: Props) {
             }}>
               Open Stats Hub Free <ArrowRight size={15} />
             </Link>
-            <Link to="/neeko-plus" style={{
+            <Link to="/neeko-plus" onClick={() => trackNeekoPlus({ source: "hero", button_text: "Unlock Full Round" })} style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
               color: "rgba(255,255,255,0.65)", fontWeight: 600, fontSize: 13,
