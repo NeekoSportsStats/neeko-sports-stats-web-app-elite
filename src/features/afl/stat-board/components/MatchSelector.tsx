@@ -190,7 +190,7 @@ export function MatchSelector({ matches, selected, loading, onChange, hasFullAcc
             <div className="px-3.5 py-2 border-t border-white/[0.07] bg-white/[0.015] flex items-center gap-3">
               <span className="flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 shrink-0" aria-hidden />
-                <span className="text-[10px] text-white/28">First 2 matches free</span>
+                <span className="text-[10px] text-white/28">Free this week: 2 games</span>
               </span>
               <span className="text-white/12">·</span>
               <span className="flex items-center gap-1.5">
@@ -298,6 +298,13 @@ function MatchOption({
       {isFree && !isSelected && !hasFullAccess && (
         <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide text-emerald-500/70 bg-emerald-500/8 rounded px-1.5 py-0.5 leading-none">
           Free
+        </span>
+      )}
+
+      {/* Neeko+ badge — only for locked matches when free user */}
+      {isLocked && !isSelected && !hasFullAccess && (
+        <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide text-[#F5C84C]/60 bg-[#F5C84C]/8 rounded px-1.5 py-0.5 leading-none">
+          Neeko+
         </span>
       )}
     </button>

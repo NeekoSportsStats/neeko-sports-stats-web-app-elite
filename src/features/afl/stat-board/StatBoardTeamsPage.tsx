@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback, memo, useSyncExternal
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronDown, Lock, Check } from "lucide-react";
-import { track } from "@/lib/analytics";
+import { track, trackFreeGamesCTA, trackStatBoardUpgrade } from "@/lib/analytics";
+import MobileUpgradeBar from "@/components/mobile/MobileUpgradeBar";
 
 import {
   useStatBoardTeamMatches,
@@ -247,6 +248,38 @@ export default function StatBoardTeamsPage() {
             </p>
           </div>
 
+          {/* Free games access banner */}
+          {hasFullAccess ? (
+            <div className="mb-3 flex items-center gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] px-4 py-2.5">
+              <div className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
+              <p className="text-xs font-semibold text-emerald-400">Neeko+ active — every matchup unlocked</p>
+            </div>
+          ) : (
+            <div className="mb-3 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white leading-snug">2 free games unlocked this week</p>
+                  <p className="text-xs text-white/45 mt-0.5 leading-relaxed">Browse free games below. Upgrade to unlock every matchup.</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                  <Link
+                    to="/stat-board/teams"
+                    onClick={() => trackFreeGamesCTA({ button_text: "View free games", source: "stat_board_teams", section: "top_banner" })}
+                    className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2.5 py-1 hover:bg-emerald-500/15 transition-colors whitespace-nowrap"
+                  >
+                    View free games
+                  </Link>
+                  <button
+                    onClick={() => { trackStatBoardUpgrade({ source: "stat_board_teams", button_text: "Unlock all games", section: "top_banner" }); window.location.href = "/neeko-plus"; }}
+                    className="text-[11px] font-semibold text-[#F5C84C] bg-[#F5C84C]/10 border border-[#F5C84C]/20 rounded-lg px-2.5 py-1 hover:bg-[#F5C84C]/15 transition-colors whitespace-nowrap"
+                  >
+                    Unlock all games
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ── Mobile controls (< sm) ─────────────────────────────────────────── */}
           <div className="sm:hidden mb-2 space-y-1.5" style={{ width: "100%", boxSizing: "border-box", minWidth: 0 }}>
 
@@ -378,16 +411,25 @@ export default function StatBoardTeamsPage() {
             <div className="mb-4 flex items-start gap-3 rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/5 px-3 py-2.5 sm:px-4 sm:py-3.5">
               <Lock className="h-4 w-4 shrink-0 text-[#F5C84C] mt-0.5" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-[#F5C84C] leading-snug">Team projection outlook — Neeko+ required</p>
+                <p className="text-sm font-semibold text-[#F5C84C] leading-snug">This matchup is locked</p>
                 <p className="text-xs text-white/45 mt-0.5 leading-relaxed">
-                  First 2 matches are free. Upgrade to Neeko+ to unlock every match's team score, goals, scoring shots and disposal outlooks.
+                  Neeko+ unlocks the full round — every match's team score, goals, scoring shots and disposal outlooks.
                 </p>
-                <button
-                  onClick={() => navigate("/neeko-plus")}
-                  className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-[#F5C84C]/15 border border-[#F5C84C]/30 px-3.5 py-1.5 text-[11px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/25 transition-colors"
-                >
-                  Upgrade to Neeko+
-                </button>
+                <div className="mt-2.5 flex items-center gap-2.5 flex-wrap">
+                  <button
+                    onClick={() => { trackStatBoardUpgrade({ source: "stat_board_teams", button_text: "Unlock this matchup", section: "locked_banner" }); window.location.href = "/neeko-plus"; }}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#F5C84C]/15 border border-[#F5C84C]/30 px-3.5 py-1.5 text-[11px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/25 transition-colors"
+                  >
+                    Unlock this matchup
+                  </button>
+                  <Link
+                    to="/stat-board/teams"
+                    onClick={() => trackFreeGamesCTA({ button_text: "View free games", source: "stat_board_teams", section: "locked_banner" })}
+                    className="text-[11px] font-semibold text-white/40 hover:text-white/65 transition-colors"
+                  >
+                    View free games
+                  </Link>
+                </div>
               </div>
             </div>
           )}
@@ -482,6 +524,11 @@ export default function StatBoardTeamsPage() {
           )}
         </div>
       </div>
+      {!hasFullAccess && (
+        <MobileUpgradeBar
+          state={isMatchLocked ? "locked" : "free"}
+        />
+      )}
     </>
   );
 }

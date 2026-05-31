@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { ArrowRight, ChevronRight, Target, Zap, Check, Crown, TrendingUp, TriangleAlert as AlertTriangle, Lock, Clock as UnlockIcon, ChartBar as BarChart2Icon, Star, Users, Shield } from "lucide-react";
 import { MobileShell } from "@/components/MobileShell";
-import { trackLandingCTA, trackNeekoPlus } from "@/lib/analytics";
+import { trackLandingCTA, trackNeekoPlus, trackFreeGamesCTA, trackUnlockAllGames } from "@/lib/analytics";
 import { supabase } from "@/lib/supabaseClient";
 import type { StatBoardPlayer, StatBoardMatch, StatLens } from "@/features/afl/stat-board/types";
 import { NEEKO_PRICING } from "@/config/neekoPricing";
@@ -1117,9 +1117,9 @@ export default function MobileLanding({ isPremium: _isPremium }: Props) {
             fontWeight: 900, lineHeight: 1.16, letterSpacing: "-0.028em",
             color: "#ffffff", marginBottom: 12, textAlign: "center",
           }}>
-            Find AFL disposal and goal{" "}
-            <span style={{ color: "#34d96a" }}>edges</span>{" "}
-            this week.
+            Get 2 full games free every week.{" "}
+            <span style={{ color: "#34d96a" }}>Unlock every matchup</span>{" "}
+            with Neeko+.
           </h1>
 
           <p style={{
@@ -1131,7 +1131,7 @@ export default function MobileLanding({ isPremium: _isPremium }: Props) {
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-            <Link to="/stat-board/players" onClick={() => trackLandingCTA({ button_text: "Open Stats Hub Free", section: "hero", target_url: "/stat-board/players" })} style={{
+            <Link to="/stat-board/players" onClick={() => trackFreeGamesCTA({ button_text: "View free games", section: "hero", source: "mobile_landing" })} style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               background: "linear-gradient(160deg, #22c55e 0%, #16a34a 100%)",
               color: "#f0fff4", fontWeight: 900, fontSize: 15,
@@ -1139,15 +1139,15 @@ export default function MobileLanding({ isPremium: _isPremium }: Props) {
               boxShadow: "0 4px 18px rgba(34,197,94,0.20)", minHeight: 50,
               letterSpacing: "0.01em",
             }}>
-              Open Stats Hub Free <ArrowRight size={15} />
+              View free games <ArrowRight size={15} />
             </Link>
-            <Link to="/neeko-plus" onClick={() => trackNeekoPlus({ source: "hero", button_text: "Unlock Full Round" })} style={{
+            <Link to="/neeko-plus" onClick={() => trackUnlockAllGames({ source: "mobile_landing_hero", button_text: "Unlock every game", section: "hero" })} style={{
               display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
               color: "rgba(255,255,255,0.65)", fontWeight: 600, fontSize: 13,
               padding: "10px 20px", borderRadius: 11, textDecoration: "none", minHeight: 40,
             }}>
-              Unlock Full Round <ChevronRight size={12} />
+              Unlock every game <ChevronRight size={12} />
             </Link>
           </div>
         </div>

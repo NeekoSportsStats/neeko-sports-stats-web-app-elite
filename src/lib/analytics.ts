@@ -309,3 +309,51 @@ export function trackAdminEvent(event: string, properties?: Record<string, unkno
     ...properties,
   });
 }
+
+/* =============================
+   FREE GAME CTA TRACKING
+============================= */
+export function trackFreeGamesCTA(params: {
+  button_text: string;
+  source: string;
+  section?: string;
+  match_label?: string;
+}) {
+  if (isAdminRoute()) return;
+  track("free_games_cta_clicked", params);
+}
+
+export function trackUnlockAllGames(params: {
+  source: string;
+  button_text?: string;
+  section?: string;
+}) {
+  if (isAdminRoute()) return;
+  track("unlock_all_games_clicked", params);
+}
+
+export function trackUnlockMatchup(params: {
+  source: string;
+  match_label?: string;
+  section?: string;
+}) {
+  if (isAdminRoute()) return;
+  track("unlock_this_matchup_clicked", params);
+}
+
+export function trackStatBoardUpgrade(params: {
+  source: string;
+  button_text: string;
+  section?: string;
+}) {
+  if (isAdminRoute()) return;
+  track("stat_board_upgrade_clicked", params);
+}
+
+export function trackMobileStickyCTA(params: {
+  button_text: string;
+  state: "free" | "locked";
+}) {
+  if (isAdminRoute()) return;
+  track("mobile_sticky_cta_clicked", params);
+}

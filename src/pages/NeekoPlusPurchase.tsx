@@ -644,7 +644,7 @@ const NeekoPlusPurchase = () => {
             lineHeight: 1.6,
             maxWidth: 460,
           }}>
-            Unlock full player projections, breakevens, stat trends, hit rates, team dashboards, market signals and Fantasy Hub decision tools — updated before every lockout.
+            Start with 2 free games each week. Upgrade when you want every matchup — full player projections, breakevens, stat trends, hit rates, team dashboards and market signals updated before every lockout.
           </p>
         </div>
 

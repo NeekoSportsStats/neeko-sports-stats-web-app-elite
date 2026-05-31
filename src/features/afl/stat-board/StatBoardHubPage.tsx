@@ -166,6 +166,17 @@ export default function StatBoardHubPage() {
           </div>
 
           {/* ── Cards ─────────────────────────────────────────────────────── */}
+          <div style={{ marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: 10, background: "rgba(34,197,94,0.04)", border: "1px solid rgba(34,197,94,0.14)", marginBottom: 10 }}>
+              <span style={{ height: 7, width: 7, borderRadius: "50%", background: "rgba(34,197,94,0.65)", flexShrink: 0 }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.55)", flex: 1 }}>
+                2 free games unlocked this week.
+              </span>
+              <Link to="/neeko-plus" style={{ fontSize: 11, fontWeight: 700, color: "#F5C84C", textDecoration: "none", flexShrink: 0, whiteSpace: "nowrap" }}>
+                Unlock all games
+              </Link>
+            </div>
+          </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: "clamp(22px,3vw,32px)" }}>
             {CARDS.map((card) => <HubTile key={card.title} card={card} />)}
           </div>
