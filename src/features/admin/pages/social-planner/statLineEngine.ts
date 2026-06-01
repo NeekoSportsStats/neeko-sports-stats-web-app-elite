@@ -586,29 +586,59 @@ export function formatPublicStatLine(
 /**
  * Assigns the single disposal marketing tier for a player: 30 | 25 | 20 | 15 | null.
  *
- * Strict rule: hr >= 0.70 required for all tiers.
- * 25+ explicitly excludes players who qualify at 30+ (they belong in the 30+ post).
- * Returns null if no tier qualifies.
+ * Evaluated in descending order — a player is placed at their HIGHEST qualifying tier.
+ * A player assigned to 30+ will NOT appear in 25+/20+/15+ posts.
+ * A player assigned to 25+ will NOT appear in 20+/15+ posts.
  *
- * 30+: hr30 >= 0.70 AND L5 >= 29.0 AND sample >= 5
- * 25+: hr25 >= 0.70 AND L5 >= 24.5 AND sample >= 5 AND NOT 30+ tier
- * 20+: hr20 >= 0.70 AND L5 >= 19.0 AND sample >= 4
- * 15+: hr15 >= 0.70 AND L5 >= 14.5 AND sample >= 4
+ * L5 average is used as a primary promotion signal alongside hit rate.
+ * If a player's L5 average is clearly in a higher tier's range, they are promoted
+ * even if their hit rate at that threshold is moderate (≥ 0.60).
+ *
+ * 30+ tier:
+ *   Primary:  hr30 >= 0.70 AND L5 >= 29.0 AND sample >= 5
+ *   L5 promo: L5 >= 28.5 AND hr30 >= 0.60 AND sample >= 5
+ *
+ * 25+ tier (excludes 30+ players):
+ *   Primary:  hr25 >= 0.70 AND L5 >= 24.5 AND sample >= 5
+ *   L5 promo: L5 >= 24.0 AND hr25 >= 0.60 AND sample >= 5
+ *
+ * 20+ tier (excludes 30+/25+ players):
+ *   Primary:  hr20 >= 0.70 AND L5 >= 19.0 AND sample >= 4
+ *   L5 promo: L5 >= 18.5 AND hr20 >= 0.55 AND sample >= 4
+ *
+ * 15+ tier:
+ *   hr15 >= 0.70 AND L5 >= 14.5 AND sample >= 4
  */
 export function assignDisposalMarketingTier(
   p: StatBoardPlayer,
 ): 30 | 25 | 20 | 15 | null {
   const l5 = p.last_5_avg ?? p.season_avg ?? 0;
 
+  // ── 30+ ──────────────────────────────────────────────────────────────────
   const rec30 = getRecentHitRecord(p, 30);
-  if (rec30.rate >= 0.70 && l5 >= 29.0 && rec30.sample >= 5) return 30;
+  if (rec30.sample >= 5) {
+    if (rec30.rate >= 0.70 && l5 >= 29.0) return 30;
+    // L5 promotion: strong average profile even if hit rate is moderate
+    if (l5 >= 28.5 && rec30.rate >= 0.60) return 30;
+  }
 
+  // ── 25+ ──────────────────────────────────────────────────────────────────
   const rec25 = getRecentHitRecord(p, 25);
-  if (rec25.rate >= 0.70 && l5 >= 24.5 && rec25.sample >= 5) return 25;
+  if (rec25.sample >= 5) {
+    if (rec25.rate >= 0.70 && l5 >= 24.5) return 25;
+    // L5 promotion: L5 clearly in 25+ territory
+    if (l5 >= 24.0 && rec25.rate >= 0.60) return 25;
+  }
 
+  // ── 20+ ──────────────────────────────────────────────────────────────────
   const rec20 = getRecentHitRecord(p, 20);
-  if (rec20.rate >= 0.70 && l5 >= 19.0 && rec20.sample >= 4) return 20;
+  if (rec20.sample >= 4) {
+    if (rec20.rate >= 0.70 && l5 >= 19.0) return 20;
+    // L5 promotion: solid 20+ average profile
+    if (l5 >= 18.5 && rec20.rate >= 0.55) return 20;
+  }
 
+  // ── 15+ ──────────────────────────────────────────────────────────────────
   const rec15 = getRecentHitRecord(p, 15);
   if (rec15.rate >= 0.70 && l5 >= 14.5 && rec15.sample >= 4) return 15;
 

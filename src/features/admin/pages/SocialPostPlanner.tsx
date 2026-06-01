@@ -373,66 +373,135 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
 
   // ── MONDAY ────────────────────────────────────────────────────────────────
 
-  // Post 1 — Previous week results (if completed games exist) else 20+ watchlist
+  // Post 1 — Previous week proof/recap. Must NEVER duplicate Monday Post 2 (20+ pool).
+  // Uses elite pool (30+/25+) for recap content — distinct from the strict 20+ post.
+  // If no completed games exist, falls back to a distinct alternative (elite watchlist,
+  // form movers, or evergreen) — never the same 20+ pool as Post 2.
   {
     const hasCompleted = completedMatches.length > 0;
 
     if (hasCompleted) {
-      // Recap framing — only include players from teams that actually completed games.
-      // If no such players exist, this post must be marked Needs Review.
+      // Recap framing — draw from poolElite (30+/25+) so this post is distinct from Post 2.
+      // Fall back to pool25 → poolElite → formMovers for player content.
+      // If none available with completed-game players, mark Needs Review but still
+      // use a different player set than Post 2.
       const completedTeamIds = new Set(completedMatches.flatMap(m => [m.home_team_id, m.away_team_id]));
-      const completedDispPlayers = pool20.filter(p => completedTeamIds.has(p.team_id));
-      const hasActuals = completedDispPlayers.length >= 2;
-      const recapPool = hasActuals ? completedDispPlayers : pool20.length >= 2 ? pool20 : dispPool;
-      const recapThrNum = 20;
-      const recapPlayers = recapPool.slice(0, 5);
-      const bullets = recapPlayers.map(p => formatPublicStatLine(p, recapThrNum));
-      const hook = `${rl} results in. Here's how the form numbers looked across the weekend.`;
+
+      // Prefer elite-tier players from completed teams for proof post
+      const eliteCompletedPlayers = poolElite.filter(p => completedTeamIds.has(p.team_id));
+      const eliteAnyPlayers = poolElite; // fallback: any elite player
+      const formMoverCompletedPlayers = formMovers.filter(p => completedTeamIds.has(p.team_id));
+
+      // Select recap players: elite completed → elite any → form movers → needs review
+      let recapPlayers: StatBoardPlayer[];
+      let recapThrNum: number;
+      let recapLabel: string;
+      let hasActuals: boolean;
+
+      if (eliteCompletedPlayers.length >= 2) {
+        // Use elite (25+/30+) players from completed teams — best proof scenario
+        recapPlayers = eliteCompletedPlayers.slice(0, 5);
+        recapThrNum = recapPlayers[0] ? bestDisposalThreshold(recapPlayers[0]) : 25;
+        // Use each player's own best threshold for display
+        recapLabel = "Elite Disposals";
+        hasActuals = true;
+      } else if (eliteAnyPlayers.length >= 2) {
+        // No completed-specific elite players but elite pool has entries — use them
+        recapPlayers = eliteAnyPlayers.slice(0, 5);
+        recapThrNum = 25;
+        recapLabel = "25+ Disposals";
+        hasActuals = false;
+      } else if (formMoverCompletedPlayers.length >= 2) {
+        // Fall back to form movers — still distinct from the 20+ disposal post
+        recapPlayers = formMoverCompletedPlayers.slice(0, 5);
+        recapThrNum = 20;
+        recapLabel = "Form Movers";
+        hasActuals = true;
+      } else if (formMovers.length >= 2) {
+        recapPlayers = formMovers.slice(0, 5);
+        recapThrNum = 20;
+        recapLabel = "Form Movers";
+        hasActuals = false;
+      } else {
+        // Last resort: use pool25 or mark Needs Review — but never pool20
+        recapPlayers = pool25.length >= 2 ? pool25.slice(0, 5) : [];
+        recapThrNum = 25;
+        recapLabel = "25+ Disposals";
+        hasActuals = false;
+      }
+
+      const bullets = recapPlayers.length > 0
+        ? recapPlayers.map(p => {
+            // Show each player at their actual best tier, not a forced 20+
+            const tier = bestDisposalThreshold(p);
+            return formatPublicStatLine(p, tier >= 20 ? tier : recapThrNum);
+          })
+        : ["Previous week stats recap — data pending"];
+
+      const hook = hasActuals
+        ? `${rl} results in. Here's how the disposal leaders performed across the weekend.`
+        : `${rl} preview — disposal form leaders heading into the new round.`;
+
       schedule.push(makePost({
         day: "Mon", postNumber: 1,
         type: "Carousel",
-        category: "Round Wrap", intent: "recap",
+        category: "Round Wrap", intent: hasActuals ? "recap" : "cross_game_preview",
         statLens: "disposals", confidence: hasActuals ? "High" : "Medium",
-        title: `${rl} — previous round results`,
+        title: hasActuals ? `${rl} — previous round disposal proof` : `${rl} — disposal form leaders`,
         content: hook,
         statsShown: bullets,
-        onScreenText: "Weekend results",
+        onScreenText: hasActuals ? "Weekend disposal results" : "Disposal form leaders",
         caption: buildCaption(hook, bullets, 0),
         hashtags: HASHTAG_SETS["Round Wrap"],
-        suggestedVisual: `${recapPlayers.length}-player recap grid — name, team, ${recapThrNum}+ hit rate, L5 avg`,
-        imageDescription: `Carousel. ${recapPlayers.length} players, one per slide. Each slide: player name, team, ${recapThrNum}+ disposal hit rate, L5 average. Title card: "${rl} — Round Results". Dark background, AFL team colours as accents. No betting language.`,
-        dataScope: "Completed weekend games",
+        suggestedVisual: `${recapPlayers.length}-player recap carousel — name, team, ${recapLabel} hit rate, L5 avg`,
+        imageDescription: `Carousel. ${recapPlayers.length} players, one per slide. Each slide: player name, team, disposal hit rate at their threshold (${recapLabel}), L5 average. Title card: "${rl} — Round Results". Dark background, AFL team colours as accents. No betting language.`,
+        dataScope: hasActuals ? "Completed weekend games" : `${rl} disposal leaders`,
         targetGame: null,
-        targetGameStatus: "completed",
-        fallbackWarning: hasActuals ? null : "No completed-game player data available — Needs Review. Do not publish as proof post.",
+        targetGameStatus: hasActuals ? "completed" : "any",
+        fallbackWarning: recapPlayers.length < 2 ? "Insufficient player data for recap — Needs Review. Do not publish." : null,
         players: recapPlayers,
-        thresholdLabel: `${recapThrNum}+ Disposals`,
+        thresholdLabel: recapLabel,
       }));
     } else {
-      // No completed games — show 20+ disposal watchlist instead (strict pool20 only)
-      const mon1Players = pool20.slice(0, 5);
-      const mon1ThrNum = 20;
-      const hook = `${rl} preview — who's been clearing ${mon1ThrNum}+ disposals consistently?`;
-      const bullets = mon1Players.map(p => formatPublicStatLine(p, mon1ThrNum));
+      // No completed games — use elite pool (25+/30+) as distinct watchlist.
+      // Never fall back to pool20, which is used by Post 2.
+      const mon1Players = poolElite.length >= 2 ? poolElite.slice(0, 5)
+        : pool25.length >= 2 ? pool25.slice(0, 5)
+        : pool30.length >= 1 ? pool30.slice(0, 5)
+        : formMovers.slice(0, 5);
+
+      const isElite = poolElite.length >= 2 || pool25.length >= 2 || pool30.length >= 1;
+      const mon1ThrNum = isElite ? 25 : 20;
+      const mon1Label = isElite ? "25+" : "Form Movers";
+
+      const hook = isElite
+        ? `${rl} preview — elite disposal performers. Who's been clearing 25+ consistently?`
+        : `${rl} preview — disposal form leaders heading into the round.`;
+
+      const bullets = mon1Players.map(p => {
+        const tier = bestDisposalThreshold(p);
+        return formatPublicStatLine(p, tier >= 20 ? tier : mon1ThrNum);
+      });
+
       schedule.push(makePost({
         day: "Mon", postNumber: 1,
         type: "Carousel",
-        category: "Disposal Trend", intent: "cross_game_preview",
-        statLens: "disposals", confidence: pool20.length >= 3 ? "High" : "Medium",
-        title: `${rl} — ${mon1ThrNum}+ disposals watchlist`,
+        category: "Round Wrap", intent: "cross_game_preview",
+        statLens: "disposals", confidence: mon1Players.length >= 3 ? "High" : "Medium",
+        title: `${rl} — ${mon1Label} disposal leaders`,
         content: hook,
         statsShown: bullets,
-        onScreenText: `${mon1ThrNum}+ disposal form`,
+        onScreenText: `${mon1Label} disposal form`,
         caption: buildCaption(hook, bullets, 0),
-        hashtags: HASHTAG_SETS["Disposal Trend"],
-        suggestedVisual: `${mon1Players.length}-player stat grid — name, team, ${mon1ThrNum}+ hit rate, L5 avg`,
-        imageDescription: `Carousel. ${mon1Players.length} players, one per slide. Each slide: player name, team, ${mon1ThrNum}+ disposals hit rate as a percentage, L5 average. Dark background, AFL team colours as accents. Headline: "${rl} — ${mon1ThrNum}+ Disposals Watchlist". No betting language.`,
-        dataScope: `${rl} ${mon1ThrNum}+ disposal player pool`,
+        hashtags: HASHTAG_SETS["Round Wrap"],
+        suggestedVisual: `${mon1Players.length}-player stat grid — name, team, disposal hit rate, L5 avg`,
+        imageDescription: `Carousel. ${mon1Players.length} players, one per slide. Each slide: player name, team, disposal hit rate at their threshold, L5 average. Dark background, AFL team colours as accents. Headline: "${rl} — ${mon1Label} Disposal Leaders". No betting language.`,
+        dataScope: `${rl} elite disposal player pool`,
         targetGame: null,
         targetGameStatus: "any",
-        fallbackWarning: pool20.length < 2 ? `Low 20+ candidate count — using ${mon1ThrNum}+ pool instead` : null,
+        fallbackWarning: mon1Players.length < 2 ? "Low disposal candidate count — Needs Review" : null,
         players: mon1Players,
-        thresholdLabel: `${mon1ThrNum}+ Disposals`,
+        thresholdLabel: `${mon1Label} Disposals`,
       }));
     }
   }
@@ -975,6 +1044,37 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
       targetGame: null, targetGameStatus: "any", fallbackWarning: null,
       players, thresholdLabel: "20+ Disposals", postNumber: 1,
     });
+  }
+
+  // ── Duplicate post detection ──────────────────────────────────────────────
+  // Flag any two scheduled posts on the same day that share stat family + threshold
+  // AND have >= 60% player overlap. Injects a fallbackWarning on the lower-priority post.
+  function playerOverlapRatio(a: SocialPost, b: SocialPost): number {
+    const idsA = new Set((a.players ?? []).map(p => p.player_id));
+    const idsB = new Set((b.players ?? []).map(p => p.player_id));
+    if (idsA.size === 0 || idsB.size === 0) return 0;
+    let shared = 0;
+    idsA.forEach(id => { if (idsB.has(id)) shared++; });
+    return shared / Math.max(idsA.size, idsB.size);
+  }
+
+  for (let i = 0; i < schedule.length; i++) {
+    for (let j = i + 1; j < schedule.length; j++) {
+      const a = schedule[i];
+      const b = schedule[j];
+      if (a.day !== b.day) continue;
+      if (a.statLens !== b.statLens) continue;
+      if (a.thresholdLabel !== b.thresholdLabel) continue;
+      const overlap = playerOverlapRatio(a, b);
+      if (overlap >= 0.6) {
+        const warn = `Duplicate post detected: Post ${a.postNumber} and Post ${b.postNumber} on ${a.day} share ${Math.round(overlap * 100)}% of the same players (${a.thresholdLabel}). One must be replaced with a distinct post type.`;
+        // Flag the higher-numbered (later) post as the one needing replacement
+        schedule[j] = {
+          ...schedule[j],
+          fallbackWarning: warn,
+        };
+      }
+    }
   }
 
   // Enrich all posts with compliance, quality, timing, platform captions, etc.
