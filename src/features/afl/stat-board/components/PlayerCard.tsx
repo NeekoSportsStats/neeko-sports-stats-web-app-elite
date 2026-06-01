@@ -31,7 +31,7 @@ export function PlayerCard({
   const { isPremium } = useAccessState();
 
   const thresholdKey = String(threshold);
-  const hitData = player.all_threshold_hit_rates?.[thresholdKey];
+  const hitData = (player.season_threshold_hit_rates ?? player.all_threshold_hit_rates)?.[thresholdKey];
 
   // hit_rate_last_10 is 0–1, multiply by 100 for display
   const hitRatePct =
@@ -44,8 +44,8 @@ export function PlayerCard({
   const hitFraction =
     hitData != null
       ? `${hitData.hits}/${hitData.games}`
-      : player.hit_count_last_10 != null
-      ? `${player.hit_count_last_10}/${Math.min(player.games_played ?? 0, 10)}`
+      : player.hit_count_last_10 != null && player.games_played != null
+      ? `${player.hit_count_last_10}/${player.games_played}`
       : null;
 
   const projLabel = lens === "disposals" ? "Projected disposals" : "Projected goals";

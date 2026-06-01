@@ -364,7 +364,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
           {/* Hit rates — all thresholds */}
           {thresholds.map((t, idx) => {
             const isLast = idx === thresholds.length - 1;
-            const data = player.all_threshold_hit_rates?.[String(t)];
+            const data = (player.season_threshold_hit_rates ?? player.all_threshold_hit_rates)?.[String(t)];
             const rate = safeNum(data?.rate);
             const hits = safeNum(data?.hits);
             const games = safeNum(data?.games);
@@ -463,7 +463,7 @@ function hitRateCell(
     return <span className="text-[11px] text-white/20 blur-[4px] select-none" aria-hidden>—</span>;
   }
 
-  const data = player.all_threshold_hit_rates?.[String(threshold)];
+  const data = (player.season_threshold_hit_rates ?? player.all_threshold_hit_rates)?.[String(threshold)];
 
   const hits  = safeNum(data?.hits);
   const games = safeNum(data?.games);

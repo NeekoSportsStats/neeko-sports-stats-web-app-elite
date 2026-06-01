@@ -180,7 +180,7 @@ export function ExpandedPlayerPanel({
       ? [...baseChartSlots, projectedSlot]
       : baseChartSlots;
 
-  const hitRates = player.all_threshold_hit_rates ?? {};
+  const hitRates = player.season_threshold_hit_rates ?? player.all_threshold_hit_rates ?? {};
 
   const summaryStats: { label: string; value: string; muted?: boolean }[] = [
     { label: "L3 avg",  value: fmt1(player.last_3_avg) },
@@ -326,11 +326,9 @@ export function ExpandedPlayerPanel({
           <section aria-label="Hit rate by threshold">
             <p className="text-[9px] sm:text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-1.5 sm:mb-2">
               {lens === "disposals" ? "Disposal" : "Goal"} hit rates
-              {playedCount > 0 && (
-                <span className="ml-1.5 font-normal normal-case tracking-normal text-white/22">
-                  — last {Math.min(playedCount, 10)} games
-                </span>
-              )}
+              <span className="ml-1.5 font-normal normal-case tracking-normal text-white/22">
+                — 2026 season
+              </span>
             </p>
             <div className="rounded-lg border border-white/8 overflow-hidden">
               <table className="w-full text-xs" role="table">
