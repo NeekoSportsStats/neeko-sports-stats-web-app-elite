@@ -396,7 +396,7 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
   const referrers = acquisition?.referrers ?? [];
   if (utms.length > 0) {
     lines.push(`### UTM Campaigns`);
-    lines.push(`| Source | Medium | Campaign | Sessions |`);
+    lines.push(`| Source | Medium | Campaign | Pageviews |`);
     lines.push(`|---|---|---|---|`);
     utms.slice(0, 15).forEach(r => {
       lines.push(`| ${safeText(r.source)} | ${safeText(r.medium)} | ${safeText(r.campaign)} | ${safeInt(r.sessions)} |`);
@@ -405,7 +405,7 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
   }
   if (referrers.length > 0) {
     lines.push(`### Referrers`);
-    lines.push(`| Referrer | Sessions |`);
+    lines.push(`| Referrer | Pageviews |`);
     lines.push(`|---|---|`);
     referrers.slice(0, 10).forEach(r => {
       lines.push(`| ${safeText(r.referrer)} | ${safeInt(r.sessions)} |`);
@@ -423,16 +423,17 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
 
   // ── 8. Device Breakdown
   lines.push(`## 8. Device Breakdown`);
-  const totalDeviceSessions = devices.reduce((s, d) => s + safeInt(d.sessions), 0);
+  const totalDevicePageviews = devices.reduce((s, d) => s + safeInt(d.sessions), 0);
   const deviceTypes: Record<string, number> = {};
   for (const d of devices) {
     const key = (d.device_type || "unknown").toLowerCase();
     deviceTypes[key] = (deviceTypes[key] ?? 0) + safeInt(d.sessions);
   }
+  lines.push(`Note: counts are pageview events, not unique sessions.`);
   if (Object.keys(deviceTypes).length > 0) {
     Object.entries(deviceTypes).sort((a, b) => b[1] - a[1]).forEach(([type, n]) => {
-      const pct = totalDeviceSessions > 0 ? Math.round((n / totalDeviceSessions) * 100) : 0;
-      lines.push(`- ${type}: ${n.toLocaleString()} sessions (${pct}%)`);
+      const pct = totalDevicePageviews > 0 ? Math.round((n / totalDevicePageviews) * 100) : 0;
+      lines.push(`- ${type}: ${n.toLocaleString()} pageviews (${pct}%)`);
     });
   } else {
     lines.push(`No device data.`);

@@ -81,10 +81,12 @@ function adminExclusionWhere(includeAdmin: boolean): string {
 
 /**
  * Extracts clean path from URL (strips query string and hash).
- * Uses splitByChar on '?' to get just the path portion.
+ * Uses NULLIF to turn empty strings into NULL so they can be filtered.
+ * Bug fix: splitByChar on null URL returns "" — wrapping in NULLIF prevents
+ * empty-string paths from being grouped together and masking real pages.
  */
 function cleanPathExpr(urlField: string): string {
-  return `splitByChar('?', splitByChar('#', ${urlField})[1])[1]`;
+  return `NULLIF(splitByChar('?', splitByChar('#', ${urlField})[1])[1], '')`;
 }
 
 async function getEventCounts(
@@ -171,17 +173,22 @@ async function getTopPages(
         WHERE event = '$pageview'
           AND timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND ${adminExclusionWhere(includeAdmin)}
+          AND properties.$current_url IS NOT NULL
+          AND properties.$current_url != ''
         GROUP BY clean_path
+        HAVING clean_path IS NOT NULL AND clean_path != ''
         ORDER BY views DESC
         LIMIT 20
       `,
     });
     const rows = (result as any)?.results ?? [];
-    return rows.map((row: unknown[]) => ({
-      page: String(row[0] ?? ""),
-      views: Number(row[1]) || 0,
-      unique_users: Number(row[2]) || 0,
-    }));
+    return rows
+      .filter((row: unknown[]) => row[0] != null && String(row[0]).trim() !== "")
+      .map((row: unknown[]) => ({
+        page: String(row[0] ?? ""),
+        views: Number(row[1]) || 0,
+        unique_users: Number(row[2]) || 0,
+      }));
   } catch {
     return [];
   }
@@ -247,6 +254,12 @@ async function getAcquisitionData(
             multiIf(
               isNotNull(properties.gclid) OR isNotNull(properties.gbraid) OR isNotNull(properties.wbraid) OR isNotNull(properties.gad_source),
               'google_ads',
+              properties.$referring_domain LIKE '%tagassistant.google.com%',
+              'internal_testing',
+              properties.$referring_domain LIKE '%checkout.stripe.com%' OR properties.$referring_domain LIKE '%stripe.com%',
+              'stripe_return',
+              properties.$referring_domain LIKE '%neekostats.com.au%',
+              'self_referral',
               properties.$referring_domain LIKE '%google.%',
               'organic_google',
               properties.$referring_domain LIKE '%facebook.%' OR properties.$referring_domain LIKE '%instagram.%' OR properties.$referring_domain LIKE '%twitter.%' OR properties.$referring_domain LIKE '%x.com%' OR properties.$referring_domain LIKE '%reddit.%' OR properties.$referring_domain LIKE '%tiktok.%',
@@ -256,14 +269,14 @@ async function getAcquisitionData(
               'referral'
             ) as source_category,
             coalesce(properties.$referring_domain, 'direct') as referrer,
-            count() as sessions,
+            count() as pageviews,
             uniq(distinct_id) as users
           FROM events
           WHERE event = '$pageview'
             AND timestamp >= now() - interval ${interval}
             AND ${exclusion}
           GROUP BY source_category, referrer
-          ORDER BY sessions DESC
+          ORDER BY pageviews DESC
           LIMIT 20
         `,
       }),
@@ -276,7 +289,7 @@ async function getAcquisitionData(
             properties.utm_medium as medium,
             properties.utm_campaign as campaign,
             isNotNull(properties.gclid) OR isNotNull(properties.gbraid) OR isNotNull(properties.wbraid) as has_gclid,
-            count() as sessions,
+            count() as pageviews,
             uniq(distinct_id) as users
           FROM events
           WHERE event = '$pageview'
@@ -284,7 +297,7 @@ async function getAcquisitionData(
             AND ${exclusion}
             AND (properties.utm_source IS NOT NULL OR properties.utm_medium IS NOT NULL OR properties.gclid IS NOT NULL OR properties.gbraid IS NOT NULL OR properties.wbraid IS NOT NULL)
           GROUP BY source, medium, campaign, has_gclid
-          ORDER BY sessions DESC
+          ORDER BY pageviews DESC
           LIMIT 20
         `,
       }),
@@ -296,7 +309,7 @@ async function getAcquisitionData(
             coalesce(properties.utm_campaign, 'unknown_campaign') as campaign,
             coalesce(properties.utm_source, 'google') as source,
             coalesce(properties.utm_medium, 'cpc') as medium,
-            count() as sessions,
+            count() as pageviews,
             uniq(distinct_id) as users,
             countIf(event IN ('landing_cta_clicked', 'pricing_cta_clicked', 'neeko_plus_clicked')) as cta_clicks,
             countIf(event = 'checkout_started') as checkout_starts,
@@ -306,7 +319,7 @@ async function getAcquisitionData(
             AND ${exclusion}
             AND (properties.gclid IS NOT NULL OR properties.gbraid IS NOT NULL OR properties.wbraid IS NOT NULL OR properties.gad_source IS NOT NULL)
           GROUP BY campaign, source, medium
-          ORDER BY sessions DESC
+          ORDER BY pageviews DESC
           LIMIT 15
         `,
       }),
@@ -316,6 +329,8 @@ async function getAcquisitionData(
       ? ((referrersResult.value as any)?.results ?? []).map((row: unknown[]) => ({
           source_category: row[0],
           referrer: row[1],
+          // Return both field names for backward compat — these are pageview events not sessions
+          pageviews: Number(row[2]) || 0,
           sessions: Number(row[2]) || 0,
           users: Number(row[3]) || 0,
         }))
@@ -327,6 +342,7 @@ async function getAcquisitionData(
           medium: row[1],
           campaign: row[2],
           has_gclid: Boolean(row[3]),
+          pageviews: Number(row[4]) || 0,
           sessions: Number(row[4]) || 0,
           users: Number(row[5]) || 0,
         }))
@@ -337,6 +353,7 @@ async function getAcquisitionData(
           campaign: row[0],
           source: row[1],
           medium: row[2],
+          pageviews: Number(row[3]) || 0,
           sessions: Number(row[3]) || 0,
           users: Number(row[4]) || 0,
           cta_clicks: Number(row[5]) || 0,
@@ -346,17 +363,25 @@ async function getAcquisitionData(
       : [];
 
     // Summarise by source category
-    const sourceCategories: Record<string, { sessions: number; users: number }> = {};
+    const sourceCategories: Record<string, { pageviews: number; sessions: number; users: number }> = {};
     for (const r of referrers) {
       const cat = (r as any).source_category ?? "unknown";
-      if (!sourceCategories[cat]) sourceCategories[cat] = { sessions: 0, users: 0 };
+      if (!sourceCategories[cat]) sourceCategories[cat] = { pageviews: 0, sessions: 0, users: 0 };
+      sourceCategories[cat].pageviews += (r as any).pageviews;
       sourceCategories[cat].sessions += (r as any).sessions;
       sourceCategories[cat].users += (r as any).users;
     }
 
-    return { referrers, utms, google_ads: googleAds, source_categories: sourceCategories };
+    return {
+      referrers,
+      utms,
+      google_ads: googleAds,
+      source_categories: sourceCategories,
+      // Clarify what counts represent
+      count_label: "pageviews",
+    };
   } catch {
-    return { referrers: [], utms: [], google_ads: [], source_categories: {} };
+    return { referrers: [], utms: [], google_ads: [], source_categories: {}, count_label: "pageviews" };
   }
 }
 
@@ -384,7 +409,8 @@ async function getFunnelData(
           countIf(event IN (
             'free_games_cta_clicked', 'unlock_all_games_clicked',
             'unlock_this_matchup_clicked', 'stat_board_upgrade_clicked',
-            'mobile_sticky_cta_clicked', 'marketing_cta_clicked'
+            'mobile_sticky_cta_clicked', 'marketing_cta_clicked',
+            'hero_cta_clicked', 'view_free_games_clicked', 'unlock_full_round_clicked'
           )) as product_cta_clicks,
           countIf(event = 'checkout_started') as checkout_started,
           countIf(event IN ('subscription_activated', 'checkout_success')) as checkout_success,
@@ -421,6 +447,10 @@ async function getFunnelData(
       const checkoutToSuccess = checkoutStarted > 0 ? Math.round((checkoutSuccess / checkoutStarted) * 100) : 0;
       const viewToSuccess = pageViews > 0 ? Math.round((checkoutSuccess / pageViews) * 100) : 0;
 
+      // Dropoffs clamped to [0,100] — can't be negative, CTA clicks can exceed gate views
+      // because CTAs fire from banners and mobile bars, not only from gate triggers.
+      const clamp = (n: number) => Math.max(0, Math.min(100, n));
+
       return {
         page_views: pageViews,
         unique_visitors: uniqueVisitors,
@@ -443,12 +473,14 @@ async function getFunnelData(
           checkout_to_success: checkoutToSuccess,
           view_to_success: viewToSuccess,
         },
-        // Legacy dropoff fields (kept for backward compat)
+        // Dropoffs are clamped [0,100] — these are event-count drop-offs, not sequential user paths.
         dropoffs: {
-          views_to_cta: pageViews > 0 ? Math.round((1 - ctaClicks / pageViews) * 100) : 0,
-          cta_to_checkout: ctaClicks > 0 ? Math.round((1 - checkoutStarted / ctaClicks) * 100) : 0,
-          checkout_to_success: checkoutStarted > 0 ? Math.round((1 - checkoutSuccess / checkoutStarted) * 100) : 0,
+          views_to_cta: clamp(pageViews > 0 ? Math.round((1 - ctaClicks / pageViews) * 100) : 0),
+          cta_to_checkout: clamp(ctaClicks > 0 ? Math.round((1 - checkoutStarted / ctaClicks) * 100) : 0),
+          checkout_to_success: clamp(checkoutStarted > 0 ? Math.round((1 - checkoutSuccess / checkoutStarted) * 100) : 0),
         },
+        // Explains funnel methodology to admin
+        funnel_note: "Event-count funnel — stages count distinct events, not sequential user paths. CTA clicks include banner/mobile CTAs and can exceed gate views.",
       };
     }
     return {};
@@ -546,7 +578,8 @@ async function getCtaPerformance(
                         'premium_gate_cta_clicked', 'locked_cell_clicked', 'marketing_cta_clicked',
                         'free_games_cta_clicked', 'unlock_all_games_clicked',
                         'unlock_this_matchup_clicked', 'stat_board_upgrade_clicked',
-                        'mobile_sticky_cta_clicked'
+                        'mobile_sticky_cta_clicked',
+                        'hero_cta_clicked', 'view_free_games_clicked', 'unlock_full_round_clicked'
                        )
           AND timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND ${adminExclusionWhere(includeAdmin)}
@@ -585,14 +618,14 @@ async function getDeviceBreakdown(
           properties.$os as os,
           properties.$browser as browser,
           properties.$device_type as device_type,
-          count() as sessions,
+          count() as pageviews,
           uniq(distinct_id) as users
         FROM events
         WHERE event = '$pageview'
           AND timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND ${adminExclusionWhere(includeAdmin)}
         GROUP BY os, browser, device_type
-        ORDER BY sessions DESC
+        ORDER BY pageviews DESC
         LIMIT 20
       `,
     });
@@ -601,7 +634,9 @@ async function getDeviceBreakdown(
       os: String(row[0] ?? ""),
       browser: String(row[1] ?? ""),
       device_type: String(row[2] ?? ""),
-      sessions: Number(row[3]) || 0,   // count of $pageview events, not unique sessions
+      // These are $pageview event counts, not unique sessions
+      pageviews: Number(row[3]) || 0,
+      sessions: Number(row[3]) || 0,   // kept for backward compat — same value, but see count_label
       users: Number(row[4]) || 0,
     }));
   } catch {
@@ -628,20 +663,20 @@ async function getEngagedSessions(
           countIf(has_product_event) as sessions_with_product
         FROM (
           SELECT
-            session_id,
+            properties.$session_id,
             countIf(event = '$pageview') as pageview_count,
             countIf(event IN (
               'landing_cta_clicked','pricing_cta_clicked','neeko_plus_clicked',
               'premium_gate_cta_clicked','free_games_cta_clicked','unlock_all_games_clicked',
               'unlock_this_matchup_clicked','stat_board_upgrade_clicked','mobile_sticky_cta_clicked',
-              'marketing_cta_clicked'
+              'marketing_cta_clicked','hero_cta_clicked','view_free_games_clicked','unlock_full_round_clicked'
             )) > 0 as has_cta_click,
             countIf(event IN ('stat_board_filter_used','stat_board_player_expand','rankings_view','market_watch_view','edge_board_view')) > 0 as has_product_event
           FROM events
           WHERE timestamp >= now() - interval ${intervalExpr(hours, days)}
             AND ${adminExclusionWhere(includeAdmin)}
-            AND session_id IS NOT NULL
-          GROUP BY session_id
+            AND properties.$session_id IS NOT NULL
+          GROUP BY properties.$session_id
         )
       `,
     });
@@ -678,13 +713,13 @@ async function getSessionReviewShortlist(
       kind: "HogQLQuery",
       query: `
         SELECT
-          session_id,
+          properties.$session_id,
           countIf(event = '$pageview') as page_views,
           countIf(event IN (
             'landing_cta_clicked','pricing_cta_clicked','neeko_plus_clicked',
             'premium_gate_cta_clicked','free_games_cta_clicked','unlock_all_games_clicked',
             'unlock_this_matchup_clicked','stat_board_upgrade_clicked','mobile_sticky_cta_clicked',
-            'marketing_cta_clicked'
+            'marketing_cta_clicked','hero_cta_clicked','view_free_games_clicked','unlock_full_round_clicked'
           )) as cta_clicks,
           countIf(event IN ('checkout_started')) as checkout_starts,
           countIf(event IN ('stat_board_filter_used','stat_board_player_expand','rankings_view','market_watch_view','edge_board_view')) as product_events,
@@ -697,6 +732,12 @@ async function getSessionReviewShortlist(
           any(multiIf(
             isNotNull(any(properties.gclid)) OR isNotNull(any(properties.gbraid)) OR isNotNull(any(properties.wbraid)),
             'google_ads',
+            any(properties.$referring_domain) LIKE '%tagassistant.google.com%',
+            'internal_testing',
+            any(properties.$referring_domain) LIKE '%checkout.stripe.com%',
+            'stripe_return',
+            any(properties.$referring_domain) LIKE '%neekostats.com.au%',
+            'self_referral',
             any(properties.$referring_domain) LIKE '%google.%',
             'organic_google',
             any(properties.$referring_domain) LIKE '%facebook.%' OR any(properties.$referring_domain) LIKE '%instagram.%' OR any(properties.$referring_domain) LIKE '%reddit.%',
@@ -708,8 +749,8 @@ async function getSessionReviewShortlist(
         FROM events
         WHERE timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND ${adminExclusionWhere(includeAdmin)}
-          AND session_id IS NOT NULL
-        GROUP BY session_id
+          AND properties.$session_id IS NOT NULL
+        GROUP BY properties.$session_id
         HAVING cta_clicks > 0 OR checkout_starts > 0 OR (page_views >= 3 AND product_events >= 2)
         ORDER BY cta_clicks DESC, product_events DESC
         LIMIT 25
@@ -759,13 +800,13 @@ async function getSessionDurationMetrics(
           countIf(duration_sec >= 300) as over_300s
         FROM (
           SELECT
-            session_id,
+            properties.$session_id,
             toInt64(dateDiff('second', min(timestamp), max(timestamp))) as duration_sec
           FROM events
           WHERE timestamp >= now() - interval ${intervalExpr(hours, days)}
             AND ${adminExclusionWhere(includeAdmin)}
-            AND session_id IS NOT NULL
-          GROUP BY session_id
+            AND properties.$session_id IS NOT NULL
+          GROUP BY properties.$session_id
           HAVING duration_sec >= 0
         )
       `,
@@ -794,6 +835,15 @@ async function getSessionDurationMetrics(
         pct_over_300s: total > 0 ? Math.round((over300 / total) * 100) : 0,
         pct_over_60s: total > 0 ? Math.round(((s60120 + s120300 + over300) / total) * 100) : 0,
         pct_over_120s: total > 0 ? Math.round(((s120300 + over300) / total) * 100) : 0,
+        // Frontend-friendly aliases matching SessionDurationData type
+        under_10s: under10,
+        s10_to_30s: s1030,
+        s30_to_60s: s3060,
+        s60_to_120s: s60120,
+        s120_to_300s: s120300,
+        over_300s: over300,
+        over_60s: s60120 + s120300 + over300,
+        over_120s: s120300 + over300,
         buckets: { under10, s1030, s3060, s60120, s120300, over300 },
       };
     }
@@ -824,27 +874,32 @@ async function getTimeOnPage(
           SELECT
             properties.$current_url,
             event,
-            session_id,
+            properties.$session_id,
             timestamp,
-            toInt64(dateDiff('second', timestamp, leadInFrame(timestamp) OVER (PARTITION BY session_id ORDER BY timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING))) as duration_sec
+            toInt64(dateDiff('second', timestamp, leadInFrame(timestamp) OVER (PARTITION BY properties.$session_id ORDER BY timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING))) as duration_sec
           FROM events
           WHERE event = '$pageview'
             AND timestamp >= now() - interval ${intervalExpr(hours, days)}
             AND ${adminExclusionWhere(includeAdmin)}
-            AND session_id IS NOT NULL
+            AND properties.$session_id IS NOT NULL
+            AND properties.$current_url IS NOT NULL
+            AND properties.$current_url != ''
         )
         GROUP BY page
+        HAVING page IS NOT NULL AND page != ''
         ORDER BY pageviews DESC
         LIMIT 15
       `,
     });
     const rows = (result as any)?.results ?? [];
-    return rows.map((row: unknown[]) => ({
-      page: String(row[0] ?? ""),
-      pageviews: Number(row[1]) || 0,
-      exits: Number(row[2]) || 0,
-      avg_time_sec: row[3] != null ? Math.round(Number(row[3])) : null,
-    }));
+    return rows
+      .filter((row: unknown[]) => row[0] != null && String(row[0]).trim() !== "")
+      .map((row: unknown[]) => ({
+        page: String(row[0] ?? ""),
+        pageviews: Number(row[1]) || 0,
+        exits: Number(row[2]) || 0,
+        avg_time_sec: row[3] != null ? Math.round(Number(row[3])) : null,
+      }));
   } catch {
     return [];
   }
@@ -965,6 +1020,17 @@ async function getMarketingInsights(
       `Wire trackGateInteraction({ action: "viewed", ... }) to stat-board locked state renders.`
     );
   }
+  if ((sessionData as any).total_sessions === 0 && f.page_views > 0) {
+    dataNotes.push(
+      `Sessions = 0. PostHog session data uses properties.$session_id. ` +
+      `If this persists after refresh, sessions may not be enabled on your PostHog project, or the SDK version is older.`
+    );
+  }
+  // Device/referrer count clarification — always add for transparency
+  dataNotes.push(
+    `Device Breakdown and Traffic Sources show pageview event counts, not unique sessions. ` +
+    `True session counts require properties.$session_id grouping.`
+  );
 
   return {
     funnel: funnelData,
