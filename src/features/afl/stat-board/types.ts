@@ -170,6 +170,7 @@ export interface StatBoardPlayer {
   hit_count_last_10: number | null;
   hit_rate_last_10: number | null;
   all_threshold_hit_rates: Record<string, ThresholdHitRate> | null;
+  season_threshold_hit_rates: Record<string, ThresholdHitRate> | null;
   confidence_label: "HIGH" | "MEDIUM" | "LOW" | null;
   match_order: number;
   is_free_match: boolean;

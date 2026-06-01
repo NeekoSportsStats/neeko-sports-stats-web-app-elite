@@ -32,8 +32,10 @@ export interface HitRecord {
 }
 
 /**
- * Returns the hit record for a player at a given threshold.
+ * Returns the last-10 hit record for a player at a given threshold.
  * Prefers all_threshold_hit_rates; falls back to hit_rate_last_10.
+ * Used internally by evaluateDisposalLine/evaluateGoalLine/assignDisposalMarketingTier
+ * for threshold qualification logic (intentionally last-10 based).
  */
 export function getRecentHitRecord(
   p: StatBoardPlayer,
@@ -55,6 +57,29 @@ export function getRecentHitRecord(
     sample,
     rate,
   };
+}
+
+/**
+ * Returns the full-season hit record for a player at a given threshold.
+ * Reads season_threshold_hit_rates (denominator = all season games, not capped at 10).
+ * Used by formatPublicStatLine and all public copy surfaces.
+ *
+ * Falls back to getRecentHitRecord if season data is unavailable.
+ */
+export function getSeasonHitRecord(
+  p: StatBoardPlayer,
+  threshold: number,
+): HitRecord {
+  const entry = p.season_threshold_hit_rates?.[String(threshold)];
+  if (entry && entry.games > 0) {
+    return {
+      hits: entry.hits,
+      sample: entry.games,
+      rate: normaliseRate(entry.rate),
+    };
+  }
+  // Fallback to last-10 record if season data not yet available
+  return getRecentHitRecord(p, threshold);
 }
 
 // ─── Display formatters ───────────────────────────────────────────────────────
@@ -283,6 +308,8 @@ export interface CandidateScore {
   threshold: number;
   tier: ConfidenceTier;
   hitRecord: HitRecord;
+  /** Full-season hit record (denominator = all season games). Used for public copy display. */
+  seasonHitRecord: HitRecord;
   l5Avg: number;
   seasonAvg: number;
   games: number;
@@ -390,6 +417,7 @@ export function rankDisposalCandidatesForTeams(
       threshold: ev.threshold,
       tier: ev.tier,
       hitRecord: ev.hitRecord,
+      seasonHitRecord: getSeasonHitRecord(p, ev.threshold),
       l5Avg: ev.l5Avg,
       seasonAvg: ev.seasonAvg,
       games: ev.games,
@@ -438,6 +466,7 @@ export function rankGoalCandidatesForTeams(
       threshold: ev.threshold,
       tier: ev.tier,
       hitRecord: ev.hitRecord,
+      seasonHitRecord: getSeasonHitRecord(p, ev.threshold),
       l5Avg: ev.l5Avg,
       seasonAvg: p.season_avg ?? 0,
       games: ev.games,
@@ -489,6 +518,7 @@ export function rankGoalCandidatesAt1Plus(
       threshold: 1,
       tier: ev.tier,
       hitRecord: ev.hitRecord,
+      seasonHitRecord: getSeasonHitRecord(p, 1),
       l5Avg: ev.l5Avg,
       seasonAvg: p.season_avg ?? 0,
       games: ev.games,
@@ -559,7 +589,10 @@ export function tierColor(tier: ConfidenceTier): string {
 
 /**
  * Canonical stat bullet used in all weekly social posts.
- * Format: "Player (Team) — 8/10 (80%) at 25+, L5 avg 27.8"
+ * Format: "Player (Team) — 8/13 (62%) at 25+, L5 avg 27.8"
+ *
+ * Uses full-season hit record (getSeasonHitRecord) so the denominator reflects
+ * all games played this season, not just the last 10.
  *
  * Disposal thresholds: pass 15 | 20 | 25 | 30.
  * Goal thresholds: pass 1 | 2 | 3 (outputs "1+ goal" / "2+ goals" / "3+ goals").
@@ -568,7 +601,7 @@ export function formatPublicStatLine(
   p: StatBoardPlayer,
   threshold: number,
 ): string {
-  const rec = getRecentHitRecord(p, threshold);
+  const rec = getSeasonHitRecord(p, threshold);
   const record = rec.sample > 0 ? `${rec.hits}/${rec.sample}` : "—";
   const pctStr = rec.sample > 0 ? ` (${Math.round(rec.rate * 100)}%)` : "";
   const hasL5 = p.last_5_avg !== null && p.last_5_avg !== undefined;

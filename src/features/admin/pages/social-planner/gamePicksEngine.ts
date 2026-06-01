@@ -18,6 +18,7 @@ import {
   resolveFreshLast5ForSocial,
   formatHitRecord,
   formatRateAsPercent,
+  getSeasonHitRecord,
 } from "./statLineEngine";
 import type { CandidateScore, ConfidenceTier } from "./statLineEngine";
 
@@ -96,6 +97,10 @@ function toGamePickPlayer(c: CandidateScore, statFamily: "disposals" | "goals"):
     last_5_avg: c.l5Avg,
   } as Pick<StatBoardPlayer, "last_10_values" | "last_5_avg"> as StatBoardPlayer);
 
+  // Use full-season hit record for all public display fields.
+  // Qualification logic (threshold selection, scoring) still uses last-10 hitRecord.
+  const displayRec = c.seasonHitRecord;
+
   const adminWarnings: string[] = [];
 
   if (c.games < 5) {
@@ -117,11 +122,11 @@ function toGamePickPlayer(c: CandidateScore, statFamily: "disposals" | "goals"):
     team_name: c.team_name,
     threshold: c.threshold,
     statFamily,
-    hitRecord: c.hitRecord.sample > 0
-      ? formatHitRecord(c.hitRecord.hits, c.hitRecord.sample)
+    hitRecord: displayRec.sample > 0
+      ? formatHitRecord(displayRec.hits, displayRec.sample)
       : "—",
-    hitPct: formatRateAsPercent(c.hitRecord.rate),
-    hitRate: c.hitRecord.rate,
+    hitPct: formatRateAsPercent(displayRec.rate),
+    hitRate: displayRec.rate,
     l5_avg: c.l5Avg,
     season_avg: c.seasonAvg,
     games_played: c.games,

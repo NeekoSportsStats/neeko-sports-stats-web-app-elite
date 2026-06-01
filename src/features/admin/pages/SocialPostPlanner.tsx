@@ -28,7 +28,7 @@ import { buildEvergreenPool } from "./social-planner/evergreenPosts";
 const asArray = <T,>(value: T[] | null | undefined): T[] =>
   Array.isArray(value) ? value : [];
 import {
-  getRecentHitRecord, formatPublicStatLine, formatRateAsPercent,
+  getRecentHitRecord, getSeasonHitRecord, formatPublicStatLine, formatRateAsPercent,
   assignDisposalMarketingTier, assignGoalMarketingTier,
 } from "./social-planner/statLineEngine";
 import { usePostStatus, STATUS_LABELS, STATUS_OPTIONS } from "./social-planner/usePostStatus";
@@ -569,7 +569,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
     const tue1Players = pool25.slice(0, 5);
     const isFallback = pool25.length < 2;
     const tue1ThrNum = 25;
-    const hook = `${rl} — who's been clearing ${tue1ThrNum}+ disposals consistently? Data from the last 5 games.`;
+    const hook = `${rl} — who's been clearing ${tue1ThrNum}+ disposals consistently? Season hit rates.`;
     const tue1Bullets = tue1Players.map(p => formatPublicStatLine(p, tue1ThrNum));
     schedule.push(makePost({
       day: "Tue", postNumber: 1,
@@ -596,7 +596,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   // Post 2 — Current week 2+ goals
   {
     const tue2Players = (goalPool2.length >= 2 ? goalPool2 : goalPool.filter(p => getHitRate(p, 2) >= 0.45)).slice(0, 5);
-    const hook = `${rl} — multi-goal scorers with strong recent form. Hit rates from the last 5 games.`;
+    const hook = `${rl} — multi-goal scorers with strong season form. Season hit rates.`;
     const bullets = tue2Players.map(p => formatPublicStatLine(p, 2));
     schedule.push(makePost({
       day: "Tue", postNumber: 2,
@@ -906,7 +906,7 @@ function buildWeeklyPlan(data: CIDataSubset): { schedule: SocialPost[]; backup: 
   {
     const markPlayers = dispPool.filter(p => getHitRate(p, 5) >= 0.45).slice(0, 5);
     if (markPlayers.length >= 2) {
-      const bullets = markPlayers.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${formatRateAsPercent(getHitRate(p, 5))} at 5+ (disposal proxy), L5 avg ${getL5Avg(p).toFixed(1)}`);
+      const bullets = markPlayers.map(p => `${p.player_name} (${p.team_name ?? ""}) — ${formatRateAsPercent(getSeasonHitRecord(p, 5).rate)} at 5+ (disposal proxy), L5 avg ${getL5Avg(p).toFixed(1)}`);
       bkPost({ day: "Tue", type: "Image", category: "Matchup Angle", intent: "cross_game_preview", statLens: "disposals", confidence: "Medium", title: `Mark and contested possession form — ${rl}`, content: "Contested possession and marking form. Players winning the ball consistently.", statsShown: bullets, onScreenText: "Marking form", caption: buildCaption("Contested possession form.", bullets, 5), hashtags: HASHTAG_SETS["Matchup Angle"], suggestedVisual: "5-player contested stat grid", imageDescription: `Static image. 5-player contested possession grid. Each row: player name, team, contested stat hit rate, L5 disposal average. Headline: "Marking and Contested Form". Dark background, clean layout. No betting language.`, dataScope: `${rl} cross-game pool`, targetGame: null, targetGameStatus: "any", fallbackWarning: null, players: markPlayers, thresholdLabel: "Contested Form", postNumber: 1 });
     }
   }
