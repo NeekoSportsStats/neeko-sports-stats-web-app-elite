@@ -585,24 +585,43 @@ export type HookStyle =
   | "curiosity"
   | "stat_driven"
   | "challenge"
-  | "punchy";
+  | "punchy"
+  | "tiktok_short"
+  | "on_screen"
+  | "cta_style"
+  | "question"
+  | "data_angle";
+
+export type HookPlatform = "tiktok" | "instagram" | "facebook" | "on_screen" | "video" | "general";
 
 export interface HookItem {
   style: HookStyle;
+  platform: HookPlatform;
   label: string;
   text: string;
 }
 
 export interface HookRecommendedUse {
-  bestCaption: string;
-  bestVideoOpener: string;
+  bestTikTok: string;
+  bestInstagram: string;
+  bestFacebook: string;
   bestOnScreen: string;
+  bestVideoOpener: string;
+  bestCaptionOpener: string;
   bestShort: string;
+  tiktokSubject: string;
 }
 
 export interface PostHookPack {
   postId: string;
   postTitle: string;
+  tiktokSubjectLine: string;
+  tiktokHooks: HookItem[];
+  instagramHooks: HookItem[];
+  facebookHooks: HookItem[];
+  onScreenHooks: HookItem[];
+  videoOpeners: HookItem[];
+  /** All hooks combined for backwards compat */
   hooks: HookItem[];
   recommended: HookRecommendedUse;
 }
@@ -612,6 +631,7 @@ function lensContext(post: SocialPost): {
   statVerb: string;
   statNoun: string;
   actionNoun: string;
+  statAdjective: string;
 } {
   switch (post.statLens) {
     case "goals":
@@ -620,6 +640,7 @@ function lensContext(post: SocialPost): {
         statVerb: "kicking goals",
         statNoun: "goals",
         actionNoun: "scoring",
+        statAdjective: "goal-scoring",
       };
     case "tackles":
       return {
@@ -627,6 +648,7 @@ function lensContext(post: SocialPost): {
         statVerb: "laying tackles",
         statNoun: "tackles",
         actionNoun: "tackling",
+        statAdjective: "tackle",
       };
     case "marks":
       return {
@@ -634,6 +656,7 @@ function lensContext(post: SocialPost): {
         statVerb: "taking marks",
         statNoun: "marks",
         actionNoun: "marking",
+        statAdjective: "marking",
       };
     case "hitouts":
       return {
@@ -641,6 +664,7 @@ function lensContext(post: SocialPost): {
         statVerb: "winning hitouts",
         statNoun: "hitouts",
         actionNoun: "ruck work",
+        statAdjective: "hitout",
       };
     default:
       return {
@@ -648,160 +672,544 @@ function lensContext(post: SocialPost): {
         statVerb: "moving the ball",
         statNoun: "disposals",
         actionNoun: "ball use",
+        statAdjective: "disposal",
       };
   }
 }
 
+/** Strips banned gambling/tipping language from hook text. Returns cleaned text. */
+function cleanHookText(text: string): string {
+  return text
+    .replace(/\b(bet|odds|tip|lock|banker|guaranteed|clear the line|clearing the line|lock in)\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+/** Build a concise TikTok subject/title line — max 55 chars, post-specific, no betting language. */
+export function buildTikTokSubjectLine(post: SocialPost): string {
+  const firstPlayer = safeArr(post.playerNames)[0] ?? "";
+  const { threshold } = postContext(post);
+  const isGoals = post.statLens === "goals";
+  const isMixed = post.statLens === "mixed" || post.category === "Round Preview";
+  const isTeamTotal = post.category === "Team Total";
+  const isProof = post.category === "Proof Post";
+  const teams = safeArr(post.teamNames);
+
+  let subject: string;
+  if (isProof) {
+    subject = firstPlayer
+      ? `${firstPlayer} hit the target — data recap`
+      : `AFL stat prediction recap`;
+  } else if (isTeamTotal && teams.length >= 2) {
+    subject = `${teams[0]} vs ${teams[1]} stat breakdown`;
+  } else if (isMixed && teams.length >= 2) {
+    subject = `${teams[0]} vs ${teams[1]} full game picks`;
+  } else if (isGoals && firstPlayer) {
+    subject = `${firstPlayer} goal form — ${threshold}`;
+  } else if (firstPlayer) {
+    subject = `${firstPlayer} — ${threshold}`;
+  } else {
+    subject = post.title.slice(0, 55);
+  }
+
+  return cleanHookText(subject).slice(0, 55);
+}
+
 export function buildPostHookPack(post: SocialPost): PostHookPack {
   const { players, threshold } = postContext(post);
-  const firstPlayer = safeArr(post.playerNames)[0] ?? "this player";
-  const secondPlayer = safeArr(post.playerNames)[1];
-  const playerList3 = safeArr(post.playerNames).slice(0, 3).join(", ");
-  const { statNoun, statVerb, actionNoun } = lensContext(post);
+  const allPlayers = safeArr(post.playerNames);
+  const firstPlayer = allPlayers[0] ?? "this player";
+  const secondPlayer = allPlayers[1] ?? "";
+  const thirdPlayer = allPlayers[2] ?? "";
+  const playerList3 = allPlayers.slice(0, 3).join(", ");
+  const playerCount = allPlayers.length;
+  const { statNoun, statVerb, actionNoun, statAdjective } = lensContext(post);
   const isGoals = post.statLens === "goals";
   const isFormMover = post.category === "Form Mover";
   const isTeamTotal = post.category === "Team Total";
   const isMatchup = post.category === "Matchup Angle";
   const isProof = post.category === "Proof Post";
+  const isMixed = post.statLens === "mixed" || post.category === "Round Preview";
   const teams = safeArr(post.teamNames);
   const twoTeams = teams.length >= 2;
+  const game = post.targetGame ?? (twoTeams ? `${teams[0]} vs ${teams[1]}` : "this week's match");
+  const tiktokSubjectLine = buildTikTokSubjectLine(post);
 
-  // ─── Hook 1: Direct ───────────────────────────────────────────────────────
-  let direct: string;
-  if (isGoals) {
-    direct = playerList3
-      ? `${playerList3} — all hitting ${threshold} in recent games.`
-      : `These players are hitting ${threshold} consistently right now.`;
-  } else if (isFormMover) {
-    direct = firstPlayer
-      ? `${firstPlayer} is trending up. The numbers back it.`
-      : `Form is moving. These are the names rising right now.`;
-  } else if (isTeamTotal && twoTeams) {
-    direct = `${teams[0]} vs ${teams[1]} — here's the ${statNoun} breakdown.`;
-  } else if (isMatchup) {
-    direct = firstPlayer
-      ? `${firstPlayer} faces a test this week. Here's what the data says.`
-      : `The matchup data is in. Here's what it looks like.`;
-  } else if (isProof) {
-    direct = `The prediction landed. Here's the stat line that backed it up.`;
-  } else {
-    direct = playerList3
-      ? `${playerList3} are all clearing ${threshold}.`
-      : `These are the AFL players clearing ${threshold} right now.`;
+  // ─── Helpers for per-stat-family language ─────────────────────────────────
+
+  function thresholdPhrase(): string {
+    if (isGoals) return `${threshold} in recent weeks`;
+    if (isMixed) return `their key stat thresholds`;
+    return `${threshold}`;
   }
 
-  // ─── Hook 2: Curiosity ────────────────────────────────────────────────────
-  let curiosity: string;
-  if (isGoals) {
-    curiosity = secondPlayer
-      ? `Who's actually ${statVerb} consistently? ${firstPlayer} and ${secondPlayer} might surprise you.`
-      : `Who's actually ${statVerb} week after week? The list is shorter than you think.`;
-  } else if (isFormMover) {
-    curiosity = `Not many people are watching this trend yet. Here's why that'll change.`;
-  } else if (isTeamTotal && twoTeams) {
-    curiosity = `Which team is actually dominating ${statNoun}? The gap might surprise you.`;
-  } else if (isMatchup) {
-    curiosity = `You've probably heard the hype. Here's what the actual stats say about this matchup.`;
-  } else if (isProof) {
-    curiosity = `The numbers said it last week. Did you see it coming?`;
-  } else {
-    curiosity = secondPlayer
-      ? `You'd back ${firstPlayer} here — but what about ${secondPlayer}? Both worth a look.`
-      : `Who's quietly running one of the best ${actionNoun} numbers in the competition right now?`;
+  function statAction(): string {
+    if (isGoals) return `${statVerb}`;
+    return `notching ${threshold}`;
   }
 
-  // ─── Hook 3: Stat-driven ──────────────────────────────────────────────────
-  let statDriven: string;
-  if (isGoals) {
-    statDriven = firstPlayer
-      ? `${firstPlayer} has cleared ${threshold} in their last few games. Hard to ignore that trend.`
-      : `${threshold} in recent games — these are the players hitting it most consistently.`;
-  } else if (isFormMover) {
-    statDriven = firstPlayer
-      ? `${firstPlayer}'s recent ${statNoun} numbers are moving fast. Here's the breakdown.`
-      : `The form data doesn't lie. These are the players whose ${statNoun} numbers are trending up.`;
-  } else if (isTeamTotal) {
-    statDriven = `Total ${statNoun} per game — this is how the teams actually compare.`;
-  } else {
-    statDriven = firstPlayer
-      ? `${firstPlayer} has been clearing ${threshold} in recent games. The form is real.`
-      : `${threshold} hit rate over the last few games — these are the names holding up.`;
-  }
+  // ─── TikTok Hooks (5) ─────────────────────────────────────────────────────
 
-  // ─── Hook 4: Challenge / question ────────────────────────────────────────
-  let challenge: string;
-  if (isGoals) {
-    challenge = `Before you make your AFL picks this round — have you checked the ${statNoun} form?`;
-  } else if (isFormMover) {
-    challenge = `If you're still relying on last year's form, you're missing something. Check this.`;
-  } else if (isTeamTotal && twoTeams) {
-    challenge = `${teams[0]} or ${teams[1]}? The ${statNoun} data might change your read.`;
-  } else if (isMatchup) {
-    challenge = `Think you know how this matchup plays out? Look at the ${statNoun} numbers first.`;
-  } else {
-    challenge = `Before you lock in your AFL moves this week — check ${threshold} and see who's actually been consistent.`;
-  }
+  const tiktokHooks: HookItem[] = [];
 
-  // ─── Hook 5: Punchy / scroll-stopper ─────────────────────────────────────
-  let punchy: string;
-  if (isGoals) {
-    punchy = `${threshold}. These names keep showing up.`;
-  } else if (isFormMover) {
-    punchy = `The form shift is real. Here's who's moving.`;
-  } else if (isTeamTotal) {
-    punchy = `${statNoun.charAt(0).toUpperCase() + statNoun.slice(1)} by team. The gap is bigger than you'd think.`;
-  } else if (isMatchup) {
-    punchy = `This matchup has some interesting numbers underneath it. Look closer.`;
-  } else if (isProof) {
-    punchy = `Called it. Here's the stat line.`;
-  } else {
-    punchy = `${threshold}. These are the names delivering it.`;
-  }
+  // TikTok 1 — ultra-short scroll-stopper
+  tiktokHooks.push({
+    style: "tiktok_short",
+    platform: "tiktok",
+    label: "TikTok 1 — Scroll-stopper",
+    text: cleanHookText(
+      isGoals
+        ? `${firstPlayer}. ${threshold}. It keeps happening.`
+        : isFormMover
+        ? `${firstPlayer}'s form has shifted. Here's the proof.`
+        : isMixed
+        ? `${game} — full picks breakdown.`
+        : `${threshold}. ${playerCount > 1 ? `${playerCount} players` : firstPlayer}. This week.`
+    ),
+  });
 
-  const hooks: HookItem[] = [
-    { style: "direct",      label: "Hook 1 — Direct",              text: direct     },
-    { style: "curiosity",   label: "Hook 2 — Curiosity",           text: curiosity  },
-    { style: "stat_driven", label: "Hook 3 — Stat-driven",         text: statDriven },
-    { style: "challenge",   label: "Hook 4 — Challenge / question", text: challenge  },
-    { style: "punchy",      label: "Hook 5 — Punchy / scroll-stop", text: punchy     },
+  // TikTok 2 — stat-led
+  tiktokHooks.push({
+    style: "stat_driven",
+    platform: "tiktok",
+    label: "TikTok 2 — Stat-led",
+    text: cleanHookText(
+      isGoals
+        ? `${firstPlayer} has hit ${threshold} in ${playerCount > 1 ? "multiple games" : "recent games"}. ${secondPlayer ? `${secondPlayer} too.` : "The form is real."}`
+        : isTeamTotal && twoTeams
+        ? `${teams[0]} vs ${teams[1]} — ${statNoun} gap is bigger than expected.`
+        : `${threshold} — ${playerCount > 2 ? `${playerCount} players` : playerList3} all in form right now.`
+    ),
+  });
+
+  // TikTok 3 — curiosity
+  tiktokHooks.push({
+    style: "curiosity",
+    platform: "tiktok",
+    label: "TikTok 3 — Curiosity",
+    text: cleanHookText(
+      isGoals
+        ? `Who's actually ${statVerb} consistently this season? Not who you think.`
+        : isFormMover
+        ? `Something is changing with ${firstPlayer}'s numbers. Worth knowing about.`
+        : isMixed
+        ? `Full ${game} breakdown — who's actually in form and who isn't?`
+        : `Who's quietly running the best ${statAdjective} form in AFL right now?`
+    ),
+  });
+
+  // TikTok 4 — question
+  tiktokHooks.push({
+    style: "question",
+    platform: "tiktok",
+    label: "TikTok 4 — Question",
+    text: cleanHookText(
+      isGoals
+        ? `Can ${firstPlayer} keep hitting ${threshold} this round?${secondPlayer ? ` What about ${secondPlayer}?` : ""}`
+        : isTeamTotal && twoTeams
+        ? `Which team wins the ${statNoun} battle — ${teams[0]} or ${teams[1]}?`
+        : isMatchup
+        ? `How does ${game} look from a stat angle? The numbers are interesting.`
+        : `Which AFL players have been most consistent with ${threshold} this season?`
+    ),
+  });
+
+  // TikTok 5 — data angle
+  tiktokHooks.push({
+    style: "data_angle",
+    platform: "tiktok",
+    label: "TikTok 5 — Data angle",
+    text: cleanHookText(
+      isProof
+        ? `Called it last week. Here's the stat line that came through.`
+        : isGoals
+        ? `AFL goal data from the last 5 weeks. ${firstPlayer} is near the top.`
+        : isMixed
+        ? `Stat board for ${game}. Disposals, goals, form — all here.`
+        : `AFL ${statAdjective} form data — here's who's been most consistent.`
+    ),
+  });
+
+  // ─── Instagram Hooks (5) ──────────────────────────────────────────────────
+
+  const instagramHooks: HookItem[] = [];
+
+  // Instagram 1 — direct caption opener
+  instagramHooks.push({
+    style: "direct",
+    platform: "instagram",
+    label: "Instagram 1 — Direct",
+    text: cleanHookText(
+      isGoals
+        ? `${playerList3} — all hitting ${threshold} consistently this season.`
+        : isFormMover
+        ? `${firstPlayer} is trending up. The numbers back it this week.`
+        : isTeamTotal && twoTeams
+        ? `${teams[0]} vs ${teams[1]} — here's the ${statNoun} breakdown for this match.`
+        : `${playerList3 || "These players"} are all clearing ${threshold} right now.`
+    ),
+  });
+
+  // Instagram 2 — curiosity caption
+  instagramHooks.push({
+    style: "curiosity",
+    platform: "instagram",
+    label: "Instagram 2 — Curiosity",
+    text: cleanHookText(
+      isGoals
+        ? `Who's actually been ${statVerb} week after week? ${firstPlayer}${secondPlayer ? ` and ${secondPlayer}` : ""} might surprise you.`
+        : isMatchup
+        ? `You've heard the talk about ${game}. Here's what the actual data says.`
+        : `Not many people are tracking ${threshold} this season. Here's why it matters.`
+    ),
+  });
+
+  // Instagram 3 — stat-driven
+  instagramHooks.push({
+    style: "stat_driven",
+    platform: "instagram",
+    label: "Instagram 3 — Stat-driven",
+    text: cleanHookText(
+      isGoals
+        ? `${firstPlayer} has cleared ${threshold} in recent games. That's a form line worth noting.`
+        : isTeamTotal
+        ? `Total ${statNoun} per game — this is how ${twoTeams ? `${teams[0]} and ${teams[1]}` : "the teams"} actually compare.`
+        : `${threshold} hit rate over the last 5 games — ${playerList3 || "these players"} are the names holding up.`
+    ),
+  });
+
+  // Instagram 4 — challenge
+  instagramHooks.push({
+    style: "challenge",
+    platform: "instagram",
+    label: "Instagram 4 — Challenge",
+    text: cleanHookText(
+      isGoals
+        ? `Before you finalise your AFL picks this round — have you checked the ${statNoun} form?`
+        : isTeamTotal && twoTeams
+        ? `${teams[0]} or ${teams[1]}? The ${statNoun} data might change your read.`
+        : `Think you know who's in form? Check the last 5 ${statNoun} averages first.`
+    ),
+  });
+
+  // Instagram 5 — player-led
+  instagramHooks.push({
+    style: "punchy",
+    platform: "instagram",
+    label: "Instagram 5 — Player-led",
+    text: cleanHookText(
+      isProof
+        ? `Flagged ${firstPlayer} last week. The stat line followed.`
+        : isMixed
+        ? `${game}: ${playerCount} players with strong form profiles heading in.`
+        : secondPlayer
+        ? `${firstPlayer} and ${secondPlayer} are both showing up in the ${statAdjective} data this week.`
+        : `${firstPlayer} is one of the stronger ${statAdjective} profiles heading into this round.`
+    ),
+  });
+
+  // ─── Facebook Hooks (5) ───────────────────────────────────────────────────
+
+  const facebookHooks: HookItem[] = [];
+
+  // Facebook 1 — longer, conversational
+  facebookHooks.push({
+    style: "direct",
+    platform: "facebook",
+    label: "Facebook 1 — Conversational",
+    text: cleanHookText(
+      isGoals
+        ? `Looking at the AFL ${statNoun} form this week — ${playerList3 || "a few players"} have been particularly consistent hitting ${threshold}. Worth knowing about heading into the round.`
+        : isFormMover
+        ? `${firstPlayer}'s recent form has been worth tracking. The ${statNoun} numbers have been moving in the right direction over the past few weeks.`
+        : isMixed
+        ? `${game} full picks breakdown — here's how the stats stack up for ${playerCount} players across disposals and goals.`
+        : `The ${statAdjective} form data is in for this week. ${playerList3 || "A few players"} stand out at ${threshold}.`
+    ),
+  });
+
+  // Facebook 2 — educational
+  facebookHooks.push({
+    style: "data_angle",
+    platform: "facebook",
+    label: "Facebook 2 — Educational",
+    text: cleanHookText(
+      isGoals
+        ? `AFL ${statNoun} form is one of the more consistent indicators week-to-week. Here's who's been hitting ${threshold} in recent games.`
+        : isTeamTotal && twoTeams
+        ? `Team ${statNoun} averages don't always tell the full story. Here's how ${teams[0]} and ${teams[1]} actually compare in ${game}.`
+        : `Tracking ${threshold} across the season — here's what the data shows about which players have been the most consistent.`
+    ),
+  });
+
+  // Facebook 3 — community engagement
+  facebookHooks.push({
+    style: "question",
+    platform: "facebook",
+    label: "Facebook 3 — Engagement question",
+    text: cleanHookText(
+      isGoals
+        ? `Who do you think has the best ${statNoun} form in AFL right now? Our data has ${firstPlayer}${secondPlayer ? ` and ${secondPlayer}` : ""} near the top.`
+        : isMatchup
+        ? `${game} — which players stand out to you from a fantasy perspective? Here's what the stat board looks like.`
+        : `Who's been the most consistent AFL player at ${threshold} this season? Drop your picks below — we've got the data breakdown.`
+    ),
+  });
+
+  // Facebook 4 — proof/credibility
+  facebookHooks.push({
+    style: "stat_driven",
+    platform: "facebook",
+    label: "Facebook 4 — Credibility",
+    text: cleanHookText(
+      isProof
+        ? `We flagged ${firstPlayer} last week based on the stat trends. Here's how the numbers played out.`
+        : isGoals
+        ? `${firstPlayer} has cleared ${threshold} in their last several appearances. Here's the full breakdown of who's been consistent.`
+        : `Here's the ${threshold} hit rate breakdown — ${playerList3 || "these players"} are the most reliable over the last 5 weeks.`
+    ),
+  });
+
+  // Facebook 5 — CTA-style
+  facebookHooks.push({
+    style: "cta_style",
+    platform: "facebook",
+    label: "Facebook 5 — CTA",
+    text: cleanHookText(
+      `Full AFL ${statAdjective} stat board at Neeko Sports Stats — updated weekly. ${playerList3 ? `${playerList3} and more tracked.` : "All players tracked."} Link in bio.`
+    ),
+  });
+
+  // ─── On-screen text hooks (5) ─────────────────────────────────────────────
+
+  const onScreenHooks: HookItem[] = [];
+
+  onScreenHooks.push({
+    style: "on_screen",
+    platform: "on_screen",
+    label: "On-screen 1 — Headline stat",
+    text: cleanHookText(
+      isGoals
+        ? `${threshold} — ${playerCount} players in form`
+        : isTeamTotal && twoTeams
+        ? `${teams[0]} vs ${teams[1]} — ${statNoun} breakdown`
+        : `${threshold} — who's hitting it`
+    ),
+  });
+
+  onScreenHooks.push({
+    style: "on_screen",
+    platform: "on_screen",
+    label: "On-screen 2 — Player stat",
+    text: cleanHookText(
+      firstPlayer
+        ? `${firstPlayer} — ${isGoals ? thresholdPhrase() : `${threshold} form`}`
+        : `AFL ${statAdjective} form — current season`
+    ),
+  });
+
+  onScreenHooks.push({
+    style: "on_screen",
+    platform: "on_screen",
+    label: "On-screen 3 — Multi-player",
+    text: cleanHookText(
+      playerCount >= 3
+        ? `${allPlayers.slice(0, 3).join(" · ")} — all in form`
+        : playerCount >= 2
+        ? `${firstPlayer} · ${secondPlayer} — ${statAdjective} form`
+        : `${firstPlayer} — ${statAdjective} form this season`
+    ),
+  });
+
+  onScreenHooks.push({
+    style: "on_screen",
+    platform: "on_screen",
+    label: "On-screen 4 — Curiosity",
+    text: cleanHookText(
+      isGoals
+        ? `Most consistent ${statNoun} scorers this season`
+        : isMixed
+        ? `${game} — full stat board`
+        : `Who's clearing ${threshold}?`
+    ),
+  });
+
+  onScreenHooks.push({
+    style: "on_screen",
+    platform: "on_screen",
+    label: "On-screen 5 — CTA",
+    text: cleanHookText(`Full board @ Neeko Sports Stats`),
+  });
+
+  // ─── Video openers (5) ────────────────────────────────────────────────────
+
+  const videoOpeners: HookItem[] = [];
+
+  videoOpeners.push({
+    style: "punchy",
+    platform: "video",
+    label: "Video opener 1 — Punchy",
+    text: cleanHookText(
+      isGoals
+        ? `${threshold}. ${firstPlayer} keeps hitting it.`
+        : isMixed
+        ? `${game}. Full picks. Let's go.`
+        : `${threshold}. Here are the players who keep showing up.`
+    ),
+  });
+
+  videoOpeners.push({
+    style: "question",
+    platform: "video",
+    label: "Video opener 2 — Question",
+    text: cleanHookText(
+      isGoals
+        ? `Who's been the most reliable ${statAdjective} performer in AFL this season? Here's what the data actually says.`
+        : isMatchup
+        ? `What does the data say about ${game}? Here's the full stat breakdown.`
+        : `Which AFL players have been most consistent at ${threshold}? Stay with me.`
+    ),
+  });
+
+  videoOpeners.push({
+    style: "stat_driven",
+    platform: "video",
+    label: "Video opener 3 — Stat-led",
+    text: cleanHookText(
+      isGoals
+        ? `${firstPlayer} has cleared ${threshold} in recent games. ${secondPlayer ? `${secondPlayer} too.` : "The form is consistent."} Here's the full board.`
+        : isTeamTotal && twoTeams
+        ? `${teams[0]} averages ${statNoun} against ${teams[1]}. Here's the breakdown.`
+        : `${threshold} — ${playerList3 || "these players"} all in form. Here's the breakdown.`
+    ),
+  });
+
+  videoOpeners.push({
+    style: "curiosity",
+    platform: "video",
+    label: "Video opener 4 — Curiosity",
+    text: cleanHookText(
+      isFormMover
+        ? `Something is happening with ${firstPlayer}'s numbers. It started a few weeks ago and it's still going.`
+        : isMixed
+        ? `${game} has some interesting stat stories heading in. Here's what you need to know.`
+        : `Not everyone is tracking ${statAdjective} form this closely. Here's what the data has been showing.`
+    ),
+  });
+
+  videoOpeners.push({
+    style: "direct",
+    platform: "video",
+    label: "Video opener 5 — Direct",
+    text: cleanHookText(
+      isProof
+        ? `We had ${firstPlayer} flagged last week. Here's how the numbers played out.`
+        : isGoals
+        ? `Here are the AFL players hitting ${threshold} most consistently right now — ${playerList3 || "let's look at the data"}.`
+        : `Here's the ${threshold} form board for this round — ${playerCount} players worth knowing about.`
+    ),
+  });
+
+  // ─── Combine all hooks ────────────────────────────────────────────────────
+
+  const allHooks: HookItem[] = [
+    ...tiktokHooks,
+    ...instagramHooks,
+    ...facebookHooks,
+    ...onScreenHooks,
+    ...videoOpeners,
   ];
 
-  // ─── Recommended use derivations ─────────────────────────────────────────
-  // Best caption opener — curiosity or direct (longer, sets up the post)
-  const bestCaption = curiosity;
+  // ─── Recommended picks ────────────────────────────────────────────────────
 
-  // Best video opener — punchy (short, immediate impact)
-  const bestVideoOpener = punchy;
-
-  // Best on-screen hook — stat-driven (concrete, readable on graphic)
-  const bestOnScreen = statDriven;
-
-  // Best short hook — shortest of direct/punchy
-  const bestShort = direct.length <= punchy.length ? direct : punchy;
+  const recommended: HookRecommendedUse = {
+    tiktokSubject: tiktokSubjectLine,
+    bestTikTok: tiktokHooks[0].text,
+    bestInstagram: instagramHooks[1].text, // curiosity hook works best for IG captions
+    bestFacebook: facebookHooks[0].text,   // conversational works best for FB
+    bestOnScreen: onScreenHooks[0].text,
+    bestVideoOpener: videoOpeners[0].text,
+    bestCaptionOpener: instagramHooks[2].text, // stat-driven for caption body
+    bestShort: tiktokHooks[0].text,        // shortest TikTok hook = best short
+  };
 
   return {
     postId: post.id,
     postTitle: post.title,
-    hooks,
-    recommended: { bestCaption, bestVideoOpener, bestOnScreen, bestShort },
+    tiktokSubjectLine,
+    tiktokHooks,
+    instagramHooks,
+    facebookHooks,
+    onScreenHooks,
+    videoOpeners,
+    hooks: allHooks,
+    recommended,
   };
 }
 
 /** Legacy adapter — keeps hookVariations in AiCreativePromptPack working */
 export function buildHookVariations(post: SocialPost): string[] {
   const pack = buildPostHookPack(post);
-  return pack.hooks.map(h => h.text);
+  // Return a representative subset: first hook from each platform group
+  return [
+    pack.tiktokHooks[0]?.text ?? "",
+    pack.instagramHooks[0]?.text ?? "",
+    pack.facebookHooks[0]?.text ?? "",
+    pack.onScreenHooks[0]?.text ?? "",
+    pack.videoOpeners[0]?.text ?? "",
+  ].filter(Boolean);
 }
 
 export function copyAllHooks(hookPack: PostHookPack): string {
-  const lines = hookPack.hooks.map(h => `${h.label}:\n${h.text}`).join("\n\n");
-  const recs = [
-    `Best caption opener:\n${hookPack.recommended.bestCaption}`,
-    `Best video opener:\n${hookPack.recommended.bestVideoOpener}`,
-    `Best on-screen hook:\n${hookPack.recommended.bestOnScreen}`,
-    `Best short hook:\n${hookPack.recommended.bestShort}`,
-  ].join("\n\n");
-  return `=== HOOKS — ${hookPack.postTitle} ===\n\n${lines}\n\n--- RECOMMENDED USE ---\n\n${recs}`;
+  const sections: string[] = [];
+  sections.push(`=== HOOKS — ${hookPack.postTitle} ===`);
+  sections.push(`TikTok Subject Line: ${hookPack.tiktokSubjectLine}`);
+  sections.push(``);
+
+  sections.push(`--- TIKTOK HOOKS ---`);
+  sections.push(hookPack.tiktokHooks.map(h => `${h.label}:\n${h.text}`).join("\n\n"));
+  sections.push(``);
+
+  sections.push(`--- INSTAGRAM HOOKS ---`);
+  sections.push(hookPack.instagramHooks.map(h => `${h.label}:\n${h.text}`).join("\n\n"));
+  sections.push(``);
+
+  sections.push(`--- FACEBOOK HOOKS ---`);
+  sections.push(hookPack.facebookHooks.map(h => `${h.label}:\n${h.text}`).join("\n\n"));
+  sections.push(``);
+
+  sections.push(`--- ON-SCREEN TEXT ---`);
+  sections.push(hookPack.onScreenHooks.map(h => `${h.label}:\n${h.text}`).join("\n\n"));
+  sections.push(``);
+
+  sections.push(`--- VIDEO OPENERS ---`);
+  sections.push(hookPack.videoOpeners.map(h => `${h.label}:\n${h.text}`).join("\n\n"));
+  sections.push(``);
+
+  sections.push(`--- RECOMMENDED ---`);
+  sections.push(`TikTok Subject: ${hookPack.recommended.tiktokSubject}`);
+  sections.push(`Best TikTok hook: ${hookPack.recommended.bestTikTok}`);
+  sections.push(`Best Instagram hook: ${hookPack.recommended.bestInstagram}`);
+  sections.push(`Best Facebook hook: ${hookPack.recommended.bestFacebook}`);
+  sections.push(`Best on-screen: ${hookPack.recommended.bestOnScreen}`);
+  sections.push(`Best video opener: ${hookPack.recommended.bestVideoOpener}`);
+  sections.push(`Best caption opener: ${hookPack.recommended.bestCaptionOpener}`);
+  sections.push(`Best short hook: ${hookPack.recommended.bestShort}`);
+
+  return sections.join("\n");
+}
+
+export function copyPlatformHooks(hookPack: PostHookPack, platform: HookPlatform): string {
+  const groups: Record<HookPlatform, HookItem[]> = {
+    tiktok: hookPack.tiktokHooks,
+    instagram: hookPack.instagramHooks,
+    facebook: hookPack.facebookHooks,
+    on_screen: hookPack.onScreenHooks,
+    video: hookPack.videoOpeners,
+    general: hookPack.hooks,
+  };
+  const items = groups[platform] ?? [];
+  return items.map(h => `${h.label}:\n${h.text}`).join("\n\n");
 }
 
 // ─── Master builder ───────────────────────────────────────────────────────────

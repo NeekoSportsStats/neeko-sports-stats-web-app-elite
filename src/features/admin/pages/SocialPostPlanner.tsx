@@ -53,10 +53,11 @@ import {
   copyAllVideoPrompts,
   copyHooksOnly,
   copyAllHooks,
+  copyPlatformHooks,
   copyFullPack,
   CREATIVE_ASSET_ROLE_LABELS,
 } from "./social-planner/aiCreativePrompts";
-import type { CreativeAsset, CreativeAssetRole, AiCreativePromptPack, PostHookPack } from "./social-planner/aiCreativePrompts";
+import type { CreativeAsset, CreativeAssetRole, AiCreativePromptPack, PostHookPack, HookItem } from "./social-planner/aiCreativePrompts";
 
 // Re-export CIDataSubset for AdminContentIntel compatibility
 export type { CIDataSubset };
@@ -1186,6 +1187,12 @@ function buildFullPostText(post: SocialPost, includeHeader = true): string {
     lines.push(`Intent: ${post.intent}`);
     lines.push(``);
   }
+  // TikTok subject line (max 55 chars)
+  const tiktokSubject = buildPostHookPack(post).tiktokSubjectLine;
+  if (tiktokSubject) {
+    lines.push(`TikTok Subject: ${tiktokSubject}`);
+    lines.push(``);
+  }
   lines.push(`Content: ${post.content}`);
   lines.push(``);
   if (asArray(post.statsShown).length > 0) {
@@ -1751,10 +1758,27 @@ const HOOK_STYLE_COLORS: Record<string, string> = {
   stat_driven: "text-emerald-400",
   challenge:   "text-rose-400",
   punchy:      "text-zinc-200",
+  tiktok_short:"text-pink-400",
+  on_screen:   "text-cyan-400",
+  cta_style:   "text-orange-400",
+  question:    "text-violet-400",
+  data_angle:  "text-teal-400",
+};
+
+type HookPlatformTab = "tiktok" | "instagram" | "facebook" | "on_screen" | "video" | "recommended";
+
+const HOOK_PLATFORM_TAB_LABELS: Record<HookPlatformTab, string> = {
+  tiktok:      "TikTok",
+  instagram:   "Instagram",
+  facebook:    "Facebook",
+  on_screen:   "On-Screen",
+  video:       "Video Openers",
+  recommended: "Recommended",
 };
 
 function HookVariationsSection({ post }: { post: SocialPost }) {
   const [open, setOpen] = useState(false);
+  const [platformTab, setPlatformTab] = useState<HookPlatformTab>("tiktok");
   const [copiedId, setCopied] = useState<string | null>(null);
   const [regenerated, setRegenerated] = useState(0);
 
@@ -1787,6 +1811,24 @@ function HookVariationsSection({ post }: { post: SocialPost }) {
     );
   }
 
+  const platformHooks: Record<HookPlatformTab, HookItem[]> = {
+    tiktok:      hookPack.tiktokHooks,
+    instagram:   hookPack.instagramHooks,
+    facebook:    hookPack.facebookHooks,
+    on_screen:   hookPack.onScreenHooks,
+    video:       hookPack.videoOpeners,
+    recommended: [],
+  };
+
+  const platformCopyText: Record<HookPlatformTab, string> = {
+    tiktok:      copyPlatformHooks(hookPack, "tiktok"),
+    instagram:   copyPlatformHooks(hookPack, "instagram"),
+    facebook:    copyPlatformHooks(hookPack, "facebook"),
+    on_screen:   copyPlatformHooks(hookPack, "on_screen"),
+    video:       copyPlatformHooks(hookPack, "video"),
+    recommended: copyAllHooks(hookPack),
+  };
+
   return (
     <div className="bg-zinc-900/30 border border-zinc-800/60 rounded-lg overflow-hidden">
       {/* Header */}
@@ -1797,66 +1839,104 @@ function HookVariationsSection({ post }: { post: SocialPost }) {
         <div className="flex items-center gap-2">
           <Zap className="h-3 w-3 text-amber-400/80" />
           <span className="text-[11px] font-semibold text-zinc-300">Hook Variations</span>
-          <span className="text-[9px] text-zinc-600">5 hooks · caption · video · on-screen</span>
+          <span className="text-[9px] text-zinc-600">
+            {hookPack.hooks.length} hooks · TikTok · Instagram · Facebook · on-screen · video
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[9px] text-zinc-600">{hookPack.hooks.length} hooks</span>
+          <span className="text-[9px] text-zinc-600">{hookPack.hooks.length} total</span>
           {open ? <ChevronUp className="h-3 w-3 text-zinc-500" /> : <ChevronDown className="h-3 w-3 text-zinc-500" />}
         </div>
       </button>
 
       {open && (
         <div className="px-3 pb-3 space-y-3">
-          {/* Action buttons */}
-          <div className="flex flex-wrap gap-1.5 pt-1">
+          {/* TikTok subject line */}
+          <div className="flex items-start gap-2 bg-pink-950/20 border border-pink-800/30 rounded px-2 py-1.5 mt-1">
+            <span className="text-[9px] font-semibold text-pink-400 shrink-0 pt-0.5 w-[110px]">TikTok Subject</span>
+            <p className="text-[10px] text-zinc-200 flex-1 leading-snug font-medium">{hookPack.tiktokSubjectLine}</p>
+            <CpBtn id={`ttsub-${post.id}`} text={hookPack.tiktokSubjectLine} label="Copy" />
+          </div>
+
+          {/* Global action buttons */}
+          <div className="flex flex-wrap gap-1.5">
             <CpBtn id={`hooks-all-${post.id}`} text={copyAllHooks(hookPack)} label="Copy all hooks" />
-            <CpBtn id={`hook-short-${post.id}`} text={hookPack.recommended.bestShort} label="Copy short hook" />
-            <CpBtn id={`hook-spoken-${post.id}`} text={hookPack.recommended.bestVideoOpener} label="Copy spoken hook" />
-            <CpBtn id={`hook-screen-${post.id}`} text={hookPack.recommended.bestOnScreen} label="Copy on-screen hook" />
+            <CpBtn id={`hook-short-${post.id}`} text={hookPack.recommended.bestShort} label="Best short" />
+            <CpBtn id={`hook-video-${post.id}`} text={hookPack.recommended.bestVideoOpener} label="Best video" />
+            <CpBtn id={`hook-screen-${post.id}`} text={hookPack.recommended.bestOnScreen} label="Best on-screen" />
             <button
               onClick={() => setRegenerated(n => n + 1)}
               className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded border font-medium transition-colors bg-zinc-800/60 border-zinc-700/40 text-zinc-500 hover:text-zinc-200 hover:border-zinc-600"
             >
-              Regenerate hooks
+              Regenerate
             </button>
           </div>
 
-          {/* Hooks list */}
-          <div className="space-y-1">
-            {hookPack.hooks.map((hook, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-2 bg-zinc-800/30 border border-zinc-700/30 rounded px-2 py-1.5"
+          {/* Platform tabs */}
+          <div className="flex gap-0.5 border-b border-zinc-800">
+            {(Object.keys(HOOK_PLATFORM_TAB_LABELS) as HookPlatformTab[]).map(t => (
+              <button
+                key={t}
+                onClick={() => setPlatformTab(t)}
+                className={`text-[9px] px-2 py-1 font-medium transition-colors border-b-2 -mb-px ${
+                  platformTab === t
+                    ? "border-amber-500 text-amber-400"
+                    : "border-transparent text-zinc-600 hover:text-zinc-400"
+                }`}
               >
-                <div className="shrink-0 pt-0.5 w-[100px]">
-                  <span className={`text-[8.5px] font-semibold ${HOOK_STYLE_COLORS[hook.style] ?? "text-zinc-500"}`}>
-                    {hook.label}
-                  </span>
-                </div>
-                <p className="text-[10px] text-zinc-300 flex-1 leading-snug">{hook.text}</p>
-                <CpBtn id={`hook-${post.id}-${i}`} text={hook.text} label="Copy" />
-              </div>
+                {HOOK_PLATFORM_TAB_LABELS[t]}
+              </button>
             ))}
           </div>
 
-          {/* Recommended use */}
-          <div className="bg-zinc-800/20 border border-zinc-700/20 rounded-lg p-2 space-y-2">
-            <div className="text-[10px] font-semibold text-zinc-500">Recommended use</div>
+          {/* Platform-specific hook list */}
+          {platformTab !== "recommended" && (
+            <div className="space-y-1">
+              <div className="flex justify-end">
+                <CpBtn
+                  id={`hooks-platform-${platformTab}-${post.id}`}
+                  text={platformCopyText[platformTab]}
+                  label={`Copy ${HOOK_PLATFORM_TAB_LABELS[platformTab]} hooks`}
+                />
+              </div>
+              {platformHooks[platformTab].map((hook, i) => (
+                <div
+                  key={i}
+                  className="flex items-start gap-2 bg-zinc-800/30 border border-zinc-700/30 rounded px-2 py-1.5"
+                >
+                  <div className="shrink-0 pt-0.5 w-[130px]">
+                    <span className={`text-[8.5px] font-semibold ${HOOK_STYLE_COLORS[hook.style] ?? "text-zinc-500"}`}>
+                      {hook.label}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-zinc-300 flex-1 leading-snug">{hook.text}</p>
+                  <CpBtn id={`hook-${post.id}-${platformTab}-${i}`} text={hook.text} label="Copy" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Recommended tab */}
+          {platformTab === "recommended" && (
             <div className="space-y-1.5">
               {[
-                { label: "Best caption opener",  key: "bestCaption" as const, copyId: `rcap-${post.id}` },
-                { label: "Best video opener",    key: "bestVideoOpener" as const, copyId: `rvid-${post.id}` },
-                { label: "Best on-screen hook",  key: "bestOnScreen" as const, copyId: `rscr-${post.id}` },
-                { label: "Best short hook",      key: "bestShort" as const, copyId: `rsht-${post.id}` },
+                { label: "TikTok Subject",     key: "tiktokSubject" as const,    copyId: `rtsub-${post.id}` },
+                { label: "Best TikTok",        key: "bestTikTok" as const,       copyId: `rttk-${post.id}` },
+                { label: "Best Instagram",     key: "bestInstagram" as const,    copyId: `rig-${post.id}` },
+                { label: "Best Facebook",      key: "bestFacebook" as const,     copyId: `rfb-${post.id}` },
+                { label: "Best on-screen",     key: "bestOnScreen" as const,     copyId: `rscr-${post.id}` },
+                { label: "Best video opener",  key: "bestVideoOpener" as const,  copyId: `rvid-${post.id}` },
+                { label: "Best caption",       key: "bestCaptionOpener" as const,copyId: `rcap-${post.id}` },
+                { label: "Best short",         key: "bestShort" as const,        copyId: `rsht-${post.id}` },
               ].map(({ label, key, copyId }) => (
-                <div key={key} className="flex items-start gap-2">
-                  <span className="text-[9px] text-zinc-600 shrink-0 w-[120px] pt-0.5">{label}</span>
-                  <p className="text-[9.5px] text-zinc-400 flex-1 leading-snug">{hookPack.recommended[key]}</p>
+                <div key={key} className="flex items-start gap-2 bg-zinc-800/30 border border-zinc-700/30 rounded px-2 py-1.5">
+                  <span className="text-[9px] text-zinc-500 shrink-0 w-[110px] pt-0.5 font-medium">{label}</span>
+                  <p className="text-[9.5px] text-zinc-300 flex-1 leading-snug">{hookPack.recommended[key]}</p>
                   <CpBtn id={copyId} text={hookPack.recommended[key]} label="Copy" />
                 </div>
               ))}
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
