@@ -2032,26 +2032,38 @@ function CreativePromptPackSection({ post }: { post: SocialPost }) {
           {/* Carousel tab */}
           {tab === "carousel" && (
             <div className="space-y-3">
-              {pack.carouselPromptPacks.map(cp => (
-                <div key={cp.id} className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg p-2 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] font-semibold text-zinc-300">{cp.label}</span>
-                      <span className="text-[9px] text-zinc-600 ml-2">{cp.format}</span>
-                    </div>
-                    <CopyBtn id={`${cp.id}-combined`} text={cp.combinedPrompt} label="Copy all slides" />
-                  </div>
-                  <div className="space-y-1">
-                    {cp.slides.map((slide, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <span className="text-[9px] text-zinc-600 shrink-0 w-14 pt-0.5">{slide.slideLabel}</span>
-                        <p className="text-[9.5px] text-zinc-400 leading-relaxed flex-1 line-clamp-2">{slide.prompt}</p>
-                        <CopyBtn id={`${cp.id}-slide-${i}`} text={slide.prompt} />
+              {pack.carouselPromptPacks.map(cp => {
+                // Validate player slide count: cover + player slides + CTA
+                const expectedPlayerSlides = asArray(post.statsShown).length;
+                const actualPlayerSlides = cp.slides.length - 2; // minus cover and CTA
+                const slideMismatch = actualPlayerSlides !== expectedPlayerSlides;
+                return (
+                  <div key={cp.id} className="bg-zinc-800/30 border border-zinc-700/30 rounded-lg p-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] font-semibold text-zinc-300">{cp.label}</span>
+                        <span className="text-[9px] text-zinc-600 ml-2">{cp.format}</span>
+                        <span className="text-[9px] text-zinc-600 ml-1">· {cp.slides.length} slides</span>
                       </div>
-                    ))}
+                      <CopyBtn id={`${cp.id}-combined`} text={cp.combinedPrompt} label="Copy all slides" />
+                    </div>
+                    {slideMismatch && (
+                      <p className="text-[9px] text-amber-400 bg-amber-950/40 border border-amber-700/30 rounded px-2 py-1">
+                        Warning: {actualPlayerSlides} player slide{actualPlayerSlides !== 1 ? "s" : ""} generated but post has {expectedPlayerSlides} stat line{expectedPlayerSlides !== 1 ? "s" : ""} — mismatch
+                      </p>
+                    )}
+                    <div className="space-y-1">
+                      {cp.slides.map((slide, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <span className="text-[9px] text-zinc-600 shrink-0 w-14 pt-0.5">{slide.slideLabel}</span>
+                          <p className="text-[9.5px] text-zinc-400 leading-relaxed flex-1 line-clamp-2">{slide.prompt}</p>
+                          <CopyBtn id={`${cp.id}-slide-${i}`} text={slide.prompt} />
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

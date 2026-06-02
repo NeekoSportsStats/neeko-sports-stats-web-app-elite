@@ -297,12 +297,15 @@ export function buildCarouselPromptPacks(
   // Pack 1 — Stat-card carousel
   {
     const slides: CarouselPromptItem[] = [];
+    // Use statList as the canonical per-player source so mixed-stat posts (Full Game
+    // Picks) get the correct stat label per slide, and no player is capped out.
+    const totalSlides = statList.length + 2; // cover + N player slides + CTA
 
     slides.push({
       slideIndex: 1,
       slideLabel: "Cover slide",
       prompt: [
-        `Slide 1 of ${playerList.length + 2} — Cover slide.`,
+        `Slide 1 of ${totalSlides} — Cover slide.`,
         `Bold headline: "${post.title}".`,
         `Sub-text: "${threshold}" — AFL ${new Date().getFullYear()}.`,
         `Dark background with strong contrast. The headline takes up most of the slide.`,
@@ -314,17 +317,22 @@ export function buildCarouselPromptPacks(
       ].filter(Boolean).join(" "),
     });
 
-    playerList.slice(0, 5).forEach((player, i) => {
-      const stat = statList[i] ?? `${threshold} hit rate`;
+    // No cap: iterate every stat line so Full Game Picks (8 players) gets all slides
+    statList.forEach((stat, i) => {
+      const dashIdx = stat.indexOf(" — ");
+      const player = dashIdx >= 0 ? stat.slice(0, dashIdx).trim() : (playerList[i] ?? `Player ${i + 1}`);
+      // Detect goal vs disposal family per slide for correct visual note
+      const isGoal = /\d\+\s*goal|goals?\s+at/.test(stat.toLowerCase()) || /\bgoal\b/.test(stat.toLowerCase());
+      const accentNote = isGoal ? "Goal number in gold." : "Disposal count in gold.";
       slides.push({
         slideIndex: i + 2,
         slideLabel: `Player ${i + 1} — ${player}`,
         prompt: [
-          `Slide ${i + 2} of ${playerList.length + 2} — Player stat card.`,
+          `Slide ${i + 2} of ${totalSlides} — Player stat card.`,
           `Player: ${player}.`,
           `Stat to feature: ${stat}.`,
           `Layout: player name large at top, stat figure massive in centre, hit rate / context stat below in smaller text.`,
-          `Style: clean dark card, team accent colour strip on left edge.`,
+          `Style: clean dark card, team accent colour strip on left edge. ${accentNote}`,
           `No extraneous text. No betting language.`,
           fmtNote,
         ].filter(Boolean).join(" "),
