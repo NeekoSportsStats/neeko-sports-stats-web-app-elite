@@ -352,65 +352,107 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
         </div>
 
         {/* ── Row 3: compact stats strip ── */}
-        <div className="flex items-stretch gap-0 border border-white/8 rounded-lg overflow-hidden w-full">
-          {/* Recent avg */}
-          <div className="flex-1 px-1.5 py-1.5 border-r border-white/8 min-w-0">
-            <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">Avg</p>
-            <p className={`text-[11px] font-semibold tabular-nums leading-none ${last10Avg != null ? "text-white/68" : "text-white/22"}`}>
-              {avgDisplay}
-            </p>
-          </div>
+        {(() => {
+          // Compute "best line" — the highest threshold with a hit rate >= 50%
+          const hitRateData = player.season_threshold_hit_rates ?? player.all_threshold_hit_rates ?? {};
+          let bestLineT: number | null = null;
+          let bestLineHits: number | null = null;
+          let bestLineGames: number | null = null;
+          let bestLineRate: number | null = null;
+          if (!isPlayerLocked) {
+            for (const t of [...thresholds].reverse()) {
+              const d = hitRateData[String(t)];
+              const r = safeNum(d?.rate);
+              const h = safeNum(d?.hits);
+              const g = safeNum(d?.games);
+              if (r != null && r >= 50 && h != null && g != null && g > 0) {
+                bestLineT = t;
+                bestLineHits = h;
+                bestLineGames = g;
+                bestLineRate = r;
+                break;
+              }
+            }
+          }
 
-          {/* Hit rates — all thresholds */}
-          {thresholds.map((t, idx) => {
-            const isLast = idx === thresholds.length - 1;
-            const data = (player.season_threshold_hit_rates ?? player.all_threshold_hit_rates)?.[String(t)];
-            const rate = safeNum(data?.rate);
-            const hits = safeNum(data?.hits);
-            const games = safeNum(data?.games);
-            const hasData = hits !== null && games !== null && games > 0;
-            const rateColor = rate != null && rate >= 70
-              ? "text-emerald-400"
-              : rate != null && rate >= 50
-              ? "text-amber-400"
-              : "text-white/32";
+          return (
+            <>
+              {/* Best-line highlight pill — only shown when a meaningful line exists */}
+              {bestLineT != null && bestLineRate != null && bestLineHits != null && bestLineGames != null && (
+                <div className="flex items-center gap-1 mb-1.5 min-w-0">
+                  <span className="text-[8px] text-white/30 shrink-0">Best line:</span>
+                  <span className="text-[8px] font-bold text-emerald-400 shrink-0 tabular-nums">
+                    {bestLineT}+ — {bestLineHits}/{bestLineGames} ({bestLineRate}%)
+                  </span>
+                </div>
+              )}
 
-            return (
-              <div key={t} className={`flex-1 px-1 py-1.5 text-center min-w-0 ${isLast ? "" : "border-r border-white/8"}`}>
-                {isPlayerLocked ? (
-                  <>
-                    <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">{t}+</p>
-                    <p className="text-[9px] text-white/18 select-none tabular-nums leading-none">—</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">{t}+</p>
-                    {hasData && rate != null ? (
-                      <p className={`text-[10px] font-bold tabular-nums leading-none ${rateColor}`}>
-                        {rate > 0 ? `${rate}%` : "0%"}
-                      </p>
-                    ) : (
-                      <p className="text-[9px] text-white/20 leading-none">—</p>
-                    )}
-                  </>
-                )}
+              <div className="flex items-stretch gap-0 border border-white/8 rounded-lg overflow-hidden w-full">
+                {/* Recent avg */}
+                <div className="flex-1 px-1.5 py-1.5 border-r border-white/8 min-w-0">
+                  <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">Avg</p>
+                  <p className={`text-[11px] font-semibold tabular-nums leading-none ${last10Avg != null ? "text-white/68" : "text-white/22"}`}>
+                    {avgDisplay}
+                  </p>
+                </div>
+
+                {/* Hit rates — all thresholds */}
+                {thresholds.map((t, idx) => {
+                  const isLast = idx === thresholds.length - 1;
+                  const data = hitRateData[String(t)];
+                  const rate = safeNum(data?.rate);
+                  const hits = safeNum(data?.hits);
+                  const games = safeNum(data?.games);
+                  const hasData = hits !== null && games !== null && games > 0;
+                  const isBestLine = t === bestLineT;
+                  const rateColor = rate != null && rate >= 70
+                    ? "text-emerald-400"
+                    : rate != null && rate >= 50
+                    ? "text-amber-400"
+                    : "text-white/32";
+
+                  return (
+                    <div
+                      key={t}
+                      className={`flex-1 px-1 py-1.5 text-center min-w-0 ${isLast ? "" : "border-r border-white/8"} ${isBestLine && !isPlayerLocked ? "bg-emerald-500/[0.06]" : ""}`}
+                    >
+                      {isPlayerLocked ? (
+                        <>
+                          <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">{t}+</p>
+                          <p className="text-[9px] text-white/18 select-none tabular-nums leading-none">—</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className={`text-[7px] uppercase tracking-wide leading-none mb-0.5 ${isBestLine ? "text-emerald-500/50" : "text-white/25"}`}>{t}+</p>
+                          {hasData && rate != null ? (
+                            <p className={`text-[10px] font-bold tabular-nums leading-none ${rateColor}`}>
+                              {rate > 0 ? `${rate}%` : "0%"}
+                            </p>
+                          ) : (
+                            <p className="text-[9px] text-white/20 leading-none">—</p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Consistency */}
+                <div className="flex-1 px-1.5 py-1.5 border-l border-white/8 min-w-0">
+                  <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">Form</p>
+                  {!isPlayerLocked && conf && confidence ? (
+                    <div className="flex items-center gap-1">
+                      <span className={`h-[5px] w-[5px] rounded-full shrink-0 ${conf.dot}`} aria-hidden />
+                      <span className={`text-[9px] font-semibold leading-none ${conf.text}`}>{conf.label}</span>
+                    </div>
+                  ) : (
+                    <p className="text-[9px] text-white/20 leading-none">—</p>
+                  )}
+                </div>
               </div>
-            );
-          })}
-
-          {/* Consistency */}
-          <div className="flex-1 px-1.5 py-1.5 border-l border-white/8 min-w-0">
-            <p className="text-[7px] text-white/25 uppercase tracking-wide leading-none mb-0.5">Form</p>
-            {!isPlayerLocked && conf && confidence ? (
-              <div className="flex items-center gap-1">
-                <span className={`h-[5px] w-[5px] rounded-full shrink-0 ${conf.dot}`} aria-hidden />
-                <span className={`text-[9px] font-semibold leading-none ${conf.text}`}>{conf.label}</span>
-              </div>
-            ) : (
-              <p className="text-[9px] text-white/20 leading-none">—</p>
-            )}
-          </div>
-        </div>
+            </>
+          );
+        })()}
       </button>
 
       {/* ── Expanded detail — no animation, no transforms on mobile ── */}

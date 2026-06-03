@@ -325,9 +325,9 @@ export function ExpandedPlayerPanel({
 
           <section aria-label="Hit rate by threshold">
             <p className="text-[9px] sm:text-[10px] font-semibold text-white/35 uppercase tracking-wider mb-1.5 sm:mb-2">
-              {lens === "disposals" ? "Disposal" : "Goal"} hit rates
+              Season hit rates
               <span className="ml-1.5 font-normal normal-case tracking-normal text-white/22">
-                — 2026 season
+                — {lens === "disposals" ? "disposals" : "goals"} · 2026
               </span>
             </p>
             <div className="rounded-lg border border-white/8 overflow-hidden">

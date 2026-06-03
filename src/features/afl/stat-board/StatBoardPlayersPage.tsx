@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback, memo, useSyncExternalStore, useDeferredValue } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Search, X, Lock, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, X, Lock, ChevronDown, ChevronUp, CircleHelp as HelpCircle } from "lucide-react";
 import { track, trackGateInteraction, trackLockedDataClick, trackFreeGamesCTA, trackStatBoardUpgrade } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
 import MobileUpgradeBar from "@/components/mobile/MobileUpgradeBar";
@@ -108,7 +108,10 @@ export default function StatBoardPlayersPage() {
   const [sortOpen, setSortOpen] = useState(false);
   const [expandedPlayerId, setExpandedPlayerId] = useState<number | null>(null);
   const [stickyVisible, setStickyVisible] = useState(false);
+  const [mobileStickyVisible, setMobileStickyVisible] = useState(false);
+  const [howToOpen, setHowToOpen] = useState(false);
   const controlsRef = useRef<HTMLDivElement>(null);
+  const bannerRef = useRef<HTMLDivElement>(null);
   const [searchParams] = useSearchParams();
   const urlMatchId = searchParams.get("match_id") ? Number(searchParams.get("match_id")) : null;
 
@@ -172,6 +175,19 @@ export default function StatBoardPlayersPage() {
     const observer = new IntersectionObserver(
       ([entry]) => setStickyVisible(!entry.isIntersecting),
       { rootMargin: "-1px 0px 0px 0px", threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isMobile]);
+
+  // Mobile sticky CTA: only show after user has scrolled past the top banner.
+  useEffect(() => {
+    if (!isMobile) { setMobileStickyVisible(false); return; }
+    const el = bannerRef.current;
+    if (!el) { setMobileStickyVisible(true); return; }
+    const observer = new IntersectionObserver(
+      ([entry]) => setMobileStickyVisible(!entry.isIntersecting),
+      { rootMargin: "0px 0px 0px 0px", threshold: 0 }
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -311,46 +327,47 @@ export default function StatBoardPlayersPage() {
           className="mx-auto w-full max-w-[1360px] px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 min-w-0"
           style={{
             paddingBottom: "calc(5rem + env(safe-area-inset-bottom))",
-            paddingTop: isMobile ? "calc(62px + 1rem)" : undefined,
+            paddingTop: isMobile ? "calc(62px + 0.75rem)" : undefined,
             boxSizing: "border-box",
             maxWidth: "100%",
           }}
         >
 
-          {/* Page header */}
-          <div className="mb-4 sm:mb-6">
-            <h1 className="text-xl font-bold tracking-tight text-white">AFL Player Stat Board</h1>
-            <p className="mt-1 text-sm text-white/50 max-w-xl leading-relaxed">
-              Pick a match, choose a stat, and compare every player's recent trends, hit rates and projections.
+          {/* Page header — compact on mobile */}
+          <div className="mb-3 sm:mb-5">
+            <h1 className="text-[18px] sm:text-xl font-bold tracking-tight text-white leading-tight">AFL Player Stat Board</h1>
+            <p className="mt-0.5 text-[11px] sm:text-sm text-white/45 sm:max-w-xl leading-relaxed">
+              <span className="sm:hidden">Pick a game, choose a stat, compare trends.</span>
+              <span className="hidden sm:inline">Pick a match, choose a stat, and compare every player's recent trends, hit rates and projections.</span>
             </p>
           </div>
 
           {/* Free games access banner */}
           {hasFullAccess ? (
-            <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] px-4 py-2.5">
-              <div className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
-              <p className="text-xs font-semibold text-emerald-400">Neeko+ active — every matchup unlocked</p>
+            <div ref={bannerRef} className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+              <p className="text-[11px] font-semibold text-emerald-400">Neeko+ active — every matchup unlocked</p>
             </div>
           ) : (
-            <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3">
-              <div className="flex items-start justify-between gap-3">
+            <div ref={bannerRef} className="mb-3 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2.5 sm:px-4 sm:py-3">
+              <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-white leading-snug">2 free games unlocked this week</p>
-                  <p className="text-xs text-white/45 mt-0.5 leading-relaxed">Browse free games below. Upgrade to unlock every matchup, projection and trend.</p>
+                  <p className="text-[12px] sm:text-sm font-bold text-white leading-snug">2 free games this week</p>
+                  <p className="text-[10px] sm:text-xs text-white/40 mt-0.5 leading-snug hidden sm:block">Browse free games below. Upgrade to unlock every matchup, projection and trend.</p>
                 </div>
-                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <Link
                     to="/stat-board/players"
-                    onClick={() => trackFreeGamesCTA({ button_text: "View free games", source: "stat_board_players", section: "top_banner" })}
-                    className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2.5 py-1 hover:bg-emerald-500/15 transition-colors whitespace-nowrap"
+                    onClick={() => trackFreeGamesCTA({ button_text: "View free", source: "stat_board_players", section: "top_banner" })}
+                    className="text-[10px] sm:text-[11px] font-semibold text-emerald-400 bg-emerald-500/8 border border-emerald-500/18 rounded-lg px-2 py-1 hover:bg-emerald-500/15 transition-colors whitespace-nowrap"
                   >
-                    View free games
+                    View free
                   </Link>
                   <button
-                    onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Unlock all games", section: "top_banner" }); window.location.href = "/neeko-plus"; }}
-                    className="text-[11px] font-semibold text-[#F5C84C] bg-[#F5C84C]/10 border border-[#F5C84C]/20 rounded-lg px-2.5 py-1 hover:bg-[#F5C84C]/15 transition-colors whitespace-nowrap"
+                    onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Unlock all", section: "top_banner" }); window.location.href = "/neeko-plus"; }}
+                    className="text-[10px] sm:text-[11px] font-semibold text-[#F5C84C] bg-[#F5C84C]/8 border border-[#F5C84C]/18 rounded-lg px-2 py-1 hover:bg-[#F5C84C]/15 transition-colors whitespace-nowrap"
                   >
-                    Unlock all games
+                    Unlock all
                   </button>
                 </div>
               </div>
@@ -359,55 +376,54 @@ export default function StatBoardPlayersPage() {
 
           {/* Match selector */}
           {matchesError ? (
-            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+            <div className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
               Could not load matches. Please try refreshing.
             </div>
           ) : (
-            <MatchSelector
-              matches={matches}
-              selected={selectedMatch}
-              loading={matchesLoading}
-              onChange={handleMatchChange}
-              hasFullAccess={hasFullAccess}
-            />
+            <div className="mb-3">
+              <MatchSelector
+                matches={matches}
+                selected={selectedMatch}
+                loading={matchesLoading}
+                onChange={handleMatchChange}
+                hasFullAccess={hasFullAccess}
+              />
+            </div>
           )}
 
           {/* ── Inline controls (observed for sticky trigger) ─────────────────── */}
-          <div ref={controlsRef} className="mb-3" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
+          <div ref={controlsRef} className="mb-2.5" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
 
             {/* Mobile controls — compact pill style */}
-            <div className="sm:hidden space-y-2.5" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
+            <div className="sm:hidden space-y-2" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
 
-              {/* Row 1: Stat lens toggle pills */}
-              <div className="flex gap-1.5" style={{ width: "100%", minWidth: 0 }}>
+              {/* Row 1: Stat lens toggle + position pills in one scrollable row */}
+              <div
+                className="flex gap-1.5 overflow-x-auto"
+                style={{ scrollbarWidth: "none", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" }}
+              >
                 {(["disposals", "goals"] as StatLens[]).map((l) => (
                   <button
                     key={l}
                     onClick={() => handleLensChange(l)}
-                    className={`px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition-colors border ${
+                    className={`px-3 py-1.5 rounded-full text-[11px] font-semibold transition-colors border shrink-0 ${
                       lens === l
                         ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-400"
-                        : "bg-white/[0.04] border-white/[0.08] text-white/42 hover:text-white/65"
+                        : "bg-white/[0.04] border-white/[0.08] text-white/40 hover:text-white/65"
                     }`}
                   >
                     {l === "disposals" ? "Disposals" : "Goals"}
                   </button>
                 ))}
-              </div>
-
-              {/* Row 2: Position filter pills — internal scroll only */}
-              <div
-                className="flex gap-1.5 overflow-x-auto"
-                style={{ scrollbarWidth: "none", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box" }}
-              >
+                <span className="text-white/15 text-[10px] self-center shrink-0">|</span>
                 {POSITION_OPTIONS.map(({ key, label }) => (
                   <button
                     key={key}
                     onClick={() => handlePositionChange(key)}
-                    className={`px-3 py-1.5 rounded-full text-[12px] font-semibold whitespace-nowrap transition-colors border shrink-0 ${
+                    className={`px-2.5 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors border shrink-0 ${
                       positionFilter === key
                         ? "bg-white/12 border-white/20 text-white"
-                        : "bg-white/[0.04] border-white/[0.08] text-white/42 hover:text-white/65"
+                        : "bg-white/[0.04] border-white/[0.08] text-white/38 hover:text-white/65"
                     }`}
                   >
                     {label}
@@ -415,17 +431,17 @@ export default function StatBoardPlayersPage() {
                 ))}
               </div>
 
-              {/* Row 3: Search + Sort */}
-              <div className="flex items-center gap-2" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
+              {/* Row 2: Search + Sort + How-to-read */}
+              <div className="flex items-center gap-1.5" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
                 {/* Search */}
-                <div className="flex items-center rounded-full border border-white/[0.08] bg-white/[0.04] pl-3 pr-2 py-1.5 gap-2" style={{ flex: "1 1 0", minWidth: 0 }}>
-                  <Search className="h-3.5 w-3.5 text-white/22 pointer-events-none shrink-0" />
+                <div className="flex items-center rounded-full border border-white/[0.08] bg-white/[0.04] pl-2.5 pr-2 py-1.5 gap-1.5" style={{ flex: "1 1 0", minWidth: 0 }}>
+                  <Search className="h-3 w-3 text-white/22 pointer-events-none shrink-0" />
                   <input
                     type="text"
                     placeholder="Search…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="flex-1 min-w-0 bg-transparent text-[13px] text-white placeholder:text-white/22 focus:outline-none"
+                    className="flex-1 min-w-0 bg-transparent text-[12px] text-white placeholder:text-white/22 focus:outline-none"
                   />
                   {search && (
                     <button
@@ -433,7 +449,7 @@ export default function StatBoardPlayersPage() {
                       className="text-white/22 hover:text-white/55 shrink-0"
                       aria-label="Clear search"
                     >
-                      <X className="h-3.5 w-3.5" />
+                      <X className="h-3 w-3" />
                     </button>
                   )}
                 </div>
@@ -441,10 +457,10 @@ export default function StatBoardPlayersPage() {
                 <div className="relative shrink-0">
                   <button
                     onClick={() => setSortOpen((v) => !v)}
-                    className="flex items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1.5 text-[11px] font-medium text-white/50 hover:text-white/70 focus:outline-none transition-colors"
+                    className="flex items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-medium text-white/45 hover:text-white/70 focus:outline-none transition-colors"
                     aria-haspopup="listbox"
                     aria-expanded={sortOpen}
-                    style={{ maxWidth: 110, overflow: "hidden" }}
+                    style={{ maxWidth: 100, overflow: "hidden" }}
                   >
                     <span className="truncate">{sortButtonLabel(sortKey)}</span>
                     <ChevronDown className={`h-3 w-3 text-white/28 transition-transform shrink-0 ${sortOpen ? "rotate-180" : ""}`} />
@@ -458,21 +474,44 @@ export default function StatBoardPlayersPage() {
                     />
                   )}
                 </div>
+                {/* How to read */}
+                <button
+                  onClick={() => setHowToOpen((v) => !v)}
+                  className="shrink-0 flex items-center justify-center h-7 w-7 rounded-full border border-white/[0.08] bg-white/[0.04] text-white/30 hover:text-white/60 transition-colors"
+                  aria-label="How to read this"
+                  aria-expanded={howToOpen}
+                >
+                  <HelpCircle className="h-3.5 w-3.5" />
+                </button>
               </div>
 
-              {/* Row 4: Viewing context — subtle */}
+              {/* How to read — collapsible glossary */}
+              {howToOpen && (
+                <div className="rounded-xl border border-white/8 bg-white/[0.025] px-3 py-2.5 space-y-1.5">
+                  <p className="text-[10px] font-bold text-white/55 uppercase tracking-wider mb-1">How to read this</p>
+                  {[
+                    { term: "PROJ", def: "Projected stat for this match based on recent form and matchup" },
+                    { term: "L5",   def: "Last 5 games average" },
+                    { term: "20+",  def: "Season hit rate — how often the player exceeded that threshold" },
+                    { term: "BYE",  def: "Bye week — no game played" },
+                    { term: "DNP",  def: "Did not play — listed but did not take the field" },
+                    { term: "Form", def: "Consistency label based on recent scoring variance (High / Medium / Low)" },
+                  ].map(({ term, def }) => (
+                    <div key={term} className="flex gap-2 items-baseline">
+                      <span className="text-[9px] font-bold text-white/55 bg-white/5 border border-white/8 rounded px-1 py-0.5 shrink-0 tabular-nums">{term}</span>
+                      <span className="text-[10px] text-white/38 leading-snug">{def}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Viewing context — very subtle, single line */}
               {!playersLoading && selectedMatch && (
-                <div className="flex items-center gap-1.5 flex-wrap px-0.5" style={{ width: "100%", minWidth: 0, overflow: "hidden" }}>
-                  <span className="text-[10px] font-semibold text-white/18 uppercase tracking-widest shrink-0">Viewing</span>
-                  <span className="text-[10px] text-white/35 truncate min-w-0" style={{ flex: "1 1 0", minWidth: 0 }}>{selectedMatch.match_label}</span>
-                  <span className="text-white/12 text-[10px] shrink-0">·</span>
-                  <span className="text-[10px] text-white/28 shrink-0">{lens === "disposals" ? "Disposals" : "Goals"}</span>
-                  {players.length > 0 && (
-                    <>
-                      <span className="text-white/12 text-[10px] shrink-0">·</span>
-                      <span className="text-[10px] text-white/22 shrink-0">{players.length} players</span>
-                    </>
-                  )}
+                <div className="flex items-center gap-1 px-0.5 overflow-hidden" style={{ width: "100%", minWidth: 0 }}>
+                  <span className="text-[10px] text-white/25 truncate min-w-0 flex-1">
+                    {selectedMatch.match_label} · {lens === "disposals" ? "Disposals" : "Goals"}
+                    {players.length > 0 ? ` · ${players.length} players` : ""}
+                  </span>
                 </div>
               )}
             </div>
@@ -562,7 +601,7 @@ export default function StatBoardPlayersPage() {
             </div>
           </div>
 
-          {/* Context row — desktop only (mobile uses the card row above) */}
+          {/* Context row — desktop only */}
           {!playersLoading && selectedMatch && (
             <div className="mb-3 sm:mb-5 hidden sm:flex items-center gap-1.5 flex-wrap text-[12px] text-white/48">
               <span className="text-white/30 text-[11px]">Viewing:</span>
@@ -583,24 +622,24 @@ export default function StatBoardPlayersPage() {
 
           {/* Locked banner */}
           {isLocked && (
-            <div className="mb-4 flex items-start gap-3 rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/5 px-4 py-3.5">
+            <div className="mb-3 flex items-start gap-3 rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/5 px-3 sm:px-4 py-3">
               <Lock className="h-4 w-4 shrink-0 text-[#F5C84C] mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-[#F5C84C] leading-snug">This matchup is locked</p>
-                <p className="text-xs text-white/45 mt-0.5 leading-relaxed">
+                <p className="text-[11px] text-white/40 mt-0.5 leading-relaxed hidden sm:block">
                   Neeko+ unlocks the full round — every match, projection, hit rate and trend.
                 </p>
-                <div className="mt-2.5 flex items-center gap-2.5 flex-wrap">
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <button
                     onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Unlock this matchup", section: "locked_banner" }); window.location.href = "/neeko-plus"; }}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#F5C84C]/15 border border-[#F5C84C]/30 px-3.5 py-1.5 text-[11px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/25 transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#F5C84C]/15 border border-[#F5C84C]/30 px-3 py-1.5 text-[11px] font-semibold text-[#F5C84C] hover:bg-[#F5C84C]/25 transition-colors"
                   >
                     Unlock this matchup
                   </button>
                   <Link
                     to="/stat-board/players"
                     onClick={() => trackFreeGamesCTA({ button_text: "View free games", source: "stat_board_players", section: "locked_banner" })}
-                    className="text-[11px] font-semibold text-white/40 hover:text-white/65 transition-colors"
+                    className="text-[11px] font-semibold text-white/38 hover:text-white/65 transition-colors"
                   >
                     View free games
                   </Link>
@@ -611,7 +650,7 @@ export default function StatBoardPlayersPage() {
 
           {/* Players error */}
           {playersError && (
-            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+            <div className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
               Could not load players. Please try again.
             </div>
           )}
@@ -668,7 +707,7 @@ export default function StatBoardPlayersPage() {
           )}
         </div>
       </div>
-      {!hasFullAccess && (
+      {!hasFullAccess && mobileStickyVisible && (
         <MobileUpgradeBar
           state={selectedMatch?.is_locked ? "locked" : "free"}
         />
@@ -1033,7 +1072,7 @@ const TeamBoard = memo(function TeamBoard({
   const headerCount = searchActive
     ? `${totalCount} ${totalCount === 1 ? "player" : "players"} found`
     : isCapped
-    ? `${TOP_N} of ${totalCount} shown`
+    ? `Top ${TOP_N} shown · ${totalCount} available`
     : `${totalCount} ${totalCount === 1 ? "player" : "players"}`;
 
   const showMoreBtn = needsCap && (
