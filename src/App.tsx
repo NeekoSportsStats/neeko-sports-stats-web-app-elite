@@ -1,6 +1,6 @@
 import React, { Suspense, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
-import { track, captureAttribution } from "@/lib/analytics";
+import { trackPageView, captureAttribution, startEngagementTracking, stopEngagementTracking } from "@/lib/analytics";
 import { useCanonical } from "@/hooks/useCanonical";
 import { Layout } from "@/components/Layout";
 import { LandingLayout } from "@/components/LandingLayout";
@@ -101,7 +101,10 @@ function App() {
   }, []);
 
   useEffect(() => {
-    track("Page View", { path: location.pathname });
+    captureAttribution();
+    trackPageView(location.pathname);
+    startEngagementTracking();
+    return () => stopEngagementTracking();
   }, [location.pathname]);
 
   return (

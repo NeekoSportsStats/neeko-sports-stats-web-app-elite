@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
-import { trackNeekoPlus, trackCheckoutEvent, trackGateInteraction } from "@/lib/analytics";
+import { trackNeekoPlus, trackCheckoutEvent, trackGateInteraction, trackCheckoutStartClicked, trackCheckoutRedirectAttempted } from "@/lib/analytics";
 import { Check, Crown, Loader as Loader2, TrendingUp, Target, Zap, Shield, ArrowRight, Lock, Clock, ChartBar as BarChart2, Activity, ChartLine as LineChart, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { NEEKO_PRICING, NeekoPlan } from "@/config/neekoPricing";
@@ -515,6 +515,7 @@ const NeekoPlusPurchase = () => {
       }
 
       trackNeekoPlus({ source: "neeko_plus_page", plan, button_text: plan === "season" ? "Get Full Season Access" : "Start Weekly" });
+      trackCheckoutStartClicked({ plan, source: "neeko_plus_page" });
 
       const origin = window.location.origin;
 
@@ -548,6 +549,7 @@ const NeekoPlusPurchase = () => {
         stripe_session_id: data.sessionId ?? undefined,
       });
 
+      trackCheckoutRedirectAttempted({ plan, session_url_received: true });
       window.location.assign(data.url);
     } catch (err: any) {
       toast({

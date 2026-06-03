@@ -149,7 +149,7 @@ async function getDailyActiveUsers(
           uniqIf(distinct_id, timestamp >= now() - interval 7 day) as wau,
           uniqIf(distinct_id, timestamp >= now() - interval 30 day) as mau
         FROM events
-        WHERE event = '$pageview'
+        WHERE event IN ('page_viewed', '$pageview')
           AND ${adminExclusionWhere(includeAdmin)}
         LIMIT 1
       `,
@@ -177,15 +177,16 @@ async function getTopPages(
       kind: "HogQLQuery",
       query: `
         SELECT
-          ${cleanPathExpr("properties.$current_url")} as clean_path,
+          coalesce(
+            NULLIF(JSONExtractString(properties, 'clean_page_path'), ''),
+            ${cleanPathExpr("properties.$current_url")}
+          ) as clean_path,
           count() as views,
           uniq(distinct_id) as unique_users
         FROM events
-        WHERE event = '$pageview'
+        WHERE event IN ('page_viewed', '$pageview')
           AND timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND ${adminExclusionWhere(includeAdmin)}
-          AND properties.$current_url IS NOT NULL
-          AND properties.$current_url != ''
         GROUP BY clean_path
         HAVING clean_path IS NOT NULL AND clean_path != ''
         ORDER BY views DESC
@@ -322,8 +323,8 @@ async function getAcquisitionData(
             coalesce(properties.utm_medium, 'cpc') as medium,
             count() as pageviews,
             uniq(distinct_id) as users,
-            countIf(event IN ('landing_cta_clicked', 'pricing_cta_clicked', 'neeko_plus_clicked')) as cta_clicks,
-            countIf(event = 'checkout_started') as checkout_starts,
+            countIf(event IN ('cta_clicked', 'landing_cta_clicked', 'pricing_cta_clicked', 'neeko_plus_clicked')) as cta_clicks,
+            countIf(event IN ('checkout_start_clicked', 'checkout_started')) as checkout_starts,
             countIf(event IN ('subscription_activated', 'checkout_success')) as purchases
           FROM events
           WHERE timestamp >= now() - interval ${interval}
@@ -410,20 +411,15 @@ async function getFunnelData(
       kind: "HogQLQuery",
       query: `
         SELECT
-          countIf(event = '$pageview') as page_views,
-          uniqIf(distinct_id, event = '$pageview') as unique_visitors,
-          countIf(event = 'premium_gate_viewed') as gate_views,
-          countIf(event = 'locked_cell_clicked') as locked_cell_clicks,
-          countIf(event = 'landing_cta_clicked') as landing_cta_clicks,
-          countIf(event = 'pricing_cta_clicked') as pricing_cta_clicks,
-          countIf(event = 'neeko_plus_clicked') as neeko_plus_clicks,
-          countIf(event IN (
-            'free_games_cta_clicked', 'unlock_all_games_clicked',
-            'unlock_this_matchup_clicked', 'stat_board_upgrade_clicked',
-            'mobile_sticky_cta_clicked', 'marketing_cta_clicked',
-            'hero_cta_clicked', 'view_free_games_clicked', 'unlock_full_round_clicked'
-          )) as product_cta_clicks,
-          countIf(event = 'checkout_started') as checkout_started,
+          countIf(event IN ('page_viewed', '$pageview')) as page_views,
+          uniqIf(distinct_id, event IN ('page_viewed', '$pageview')) as unique_visitors,
+          countIf(event IN ('gate_viewed', 'premium_gate_viewed')) as gate_views,
+          countIf(event IN ('locked_data_clicked', 'locked_cell_clicked')) as locked_cell_clicks,
+          countIf(event = 'cta_clicked' AND JSONExtractString(properties, 'cta_location') = 'landing_hero') as landing_cta_clicks,
+          countIf(event = 'cta_clicked' AND JSONExtractString(properties, 'cta_location') LIKE '%pricing%') as pricing_cta_clicks,
+          countIf(event IN ('cta_clicked', 'neeko_plus_clicked')) as neeko_plus_clicks,
+          countIf(event = 'cta_clicked') as product_cta_clicks,
+          countIf(event IN ('checkout_start_clicked', 'checkout_started')) as checkout_started,
           countIf(event IN ('subscription_activated', 'checkout_success')) as checkout_success,
           countIf(event = 'checkout_cancelled') as checkout_cancelled
         FROM events
@@ -577,14 +573,17 @@ async function getCtaPerformance(
       kind: "HogQLQuery",
       query: `
         SELECT
-          event,
-          JSONExtractString(properties, 'button_text') as button_text,
-          JSONExtractString(properties, 'section') as section,
-          JSONExtractString(properties, 'source') as source,
-          ${cleanPathExpr("properties.$current_url")} as clean_path,
+          coalesce(NULLIF(JSONExtractString(properties, 'cta_location'), ''), event) as cta_location,
+          JSONExtractString(properties, 'cta_text') as cta_text,
+          JSONExtractString(properties, 'cta_type') as cta_type,
+          coalesce(
+            NULLIF(JSONExtractString(properties, 'clean_page_path'), ''),
+            ${cleanPathExpr("properties.$current_url")}
+          ) as clean_path,
           count() as clicks
         FROM events
         WHERE event IN (
+                        'cta_clicked',
                         'landing_cta_clicked', 'pricing_cta_clicked', 'neeko_plus_clicked',
                         'premium_gate_cta_clicked', 'locked_cell_clicked', 'marketing_cta_clicked',
                         'free_games_cta_clicked', 'unlock_all_games_clicked',
@@ -594,7 +593,7 @@ async function getCtaPerformance(
                        )
           AND timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND ${adminExclusionWhere(includeAdmin)}
-        GROUP BY event, button_text, section, source, clean_path
+        GROUP BY cta_location, cta_text, cta_type, clean_path
         ORDER BY clicks DESC
         LIMIT 40
       `,
@@ -602,11 +601,11 @@ async function getCtaPerformance(
     const rows = (result as any)?.results ?? [];
     return rows.map((row: unknown[]) => ({
       event: String(row[0] ?? ""),
-      button_text: String(row[1] ?? ""),
-      section: String(row[2] ?? ""),
-      source: String(row[3] ?? ""),
-      clean_path: String(row[4] ?? ""),
-      clicks: Number(row[5]) || 0,
+      cta_location: String(row[0] ?? ""),
+      cta_text: String(row[1] ?? ""),
+      cta_type: String(row[2] ?? ""),
+      clean_path: String(row[3] ?? ""),
+      clicks: Number(row[4]) || 0,
     }));
   } catch {
     return [];
@@ -632,7 +631,7 @@ async function getDeviceBreakdown(
           count() as pageviews,
           uniq(distinct_id) as users
         FROM events
-        WHERE event = '$pageview'
+        WHERE event IN ('page_viewed', '$pageview')
           AND timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND ${adminExclusionWhere(includeAdmin)}
         GROUP BY os, browser, device_type
@@ -677,6 +676,7 @@ async function getEngagedSessions(
             ${sessionIdExpr()} as sid,
             countIf(event = '$pageview') as pageview_count,
             countIf(event IN (
+              'cta_clicked',
               'landing_cta_clicked','pricing_cta_clicked','neeko_plus_clicked',
               'premium_gate_cta_clicked','free_games_cta_clicked','unlock_all_games_clicked',
               'unlock_this_matchup_clicked','stat_board_upgrade_clicked','mobile_sticky_cta_clicked',
@@ -728,12 +728,13 @@ async function getSessionReviewShortlist(
           ${sessionIdExpr()} as sid,
           countIf(event = '$pageview') as page_views,
           countIf(event IN (
+            'cta_clicked',
             'landing_cta_clicked','pricing_cta_clicked','neeko_plus_clicked',
             'premium_gate_cta_clicked','free_games_cta_clicked','unlock_all_games_clicked',
             'unlock_this_matchup_clicked','stat_board_upgrade_clicked','mobile_sticky_cta_clicked',
             'marketing_cta_clicked','hero_cta_clicked','view_free_games_clicked','unlock_full_round_clicked'
           )) as cta_clicks,
-          countIf(event IN ('checkout_started')) as checkout_starts,
+          countIf(event IN ('checkout_start_clicked', 'checkout_started')) as checkout_starts,
           countIf(event IN ('stat_board_filter_used','stat_board_player_expand','rankings_view','market_watch_view','edge_board_view')) as product_events,
           min(timestamp) as session_start,
           max(timestamp) as session_end,
@@ -881,25 +882,28 @@ async function getTimeOnPage(
       kind: "HogQLQuery",
       query: `
         SELECT
-          ${cleanPathExpr("properties.$current_url")} as page,
+          coalesce(
+            NULLIF(JSONExtractString(properties, 'clean_page_path'), ''),
+            ${cleanPathExpr("properties.$current_url")}
+          ) as page,
           count() as pageviews,
           countIf(duration_sec IS NOT NULL AND duration_sec > 0) as timed_exits,
           avgIf(duration_sec, duration_sec IS NOT NULL AND duration_sec > 0 AND duration_sec < 3600) as avg_time
         FROM (
           SELECT
             properties.$current_url,
+            properties.clean_page_path,
             event,
             ${sessionIdExpr()} as sid,
             timestamp,
             toInt64(dateDiff('second', timestamp, leadInFrame(timestamp) OVER (PARTITION BY ${sessionIdExpr()} ORDER BY timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING))) as duration_sec
           FROM events
-          WHERE event = '$pageview'
+          WHERE event IN ('page_viewed', '$pageview')
             AND timestamp >= now() - interval ${intervalExpr(hours, days)}
             AND ${adminExclusionWhere(includeAdmin)}
             AND ${sessionIdExpr()} IS NOT NULL
             AND ${sessionIdExpr()} != ''
-            AND properties.$current_url IS NOT NULL
-            AND properties.$current_url != ''
+            AND (properties.clean_page_path IS NOT NULL OR properties.$current_url IS NOT NULL)
         )
         GROUP BY page
         HAVING page IS NOT NULL AND page != ''
