@@ -1193,8 +1193,16 @@ export default function AdminMarketingInsights() {
             />
             <StatCard
               label="Sessions"
-              value={safeNumber(sessions?.total_sessions, "0")}
-              sub={`${safeInt(sessions?.multi_page_sessions)} multi-page`}
+              value={
+                sessions?.total_sessions === 0 && (funnel?.page_views ?? 0) > 0
+                  ? "—"
+                  : safeNumber(sessions?.total_sessions, "—")
+              }
+              sub={
+                sessions?.total_sessions === 0 && (funnel?.page_views ?? 0) > 0
+                  ? "No session data available"
+                  : `${safeInt(sessions?.multi_page_sessions)} multi-page`
+              }
               icon={Users}
               accent="bg-blue-500/10"
             />
@@ -1375,7 +1383,7 @@ export default function AdminMarketingInsights() {
                       <tr className="border-b border-border/40">
                         <th className="text-left font-medium text-muted-foreground pb-2 pr-3">Source</th>
                         <th className="text-left font-medium text-muted-foreground pb-2 pr-3">Medium</th>
-                        <th className="text-right font-medium text-muted-foreground pb-2">Sessions</th>
+                        <th className="text-right font-medium text-muted-foreground pb-2">Views</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1385,6 +1393,7 @@ export default function AdminMarketingInsights() {
                           <td className="py-2 pr-3 text-muted-foreground">{row.medium || "—"}</td>
                           <td className="py-2 text-right tabular-nums font-semibold">{safeInt(row.sessions).toLocaleString()}</td>
                         </tr>
+
                       ))}
                     </tbody>
                   </table>

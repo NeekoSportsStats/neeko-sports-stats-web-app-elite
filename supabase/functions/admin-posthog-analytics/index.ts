@@ -80,6 +80,17 @@ function adminExclusionWhere(includeAdmin: boolean): string {
 }
 
 /**
+ * Returns a HogQL expression for the session identifier.
+ * PostHog natively populates properties.$session_id when session recording is enabled.
+ * If not enabled, fall back to the custom `session_id` property set by analytics.ts
+ * in baseProperties() — this is a localStorage UUID stored as `session_id` (no $ prefix).
+ * Using coalesce means either source works.
+ */
+function sessionIdExpr(): string {
+  return `coalesce(properties.$session_id, JSONExtractString(properties, 'session_id'))`;
+}
+
+/**
  * Extracts clean path from URL (strips query string and hash).
  * Uses NULLIF to turn empty strings into NULL so they can be filtered.
  * Bug fix: splitByChar on null URL returns "" — wrapping in NULLIF prevents
@@ -663,7 +674,7 @@ async function getEngagedSessions(
           countIf(has_product_event) as sessions_with_product
         FROM (
           SELECT
-            properties.$session_id,
+            ${sessionIdExpr()} as sid,
             countIf(event = '$pageview') as pageview_count,
             countIf(event IN (
               'landing_cta_clicked','pricing_cta_clicked','neeko_plus_clicked',
@@ -675,8 +686,9 @@ async function getEngagedSessions(
           FROM events
           WHERE timestamp >= now() - interval ${intervalExpr(hours, days)}
             AND ${adminExclusionWhere(includeAdmin)}
-            AND properties.$session_id IS NOT NULL
-          GROUP BY properties.$session_id
+            AND ${sessionIdExpr()} IS NOT NULL
+            AND ${sessionIdExpr()} != ''
+          GROUP BY sid
         )
       `,
     });
@@ -713,7 +725,7 @@ async function getSessionReviewShortlist(
       kind: "HogQLQuery",
       query: `
         SELECT
-          properties.$session_id,
+          ${sessionIdExpr()} as sid,
           countIf(event = '$pageview') as page_views,
           countIf(event IN (
             'landing_cta_clicked','pricing_cta_clicked','neeko_plus_clicked',
@@ -749,8 +761,9 @@ async function getSessionReviewShortlist(
         FROM events
         WHERE timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND ${adminExclusionWhere(includeAdmin)}
-          AND properties.$session_id IS NOT NULL
-        GROUP BY properties.$session_id
+          AND ${sessionIdExpr()} IS NOT NULL
+          AND ${sessionIdExpr()} != ''
+        GROUP BY sid
         HAVING cta_clicks > 0 OR checkout_starts > 0 OR (page_views >= 3 AND product_events >= 2)
         ORDER BY cta_clicks DESC, product_events DESC
         LIMIT 25
@@ -800,13 +813,14 @@ async function getSessionDurationMetrics(
           countIf(duration_sec >= 300) as over_300s
         FROM (
           SELECT
-            properties.$session_id,
+            ${sessionIdExpr()} as sid,
             toInt64(dateDiff('second', min(timestamp), max(timestamp))) as duration_sec
           FROM events
           WHERE timestamp >= now() - interval ${intervalExpr(hours, days)}
             AND ${adminExclusionWhere(includeAdmin)}
-            AND properties.$session_id IS NOT NULL
-          GROUP BY properties.$session_id
+            AND ${sessionIdExpr()} IS NOT NULL
+            AND ${sessionIdExpr()} != ''
+          GROUP BY sid
           HAVING duration_sec >= 0
         )
       `,
@@ -814,6 +828,7 @@ async function getSessionDurationMetrics(
     const row = ((result as any)?.results ?? [])[0];
     if (Array.isArray(row)) {
       const total = Number(row[0]) || 0;
+      if (total === 0) return { available: false };
       const avg = Number(row[1]) || 0;
       const median = Number(row[2]) || 0;
       const under10 = Number(row[3]) || 0;
@@ -874,14 +889,15 @@ async function getTimeOnPage(
           SELECT
             properties.$current_url,
             event,
-            properties.$session_id,
+            ${sessionIdExpr()} as sid,
             timestamp,
-            toInt64(dateDiff('second', timestamp, leadInFrame(timestamp) OVER (PARTITION BY properties.$session_id ORDER BY timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING))) as duration_sec
+            toInt64(dateDiff('second', timestamp, leadInFrame(timestamp) OVER (PARTITION BY ${sessionIdExpr()} ORDER BY timestamp ROWS BETWEEN CURRENT ROW AND 1 FOLLOWING))) as duration_sec
           FROM events
           WHERE event = '$pageview'
             AND timestamp >= now() - interval ${intervalExpr(hours, days)}
             AND ${adminExclusionWhere(includeAdmin)}
-            AND properties.$session_id IS NOT NULL
+            AND ${sessionIdExpr()} IS NOT NULL
+            AND ${sessionIdExpr()} != ''
             AND properties.$current_url IS NOT NULL
             AND properties.$current_url != ''
         )
@@ -1022,8 +1038,10 @@ async function getMarketingInsights(
   }
   if ((sessionData as any).total_sessions === 0 && f.page_views > 0) {
     dataNotes.push(
-      `Sessions = 0. PostHog session data uses properties.$session_id. ` +
-      `If this persists after refresh, sessions may not be enabled on your PostHog project, or the SDK version is older.`
+      `Sessions = 0 despite ${f.page_views} page views. ` +
+      `This dashboard tries both PostHog's native $session_id and the custom session_id property sent by analytics.ts. ` +
+      `If both are absent, session grouping returns 0. ` +
+      `Check that posthog.init() has persistence enabled (it does) and that events are being captured from real browser sessions.`
     );
   }
   // Device/referrer count clarification — always add for transparency

@@ -357,3 +357,21 @@ export function trackMobileStickyCTA(params: {
   if (isAdminRoute()) return;
   track("mobile_sticky_cta_clicked", params);
 }
+
+export function trackViewFreeGames(params: {
+  source: string;
+  section?: string;
+  match_label?: string;
+}) {
+  if (isAdminRoute()) return;
+  track("view_free_games_clicked", params);
+}
+
+export function trackUnlockFullRound(params: {
+  source: string;
+  round?: number | string;
+  section?: string;
+}) {
+  if (isAdminRoute()) return;
+  track("unlock_full_round_clicked", params);
+}
