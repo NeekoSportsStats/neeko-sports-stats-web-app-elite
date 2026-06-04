@@ -47,10 +47,14 @@ export function buildPost(
   };
 
   const hookCategory = contentTypeToHookCategory(slot.contentType, visibilityMode);
-  const hook = pickHook(hookCategory, usedHookIds);
-  const caption = pickCaption(hookCategory as CaptionCategory, usedCaptionIds);
 
   const selectedPlayers = selectPlayersForSlot(slot, allPlayers, settings);
+
+  // If a player-specific slot type has no player data, warn and shift to product education copy
+  const needsPlayers = slot.contentType === "player_spotlight" || slot.contentType === "player_spotlight_duo";
+  const noPlayersWarning = needsPlayers && selectedPlayers.length === 0
+    ? "No player data available — using product education copy. Regenerate after loading player stats."
+    : null;
 
   if (selectedPlayers.length > 0) {
     const p = selectedPlayers[0];
@@ -63,6 +67,10 @@ export function buildPost(
     tokens.statType  = p.statType;
   }
 
+  // Use product category if we needed players but have none
+  const effectiveHookCategory = noPlayersWarning ? ("product" as HookCategory) : hookCategory;
+  const hook    = pickHook(effectiveHookCategory, usedHookIds);
+  const caption = pickCaption(effectiveHookCategory as CaptionCategory, usedCaptionIds);
   const hookText    = replaceTokens(hook.template, tokens);
   const captionText = replaceTokens(caption.template, tokens);
   const shortCaption = `${hookText}\n\n${CTA}`;
@@ -75,11 +83,14 @@ export function buildPost(
     : generateCoverPrompt(slot.contentType, game ?? undefined, selectedPlayers);
 
   const safetyResult = checkSafety(`${hookText} ${captionText}`);
-  const warnings = safetyResult.flags.map(f =>
-    f.type === "banned"
-      ? `Banned word: "${f.word}"`
-      : f.suggestion ?? `Caution: "${f.word}"`
-  );
+  const warnings = [
+    ...(noPlayersWarning ? [noPlayersWarning] : []),
+    ...safetyResult.flags.map(f =>
+      f.type === "banned"
+        ? `Banned word: "${f.word}"`
+        : f.suggestion ?? `Caution: "${f.word}"`
+    ),
+  ];
 
   const visibilityBadge = visibilityMode === "open_free_game"
     ? "Free Game Board"

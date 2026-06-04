@@ -15,7 +15,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type { SocialPost, AFLGame, AFLPlayerStat, PostStatus } from "../types";
 import {
   dbGameToAFLGame, dbStatToAFLPlayerStat,
-  dbToPost, postToDb,
+  dbToPost, postToDb, isUuid,
   type DbGame, type DbPlayerStat, type DbPost,
 } from "../lib/dbAdapter";
 
@@ -78,14 +78,26 @@ export function useSocialPlannerData(): UseSocialPlannerDataReturn {
     });
   }, [withLoading]);
 
-  const fetchPlayerStats = useCallback((season: number): Promise<AFLPlayerStat[]> => {
-    return withLoading(async () => {
+  const fetchPlayerStats = useCallback(async (season: number): Promise<AFLPlayerStat[]> => {
+    setIsLoading(true);
+    try {
       const { data, error: err } = await supabase
         .rpc("get_social_planner_player_stats", { p_season: season, p_min_games: 3 });
-      if (err) throw new Error(err.message);
+      if (err) {
+        console.warn("[SocialPlanner] fetchPlayerStats RPC failed:", err.message, err.code);
+        setError("Player stats could not be loaded. Posts will generate without player data.");
+        return [];
+      }
       return ((data ?? []) as DbPlayerStat[]).map(dbStatToAFLPlayerStat);
-    });
-  }, [withLoading]);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn("[SocialPlanner] fetchPlayerStats unexpected error:", msg);
+      setError("Player stats could not be loaded. Posts will generate without player data.");
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const loadPosts = useCallback((round: number, season: number): Promise<SocialPost[]> => {
     return withLoading(async () => {
@@ -123,15 +135,26 @@ export function useSocialPlannerData(): UseSocialPlannerDataReturn {
   const upsertPost = useCallback((post: SocialPost): Promise<void> => {
     return withLoading(async () => {
       const row = postToDb(post);
-      const { error: err } = await supabase
-        .from("social_content_posts")
-        .upsert(row, { onConflict: "id" });
-      if (err) throw new Error(err.message);
+      if (isUuid(post.id)) {
+        // Post loaded from DB — update by id
+        const { error: err } = await supabase
+          .from("social_content_posts")
+          .update(row)
+          .eq("id", post.id);
+        if (err) throw new Error(err.message);
+      } else {
+        // Locally generated post — insert and let DB assign uuid
+        const { error: err } = await supabase
+          .from("social_content_posts")
+          .insert(row);
+        if (err) throw new Error(err.message);
+      }
     });
   }, [withLoading]);
 
   const updateStatus = useCallback((id: string, status: PostStatus): Promise<void> => {
     return withLoading(async () => {
+      if (!isUuid(id)) return; // local-only post, nothing in DB yet
       const { error: err } = await supabase
         .from("social_content_posts")
         .update({ status })

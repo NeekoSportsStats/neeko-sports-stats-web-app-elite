@@ -7,6 +7,14 @@ import type {
   CarouselSlide, ConfidenceTier,
 } from "../types";
 
+// ─── UUID validation ──────────────────────────────────────────────────────────
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isUuid(value: string | null | undefined): value is string {
+  return typeof value === "string" && UUID_RE.test(value);
+}
+
 // ─── DB row type (matches social_content_posts columns) ──────────────────────
 
 export interface DbPost {
@@ -18,6 +26,7 @@ export interface DbPost {
   day_of_week: string;
   content_type: string;
   game_id: string | null;
+  game_key: string | null;
   home_team: string | null;
   away_team: string | null;
   title: string;
@@ -123,16 +132,17 @@ export function dbStatToAFLPlayerStat(row: DbPlayerStat): AFLPlayerStat {
   };
 }
 
-export function postToDb(post: SocialPost): Partial<DbPost> {
+export function postToDb(post: SocialPost): Omit<Partial<DbPost>, "id"> & { game_key: string | null } {
   return {
-    id: post.id,
+    // Never send id — let Supabase generate via gen_random_uuid()
     round: post.round,
     season: post.season,
     date: post.date,
     scheduled_at: post.scheduledAt ?? null,
     day_of_week: post.dayOfWeek,
     content_type: post.contentType,
-    game_id: post.gameId ?? null,
+    game_id: isUuid(post.gameId) ? post.gameId : null,
+    game_key: post.gameId ?? null,
     home_team: post.homeTeam ?? null,
     away_team: post.awayTeam ?? null,
     title: post.title,
