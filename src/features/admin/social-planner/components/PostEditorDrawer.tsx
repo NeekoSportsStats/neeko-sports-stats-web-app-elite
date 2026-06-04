@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Copy, Check, RefreshCw, ChevronLeft, AlertTriangle, Shield, ShieldCheck } from "lucide-react";
+import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck } from "lucide-react";
 import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode } from "../types";
 import { checkSafety } from "../lib/safetyRules";
 import { SafetyCheckPanel } from "./SafetyCheckPanel";
