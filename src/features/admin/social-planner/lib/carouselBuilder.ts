@@ -174,7 +174,7 @@ function buildMatchBoardSlides(
     id: makeId("cta", slides.length),
     slideType: "cta",
     title: "See the Full Board",
-    subtitle: "neekostatistics.com.au",
+    subtitle: "neekostats.com.au",
     designNotes: "Brand CTA slide. Dark background, logo, URL.",
   });
 
@@ -213,7 +213,7 @@ function buildSpotlightSlides(
     id: makeId("cta", slides.length),
     slideType: "cta",
     title: "See the Full Board",
-    subtitle: "neekostatistics.com.au",
+    subtitle: "neekostats.com.au",
   });
 
   return slides;
@@ -250,7 +250,7 @@ function buildRoundSlides(
     id: makeId("cta", slides.length),
     slideType: "cta",
     title: "See the Full Board",
-    subtitle: "neekostatistics.com.au",
+    subtitle: "neekostats.com.au",
   });
 
   return slides;
@@ -282,7 +282,7 @@ function buildProductSlides(tokens: TokenMap): CarouselSlide[] {
       id: makeId("cta", 3),
       slideType: "cta",
       title: "Full Board at Neeko",
-      subtitle: "neekostatistics.com.au",
+      subtitle: "neekostats.com.au",
     },
   ];
 }
@@ -300,7 +300,7 @@ function buildStorySlides(tokens: TokenMap): CarouselSlide[] {
       id: makeId("cta", 1),
       slideType: "cta",
       title: "Full Board at Neeko",
-      subtitle: "neekostatistics.com.au",
+      subtitle: "neekostats.com.au",
     },
   ];
 }

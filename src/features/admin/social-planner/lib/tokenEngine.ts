@@ -31,11 +31,11 @@ export function getRequiredTokens(template: string): Set<string> {
 
 /** CTA variants — rotated per post. */
 export const CTA_VARIANTS = [
-  "See the full board at neekostatistics.com.au",
-  "Full board at neekostatistics.com.au",
-  "The complete board lives at neekostatistics.com.au",
-  "Find the full stat board at neekostatistics.com.au",
-  "More data inside — neekostatistics.com.au",
+  "See the full board at neekostats.com.au",
+  "Full board at neekostats.com.au",
+  "The complete board lives at neekostats.com.au",
+  "Find the full stat board at neekostats.com.au",
+  "More data inside — neekostats.com.au",
 ];
 
 let _ctaIndex = 0;
@@ -67,7 +67,7 @@ export function replaceTokens(template: string, tokens: TokenMap): string {
     "[lastFive]":     tokens.lastFive ?? "",
     "[statType]":     tokens.statType ?? "",
     "[contentTitle]": tokens.contentTitle ?? "",
-    "[cta]":          tokens.cta ?? "See the full board at neekostatistics.com.au",
+    "[cta]":          tokens.cta ?? "See the full board at neekostats.com.au",
   };
   for (const [key, value] of Object.entries(map)) {
     result = result.replaceAll(key, value);

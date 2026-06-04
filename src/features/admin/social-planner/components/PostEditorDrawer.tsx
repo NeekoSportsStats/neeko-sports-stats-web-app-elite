@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck } from "lucide-react";
+import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye } from "lucide-react";
 import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode } from "../types";
 import { checkSafety } from "../lib/safetyRules";
 import { SafetyCheckPanel } from "./SafetyCheckPanel";
@@ -7,6 +7,15 @@ import { pickHook, type HookCategory } from "../lib/hookLibrary";
 import { pickCaption, type CaptionCategory } from "../lib/captionLibrary";
 import { replaceTokens, gameLabel } from "../lib/tokenEngine";
 import type { TokenMap } from "../types";
+import {
+  buildFullCarouselPrompt,
+  buildSlidePromptPackage,
+  buildBackgroundPromptPackage,
+  buildFullSlideTextPackage,
+  buildFullPostPackage,
+  checkPromptHealth,
+  type PromptMode,
+} from "../lib/carouselPromptBuilder";
 
 const STATUS_OPTIONS: PostStatus[] = ["draft", "ready", "scheduled", "posted", "archived"];
 
@@ -78,7 +87,8 @@ export function PostEditorDrawer({ post, onClose, onSave }: PostEditorDrawerProp
   const hasMissingRequired = edited.warnings.some(w =>
     w.includes("selection required") || w.includes("before marking")
   );
-  const canMarkReady = !hasSafetyIssues && !hasMissingRequired && edited.status !== "ready";
+  const promptHealth = checkPromptHealth(edited);
+  const canMarkReady = !hasSafetyIssues && !hasMissingRequired && promptHealth.isComplete && edited.status !== "ready";
 
   const totalIssues = edited.warnings.length + (hasSafetyIssues ? 1 : 0);
 
@@ -226,6 +236,9 @@ export function PostEditorDrawer({ post, onClose, onSave }: PostEditorDrawerProp
             )}
             {hasMissingRequired && (
               <span className="hidden sm:inline text-[10px] text-amber-400">Required fields missing</span>
+            )}
+            {!promptHealth.isComplete && (
+              <span className="hidden sm:inline text-[10px] text-amber-400">Prompt incomplete</span>
             )}
             {canMarkReady && (
               <button
@@ -575,11 +588,21 @@ function buildSlideText(slide: CarouselSlide, index: number): string {
       if (row.blurred) {
         lines.push("[blurred row]");
       } else {
-        const parts: string[] = [row.playerName, `avg ${row.l5Avg.toFixed(1)}`];
-        if (row.threshold20) parts.push(`20+: ${row.threshold20}`);
-        if (row.threshold25) parts.push(`25+: ${row.threshold25}`);
-        if (row.threshold1Goal) parts.push(`1g+: ${row.threshold1Goal}`);
-        lines.push(parts.join(" | "));
+        const isDisposal = row.threshold15 != null || row.threshold20 != null;
+        if (isDisposal) {
+          const parts = [row.playerName, `avg ${row.l5Avg.toFixed(1)}`];
+          if (row.threshold15) parts.push(`15+: ${row.threshold15}`);
+          if (row.threshold20) parts.push(`20+: ${row.threshold20}`);
+          if (row.threshold25) parts.push(`25+: ${row.threshold25}`);
+          if (row.threshold30) parts.push(`30+: ${row.threshold30}`);
+          lines.push(parts.join(" | "));
+        } else {
+          const parts = [row.playerName, `avg ${row.l5Avg.toFixed(1)}`];
+          if (row.threshold1Goal)  parts.push(`1+: ${row.threshold1Goal}`);
+          if (row.threshold2Goals) parts.push(`2+: ${row.threshold2Goals}`);
+          if (row.threshold3Goals) parts.push(`3+: ${row.threshold3Goals}`);
+          lines.push(parts.join(" | "));
+        }
       }
     }
   }
@@ -616,7 +639,7 @@ function HookCaptionTab({
       l5Avg:     p?.l5Avg?.toFixed(1),
       lastFive:  p?.lastFive?.join(" · "),
       statType:  p?.statType,
-      cta:       "See the full board at neekostatistics.com.au",
+      cta:       "See the full board at neekostats.com.au",
     };
   }
 
@@ -645,7 +668,7 @@ function HookCaptionTab({
     const resolved = replaceTokens(newHook.template, buildTokenMap(edited));
     update("hook", resolved);
     update("usedHookId", newHook.id);
-    update("shortCaption", `${resolved}\n\nSee the full board at neekostatistics.com.au`);
+    update("shortCaption", `${resolved}\n\nSee the full board at neekostats.com.au`);
   }
 
   function regenerateCaption() {
@@ -668,7 +691,7 @@ function HookCaptionTab({
     const resolvedCaption = replaceTokens(newCaption.template, tokens);
     update("hook",           resolvedHook);
     update("caption",        resolvedCaption);
-    update("shortCaption",   `${resolvedHook}\n\nSee the full board at neekostatistics.com.au`);
+    update("shortCaption",   `${resolvedHook}\n\nSee the full board at neekostats.com.au`);
     update("usedHookId",     newHook.id);
     update("usedCaptionId",  newCaption.id);
   }
@@ -787,6 +810,12 @@ function SafetyBadge({ result }: { result: ReturnType<typeof checkSafety> }) {
 
 // ─── Tab: Image Prompts ───────────────────────────────────────────────────────
 
+const PROMPT_MODES: Array<{ value: PromptMode; label: string; desc: string }> = [
+  { value: "full_graphic",    label: "Full Graphic",    desc: "All text, tables & stats included in prompt" },
+  { value: "background_only", label: "Background Only", desc: "Clean background only — app adds text via template" },
+  { value: "template_export", label: "Template Export", desc: "Slide text package for template tools" },
+];
+
 function ImagePromptsTab({
   edited,
   update,
@@ -794,132 +823,331 @@ function ImagePromptsTab({
   edited: SocialPost;
   update: <K extends keyof SocialPost>(key: K, value: SocialPost[K]) => void;
 }) {
+  const [mode, setMode] = useState<PromptMode>(edited.promptMode ?? "full_graphic");
+  const health = checkPromptHealth(edited);
+
+  const fullCarouselPrompt    = buildFullCarouselPrompt(edited);
+  const slidePromptPackage    = buildSlidePromptPackage(edited);
+  const backgroundPromptPkg   = buildBackgroundPromptPackage(edited);
+  const fullSlideText         = buildFullSlideTextPackage(edited);
+
   const slidePrompts = edited.carouselSlides.filter(s => s.imagePrompt);
+
+  function handleModeChange(newMode: PromptMode) {
+    setMode(newMode);
+    update("promptMode", newMode);
+  }
 
   return (
     <div className="space-y-5">
-      {/* Cover prompt */}
+
+      {/* Data health warning */}
+      {!health.isComplete && (
+        <div className="rounded-lg bg-amber-950/30 border border-amber-700/50 p-3">
+          <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" />
+            Prompt Incomplete
+          </p>
+          <ul className="space-y-1">
+            {health.missingData.map((msg, i) => (
+              <li key={i} className="text-xs text-amber-300/80">{msg}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Prompt Mode Selector */}
+      <div>
+        <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Prompt Mode</p>
+        <div className="grid grid-cols-3 gap-2">
+          {PROMPT_MODES.map(m => (
+            <button
+              key={m.value}
+              onClick={() => handleModeChange(m.value)}
+              className={`rounded-lg border p-2.5 text-left transition-colors
+                ${mode === m.value
+                  ? "border-sky-600 bg-sky-950/40 text-sky-300"
+                  : "border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"}`}
+            >
+              <p className="text-[11px] font-semibold mb-0.5">{m.label}</p>
+              <p className="text-[10px] leading-tight opacity-75">{m.desc}</p>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="h-px bg-zinc-800" />
+
+      {/* Full Carousel Prompt */}
+      {mode === "full_graphic" && (
+        <>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-2">
+                <Layers className="w-3.5 h-3.5 text-zinc-400" />
+                <label className="text-xs font-medium text-zinc-300">Full Carousel Prompt</label>
+              </div>
+              <CopyIconButton value={fullCarouselPrompt} label="Copy All" />
+            </div>
+            <p className="text-[10px] text-zinc-500 mb-2">
+              One large prompt describing all {edited.carouselSlides.length} slides together.
+              Paste into Midjourney, DALL-E, or your image generator.
+            </p>
+            <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3 max-h-60 overflow-y-auto">
+              <pre className="text-[10px] text-zinc-300 font-mono leading-relaxed whitespace-pre-wrap break-words">
+                {fullCarouselPrompt}
+              </pre>
+            </div>
+          </div>
+
+          <div className="h-px bg-zinc-800" />
+
+          {/* Slide-by-Slide Prompt Package */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-2">
+                <FileText className="w-3.5 h-3.5 text-zinc-400" />
+                <label className="text-xs font-medium text-zinc-300">Slide-by-Slide Prompt Package</label>
+              </div>
+              <CopyIconButton value={slidePromptPackage} label="Copy Package" />
+            </div>
+            <p className="text-[10px] text-zinc-500 mb-2">
+              Separate prompts for each slide — use when generating slides individually.
+            </p>
+            <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3 max-h-60 overflow-y-auto">
+              <pre className="text-[10px] text-zinc-300 font-mono leading-relaxed whitespace-pre-wrap break-words">
+                {slidePromptPackage}
+              </pre>
+            </div>
+          </div>
+
+          <div className="h-px bg-zinc-800" />
+
+          {/* Individual Slide Prompts */}
+          {slidePrompts.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">Individual Slide Prompts</p>
+              <div className="space-y-3">
+                {edited.carouselSlides.map((slide, i) => (
+                  <IndividualSlidePromptCard key={slide.id} slide={slide} index={i} post={edited} />
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Background Only Prompts */}
+      {mode === "background_only" && (
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-2">
+              <Image className="w-3.5 h-3.5 text-zinc-400" />
+              <label className="text-xs font-medium text-zinc-300">Background Prompt Package</label>
+            </div>
+            <CopyIconButton value={backgroundPromptPkg} label="Copy All" />
+          </div>
+          <div className="rounded-lg bg-amber-950/20 border border-amber-800/30 px-3 py-2 mb-3">
+            <p className="text-[10px] text-amber-300/80">
+              BACKGROUND ONLY — these prompts generate clean backgrounds with no text.
+              Your app or template system will overlay all text, tables and stats.
+            </p>
+          </div>
+          <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3 max-h-80 overflow-y-auto">
+            <pre className="text-[10px] text-zinc-300 font-mono leading-relaxed whitespace-pre-wrap break-words">
+              {backgroundPromptPkg}
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {/* Template Export */}
+      {mode === "template_export" && (
+        <div>
+          <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center gap-2">
+              <Eye className="w-3.5 h-3.5 text-zinc-400" />
+              <label className="text-xs font-medium text-zinc-300">Full Slide Text Package</label>
+            </div>
+            <CopyIconButton value={fullSlideText} label="Copy Text" />
+          </div>
+          <p className="text-[10px] text-zinc-500 mb-2">
+            Exact text content for each slide — not an image prompt. Use with Canva, Figma, or custom templates.
+          </p>
+          <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3 max-h-80 overflow-y-auto">
+            <pre className="text-[10px] text-zinc-300 font-mono leading-relaxed whitespace-pre-wrap break-words">
+              {fullSlideText}
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {/* Cover image prompt (always visible) */}
+      <div className="h-px bg-zinc-800" />
       <div>
         <div className="flex items-center justify-between mb-1.5">
           <label className="text-xs font-medium text-zinc-400">Cover Image Prompt</label>
           <CopyIconButton value={edited.imagePrompt} label="Copy" />
         </div>
         <textarea
-          rows={5}
+          rows={4}
           value={edited.imagePrompt}
           onChange={e => update("imagePrompt", e.target.value)}
           className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-xs text-zinc-200 focus:outline-none focus:border-sky-600 resize-none font-mono leading-relaxed"
         />
       </div>
 
-      {/* Per-slide prompts */}
-      {slidePrompts.length > 0 ? (
-        <>
-          <div className="h-px bg-zinc-800" />
-          <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Per-slide Prompts</p>
-          <div className="space-y-3">
-            {slidePrompts.map((slide, i) => (
-              <div key={slide.id} className="rounded-lg bg-zinc-900 border border-zinc-800 overflow-hidden">
-                <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800/60">
-                  <p className="text-[10px] text-zinc-400">Slide {i + 1} — {slide.title}</p>
-                  <CopyIconButton value={slide.imagePrompt!} label="Copy" />
-                </div>
-                <div className="px-3 py-2.5">
-                  <p className="text-[11px] text-zinc-400 font-mono leading-relaxed whitespace-pre-wrap">
-                    {slide.imagePrompt}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      ) : (
-        <p className="text-xs text-zinc-600 text-center py-4">No per-slide image prompts generated.</p>
-      )}
-
-      {/* Safety reminder */}
+      {/* Prompt Guidelines */}
       <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3">
         <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Prompt Guidelines</p>
         <ul className="space-y-1 text-[10px] text-zinc-500">
-          <li>No page or slide numbers in prompts</li>
-          <li>No player photos on cover slides by default</li>
-          <li>No gambling language (bet, odds, picks, lock, line)</li>
-          <li>No bookmaker branding</li>
-          <li>No tipster phrasing</li>
+          <li>No page or slide numbers in any prompt</li>
+          <li>No player photos on cover slides</li>
+          <li>No gambling language: bet, odds, picks, lock, line, banker, multi, overs, unders</li>
+          <li>No bookmaker branding or tipster phrasing</li>
+          <li>Use ratios (12/12, 9/10) not percentages as main stat format</li>
+          <li>Open Free Game: all rows visible, no blur</li>
+          <li>Preview Blurred: top 3 visible, remainder blurred with CTA overlay</li>
         </ul>
       </div>
     </div>
   );
 }
 
+function IndividualSlidePromptCard({
+  slide,
+  index,
+  post,
+}: {
+  slide: CarouselSlide;
+  index: number;
+  post: SocialPost;
+}) {
+  const slideText = buildSlideCardText(slide, index);
+  const prompt    = slide.imagePrompt ?? "(no prompt generated for this slide)";
+
+  return (
+    <div className="rounded-lg bg-zinc-900 border border-zinc-800 overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800/60">
+        <div>
+          <p className="text-[10px] text-zinc-500 uppercase tracking-wider">
+            Slide {index + 1} · {slide.slideType.replace(/_/g, " ")}
+          </p>
+          <p className="text-xs font-medium text-zinc-200">{slide.title}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <CopyIconButton value={slideText} label="Text" />
+          <CopyIconButton value={prompt} label="Prompt" />
+        </div>
+      </div>
+      {/* Row preview */}
+      {slide.rows && slide.rows.length > 0 && (
+        <div className="px-3 py-2 border-b border-zinc-800/40 space-y-1">
+          {slide.rows.map((row, ri) => (
+            <div
+              key={ri}
+              className={`text-[10px] font-mono ${row.blurred ? "text-zinc-600 italic" : "text-zinc-400"}`}
+            >
+              {row.blurred
+                ? "(blurred row)"
+                : `${row.playerName} | avg ${row.l5Avg.toFixed(1)}`}
+            </div>
+          ))}
+        </div>
+      )}
+      {/* Prompt preview */}
+      {slide.imagePrompt && (
+        <div className="px-3 py-2.5">
+          <p className="text-[10px] text-zinc-500 mb-1">Image prompt</p>
+          <p className="text-[10px] text-zinc-500 font-mono leading-relaxed line-clamp-4">
+            {slide.imagePrompt}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function buildSlideCardText(slide: CarouselSlide, index: number): string {
+  const lines: string[] = [`SLIDE ${index + 1}: ${slide.title}`];
+  if (slide.subtitle) lines.push(slide.subtitle);
+  if (slide.rows && slide.rows.length > 0) {
+    lines.push("");
+    for (const row of slide.rows) {
+      if (row.blurred) {
+        lines.push("[blurred row]");
+      } else {
+        const isDisposal = row.threshold15 != null || row.threshold20 != null;
+        if (isDisposal) {
+          const parts = [row.playerName, `avg ${row.l5Avg.toFixed(1)}`];
+          if (row.threshold15) parts.push(`15+: ${row.threshold15}`);
+          if (row.threshold20) parts.push(`20+: ${row.threshold20}`);
+          if (row.threshold25) parts.push(`25+: ${row.threshold25}`);
+          if (row.threshold30) parts.push(`30+: ${row.threshold30}`);
+          lines.push(parts.join(" | "));
+        } else {
+          const parts = [row.playerName, `avg ${row.l5Avg.toFixed(1)}`];
+          if (row.threshold1Goal)  parts.push(`1+: ${row.threshold1Goal}`);
+          if (row.threshold2Goals) parts.push(`2+: ${row.threshold2Goals}`);
+          if (row.threshold3Goals) parts.push(`3+: ${row.threshold3Goals}`);
+          lines.push(parts.join(" | "));
+        }
+      }
+    }
+  }
+  if (slide.ctaOverlayText) {
+    lines.push("");
+    lines.push(`CTA: ${slide.ctaOverlayText}`);
+  }
+  return lines.join("\n");
+}
+
 // ─── Tab: Export / Copy ───────────────────────────────────────────────────────
 
 function ExportTab({ edited }: { edited: SocialPost }) {
-  const slideText = edited.carouselSlides
-    .map((s, i) => {
-      const rowLines = (s.rows ?? [])
-        .map(r => r.blurred ? "(blurred row)" : `${r.playerName} — avg ${r.l5Avg.toFixed(1)}`)
-        .join("\n");
-      return `--- Slide ${i + 1}: ${s.title} ---\n${s.subtitle ? s.subtitle + "\n" : ""}${rowLines}`;
-    })
-    .join("\n\n");
+  const health             = checkPromptHealth(edited);
+  const fullSlideText      = buildFullSlideTextPackage(edited);
+  const fullCarouselPrompt = buildFullCarouselPrompt(edited);
+  const slidePromptPkg     = buildSlidePromptPackage(edited);
+  const backgroundPkg      = buildBackgroundPromptPackage(edited);
+  const fullPostPackage    = buildFullPostPackage(edited);
 
   const safetyOk = checkSafety(edited.hook).isSafe && checkSafety(edited.caption).isSafe;
 
-  const packageText = [
-    `POST: ${edited.title}`,
-    `Round ${edited.round} · ${edited.season} · ${edited.dayOfWeek} ${edited.date}`,
-    edited.homeTeam && edited.awayTeam ? `Game: ${edited.homeTeam} v ${edited.awayTeam}` : null,
-    edited.visibilityBadge ? `Visibility: ${edited.visibilityBadge}` : null,
-    "",
-    "HOOK",
-    edited.hook,
-    "",
-    "CAPTION",
-    edited.caption,
-    "",
-    "SHORT CAPTION",
-    edited.shortCaption,
-    "",
-    "HASHTAGS",
-    edited.hashtags.join(" "),
-    slideText ? `\nSLIDES\n${slideText}` : null,
-    "",
-    "IMAGE PROMPT",
-    edited.imagePrompt,
-    "",
-    `SAFETY: ${safetyOk ? "Clean" : "Issues found — review before posting"}`,
-  ].filter(line => line !== null).join("\n");
-
-  const storyVersion = [
-    edited.hook,
-    "",
-    edited.shortCaption,
-    "",
-    edited.hashtags.slice(0, 5).join(" "),
-  ].join("\n");
-
-  const fields: Array<{ label: string; value: string; multiline?: boolean }> = [
-    { label: "Full Post Package", value: packageText, multiline: true },
-    { label: "Hook",              value: edited.hook },
-    { label: "Instagram Caption", value: edited.caption },
-    { label: "Short Caption",     value: edited.shortCaption },
-    { label: "Hashtags",          value: edited.hashtags.join(" ") },
-    { label: "Story Version",     value: storyVersion },
-    { label: "Image Prompt",      value: edited.imagePrompt },
-    { label: "Carousel Text",     value: slideText || "(no slide text)" },
+  const fields: Array<{ label: string; value: string; multiline?: boolean; warn?: boolean }> = [
+    { label: "Full Post Package",             value: fullPostPackage,    multiline: true },
+    { label: "Hook",                           value: edited.hook },
+    { label: "Instagram Caption",              value: edited.caption },
+    { label: "Short Caption",                  value: edited.shortCaption },
+    { label: "Hashtags",                       value: edited.hashtags.join(" ") },
+    { label: "Full Slide Text",                value: fullSlideText,     multiline: true },
+    { label: "Full Carousel Prompt",           value: fullCarouselPrompt, multiline: true, warn: !health.isComplete },
+    { label: "Slide-by-Slide Prompt Package",  value: slidePromptPkg,    multiline: true },
+    { label: "Background Prompt Package",      value: backgroundPkg,     multiline: true },
+    { label: "Cover Image Prompt",             value: edited.imagePrompt },
   ];
 
   return (
     <div className="space-y-4">
+      {!health.isComplete && (
+        <div className="rounded-lg bg-amber-950/30 border border-amber-700/50 p-3">
+          <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider mb-1">
+            <AlertTriangle className="w-3 h-3 inline mr-1" />
+            Incomplete prompt data
+          </p>
+          {health.missingData.map((msg, i) => (
+            <p key={i} className="text-[10px] text-amber-300/80">• {msg}</p>
+          ))}
+        </div>
+      )}
       {fields.map(f => (
-        <CopyField key={f.label} label={f.label} value={f.value} multiline={f.multiline} />
+        <CopyField key={f.label} label={f.label} value={f.value} multiline={f.multiline} warn={f.warn} />
       ))}
     </div>
   );
 }
 
-function CopyField({ label, value, multiline = false }: { label: string; value: string; multiline?: boolean }) {
+function CopyField({ label, value, multiline = false, warn = false }: { label: string; value: string; multiline?: boolean; warn?: boolean }) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
@@ -930,9 +1158,12 @@ function CopyField({ label, value, multiline = false }: { label: string; value: 
   }
 
   return (
-    <div className="rounded-lg bg-zinc-900 border border-zinc-800 overflow-hidden">
+    <div className={`rounded-lg border overflow-hidden ${warn ? "border-amber-800/50 bg-amber-950/20" : "bg-zinc-900 border-zinc-800"}`}>
       <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800/60">
-        <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{label}</p>
+        <div className="flex items-center gap-1.5">
+          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{label}</p>
+          {warn && <AlertTriangle className="w-2.5 h-2.5 text-amber-400" />}
+        </div>
         <button
           onClick={handleCopy}
           className={`flex items-center gap-1 text-[10px] transition-colors

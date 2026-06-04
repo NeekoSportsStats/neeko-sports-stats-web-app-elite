@@ -43,6 +43,11 @@ export interface DbPost {
   platform: string;
   used_hook_id: string | null;
   used_caption_id: string | null;
+  prompt_mode: string | null;
+  full_carousel_prompt: string | null;
+  carousel_prompt_package: string | null;
+  full_slide_text_package: string | null;
+  background_prompt_package: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -161,6 +166,11 @@ export function postToDb(post: SocialPost): Omit<Partial<DbPost>, "id"> & { game
     platform: post.platform,
     used_hook_id: post.usedHookId ?? null,
     used_caption_id: post.usedCaptionId ?? null,
+    prompt_mode: post.promptMode ?? null,
+    full_carousel_prompt: post.fullCarouselPrompt ?? null,
+    carousel_prompt_package: post.carouselPromptPackage ?? null,
+    full_slide_text_package: post.fullSlideTextPackage ?? null,
+    background_prompt_package: post.backgroundPromptPackage ?? null,
   };
 }
 
@@ -192,6 +202,11 @@ export function dbToPost(row: DbPost): SocialPost {
     updatedAt: row.updated_at,
     usedHookId: row.used_hook_id ?? undefined,
     usedCaptionId: row.used_caption_id ?? undefined,
+    promptMode: (row.prompt_mode as SocialPost["promptMode"]) ?? undefined,
+    fullCarouselPrompt: row.full_carousel_prompt ?? undefined,
+    carouselPromptPackage: row.carousel_prompt_package ?? undefined,
+    fullSlideTextPackage: row.full_slide_text_package ?? undefined,
+    backgroundPromptPackage: row.background_prompt_package ?? undefined,
   };
 }
 

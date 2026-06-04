@@ -114,6 +114,8 @@ export interface CarouselSlide {
   subtitle?: string;
   rows?: StatBoardRow[];
   imagePrompt?: string;
+  backgroundPrompt?: string;
+  slideText?: string;
   designNotes?: string;
   // Visibility mode fields (match_stat_board only)
   visibilityMode?: ContentVisibilityMode;
@@ -154,6 +156,12 @@ export interface SocialPost {
   // Visibility mode (match_stat_board only)
   visibilityMode?: ContentVisibilityMode;
   visibilityBadge?: string;
+  // Prompt packages
+  promptMode?: "full_graphic" | "background_only" | "template_export";
+  fullCarouselPrompt?: string;
+  carouselPromptPackage?: string;
+  fullSlideTextPackage?: string;
+  backgroundPromptPackage?: string;
   // UI-only: track which template IDs were used for dedup
   usedHookId?: string;
   usedCaptionId?: string;
@@ -201,7 +209,7 @@ export const DEFAULT_SETTINGS: PlannerSettings = {
   satSunVisibleRows: 3,
   satSunTotalRows: 8,
   weekendPostingMode: "one_per_game",
-  ctaOverlayText: "See the full board at neekostatistics.com.au",
+  ctaOverlayText: "See the full board at neekostats.com.au",
   showFreeGameBadge: true,
   showPreviewBadge: true,
 };

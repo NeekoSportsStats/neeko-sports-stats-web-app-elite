@@ -790,7 +790,7 @@ export const CAPTIONS: CaptionTemplate[] = [
     id: "cPv07",
     category: "preview_game",
     template:
-      "[game] — a sample from the Round [round] board.\n\nFull player form data lives at neekostatistics.com.au.\n\n[cta]",
+      "[game] — a sample from the Round [round] board.\n\nFull player form data lives at neekostats.com.au.\n\n[cta]",
   },
   {
     id: "cPv08",
@@ -859,7 +859,7 @@ export const CAPTIONS: CaptionTemplate[] = [
     id: "cpvg03",
     category: "preview_game",
     template:
-      "A sample from the [game] board — Round [round].\n\nMore records available at neekostatistics.com.au.\n\n[cta]",
+      "A sample from the [game] board — Round [round].\n\nMore records available at neekostats.com.au.\n\n[cta]",
   },
   {
     id: "cpvg04",
