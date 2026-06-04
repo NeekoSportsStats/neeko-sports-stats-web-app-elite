@@ -1,0 +1,192 @@
+/**
+ * Serialise SocialPost ↔ social_content_posts DB row.
+ */
+import type {
+  SocialPost, AFLGame, AFLPlayerStat,
+  ContentType, DayOfWeek, Platform, PostStatus,
+  CarouselSlide, ConfidenceTier,
+} from "../types";
+
+// ─── DB row type (matches social_content_posts columns) ──────────────────────
+
+export interface DbPost {
+  id: string;
+  round: number | null;
+  season: number | null;
+  date: string;
+  scheduled_at: string | null;
+  day_of_week: string;
+  content_type: string;
+  game_id: string | null;
+  home_team: string | null;
+  away_team: string | null;
+  title: string;
+  hook: string;
+  caption: string;
+  short_caption: string;
+  hashtags: string[];
+  image_prompt: string;
+  carousel_slides: unknown;
+  selected_players: unknown;
+  warnings: string[];
+  status: string;
+  platform: string;
+  used_hook_id: string | null;
+  used_caption_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ─── DB game row type ─────────────────────────────────────────────────────────
+
+export interface DbGame {
+  id: string;
+  round: number;
+  season: number;
+  start_time: string;
+  date: string;
+  day_of_week: string;
+  home_team: string;
+  away_team: string;
+  venue: string;
+  status: string;
+  is_thursday_game: boolean;
+  is_friday_game: boolean;
+  is_saturday_game: boolean;
+  is_sunday_game: boolean;
+}
+
+// ─── DB player stat row ───────────────────────────────────────────────────────
+
+export interface DbPlayerStat {
+  id: string;
+  player_id: string;
+  player_name: string;
+  team: string;
+  stat_type: string;
+  threshold: number;
+  threshold_label: string;
+  games_met: number;
+  games_played: number;
+  record_label: string;
+  percent: number;
+  l5_avg: number;
+  projection: number;
+  last_five: number[];
+  confidence_tier: string;
+  include_in_free_post: boolean;
+}
+
+// ─── Converters ───────────────────────────────────────────────────────────────
+
+export function dbGameToAFLGame(row: DbGame): AFLGame {
+  const day = normaliseDayOfWeek(row.day_of_week);
+  return {
+    id: row.id,
+    round: row.round,
+    season: row.season,
+    startTime: row.start_time,
+    date: row.date,
+    dayOfWeek: day,
+    homeTeam: row.home_team,
+    awayTeam: row.away_team,
+    venue: row.venue,
+    status: row.status as AFLGame["status"],
+    isThursdayGame: row.is_thursday_game,
+    isFridayGame: row.is_friday_game,
+    isSaturdayGame: row.is_saturday_game,
+    isSundayGame: row.is_sunday_game,
+  };
+}
+
+export function dbStatToAFLPlayerStat(row: DbPlayerStat): AFLPlayerStat {
+  return {
+    id: row.id,
+    playerId: row.player_id,
+    playerName: row.player_name,
+    team: row.team,
+    opponent: "",
+    gameId: "",
+    statType: row.stat_type as AFLPlayerStat["statType"],
+    threshold: row.threshold,
+    thresholdLabel: row.threshold_label,
+    gamesMet: row.games_met,
+    gamesPlayed: row.games_played,
+    recordLabel: row.record_label,
+    percent: Number(row.percent),
+    l5Avg: Number(row.l5_avg),
+    projection: Number(row.projection),
+    lastFive: row.last_five ?? [],
+    source: "supabase",
+    confidenceTier: row.confidence_tier as ConfidenceTier,
+    includeInFreePost: row.include_in_free_post,
+  };
+}
+
+export function postToDb(post: SocialPost): Partial<DbPost> {
+  return {
+    id: post.id,
+    round: post.round,
+    season: post.season,
+    date: post.date,
+    scheduled_at: post.scheduledAt ?? null,
+    day_of_week: post.dayOfWeek,
+    content_type: post.contentType,
+    game_id: post.gameId ?? null,
+    home_team: post.homeTeam ?? null,
+    away_team: post.awayTeam ?? null,
+    title: post.title,
+    hook: post.hook,
+    caption: post.caption,
+    short_caption: post.shortCaption,
+    hashtags: post.hashtags,
+    image_prompt: post.imagePrompt,
+    carousel_slides: post.carouselSlides,
+    selected_players: post.selectedPlayers,
+    warnings: post.warnings,
+    status: post.status,
+    platform: post.platform,
+    used_hook_id: post.usedHookId ?? null,
+    used_caption_id: post.usedCaptionId ?? null,
+  };
+}
+
+export function dbToPost(row: DbPost): SocialPost {
+  return {
+    id: row.id,
+    round: row.round ?? 1,
+    season: row.season ?? 2026,
+    date: row.date ?? "",
+    scheduledAt: row.scheduled_at ?? undefined,
+    dayOfWeek: (row.day_of_week as DayOfWeek) ?? "Mon",
+    contentType: (row.content_type as ContentType) ?? "player_spotlight",
+    gameId: row.game_id ?? undefined,
+    homeTeam: row.home_team ?? undefined,
+    awayTeam: row.away_team ?? undefined,
+    title: row.title,
+    hook: row.hook,
+    caption: row.caption,
+    shortCaption: row.short_caption,
+    hashtags: row.hashtags ?? [],
+    imagePrompt: row.image_prompt,
+    carouselSlides: (row.carousel_slides as CarouselSlide[]) ?? [],
+    selectedPlayers: (row.selected_players as AFLPlayerStat[]) ?? [],
+    warnings: row.warnings ?? [],
+    status: (row.status as PostStatus) ?? "draft",
+    platform: (row.platform as Platform) ?? "instagram",
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    usedHookId: row.used_hook_id ?? undefined,
+    usedCaptionId: row.used_caption_id ?? undefined,
+  };
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function normaliseDayOfWeek(raw: string): DayOfWeek {
+  const map: Record<string, DayOfWeek> = {
+    Mon: "Mon", Tue: "Tue", Wed: "Wed",
+    Thu: "Thu", Fri: "Fri", Sat: "Sat", Sun: "Sun",
+  };
+  return map[raw] ?? "Mon";
+}

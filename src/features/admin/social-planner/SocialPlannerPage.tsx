@@ -1,9 +1,10 @@
-import { useState, useCallback } from "react";
-import { RefreshCw, BookOpen, Calendar, List, Settings } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { RefreshCw, BookOpen, List, Settings, AlertCircle, Loader2 } from "lucide-react";
 import type { SocialPost, PostStatus, PlannerSettings, AFLGame, AFLPlayerStat } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
 import { buildWeekSchedule, getMondayOfWeek, type WeekSchedule } from "./lib/scheduleEngine";
 import { buildWeekPosts } from "./lib/postGenerator";
+import { useSocialPlannerData } from "./hooks/useSocialPlannerData";
 import { PlannerHeader } from "./components/PlannerHeader";
 import { WeeklyQueue } from "./components/WeeklyQueue";
 import { PostEditorDrawer } from "./components/PostEditorDrawer";
@@ -19,44 +20,89 @@ export default function SocialPlannerPage() {
   const [editingPost, setEditingPost] = useState<SocialPost | null>(null);
   const [tab, setTab] = useState<Tab>("queue");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [roundInitialised, setRoundInitialised] = useState(false);
 
-  function handleGenerate() {
+  const db = useSocialPlannerData();
+
+  // ── Auto-populate round + season from DB on mount ──────────────────────────
+  useEffect(() => {
+    (async () => {
+      const current = await db.fetchCurrentRound().catch(() => null);
+      if (current) {
+        setSettings(prev => ({
+          ...prev,
+          currentRound: current.week ?? prev.currentRound,
+          currentSeason: current.season ?? prev.currentSeason,
+        }));
+      }
+      setRoundInitialised(true);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Load existing posts for current round whenever round changes ───────────
+  useEffect(() => {
+    if (!roundInitialised) return;
+    (async () => {
+      const saved = await db.loadPosts(settings.currentRound, settings.currentSeason).catch(() => []);
+      if (saved.length > 0) setPosts(saved);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roundInitialised, settings.currentRound, settings.currentSeason]);
+
+  // ── Generate Week ──────────────────────────────────────────────────────────
+  const handleGenerate = useCallback(async () => {
     setIsGenerating(true);
 
-    // Derive Monday of the current week
-    const today = new Date().toISOString().split("T")[0];
-    const monday = getMondayOfWeek(today);
+    try {
+      const { currentRound, currentSeason } = settings;
+      const today = new Date().toISOString().split("T")[0];
+      const monday = getMondayOfWeek(today);
 
-    // In production this would pull from Supabase — using empty arrays as stubs
-    const games: AFLGame[] = [];
-    const players: AFLPlayerStat[] = [];
+      const [games, players] = await Promise.all([
+        db.fetchGames(currentRound, currentSeason).catch((): AFLGame[] => []),
+        db.fetchPlayerStats(currentSeason).catch((): AFLPlayerStat[] => []),
+      ]);
 
-    const newSchedule = buildWeekSchedule(
-      settings.currentRound,
-      settings.currentSeason,
-      monday,
-      games
+      const newSchedule = buildWeekSchedule(currentRound, currentSeason, monday, games);
+      const newPosts = buildWeekPosts(newSchedule.slots, settings, players, games);
+
+      setSchedule(newSchedule);
+      setPosts(newPosts);
+
+      // Persist in background — don't block the UI
+      db.savePosts(newPosts, currentRound, currentSeason).catch(console.error);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [settings, db]);
+
+  // ── Status change ──────────────────────────────────────────────────────────
+  const handleStatusChange = useCallback((id: string, status: PostStatus) => {
+    setPosts(prev =>
+      prev.map(p => p.id === id ? { ...p, status, updatedAt: new Date().toISOString() } : p)
     );
+    db.updateStatus(id, status).catch(console.error);
+  }, [db]);
 
-    const newPosts = buildWeekPosts(newSchedule.slots, settings, players, games);
-
-    setSchedule(newSchedule);
-    setPosts(newPosts);
-    setIsGenerating(false);
-  }
-
-  function handleStatusChange(id: string, status: PostStatus) {
-    setPosts(prev => prev.map(p => p.id === id ? { ...p, status, updatedAt: new Date().toISOString() } : p));
-  }
-
-  function handleSavePost(updatedPost: SocialPost) {
+  // ── Save edited post ───────────────────────────────────────────────────────
+  const handleSavePost = useCallback((updatedPost: SocialPost) => {
     setPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p));
-  }
+    db.upsertPost(updatedPost).catch(console.error);
+  }, [db]);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <PlannerHeader schedule={schedule} onSettings={() => setTab("settings")} />
+
+        {/* DB error banner */}
+        {db.error && (
+          <div className="flex items-center gap-2 mb-4 px-4 py-3 rounded-lg bg-red-950/50 border border-red-800/60 text-red-300 text-xs">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{db.error}</span>
+          </div>
+        )}
 
         {/* Tab bar */}
         <div className="flex items-center gap-1 mb-6 border-b border-zinc-800 pb-0">
@@ -84,18 +130,27 @@ export default function SocialPlannerPage() {
         {tab === "queue" && (
           <div>
             <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <p className="text-sm text-zinc-400">
                   Round {settings.currentRound} · Season {settings.currentSeason}
                 </p>
+                {db.isLoading && !isGenerating && (
+                  <Loader2 className="w-3.5 h-3.5 text-zinc-500 animate-spin" />
+                )}
               </div>
               <button
                 onClick={handleGenerate}
-                disabled={isGenerating}
+                disabled={isGenerating || db.isLoading}
                 className="flex items-center gap-2 px-4 py-2 text-xs rounded-md bg-sky-700 hover:bg-sky-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium transition-colors"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isGenerating ? "animate-spin" : ""}`} />
-                {posts.length > 0 ? "Regenerate Week" : "Generate Week"}
+                {isGenerating ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5" />
+                )}
+                {isGenerating
+                  ? "Generating..."
+                  : posts.length > 0 ? "Regenerate Week" : "Generate Week"}
               </button>
             </div>
 
