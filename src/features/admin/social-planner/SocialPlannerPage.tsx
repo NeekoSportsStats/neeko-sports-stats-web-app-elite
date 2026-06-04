@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { RefreshCw, BookOpen, List, Settings, AlertCircle, Loader2 } from "lucide-react";
+import { RefreshCw, BookOpen, List, Settings, CircleAlert as AlertCircle, Loader as Loader2 } from "lucide-react";
 import type { SocialPost, PostStatus, PlannerSettings, AFLGame, AFLPlayerStat } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
 import { buildWeekSchedule, getMondayOfWeek, type WeekSchedule } from "./lib/scheduleEngine";
@@ -64,7 +64,7 @@ export default function SocialPlannerPage() {
         db.fetchPlayerStats(currentSeason).catch((): AFLPlayerStat[] => []),
       ]);
 
-      const newSchedule = buildWeekSchedule(currentRound, currentSeason, monday, games);
+      const newSchedule = buildWeekSchedule(currentRound, currentSeason, monday, games, settings);
       const newPosts = buildWeekPosts(newSchedule.slots, settings, players, games);
 
       setSchedule(newSchedule);

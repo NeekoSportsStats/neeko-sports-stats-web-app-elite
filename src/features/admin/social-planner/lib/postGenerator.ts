@@ -2,15 +2,15 @@
  * Post generator — builds SocialPost objects from schedule slots + player data.
  */
 import type {
-  SocialPost, ContentType, Platform, AFLGame, AFLPlayerStat,
+  SocialPost, ContentType, ContentVisibilityMode, Platform, AFLGame, AFLPlayerStat,
   PlannerSettings, TokenMap,
 } from "../types";
 import type { ScheduleSlot } from "./scheduleEngine";
-import { pickHook } from "./hookLibrary";
-import { pickCaption } from "./captionLibrary";
+import { pickHook, type HookCategory } from "./hookLibrary";
+import { pickCaption, type CaptionCategory } from "./captionLibrary";
 import { replaceTokens, gameLabel } from "./tokenEngine";
 import { buildCarouselSlides } from "./carouselBuilder";
-import { generateCoverPrompt } from "./promptGenerator";
+import { generateCoverPrompt, generateOpenFreeGameCoverPrompt } from "./promptGenerator";
 import { selectPlayersForSlot } from "./playerSelector";
 import { generateHashtags } from "./hashtagGenerator";
 import { checkSafety } from "./safetyRules";
@@ -30,20 +30,25 @@ export function buildPost(
   usedHookIds: Set<string> = new Set(),
   usedCaptionIds: Set<string> = new Set()
 ): SocialPost {
-  const { round, season } = settings;
+  // Use currentRound/currentSeason (not round/season — those don't exist on PlannerSettings)
+  const round = settings.currentRound;
+  const season = settings.currentSeason;
+
   const game = games.find(g => g.id === slot.gameId);
+  const visibilityMode: ContentVisibilityMode | undefined =
+    slot.contentType === "match_stat_board" ? (slot.visibilityMode ?? "preview_blurred") : undefined;
 
   const tokens: TokenMap = {
     round,
     game:     game ? gameLabel(game.homeTeam, game.awayTeam) : undefined,
-    homeTeam: game?.homeTeam,
-    awayTeam: game?.awayTeam,
+    homeTeam: game?.homeTeam ?? slot.homeTeam,
+    awayTeam: game?.awayTeam ?? slot.awayTeam,
     cta:      CTA,
   };
 
-  const hookCategory = contentTypeToHookCategory(slot.contentType);
+  const hookCategory = contentTypeToHookCategory(slot.contentType, visibilityMode);
   const hook = pickHook(hookCategory, usedHookIds);
-  const caption = pickCaption(hookCategory, usedCaptionIds);
+  const caption = pickCaption(hookCategory as CaptionCategory, usedCaptionIds);
 
   const selectedPlayers = selectPlayersForSlot(slot, allPlayers, settings);
 
@@ -64,7 +69,10 @@ export function buildPost(
   const title       = buildTitle(slot, tokens, game);
   const hashtags    = generateHashtags(slot.contentType, game, selectedPlayers);
   const carouselSlides = buildCarouselSlides(slot, selectedPlayers, tokens, settings);
-  const imagePrompt = generateCoverPrompt(slot.contentType, game, selectedPlayers);
+
+  const imagePrompt = visibilityMode === "open_free_game"
+    ? generateOpenFreeGameCoverPrompt(slot.homeTeam ?? "", slot.awayTeam ?? "")
+    : generateCoverPrompt(slot.contentType, game ?? undefined, selectedPlayers);
 
   const safetyResult = checkSafety(`${hookText} ${captionText}`);
   const warnings = safetyResult.flags.map(f =>
@@ -72,6 +80,12 @@ export function buildPost(
       ? `Banned word: "${f.word}"`
       : f.suggestion ?? `Caution: "${f.word}"`
   );
+
+  const visibilityBadge = visibilityMode === "open_free_game"
+    ? "Free Game Board"
+    : visibilityMode === "preview_blurred"
+    ? "Preview"
+    : undefined;
 
   const now = new Date().toISOString();
 
@@ -96,6 +110,8 @@ export function buildPost(
     platform: DEFAULT_PLATFORM,
     warnings,
     selectedPlayers,
+    visibilityMode,
+    visibilityBadge,
     createdAt: now,
     updatedAt: now,
     usedHookId: hook.id,
@@ -126,8 +142,12 @@ export function buildWeekPosts(
 function buildTitle(slot: ScheduleSlot, tokens: TokenMap, game?: AFLGame): string {
   const round = tokens.round ?? "";
   switch (slot.contentType) {
-    case "match_stat_board":
-      return game ? `${game.homeTeam} v ${game.awayTeam} — R${round}` : `Round ${round} Match Board`;
+    case "match_stat_board": {
+      const base = game ? `${game.homeTeam} v ${game.awayTeam} — R${round}` : `Round ${round} Match Board`;
+      if (slot.visibilityMode === "open_free_game") return `${base} [Free Board]`;
+      if (slot.visibilityMode === "preview_blurred") return `${base} [Preview]`;
+      return base;
+    }
     case "player_spotlight":
       return tokens.player ? `${tokens.player} — Form Watch` : "Player Spotlight";
     case "player_spotlight_duo":
@@ -143,8 +163,16 @@ function buildTitle(slot: ScheduleSlot, tokens: TokenMap, game?: AFLGame): strin
   }
 }
 
-function contentTypeToHookCategory(ct: ContentType): Parameters<typeof pickHook>[0] {
-  const map: Record<ContentType, Parameters<typeof pickHook>[0]> = {
+function contentTypeToHookCategory(
+  ct: ContentType,
+  visibilityMode?: ContentVisibilityMode
+): HookCategory {
+  if (ct === "match_stat_board") {
+    if (visibilityMode === "open_free_game") return "free_game_board";
+    if (visibilityMode === "preview_blurred") return "preview_game";
+    return "match_board";
+  }
+  const map: Record<ContentType, HookCategory> = {
     match_stat_board:     "match_board",
     player_spotlight:     "player_spotlight",
     player_spotlight_duo: "player_spotlight",

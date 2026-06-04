@@ -20,6 +20,15 @@ export type Platform = "instagram" | "facebook" | "tiktok" | "threads" | "x";
 
 export type ConfidenceTier = "elite" | "strong" | "watch" | "thin_sample";
 
+/** How a match stat board post is surfaced to followers */
+export type ContentVisibilityMode = "open_free_game" | "preview_blurred" | "manual";
+
+/** How free game slots are selected each round */
+export type FreeGameSelectionMode = "thu_fri" | "first_two" | "manual";
+
+/** How many posts per day on weekends */
+export type WeekendPostingMode = "one_per_game" | "two_max" | "stories_overflow";
+
 export type SlideType =
   | "cover"
   | "home_disposals"
@@ -95,6 +104,7 @@ export interface StatBoardRow {
   threshold2Goals?: string;
   threshold3Goals?: string;
   note?: string;
+  blurred?: boolean;      // true = row rendered blurred with CTA overlay
 }
 
 export interface CarouselSlide {
@@ -105,6 +115,13 @@ export interface CarouselSlide {
   rows?: StatBoardRow[];
   imagePrompt?: string;
   designNotes?: string;
+  // Visibility mode fields (match_stat_board only)
+  visibilityMode?: ContentVisibilityMode;
+  visibleRowCount?: number;
+  blurredRowCount?: number;
+  ctaOverlayText?: string;
+  showFreeGameBadge?: boolean;
+  showPreviewBadge?: boolean;
 }
 
 // ─── Social Post ──────────────────────────────────────────────────────────────
@@ -133,6 +150,9 @@ export interface SocialPost {
   selectedPlayers: AFLPlayerStat[];
   createdAt: string;
   updatedAt: string;
+  // Visibility mode (match_stat_board only)
+  visibilityMode?: ContentVisibilityMode;
+  visibilityBadge?: string;
   // UI-only: track which template IDs were used for dedup
   usedHookId?: string;
   usedCaptionId?: string;
@@ -151,6 +171,16 @@ export interface PlannerSettings {
   styleMode: StyleMode;
   currentRound: number;
   currentSeason: number;
+  // Free game / preview blurred system
+  freeGamesPerRound: number;           // 2 — how many games get open_free_game treatment
+  freeGameSelectionMode: FreeGameSelectionMode; // "thu_fri" = Thu/Fri games, "first_two", "manual"
+  thuFriMaxRows: number;               // 10 — max player rows for open free game boards
+  satSunVisibleRows: number;           // 3 — visible rows before blur on weekend boards
+  satSunTotalRows: number;             // 8 — total rows including blurred ones
+  weekendPostingMode: WeekendPostingMode; // "one_per_game" = one post per game, no forced fill
+  ctaOverlayText: string;              // text on the blur overlay CTA
+  showFreeGameBadge: boolean;          // show "Free Game Board" badge on cover
+  showPreviewBadge: boolean;           // show "Preview — full board at Neeko" badge
 }
 
 export const DEFAULT_SETTINGS: PlannerSettings = {
@@ -164,6 +194,15 @@ export const DEFAULT_SETTINGS: PlannerSettings = {
   styleMode: "clean",
   currentRound: 1,
   currentSeason: 2026,
+  freeGamesPerRound: 2,
+  freeGameSelectionMode: "thu_fri",
+  thuFriMaxRows: 10,
+  satSunVisibleRows: 3,
+  satSunTotalRows: 8,
+  weekendPostingMode: "one_per_game",
+  ctaOverlayText: "See the full board at neekostatistics.com.au",
+  showFreeGameBadge: true,
+  showPreviewBadge: true,
 };
 
 // ─── Token map ────────────────────────────────────────────────────────────────

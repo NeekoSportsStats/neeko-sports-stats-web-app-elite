@@ -686,6 +686,130 @@ export const CAPTIONS: CaptionTemplate[] = [
     template:
       "Round [round] stat preview.\n\nEarly board data. Clean format.\n\n[cta]",
   },
+
+  // ─── Free Game Board ───────────────────────────────────────────────────────
+  {
+    id: "cFg01",
+    category: "free_game_board",
+    template:
+      "[game] — Round [round].\n\nFull stat board is open. Every disposal and goal record in one view.\n\nRatios show games at threshold vs games played.\n\n[cta]",
+  },
+  {
+    id: "cFg02",
+    category: "free_game_board",
+    template:
+      "[homeTeam] v [awayTeam] — full board.\n\nAll disposal and goal threshold records from the recent sample.\n\nNo restrictions.\n\n[cta]",
+  },
+  {
+    id: "cFg03",
+    category: "free_game_board",
+    template:
+      "Free game board for Round [round]: [game].\n\nComplete form data — disposals, goals, ratios.\n\n[cta]",
+  },
+  {
+    id: "cFg04",
+    category: "free_game_board",
+    template:
+      "The complete stat board for [game].\n\nEvery player threshold record in the recent sample. Full view.\n\n[cta]",
+  },
+  {
+    id: "cFg05",
+    category: "free_game_board",
+    template:
+      "[game] — the full board is open for Round [round].\n\nDisposal form and goal form. Clean ratio view.\n\n[cta]",
+  },
+  {
+    id: "cFg06",
+    category: "free_game_board",
+    template:
+      "Full matchday board: [homeTeam] v [awayTeam].\n\nAll records. All thresholds. Recent sample.\n\n[cta]",
+  },
+  {
+    id: "cFg07",
+    category: "free_game_board",
+    template:
+      "Every disposal and goal record for [game].\n\nFull board — no sign-up, no paywall.\n\n[cta]",
+  },
+  {
+    id: "cFg08",
+    category: "free_game_board",
+    template:
+      "The open board for [game] — Round [round].\n\nDisposals and goals from the recent data. Full view.\n\n[cta]",
+  },
+  {
+    id: "cFg09",
+    category: "free_game_board",
+    template:
+      "Complete form board for [homeTeam] and [awayTeam].\n\nEvery threshold record. Ratio format. Fast scan.\n\n[cta]",
+  },
+  {
+    id: "cFg10",
+    category: "free_game_board",
+    template:
+      "Round [round] full board drop: [game].\n\nAll player disposal and goal records from the recent sample.\n\n[cta]",
+  },
+
+  // ─── Preview Game ──────────────────────────────────────────────────────────
+  {
+    id: "cPv01",
+    category: "preview_game",
+    template:
+      "[game] — Round [round].\n\nTop form records from the board. Full view inside Neeko.\n\n[cta]",
+  },
+  {
+    id: "cPv02",
+    category: "preview_game",
+    template:
+      "[homeTeam] v [awayTeam] — board preview.\n\nKey threshold records from the recent sample. More rows at Neeko.\n\n[cta]",
+  },
+  {
+    id: "cPv03",
+    category: "preview_game",
+    template:
+      "A look at [game] — Round [round].\n\nTop form names from the board. Full board available at Neeko.\n\n[cta]",
+  },
+  {
+    id: "cPv04",
+    category: "preview_game",
+    template:
+      "Preview: [game] stat board.\n\nTop disposal and goal records. Full view at Neeko.\n\n[cta]",
+  },
+  {
+    id: "cPv05",
+    category: "preview_game",
+    template:
+      "The first names from the [game] board.\n\nRecent form records. More data inside.\n\n[cta]",
+  },
+  {
+    id: "cPv06",
+    category: "preview_game",
+    template:
+      "Partial form board: [homeTeam] v [awayTeam].\n\nTop records shown — full board at Neeko.\n\n[cta]",
+  },
+  {
+    id: "cPv07",
+    category: "preview_game",
+    template:
+      "[game] — a sample from the Round [round] board.\n\nFull player form data lives at neekostatistics.com.au.\n\n[cta]",
+  },
+  {
+    id: "cPv08",
+    category: "preview_game",
+    template:
+      "Top of the board for [homeTeam] v [awayTeam].\n\nMore records available at Neeko.\n\n[cta]",
+  },
+  {
+    id: "cPv09",
+    category: "preview_game",
+    template:
+      "[game] board preview — Round [round].\n\nKey player threshold records. Full view at Neeko.\n\n[cta]",
+  },
+  {
+    id: "cPv10",
+    category: "preview_game",
+    template:
+      "A quick preview from the [game] board.\n\nTop disposal and goal form. The rest is inside Neeko.\n\n[cta]",
+  },
 ];
 
 /** Pick a caption from the library avoiding recently used IDs */

@@ -10,7 +10,9 @@ export type HookCategory =
   | "goal"
   | "product"
   | "round_review"
-  | "round_ahead";
+  | "round_ahead"
+  | "free_game_board"
+  | "preview_game";
 
 export interface HookTemplate {
   id: string;
@@ -182,6 +184,50 @@ export const HOOKS: HookTemplate[] = [
   { id: "ra13", category: "round_ahead", template: "The next round starts with the board." },
   { id: "ra14", category: "round_ahead", template: "Player form before Round [round]." },
   { id: "ra15", category: "round_ahead", template: "Round [round] stat preview." },
+
+  // ─── Free Game Board ───────────────────────────────────────────────────────
+  { id: "fg01", category: "free_game_board", template: "Full board for [game]. No sign-up required." },
+  { id: "fg02", category: "free_game_board", template: "The complete stat board for [game]." },
+  { id: "fg03", category: "free_game_board", template: "Free game board: [homeTeam] v [awayTeam]." },
+  { id: "fg04", category: "free_game_board", template: "Full form board for tonight's game." },
+  { id: "fg05", category: "free_game_board", template: "[game] — the full board is open." },
+  { id: "fg06", category: "free_game_board", template: "Every disposal and goal record for [game]." },
+  { id: "fg07", category: "free_game_board", template: "The complete Round [round] board for [game]." },
+  { id: "fg08", category: "free_game_board", template: "Full stat board: [homeTeam] v [awayTeam]." },
+  { id: "fg09", category: "free_game_board", template: "Disposals. Goals. Form. All of it — [game]." },
+  { id: "fg10", category: "free_game_board", template: "The full Thursday board is here." },
+  { id: "fg11", category: "free_game_board", template: "Full board drop for [game]." },
+  { id: "fg12", category: "free_game_board", template: "[game] — every record in one board." },
+  { id: "fg13", category: "free_game_board", template: "Complete form board for [homeTeam] v [awayTeam]." },
+  { id: "fg14", category: "free_game_board", template: "Full matchday board: [game]." },
+  { id: "fg15", category: "free_game_board", template: "The open board for Round [round]." },
+  { id: "fg16", category: "free_game_board", template: "[game] — full stat board, no restrictions." },
+  { id: "fg17", category: "free_game_board", template: "Complete disposal and goal form: [game]." },
+  { id: "fg18", category: "free_game_board", template: "Full player form board for [homeTeam] and [awayTeam]." },
+  { id: "fg19", category: "free_game_board", template: "The whole board is open for [game]." },
+  { id: "fg20", category: "free_game_board", template: "Every name. Every record. [game]." },
+
+  // ─── Preview Game ──────────────────────────────────────────────────────────
+  { id: "pv01", category: "preview_game", template: "Top 3 from the [game] board." },
+  { id: "pv02", category: "preview_game", template: "A look at [game] — more inside." },
+  { id: "pv03", category: "preview_game", template: "Preview: [homeTeam] v [awayTeam] form board." },
+  { id: "pv04", category: "preview_game", template: "The first 3 rows from [game]." },
+  { id: "pv05", category: "preview_game", template: "[game] — partial board preview." },
+  { id: "pv06", category: "preview_game", template: "A sample from the Round [round] board." },
+  { id: "pv07", category: "preview_game", template: "The top of the [homeTeam] v [awayTeam] board." },
+  { id: "pv08", category: "preview_game", template: "Partial board view: [game]." },
+  { id: "pv09", category: "preview_game", template: "The first names from [game]." },
+  { id: "pv10", category: "preview_game", template: "Preview form board — [game]." },
+  { id: "pv11", category: "preview_game", template: "A slice of the [homeTeam] v [awayTeam] data." },
+  { id: "pv12", category: "preview_game", template: "The early view: [game]." },
+  { id: "pv13", category: "preview_game", template: "Top records from [game]. Full board inside." },
+  { id: "pv14", category: "preview_game", template: "Round [round] preview: [game]." },
+  { id: "pv15", category: "preview_game", template: "A quick preview before [game]." },
+  { id: "pv16", category: "preview_game", template: "[game] — the board starts here." },
+  { id: "pv17", category: "preview_game", template: "The top names from [homeTeam] v [awayTeam]." },
+  { id: "pv18", category: "preview_game", template: "Form preview: [homeTeam] and [awayTeam]." },
+  { id: "pv19", category: "preview_game", template: "The top of the board for [game]." },
+  { id: "pv20", category: "preview_game", template: "Preview: Round [round] stat board." },
 ];
 
 /** Pick a hook from the library avoiding recently used IDs */

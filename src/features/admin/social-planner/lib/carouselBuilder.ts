@@ -1,12 +1,18 @@
 /**
  * Carousel builder — assembles CarouselSlide arrays for each content type.
+ * Supports open_free_game (full board) and preview_blurred (top N visible, rest blurred).
  */
 import type {
   CarouselSlide, SlideType, AFLPlayerStat, PlannerSettings, StatBoardRow, TokenMap,
+  ContentVisibilityMode,
 } from "../types";
 import type { ScheduleSlot } from "./scheduleEngine";
 import { formatRatio } from "./statFormatter";
-import { generateSlidePrompt, generateCoverPrompt } from "./promptGenerator";
+import {
+  generateSlidePrompt, generateCoverPrompt,
+  generateOpenFreeGameCoverPrompt, generateOpenFreeGameTablePrompt,
+  generatePreviewBlurredTablePrompt,
+} from "./promptGenerator";
 import { gameLabel } from "./tokenEngine";
 
 function makeId(prefix: string, index: number): string {
@@ -42,33 +48,58 @@ function buildMatchBoardSlides(
   tokens: TokenMap,
   settings: PlannerSettings
 ): CarouselSlide[] {
+  const visibilityMode: ContentVisibilityMode = slot.visibilityMode ?? "preview_blurred";
+  const isOpen = visibilityMode === "open_free_game";
   const slides: CarouselSlide[] = [];
   const game = tokens.game ?? `${slot.homeTeam} v ${slot.awayTeam}`;
 
   // Cover
+  const coverSubtitle = isOpen
+    ? (settings.showFreeGameBadge ? "Free Game Board" : `Round ${tokens.round} Stat Board`)
+    : (settings.showPreviewBadge ? "Preview — full board at Neeko" : `Round ${tokens.round} Stat Board`);
+
+  const coverImagePrompt = isOpen
+    ? generateOpenFreeGameCoverPrompt(slot.homeTeam ?? "", slot.awayTeam ?? "")
+    : generateCoverPrompt("match_stat_board", {
+        homeTeam: slot.homeTeam ?? "",
+        awayTeam: slot.awayTeam ?? "",
+      } as any);
+
   slides.push({
     id: makeId("cover", 0),
     slideType: "cover",
     title: game,
-    subtitle: `Round ${tokens.round} Stat Board`,
-    imagePrompt: generateCoverPrompt("match_stat_board", {
-      homeTeam: slot.homeTeam ?? "",
-      awayTeam: slot.awayTeam ?? "",
-    } as any),
+    subtitle: coverSubtitle,
+    imagePrompt: coverImagePrompt,
+    visibilityMode,
+    showFreeGameBadge: isOpen && settings.showFreeGameBadge,
+    showPreviewBadge: !isOpen && settings.showPreviewBadge,
   });
+
+  // Determine visible row limit for blurred mode
+  const visibleRowsLimit = isOpen
+    ? settings.thuFriMaxRows
+    : settings.satSunVisibleRows;
 
   // Home disposals
   const homeDisposals = players.filter(
     p => p.statType === "disposals" && p.team === slot.homeTeam
   );
   if (homeDisposals.length > 0) {
+    const rows = buildStatRowsWithBlur(homeDisposals, visibleRowsLimit, !isOpen);
     slides.push({
       id: makeId("home_disposals", 1),
       slideType: "home_disposals",
       title: `${slot.homeTeam} — Disposals`,
       subtitle: "Recent threshold records",
-      rows: buildStatRows(homeDisposals),
-      imagePrompt: generateSlidePrompt("Home Disposals", slot.homeTeam, slot.awayTeam),
+      rows,
+      imagePrompt: isOpen
+        ? generateOpenFreeGameTablePrompt("Home Disposals", slot.homeTeam, slot.awayTeam)
+        : generatePreviewBlurredTablePrompt("Home Disposals", slot.homeTeam, slot.awayTeam),
+      visibilityMode,
+      visibleRowCount: rows.filter(r => !r.blurred).length,
+      blurredRowCount: rows.filter(r => r.blurred).length,
+      ctaOverlayText: !isOpen ? settings.ctaOverlayText : undefined,
     });
   }
 
@@ -77,13 +108,20 @@ function buildMatchBoardSlides(
     p => p.statType === "disposals" && p.team === slot.awayTeam
   );
   if (awayDisposals.length > 0) {
+    const rows = buildStatRowsWithBlur(awayDisposals, visibleRowsLimit, !isOpen);
     slides.push({
       id: makeId("away_disposals", 2),
       slideType: "away_disposals",
       title: `${slot.awayTeam} — Disposals`,
       subtitle: "Recent threshold records",
-      rows: buildStatRows(awayDisposals),
-      imagePrompt: generateSlidePrompt("Away Disposals", slot.homeTeam, slot.awayTeam),
+      rows,
+      imagePrompt: isOpen
+        ? generateOpenFreeGameTablePrompt("Away Disposals", slot.homeTeam, slot.awayTeam)
+        : generatePreviewBlurredTablePrompt("Away Disposals", slot.homeTeam, slot.awayTeam),
+      visibilityMode,
+      visibleRowCount: rows.filter(r => !r.blurred).length,
+      blurredRowCount: rows.filter(r => r.blurred).length,
+      ctaOverlayText: !isOpen ? settings.ctaOverlayText : undefined,
     });
   }
 
@@ -92,13 +130,20 @@ function buildMatchBoardSlides(
     p => p.statType === "goals" && p.team === slot.homeTeam
   );
   if (homeGoals.length > 0) {
+    const rows = buildStatRowsWithBlur(homeGoals, visibleRowsLimit, !isOpen);
     slides.push({
       id: makeId("home_goals", 3),
       slideType: "home_goals",
       title: `${slot.homeTeam} — Goals`,
       subtitle: "Recent scoring records",
-      rows: buildStatRows(homeGoals),
-      imagePrompt: generateSlidePrompt("Home Goals", slot.homeTeam, slot.awayTeam),
+      rows,
+      imagePrompt: isOpen
+        ? generateOpenFreeGameTablePrompt("Home Goals", slot.homeTeam, slot.awayTeam)
+        : generatePreviewBlurredTablePrompt("Home Goals", slot.homeTeam, slot.awayTeam),
+      visibilityMode,
+      visibleRowCount: rows.filter(r => !r.blurred).length,
+      blurredRowCount: rows.filter(r => r.blurred).length,
+      ctaOverlayText: !isOpen ? settings.ctaOverlayText : undefined,
     });
   }
 
@@ -107,13 +152,20 @@ function buildMatchBoardSlides(
     p => p.statType === "goals" && p.team === slot.awayTeam
   );
   if (awayGoals.length > 0) {
+    const rows = buildStatRowsWithBlur(awayGoals, visibleRowsLimit, !isOpen);
     slides.push({
       id: makeId("away_goals", 4),
       slideType: "away_goals",
       title: `${slot.awayTeam} — Goals`,
       subtitle: "Recent scoring records",
-      rows: buildStatRows(awayGoals),
-      imagePrompt: generateSlidePrompt("Away Goals", slot.homeTeam, slot.awayTeam),
+      rows,
+      imagePrompt: isOpen
+        ? generateOpenFreeGameTablePrompt("Away Goals", slot.homeTeam, slot.awayTeam)
+        : generatePreviewBlurredTablePrompt("Away Goals", slot.homeTeam, slot.awayTeam),
+      visibilityMode,
+      visibleRowCount: rows.filter(r => !r.blurred).length,
+      blurredRowCount: rows.filter(r => r.blurred).length,
+      ctaOverlayText: !isOpen ? settings.ctaOverlayText : undefined,
     });
   }
 
@@ -136,7 +188,6 @@ function buildSpotlightSlides(
 ): CarouselSlide[] {
   const slides: CarouselSlide[] = [];
 
-  // Cover
   slides.push({
     id: makeId("cover", 0),
     slideType: "cover",
@@ -147,7 +198,6 @@ function buildSpotlightSlides(
     imagePrompt: generateCoverPrompt("player_spotlight"),
   });
 
-  // One slide per featured player
   players.slice(0, count).forEach((p, i) => {
     slides.push({
       id: makeId("player_spotlight", i + 1),
@@ -159,7 +209,6 @@ function buildSpotlightSlides(
     });
   });
 
-  // CTA
   slides.push({
     id: makeId("cta", slides.length),
     slideType: "cta",
@@ -254,6 +303,20 @@ function buildStorySlides(tokens: TokenMap): CarouselSlide[] {
       subtitle: "neekostatistics.com.au",
     },
   ];
+}
+
+/**
+ * Build stat rows, marking rows beyond visibleLimit as blurred when applyBlur is true.
+ */
+function buildStatRowsWithBlur(
+  players: AFLPlayerStat[],
+  visibleLimit: number,
+  applyBlur: boolean
+): StatBoardRow[] {
+  return players.map((p, i) => ({
+    ...buildStatRow(p),
+    blurred: applyBlur && i >= visibleLimit,
+  }));
 }
 
 function buildStatRows(players: AFLPlayerStat[]): StatBoardRow[] {

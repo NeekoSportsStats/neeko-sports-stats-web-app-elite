@@ -1,7 +1,9 @@
 /**
  * Player selector — chooses which players to feature in a given slot.
  * Rules:
- * - Match board: up to 5 disposal players + 4 goal players per team
+ * - Match board: filtered by team name (not gameId — RPC returns season-wide stats)
+ * - open_free_game: up to thuFriMaxRows total rows
+ * - preview_blurred: up to satSunTotalRows total rows (first satSunVisibleRows clear, rest blurred)
  * - Player spotlight: top 1 player by sample strength
  * - Player spotlight duo: top 2 players
  * - Round review/ahead: top players across all teams
@@ -9,7 +11,7 @@
  * - Dedup across slots within same week
  */
 
-import type { AFLPlayerStat, ContentType, PlannerSettings } from "../types";
+import type { AFLPlayerStat, ContentType, ContentVisibilityMode, PlannerSettings } from "../types";
 import type { ScheduleSlot } from "./scheduleEngine";
 import { sortPlayersBySampleStrength, isThinSample } from "./statFormatter";
 
@@ -23,10 +25,10 @@ export function selectPlayersForSlot(
       return selectMatchBoardPlayers(slot, allPlayers, settings);
 
     case "player_spotlight":
-      return selectSpotlightPlayers(allPlayers, 1, slot.gameId);
+      return selectSpotlightPlayers(allPlayers, 1, slot.homeTeam, slot.awayTeam);
 
     case "player_spotlight_duo":
-      return selectSpotlightPlayers(allPlayers, 2, slot.gameId);
+      return selectSpotlightPlayers(allPlayers, 2, slot.homeTeam, slot.awayTeam);
 
     case "round_review":
     case "round_ahead_watch":
@@ -43,29 +45,36 @@ function selectMatchBoardPlayers(
   allPlayers: AFLPlayerStat[],
   settings: PlannerSettings
 ): AFLPlayerStat[] {
-  if (!slot.gameId) return [];
+  if (!slot.homeTeam || !slot.awayTeam) return [];
 
-  const gamePlayers = allPlayers.filter(p => p.gameId === slot.gameId);
+  const visibilityMode: ContentVisibilityMode = slot.visibilityMode ?? "preview_blurred";
+  const maxPerTeamDisposals = visibilityMode === "open_free_game"
+    ? Math.ceil(settings.thuFriMaxRows / 4)  // distribute across 4 sections
+    : Math.ceil(settings.satSunTotalRows / 4);
+  const maxPerTeamGoals = visibilityMode === "open_free_game"
+    ? Math.ceil(settings.thuFriMaxRows / 4)
+    : Math.ceil(settings.satSunTotalRows / 4);
 
-  const homeDisposals = gamePlayers
-    .filter(p => p.statType === "disposals" && p.team === slot.homeTeam)
+  // Filter by team name (not gameId — RPC returns season-wide stats without gameId)
+  const homeDisposals = allPlayers
+    .filter(p => p.statType === "disposals" && p.team === slot.homeTeam && !isThinSample(p))
     .sort(bySampleStrength)
-    .slice(0, settings.maxDisposalRowsPerTeam);
+    .slice(0, maxPerTeamDisposals);
 
-  const awayDisposals = gamePlayers
-    .filter(p => p.statType === "disposals" && p.team === slot.awayTeam)
+  const awayDisposals = allPlayers
+    .filter(p => p.statType === "disposals" && p.team === slot.awayTeam && !isThinSample(p))
     .sort(bySampleStrength)
-    .slice(0, settings.maxDisposalRowsPerTeam);
+    .slice(0, maxPerTeamDisposals);
 
-  const homeGoals = gamePlayers
-    .filter(p => p.statType === "goals" && p.team === slot.homeTeam)
+  const homeGoals = allPlayers
+    .filter(p => p.statType === "goals" && p.team === slot.homeTeam && !isThinSample(p))
     .sort(bySampleStrength)
-    .slice(0, settings.maxGoalRowsPerTeam);
+    .slice(0, maxPerTeamGoals);
 
-  const awayGoals = gamePlayers
-    .filter(p => p.statType === "goals" && p.team === slot.awayTeam)
+  const awayGoals = allPlayers
+    .filter(p => p.statType === "goals" && p.team === slot.awayTeam && !isThinSample(p))
     .sort(bySampleStrength)
-    .slice(0, settings.maxGoalRowsPerTeam);
+    .slice(0, maxPerTeamGoals);
 
   return [...homeDisposals, ...awayDisposals, ...homeGoals, ...awayGoals];
 }
@@ -73,13 +82,14 @@ function selectMatchBoardPlayers(
 function selectSpotlightPlayers(
   allPlayers: AFLPlayerStat[],
   count: number,
-  gameId?: string
+  homeTeam?: string,
+  awayTeam?: string
 ): AFLPlayerStat[] {
   let pool = allPlayers.filter(p => !isThinSample(p));
 
-  if (gameId) {
-    // Prefer players from this game
-    const gamePool = pool.filter(p => p.gameId === gameId);
+  if (homeTeam && awayTeam) {
+    // Prefer players from this matchup
+    const gamePool = pool.filter(p => p.team === homeTeam || p.team === awayTeam);
     if (gamePool.length >= count) pool = gamePool;
   }
 

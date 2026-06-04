@@ -11,7 +11,7 @@ const COVER_STYLE =
 
 export function generateCoverPrompt(
   contentType: ContentType,
-  game?: AFLGame,
+  game?: AFLGame | { homeTeam: string; awayTeam: string },
   players?: AFLPlayerStat[]
 ): string {
   switch (contentType) {
@@ -50,6 +50,50 @@ export function generateCoverPrompt(
     case "story_extra":
       return `${COVER_STYLE} Story extra cover. Bold, minimal, dark background.`;
   }
+}
+
+/** Cover prompt for open free game boards */
+export function generateOpenFreeGameCoverPrompt(homeTeam: string, awayTeam: string): string {
+  return (
+    `Clean dark sports graphic for ${homeTeam} vs ${awayTeam}. ` +
+    `Full game board cover — open access, no blur. ` +
+    `Bold split-colour abstract design, deep charcoal tones, ` +
+    `stadium atmosphere lighting. "Free Game Board" badge in top corner. ` +
+    `No player photos. No text overlay.`
+  );
+}
+
+/** Table slide prompt for open free game boards (all rows visible) */
+export function generateOpenFreeGameTablePrompt(
+  slideTitle: string,
+  homeTeam?: string,
+  awayTeam?: string
+): string {
+  const teams = homeTeam && awayTeam ? ` for ${homeTeam} vs ${awayTeam}` : "";
+  return (
+    `Clean dark AFL stats table slide${teams}. ` +
+    `Title: "${slideTitle}". ` +
+    `All rows fully visible — this is a free game board. ` +
+    `Premium dark background, crisp ratio typography, no player photos. ` +
+    `Stat card layout. No blur or fade effects.`
+  );
+}
+
+/** Table slide prompt for preview blurred boards (top N visible, rest blurred) */
+export function generatePreviewBlurredTablePrompt(
+  slideTitle: string,
+  homeTeam?: string,
+  awayTeam?: string
+): string {
+  const teams = homeTeam && awayTeam ? ` for ${homeTeam} vs ${awayTeam}` : "";
+  return (
+    `Clean dark AFL stats table slide${teams}. ` +
+    `Title: "${slideTitle}". ` +
+    `Top rows are fully visible with clear stat data. ` +
+    `Lower rows fade into a gaussian blur with a subtle CTA overlay at the bottom. ` +
+    `Dark premium background, crisp typography. No player photos. ` +
+    `The blur effect signals more data is available at Neeko.`
+  );
 }
 
 export function generateSlidePrompt(

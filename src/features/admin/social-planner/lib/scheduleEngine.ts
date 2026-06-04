@@ -5,13 +5,18 @@
  * - Mon–Wed: 2 feed posts/day (round_review Mon, round_ahead_watch Tue/Wed)
  * - Thu: 2 posts (round_ahead_watch + match_stat_board if Thurs game)
  * - Fri: 2 posts (match_stat_board if Fri game, else player_spotlight)
- * - Sat: 2–4 posts (match_stat_board per game, up to 4 games)
- * - Sun: 2–4 posts (match_stat_board per game, up to 4 games)
+ * - Sat/Sun: one post per game (weekendPostingMode=one_per_game), or up to 4 (two_max)
  * - product_education: 1 per week, typically Wednesday
  * - story_extra: ad hoc, not scheduled automatically
+ *
+ * Visibility mode assignment:
+ * - Thu/Fri games → open_free_game (freeGameSelectionMode="thu_fri")
+ * - Sat/Sun games → preview_blurred
+ * - Fallback: if no Thu/Fri games and mode="thu_fri", first freeGamesPerRound
+ *   chronological games become open_free_game
  */
 
-import type { AFLGame, ContentType, DayOfWeek, SocialPost } from "../types";
+import type { AFLGame, ContentType, ContentVisibilityMode, DayOfWeek, PlannerSettings } from "../types";
 
 export interface ScheduleSlot {
   day: DayOfWeek;
@@ -21,6 +26,7 @@ export interface ScheduleSlot {
   homeTeam?: string;
   awayTeam?: string;
   priority: number;      // lower = higher priority
+  visibilityMode?: ContentVisibilityMode;
 }
 
 export interface WeekSchedule {
@@ -49,13 +55,58 @@ export function getMondayOfWeek(dateStr: string): string {
 /** Map day offset (0=Mon) to DayOfWeek label */
 const DAY_LABELS: DayOfWeek[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+/**
+ * Determine which game IDs get open_free_game treatment this round.
+ * Thu/Fri games are free by default; fallback to first N chronological games.
+ */
+function computeFreeGameIds(
+  games: AFLGame[],
+  round: number,
+  season: number,
+  settings: PlannerSettings
+): Set<string> {
+  const roundGames = games.filter(g => g.round === round && g.season === season);
+  const freeIds = new Set<string>();
+
+  if (settings.freeGameSelectionMode === "thu_fri") {
+    for (const g of roundGames) {
+      if (g.isThursdayGame || g.isFridayGame) {
+        freeIds.add(g.id);
+      }
+    }
+    // Fallback: no Thu/Fri games — use first N chronological
+    if (freeIds.size === 0) {
+      const sorted = [...roundGames].sort((a, b) => a.startTime.localeCompare(b.startTime));
+      for (const g of sorted.slice(0, settings.freeGamesPerRound)) {
+        freeIds.add(g.id);
+      }
+    }
+  } else if (settings.freeGameSelectionMode === "first_two") {
+    const sorted = [...roundGames].sort((a, b) => a.startTime.localeCompare(b.startTime));
+    for (const g of sorted.slice(0, settings.freeGamesPerRound)) {
+      freeIds.add(g.id);
+    }
+  }
+  // "manual" — freeIds stays empty; caller assigns manually
+
+  return freeIds;
+}
+
 export function buildWeekSchedule(
   round: number,
   season: number,
   mondayDate: string,
-  games: AFLGame[]
+  games: AFLGame[],
+  settings?: PlannerSettings
 ): WeekSchedule {
   const slots: ScheduleSlot[] = [];
+
+  // Determine free game IDs (requires settings; fall back gracefully)
+  const freeGameIds = settings
+    ? computeFreeGameIds(games, round, season, settings)
+    : new Set<string>();
+
+  const weekendMode = settings?.weekendPostingMode ?? "one_per_game";
 
   // Group games by day
   const gamesByDay: Record<DayOfWeek, AFLGame[]> = {
@@ -92,9 +143,9 @@ export function buildWeekSchedule(
       slots.push({
         day: "Thu", date: thuDate, contentType: "match_stat_board",
         gameId: g.id, homeTeam: g.homeTeam, awayTeam: g.awayTeam, priority: priority++,
+        visibilityMode: freeGameIds.has(g.id) ? "open_free_game" : "preview_blurred",
       });
     }
-    // Fill to 2 if only 1 game
     if (thuGames.length === 1) {
       slots.push({ day: "Thu", date: thuDate, contentType: "player_spotlight", priority: priority++ });
     }
@@ -111,6 +162,7 @@ export function buildWeekSchedule(
       slots.push({
         day: "Fri", date: friDate, contentType: "match_stat_board",
         gameId: g.id, homeTeam: g.homeTeam, awayTeam: g.awayTeam, priority: priority++,
+        visibilityMode: freeGameIds.has(g.id) ? "open_free_game" : "preview_blurred",
       });
     }
     if (friGames.length === 1) {
@@ -121,37 +173,43 @@ export function buildWeekSchedule(
     slots.push({ day: "Fri", date: friDate, contentType: "player_spotlight_duo", priority: priority++ });
   }
 
-  // Saturday — match boards (up to 4)
+  // Saturday — one post per game (one_per_game) or up to 4 (two_max/stories_overflow)
   const satDate = offsetDate(mondayDate, 5);
   const satGames = gamesByDay["Sat"];
-  const satCount = Math.min(satGames.length, 4);
-  for (let i = 0; i < satCount; i++) {
+  const satLimit = weekendMode === "one_per_game" ? satGames.length : Math.min(satGames.length, 4);
+  for (let i = 0; i < satLimit; i++) {
     const g = satGames[i];
     slots.push({
       day: "Sat", date: satDate, contentType: "match_stat_board",
       gameId: g.id, homeTeam: g.homeTeam, awayTeam: g.awayTeam, priority: priority++,
+      visibilityMode: freeGameIds.has(g.id) ? "open_free_game" : "preview_blurred",
     });
   }
-  // Fill to minimum 2
-  const satFillNeeded = Math.max(0, 2 - satCount);
-  for (let i = 0; i < satFillNeeded; i++) {
-    slots.push({ day: "Sat", date: satDate, contentType: "player_spotlight", priority: priority++ });
+  // Only fill to minimum 2 when NOT in one_per_game mode
+  if (weekendMode !== "one_per_game") {
+    const satFillNeeded = Math.max(0, 2 - satLimit);
+    for (let i = 0; i < satFillNeeded; i++) {
+      slots.push({ day: "Sat", date: satDate, contentType: "player_spotlight", priority: priority++ });
+    }
   }
 
-  // Sunday — match boards (up to 4)
+  // Sunday — same logic
   const sunDate = offsetDate(mondayDate, 6);
   const sunGames = gamesByDay["Sun"];
-  const sunCount = Math.min(sunGames.length, 4);
-  for (let i = 0; i < sunCount; i++) {
+  const sunLimit = weekendMode === "one_per_game" ? sunGames.length : Math.min(sunGames.length, 4);
+  for (let i = 0; i < sunLimit; i++) {
     const g = sunGames[i];
     slots.push({
       day: "Sun", date: sunDate, contentType: "match_stat_board",
       gameId: g.id, homeTeam: g.homeTeam, awayTeam: g.awayTeam, priority: priority++,
+      visibilityMode: freeGameIds.has(g.id) ? "open_free_game" : "preview_blurred",
     });
   }
-  const sunFillNeeded = Math.max(0, 2 - sunCount);
-  for (let i = 0; i < sunFillNeeded; i++) {
-    slots.push({ day: "Sun", date: sunDate, contentType: "player_spotlight", priority: priority++ });
+  if (weekendMode !== "one_per_game") {
+    const sunFillNeeded = Math.max(0, 2 - sunLimit);
+    for (let i = 0; i < sunFillNeeded; i++) {
+      slots.push({ day: "Sun", date: sunDate, contentType: "player_spotlight", priority: priority++ });
+    }
   }
 
   return {
