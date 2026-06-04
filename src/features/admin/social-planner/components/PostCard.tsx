@@ -69,7 +69,7 @@ export function PostCard({ post, onEdit, onStatusChange }: PostCardProps) {
     <div
       className={`
         relative rounded-lg border bg-zinc-900 p-4 cursor-pointer
-        hover:border-zinc-600 transition-colors
+        hover:border-zinc-600 active:scale-[0.99] transition-all select-none
         ${hasWarnings ? "border-amber-800/60" : "border-zinc-800"}
       `}
       onClick={() => onEdit(post)}
@@ -104,7 +104,17 @@ export function PostCard({ post, onEdit, onStatusChange }: PostCardProps) {
       )}
 
       {/* Hook preview */}
-      <p className="text-xs text-zinc-500 line-clamp-2 mb-3">{post.hook}</p>
+      {post.hook && (
+        <p className="text-xs text-zinc-500 line-clamp-1 mb-1">{post.hook}</p>
+      )}
+
+      {/* Caption preview */}
+      {post.caption && (
+        <p className="text-[11px] text-zinc-600 line-clamp-2 mb-3">{post.caption}</p>
+      )}
+      {!post.hook && !post.caption && (
+        <p className="text-xs text-zinc-700 italic mb-3">No content yet</p>
+      )}
 
       {/* Stats row */}
       <div className="flex items-center gap-3 text-[10px] text-zinc-500 mb-3">
@@ -151,10 +161,13 @@ export function PostCard({ post, onEdit, onStatusChange }: PostCardProps) {
                 Mark Ready
               </button>
             )}
-          <span className="flex items-center gap-1 text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors">
+          <button
+            className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
+            onClick={(e) => { e.stopPropagation(); onEdit(post); }}
+          >
             <ExternalLink className="w-3 h-3" />
             Open
-          </span>
+          </button>
         </div>
       </div>
     </div>
