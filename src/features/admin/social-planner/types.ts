@@ -127,7 +127,8 @@ export interface CarouselSlide {
 // ─── Social Post ──────────────────────────────────────────────────────────────
 
 export interface SocialPost {
-  id: string;
+  id: string;             // UUID once saved; crypto.randomUUID() in-memory before save
+  clientPostKey?: string; // Original in-memory key preserved for stable React keys
   round: number;
   season: number;
   date: string;

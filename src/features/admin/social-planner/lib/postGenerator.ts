@@ -19,7 +19,7 @@ const DEFAULT_PLATFORM: Platform = "instagram";
 const CTA = "See the full board at neekostatistics.com.au";
 
 function generateId(): string {
-  return Math.random().toString(36).slice(2, 11);
+  return crypto.randomUUID();
 }
 
 export function buildPost(

@@ -19,6 +19,7 @@ export function isUuid(value: string | null | undefined): value is string {
 
 export interface DbPost {
   id: string;
+  client_post_key: string | null;
   round: number | null;
   season: number | null;
   date: string;
@@ -135,13 +136,15 @@ export function dbStatToAFLPlayerStat(row: DbPlayerStat): AFLPlayerStat {
 export function postToDb(post: SocialPost): Omit<Partial<DbPost>, "id"> & { game_key: string | null } {
   return {
     // Never send id — let Supabase generate via gen_random_uuid()
+    client_post_key: post.clientPostKey ?? post.id,
     round: post.round,
     season: post.season,
     date: post.date,
     scheduled_at: post.scheduledAt ?? null,
     day_of_week: post.dayOfWeek,
     content_type: post.contentType,
-    game_id: isUuid(post.gameId) ? post.gameId : null,
+    // game_id is text column — store whatever string we have (may be non-uuid external IDs)
+    game_id: post.gameId ? String(post.gameId) : null,
     game_key: post.gameId ?? null,
     home_team: post.homeTeam ?? null,
     away_team: post.awayTeam ?? null,
@@ -164,6 +167,7 @@ export function postToDb(post: SocialPost): Omit<Partial<DbPost>, "id"> & { game
 export function dbToPost(row: DbPost): SocialPost {
   return {
     id: row.id,
+    clientPostKey: row.client_post_key ?? undefined,
     round: row.round ?? 1,
     season: row.season ?? 2026,
     date: row.date ?? "",

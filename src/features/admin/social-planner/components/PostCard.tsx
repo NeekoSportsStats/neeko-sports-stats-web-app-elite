@@ -1,4 +1,5 @@
-import { TriangleAlert as AlertTriangle, CircleCheck as CheckCircle2, FileText, Image, Play } from "lucide-react";
+import { useState } from "react";
+import { TriangleAlert as AlertTriangle, Copy, Check, Users, Layers, ExternalLink } from "lucide-react";
 import type { SocialPost, PostStatus } from "../types";
 
 const STATUS_CONFIG: Record<PostStatus, { label: string; color: string }> = {
@@ -19,6 +20,12 @@ const CONTENT_TYPE_LABELS: Record<SocialPost["contentType"], string> = {
   story_extra:          "Story Extra",
 };
 
+const VISIBILITY_BADGES: Record<string, string> = {
+  open_free_game: "text-emerald-400 bg-emerald-950 border-emerald-800",
+  preview_blurred: "text-amber-400 bg-amber-950 border-amber-800",
+  manual: "text-zinc-400 bg-zinc-800 border-zinc-700",
+};
+
 interface PostCardProps {
   post: SocialPost;
   onEdit: (post: SocialPost) => void;
@@ -26,8 +33,33 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, onEdit, onStatusChange }: PostCardProps) {
+  const [captionCopied, setCaptionCopied] = useState(false);
   const status = STATUS_CONFIG[post.status];
   const hasWarnings = post.warnings.length > 0;
+
+  function handleCopyCaption(e: React.MouseEvent) {
+    e.stopPropagation();
+    const text = `${post.hook}\n\n${post.caption}\n\n${post.hashtags.join(" ")}`;
+    navigator.clipboard.writeText(text).then(() => {
+      setCaptionCopied(true);
+      setTimeout(() => setCaptionCopied(false), 1800);
+    });
+  }
+
+  function handleMarkReady(e: React.MouseEvent) {
+    e.stopPropagation();
+    onStatusChange(post.id, "ready");
+  }
+
+  const visibilityMode = post.visibilityMode;
+  const visibilityBadgeColor = visibilityMode ? (VISIBILITY_BADGES[visibilityMode] ?? VISIBILITY_BADGES.manual) : null;
+
+  const gameLabel = post.homeTeam && post.awayTeam
+    ? `${post.homeTeam} v ${post.awayTeam}`
+    : null;
+
+  const visibleRows = post.carouselSlides.reduce((sum, s) => sum + (s.visibleRowCount ?? 0), 0);
+  const blurredRows = post.carouselSlides.reduce((sum, s) => sum + (s.blurredRowCount ?? 0), 0);
 
   return (
     <div
@@ -38,10 +70,23 @@ export function PostCard({ post, onEdit, onStatusChange }: PostCardProps) {
       `}
       onClick={() => onEdit(post)}
     >
-      {/* Header */}
-      <div className="flex items-start justify-between gap-2 mb-2">
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-2 mb-1.5">
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-zinc-500 mb-0.5">{CONTENT_TYPE_LABELS[post.contentType]}</p>
+          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+            <p className="text-[10px] text-zinc-500">{CONTENT_TYPE_LABELS[post.contentType]}</p>
+            {visibilityMode && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${visibilityBadgeColor}`}>
+                {visibilityMode === "open_free_game" ? "Free Board" : visibilityMode === "preview_blurred" ? "Preview" : "Manual"}
+              </span>
+            )}
+            {hasWarnings && (
+              <span className="flex items-center gap-0.5 text-[10px] text-amber-400">
+                <AlertTriangle className="w-3 h-3" />
+                {post.warnings.length}
+              </span>
+            )}
+          </div>
           <h3 className="text-sm font-medium text-zinc-200 truncate">{post.title}</h3>
         </div>
         <span className={`shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full border ${status.color}`}>
@@ -49,36 +94,59 @@ export function PostCard({ post, onEdit, onStatusChange }: PostCardProps) {
         </span>
       </div>
 
-      {/* Hook preview */}
-      <p className="text-xs text-zinc-400 line-clamp-2 mb-3">{post.hook}</p>
+      {/* Game matchup */}
+      {gameLabel && (
+        <p className="text-[11px] text-zinc-400 font-medium mb-1">{gameLabel}</p>
+      )}
 
-      {/* Meta row */}
-      <div className="flex items-center justify-between text-[10px] text-zinc-500">
-        <div className="flex items-center gap-3">
+      {/* Hook preview */}
+      <p className="text-xs text-zinc-500 line-clamp-2 mb-3">{post.hook}</p>
+
+      {/* Stats row */}
+      <div className="flex items-center gap-3 text-[10px] text-zinc-500 mb-3">
+        <span className="flex items-center gap-1">
+          <Layers className="w-3 h-3" />
+          {post.carouselSlides.length} slides
+        </span>
+        {post.selectedPlayers.length > 0 && (
           <span className="flex items-center gap-1">
-            <Image className="w-3 h-3" />
-            {post.carouselSlides.length} slides
+            <Users className="w-3 h-3" />
+            {post.selectedPlayers.length} player{post.selectedPlayers.length !== 1 ? "s" : ""}
           </span>
-          <span className="flex items-center gap-1">
-            <FileText className="w-3 h-3" />
-            {post.hashtags.length} tags
+        )}
+        {blurredRows > 0 && (
+          <span className="text-zinc-600">
+            {visibleRows} visible · {blurredRows} blurred
           </span>
-          {hasWarnings && (
-            <span className="flex items-center gap-1 text-amber-400">
-              <AlertTriangle className="w-3 h-3" />
-              {post.warnings.length} warning{post.warnings.length > 1 ? "s" : ""}
-            </span>
-          )}
+        )}
+        <span className="text-zinc-600">{post.hashtags.length} tags</span>
+      </div>
+
+      {/* Action row */}
+      <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/60">
+        <div className="flex items-center gap-2">
+          <button
+            className={`flex items-center gap-1 text-[10px] transition-colors
+              ${captionCopied ? "text-emerald-400" : "text-zinc-500 hover:text-zinc-300"}`}
+            onClick={handleCopyCaption}
+          >
+            {captionCopied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+            {captionCopied ? "Copied" : "Copy Caption"}
+          </button>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           {post.status === "draft" && (
             <button
-              className="text-[10px] text-emerald-400 hover:text-emerald-300"
-              onClick={(e) => { e.stopPropagation(); onStatusChange(post.id, "ready"); }}
+              className="text-[10px] text-emerald-400 hover:text-emerald-300 transition-colors"
+              onClick={handleMarkReady}
             >
               Mark Ready
             </button>
           )}
+          <span className="flex items-center gap-1 text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors">
+            <ExternalLink className="w-3 h-3" />
+            Open
+          </span>
         </div>
       </div>
     </div>

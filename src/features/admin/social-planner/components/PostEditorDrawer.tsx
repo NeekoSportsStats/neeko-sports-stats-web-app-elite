@@ -1,8 +1,12 @@
 import { useState, useEffect } from "react";
-import { X, Copy, Check } from "lucide-react";
-import type { SocialPost, PostStatus, CarouselSlide } from "../types";
+import { X, Copy, Check, RefreshCw } from "lucide-react";
+import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode } from "../types";
 import { checkSafety } from "../lib/safetyRules";
 import { SafetyCheckPanel } from "./SafetyCheckPanel";
+import { pickHook, type HookCategory } from "../lib/hookLibrary";
+import { pickCaption, type CaptionCategory } from "../lib/captionLibrary";
+import { replaceTokens, gameLabel } from "../lib/tokenEngine";
+import type { TokenMap } from "../types";
 
 const STATUS_OPTIONS: PostStatus[] = ["draft", "ready", "scheduled", "posted", "archived"];
 
@@ -337,25 +341,128 @@ function HookCaptionTab({
   edited: SocialPost;
   update: <K extends keyof SocialPost>(key: K, value: SocialPost[K]) => void;
 }) {
+  function buildTokenMap(post: SocialPost): TokenMap {
+    const p = post.selectedPlayers[0];
+    return {
+      round: post.round,
+      game: post.homeTeam && post.awayTeam ? gameLabel(post.homeTeam, post.awayTeam) : undefined,
+      homeTeam: post.homeTeam,
+      awayTeam: post.awayTeam,
+      player: p?.playerName,
+      team: p?.team,
+      record: p?.recordLabel,
+      threshold: p?.thresholdLabel,
+      l5Avg: p?.l5Avg?.toFixed(1),
+      lastFive: p?.lastFive?.join(" · "),
+      statType: p?.statType,
+      cta: "See the full board at neekostatistics.com.au",
+    };
+  }
+
+  function hookCategoryFor(ct: ContentType, vm?: ContentVisibilityMode): HookCategory {
+    if (ct === "match_stat_board") {
+      if (vm === "open_free_game") return "free_game_board";
+      if (vm === "preview_blurred") return "preview_game";
+      return "match_board";
+    }
+    const map: Record<ContentType, HookCategory> = {
+      match_stat_board: "match_board",
+      player_spotlight: "player_spotlight",
+      player_spotlight_duo: "player_spotlight",
+      round_review: "round_review",
+      round_ahead_watch: "round_ahead",
+      product_education: "product",
+      story_extra: "match_board",
+    };
+    return map[ct];
+  }
+
+  function handleRegenerateHook() {
+    const category = hookCategoryFor(edited.contentType, edited.visibilityMode);
+    const exclude = new Set(edited.usedHookId ? [edited.usedHookId] : []);
+    const newHook = pickHook(category, exclude);
+    const tokens = buildTokenMap(edited);
+    const resolved = replaceTokens(newHook.template, tokens);
+    update("hook", resolved);
+    update("usedHookId", newHook.id);
+    update("shortCaption", `${resolved}\n\nSee the full board at neekostatistics.com.au`);
+  }
+
+  function handleRegenerateCaption() {
+    const category = hookCategoryFor(edited.contentType, edited.visibilityMode);
+    const exclude = new Set(edited.usedCaptionId ? [edited.usedCaptionId] : []);
+    const newCaption = pickCaption(category as CaptionCategory, exclude);
+    const tokens = buildTokenMap(edited);
+    const resolved = replaceTokens(newCaption.template, tokens);
+    update("caption", resolved);
+    update("usedCaptionId", newCaption.id);
+  }
+
+  function handleRegenerateFull() {
+    const category = hookCategoryFor(edited.contentType, edited.visibilityMode);
+    const excludeHooks = new Set(edited.usedHookId ? [edited.usedHookId] : []);
+    const excludeCaptions = new Set(edited.usedCaptionId ? [edited.usedCaptionId] : []);
+    const newHook = pickHook(category, excludeHooks);
+    const newCaption = pickCaption(category as CaptionCategory, excludeCaptions);
+    const tokens = buildTokenMap(edited);
+    const resolvedHook = replaceTokens(newHook.template, tokens);
+    const resolvedCaption = replaceTokens(newCaption.template, tokens);
+    update("hook", resolvedHook);
+    update("caption", resolvedCaption);
+    update("shortCaption", `${resolvedHook}\n\nSee the full board at neekostatistics.com.au`);
+    update("usedHookId", newHook.id);
+    update("usedCaptionId", newCaption.id);
+  }
+
   return (
     <div className="space-y-5">
-      <Field label="Hook">
+      <div className="flex items-center justify-end gap-2">
+        <button
+          onClick={handleRegenerateFull}
+          className="flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-white hover:border-zinc-600 transition-colors"
+        >
+          <RefreshCw className="w-3 h-3" />
+          Regenerate Full Copy
+        </button>
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="text-xs font-medium text-zinc-400">Hook</label>
+          <button
+            onClick={handleRegenerateHook}
+            className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            <RefreshCw className="w-3 h-3" />
+            New Hook
+          </button>
+        </div>
         <textarea
           rows={3}
           value={edited.hook}
           onChange={e => update("hook", e.target.value)}
           className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-sky-600 resize-none"
         />
-      </Field>
+      </div>
 
-      <Field label="Caption (long)">
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <label className="text-xs font-medium text-zinc-400">Caption (long)</label>
+          <button
+            onClick={handleRegenerateCaption}
+            className="flex items-center gap-1 text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            <RefreshCw className="w-3 h-3" />
+            New Caption
+          </button>
+        </div>
         <textarea
           rows={8}
           value={edited.caption}
           onChange={e => update("caption", e.target.value)}
           className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-200 focus:outline-none focus:border-sky-600 resize-none"
         />
-      </Field>
+      </div>
 
       <Field label="Short Caption">
         <textarea
@@ -417,6 +524,38 @@ function ImagePromptsTab({
 // ─── Tab: Export / Copy ───────────────────────────────────────────────────────
 
 function ExportTab({ edited }: { edited: SocialPost }) {
+  const slideText = edited.carouselSlides
+    .map((s, i) => {
+      const rowLines = (s.rows ?? [])
+        .map(r => r.blurred ? "(blurred row)" : `${r.playerName} — avg ${r.l5Avg.toFixed(1)}`)
+        .join("\n");
+      return `--- Slide ${i + 1}: ${s.title} ---\n${s.subtitle ? s.subtitle + "\n" : ""}${rowLines}`;
+    })
+    .join("\n\n");
+
+  const packageText = [
+    `=== COPY PACKAGE: ${edited.title} ===`,
+    `Round ${edited.round} · ${edited.season} · ${edited.dayOfWeek} ${edited.date}`,
+    edited.homeTeam && edited.awayTeam ? `Game: ${edited.homeTeam} v ${edited.awayTeam}` : null,
+    edited.visibilityBadge ? `Visibility: ${edited.visibilityBadge}` : null,
+    "",
+    "HOOK",
+    edited.hook,
+    "",
+    "CAPTION",
+    edited.caption,
+    "",
+    "SHORT CAPTION",
+    edited.shortCaption,
+    "",
+    "HASHTAGS",
+    edited.hashtags.join(" "),
+    slideText ? "\nSLIDE TEXT\n" + slideText : null,
+    "",
+    "IMAGE PROMPT",
+    edited.imagePrompt,
+  ].filter(line => line !== null).join("\n");
+
   const fields = [
     { label: "Hook",            value: edited.hook },
     { label: "Caption (long)",  value: edited.caption },
@@ -427,6 +566,8 @@ function ExportTab({ edited }: { edited: SocialPost }) {
 
   return (
     <div className="space-y-4">
+      <CopyField label="Full Copy Package" value={packageText} multiline />
+      <div className="h-px bg-zinc-800" />
       {fields.map(f => (
         <CopyField key={f.label} label={f.label} value={f.value} />
       ))}
@@ -434,7 +575,7 @@ function ExportTab({ edited }: { edited: SocialPost }) {
   );
 }
 
-function CopyField({ label, value }: { label: string; value: string }) {
+function CopyField({ label, value, multiline = false }: { label: string; value: string; multiline?: boolean }) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
@@ -457,8 +598,8 @@ function CopyField({ label, value }: { label: string; value: string }) {
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <div className="px-3 py-2.5">
-        <p className="text-xs text-zinc-300 whitespace-pre-wrap break-words">{value || "(empty)"}</p>
+      <div className={`px-3 py-2.5 ${multiline ? "max-h-48 overflow-y-auto" : ""}`}>
+        <p className="text-xs text-zinc-300 whitespace-pre-wrap break-words font-mono">{value || "(empty)"}</p>
       </div>
     </div>
   );

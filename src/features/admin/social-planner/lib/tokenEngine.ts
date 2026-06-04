@@ -27,6 +27,9 @@ export function replaceTokens(template: string, tokens: TokenMap): string {
     result = result.replaceAll(key, value);
   }
 
+  // Strip any remaining unresolved [token] placeholders
+  result = result.replace(/\[[^\]]+\]/g, "");
+
   // Clean up artefacts from missing tokens:
   // " 's " → "'s " (possessive with missing player name)
   result = result.replace(/ 's\b/g, "'s");
@@ -34,6 +37,9 @@ export function replaceTokens(template: string, tokens: TokenMap): string {
   result = result.replace(/  +/g, " ");
   // Dangling "at ." or "for ." etc. (token was last word before punctuation)
   result = result.replace(/\b(at|for|by|of|in|to|with|and)\s*\./gi, ".");
+  // Dangling "·" or "-" with surrounding spaces from empty token slots
+  result = result.replace(/\s+[·\-]\s+[·\-]\s+/g, " · ");
+  result = result.replace(/\s{2,}/g, " ");
   // Lines that are entirely whitespace after replacement
   result = result.split("\n").map(l => l.trim()).filter(Boolean).join("\n");
 
