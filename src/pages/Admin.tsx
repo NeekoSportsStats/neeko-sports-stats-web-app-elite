@@ -137,6 +137,7 @@ export const AdminMarketingPage      = lazy(() => import("@/features/admin/pages
 export const AdminPlayerIdentityPage = lazy(() => import("@/features/admin/pages/AdminPlayerIdentity"));
 export const AdminInternalOpsPage      = lazy(() => import("@/features/admin/pages/AdminAdminHub"));
 export const AdminConversionTestPage   = lazy(() => import("@/features/admin/pages/AdminConversionTest"));
+export const AdminSocialPlannerPage    = lazy(() => import("@/features/admin/social-planner/SocialPlannerPage"));
 
 export { AdminShellWithProvider as AdminShell };
 export default AdminShellWithProvider;

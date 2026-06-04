@@ -35,6 +35,7 @@ import {
   AdminPlayerIdentityPage,
   AdminInternalOpsPage,
   AdminConversionTestPage,
+  AdminSocialPlannerPage,
 } from "@/pages/Admin";
 
 const NeekoPlusPurchase = React.lazy(() => import("@/pages/NeekoPlusPurchase"));
@@ -176,6 +177,7 @@ function App() {
           <Route path="player-lab" element={<AdminPlayerLabPage />} />
           <Route path="player-identity" element={<AdminPlayerIdentityPage />} />
           <Route path="internal-ops" element={<AdminInternalOpsPage />} />
+          <Route path="social-planner" element={<AdminSocialPlannerPage />} />
           {/* Marketing: hidden from main nav, accessible via direct URL for admins */}
           <Route path="marketing" element={<AdminMarketingPage />} />
           {/* /admin/marketing-insights redirects to Users & Growth (Marketing Analytics tab) */}

@@ -1,5 +1,5 @@
 import type { ElementType } from "react";
-import { LayoutDashboard, HeartPulse, Users, Terminal, Lightbulb, FlaskConical, Settings2, Fingerprint } from "lucide-react";
+import { LayoutDashboard, HeartPulse, Users, Terminal, Lightbulb, FlaskConical, Settings2, Fingerprint, CalendarDays } from "lucide-react";
 
 export interface AdminSection {
   path: string;
@@ -17,6 +17,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { path: "/admin/content-intel",  label: "Content Intel",   icon: Lightbulb },
   { path: "/admin/player-lab",     label: "Player Lab",      icon: FlaskConical },
   { path: "/admin/player-identity", label: "Player Identity", icon: Fingerprint },
+  { path: "/admin/social-planner",  label: "Social Planner",  icon: CalendarDays },
   { path: "/admin/internal-ops",   label: "Internal Ops",    icon: Settings2 },
 ];
 
