@@ -178,6 +178,7 @@ export function initAnalytics() {
 ============================= */
 export function initGoogleAds() {
   if (typeof window === "undefined") return;
+  if (isAdminRoute()) return;
 
   const adsId = import.meta.env.VITE_GOOGLE_ADS_ID as string | undefined;
   if (!adsId || !adsId.startsWith("AW-")) {

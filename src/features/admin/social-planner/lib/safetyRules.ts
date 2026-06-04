@@ -16,11 +16,14 @@ export const BANNED_WORDS = [
   "punt", "punting",
   "wager",
   "tipster",
+  "picks", "pick",
+  "tip", "tips",
+  "back", "backing",
+  "gamble", "gambling",
+  "flush",
 ];
 
-export const CAUTION_WORDS = [
-  "picks",
-];
+export const CAUTION_WORDS: string[] = [];
 
 export const PAGE_NUMBER_PATTERNS = [
   /slide \d+ of \d+/i,
@@ -42,10 +45,8 @@ export interface SafetyResult {
 }
 
 export function checkSafety(text: string): SafetyResult {
-  const lower = text.toLowerCase();
   const flags: SafetyFlag[] = [];
 
-  // Check banned words (whole word)
   for (const word of BANNED_WORDS) {
     const regex = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi");
     if (regex.test(text)) {
@@ -53,7 +54,6 @@ export function checkSafety(text: string): SafetyResult {
     }
   }
 
-  // Check caution words
   for (const word of CAUTION_WORDS) {
     const regex = new RegExp(`\\b${word}\\b`, "gi");
     if (regex.test(text)) {
@@ -65,9 +65,8 @@ export function checkSafety(text: string): SafetyResult {
     }
   }
 
-  // Check page number patterns
   for (const pattern of PAGE_NUMBER_PATTERNS) {
-    if (pattern.test(lower)) {
+    if (pattern.test(text.toLowerCase())) {
       flags.push({
         word: "page number pattern",
         type: "page_number",

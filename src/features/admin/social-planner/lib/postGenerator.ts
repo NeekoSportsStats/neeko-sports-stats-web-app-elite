@@ -8,7 +8,7 @@ import type {
 import type { ScheduleSlot } from "./scheduleEngine";
 import { pickHook, type HookCategory } from "./hookLibrary";
 import { pickCaption, type CaptionCategory } from "./captionLibrary";
-import { replaceTokens, gameLabel } from "./tokenEngine";
+import { replaceTokens, gameLabel, nextCta, resetCtaRotation } from "./tokenEngine";
 import { buildCarouselSlides } from "./carouselBuilder";
 import { generateCoverPrompt, generateOpenFreeGameCoverPrompt } from "./promptGenerator";
 import { selectPlayersForSlot } from "./playerSelector";
@@ -16,10 +16,30 @@ import { generateHashtags } from "./hashtagGenerator";
 import { checkSafety } from "./safetyRules";
 
 const DEFAULT_PLATFORM: Platform = "instagram";
-const CTA = "See the full board at neekostatistics.com.au";
 
 function generateId(): string {
   return crypto.randomUUID();
+}
+
+/** Builds the set of token keys that are actually available for a given slot/players. */
+function buildAvailableTokens(
+  slot: ScheduleSlot,
+  players: AFLPlayerStat[],
+  game?: AFLGame
+): Set<string> {
+  const available = new Set<string>(["round", "season", "cta"]);
+  if (game || slot.homeTeam) { available.add("game"); available.add("homeTeam"); available.add("awayTeam"); }
+  if (players.length > 0) {
+    available.add("player");
+    available.add("team");
+    available.add("record");
+    available.add("threshold");
+    available.add("l5Avg");
+    available.add("statType");
+    if (players[0].lastFive.length > 0) available.add("lastFive");
+    if (players[0].projection != null) available.add("projection");
+  }
+  return available;
 }
 
 export function buildPost(
@@ -30,7 +50,6 @@ export function buildPost(
   usedHookIds: Set<string> = new Set(),
   usedCaptionIds: Set<string> = new Set()
 ): SocialPost {
-  // Use currentRound/currentSeason (not round/season — those don't exist on PlannerSettings)
   const round = settings.currentRound;
   const season = settings.currentSeason;
 
@@ -38,22 +57,29 @@ export function buildPost(
   const visibilityMode: ContentVisibilityMode | undefined =
     slot.contentType === "match_stat_board" ? (slot.visibilityMode ?? "preview_blurred") : undefined;
 
+  const cta = nextCta();
+
   const tokens: TokenMap = {
     round,
     game:     game ? gameLabel(game.homeTeam, game.awayTeam) : undefined,
     homeTeam: game?.homeTeam ?? slot.homeTeam,
     awayTeam: game?.awayTeam ?? slot.awayTeam,
-    cta:      CTA,
+    cta,
   };
 
   const hookCategory = contentTypeToHookCategory(slot.contentType, visibilityMode);
 
   const selectedPlayers = selectPlayersForSlot(slot, allPlayers, settings);
 
-  // If a player-specific slot type has no player data, warn and shift to product education copy
   const needsPlayers = slot.contentType === "player_spotlight" || slot.contentType === "player_spotlight_duo";
+  const needsGame = slot.contentType === "match_stat_board";
+
+  // Fallback warnings for missing required data
   const noPlayersWarning = needsPlayers && selectedPlayers.length === 0
-    ? "No player data available — using product education copy. Regenerate after loading player stats."
+    ? "Select a player before marking this post ready."
+    : null;
+  const noGameWarning = needsGame && !game && !slot.homeTeam
+    ? "Select a game before marking this post ready."
     : null;
 
   if (selectedPlayers.length > 0) {
@@ -67,14 +93,16 @@ export function buildPost(
     tokens.statType  = p.statType;
   }
 
+  const availableTokens = buildAvailableTokens(slot, selectedPlayers, game);
+
   // Use product category if we needed players but have none
   const effectiveHookCategory = noPlayersWarning ? ("product" as HookCategory) : hookCategory;
-  const hook    = pickHook(effectiveHookCategory, usedHookIds);
-  const caption = pickCaption(effectiveHookCategory as CaptionCategory, usedCaptionIds);
+  const hook    = pickHook(effectiveHookCategory, usedHookIds, availableTokens);
+  const caption = pickCaption(effectiveHookCategory as CaptionCategory, usedCaptionIds, availableTokens);
   const hookText    = replaceTokens(hook.template, tokens);
   const captionText = replaceTokens(caption.template, tokens);
-  const shortCaption = `${hookText}\n\n${CTA}`;
-  const title       = buildTitle(slot, tokens, game);
+  const shortCaption = `${hookText}\n\n${cta}`;
+  const title       = buildTitle(slot, tokens, game, noPlayersWarning != null, noGameWarning != null);
   const hashtags    = generateHashtags(slot.contentType, game, selectedPlayers);
   const carouselSlides = buildCarouselSlides(slot, selectedPlayers, tokens, settings);
 
@@ -85,6 +113,7 @@ export function buildPost(
   const safetyResult = checkSafety(`${hookText} ${captionText}`);
   const warnings = [
     ...(noPlayersWarning ? [noPlayersWarning] : []),
+    ...(noGameWarning ? [noGameWarning] : []),
     ...safetyResult.flags.map(f =>
       f.type === "banned"
         ? `Banned word: "${f.word}"`
@@ -136,6 +165,7 @@ export function buildWeekPosts(
   allPlayers: AFLPlayerStat[],
   games: AFLGame[]
 ): SocialPost[] {
+  resetCtaRotation();
   const usedHookIds = new Set<string>();
   const usedCaptionIds = new Set<string>();
   const posts: SocialPost[] = [];
@@ -150,18 +180,27 @@ export function buildWeekPosts(
   return posts;
 }
 
-function buildTitle(slot: ScheduleSlot, tokens: TokenMap, game?: AFLGame): string {
+function buildTitle(
+  slot: ScheduleSlot,
+  tokens: TokenMap,
+  game?: AFLGame,
+  missingPlayers?: boolean,
+  missingGame?: boolean
+): string {
   const round = tokens.round ?? "";
   switch (slot.contentType) {
     case "match_stat_board": {
+      if (missingGame) return "Game selection required";
       const base = game ? `${game.homeTeam} v ${game.awayTeam} — R${round}` : `Round ${round} Match Board`;
       if (slot.visibilityMode === "open_free_game") return `${base} [Free Board]`;
       if (slot.visibilityMode === "preview_blurred") return `${base} [Preview]`;
       return base;
     }
     case "player_spotlight":
+      if (missingPlayers) return "Player selection required";
       return tokens.player ? `${tokens.player} — Form Watch` : "Player Spotlight";
     case "player_spotlight_duo":
+      if (missingPlayers) return "Player selection required";
       return "Player Duo Spotlight";
     case "round_review":
       return `Round ${round} Review`;

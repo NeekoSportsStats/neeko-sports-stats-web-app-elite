@@ -51,7 +51,13 @@ export function PostEditorDrawer({ post, onClose, onSave }: PostEditorDrawerProp
   const hookSafety    = checkSafety(edited.hook);
   const captionSafety = checkSafety(edited.caption);
   const shortSafety   = checkSafety(edited.shortCaption);
-  const hasSafetyIssues = hookSafety.failed || captionSafety.failed || shortSafety.failed;
+  const hasSafetyIssues = !hookSafety.isSafe || !captionSafety.isSafe || !shortSafety.isSafe;
+
+  // Mark Ready is disabled when safety fails or required fields are missing
+  const hasMissingRequired = edited.warnings.some(w =>
+    w.includes("selection required") || w.includes("before marking")
+  );
+  const canMarkReady = !hasSafetyIssues && !hasMissingRequired;
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -136,12 +142,19 @@ export function PostEditorDrawer({ post, onClose, onSave }: PostEditorDrawerProp
           >
             Discard changes
           </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-1.5 text-xs rounded bg-sky-700 hover:bg-sky-600 text-white transition-colors font-medium"
-          >
-            Save changes
-          </button>
+          <div className="flex items-center gap-3">
+            {(hasSafetyIssues || hasMissingRequired) && edited.status === "ready" && (
+              <span className="text-[10px] text-amber-400">
+                {hasSafetyIssues ? "Fix safety issues first" : "Required fields missing"}
+              </span>
+            )}
+            <button
+              onClick={handleSave}
+              className="px-4 py-1.5 text-xs rounded bg-sky-700 hover:bg-sky-600 text-white transition-colors font-medium"
+            >
+              Save changes
+            </button>
+          </div>
         </div>
       </div>
     </div>

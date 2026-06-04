@@ -51,6 +51,10 @@ export function PostCard({ post, onEdit, onStatusChange }: PostCardProps) {
     onStatusChange(post.id, "ready");
   }
 
+  const hasMissingRequired = post.warnings.some(w =>
+    w.includes("selection required") || w.includes("before marking")
+  );
+  const canMarkReady = !hasWarnings && !hasMissingRequired;
   const visibilityMode = post.visibilityMode;
   const visibilityBadgeColor = visibilityMode ? (VISIBILITY_BADGES[visibilityMode] ?? VISIBILITY_BADGES.manual) : null;
 
@@ -136,13 +140,17 @@ export function PostCard({ post, onEdit, onStatusChange }: PostCardProps) {
         </div>
         <div className="flex items-center gap-2">
           {post.status === "draft" && (
-            <button
-              className="text-[10px] text-emerald-400 hover:text-emerald-300 transition-colors"
-              onClick={handleMarkReady}
-            >
-              Mark Ready
-            </button>
-          )}
+              <button
+                disabled={!canMarkReady}
+                className={`text-[10px] transition-colors
+                  ${canMarkReady
+                    ? "text-emerald-400 hover:text-emerald-300"
+                    : "text-zinc-600 cursor-not-allowed"}`}
+                onClick={canMarkReady ? handleMarkReady : undefined}
+              >
+                Mark Ready
+              </button>
+            )}
           <span className="flex items-center gap-1 text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors">
             <ExternalLink className="w-3 h-3" />
             Open

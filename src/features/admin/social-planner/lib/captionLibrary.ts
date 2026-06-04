@@ -810,19 +810,246 @@ export const CAPTIONS: CaptionTemplate[] = [
     template:
       "A quick preview from the [game] board.\n\nTop disposal and goal form. The rest is inside Neeko.\n\n[cta]",
   },
+  // Part 9 — Open Free Game captions (cofg)
+  {
+    id: "cofg01",
+    category: "free_game_board",
+    template:
+      "[game] — Round [round].\n\nFull board, no paywall. Every disposal and goal threshold record visible.\n\n[cta]",
+  },
+  {
+    id: "cofg02",
+    category: "free_game_board",
+    template:
+      "The full [homeTeam] v [awayTeam] board is open.\n\nAll player threshold records from the recent sample. Ratio format.\n\n[cta]",
+  },
+  {
+    id: "cofg03",
+    category: "free_game_board",
+    template:
+      "Open game board — [game].\n\nDisposals. Goals. Ratios. Every name in the matchup.\n\n[cta]",
+  },
+  {
+    id: "cofg04",
+    category: "free_game_board",
+    template:
+      "Round [round] free board: [homeTeam] v [awayTeam].\n\nComplete form data — no restrictions.\n\n[cta]",
+  },
+  {
+    id: "cofg05",
+    category: "free_game_board",
+    template:
+      "[game] — the complete stat board is live.\n\nAll disposal and goal records. Full view.\n\n[cta]",
+  },
+
+  // Part 9 — Preview Game captions (cpvg)
+  {
+    id: "cpvg01",
+    category: "preview_game",
+    template:
+      "[game] — Round [round] preview.\n\nTop form records from the board. Full view available at Neeko.\n\n[cta]",
+  },
+  {
+    id: "cpvg02",
+    category: "preview_game",
+    template:
+      "Form preview: [homeTeam] v [awayTeam].\n\nThe top disposal and goal records. Full board inside.\n\n[cta]",
+  },
+  {
+    id: "cpvg03",
+    category: "preview_game",
+    template:
+      "A sample from the [game] board — Round [round].\n\nMore records available at neekostatistics.com.au.\n\n[cta]",
+  },
+  {
+    id: "cpvg04",
+    category: "preview_game",
+    template:
+      "Partial board view: [game].\n\nKey player threshold records. Full view at Neeko.\n\n[cta]",
+  },
+  {
+    id: "cpvg05",
+    category: "preview_game",
+    template:
+      "Preview: [homeTeam] v [awayTeam].\n\nTop names from the form board. All rows visible inside Neeko.\n\n[cta]",
+  },
+
+  // Part 9 — Player Spotlight captions (cpsh)
+  {
+    id: "cpsh01",
+    category: "player_spotlight",
+    template:
+      "[player] — recent form profile.\n\n[record] at [threshold]. L5 avg: [l5Avg].\n\nFull board at Neeko.\n\n[cta]",
+  },
+  {
+    id: "cpsh02",
+    category: "player_spotlight",
+    template:
+      "Form spotlight: [player] from [team].\n\nThreshold record: [record] at [threshold].\n\n[cta]",
+  },
+  {
+    id: "cpsh03",
+    category: "player_spotlight",
+    template:
+      "[player] — by the numbers this season.\n\n[record] at [threshold]. Recent last 5: [lastFive]\n\n[cta]",
+  },
+  {
+    id: "cpsh04",
+    category: "player_spotlight",
+    template:
+      "One to watch from Round [round]: [player].\n\n[record] at [threshold] from [team].\n\n[cta]",
+  },
+  {
+    id: "cpsh05",
+    category: "player_spotlight",
+    template:
+      "[player] form check — Round [round].\n\nL5 avg: [l5Avg]. Threshold: [threshold]. Record: [record].\n\n[cta]",
+  },
+
+  // Part 9 — Disposal captions (cdsh)
+  {
+    id: "cdsh01",
+    category: "disposal",
+    template:
+      "Disposal spotlight: [player].\n\n[record] at [threshold] in the recent sample.\n\nL5 avg: [l5Avg].\n\n[cta]",
+  },
+  {
+    id: "cdsh02",
+    category: "disposal",
+    template:
+      "[player] disposal form — Round [round].\n\nRecord: [record] at [threshold] from [team].\n\n[cta]",
+  },
+  {
+    id: "cdsh03",
+    category: "disposal",
+    template:
+      "Disposal watch: [player] from [team].\n\n[record] at [threshold]. Last 5: [lastFive]\n\n[cta]",
+  },
+
+  // Part 9 — Goal captions (cgsh)
+  {
+    id: "cgsh01",
+    category: "goal",
+    template:
+      "Goal spotlight: [player].\n\n[record] at [threshold] in the recent sample.\n\nL5 avg: [l5Avg].\n\n[cta]",
+  },
+  {
+    id: "cgsh02",
+    category: "goal",
+    template:
+      "[player] goal form — Round [round].\n\nRecord: [record] at [threshold] from [team].\n\n[cta]",
+  },
+  {
+    id: "cgsh03",
+    category: "goal",
+    template:
+      "Goal watch: [player] from [team].\n\n[record] at [threshold]. Last 5: [lastFive]\n\n[cta]",
+  },
+
+  // Part 9 — Round Review captions (crr)
+  {
+    id: "crr01",
+    category: "round_review",
+    template:
+      "Round [round] recap.\n\nThe records that stood out. What the board looks like now.\n\n[cta]",
+  },
+  {
+    id: "crr02",
+    category: "round_review",
+    template:
+      "What the data showed — Round [round].\n\nForm lines updated after the weekend.\n\n[cta]",
+  },
+  {
+    id: "crr03",
+    category: "round_review",
+    template:
+      "Post-round board review — Round [round].\n\nKey player form notes from the games.\n\n[cta]",
+  },
+
+  // Part 9 — Round Ahead captions (crah)
+  {
+    id: "crah01",
+    category: "round_ahead",
+    template:
+      "Round [round] form watch.\n\nThe board is shaping up. Key records to know.\n\n[cta]",
+  },
+  {
+    id: "crah02",
+    category: "round_ahead",
+    template:
+      "Heading into Round [round].\n\nEarly form board is live at Neeko. Player records, thresholds, recent data.\n\n[cta]",
+  },
+  {
+    id: "crah03",
+    category: "round_ahead",
+    template:
+      "Round [round] preview board.\n\nDisposals. Goals. Threshold records. What the data says before bounce.\n\n[cta]",
+  },
+
+  // Part 9 — Product captions (cpr)
+  {
+    id: "cpr01",
+    category: "product",
+    template:
+      "Why the board beats raw stat pages.\n\nContext. Sample size. Ratio format. All in one clean view at Neeko.\n\n[cta]",
+  },
+  {
+    id: "cpr02",
+    category: "product",
+    template:
+      "Context is everything in AFL stats.\n\nA ratio tells you more than a raw number ever will.\n\nThat's the Neeko approach.\n\n[cta]",
+  },
+  {
+    id: "cpr03",
+    category: "product",
+    template:
+      "The AFL form board every fan should know.\n\nDisposals, goals, thresholds — recent sample only. Clean format.\n\n[cta]",
+  },
+  {
+    id: "cpr04",
+    category: "product",
+    template:
+      "Ratios over percentages — always.\n\n9/10 and 9/14 both show 90% and 64%.\n\nBut only one tells you the sample size.\n\n[cta]",
+  },
+  {
+    id: "cpr05",
+    category: "product",
+    template:
+      "One place for all the AFL form data.\n\nPlayer thresholds, recent scores, projections — Neeko has it.\n\n[cta]",
+  },
 ];
 
-/** Pick a caption from the library avoiding recently used IDs */
+/** Pick a caption avoiding recently used IDs and templates that require tokens
+ * not present in the available token set.
+ */
 export function pickCaption(
   category: CaptionCategory,
-  usedIds: Set<string> = new Set()
+  usedIds: Set<string> = new Set(),
+  availableTokens?: Set<string>
 ): CaptionTemplate {
-  const pool = CAPTIONS.filter(c => c.category === category && !usedIds.has(c.id));
-  if (pool.length === 0) {
-    const fallbackPool = CAPTIONS.filter(c => c.category === category);
-    return fallbackPool[0] ?? CAPTIONS[0];
+  const categoryPool = CAPTIONS.filter(c => c.category === category);
+  const unusedPool = categoryPool.filter(c => !usedIds.has(c.id));
+  const basePool = unusedPool.length > 0 ? unusedPool : categoryPool;
+
+  if (availableTokens && availableTokens.size > 0) {
+    const compatible = basePool.filter(c => {
+      const required = getTemplateCaptionTokens(c.template);
+      for (const t of required) {
+        if (!availableTokens.has(t)) return false;
+      }
+      return true;
+    });
+    if (compatible.length > 0) {
+      return compatible[Math.floor(Math.random() * compatible.length)];
+    }
   }
-  return pool[Math.floor(Math.random() * pool.length)];
+
+  if (basePool.length === 0) return CAPTIONS[0];
+  return basePool[Math.floor(Math.random() * basePool.length)];
+}
+
+function getTemplateCaptionTokens(template: string): string[] {
+  return [...template.matchAll(/\[([a-zA-Z0-9_]+)\]/g)].map(m => m[1]);
 }
 
 export function getCaptionById(id: string): CaptionTemplate | undefined {

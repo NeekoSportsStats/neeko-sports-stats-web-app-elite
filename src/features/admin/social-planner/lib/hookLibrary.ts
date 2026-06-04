@@ -206,6 +206,17 @@ export const HOOKS: HookTemplate[] = [
   { id: "fg18", category: "free_game_board", template: "Full player form board for [homeTeam] and [awayTeam]." },
   { id: "fg19", category: "free_game_board", template: "The whole board is open for [game]." },
   { id: "fg20", category: "free_game_board", template: "Every name. Every record. [game]." },
+  // Part 9 additions
+  { id: "ofg01", category: "free_game_board", template: "The full [game] board is open." },
+  { id: "ofg02", category: "free_game_board", template: "Free board: [homeTeam] v [awayTeam] — all records visible." },
+  { id: "ofg03", category: "free_game_board", template: "Full disposal and goal form: [game]." },
+  { id: "ofg04", category: "free_game_board", template: "Complete match board for [game] — open access." },
+  { id: "ofg05", category: "free_game_board", template: "Round [round] open board: [homeTeam] v [awayTeam]." },
+  { id: "ofg06", category: "free_game_board", template: "The [game] stat board is fully open." },
+  { id: "ofg07", category: "free_game_board", template: "No restrictions — full form board for [game]." },
+  { id: "ofg08", category: "free_game_board", template: "Round [round] free board: [game]." },
+  { id: "ofg09", category: "free_game_board", template: "Open board drop: [homeTeam] v [awayTeam]." },
+  { id: "ofg10", category: "free_game_board", template: "Full player form — [game] board is live." },
 
   // ─── Preview Game ──────────────────────────────────────────────────────────
   { id: "pv01", category: "preview_game", template: "Top 3 from the [game] board." },
@@ -228,20 +239,101 @@ export const HOOKS: HookTemplate[] = [
   { id: "pv18", category: "preview_game", template: "Form preview: [homeTeam] and [awayTeam]." },
   { id: "pv19", category: "preview_game", template: "The top of the board for [game]." },
   { id: "pv20", category: "preview_game", template: "Preview: Round [round] stat board." },
+  // Part 9 additions
+  { id: "pvg01", category: "preview_game", template: "A snapshot from the [game] board." },
+  { id: "pvg02", category: "preview_game", template: "[game] — preview board for Round [round]." },
+  { id: "pvg03", category: "preview_game", template: "Top names before bounce: [homeTeam] v [awayTeam]." },
+  { id: "pvg04", category: "preview_game", template: "Partial view: [game] stat board." },
+  { id: "pvg05", category: "preview_game", template: "The board opens for [game]. Preview inside." },
+  { id: "pvg06", category: "preview_game", template: "Form preview: [game] — Round [round]." },
+  { id: "pvg07", category: "preview_game", template: "Top disposal records heading into [game]." },
+  { id: "pvg08", category: "preview_game", template: "Top goal records heading into [game]." },
+  { id: "pvg09", category: "preview_game", template: "Preview board — [homeTeam] v [awayTeam]." },
+  { id: "pvg10", category: "preview_game", template: "The [game] form preview." },
+
+  // Part 9 — Player Spotlight specific
+  { id: "psh01", category: "player_spotlight", template: "[player] — the recent form profile." },
+  { id: "psh02", category: "player_spotlight", template: "One player worth knowing this week." },
+  { id: "psh03", category: "player_spotlight", template: "[player] has hit [threshold] in [record] recently." },
+  { id: "psh04", category: "player_spotlight", template: "Recent form read: [player]." },
+  { id: "psh05", category: "player_spotlight", template: "The [team] player in focus this round." },
+  { id: "psh06", category: "player_spotlight", template: "[player] profile — L5 avg: [l5Avg]." },
+  { id: "psh07", category: "player_spotlight", template: "A stat line worth looking at: [player]." },
+  { id: "psh08", category: "player_spotlight", template: "Recent output: [player] — [record] at [threshold]." },
+  { id: "psh09", category: "player_spotlight", template: "The board feature this week: [player]." },
+  { id: "psh10", category: "player_spotlight", template: "[player] form through the numbers." },
+
+  // Part 9 — Disposal specific (dsh)
+  { id: "dsh01", category: "disposal", template: "[player] disposal form — [record] at [threshold]." },
+  { id: "dsh02", category: "disposal", template: "Disposal watch: [player] from [team]." },
+  { id: "dsh03", category: "disposal", template: "L5 disposals: [player] avg [l5Avg]." },
+  { id: "dsh04", category: "disposal", template: "[player] has been strong at [threshold] disposals." },
+  { id: "dsh05", category: "disposal", template: "Disposal spotlight: [player] — [record] in recent games." },
+
+  // Part 9 — Goal specific (gsh)
+  { id: "gsh01", category: "goal", template: "[player] goal form — [record] at [threshold]." },
+  { id: "gsh02", category: "goal", template: "Goal watch: [player] from [team]." },
+  { id: "gsh03", category: "goal", template: "L5 goals: [player] avg [l5Avg]." },
+  { id: "gsh04", category: "goal", template: "[player] has been finding the goals at [threshold]." },
+  { id: "gsh05", category: "goal", template: "Goal spotlight: [player] — [record] in recent games." },
+
+  // Part 9 — Round Review (rrh)
+  { id: "rrh01", category: "round_review", template: "Round [round] recap from the data." },
+  { id: "rrh02", category: "round_review", template: "What held and what didn't — Round [round]." },
+  { id: "rrh03", category: "round_review", template: "The weekend board review is in." },
+  { id: "rrh04", category: "round_review", template: "Key records from Round [round]." },
+  { id: "rrh05", category: "round_review", template: "Round [round] form notes from the board." },
+
+  // Part 9 — Round Ahead (rah)
+  { id: "rah01", category: "round_ahead", template: "Round [round] board is taking shape." },
+  { id: "rah02", category: "round_ahead", template: "Early form watch — Round [round]." },
+  { id: "rah03", category: "round_ahead", template: "The data ahead of Round [round]." },
+  { id: "rah04", category: "round_ahead", template: "Round [round] player watchlist." },
+  { id: "rah05", category: "round_ahead", template: "What the board shows before Round [round]." },
+
+  // Part 9 — Product/Education (prh)
+  { id: "prh01", category: "product", template: "Why the board beats raw stat pages." },
+  { id: "prh02", category: "product", template: "Context is everything in AFL stats." },
+  { id: "prh03", category: "product", template: "The board every AFL fan should know." },
+  { id: "prh04", category: "product", template: "Ratios over percentages — always." },
+  { id: "prh05", category: "product", template: "One place for all the AFL form data." },
 ];
 
-/** Pick a hook from the library avoiding recently used IDs */
+/**
+ * Pick a hook avoiding recently used IDs and templates that require tokens
+ * not present in the available token set. Falls back to any unused hook if
+ * no token-compatible hook exists.
+ */
 export function pickHook(
   category: HookCategory,
-  usedIds: Set<string> = new Set()
+  usedIds: Set<string> = new Set(),
+  availableTokens?: Set<string>
 ): HookTemplate {
-  const pool = HOOKS.filter(h => h.category === category && !usedIds.has(h.id));
-  if (pool.length === 0) {
-    // All used — reset and pick first
-    const fallbackPool = HOOKS.filter(h => h.category === category);
-    return fallbackPool[0] ?? HOOKS[0];
+  const categoryPool = HOOKS.filter(h => h.category === category);
+  const unusedPool = categoryPool.filter(h => !usedIds.has(h.id));
+  const basePool = unusedPool.length > 0 ? unusedPool : categoryPool;
+
+  if (availableTokens && availableTokens.size > 0) {
+    // Filter to templates whose required tokens are all satisfied
+    const compatible = basePool.filter(h => {
+      const required = getTemplateTokens(h.template);
+      for (const t of required) {
+        if (!availableTokens.has(t)) return false;
+      }
+      return true;
+    });
+    if (compatible.length > 0) {
+      return compatible[Math.floor(Math.random() * compatible.length)];
+    }
   }
-  return pool[Math.floor(Math.random() * pool.length)];
+
+  if (basePool.length === 0) return HOOKS[0];
+  return basePool[Math.floor(Math.random() * basePool.length)];
+}
+
+/** Extract token names from a template string (e.g. "[player]" → "player") */
+function getTemplateTokens(template: string): string[] {
+  return [...template.matchAll(/\[([a-zA-Z0-9_]+)\]/g)].map(m => m[1]);
 }
 
 export function getHookById(id: string): HookTemplate | undefined {
