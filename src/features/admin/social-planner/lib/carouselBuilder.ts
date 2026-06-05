@@ -81,87 +81,39 @@ function buildMatchBoardSlides(
     ? settings.thuFriMaxRows
     : settings.satSunVisibleRows;
 
-  // Home disposals
-  const homeDisposals = players.filter(
-    p => p.statType === "disposals" && p.team === slot.homeTeam
-  );
-  if (homeDisposals.length > 0) {
-    const rows = buildStatRowsWithBlur(homeDisposals, visibleRowsLimit, !isOpen);
-    slides.push({
-      id: makeId("home_disposals", 1),
-      slideType: "home_disposals",
-      title: `${slot.homeTeam} — Disposals`,
-      subtitle: "Recent threshold records",
-      rows,
-      imagePrompt: isOpen
-        ? generateOpenFreeGameTablePrompt("Home Disposals", slot.homeTeam, slot.awayTeam)
-        : generatePreviewBlurredTablePrompt("Home Disposals", slot.homeTeam, slot.awayTeam),
-      visibilityMode,
-      visibleRowCount: rows.filter(r => !r.blurred).length,
-      blurredRowCount: rows.filter(r => r.blurred).length,
-      ctaOverlayText: !isOpen ? settings.ctaOverlayText : undefined,
-    });
-  }
+  // Always emit all 4 table slides — rows: [] when no players found
+  const sections: Array<{
+    key: string;
+    slideType: CarouselSlide["slideType"];
+    team: string | undefined;
+    statType: "disposals" | "goals";
+    titleSuffix: string;
+    subtitle: string;
+    label: string;
+    index: number;
+  }> = [
+    { key: "home_disposals", slideType: "home_disposals", team: slot.homeTeam, statType: "disposals", titleSuffix: "Disposals", subtitle: "Recent threshold records", label: "Home Disposals", index: 1 },
+    { key: "away_disposals", slideType: "away_disposals", team: slot.awayTeam, statType: "disposals", titleSuffix: "Disposals", subtitle: "Recent threshold records", label: "Away Disposals", index: 2 },
+    { key: "home_goals",     slideType: "home_goals",     team: slot.homeTeam, statType: "goals",     titleSuffix: "Goals",     subtitle: "Recent scoring records",    label: "Home Goals",     index: 3 },
+    { key: "away_goals",     slideType: "away_goals",     team: slot.awayTeam, statType: "goals",     titleSuffix: "Goals",     subtitle: "Recent scoring records",    label: "Away Goals",     index: 4 },
+  ];
 
-  // Away disposals
-  const awayDisposals = players.filter(
-    p => p.statType === "disposals" && p.team === slot.awayTeam
-  );
-  if (awayDisposals.length > 0) {
-    const rows = buildStatRowsWithBlur(awayDisposals, visibleRowsLimit, !isOpen);
+  for (const section of sections) {
+    const sectionPlayers = players.filter(
+      p => p.statType === section.statType && p.team === section.team
+    );
+    const rows = sectionPlayers.length > 0
+      ? buildStatRowsWithBlur(sectionPlayers, visibleRowsLimit, !isOpen)
+      : [];
     slides.push({
-      id: makeId("away_disposals", 2),
-      slideType: "away_disposals",
-      title: `${slot.awayTeam} — Disposals`,
-      subtitle: "Recent threshold records",
+      id: makeId(section.key, section.index),
+      slideType: section.slideType,
+      title: `${section.team ?? "TBD"} — ${section.titleSuffix}`,
+      subtitle: section.subtitle,
       rows,
       imagePrompt: isOpen
-        ? generateOpenFreeGameTablePrompt("Away Disposals", slot.homeTeam, slot.awayTeam)
-        : generatePreviewBlurredTablePrompt("Away Disposals", slot.homeTeam, slot.awayTeam),
-      visibilityMode,
-      visibleRowCount: rows.filter(r => !r.blurred).length,
-      blurredRowCount: rows.filter(r => r.blurred).length,
-      ctaOverlayText: !isOpen ? settings.ctaOverlayText : undefined,
-    });
-  }
-
-  // Home goals
-  const homeGoals = players.filter(
-    p => p.statType === "goals" && p.team === slot.homeTeam
-  );
-  if (homeGoals.length > 0) {
-    const rows = buildStatRowsWithBlur(homeGoals, visibleRowsLimit, !isOpen);
-    slides.push({
-      id: makeId("home_goals", 3),
-      slideType: "home_goals",
-      title: `${slot.homeTeam} — Goals`,
-      subtitle: "Recent scoring records",
-      rows,
-      imagePrompt: isOpen
-        ? generateOpenFreeGameTablePrompt("Home Goals", slot.homeTeam, slot.awayTeam)
-        : generatePreviewBlurredTablePrompt("Home Goals", slot.homeTeam, slot.awayTeam),
-      visibilityMode,
-      visibleRowCount: rows.filter(r => !r.blurred).length,
-      blurredRowCount: rows.filter(r => r.blurred).length,
-      ctaOverlayText: !isOpen ? settings.ctaOverlayText : undefined,
-    });
-  }
-
-  // Away goals
-  const awayGoals = players.filter(
-    p => p.statType === "goals" && p.team === slot.awayTeam
-  );
-  if (awayGoals.length > 0) {
-    const rows = buildStatRowsWithBlur(awayGoals, visibleRowsLimit, !isOpen);
-    slides.push({
-      id: makeId("away_goals", 4),
-      slideType: "away_goals",
-      title: `${slot.awayTeam} — Goals`,
-      subtitle: "Recent scoring records",
-      rows,
-      imagePrompt: isOpen
-        ? generateOpenFreeGameTablePrompt("Away Goals", slot.homeTeam, slot.awayTeam)
-        : generatePreviewBlurredTablePrompt("Away Goals", slot.homeTeam, slot.awayTeam),
+        ? generateOpenFreeGameTablePrompt(section.label, slot.homeTeam, slot.awayTeam)
+        : generatePreviewBlurredTablePrompt(section.label, slot.homeTeam, slot.awayTeam),
       visibilityMode,
       visibleRowCount: rows.filter(r => !r.blurred).length,
       blurredRowCount: rows.filter(r => r.blurred).length,

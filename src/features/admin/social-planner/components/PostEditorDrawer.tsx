@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye } from "lucide-react";
-import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode } from "../types";
+import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat } from "../types";
 import { checkSafety } from "../lib/safetyRules";
 import { SafetyCheckPanel } from "./SafetyCheckPanel";
 import { pickHook, type HookCategory } from "../lib/hookLibrary";
@@ -88,9 +88,10 @@ export function PostEditorDrawer({ post, onClose, onSave }: PostEditorDrawerProp
     w.includes("selection required") || w.includes("before marking")
   );
   const promptHealth = checkPromptHealth(edited);
-  const canMarkReady = !hasSafetyIssues && !hasMissingRequired && promptHealth.isComplete && edited.status !== "ready";
-
-  const totalIssues = edited.warnings.length + (hasSafetyIssues ? 1 : 0);
+  const hasUnresolvedTokens = /\{[a-zA-Z_]+\}/.test(edited.hook + edited.caption);
+  const isReady = !hasMissingRequired && promptHealth.isComplete && !hasUnresolvedTokens
+    && edited.carouselSlides.length > 0 && edited.hook.length > 0 && edited.caption.length > 0;
+  const canMarkReady = !hasSafetyIssues && isReady && edited.status !== "ready";
 
   return (
     <>
@@ -101,10 +102,10 @@ export function PostEditorDrawer({ post, onClose, onSave }: PostEditorDrawerProp
       />
 
       {/* Full-screen panel */}
-      <div className="fixed inset-0 z-[99] flex flex-col bg-[#050506] sm:inset-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-full sm:max-w-2xl sm:border-l sm:border-zinc-800">
+      <div className="fixed inset-0 z-[99] flex flex-col overflow-hidden bg-[#050506] sm:inset-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-full sm:max-w-2xl sm:border-l sm:border-zinc-800">
 
-        {/* ── Sticky Header ── */}
-        <div className="shrink-0 sticky top-0 z-20 bg-[#050506]/95 backdrop-blur border-b border-white/[0.08]">
+        {/* ── Header ── */}
+        <div className="shrink-0 z-20 bg-[#050506]/95 backdrop-blur border-b border-white/[0.08]">
           <div className="flex items-start justify-between px-4 pt-4 pb-3 gap-3">
             <div className="flex items-center gap-2 min-w-0">
               <button
@@ -131,10 +132,16 @@ export function PostEditorDrawer({ post, onClose, onSave }: PostEditorDrawerProp
                       Safety
                     </span>
                   )}
-                  {totalIssues === 0 && (
+                  {!hasSafetyIssues && !isReady && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded border bg-zinc-800 border-zinc-700 text-zinc-400 flex items-center gap-0.5">
+                      <Shield className="w-2.5 h-2.5" />
+                      Incomplete
+                    </span>
+                  )}
+                  {!hasSafetyIssues && isReady && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded border bg-emerald-950/60 border-emerald-800/60 text-emerald-400 flex items-center gap-0.5">
                       <ShieldCheck className="w-2.5 h-2.5" />
-                      Clean
+                      Ready
                     </span>
                   )}
                 </div>
@@ -197,7 +204,7 @@ export function PostEditorDrawer({ post, onClose, onSave }: PostEditorDrawerProp
         {/* ── Scrollable Content ── */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 pb-32"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 pb-32"
           style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
         >
           {tab === "overview"   && <OverviewTab edited={edited} update={update} />}
@@ -215,9 +222,9 @@ export function PostEditorDrawer({ post, onClose, onSave }: PostEditorDrawerProp
           )}
         </div>
 
-        {/* ── Sticky Footer ── */}
+        {/* ── Footer ── */}
         <div
-          className="shrink-0 sticky bottom-0 z-20 bg-[#050506]/95 backdrop-blur border-t border-white/[0.08] px-4 py-3 flex items-center justify-between gap-2"
+          className="shrink-0 z-20 bg-[#050506]/95 backdrop-blur border-t border-white/[0.08] px-4 py-3 flex items-center justify-between gap-2"
           style={{ paddingBottom: "calc(12px + env(safe-area-inset-bottom))" }}
         >
           <button
@@ -234,11 +241,14 @@ export function PostEditorDrawer({ post, onClose, onSave }: PostEditorDrawerProp
                 Safety issues
               </span>
             )}
-            {hasMissingRequired && (
+            {!hasSafetyIssues && hasMissingRequired && (
               <span className="hidden sm:inline text-[10px] text-amber-400">Required fields missing</span>
             )}
-            {!promptHealth.isComplete && (
+            {!hasSafetyIssues && !hasMissingRequired && !promptHealth.isComplete && (
               <span className="hidden sm:inline text-[10px] text-amber-400">Prompt incomplete</span>
+            )}
+            {!hasSafetyIssues && !hasMissingRequired && promptHealth.isComplete && hasUnresolvedTokens && (
+              <span className="hidden sm:inline text-[10px] text-amber-400">Unresolved tokens</span>
             )}
             {canMarkReady && (
               <button
@@ -401,82 +411,169 @@ function PlayersTab({ edited }: { edited: SocialPost }) {
         </div>
       )}
 
-      {/* Players */}
-      {edited.selectedPlayers.length === 0 ? (
-        <div className="text-center py-10 text-zinc-500 rounded-lg border border-dashed border-zinc-800">
-          <p className="text-sm mb-1">No players selected for this post.</p>
-          <p className="text-xs text-zinc-600">Generate with player data loaded to populate this tab.</p>
-        </div>
-      ) : (
-        <>
-          <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
-            Players ({edited.selectedPlayers.length})
-          </p>
-          <div className="space-y-2">
-            {edited.selectedPlayers.map((p, i) => (
-              <div key={i} className="rounded-lg bg-zinc-900 border border-zinc-800 p-3">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div>
-                    <p className="text-sm font-medium text-zinc-200">{p.playerName}</p>
-                    <p className="text-[10px] text-zinc-500">{p.team}</p>
-                  </div>
-                  <ConfidencePill tier={p.confidenceTier} />
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-[10px] text-zinc-400 mb-2">
-                  <span className="col-span-3 text-zinc-500">{p.statType} · Threshold: {p.thresholdLabel}</span>
-                  <span>Record: <span className="text-zinc-300 font-medium">{p.recordLabel}</span></span>
-                  <span>L5 Avg: <span className="text-zinc-300 font-medium">{p.l5Avg.toFixed(1)}</span></span>
-                  {p.projection != null && (
-                    <span>Proj: <span className="text-sky-300 font-medium">{p.projection.toFixed(1)}</span></span>
-                  )}
-                </div>
-                {p.lastFive.length > 0 && (
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] text-zinc-500">Last 5:</span>
-                    {p.lastFive.map((v, vi) => (
-                      <span
-                        key={vi}
-                        className={`text-[10px] px-1.5 py-0.5 rounded border font-mono
-                          ${v >= p.threshold
-                            ? "bg-emerald-950/50 border-emerald-800/50 text-emerald-400"
-                            : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}
-                      >
-                        {v}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {p.includeInFreePost && (
-                  <span className="inline-block mt-1.5 text-[10px] px-1.5 py-0.5 rounded border bg-emerald-950/50 border-emerald-800/50 text-emerald-400">
-                    Free post
-                  </span>
-                )}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      {/* Match board breakdown */}
-      {isMatchBoard && edited.carouselSlides.length > 0 && (
-        <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-4">
-          <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">Board Layout</p>
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            {edited.carouselSlides.map((s, i) => (
-              <div key={s.id} className="flex items-center justify-between text-[10px]">
-                <span className="text-zinc-400 capitalize">{s.slideType.replace(/_/g, " ")}</span>
-                <span className="text-zinc-600">
-                  {s.visibleRowCount != null && `${s.visibleRowCount}v`}
-                  {s.blurredRowCount != null && ` ${s.blurredRowCount}b`}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {isMatchBoard
+        ? <MatchBoardStatSections post={edited} />
+        : <PlayerList players={edited.selectedPlayers} />
+      }
     </div>
   );
 }
+
+function MatchBoardStatSections({ post }: { post: SocialPost }) {
+  const sections: Array<{
+    key: string;
+    label: string;
+    team: string | undefined;
+    statType: "disposals" | "goals";
+  }> = [
+    { key: "home_disposals", label: `${post.homeTeam ?? "Home"} — Disposals`, team: post.homeTeam, statType: "disposals" },
+    { key: "away_disposals", label: `${post.awayTeam ?? "Away"} — Disposals`, team: post.awayTeam, statType: "disposals" },
+    { key: "home_goals",     label: `${post.homeTeam ?? "Home"} — Goals`,     team: post.homeTeam, statType: "goals" },
+    { key: "away_goals",     label: `${post.awayTeam ?? "Away"} — Goals`,     team: post.awayTeam, statType: "goals" },
+  ];
+
+  const hasAnyPlayers = post.selectedPlayers.length > 0;
+
+  return (
+    <div className="space-y-4">
+      {!hasAnyPlayers && (
+        <div className="rounded-lg border border-amber-800/40 bg-amber-950/20 p-3">
+          <p className="text-[10px] text-amber-400 flex items-center gap-1.5">
+            <AlertTriangle className="w-3 h-3 shrink-0" />
+            No player stats loaded — regenerate with player data to populate tables.
+          </p>
+        </div>
+      )}
+      {sections.map(section => {
+        const players = post.selectedPlayers.filter(
+          p => p.statType === section.statType && p.team === section.team
+        );
+        const isDisposals = section.statType === "disposals";
+        return (
+          <div key={section.key} className="rounded-lg bg-zinc-900 border border-zinc-800 overflow-hidden">
+            <div className="px-3 py-2 border-b border-zinc-800/60 flex items-center justify-between">
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{section.label}</p>
+              <span className="text-[10px] text-zinc-600">{players.length} players</span>
+            </div>
+            {players.length === 0 ? (
+              <p className="text-[10px] text-zinc-600 px-3 py-3">
+                No data — team: {section.team ?? "unknown"}
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-[10px]">
+                  <thead>
+                    <tr className="border-b border-zinc-800/40">
+                      <th className="text-left px-3 py-1.5 text-zinc-500 font-medium">Player</th>
+                      <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">L5 Avg</th>
+                      {isDisposals ? (
+                        <>
+                          <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">15+</th>
+                          <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">20+</th>
+                          <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">25+</th>
+                          <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">30+</th>
+                        </>
+                      ) : (
+                        <>
+                          <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">1+</th>
+                          <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">2+</th>
+                          <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">3+</th>
+                        </>
+                      )}
+                      <th className="text-right px-3 py-1.5 text-zinc-500 font-medium">Tier</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-800/30">
+                    {players.map((p, i) => (
+                      <tr key={i} className="hover:bg-zinc-800/30 transition-colors">
+                        <td className="px-3 py-1.5 text-zinc-300 font-medium">{p.playerName}</td>
+                        <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.l5Avg.toFixed(1)}</td>
+                        {isDisposals ? (
+                          <>
+                            <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.threshold === 15 ? p.recordLabel : ""}</td>
+                            <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.threshold === 20 ? p.recordLabel : ""}</td>
+                            <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.threshold === 25 ? p.recordLabel : ""}</td>
+                            <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.threshold === 30 ? p.recordLabel : ""}</td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.threshold === 1 ? p.recordLabel : ""}</td>
+                            <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.threshold === 2 ? p.recordLabel : ""}</td>
+                            <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.threshold === 3 ? p.recordLabel : ""}</td>
+                          </>
+                        )}
+                        <td className="px-3 py-1.5 text-right">
+                          <ConfidencePill tier={p.confidenceTier} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function PlayerList({ players }: { players: AFLPlayerStat[] }) {
+  if (players.length === 0) {
+    return (
+      <div className="text-center py-10 text-zinc-500 rounded-lg border border-dashed border-zinc-800">
+        <p className="text-sm mb-1">No players selected for this post.</p>
+        <p className="text-xs text-zinc-600">Generate with player data loaded to populate this tab.</p>
+      </div>
+    );
+  }
+  return (
+    <>
+      <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+        Players ({players.length})
+      </p>
+      <div className="space-y-2">
+        {players.map((p, i) => (
+          <div key={i} className="rounded-lg bg-zinc-900 border border-zinc-800 p-3">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div>
+                <p className="text-sm font-medium text-zinc-200">{p.playerName}</p>
+                <p className="text-[10px] text-zinc-500">{p.team}</p>
+              </div>
+              <ConfidencePill tier={p.confidenceTier} />
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-[10px] text-zinc-400 mb-2">
+              <span className="col-span-3 text-zinc-500">{p.statType} · Threshold: {p.thresholdLabel}</span>
+              <span>Record: <span className="text-zinc-300 font-medium">{p.recordLabel}</span></span>
+              <span>L5 Avg: <span className="text-zinc-300 font-medium">{p.l5Avg.toFixed(1)}</span></span>
+              {p.projection != null && (
+                <span>Proj: <span className="text-sky-300 font-medium">{p.projection.toFixed(1)}</span></span>
+              )}
+            </div>
+            {p.lastFive.length > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] text-zinc-500">Last 5:</span>
+                {p.lastFive.map((v, vi) => (
+                  <span
+                    key={vi}
+                    className={`text-[10px] px-1.5 py-0.5 rounded border font-mono
+                      ${v >= p.threshold
+                        ? "bg-emerald-950/50 border-emerald-800/50 text-emerald-400"
+                        : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}
+                  >
+                    {v}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// ─── Tab: Carousel Slides ─────────────────────────────────────────────────────
 
 function ConfidencePill({ tier }: { tier: string }) {
   const config: Record<string, string> = {
@@ -491,8 +588,6 @@ function ConfidencePill({ tier }: { tier: string }) {
     </span>
   );
 }
-
-// ─── Tab: Carousel Slides ─────────────────────────────────────────────────────
 
 function SlidesTab({ edited }: { edited: SocialPost }) {
   if (edited.carouselSlides.length === 0) {
