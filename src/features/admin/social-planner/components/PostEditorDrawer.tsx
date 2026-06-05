@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye, Search, SortAsc } from "lucide-react";
+import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye, Search, Import as SortAsc } from "lucide-react";
 import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat } from "../types";
 import type { MatchBoardPlayerRow } from "../lib/rowAggregator";
 import { checkSafety } from "../lib/safetyRules";
