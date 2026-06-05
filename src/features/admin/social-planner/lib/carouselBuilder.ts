@@ -14,6 +14,8 @@ import {
   generatePreviewBlurredTablePrompt,
 } from "./promptGenerator";
 import { gameLabel } from "./tokenEngine";
+import { rowsToStatBoardRows } from "./rowAggregator";
+import type { MatchBoardPlayerRow } from "./rowAggregator";
 
 function makeId(prefix: string, index: number): string {
   return `${prefix}-${index}`;
@@ -255,6 +257,57 @@ function buildStorySlides(tokens: TokenMap): CarouselSlide[] {
       subtitle: "neekostats.com.au",
     },
   ];
+}
+
+/**
+ * Rebuild only the 4 stat table slides of a match board from aggregated admin rows.
+ * Replaces slides at indices 1–4 (home_disposals, away_disposals, home_goals, away_goals)
+ * while preserving cover (index 0) and CTA (last slide).
+ */
+export function rebuildMatchBoardSlidesFromRows(
+  existingSlides: CarouselSlide[],
+  matchBoardRows: {
+    homeDisposals: MatchBoardPlayerRow[];
+    awayDisposals: MatchBoardPlayerRow[];
+    homeGoals:     MatchBoardPlayerRow[];
+    awayGoals:     MatchBoardPlayerRow[];
+  },
+  ctaOverlayText?: string
+): CarouselSlide[] {
+  const cover = existingSlides[0];
+  const cta   = existingSlides[existingSlides.length - 1];
+  const isOpen = cover?.visibilityMode === "open_free_game";
+
+  const sectionMap: Array<{
+    key: keyof typeof matchBoardRows;
+    slideType: CarouselSlide["slideType"];
+    subtitle: string;
+    index: number;
+  }> = [
+    { key: "homeDisposals", slideType: "home_disposals", subtitle: "Recent threshold records", index: 1 },
+    { key: "awayDisposals", slideType: "away_disposals", subtitle: "Recent threshold records", index: 2 },
+    { key: "homeGoals",     slideType: "home_goals",     subtitle: "Recent scoring records",   index: 3 },
+    { key: "awayGoals",     slideType: "away_goals",     subtitle: "Recent scoring records",   index: 4 },
+  ];
+
+  const tableSlides = sectionMap.map(({ key, slideType, subtitle, index }) => {
+    const existingSlide = existingSlides.find(s => s.slideType === slideType) ?? existingSlides[index];
+    const rows: StatBoardRow[] = rowsToStatBoardRows(matchBoardRows[key]);
+    return {
+      ...(existingSlide ?? {}),
+      id: existingSlide?.id ?? makeId(key, index),
+      slideType,
+      title: existingSlide?.title ?? slideType,
+      subtitle: existingSlide?.subtitle ?? subtitle,
+      rows,
+      visibilityMode: cover?.visibilityMode,
+      visibleRowCount: rows.filter(r => !r.blurred).length,
+      blurredRowCount: rows.filter(r => r.blurred).length,
+      ctaOverlayText: !isOpen ? ctaOverlayText : undefined,
+    } as CarouselSlide;
+  });
+
+  return [cover, ...tableSlides, cta].filter(Boolean) as CarouselSlide[];
 }
 
 /**

@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye } from "lucide-react";
 import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat } from "../types";
+import type { MatchBoardPlayerRow } from "../lib/rowAggregator";
 import { checkSafety } from "../lib/safetyRules";
+import { rebuildMatchBoardSlidesFromRows } from "../lib/carouselBuilder";
 import { SafetyCheckPanel } from "./SafetyCheckPanel";
 import { pickHook, type HookCategory } from "../lib/hookLibrary";
 import { pickCaption, type CaptionCategory } from "../lib/captionLibrary";
@@ -211,7 +213,7 @@ export function PostEditorDrawer({ post, onClose, onSave }: PostEditorDrawerProp
           style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
         >
           {tab === "overview"   && <OverviewTab edited={edited} update={update} />}
-          {tab === "players"    && <PlayersTab edited={edited} />}
+          {tab === "players"    && <PlayersTab edited={edited} onUpdate={post => setEdited(post)} />}
           {tab === "slides"     && <SlidesTab edited={edited} />}
           {tab === "copy_paste" && <HookCaptionTab edited={edited} update={update} />}
           {tab === "image"      && <ImagePromptsTab edited={edited} update={update} />}
@@ -396,7 +398,13 @@ function OverviewTab({
 
 // ─── Tab: Game & Players ──────────────────────────────────────────────────────
 
-function PlayersTab({ edited }: { edited: SocialPost }) {
+function PlayersTab({
+  edited,
+  onUpdate,
+}: {
+  edited: SocialPost;
+  onUpdate: (post: SocialPost) => void;
+}) {
   const isMatchBoard = edited.contentType === "match_stat_board";
 
   return (
@@ -416,108 +424,231 @@ function PlayersTab({ edited }: { edited: SocialPost }) {
       )}
 
       {isMatchBoard
-        ? <MatchBoardStatSections post={edited} />
+        ? <MatchBoardAggregatedSections post={edited} onUpdate={onUpdate} />
         : <PlayerList players={edited.selectedPlayers} />
       }
     </div>
   );
 }
 
-function MatchBoardStatSections({ post }: { post: SocialPost }) {
+function MatchBoardAggregatedSections({
+  post,
+  onUpdate,
+}: {
+  post: SocialPost;
+  onUpdate: (post: SocialPost) => void;
+}) {
+  const rows = post.matchBoardRows;
+
+  if (!rows) {
+    return (
+      <div className="rounded-lg border border-amber-800/40 bg-amber-950/20 p-3">
+        <p className="text-[10px] text-amber-400 flex items-center gap-1.5">
+          <AlertTriangle className="w-3 h-3 shrink-0" />
+          No aggregated player rows — regenerate the week to load player data.
+        </p>
+      </div>
+    );
+  }
+
+  function updateSection(
+    sectionKey: keyof NonNullable<SocialPost["matchBoardRows"]>,
+    updatedRows: MatchBoardPlayerRow[]
+  ) {
+    const newMatchBoardRows = { ...rows!, [sectionKey]: updatedRows };
+    const newSlides = rebuildMatchBoardSlidesFromRows(
+      post.carouselSlides,
+      newMatchBoardRows,
+      "See the full board at neekostats.com.au"
+    );
+    onUpdate({
+      ...post,
+      matchBoardRows: newMatchBoardRows,
+      carouselSlides: newSlides,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
   const sections: Array<{
-    key: string;
+    key: keyof NonNullable<SocialPost["matchBoardRows"]>;
     label: string;
-    team: string | undefined;
     statType: "disposals" | "goals";
   }> = [
-    { key: "home_disposals", label: `${post.homeTeam ?? "Home"} — Disposals`, team: post.homeTeam, statType: "disposals" },
-    { key: "away_disposals", label: `${post.awayTeam ?? "Away"} — Disposals`, team: post.awayTeam, statType: "disposals" },
-    { key: "home_goals",     label: `${post.homeTeam ?? "Home"} — Goals`,     team: post.homeTeam, statType: "goals" },
-    { key: "away_goals",     label: `${post.awayTeam ?? "Away"} — Goals`,     team: post.awayTeam, statType: "goals" },
+    { key: "homeDisposals", label: `${post.homeTeam ?? "Home"} — Disposals`, statType: "disposals" },
+    { key: "awayDisposals", label: `${post.awayTeam ?? "Away"} — Disposals`, statType: "disposals" },
+    { key: "homeGoals",     label: `${post.homeTeam ?? "Home"} — Goals`,     statType: "goals" },
+    { key: "awayGoals",     label: `${post.awayTeam ?? "Away"} — Goals`,     statType: "goals" },
   ];
-
-  const hasAnyPlayers = post.selectedPlayers.length > 0;
 
   return (
     <div className="space-y-4">
-      {!hasAnyPlayers && (
-        <div className="rounded-lg border border-amber-800/40 bg-amber-950/20 p-3">
-          <p className="text-[10px] text-amber-400 flex items-center gap-1.5">
-            <AlertTriangle className="w-3 h-3 shrink-0" />
-            No player stats loaded — regenerate with player data to populate tables.
-          </p>
+      {sections.map(section => (
+        <AggregatedRowSection
+          key={section.key}
+          label={section.label}
+          statType={section.statType}
+          rows={rows[section.key]}
+          onRowsChange={updated => updateSection(section.key, updated)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function AggregatedRowSection({
+  label,
+  statType,
+  rows,
+  onRowsChange,
+}: {
+  label: string;
+  statType: "disposals" | "goals";
+  rows: MatchBoardPlayerRow[];
+  onRowsChange: (rows: MatchBoardPlayerRow[]) => void;
+}) {
+  const selectedCount = rows.filter(r => r.selected).length;
+  const isDisposals = statType === "disposals";
+
+  function toggleSelected(key: string) {
+    onRowsChange(rows.map(r => r.key === key ? { ...r, selected: !r.selected, blurred: r.selected ? false : r.blurred } : r));
+  }
+
+  function toggleBlurred(key: string) {
+    onRowsChange(rows.map(r => r.key === key && r.selected ? { ...r, blurred: !r.blurred } : r));
+  }
+
+  function quickSelect(n: number) {
+    onRowsChange(rows.map((r, i) => ({ ...r, selected: i < n, blurred: i < n ? r.blurred : false })));
+  }
+
+  function clearAll() {
+    onRowsChange(rows.map(r => ({ ...r, selected: false, blurred: false })));
+  }
+
+  return (
+    <div className="rounded-lg bg-zinc-900 border border-zinc-800 overflow-hidden">
+      {/* Header */}
+      <div className="px-3 py-2 border-b border-zinc-800/60 flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{label}</p>
+          <span className="text-[10px] text-zinc-600">{selectedCount}/{rows.length} selected</span>
+        </div>
+        {/* Quick select buttons */}
+        <div className="flex items-center gap-1">
+          {[3, 5, 8].map(n => (
+            <button
+              key={n}
+              onClick={() => quickSelect(n)}
+              className="text-[9px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition-colors"
+            >
+              Top {n}
+            </button>
+          ))}
+          <button
+            onClick={clearAll}
+            className="text-[9px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600 transition-colors"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="text-[10px] text-zinc-600 px-3 py-3">No player data for this section.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-[10px]">
+            <thead>
+              <tr className="border-b border-zinc-800/40">
+                <th className="px-2 py-1.5 text-zinc-500 font-medium w-8">On</th>
+                <th className="text-left px-2 py-1.5 text-zinc-500 font-medium">Player</th>
+                <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">L5</th>
+                {isDisposals ? (
+                  <>
+                    <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">15+</th>
+                    <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">20+</th>
+                    <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">25+</th>
+                    <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">30+</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">1+</th>
+                    <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">2+</th>
+                    <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">3+</th>
+                  </>
+                )}
+                <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">Blur</th>
+                <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">Tier</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-800/20">
+              {rows.map(row => (
+                <tr
+                  key={row.key}
+                  className={`transition-colors ${
+                    row.selected
+                      ? row.blurred
+                        ? "bg-zinc-800/20 text-zinc-500"
+                        : "bg-zinc-800/40 text-zinc-200"
+                      : "text-zinc-600 hover:bg-zinc-800/20"
+                  }`}
+                >
+                  {/* Select toggle */}
+                  <td className="px-2 py-1.5 text-center">
+                    <button
+                      onClick={() => toggleSelected(row.key)}
+                      className={`w-3.5 h-3.5 rounded border transition-colors inline-flex items-center justify-center ${
+                        row.selected
+                          ? "bg-sky-600 border-sky-500"
+                          : "bg-zinc-800 border-zinc-600 hover:border-zinc-400"
+                      }`}
+                      title={row.selected ? "Deselect" : "Select"}
+                    >
+                      {row.selected && <Check className="w-2 h-2 text-white" />}
+                    </button>
+                  </td>
+                  <td className="px-2 py-1.5 font-medium whitespace-nowrap">{row.playerName}</td>
+                  <td className="px-2 py-1.5 text-right font-mono">{row.l5Avg.toFixed(1)}</td>
+                  {isDisposals ? (
+                    <>
+                      <td className="px-2 py-1.5 text-right font-mono">{row.t15 ?? "—"}</td>
+                      <td className="px-2 py-1.5 text-right font-mono">{row.t20 ?? "—"}</td>
+                      <td className="px-2 py-1.5 text-right font-mono">{row.t25 ?? "—"}</td>
+                      <td className="px-2 py-1.5 text-right font-mono">{row.t30 ?? "—"}</td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="px-2 py-1.5 text-right font-mono">{row.t1 ?? "—"}</td>
+                      <td className="px-2 py-1.5 text-right font-mono">{row.t2 ?? "—"}</td>
+                      <td className="px-2 py-1.5 text-right font-mono">{row.t3 ?? "—"}</td>
+                    </>
+                  )}
+                  {/* Blur toggle — only enabled for selected rows */}
+                  <td className="px-2 py-1.5 text-right">
+                    <button
+                      onClick={() => toggleBlurred(row.key)}
+                      disabled={!row.selected}
+                      className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${
+                        !row.selected
+                          ? "border-zinc-800 text-zinc-700 cursor-not-allowed"
+                          : row.blurred
+                          ? "border-amber-700 bg-amber-950/40 text-amber-400 hover:bg-amber-950/60"
+                          : "border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
+                      }`}
+                      title={row.blurred ? "Unblur" : "Blur this row"}
+                    >
+                      {row.blurred ? "Blurred" : "Visible"}
+                    </button>
+                  </td>
+                  <td className="px-2 py-1.5 text-right">
+                    <ConfidencePill tier={row.tier} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
-      {sections.map(section => {
-        const players = post.selectedPlayers.filter(
-          p => p.statType === section.statType && p.team === section.team
-        );
-        const isDisposals = section.statType === "disposals";
-        return (
-          <div key={section.key} className="rounded-lg bg-zinc-900 border border-zinc-800 overflow-hidden">
-            <div className="px-3 py-2 border-b border-zinc-800/60 flex items-center justify-between">
-              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{section.label}</p>
-              <span className="text-[10px] text-zinc-600">{players.length} players</span>
-            </div>
-            {players.length === 0 ? (
-              <p className="text-[10px] text-zinc-600 px-3 py-3">
-                No data — team: {section.team ?? "unknown"}
-              </p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-[10px]">
-                  <thead>
-                    <tr className="border-b border-zinc-800/40">
-                      <th className="text-left px-3 py-1.5 text-zinc-500 font-medium">Player</th>
-                      <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">L5 Avg</th>
-                      {isDisposals ? (
-                        <>
-                          <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">15+</th>
-                          <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">20+</th>
-                          <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">25+</th>
-                          <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">30+</th>
-                        </>
-                      ) : (
-                        <>
-                          <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">1+</th>
-                          <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">2+</th>
-                          <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">3+</th>
-                        </>
-                      )}
-                      <th className="text-right px-3 py-1.5 text-zinc-500 font-medium">Tier</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-zinc-800/30">
-                    {players.map((p, i) => (
-                      <tr key={i} className="hover:bg-zinc-800/30 transition-colors">
-                        <td className="px-3 py-1.5 text-zinc-300 font-medium">{p.playerName}</td>
-                        <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.l5Avg.toFixed(1)}</td>
-                        {isDisposals ? (
-                          <>
-                            <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.threshold === 15 ? p.recordLabel : ""}</td>
-                            <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.threshold === 20 ? p.recordLabel : ""}</td>
-                            <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.threshold === 25 ? p.recordLabel : ""}</td>
-                            <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.threshold === 30 ? p.recordLabel : ""}</td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.threshold === 1 ? p.recordLabel : ""}</td>
-                            <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.threshold === 2 ? p.recordLabel : ""}</td>
-                            <td className="px-2 py-1.5 text-right text-zinc-400 font-mono">{p.threshold === 3 ? p.recordLabel : ""}</td>
-                          </>
-                        )}
-                        <td className="px-3 py-1.5 text-right">
-                          <ConfidencePill tier={p.confidenceTier} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -1211,7 +1342,25 @@ function ExportTab({ edited }: { edited: SocialPost }) {
   const backgroundPkg      = buildBackgroundPromptPackage(edited);
   const fullPostPackage    = buildFullPostPackage(edited);
 
-  const safetyOk = checkSafety(edited.hook).isSafe && checkSafety(edited.caption).isSafe;
+  const copyAllPackage = [
+    "=== HOOK ===",
+    edited.hook,
+    "",
+    "=== INSTAGRAM CAPTION ===",
+    edited.caption,
+    "",
+    "=== SHORT CAPTION / STORY ===",
+    edited.shortCaption,
+    "",
+    "=== HASHTAGS ===",
+    edited.hashtags.join(" "),
+    "",
+    "=== FULL SLIDE TEXT ===",
+    fullSlideText,
+    "",
+    "=== FULL CAROUSEL PROMPT ===",
+    fullCarouselPrompt,
+  ].join("\n");
 
   const fields: Array<{ label: string; value: string; multiline?: boolean; warn?: boolean }> = [
     { label: "Full Post Package",             value: fullPostPackage,    multiline: true },
@@ -1239,6 +1388,15 @@ function ExportTab({ edited }: { edited: SocialPost }) {
           ))}
         </div>
       )}
+
+      {/* Copy All button */}
+      <CopyField
+        label="Copy Everything (Hook + Caption + Slides + Prompt)"
+        value={copyAllPackage}
+        multiline
+        highlight
+      />
+
       {fields.map(f => (
         <CopyField key={f.label} label={f.label} value={f.value} multiline={f.multiline} warn={f.warn} />
       ))}
@@ -1246,7 +1404,7 @@ function ExportTab({ edited }: { edited: SocialPost }) {
   );
 }
 
-function CopyField({ label, value, multiline = false, warn = false }: { label: string; value: string; multiline?: boolean; warn?: boolean }) {
+function CopyField({ label, value, multiline = false, warn = false, highlight = false }: { label: string; value: string; multiline?: boolean; warn?: boolean; highlight?: boolean }) {
   const [copied, setCopied] = useState(false);
 
   function handleCopy() {
@@ -1257,7 +1415,7 @@ function CopyField({ label, value, multiline = false, warn = false }: { label: s
   }
 
   return (
-    <div className={`rounded-lg border overflow-hidden ${warn ? "border-amber-800/50 bg-amber-950/20" : "bg-zinc-900 border-zinc-800"}`}>
+    <div className={`rounded-lg border overflow-hidden ${warn ? "border-amber-800/50 bg-amber-950/20" : highlight ? "border-sky-700/60 bg-sky-950/20" : "bg-zinc-900 border-zinc-800"}`}>
       <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800/60">
         <div className="flex items-center gap-1.5">
           <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{label}</p>

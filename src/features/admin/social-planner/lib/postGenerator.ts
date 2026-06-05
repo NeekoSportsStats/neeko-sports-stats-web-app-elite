@@ -14,6 +14,8 @@ import { generateCoverPrompt, generateOpenFreeGameCoverPrompt } from "./promptGe
 import { selectPlayersForSlot } from "./playerSelector";
 import { generateHashtags } from "./hashtagGenerator";
 import { checkSafety } from "./safetyRules";
+import { aggregateToRows, applyDefaultSelection } from "./rowAggregator";
+import type { MatchBoardPlayerRow } from "./rowAggregator";
 
 const DEFAULT_PLATFORM: Platform = "instagram";
 
@@ -42,13 +44,41 @@ function buildAvailableTokens(
   return available;
 }
 
+/**
+ * Build aggregated match board rows for a match board post.
+ * Applies default selection based on visibility mode.
+ */
+function buildMatchBoardRows(
+  slot: ScheduleSlot,
+  allPlayers: AFLPlayerStat[],
+  settings: PlannerSettings,
+  visibilityMode: ContentVisibilityMode
+): SocialPost["matchBoardRows"] {
+  const homeTeam = slot.homeTeam ?? "";
+  const awayTeam = slot.awayTeam ?? "";
+  const isOpen = visibilityMode === "open_free_game";
+  const totalLimit = isOpen ? settings.thuFriMaxRows : settings.satSunTotalRows;
+  const visibleLimit = isOpen ? settings.thuFriMaxRows : settings.satSunVisibleRows;
+
+  const apply = (rows: MatchBoardPlayerRow[]) =>
+    applyDefaultSelection(rows, visibilityMode, totalLimit, visibleLimit);
+
+  return {
+    homeDisposals: apply(aggregateToRows(allPlayers, homeTeam, "disposals")),
+    awayDisposals: apply(aggregateToRows(allPlayers, awayTeam, "disposals")),
+    homeGoals:     apply(aggregateToRows(allPlayers, homeTeam, "goals")),
+    awayGoals:     apply(aggregateToRows(allPlayers, awayTeam, "goals")),
+  };
+}
+
 export function buildPost(
   slot: ScheduleSlot,
   settings: PlannerSettings,
   allPlayers: AFLPlayerStat[],
   games: AFLGame[],
   usedHookIds: Set<string> = new Set(),
-  usedCaptionIds: Set<string> = new Set()
+  usedCaptionIds: Set<string> = new Set(),
+  usedSpotlightPlayerIds: Set<string> = new Set()
 ): SocialPost {
   const round = settings.currentRound;
   const season = settings.currentSeason;
@@ -69,7 +99,10 @@ export function buildPost(
 
   const hookCategory = contentTypeToHookCategory(slot.contentType, visibilityMode);
 
-  const selectedPlayers = selectPlayersForSlot(slot, allPlayers, settings);
+  // For spotlight posts, prefer game-specific players and avoid repeats
+  const selectedPlayers = slot.contentType === "player_spotlight" || slot.contentType === "player_spotlight_duo"
+    ? selectSpotlightPlayersForSlot(slot, allPlayers, usedSpotlightPlayerIds, slot.contentType === "player_spotlight_duo" ? 2 : 1)
+    : selectPlayersForSlot(slot, allPlayers, settings);
 
   if (slot.contentType === "match_stat_board") {
     const homeDisp = allPlayers.filter(p => p.team === slot.homeTeam && p.statType === "disposals").length;
@@ -86,7 +119,6 @@ export function buildPost(
   const needsPlayers = slot.contentType === "player_spotlight" || slot.contentType === "player_spotlight_duo";
   const needsGame = slot.contentType === "match_stat_board";
 
-  // Fallback warnings for missing required data
   const noPlayersWarning = needsPlayers && selectedPlayers.length === 0
     ? "Select a player before marking this post ready."
     : null;
@@ -107,7 +139,6 @@ export function buildPost(
 
   const availableTokens = buildAvailableTokens(slot, selectedPlayers, game);
 
-  // Use product category if we needed players but have none
   const effectiveHookCategory = noPlayersWarning ? ("product" as HookCategory) : hookCategory;
   const hook    = pickHook(effectiveHookCategory, usedHookIds, availableTokens);
   const caption = pickCaption(effectiveHookCategory as CaptionCategory, usedCaptionIds, availableTokens);
@@ -139,6 +170,11 @@ export function buildPost(
     ? "Preview"
     : undefined;
 
+  // Build aggregated match board rows for admin UI
+  const matchBoardRows = slot.contentType === "match_stat_board" && visibilityMode
+    ? buildMatchBoardRows(slot, allPlayers, settings, visibilityMode)
+    : undefined;
+
   const now = new Date().toISOString();
 
   return {
@@ -164,6 +200,7 @@ export function buildPost(
     selectedPlayers,
     visibilityMode,
     visibilityBadge,
+    matchBoardRows,
     createdAt: now,
     updatedAt: now,
     usedHookId: hook.id,
@@ -180,6 +217,7 @@ export function buildWeekPosts(
   resetCtaRotation();
   const usedHookIds = new Set<string>();
   const usedCaptionIds = new Set<string>();
+  const usedSpotlightPlayerIds = new Set<string>();
   const posts: SocialPost[] = [];
 
   console.group("[PostGenerator] buildWeekPosts");
@@ -189,13 +227,72 @@ export function buildWeekPosts(
   console.groupEnd();
 
   for (const slot of slots) {
-    const post = buildPost(slot, settings, allPlayers, games, usedHookIds, usedCaptionIds);
+    const post = buildPost(slot, settings, allPlayers, games, usedHookIds, usedCaptionIds, usedSpotlightPlayerIds);
     if (post.usedHookId) usedHookIds.add(post.usedHookId);
     if (post.usedCaptionId) usedCaptionIds.add(post.usedCaptionId);
+    // Track spotlight players so we don't reuse them in the same week
+    if (post.contentType === "player_spotlight" || post.contentType === "player_spotlight_duo") {
+      for (const p of post.selectedPlayers) {
+        usedSpotlightPlayerIds.add(p.playerId);
+      }
+    }
     posts.push(post);
   }
 
   return posts;
+}
+
+/**
+ * Select spotlight players for a slot, preferring players from the game assigned
+ * to that slot (Thu/Fri game), avoiding players already used this week.
+ */
+function selectSpotlightPlayersForSlot(
+  slot: ScheduleSlot,
+  allPlayers: AFLPlayerStat[],
+  usedPlayerIds: Set<string>,
+  count: number
+): AFLPlayerStat[] {
+  // Prefer game-specific players if this slot has a home/away team
+  const gameTeams = slot.homeTeam && slot.awayTeam
+    ? new Set([slot.homeTeam, slot.awayTeam])
+    : null;
+
+  // Get the best unique player per playerId (avoid threshold duplicates on the same player)
+  const bestByPlayer = new Map<string, AFLPlayerStat>();
+  for (const p of allPlayers) {
+    if (p.confidenceTier === "thin_sample") continue;
+    const existing = bestByPlayer.get(p.playerId);
+    if (!existing || p.percent > existing.percent || p.gamesPlayed > existing.gamesPlayed) {
+      bestByPlayer.set(p.playerId, p);
+    }
+  }
+
+  const deduped = Array.from(bestByPlayer.values());
+
+  // Prefer game-specific players not already used
+  if (gameTeams) {
+    const gamePool = deduped
+      .filter(p => gameTeams.has(p.team) && !usedPlayerIds.has(p.playerId))
+      .sort(bySampleStrength);
+    if (gamePool.length >= count) return gamePool.slice(0, count);
+    // Fallback: game players even if used
+    const gameAny = deduped
+      .filter(p => gameTeams.has(p.team))
+      .sort(bySampleStrength);
+    if (gameAny.length >= count) return gameAny.slice(0, count);
+  }
+
+  // General fallback: best player not already used
+  return deduped
+    .filter(p => !usedPlayerIds.has(p.playerId))
+    .sort(bySampleStrength)
+    .slice(0, count);
+}
+
+function bySampleStrength(a: AFLPlayerStat, b: AFLPlayerStat): number {
+  if (b.gamesPlayed !== a.gamesPlayed) return b.gamesPlayed - a.gamesPlayed;
+  if (b.percent !== a.percent) return b.percent - a.percent;
+  return b.l5Avg - a.l5Avg;
 }
 
 function buildTitle(

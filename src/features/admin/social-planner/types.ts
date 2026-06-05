@@ -165,6 +165,13 @@ export interface SocialPost {
   // UI-only: track which template IDs were used for dedup
   usedHookId?: string;
   usedCaptionId?: string;
+  /** Aggregated admin-editable rows for match stat boards (keyed by section) */
+  matchBoardRows?: {
+    homeDisposals: import("./lib/rowAggregator").MatchBoardPlayerRow[];
+    awayDisposals: import("./lib/rowAggregator").MatchBoardPlayerRow[];
+    homeGoals:     import("./lib/rowAggregator").MatchBoardPlayerRow[];
+    awayGoals:     import("./lib/rowAggregator").MatchBoardPlayerRow[];
+  };
 }
 
 // ─── Planner Settings ─────────────────────────────────────────────────────────
