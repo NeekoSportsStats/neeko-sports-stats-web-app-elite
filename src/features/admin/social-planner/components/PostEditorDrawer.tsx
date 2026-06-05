@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye } from "lucide-react";
+import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye, Search, SortAsc } from "lucide-react";
 import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat } from "../types";
 import type { MatchBoardPlayerRow } from "../lib/rowAggregator";
 import { checkSafety } from "../lib/safetyRules";
@@ -44,11 +44,12 @@ const STATUS_COLORS: Record<PostStatus, string> = {
 
 interface PostEditorDrawerProps {
   post: SocialPost | null;
+  allPlayers?: AFLPlayerStat[];
   onClose: () => void;
   onSave: (post: SocialPost) => void;
 }
 
-export function PostEditorDrawer({ post, onClose, onSave }: PostEditorDrawerProps) {
+export function PostEditorDrawer({ post, allPlayers = [], onClose, onSave }: PostEditorDrawerProps) {
   const [edited, setEdited] = useState<SocialPost | null>(null);
   const [tab, setTab] = useState<DrawerTab>("overview");
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -213,7 +214,7 @@ export function PostEditorDrawer({ post, onClose, onSave }: PostEditorDrawerProp
           style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
         >
           {tab === "overview"   && <OverviewTab edited={edited} update={update} />}
-          {tab === "players"    && <PlayersTab edited={edited} onUpdate={post => setEdited(post)} />}
+          {tab === "players"    && <PlayersTab edited={edited} allPlayers={allPlayers} onUpdate={post => setEdited(post)} />}
           {tab === "slides"     && <SlidesTab edited={edited} />}
           {tab === "copy_paste" && <HookCaptionTab edited={edited} update={update} />}
           {tab === "image"      && <ImagePromptsTab edited={edited} update={update} />}
@@ -400,12 +401,15 @@ function OverviewTab({
 
 function PlayersTab({
   edited,
+  allPlayers,
   onUpdate,
 }: {
   edited: SocialPost;
+  allPlayers: AFLPlayerStat[];
   onUpdate: (post: SocialPost) => void;
 }) {
   const isMatchBoard = edited.contentType === "match_stat_board";
+  const isSpotlight = edited.contentType === "player_spotlight" || edited.contentType === "player_spotlight_duo";
 
   return (
     <div className="space-y-4">
@@ -425,6 +429,8 @@ function PlayersTab({
 
       {isMatchBoard
         ? <MatchBoardAggregatedSections post={edited} onUpdate={onUpdate} />
+        : isSpotlight
+        ? <SpotlightPlayerSelector post={edited} allPlayers={allPlayers} onUpdate={onUpdate} />
         : <PlayerList players={edited.selectedPlayers} />
       }
     </div>
@@ -535,7 +541,7 @@ function AggregatedRowSection({
         </div>
         {/* Quick select buttons */}
         <div className="flex items-center gap-1">
-          {[3, 5, 8].map(n => (
+          {[3, 5, 8, 10].map(n => (
             <button
               key={n}
               onClick={() => quickSelect(n)}
@@ -651,6 +657,216 @@ function AggregatedRowSection({
       )}
     </div>
   );
+}
+
+// ─── Spotlight Player Selector ────────────────────────────────────────────────
+
+type SpotlightSortKey = "bestRecord" | "gamesPlayed" | "l5Avg" | "projection";
+
+function SpotlightPlayerSelector({
+  post,
+  allPlayers,
+  onUpdate,
+}: {
+  post: SocialPost;
+  allPlayers: AFLPlayerStat[];
+  onUpdate: (post: SocialPost) => void;
+}) {
+  const isDuo = post.contentType === "player_spotlight_duo";
+  const maxSelect = isDuo ? 2 : 1;
+
+  const [search, setSearch] = useState("");
+  const [statFilter, setStatFilter] = useState<"any" | "disposals" | "goals">("any");
+  const [sortKey, setSortKey] = useState<SpotlightSortKey>("bestRecord");
+
+  // Deduplicate players: best threshold row per playerId
+  const candidates = useMemo(() => {
+    const bestByPlayer = new Map<string, AFLPlayerStat>();
+    for (const p of allPlayers) {
+      if (p.confidenceTier === "thin_sample") continue;
+      const existing = bestByPlayer.get(p.playerId);
+      if (!existing || p.percent > existing.percent || p.gamesPlayed > existing.gamesPlayed) {
+        bestByPlayer.set(p.playerId, p);
+      }
+    }
+    let list = Array.from(bestByPlayer.values());
+
+    if (statFilter !== "any") list = list.filter(p => p.statType === statFilter);
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(p => p.playerName.toLowerCase().includes(q) || p.team.toLowerCase().includes(q));
+    }
+
+    list.sort((a, b) => {
+      switch (sortKey) {
+        case "bestRecord":   return b.percent !== a.percent ? b.percent - a.percent : b.gamesPlayed - a.gamesPlayed;
+        case "gamesPlayed":  return b.gamesPlayed !== a.gamesPlayed ? b.gamesPlayed - a.gamesPlayed : b.percent - a.percent;
+        case "l5Avg":        return b.l5Avg - a.l5Avg;
+        case "projection":   return (b.projection ?? 0) - (a.projection ?? 0);
+      }
+    });
+
+    return list;
+  }, [allPlayers, statFilter, search, sortKey]);
+
+  const selectedIds = new Set(post.selectedPlayers.map(p => p.playerId));
+
+  function selectPlayer(p: AFLPlayerStat) {
+    let next: AFLPlayerStat[];
+    if (selectedIds.has(p.playerId)) {
+      // Deselect
+      next = post.selectedPlayers.filter(s => s.playerId !== p.playerId);
+    } else if (post.selectedPlayers.length >= maxSelect) {
+      // Replace last
+      next = [...post.selectedPlayers.slice(0, maxSelect - 1), p];
+    } else {
+      next = [...post.selectedPlayers, p];
+    }
+    onUpdate({
+      ...post,
+      selectedPlayers: next,
+      title: buildSpotlightTitle(post.contentType, next),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Currently selected */}
+      <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3">
+        <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">
+          Selected ({post.selectedPlayers.length}/{maxSelect})
+        </p>
+        {post.selectedPlayers.length === 0 ? (
+          <p className="text-[10px] text-zinc-600">No players selected — choose from candidates below.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {post.selectedPlayers.map(p => (
+              <div key={p.playerId} className="flex items-center justify-between gap-2 bg-sky-950/30 border border-sky-800/40 rounded px-2.5 py-1.5">
+                <div>
+                  <span className="text-xs font-medium text-sky-200">{p.playerName}</span>
+                  <span className="text-[10px] text-zinc-500 ml-1.5">{p.team} · {p.statType} · {p.thresholdLabel}</span>
+                </div>
+                <button
+                  onClick={() => selectPlayer(p)}
+                  className="text-[9px] text-zinc-500 hover:text-red-400 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-[140px]">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-600" />
+          <input
+            type="text"
+            placeholder="Search player or team..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-6 pr-2 py-1.5 text-[11px] bg-zinc-900 border border-zinc-700 rounded text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-sky-600"
+          />
+        </div>
+        <select
+          value={statFilter}
+          onChange={e => setStatFilter(e.target.value as typeof statFilter)}
+          className="text-[11px] bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-300 focus:outline-none focus:border-sky-600"
+        >
+          <option value="any">Any stat</option>
+          <option value="disposals">Disposals</option>
+          <option value="goals">Goals</option>
+        </select>
+        <select
+          value={sortKey}
+          onChange={e => setSortKey(e.target.value as SpotlightSortKey)}
+          className="text-[11px] bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-300 focus:outline-none focus:border-sky-600"
+        >
+          <option value="bestRecord">Best record</option>
+          <option value="gamesPlayed">Games played</option>
+          <option value="l5Avg">L5 average</option>
+          <option value="projection">Projection</option>
+        </select>
+      </div>
+
+      {/* Candidate list */}
+      {allPlayers.length === 0 ? (
+        <div className="text-center py-8 rounded-lg border border-dashed border-zinc-800">
+          <p className="text-xs text-zinc-500">No player data loaded.</p>
+          <p className="text-[10px] text-zinc-600 mt-1">Generate the week to load player stats.</p>
+        </div>
+      ) : candidates.length === 0 ? (
+        <div className="text-center py-6 rounded-lg border border-dashed border-zinc-800">
+          <p className="text-xs text-zinc-500">No players match your filters.</p>
+        </div>
+      ) : (
+        <div className="rounded-lg bg-zinc-900 border border-zinc-800 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-[10px]">
+              <thead>
+                <tr className="border-b border-zinc-800/60">
+                  <th className="text-left px-3 py-1.5 text-zinc-500 font-medium">Player</th>
+                  <th className="text-left px-2 py-1.5 text-zinc-500 font-medium">Stat</th>
+                  <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">Record</th>
+                  <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">L5</th>
+                  <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">GP</th>
+                  <th className="px-2 py-1.5 text-zinc-500 font-medium w-16" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/20">
+                {candidates.slice(0, 40).map(p => {
+                  const isSelected = selectedIds.has(p.playerId);
+                  return (
+                    <tr
+                      key={`${p.playerId}:${p.statType}`}
+                      className={`transition-colors ${isSelected ? "bg-sky-950/30" : "hover:bg-zinc-800/30"}`}
+                    >
+                      <td className="px-3 py-1.5">
+                        <span className={`font-medium ${isSelected ? "text-sky-200" : "text-zinc-200"}`}>{p.playerName}</span>
+                        <span className="text-zinc-600 ml-1.5">{p.team}</span>
+                      </td>
+                      <td className="px-2 py-1.5 text-zinc-400 whitespace-nowrap">
+                        {p.statType === "disposals" ? "Disp" : "Goals"} {p.thresholdLabel}
+                      </td>
+                      <td className="px-2 py-1.5 text-right font-mono text-zinc-300">{p.recordLabel}</td>
+                      <td className="px-2 py-1.5 text-right font-mono text-zinc-400">{p.l5Avg.toFixed(1)}</td>
+                      <td className="px-2 py-1.5 text-right font-mono text-zinc-500">{p.gamesPlayed}</td>
+                      <td className="px-2 py-1.5 text-right">
+                        <button
+                          onClick={() => selectPlayer(p)}
+                          className={`text-[9px] px-2 py-0.5 rounded border transition-colors ${
+                            isSelected
+                              ? "border-sky-700 bg-sky-900/40 text-sky-300 hover:bg-red-950/40 hover:border-red-700 hover:text-red-300"
+                              : "border-zinc-700 text-zinc-400 hover:border-sky-700 hover:text-sky-300 hover:bg-sky-950/20"
+                          }`}
+                        >
+                          {isSelected ? "Remove" : "Select"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {candidates.length > 40 && (
+            <p className="text-[10px] text-zinc-600 text-center py-2 border-t border-zinc-800/40">
+              Showing 40 of {candidates.length} — refine your search to narrow results.
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function buildSpotlightTitle(contentType: SocialPost["contentType"], players: AFLPlayerStat[]): string {
+  if (contentType === "player_spotlight_duo") return "Player Duo Spotlight";
+  if (players.length > 0) return `${players[0].playerName} — Form Watch`;
+  return "Player Spotlight";
 }
 
 function PlayerList({ players }: { players: AFLPlayerStat[] }) {

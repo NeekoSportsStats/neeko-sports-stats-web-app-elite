@@ -34,6 +34,8 @@ export default function SocialPlannerPage() {
   const [tab, setTab] = useState<Tab>("queue");
   const [isGenerating, setIsGenerating] = useState(false);
   const [roundInitialised, setRoundInitialised] = useState(false);
+  const [allPlayers, setAllPlayers] = useState<AFLPlayerStat[]>([]);
+
   const [health, setHealth] = useState<DataHealth>({
     rpcStatus: "idle",
     rpcError: null,
@@ -98,6 +100,7 @@ export default function SocialPlannerPage() {
       ]);
       fetchedPlayers = players;
       if (fetchedPlayers.length > 0) { rpcOk = true; }
+      setAllPlayers(fetchedPlayers);
 
       const newSchedule = buildWeekSchedule(currentRound, currentSeason, monday, games, settings);
       const newPosts = buildWeekPosts(newSchedule.slots, settings, fetchedPlayers, games);
@@ -236,6 +239,7 @@ export default function SocialPlannerPage() {
       {/* Post editor drawer */}
       <PostEditorDrawer
         post={editingPost}
+        allPlayers={allPlayers}
         onClose={() => setEditingPost(null)}
         onSave={handleSavePost}
       />
