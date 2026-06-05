@@ -71,6 +71,18 @@ export function buildPost(
 
   const selectedPlayers = selectPlayersForSlot(slot, allPlayers, settings);
 
+  if (slot.contentType === "match_stat_board") {
+    const homeDisp = allPlayers.filter(p => p.team === slot.homeTeam && p.statType === "disposals").length;
+    const awayDisp = allPlayers.filter(p => p.team === slot.awayTeam && p.statType === "disposals").length;
+    const homeGoal = allPlayers.filter(p => p.team === slot.homeTeam && p.statType === "goals").length;
+    const awayGoal = allPlayers.filter(p => p.team === slot.awayTeam && p.statType === "goals").length;
+    console.log(`[PostGenerator] match_stat_board ${slot.homeTeam} v ${slot.awayTeam}`, {
+      totalPlayers: allPlayers.length,
+      homeDisp, awayDisp, homeGoal, awayGoal,
+      selected: selectedPlayers.length,
+    });
+  }
+
   const needsPlayers = slot.contentType === "player_spotlight" || slot.contentType === "player_spotlight_duo";
   const needsGame = slot.contentType === "match_stat_board";
 
@@ -169,6 +181,12 @@ export function buildWeekPosts(
   const usedHookIds = new Set<string>();
   const usedCaptionIds = new Set<string>();
   const posts: SocialPost[] = [];
+
+  console.group("[PostGenerator] buildWeekPosts");
+  console.log("games", games.length, games[0]);
+  console.log("players", allPlayers.length, allPlayers[0]);
+  console.log("slots", slots.length, slots.map(s => `${s.day}/${s.contentType}/${s.homeTeam ?? ""}v${s.awayTeam ?? ""}`));
+  console.groupEnd();
 
   for (const slot of slots) {
     const post = buildPost(slot, settings, allPlayers, games, usedHookIds, usedCaptionIds);

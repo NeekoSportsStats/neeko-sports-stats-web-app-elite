@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye } from "lucide-react";
 import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat } from "../types";
 import { checkSafety } from "../lib/safetyRules";
@@ -93,16 +94,18 @@ export function PostEditorDrawer({ post, onClose, onSave }: PostEditorDrawerProp
     && edited.carouselSlides.length > 0 && edited.hook.length > 0 && edited.caption.length > 0;
   const canMarkReady = !hasSafetyIssues && isReady && edited.status !== "ready";
 
-  return (
+  return createPortal(
     <>
       {/* Backdrop — only on desktop */}
       <div
-        className="fixed inset-0 z-[98] bg-black/50 hidden sm:block"
+        className="fixed inset-0 z-[9998] bg-black/50 hidden sm:block"
         onClick={onClose}
       />
 
       {/* Full-screen panel */}
-      <div className="fixed inset-0 z-[99] flex flex-col overflow-hidden bg-[#050506] sm:inset-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-full sm:max-w-2xl sm:border-l sm:border-zinc-800">
+      <div className="fixed inset-0 z-[9999] flex flex-col overflow-hidden bg-[#050506] sm:inset-auto sm:right-0 sm:top-0 sm:bottom-0 sm:w-full sm:max-w-2xl sm:border-l sm:border-zinc-800"
+        style={{ height: "100dvh" }}
+      >
 
         {/* ── Header ── */}
         <div className="shrink-0 z-20 bg-[#050506]/95 backdrop-blur border-b border-white/[0.08]">
@@ -267,7 +270,8 @@ export function PostEditorDrawer({ post, onClose, onSave }: PostEditorDrawerProp
           </div>
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 

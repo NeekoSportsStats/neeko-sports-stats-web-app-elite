@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { RefreshCw, BookOpen, List, Settings, CircleAlert as AlertCircle, Loader as Loader2 } from "lucide-react";
+import { RefreshCw, BookOpen, List, Settings, CircleAlert as AlertCircle, Loader as Loader2, Activity, CircleCheck as CheckCircle2, Circle as XCircle } from "lucide-react";
 import type { SocialPost, PostStatus, PlannerSettings, AFLGame, AFLPlayerStat } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
 import { buildWeekSchedule, getMondayOfWeek, type WeekSchedule } from "./lib/scheduleEngine";
@@ -13,6 +13,19 @@ import { SettingsPanel } from "./components/SettingsPanel";
 
 type Tab = "queue" | "library" | "settings";
 
+interface DataHealth {
+  rpcStatus: "ok" | "error" | "idle";
+  rpcError: string | null;
+  season: number;
+  minGames: number;
+  totalPlayerRows: number;
+  disposalRows: number;
+  goalRows: number;
+  gamesLoaded: number;
+  matchBoardsGenerated: number;
+  lastRefresh: string | null;
+}
+
 export default function SocialPlannerPage() {
   const [settings, setSettings] = useState<PlannerSettings>(DEFAULT_SETTINGS);
   const [posts, setPosts] = useState<SocialPost[]>([]);
@@ -21,6 +34,18 @@ export default function SocialPlannerPage() {
   const [tab, setTab] = useState<Tab>("queue");
   const [isGenerating, setIsGenerating] = useState(false);
   const [roundInitialised, setRoundInitialised] = useState(false);
+  const [health, setHealth] = useState<DataHealth>({
+    rpcStatus: "idle",
+    rpcError: null,
+    season: DEFAULT_SETTINGS.currentSeason,
+    minGames: 3,
+    totalPlayerRows: 0,
+    disposalRows: 0,
+    goalRows: 0,
+    gamesLoaded: 0,
+    matchBoardsGenerated: 0,
+    lastRefresh: null,
+  });
 
   const db = useSocialPlannerData();
 
@@ -59,13 +84,37 @@ export default function SocialPlannerPage() {
       const today = new Date().toISOString().split("T")[0];
       const monday = getMondayOfWeek(today);
 
+      let fetchedPlayers: AFLPlayerStat[] = [];
+      let rpcOk = true;
+      let rpcErr: string | null = null;
+
       const [games, players] = await Promise.all([
         db.fetchGames(currentRound, currentSeason).catch((): AFLGame[] => []),
-        db.fetchPlayerStats(currentSeason).catch((): AFLPlayerStat[] => []),
+        db.fetchPlayerStats(currentSeason).catch((e): AFLPlayerStat[] => {
+          rpcOk = false;
+          rpcErr = e instanceof Error ? e.message : String(e);
+          return [];
+        }),
       ]);
+      fetchedPlayers = players;
+      if (fetchedPlayers.length > 0) { rpcOk = true; }
 
       const newSchedule = buildWeekSchedule(currentRound, currentSeason, monday, games, settings);
-      const newPosts = buildWeekPosts(newSchedule.slots, settings, players, games);
+      const newPosts = buildWeekPosts(newSchedule.slots, settings, fetchedPlayers, games);
+      const matchBoards = newPosts.filter(p => p.contentType === "match_stat_board").length;
+
+      setHealth({
+        rpcStatus: rpcOk ? "ok" : "error",
+        rpcError: rpcErr,
+        season: currentSeason,
+        minGames: 3,
+        totalPlayerRows: fetchedPlayers.length,
+        disposalRows: fetchedPlayers.filter(p => p.statType === "disposals").length,
+        goalRows: fetchedPlayers.filter(p => p.statType === "goals").length,
+        gamesLoaded: games.length,
+        matchBoardsGenerated: matchBoards,
+        lastRefresh: new Date().toISOString(),
+      });
 
       setSchedule(newSchedule);
       setPosts(newPosts);
@@ -154,6 +203,11 @@ export default function SocialPlannerPage() {
               </button>
             </div>
 
+            {/* Data Health Panel — shown after first generate */}
+            {health.lastRefresh && (
+              <DataHealthPanel health={health} />
+            )}
+
             <WeeklyQueue
               posts={posts}
               onEditPost={setEditingPost}
@@ -185,6 +239,45 @@ export default function SocialPlannerPage() {
         onClose={() => setEditingPost(null)}
         onSave={handleSavePost}
       />
+    </div>
+  );
+}
+
+function DataHealthPanel({ health }: { health: DataHealth }) {
+  const isOk = health.rpcStatus === "ok";
+  const isError = health.rpcStatus === "error";
+
+  const rows: Array<{ label: string; value: string | number; warn?: boolean }> = [
+    { label: "RPC Status",        value: health.rpcStatus.toUpperCase(), warn: isError },
+    { label: "Last RPC Error",    value: health.rpcError ?? "—", warn: !!health.rpcError },
+    { label: "Season",            value: health.season },
+    { label: "Min Games Filter",  value: health.minGames },
+    { label: "Player stat rows",  value: health.totalPlayerRows, warn: health.totalPlayerRows === 0 },
+    { label: "Disposal rows",     value: health.disposalRows, warn: health.disposalRows === 0 },
+    { label: "Goal rows",         value: health.goalRows, warn: health.goalRows === 0 },
+    { label: "Games loaded",      value: health.gamesLoaded, warn: health.gamesLoaded === 0 },
+    { label: "Match boards",      value: health.matchBoardsGenerated },
+    { label: "Last refresh",      value: health.lastRefresh ? new Date(health.lastRefresh).toLocaleTimeString() : "—" },
+  ];
+
+  return (
+    <div className={`mb-5 rounded-lg border p-3 ${isError ? "border-red-800/50 bg-red-950/20" : "border-zinc-800 bg-zinc-900/50"}`}>
+      <div className="flex items-center gap-2 mb-2">
+        <Activity className="w-3.5 h-3.5 text-zinc-400" />
+        <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Data Health</p>
+        {isOk && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+        {isError && <XCircle className="w-3.5 h-3.5 text-red-400" />}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-4 gap-y-1.5">
+        {rows.map(r => (
+          <div key={r.label}>
+            <p className="text-[9px] text-zinc-600 uppercase tracking-wider">{r.label}</p>
+            <p className={`text-[11px] font-mono font-medium truncate ${r.warn ? "text-amber-400" : "text-zinc-300"}`}>
+              {String(r.value)}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

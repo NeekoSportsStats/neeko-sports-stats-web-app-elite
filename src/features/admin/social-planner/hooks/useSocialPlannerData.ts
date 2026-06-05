@@ -81,14 +81,25 @@ export function useSocialPlannerData(): UseSocialPlannerDataReturn {
   const fetchPlayerStats = useCallback(async (season: number): Promise<AFLPlayerStat[]> => {
     setIsLoading(true);
     try {
+      console.group("[SocialPlanner] fetchPlayerStats");
+      console.log("params", { p_season: season, p_min_games: 3 });
+
       const { data, error: err } = await supabase
         .rpc("get_social_planner_player_stats", { p_season: season, p_min_games: 3 });
+
+      console.log("error", err);
+      console.log("rows", (data as unknown[] | null)?.length ?? 0);
+      console.log("first row", (data as unknown[])?.[0]);
+      console.groupEnd();
+
       if (err) {
         console.warn("[SocialPlanner] fetchPlayerStats RPC failed:", err.message, err.code);
         setError("Player stats could not be loaded. Posts will generate without player data.");
         return [];
       }
-      return ((data ?? []) as DbPlayerStat[]).map(dbStatToAFLPlayerStat);
+      const mapped = ((data ?? []) as DbPlayerStat[]).map(dbStatToAFLPlayerStat);
+      console.log("[SocialPlanner] mapped rows", mapped.length, "first:", mapped[0]);
+      return mapped;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.warn("[SocialPlanner] fetchPlayerStats unexpected error:", msg);
