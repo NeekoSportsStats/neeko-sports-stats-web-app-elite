@@ -7,6 +7,8 @@
  */
 import type { AFLPlayerStat, ConfidenceTier } from "../types";
 
+export type RowDisplayMode = "visible" | "name_only" | "blurred" | "hidden";
+
 export interface MatchBoardPlayerRow {
   /** Stable key for React renders */
   key: string;
@@ -26,6 +28,14 @@ export interface MatchBoardPlayerRow {
   t1?: string;
   t2?: string;
   t3?: string;
+  /** Percentages per threshold for colour grading (0–100) */
+  p15?: number;
+  p20?: number;
+  p25?: number;
+  p30?: number;
+  p1?: number;
+  p2?: number;
+  p3?: number;
   /** Best percentage across all thresholds (0–100) */
   bestPercent: number;
   /** Most games played across all threshold rows */
@@ -34,8 +44,10 @@ export interface MatchBoardPlayerRow {
   tier: ConfidenceTier;
   /** Admin UI: is this row currently selected for the carousel */
   selected: boolean;
-  /** Admin UI: is this row blurred/preview in the carousel */
-  blurred: boolean;
+  /** Admin UI: how to display this row in the carousel */
+  displayMode: RowDisplayMode;
+  /** Admin UI: manual sort order for selected rows (lower = higher in list) */
+  sortOrder: number;
 }
 
 const TIER_RANK: Record<ConfidenceTier, number> = {
@@ -72,18 +84,16 @@ export function aggregateToRows(
         maxGamesPlayed: p.gamesPlayed,
         tier: p.confidenceTier,
         selected: false,
-        blurred: false,
+        displayMode: "visible",
+        sortOrder: 0,
       };
-      setThreshold(row, p.threshold, p.recordLabel);
+      setThreshold(row, p.threshold, p.recordLabel, p.percent);
       byPlayer.set(p.playerId, row);
     } else {
-      // Merge threshold column
-      setThreshold(existing, p.threshold, p.recordLabel);
-      // Keep highest quality metadata
+      setThreshold(existing, p.threshold, p.recordLabel, p.percent);
       if (p.percent > existing.bestPercent) existing.bestPercent = p.percent;
       if (p.gamesPlayed > existing.maxGamesPlayed) existing.maxGamesPlayed = p.gamesPlayed;
       if (TIER_RANK[p.confidenceTier] > TIER_RANK[existing.tier]) existing.tier = p.confidenceTier;
-      // Use the l5Avg from the most-games row
       if (p.gamesPlayed >= existing.maxGamesPlayed) existing.l5Avg = p.l5Avg;
       if (p.projection != null && (existing.projection == null || p.gamesPlayed >= existing.maxGamesPlayed)) {
         existing.projection = p.projection;
@@ -95,16 +105,16 @@ export function aggregateToRows(
   return Array.from(byPlayer.values()).sort(byQuality);
 }
 
-function setThreshold(row: MatchBoardPlayerRow, threshold: number, label: string) {
+function setThreshold(row: MatchBoardPlayerRow, threshold: number, label: string, percent: number) {
   if (row.statType === "disposals") {
-    if (threshold === 15) row.t15 = label;
-    else if (threshold === 20) row.t20 = label;
-    else if (threshold === 25) row.t25 = label;
-    else if (threshold === 30) row.t30 = label;
+    if (threshold === 15) { row.t15 = label; row.p15 = percent; }
+    else if (threshold === 20) { row.t20 = label; row.p20 = percent; }
+    else if (threshold === 25) { row.t25 = label; row.p25 = percent; }
+    else if (threshold === 30) { row.t30 = label; row.p30 = percent; }
   } else {
-    if (threshold === 1) row.t1 = label;
-    else if (threshold === 2) row.t2 = label;
-    else if (threshold === 3) row.t3 = label;
+    if (threshold === 1) { row.t1 = label; row.p1 = percent; }
+    else if (threshold === 2) { row.t2 = label; row.p2 = percent; }
+    else if (threshold === 3) { row.t3 = label; row.p3 = percent; }
   }
 }
 
@@ -116,8 +126,9 @@ function byQuality(a: MatchBoardPlayerRow, b: MatchBoardPlayerRow): number {
 
 /**
  * Apply default selections to a set of aggregated rows.
+ *
  * open_free_game: top N all visible.
- * preview_blurred: top N total, first visibleLimit visible, rest blurred.
+ * preview_blurred: top 3 visible, rows 4–N name_only (admin can promote/demote).
  */
 export function applyDefaultSelection(
   rows: MatchBoardPlayerRow[],
@@ -127,22 +138,27 @@ export function applyDefaultSelection(
 ): MatchBoardPlayerRow[] {
   return rows.map((row, i) => {
     if (mode === "open_free_game") {
-      return { ...row, selected: i < totalLimit, blurred: false };
+      const selected = i < totalLimit;
+      return { ...row, selected, displayMode: "visible" as RowDisplayMode, sortOrder: selected ? i : 0 };
     } else if (mode === "preview_blurred") {
       const selected = i < totalLimit;
-      const blurred = selected && i >= visibleLimit;
-      return { ...row, selected, blurred };
+      let displayMode: RowDisplayMode = "visible";
+      if (!selected) displayMode = "visible";
+      else if (i < visibleLimit) displayMode = "visible";
+      else displayMode = "name_only";
+      return { ...row, selected, displayMode, sortOrder: selected ? i : 0 };
     }
     return row;
   });
 }
 
-/** Convert aggregated rows back to StatBoardRows for carousel slides */
+/** Convert aggregated rows back to StatBoardRows for carousel slides, respecting displayMode and sortOrder */
 export function rowsToStatBoardRows(
   rows: MatchBoardPlayerRow[]
 ): import("../types").StatBoardRow[] {
   return rows
-    .filter(r => r.selected)
+    .filter(r => r.selected && r.displayMode !== "hidden")
+    .sort((a, b) => a.sortOrder - b.sortOrder)
     .map(r => ({
       playerName: r.playerName,
       l5Avg: r.l5Avg,
@@ -154,6 +170,9 @@ export function rowsToStatBoardRows(
       threshold1Goal: r.statType === "goals" ? (r.t1 ?? "—") : undefined,
       threshold2Goals: r.statType === "goals" ? (r.t2 ?? "—") : undefined,
       threshold3Goals: r.statType === "goals" ? (r.t3 ?? "—") : undefined,
-      blurred: r.blurred,
+      blurred: r.displayMode === "blurred",
+      displayMode: r.displayMode,
+      thresholdPercent: r.bestPercent,
+      gamesPlayedForGrade: r.maxGamesPlayed,
     }));
 }

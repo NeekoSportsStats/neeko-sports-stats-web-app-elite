@@ -42,6 +42,19 @@ FORMAT & DESIGN:
 - Clean table layouts with strong contrast
 - Include ${BRAND} branding on every slide`.trim();
 
+// ─── Colour grade rules ───────────────────────────────────────────────────────
+
+const COLOUR_GRADE_RULES = `
+COLOUR CODING FOR THRESHOLD CELLS (use subtle tints, not solid blocks):
+- 90%+ hit rate with 6+ games: gold/amber highlight (elite form)
+- 75–89% with 6+ games: green tint (strong form)
+- 60–74%: amber/yellow tint (solid)
+- 50–59%: orange tint (watch)
+- Under 50%: muted red/dark (low)
+- Under 6 games played: blue-grey outline or muted border only (thin sample — do NOT colour as green even if 100%)
+- Missing data (—): grey dash, no colour
+Use ratio text (e.g. 9/11) as the main visible stat — colour is secondary visual cue only.`.trim();
+
 // ─── Row formatters ───────────────────────────────────────────────────────────
 
 function formatDisposalRow(row: StatBoardRow): string {
@@ -60,7 +73,24 @@ function formatGoalRow(row: StatBoardRow): string {
 }
 
 function formatRow(row: StatBoardRow, isDisposal: boolean): string {
-  if (row.blurred) return "(row hidden — upgrade to unlock)";
+  const mode = row.displayMode ?? (row.blurred ? "blurred" : "visible");
+  switch (mode) {
+    case "hidden":
+      return null as unknown as string; // caller filters nulls
+    case "blurred":
+      return "(row hidden — upgrade to unlock)";
+    case "name_only":
+      return `${row.playerName} | [stats hidden — preview only]`;
+    default:
+      return isDisposal ? formatDisposalRow(row) : formatGoalRow(row);
+  }
+}
+
+function formatRowForText(row: StatBoardRow, isDisposal: boolean): string | null {
+  const mode = row.displayMode ?? (row.blurred ? "blurred" : "visible");
+  if (mode === "hidden") return null;
+  if (mode === "blurred") return `[BLURRED] ${row.playerName} | stats hidden`;
+  if (mode === "name_only") return `[NAME ONLY] ${row.playerName} | stats hidden`;
   return isDisposal ? formatDisposalRow(row) : formatGoalRow(row);
 }
 
@@ -117,9 +147,15 @@ function buildTableSlideSection(
 ): string {
   const isDisposal = isDisposalSlide(slide.slideType);
   const rows = slide.rows ?? [];
-  const visibleRows = rows.filter(r => !r.blurred);
-  const blurredRows = rows.filter(r => r.blurred);
-  const totalRows = rows.length;
+  const visibleRows = rows.filter(r => {
+    const mode = r.displayMode ?? (r.blurred ? "blurred" : "visible");
+    return mode === "visible";
+  });
+  const nameOnlyRows = rows.filter(r => r.displayMode === "name_only");
+  const blurredRows = rows.filter(r => r.blurred || r.displayMode === "blurred");
+  const hiddenRows = rows.filter(r => r.displayMode === "hidden");
+  const shownRows = rows.filter(r => r.displayMode !== "hidden");
+  const totalRows = shownRows.length;
   const hasData = rows.length > 0;
 
   const colHeader = isDisposal
@@ -127,12 +163,21 @@ function buildTableSlideSection(
     : "Player | L5 Avg | 1+ | 2+ | 3+";
 
   const rowLines = hasData
-    ? visibleRows.map((r, i) => `${i + 1}. ${formatRow(r, isDisposal)}`).join("\n")
+    ? shownRows
+        .map((r, i) => {
+          const line = formatRow(r, isDisposal);
+          if (line == null) return null;
+          return `${i + 1}. ${line}`;
+        })
+        .filter(Boolean)
+        .join("\n")
     : "DATA MISSING — no rows available for this slide";
 
-  const blurNote = blurredRows.length > 0
-    ? `\n(${blurredRows.length} additional rows are blurred/hidden)`
-    : "";
+  const modeSummary: string[] = [];
+  if (nameOnlyRows.length > 0) modeSummary.push(`${nameOnlyRows.length} name-only row(s): show player name, hide all stats`);
+  if (blurredRows.length > 0) modeSummary.push(`${blurredRows.length} blurred row(s): fully obscure`);
+  if (hiddenRows.length > 0) modeSummary.push(`${hiddenRows.length} row(s) excluded entirely`);
+  const modeNote = modeSummary.length > 0 ? `\nDisplay modes: ${modeSummary.join("; ")}` : "";
 
   const visInstructions = hasData
     ? visibilityInstructions(
@@ -148,9 +193,11 @@ Table columns:
 ${colHeader}
 
 Rows:
-${rowLines}${blurNote}
+${rowLines}${modeNote}
 
-${visInstructions}`;
+${visInstructions}
+
+${COLOUR_GRADE_RULES}`;
 }
 
 function buildCTASlideSection(slideNum: number, slide: CarouselSlide): string {
@@ -369,6 +416,7 @@ ${post.homeTeam && post.awayTeam ? `${post.homeTeam} v ${post.awayTeam}` : ""} |
 Visibility: ${post.visibilityMode?.replace(/_/g, " ") ?? "standard"}
 
 This is the exact text content for each slide (not an image prompt).
+Display mode labels: [VISIBLE] full stats shown | [NAME ONLY] name visible, stats hidden | [BLURRED] row obscured | rows marked [hidden] excluded
 `;
 
   const slideSections = post.carouselSlides.map((slide, i) => {
@@ -385,11 +433,8 @@ This is the exact text content for each slide (not an image prompt).
         lines.push("Player | L5 Avg | 1+ | 2+ | 3+");
       }
       for (const row of rows) {
-        if (row.blurred) {
-          lines.push("(row hidden — upgrade to unlock)");
-        } else {
-          lines.push(formatRow(row, isDisposal));
-        }
+        const formatted = formatRowForText(row, isDisposal);
+        if (formatted != null) lines.push(formatted);
       }
     }
 

@@ -104,7 +104,11 @@ export interface StatBoardRow {
   threshold2Goals?: string;
   threshold3Goals?: string;
   note?: string;
-  blurred?: boolean;      // true = row rendered blurred with CTA overlay
+  blurred?: boolean;      // legacy compat — prefer displayMode
+  displayMode?: "visible" | "name_only" | "blurred" | "hidden";
+  /** Percentage per threshold for colour grading (0–100) */
+  thresholdPercent?: number;
+  gamesPlayedForGrade?: number;
 }
 
 export interface CarouselSlide {

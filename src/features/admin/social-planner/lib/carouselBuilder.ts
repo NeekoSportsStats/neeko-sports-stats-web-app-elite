@@ -293,6 +293,8 @@ export function rebuildMatchBoardSlidesFromRows(
   const tableSlides = sectionMap.map(({ key, slideType, subtitle, index }) => {
     const existingSlide = existingSlides.find(s => s.slideType === slideType) ?? existingSlides[index];
     const rows: StatBoardRow[] = rowsToStatBoardRows(matchBoardRows[key]);
+    const visibleCount = rows.filter(r => r.displayMode === "visible" || (!r.displayMode && !r.blurred)).length;
+    const blurredCount = rows.filter(r => r.blurred || r.displayMode === "blurred").length;
     return {
       ...(existingSlide ?? {}),
       id: existingSlide?.id ?? makeId(key, index),
@@ -301,8 +303,8 @@ export function rebuildMatchBoardSlidesFromRows(
       subtitle: existingSlide?.subtitle ?? subtitle,
       rows,
       visibilityMode: cover?.visibilityMode,
-      visibleRowCount: rows.filter(r => !r.blurred).length,
-      blurredRowCount: rows.filter(r => r.blurred).length,
+      visibleRowCount: visibleCount,
+      blurredRowCount: blurredCount,
       ctaOverlayText: !isOpen ? ctaOverlayText : undefined,
     } as CarouselSlide;
   });

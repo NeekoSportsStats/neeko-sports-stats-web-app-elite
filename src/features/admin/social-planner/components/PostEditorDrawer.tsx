@@ -501,6 +501,54 @@ function MatchBoardAggregatedSections({
   );
 }
 
+// ─── Colour grading helper ────────────────────────────────────────────────────
+
+type RecordGrade = "elite" | "strong" | "solid" | "watch" | "low" | "thin_sample" | "missing";
+
+function getRecordGrade(label?: string, percent?: number, gamesPlayed?: number): RecordGrade {
+  if (!label || label === "—") return "missing";
+  if ((gamesPlayed ?? 0) < 6) return "thin_sample";
+  const pct = percent ?? 0;
+  if (pct >= 90) return "elite";
+  if (pct >= 75) return "strong";
+  if (pct >= 60) return "solid";
+  if (pct >= 50) return "watch";
+  return "low";
+}
+
+const GRADE_CLASSES: Record<RecordGrade, string> = {
+  elite:       "text-amber-300 font-semibold",
+  strong:      "text-emerald-400 font-medium",
+  solid:       "text-yellow-400",
+  watch:       "text-orange-400",
+  low:         "text-red-400/80",
+  thin_sample: "text-sky-400/70 italic",
+  missing:     "text-zinc-600",
+};
+
+function GradeCell({ label, percent, gamesPlayed }: { label?: string; percent?: number; gamesPlayed?: number }) {
+  const grade = getRecordGrade(label, percent, gamesPlayed);
+  return (
+    <span className={`font-mono text-[10px] ${GRADE_CLASSES[grade]}`}>
+      {label ?? "—"}
+    </span>
+  );
+}
+
+// ─── Display mode labels ──────────────────────────────────────────────────────
+
+const DISPLAY_MODE_LABELS: Record<string, string> = {
+  visible:   "Visible",
+  name_only: "Name only",
+  blurred:   "Blur row",
+  hidden:    "Hidden",
+};
+
+// ─── AggregatedRowSection ─────────────────────────────────────────────────────
+
+type SectionFilter = "all" | "selected" | "visible" | "preview" | "unselected";
+type SectionSort = "manual" | "bestRecord" | "gamesPlayed" | "l5Avg" | "playerName";
+
 function AggregatedRowSection({
   label,
   statType,
@@ -512,50 +560,173 @@ function AggregatedRowSection({
   rows: MatchBoardPlayerRow[];
   onRowsChange: (rows: MatchBoardPlayerRow[]) => void;
 }) {
+  const [filter, setFilter] = useState<SectionFilter>("all");
+  const [sort, setSort] = useState<SectionSort>("manual");
+
   const selectedCount = rows.filter(r => r.selected).length;
   const isDisposals = statType === "disposals";
 
-  function toggleSelected(key: string) {
-    onRowsChange(rows.map(r => r.key === key ? { ...r, selected: !r.selected, blurred: r.selected ? false : r.blurred } : r));
+  // Build display list
+  const displayRows = useMemo(() => {
+    let list = [...rows];
+
+    // Apply filter
+    if (filter === "selected") list = list.filter(r => r.selected);
+    else if (filter === "visible") list = list.filter(r => r.selected && r.displayMode === "visible");
+    else if (filter === "preview") list = list.filter(r => r.selected && (r.displayMode === "name_only" || r.displayMode === "blurred"));
+    else if (filter === "unselected") list = list.filter(r => !r.selected);
+    else {
+      // "all": selected first, then unselected
+      const sel = list.filter(r => r.selected).sort((a, b) => a.sortOrder - b.sortOrder);
+      const unsel = list.filter(r => !r.selected);
+      list = [...sel, ...unsel];
+    }
+
+    // Apply sort (only to unselected; selected always by sortOrder when "manual")
+    if (sort !== "manual") {
+      list.sort((a, b) => {
+        if (a.selected !== b.selected) return a.selected ? -1 : 1;
+        switch (sort) {
+          case "bestRecord":   return b.bestPercent - a.bestPercent;
+          case "gamesPlayed":  return b.maxGamesPlayed - a.maxGamesPlayed;
+          case "l5Avg":        return b.l5Avg - a.l5Avg;
+          case "playerName":   return a.playerName.localeCompare(b.playerName);
+          default:             return 0;
+        }
+      });
+    }
+
+    return list;
+  }, [rows, filter, sort]);
+
+  function updateRow(key: string, patch: Partial<MatchBoardPlayerRow>) {
+    onRowsChange(rows.map(r => r.key === key ? { ...r, ...patch } : r));
   }
 
-  function toggleBlurred(key: string) {
-    onRowsChange(rows.map(r => r.key === key && r.selected ? { ...r, blurred: !r.blurred } : r));
+  function toggleSelected(key: string) {
+    const row = rows.find(r => r.key === key);
+    if (!row) return;
+    if (row.selected) {
+      // Deselect: clear sort order
+      onRowsChange(rows.map(r => r.key === key ? { ...r, selected: false, sortOrder: 0 } : r));
+    } else {
+      // Select: assign next sort order
+      const maxOrder = Math.max(0, ...rows.filter(r => r.selected).map(r => r.sortOrder));
+      onRowsChange(rows.map(r => r.key === key ? { ...r, selected: true, sortOrder: maxOrder + 1 } : r));
+    }
+  }
+
+  function setDisplayMode(key: string, mode: MatchBoardPlayerRow["displayMode"]) {
+    updateRow(key, { displayMode: mode });
   }
 
   function quickSelect(n: number) {
-    onRowsChange(rows.map((r, i) => ({ ...r, selected: i < n, blurred: i < n ? r.blurred : false })));
+    onRowsChange(rows.map((r, i) => ({
+      ...r,
+      selected: i < n,
+      sortOrder: i < n ? i : 0,
+      displayMode: i < n ? r.displayMode : "visible" as const,
+    })));
   }
 
   function clearAll() {
-    onRowsChange(rows.map(r => ({ ...r, selected: false, blurred: false })));
+    onRowsChange(rows.map(r => ({ ...r, selected: false, sortOrder: 0 })));
+  }
+
+  function resetRecommended() {
+    // Re-apply default based on current sort order (top 8 for free game, top 3 visible + 4-8 name_only)
+    onRowsChange(rows.map((r, i) => ({
+      ...r,
+      selected: i < 8,
+      sortOrder: i < 8 ? i : 0,
+      displayMode: i < 3 ? "visible" as const : (i < 8 ? "name_only" as const : "visible" as const),
+    })));
+  }
+
+  function bulkSetMode(mode: MatchBoardPlayerRow["displayMode"]) {
+    onRowsChange(rows.map(r => r.selected ? { ...r, displayMode: mode } : r));
+  }
+
+  // Reorder helpers (operate on selected rows by sortOrder)
+  function moveRow(key: string, direction: "up" | "down" | "top" | "bottom") {
+    const selected = rows.filter(r => r.selected).sort((a, b) => a.sortOrder - b.sortOrder);
+    const idx = selected.findIndex(r => r.key === key);
+    if (idx === -1) return;
+
+    let newIdx: number;
+    if (direction === "up") newIdx = Math.max(0, idx - 1);
+    else if (direction === "down") newIdx = Math.min(selected.length - 1, idx + 1);
+    else if (direction === "top") newIdx = 0;
+    else newIdx = selected.length - 1;
+
+    if (newIdx === idx) return;
+
+    // Swap sortOrders
+    const reordered = [...selected];
+    const [moved] = reordered.splice(idx, 1);
+    reordered.splice(newIdx, 0, moved);
+    const keyToOrder = new Map(reordered.map((r, i) => [r.key, i]));
+
+    onRowsChange(rows.map(r => ({
+      ...r,
+      sortOrder: r.selected ? (keyToOrder.get(r.key) ?? r.sortOrder) : r.sortOrder,
+    })));
   }
 
   return (
     <div className="rounded-lg bg-zinc-900 border border-zinc-800 overflow-hidden">
       {/* Header */}
-      <div className="px-3 py-2 border-b border-zinc-800/60 flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
-          <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{label}</p>
-          <span className="text-[10px] text-zinc-600">{selectedCount}/{rows.length} selected</span>
+      <div className="px-3 py-2 border-b border-zinc-800/60 space-y-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{label}</p>
+            <span className="text-[10px] text-zinc-600">{selectedCount}/{rows.length} selected</span>
+          </div>
+          {/* Quick select */}
+          <div className="flex items-center gap-1 flex-wrap">
+            {[3, 5, 8, 10].map(n => (
+              <button key={n} onClick={() => quickSelect(n)}
+                className="text-[9px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition-colors">
+                Top {n}
+              </button>
+            ))}
+            <button onClick={clearAll}
+              className="text-[9px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600 transition-colors">
+              Clear
+            </button>
+            <button onClick={resetRecommended}
+              className="text-[9px] px-1.5 py-0.5 rounded border border-sky-800/60 text-sky-400/80 hover:text-sky-200 hover:border-sky-600 transition-colors">
+              Reset
+            </button>
+          </div>
         </div>
-        {/* Quick select buttons */}
-        <div className="flex items-center gap-1">
-          {[3, 5, 8, 10].map(n => (
-            <button
-              key={n}
-              onClick={() => quickSelect(n)}
-              className="text-[9px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-600 transition-colors"
-            >
-              Top {n}
+
+        {/* Bulk display mode + filters + sort */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-[9px] text-zinc-600">Bulk:</span>
+          {(["visible", "name_only", "blurred", "hidden"] as const).map(mode => (
+            <button key={mode} onClick={() => bulkSetMode(mode)}
+              className="text-[9px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-500 transition-colors">
+              {DISPLAY_MODE_LABELS[mode]}
             </button>
           ))}
-          <button
-            onClick={clearAll}
-            className="text-[9px] px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600 transition-colors"
-          >
-            Clear
-          </button>
+          <span className="text-[9px] text-zinc-600 ml-2">Filter:</span>
+          <select value={filter} onChange={e => setFilter(e.target.value as SectionFilter)}
+            className="text-[9px] bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-zinc-400 focus:outline-none">
+            <option value="all">All</option>
+            <option value="selected">Selected</option>
+            <option value="visible">Visible</option>
+            <option value="preview">Preview</option>
+            <option value="unselected">Unselected</option>
+          </select>
+          <select value={sort} onChange={e => setSort(e.target.value as SectionSort)}
+            className="text-[9px] bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-zinc-400 focus:outline-none">
+            <option value="manual">Manual order</option>
+            <option value="bestRecord">Best record</option>
+            <option value="gamesPlayed">Games played</option>
+            <option value="l5Avg">L5 avg</option>
+            <option value="playerName">Player name</option>
+          </select>
         </div>
       </div>
 
@@ -566,7 +737,8 @@ function AggregatedRowSection({
           <table className="w-full text-[10px]">
             <thead>
               <tr className="border-b border-zinc-800/40">
-                <th className="px-2 py-1.5 text-zinc-500 font-medium w-8">On</th>
+                <th className="px-1.5 py-1.5 text-zinc-500 font-medium w-6">On</th>
+                <th className="px-1 py-1.5 text-zinc-500 font-medium w-14">Order</th>
                 <th className="text-left px-2 py-1.5 text-zinc-500 font-medium">Player</th>
                 <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">L5</th>
                 {isDisposals ? (
@@ -583,74 +755,97 @@ function AggregatedRowSection({
                     <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">3+</th>
                   </>
                 )}
-                <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">Blur</th>
-                <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">Tier</th>
+                <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">Display</th>
+                <th className="text-right px-1.5 py-1.5 text-zinc-500 font-medium">Tier</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/20">
-              {rows.map(row => (
-                <tr
-                  key={row.key}
-                  className={`transition-colors ${
-                    row.selected
-                      ? row.blurred
-                        ? "bg-zinc-800/20 text-zinc-500"
-                        : "bg-zinc-800/40 text-zinc-200"
-                      : "text-zinc-600 hover:bg-zinc-800/20"
-                  }`}
-                >
-                  {/* Select toggle */}
-                  <td className="px-2 py-1.5 text-center">
-                    <button
-                      onClick={() => toggleSelected(row.key)}
-                      className={`w-3.5 h-3.5 rounded border transition-colors inline-flex items-center justify-center ${
-                        row.selected
-                          ? "bg-sky-600 border-sky-500"
-                          : "bg-zinc-800 border-zinc-600 hover:border-zinc-400"
-                      }`}
-                      title={row.selected ? "Deselect" : "Select"}
-                    >
-                      {row.selected && <Check className="w-2 h-2 text-white" />}
-                    </button>
-                  </td>
-                  <td className="px-2 py-1.5 font-medium whitespace-nowrap">{row.playerName}</td>
-                  <td className="px-2 py-1.5 text-right font-mono">{row.l5Avg.toFixed(1)}</td>
-                  {isDisposals ? (
-                    <>
-                      <td className="px-2 py-1.5 text-right font-mono">{row.t15 ?? "—"}</td>
-                      <td className="px-2 py-1.5 text-right font-mono">{row.t20 ?? "—"}</td>
-                      <td className="px-2 py-1.5 text-right font-mono">{row.t25 ?? "—"}</td>
-                      <td className="px-2 py-1.5 text-right font-mono">{row.t30 ?? "—"}</td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="px-2 py-1.5 text-right font-mono">{row.t1 ?? "—"}</td>
-                      <td className="px-2 py-1.5 text-right font-mono">{row.t2 ?? "—"}</td>
-                      <td className="px-2 py-1.5 text-right font-mono">{row.t3 ?? "—"}</td>
-                    </>
-                  )}
-                  {/* Blur toggle — only enabled for selected rows */}
-                  <td className="px-2 py-1.5 text-right">
-                    <button
-                      onClick={() => toggleBlurred(row.key)}
-                      disabled={!row.selected}
-                      className={`text-[9px] px-1.5 py-0.5 rounded border transition-colors ${
-                        !row.selected
-                          ? "border-zinc-800 text-zinc-700 cursor-not-allowed"
-                          : row.blurred
-                          ? "border-amber-700 bg-amber-950/40 text-amber-400 hover:bg-amber-950/60"
-                          : "border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"
-                      }`}
-                      title={row.blurred ? "Unblur" : "Blur this row"}
-                    >
-                      {row.blurred ? "Blurred" : "Visible"}
-                    </button>
-                  </td>
-                  <td className="px-2 py-1.5 text-right">
-                    <ConfidencePill tier={row.tier} />
-                  </td>
-                </tr>
-              ))}
+              {displayRows.map(row => {
+                const rowClass = row.selected
+                  ? row.displayMode === "hidden"   ? "bg-zinc-800/10 text-zinc-600"
+                  : row.displayMode === "blurred"  ? "bg-zinc-800/20 text-zinc-500"
+                  : row.displayMode === "name_only" ? "bg-amber-950/10 text-zinc-400"
+                  : "bg-zinc-800/40 text-zinc-200"
+                  : "text-zinc-600 hover:bg-zinc-800/20";
+                return (
+                  <tr key={row.key} className={`transition-colors ${rowClass}`}>
+                    {/* Select toggle */}
+                    <td className="px-1.5 py-1.5 text-center">
+                      <button
+                        onClick={() => toggleSelected(row.key)}
+                        className={`w-3.5 h-3.5 rounded border transition-colors inline-flex items-center justify-center ${
+                          row.selected ? "bg-sky-600 border-sky-500" : "bg-zinc-800 border-zinc-600 hover:border-zinc-400"
+                        }`}
+                        title={row.selected ? "Deselect" : "Select"}
+                      >
+                        {row.selected && <Check className="w-2 h-2 text-white" />}
+                      </button>
+                    </td>
+                    {/* Reorder — only for selected rows */}
+                    <td className="px-1 py-1 text-center">
+                      {row.selected ? (
+                        <div className="flex items-center gap-0.5 justify-center">
+                          <button onClick={() => moveRow(row.key, "top")} title="Move to top"
+                            className="text-zinc-600 hover:text-zinc-300 transition-colors text-[8px] px-0.5">⇑</button>
+                          <button onClick={() => moveRow(row.key, "up")} title="Move up"
+                            className="text-zinc-500 hover:text-zinc-200 transition-colors text-[9px] px-0.5">↑</button>
+                          <button onClick={() => moveRow(row.key, "down")} title="Move down"
+                            className="text-zinc-500 hover:text-zinc-200 transition-colors text-[9px] px-0.5">↓</button>
+                          <button onClick={() => moveRow(row.key, "bottom")} title="Move to bottom"
+                            className="text-zinc-600 hover:text-zinc-300 transition-colors text-[8px] px-0.5">⇓</button>
+                        </div>
+                      ) : (
+                        <span className="text-zinc-700">—</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5 font-medium whitespace-nowrap">
+                      {row.playerName}
+                      {row.selected && (
+                        <span className="ml-1 text-zinc-600 font-normal">#{row.sortOrder + 1}</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5 text-right font-mono">{row.l5Avg.toFixed(1)}</td>
+                    {isDisposals ? (
+                      <>
+                        <td className="px-2 py-1.5 text-right"><GradeCell label={row.t15} percent={row.p15} gamesPlayed={row.maxGamesPlayed} /></td>
+                        <td className="px-2 py-1.5 text-right"><GradeCell label={row.t20} percent={row.p20} gamesPlayed={row.maxGamesPlayed} /></td>
+                        <td className="px-2 py-1.5 text-right"><GradeCell label={row.t25} percent={row.p25} gamesPlayed={row.maxGamesPlayed} /></td>
+                        <td className="px-2 py-1.5 text-right"><GradeCell label={row.t30} percent={row.p30} gamesPlayed={row.maxGamesPlayed} /></td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-2 py-1.5 text-right"><GradeCell label={row.t1} percent={row.p1} gamesPlayed={row.maxGamesPlayed} /></td>
+                        <td className="px-2 py-1.5 text-right"><GradeCell label={row.t2} percent={row.p2} gamesPlayed={row.maxGamesPlayed} /></td>
+                        <td className="px-2 py-1.5 text-right"><GradeCell label={row.t3} percent={row.p3} gamesPlayed={row.maxGamesPlayed} /></td>
+                      </>
+                    )}
+                    {/* Display mode selector */}
+                    <td className="px-2 py-1">
+                      <select
+                        disabled={!row.selected}
+                        value={row.selected ? row.displayMode : "visible"}
+                        onChange={e => setDisplayMode(row.key, e.target.value as MatchBoardPlayerRow["displayMode"])}
+                        className={`text-[9px] rounded border px-1 py-0.5 focus:outline-none ${
+                          !row.selected
+                            ? "bg-zinc-900 border-zinc-800 text-zinc-700 cursor-not-allowed"
+                            : row.displayMode === "visible"   ? "bg-zinc-800 border-zinc-600 text-zinc-200"
+                            : row.displayMode === "name_only" ? "bg-amber-950/40 border-amber-700/60 text-amber-300"
+                            : row.displayMode === "blurred"   ? "bg-zinc-800/60 border-zinc-600 text-zinc-400"
+                            : "bg-zinc-900 border-zinc-700 text-zinc-600"
+                        }`}
+                      >
+                        <option value="visible">Visible</option>
+                        <option value="name_only">Name only</option>
+                        <option value="blurred">Blur row</option>
+                        <option value="hidden">Hidden</option>
+                      </select>
+                    </td>
+                    <td className="px-1.5 py-1.5 text-right">
+                      <ConfidencePill tier={row.tier} />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
