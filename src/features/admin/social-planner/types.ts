@@ -243,6 +243,8 @@ export interface SocialPost {
     homeGoals:     import("./lib/rowAggregator").MatchBoardPlayerRow[];
     awayGoals:     import("./lib/rowAggregator").MatchBoardPlayerRow[];
   };
+  /** Reference screenshots selected for this post's AI prompts */
+  referenceScreenshots?: ReferenceScreenshot[];
 }
 
 // ─── Planner Settings ─────────────────────────────────────────────────────────
@@ -278,6 +280,7 @@ export interface PlannerSettings {
   excludeDoubtfulFromAuto: boolean;    // true — doubtful not auto-selected
   allowManualAvailabilityOverride: boolean; // true — admin can manually include
   showUnknownAvailabilityWarning: boolean;  // true
+  screenshotRefMode: ScreenshotRefMode;     // "product_education_only" default
 }
 
 export const DEFAULT_SETTINGS: PlannerSettings = {
@@ -310,7 +313,30 @@ export const DEFAULT_SETTINGS: PlannerSettings = {
   excludeDoubtfulFromAuto: true,
   allowManualAvailabilityOverride: true,
   showUnknownAvailabilityWarning: true,
+  screenshotRefMode: "product_education_only",
 };
+
+// ─── Reference Screenshots ────────────────────────────────────────────────────
+
+export type ScreenshotTag =
+  | "mobile_stat_board"
+  | "player_card"
+  | "hit_rate_table"
+  | "recent_form_strip"
+  | "product_education"
+  | "match_board"
+  | "player_spotlight";
+
+export interface ReferenceScreenshot {
+  id: string;
+  url: string;
+  label?: string;
+  tags: ScreenshotTag[];
+  uploadedAt: string;
+}
+
+/** Controls when screenshot style reference language is injected into prompts */
+export type ScreenshotRefMode = "off" | "product_education_only" | "all_board_style";
 
 // ─── Token map ────────────────────────────────────────────────────────────────
 

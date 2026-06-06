@@ -10,7 +10,7 @@
  * - No bookmaker branding
  */
 
-import type { SocialPost, CarouselSlide, StatBoardRow, ContentVisibilityMode, PlayerAvailabilityStatus, SpotlightSelection } from "../types";
+import type { SocialPost, CarouselSlide, StatBoardRow, ContentVisibilityMode, PlayerAvailabilityStatus, SpotlightSelection, ScreenshotRefMode } from "../types";
 import { EXCLUDED_STATUSES, WARNING_STATUSES } from "../types";
 
 export type PromptMode = "full_graphic" | "background_only" | "template_export";
@@ -64,7 +64,133 @@ IMPORTANT:
 - Do NOT use lock icons, padlock icons, or the words "locked" or "unlock".
 - Use a soft blur or dark glass overlay for hidden stats, with a CTA strip: "See the full board at Neeko Sports Stats"`.trim();
 
-// ─── Row formatters ───────────────────────────────────────────────────────────
+// ─── Screenshot reference blocks ─────────────────────────────────────────────
+
+const SCREENSHOT_EXCLUSIONS = `Do NOT recreate:
+- Safari address bar or browser chrome
+- Phone status bar (time, battery, signal icons)
+- Bottom Safari toolbar or browser controls
+- Site navigation header
+- Exact screenshot crop
+- Any mobile browser UI element`;
+
+const SCREENSHOT_EXTRACT_BASE = `Extract the visual language:
+- Dark premium charcoal/black mobile UI
+- Rounded stat cards
+- Recent game score strip
+- Hit-rate table with threshold rows
+- Ratio records like 12/12, 9/12, 7/12
+- L5 avg and projection cards
+- Green/amber/red record-strength colouring
+- Subtle premium black/charcoal background
+- Clean sports analytics layout`;
+
+const SCREENSHOT_REF_PREFIX = `Use the attached Neeko Sports Stats mobile board screenshots as visual style references only.`;
+
+function buildScreenshotReferenceBlock(
+  mode: "how_to_read" | "match_board" | "player_spotlight" | "product_education" | "general"
+): string {
+  switch (mode) {
+    case "how_to_read":
+      return `REFERENCE IMAGES:
+${SCREENSHOT_REF_PREFIX}
+
+${SCREENSHOT_EXTRACT_BASE}
+- Expanded player detail area
+- Dark rounded player cards
+- Subtitle text areas below stats
+
+${SCREENSHOT_EXCLUSIONS}
+
+Create clean Instagram carousel graphics inspired by the product UI, not literal screenshots.`;
+
+    case "match_board":
+      return `REFERENCE IMAGES:
+${SCREENSHOT_REF_PREFIX} Use for table card style only.
+
+Extract:
+- Rounded dark stat cards
+- Compact rows with threshold columns
+- Ratio records as the hero stat
+- Colour-coded stat cells (green, amber/orange, muted red, grey dash, blue/teal)
+- Green for elite/strong records
+- Amber/orange for middle records
+- Muted red for lower records
+- Grey dash for missing data
+- Teal/blue for small samples
+
+${SCREENSHOT_EXCLUSIONS}
+
+Do not make the generated carousel look like a phone screenshot. It should look like a polished Instagram stat-board graphic inspired by the app.`;
+
+    case "player_spotlight":
+      return `REFERENCE IMAGES:
+${SCREENSHOT_REF_PREFIX} Use as supporting design reference for the stat card area only.
+
+Extract for the stat card section only:
+- Dark rounded stat card
+- Ratio as the hero stat
+- L5 avg display
+- Last 5 strip
+- Clean green/amber/red stat colouring
+
+The player spotlight should be a premium player graphic using the supplied player photo.
+Do not recreate the app as a screenshot. The photo and stadium atmosphere are primary.
+
+${SCREENSHOT_EXCLUSIONS}`;
+
+    case "product_education":
+      return `REFERENCE IMAGES:
+${SCREENSHOT_REF_PREFIX}
+
+${SCREENSHOT_EXTRACT_BASE}
+
+Use these visual ideas to create clean, educational Instagram carousel graphics.
+Do not recreate the phone browser chrome.
+Inspired by the product UI — not a literal screenshot.
+
+${SCREENSHOT_EXCLUSIONS}`;
+
+    default:
+      return `REFERENCE IMAGES:
+${SCREENSHOT_REF_PREFIX}
+
+${SCREENSHOT_EXTRACT_BASE}
+
+${SCREENSHOT_EXCLUSIONS}`;
+  }
+}
+
+/** Determines whether to inject a screenshot reference block for this post + mode */
+function shouldInjectScreenshotRef(
+  post: SocialPost,
+  refMode: ScreenshotRefMode | undefined,
+): boolean {
+  if (!refMode || refMode === "off") return false;
+  if (!post.referenceScreenshots || post.referenceScreenshots.length === 0) return false;
+  const ct = post.contentType;
+  if (refMode === "product_education_only") {
+    return ct === "product_education";
+  }
+  // all_board_style
+  return (
+    ct === "match_stat_board" ||
+    ct === "product_education" ||
+    ct === "player_spotlight" ||
+    ct === "player_spotlight_duo"
+  );
+}
+
+/** Builds the REFERENCE IMAGES block appropriate for this post type */
+function buildPostScreenshotRef(post: SocialPost): string {
+  const ct = post.contentType;
+  if (ct === "product_education") return buildScreenshotReferenceBlock("product_education");
+  if (ct === "match_stat_board") return buildScreenshotReferenceBlock("match_board");
+  if (ct === "player_spotlight" || ct === "player_spotlight_duo") return buildScreenshotReferenceBlock("player_spotlight");
+  return buildScreenshotReferenceBlock("general");
+}
+
+
 
 function formatDisposalRow(row: StatBoardRow): string {
   const d15 = row.threshold15 ?? "—";
@@ -322,10 +448,11 @@ export function buildSpotlightImagePrompt(post: SocialPost): string {
 }
 
 function buildGenericSlideSection(slideNum: number, slide: CarouselSlide): string {
+  const designNotes = slide.designNotes ? `\nDesign notes: ${slide.designNotes}` : "";
+  const slideTextBlock = slide.slideText ? `\nSlide text:\n${slide.slideText}` : "";
   return `SLIDE ${slideNum} — ${slide.title.toUpperCase()}
-${slide.subtitle ? `Subtitle: ${slide.subtitle}\n` : ""}Design:
-Dark premium AFL stats style. ${BRAND} branding.
-${slide.designNotes ?? ""}`.trim();
+${slide.subtitle ? `Subtitle: ${slide.subtitle}\n` : ""}${slideTextBlock}Design:
+Dark premium AFL stats style. ${BRAND} branding.${designNotes}`.trim();
 }
 
 // ─── Background-only prompt builder per slide ─────────────────────────────────
@@ -370,19 +497,31 @@ IMPORTANT:
 
 // ─── Public: Full Carousel Prompt ────────────────────────────────────────────
 
-export function buildFullCarouselPrompt(post: SocialPost): string {
+export function buildFullCarouselPrompt(post: SocialPost, screenshotRefMode?: ScreenshotRefMode): string {
   const isMatchBoard = post.contentType === "match_stat_board";
+  const isProductEd = post.contentType === "product_education";
   const hasData = post.selectedPlayers.length > 0;
   const dataWarning = isMatchBoard && !hasData
     ? "\n⚠️ WARNING: Player stat rows are missing. Full carousel prompt cannot include table data.\nDATA MISSING — regenerate after player stats load.\n"
     : "";
+
+  const screenshotBlock = shouldInjectScreenshotRef(post, screenshotRefMode)
+    ? `\n${buildPostScreenshotRef(post)}\n`
+    : "";
+
+  const productEdBlock = isProductEd ? `
+PRODUCT EDUCATION STYLE GUIDE:
+These slides should look like clean, educational Instagram graphics inspired by the Neeko Sports Stats product UI.
+Use dark premium charcoal backgrounds, rounded stat card elements, and the app's visual language.
+Do NOT use gambling language. No lock icons. No page numbers.
+` : "";
 
   const intro = `Create a premium AFL Instagram carousel for ${BRAND}.
 
 ${CAROUSEL_STYLE}
 
 ${SAFETY_RULES}
-${dataWarning}
+${dataWarning}${productEdBlock}${screenshotBlock}
 ---`;
 
   const slideSections: string[] = [];
@@ -426,7 +565,11 @@ ${dataWarning}
 
 // ─── Public: Slide-by-Slide Prompt Package ────────────────────────────────────
 
-export function buildSlidePromptPackage(post: SocialPost): string {
+export function buildSlidePromptPackage(post: SocialPost, screenshotRefMode?: ScreenshotRefMode): string {
+  const screenshotBlock = shouldInjectScreenshotRef(post, screenshotRefMode)
+    ? `\n${buildPostScreenshotRef(post)}\n`
+    : "";
+
   const header = `PROMPT PACKAGE — ${post.title}
 ${post.homeTeam && post.awayTeam ? `${post.homeTeam} v ${post.awayTeam} | ` : ""}Round ${post.round} · ${post.season}
 Visibility: ${post.visibilityMode?.replace(/_/g, " ") ?? "standard"}
@@ -434,7 +577,7 @@ Visibility: ${post.visibilityMode?.replace(/_/g, " ") ?? "standard"}
 Each prompt below is for a single slide. Use them separately with your image generator.
 
 ${SAFETY_RULES}
-`;
+${screenshotBlock}`;
 
   const slideSections: string[] = [];
   let slideNum = 1;
@@ -548,7 +691,7 @@ COLOUR RULES: Green for elite/strong records. Amber/orange for middle. Muted red
 
 // ─── Public: Full Post Package ────────────────────────────────────────────────
 
-export function buildFullPostPackage(post: SocialPost): string {
+export function buildFullPostPackage(post: SocialPost, screenshotRefMode?: ScreenshotRefMode): string {
   const safetyLine = post.warnings.length === 0
     ? "SAFETY: Clean — no issues found."
     : `SAFETY: ${post.warnings.length} issue(s) — review before posting.\n${post.warnings.map(w => `  • ${w}`).join("\n")}`;
@@ -586,6 +729,11 @@ export function buildFullPostPackage(post: SocialPost): string {
     "- CTA strip text: \"See the full board at Neeko Sports Stats\"",
   ].join("\n");
 
+  const hasScreenshotRef = shouldInjectScreenshotRef(post, screenshotRefMode);
+  const screenshotSection = hasScreenshotRef
+    ? ["─".repeat(60), "", buildPostScreenshotRef(post), "", "─".repeat(60), ""]
+    : [];
+
   return [
     `POST TITLE:`,
     post.title,
@@ -605,18 +753,19 @@ export function buildFullPostPackage(post: SocialPost): string {
     colourRules,
     "",
     ...(availabilityWarningBlock ? [availabilityWarningBlock, "─".repeat(60), ""] : []),
+    ...screenshotSection,
     "─".repeat(60),
     "",
     buildFullSlideTextPackage(post),
     "",
     "─".repeat(60),
     "",
-    buildFullCarouselPrompt(post),
+    buildFullCarouselPrompt(post, screenshotRefMode),
     "",
     "─".repeat(60),
     "",
     "SLIDE-BY-SLIDE PROMPTS:",
-    buildSlidePromptPackage(post),
+    buildSlidePromptPackage(post, screenshotRefMode),
     "",
     "─".repeat(60),
     "",
@@ -626,11 +775,16 @@ export function buildFullPostPackage(post: SocialPost): string {
 
 // ─── Public: Spotlight Full Package ──────────────────────────────────────────
 
-export function buildSpotlightFullPackage(post: SocialPost): string {
+export function buildSpotlightFullPackage(post: SocialPost, screenshotRefMode?: ScreenshotRefMode): string {
   const sel = post.selectedSpotlight?.[0];
   const safetyLine = post.warnings.length === 0
     ? "SAFETY: Clean — no issues found."
     : `SAFETY: ${post.warnings.length} issue(s) — review before posting.\n${post.warnings.map(w => `  • ${w}`).join("\n")}`;
+
+  const hasScreenshotRef = shouldInjectScreenshotRef(post, screenshotRefMode);
+  const screenshotSection = hasScreenshotRef
+    ? ["─".repeat(60), "", buildScreenshotReferenceBlock("player_spotlight"), "", "─".repeat(60), ""]
+    : [];
 
   if (!sel) {
     return [
@@ -672,6 +826,7 @@ export function buildSpotlightFullPackage(post: SocialPost): string {
     `CAPTION:`,
     post.caption || "(empty)",
     "",
+    ...screenshotSection,
     `IMAGE PROMPT:`,
     post.imagePrompt || "(empty — refresh AI prompt)",
     "",

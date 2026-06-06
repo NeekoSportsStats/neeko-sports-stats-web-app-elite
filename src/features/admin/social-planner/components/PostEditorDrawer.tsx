@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye, Search, Import as SortAsc } from "lucide-react";
-import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat, PlayerAvailabilityStatus, SpotlightSelection } from "../types";
+import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat, PlayerAvailabilityStatus, SpotlightSelection, ReferenceScreenshot, ScreenshotTag, ScreenshotRefMode } from "../types";
 import { EXCLUDED_STATUSES, WARNING_STATUSES } from "../types";
 import type { MatchBoardPlayerRow } from "../lib/rowAggregator";
 import { effectiveStatus, isAvailabilityWarning, isExcludedStatus } from "../hooks/usePlayerAvailability";
@@ -49,11 +49,12 @@ const STATUS_COLORS: Record<PostStatus, string> = {
 interface PostEditorDrawerProps {
   post: SocialPost | null;
   allPlayers?: AFLPlayerStat[];
+  screenshotRefMode?: ScreenshotRefMode;
   onClose: () => void;
   onSave: (post: SocialPost) => void;
 }
 
-export function PostEditorDrawer({ post, allPlayers = [], onClose, onSave }: PostEditorDrawerProps) {
+export function PostEditorDrawer({ post, allPlayers = [], screenshotRefMode, onClose, onSave }: PostEditorDrawerProps) {
   const [edited, setEdited] = useState<SocialPost | null>(null);
   const [tab, setTab] = useState<DrawerTab>("overview");
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -242,11 +243,11 @@ export function PostEditorDrawer({ post, allPlayers = [], onClose, onSave }: Pos
           {tab === "players"    && <PlayersTab edited={edited} allPlayers={allPlayers} onUpdate={post => setEdited(post)} />}
           {tab === "slides"     && <SlidesTab edited={edited} />}
           {tab === "copy_paste" && <HookCaptionTab edited={edited} update={update} />}
-          {tab === "image"      && <ImagePromptsTab edited={edited} update={update} onRefreshSpotlight={() => {
+          {tab === "image"      && <ImagePromptsTab edited={edited} update={update} screenshotRefMode={screenshotRefMode} onRefreshSpotlight={() => {
             const next = { ...edited, imagePrompt: buildSpotlightImagePrompt(edited), spotlightPromptStale: false, updatedAt: new Date().toISOString() };
             setEdited(next);
           }} />}
-          {tab === "export"     && <ExportTab edited={edited} onRefreshSpotlight={() => {
+          {tab === "export"     && <ExportTab edited={edited} screenshotRefMode={screenshotRefMode} onRefreshSpotlight={() => {
             const next = { ...edited, imagePrompt: buildSpotlightImagePrompt(edited), spotlightPromptStale: false, updatedAt: new Date().toISOString() };
             setEdited(next);
           }} />}
@@ -1650,17 +1651,19 @@ const PROMPT_MODES: Array<{ value: PromptMode; label: string; desc: string }> = 
 function ImagePromptsTab({
   edited,
   update,
+  screenshotRefMode,
   onRefreshSpotlight,
 }: {
   edited: SocialPost;
   update: <K extends keyof SocialPost>(key: K, value: SocialPost[K]) => void;
+  screenshotRefMode?: ScreenshotRefMode;
   onRefreshSpotlight?: () => void;
 }) {
   const [mode, setMode] = useState<PromptMode>(edited.promptMode ?? "full_graphic");
   const health = checkPromptHealth(edited);
 
-  const fullCarouselPrompt    = buildFullCarouselPrompt(edited);
-  const slidePromptPackage    = buildSlidePromptPackage(edited);
+  const fullCarouselPrompt    = buildFullCarouselPrompt(edited, screenshotRefMode);
+  const slidePromptPackage    = buildSlidePromptPackage(edited, screenshotRefMode);
   const backgroundPromptPkg   = buildBackgroundPromptPackage(edited);
   const fullSlideText         = buildFullSlideTextPackage(edited);
 
@@ -1673,9 +1676,14 @@ function ImagePromptsTab({
 
   const isSpotlightPost = edited.contentType === "player_spotlight" || edited.contentType === "player_spotlight_duo";
   const spotlightPrompt = isSpotlightPost ? buildSpotlightImagePrompt(edited) : null;
+  const hasScreenshots = (edited.referenceScreenshots ?? []).length > 0;
+  const screenshotRefActive = screenshotRefMode && screenshotRefMode !== "off";
 
   return (
     <div className="space-y-5">
+
+      {/* Reference Style Assets */}
+      <ReferenceScreenshotsSection edited={edited} update={update} screenshotRefMode={screenshotRefMode} />
 
       {/* Spotlight prompt section */}
       {isSpotlightPost && (
@@ -1979,15 +1987,15 @@ function buildSlideCardText(slide: CarouselSlide, index: number): string {
 
 // ─── Tab: Export / Copy ───────────────────────────────────────────────────────
 
-function ExportTab({ edited, onRefreshSpotlight }: { edited: SocialPost; onRefreshSpotlight?: () => void }) {
+function ExportTab({ edited, screenshotRefMode, onRefreshSpotlight }: { edited: SocialPost; screenshotRefMode?: ScreenshotRefMode; onRefreshSpotlight?: () => void }) {
   const isSpotlightPost    = edited.contentType === "player_spotlight" || edited.contentType === "player_spotlight_duo";
   const health             = checkPromptHealth(edited);
   const fullSlideText      = buildFullSlideTextPackage(edited);
-  const fullCarouselPrompt = buildFullCarouselPrompt(edited);
-  const slidePromptPkg     = buildSlidePromptPackage(edited);
+  const fullCarouselPrompt = buildFullCarouselPrompt(edited, screenshotRefMode);
+  const slidePromptPkg     = buildSlidePromptPackage(edited, screenshotRefMode);
   const backgroundPkg      = buildBackgroundPromptPackage(edited);
-  const fullPostPackage    = buildFullPostPackage(edited);
-  const spotlightPackage   = isSpotlightPost ? buildSpotlightFullPackage(edited) : null;
+  const fullPostPackage    = buildFullPostPackage(edited, screenshotRefMode);
+  const spotlightPackage   = isSpotlightPost ? buildSpotlightFullPackage(edited, screenshotRefMode) : null;
   const spotlightPrompt    = isSpotlightPost ? buildSpotlightImagePrompt(edited) : null;
 
   const copyAllPackage = [
@@ -2166,6 +2174,233 @@ function MetaItem({
     <div className={className}>
       <p className="text-[10px] text-zinc-500 mb-0.5">{label}</p>
       <p className="text-xs text-zinc-300 capitalize">{value}</p>
+    </div>
+  );
+}
+
+// ─── Screenshot tag display helpers ──────────────────────────────────────────
+
+const SCREENSHOT_TAG_LABELS: Record<ScreenshotTag, string> = {
+  mobile_stat_board:  "Mobile Stat Board",
+  player_card:        "Player Card",
+  hit_rate_table:     "Hit Rate Table",
+  recent_form_strip:  "Recent Form Strip",
+  product_education:  "Product Education",
+  match_board:        "Match Board",
+  player_spotlight:   "Player Spotlight",
+};
+
+const ALL_SCREENSHOT_TAGS: ScreenshotTag[] = [
+  "mobile_stat_board", "player_card", "hit_rate_table",
+  "recent_form_strip", "product_education", "match_board", "player_spotlight",
+];
+
+const REF_MODE_LABELS: Record<ScreenshotRefMode, string> = {
+  off:                     "Off",
+  product_education_only:  "Product Education Only",
+  all_board_style:         "All Board Style",
+};
+
+const REF_MODE_DESCRIPTIONS: Record<ScreenshotRefMode, string> = {
+  off:                     "Screenshot references will NOT be injected into any prompts.",
+  product_education_only:  "Screenshot references injected into Product Education prompts only.",
+  all_board_style:         "Screenshot references injected into all board-style and spotlight prompts.",
+};
+
+// ─── ReferenceScreenshotsSection ─────────────────────────────────────────────
+
+function ReferenceScreenshotsSection({
+  edited,
+  update,
+  screenshotRefMode,
+}: {
+  edited: SocialPost;
+  update: <K extends keyof SocialPost>(key: K, value: SocialPost[K]) => void;
+  screenshotRefMode?: ScreenshotRefMode;
+}) {
+  const screenshots = edited.referenceScreenshots ?? [];
+
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [urlInput, setUrlInput]       = useState("");
+  const [labelInput, setLabelInput]   = useState("");
+  const [selectedTags, setSelectedTags] = useState<ScreenshotTag[]>([]);
+  const [urlError, setUrlError]       = useState("");
+
+  const refMode: ScreenshotRefMode = screenshotRefMode ?? "off";
+  const isActive = refMode !== "off";
+
+  function toggleTag(tag: ScreenshotTag) {
+    setSelectedTags(prev =>
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  }
+
+  function handleAdd() {
+    const trimmed = urlInput.trim();
+    if (!trimmed) {
+      setUrlError("URL is required.");
+      return;
+    }
+    try { new URL(trimmed); } catch {
+      setUrlError("Enter a valid URL (https://...).");
+      return;
+    }
+    const newShot: ReferenceScreenshot = {
+      id: crypto.randomUUID(),
+      url: trimmed,
+      label: labelInput.trim() || undefined,
+      tags: selectedTags,
+      uploadedAt: new Date().toISOString(),
+    };
+    update("referenceScreenshots", [...screenshots, newShot]);
+    setUrlInput("");
+    setLabelInput("");
+    setSelectedTags([]);
+    setUrlError("");
+    setShowAddForm(false);
+  }
+
+  function handleRemove(id: string) {
+    update("referenceScreenshots", screenshots.filter(s => s.id !== id));
+  }
+
+  return (
+    <div className="rounded-lg bg-zinc-900 border border-zinc-800 overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800/60">
+        <div className="flex items-center gap-2">
+          <Image className="w-3.5 h-3.5 text-violet-400" />
+          <span className="text-xs font-medium text-zinc-200">Reference Style Assets</span>
+          {screenshots.length > 0 && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700">
+              {screenshots.length}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => setShowAddForm(v => !v)}
+          className="text-[10px] px-2 py-1 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+        >
+          {showAddForm ? "Cancel" : "+ Add URL"}
+        </button>
+      </div>
+
+      <div className="p-3 space-y-3">
+        {/* Mode status badge */}
+        <div className={`flex items-start gap-2 rounded-md px-2.5 py-2 border text-[10px]
+          ${isActive
+            ? "bg-violet-950/30 border-violet-700/40 text-violet-300"
+            : "bg-zinc-800/50 border-zinc-700/50 text-zinc-500"}`}
+        >
+          <span className="font-semibold shrink-0">
+            Ref mode: {REF_MODE_LABELS[refMode]}
+          </span>
+          <span className="text-zinc-400">{REF_MODE_DESCRIPTIONS[refMode]}</span>
+        </div>
+
+        {/* Existing screenshots */}
+        {screenshots.length > 0 && (
+          <ul className="space-y-2">
+            {screenshots.map(shot => (
+              <li key={shot.id} className="flex gap-2 rounded-md bg-zinc-800/60 border border-zinc-700/60 p-2">
+                <img
+                  src={shot.url}
+                  alt={shot.label ?? "reference"}
+                  className="w-14 h-14 object-cover rounded shrink-0 bg-zinc-700"
+                  onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+                <div className="flex-1 min-w-0">
+                  {shot.label && (
+                    <p className="text-[10px] font-medium text-zinc-200 truncate mb-1">{shot.label}</p>
+                  )}
+                  <p className="text-[9px] text-zinc-500 truncate mb-1.5 font-mono">{shot.url}</p>
+                  {shot.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {shot.tags.map(tag => (
+                        <span key={tag} className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-700/80 text-zinc-300 border border-zinc-600/50">
+                          {SCREENSHOT_TAG_LABELS[tag]}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => handleRemove(shot.id)}
+                  className="text-zinc-600 hover:text-red-400 transition-colors shrink-0 mt-0.5"
+                  title="Remove"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {screenshots.length === 0 && !showAddForm && (
+          <p className="text-[10px] text-zinc-600">
+            No reference screenshots added. Add a URL to inject style reference language into AI prompts.
+          </p>
+        )}
+
+        {/* Add form */}
+        {showAddForm && (
+          <div className="rounded-md bg-zinc-800/60 border border-zinc-700/60 p-3 space-y-2.5">
+            <div>
+              <label className="block text-[10px] font-medium text-zinc-400 mb-1">Screenshot URL *</label>
+              <input
+                type="url"
+                value={urlInput}
+                onChange={e => { setUrlInput(e.target.value); setUrlError(""); }}
+                placeholder="https://..."
+                className="w-full bg-zinc-900 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-violet-600"
+              />
+              {urlError && <p className="text-[10px] text-red-400 mt-1">{urlError}</p>}
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-zinc-400 mb-1">Label (optional)</label>
+              <input
+                type="text"
+                value={labelInput}
+                onChange={e => setLabelInput(e.target.value)}
+                placeholder="e.g. Mobile stat board dark theme"
+                className="w-full bg-zinc-900 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-violet-600"
+              />
+            </div>
+            <div>
+              <p className="text-[10px] font-medium text-zinc-400 mb-1.5">Tags</p>
+              <div className="flex flex-wrap gap-1.5">
+                {ALL_SCREENSHOT_TAGS.map(tag => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => toggleTag(tag)}
+                    className={`text-[10px] px-2 py-1 rounded border transition-colors
+                      ${selectedTags.includes(tag)
+                        ? "bg-violet-900/50 border-violet-600/70 text-violet-200"
+                        : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"}`}
+                  >
+                    {SCREENSHOT_TAG_LABELS[tag]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={handleAdd}
+                className="text-[10px] px-3 py-1.5 rounded bg-violet-700 hover:bg-violet-600 text-white font-medium transition-colors"
+              >
+                Add Screenshot
+              </button>
+              <button
+                onClick={() => { setShowAddForm(false); setUrlInput(""); setLabelInput(""); setSelectedTags([]); setUrlError(""); }}
+                className="text-[10px] px-3 py-1.5 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import type {
   SocialPost, AFLGame, AFLPlayerStat,
   ContentType, DayOfWeek, Platform, PostStatus,
   CarouselSlide, ConfidenceTier, PlayerAvailabilityStatus,
+  ReferenceScreenshot,
 } from "../types";
 
 // ─── UUID validation ──────────────────────────────────────────────────────────
@@ -48,6 +49,7 @@ export interface DbPost {
   carousel_prompt_package: string | null;
   full_slide_text_package: string | null;
   background_prompt_package: string | null;
+  reference_screenshots: unknown;
   created_at: string;
   updated_at: string;
 }
@@ -188,6 +190,7 @@ export function postToDb(post: SocialPost): Omit<Partial<DbPost>, "id"> & { game
     carousel_prompt_package: post.carouselPromptPackage ?? null,
     full_slide_text_package: post.fullSlideTextPackage ?? null,
     background_prompt_package: post.backgroundPromptPackage ?? null,
+    reference_screenshots: post.referenceScreenshots ?? [],
   };
 }
 
@@ -224,6 +227,7 @@ export function dbToPost(row: DbPost): SocialPost {
     carouselPromptPackage: row.carousel_prompt_package ?? undefined,
     fullSlideTextPackage: row.full_slide_text_package ?? undefined,
     backgroundPromptPackage: row.background_prompt_package ?? undefined,
+    referenceScreenshots: (row.reference_screenshots as ReferenceScreenshot[]) ?? [],
   };
 }
 

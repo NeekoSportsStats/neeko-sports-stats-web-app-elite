@@ -1,4 +1,4 @@
-import type { PlannerSettings, FreeGameSelectionMode, WeekendPostingMode, AvailabilityFilterMode } from "../types";
+import type { PlannerSettings, FreeGameSelectionMode, WeekendPostingMode, AvailabilityFilterMode, ScreenshotRefMode } from "../types";
 import { DEFAULT_SETTINGS } from "../types";
 
 interface SettingsPanelProps {
@@ -167,6 +167,26 @@ export function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProp
             checked={settings.showPreviewBadge}
             onChange={v => update("showPreviewBadge", v)}
           />
+        </div>
+      </section>
+
+      {/* AI Prompt Screenshot References */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">AI Prompt Screenshots</h3>
+        <div>
+          <label className="block text-xs text-zinc-400 mb-1">Screenshot Reference Mode</label>
+          <select
+            value={settings.screenshotRefMode}
+            onChange={e => update("screenshotRefMode", e.target.value as ScreenshotRefMode)}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-200 focus:outline-none focus:border-sky-600"
+          >
+            <option value="off">Off — no screenshot references</option>
+            <option value="product_education_only">Product Education only (recommended)</option>
+            <option value="all_board_style">All board-style prompts</option>
+          </select>
+          <p className="text-[10px] text-zinc-600 mt-1">
+            When enabled, adds a style-reference block to AI prompts instructing the designer to extract visual style (colours, layout, typography) from the screenshots attached to each post. Screenshots are added per-post in the Image Prompts tab.
+          </p>
         </div>
       </section>
 

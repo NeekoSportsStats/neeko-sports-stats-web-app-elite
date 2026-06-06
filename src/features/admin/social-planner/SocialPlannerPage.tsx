@@ -240,6 +240,7 @@ export default function SocialPlannerPage() {
       <PostEditorDrawer
         post={editingPost}
         allPlayers={allPlayers}
+        screenshotRefMode={settings.screenshotRefMode}
         onClose={() => setEditingPost(null)}
         onSave={handleSavePost}
       />
