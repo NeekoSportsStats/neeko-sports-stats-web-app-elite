@@ -45,15 +45,23 @@ FORMAT & DESIGN:
 // ─── Colour grade rules ───────────────────────────────────────────────────────
 
 const COLOUR_GRADE_RULES = `
-COLOUR CODING FOR THRESHOLD CELLS (use subtle tints, not solid blocks):
-- 90%+ hit rate with 6+ games: gold/amber highlight (elite form)
-- 75–89% with 6+ games: green tint (strong form)
-- 60–74%: amber/yellow tint (solid)
-- 50–59%: orange tint (watch)
-- Under 50%: muted red/dark (low)
-- Under 6 games played: blue-grey outline or muted border only (thin sample — do NOT colour as green even if 100%)
-- Missing data (—): grey dash, no colour
-Use ratio text (e.g. 9/11) as the main visible stat — colour is secondary visual cue only.`.trim();
+RECORD CELL COLOUR RULES (use ratios as the main text — e.g. 11/11, 9/10, 7/12):
+- 90%+ hit rate with 8+ games: emerald green (NOT gold, NOT yellow)
+- 75–89% with 8+ games: green
+- 60–74%: amber/orange (not Neeko brand gold)
+- 50–59%: orange
+- under 50%: muted red
+- fewer than 6 games: blue/teal small-sample style — even if ratio is perfect (e.g. 4/4)
+- missing data: grey dash, no colour
+
+IMPORTANT:
+- Do NOT use gold or yellow for 100% records.
+- Gold is reserved for Neeko Sports Stats branding, headings, dividers and CTA accents only.
+- Keep colours premium and subtle — not a traffic-light board.
+- For rows marked name_only: show player name, hide stat cells with a soft blur / dark glass overlay. Do NOT reveal coloured stat cells.
+- For rows marked blurred: fully obscure the row with a soft blur / dark glass overlay.
+- Do NOT use lock icons, padlock icons, or the words "locked" or "unlock".
+- Use a soft blur or dark glass overlay for hidden stats, with a CTA strip: "See the full board at Neeko Sports Stats"`.trim();
 
 // ─── Row formatters ───────────────────────────────────────────────────────────
 
@@ -76,11 +84,11 @@ function formatRow(row: StatBoardRow, isDisposal: boolean): string {
   const mode = row.displayMode ?? (row.blurred ? "blurred" : "visible");
   switch (mode) {
     case "hidden":
-      return null as unknown as string; // caller filters nulls
+      return null as unknown as string;
     case "blurred":
-      return "(row hidden — upgrade to unlock)";
+      return "(row obscured — soft blur/dark glass overlay)";
     case "name_only":
-      return `${row.playerName} | [stats hidden — preview only]`;
+      return `${row.playerName} | [stat cells hidden — soft blur overlay]`;
     default:
       return isDisposal ? formatDisposalRow(row) : formatGoalRow(row);
   }
@@ -89,7 +97,7 @@ function formatRow(row: StatBoardRow, isDisposal: boolean): string {
 function formatRowForText(row: StatBoardRow, isDisposal: boolean): string | null {
   const mode = row.displayMode ?? (row.blurred ? "blurred" : "visible");
   if (mode === "hidden") return null;
-  if (mode === "blurred") return `[BLURRED] ${row.playerName} | stats hidden`;
+  if (mode === "blurred") return `[BLURRED] ${row.playerName} | row obscured`;
   if (mode === "name_only") return `[NAME ONLY] ${row.playerName} | stats hidden`;
   return isDisposal ? formatDisposalRow(row) : formatGoalRow(row);
 }
@@ -107,18 +115,18 @@ function visibilityInstructions(
   visibleRows: number | undefined
 ): string {
   if (mode === "open_free_game") {
-    return `Visibility: OPEN FREE GAME — show all ${totalRows} rows clearly. No blur. No lock language. No covered rows.`;
+    return `Visibility: OPEN FREE GAME — show all ${totalRows} rows clearly. No blur. No hidden rows.`;
   }
   const visible = visibleRows ?? 3;
-  const blurredCount = Math.max(0, totalRows - visible);
+  const hiddenCount = Math.max(0, totalRows - visible);
   return [
-    `Visibility: PREVIEW BLURRED`,
-    `Show only the top ${visible} rows clearly.`,
-    `Rows ${visible + 1}–${totalRows} (${blurredCount} rows) must be blurred, faded, or covered.`,
-    `Blurred rows must NOT reveal readable player names or records.`,
+    `Visibility: PREVIEW BOARD`,
+    `Show the top ${visible} rows fully (player name + all stat cells visible).`,
+    `Rows ${visible + 1}–${totalRows} (${hiddenCount} rows): apply a soft blur / dark glass overlay over stat cells. Do NOT show readable stats or reveal coloured cells.`,
+    `Do NOT use lock icons, padlock icons, or the words "locked" or "unlock".`,
     ctaOverlayText
-      ? `Place CTA overlay over the blurred rows: "${ctaOverlayText}"`
-      : `Place CTA overlay over the blurred rows: "See the full board at ${CTA_URL}"`,
+      ? `Place a CTA strip over the blurred area: "${ctaOverlayText}"`
+      : `Place a CTA strip over the blurred area: "See the full board at Neeko Sports Stats"`,
   ].join("\n");
 }
 
@@ -416,7 +424,8 @@ ${post.homeTeam && post.awayTeam ? `${post.homeTeam} v ${post.awayTeam}` : ""} |
 Visibility: ${post.visibilityMode?.replace(/_/g, " ") ?? "standard"}
 
 This is the exact text content for each slide (not an image prompt).
-Display mode labels: [VISIBLE] full stats shown | [NAME ONLY] name visible, stats hidden | [BLURRED] row obscured | rows marked [hidden] excluded
+Display mode labels: [VISIBLE] full stats shown | [NAME ONLY] name visible, stat cells blurred | [BLURRED] row fully obscured | rows marked hidden excluded
+COLOUR RULES: Green for elite/strong records. Amber/orange for middle. Muted red for low. Grey dash for missing. Blue/teal for small samples (<6 games). Gold reserved for branding only.
 `;
 
   const slideSections = post.carouselSlides.map((slide, i) => {
@@ -462,6 +471,22 @@ export function buildFullPostPackage(post: SocialPost): string {
     ? "SAFETY: Clean — no issues found."
     : `SAFETY: ${post.warnings.length} issue(s) — review before posting.\n${post.warnings.map(w => `  • ${w}`).join("\n")}`;
 
+  const colourRules = [
+    "COLOUR RULES:",
+    "- Ratios are the main display (e.g. 11/11, 9/10, 7/12). Do not replace with percentages.",
+    "- 90%+ with 8+ games: emerald green.",
+    "- 75–89% with 8+ games: green.",
+    "- 60–74%: amber/orange.",
+    "- 50–59%: orange.",
+    "- Under 50%: muted red.",
+    "- Fewer than 6 games (any ratio): blue/teal small-sample style.",
+    "- Missing data: grey dash.",
+    "- Do NOT use gold or yellow for 100% records — gold is for Neeko branding and CTA accents only.",
+    "- Do NOT use lock icons, padlock icons, or the words locked/unlock.",
+    "- Hidden stat cells: soft blur / dark glass overlay.",
+    "- CTA strip text: \"See the full board at Neeko Sports Stats\"",
+  ].join("\n");
+
   return [
     `POST TITLE:`,
     post.title,
@@ -477,6 +502,10 @@ export function buildFullPostPackage(post: SocialPost): string {
     "",
     `HASHTAGS:`,
     post.hashtags.join(" ") || "(none)",
+    "",
+    colourRules,
+    "",
+    "─".repeat(60),
     "",
     buildFullSlideTextPackage(post),
     "",

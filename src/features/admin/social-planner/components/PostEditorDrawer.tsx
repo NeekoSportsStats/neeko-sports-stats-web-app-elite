@@ -503,36 +503,32 @@ function MatchBoardAggregatedSections({
 
 // ─── Colour grading helper ────────────────────────────────────────────────────
 
-type RecordGrade = "elite" | "strong" | "solid" | "watch" | "low" | "thin_sample" | "missing";
+type RecordCellTone = "perfect" | "strong" | "solid" | "watch" | "low" | "thin_sample" | "missing";
 
-function getRecordGrade(label?: string, percent?: number, gamesPlayed?: number): RecordGrade {
-  if (!label || label === "—") return "missing";
-  if ((gamesPlayed ?? 0) < 6) return "thin_sample";
-  const pct = percent ?? 0;
-  if (pct >= 90) return "elite";
-  if (pct >= 75) return "strong";
-  if (pct >= 60) return "solid";
-  if (pct >= 50) return "watch";
+function parseRecord(recordLabel?: string | null) {
+  if (!recordLabel || recordLabel === "—") return { gamesPlayed: null, percentage: null };
+  const m = recordLabel.match(/^(\d+)\/(\d+)$/);
+  if (!m) return { gamesPlayed: null, percentage: null };
+  const met = Number(m[1]);
+  const played = Number(m[2]);
+  return { gamesPlayed: played, percentage: played > 0 ? (met / played) * 100 : null };
+}
+
+function getRecordCellTone(recordLabel?: string | null): RecordCellTone {
+  const { gamesPlayed, percentage } = parseRecord(recordLabel);
+  if (!recordLabel || recordLabel === "—" || percentage === null || gamesPlayed === null) return "missing";
+  if (gamesPlayed < 6) return "thin_sample";
+  if (percentage >= 90) return "perfect";
+  if (percentage >= 75) return "strong";
+  if (percentage >= 60) return "solid";
+  if (percentage >= 50) return "watch";
   return "low";
 }
 
-const GRADE_CLASSES: Record<RecordGrade, string> = {
-  elite:       "text-amber-300 font-semibold",
-  strong:      "text-emerald-400 font-medium",
-  solid:       "text-yellow-400",
-  watch:       "text-orange-400",
-  low:         "text-red-400/80",
-  thin_sample: "text-sky-400/70 italic",
-  missing:     "text-zinc-600",
-};
-
-function GradeCell({ label, percent, gamesPlayed }: { label?: string; percent?: number; gamesPlayed?: number }) {
-  const grade = getRecordGrade(label, percent, gamesPlayed);
-  return (
-    <span className={`font-mono text-[10px] ${GRADE_CLASSES[grade]}`}>
-      {label ?? "—"}
-    </span>
-  );
+function GradeCell({ label }: { label?: string; percent?: number; gamesPlayed?: number }) {
+  const tone = getRecordCellTone(label);
+  const cls = tone === "thin_sample" ? "record-cell record-cell-thin_sample" : `record-cell record-cell-${tone}`;
+  return <span className={cls}>{label ?? "—"}</span>;
 }
 
 // ─── Display mode labels ──────────────────────────────────────────────────────

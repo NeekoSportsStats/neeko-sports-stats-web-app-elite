@@ -7,6 +7,54 @@
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 }
 
+/* ── Record-strength cells (Social Planner stat board) ──────────────────────── */
+.record-cell {
+  font-weight: 700;
+  font-size: 10px;
+  font-family: ui-monospace, monospace;
+  border-radius: 5px;
+  padding: 2px 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+}
+.record-cell-perfect {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+}
+.record-cell-strong {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.10);
+  border: 1px solid rgba(74, 222, 128, 0.25);
+}
+.record-cell-solid {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.10);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+.record-cell-watch {
+  color: #fb923c;
+  background: rgba(251, 146, 60, 0.10);
+  border: 1px solid rgba(251, 146, 60, 0.22);
+}
+.record-cell-low {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.10);
+  border: 1px solid rgba(248, 113, 113, 0.22);
+}
+.record-cell-thin_sample {
+  color: #67e8f9;
+  background: rgba(103, 232, 249, 0.08);
+  border: 1px solid rgba(103, 232, 249, 0.22);
+}
+.record-cell-missing {
+  color: #6b7280;
+  background: transparent;
+  border: 1px solid transparent;
+}
+
 html {
   scroll-behavior: smooth;
   background: #0F0F0F;
