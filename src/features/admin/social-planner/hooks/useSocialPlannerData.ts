@@ -99,6 +99,22 @@ export function useSocialPlannerData(): UseSocialPlannerDataReturn {
       }
       const mapped = ((data ?? []) as DbPlayerStat[]).map(dbStatToAFLPlayerStat);
       console.log("[SocialPlanner] mapped rows", mapped.length, "first:", mapped[0]);
+
+      // Debug: log all Logan McDonald goal rows from RPC
+      if (process.env.NODE_ENV !== "production") {
+        const loganRows = ((data ?? []) as DbPlayerStat[])
+          .filter(r => r.player_name === "Logan McDonald" && r.stat_type === "goals");
+        if (loganRows.length > 0) {
+          console.group("[SocialPlanner Debug] Logan McDonald goals — raw RPC rows");
+          loganRows.forEach(r => console.log(
+            `threshold=${r.threshold} label=${r.threshold_label} record=${r.record_label}`,
+            `games_met=${r.games_met} games_played=${r.games_played} l5_avg=${r.l5_avg}`,
+            `last_five=${JSON.stringify(r.last_five)}`
+          ));
+          console.groupEnd();
+        }
+      }
+
       return mapped;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);

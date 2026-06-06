@@ -111,7 +111,22 @@ export function aggregateToRows(
     }
   }
 
-  return Array.from(byPlayer.values()).sort(byQuality);
+  const result = Array.from(byPlayer.values()).sort(byQuality);
+
+  // Debug: log any player named "Logan McDonald" for goals
+  if (process.env.NODE_ENV !== "production") {
+    const logan = result.find(r => r.playerName === "Logan McDonald" && r.statType === "goals");
+    if (logan) {
+      console.group("[SocialPlanner Debug] Logan McDonald goals — aggregated row");
+      console.log("t1:", logan.t1, "t2:", logan.t2, "t3:", logan.t3);
+      console.log("p1:", logan.p1, "p2:", logan.p2, "p3:", logan.p3);
+      console.log("l5Avg:", logan.l5Avg, "maxGamesPlayed:", logan.maxGamesPlayed);
+      console.log("lastFive:", logan.lastFive);
+      console.groupEnd();
+    }
+  }
+
+  return result;
 }
 
 function setThreshold(row: MatchBoardPlayerRow, threshold: number, label: string, percent: number) {
@@ -165,7 +180,7 @@ export function applyDefaultSelection(
 export function rowsToStatBoardRows(
   rows: MatchBoardPlayerRow[]
 ): import("../types").StatBoardRow[] {
-  return rows
+  const result = rows
     .filter(r => r.selected && r.displayMode !== "hidden")
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map(r => ({
@@ -184,4 +199,18 @@ export function rowsToStatBoardRows(
       thresholdPercent: r.bestPercent,
       gamesPlayedForGrade: r.maxGamesPlayed,
     }));
+
+  // Debug: log Logan McDonald goals carousel row
+  if (process.env.NODE_ENV !== "production") {
+    const logan = result.find(r => r.playerName === "Logan McDonald"
+      && r.threshold1Goal !== undefined);
+    if (logan) {
+      console.group("[SocialPlanner Debug] Logan McDonald goals — carousel row");
+      console.log("1+:", logan.threshold1Goal, "2+:", logan.threshold2Goals, "3+:", logan.threshold3Goals);
+      console.log("l5Avg:", logan.l5Avg);
+      console.groupEnd();
+    }
+  }
+
+  return result;
 }

@@ -14,7 +14,7 @@ import {
   generatePreviewBlurredTablePrompt,
 } from "./promptGenerator";
 import { gameLabel } from "./tokenEngine";
-import { rowsToStatBoardRows } from "./rowAggregator";
+import { aggregateToRows, rowsToStatBoardRows } from "./rowAggregator";
 import type { MatchBoardPlayerRow } from "./rowAggregator";
 
 function makeId(prefix: string, index: number): string {
@@ -78,11 +78,6 @@ function buildMatchBoardSlides(
     showPreviewBadge: false,
   });
 
-  // Determine visible row limit for blurred mode
-  const visibleRowsLimit = isOpen
-    ? settings.thuFriMaxRows
-    : settings.satSunVisibleRows;
-
   // Always emit all 4 table slides — rows: [] when no players found
   const sections: Array<{
     key: string;
@@ -101,12 +96,18 @@ function buildMatchBoardSlides(
   ];
 
   for (const section of sections) {
-    const sectionPlayers = players.filter(
-      p => p.statType === section.statType && p.team === section.team
-    );
-    const rows = sectionPlayers.length > 0
-      ? buildStatRowsWithBlur(sectionPlayers, visibleRowsLimit, !isOpen)
-      : [];
+    // Aggregate all threshold rows for this team+statType into one row per player,
+    // then convert to StatBoardRows. This ensures all threshold columns are filled.
+    const aggregated = aggregateToRows(players, section.team ?? "", section.statType);
+    const rowLimit = isOpen ? settings.thuFriMaxRows : settings.satSunTotalRows;
+    const visibleLimit = isOpen ? settings.thuFriMaxRows : settings.satSunVisibleRows;
+    const selectedRows = aggregated.slice(0, rowLimit).map((row, i) => ({
+      ...row,
+      selected: true,
+      displayMode: (isOpen || i < visibleLimit ? "visible" : "name_only") as import("./rowAggregator").RowDisplayMode,
+      sortOrder: i,
+    }));
+    const rows: StatBoardRow[] = rowsToStatBoardRows(selectedRows);
     slides.push({
       id: makeId(section.key, section.index),
       slideType: section.slideType,
@@ -348,23 +349,6 @@ export function rebuildMatchBoardSlidesFromRows(
   return [cover, ...tableSlides, cta].filter(Boolean) as CarouselSlide[];
 }
 
-/**
- * Build stat rows, marking rows beyond visibleLimit as blurred when applyBlur is true.
- */
-function buildStatRowsWithBlur(
-  players: AFLPlayerStat[],
-  visibleLimit: number,
-  applyBlur: boolean
-): StatBoardRow[] {
-  return players.map((p, i) => ({
-    ...buildStatRow(p),
-    blurred: applyBlur && i >= visibleLimit,
-  }));
-}
-
-function buildStatRows(players: AFLPlayerStat[]): StatBoardRow[] {
-  return players.map(buildStatRow);
-}
 
 function buildStatRow(p: AFLPlayerStat): StatBoardRow {
   if (p.statType === "disposals") {
