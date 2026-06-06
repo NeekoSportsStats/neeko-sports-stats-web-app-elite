@@ -543,9 +543,20 @@ function MatchBoardAggregatedSections({
   allPlayers: AFLPlayerStat[];
   onUpdate: (post: SocialPost) => void;
 }) {
-  // Derive fresh rows from allPlayers when available — bypasses stale saved JSON.
-  // Falls back to saved post.matchBoardRows only when player data hasn't loaded yet.
-  const rows = useMemo((): SocialPost["matchBoardRows"] => {
+  // Local override rows — set when the Refresh button is clicked.
+  // Takes priority over both the memo and saved post.matchBoardRows.
+  const [overrideRows, setOverrideRows] = useState<SocialPost["matchBoardRows"] | null>(null);
+  const [refreshed, setRefreshed] = useState(false);
+
+  // Reset override when the post changes (different post opened)
+  useEffect(() => {
+    setOverrideRows(null);
+    setRefreshed(false);
+  }, [post.id]);
+
+  // Auto-derive fresh rows from allPlayers when available.
+  // Falls back to saved post.matchBoardRows only when allPlayers isn't loaded yet.
+  const derivedRows = useMemo((): SocialPost["matchBoardRows"] => {
     if (allPlayers.length > 0 && post.homeTeam && post.awayTeam) {
       const visMode = post.visibilityMode ?? "preview_blurred";
       const isOpen = visMode === "open_free_game";
@@ -573,10 +584,27 @@ function MatchBoardAggregatedSections({
     return post.matchBoardRows;
   }, [allPlayers, post.homeTeam, post.awayTeam, post.visibilityMode, post.matchBoardRows]);
 
-  function handleRefreshPlayerData(e: React.MouseEvent) {
+  // Effective rows: manual override > auto-derived
+  const rows = overrideRows ?? derivedRows;
+
+  function handleRefreshPlayerData(e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();
     e.preventDefault();
-    if (!allPlayers.length) return;
+
+    console.log("[SocialPlanner] Refresh Player Data CLICKED", {
+      postId: post.id,
+      title: post.title,
+      contentType: post.contentType,
+      homeTeam: post.homeTeam,
+      awayTeam: post.awayTeam,
+      allPlayersCount: allPlayers?.length ?? 0,
+    });
+
+    if (!allPlayers.length) {
+      console.warn("[SocialPlanner] Cannot refresh — allPlayers is empty");
+      return;
+    }
+
     const visMode = post.visibilityMode ?? "preview_blurred";
     const isOpen = visMode === "open_free_game";
     const totalLimit   = isOpen ? 10 : 8;
@@ -589,6 +617,23 @@ function MatchBoardAggregatedSections({
       totalLimit,
       visibleLimit
     );
+
+    if (process.env.NODE_ENV !== "production") {
+      const logan = newRows.awayGoals.find(r => r.playerName === "Logan McDonald")
+        ?? newRows.homeGoals.find(r => r.playerName === "Logan McDonald");
+      console.log("[SocialPlanner] Refresh Player Data RESULT", {
+        homeDisposals: newRows.homeDisposals.length,
+        awayDisposals: newRows.awayDisposals.length,
+        homeGoals: newRows.homeGoals.length,
+        awayGoals: newRows.awayGoals.length,
+        loganMcDonald: logan,
+      });
+    }
+
+    // Update local display immediately — this is what makes the UI change
+    setOverrideRows(newRows);
+    setRefreshed(true);
+
     const newSlides = rebuildMatchBoardSlidesFromRows(
       post.carouselSlides,
       newRows,
@@ -603,17 +648,6 @@ function MatchBoardAggregatedSections({
       match_board_refreshed_at: now,
       updatedAt: now,
     });
-
-    if (process.env.NODE_ENV !== "production") {
-      const logan = newRows.awayGoals.find(r => r.playerName === "Logan McDonald")
-        ?? newRows.homeGoals.find(r => r.playerName === "Logan McDonald");
-      if (logan) {
-        console.group("[SocialPlanner UI Check] Logan McDonald goals — after Refresh Player Data");
-        console.log("t1:", logan.t1, "t2:", logan.t2, "t3:", logan.t3);
-        console.log("l5Avg:", logan.l5Avg, "maxGamesPlayed:", logan.maxGamesPlayed);
-        console.groupEnd();
-      }
-    }
   }
 
   if (!rows) {
@@ -642,6 +676,8 @@ function MatchBoardAggregatedSections({
     updatedRows: MatchBoardPlayerRow[]
   ) {
     const newMatchBoardRows = { ...rows!, [sectionKey]: updatedRows };
+    // Keep override state in sync so edits made after a refresh are reflected
+    if (overrideRows) setOverrideRows(newMatchBoardRows);
     const newSlides = rebuildMatchBoardSlidesFromRows(
       post.carouselSlides,
       newMatchBoardRows,
@@ -668,15 +704,21 @@ function MatchBoardAggregatedSections({
 
   return (
     <div className="space-y-4">
-      {/* Sticky toolbar — Refresh button sits above tables with proper z-index */}
-      <div className="sticky top-0 z-10 -mx-4 px-4 py-2 bg-[#050506]/95 backdrop-blur border-b border-white/[0.05] flex items-center justify-between">
+      {/* Sticky toolbar — z-30 sits above drawer header (z-20) so pointer events are never blocked */}
+      <div
+        className="sticky top-0 z-30 -mx-4 px-4 py-2 bg-[#050506] border-b border-white/[0.05] flex items-center justify-between pointer-events-auto"
+        style={{ backdropFilter: "blur(8px)" }}
+      >
         <p className="text-[10px] text-zinc-500">
           {allPlayers.length > 0 ? "Live data" : "Saved data"}
           {allPlayers.length > 0 && (
             <span className="ml-1 text-emerald-600">· {allPlayers.filter(p => p.team === post.homeTeam || p.team === post.awayTeam).length} player rows loaded</span>
           )}
+          {refreshed && (
+            <span className="ml-2 text-sky-400">Refreshed</span>
+          )}
         </p>
-        {allPlayers.length > 0 && (
+        {allPlayers.length > 0 ? (
           <button
             type="button"
             onClick={handleRefreshPlayerData}
@@ -686,6 +728,8 @@ function MatchBoardAggregatedSections({
             <RefreshCw className="w-3 h-3" />
             Refresh Player Data
           </button>
+        ) : (
+          <span className="text-[10px] text-zinc-600">Load player data first</span>
         )}
       </div>
       {sections.map(section => (
