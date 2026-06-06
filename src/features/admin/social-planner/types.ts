@@ -245,6 +245,10 @@ export interface SocialPost {
   };
   /** Reference screenshots selected for this post's AI prompts */
   referenceScreenshots?: ReferenceScreenshot[];
+  /** True for match boards that belong to the current round but fall on a planning day (Mon/Tue/Wed) */
+  isRoundOverflow?: boolean;
+  /** True for round_review posts where the final game of the round has not yet been completed */
+  roundReviewPending?: boolean;
 }
 
 // ─── Planner Settings ─────────────────────────────────────────────────────────

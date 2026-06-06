@@ -23,6 +23,9 @@ interface DataHealth {
   goalRows: number;
   gamesLoaded: number;
   matchBoardsGenerated: number;
+  unplacedGames: string[];    // fixture labels for games with no match board
+  roundReviewPending: boolean;
+  finalGameDate: string | null;
   lastRefresh: string | null;
 }
 
@@ -46,6 +49,9 @@ export default function SocialPlannerPage() {
     goalRows: 0,
     gamesLoaded: 0,
     matchBoardsGenerated: 0,
+    unplacedGames: [],
+    roundReviewPending: false,
+    finalGameDate: null,
     lastRefresh: null,
   });
 
@@ -106,6 +112,18 @@ export default function SocialPlannerPage() {
       const newPosts = buildWeekPosts(newSchedule.slots, settings, fetchedPlayers, games);
       const matchBoards = newPosts.filter(p => p.contentType === "match_stat_board").length;
 
+      // Unplaced fixture detection: compare loaded game IDs against generated match board game IDs
+      const boardGameIds = new Set(
+        newPosts
+          .filter(p => p.contentType === "match_stat_board" && p.gameId)
+          .map(p => p.gameId as string)
+      );
+      const unplacedGames = games
+        .filter(g => g.round === currentRound && g.season === currentSeason && !boardGameIds.has(g.id))
+        .map(g => `${g.homeTeam} v ${g.awayTeam}`);
+
+      const roundReviewPending = newPosts.some(p => p.contentType === "round_review" && p.roundReviewPending);
+
       setHealth({
         rpcStatus: rpcOk ? "ok" : "error",
         rpcError: rpcErr,
@@ -116,6 +134,9 @@ export default function SocialPlannerPage() {
         goalRows: fetchedPlayers.filter(p => p.statType === "goals").length,
         gamesLoaded: games.length,
         matchBoardsGenerated: matchBoards,
+        unplacedGames,
+        roundReviewPending,
+        finalGameDate: newSchedule.finalGameDate ?? null,
         lastRefresh: new Date().toISOString(),
       });
 
@@ -249,8 +270,12 @@ export default function SocialPlannerPage() {
 }
 
 function DataHealthPanel({ health }: { health: DataHealth }) {
-  const isOk = health.rpcStatus === "ok";
   const isError = health.rpcStatus === "error";
+  const hasUnplaced = health.unplacedGames.length > 0;
+  const boardMismatch = health.gamesLoaded > 0 && health.matchBoardsGenerated !== health.gamesLoaded;
+  const isOk = !isError && !hasUnplaced && !boardMismatch && health.rpcStatus === "ok"
+    && health.totalPlayerRows > 0 && health.gamesLoaded > 0;
+  const isWarn = !isError && !isOk;
 
   const rows: Array<{ label: string; value: string | number; warn?: boolean }> = [
     { label: "RPC Status",        value: health.rpcStatus.toUpperCase(), warn: isError },
@@ -261,17 +286,32 @@ function DataHealthPanel({ health }: { health: DataHealth }) {
     { label: "Disposal rows",     value: health.disposalRows, warn: health.disposalRows === 0 },
     { label: "Goal rows",         value: health.goalRows, warn: health.goalRows === 0 },
     { label: "Games loaded",      value: health.gamesLoaded, warn: health.gamesLoaded === 0 },
-    { label: "Match boards",      value: health.matchBoardsGenerated },
+    { label: "Match boards",      value: health.matchBoardsGenerated, warn: boardMismatch },
+    { label: "Unplaced games",    value: health.unplacedGames.length === 0 ? "0" : health.unplacedGames.join(", "), warn: hasUnplaced },
+    { label: "Round review",      value: health.roundReviewPending ? "Pending" : "Ready", warn: health.roundReviewPending },
+    { label: "Final game date",   value: health.finalGameDate ?? "—" },
     { label: "Last refresh",      value: health.lastRefresh ? new Date(health.lastRefresh).toLocaleTimeString() : "—" },
   ];
 
+  const borderClass = isError
+    ? "border-red-800/50 bg-red-950/20"
+    : isWarn
+    ? "border-amber-700/50 bg-amber-950/10"
+    : "border-zinc-800 bg-zinc-900/50";
+
   return (
-    <div className={`mb-5 rounded-lg border p-3 ${isError ? "border-red-800/50 bg-red-950/20" : "border-zinc-800 bg-zinc-900/50"}`}>
+    <div className={`mb-5 rounded-lg border p-3 ${borderClass}`}>
       <div className="flex items-center gap-2 mb-2">
         <Activity className="w-3.5 h-3.5 text-zinc-400" />
         <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Data Health</p>
-        {isOk && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+        {isOk  && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />}
+        {isWarn && !isError && <AlertCircle className="w-3.5 h-3.5 text-amber-400" />}
         {isError && <XCircle className="w-3.5 h-3.5 text-red-400" />}
+        {boardMismatch && (
+          <span className="text-[10px] text-amber-400 font-medium">
+            {health.unplacedGames.length} fixture{health.unplacedGames.length !== 1 ? "s" : ""} missing from content queue
+          </span>
+        )}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-4 gap-y-1.5">
         {rows.map(r => (

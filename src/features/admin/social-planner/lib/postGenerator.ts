@@ -157,6 +157,7 @@ export function buildPost(
   const warnings = [
     ...(noPlayersWarning ? [noPlayersWarning] : []),
     ...(noGameWarning ? [noGameWarning] : []),
+    ...(slot.roundReviewPending ? ["Round not yet complete — post after final game is played."] : []),
     ...safetyResult.flags.map(f =>
       f.type === "banned"
         ? `Banned word: "${f.word}"`
@@ -205,6 +206,8 @@ export function buildPost(
     updatedAt: now,
     usedHookId: hook.id,
     usedCaptionId: caption.id,
+    isRoundOverflow: slot.isRoundOverflow ?? false,
+    roundReviewPending: slot.roundReviewPending ?? false,
   };
 }
 
