@@ -605,6 +605,13 @@ function MatchBoardAggregatedSections({
       return;
     }
 
+    if (process.env.NODE_ENV !== "production") {
+      const rawLoganGoalRows = allPlayers.filter(
+        p => p.playerName === "Logan McDonald" && p.statType === "goals"
+      );
+      console.log("[SocialPlanner] Logan raw allPlayers goal rows in drawer", rawLoganGoalRows);
+    }
+
     const visMode = post.visibilityMode ?? "preview_blurred";
     const isOpen = visMode === "open_free_game";
     const totalLimit   = isOpen ? 10 : 8;
@@ -618,17 +625,15 @@ function MatchBoardAggregatedSections({
       visibleLimit
     );
 
-    if (process.env.NODE_ENV !== "production") {
-      const logan = newRows.awayGoals.find(r => r.playerName === "Logan McDonald")
-        ?? newRows.homeGoals.find(r => r.playerName === "Logan McDonald");
-      console.log("[SocialPlanner] Refresh Player Data RESULT", {
-        homeDisposals: newRows.homeDisposals.length,
-        awayDisposals: newRows.awayDisposals.length,
-        homeGoals: newRows.homeGoals.length,
-        awayGoals: newRows.awayGoals.length,
-        loganMcDonald: logan,
-      });
-    }
+    const refreshedLogan = newRows.awayGoals.find(r => r.playerName === "Logan McDonald")
+      ?? newRows.homeGoals.find(r => r.playerName === "Logan McDonald");
+    console.log("[SocialPlanner] Refresh Player Data RESULT", {
+      homeDisposals: newRows.homeDisposals.length,
+      awayDisposals: newRows.awayDisposals.length,
+      homeGoals: newRows.homeGoals.length,
+      awayGoals: newRows.awayGoals.length,
+      loganMcDonald: refreshedLogan,
+    });
 
     // Update local display immediately — this is what makes the UI change
     setOverrideRows(newRows);
