@@ -247,7 +247,7 @@ export function PostEditorDrawer({ post, allPlayers = [], screenshotRefMode, onC
         {/* ── Scrollable Content ── */}
         <div
           ref={scrollRef}
-          className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 pb-32"
+          className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-4 pb-32"
           style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
         >
           {tab === "overview"   && <OverviewTab edited={edited} update={update} />}
@@ -543,9 +543,40 @@ function MatchBoardAggregatedSections({
   allPlayers: AFLPlayerStat[];
   onUpdate: (post: SocialPost) => void;
 }) {
-  const rows = post.matchBoardRows;
+  // Derive fresh rows from allPlayers when available — bypasses stale saved JSON.
+  // Falls back to saved post.matchBoardRows only when player data hasn't loaded yet.
+  const rows = useMemo((): SocialPost["matchBoardRows"] => {
+    if (allPlayers.length > 0 && post.homeTeam && post.awayTeam) {
+      const visMode = post.visibilityMode ?? "preview_blurred";
+      const isOpen = visMode === "open_free_game";
+      const totalLimit   = isOpen ? 10 : 8;
+      const visibleLimit = isOpen ? 10 : 3;
+      if (process.env.NODE_ENV !== "production") {
+        const loganGoals = allPlayers.filter(
+          p => p.playerName === "Logan McDonald" && p.statType === "goals"
+        );
+        if (loganGoals.length > 0) {
+          console.group("[SocialPlanner UI Check] MatchBoardAggregatedSections — raw allPlayers for Logan McDonald goals");
+          loganGoals.forEach(r => console.log(`threshold=${r.threshold} record=${r.recordLabel} l5Avg=${r.l5Avg}`));
+          console.groupEnd();
+        }
+      }
+      return buildMatchBoardRowsDirect(
+        post.homeTeam,
+        post.awayTeam,
+        allPlayers,
+        visMode,
+        totalLimit,
+        visibleLimit
+      );
+    }
+    return post.matchBoardRows;
+  }, [allPlayers, post.homeTeam, post.awayTeam, post.visibilityMode, post.matchBoardRows]);
 
-  function handleRefreshPlayerData() {
+  function handleRefreshPlayerData(e: React.MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!allPlayers.length) return;
     const visMode = post.visibilityMode ?? "preview_blurred";
     const isOpen = visMode === "open_free_game";
     const totalLimit   = isOpen ? 10 : 8;
@@ -573,7 +604,6 @@ function MatchBoardAggregatedSections({
       updatedAt: now,
     });
 
-    // Debug: log re-aggregated Logan McDonald goals
     if (process.env.NODE_ENV !== "production") {
       const logan = newRows.awayGoals.find(r => r.playerName === "Logan McDonald")
         ?? newRows.homeGoals.find(r => r.playerName === "Logan McDonald");
@@ -595,6 +625,7 @@ function MatchBoardAggregatedSections({
         </p>
         {allPlayers.length > 0 && (
           <button
+            type="button"
             onClick={handleRefreshPlayerData}
             className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded border border-sky-700 text-sky-400 hover:text-sky-200 hover:border-sky-500 transition-colors"
           >
@@ -637,18 +668,26 @@ function MatchBoardAggregatedSections({
 
   return (
     <div className="space-y-4">
-      {allPlayers.length > 0 && (
-        <div className="flex justify-end">
+      {/* Sticky toolbar — Refresh button sits above tables with proper z-index */}
+      <div className="sticky top-0 z-10 -mx-4 px-4 py-2 bg-[#050506]/95 backdrop-blur border-b border-white/[0.05] flex items-center justify-between">
+        <p className="text-[10px] text-zinc-500">
+          {allPlayers.length > 0 ? "Live data" : "Saved data"}
+          {allPlayers.length > 0 && (
+            <span className="ml-1 text-emerald-600">· {allPlayers.filter(p => p.team === post.homeTeam || p.team === post.awayTeam).length} player rows loaded</span>
+          )}
+        </p>
+        {allPlayers.length > 0 && (
           <button
+            type="button"
             onClick={handleRefreshPlayerData}
-            className="flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded border border-sky-800/60 text-sky-400/80 hover:text-sky-200 hover:border-sky-600 transition-colors"
+            className="flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded border border-sky-800/60 text-sky-400/80 hover:text-sky-200 hover:border-sky-600 transition-colors pointer-events-auto"
             title="Re-aggregate player data from the latest fetch — fixes stale threshold values"
           >
             <RefreshCw className="w-3 h-3" />
             Refresh Player Data
           </button>
-        </div>
-      )}
+        )}
+      </div>
       {sections.map(section => (
         <AggregatedRowSection
           key={section.key}

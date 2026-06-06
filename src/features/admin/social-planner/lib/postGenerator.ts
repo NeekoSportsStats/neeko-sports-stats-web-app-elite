@@ -18,7 +18,7 @@ import { aggregateToRows, applyDefaultSelection } from "./rowAggregator";
 import type { MatchBoardPlayerRow } from "./rowAggregator";
 
 const DEFAULT_PLATFORM: Platform = "instagram";
-export const MATCH_BOARD_DATA_VERSION = "match_board_aggregated_v2";
+export const MATCH_BOARD_DATA_VERSION = "match_board_aggregated_v3";
 
 function generateId(): string {
   return crypto.randomUUID();

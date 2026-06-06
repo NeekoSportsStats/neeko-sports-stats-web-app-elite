@@ -2,6 +2,7 @@ import { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import type { SocialPost, PostStatus, DayOfWeek } from "../types";
 import { PostCard } from "./PostCard";
+import { MATCH_BOARD_DATA_VERSION } from "../lib/postGenerator";
 
 const STANDARD_DAY_ORDER: DayOfWeek[] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const DAY_LABELS: Record<DayOfWeek, string> = {
@@ -52,7 +53,7 @@ export function WeeklyQueue({ posts, onEditPost, onStatusChange, onRefreshAllMat
   const roundNum = posts[0]?.round ?? "";
   const matchBoardCount = posts.filter(p => p.contentType === "match_stat_board").length;
   const staleCount = posts.filter(
-    p => p.contentType === "match_stat_board" && p.match_board_data_version !== "match_board_aggregated_v2"
+    p => p.contentType === "match_stat_board" && p.match_board_data_version !== MATCH_BOARD_DATA_VERSION
   ).length;
 
   async function handleConfirmRefresh() {

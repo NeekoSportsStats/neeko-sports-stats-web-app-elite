@@ -50,6 +50,9 @@ export interface DbPost {
   full_slide_text_package: string | null;
   background_prompt_package: string | null;
   reference_screenshots: unknown;
+  match_board_rows: unknown;
+  match_board_data_version: string | null;
+  match_board_refreshed_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -191,6 +194,9 @@ export function postToDb(post: SocialPost): Omit<Partial<DbPost>, "id"> & { game
     full_slide_text_package: post.fullSlideTextPackage ?? null,
     background_prompt_package: post.backgroundPromptPackage ?? null,
     reference_screenshots: post.referenceScreenshots ?? [],
+    match_board_rows: post.matchBoardRows ?? null,
+    match_board_data_version: post.match_board_data_version ?? null,
+    match_board_refreshed_at: post.match_board_refreshed_at ?? null,
   };
 }
 
@@ -228,6 +234,9 @@ export function dbToPost(row: DbPost): SocialPost {
     fullSlideTextPackage: row.full_slide_text_package ?? undefined,
     backgroundPromptPackage: row.background_prompt_package ?? undefined,
     referenceScreenshots: (row.reference_screenshots as ReferenceScreenshot[]) ?? [],
+    matchBoardRows: (row.match_board_rows as SocialPost["matchBoardRows"]) ?? undefined,
+    match_board_data_version: row.match_board_data_version ?? undefined,
+    match_board_refreshed_at: row.match_board_refreshed_at ?? undefined,
   };
 }
 
