@@ -197,6 +197,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               }
               break;
 
+            case "TOKEN_REFRESH_FAILED":
+              // Stale/invalid refresh token — clear local auth state and redirect to login.
+              currentUserIdRef.current = null;
+              try {
+                localStorage.removeItem("supabase.auth.token");
+                // Clear any supabase-prefixed keys (session storage)
+                Object.keys(localStorage)
+                  .filter(k => k.startsWith("sb-"))
+                  .forEach(k => localStorage.removeItem(k));
+              } catch { /* storage may be unavailable */ }
+              try { resetUser(); } catch { /* non-critical */ }
+              if (isMounted) {
+                setUser(null);
+                setIsPremium(false);
+                setIsAdmin(false);
+                setLoading(false);
+              }
+              if (supabase) {
+                supabase.auth.signOut({ scope: "global" }).catch(() => {});
+              }
+              window.location.href = "/login?reason=session_expired";
+              break;
+
             case "USER_UPDATED":
               if (typeof window !== "undefined" && window.location.pathname === "/reset-password") {
                 return;
