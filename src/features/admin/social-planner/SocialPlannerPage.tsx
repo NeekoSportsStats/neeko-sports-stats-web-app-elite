@@ -326,7 +326,7 @@ function DataHealthPanel({ health }: { health: DataHealth }) {
     { label: "Last RPC Error",    value: health.rpcError ?? "—", warn: !!health.rpcError },
     { label: "Season",            value: health.season },
     { label: "Min Games Filter",  value: health.minGames },
-    { label: "Player stat rows",  value: health.totalPlayerRows, warn: health.totalPlayerRows === 0 },
+    { label: "Player stat rows",  value: health.totalPlayerRows === 1000 ? "1000 ⚠ cap?" : health.totalPlayerRows, warn: health.totalPlayerRows === 0 || health.totalPlayerRows === 1000 },
     { label: "Disposal rows",     value: health.disposalRows, warn: health.disposalRows === 0 },
     { label: "Goal rows",         value: health.goalRows, warn: health.goalRows === 0 },
     { label: "Games loaded",      value: health.gamesLoaded, warn: health.gamesLoaded === 0 },
@@ -367,6 +367,11 @@ function DataHealthPanel({ health }: { health: DataHealth }) {
           </div>
         ))}
       </div>
+      {health.totalPlayerRows === 1000 && (
+        <p className="mt-2 text-[10px] text-amber-400 font-medium">
+          Player stats may be truncated at 1000 rows — some threshold records may be missing.
+        </p>
+      )}
     </div>
   );
 }

@@ -81,29 +81,43 @@ export function useSocialPlannerData(): UseSocialPlannerDataReturn {
   const fetchPlayerStats = useCallback(async (season: number): Promise<AFLPlayerStat[]> => {
     setIsLoading(true);
     try {
-      console.group("[SocialPlanner] fetchPlayerStats");
-      console.log("params", { p_season: season, p_min_games: 3 });
+      const PAGE_SIZE = 1000;
+      const allRows: DbPlayerStat[] = [];
+      let from = 0;
+      let pages = 0;
 
-      const { data, error: err } = await supabase
-        .rpc("get_social_planner_player_stats", { p_season: season, p_min_games: 3 });
+      while (true) {
+        const to = from + PAGE_SIZE - 1;
+        const { data, error: err } = await supabase
+          .rpc("get_social_planner_player_stats", { p_season: season, p_min_games: 3 })
+          .range(from, to);
 
-      console.log("error", err);
-      console.log("rows", (data as unknown[] | null)?.length ?? 0);
-      console.log("first row", (data as unknown[])?.[0]);
-      console.groupEnd();
+        if (err) {
+          console.warn("[SocialPlanner] fetchPlayerStats RPC failed:", err.message, err.code);
+          setError("Player stats could not be loaded. Posts will generate without player data.");
+          return [];
+        }
 
-      if (err) {
-        console.warn("[SocialPlanner] fetchPlayerStats RPC failed:", err.message, err.code);
-        setError("Player stats could not be loaded. Posts will generate without player data.");
-        return [];
+        const pageRows = (data ?? []) as DbPlayerStat[];
+        allRows.push(...pageRows);
+        pages++;
+        console.log("[SocialPlanner] fetchPlayerStats page", { from, to, rows: pageRows.length, totalSoFar: allRows.length });
+
+        if (pageRows.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
       }
-      const mapped = ((data ?? []) as DbPlayerStat[]).map(dbStatToAFLPlayerStat);
-      console.log("[SocialPlanner] mapped rows", mapped.length, "first:", mapped[0]);
 
-      // Debug: log all Logan McDonald goal rows from RPC
+      const mapped = allRows.map(dbStatToAFLPlayerStat);
+      console.log("[SocialPlanner] fetchPlayerStats COMPLETE", {
+        pages,
+        rawRows: allRows.length,
+        mappedRows: mapped.length,
+        disposalRows: mapped.filter(r => r.statType === "disposals").length,
+        goalRows: mapped.filter(r => r.statType === "goals").length,
+      });
+
       if (process.env.NODE_ENV !== "production") {
-        const loganRows = ((data ?? []) as DbPlayerStat[])
-          .filter(r => r.player_name === "Logan McDonald" && r.stat_type === "goals");
+        const loganRows = allRows.filter(r => r.player_name === "Logan McDonald" && r.stat_type === "goals");
         if (loganRows.length > 0) {
           console.group("[SocialPlanner Debug] Logan McDonald goals — raw RPC rows");
           loganRows.forEach(r => console.log(
