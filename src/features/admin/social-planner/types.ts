@@ -249,6 +249,10 @@ export interface SocialPost {
   isRoundOverflow?: boolean;
   /** True for round_review posts where the final game of the round has not yet been completed */
   roundReviewPending?: boolean;
+  /** Aggregation version stamp — "match_board_aggregated_v2" = post-fix path */
+  match_board_data_version?: string;
+  /** ISO timestamp of last manual/auto refresh of matchBoardRows */
+  match_board_refreshed_at?: string;
 }
 
 // ─── Planner Settings ─────────────────────────────────────────────────────────

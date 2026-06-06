@@ -3,7 +3,8 @@ import { RefreshCw, BookOpen, List, Settings, CircleAlert as AlertCircle, Loader
 import type { SocialPost, PostStatus, PlannerSettings, AFLGame, AFLPlayerStat } from "./types";
 import { DEFAULT_SETTINGS } from "./types";
 import { buildWeekSchedule, getMondayOfWeek, type WeekSchedule } from "./lib/scheduleEngine";
-import { buildWeekPosts } from "./lib/postGenerator";
+import { buildWeekPosts, buildMatchBoardRowsDirect, MATCH_BOARD_DATA_VERSION } from "./lib/postGenerator";
+import { rebuildMatchBoardSlidesFromRows } from "./lib/carouselBuilder";
 import { useSocialPlannerData } from "./hooks/useSocialPlannerData";
 import { PlannerHeader } from "./components/PlannerHeader";
 import { WeeklyQueue } from "./components/WeeklyQueue";
@@ -164,6 +165,48 @@ export default function SocialPlannerPage() {
     db.upsertPost(updatedPost).catch(console.error);
   }, [db]);
 
+  // ── Bulk refresh all match board data ─────────────────────────────────────
+  const handleRefreshAllMatchBoards = useCallback(async (): Promise<number> => {
+    const now = new Date().toISOString();
+    const ctaText = settings.ctaOverlayText || "See the full board at neekostats.com.au";
+    let count = 0;
+
+    const updated = posts.map(post => {
+      if (post.contentType !== "match_stat_board") return post;
+      const visMode = post.visibilityMode ?? "preview_blurred";
+      const isOpen = visMode === "open_free_game";
+      const totalLimit   = isOpen ? settings.thuFriMaxRows : settings.satSunTotalRows;
+      const visibleLimit = isOpen ? settings.thuFriMaxRows : settings.satSunVisibleRows;
+      const newRows = buildMatchBoardRowsDirect(
+        post.homeTeam ?? "",
+        post.awayTeam ?? "",
+        allPlayers,
+        visMode,
+        totalLimit,
+        visibleLimit
+      );
+      const newSlides = rebuildMatchBoardSlidesFromRows(post.carouselSlides, newRows, ctaText);
+      count++;
+      return {
+        ...post,
+        matchBoardRows: newRows,
+        carouselSlides: newSlides,
+        match_board_data_version: MATCH_BOARD_DATA_VERSION,
+        match_board_refreshed_at: now,
+        updatedAt: now,
+      };
+    });
+
+    setPosts(updated);
+    // Persist all refreshed match boards in background
+    for (const post of updated) {
+      if (post.contentType === "match_stat_board") {
+        db.upsertPost(post).catch(console.error);
+      }
+    }
+    return count;
+  }, [posts, allPlayers, settings, db]);
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
@@ -236,6 +279,7 @@ export default function SocialPlannerPage() {
               posts={posts}
               onEditPost={setEditingPost}
               onStatusChange={handleStatusChange}
+              onRefreshAllMatchBoards={allPlayers.length > 0 ? handleRefreshAllMatchBoards : undefined}
             />
           </div>
         )}

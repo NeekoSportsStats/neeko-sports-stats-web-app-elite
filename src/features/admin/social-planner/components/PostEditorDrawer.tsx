@@ -7,7 +7,7 @@ import type { MatchBoardPlayerRow } from "../lib/rowAggregator";
 import { effectiveStatus, isAvailabilityWarning, isExcludedStatus } from "../hooks/usePlayerAvailability";
 import { checkSafety } from "../lib/safetyRules";
 import { rebuildMatchBoardSlidesFromRows } from "../lib/carouselBuilder";
-import { buildMatchBoardRowsDirect } from "../lib/postGenerator";
+import { buildMatchBoardRowsDirect, MATCH_BOARD_DATA_VERSION } from "../lib/postGenerator";
 import { SafetyCheckPanel } from "./SafetyCheckPanel";
 import { pickHook, type HookCategory } from "../lib/hookLibrary";
 import { pickCaption, type CaptionCategory } from "../lib/captionLibrary";
@@ -122,7 +122,11 @@ export function PostEditorDrawer({ post, allPlayers = [], screenshotRefMode, onC
   const isReady = !hasMissingRequired && !hasUnavailableSelectedRows && promptHealth.isComplete && !hasUnresolvedTokens
     && !spotlightMissingPlayer && !spotlightMissingLastFive && !spotlightPromptStale
     && edited.carouselSlides.length > 0 && edited.hook.length > 0 && edited.caption.length > 0;
-  const canMarkReady = !hasSafetyIssues && isReady && edited.status !== "ready";
+
+  const isMatchBoard = edited.contentType === "match_stat_board";
+  const isMatchBoardStale = isMatchBoard && edited.match_board_data_version !== MATCH_BOARD_DATA_VERSION;
+
+  const canMarkReady = !hasSafetyIssues && isReady && !isMatchBoardStale && edited.status !== "ready";
 
   return createPortal(
     <>
@@ -163,6 +167,12 @@ export function PostEditorDrawer({ post, allPlayers = [], screenshotRefMode, onC
                     <span className="text-[10px] px-1.5 py-0.5 rounded border bg-amber-950/60 border-amber-800/60 text-amber-300 flex items-center gap-0.5">
                       <AlertTriangle className="w-2.5 h-2.5" />
                       Safety
+                    </span>
+                  )}
+                  {isMatchBoardStale && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded border bg-orange-950/60 border-orange-700/60 text-orange-300 flex items-center gap-0.5">
+                      <AlertTriangle className="w-2.5 h-2.5" />
+                      Stale Data
                     </span>
                   )}
                   {!hasSafetyIssues && !isReady && (
@@ -300,6 +310,48 @@ export function PostEditorDrawer({ post, allPlayers = [], screenshotRefMode, onC
             )}
             {isSpotlight && spotlightPromptStale && (
               <span className="hidden sm:inline text-[10px] text-amber-400">Prompt out of date</span>
+            )}
+            {isMatchBoardStale && (
+              <span className="hidden sm:flex items-center gap-1 text-[10px] text-orange-400">
+                <AlertTriangle className="w-3 h-3" />
+                Stale data — refresh before marking ready
+              </span>
+            )}
+            {isMatchBoardStale && allPlayers.length > 0 && (
+              <button
+                onClick={() => {
+                  const visMode = edited.visibilityMode ?? "preview_blurred";
+                  const isOpen = visMode === "open_free_game";
+                  const totalLimit   = isOpen ? 10 : 8;
+                  const visibleLimit = isOpen ? 10 : 3;
+                  const newRows = buildMatchBoardRowsDirect(
+                    edited.homeTeam ?? "",
+                    edited.awayTeam ?? "",
+                    allPlayers,
+                    visMode,
+                    totalLimit,
+                    visibleLimit
+                  );
+                  const newSlides = rebuildMatchBoardSlidesFromRows(
+                    edited.carouselSlides,
+                    newRows,
+                    "See the full board at neekostats.com.au"
+                  );
+                  const now = new Date().toISOString();
+                  setEdited(prev => prev ? {
+                    ...prev,
+                    matchBoardRows: newRows,
+                    carouselSlides: newSlides,
+                    match_board_data_version: MATCH_BOARD_DATA_VERSION,
+                    match_board_refreshed_at: now,
+                    updatedAt: now,
+                  } : null);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded border border-orange-700 bg-orange-950/60 text-orange-300 hover:bg-orange-900/60 transition-colors font-medium"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Refresh Data
+              </button>
             )}
             {canMarkReady && (
               <button
@@ -511,11 +563,14 @@ function MatchBoardAggregatedSections({
       newRows,
       "See the full board at neekostats.com.au"
     );
+    const now = new Date().toISOString();
     onUpdate({
       ...post,
       matchBoardRows: newRows,
       carouselSlides: newSlides,
-      updatedAt: new Date().toISOString(),
+      match_board_data_version: MATCH_BOARD_DATA_VERSION,
+      match_board_refreshed_at: now,
+      updatedAt: now,
     });
 
     // Debug: log re-aggregated Logan McDonald goals

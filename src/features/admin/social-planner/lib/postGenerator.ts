@@ -18,6 +18,7 @@ import { aggregateToRows, applyDefaultSelection } from "./rowAggregator";
 import type { MatchBoardPlayerRow } from "./rowAggregator";
 
 const DEFAULT_PLATFORM: Platform = "instagram";
+export const MATCH_BOARD_DATA_VERSION = "match_board_aggregated_v2";
 
 function generateId(): string {
   return crypto.randomUUID();
@@ -244,6 +245,8 @@ export function buildPost(
     usedCaptionId: caption.id,
     isRoundOverflow: slot.isRoundOverflow ?? false,
     roundReviewPending: slot.roundReviewPending ?? false,
+    match_board_data_version: matchBoardRows ? MATCH_BOARD_DATA_VERSION : undefined,
+    match_board_refreshed_at: matchBoardRows ? now : undefined,
   };
 }
 

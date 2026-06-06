@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { RefreshCw } from "lucide-react";
 import type { SocialPost, PostStatus, DayOfWeek } from "../types";
 import { PostCard } from "./PostCard";
 
@@ -11,9 +13,15 @@ interface WeeklyQueueProps {
   posts: SocialPost[];
   onEditPost: (post: SocialPost) => void;
   onStatusChange: (id: string, status: PostStatus) => void;
+  /** Called to bulk-refresh all match_stat_board posts in the queue. Returns count refreshed. */
+  onRefreshAllMatchBoards?: () => Promise<number>;
 }
 
-export function WeeklyQueue({ posts, onEditPost, onStatusChange }: WeeklyQueueProps) {
+export function WeeklyQueue({ posts, onEditPost, onStatusChange, onRefreshAllMatchBoards }: WeeklyQueueProps) {
+  const [confirming, setConfirming] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastResult, setLastResult] = useState<string | null>(null);
+
   if (posts.length === 0) {
     return (
       <div className="text-center py-16 text-zinc-500">
@@ -41,11 +49,70 @@ export function WeeklyQueue({ posts, onEditPost, onStatusChange }: WeeklyQueuePr
     overflowByDay[post.dayOfWeek]!.push(post);
   }
 
-  // Determine the round number from any post
   const roundNum = posts[0]?.round ?? "";
+  const matchBoardCount = posts.filter(p => p.contentType === "match_stat_board").length;
+  const staleCount = posts.filter(
+    p => p.contentType === "match_stat_board" && p.match_board_data_version !== "match_board_aggregated_v2"
+  ).length;
+
+  async function handleConfirmRefresh() {
+    if (!onRefreshAllMatchBoards) return;
+    setRefreshing(true);
+    setConfirming(false);
+    try {
+      const count = await onRefreshAllMatchBoards();
+      setLastResult(`${count} match board${count !== 1 ? "s" : ""} refreshed`);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   return (
     <div className="space-y-6">
+      {/* Bulk refresh toolbar */}
+      {onRefreshAllMatchBoards && matchBoardCount > 0 && (
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            {staleCount > 0 && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-950/60 border border-orange-700/60 text-orange-300">
+                {staleCount} stale board{staleCount !== 1 ? "s" : ""}
+              </span>
+            )}
+            {lastResult && !refreshing && (
+              <span className="text-[10px] text-emerald-400">{lastResult}</span>
+            )}
+          </div>
+          {!confirming ? (
+            <button
+              onClick={() => { setConfirming(true); setLastResult(null); }}
+              disabled={refreshing}
+              className="flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-100 hover:border-zinc-500 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3 h-3 ${refreshing ? "animate-spin" : ""}`} />
+              {refreshing ? "Refreshing…" : "Refresh All Match Board Data"}
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-zinc-400">
+                Rebuild all {matchBoardCount} match board{matchBoardCount !== 1 ? "s" : ""}?
+              </span>
+              <button
+                onClick={handleConfirmRefresh}
+                className="text-[10px] px-2.5 py-1 rounded border border-orange-700 bg-orange-950/60 text-orange-300 hover:bg-orange-900/60 transition-colors"
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => setConfirming(false)}
+                className="text-[10px] px-2 py-1 rounded border border-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Standard weekly sections Mon → Sun */}
       {STANDARD_DAY_ORDER.map(day => {
         const dayPosts = byDay[day];
