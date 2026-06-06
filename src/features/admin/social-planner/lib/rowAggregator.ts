@@ -5,7 +5,7 @@
  * The RPC returns one row per (player × threshold), so Bailey Dale may appear
  * four times (15+, 20+, 25+, 30+). This module merges them.
  */
-import type { AFLPlayerStat, ConfidenceTier } from "../types";
+import type { AFLPlayerStat, ConfidenceTier, PlayerAvailabilityStatus } from "../types";
 
 export type RowDisplayMode = "visible" | "name_only" | "blurred" | "hidden";
 
@@ -48,6 +48,12 @@ export interface MatchBoardPlayerRow {
   displayMode: RowDisplayMode;
   /** Admin UI: manual sort order for selected rows (lower = higher in list) */
   sortOrder: number;
+  /** Player availability status from availability table or player stat */
+  availabilityStatus?: PlayerAvailabilityStatus;
+  /** Human-readable availability reason */
+  availabilityReason?: string | null;
+  /** True if admin has manually overridden default exclusion */
+  manualAvailabilityOverride?: PlayerAvailabilityStatus | null;
 }
 
 const TIER_RANK: Record<ConfidenceTier, number> = {
@@ -86,6 +92,9 @@ export function aggregateToRows(
         selected: false,
         displayMode: "visible",
         sortOrder: 0,
+        availabilityStatus: p.availabilityStatus ?? "unknown",
+        availabilityReason: p.availabilityReason ?? null,
+        manualAvailabilityOverride: p.manualAvailabilityOverride ?? null,
       };
       setThreshold(row, p.threshold, p.recordLabel, p.percent);
       byPlayer.set(p.playerId, row);

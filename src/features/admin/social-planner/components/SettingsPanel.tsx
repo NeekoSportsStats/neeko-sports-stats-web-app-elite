@@ -1,4 +1,4 @@
-import type { PlannerSettings, FreeGameSelectionMode, WeekendPostingMode } from "../types";
+import type { PlannerSettings, FreeGameSelectionMode, WeekendPostingMode, AvailabilityFilterMode } from "../types";
 import { DEFAULT_SETTINGS } from "../types";
 
 interface SettingsPanelProps {
@@ -167,6 +167,36 @@ export function SettingsPanel({ settings, onChange, onClose }: SettingsPanelProp
             checked={settings.showPreviewBadge}
             onChange={v => update("showPreviewBadge", v)}
           />
+        </div>
+      </section>
+
+      {/* Player Availability */}
+      <section className="space-y-3">
+        <h3 className="text-xs font-medium text-zinc-400 uppercase tracking-wider">Player Availability</h3>
+        <div>
+          <label className="block text-xs text-zinc-400 mb-1">Filter Mode</label>
+          <select
+            value={settings.availabilityFilterMode}
+            onChange={e => update("availabilityFilterMode", e.target.value as AvailabilityFilterMode)}
+            className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-1.5 text-sm text-zinc-200 focus:outline-none focus:border-sky-600"
+          >
+            <option value="balanced">Balanced (recommended)</option>
+            <option value="strict">Strict (available only)</option>
+            <option value="manual">Manual (no auto-filtering)</option>
+          </select>
+          <p className="text-[10px] text-zinc-600 mt-1">
+            Balanced: excludes definite absentees, warns on uncertain. Strict: only "available" status. Manual: admin handles everything.
+          </p>
+        </div>
+        <div className="space-y-2 pt-1">
+          <Toggle label="Exclude injured players" checked={settings.excludeInjured} onChange={v => update("excludeInjured", v)} />
+          <Toggle label="Exclude suspended players" checked={settings.excludeSuspended} onChange={v => update("excludeSuspended", v)} />
+          <Toggle label="Exclude omitted players" checked={settings.excludeOmitted} onChange={v => update("excludeOmitted", v)} />
+          <Toggle label="Exclude managed / rested players" checked={settings.excludeManaged} onChange={v => update("excludeManaged", v)} />
+          <Toggle label="Exclude inactive players" checked={settings.excludeInactive} onChange={v => update("excludeInactive", v)} />
+          <Toggle label="Exclude doubtful from auto-selection" checked={settings.excludeDoubtfulFromAuto} onChange={v => update("excludeDoubtfulFromAuto", v)} />
+          <Toggle label="Allow manual override for excluded players" checked={settings.allowManualAvailabilityOverride} onChange={v => update("allowManualAvailabilityOverride", v)} />
+          <Toggle label="Show warning for unknown availability" checked={settings.showUnknownAvailabilityWarning} onChange={v => update("showUnknownAvailabilityWarning", v)} />
         </div>
       </section>
 

@@ -10,7 +10,8 @@
  * - No bookmaker branding
  */
 
-import type { SocialPost, CarouselSlide, StatBoardRow, ContentVisibilityMode } from "../types";
+import type { SocialPost, CarouselSlide, StatBoardRow, ContentVisibilityMode, PlayerAvailabilityStatus } from "../types";
+import { EXCLUDED_STATUSES, WARNING_STATUSES } from "../types";
 
 export type PromptMode = "full_graphic" | "background_only" | "template_export";
 
@@ -482,6 +483,23 @@ export function buildFullPostPackage(post: SocialPost): string {
     ? "SAFETY: Clean — no issues found."
     : `SAFETY: ${post.warnings.length} issue(s) — review before posting.\n${post.warnings.map(w => `  • ${w}`).join("\n")}`;
 
+  // Build availability warning block
+  const unavailablePlayers = post.selectedPlayers.filter(p => {
+    const status = p.manualAvailabilityOverride ?? p.availabilityStatus;
+    if (!status || status === "available") return false;
+    return EXCLUDED_STATUSES.has(status as PlayerAvailabilityStatus) || WARNING_STATUSES.has(status as PlayerAvailabilityStatus);
+  });
+  const availabilityWarningBlock = unavailablePlayers.length === 0 ? "" : [
+    "AVAILABILITY WARNINGS:",
+    ...unavailablePlayers.map(p => {
+      const status = p.manualAvailabilityOverride ?? p.availabilityStatus ?? "unknown";
+      const override = p.manualAvailabilityOverride ? " [admin override]" : "";
+      const reason = p.availabilityReason ? ` — ${p.availabilityReason}` : "";
+      return `  • ${p.playerName} (${p.team}): ${status}${reason}${override}`;
+    }),
+    "",
+  ].join("\n");
+
   const colourRules = [
     "COLOUR RULES:",
     "- Ratios are the main display (e.g. 11/11, 9/10, 7/12). Do not replace with percentages.",
@@ -516,6 +534,7 @@ export function buildFullPostPackage(post: SocialPost): string {
     "",
     colourRules,
     "",
+    ...(availabilityWarningBlock ? [availabilityWarningBlock, "─".repeat(60), ""] : []),
     "─".repeat(60),
     "",
     buildFullSlideTextPackage(post),

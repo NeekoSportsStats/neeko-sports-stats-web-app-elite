@@ -9,30 +9,40 @@
  * - Round review/ahead: top players across all teams
  * - No thin samples on covers (gamesPlayed <= 4)
  * - Dedup across slots within same week
+ * - Availability: exclude injured/suspended/omitted/managed/inactive by default
  */
 
-import type { AFLPlayerStat, ContentType, ContentVisibilityMode, PlannerSettings } from "../types";
+import type { AFLPlayerStat, ContentType, ContentVisibilityMode, PlannerSettings, PlayerAvailabilityStatus } from "../types";
 import type { ScheduleSlot } from "./scheduleEngine";
 import { sortPlayersBySampleStrength, isThinSample } from "./statFormatter";
+import type { PlayerAvailabilityRecord } from "../types";
+import {
+  lookupAvailability,
+  shouldExcludePlayer,
+  effectiveStatus,
+} from "../hooks/usePlayerAvailability";
 
 export function selectPlayersForSlot(
   slot: ScheduleSlot,
   allPlayers: AFLPlayerStat[],
-  settings: PlannerSettings
+  settings: PlannerSettings,
+  availabilityLookup?: Map<string, PlayerAvailabilityRecord>
 ): AFLPlayerStat[] {
+  const lookup = availabilityLookup ?? new Map();
+
   switch (slot.contentType) {
     case "match_stat_board":
-      return selectMatchBoardPlayers(slot, allPlayers, settings);
+      return selectMatchBoardPlayers(slot, allPlayers, settings, lookup);
 
     case "player_spotlight":
-      return selectSpotlightPlayers(allPlayers, 1, slot.homeTeam, slot.awayTeam);
+      return selectSpotlightPlayers(allPlayers, 1, settings, lookup, slot.homeTeam, slot.awayTeam);
 
     case "player_spotlight_duo":
-      return selectSpotlightPlayers(allPlayers, 2, slot.homeTeam, slot.awayTeam);
+      return selectSpotlightPlayers(allPlayers, 2, settings, lookup, slot.homeTeam, slot.awayTeam);
 
     case "round_review":
     case "round_ahead_watch":
-      return selectTopPlayers(allPlayers, 5);
+      return selectTopPlayers(allPlayers, 5, settings, lookup);
 
     case "product_education":
     case "story_extra":
@@ -40,39 +50,49 @@ export function selectPlayersForSlot(
   }
 }
 
+function isAvailable(
+  p: AFLPlayerStat,
+  settings: PlannerSettings,
+  lookup: Map<string, PlayerAvailabilityRecord>
+): boolean {
+  const status = effectiveStatus(p, lookup);
+  const hasManualOverride = !!p.manualAvailabilityOverride;
+  return !shouldExcludePlayer(status, settings, hasManualOverride);
+}
+
 function selectMatchBoardPlayers(
   slot: ScheduleSlot,
   allPlayers: AFLPlayerStat[],
-  settings: PlannerSettings
+  settings: PlannerSettings,
+  lookup: Map<string, PlayerAvailabilityRecord>
 ): AFLPlayerStat[] {
   if (!slot.homeTeam || !slot.awayTeam) return [];
 
   const visibilityMode: ContentVisibilityMode = slot.visibilityMode ?? "preview_blurred";
   const maxPerTeamDisposals = visibilityMode === "open_free_game"
-    ? Math.ceil(settings.thuFriMaxRows / 4)  // distribute across 4 sections
+    ? Math.ceil(settings.thuFriMaxRows / 4)
     : Math.ceil(settings.satSunTotalRows / 4);
   const maxPerTeamGoals = visibilityMode === "open_free_game"
     ? Math.ceil(settings.thuFriMaxRows / 4)
     : Math.ceil(settings.satSunTotalRows / 4);
 
-  // Filter by team name (not gameId — RPC returns season-wide stats without gameId)
   const homeDisposals = allPlayers
-    .filter(p => p.statType === "disposals" && p.team === slot.homeTeam && !isThinSample(p))
+    .filter(p => p.statType === "disposals" && p.team === slot.homeTeam && !isThinSample(p) && isAvailable(p, settings, lookup))
     .sort(bySampleStrength)
     .slice(0, maxPerTeamDisposals);
 
   const awayDisposals = allPlayers
-    .filter(p => p.statType === "disposals" && p.team === slot.awayTeam && !isThinSample(p))
+    .filter(p => p.statType === "disposals" && p.team === slot.awayTeam && !isThinSample(p) && isAvailable(p, settings, lookup))
     .sort(bySampleStrength)
     .slice(0, maxPerTeamDisposals);
 
   const homeGoals = allPlayers
-    .filter(p => p.statType === "goals" && p.team === slot.homeTeam && !isThinSample(p))
+    .filter(p => p.statType === "goals" && p.team === slot.homeTeam && !isThinSample(p) && isAvailable(p, settings, lookup))
     .sort(bySampleStrength)
     .slice(0, maxPerTeamGoals);
 
   const awayGoals = allPlayers
-    .filter(p => p.statType === "goals" && p.team === slot.awayTeam && !isThinSample(p))
+    .filter(p => p.statType === "goals" && p.team === slot.awayTeam && !isThinSample(p) && isAvailable(p, settings, lookup))
     .sort(bySampleStrength)
     .slice(0, maxPerTeamGoals);
 
@@ -82,13 +102,14 @@ function selectMatchBoardPlayers(
 function selectSpotlightPlayers(
   allPlayers: AFLPlayerStat[],
   count: number,
+  settings: PlannerSettings,
+  lookup: Map<string, PlayerAvailabilityRecord>,
   homeTeam?: string,
   awayTeam?: string
 ): AFLPlayerStat[] {
-  let pool = allPlayers.filter(p => !isThinSample(p));
+  let pool = allPlayers.filter(p => !isThinSample(p) && isAvailable(p, settings, lookup));
 
   if (homeTeam && awayTeam) {
-    // Prefer players from this matchup
     const gamePool = pool.filter(p => p.team === homeTeam || p.team === awayTeam);
     if (gamePool.length >= count) pool = gamePool;
   }
@@ -98,9 +119,11 @@ function selectSpotlightPlayers(
 
 function selectTopPlayers(
   allPlayers: AFLPlayerStat[],
-  count: number
+  count: number,
+  settings: PlannerSettings,
+  lookup: Map<string, PlayerAvailabilityRecord>
 ): AFLPlayerStat[] {
-  const pool = allPlayers.filter(p => !isThinSample(p));
+  const pool = allPlayers.filter(p => !isThinSample(p) && isAvailable(p, settings, lookup));
   return sortPlayersBySampleStrength(pool).slice(0, count);
 }
 

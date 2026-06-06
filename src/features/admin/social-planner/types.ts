@@ -5,6 +5,45 @@
 
 export type DayOfWeek = "Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun";
 
+// ─── Player Availability ──────────────────────────────────────────────────────
+
+export type PlayerAvailabilityStatus =
+  | "available"
+  | "injured"
+  | "suspended"
+  | "omitted"
+  | "managed"
+  | "test"
+  | "doubtful"
+  | "inactive"
+  | "unknown";
+
+/** Statuses that should be excluded from auto-selection by default */
+export const EXCLUDED_STATUSES: Set<PlayerAvailabilityStatus> = new Set([
+  "injured", "suspended", "omitted", "managed", "inactive",
+]);
+
+/** Statuses that are allowed but warrant a warning */
+export const WARNING_STATUSES: Set<PlayerAvailabilityStatus> = new Set([
+  "test", "doubtful", "unknown",
+]);
+
+export interface PlayerAvailabilityRecord {
+  id?: string;
+  season: number;
+  round: number;
+  playerId?: string | null;
+  playerName: string;
+  team?: string | null;
+  status: PlayerAvailabilityStatus;
+  reason?: string | null;
+  expectedToPlay: boolean;
+  source: string;
+  updatedAt?: string;
+}
+
+export type AvailabilityFilterMode = "strict" | "balanced" | "manual";
+
 export type ContentType =
   | "match_stat_board"
   | "player_spotlight"
@@ -88,6 +127,11 @@ export interface AFLPlayerStat {
   source: string;
   confidenceTier: ConfidenceTier;
   includeInFreePost: boolean;
+  // Availability
+  availabilityStatus?: PlayerAvailabilityStatus;
+  availabilityReason?: string | null;
+  expectedToPlay?: boolean;
+  manualAvailabilityOverride?: PlayerAvailabilityStatus | null;
 }
 
 // ─── Carousel ─────────────────────────────────────────────────────────────────
@@ -201,6 +245,16 @@ export interface PlannerSettings {
   ctaOverlayText: string;              // text on the blur overlay CTA
   showFreeGameBadge: boolean;          // show "Free Game Board" badge on cover
   showPreviewBadge: boolean;           // show "Preview — full board at Neeko" badge
+  // Availability filtering
+  availabilityFilterMode: AvailabilityFilterMode; // "balanced" default
+  excludeInjured: boolean;             // true
+  excludeSuspended: boolean;           // true
+  excludeOmitted: boolean;             // true
+  excludeManaged: boolean;             // true
+  excludeInactive: boolean;            // true
+  excludeDoubtfulFromAuto: boolean;    // true — doubtful not auto-selected
+  allowManualAvailabilityOverride: boolean; // true — admin can manually include
+  showUnknownAvailabilityWarning: boolean;  // true
 }
 
 export const DEFAULT_SETTINGS: PlannerSettings = {
@@ -223,6 +277,16 @@ export const DEFAULT_SETTINGS: PlannerSettings = {
   ctaOverlayText: "See the full board at neekostats.com.au",
   showFreeGameBadge: true,
   showPreviewBadge: true,
+  // Availability filtering defaults
+  availabilityFilterMode: "balanced",
+  excludeInjured: true,
+  excludeSuspended: true,
+  excludeOmitted: true,
+  excludeManaged: true,
+  excludeInactive: true,
+  excludeDoubtfulFromAuto: true,
+  allowManualAvailabilityOverride: true,
+  showUnknownAvailabilityWarning: true,
 };
 
 // ─── Token map ────────────────────────────────────────────────────────────────

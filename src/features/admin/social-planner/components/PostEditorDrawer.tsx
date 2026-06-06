@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye, Search, Import as SortAsc } from "lucide-react";
-import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat } from "../types";
+import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat, PlayerAvailabilityStatus } from "../types";
+import { EXCLUDED_STATUSES, WARNING_STATUSES } from "../types";
 import type { MatchBoardPlayerRow } from "../lib/rowAggregator";
+import { effectiveStatus, isAvailabilityWarning, isExcludedStatus } from "../hooks/usePlayerAvailability";
 import { checkSafety } from "../lib/safetyRules";
 import { rebuildMatchBoardSlidesFromRows } from "../lib/carouselBuilder";
 import { SafetyCheckPanel } from "./SafetyCheckPanel";
@@ -91,9 +93,21 @@ export function PostEditorDrawer({ post, allPlayers = [], onClose, onSave }: Pos
   const hasMissingRequired = edited.warnings.some(w =>
     w.includes("selection required") || w.includes("before marking")
   );
+
+  // Check if any selected match board rows have excluded availability status without override
+  const hasUnavailableSelectedRows = edited.matchBoardRows != null && (
+    ["homeDisposals", "awayDisposals", "homeGoals", "awayGoals"] as const
+  ).some(section =>
+    edited.matchBoardRows![section].some(r =>
+      r.selected &&
+      r.availabilityStatus != null &&
+      EXCLUDED_STATUSES.has(r.availabilityStatus) &&
+      !r.manualAvailabilityOverride
+    )
+  );
   const promptHealth = checkPromptHealth(edited);
   const hasUnresolvedTokens = /\{[a-zA-Z_]+\}/.test(edited.hook + edited.caption);
-  const isReady = !hasMissingRequired && promptHealth.isComplete && !hasUnresolvedTokens
+  const isReady = !hasMissingRequired && !hasUnavailableSelectedRows && promptHealth.isComplete && !hasUnresolvedTokens
     && edited.carouselSlides.length > 0 && edited.hook.length > 0 && edited.caption.length > 0;
   const canMarkReady = !hasSafetyIssues && isReady && edited.status !== "ready";
 
@@ -250,10 +264,13 @@ export function PostEditorDrawer({ post, allPlayers = [], onClose, onSave }: Pos
             {!hasSafetyIssues && hasMissingRequired && (
               <span className="hidden sm:inline text-[10px] text-amber-400">Required fields missing</span>
             )}
-            {!hasSafetyIssues && !hasMissingRequired && !promptHealth.isComplete && (
+            {!hasSafetyIssues && !hasMissingRequired && hasUnavailableSelectedRows && (
+              <span className="hidden sm:inline text-[10px] text-red-400">Unavailable player selected</span>
+            )}
+            {!hasSafetyIssues && !hasMissingRequired && !hasUnavailableSelectedRows && !promptHealth.isComplete && (
               <span className="hidden sm:inline text-[10px] text-amber-400">Prompt incomplete</span>
             )}
-            {!hasSafetyIssues && !hasMissingRequired && promptHealth.isComplete && hasUnresolvedTokens && (
+            {!hasSafetyIssues && !hasMissingRequired && !hasUnavailableSelectedRows && promptHealth.isComplete && hasUnresolvedTokens && (
               <span className="hidden sm:inline text-[10px] text-amber-400">Unresolved tokens</span>
             )}
             {canMarkReady && (
@@ -531,6 +548,39 @@ function GradeCell({ label }: { label?: string; percent?: number; gamesPlayed?: 
   return <span className={cls}>{label ?? "—"}</span>;
 }
 
+// ─── Availability badge ───────────────────────────────────────────────────────
+
+const AVAIL_STATUS_CONFIG: Record<PlayerAvailabilityStatus, { label: string; cls: string }> = {
+  available:  { label: "Available",  cls: "text-emerald-400 bg-emerald-950/60 border-emerald-800/60" },
+  injured:    { label: "Injured",    cls: "text-red-400 bg-red-950/60 border-red-800/60" },
+  suspended:  { label: "Suspended",  cls: "text-orange-400 bg-orange-950/60 border-orange-800/60" },
+  omitted:    { label: "Omitted",    cls: "text-orange-400 bg-orange-950/60 border-orange-800/60" },
+  managed:    { label: "Managed",    cls: "text-amber-400 bg-amber-950/60 border-amber-800/60" },
+  test:       { label: "Test",       cls: "text-amber-300 bg-amber-950/60 border-amber-800/60" },
+  doubtful:   { label: "Doubtful",   cls: "text-yellow-400 bg-yellow-950/60 border-yellow-800/60" },
+  inactive:   { label: "Inactive",   cls: "text-zinc-400 bg-zinc-800 border-zinc-700" },
+  unknown:    { label: "?",          cls: "text-zinc-500 bg-zinc-800 border-zinc-700" },
+};
+
+function AvailabilityBadge({
+  status,
+  reason,
+}: {
+  status?: PlayerAvailabilityStatus;
+  reason?: string | null;
+}) {
+  if (!status || status === "available") return null;
+  const cfg = AVAIL_STATUS_CONFIG[status] ?? AVAIL_STATUS_CONFIG.unknown;
+  return (
+    <span
+      className={`ml-1.5 text-[8px] px-1 py-0.5 rounded border ${cfg.cls}`}
+      title={reason ?? undefined}
+    >
+      {cfg.label}
+    </span>
+  );
+}
+
 // ─── Display mode labels ──────────────────────────────────────────────────────
 
 const DISPLAY_MODE_LABELS: Record<string, string> = {
@@ -799,6 +849,7 @@ function AggregatedRowSection({
                       {row.selected && (
                         <span className="ml-1 text-zinc-600 font-normal">#{row.sortOrder + 1}</span>
                       )}
+                      <AvailabilityBadge status={row.availabilityStatus} reason={row.availabilityReason} />
                     </td>
                     <td className="px-2 py-1.5 text-right font-mono">{row.l5Avg.toFixed(1)}</td>
                     {isDisposals ? (
@@ -817,24 +868,29 @@ function AggregatedRowSection({
                     )}
                     {/* Display mode selector */}
                     <td className="px-2 py-1">
-                      <select
-                        disabled={!row.selected}
-                        value={row.selected ? row.displayMode : "visible"}
-                        onChange={e => setDisplayMode(row.key, e.target.value as MatchBoardPlayerRow["displayMode"])}
-                        className={`text-[9px] rounded border px-1 py-0.5 focus:outline-none ${
-                          !row.selected
-                            ? "bg-zinc-900 border-zinc-800 text-zinc-700 cursor-not-allowed"
-                            : row.displayMode === "visible"   ? "bg-zinc-800 border-zinc-600 text-zinc-200"
-                            : row.displayMode === "name_only" ? "bg-amber-950/40 border-amber-700/60 text-amber-300"
-                            : row.displayMode === "blurred"   ? "bg-zinc-800/60 border-zinc-600 text-zinc-400"
-                            : "bg-zinc-900 border-zinc-700 text-zinc-600"
-                        }`}
-                      >
-                        <option value="visible">Visible</option>
-                        <option value="name_only">Name only</option>
-                        <option value="blurred">Blur row</option>
-                        <option value="hidden">Hidden</option>
-                      </select>
+                      <div className="flex flex-col gap-0.5 items-end">
+                        <select
+                          disabled={!row.selected}
+                          value={row.selected ? row.displayMode : "visible"}
+                          onChange={e => setDisplayMode(row.key, e.target.value as MatchBoardPlayerRow["displayMode"])}
+                          className={`text-[9px] rounded border px-1 py-0.5 focus:outline-none ${
+                            !row.selected
+                              ? "bg-zinc-900 border-zinc-800 text-zinc-700 cursor-not-allowed"
+                              : row.displayMode === "visible"   ? "bg-zinc-800 border-zinc-600 text-zinc-200"
+                              : row.displayMode === "name_only" ? "bg-amber-950/40 border-amber-700/60 text-amber-300"
+                              : row.displayMode === "blurred"   ? "bg-zinc-800/60 border-zinc-600 text-zinc-400"
+                              : "bg-zinc-900 border-zinc-700 text-zinc-600"
+                          }`}
+                        >
+                          <option value="visible">Visible</option>
+                          <option value="name_only">Name only</option>
+                          <option value="blurred">Blur row</option>
+                          <option value="hidden">Hidden</option>
+                        </select>
+                        {row.availabilityStatus && EXCLUDED_STATUSES.has(row.availabilityStatus) && !row.manualAvailabilityOverride && row.selected && (
+                          <span className="text-[8px] text-red-400/80">Override needed</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-1.5 py-1.5 text-right">
                       <ConfidencePill tier={row.tier} />
@@ -933,10 +989,19 @@ function SpotlightPlayerSelector({
         ) : (
           <div className="space-y-1.5">
             {post.selectedPlayers.map(p => (
-              <div key={p.playerId} className="flex items-center justify-between gap-2 bg-sky-950/30 border border-sky-800/40 rounded px-2.5 py-1.5">
+              <div key={p.playerId} className={`flex items-center justify-between gap-2 rounded px-2.5 py-1.5 border ${
+                p.availabilityStatus && EXCLUDED_STATUSES.has(p.availabilityStatus) && !p.manualAvailabilityOverride
+                  ? "bg-red-950/20 border-red-800/40"
+                  : "bg-sky-950/30 border-sky-800/40"
+              }`}>
                 <div>
-                  <span className="text-xs font-medium text-sky-200">{p.playerName}</span>
+                  <span className={`text-xs font-medium ${
+                    p.availabilityStatus && EXCLUDED_STATUSES.has(p.availabilityStatus) && !p.manualAvailabilityOverride
+                      ? "text-red-300"
+                      : "text-sky-200"
+                  }`}>{p.playerName}</span>
                   <span className="text-[10px] text-zinc-500 ml-1.5">{p.team} · {p.statType} · {p.thresholdLabel}</span>
+                  <AvailabilityBadge status={p.availabilityStatus} reason={p.availabilityReason} />
                 </div>
                 <button
                   onClick={() => selectPlayer(p)}
@@ -1018,6 +1083,7 @@ function SpotlightPlayerSelector({
                       <td className="px-3 py-1.5">
                         <span className={`font-medium ${isSelected ? "text-sky-200" : "text-zinc-200"}`}>{p.playerName}</span>
                         <span className="text-zinc-600 ml-1.5">{p.team}</span>
+                        <AvailabilityBadge status={p.availabilityStatus} reason={p.availabilityReason} />
                       </td>
                       <td className="px-2 py-1.5 text-zinc-400 whitespace-nowrap">
                         {p.statType === "disposals" ? "Disp" : "Goals"} {p.thresholdLabel}
