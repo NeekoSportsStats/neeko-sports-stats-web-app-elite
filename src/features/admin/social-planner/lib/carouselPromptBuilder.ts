@@ -134,11 +134,13 @@ function visibilityInstructions(
 
 function buildCoverSlideSection(post: SocialPost, slide: CarouselSlide): string {
   const isOpen = post.visibilityMode === "open_free_game";
-  const boardLabel = isOpen ? "Free Game Board" : "Preview Board";
+  const boardLabel = slide.designNotes ?? (isOpen ? "Free Game Board" : "Match Stat Board");
   return `SLIDE 1 — COVER
 Text:
 ${slide.title}
-${slide.subtitle ?? `Round ${post.round} ${boardLabel}`}
+${slide.subtitle ?? `Round ${post.round}`}
+${boardLabel}
+Disposal + Goal Form
 AFL ${post.season}
 
 Design:
@@ -432,6 +434,15 @@ COLOUR RULES: Green for elite/strong records. Amber/orange for middle. Muted red
     const slideNum = i + 1;
     const lines: string[] = [`SLIDE ${slideNum} — ${slide.title.toUpperCase()}`];
     if (slide.subtitle) lines.push(slide.subtitle);
+
+    // Cover slide: emit board label + sub-labels
+    if (slide.slideType === "cover" && post.contentType === "match_stat_board") {
+      const isOpen = post.visibilityMode === "open_free_game";
+      const boardLabel = slide.designNotes ?? (isOpen ? "Free Game Board" : "Match Stat Board");
+      lines.push(boardLabel);
+      lines.push("Disposal + Goal Form");
+      lines.push(`AFL ${post.season}`);
+    }
 
     const rows = slide.rows ?? [];
     if (rows.length > 0) {

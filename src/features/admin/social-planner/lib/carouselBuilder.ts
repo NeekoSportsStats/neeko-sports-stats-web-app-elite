@@ -56,9 +56,8 @@ function buildMatchBoardSlides(
   const game = tokens.game ?? `${slot.homeTeam} v ${slot.awayTeam}`;
 
   // Cover
-  const coverSubtitle = isOpen
-    ? (settings.showFreeGameBadge ? "Free Game Board" : `Round ${tokens.round} Stat Board`)
-    : (settings.showPreviewBadge ? "Preview — full board at Neeko" : `Round ${tokens.round} Stat Board`);
+  const boardLabel = isOpen ? "Free Game Board" : "Match Stat Board";
+  const coverSubtitle = `Round ${tokens.round}`;
 
   const coverImagePrompt = isOpen
     ? generateOpenFreeGameCoverPrompt(slot.homeTeam ?? "", slot.awayTeam ?? "")
@@ -72,10 +71,11 @@ function buildMatchBoardSlides(
     slideType: "cover",
     title: game,
     subtitle: coverSubtitle,
+    designNotes: boardLabel,
     imagePrompt: coverImagePrompt,
     visibilityMode,
     showFreeGameBadge: isOpen && settings.showFreeGameBadge,
-    showPreviewBadge: !isOpen && settings.showPreviewBadge,
+    showPreviewBadge: false,
   });
 
   // Determine visible row limit for blurred mode
