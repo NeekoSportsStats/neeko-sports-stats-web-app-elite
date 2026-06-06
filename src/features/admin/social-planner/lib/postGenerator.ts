@@ -45,6 +45,42 @@ function buildAvailableTokens(
 }
 
 /**
+ * Build aggregated match board rows from raw player stats directly.
+ * Used in the PostEditorDrawer to refresh stale matchBoardRows from fresh allPlayers data.
+ */
+export function buildMatchBoardRowsDirect(
+  homeTeam: string,
+  awayTeam: string,
+  allPlayers: AFLPlayerStat[],
+  visibilityMode: ContentVisibilityMode,
+  totalLimit: number,
+  visibleLimit: number
+): NonNullable<SocialPost["matchBoardRows"]> {
+  const apply = (rows: MatchBoardPlayerRow[]) =>
+    applyDefaultSelection(rows, visibilityMode, totalLimit, visibleLimit);
+
+  if (process.env.NODE_ENV !== "production") {
+    const loganRows = allPlayers.filter(
+      r => r.playerName === "Logan McDonald" && r.statType === "goals"
+    );
+    if (loganRows.length > 0) {
+      console.group("[SocialPlanner UI Check] buildMatchBoardRowsDirect — Logan McDonald goals raw");
+      loganRows.forEach(r =>
+        console.log(`threshold=${r.threshold} record=${r.recordLabel} l5Avg=${r.l5Avg}`)
+      );
+      console.groupEnd();
+    }
+  }
+
+  return {
+    homeDisposals: apply(aggregateToRows(allPlayers, homeTeam, "disposals")),
+    awayDisposals: apply(aggregateToRows(allPlayers, awayTeam, "disposals")),
+    homeGoals:     apply(aggregateToRows(allPlayers, homeTeam, "goals")),
+    awayGoals:     apply(aggregateToRows(allPlayers, awayTeam, "goals")),
+  };
+}
+
+/**
  * Build aggregated match board rows for a match board post.
  * Applies default selection based on visibility mode.
  */

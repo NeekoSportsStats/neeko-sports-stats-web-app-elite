@@ -7,6 +7,7 @@ import type { MatchBoardPlayerRow } from "../lib/rowAggregator";
 import { effectiveStatus, isAvailabilityWarning, isExcludedStatus } from "../hooks/usePlayerAvailability";
 import { checkSafety } from "../lib/safetyRules";
 import { rebuildMatchBoardSlidesFromRows } from "../lib/carouselBuilder";
+import { buildMatchBoardRowsDirect } from "../lib/postGenerator";
 import { SafetyCheckPanel } from "./SafetyCheckPanel";
 import { pickHook, type HookCategory } from "../lib/hookLibrary";
 import { pickCaption, type CaptionCategory } from "../lib/captionLibrary";
@@ -472,7 +473,7 @@ function PlayersTab({
       )}
 
       {isMatchBoard
-        ? <MatchBoardAggregatedSections post={edited} onUpdate={onUpdate} />
+        ? <MatchBoardAggregatedSections post={edited} allPlayers={allPlayers} onUpdate={onUpdate} />
         : isSpotlight
         ? <SpotlightPlayerSelector post={edited} allPlayers={allPlayers} onUpdate={onUpdate} />
         : <PlayerList players={edited.selectedPlayers} />
@@ -483,20 +484,69 @@ function PlayersTab({
 
 function MatchBoardAggregatedSections({
   post,
+  allPlayers,
   onUpdate,
 }: {
   post: SocialPost;
+  allPlayers: AFLPlayerStat[];
   onUpdate: (post: SocialPost) => void;
 }) {
   const rows = post.matchBoardRows;
 
+  function handleRefreshPlayerData() {
+    const visMode = post.visibilityMode ?? "preview_blurred";
+    const isOpen = visMode === "open_free_game";
+    const totalLimit   = isOpen ? 10 : 8;
+    const visibleLimit = isOpen ? 10 : 3;
+    const newRows = buildMatchBoardRowsDirect(
+      post.homeTeam ?? "",
+      post.awayTeam ?? "",
+      allPlayers,
+      visMode,
+      totalLimit,
+      visibleLimit
+    );
+    const newSlides = rebuildMatchBoardSlidesFromRows(
+      post.carouselSlides,
+      newRows,
+      "See the full board at neekostats.com.au"
+    );
+    onUpdate({
+      ...post,
+      matchBoardRows: newRows,
+      carouselSlides: newSlides,
+      updatedAt: new Date().toISOString(),
+    });
+
+    // Debug: log re-aggregated Logan McDonald goals
+    if (process.env.NODE_ENV !== "production") {
+      const logan = newRows.awayGoals.find(r => r.playerName === "Logan McDonald")
+        ?? newRows.homeGoals.find(r => r.playerName === "Logan McDonald");
+      if (logan) {
+        console.group("[SocialPlanner UI Check] Logan McDonald goals — after Refresh Player Data");
+        console.log("t1:", logan.t1, "t2:", logan.t2, "t3:", logan.t3);
+        console.log("l5Avg:", logan.l5Avg, "maxGamesPlayed:", logan.maxGamesPlayed);
+        console.groupEnd();
+      }
+    }
+  }
+
   if (!rows) {
     return (
-      <div className="rounded-lg border border-amber-800/40 bg-amber-950/20 p-3">
+      <div className="rounded-lg border border-amber-800/40 bg-amber-950/20 p-3 space-y-2">
         <p className="text-[10px] text-amber-400 flex items-center gap-1.5">
           <AlertTriangle className="w-3 h-3 shrink-0" />
           No aggregated player rows — regenerate the week to load player data.
         </p>
+        {allPlayers.length > 0 && (
+          <button
+            onClick={handleRefreshPlayerData}
+            className="flex items-center gap-1.5 text-[10px] px-2 py-1 rounded border border-sky-700 text-sky-400 hover:text-sky-200 hover:border-sky-500 transition-colors"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Refresh Player Data
+          </button>
+        )}
       </div>
     );
   }
@@ -532,6 +582,18 @@ function MatchBoardAggregatedSections({
 
   return (
     <div className="space-y-4">
+      {allPlayers.length > 0 && (
+        <div className="flex justify-end">
+          <button
+            onClick={handleRefreshPlayerData}
+            className="flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded border border-sky-800/60 text-sky-400/80 hover:text-sky-200 hover:border-sky-600 transition-colors"
+            title="Re-aggregate player data from the latest fetch — fixes stale threshold values"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Refresh Player Data
+          </button>
+        </div>
+      )}
       {sections.map(section => (
         <AggregatedRowSection
           key={section.key}
@@ -671,6 +733,17 @@ function AggregatedRowSection({
 
     return list;
   }, [rows, filter, sort]);
+
+  // Dev-only: log Logan McDonald goals when this section renders
+  if (process.env.NODE_ENV !== "production" && statType === "goals") {
+    const logan = rows.find(r => r.playerName === "Logan McDonald");
+    if (logan) {
+      console.group(`[SocialPlanner UI Check] Logan McDonald goals — ${label} table`);
+      console.log("t1:", logan.t1, "t2:", logan.t2, "t3:", logan.t3);
+      console.log("l5Avg:", logan.l5Avg, "maxGamesPlayed:", logan.maxGamesPlayed);
+      console.groupEnd();
+    }
+  }
 
   function updateRow(key: string, patch: Partial<MatchBoardPlayerRow>) {
     onRowsChange(rows.map(r => r.key === key ? { ...r, ...patch } : r));
