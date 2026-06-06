@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye, Search, Import as SortAsc } from "lucide-react";
-import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat, PlayerAvailabilityStatus, SpotlightSelection, ReferenceScreenshot, ScreenshotTag, ScreenshotRefMode } from "../types";
-import { EXCLUDED_STATUSES, WARNING_STATUSES } from "../types";
+import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat, PlayerAvailabilityStatus, SpotlightSelection, ReferenceScreenshot, ScreenshotTag, ScreenshotRefMode, CarouselStylePreset } from "../types";
+import { EXCLUDED_STATUSES, WARNING_STATUSES, CAROUSEL_STYLE_PRESET_LABELS } from "../types";
 import type { MatchBoardPlayerRow } from "../lib/rowAggregator";
 import { effectiveStatus, isAvailabilityWarning, isExcludedStatus } from "../hooks/usePlayerAvailability";
 import { checkSafety } from "../lib/safetyRules";
@@ -468,6 +468,33 @@ function OverviewTab({
             <option key={p} value={p}>{p}</option>
           ))}
         </select>
+      </Field>
+
+      {/* Carousel Style */}
+      <Field label="Carousel Style">
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-1.5">
+            {(Object.keys(CAROUSEL_STYLE_PRESET_LABELS) as CarouselStylePreset[]).map(preset => {
+              const isActive = (edited.carouselStylePreset ?? "premium_stats_board") === preset;
+              return (
+                <button
+                  key={preset}
+                  onClick={() => update("carouselStylePreset", preset)}
+                  className={`text-left px-2.5 py-2 rounded border text-xs transition-colors ${
+                    isActive
+                      ? "border-amber-600/70 bg-amber-950/40 text-amber-300 font-medium"
+                      : "border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600 hover:text-zinc-300"
+                  }`}
+                >
+                  {CAROUSEL_STYLE_PRESET_LABELS[preset]}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-zinc-500">
+            Changes the visual prompt style only. Player selections and stats still update automatically.
+          </p>
+        </div>
       </Field>
 
       {/* Action buttons */}
@@ -1954,6 +1981,15 @@ function ImagePromptsTab({
           </ul>
         </div>
       )}
+
+      {/* Active style preset indicator */}
+      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-950/30 border border-amber-800/40">
+        <span className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">Style:</span>
+        <span className="text-[11px] text-amber-300 font-medium">
+          {CAROUSEL_STYLE_PRESET_LABELS[edited.carouselStylePreset ?? "premium_stats_board"]}
+        </span>
+        <span className="text-[10px] text-zinc-500">— change in Overview tab</span>
+      </div>
 
       {/* Prompt Mode Selector */}
       <div>

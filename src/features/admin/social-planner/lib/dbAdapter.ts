@@ -5,7 +5,7 @@ import type {
   SocialPost, AFLGame, AFLPlayerStat,
   ContentType, DayOfWeek, Platform, PostStatus,
   CarouselSlide, ConfidenceTier, PlayerAvailabilityStatus,
-  ReferenceScreenshot,
+  ReferenceScreenshot, CarouselStylePreset,
 } from "../types";
 
 // ─── UUID validation ──────────────────────────────────────────────────────────
@@ -53,6 +53,7 @@ export interface DbPost {
   match_board_rows: unknown;
   match_board_data_version: string | null;
   match_board_refreshed_at: string | null;
+  carousel_style_preset: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -197,6 +198,7 @@ export function postToDb(post: SocialPost): Omit<Partial<DbPost>, "id"> & { game
     match_board_rows: post.matchBoardRows ?? null,
     match_board_data_version: post.match_board_data_version ?? null,
     match_board_refreshed_at: post.match_board_refreshed_at ?? null,
+    carousel_style_preset: post.carouselStylePreset ?? null,
   };
 }
 
@@ -237,6 +239,7 @@ export function dbToPost(row: DbPost): SocialPost {
     matchBoardRows: (row.match_board_rows as SocialPost["matchBoardRows"]) ?? undefined,
     match_board_data_version: row.match_board_data_version ?? undefined,
     match_board_refreshed_at: row.match_board_refreshed_at ?? undefined,
+    carouselStylePreset: (row.carousel_style_preset as CarouselStylePreset | null) ?? "premium_stats_board",
   };
 }
 
