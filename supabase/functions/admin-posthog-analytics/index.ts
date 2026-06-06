@@ -415,13 +415,16 @@ async function getFunnelData(
           uniqIf(distinct_id, event IN ('page_viewed', '$pageview')) as unique_visitors,
           countIf(event IN ('gate_viewed', 'premium_gate_viewed')) as gate_views,
           countIf(event IN ('locked_data_clicked', 'locked_cell_clicked')) as locked_cell_clicks,
-          countIf(event = 'cta_clicked' AND JSONExtractString(properties, 'cta_location') = 'landing_hero') as landing_cta_clicks,
+          countIf(event = 'cta_clicked' AND JSONExtractString(properties, 'cta_location') LIKE 'landing_%') as landing_cta_clicks,
           countIf(event = 'cta_clicked' AND JSONExtractString(properties, 'cta_location') LIKE '%pricing%') as pricing_cta_clicks,
-          countIf(event IN ('cta_clicked', 'neeko_plus_clicked')) as neeko_plus_clicks,
-          countIf(event = 'cta_clicked') as product_cta_clicks,
-          countIf(event IN ('checkout_start_clicked', 'checkout_started')) as checkout_started,
+          countIf(event = 'cta_clicked' AND JSONExtractString(properties, 'cta_location') LIKE '%neeko%') as neeko_plus_clicks,
+          countIf(event = 'cta_clicked') as cta_clicks_total,
+          countIf(event IN ('checkout_attempted', 'checkout_start_clicked')) as checkout_attempts,
+          countIf(event IN ('checkout_started', 'checkout_session_created')) as checkout_started,
+          countIf(event = 'checkout_redirected') as checkout_redirected,
           countIf(event IN ('subscription_activated', 'checkout_success')) as checkout_success,
-          countIf(event = 'checkout_cancelled') as checkout_cancelled
+          countIf(event = 'checkout_cancelled') as checkout_cancelled,
+          countIf(event = 'checkout_error') as checkout_errors
         FROM events
         WHERE timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND ${exclusion}
@@ -437,12 +440,15 @@ async function getFunnelData(
       const landingCtaClicks = Number(row[4]) || 0;
       const pricingCtaClicks = Number(row[5]) || 0;
       const neekoClicks = Number(row[6]) || 0;
-      const productCtaClicks = Number(row[7]) || 0;
-      const checkoutStarted = Number(row[8]) || 0;
-      const checkoutSuccess = Number(row[9]) || 0;
-      const checkoutCancelled = Number(row[10]) || 0;
+      // canonical total — all CTAs fire as cta_clicked via trackCTA(), no double-counting
+      const ctaClicks = Number(row[7]) || 0;
+      const checkoutAttempts = Number(row[8]) || 0;
+      const checkoutStarted = Number(row[9]) || 0;
+      const checkoutRedirected = Number(row[10]) || 0;
+      const checkoutSuccess = Number(row[11]) || 0;
+      const checkoutCancelled = Number(row[12]) || 0;
+      const checkoutErrors = Number(row[13]) || 0;
 
-      const ctaClicks = landingCtaClicks + pricingCtaClicks + neekoClicks + productCtaClicks;
       const conversionRate = checkoutStarted > 0
         ? Math.round((checkoutSuccess / checkoutStarted) * 100)
         : 0;
@@ -466,11 +472,15 @@ async function getFunnelData(
         landing_cta_clicks: landingCtaClicks,
         pricing_cta_clicks: pricingCtaClicks,
         neeko_plus_clicks: neekoClicks,
-        product_cta_clicks: productCtaClicks,
+        // product_cta_clicks kept for backward compat — same as cta_clicks (canonical)
+        product_cta_clicks: ctaClicks,
         cta_clicks: ctaClicks,
+        checkout_attempts: checkoutAttempts,
         checkout_started: checkoutStarted,
+        checkout_redirected: checkoutRedirected,
         checkout_success: checkoutSuccess,
         checkout_cancelled: checkoutCancelled,
+        checkout_errors: checkoutErrors,
         conversion_rate: conversionRate,
         // Conversion rates (%)
         rates: {
@@ -487,7 +497,7 @@ async function getFunnelData(
           checkout_to_success: clamp(checkoutStarted > 0 ? Math.round((1 - checkoutSuccess / checkoutStarted) * 100) : 0),
         },
         // Explains funnel methodology to admin
-        funnel_note: "Event-count funnel — stages count distinct events, not sequential user paths. CTA clicks include banner/mobile CTAs and can exceed gate views.",
+        funnel_note: "Event-count funnel — stages count distinct events, not sequential user paths. cta_clicks = all cta_clicked events (canonical). CTA sub-counts (landing/pricing/neeko) are non-overlapping location filters on the same event set.",
       };
     }
     return {};
@@ -674,14 +684,8 @@ async function getEngagedSessions(
         FROM (
           SELECT
             ${sessionIdExpr()} as sid,
-            countIf(event = '$pageview') as pageview_count,
-            countIf(event IN (
-              'cta_clicked',
-              'landing_cta_clicked','pricing_cta_clicked','neeko_plus_clicked',
-              'premium_gate_cta_clicked','free_games_cta_clicked','unlock_all_games_clicked',
-              'unlock_this_matchup_clicked','stat_board_upgrade_clicked','mobile_sticky_cta_clicked',
-              'marketing_cta_clicked','hero_cta_clicked','view_free_games_clicked','unlock_full_round_clicked'
-            )) > 0 as has_cta_click,
+            countIf(event IN ('page_viewed', '$pageview')) as pageview_count,
+            countIf(event = 'cta_clicked') > 0 as has_cta_click,
             countIf(event IN ('stat_board_filter_used','stat_board_player_expand','rankings_view','market_watch_view','edge_board_view')) > 0 as has_product_event
           FROM events
           WHERE timestamp >= now() - interval ${intervalExpr(hours, days)}
@@ -726,15 +730,9 @@ async function getSessionReviewShortlist(
       query: `
         SELECT
           ${sessionIdExpr()} as sid,
-          countIf(event = '$pageview') as page_views,
-          countIf(event IN (
-            'cta_clicked',
-            'landing_cta_clicked','pricing_cta_clicked','neeko_plus_clicked',
-            'premium_gate_cta_clicked','free_games_cta_clicked','unlock_all_games_clicked',
-            'unlock_this_matchup_clicked','stat_board_upgrade_clicked','mobile_sticky_cta_clicked',
-            'marketing_cta_clicked','hero_cta_clicked','view_free_games_clicked','unlock_full_round_clicked'
-          )) as cta_clicks,
-          countIf(event IN ('checkout_start_clicked', 'checkout_started')) as checkout_starts,
+          countIf(event IN ('page_viewed', '$pageview')) as page_views,
+          countIf(event = 'cta_clicked') as cta_clicks,
+          countIf(event IN ('checkout_attempted', 'checkout_start_clicked', 'checkout_started', 'checkout_session_created')) as checkout_starts,
           countIf(event IN ('stat_board_filter_used','stat_board_player_expand','rankings_view','market_watch_view','edge_board_view')) as product_events,
           min(timestamp) as session_start,
           max(timestamp) as session_end,
@@ -925,6 +923,61 @@ async function getTimeOnPage(
   }
 }
 
+async function getRecentConversions(
+  apiKey: string,
+  projectId: string,
+  host: string,
+  includeAdmin = false,
+): Promise<Array<Record<string, unknown>>> {
+  try {
+    const result = await queryPostHog(apiKey, projectId, host, {
+      kind: "HogQLQuery",
+      query: `
+        SELECT
+          event,
+          ${sessionIdExpr()} as sid,
+          coalesce(
+            NULLIF(JSONExtractString(properties, 'clean_page_path'), ''),
+            ${cleanPathExpr("properties.$current_url")}
+          ) as path,
+          JSONExtractString(properties, 'cta_location') as cta_location,
+          JSONExtractString(properties, 'plan') as plan,
+          JSONExtractString(properties, 'error') as error_msg,
+          properties.$os as os,
+          properties.$browser as browser,
+          timestamp
+        FROM events
+        WHERE event IN (
+          'cta_clicked',
+          'checkout_attempted', 'checkout_session_created', 'checkout_started',
+          'checkout_redirected', 'checkout_success', 'subscription_activated',
+          'checkout_cancelled', 'checkout_error',
+          'checkout_start_clicked', 'checkout_redirect_attempted',
+          'gate_viewed', 'locked_data_clicked'
+        )
+          AND ${adminExclusionWhere(includeAdmin)}
+        ORDER BY timestamp DESC
+        LIMIT 20
+      `,
+    });
+    const rows = (result as any)?.results ?? [];
+    return rows.map((row: unknown[]) => ({
+      event: row[0],
+      session_id: String(row[1] ?? "").slice(0, 16) + "…",
+      path: row[2],
+      cta_location: row[3],
+      plan: row[4],
+      error_msg: row[5],
+      os: row[6],
+      browser: row[7],
+      timestamp: row[8],
+    }));
+  } catch {
+    return [];
+  }
+}
+
+
 async function getMarketingInsights(
   apiKey: string,
   projectId: string,
@@ -933,7 +986,7 @@ async function getMarketingInsights(
   hours: number | null = null,
   includeAdmin = false,
 ): Promise<Record<string, unknown>> {
-  const [funnel, ctaPerf, devices, sessions, topPages, acquisition, sessionReview, sessionDuration, timeOnPage] = await Promise.allSettled([
+  const [funnel, ctaPerf, devices, sessions, topPages, acquisition, sessionReview, sessionDuration, timeOnPage, recentConversions] = await Promise.allSettled([
     getFunnelData(apiKey, projectId, host, days, hours, includeAdmin),
     getCtaPerformance(apiKey, projectId, host, days, hours, includeAdmin),
     getDeviceBreakdown(apiKey, projectId, host, days, hours, includeAdmin),
@@ -943,6 +996,7 @@ async function getMarketingInsights(
     getSessionReviewShortlist(apiKey, projectId, host, days, hours, includeAdmin),
     getSessionDurationMetrics(apiKey, projectId, host, days, hours, includeAdmin),
     getTimeOnPage(apiKey, projectId, host, days, hours, includeAdmin),
+    getRecentConversions(apiKey, projectId, host, includeAdmin),
   ]);
 
   const funnelData = funnel.status === "fulfilled" ? funnel.value : {};
@@ -954,6 +1008,7 @@ async function getMarketingInsights(
   const sessionReviewData = sessionReview.status === "fulfilled" ? sessionReview.value : [];
   const sdData = sessionDuration.status === "fulfilled" ? sessionDuration.value : { available: false };
   const topData = timeOnPage.status === "fulfilled" ? timeOnPage.value : [];
+  const recentConversionsData = recentConversions.status === "fulfilled" ? recentConversions.value : [];
 
   // Auto-generate behaviour insights
   const insights: string[] = [];
@@ -1064,6 +1119,7 @@ async function getMarketingInsights(
     session_review_shortlist: sessionReviewData,
     session_duration: sdData,
     time_on_page: topData,
+    recent_conversions: recentConversionsData,
     behaviour_insights: insights,
     recommended_actions: actions,
     data_notes: dataNotes,

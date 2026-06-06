@@ -370,11 +370,36 @@ export function trackCheckoutRedirectAttempted(params: {
 }
 
 export function trackCheckoutEvent(
-  event: "checkout_started" | "checkout_redirected" | "checkout_success" | "checkout_cancelled" | "checkout_error",
+  event:
+    | "checkout_attempted"
+    | "checkout_session_created"
+    | "checkout_started"
+    | "checkout_redirected"
+    | "checkout_success"
+    | "checkout_cancelled"
+    | "checkout_error",
   properties?: Record<string, unknown>,
 ) {
-  // Allow checkout_success even on admin routes (admin conversion test page)
+  // Allow checkout events even on admin routes (admin conversion test page)
   track(event, properties);
+}
+
+/**
+ * Best-effort PostHog flush before a page navigation.
+ * posthog-js queues events; this gives them ~300ms to ship before the browser unloads.
+ */
+export async function flushBeforeRedirect(): Promise<void> {
+  try {
+    await Promise.race([
+      new Promise<void>(resolve => {
+        posthog.capture("$flush", undefined);
+        resolve();
+      }),
+      new Promise<void>(resolve => setTimeout(resolve, 300)),
+    ]);
+  } catch {
+    // non-critical
+  }
 }
 
 /* =============================

@@ -16,9 +16,12 @@ interface FunnelData {
   neeko_plus_clicks: number;
   product_cta_clicks: number;
   cta_clicks: number;
+  checkout_attempts: number;
   checkout_started: number;
+  checkout_redirected: number;
   checkout_success: number;
   checkout_cancelled: number;
+  checkout_errors: number;
   conversion_rate: number;
   dropoffs: Record<string, number>;
 }
@@ -100,6 +103,18 @@ interface TimeOnPageRow {
   pageviews: number;
 }
 
+interface RecentConversionEvent {
+  event: string;
+  session_id: string;
+  path: string | null;
+  cta_location: string | null;
+  plan: string | null;
+  error_msg: string | null;
+  os: string | null;
+  browser: string | null;
+  timestamp: string;
+}
+
 interface InsightsData {
   posthog_available: boolean;
   funnel?: FunnelData;
@@ -111,6 +126,7 @@ interface InsightsData {
   top_pages?: TopPage[];
   acquisition?: { utms: AcquisitionRow[]; referrers: Array<{ referrer: string; sessions: number }> };
   session_review_shortlist?: SessionReviewRow[];
+  recent_conversions?: RecentConversionEvent[];
   behaviour_insights?: string[];
   recommended_actions?: string[];
   data_notes?: string[];
@@ -324,9 +340,12 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
     lines.push(`| Page Views | ${safeNumber(funnel.page_views)} | — |`);
     lines.push(`| Gate Views | ${safeNumber(funnel.gate_views)} | — |`);
     lines.push(`| CTA Clicks | ${safeNumber(funnel.cta_clicks)} | ${funnel.dropoffs?.views_to_cta ?? 0}% from views |`);
-    lines.push(`| Checkout Started | ${safeNumber(funnel.checkout_started)} | ${funnel.dropoffs?.cta_to_checkout ?? 0}% from CTA |`);
+    lines.push(`| Checkout Attempted | ${safeNumber(funnel.checkout_attempts)} | — |`);
+    lines.push(`| Checkout Session Created | ${safeNumber(funnel.checkout_started)} | ${funnel.dropoffs?.cta_to_checkout ?? 0}% from CTA |`);
+    lines.push(`| Checkout Redirected | ${safeNumber(funnel.checkout_redirected)} | — |`);
     lines.push(`| Checkout Success | ${safeNumber(funnel.checkout_success)} | ${funnel.dropoffs?.checkout_to_success ?? 0}% from starts |`);
     lines.push(`| Checkout Cancelled | ${safeNumber(funnel.checkout_cancelled)} | — |`);
+    lines.push(`| Checkout Errors | ${safeNumber(funnel.checkout_errors)} | — |`);
     lines.push(``);
     lines.push(`Conversion Rates:`);
     lines.push(`- View → Gate: ${rate(gateViews, views)}`);
@@ -360,7 +379,9 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
   // ── 4. Top CTA Events
   lines.push(`## 4. Top CTA Events`);
   const totalCtaClicks = cta.reduce((s, r) => s + safeInt(r.clicks), 0);
-  lines.push(`Total CTA clicks: ${totalCtaClicks.toLocaleString()}`);
+  lines.push(`Total CTA clicks: ${totalCtaClicks.toLocaleString()} (sum of rows below = all cta_clicked events grouped by location)`);
+  lines.push(`Executive Summary CTA Clicks: ${safeInt(funnel?.cta_clicks)} (count of all cta_clicked events — same event, different aggregation)`);
+  lines.push(`Note: both counts use only the canonical "cta_clicked" event. All CTA helpers (trackLandingCTA, trackPricingCTA, etc.) delegate to trackCTA() which fires "cta_clicked". Difference between totals reflects grouping by location vs raw count.`);
   if (cta.length > 0) {
     lines.push(``);
     lines.push(`| Event | Button | Section | Clicks |`);
@@ -672,7 +693,9 @@ function FunnelCard({ funnel, onCopy }: { funnel: FunnelData; onCopy?: () => str
     { stage: "page_views", users: safeInt(funnel.page_views) },
     { stage: "gate_views", users: safeInt(funnel.gate_views) },
     { stage: "cta_clicks", users: safeInt(funnel.cta_clicks) },
+    { stage: "checkout_attempted", users: safeInt(funnel.checkout_attempts) },
     { stage: "checkout_started", users: safeInt(funnel.checkout_started) },
+    { stage: "checkout_redirected", users: safeInt(funnel.checkout_redirected) },
     { stage: "checkout_success", users: safeInt(funnel.checkout_success) },
   ];
   const top = stages[0]?.users ?? 0;
@@ -893,6 +916,69 @@ function SessionDurationPanel({
   );
 }
 
+function RecentConversionsPanel({ events }: { events: RecentConversionEvent[] }) {
+  const [open, setOpen] = useState(false);
+
+  const eventColor = (event: string) => {
+    if (event.includes("success") || event.includes("activated")) return "text-emerald-400";
+    if (event.includes("error") || event.includes("cancelled")) return "text-red-400";
+    if (event.includes("redirected") || event.includes("started") || event.includes("created")) return "text-sky-400";
+    if (event.includes("cta_clicked") || event.includes("checkout_attempted")) return "text-amber-400";
+    return "text-muted-foreground/70";
+  };
+
+  return (
+    <div className="rounded-lg border border-border/60 bg-card">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-5 py-3 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-amber-500/70 animate-pulse" />
+          Analytics Debug — Last 20 Conversion Events
+        </span>
+        <span className="text-[11px] font-normal text-muted-foreground/50">{open ? "hide" : "show"}</span>
+      </button>
+      {open && (
+        <div className="border-t border-border/40 px-5 pb-4 pt-3 overflow-x-auto">
+          {events.length === 0 ? (
+            <p className="text-xs text-muted-foreground/50 italic">No conversion events in the last 30 days.</p>
+          ) : (
+            <table className="w-full text-xs min-w-[640px]">
+              <thead>
+                <tr className="border-b border-border/40">
+                  <th className="text-left font-medium text-muted-foreground pb-2 pr-3">Event</th>
+                  <th className="text-left font-medium text-muted-foreground pb-2 pr-3">Path</th>
+                  <th className="text-left font-medium text-muted-foreground pb-2 pr-3">CTA / Plan</th>
+                  <th className="text-left font-medium text-muted-foreground pb-2 pr-3">Device</th>
+                  <th className="text-right font-medium text-muted-foreground pb-2">Time</th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.map((ev, i) => (
+                  <tr key={i} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
+                    <td className={`py-1.5 pr-3 font-mono text-[11px] font-semibold ${eventColor(ev.event)}`}>{ev.event}</td>
+                    <td className="py-1.5 pr-3 text-muted-foreground truncate max-w-[160px]">{ev.path || "—"}</td>
+                    <td className="py-1.5 pr-3 text-muted-foreground/70 text-[11px]">
+                      {[ev.cta_location, ev.plan, ev.error_msg].filter(Boolean).join(" / ") || "—"}
+                    </td>
+                    <td className="py-1.5 pr-3 text-muted-foreground/60 text-[11px]">
+                      {[ev.os, ev.browser].filter(Boolean).join(" / ") || "—"}
+                    </td>
+                    <td className="py-1.5 text-right tabular-nums text-muted-foreground/50 text-[11px]">
+                      {ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SetupPanel() {
   return (
     <div className="rounded-lg border border-amber-500/30 bg-amber-950/10 p-6 flex flex-col items-center gap-3 text-center">
@@ -1007,6 +1093,7 @@ export default function AdminMarketingInsights() {
 
   const engagementRate = safeInt(sessions?.engagement_rate);
   const totalCtaClicks = cta.reduce((s, r) => s + safeInt(r.clicks), 0);
+  const recentConversions = data?.recent_conversions ?? [];
 
   const copyDisabled = loading || !data || !data.posthog_available || !isDataReadyForRange;
 
@@ -1460,6 +1547,9 @@ export default function AdminMarketingInsights() {
               </div>
             </div>
           )}
+
+          {/* Analytics Debug Panel */}
+          <RecentConversionsPanel events={recentConversions} />
 
           {/* Behaviour insights + Recommended actions */}
           {(insights.length > 0 || actions.length > 0) && (
