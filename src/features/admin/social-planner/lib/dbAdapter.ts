@@ -4,7 +4,7 @@
 import type {
   SocialPost, AFLGame, AFLPlayerStat,
   ContentType, DayOfWeek, Platform, PostStatus,
-  CarouselSlide, ConfidenceTier,
+  CarouselSlide, ConfidenceTier, PlayerAvailabilityStatus,
 } from "../types";
 
 // ─── UUID validation ──────────────────────────────────────────────────────────
@@ -90,6 +90,10 @@ export interface DbPlayerStat {
   last_five: number[];
   confidence_tier: string;
   include_in_free_post: boolean;
+  // Canonical player status from player_rankings_cache
+  player_status: string | null;
+  manual_status: string | null;
+  is_available: boolean | null;
 }
 
 // ─── Converters ───────────────────────────────────────────────────────────────
@@ -115,6 +119,16 @@ export function dbGameToAFLGame(row: DbGame): AFLGame {
 }
 
 export function dbStatToAFLPlayerStat(row: DbPlayerStat): AFLPlayerStat {
+  const availabilityStatus = resolveAvailabilityStatus(row.player_status, row.is_available);
+  console.debug("[dbStatToAFLPlayerStat]", row.player_name, row.stat_type, row.threshold_label, {
+    player_status: row.player_status,
+    manual_status: row.manual_status,
+    is_available: row.is_available,
+    resolved: availabilityStatus,
+    last_five: row.last_five,
+    l5_avg: row.l5_avg,
+    record_label: row.record_label,
+  });
   return {
     id: row.id,
     playerId: row.player_id,
@@ -135,6 +149,9 @@ export function dbStatToAFLPlayerStat(row: DbPlayerStat): AFLPlayerStat {
     source: "supabase",
     confidenceTier: row.confidence_tier as ConfidenceTier,
     includeInFreePost: row.include_in_free_post,
+    availabilityStatus,
+    availabilityReason: row.manual_status ?? null,
+    expectedToPlay: row.is_available ?? true,
   };
 }
 
@@ -218,4 +235,24 @@ function normaliseDayOfWeek(raw: string): DayOfWeek {
     Thu: "Thu", Fri: "Fri", Sat: "Sat", Sun: "Sun",
   };
   return map[raw] ?? "Mon";
+}
+
+/** Map canonical rankings-cache status values to PlayerAvailabilityStatus */
+function resolveAvailabilityStatus(
+  playerStatus: string | null,
+  isAvailable: boolean | null,
+): PlayerAvailabilityStatus {
+  if (!playerStatus) {
+    return isAvailable === false ? "unknown" : "available";
+  }
+  const s = playerStatus.toUpperCase();
+  if (s === "OUT" || s === "INJURED") return "injured";
+  if (s === "SUSPENDED") return "suspended";
+  if (s === "TEST") return "test";
+  if (s === "MANAGED") return "managed";
+  if (s === "OMITTED") return "omitted";
+  if (s === "DOUBTFUL") return "doubtful";
+  if (s === "INACTIVE") return "inactive";
+  if (s === "AVAILABLE") return "available";
+  return "unknown";
 }
