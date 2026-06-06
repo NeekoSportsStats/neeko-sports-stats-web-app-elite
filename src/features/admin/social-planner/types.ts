@@ -176,6 +176,25 @@ export interface CarouselSlide {
 
 // ─── Social Post ──────────────────────────────────────────────────────────────
 
+/** Selected player+stat for a spotlight post — richer than bare AFLPlayerStat */
+export interface SpotlightSelection {
+  playerId: string;
+  playerName: string;
+  team: string;
+  opponent: string;
+  gameId: string;
+  gameLabel: string;
+  statType: "disposals" | "goals";
+  threshold: number;
+  thresholdLabel: string;
+  recordLabel: string;
+  l5Avg: number;
+  lastFive: number[];
+  projection?: number;
+  availabilityStatus?: PlayerAvailabilityStatus;
+  availabilityReason?: string | null;
+}
+
 export interface SocialPost {
   id: string;             // UUID once saved; crypto.randomUUID() in-memory before save
   clientPostKey?: string; // Original in-memory key preserved for stable React keys
@@ -201,6 +220,10 @@ export interface SocialPost {
   selectedPlayers: AFLPlayerStat[];
   createdAt: string;
   updatedAt: string;
+  // Player spotlight selection (player_spotlight / player_spotlight_duo)
+  selectedSpotlight?: SpotlightSelection[];
+  /** True when selectedSpotlight changed and imagePrompt has not been rebuilt */
+  spotlightPromptStale?: boolean;
   // Visibility mode (match_stat_board only)
   visibilityMode?: ContentVisibilityMode;
   visibilityBadge?: string;

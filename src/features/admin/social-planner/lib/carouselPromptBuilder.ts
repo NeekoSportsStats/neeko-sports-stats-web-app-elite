@@ -10,7 +10,7 @@
  * - No bookmaker branding
  */
 
-import type { SocialPost, CarouselSlide, StatBoardRow, ContentVisibilityMode, PlayerAvailabilityStatus } from "../types";
+import type { SocialPost, CarouselSlide, StatBoardRow, ContentVisibilityMode, PlayerAvailabilityStatus, SpotlightSelection } from "../types";
 import { EXCLUDED_STATUSES, WARNING_STATUSES } from "../types";
 
 export type PromptMode = "full_graphic" | "background_only" | "template_export";
@@ -230,13 +230,18 @@ function buildPlayerSpotlightSlideSection(
   slide: CarouselSlide,
   post: SocialPost
 ): string {
+  // Prefer rich selectedSpotlight data; fall back to legacy slide.rows
+  const sel = post.selectedSpotlight?.[0];
+  if (sel) {
+    return buildSpotlightPromptFromSelection(sel, post, slideNum);
+  }
+
   const row = slide.rows?.[0];
   if (!row) {
     return `SLIDE ${slideNum} — PLAYER SPOTLIGHT
 WARNING: No player selected. Select a player before generating the full player spotlight prompt.`;
   }
-  const isDisposal = slide.title.toLowerCase().includes("disposal") ||
-    (row.threshold15 != null || row.threshold20 != null);
+
   return `SLIDE ${slideNum} — PLAYER SPOTLIGHT: ${slide.title}
 Text:
 ${row.playerName}
@@ -249,6 +254,71 @@ High-energy matchday atmosphere, stadium lights, crowd blur.
 Team colour paint strokes. Floating stat card in bottom third.
 Gold main record. White player name. Dark navy/black base.
 ${BRAND} branding.`;
+}
+
+/** Build the full Player Spotlight image prompt from rich SpotlightSelection data */
+function buildSpotlightPromptFromSelection(
+  sel: SpotlightSelection,
+  post: SocialPost,
+  slideNum = 1
+): string {
+  const statTypeWord = sel.statType === "goals" ? "goals" : "disposals";
+  const last5 = sel.lastFive.length > 0
+    ? sel.lastFive.join(" · ")
+    : "Last 5 data unavailable";
+  const matchCtx = sel.gameLabel || `${post.homeTeam ?? "Home"} v ${post.awayTeam ?? "Away"}`;
+
+  return `SLIDE ${slideNum} — PLAYER SPOTLIGHT: ${sel.playerName}
+
+Create a premium AFL Player Spotlight graphic for ${BRAND}.
+
+Use the supplied player photo only.
+
+Text on image:
+${sel.playerName}
+${sel.recordLabel}
+at ${sel.thresholdLabel} ${statTypeWord}
+L5 avg ${sel.l5Avg.toFixed(1)}
+Last 5: ${last5}
+
+Match context:
+${matchCtx}
+Round ${post.round}
+AFL ${post.season}
+
+Design:
+High-energy AFL matchday atmosphere.
+Dark navy / black base.
+Stadium lights.
+Crowd blur.
+Team colour accents for ${sel.team}.
+Floating stat card in the bottom third.
+Large ratio record as the hero stat.
+Use green for strong/elite records, not yellow/gold.
+Use Neeko gold only for branding, borders, dividers and CTA accents.
+White player name.
+Bold condensed sports typography.
+${BRAND} branding visible but clean.
+
+Important:
+- Use the supplied player photo only.
+- Do not invent a different player.
+- No page numbers.
+- No "slide 1 of 1".
+- No gambling language.
+- No odds.
+- No bookmaker branding.
+- No tipster phrasing.
+- Do not include words like bet, odds, banker, lock, picks, target, line, clearing the line, multi, overs, unders.
+- Use the ratio record as the main stat, not the percentage.
+- Format: 1080x1350 portrait.`;
+}
+
+/** Public builder — called by the Refresh AI Prompt button */
+export function buildSpotlightImagePrompt(post: SocialPost): string {
+  const sel = post.selectedSpotlight?.[0];
+  if (!sel) return "";
+  return buildSpotlightPromptFromSelection(sel, post);
 }
 
 function buildGenericSlideSection(slideNum: number, slide: CarouselSlide): string {
@@ -547,6 +617,63 @@ export function buildFullPostPackage(post: SocialPost): string {
     "",
     "SLIDE-BY-SLIDE PROMPTS:",
     buildSlidePromptPackage(post),
+    "",
+    "─".repeat(60),
+    "",
+    safetyLine,
+  ].join("\n");
+}
+
+// ─── Public: Spotlight Full Package ──────────────────────────────────────────
+
+export function buildSpotlightFullPackage(post: SocialPost): string {
+  const sel = post.selectedSpotlight?.[0];
+  const safetyLine = post.warnings.length === 0
+    ? "SAFETY: Clean — no issues found."
+    : `SAFETY: ${post.warnings.length} issue(s) — review before posting.\n${post.warnings.map(w => `  • ${w}`).join("\n")}`;
+
+  if (!sel) {
+    return [
+      `POST TITLE:`,
+      post.title,
+      "",
+      "SELECTED STAT:",
+      "No player selected — choose a player in the Game & Players tab.",
+      "",
+      `HOOK:`,
+      post.hook || "(empty)",
+      "",
+      `CAPTION:`,
+      post.caption || "(empty)",
+      "",
+      `IMAGE PROMPT:`,
+      "(empty — select a player and refresh AI prompt)",
+      "",
+      safetyLine,
+    ].join("\n");
+  }
+
+  const statTypeWord = sel.statType === "goals" ? "goals" : "disposals";
+  const last5 = sel.lastFive.length > 0 ? sel.lastFive.join(" · ") : "unavailable";
+
+  return [
+    `POST TITLE:`,
+    post.title,
+    "",
+    `SELECTED STAT:`,
+    sel.playerName,
+    `${sel.recordLabel} at ${sel.thresholdLabel} ${statTypeWord}`,
+    `L5 avg ${sel.l5Avg.toFixed(1)}`,
+    `Last 5: ${last5}`,
+    "",
+    `HOOK:`,
+    post.hook || "(empty)",
+    "",
+    `CAPTION:`,
+    post.caption || "(empty)",
+    "",
+    `IMAGE PROMPT:`,
+    post.imagePrompt || "(empty — refresh AI prompt)",
     "",
     "─".repeat(60),
     "",

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye, Search, Import as SortAsc } from "lucide-react";
-import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat, PlayerAvailabilityStatus } from "../types";
+import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat, PlayerAvailabilityStatus, SpotlightSelection } from "../types";
 import { EXCLUDED_STATUSES, WARNING_STATUSES } from "../types";
 import type { MatchBoardPlayerRow } from "../lib/rowAggregator";
 import { effectiveStatus, isAvailabilityWarning, isExcludedStatus } from "../hooks/usePlayerAvailability";
@@ -18,6 +18,8 @@ import {
   buildBackgroundPromptPackage,
   buildFullSlideTextPackage,
   buildFullPostPackage,
+  buildSpotlightImagePrompt,
+  buildSpotlightFullPackage,
   checkPromptHealth,
   type PromptMode,
 } from "../lib/carouselPromptBuilder";
@@ -107,7 +109,16 @@ export function PostEditorDrawer({ post, allPlayers = [], onClose, onSave }: Pos
   );
   const promptHealth = checkPromptHealth(edited);
   const hasUnresolvedTokens = /\{[a-zA-Z_]+\}/.test(edited.hook + edited.caption);
+
+  // Spotlight-specific readiness checks
+  const isSpotlight = edited.contentType === "player_spotlight" || edited.contentType === "player_spotlight_duo";
+  const spotlightMissingPlayer = isSpotlight && (!edited.selectedSpotlight || edited.selectedSpotlight.length === 0);
+  const spotlightMissingLastFive = isSpotlight && edited.selectedSpotlight != null &&
+    edited.selectedSpotlight.some(s => !s.lastFive || s.lastFive.length === 0);
+  const spotlightPromptStale = isSpotlight && !!edited.spotlightPromptStale;
+
   const isReady = !hasMissingRequired && !hasUnavailableSelectedRows && promptHealth.isComplete && !hasUnresolvedTokens
+    && !spotlightMissingPlayer && !spotlightMissingLastFive && !spotlightPromptStale
     && edited.carouselSlides.length > 0 && edited.hook.length > 0 && edited.caption.length > 0;
   const canMarkReady = !hasSafetyIssues && isReady && edited.status !== "ready";
 
@@ -231,8 +242,14 @@ export function PostEditorDrawer({ post, allPlayers = [], onClose, onSave }: Pos
           {tab === "players"    && <PlayersTab edited={edited} allPlayers={allPlayers} onUpdate={post => setEdited(post)} />}
           {tab === "slides"     && <SlidesTab edited={edited} />}
           {tab === "copy_paste" && <HookCaptionTab edited={edited} update={update} />}
-          {tab === "image"      && <ImagePromptsTab edited={edited} update={update} />}
-          {tab === "export"     && <ExportTab edited={edited} />}
+          {tab === "image"      && <ImagePromptsTab edited={edited} update={update} onRefreshSpotlight={() => {
+            const next = { ...edited, imagePrompt: buildSpotlightImagePrompt(edited), spotlightPromptStale: false, updatedAt: new Date().toISOString() };
+            setEdited(next);
+          }} />}
+          {tab === "export"     && <ExportTab edited={edited} onRefreshSpotlight={() => {
+            const next = { ...edited, imagePrompt: buildSpotlightImagePrompt(edited), spotlightPromptStale: false, updatedAt: new Date().toISOString() };
+            setEdited(next);
+          }} />}
           {tab === "safety"     && (
             <SafetyCheckPanel
               hookResult={hookSafety}
@@ -272,6 +289,15 @@ export function PostEditorDrawer({ post, allPlayers = [], onClose, onSave }: Pos
             )}
             {!hasSafetyIssues && !hasMissingRequired && !hasUnavailableSelectedRows && promptHealth.isComplete && hasUnresolvedTokens && (
               <span className="hidden sm:inline text-[10px] text-amber-400">Unresolved tokens</span>
+            )}
+            {isSpotlight && spotlightMissingPlayer && (
+              <span className="hidden sm:inline text-[10px] text-amber-400">No player selected</span>
+            )}
+            {isSpotlight && !spotlightMissingPlayer && spotlightMissingLastFive && (
+              <span className="hidden sm:inline text-[10px] text-amber-400">Last 5 data missing</span>
+            )}
+            {isSpotlight && spotlightPromptStale && (
+              <span className="hidden sm:inline text-[10px] text-amber-400">Prompt out of date</span>
             )}
             {canMarkReady && (
               <button
@@ -910,6 +936,29 @@ function AggregatedRowSection({
 
 type SpotlightSortKey = "bestRecord" | "gamesPlayed" | "l5Avg" | "projection";
 
+function buildSelectionFromStat(p: AFLPlayerStat, post: SocialPost): SpotlightSelection {
+  const home = post.homeTeam ?? "";
+  const away = post.awayTeam ?? "";
+  const label = home && away ? `${home} vs ${away}` : post.title;
+  return {
+    playerId:           p.playerId,
+    playerName:         p.playerName,
+    team:               p.team,
+    opponent:           p.opponent,
+    gameId:             p.gameId,
+    gameLabel:          label,
+    statType:           p.statType,
+    threshold:          p.threshold,
+    thresholdLabel:     p.thresholdLabel,
+    recordLabel:        p.recordLabel,
+    l5Avg:              p.l5Avg,
+    lastFive:           p.lastFive ?? [],
+    projection:         p.projection,
+    availabilityStatus: p.availabilityStatus,
+    availabilityReason: p.availabilityReason ?? null,
+  };
+}
+
 function SpotlightPlayerSelector({
   post,
   allPlayers,
@@ -924,21 +973,22 @@ function SpotlightPlayerSelector({
 
   const [search, setSearch] = useState("");
   const [statFilter, setStatFilter] = useState<"any" | "disposals" | "goals">("any");
+  const [thresholdFilter, setThresholdFilter] = useState<string>("any");
   const [sortKey, setSortKey] = useState<SpotlightSortKey>("bestRecord");
 
-  // Deduplicate players: best threshold row per playerId
+  // All unique thresholds available in the data (for the threshold picker)
+  const availableThresholds = useMemo(() => {
+    const seen = new Set<string>();
+    for (const p of allPlayers) seen.add(p.thresholdLabel);
+    return Array.from(seen).sort();
+  }, [allPlayers]);
+
+  // All rows (not deduped) — spotlight can show any threshold row per player
   const candidates = useMemo(() => {
-    const bestByPlayer = new Map<string, AFLPlayerStat>();
-    for (const p of allPlayers) {
-      if (p.confidenceTier === "thin_sample") continue;
-      const existing = bestByPlayer.get(p.playerId);
-      if (!existing || p.percent > existing.percent || p.gamesPlayed > existing.gamesPlayed) {
-        bestByPlayer.set(p.playerId, p);
-      }
-    }
-    let list = Array.from(bestByPlayer.values());
+    let list = allPlayers.filter(p => p.confidenceTier !== "thin_sample");
 
     if (statFilter !== "any") list = list.filter(p => p.statType === statFilter);
+    if (thresholdFilter !== "any") list = list.filter(p => p.thresholdLabel === thresholdFilter);
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(p => p.playerName.toLowerCase().includes(q) || p.team.toLowerCase().includes(q));
@@ -954,25 +1004,40 @@ function SpotlightPlayerSelector({
     });
 
     return list;
-  }, [allPlayers, statFilter, search, sortKey]);
+  }, [allPlayers, statFilter, thresholdFilter, search, sortKey]);
 
-  const selectedIds = new Set(post.selectedPlayers.map(p => p.playerId));
+  // Selected spotlight keys for quick lookup
+  const selectedKeys = new Set(
+    (post.selectedSpotlight ?? []).map(s => `${s.playerId}:${s.statType}:${s.threshold}`)
+  );
 
   function selectPlayer(p: AFLPlayerStat) {
-    let next: AFLPlayerStat[];
-    if (selectedIds.has(p.playerId)) {
+    const key = `${p.playerId}:${p.statType}:${p.threshold}`;
+    const sel = buildSelectionFromStat(p, post);
+    let nextSpotlight: SpotlightSelection[];
+    let nextPlayers: AFLPlayerStat[];
+
+    if (selectedKeys.has(key)) {
       // Deselect
-      next = post.selectedPlayers.filter(s => s.playerId !== p.playerId);
-    } else if (post.selectedPlayers.length >= maxSelect) {
+      nextSpotlight = (post.selectedSpotlight ?? []).filter(
+        s => !(s.playerId === p.playerId && s.statType === p.statType && s.threshold === p.threshold)
+      );
+      nextPlayers = post.selectedPlayers.filter(s => s.playerId !== p.playerId);
+    } else if ((post.selectedSpotlight ?? []).length >= maxSelect) {
       // Replace last
-      next = [...post.selectedPlayers.slice(0, maxSelect - 1), p];
+      nextSpotlight = [...(post.selectedSpotlight ?? []).slice(0, maxSelect - 1), sel];
+      nextPlayers = [...post.selectedPlayers.slice(0, maxSelect - 1), p];
     } else {
-      next = [...post.selectedPlayers, p];
+      nextSpotlight = [...(post.selectedSpotlight ?? []), sel];
+      nextPlayers = [...post.selectedPlayers, p];
     }
+
     onUpdate({
       ...post,
-      selectedPlayers: next,
-      title: buildSpotlightTitle(post.contentType, next),
+      selectedSpotlight: nextSpotlight,
+      selectedPlayers:   nextPlayers,
+      spotlightPromptStale: nextSpotlight.length > 0,
+      title: buildSpotlightTitle(post.contentType, nextPlayers),
       updatedAt: new Date().toISOString(),
     });
   }
@@ -982,36 +1047,77 @@ function SpotlightPlayerSelector({
       {/* Currently selected */}
       <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-3">
         <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">
-          Selected ({post.selectedPlayers.length}/{maxSelect})
+          Selected ({(post.selectedSpotlight ?? []).length}/{maxSelect})
         </p>
-        {post.selectedPlayers.length === 0 ? (
+        {(post.selectedSpotlight ?? []).length === 0 ? (
           <p className="text-[10px] text-zinc-600">No players selected — choose from candidates below.</p>
         ) : (
           <div className="space-y-1.5">
-            {post.selectedPlayers.map(p => (
-              <div key={p.playerId} className={`flex items-center justify-between gap-2 rounded px-2.5 py-1.5 border ${
-                p.availabilityStatus && EXCLUDED_STATUSES.has(p.availabilityStatus) && !p.manualAvailabilityOverride
-                  ? "bg-red-950/20 border-red-800/40"
-                  : "bg-sky-950/30 border-sky-800/40"
-              }`}>
-                <div>
-                  <span className={`text-xs font-medium ${
-                    p.availabilityStatus && EXCLUDED_STATUSES.has(p.availabilityStatus) && !p.manualAvailabilityOverride
-                      ? "text-red-300"
-                      : "text-sky-200"
-                  }`}>{p.playerName}</span>
-                  <span className="text-[10px] text-zinc-500 ml-1.5">{p.team} · {p.statType} · {p.thresholdLabel}</span>
-                  <AvailabilityBadge status={p.availabilityStatus} reason={p.availabilityReason} />
+            {(post.selectedSpotlight ?? []).map(s => {
+              const isExcluded = s.availabilityStatus && EXCLUDED_STATUSES.has(s.availabilityStatus);
+              return (
+                <div key={`${s.playerId}:${s.statType}:${s.threshold}`} className={`rounded border px-2.5 py-1.5 ${
+                  isExcluded ? "bg-red-950/20 border-red-800/40" : "bg-sky-950/30 border-sky-800/40"
+                }`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <span className={`text-xs font-medium ${isExcluded ? "text-red-300" : "text-sky-200"}`}>
+                        {s.playerName}
+                      </span>
+                      <span className="text-[10px] text-zinc-500 ml-1.5">
+                        {s.team} · {s.statType === "disposals" ? "Disp" : "Goals"} {s.thresholdLabel} · {s.recordLabel}
+                      </span>
+                      <AvailabilityBadge status={s.availabilityStatus} reason={s.availabilityReason} />
+                    </div>
+                    <button
+                      onClick={() => {
+                        const nextSpotlight = (post.selectedSpotlight ?? []).filter(
+                          x => !(x.playerId === s.playerId && x.statType === s.statType && x.threshold === s.threshold)
+                        );
+                        const nextPlayers = post.selectedPlayers.filter(p => p.playerId !== s.playerId);
+                        onUpdate({
+                          ...post,
+                          selectedSpotlight: nextSpotlight,
+                          selectedPlayers: nextPlayers,
+                          spotlightPromptStale: nextSpotlight.length > 0,
+                          title: buildSpotlightTitle(post.contentType, nextPlayers),
+                          updatedAt: new Date().toISOString(),
+                        });
+                      }}
+                      className="text-[9px] text-zinc-500 hover:text-red-400 transition-colors shrink-0"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  {/* L5 data preview */}
+                  {s.lastFive && s.lastFive.length > 0 ? (
+                    <div className="mt-1 flex items-center gap-2">
+                      <span className="text-[9px] text-zinc-600">L5:</span>
+                      <div className="flex gap-1">
+                        {s.lastFive.map((v, i) => (
+                          <span key={i} className={`text-[9px] font-mono px-1 py-0.5 rounded ${
+                            v >= s.threshold ? "text-emerald-400 bg-emerald-950/40" : "text-zinc-500 bg-zinc-800/60"
+                          }`}>{v}</span>
+                        ))}
+                      </div>
+                      <span className="text-[9px] text-zinc-600">avg {s.l5Avg.toFixed(1)}</span>
+                      {s.projection != null && (
+                        <span className="text-[9px] text-sky-500">proj {s.projection.toFixed(1)}</span>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-[9px] text-amber-400 mt-1">No Last 5 data — prompt will be incomplete.</p>
+                  )}
                 </div>
-                <button
-                  onClick={() => selectPlayer(p)}
-                  className="text-[9px] text-zinc-500 hover:text-red-400 transition-colors"
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
+              );
+            })}
           </div>
+        )}
+        {post.spotlightPromptStale && (post.selectedSpotlight ?? []).length > 0 && (
+          <p className="text-[9px] text-amber-400 mt-2 flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3 shrink-0" />
+            Prompt out of date — refresh in Image Prompts tab.
+          </p>
         )}
       </div>
 
@@ -1029,12 +1135,22 @@ function SpotlightPlayerSelector({
         </div>
         <select
           value={statFilter}
-          onChange={e => setStatFilter(e.target.value as typeof statFilter)}
+          onChange={e => { setStatFilter(e.target.value as typeof statFilter); setThresholdFilter("any"); }}
           className="text-[11px] bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-300 focus:outline-none focus:border-sky-600"
         >
           <option value="any">Any stat</option>
           <option value="disposals">Disposals</option>
           <option value="goals">Goals</option>
+        </select>
+        <select
+          value={thresholdFilter}
+          onChange={e => setThresholdFilter(e.target.value)}
+          className="text-[11px] bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-300 focus:outline-none focus:border-sky-600"
+        >
+          <option value="any">Any threshold</option>
+          {availableThresholds.map(t => (
+            <option key={t} value={t}>{t}</option>
+          ))}
         </select>
         <select
           value={sortKey}
@@ -1067,17 +1183,19 @@ function SpotlightPlayerSelector({
                   <th className="text-left px-3 py-1.5 text-zinc-500 font-medium">Player</th>
                   <th className="text-left px-2 py-1.5 text-zinc-500 font-medium">Stat</th>
                   <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">Record</th>
-                  <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">L5</th>
-                  <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">GP</th>
+                  <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">L5 Avg</th>
+                  <th className="text-right px-2 py-1.5 text-zinc-500 font-medium">Last 5</th>
                   <th className="px-2 py-1.5 text-zinc-500 font-medium w-16" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/20">
-                {candidates.slice(0, 40).map(p => {
-                  const isSelected = selectedIds.has(p.playerId);
+                {candidates.slice(0, 50).map(p => {
+                  const key = `${p.playerId}:${p.statType}:${p.threshold}`;
+                  const isSelected = selectedKeys.has(key);
+                  const missingL5 = !p.lastFive || p.lastFive.length === 0;
                   return (
                     <tr
-                      key={`${p.playerId}:${p.statType}`}
+                      key={key}
                       className={`transition-colors ${isSelected ? "bg-sky-950/30" : "hover:bg-zinc-800/30"}`}
                     >
                       <td className="px-3 py-1.5">
@@ -1090,7 +1208,17 @@ function SpotlightPlayerSelector({
                       </td>
                       <td className="px-2 py-1.5 text-right font-mono text-zinc-300">{p.recordLabel}</td>
                       <td className="px-2 py-1.5 text-right font-mono text-zinc-400">{p.l5Avg.toFixed(1)}</td>
-                      <td className="px-2 py-1.5 text-right font-mono text-zinc-500">{p.gamesPlayed}</td>
+                      <td className="px-2 py-1.5 text-right">
+                        {missingL5 ? (
+                          <span className="text-amber-500 text-[9px]">no data</span>
+                        ) : (
+                          <div className="flex gap-0.5 justify-end">
+                            {p.lastFive!.map((v, i) => (
+                              <span key={i} className={`text-[9px] font-mono px-0.5 ${v >= p.threshold ? "text-emerald-400" : "text-zinc-600"}`}>{v}</span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
                       <td className="px-2 py-1.5 text-right">
                         <button
                           onClick={() => selectPlayer(p)}
@@ -1109,9 +1237,9 @@ function SpotlightPlayerSelector({
               </tbody>
             </table>
           </div>
-          {candidates.length > 40 && (
+          {candidates.length > 50 && (
             <p className="text-[10px] text-zinc-600 text-center py-2 border-t border-zinc-800/40">
-              Showing 40 of {candidates.length} — refine your search to narrow results.
+              Showing 50 of {candidates.length} — refine your search to narrow results.
             </p>
           )}
         </div>
@@ -1522,9 +1650,11 @@ const PROMPT_MODES: Array<{ value: PromptMode; label: string; desc: string }> = 
 function ImagePromptsTab({
   edited,
   update,
+  onRefreshSpotlight,
 }: {
   edited: SocialPost;
   update: <K extends keyof SocialPost>(key: K, value: SocialPost[K]) => void;
+  onRefreshSpotlight?: () => void;
 }) {
   const [mode, setMode] = useState<PromptMode>(edited.promptMode ?? "full_graphic");
   const health = checkPromptHealth(edited);
@@ -1541,8 +1671,50 @@ function ImagePromptsTab({
     update("promptMode", newMode);
   }
 
+  const isSpotlightPost = edited.contentType === "player_spotlight" || edited.contentType === "player_spotlight_duo";
+  const spotlightPrompt = isSpotlightPost ? buildSpotlightImagePrompt(edited) : null;
+
   return (
     <div className="space-y-5">
+
+      {/* Spotlight prompt section */}
+      {isSpotlightPost && (
+        <div className="rounded-lg bg-zinc-900 border border-zinc-800 overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800/60">
+            <div className="flex items-center gap-2">
+              <Image className="w-3.5 h-3.5 text-sky-400" />
+              <span className="text-xs font-medium text-zinc-200">Player Spotlight Prompt</span>
+              {edited.spotlightPromptStale && (
+                <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-amber-700/60 bg-amber-950/40 text-amber-400">
+                  <AlertTriangle className="w-2.5 h-2.5" />
+                  Prompt out of date
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {spotlightPrompt && <CopyIconButton value={spotlightPrompt} label="Copy" />}
+              {onRefreshSpotlight && (
+                <button
+                  onClick={onRefreshSpotlight}
+                  className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-sky-700/60 bg-sky-950/40 text-sky-300 hover:bg-sky-900/60 transition-colors"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  Refresh AI Prompt
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="p-3">
+            {(!edited.selectedSpotlight || edited.selectedSpotlight.length === 0) ? (
+              <p className="text-[10px] text-zinc-500">No player selected — go to Game &amp; Players tab to select a player.</p>
+            ) : (
+              <pre className="text-[10px] text-zinc-300 font-mono leading-relaxed whitespace-pre-wrap break-words max-h-60 overflow-y-auto">
+                {spotlightPrompt}
+              </pre>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Data health warning */}
       {!health.isComplete && (
@@ -1807,13 +1979,16 @@ function buildSlideCardText(slide: CarouselSlide, index: number): string {
 
 // ─── Tab: Export / Copy ───────────────────────────────────────────────────────
 
-function ExportTab({ edited }: { edited: SocialPost }) {
+function ExportTab({ edited, onRefreshSpotlight }: { edited: SocialPost; onRefreshSpotlight?: () => void }) {
+  const isSpotlightPost    = edited.contentType === "player_spotlight" || edited.contentType === "player_spotlight_duo";
   const health             = checkPromptHealth(edited);
   const fullSlideText      = buildFullSlideTextPackage(edited);
   const fullCarouselPrompt = buildFullCarouselPrompt(edited);
   const slidePromptPkg     = buildSlidePromptPackage(edited);
   const backgroundPkg      = buildBackgroundPromptPackage(edited);
   const fullPostPackage    = buildFullPostPackage(edited);
+  const spotlightPackage   = isSpotlightPost ? buildSpotlightFullPackage(edited) : null;
+  const spotlightPrompt    = isSpotlightPost ? buildSpotlightImagePrompt(edited) : null;
 
   const copyAllPackage = [
     "=== HOOK ===",
@@ -1859,6 +2034,40 @@ function ExportTab({ edited }: { edited: SocialPost }) {
           {health.missingData.map((msg, i) => (
             <p key={i} className="text-[10px] text-amber-300/80">• {msg}</p>
           ))}
+        </div>
+      )}
+
+      {/* Spotlight section */}
+      {isSpotlightPost && (
+        <div className="rounded-lg bg-zinc-900 border border-sky-800/40 overflow-hidden">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-zinc-800/60 bg-sky-950/20">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold text-sky-400 uppercase tracking-wider">Player Spotlight</span>
+              {edited.spotlightPromptStale && (
+                <span className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border border-amber-700/60 bg-amber-950/40 text-amber-400">
+                  <AlertTriangle className="w-2.5 h-2.5" />
+                  Prompt out of date
+                </span>
+              )}
+            </div>
+            {onRefreshSpotlight && (
+              <button
+                onClick={onRefreshSpotlight}
+                className="flex items-center gap-1 text-[10px] px-2 py-1 rounded border border-sky-700/60 bg-sky-950/40 text-sky-300 hover:bg-sky-900/60 transition-colors"
+              >
+                <RefreshCw className="w-3 h-3" />
+                Refresh AI Prompt
+              </button>
+            )}
+          </div>
+          <div className="p-3 space-y-3">
+            {spotlightPrompt && (
+              <CopyField label="Player Spotlight Image Prompt" value={spotlightPrompt} multiline />
+            )}
+            {spotlightPackage && (
+              <CopyField label="Full Spotlight Package" value={spotlightPackage} multiline />
+            )}
+          </div>
         </div>
       )}
 
