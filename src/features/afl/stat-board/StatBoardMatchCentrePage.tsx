@@ -1,4 +1,4 @@
-import { useState, memo, useEffect } from "react";
+import { useState, memo, useEffect, useRef } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -15,6 +15,8 @@ import {
   Zap,
   TrendingUp,
   Target,
+  Check,
+  X,
 } from "lucide-react";
 import { useMatchCentreData } from "./useMatchCentreData";
 import type {
@@ -704,79 +706,48 @@ function ExpandedPanel({
   );
 }
 
-// ── Locked fixture card ───────────────────────────────────────────────────────
+// ── Preview match card (replaces locked fixture) ──────────────────────────────
 
-function LockedFixture({
+function PreviewMatchCard({
   fixture,
   onUpgrade,
 }: {
   fixture: MatchCentreFixture;
   onUpgrade: () => void;
 }) {
-  const isMobile = useIsMobile();
   const home = abbreviateTeam(fixture.homeTeamName);
   const away = abbreviateTeam(fixture.awayTeamName);
 
   return (
-    <div className="rounded-2xl border border-[#F5C84C]/12 bg-white/[0.015] overflow-hidden">
+    <div className="rounded-2xl border border-white/[0.08] bg-[#0d0d0f] overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-white/[0.05] flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[13.5px] font-bold text-white/40 leading-snug">
-              {home}
-              <span className="mx-1.5 font-normal text-white/18 text-[11px]">vs</span>
-              {away}
-            </span>
-            <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-[#F5C84C]/55 bg-[#F5C84C]/[0.07] border border-[#F5C84C]/15 rounded px-1.5 py-0.5 leading-none">
-              <Lock className="h-2 w-2" aria-hidden />
-              Neeko+ required
-            </span>
-          </div>
-          <p className="text-[10px] text-white/22 mt-0.5 leading-none">
+      <div className="px-4 py-3 border-b border-white/[0.05] flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-[13.5px] font-bold text-white/55 leading-snug truncate">
+            {home}
+            <span className="mx-1.5 font-normal text-white/20 text-[11px]">vs</span>
+            {away}
+          </p>
+          <p className="text-[9.5px] text-white/25 mt-0.5 leading-none">
             {formatMatchDate(fixture.gameDate)}
             {fixture.venue && <> · {abbreviateVenue(fixture.venue)}</>}
           </p>
         </div>
+        <span className="shrink-0 text-[8.5px] font-bold uppercase tracking-widest text-white/35 bg-white/[0.05] border border-white/[0.08] rounded px-1.5 py-0.5 leading-none">
+          Preview
+        </span>
       </div>
 
-      {isMobile ? (
-        /* Ghost score cards — mobile */
-        <div className="px-2.5 pt-2.5 pb-2.5 grid grid-cols-2 gap-1.5">
-          {[home, away].map((team) => (
-            <div key={team} className="rounded-xl bg-white/[0.02] border border-white/[0.05] px-2.5 py-2.5">
-              <div className="text-[10px] text-white/22 mb-1.5 truncate font-medium">{team}</div>
-              <div className="h-5 w-12 rounded bg-white/[0.05] mb-1" />
-              <div className="h-2.5 w-16 rounded bg-white/[0.035]" />
-            </div>
-          ))}
-        </div>
-      ) : (
-        /* Ghost stat rows — desktop */
-        <div className="px-4 py-3">
-          {[home, away].map((team) => (
-            <div key={team} className="flex items-center gap-3 py-1">
-              <span className="flex-1 text-[12.5px] font-semibold text-white/22">{team}</span>
-              <div className="flex items-center gap-2 shrink-0">
-                <div className="h-3 w-10 rounded bg-white/[0.035]" />
-                <div className="h-3 w-8 rounded bg-white/[0.035]" />
-                <div className="h-3 w-12 rounded bg-white/[0.035]" />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* CTA */}
-      <div className="px-3 py-2.5 sm:px-4 sm:py-3 border-t border-white/[0.05] flex flex-col sm:flex-row sm:items-center gap-2.5">
-        <p className="text-[11px] text-white/28 leading-snug flex-1">
-          Unlock projected totals, margin lean, team trends and full match context.
+      {/* Teaser body */}
+      <div className="px-4 py-3 flex items-start justify-between gap-3">
+        <p className="text-[11.5px] text-white/38 leading-relaxed flex-1">
+          Projected totals, margin lean &amp; team trends inside.
         </p>
         <button
           onClick={onUpgrade}
-          className="w-full sm:w-auto shrink-0 text-[12px] sm:text-[11px] font-bold text-[#F5C84C] bg-[#F5C84C]/[0.09] border border-[#F5C84C]/22 rounded-xl px-4 py-2.5 sm:py-1.5 hover:bg-[#F5C84C]/[0.15] active:bg-[#F5C84C]/[0.20] transition-colors leading-none whitespace-nowrap"
+          className="shrink-0 text-[11px] font-bold text-[#F5C84C] bg-[#F5C84C]/[0.09] border border-[#F5C84C]/22 rounded-xl px-3.5 py-2 hover:bg-[#F5C84C]/[0.15] active:bg-[#F5C84C]/[0.20] transition-colors leading-none whitespace-nowrap"
         >
-          Unlock Neeko+
+          Unlock this matchup
         </button>
       </div>
     </div>
@@ -1183,6 +1154,7 @@ export default function StatBoardMatchCentrePage() {
     error,
   } = useMatchCentreData();
 
+  const [matchSheetOpen, setMatchSheetOpen] = useState(false);
   const hasLockedFixtures = !loading && !hasFullAccess && allFixtures.some((f) => f.isLocked);
 
   // Track gate view when locked fixtures are visible
@@ -1274,38 +1246,98 @@ export default function StatBoardMatchCentrePage() {
 
           {/* Free games access banner */}
           {hasFullAccess ? (
-            <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] px-4 py-2.5">
+            <div className="mb-4 hidden sm:flex items-center gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] px-4 py-2.5">
               <div className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
               <p className="text-xs font-semibold text-emerald-400">Neeko+ active — every matchup unlocked</p>
             </div>
           ) : (
-            <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-white leading-snug">2 free games unlocked this week</p>
-                  <p className="text-xs text-white/45 mt-0.5 leading-relaxed">Browse free games below. Upgrade to unlock every matchup and trend.</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-                  <Link
-                    to="/stat-board/match-centre"
-                    onClick={() => trackFreeGamesCTA({ button_text: "View free games", source: "stat_board_match_centre", section: "top_banner" })}
-                    className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2.5 py-1 hover:bg-emerald-500/15 transition-colors whitespace-nowrap"
-                  >
-                    View free games
-                  </Link>
-                  <button
-                    onClick={() => { trackStatBoardUpgrade({ source: "stat_board_match_centre", button_text: "Unlock all games", section: "top_banner" }); window.location.href = "/neeko-plus"; }}
-                    className="text-[11px] font-semibold text-[#F5C84C] bg-[#F5C84C]/10 border border-[#F5C84C]/20 rounded-lg px-2.5 py-1 hover:bg-[#F5C84C]/15 transition-colors whitespace-nowrap"
-                  >
-                    Unlock all games
-                  </button>
+            <>
+              {/* Desktop banner */}
+              <div className="mb-4 hidden sm:block rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white leading-snug">2 free games unlocked this week</p>
+                    <p className="text-xs text-white/45 mt-0.5 leading-relaxed">Browse free games below. Upgrade to unlock every matchup and trend.</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                    <Link
+                      to="/stat-board/match-centre"
+                      onClick={() => trackFreeGamesCTA({ button_text: "View free games", source: "stat_board_match_centre", section: "top_banner" })}
+                      className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-2.5 py-1 hover:bg-emerald-500/15 transition-colors whitespace-nowrap"
+                    >
+                      View free games
+                    </Link>
+                    <button
+                      onClick={() => { trackStatBoardUpgrade({ source: "stat_board_match_centre", button_text: "Unlock all games", section: "top_banner" }); window.location.href = "/neeko-plus"; }}
+                      className="text-[11px] font-semibold text-[#F5C84C] bg-[#F5C84C]/10 border border-[#F5C84C]/20 rounded-lg px-2.5 py-1 hover:bg-[#F5C84C]/15 transition-colors whitespace-nowrap"
+                    >
+                      Unlock all games
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+              {/* Mobile banner — compact */}
+              <div className="mb-3 sm:hidden flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 shrink-0" />
+                  <span className="text-[11px] font-semibold text-white/75 truncate">2 free games this week</span>
+                </div>
+                <button
+                  onClick={() => { trackStatBoardUpgrade({ source: "stat_board_match_centre", button_text: "Unlock all", section: "top_banner_mobile" }); window.location.href = "/neeko-plus"; }}
+                  className="shrink-0 text-[10px] font-bold text-[#F5C84C] bg-[#F5C84C]/10 border border-[#F5C84C]/18 rounded-lg px-2 py-1 hover:bg-[#F5C84C]/15 transition-colors whitespace-nowrap"
+                >
+                  Unlock all
+                </button>
+              </div>
+            </>
           )}
 
           {/* ── Controls ────────────────────────────────────────────────── */}
           <div className="mb-3 sm:mb-5 space-y-2">
+
+            {/* Mobile match selector card */}
+            {isMobile && allFixtures.length > 0 && (
+              <div className="sm:hidden flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                <div className="flex-1 min-w-0">
+                  {selectedMatchId != null ? (() => {
+                    const fx = allFixtures.find((f) => f.matchId === selectedMatchId);
+                    return fx ? (
+                      <>
+                        <p className="text-[11px] font-semibold text-white/90 truncate leading-tight">
+                          {abbreviateTeam(fx.homeTeamName)} vs {abbreviateTeam(fx.awayTeamName)}
+                        </p>
+                        <p className="text-[9px] text-white/35 mt-0.5 leading-none">
+                          {formatMatchDate(fx.gameDate)}
+                        </p>
+                      </>
+                    ) : null;
+                  })() : (
+                    <p className="text-[11px] font-semibold text-white/65 leading-tight">All matches this round</p>
+                  )}
+                </div>
+                {!hasFullAccess && selectedMatchId != null && (() => {
+                  const fx = allFixtures.find((f) => f.matchId === selectedMatchId);
+                  if (!fx) return null;
+                  return (
+                    <span className={`shrink-0 text-[8px] font-bold uppercase tracking-wide rounded px-1.5 py-0.5 leading-none ${
+                      fx.isFreePreview
+                        ? "text-emerald-400/80 bg-emerald-500/8 border border-emerald-500/15"
+                        : fx.isLocked
+                        ? "text-white/40 bg-white/5 border border-white/10"
+                        : "text-white/40 bg-white/5 border border-white/10"
+                    }`}>
+                      {fx.isFreePreview ? "Free" : "Preview"}
+                    </span>
+                  );
+                })()}
+                <button
+                  onClick={() => setMatchSheetOpen(true)}
+                  className="shrink-0 text-[10px] font-semibold text-white/50 bg-white/[0.06] border border-white/10 rounded-lg px-2 py-1 hover:text-white/75 hover:bg-white/[0.09] transition-colors whitespace-nowrap"
+                >
+                  Change
+                </button>
+              </div>
+            )}
             {/* Lens tabs */}
             <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 no-scrollbar">
               <div className="flex items-center gap-1 sm:gap-1.5 min-w-max sm:flex-wrap sm:min-w-0">
@@ -1324,14 +1356,18 @@ export default function StatBoardMatchCentrePage() {
               </div>
             </div>
 
-            {/* Match filter + sort */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            {/* Match filter + sort — desktop only; mobile uses card above */}
+            <div className="hidden sm:flex flex-row items-center gap-2">
               <MatchFilterDropdown
                 allFixtures={allFixtures}
                 selectedMatchId={selectedMatchId}
                 onSelect={setSelectedMatchId}
                 hasFullAccess={hasFullAccess}
               />
+              <SortDropdown value={sortMode} onChange={setSortMode} />
+            </div>
+            {/* Mobile sort only */}
+            <div className="sm:hidden">
               <SortDropdown value={sortMode} onChange={setSortMode} />
             </div>
           </div>
@@ -1373,7 +1409,7 @@ export default function StatBoardMatchCentrePage() {
             <div className="space-y-3">
               {fixtures.map((fixture) =>
                 fixture.isLocked ? (
-                  <LockedFixture
+                  <PreviewMatchCard
                     key={fixture.matchId}
                     fixture={fixture}
                     onUpgrade={() => navigate("/neeko-plus")}
@@ -1431,6 +1467,179 @@ export default function StatBoardMatchCentrePage() {
           state={allFixtures.some((f) => f.isLocked) ? "locked" : "free"}
         />
       )}
+      {matchSheetOpen && (
+        <MCMatchBottomSheet
+          allFixtures={allFixtures}
+          selectedMatchId={selectedMatchId}
+          hasFullAccess={hasFullAccess}
+          onSelect={(id) => { setSelectedMatchId(id); }}
+          onClose={() => setMatchSheetOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+// ── Match Centre bottom sheet ─────────────────────────────────────────────────
+
+interface MCMatchBottomSheetProps {
+  allFixtures: MatchCentreFixture[];
+  selectedMatchId: number | null;
+  hasFullAccess: boolean;
+  onSelect: (id: number | null) => void;
+  onClose: () => void;
+}
+
+function MCMatchBottomSheet({ allFixtures, selectedMatchId, hasFullAccess, onSelect, onClose }: MCMatchBottomSheetProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!scrollRef.current || selectedMatchId == null) return;
+    const el = scrollRef.current.querySelector("[data-selected='true']") as HTMLElement | null;
+    if (el) el.scrollIntoView({ block: "nearest", behavior: "instant" });
+  }, [selectedMatchId]);
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-[2px]"
+        aria-hidden
+        onClick={onClose}
+        style={{ touchAction: "none" }}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Select a match"
+        className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl bg-[#111111] border-t border-white/10 shadow-2xl"
+        style={{
+          maxHeight: "82dvh",
+          display: "flex",
+          flexDirection: "column",
+          paddingBottom: "env(safe-area-inset-bottom)",
+          animation: "mcSheetUp 220ms cubic-bezier(0.32,0.72,0,1) forwards",
+        }}
+      >
+        <style>{`
+          @keyframes mcSheetUp {
+            from { transform: translateY(100%); }
+            to   { transform: translateY(0); }
+          }
+        `}</style>
+
+        <div className="px-4 pt-3 pb-2 shrink-0">
+          <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/18" aria-hidden />
+          <div className="flex items-center justify-between">
+            <h2 className="text-[15px] font-bold text-white">Choose a match</h2>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="h-7 w-7 flex items-center justify-center rounded-full text-white/35 hover:text-white/70 hover:bg-white/8 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          {!hasFullAccess && (
+            <div className="mt-2 flex items-center gap-3">
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 shrink-0" />
+                <span className="text-[10px] text-white/38">Free Board</span>
+              </span>
+              <span className="text-white/12">·</span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-white/20 shrink-0" />
+                <span className="text-[10px] text-white/38">Preview Board</span>
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div className="h-px bg-white/[0.07] shrink-0" />
+
+        <div
+          ref={scrollRef}
+          className="overflow-y-auto overscroll-contain flex-1 py-1.5"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          <button
+            role="option"
+            aria-selected={selectedMatchId === null}
+            data-selected={selectedMatchId === null ? "true" : undefined}
+            onClick={() => { onSelect(null); onClose(); }}
+            className={`w-full flex items-center gap-3 px-4 py-3 text-left border-b border-white/[0.06] transition-colors duration-75 focus:outline-none ${selectedMatchId === null ? "bg-white/[0.09]" : "hover:bg-white/[0.04]"}`}
+          >
+            <span className="shrink-0 w-5 h-5 flex items-center justify-center">
+              {selectedMatchId === null
+                ? <Check className="h-4 w-4 text-emerald-400" />
+                : <span className="h-2 w-2 rounded-full bg-white/20" />}
+            </span>
+            <p className="text-[13px] font-semibold text-white/85">All matches this round</p>
+          </button>
+
+          {allFixtures.map((fixture) => {
+            const isSel = selectedMatchId === fixture.matchId;
+            const isFree = hasFullAccess ? true : fixture.isFreePreview;
+            const dateStr = fixture.gameDate ? formatMatchDate(fixture.gameDate) : null;
+            return (
+              <button
+                key={fixture.matchId}
+                role="option"
+                aria-selected={isSel}
+                data-selected={isSel ? "true" : undefined}
+                onClick={() => { onSelect(fixture.matchId); onClose(); }}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors duration-75 focus:outline-none focus-visible:bg-white/8 ${isSel ? "bg-white/[0.09]" : "hover:bg-white/[0.04] active:bg-white/[0.07]"}`}
+              >
+                <span className="shrink-0 w-5 h-5 flex items-center justify-center">
+                  {isSel ? (
+                    <Check className="h-4 w-4 text-emerald-400" />
+                  ) : isFree ? (
+                    <span className="h-2 w-2 rounded-full bg-emerald-500/60" />
+                  ) : (
+                    <span className="h-2 w-2 rounded-full bg-white/20" />
+                  )}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[13px] font-semibold leading-tight truncate ${isSel ? "text-white" : "text-white/85"}`}>
+                    {abbreviateTeam(fixture.homeTeamName)}
+                    <span className="mx-1.5 font-normal text-white/30 text-[11px]">vs</span>
+                    {abbreviateTeam(fixture.awayTeamName)}
+                  </p>
+                  {dateStr && (
+                    <p className="text-[10px] text-white/32 mt-0.5 leading-none">{dateStr}</p>
+                  )}
+                </div>
+                {!hasFullAccess && (
+                  <span className="shrink-0">
+                    {isFree ? (
+                      <span className="text-[9px] font-bold uppercase tracking-wide text-emerald-500/70 bg-emerald-500/8 border border-emerald-500/15 rounded px-1.5 py-0.5 leading-none">
+                        Free
+                      </span>
+                    ) : (
+                      <span className="text-[9px] font-bold uppercase tracking-wide text-white/40 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 leading-none">
+                        Preview
+                      </span>
+                    )}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
     </>
   );
 }
