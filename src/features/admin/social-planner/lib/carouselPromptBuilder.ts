@@ -12,7 +12,6 @@
 
 import type { SocialPost, CarouselSlide, StatBoardRow, ContentVisibilityMode, PlayerAvailabilityStatus, SpotlightSelection, ScreenshotRefMode } from "../types";
 import { EXCLUDED_STATUSES, WARNING_STATUSES } from "../types";
-import { getCarouselStylePresetConfig, type CarouselStylePresetConfig } from "./carouselStylePresets";
 
 export type PromptMode = "full_graphic" | "background_only" | "template_export";
 
@@ -29,6 +28,20 @@ IMPORTANT RESTRICTIONS:
 - Do not include words: bet, odds, banker, lock, picks, target, line, clearing the line, multi, overs, unders.
 - Use ratios like 12/12, 9/10, 7/12 as the main stat format.
 - Do not use percentages as the main visual stat unless included as secondary text.`.trim();
+
+const CAROUSEL_STYLE = `
+FORMAT & DESIGN:
+- Dimensions: 1080×1350 portrait (Instagram carousel)
+- Create each slide as a separate image
+- Consistent premium dark AFL stats-board style across all slides
+- Dark charcoal / black background
+- Stadium lighting atmosphere
+- Subtle data graphics and grid texture
+- Gold stat highlights
+- Team colour accents where relevant
+- Bold condensed sports typography
+- Clean table layouts with strong contrast
+- Include ${BRAND} branding on every slide`.trim();
 
 // ─── Colour grade rules ───────────────────────────────────────────────────────
 
@@ -246,7 +259,7 @@ function visibilityInstructions(
 
 // ─── Per-slide prompt builders ────────────────────────────────────────────────
 
-function buildCoverSlideSection(post: SocialPost, slide: CarouselSlide, style: CarouselStylePresetConfig): string {
+function buildCoverSlideSection(post: SocialPost, slide: CarouselSlide): string {
   const isOpen = post.visibilityMode === "open_free_game";
   const boardLabel = slide.designNotes ?? (isOpen ? "Free Game Board" : "Match Stat Board");
   return `SLIDE 1 — COVER
@@ -258,15 +271,16 @@ Disposal + Goal Form
 AFL ${post.season}
 
 Design:
-${style.coverDesign}
-Team colour accents for ${post.homeTeam ?? "home team"} and ${post.awayTeam ?? "away team"}.`;
+No player photos on cover.
+Team colour accents for ${post.homeTeam ?? "home team"} and ${post.awayTeam ?? "away team"}.
+Dark premium stadium/stat-board style.
+${BRAND} branding.`;
 }
 
 function buildTableSlideSection(
   slideNum: number,
   slide: CarouselSlide,
-  post: SocialPost,
-  style: CarouselStylePresetConfig
+  post: SocialPost
 ): string {
   const isDisposal = isDisposalSlide(slide.slideType);
   const rows = slide.rows ?? [];
@@ -320,13 +334,10 @@ ${rowLines}${modeNote}
 
 ${visInstructions}
 
-Design:
-${style.tableDesign}
-
 ${COLOUR_GRADE_RULES}`;
 }
 
-function buildCTASlideSection(slideNum: number, slide: CarouselSlide, style: CarouselStylePresetConfig): string {
+function buildCTASlideSection(slideNum: number, slide: CarouselSlide): string {
   return `SLIDE ${slideNum} — CTA
 Text:
 See the full board at ${BRAND}.
@@ -334,19 +345,21 @@ ${CTA_URL}
 Link in bio.
 
 Design:
-${style.ctaDesign}`;
+Minimal dark premium CTA slide.
+Gold highlights.
+${BRAND} branding.
+No player photos.`;
 }
 
 function buildPlayerSpotlightSlideSection(
   slideNum: number,
   slide: CarouselSlide,
-  post: SocialPost,
-  style: CarouselStylePresetConfig
+  post: SocialPost
 ): string {
   // Prefer rich selectedSpotlight data; fall back to legacy slide.rows
   const sel = post.selectedSpotlight?.[0];
   if (sel) {
-    return buildSpotlightPromptFromSelection(sel, post, slideNum, style);
+    return buildSpotlightPromptFromSelection(sel, post, slideNum);
   }
 
   const row = slide.rows?.[0];
@@ -363,17 +376,18 @@ L5 avg: ${row.l5Avg.toFixed(1)}
 
 Design:
 Use supplied player photo only (do not invent a different player).
-${style.spotlightDesign}`;
+High-energy matchday atmosphere, stadium lights, crowd blur.
+Team colour paint strokes. Floating stat card in bottom third.
+Gold main record. White player name. Dark navy/black base.
+${BRAND} branding.`;
 }
 
 /** Build the full Player Spotlight image prompt from rich SpotlightSelection data */
 function buildSpotlightPromptFromSelection(
   sel: SpotlightSelection,
   post: SocialPost,
-  slideNum = 1,
-  style?: CarouselStylePresetConfig
+  slideNum = 1
 ): string {
-  const resolvedStyle = style ?? getCarouselStylePresetConfig(post.carouselStylePreset);
   const statTypeWord = sel.statType === "goals" ? "goals" : "disposals";
   const last5 = sel.lastFive.length > 0
     ? sel.lastFive.join(" · ")
@@ -399,8 +413,18 @@ Round ${post.round}
 AFL ${post.season}
 
 Design:
-${resolvedStyle.spotlightDesign}
+High-energy AFL matchday atmosphere.
+Dark navy / black base.
+Stadium lights.
+Crowd blur.
 Team colour accents for ${sel.team}.
+Floating stat card in the bottom third.
+Large ratio record as the hero stat.
+Use green for strong/elite records, not yellow/gold.
+Use Neeko gold only for branding, borders, dividers and CTA accents.
+White player name.
+Bold condensed sports typography.
+${BRAND} branding visible but clean.
 
 Important:
 - Use the supplied player photo only.
@@ -420,8 +444,7 @@ Important:
 export function buildSpotlightImagePrompt(post: SocialPost): string {
   const sel = post.selectedSpotlight?.[0];
   if (!sel) return "";
-  const style = getCarouselStylePresetConfig(post.carouselStylePreset);
-  return buildSpotlightPromptFromSelection(sel, post, 1, style);
+  return buildSpotlightPromptFromSelection(sel, post);
 }
 
 function buildGenericSlideSection(slideNum: number, slide: CarouselSlide): string {
@@ -475,7 +498,6 @@ IMPORTANT:
 // ─── Public: Full Carousel Prompt ────────────────────────────────────────────
 
 export function buildFullCarouselPrompt(post: SocialPost, screenshotRefMode?: ScreenshotRefMode): string {
-  const style = getCarouselStylePresetConfig(post.carouselStylePreset);
   const isMatchBoard = post.contentType === "match_stat_board";
   const isProductEd = post.contentType === "product_education";
   const hasData = post.selectedPlayers.length > 0;
@@ -496,10 +518,7 @@ Do NOT use gambling language. No lock icons. No page numbers.
 
   const intro = `Create a premium AFL Instagram carousel for ${BRAND}.
 
-${style.styleLabel}
-
-FORMAT & DESIGN:
-${style.formatBlock}
+${CAROUSEL_STYLE}
 
 ${SAFETY_RULES}
 ${dataWarning}${productEdBlock}${screenshotBlock}
@@ -513,7 +532,7 @@ ${dataWarning}${productEdBlock}${screenshotBlock}
     switch (slide.slideType) {
       case "cover":
         if (isMatchBoard) {
-          section = buildCoverSlideSection(post, slide, style);
+          section = buildCoverSlideSection(post, slide);
         } else {
           section = buildGenericSlideSection(slideNum, slide);
         }
@@ -522,13 +541,13 @@ ${dataWarning}${productEdBlock}${screenshotBlock}
       case "away_disposals":
       case "home_goals":
       case "away_goals":
-        section = buildTableSlideSection(slideNum, slide, post, style);
+        section = buildTableSlideSection(slideNum, slide, post);
         break;
       case "player_spotlight":
-        section = buildPlayerSpotlightSlideSection(slideNum, slide, post, style);
+        section = buildPlayerSpotlightSlideSection(slideNum, slide, post);
         break;
       case "cta":
-        section = buildCTASlideSection(slideNum, slide, style);
+        section = buildCTASlideSection(slideNum, slide);
         break;
       default:
         section = buildGenericSlideSection(slideNum, slide);
@@ -547,7 +566,6 @@ ${dataWarning}${productEdBlock}${screenshotBlock}
 // ─── Public: Slide-by-Slide Prompt Package ────────────────────────────────────
 
 export function buildSlidePromptPackage(post: SocialPost, screenshotRefMode?: ScreenshotRefMode): string {
-  const style = getCarouselStylePresetConfig(post.carouselStylePreset);
   const screenshotBlock = shouldInjectScreenshotRef(post, screenshotRefMode)
     ? `\n${buildPostScreenshotRef(post)}\n`
     : "";
@@ -555,7 +573,6 @@ export function buildSlidePromptPackage(post: SocialPost, screenshotRefMode?: Sc
   const header = `PROMPT PACKAGE — ${post.title}
 ${post.homeTeam && post.awayTeam ? `${post.homeTeam} v ${post.awayTeam} | ` : ""}Round ${post.round} · ${post.season}
 Visibility: ${post.visibilityMode?.replace(/_/g, " ") ?? "standard"}
-${style.styleLabel}
 
 Each prompt below is for a single slide. Use them separately with your image generator.
 
@@ -570,20 +587,20 @@ ${screenshotBlock}`;
     switch (slide.slideType) {
       case "cover":
         section = post.contentType === "match_stat_board"
-          ? buildCoverSlideSection(post, slide, style)
+          ? buildCoverSlideSection(post, slide)
           : buildGenericSlideSection(slideNum, slide);
         break;
       case "home_disposals":
       case "away_disposals":
       case "home_goals":
       case "away_goals":
-        section = buildTableSlideSection(slideNum, slide, post, style);
+        section = buildTableSlideSection(slideNum, slide, post);
         break;
       case "player_spotlight":
-        section = buildPlayerSpotlightSlideSection(slideNum, slide, post, style);
+        section = buildPlayerSpotlightSlideSection(slideNum, slide, post);
         break;
       case "cta":
-        section = buildCTASlideSection(slideNum, slide, style);
+        section = buildCTASlideSection(slideNum, slide);
         break;
       default:
         section = buildGenericSlideSection(slideNum, slide);

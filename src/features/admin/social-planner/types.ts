@@ -86,19 +86,6 @@ export type StyleMode =
   | "game_day"
   | "short_form";
 
-export type CarouselStylePreset =
-  | "premium_stats_board"
-  | "editorial_poster"
-  | "broadcast_graphic"
-  | "minimal_luxury";
-
-export const CAROUSEL_STYLE_PRESET_LABELS: Record<CarouselStylePreset, string> = {
-  premium_stats_board: "Premium Stats Board",
-  editorial_poster:    "Editorial Poster",
-  broadcast_graphic:   "Broadcast Graphic",
-  minimal_luxury:      "Minimal Luxury",
-};
-
 // ─── AFL Game ─────────────────────────────────────────────────────────────────
 
 export interface AFLGame {
@@ -266,8 +253,6 @@ export interface SocialPost {
   match_board_data_version?: string;
   /** ISO timestamp of last manual/auto refresh of matchBoardRows */
   match_board_refreshed_at?: string;
-  /** Visual style preset for AI carousel prompt generation */
-  carouselStylePreset?: CarouselStylePreset;
 }
 
 // ─── Planner Settings ─────────────────────────────────────────────────────────
