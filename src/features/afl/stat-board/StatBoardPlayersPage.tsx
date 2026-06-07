@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback, memo, useSyncExternalStore, useDeferredValue } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Search, X, Lock, ChevronDown, ChevronUp, CircleHelp as HelpCircle } from "lucide-react";
+import { Search, X, Lock, ChevronDown, ChevronUp, CircleHelp as HelpCircle, ChevronRight } from "lucide-react";
 import { track, trackGateInteraction, trackLockedDataClick, trackFreeGamesCTA, trackStatBoardUpgrade } from "@/lib/analytics";
 import { useAuth } from "@/lib/auth";
 import MobileUpgradeBar from "@/components/mobile/MobileUpgradeBar";
@@ -10,7 +10,7 @@ import {
   useStatBoardMatches,
   useStatBoardPlayers,
 } from "./useStatBoard";
-import { useStatBoardAccess } from "./useStatBoardAccess";
+import { useStatBoardAccess, resolveMatchAccessMode, PREVIEW_VISIBLE_ROWS } from "./useStatBoardAccess";
 import type {
   StatBoardMatch,
   StatBoardPlayer,
@@ -20,6 +20,7 @@ import type {
 import { defaultThreshold, thresholdsForLens } from "./types";
 import { MatchSelector } from "./components/MatchSelector";
 import { BoardRow, MobilePlayerCard } from "./components/BoardRow";
+import { MobileMatchBottomSheet } from "./components/MobileMatchBottomSheet";
 
 // Subscribes to window width; returns true when viewport < 768px (md breakpoint).
 function subscribe(cb: () => void) {
@@ -110,6 +111,7 @@ export default function StatBoardPlayersPage() {
   const [stickyVisible, setStickyVisible] = useState(false);
   const [mobileStickyVisible, setMobileStickyVisible] = useState(false);
   const [howToOpen, setHowToOpen] = useState(false);
+  const [matchSheetOpen, setMatchSheetOpen] = useState(false);
   const controlsRef = useRef<HTMLDivElement>(null);
   const bannerRef = useRef<HTMLDivElement>(null);
   const [searchParams] = useSearchParams();
@@ -131,6 +133,8 @@ export default function StatBoardPlayersPage() {
     positionFilter,
     search,
   });
+
+  const accessMode = resolveMatchAccessMode(selectedMatch, hasFullAccess);
 
   // Auto-select default match — prefer URL param match_id if present.
   // We defer the actual pick until after the first player-row probe so we never
@@ -245,15 +249,16 @@ export default function StatBoardPlayersPage() {
   }, [deferredSearch]);
 
   // Premium users see all matches unlocked; is_locked is a DB hint for free users only
+  // On mobile, non-free matches are shown as "preview" not hard-locked
   const isLocked = hasFullAccess ? false : (selectedMatch?.is_locked ?? false);
   const navigate = useNavigate();
 
-  // Track gate view when a locked match is selected
+  // Track gate view when a locked match is selected (desktop only — mobile shows preview)
   useEffect(() => {
-    if (isLocked) {
+    if (isLocked && !isMobile) {
       trackGateInteraction({ source: "stat_board_players", section: "locked_match_banner", action: "viewed" });
     }
-  }, [isLocked]);
+  }, [isLocked, isMobile]);
 
   return (
     <>
@@ -342,54 +347,152 @@ export default function StatBoardPlayersPage() {
             </p>
           </div>
 
-          {/* Free games access banner */}
-          {hasFullAccess ? (
-            <div ref={bannerRef} className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
-              <p className="text-[11px] font-semibold text-emerald-400">Neeko+ active — every matchup unlocked</p>
-            </div>
-          ) : (
-            <div ref={bannerRef} className="mb-3 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2.5 sm:px-4 sm:py-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-[12px] sm:text-sm font-bold text-white leading-snug">2 free games this week</p>
-                  <p className="text-[10px] sm:text-xs text-white/40 mt-0.5 leading-snug hidden sm:block">Browse free games below. Upgrade to unlock every matchup, projection and trend.</p>
+          {/* ── Mobile layout: match card + access banner ─────────────────── */}
+          <div className="sm:hidden mb-3">
+            {/* Match card with Change match button */}
+            {matchesError ? (
+              <div className="mb-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                Could not load matches. Please try refreshing.
+              </div>
+            ) : matchesLoading ? (
+              <div className="mb-2 h-16 rounded-2xl bg-white/5 border border-white/8 animate-pulse" />
+            ) : selectedMatch ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3.5 py-3 flex items-center gap-3 min-w-0">
+                {/* Access dot */}
+                <div className="shrink-0">
+                  {accessMode === "full" ? (
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 block" />
+                  ) : accessMode === "free" ? (
+                    <span className="h-2 w-2 rounded-full bg-emerald-500/70 block" />
+                  ) : (
+                    <span className="h-2 w-2 rounded-full bg-white/25 block" />
+                  )}
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Link
-                    to="/stat-board/players"
-                    onClick={() => trackFreeGamesCTA({ button_text: "View free", source: "stat_board_players", section: "top_banner" })}
-                    className="text-[10px] sm:text-[11px] font-semibold text-emerald-400 bg-emerald-500/8 border border-emerald-500/18 rounded-lg px-2 py-1 hover:bg-emerald-500/15 transition-colors whitespace-nowrap"
-                  >
-                    View free
-                  </Link>
+
+                {/* Match info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] font-bold text-white leading-tight truncate">
+                    {selectedMatch.match_label.replace(/\s+v(?:s\.?)?\s+/i, " vs ")}
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className="text-[10px] text-white/38 font-medium">
+                      {selectedMatch.week === 0 ? "Opening Round" : `Round ${selectedMatch.week}`}
+                    </span>
+                    {!hasFullAccess && (
+                      <span className={`text-[9px] font-bold uppercase tracking-wide rounded px-1.5 py-0.5 leading-none ${
+                        accessMode === "free"
+                          ? "text-emerald-500/70 bg-emerald-500/8 border border-emerald-500/15"
+                          : "text-white/40 bg-white/5 border border-white/10"
+                      }`}>
+                        {accessMode === "free" ? "Free Board" : "Preview Board"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Change match button */}
+                <button
+                  onClick={() => setMatchSheetOpen(true)}
+                  className="shrink-0 flex items-center gap-1 rounded-lg bg-white/8 border border-white/12 px-2.5 py-1.5 text-[11px] font-semibold text-white/70 hover:bg-white/12 hover:text-white/90 active:bg-white/15 transition-colors"
+                >
+                  Change
+                  <ChevronRight className="h-3 w-3 text-white/40" />
+                </button>
+              </div>
+            ) : null}
+
+            {/* Access context banner — preview mode */}
+            {!hasFullAccess && accessMode === "preview" && selectedMatch && (
+              <div ref={bannerRef} className="mt-2 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-bold text-white leading-snug">Preview Board</p>
+                    <p className="text-[10px] text-white/38 mt-0.5 leading-snug">Top 3 players visible · rows 4–8 hidden</p>
+                  </div>
                   <button
-                    onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Unlock all", section: "top_banner" }); window.location.href = "/neeko-plus"; }}
-                    className="text-[10px] sm:text-[11px] font-semibold text-[#F5C84C] bg-[#F5C84C]/8 border border-[#F5C84C]/18 rounded-lg px-2 py-1 hover:bg-[#F5C84C]/15 transition-colors whitespace-nowrap"
+                    onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Unlock", section: "preview_banner" }); window.location.href = "/neeko-plus"; }}
+                    className="shrink-0 text-[10px] font-semibold text-[#F5C84C] bg-[#F5C84C]/8 border border-[#F5C84C]/18 rounded-lg px-2 py-1 hover:bg-[#F5C84C]/15 transition-colors whitespace-nowrap"
                   >
                     Unlock all
                   </button>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Match selector */}
-          {matchesError ? (
-            <div className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-              Could not load matches. Please try refreshing.
-            </div>
-          ) : (
-            <div className="mb-3">
-              <MatchSelector
-                matches={matches}
-                selected={selectedMatch}
-                loading={matchesLoading}
-                onChange={handleMatchChange}
-                hasFullAccess={hasFullAccess}
-              />
-            </div>
-          )}
+            {/* Access context banner — free game */}
+            {!hasFullAccess && accessMode === "free" && (
+              <div ref={bannerRef} className="mt-2 flex items-center gap-2 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.05] px-3 py-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/70 shrink-0" />
+                <p className="text-[10px] text-emerald-400 font-semibold flex-1">Free Board — full stats visible</p>
+                <button
+                  onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Unlock all", section: "free_banner" }); window.location.href = "/neeko-plus"; }}
+                  className="shrink-0 text-[9px] font-semibold text-[#F5C84C]/80 hover:text-[#F5C84C] transition-colors whitespace-nowrap"
+                >
+                  Unlock all rounds
+                </button>
+              </div>
+            )}
+
+            {/* Neeko+ active (no ref needed — not tracked for sticky) */}
+            {hasFullAccess && (
+              <div className="mt-2 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                <p className="text-[11px] font-semibold text-emerald-400">Neeko+ — every matchup unlocked</p>
+              </div>
+            )}
+          </div>
+
+          {/* ── Desktop: original banner + match selector ───────────────────── */}
+          <div className="hidden sm:block">
+            {/* Free games access banner */}
+            {hasFullAccess ? (
+              <div ref={bannerRef} className="mb-3 flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/[0.06] px-3 py-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                <p className="text-[11px] font-semibold text-emerald-400">Neeko+ active — every matchup unlocked</p>
+              </div>
+            ) : (
+              <div ref={bannerRef} className="mb-3 rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white leading-snug">2 free games this week</p>
+                    <p className="text-xs text-white/40 mt-0.5 leading-snug">Browse free games below. Upgrade to unlock every matchup, projection and trend.</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Link
+                      to="/stat-board/players"
+                      onClick={() => trackFreeGamesCTA({ button_text: "View free", source: "stat_board_players", section: "top_banner" })}
+                      className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/8 border border-emerald-500/18 rounded-lg px-2 py-1 hover:bg-emerald-500/15 transition-colors whitespace-nowrap"
+                    >
+                      View free
+                    </Link>
+                    <button
+                      onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Unlock all", section: "top_banner" }); window.location.href = "/neeko-plus"; }}
+                      className="text-[11px] font-semibold text-[#F5C84C] bg-[#F5C84C]/8 border border-[#F5C84C]/18 rounded-lg px-2 py-1 hover:bg-[#F5C84C]/15 transition-colors whitespace-nowrap"
+                    >
+                      Unlock all
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Match selector */}
+            {matchesError ? (
+              <div className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                Could not load matches. Please try refreshing.
+              </div>
+            ) : (
+              <div className="mb-3">
+                <MatchSelector
+                  matches={matches}
+                  selected={selectedMatch}
+                  loading={matchesLoading}
+                  onChange={handleMatchChange}
+                  hasFullAccess={hasFullAccess}
+                />
+              </div>
+            )}
+          </div>
 
           {/* ── Inline controls (observed for sticky trigger) ─────────────────── */}
           <div ref={controlsRef} className="mb-2.5" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
@@ -620,13 +723,13 @@ export default function StatBoardPlayersPage() {
             </div>
           )}
 
-          {/* Locked banner */}
-          {isLocked && (
-            <div className="mb-3 flex items-start gap-3 rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/5 px-3 sm:px-4 py-3">
+          {/* Locked banner — desktop only (mobile uses preview mode instead) */}
+          {isLocked && !isMobile && (
+            <div className="mb-3 flex items-start gap-3 rounded-xl border border-[#F5C84C]/20 bg-[#F5C84C]/5 px-4 py-3">
               <Lock className="h-4 w-4 shrink-0 text-[#F5C84C] mt-0.5" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-[#F5C84C] leading-snug">This matchup is locked</p>
-                <p className="text-[11px] text-white/40 mt-0.5 leading-relaxed hidden sm:block">
+                <p className="text-[11px] text-white/40 mt-0.5 leading-relaxed">
                   Neeko+ unlocks the full round — every match, projection, hit rate and trend.
                 </p>
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
@@ -680,6 +783,7 @@ export default function StatBoardPlayersPage() {
                 thresholds={thresholds}
                 defaultThreshold={threshold}
                 isMatchLocked={isLocked}
+                accessMode={accessMode}
                 expandedPlayerId={expandedPlayerId}
                 onToggleExpand={handleToggleExpand}
                 searchActive={search.trim().length > 0}
@@ -693,6 +797,7 @@ export default function StatBoardPlayersPage() {
                 thresholds={thresholds}
                 defaultThreshold={threshold}
                 isMatchLocked={isLocked}
+                accessMode={accessMode}
                 expandedPlayerId={expandedPlayerId}
                 onToggleExpand={handleToggleExpand}
                 searchActive={search.trim().length > 0}
@@ -709,7 +814,16 @@ export default function StatBoardPlayersPage() {
       </div>
       {!hasFullAccess && mobileStickyVisible && (
         <MobileUpgradeBar
-          state={selectedMatch?.is_locked ? "locked" : "free"}
+          state={accessMode === "preview" ? "free" : selectedMatch?.is_locked ? "locked" : "free"}
+        />
+      )}
+      {matchSheetOpen && (
+        <MobileMatchBottomSheet
+          matches={matches}
+          selected={selectedMatch}
+          hasFullAccess={hasFullAccess}
+          onSelect={handleMatchChange}
+          onClose={() => setMatchSheetOpen(false)}
         />
       )}
     </>
@@ -1027,6 +1141,7 @@ interface TeamBoardProps {
   thresholds: readonly number[];
   defaultThreshold: number;
   isMatchLocked: boolean;
+  accessMode: import("./useStatBoardAccess").MatchAccessMode;
   expandedPlayerId: number | null;
   onToggleExpand: (id: number | null) => void;
   searchActive: boolean;
@@ -1041,6 +1156,7 @@ const TeamBoard = memo(function TeamBoard({
   thresholds,
   defaultThreshold,
   isMatchLocked,
+  accessMode,
   expandedPlayerId,
   onToggleExpand,
   searchActive,
@@ -1187,11 +1303,17 @@ const TeamBoard = memo(function TeamBoard({
 
   // ── Mobile layout — stacked cards ──
   if (isMobile) {
+    const isPreviewBoard = accessMode === "preview" && !searchActive;
+    const fullyVisiblePlayers = visiblePlayers.slice(0, isPreviewBoard ? PREVIEW_VISIBLE_ROWS : undefined);
+    const previewPlayers = isPreviewBoard ? visiblePlayers.slice(PREVIEW_VISIBLE_ROWS) : [];
+
     return (
       <div className="w-full min-w-0">
         {mobileTeamHeader}
+
+        {/* Fully visible players */}
         <div className="flex flex-col gap-2 w-full min-w-0">
-          {visiblePlayers.map((player) => (
+          {fullyVisiblePlayers.map((player) => (
             <MobilePlayerCard
               key={`${matchId ?? 0}-${player.player_id}`}
               player={player}
@@ -1207,7 +1329,47 @@ const TeamBoard = memo(function TeamBoard({
             />
           ))}
         </div>
-        {showMoreBtn}
+
+        {/* Preview board: mid-board CTA divider + name-only cards */}
+        {isPreviewBoard && previewPlayers.length > 0 && (
+          <>
+            <div className="my-3 rounded-xl border border-white/[0.07] bg-white/[0.025] px-3 py-2.5 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold text-white/75 leading-snug">
+                  +{previewPlayers.length} more players
+                </p>
+                <p className="text-[10px] text-white/35 mt-0.5 leading-snug">
+                  Unlock Neeko+ to see full stats and projections
+                </p>
+              </div>
+              <button
+                onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Unlock", section: "preview_mid_board" }); window.location.href = "/neeko-plus"; }}
+                className="shrink-0 text-[10px] font-semibold text-[#F5C84C] bg-[#F5C84C]/8 border border-[#F5C84C]/18 rounded-lg px-2.5 py-1.5 hover:bg-[#F5C84C]/15 transition-colors whitespace-nowrap"
+              >
+                Unlock
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-1.5 w-full min-w-0">
+              {previewPlayers.map((player) => (
+                <MobilePlayerCard
+                  key={`${matchId ?? 0}-${player.player_id}`}
+                  player={player}
+                  lens={lens}
+                  thresholds={thresholds}
+                  defaultThreshold={defaultThreshold}
+                  isMatchLocked={isMatchLocked}
+                  isExpanded={false}
+                  onToggleExpand={() => {}}
+                  matchId={matchId}
+                  previewMode
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        {!isPreviewBoard && showMoreBtn}
         {legend}
       </div>
     );

@@ -240,6 +240,8 @@ interface MobileCardProps {
   isExpanded: boolean;
   onToggleExpand: () => void;
   matchId: number | null;
+  /** When set, this card is shown in preview mode (name-only/blurred data) */
+  previewMode?: boolean;
 }
 
 export const MobilePlayerCard = memo(function MobilePlayerCard({
@@ -250,6 +252,7 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
   isMatchLocked,
   isExpanded,
   onToggleExpand,
+  previewMode = false,
 }: MobileCardProps) {
   const confidence = player.confidence_label;
   const confStyles: Record<string, { dot: string; text: string; label: string }> = {
@@ -274,6 +277,50 @@ export const MobilePlayerCard = memo(function MobilePlayerCard({
   const last10Avg = safeNum(player.last_10_avg);
   const avgDisplay = last10Avg != null ? last10Avg.toFixed(1) : "—";
   const projDisplay = safeNum(player.projection);
+
+  // ── Preview mode card — name + team visible, stats soft-blurred ──
+  if (previewMode) {
+    return (
+      <div
+        className="mobile-player-card rounded-2xl border border-white/[0.07] bg-[#0d0d0d] w-full min-w-0"
+        style={{ maxWidth: "100%", boxSizing: "border-box", overflowX: "hidden" }}
+      >
+        <div className="px-3 py-2.5 flex items-center justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-[13px] font-bold text-white/80 leading-tight truncate">
+                {player.player_name}
+              </span>
+              {player.position_group && (
+                <span className="text-[8px] font-bold text-white/25 bg-white/5 rounded px-1 py-0.5 tracking-wide shrink-0">
+                  {player.position_group}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] text-white/30">{player.team_name || "—"}</span>
+          </div>
+          {/* Blurred projection placeholder */}
+          <div className="text-right shrink-0 select-none" aria-hidden>
+            <p className="text-[7px] text-white/20 uppercase tracking-wider leading-none mb-0.5">Proj</p>
+            <span className="text-[17px] font-bold text-white/15 blur-[5px] tabular-nums leading-none">28</span>
+          </div>
+        </div>
+        {/* Blurred stats strip */}
+        <div className="relative mx-3 mb-2.5 rounded-lg border border-white/[0.06] overflow-hidden" aria-hidden>
+          <div className="flex gap-0">
+            {["Avg", ...thresholds.map(t => `${t}+`), "Form"].map((label, i) => (
+              <div key={i} className={`flex-1 px-1 py-1.5 text-center ${i > 0 ? "border-l border-white/[0.06]" : ""}`}>
+                <p className="text-[7px] text-white/20 uppercase tracking-wide leading-none mb-0.5">{label}</p>
+                <p className="text-[10px] font-bold text-white/12 tabular-nums leading-none blur-[4px]">
+                  {["—", "73%", "58%", "42%", "25%", "Med"][i] ?? "—"}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
