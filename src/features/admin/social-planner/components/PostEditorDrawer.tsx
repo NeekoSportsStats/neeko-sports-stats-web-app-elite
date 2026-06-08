@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye, Search, Import as SortAsc } from "lucide-react";
+import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye, Search, Import as SortAsc, Pencil } from "lucide-react";
 import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat, PlayerAvailabilityStatus, SpotlightSelection, ReferenceScreenshot, ScreenshotTag, ScreenshotRefMode } from "../types";
 import { EXCLUDED_STATUSES, WARNING_STATUSES } from "../types";
 import type { MatchBoardPlayerRow } from "../lib/rowAggregator";
@@ -1193,6 +1193,13 @@ function SpotlightPlayerSelector({
   const [thresholdFilter, setThresholdFilter] = useState<string>("any");
   const [sortKey, setSortKey] = useState<SpotlightSortKey>("bestRecord");
 
+  // Inline edit state: which slot key is being edited, plus draft selections
+  const [editingSlotKey, setEditingSlotKey] = useState<string | null>(null);
+  const [editSearch, setEditSearch] = useState("");
+  const [editStatFilter, setEditStatFilter] = useState<"any" | "disposals" | "goals">("any");
+  const [editThreshold, setEditThreshold] = useState<string>("any");
+  const [editDraft, setEditDraft] = useState<AFLPlayerStat | null>(null);
+
   // All unique thresholds available in the data (for the threshold picker)
   const availableThresholds = useMemo(() => {
     const seen = new Set<string>();
@@ -1223,10 +1230,79 @@ function SpotlightPlayerSelector({
     return list;
   }, [allPlayers, statFilter, thresholdFilter, search, sortKey]);
 
+  // Edit mode candidates filtered by editSearch / editStatFilter / editThreshold
+  const editCandidates = useMemo(() => {
+    let list = allPlayers.filter(p => p.confidenceTier !== "thin_sample");
+    if (editStatFilter !== "any") list = list.filter(p => p.statType === editStatFilter);
+    if (editThreshold !== "any") list = list.filter(p => p.thresholdLabel === editThreshold);
+    if (editSearch.trim()) {
+      const q = editSearch.trim().toLowerCase();
+      list = list.filter(p => p.playerName.toLowerCase().includes(q) || p.team.toLowerCase().includes(q));
+    }
+    list.sort((a, b) => b.percent !== a.percent ? b.percent - a.percent : b.gamesPlayed - a.gamesPlayed);
+    return list.slice(0, 30);
+  }, [allPlayers, editStatFilter, editThreshold, editSearch]);
+
+  // Available thresholds filtered to current editStatFilter
+  const editThresholds = useMemo(() => {
+    const seen = new Set<string>();
+    const source = editStatFilter !== "any"
+      ? allPlayers.filter(p => p.statType === editStatFilter)
+      : allPlayers;
+    for (const p of source) seen.add(p.thresholdLabel);
+    return Array.from(seen).sort();
+  }, [allPlayers, editStatFilter]);
+
   // Selected spotlight keys for quick lookup
   const selectedKeys = new Set(
     (post.selectedSpotlight ?? []).map(s => `${s.playerId}:${s.statType}:${s.threshold}`)
   );
+
+  function startEdit(slotKey: string, s: SpotlightSelection) {
+    setEditingSlotKey(slotKey);
+    setEditSearch(s.playerName);
+    setEditStatFilter(s.statType as "disposals" | "goals");
+    setEditThreshold(s.thresholdLabel ?? "any");
+    // Pre-select the current stat row as draft
+    const current = allPlayers.find(
+      p => p.playerId === s.playerId && p.statType === s.statType && p.threshold === s.threshold
+    ) ?? null;
+    setEditDraft(current);
+  }
+
+  function cancelEdit() {
+    setEditingSlotKey(null);
+    setEditDraft(null);
+    setEditSearch("");
+    setEditStatFilter("any");
+    setEditThreshold("any");
+  }
+
+  function applyEdit(slotKey: string) {
+    if (!editDraft) return;
+    const slotIndex = (post.selectedSpotlight ?? []).findIndex(
+      s => `${s.playerId}:${s.statType}:${s.threshold}` === slotKey
+    );
+    if (slotIndex === -1) return;
+
+    const newSel = buildSelectionFromStat(editDraft, post);
+    const nextSpotlight = (post.selectedSpotlight ?? []).map((s, i) =>
+      i === slotIndex ? newSel : s
+    );
+    const nextPlayers = (post.selectedPlayers ?? []).map((p, i) =>
+      i === slotIndex ? editDraft : p
+    );
+
+    onUpdate({
+      ...post,
+      selectedSpotlight: nextSpotlight,
+      selectedPlayers: nextPlayers,
+      spotlightPromptStale: true,
+      title: buildSpotlightTitle(post.contentType, nextPlayers),
+      updatedAt: new Date().toISOString(),
+    });
+    cancelEdit();
+  }
 
   function selectPlayer(p: AFLPlayerStat) {
     const key = `${p.playerId}:${p.statType}:${p.threshold}`;
@@ -1271,9 +1347,127 @@ function SpotlightPlayerSelector({
         ) : (
           <div className="space-y-1.5">
             {(post.selectedSpotlight ?? []).map(s => {
+              const slotKey = `${s.playerId}:${s.statType}:${s.threshold}`;
               const isExcluded = s.availabilityStatus && EXCLUDED_STATUSES.has(s.availabilityStatus);
+              const isEditing = editingSlotKey === slotKey;
+
+              if (isEditing) {
+                return (
+                  <div key={slotKey} className="rounded border border-amber-700/50 bg-amber-950/20 p-2.5 space-y-2">
+                    <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">Edit player slot</p>
+
+                    {/* Search + stat filter + threshold filter */}
+                    <div className="flex gap-1.5 flex-wrap">
+                      <div className="relative flex-1 min-w-[130px]">
+                        <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-600" />
+                        <input
+                          type="text"
+                          placeholder="Search player or team..."
+                          value={editSearch}
+                          onChange={e => setEditSearch(e.target.value)}
+                          className="w-full pl-6 pr-2 py-1 text-[11px] bg-zinc-900 border border-zinc-700 rounded text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-amber-600"
+                          autoFocus
+                        />
+                      </div>
+                      <select
+                        value={editStatFilter}
+                        onChange={e => { setEditStatFilter(e.target.value as typeof editStatFilter); setEditThreshold("any"); }}
+                        className="text-[11px] bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-300 focus:outline-none focus:border-amber-600"
+                      >
+                        <option value="any">Any stat</option>
+                        <option value="disposals">Disposals</option>
+                        <option value="goals">Goals</option>
+                      </select>
+                      <select
+                        value={editThreshold}
+                        onChange={e => setEditThreshold(e.target.value)}
+                        className="text-[11px] bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-zinc-300 focus:outline-none focus:border-amber-600"
+                      >
+                        <option value="any">Any threshold</option>
+                        {editThresholds.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Draft preview */}
+                    {editDraft && (
+                      <div className="rounded border border-sky-700/40 bg-sky-950/30 px-2.5 py-1.5">
+                        <span className="text-[11px] font-medium text-sky-200">{editDraft.playerName}</span>
+                        <span className="text-[10px] text-zinc-500 ml-1.5">
+                          {editDraft.team} · {editDraft.statType === "disposals" ? "Disp" : "Goals"} {editDraft.thresholdLabel} · {editDraft.recordLabel}
+                        </span>
+                        {editDraft.lastFive && editDraft.lastFive.length > 0 && (
+                          <div className="mt-0.5 flex items-center gap-1.5">
+                            <span className="text-[9px] text-zinc-600">L5:</span>
+                            <div className="flex gap-0.5">
+                              {editDraft.lastFive.map((v, i) => (
+                                <span key={i} className={`text-[9px] font-mono px-0.5 rounded ${
+                                  v >= editDraft!.threshold ? "text-emerald-400 bg-emerald-950/40" : "text-zinc-500 bg-zinc-800/60"
+                                }`}>{v}</span>
+                              ))}
+                            </div>
+                            {editDraft.projection != null && (
+                              <span className="text-[9px] text-sky-500">proj {editDraft.projection.toFixed(1)}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Candidate picker */}
+                    {editCandidates.length > 0 && (
+                      <div className="rounded border border-zinc-800 overflow-hidden max-h-48 overflow-y-auto">
+                        <table className="w-full text-[10px]">
+                          <tbody className="divide-y divide-zinc-800/30">
+                            {editCandidates.map(p => {
+                              const k = `${p.playerId}:${p.statType}:${p.threshold}`;
+                              const isDraft = editDraft && `${editDraft.playerId}:${editDraft.statType}:${editDraft.threshold}` === k;
+                              return (
+                                <tr
+                                  key={k}
+                                  onClick={() => setEditDraft(p)}
+                                  className={`cursor-pointer transition-colors ${isDraft ? "bg-sky-950/40" : "hover:bg-zinc-800/40"}`}
+                                >
+                                  <td className="px-2.5 py-1.5">
+                                    <span className={`font-medium ${isDraft ? "text-sky-200" : "text-zinc-200"}`}>{p.playerName}</span>
+                                    <span className="text-zinc-600 ml-1.5">{p.team}</span>
+                                  </td>
+                                  <td className="px-2 py-1.5 text-zinc-400 whitespace-nowrap">
+                                    {p.statType === "disposals" ? "Disp" : "Goals"} {p.thresholdLabel}
+                                  </td>
+                                  <td className="px-2 py-1.5 text-right font-mono text-zinc-300">{p.recordLabel}</td>
+                                  <td className="px-2 py-1.5 text-right font-mono text-zinc-400">{p.l5Avg.toFixed(1)}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {/* Apply / Cancel */}
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <button
+                        onClick={() => applyEdit(slotKey)}
+                        disabled={!editDraft}
+                        className="text-[11px] px-3 py-1 rounded border border-sky-700 bg-sky-900/40 text-sky-200 hover:bg-sky-800/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                      >
+                        Apply
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        className="text-[11px] px-3 py-1 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
-                <div key={`${s.playerId}:${s.statType}:${s.threshold}`} className={`rounded border px-2.5 py-1.5 ${
+                <div key={slotKey} className={`rounded border px-2.5 py-1.5 ${
                   isExcluded ? "bg-red-950/20 border-red-800/40" : "bg-sky-950/30 border-sky-800/40"
                 }`}>
                   <div className="flex items-center justify-between gap-2">
@@ -1286,25 +1480,35 @@ function SpotlightPlayerSelector({
                       </span>
                       <AvailabilityBadge status={s.availabilityStatus} reason={s.availabilityReason} />
                     </div>
-                    <button
-                      onClick={() => {
-                        const nextSpotlight = (post.selectedSpotlight ?? []).filter(
-                          x => !(x.playerId === s.playerId && x.statType === s.statType && x.threshold === s.threshold)
-                        );
-                        const nextPlayers = post.selectedPlayers.filter(p => p.playerId !== s.playerId);
-                        onUpdate({
-                          ...post,
-                          selectedSpotlight: nextSpotlight,
-                          selectedPlayers: nextPlayers,
-                          spotlightPromptStale: nextSpotlight.length > 0,
-                          title: buildSpotlightTitle(post.contentType, nextPlayers),
-                          updatedAt: new Date().toISOString(),
-                        });
-                      }}
-                      className="text-[9px] text-zinc-500 hover:text-red-400 transition-colors shrink-0"
-                    >
-                      Remove
-                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => startEdit(slotKey, s)}
+                        className="text-[9px] flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400 hover:border-amber-600 hover:text-amber-300 transition-colors"
+                        title="Edit player / threshold"
+                      >
+                        <Pencil className="w-2.5 h-2.5" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          const nextSpotlight = (post.selectedSpotlight ?? []).filter(
+                            x => !(x.playerId === s.playerId && x.statType === s.statType && x.threshold === s.threshold)
+                          );
+                          const nextPlayers = post.selectedPlayers.filter(p => p.playerId !== s.playerId);
+                          onUpdate({
+                            ...post,
+                            selectedSpotlight: nextSpotlight,
+                            selectedPlayers: nextPlayers,
+                            spotlightPromptStale: nextSpotlight.length > 0,
+                            title: buildSpotlightTitle(post.contentType, nextPlayers),
+                            updatedAt: new Date().toISOString(),
+                          });
+                        }}
+                        className="text-[9px] text-zinc-500 hover:text-red-400 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
                   {/* L5 data preview */}
                   {s.lastFive && s.lastFive.length > 0 ? (

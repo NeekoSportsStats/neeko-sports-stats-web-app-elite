@@ -103,6 +103,63 @@ function StatBoardPreviewRow({ player }: { player: StatBoardPlayer }) {
   );
 }
 
+function rankPreviewPlayers(rows: StatBoardPlayer[]): StatBoardPlayer[] {
+  // Composite score: reward high projection + decent (not just perfect) hit rate
+  // + penalise too-perfect rows so we get a believable spread.
+  const score = (p: StatBoardPlayer): number => {
+    const hitData = p.all_threshold_hit_rates?.["20"];
+    const hits = hitData?.hits ?? 0;
+    const games = hitData?.games ?? 10;
+    const rate = games > 0 ? hits / games : 0;
+    const proj = p.projection ?? 0;
+
+    // Penalise perfect 10/10 rows — they make the preview look fake
+    const perfectPenalty = hits === games && games >= 8 ? -8 : 0;
+
+    // Projection bonus (scale 0-20 → 0-25 pts)
+    const projScore = Math.min(proj, 35) * 0.7;
+
+    // Hit rate sweet spot: 70-90% scores highest
+    const rateScore =
+      rate >= 0.9 ? 14 :
+      rate >= 0.7 ? 20 :
+      rate >= 0.5 ? 14 :
+      rate * 15;
+
+    // Sample size bonus (more games played = more reliable)
+    const sampleScore = Math.min(games, 10) * 0.5;
+
+    return projScore + rateScore + sampleScore + perfectPenalty;
+  };
+
+  const sorted = [...rows].sort((a, b) => score(b) - score(a));
+
+  // Cap perfect-record rows to at most 2 in the top 5
+  const result: StatBoardPlayer[] = [];
+  let perfectCount = 0;
+  const rest: StatBoardPlayer[] = [];
+
+  for (const p of sorted) {
+    const hitData = p.all_threshold_hit_rates?.["20"];
+    const hits = hitData?.hits ?? 0;
+    const games = hitData?.games ?? 10;
+    const isPerfect = games >= 8 && hits === games;
+
+    if (isPerfect) {
+      if (perfectCount < 2) {
+        result.push(p);
+        perfectCount++;
+      } else {
+        rest.push(p);
+      }
+    } else {
+      result.push(p);
+    }
+  }
+
+  return [...result, ...rest];
+}
+
 function StatBoardPreview() {
   const [players, setPlayers] = useState<StatBoardPlayer[]>([]);
   const [match, setMatch] = useState<StatBoardMatch | null>(null);
@@ -123,11 +180,12 @@ function StatBoardPreview() {
         p_match_id: freeMatch.match_id,
         p_lens: "disposals",
         p_threshold: 20,
-        p_limit: 6,
+        p_limit: 20,
         p_offset: 0,
       });
       const rows = (playerData as StatBoardPlayer[] | null) ?? [];
-      setPlayers(rows.filter(p => p.projection != null).slice(0, 5));
+      const withProj = rows.filter(p => p.projection != null);
+      setPlayers(rankPreviewPlayers(withProj).slice(0, 5));
       setLoading(false);
     })();
   }, []);
