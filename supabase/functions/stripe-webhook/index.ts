@@ -392,6 +392,30 @@ async function syncSubscriptionFromStripe(subscriptionId: string, planType: 'wee
     } else {
       console.log(`stripe-webhook: subscriptions synced — status=${subscription.status}, user=${userId}, plan_type=${planType}`);
     }
+
+    // Sync profiles mirror so v_user_access and is_active remain consistent
+    // even before the next scheduled health check runs.
+    const isActiveNow =
+      ['active', 'trialing', 'canceled', 'cancelled'].includes(subscription.status) &&
+      periodEnd !== null &&
+      new Date(periodEnd) > new Date();
+
+    const { error: profileSyncError } = await supabase
+      .from('profiles')
+      .update({
+        subscription_status: subscription.status,
+        billing_period_end: periodEnd,
+        billing_period_start: periodStart,
+        is_active: isActiveNow,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', userId);
+
+    if (profileSyncError) {
+      console.warn('stripe-webhook: profile sync error (non-fatal):', profileSyncError.message);
+    } else {
+      console.log(`stripe-webhook: profile synced — status=${subscription.status}, is_active=${isActiveNow}, user=${userId}`);
+    }
   } catch (err: any) {
     console.error(`stripe-webhook: error syncing subscription ${subscriptionId}:`, err?.message ?? err);
   }
