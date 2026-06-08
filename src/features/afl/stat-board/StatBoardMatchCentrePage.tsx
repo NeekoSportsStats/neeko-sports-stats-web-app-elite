@@ -719,35 +719,35 @@ function PreviewMatchCard({
   const away = abbreviateTeam(fixture.awayTeamName);
 
   return (
-    <div className="rounded-2xl border border-white/[0.08] bg-[#0d0d0f] overflow-hidden">
+    <div className="rounded-2xl border border-white/[0.07] bg-[#0c0c0e] overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-white/[0.05] flex items-center gap-2">
+      <div className="px-4 py-2.5 border-b border-white/[0.05] flex items-center gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-[13.5px] font-bold text-white/55 leading-snug truncate">
+          <p className="text-[13px] font-bold text-white/55 leading-snug truncate">
             {home}
             <span className="mx-1.5 font-normal text-white/20 text-[11px]">vs</span>
             {away}
           </p>
-          <p className="text-[9.5px] text-white/25 mt-0.5 leading-none">
+          <p className="text-[9.5px] text-white/22 mt-0.5 leading-none">
             {formatMatchDate(fixture.gameDate)}
             {fixture.venue && <> · {abbreviateVenue(fixture.venue)}</>}
           </p>
         </div>
-        <span className="shrink-0 text-[8.5px] font-bold uppercase tracking-widest text-white/35 bg-white/[0.05] border border-white/[0.08] rounded px-1.5 py-0.5 leading-none">
+        <span className="shrink-0 text-[8.5px] font-bold uppercase tracking-widest text-white/30 bg-white/[0.04] border border-white/[0.07] rounded px-1.5 py-0.5 leading-none">
           Preview
         </span>
       </div>
 
-      {/* Teaser body */}
-      <div className="px-4 py-3 flex items-start justify-between gap-3">
-        <p className="text-[11.5px] text-white/38 leading-relaxed flex-1">
-          Projected totals, margin lean &amp; team trends inside.
+      {/* Teaser body — single compact row */}
+      <div className="px-4 py-2.5 flex items-center justify-between gap-3">
+        <p className="text-[11.5px] text-white/38 leading-snug flex-1">
+          Full projections, margin lean &amp; team trends inside Neeko+.
         </p>
         <button
           onClick={onUpgrade}
-          className="shrink-0 text-[11px] font-bold text-[#F5C84C] bg-[#F5C84C]/[0.09] border border-[#F5C84C]/22 rounded-xl px-3.5 py-2 hover:bg-[#F5C84C]/[0.15] active:bg-[#F5C84C]/[0.20] transition-colors leading-none whitespace-nowrap"
+          className="shrink-0 text-[11px] font-bold text-[#F5C84C] bg-[#F5C84C]/[0.09] border border-[#F5C84C]/22 rounded-xl px-3 py-1.5 hover:bg-[#F5C84C]/[0.15] active:bg-[#F5C84C]/[0.20] transition-colors leading-none whitespace-nowrap min-h-[40px] flex items-center"
         >
-          Unlock this matchup
+          Unlock
         </button>
       </div>
     </div>
@@ -1256,8 +1256,8 @@ export default function StatBoardMatchCentrePage() {
               <div className="mb-4 hidden sm:block rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-white leading-snug">2 free games unlocked this week</p>
-                    <p className="text-xs text-white/45 mt-0.5 leading-relaxed">Browse free games below. Upgrade to unlock every matchup and trend.</p>
+                    <p className="text-sm font-bold text-white leading-snug">2 full games free this week</p>
+                    <p className="text-xs text-white/45 mt-0.5 leading-relaxed">Preview every other matchup. Unlock the full round with Neeko+.</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                     <Link
@@ -1268,10 +1268,10 @@ export default function StatBoardMatchCentrePage() {
                       View free games
                     </Link>
                     <button
-                      onClick={() => { trackStatBoardUpgrade({ source: "stat_board_match_centre", button_text: "Unlock all games", section: "top_banner" }); window.location.href = "/neeko-plus"; }}
+                      onClick={() => { trackStatBoardUpgrade({ source: "stat_board_match_centre", button_text: "Unlock full board", section: "top_banner" }); window.location.href = "/neeko-plus"; }}
                       className="text-[11px] font-semibold text-[#F5C84C] bg-[#F5C84C]/10 border border-[#F5C84C]/20 rounded-lg px-2.5 py-1 hover:bg-[#F5C84C]/15 transition-colors whitespace-nowrap"
                     >
-                      Unlock all games
+                      Unlock full board
                     </button>
                   </div>
                 </div>
@@ -1280,13 +1280,13 @@ export default function StatBoardMatchCentrePage() {
               <div className="mb-3 sm:hidden flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 shrink-0" />
-                  <span className="text-[11px] font-semibold text-white/75 truncate">2 free games this week</span>
+                  <span className="text-[11px] font-semibold text-white/75 truncate">2 full games free this week</span>
                 </div>
                 <button
-                  onClick={() => { trackStatBoardUpgrade({ source: "stat_board_match_centre", button_text: "Unlock all", section: "top_banner_mobile" }); window.location.href = "/neeko-plus"; }}
+                  onClick={() => { trackStatBoardUpgrade({ source: "stat_board_match_centre", button_text: "Unlock full board", section: "top_banner_mobile" }); window.location.href = "/neeko-plus"; }}
                   className="shrink-0 text-[10px] font-bold text-[#F5C84C] bg-[#F5C84C]/10 border border-[#F5C84C]/18 rounded-lg px-2 py-1 hover:bg-[#F5C84C]/15 transition-colors whitespace-nowrap"
                 >
-                  Unlock all
+                  Unlock full board
                 </button>
               </div>
             </>

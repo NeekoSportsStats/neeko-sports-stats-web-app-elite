@@ -268,8 +268,8 @@ export default function StatBoardTeamsPage() {
               <div className="mb-3 hidden sm:block rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-white leading-snug">2 free games unlocked this week</p>
-                    <p className="text-xs text-white/45 mt-0.5 leading-relaxed">Browse free games below. Upgrade to unlock every matchup.</p>
+                    <p className="text-sm font-bold text-white leading-snug">2 full games free this week</p>
+                    <p className="text-xs text-white/45 mt-0.5 leading-relaxed">Preview every other matchup. Unlock the full round with Neeko+.</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                     <Link
@@ -280,10 +280,10 @@ export default function StatBoardTeamsPage() {
                       View free games
                     </Link>
                     <button
-                      onClick={() => { trackStatBoardUpgrade({ source: "stat_board_teams", button_text: "Unlock all games", section: "top_banner" }); window.location.href = "/neeko-plus"; }}
+                      onClick={() => { trackStatBoardUpgrade({ source: "stat_board_teams", button_text: "Unlock full board", section: "top_banner" }); window.location.href = "/neeko-plus"; }}
                       className="text-[11px] font-semibold text-[#F5C84C] bg-[#F5C84C]/10 border border-[#F5C84C]/20 rounded-lg px-2.5 py-1 hover:bg-[#F5C84C]/15 transition-colors whitespace-nowrap"
                     >
-                      Unlock all games
+                      Unlock full board
                     </button>
                   </div>
                 </div>
@@ -292,13 +292,13 @@ export default function StatBoardTeamsPage() {
               <div className="mb-2 sm:hidden flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2">
                 <div className="flex items-center gap-1.5 min-w-0">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70 shrink-0" />
-                  <span className="text-[11px] font-semibold text-white/75 truncate">2 free games this week</span>
+                  <span className="text-[11px] font-semibold text-white/75 truncate">2 full games free this week</span>
                 </div>
                 <button
-                  onClick={() => { trackStatBoardUpgrade({ source: "stat_board_teams", button_text: "Unlock all", section: "top_banner_mobile" }); window.location.href = "/neeko-plus"; }}
+                  onClick={() => { trackStatBoardUpgrade({ source: "stat_board_teams", button_text: "Unlock full board", section: "top_banner_mobile" }); window.location.href = "/neeko-plus"; }}
                   className="shrink-0 text-[10px] font-bold text-[#F5C84C] bg-[#F5C84C]/10 border border-[#F5C84C]/18 rounded-lg px-2 py-1 hover:bg-[#F5C84C]/15 transition-colors whitespace-nowrap"
                 >
-                  Unlock all
+                  Unlock full board
                 </button>
               </div>
             </>
@@ -573,12 +573,12 @@ export default function StatBoardTeamsPage() {
                               Unlock full round with Neeko+
                             </p>
                             <p className="text-[10px] text-white/35 mt-0.5 leading-relaxed">
-                              Full projections, hit rates &amp; trends for every team.
+                              Every match. Full projections, hit rates &amp; trends.
                             </p>
                           </div>
                           <button
                             onClick={() => navigate("/neeko-plus")}
-                            className="shrink-0 rounded-lg bg-[#F5C84C]/15 border border-[#F5C84C]/30 text-[11px] font-bold text-[#F5C84C] hover:bg-[#F5C84C]/22 active:bg-[#F5C84C]/30 transition-colors"
+                            className="shrink-0 rounded-lg bg-[#F5C84C]/15 border border-[#F5C84C]/30 text-[11px] font-bold text-[#F5C84C] hover:bg-[#F5C84C]/22 active:bg-[#F5C84C]/30 transition-colors min-h-[40px] flex items-center"
                             style={{ padding: "7px 11px", whiteSpace: "nowrap" }}
                           >
                             Unlock Neeko+
@@ -753,44 +753,38 @@ function PreviewTeamCard({ fixture, onUnlockClick }: PreviewTeamCardProps) {
 
   return (
     <div
-      className="rounded-2xl border border-white/[0.08] bg-[#0d0d0d] overflow-hidden"
+      className="rounded-2xl border border-white/[0.07] bg-[#0c0c0e] overflow-hidden"
       style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}
     >
       {/* Header */}
-      <div className="px-3 py-2.5 border-b border-white/[0.06] flex items-center gap-2 bg-white/[0.015]">
-        <span className="text-[12px] font-bold text-white/55 truncate flex-1">
+      <div className="px-3 py-2.5 border-b border-white/[0.05] flex items-center gap-2 bg-white/[0.01]">
+        <span className="text-[13px] font-bold text-white/55 truncate flex-1 leading-snug">
           {home}
-          <span className="mx-1.5 font-normal text-white/22 text-[10px]">vs</span>
+          <span className="mx-1.5 font-normal text-white/20 text-[11px]">vs</span>
           {away}
         </span>
-        <span className="shrink-0 text-[8px] font-bold uppercase tracking-wide text-white/40 bg-white/5 border border-white/10 rounded px-1.5 py-0.5 leading-none">
+        <span className="shrink-0 text-[8px] font-bold uppercase tracking-wider text-white/35 bg-white/[0.04] border border-white/[0.07] rounded px-1.5 py-0.5 leading-none">
           Preview
         </span>
       </div>
 
-      {/* Body */}
-      <div className="px-3 py-2.5">
-        {(dateStr || venueShort) && (
-          <p className="text-[9px] text-white/28 mb-2 leading-none">
-            {dateStr}{dateStr && venueShort ? " · " : ""}{venueShort}
+      {/* Body + CTA in one row */}
+      <div className="px-3 py-2.5 flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          {(dateStr || venueShort) && (
+            <p className="text-[9px] text-white/25 mb-1.5 leading-none">
+              {dateStr}{dateStr && venueShort ? " · " : ""}{venueShort}
+            </p>
+          )}
+          <p className="text-[11px] text-white/40 leading-snug">
+            Full projections, margin lean &amp; team trends inside Neeko+.
           </p>
-        )}
-        <p className="text-[11px] text-white/40 leading-relaxed">
-          Projected totals, margin lean &amp; team trends inside.
-        </p>
-      </div>
-
-      {/* CTA */}
-      <div className="px-3 pb-3 flex items-center justify-between gap-2">
-        <span className="text-[9px] text-[#F5C84C]/50 font-semibold flex items-center gap-1">
-          <Lock className="h-2.5 w-2.5" aria-hidden />
-          Neeko+ required
-        </span>
+        </div>
         <button
           onClick={onUnlockClick}
-          className="shrink-0 text-[10px] font-bold text-[#F5C84C] bg-[#F5C84C]/10 border border-[#F5C84C]/22 rounded-lg px-3 py-1.5 hover:bg-[#F5C84C]/16 active:bg-[#F5C84C]/22 transition-colors whitespace-nowrap"
+          className="shrink-0 text-[10px] font-bold text-[#F5C84C] bg-[#F5C84C]/10 border border-[#F5C84C]/22 rounded-lg px-3 py-2 hover:bg-[#F5C84C]/16 active:bg-[#F5C84C]/22 transition-colors whitespace-nowrap min-h-[40px] flex items-center"
         >
-          Unlock this matchup
+          Unlock
         </button>
       </div>
     </div>
