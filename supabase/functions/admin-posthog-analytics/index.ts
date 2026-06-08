@@ -592,15 +592,7 @@ async function getCtaPerformance(
           ) as clean_path,
           count() as clicks
         FROM events
-        WHERE event IN (
-                        'cta_clicked',
-                        'landing_cta_clicked', 'pricing_cta_clicked', 'neeko_plus_clicked',
-                        'premium_gate_cta_clicked', 'locked_cell_clicked', 'marketing_cta_clicked',
-                        'free_games_cta_clicked', 'unlock_all_games_clicked',
-                        'unlock_this_matchup_clicked', 'stat_board_upgrade_clicked',
-                        'mobile_sticky_cta_clicked',
-                        'hero_cta_clicked', 'view_free_games_clicked', 'unlock_full_round_clicked'
-                       )
+        WHERE event = 'cta_clicked'
           AND timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND ${adminExclusionWhere(includeAdmin)}
         GROUP BY cta_location, cta_text, cta_type, clean_path
@@ -610,10 +602,14 @@ async function getCtaPerformance(
     });
     const rows = (result as any)?.results ?? [];
     return rows.map((row: unknown[]) => ({
-      event: String(row[0] ?? ""),
+      event: "cta_clicked",
       cta_location: String(row[0] ?? ""),
+      // Frontend CtaRow expects button_text and section
+      button_text: String(row[1] ?? ""),
+      section: String(row[0] ?? ""),
       cta_text: String(row[1] ?? ""),
       cta_type: String(row[2] ?? ""),
+      source: String(row[0] ?? ""),
       clean_path: String(row[3] ?? ""),
       clicks: Number(row[4]) || 0,
     }));

@@ -28,8 +28,10 @@ interface FunnelData {
 
 interface CtaRow {
   event: string;
-  button_text: string;
-  section: string;
+  button_text: string;   // cta_text property on the event
+  section: string;       // cta_location property on the event
+  cta_location?: string;
+  cta_type?: string;
   source: string;
   clicks: number;
 }
@@ -379,9 +381,9 @@ function buildAnalysisPack(data: InsightsData, range: MarketingInsightsRange, fe
   // ── 4. Top CTA Events
   lines.push(`## 4. Top CTA Events`);
   const totalCtaClicks = cta.reduce((s, r) => s + safeInt(r.clicks), 0);
-  lines.push(`Total CTA clicks: ${totalCtaClicks.toLocaleString()} (sum of rows below = all cta_clicked events grouped by location)`);
-  lines.push(`Executive Summary CTA Clicks: ${safeInt(funnel?.cta_clicks)} (count of all cta_clicked events — same event, different aggregation)`);
-  lines.push(`Note: both counts use only the canonical "cta_clicked" event. All CTA helpers (trackLandingCTA, trackPricingCTA, etc.) delegate to trackCTA() which fires "cta_clicked". Difference between totals reflects grouping by location vs raw count.`);
+  lines.push(`Total CTA clicks: ${totalCtaClicks.toLocaleString()} (sum of rows below — cta_clicked events grouped by cta_location)`);
+  lines.push(`Executive Summary CTA Clicks: ${safeInt(funnel?.cta_clicks)} (count of all cta_clicked events — same canonical event)`);
+  lines.push(`Note: both counts query only the canonical "cta_clicked" event. All CTA helpers (trackLandingCTA, trackPricingCTA, etc.) delegate to trackCTA() which fires "cta_clicked". Minor differences reflect grouping by cta_location vs raw total count.`);
   if (cta.length > 0) {
     lines.push(``);
     lines.push(`| Event | Button | Section | Clicks |`);
