@@ -83,11 +83,12 @@ function normaliseRate(rate: number): number {
 }
 
 function profileText(player: StatBoardPlayer): string {
-  const { stat_lens, all_threshold_hit_rates, projection, hit_rate_last_10 } = player;
+  const { stat_lens, projection, hit_rate_last_10 } = player;
+  const hitRates = player.season_threshold_hit_rates ?? player.all_threshold_hit_rates;
 
   if (stat_lens === "disposals") {
-    const hr25 = all_threshold_hit_rates?.["25"];
-    const hr20 = all_threshold_hit_rates?.["20"];
+    const hr25 = hitRates?.["25"];
+    const hr20 = hitRates?.["20"];
     if (hr25 && normaliseRate(hr25.rate) >= 0.65) return "strong 25+ profile";
     if (hr20 && normaliseRate(hr20.rate) >= 0.65) return "strong 20+ profile";
     if (hr20 && normaliseRate(hr20.rate) >= 0.45) return "solid 20+ profile";
@@ -95,8 +96,8 @@ function profileText(player: StatBoardPlayer): string {
   }
 
   // goals
-  const hr2 = all_threshold_hit_rates?.["2"];
-  const hr1 = all_threshold_hit_rates?.["1"];
+  const hr2 = hitRates?.["2"];
+  const hr1 = hitRates?.["1"];
   if ((projection ?? 0) >= 1.8) return "2+ goal ceiling";
   if (hr2 && normaliseRate(hr2.rate) >= 0.55) return "2+ goal upside";
   if (hr1 && normaliseRate(hr1.rate) >= 0.70) return "anytime goal profile";
@@ -129,10 +130,11 @@ function PlayerPreviewHeader() {
 
 function PlayerPreviewRow({ player }: { player: StatBoardPlayer }) {
   const profile = profileText(player);
+  const hitRateSource = player.season_threshold_hit_rates ?? player.all_threshold_hit_rates;
   const hitData =
     player.stat_lens === "disposals"
-      ? (player.all_threshold_hit_rates?.["20"] ?? null)
-      : (player.all_threshold_hit_rates?.["1"] ?? null);
+      ? (hitRateSource?.["20"] ?? null)
+      : (hitRateSource?.["1"] ?? null);
   const hitFrac = hitData ? `${hitData.hits}/${hitData.games}` : null;
   const hitPct = hitData?.rate != null
     ? Math.min(100, Math.round(hitData.rate > 1 ? hitData.rate : hitData.rate * 100))
