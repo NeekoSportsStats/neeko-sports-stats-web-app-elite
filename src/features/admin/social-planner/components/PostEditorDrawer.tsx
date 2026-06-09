@@ -528,7 +528,7 @@ function PlayersTab({
         ? <MatchBoardAggregatedSections post={edited} allPlayers={allPlayers} onUpdate={onUpdate} />
         : isSpotlight
         ? <SpotlightPlayerSelector post={edited} allPlayers={allPlayers} onUpdate={onUpdate} />
-        : <PlayerList players={edited.selectedPlayers} />
+        : <UniversalPlayerList post={edited} allPlayers={allPlayers} onUpdate={onUpdate} />
       }
     </div>
   );
@@ -1675,7 +1675,109 @@ function buildSpotlightTitle(contentType: SocialPost["contentType"], players: AF
   return "Player Spotlight";
 }
 
-function PlayerList({ players }: { players: AFLPlayerStat[] }) {
+// ─── Universal Player List (editable for all non-spotlight post types) ────────
+
+function rebuildPlayerSlides(
+  post: SocialPost,
+  nextPlayers: AFLPlayerStat[]
+): SocialPost["carouselSlides"] {
+  const slides = [...post.carouselSlides];
+  // Find all player_spotlight slides (by index in player array) and update title/subtitle/rows
+  let playerSlideIdx = 0;
+  return slides.map(slide => {
+    if (slide.slideType !== "player_spotlight") return slide;
+    const p = nextPlayers[playerSlideIdx++];
+    if (!p) return slide;
+    return {
+      ...slide,
+      title: p.playerName,
+      subtitle: `${p.team} · ${p.thresholdLabel} ${p.statType}: ${p.recordLabel}`,
+      rows: slide.rows && slide.rows.length > 0
+        ? [{ ...slide.rows[0], playerName: p.playerName, l5Avg: p.l5Avg, projection: p.projection }]
+        : slide.rows,
+    };
+  });
+}
+
+function UniversalPlayerList({
+  post,
+  allPlayers,
+  onUpdate,
+}: {
+  post: SocialPost;
+  allPlayers: AFLPlayerStat[];
+  onUpdate: (post: SocialPost) => void;
+}) {
+  const players = post.selectedPlayers;
+
+  // Per-slot edit state, keyed by slot index
+  const [editingSlot, setEditingSlot] = useState<number | null>(null);
+  const [editSearch, setEditSearch] = useState("");
+  const [editStatFilter, setEditStatFilter] = useState<"any" | "disposals" | "goals">("any");
+  const [editThreshold, setEditThreshold] = useState<string>("any");
+  const [editDraft, setEditDraft] = useState<AFLPlayerStat | null>(null);
+
+  const editThresholds = useMemo(() => {
+    const src = editStatFilter !== "any" ? allPlayers.filter(p => p.statType === editStatFilter) : allPlayers;
+    return Array.from(new Set(src.map(p => p.thresholdLabel))).sort();
+  }, [allPlayers, editStatFilter]);
+
+  const editCandidates = useMemo(() => {
+    let list = allPlayers.filter(p => p.confidenceTier !== "thin_sample");
+    if (editStatFilter !== "any") list = list.filter(p => p.statType === editStatFilter);
+    if (editThreshold !== "any") list = list.filter(p => p.thresholdLabel === editThreshold);
+    if (editSearch.trim()) {
+      const q = editSearch.trim().toLowerCase();
+      list = list.filter(p => p.playerName.toLowerCase().includes(q) || p.team.toLowerCase().includes(q));
+    }
+    list.sort((a, b) => b.percent !== a.percent ? b.percent - a.percent : b.gamesPlayed - a.gamesPlayed);
+    return list.slice(0, 30);
+  }, [allPlayers, editStatFilter, editThreshold, editSearch]);
+
+  function startEdit(idx: number) {
+    const p = players[idx];
+    setEditingSlot(idx);
+    setEditSearch(p.playerName);
+    setEditStatFilter(p.statType as "disposals" | "goals");
+    setEditThreshold(p.thresholdLabel ?? "any");
+    const current = allPlayers.find(
+      a => a.playerId === p.playerId && a.statType === p.statType && a.threshold === p.threshold
+    ) ?? p;
+    setEditDraft(current);
+  }
+
+  function cancelEdit() {
+    setEditingSlot(null);
+    setEditDraft(null);
+    setEditSearch("");
+    setEditStatFilter("any");
+    setEditThreshold("any");
+  }
+
+  function applyEdit(idx: number) {
+    if (!editDraft) return;
+    const nextPlayers = players.map((p, i) => i === idx ? editDraft : p);
+    const nextSlides = rebuildPlayerSlides({ ...post, selectedPlayers: nextPlayers }, nextPlayers);
+    onUpdate({
+      ...post,
+      selectedPlayers: nextPlayers,
+      carouselSlides: nextSlides,
+      updatedAt: new Date().toISOString(),
+    });
+    cancelEdit();
+  }
+
+  function removePlayer(idx: number) {
+    const nextPlayers = players.filter((_, i) => i !== idx);
+    const nextSlides = rebuildPlayerSlides({ ...post, selectedPlayers: nextPlayers }, nextPlayers);
+    onUpdate({
+      ...post,
+      selectedPlayers: nextPlayers,
+      carouselSlides: nextSlides,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
   if (players.length === 0) {
     return (
       <div className="text-center py-10 text-zinc-500 rounded-lg border border-dashed border-zinc-800">
@@ -1684,39 +1786,190 @@ function PlayerList({ players }: { players: AFLPlayerStat[] }) {
       </div>
     );
   }
+
   return (
-    <>
+    <div className="space-y-2">
       <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
         Players ({players.length})
+        {allPlayers.length === 0 && (
+          <span className="ml-2 text-zinc-600 normal-case font-normal">— load player data to enable editing</span>
+        )}
       </p>
-      <div className="space-y-2">
-        {players.map((p, i) => (
-          <div key={i} className="rounded-lg bg-zinc-900 border border-zinc-800 p-3">
+
+      {players.map((p, i) => {
+        const isEditing = editingSlot === i;
+        const isExcluded = p.availabilityStatus && EXCLUDED_STATUSES.has(p.availabilityStatus);
+
+        if (isEditing) {
+          return (
+            <div key={i} className="rounded-lg border border-amber-700/50 bg-amber-950/20 p-3 space-y-2">
+              <p className="text-[10px] font-semibold text-amber-400 uppercase tracking-wider">
+                Edit slot {i + 1} — {p.playerName}
+              </p>
+
+              <div className="flex gap-1.5 flex-wrap">
+                <div className="relative flex-1 min-w-[130px]">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-zinc-600" />
+                  <input
+                    type="text"
+                    placeholder="Search player or team..."
+                    value={editSearch}
+                    onChange={e => setEditSearch(e.target.value)}
+                    className="w-full pl-6 pr-2 py-1.5 text-[11px] bg-zinc-900 border border-zinc-700 rounded text-zinc-300 placeholder-zinc-600 focus:outline-none focus:border-amber-600"
+                    autoFocus
+                  />
+                </div>
+                <select
+                  value={editStatFilter}
+                  onChange={e => { setEditStatFilter(e.target.value as typeof editStatFilter); setEditThreshold("any"); }}
+                  className="text-[11px] bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-300 focus:outline-none focus:border-amber-600"
+                >
+                  <option value="any">Any stat</option>
+                  <option value="disposals">Disposals</option>
+                  <option value="goals">Goals</option>
+                </select>
+                <select
+                  value={editThreshold}
+                  onChange={e => setEditThreshold(e.target.value)}
+                  className="text-[11px] bg-zinc-900 border border-zinc-700 rounded px-2 py-1.5 text-zinc-300 focus:outline-none focus:border-amber-600"
+                >
+                  <option value="any">Any threshold</option>
+                  {editThresholds.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+
+              {editDraft && (
+                <div className="rounded border border-sky-700/40 bg-sky-950/30 px-2.5 py-1.5">
+                  <span className="text-[11px] font-medium text-sky-200">{editDraft.playerName}</span>
+                  <span className="text-[10px] text-zinc-500 ml-1.5">
+                    {editDraft.team} · {editDraft.statType === "disposals" ? "Disp" : "Goals"} {editDraft.thresholdLabel} · {editDraft.recordLabel}
+                  </span>
+                  {editDraft.lastFive && editDraft.lastFive.length > 0 && (
+                    <div className="mt-0.5 flex items-center gap-1.5">
+                      <span className="text-[9px] text-zinc-600">L5:</span>
+                      <div className="flex gap-0.5">
+                        {editDraft.lastFive.map((v, vi) => (
+                          <span key={vi} className={`text-[9px] font-mono px-0.5 rounded ${
+                            v >= editDraft!.threshold ? "text-emerald-400 bg-emerald-950/40" : "text-zinc-500 bg-zinc-800/60"
+                          }`}>{v}</span>
+                        ))}
+                      </div>
+                      {editDraft.projection != null && (
+                        <span className="text-[9px] text-sky-500">proj {editDraft.projection.toFixed(1)}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {editCandidates.length > 0 && (
+                <div className="rounded border border-zinc-800 overflow-hidden max-h-48 overflow-y-auto">
+                  <table className="w-full text-[10px]">
+                    <tbody className="divide-y divide-zinc-800/30">
+                      {editCandidates.map(c => {
+                        const k = `${c.playerId}:${c.statType}:${c.threshold}`;
+                        const isDraft = editDraft && `${editDraft.playerId}:${editDraft.statType}:${editDraft.threshold}` === k;
+                        return (
+                          <tr
+                            key={k}
+                            onClick={() => setEditDraft(c)}
+                            className={`cursor-pointer transition-colors ${isDraft ? "bg-sky-950/40" : "hover:bg-zinc-800/40"}`}
+                          >
+                            <td className="px-2.5 py-1.5">
+                              <span className={`font-medium ${isDraft ? "text-sky-200" : "text-zinc-200"}`}>{c.playerName}</span>
+                              <span className="text-zinc-600 ml-1.5">{c.team}</span>
+                            </td>
+                            <td className="px-2 py-1.5 text-zinc-400 whitespace-nowrap">
+                              {c.statType === "disposals" ? "Disp" : "Goals"} {c.thresholdLabel}
+                            </td>
+                            <td className="px-2 py-1.5 text-right font-mono text-zinc-300">{c.recordLabel}</td>
+                            <td className="px-2 py-1.5 text-right font-mono text-zinc-400">{c.l5Avg.toFixed(1)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 pt-0.5">
+                <button
+                  onClick={() => applyEdit(i)}
+                  disabled={!editDraft}
+                  className="text-[11px] px-3 py-1.5 rounded border border-sky-700 bg-sky-900/40 text-sky-200 hover:bg-sky-800/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+                >
+                  Apply
+                </button>
+                <button
+                  onClick={cancelEdit}
+                  className="text-[11px] px-3 py-1.5 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 hover:border-zinc-500 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          );
+        }
+
+        return (
+          <div key={i} className={`rounded-lg border p-3 ${
+            isExcluded ? "bg-red-950/20 border-red-800/40" : "bg-zinc-900 border-zinc-800"
+          }`}>
             <div className="flex items-start justify-between gap-2 mb-2">
-              <div>
-                <p className="text-sm font-medium text-zinc-200">{p.playerName}</p>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className={`text-sm font-medium ${isExcluded ? "text-red-300" : "text-zinc-200"}`}>
+                    {p.playerName}
+                  </p>
+                  <AvailabilityBadge status={p.availabilityStatus} reason={p.availabilityReason} />
+                </div>
                 <p className="text-[10px] text-zinc-500">{p.team}</p>
               </div>
-              <ConfidencePill tier={p.confidenceTier} />
+              <div className="flex items-center gap-1.5 shrink-0">
+                <ConfidencePill tier={p.confidenceTier} />
+                {allPlayers.length > 0 && (
+                  <button
+                    onClick={() => startEdit(i)}
+                    className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 text-[9px] flex items-center justify-center gap-0.5 px-1.5 py-0.5 rounded border border-zinc-700 text-zinc-400 hover:border-amber-600 hover:text-amber-300 transition-colors"
+                    title="Edit player / threshold"
+                  >
+                    <Pencil className="w-2.5 h-2.5" />
+                    <span className="hidden sm:inline">Edit</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => removePlayer(i)}
+                  className="min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center text-[9px] text-zinc-500 hover:text-red-400 transition-colors px-1"
+                  title="Remove player"
+                >
+                  <span className="hidden sm:inline">Remove</span>
+                  <X className="w-3 h-3 sm:hidden" />
+                </button>
+              </div>
             </div>
+
             <div className="grid grid-cols-3 gap-2 text-[10px] text-zinc-400 mb-2">
-              <span className="col-span-3 text-zinc-500">{p.statType} · Threshold: {p.thresholdLabel}</span>
+              <span className="col-span-3 text-zinc-500">
+                {p.statType} · {p.thresholdLabel}
+              </span>
               <span>Record: <span className="text-zinc-300 font-medium">{p.recordLabel}</span></span>
               <span>L5 Avg: <span className="text-zinc-300 font-medium">{p.l5Avg.toFixed(1)}</span></span>
               {p.projection != null && (
                 <span>Proj: <span className="text-sky-300 font-medium">{p.projection.toFixed(1)}</span></span>
               )}
             </div>
+
             {p.lastFive.length > 0 && (
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[10px] text-zinc-500">Last 5:</span>
                 {p.lastFive.map((v, vi) => (
                   <span
                     key={vi}
-                    className={`text-[10px] px-1.5 py-0.5 rounded border font-mono
-                      ${v >= p.threshold
+                    className={`text-[10px] px-1.5 py-0.5 rounded border font-mono ${
+                      v >= p.threshold
                         ? "bg-emerald-950/50 border-emerald-800/50 text-emerald-400"
-                        : "bg-zinc-800 border-zinc-700 text-zinc-400"}`}
+                        : "bg-zinc-800 border-zinc-700 text-zinc-400"
+                    }`}
                   >
                     {v}
                   </span>
@@ -1724,9 +1977,9 @@ function PlayerList({ players }: { players: AFLPlayerStat[] }) {
               </div>
             )}
           </div>
-        ))}
-      </div>
-    </>
+        );
+      })}
+    </div>
   );
 }
 
