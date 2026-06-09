@@ -1,6 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+function timingSafeCompare(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ab = enc.encode(a);
+  const bb = enc.encode(b);
+  if (ab.byteLength !== bb.byteLength) return false;
+  return crypto.subtle.timingSafeEqual(ab, bb);
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "https://www.neekostats.com.au",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -204,7 +212,7 @@ Deno.serve(async (req: Request) => {
 
     const authHeader = req.headers.get("Authorization");
     const token = authHeader?.replace("Bearer ", "");
-    if (!token || token !== serviceRoleKey) {
+    if (!token || !timingSafeCompare(token, serviceRoleKey)) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }

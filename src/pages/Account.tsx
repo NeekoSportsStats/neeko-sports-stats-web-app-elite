@@ -44,13 +44,10 @@ export default function Account() {
     const loadProfile = async () => {
       setLoadingProfile(true);
 
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle();
+      const { data: profileRows } = await supabase.rpc("get_my_profile_summary");
+      const profileData = Array.isArray(profileRows) ? (profileRows[0] ?? null) : (profileRows ?? null);
 
-      if (!data) {
+      if (!profileData) {
         setProfile({
           id: user.id,
           email: user.email,
@@ -58,18 +55,13 @@ export default function Account() {
           subscription_status: isPremium ? "active" : "free",
         });
       } else {
-        setProfile(data);
+        setProfile(profileData);
       }
 
-      const { data: sub } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .or(`profile_id.eq.${user.id},user_id.eq.${user.id}`)
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      const { data: subRows } = await supabase.rpc("get_my_subscription_summary");
+      const subData = Array.isArray(subRows) ? (subRows[0] ?? null) : (subRows ?? null);
 
-      setSubRecord(sub ?? null);
+      setSubRecord(subData ?? null);
 
       setLoadingProfile(false);
     };

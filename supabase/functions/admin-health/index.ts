@@ -1,6 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+function timingSafeCompare(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const ab = enc.encode(a);
+  const bb = enc.encode(b);
+  if (ab.byteLength !== bb.byteLength) return false;
+  return crypto.subtle.timingSafeEqual(ab, bb);
+}
+
 const ALLOWED_ORIGINS = new Set([
   "https://www.neekostats.com.au",
   "https://neekostats.com.au",
@@ -39,7 +47,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    let isAuthorized = token === serviceKey;
+    let isAuthorized = timingSafeCompare(token, serviceKey);
 
     if (!isAuthorized) {
       const userClient = createClient(supabaseUrl, serviceKey);

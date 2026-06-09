@@ -456,7 +456,6 @@ Deno.serve(async (req: Request) => {
 
   } catch (e) {
     console.error("ADMIN COMMAND ERROR:", e);
-    const msg = e instanceof Error ? e.message : "Request failed";
-    return err(msg, 500);
+    return err("Request failed", 500);
   }
 });

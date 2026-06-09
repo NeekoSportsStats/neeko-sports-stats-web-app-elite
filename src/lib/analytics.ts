@@ -283,7 +283,7 @@ export function identifyUser(user: { id: string; email?: string }) {
 
   try {
     if (!user?.id) return;
-    posthog.identify(user.id, { email: user.email ?? undefined });
+    posthog.identify(user.id);
   } catch {
     // non-critical
   }

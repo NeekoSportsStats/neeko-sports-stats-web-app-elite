@@ -164,6 +164,23 @@ Deno.serve(async (req) => {
       return err('Failed to authenticate user', 401);
     }
 
+    // Rate limit: 5 checkout attempts per user per hour
+    const windowStart = new Date();
+    windowStart.setMinutes(0, 0, 0);
+    const { data: rateCount, error: rateErr } = await supabase.rpc('increment_rate_limit', {
+      p_user_id: user.id,
+      p_function_name: 'stripe-checkout',
+      p_window_start: windowStart.toISOString(),
+    });
+    if (rateErr) {
+      console.error('stripe-checkout: rate limit check failed', rateErr);
+    } else if (typeof rateCount === 'number' && rateCount > 5) {
+      return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const planConfig = await resolvePlanConfig(plan);
 
     if (!planConfig) {

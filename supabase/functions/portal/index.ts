@@ -48,6 +48,23 @@ Deno.serve(async (req: Request) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401, headers: corsHeaders });
     }
 
+    // Rate limit: 10 portal requests per user per hour
+    const windowStart = new Date();
+    windowStart.setMinutes(0, 0, 0);
+    const { data: rateCount, error: rateErr } = await supabase.rpc('increment_rate_limit', {
+      p_user_id: user.id,
+      p_function_name: 'portal',
+      p_window_start: windowStart.toISOString(),
+    });
+    if (rateErr) {
+      console.error('portal: rate limit check failed', rateErr);
+    } else if (typeof rateCount === 'number' && rateCount > 10) {
+      return new Response(JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }), {
+        status: 429,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Resolve stripe customer via stripe_customers.user_id (the only valid column)
     const { data: customer } = await supabase
       .from('stripe_customers')

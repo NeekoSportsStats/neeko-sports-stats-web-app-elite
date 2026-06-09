@@ -42,7 +42,8 @@ Deno.serve(async (req: Request) => {
     });
     const product = await productRes.json();
     if (!productRes.ok) {
-      return new Response(JSON.stringify({ error: "product creation failed", detail: product }), {
+      console.error("[stripe-setup-products] product creation failed", product);
+      return new Response(JSON.stringify({ error: "Product setup failed" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -61,7 +62,8 @@ Deno.serve(async (req: Request) => {
     });
     const seasonPrice = await seasonPriceRes.json();
     if (!seasonPriceRes.ok) {
-      return new Response(JSON.stringify({ error: "season price creation failed", detail: seasonPrice }), {
+      console.error("[stripe-setup-products] season price creation failed", seasonPrice);
+      return new Response(JSON.stringify({ error: "Product setup failed" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -81,7 +83,8 @@ Deno.serve(async (req: Request) => {
     });
     const weeklyPrice = await weeklyPriceRes.json();
     if (!weeklyPriceRes.ok) {
-      return new Response(JSON.stringify({ error: "weekly price creation failed", detail: weeklyPrice }), {
+      console.error("[stripe-setup-products] weekly price creation failed", weeklyPrice);
+      return new Response(JSON.stringify({ error: "Product setup failed" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -104,7 +107,8 @@ Deno.serve(async (req: Request) => {
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
+    console.error("[stripe-setup-products] unhandled error:", err);
+    return new Response(JSON.stringify({ error: "Request failed" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
