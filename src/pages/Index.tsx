@@ -20,7 +20,8 @@ const DARK = "#05070A";
 // ── Stat Board live preview ───────────────────────────────────────────────────
 
 function StatBoardPreviewRow({ player }: { player: StatBoardPlayer }) {
-  const hitData = player.all_threshold_hit_rates?.["20"] ?? player.all_threshold_hit_rates?.["1"];
+  const hitRateSource = player.season_threshold_hit_rates ?? player.all_threshold_hit_rates;
+  const hitData = hitRateSource?.["20"] ?? hitRateSource?.["1"];
   const hitPct = hitData ? hitData.rate : player.hit_rate_last_10 != null ? Math.round(player.hit_rate_last_10 * 100) : null;
   const hitFrac = hitData ? `${hitData.hits}/${hitData.games}` : null;
   const proj = player.projection;
@@ -107,9 +108,10 @@ function rankPreviewPlayers(rows: StatBoardPlayer[]): StatBoardPlayer[] {
   // Composite score: reward high projection + decent (not just perfect) hit rate
   // + penalise too-perfect rows so we get a believable spread.
   const score = (p: StatBoardPlayer): number => {
-    const hitData = p.all_threshold_hit_rates?.["20"];
+    const hitRateSource = p.season_threshold_hit_rates ?? p.all_threshold_hit_rates;
+    const hitData = hitRateSource?.["20"];
     const hits = hitData?.hits ?? 0;
-    const games = hitData?.games ?? 10;
+    const games = hitData?.games ?? 0;
     const rate = games > 0 ? hits / games : 0;
     const proj = p.projection ?? 0;
 
@@ -140,9 +142,10 @@ function rankPreviewPlayers(rows: StatBoardPlayer[]): StatBoardPlayer[] {
   const rest: StatBoardPlayer[] = [];
 
   for (const p of sorted) {
-    const hitData = p.all_threshold_hit_rates?.["20"];
+    const hitRateSource = p.season_threshold_hit_rates ?? p.all_threshold_hit_rates;
+    const hitData = hitRateSource?.["20"];
     const hits = hitData?.hits ?? 0;
-    const games = hitData?.games ?? 10;
+    const games = hitData?.games ?? 0;
     const isPerfect = games >= 8 && hits === games;
 
     if (isPerfect) {
