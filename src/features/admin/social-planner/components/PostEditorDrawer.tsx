@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye, Search, Import as SortAsc, Pencil } from "lucide-react";
-import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat, PlayerAvailabilityStatus, SpotlightSelection, ReferenceScreenshot, ScreenshotTag, ScreenshotRefMode } from "../types";
-import { EXCLUDED_STATUSES, WARNING_STATUSES } from "../types";
+import { X, Copy, Check, RefreshCw, ChevronLeft, TriangleAlert as AlertTriangle, Shield, ShieldCheck, Image, FileText, Layers, Eye, Search, Import as SortAsc, Pencil, Upload, Trash2 } from "lucide-react";
+import type { SocialPost, PostStatus, CarouselSlide, ContentType, ContentVisibilityMode, AFLPlayerStat, PlayerAvailabilityStatus, SpotlightSelection, ReferenceScreenshot, ScreenshotTag, ScreenshotRefMode, EducationAsset, EducationPattern, EducationCopyTone, EducationVisualDirection } from "../types";
+import { EXCLUDED_STATUSES, WARNING_STATUSES, contentModeFor } from "../types";
 import type { MatchBoardPlayerRow } from "../lib/rowAggregator";
 import { effectiveStatus, isAvailabilityWarning, isExcludedStatus } from "../hooks/usePlayerAvailability";
 import { checkSafety } from "../lib/safetyRules";
@@ -27,17 +27,28 @@ import {
 
 const STATUS_OPTIONS: PostStatus[] = ["draft", "ready", "scheduled", "posted", "archived"];
 
-type DrawerTab = "overview" | "players" | "slides" | "copy_paste" | "image" | "export" | "safety";
+type DrawerTab = "overview" | "players" | "education_inputs" | "education_assets" | "slides" | "copy_paste" | "image" | "export" | "safety";
 
 const TAB_LABELS: Record<DrawerTab, string> = {
-  overview:   "Overview",
-  players:    "Game & Players",
-  slides:     "Carousel Slides",
-  copy_paste: "Hook & Caption",
-  image:      "Image Prompts",
-  export:     "Export / Copy",
-  safety:     "Safety Check",
+  overview:          "Overview",
+  players:           "Game & Players",
+  education_inputs:  "Content Inputs",
+  education_assets:  "Screenshots & Assets",
+  slides:            "Carousel Slides",
+  copy_paste:        "Hook & Caption",
+  image:             "Image Prompts",
+  export:            "Export / Copy",
+  safety:            "Safety Check",
 };
+
+/** Which tabs to show based on content mode */
+function visibleTabs(contentType: ContentType): DrawerTab[] {
+  const mode = contentModeFor(contentType);
+  if (mode === "product_education") {
+    return ["overview", "education_inputs", "education_assets", "slides", "copy_paste", "image", "export", "safety"];
+  }
+  return ["overview", "players", "slides", "copy_paste", "image", "export", "safety"];
+}
 
 const STATUS_COLORS: Record<PostStatus, string> = {
   draft:     "text-zinc-400 bg-zinc-800/80 border-zinc-700",
@@ -218,7 +229,7 @@ export function PostEditorDrawer({ post, allPlayers = [], screenshotRefMode, onC
 
           {/* Tab bar — horizontally scrollable */}
           <div className="flex overflow-x-auto scrollbar-hide border-t border-white/[0.05]">
-            {(Object.keys(TAB_LABELS) as DrawerTab[]).map(t => {
+            {visibleTabs(edited.contentType).map(t => {
               const isSafetyBadge = t === "safety" && hasSafetyIssues;
               return (
                 <button
@@ -250,19 +261,30 @@ export function PostEditorDrawer({ post, allPlayers = [], screenshotRefMode, onC
           className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-4 pb-32"
           style={{ WebkitOverflowScrolling: "touch" } as React.CSSProperties}
         >
-          {tab === "overview"   && <OverviewTab edited={edited} update={update} />}
-          {tab === "players"    && <PlayersTab edited={edited} allPlayers={allPlayers} onUpdate={post => setEdited(post)} />}
-          {tab === "slides"     && <SlidesTab edited={edited} />}
-          {tab === "copy_paste" && <HookCaptionTab edited={edited} update={update} />}
-          {tab === "image"      && <ImagePromptsTab edited={edited} update={update} screenshotRefMode={screenshotRefMode} onRefreshSpotlight={() => {
+          {tab === "overview"          && <OverviewTab edited={edited} update={update} />}
+          {tab === "players"           && <PlayersTab edited={edited} allPlayers={allPlayers} onUpdate={post => setEdited(post)} />}
+          {tab === "education_inputs"  && <EducationInputsTab edited={edited} update={update} onRefreshSlides={() => {
+            // Rebuild slides with updated education fields
+            import("../lib/carouselBuilder").then(({ buildCarouselSlides }) => {
+              const slot = { contentType: edited.contentType, date: edited.date, day: edited.dayOfWeek } as any;
+              const tokens = { round: edited.round };
+              const newSlides = buildCarouselSlides(slot, [], tokens, {} as any, edited);
+              const now = new Date().toISOString();
+              setEdited(prev => prev ? { ...prev, carouselSlides: newSlides, lastRefreshedAt: now, updatedAt: now } : null);
+            });
+          }} />}
+          {tab === "education_assets"  && <EducationAssetsTab edited={edited} update={update} />}
+          {tab === "slides"            && <SlidesTab edited={edited} />}
+          {tab === "copy_paste"        && <HookCaptionTab edited={edited} update={update} />}
+          {tab === "image"             && <ImagePromptsTab edited={edited} update={update} screenshotRefMode={screenshotRefMode} onRefreshSpotlight={() => {
             const next = { ...edited, imagePrompt: buildSpotlightImagePrompt(edited), spotlightPromptStale: false, updatedAt: new Date().toISOString() };
             setEdited(next);
           }} />}
-          {tab === "export"     && <ExportTab edited={edited} screenshotRefMode={screenshotRefMode} onRefreshSpotlight={() => {
+          {tab === "export"            && <ExportTab edited={edited} screenshotRefMode={screenshotRefMode} onRefreshSpotlight={() => {
             const next = { ...edited, imagePrompt: buildSpotlightImagePrompt(edited), spotlightPromptStale: false, updatedAt: new Date().toISOString() };
             setEdited(next);
           }} />}
-          {tab === "safety"     && (
+          {tab === "safety"            && (
             <SafetyCheckPanel
               hookResult={hookSafety}
               captionResult={captionSafety}
@@ -3074,6 +3096,433 @@ function ReferenceScreenshotsSection({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─── Tab: Education Content Inputs ────────────────────────────────────────────
+
+const EDUCATION_PATTERNS: { value: EducationPattern; label: string; desc: string }[] = [
+  { value: "feature_walkthrough",     label: "Feature Walkthrough",     desc: "Step through a specific feature or section of the app" },
+  { value: "beginner_explainer",      label: "Beginner Explainer",      desc: "Introduce someone new to how the board works" },
+  { value: "power_user_tips",         label: "Power User Tips",         desc: "Advanced tips for people who already use Neeko" },
+  { value: "problem_solution",        label: "Problem / Solution",      desc: "Highlight a common confusion and solve it" },
+  { value: "ui_spotlight",            label: "UI Spotlight",            desc: "Showcase a specific UI element or screen" },
+  { value: "single_image_poster",     label: "Single Image Poster",     desc: "One striking promo or statement graphic" },
+  { value: "promo_education_hybrid",  label: "Promo + Education",       desc: "Blend product education with a call to action" },
+];
+
+const EDUCATION_TONES: { value: EducationCopyTone; label: string }[] = [
+  { value: "straightforward",  label: "Straightforward" },
+  { value: "premium",          label: "Premium" },
+  { value: "punchy",           label: "Punchy" },
+  { value: "educational",      label: "Educational" },
+  { value: "expert",           label: "Expert" },
+];
+
+const EDUCATION_VISUALS: { value: EducationVisualDirection; label: string }[] = [
+  { value: "app_card",              label: "App Card" },
+  { value: "typographic_poster",    label: "Typographic Poster" },
+  { value: "screenshot_led",        label: "Screenshot Led" },
+  { value: "feature_callout",       label: "Feature Callout" },
+  { value: "clean_premium_promo",   label: "Clean Premium Promo" },
+  { value: "dark_board_infographic", label: "Dark Board Infographic" },
+];
+
+function EducationInputsTab({
+  edited,
+  update,
+  onRefreshSlides,
+}: {
+  edited: SocialPost;
+  update: <K extends keyof SocialPost>(key: K, value: SocialPost[K]) => void;
+  onRefreshSlides: () => void;
+}) {
+  const keyConcepts = edited.keyConcepts ?? [];
+
+  function setKeyConcepts(concepts: string[]) {
+    update("keyConcepts", concepts);
+  }
+
+  function addConcept() {
+    setKeyConcepts([...keyConcepts, ""]);
+  }
+
+  function updateConcept(i: number, val: string) {
+    const next = [...keyConcepts];
+    next[i] = val;
+    setKeyConcepts(next);
+  }
+
+  function removeConcept(i: number) {
+    setKeyConcepts(keyConcepts.filter((_, idx) => idx !== i));
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="rounded-lg bg-zinc-900/50 border border-zinc-800 p-3">
+        <p className="text-[10px] text-zinc-500 leading-relaxed">
+          Product education posts don't require player selection. Fill in the content inputs below, then click Refresh Slides to regenerate the carousel.
+        </p>
+      </div>
+
+      <Field label="Topic / Title">
+        <input
+          type="text"
+          value={edited.educationTopic ?? ""}
+          onChange={e => update("educationTopic", e.target.value)}
+          placeholder="e.g. How to Read the Board"
+          className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-sky-600"
+        />
+      </Field>
+
+      <Field label="Teaching Objective">
+        <input
+          type="text"
+          value={edited.teachingObjective ?? ""}
+          onChange={e => update("teachingObjective", e.target.value)}
+          placeholder="e.g. Viewer understands what hit rates mean"
+          className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-sky-600"
+        />
+      </Field>
+
+      <Field label="Target Audience">
+        <input
+          type="text"
+          value={edited.targetAudience ?? ""}
+          onChange={e => update("targetAudience", e.target.value)}
+          placeholder="e.g. AFL fans new to stat research"
+          className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-sky-600"
+        />
+      </Field>
+
+      <Field label="Product Area / Page">
+        <input
+          type="text"
+          value={edited.productArea ?? ""}
+          onChange={e => update("productArea", e.target.value)}
+          placeholder="e.g. Match Stat Board, Player Detail, Hit Rate Table"
+          className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-sky-600"
+        />
+      </Field>
+
+      <Field label="Key Concepts (slide bullets)">
+        <div className="space-y-2">
+          {keyConcepts.map((c, i) => (
+            <div key={i} className="flex gap-2">
+              <input
+                type="text"
+                value={c}
+                onChange={e => updateConcept(i, e.target.value)}
+                placeholder={`Concept ${i + 1}`}
+                className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-sky-600"
+              />
+              <button
+                type="button"
+                onClick={() => removeConcept(i)}
+                className="text-zinc-600 hover:text-zinc-300 transition-colors p-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addConcept}
+            className="text-[11px] text-sky-400 hover:text-sky-300 transition-colors"
+          >
+            + Add concept
+          </button>
+        </div>
+      </Field>
+
+      <Field label="CTA Text">
+        <input
+          type="text"
+          value={edited.educationCta ?? ""}
+          onChange={e => update("educationCta", e.target.value)}
+          placeholder="e.g. See the Full Board at Neeko"
+          className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-sky-600"
+        />
+      </Field>
+
+      <div className="border-t border-zinc-800 pt-4">
+        <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">Variation Controls</p>
+        <div className="space-y-4">
+          <Field label="Content Pattern">
+            <div className="space-y-1.5">
+              {EDUCATION_PATTERNS.map(p => (
+                <label key={p.value} className="flex items-start gap-2.5 cursor-pointer group">
+                  <input
+                    type="radio"
+                    name="educationPattern"
+                    value={p.value}
+                    checked={(edited.educationPattern ?? "feature_walkthrough") === p.value}
+                    onChange={() => update("educationPattern", p.value)}
+                    className="mt-0.5 accent-sky-500"
+                  />
+                  <div>
+                    <span className="text-xs text-zinc-200 group-hover:text-white transition-colors">{p.label}</span>
+                    <span className="block text-[10px] text-zinc-500">{p.desc}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </Field>
+
+          <Field label="Copy Tone">
+            <div className="flex flex-wrap gap-2">
+              {EDUCATION_TONES.map(t => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => update("educationCopyTone", t.value)}
+                  className={`text-[11px] px-2.5 py-1.5 rounded border transition-colors
+                    ${(edited.educationCopyTone ?? "educational") === t.value
+                      ? "bg-sky-900/50 border-sky-600/70 text-sky-200"
+                      : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"}`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <Field label="Visual Direction">
+            <div className="flex flex-wrap gap-2">
+              {EDUCATION_VISUALS.map(v => (
+                <button
+                  key={v.value}
+                  type="button"
+                  onClick={() => update("educationVisualDirection", v.value)}
+                  className={`text-[11px] px-2.5 py-1.5 rounded border transition-colors
+                    ${(edited.educationVisualDirection ?? "app_card") === v.value
+                      ? "bg-sky-900/50 border-sky-600/70 text-sky-200"
+                      : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200"}`}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+        </div>
+      </div>
+
+      <div className="pt-2">
+        <button
+          type="button"
+          onClick={() => {
+            update("variationSeed", (edited.variationSeed ?? 0) + 1);
+            onRefreshSlides();
+          }}
+          className="flex items-center gap-2 px-4 py-2 text-sm rounded border border-sky-700 bg-sky-950/60 text-sky-300 hover:bg-sky-900/60 transition-colors font-medium"
+        >
+          <RefreshCw className="w-3.5 h-3.5" />
+          Refresh Slides
+        </button>
+        {edited.lastRefreshedAt && (
+          <p className="text-[10px] text-zinc-600 mt-1.5">
+            Last refreshed {new Date(edited.lastRefreshedAt).toLocaleTimeString()}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tab: Education Screenshots & Assets ─────────────────────────────────────
+
+function EducationAssetsTab({
+  edited,
+  update,
+}: {
+  edited: SocialPost;
+  update: <K extends keyof SocialPost>(key: K, value: SocialPost[K]) => void;
+}) {
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [urlInput, setUrlInput]       = useState("");
+  const [labelInput, setLabelInput]   = useState("");
+  const [pageInput, setPageInput]     = useState("");
+  const [noteInput, setNoteInput]     = useState("");
+  const [urlError, setUrlError]       = useState("");
+
+  const assets = edited.educationAssets ?? [];
+
+  function addAsset() {
+    if (!urlInput.trim()) { setUrlError("URL is required"); return; }
+    try { new URL(urlInput.trim()); } catch { setUrlError("Enter a valid URL"); return; }
+    const newAsset: EducationAsset = {
+      id: crypto.randomUUID(),
+      url: urlInput.trim(),
+      label: labelInput.trim() || undefined,
+      pageFeature: pageInput.trim() || undefined,
+      note: noteInput.trim() || undefined,
+      uploadedAt: new Date().toISOString(),
+    };
+    update("educationAssets", [...assets, newAsset]);
+    setUrlInput(""); setLabelInput(""); setPageInput(""); setNoteInput(""); setUrlError("");
+    setShowAddForm(false);
+  }
+
+  function removeAsset(id: string) {
+    update("educationAssets", assets.filter(a => a.id !== id));
+  }
+
+  function moveAsset(id: string, dir: -1 | 1) {
+    const idx = assets.findIndex(a => a.id === id);
+    if (idx < 0) return;
+    const next = [...assets];
+    const swapIdx = idx + dir;
+    if (swapIdx < 0 || swapIdx >= next.length) return;
+    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    update("educationAssets", next);
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg bg-zinc-900/50 border border-zinc-800 p-3">
+        <p className="text-[10px] text-zinc-500 leading-relaxed">
+          Add screenshot references or asset URLs to include as visual references in AI image prompts for this education post. Screenshots show the Neeko UI to guide design style.
+        </p>
+      </div>
+
+      {assets.length > 0 && (
+        <div className="space-y-3">
+          {assets.map((asset, i) => (
+            <div key={asset.id} className="rounded-lg bg-zinc-900 border border-zinc-800 p-3">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-zinc-200 truncate">
+                    {asset.label || asset.pageFeature || `Asset ${i + 1}`}
+                  </p>
+                  {asset.pageFeature && (
+                    <p className="text-[10px] text-zinc-500">{asset.pageFeature}</p>
+                  )}
+                  {asset.note && (
+                    <p className="text-[10px] text-zinc-500 mt-0.5">{asset.note}</p>
+                  )}
+                  <p className="text-[10px] text-zinc-600 mt-1 truncate">{asset.url}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {i > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => moveAsset(asset.id, -1)}
+                      className="text-zinc-600 hover:text-zinc-300 transition-colors px-1 text-[10px]"
+                      title="Move up"
+                    >
+                      ↑
+                    </button>
+                  )}
+                  {i < assets.length - 1 && (
+                    <button
+                      type="button"
+                      onClick={() => moveAsset(asset.id, 1)}
+                      className="text-zinc-600 hover:text-zinc-300 transition-colors px-1 text-[10px]"
+                      title="Move down"
+                    >
+                      ↓
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeAsset(asset.id)}
+                    className="text-zinc-600 hover:text-red-400 transition-colors p-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+              <img
+                src={asset.url}
+                alt={asset.label ?? "Screenshot reference"}
+                className="w-full max-h-32 object-contain rounded border border-zinc-800 bg-zinc-950"
+                onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {assets.length === 0 && !showAddForm && (
+        <div className="rounded-lg border border-dashed border-zinc-700 p-6 text-center">
+          <Upload className="w-5 h-5 text-zinc-600 mx-auto mb-2" />
+          <p className="text-xs text-zinc-500">No assets added yet</p>
+          <p className="text-[10px] text-zinc-600 mt-0.5">Add screenshot URLs to use as style references in AI prompts</p>
+        </div>
+      )}
+
+      {!showAddForm ? (
+        <button
+          type="button"
+          onClick={() => setShowAddForm(true)}
+          className="flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 transition-colors font-medium"
+        >
+          <Upload className="w-3.5 h-3.5" />
+          Add screenshot / asset URL
+        </button>
+      ) : (
+        <div className="rounded-lg bg-zinc-900 border border-zinc-800 p-4 space-y-3">
+          <p className="text-[11px] font-semibold text-zinc-300">Add Asset</p>
+          <div>
+            <label className="block text-[10px] font-medium text-zinc-400 mb-1">URL *</label>
+            <input
+              type="url"
+              value={urlInput}
+              onChange={e => { setUrlInput(e.target.value); setUrlError(""); }}
+              placeholder="https://..."
+              className="w-full bg-zinc-900 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-sky-600"
+            />
+            {urlError && <p className="text-[10px] text-red-400 mt-1">{urlError}</p>}
+          </div>
+          <div>
+            <label className="block text-[10px] font-medium text-zinc-400 mb-1">Label</label>
+            <input
+              type="text"
+              value={labelInput}
+              onChange={e => setLabelInput(e.target.value)}
+              placeholder="e.g. Stat board dark theme"
+              className="w-full bg-zinc-900 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-sky-600"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-medium text-zinc-400 mb-1">Page / Feature</label>
+            <input
+              type="text"
+              value={pageInput}
+              onChange={e => setPageInput(e.target.value)}
+              placeholder="e.g. Match Stat Board, Player Detail"
+              className="w-full bg-zinc-900 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-sky-600"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] font-medium text-zinc-400 mb-1">Note</label>
+            <input
+              type="text"
+              value={noteInput}
+              onChange={e => setNoteInput(e.target.value)}
+              placeholder="Short note for the AI prompt context"
+              className="w-full bg-zinc-900 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-sky-600"
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={addAsset}
+              className="text-[10px] px-3 py-1.5 rounded bg-sky-700 hover:bg-sky-600 text-white font-medium transition-colors"
+            >
+              Add Asset
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowAddForm(false); setUrlInput(""); setLabelInput(""); setPageInput(""); setNoteInput(""); setUrlError(""); }}
+              className="text-[10px] px-3 py-1.5 rounded border border-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

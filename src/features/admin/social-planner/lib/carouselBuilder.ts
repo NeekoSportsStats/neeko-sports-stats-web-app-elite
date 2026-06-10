@@ -4,7 +4,7 @@
  */
 import type {
   CarouselSlide, SlideType, AFLPlayerStat, PlannerSettings, StatBoardRow, TokenMap,
-  ContentVisibilityMode,
+  ContentVisibilityMode, SocialPost, EducationPattern,
 } from "../types";
 import type { ScheduleSlot } from "./scheduleEngine";
 import { formatRatio } from "./statFormatter";
@@ -25,7 +25,8 @@ export function buildCarouselSlides(
   slot: ScheduleSlot,
   players: AFLPlayerStat[],
   tokens: TokenMap,
-  settings: PlannerSettings
+  settings: PlannerSettings,
+  educationPost?: Pick<SocialPost, "educationTopic" | "teachingObjective" | "keyConcepts" | "educationPattern" | "educationVisualDirection" | "educationCopyTone" | "educationSlideCount" | "productArea" | "targetAudience" | "educationCta">
 ): CarouselSlide[] {
   switch (slot.contentType) {
     case "match_stat_board":
@@ -38,7 +39,7 @@ export function buildCarouselSlides(
     case "round_ahead_watch":
       return buildRoundSlides(slot.contentType, players, tokens);
     case "product_education":
-      return buildProductSlides(tokens);
+      return buildProductSlides(tokens, educationPost);
     case "story_extra":
       return buildStorySlides(tokens);
   }
@@ -211,71 +212,278 @@ function buildRoundSlides(
   return slides;
 }
 
-function buildProductSlides(tokens: TokenMap): CarouselSlide[] {
-  return [
+function buildProductSlides(
+  tokens: TokenMap,
+  ed?: Pick<SocialPost, "educationTopic" | "teachingObjective" | "keyConcepts" | "educationPattern" | "educationVisualDirection" | "educationCopyTone" | "educationSlideCount" | "productArea" | "targetAudience" | "educationCta"> | null
+): CarouselSlide[] {
+  const topic = ed?.educationTopic || "How to Read the Board";
+  const objective = ed?.teachingObjective || "AFL stat research made simple";
+  const pattern = ed?.educationPattern ?? "feature_walkthrough";
+  const visualDir = ed?.educationVisualDirection ?? "app_card";
+  const concepts = ed?.keyConcepts ?? [];
+
+  const coverDesignNote = buildCoverDesignNote(visualDir);
+
+  const slides: CarouselSlide[] = [
     {
       id: makeId("cover", 0),
       slideType: "cover",
-      title: "How to Read the Board",
-      subtitle: "AFL stat research made simple",
+      title: topic,
+      subtitle: objective,
       imagePrompt: generateCoverPrompt("product_education"),
-      designNotes: "Premium dark board style. Simplified app-card elements in the background. Inspired by Neeko Sports Stats mobile UI — dark rounded cards, subtle green accents, charcoal premium layout.",
-    },
-    {
-      id: makeId("player_spotlight", 1),
-      slideType: "player_spotlight",
-      title: "Ratios Beat Percentages",
-      subtitle: "12/12 tells you more than 100%",
-      slideText: "11 hits from 12 games\n11/12",
-      designNotes: "Show a large example stat card: 11/12 — 11 hits from 12 games. Use green as strong record colour. Inspired by app stat card: dark rounded card, ratio as hero stat. No player photo needed.",
-    },
-    {
-      id: makeId("player_spotlight", 2),
-      slideType: "player_spotlight",
-      title: "Recent Form (L5 Avg)",
-      subtitle: "Last 5 games — your current form indicator",
-      slideText: "Last 5: 17 · 31 · 31 · 35 · 23\nL5 Avg 27.4",
-      designNotes: "Show a recent-form strip inspired by the app: 17 · 31 · 31 · 35 · 23. Then show L5 Avg 27.4. Use the app-style recent game score strip visual — dark rounded card, subtle spacing between values.",
-    },
-    {
-      id: makeId("player_spotlight", 3),
-      slideType: "player_spotlight",
-      title: "Disposal Thresholds",
-      subtitle: "How often do they hit each level?",
-      slideText: "15+ | 20+ | 25+ | 30+",
-      designNotes: "Show a simplified table inspired by the app: columns 15+ | 20+ | 25+ | 30+ with example ratio records. Dark table card. Green for strong records, amber for middle, muted red for lower. No player photos.",
-    },
-    {
-      id: makeId("player_spotlight", 4),
-      slideType: "player_spotlight",
-      title: "Goal Thresholds",
-      subtitle: "How often do they kick at each level?",
-      slideText: "1+ | 2+ | 3+",
-      designNotes: "Show a simplified table inspired by the app: columns 1+ | 2+ | 3+ with example ratio records. Same dark card style, same colour rules as disposal thresholds slide.",
-    },
-    {
-      id: makeId("player_spotlight", 5),
-      slideType: "player_spotlight",
-      title: "Colour Guide",
-      subtitle: "What the record colours mean",
-      slideText: "Green = strong record\nAmber/orange = middle\nMuted red = low\nBlue/teal = small sample\nGrey dash = no data",
-      designNotes: "Show the app-inspired record colour legend. Use colour swatches next to labels. Dark premium background. No gambling language. No lock icons.",
-    },
-    {
-      id: makeId("player_spotlight", 6),
-      slideType: "player_spotlight",
-      title: "Free vs Preview Board",
-      subtitle: "What you see depends on the game",
-      slideText: "Free Board = more rows visible\nPreview Board = top rows visible, extra rows name-only",
-      designNotes: "Show two simplified board examples side by side or stacked: Free Board (more rows clearly visible) and Preview Board (top rows visible, lower rows soft blurred/name-only). Dark premium style. No lock icons. Use soft blur overlay — not padlock.",
-    },
-    {
-      id: makeId("cta", 7),
-      slideType: "cta",
-      title: "See the Full Board at Neeko",
-      subtitle: "neekostats.com.au",
+      designNotes: coverDesignNote,
     },
   ];
+
+  // Select slide set based on pattern — fall back to default "How to Read the Board" set
+  const contentSlides = buildEducationContentSlides(pattern, concepts);
+  slides.push(...contentSlides);
+
+  slides.push({
+    id: makeId("cta", slides.length),
+    slideType: "cta",
+    title: ed?.educationCta || "See the Full Board at Neeko",
+    subtitle: "neekostats.com.au",
+  });
+
+  return slides;
+}
+
+function buildCoverDesignNote(visualDir: SocialPost["educationVisualDirection"]): string {
+  switch (visualDir) {
+    case "typographic_poster":
+      return "Typographic poster style. Bold condensed headline. Minimal dark background. No data cards.";
+    case "screenshot_led":
+      return "Screenshot-led design. Use attached app screenshots as dominant visual. Overlay headline text cleanly.";
+    case "feature_callout":
+      return "Feature callout style. Highlight one UI element or stat card in focus. Dark background, spotlight treatment.";
+    case "clean_premium_promo":
+      return "Clean premium promo. Minimal. Premium dark charcoal. Subtle green accent. Brand-forward.";
+    case "dark_board_infographic":
+      return "Dark board infographic style. Grid/data texture. Charcoal background. Green/amber data accents. Stat card motifs.";
+    default:
+      return "Premium dark board style. App-card elements in background. Inspired by Neeko Sports Stats mobile UI — dark rounded cards, subtle green accents, charcoal premium layout.";
+  }
+}
+
+function buildEducationContentSlides(
+  pattern: EducationPattern,
+  extraConcepts: string[]
+): CarouselSlide[] {
+  switch (pattern) {
+    case "beginner_explainer":
+      return [
+        {
+          id: makeId("education_slide", 1),
+          slideType: "education_slide",
+          title: "What Are Hit Rates?",
+          subtitle: "The core idea behind every stat on the board",
+          slideText: "A hit rate tells you how often a player has reached a stat threshold across their recent games.\n12/12 = hit every game this season\n9/12 = hit 9 out of 12",
+          designNotes: "Educational explainer. Show a simple ratio example: 12/12. Dark stat card inspired by the app. No player photo needed.",
+        },
+        {
+          id: makeId("education_slide", 2),
+          slideType: "education_slide",
+          title: "Reading a Threshold Row",
+          subtitle: "Columns: 15+ | 20+ | 25+ | 30+ disposals",
+          slideText: "Each column = a threshold level\nRatio tells you how often they've reached it\nMore columns = higher bar",
+          designNotes: "Show a simplified threshold table row. Dark rounded card, columns for 15+/20+/25+/30+. App-inspired layout.",
+        },
+        {
+          id: makeId("education_slide", 3),
+          slideType: "education_slide",
+          title: "What the Colours Mean",
+          subtitle: "Colour codes the strength of each record",
+          slideText: "Green = strong record\nAmber/orange = middle\nMuted red = lower record\nBlue/teal = small sample\nGrey dash = no data",
+          designNotes: "Colour legend. Use colour swatches next to each label. Dark premium background.",
+        },
+        {
+          id: makeId("education_slide", 4),
+          slideType: "education_slide",
+          title: "L5 Avg — Recent Form",
+          subtitle: "Last 5 games average — your current form signal",
+          slideText: "L5 Avg shows the player's average across their last 5 games.\nUseful for spotting form rises or drops.",
+          designNotes: "Show the L5 Avg stat card from the app. Recent-form strip. Dark rounded card.",
+        },
+      ];
+
+    case "power_user_tips":
+      return [
+        {
+          id: makeId("education_slide", 1),
+          slideType: "education_slide",
+          title: "Filter by Confidence Tier",
+          subtitle: "Not all records are equal",
+          slideText: "Thin sample (under 6 games) shows in blue/teal\nUse this to spot risky picks\nElite records: 8+ games, 90%+ hit rate",
+          designNotes: "Side-by-side example: blue/teal small-sample card vs green elite card. App-inspired stat cards.",
+        },
+        {
+          id: makeId("education_slide", 2),
+          slideType: "education_slide",
+          title: "Season vs Recent Form",
+          subtitle: "When to trust season records vs L5",
+          slideText: "Season record = full picture\nL5 Avg = recent momentum\nLook for both pointing the same direction",
+          designNotes: "Two-column comparison. Season stat card on left, L5 form strip on right. Dark premium layout.",
+        },
+        {
+          id: makeId("education_slide", 3),
+          slideType: "education_slide",
+          title: "Free Board vs Preview Board",
+          subtitle: "What each visibility mode shows",
+          slideText: "Free Board = all rows clearly visible\nPreview Board = top rows visible, extra rows name-only or blurred",
+          designNotes: "Two board examples side by side. One fully visible, one with name-only + soft blur rows. No lock icons.",
+        },
+        {
+          id: makeId("education_slide", 4),
+          slideType: "education_slide",
+          title: "Goal Thresholds",
+          subtitle: "1+ | 2+ | 3+ — the kicking records",
+          slideText: "Same ratio system, lower threshold numbers\nMost forwards hit 1+ regularly\n2+ and 3+ separate the elite goal kickers",
+          designNotes: "Goal threshold table. Columns 1+/2+/3+. Dark rounded card. App-inspired layout.",
+        },
+      ];
+
+    case "problem_solution":
+      return [
+        {
+          id: makeId("education_slide", 1),
+          slideType: "education_slide",
+          title: "The Problem with Percentages",
+          subtitle: "87% doesn't tell you the whole story",
+          slideText: "7/8 (87%) = strong record over 8 games\n7/14 (50%) = weak record but same percentage\nRatios show you both the hit rate AND the sample size.",
+          designNotes: "Comparison of two ratio cards — same percentage, different sample size. Clear contrast. App-style dark stat cards.",
+        },
+        {
+          id: makeId("education_slide", 2),
+          slideType: "education_slide",
+          title: "The Solution: Ratios",
+          subtitle: "12/12 beats 100% every time",
+          slideText: "Ratios show:\n→ How many times they hit the threshold\n→ How many chances they had\n→ The full picture at a glance",
+          designNotes: "Large hero ratio card: 12/12. Emerald green. Dark background. Simple and impactful.",
+        },
+        {
+          id: makeId("education_slide", 3),
+          slideType: "education_slide",
+          title: "Small Sample Warning",
+          subtitle: "Blue/teal = fewer than 6 games",
+          slideText: "When a player has under 6 games of data, their record shows in blue/teal.\nHigh ratio, but small sample — proceed with caution.",
+          designNotes: "Blue/teal stat card example. 4/4 small sample vs 11/12 large sample comparison. App-inspired cards.",
+        },
+      ];
+
+    case "ui_spotlight":
+      return [
+        {
+          id: makeId("education_slide", 1),
+          slideType: "education_slide",
+          title: "The Stat Board",
+          subtitle: "Your match research hub",
+          slideText: "Each match gets its own stat board\nDisposal rows + Goal rows\nSorted by hit rate strength",
+          designNotes: "Show the main stat board UI. Use attached screenshot as style reference. Overlay clean labels.",
+        },
+        {
+          id: makeId("education_slide", 2),
+          slideType: "education_slide",
+          title: "Player Detail",
+          subtitle: "Drill into any player for deeper stats",
+          slideText: "Tap any player row to expand\nSee their full threshold history\nL5 Avg + season record side by side",
+          designNotes: "Show the expanded player detail area. Dark rounded player card. Inspired by app UI.",
+        },
+        {
+          id: makeId("education_slide", 3),
+          slideType: "education_slide",
+          title: "Recent Form Strip",
+          subtitle: "Last 5 game scores at a glance",
+          slideText: "17 · 31 · 31 · 35 · 23\nThe strip shows their last 5 actual disposal/goal counts\nEasy to spot a hot or cold streak",
+          designNotes: "Recent form strip visual. Show 5 values in a row, app-style. Dark card, subtle spacing.",
+        },
+      ];
+
+    case "single_image_poster":
+      return [
+        {
+          id: makeId("education_slide", 1),
+          slideType: "education_slide",
+          title: "One Board. Every Match.",
+          subtitle: "Disposal + Goal form for every AFL game",
+          slideText: "Neeko Sports Stats gives you threshold hit rates for every player in every match.\nFree to access. Updated every round.",
+          designNotes: "Single-image poster. Bold typographic statement. Dark premium background. Brand logo prominent. neekostats.com.au as sub-text.",
+        },
+      ];
+
+    case "promo_education_hybrid":
+      return [
+        {
+          id: makeId("education_slide", 1),
+          slideType: "education_slide",
+          title: "What Is a Hit Rate?",
+          subtitle: "The stat that powers the Neeko board",
+          slideText: "12/12 = hit their disposal threshold in all 12 games this season\n9/10 = hit it in 9 of their last 10\nYou can see this for every player, every match.",
+          designNotes: "Stat card explainer. Large ratio as hero stat. Branded dark card.",
+        },
+        {
+          id: makeId("education_slide", 2),
+          slideType: "education_slide",
+          title: "See It Live",
+          subtitle: "Free for every game — at neekostats.com.au",
+          slideText: "Disposal boards. Goal boards.\nFree games every round.\nFull board access available.",
+          designNotes: "Product CTA slide. Show simplified stat board. Brand colours. Prominent neekostats.com.au.",
+        },
+      ];
+
+    // feature_walkthrough (default)
+    default:
+      return [
+        {
+          id: makeId("education_slide", 1),
+          slideType: "education_slide",
+          title: "Ratios Beat Percentages",
+          subtitle: "12/12 tells you more than 100%",
+          slideText: "11 hits from 12 games\n11/12",
+          designNotes: "Show a large example stat card: 11/12 — 11 hits from 12 games. Use green as strong record colour. Inspired by app stat card: dark rounded card, ratio as hero stat. No player photo needed.",
+        },
+        {
+          id: makeId("education_slide", 2),
+          slideType: "education_slide",
+          title: "Recent Form (L5 Avg)",
+          subtitle: "Last 5 games — your current form indicator",
+          slideText: "Last 5: 17 · 31 · 31 · 35 · 23\nL5 Avg 27.4",
+          designNotes: "Show a recent-form strip inspired by the app: 17 · 31 · 31 · 35 · 23. Then show L5 Avg 27.4. Use the app-style recent game score strip visual — dark rounded card, subtle spacing between values.",
+        },
+        {
+          id: makeId("education_slide", 3),
+          slideType: "education_slide",
+          title: "Disposal Thresholds",
+          subtitle: "How often do they hit each level?",
+          slideText: "15+ | 20+ | 25+ | 30+",
+          designNotes: "Show a simplified table inspired by the app: columns 15+ | 20+ | 25+ | 30+ with example ratio records. Dark table card. Green for strong records, amber for middle, muted red for lower. No player photos.",
+        },
+        {
+          id: makeId("education_slide", 4),
+          slideType: "education_slide",
+          title: "Goal Thresholds",
+          subtitle: "How often do they kick at each level?",
+          slideText: "1+ | 2+ | 3+",
+          designNotes: "Show a simplified table inspired by the app: columns 1+ | 2+ | 3+ with example ratio records. Same dark card style, same colour rules as disposal thresholds slide.",
+        },
+        {
+          id: makeId("education_slide", 5),
+          slideType: "education_slide",
+          title: "Colour Guide",
+          subtitle: "What the record colours mean",
+          slideText: "Green = strong record\nAmber/orange = middle\nMuted red = low\nBlue/teal = small sample\nGrey dash = no data",
+          designNotes: "Show the app-inspired record colour legend. Use colour swatches next to labels. Dark premium background. No gambling language. No lock icons.",
+        },
+        {
+          id: makeId("education_slide", 6),
+          slideType: "education_slide",
+          title: "Free vs Preview Board",
+          subtitle: "What you see depends on the game",
+          slideText: "Free Board = more rows visible\nPreview Board = top rows visible, extra rows name-only",
+          designNotes: "Show two simplified board examples side by side or stacked: Free Board (more rows clearly visible) and Preview Board (top rows visible, lower rows soft blurred/name-only). Dark premium style. No lock icons. Use soft blur overlay — not padlock.",
+        },
+      ];
+  }
 }
 
 function buildStorySlides(tokens: TokenMap): CarouselSlide[] {

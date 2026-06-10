@@ -53,6 +53,58 @@ export type ContentType =
   | "product_education"
   | "story_extra";
 
+/** Broad mode that drives editor layout, prompt generation, and required fields */
+export type ContentMode = "player_led" | "product_education" | "generic_promo";
+
+/** Derives the ContentMode from a ContentType */
+export function contentModeFor(ct: ContentType): ContentMode {
+  if (ct === "product_education") return "product_education";
+  if (
+    ct === "player_spotlight" ||
+    ct === "player_spotlight_duo" ||
+    ct === "round_review" ||
+    ct === "round_ahead_watch" ||
+    ct === "match_stat_board"
+  ) return "player_led";
+  return "generic_promo";
+}
+
+// ─── Education content patterns ───────────────────────────────────────────────
+
+export type EducationPattern =
+  | "feature_walkthrough"
+  | "beginner_explainer"
+  | "power_user_tips"
+  | "problem_solution"
+  | "ui_spotlight"
+  | "single_image_poster"
+  | "promo_education_hybrid";
+
+export type EducationCopyTone =
+  | "straightforward"
+  | "premium"
+  | "punchy"
+  | "educational"
+  | "expert";
+
+export type EducationVisualDirection =
+  | "app_card"
+  | "typographic_poster"
+  | "screenshot_led"
+  | "feature_callout"
+  | "clean_premium_promo"
+  | "dark_board_infographic";
+
+/** Uploaded or selected screenshot for an education post */
+export interface EducationAsset {
+  id: string;
+  url: string;
+  label?: string;
+  pageFeature?: string;
+  note?: string;
+  uploadedAt: string;
+}
+
 export type PostStatus = "draft" | "ready" | "scheduled" | "posted" | "archived";
 
 export type Platform = "instagram" | "facebook" | "tiktok" | "threads" | "x";
@@ -75,6 +127,7 @@ export type SlideType =
   | "home_goals"
   | "away_goals"
   | "player_spotlight"
+  | "education_slide"
   | "cta";
 
 export type StyleMode =
@@ -253,6 +306,36 @@ export interface SocialPost {
   match_board_data_version?: string;
   /** ISO timestamp of last manual/auto refresh of matchBoardRows */
   match_board_refreshed_at?: string;
+
+  // ── Product Education fields ──────────────────────────────────────────────
+  /** Broad content mode — drives editor layout and prompt generation */
+  contentMode?: ContentMode;
+  /** Education topic / post title (e.g. "How to Read the Board") */
+  educationTopic?: string;
+  /** What the post teaches the viewer */
+  teachingObjective?: string;
+  /** Who this content is aimed at (e.g. "AFL fans new to stats") */
+  targetAudience?: string;
+  /** Which feature or page area is being highlighted */
+  productArea?: string;
+  /** Key concepts, bullet points for slide content */
+  keyConcepts?: string[];
+  /** Call-to-action text override for education posts */
+  educationCta?: string;
+  /** Structural variation pattern */
+  educationPattern?: EducationPattern;
+  /** Copy tone override */
+  educationCopyTone?: EducationCopyTone;
+  /** Visual direction override */
+  educationVisualDirection?: EducationVisualDirection;
+  /** Slide count preference (3–10) */
+  educationSlideCount?: number;
+  /** Uploaded screenshot / asset references for education posts */
+  educationAssets?: EducationAsset[];
+  /** Variation seed — incrementing this triggers a new variation on refresh */
+  variationSeed?: number;
+  /** ISO timestamp of last education post refresh/regeneration */
+  lastRefreshedAt?: string;
 }
 
 // ─── Planner Settings ─────────────────────────────────────────────────────────

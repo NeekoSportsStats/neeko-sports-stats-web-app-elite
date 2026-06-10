@@ -447,6 +447,19 @@ export function buildSpotlightImagePrompt(post: SocialPost): string {
   return buildSpotlightPromptFromSelection(sel, post);
 }
 
+function buildEducationSlideSection(slideNum: number, slide: CarouselSlide, post: SocialPost): string {
+  const designNotes = slide.designNotes ? `\nDesign notes: ${slide.designNotes}` : "";
+  const slideTextBlock = slide.slideText ? `\nSlide text:\n${slide.slideText}` : "";
+  const assetRef = post.educationAssets && post.educationAssets.length > 0
+    ? `\nAsset references: ${post.educationAssets.map(a => a.label || a.pageFeature || a.url).filter(Boolean).join(", ")}`
+    : "";
+  return `SLIDE ${slideNum} — ${slide.title.toUpperCase()}
+${slide.subtitle ? `Subtitle: ${slide.subtitle}\n` : ""}${slideTextBlock}
+Design:
+Dark premium educational style. App-card inspired. ${BRAND} branding.
+No gambling language. No lock icons. No page numbers.${designNotes}${assetRef}`.trim();
+}
+
 function buildGenericSlideSection(slideNum: number, slide: CarouselSlide): string {
   const designNotes = slide.designNotes ? `\nDesign notes: ${slide.designNotes}` : "";
   const slideTextBlock = slide.slideText ? `\nSlide text:\n${slide.slideText}` : "";
@@ -513,7 +526,7 @@ export function buildFullCarouselPrompt(post: SocialPost, screenshotRefMode?: Sc
 PRODUCT EDUCATION STYLE GUIDE:
 These slides should look like clean, educational Instagram graphics inspired by the Neeko Sports Stats product UI.
 Use dark premium charcoal backgrounds, rounded stat card elements, and the app's visual language.
-Do NOT use gambling language. No lock icons. No page numbers.
+Do NOT use gambling language. No lock icons. No page numbers.${post.educationTopic ? `\nTopic: ${post.educationTopic}` : ""}${post.teachingObjective ? `\nObjective: ${post.teachingObjective}` : ""}${post.targetAudience ? `\nAudience: ${post.targetAudience}` : ""}${post.productArea ? `\nProduct area: ${post.productArea}` : ""}${post.educationPattern ? `\nPattern: ${post.educationPattern.replace(/_/g, " ")}` : ""}${post.educationVisualDirection ? `\nVisual direction: ${post.educationVisualDirection.replace(/_/g, " ")}` : ""}${post.educationCopyTone ? `\nCopy tone: ${post.educationCopyTone}` : ""}${post.educationAssets && post.educationAssets.length > 0 ? `\nScreenshot/asset references attached (${post.educationAssets.length}): use as visual style and UI reference only.` : ""}
 ` : "";
 
   const intro = `Create a premium AFL Instagram carousel for ${BRAND}.
@@ -545,6 +558,9 @@ ${dataWarning}${productEdBlock}${screenshotBlock}
         break;
       case "player_spotlight":
         section = buildPlayerSpotlightSlideSection(slideNum, slide, post);
+        break;
+      case "education_slide":
+        section = buildEducationSlideSection(slideNum, slide, post);
         break;
       case "cta":
         section = buildCTASlideSection(slideNum, slide);
@@ -599,6 +615,9 @@ ${screenshotBlock}`;
       case "player_spotlight":
         section = buildPlayerSpotlightSlideSection(slideNum, slide, post);
         break;
+      case "education_slide":
+        section = buildEducationSlideSection(slideNum, slide, post);
+        break;
       case "cta":
         section = buildCTASlideSection(slideNum, slide);
         break;
@@ -635,10 +654,14 @@ Use these when building graphics with Canva, Figma, or a custom template system.
 // ─── Public: Full Slide Text Package ─────────────────────────────────────────
 
 export function buildFullSlideTextPackage(post: SocialPost): string {
-  const header = `FULL SLIDE TEXT — ${post.title}
-${post.homeTeam && post.awayTeam ? `${post.homeTeam} v ${post.awayTeam}` : ""} | Round ${post.round} · ${post.season}
-Visibility: ${post.visibilityMode?.replace(/_/g, " ") ?? "standard"}
+  const isProductEd = post.contentType === "product_education";
+  const contextLine = isProductEd
+    ? (post.educationTopic ? `Topic: ${post.educationTopic}` : "Product Education")
+    : (post.homeTeam && post.awayTeam ? `${post.homeTeam} v ${post.awayTeam}` : "");
 
+  const header = `FULL SLIDE TEXT — ${post.title}
+${contextLine} | Round ${post.round} · ${post.season}
+${isProductEd ? "" : `Visibility: ${post.visibilityMode?.replace(/_/g, " ") ?? "standard"}\n`}
 This is the exact text content for each slide (not an image prompt).
 Display mode labels: [VISIBLE] full stats shown | [NAME ONLY] name visible, stat cells blurred | [BLURRED] row fully obscured | rows marked hidden excluded
 COLOUR RULES: Green for elite/strong records. Amber/orange for middle. Muted red for low. Grey dash for missing. Blue/teal for small samples (<6 games). Gold reserved for branding only.
@@ -659,7 +682,9 @@ COLOUR RULES: Green for elite/strong records. Amber/orange for middle. Muted red
     }
 
     const rows = slide.rows ?? [];
-    if (rows.length > 0) {
+    if (slide.slideType === "education_slide") {
+      if (slide.slideText) lines.push(slide.slideText);
+    } else if (rows.length > 0) {
       const isDisposal = isDisposalSlide(slide.slideType);
       if (isDisposal) {
         lines.push("Player | L5 Avg | 15+ | 20+ | 25+ | 30+");
