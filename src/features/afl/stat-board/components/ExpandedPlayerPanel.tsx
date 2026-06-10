@@ -182,13 +182,40 @@ export function ExpandedPlayerPanel({
 
   const hitRates = player.season_threshold_hit_rates ?? player.all_threshold_hit_rates ?? {};
 
+  const displayLow  = player.min_season  ?? player.min_last_10;
+  const displayHigh = player.max_season  ?? player.max_last_10;
+
+  if (process.env.NODE_ENV !== "production") {
+    const seasonGames = player.season_threshold_hit_rates
+      ? Object.values(player.season_threshold_hit_rates)[0]?.games
+      : null;
+    const last10Games = player.all_threshold_hit_rates
+      ? Object.values(player.all_threshold_hit_rates)[0]?.games
+      : null;
+    if (seasonGames != null && player.games_played != null && seasonGames !== player.games_played) {
+      console.warn(
+        `[StatBoard invariant] ${player.player_name}: season_threshold_hit_rates.games (${seasonGames}) !== games_played (${player.games_played})`
+      );
+    }
+    if (last10Games != null && player.games_played != null && player.games_played > 10 && last10Games !== 10) {
+      console.warn(
+        `[StatBoard invariant] ${player.player_name}: all_threshold_hit_rates.games (${last10Games}) should be 10 for players with ${player.games_played} games`
+      );
+    }
+    if (displayLow != null && player.min_last_10 != null && displayLow > player.min_last_10) {
+      console.warn(
+        `[StatBoard invariant] ${player.player_name}: min_season (${displayLow}) > min_last_10 (${player.min_last_10}) — unexpected`
+      );
+    }
+  }
+
   const summaryStats: { label: string; value: string; muted?: boolean }[] = [
     { label: "L3 avg",  value: fmt1(player.last_3_avg) },
     { label: "L5 avg",  value: fmt1(player.last_5_avg) },
     { label: "L10 avg", value: fmt1(player.last_10_avg) },
     { label: "Season",  value: fmt1(player.season_avg) },
-    { label: "Low",     value: n(player.min_last_10) != null ? String(player.min_last_10) : "—" },
-    { label: "High",    value: n(player.max_last_10) != null ? String(player.max_last_10) : "—" },
+    { label: "Low",     value: n(displayLow)  != null ? String(displayLow)  : "—" },
+    { label: "High",    value: n(displayHigh) != null ? String(displayHigh) : "—" },
     { label: "Std dev", value: fmt1(player.stddev_last_10) },
     { label: "Games",   value: n(player.games_played) != null ? String(player.games_played) : "—" },
   ].map((s) => ({ ...s, muted: s.value === "—" }));

@@ -164,6 +164,8 @@ export interface StatBoardPlayer {
   min_last_10: number | null;
   max_last_10: number | null;
   stddev_last_10: number | null;
+  min_season: number | null;
+  max_season: number | null;
   games_played: number | null;
   projection: number | null;
   threshold: number;
