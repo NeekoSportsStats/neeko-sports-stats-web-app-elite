@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader as Loader2, Crown, User, LogOut, ArrowLeft, CreditCard, Shield } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
+import { trackCTA } from "@/lib/analytics";
 
 export default function Account() {
   const { user, loading: authLoading, signOut, isPremium, isAdmin, refreshPremiumStatus } =
@@ -146,12 +147,18 @@ export default function Account() {
 
   const subscriptionActive = isPremium;
 
+  const isRoundPass = subRecord?.plan_type === "round_pass_7d";
+
   const isCancelling =
     isPremium &&
+    !isRoundPass &&
     (profile.cancel_at_period_end === true ||
       subRecord?.cancel_at_period_end === true);
 
   const getStatusBadge = (s: string) => {
+    if (isRoundPass && s === "active") {
+      return <Badge variant="default">ACTIVE</Badge>;
+    }
     if (s === "active" && isCancelling) {
       return <Badge variant="secondary">CANCELLING</Badge>;
     }
@@ -268,16 +275,66 @@ export default function Account() {
                 <Separator />
 
                 {subRecord?.plan_type === "season" || subRecord?.plan_type === "round_pass_7d" || (!subRecord && profile?.premium_expires_at) ? (
-                  <div className="text-sm text-muted-foreground text-center py-2">
-                    {subRecord?.plan_type === "round_pass_7d"
-                      ? "7-Day Round Pass is a one-time payment — no recurring billing to manage."
-                      : "Season Pass is a one-time payment — no recurring billing to manage."}
-                    <br />
-                    <span className="text-xs">
+                  <div className="space-y-3">
+                    <div className="text-sm text-muted-foreground text-center py-2">
                       {subRecord?.plan_type === "round_pass_7d"
-                        ? "Purchase another pass anytime to extend your access."
-                        : "Contact support if you need a refund."}
-                    </span>
+                        ? "This pass does not renew. No recurring billing."
+                        : "Season Pass is a one-time payment — no recurring billing to manage."}
+                      <br />
+                      <span className="text-xs">
+                        {subRecord?.plan_type === "round_pass_7d"
+                          ? "Purchase another pass anytime to extend your access."
+                          : "Contact support if you need a refund."}
+                      </span>
+                    </div>
+                    {subRecord?.plan_type === "round_pass_7d" && (
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            trackCTA({ cta_location: "account_page", cta_text: "Buy Another 7 Days", plan_key: "round_pass_7d", billing_type: "one_time", currency: "AUD" });
+                            navigate("/neeko-plus?plan=round_pass_7d");
+                          }}
+                          className="w-full"
+                        >
+                          <Crown className="h-4 w-4 mr-2" />
+                          Buy Another 7 Days
+                        </Button>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              trackCTA({ cta_location: "account_page", cta_text: "Upgrade to Weekly", plan_key: "weekly", billing_type: "subscription", currency: "AUD" });
+                              navigate("/neeko-plus?plan=weekly");
+                            }}
+                          >
+                            Upgrade to Weekly
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              trackCTA({ cta_location: "account_page", cta_text: "Upgrade to Season", plan_key: "season", billing_type: "one_time", currency: "AUD" });
+                              navigate("/neeko-plus?plan=season");
+                            }}
+                          >
+                            Upgrade to Season
+                          </Button>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => {
+                            trackCTA({ cta_location: "account_page", cta_text: "View All Plans", destination: "/neeko-plus" });
+                            navigate("/neeko-plus");
+                          }}
+                          className="w-full text-muted-foreground"
+                        >
+                          View All Plans
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <Button

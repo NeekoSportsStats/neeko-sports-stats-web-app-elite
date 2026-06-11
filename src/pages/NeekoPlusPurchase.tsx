@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
-import { trackNeekoPlus, trackCheckoutEvent, trackGateInteraction, trackCheckoutStartClicked, trackCheckoutRedirectAttempted, flushBeforeRedirect } from "@/lib/analytics";
+import { trackNeekoPlus, trackCheckoutEvent, trackGateInteraction, trackCheckoutStartClicked, trackCheckoutRedirectAttempted, flushBeforeRedirect, trackCTA } from "@/lib/analytics";
 import { Check, Crown, Loader as Loader2, TrendingUp, Target, Zap, Shield, ArrowRight, Lock, Clock, ChartBar as BarChart2, Activity, ChartLine as LineChart, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { NEEKO_PRICING, NeekoPlan } from "@/config/neekoPricing";
@@ -470,6 +470,12 @@ const NeekoPlusPurchase = () => {
   const [currentRound, setCurrentRound] = useState<number | null>(null);
   const roundsLeft = currentRound !== null ? Math.max(0, NEEKO_PRICING.season.totalRounds - currentRound) : null;
   const [previewRows, setPreviewRows] = useState<RankingRow[]>([]);
+  const [subRecord, setSubRecord] = useState<any>(null);
+
+  const isRoundPassUser = isPremium && subRecord?.plan_type === "round_pass_7d";
+  const isWeeklyUser = isPremium && subRecord?.plan_type === "weekly";
+  const isSeasonUser = isPremium && (subRecord?.plan_type === "season" || (!subRecord?.plan_type && isPremium));
+  const passExpiry = subRecord?.current_period_end ?? null;
 
   useEffect(() => {
     trackGateInteraction({ source: "neeko_plus_page", action: "viewed" });
@@ -489,8 +495,17 @@ const NeekoPlusPurchase = () => {
     });
   }, []);
 
+  useEffect(() => {
+    if (!user) return;
+    supabase.rpc("get_my_subscription_summary").then(({ data }) => {
+      const row = Array.isArray(data) ? (data[0] ?? null) : (data ?? null);
+      setSubRecord(row ?? null);
+    });
+  }, [user]);
+
   const handleSubscribe = async (plan: NeekoPlan) => {
-    if (isPremium) {
+    if (isPremium && !isRoundPassUser) {
+      // Weekly/season users already have full access — send them to account
       toast({
         title: "Already subscribed",
         description: "You already have an active Neeko+ membership.",
@@ -513,6 +528,19 @@ const NeekoPlusPurchase = () => {
         navigate("/auth?redirect=checkout");
         return;
       }
+
+      trackCTA({
+        cta_location: "neeko_plus_page",
+        cta_text: plan === "round_pass_7d"
+          ? "Get 7-Day Round Pass"
+          : plan === "season"
+            ? "Get Full Season Access"
+            : "Start Weekly",
+        plan_key: plan,
+        billing_type: plan === "weekly" ? "subscription" : "one_time",
+        value: plan === "round_pass_7d" ? NEEKO_PRICING.round_pass_7d.price : plan === "season" ? NEEKO_PRICING.season.price : NEEKO_PRICING.weekly.price,
+        currency: "AUD",
+      });
 
       trackNeekoPlus({
         source: "neeko_plus_page",
@@ -688,6 +716,27 @@ const NeekoPlusPurchase = () => {
             <span style={{ fontSize: 12.5, fontWeight: 700, color: "rgba(255,255,255,0.60)", lineHeight: 1.4 }}>
               <span style={{ color: "#E8855A" }}>{roundsLeft} round{roundsLeft !== 1 ? "s" : ""} remaining</span>
               {" "}in the 2026 season — Season Pass covers all of them.
+            </span>
+          </div>
+        )}
+
+        {/* Active pass banner — shown for round_pass_7d users */}
+        {isRoundPassUser && passExpiry && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10,
+            background: "rgba(96,165,250,0.07)",
+            border: "1px solid rgba(96,165,250,0.22)",
+            borderRadius: 10,
+            padding: "12px 16px",
+            marginBottom: 20,
+          }}>
+            <Crown size={14} style={{ color: "#60a5fa", flexShrink: 0 }} />
+            <span style={{ fontSize: 12.5, fontWeight: 600, color: "rgba(255,255,255,0.70)", lineHeight: 1.4 }}>
+              Your 7-Day Round Pass is active.{" "}
+              <span style={{ color: "#60a5fa" }}>
+                Access ends {new Date(passExpiry).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}.
+              </span>
+              {" "}Buy another pass below to extend your access.
             </span>
           </div>
         )}
@@ -968,22 +1017,37 @@ const NeekoPlusPurchase = () => {
         </div>
 
         {/* CTA */}
-        {isPremium ? (
-          <button
-            disabled
-            style={{
-              width: "100%", padding: "17px",
-              borderRadius: 12,
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.08)",
-              color: "rgba(255,255,255,0.30)",
-              fontSize: 15, fontWeight: 700, cursor: "not-allowed",
-              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            }}
-          >
-            <Lock size={15} />
-            You already have Neeko+
-          </button>
+        {isPremium && !isRoundPassUser ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <button
+              disabled
+              style={{
+                width: "100%", padding: "17px",
+                borderRadius: 12,
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                color: "rgba(255,255,255,0.30)",
+                fontSize: 15, fontWeight: 700, cursor: "not-allowed",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              }}
+            >
+              <Lock size={15} />
+              You already have Neeko+
+            </button>
+            <button
+              onClick={() => { navigate("/account"); }}
+              style={{
+                width: "100%", padding: "11px",
+                borderRadius: 10,
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "rgba(255,255,255,0.40)",
+                fontSize: 12, fontWeight: 600, cursor: "pointer",
+              }}
+            >
+              View your account
+            </button>
+          </div>
         ) : (
           <button
             onClick={() => handleSubscribe(selectedPlan)}
@@ -1017,11 +1081,17 @@ const NeekoPlusPurchase = () => {
               </>
             ) : (
               <>
-                {selectedPlan === "round_pass_7d"
-                  ? `Get 7-Day Round Pass — $${NEEKO_PRICING.round_pass_7d.price} AUD`
-                  : selectedPlan === "season"
-                    ? `Get Full Season Access — $${NEEKO_PRICING.season.price} AUD`
-                    : `Start Weekly — $${NEEKO_PRICING.weekly.price} AUD/wk`}
+                {isRoundPassUser && selectedPlan === "round_pass_7d"
+                  ? `Buy Another 7-Day Pass — $${NEEKO_PRICING.round_pass_7d.price} AUD`
+                  : isRoundPassUser && selectedPlan === "season"
+                    ? `Upgrade to Season Pass — $${NEEKO_PRICING.season.price} AUD`
+                    : isRoundPassUser && selectedPlan === "weekly"
+                      ? `Upgrade to Weekly — $${NEEKO_PRICING.weekly.price} AUD/wk`
+                      : selectedPlan === "round_pass_7d"
+                        ? `Get 7-Day Round Pass — $${NEEKO_PRICING.round_pass_7d.price} AUD`
+                        : selectedPlan === "season"
+                          ? `Get Full Season Access — $${NEEKO_PRICING.season.price} AUD`
+                          : `Start Weekly — $${NEEKO_PRICING.weekly.price} AUD/wk`}
                 <ArrowRight size={15} />
               </>
             )}
@@ -1212,10 +1282,13 @@ const NeekoPlusPurchase = () => {
         </div>
 
         {/* Bottom CTA repeat */}
-        {!isPremium && (
+        {(!isPremium || isRoundPassUser) && (
           <div style={{ marginTop: 48, textAlign: "center" }}>
             <button
-              onClick={() => handleSubscribe("round_pass_7d")}
+              onClick={() => {
+                trackCTA({ cta_location: "neeko_plus_page_bottom", cta_text: isRoundPassUser ? "Buy Another 7-Day Pass" : "Get 7-Day Round Pass", plan_key: "round_pass_7d", billing_type: "one_time", value: NEEKO_PRICING.round_pass_7d.price, currency: "AUD" });
+                handleSubscribe("round_pass_7d");
+              }}
               disabled={loading}
               style={{
                 padding: "15px 40px",
@@ -1237,7 +1310,9 @@ const NeekoPlusPurchase = () => {
                 </>
               ) : (
                 <>
-                  {`Get 7-Day Round Pass — $${NEEKO_PRICING.round_pass_7d.price} AUD`}
+                  {isRoundPassUser
+                    ? `Buy Another 7-Day Pass — $${NEEKO_PRICING.round_pass_7d.price} AUD`
+                    : `Get 7-Day Round Pass — $${NEEKO_PRICING.round_pass_7d.price} AUD`}
                   <ArrowRight size={14} />
                 </>
               )}
@@ -1245,33 +1320,88 @@ const NeekoPlusPurchase = () => {
             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", margin: "8px 0 0" }}>
               {`$${NEEKO_PRICING.round_pass_7d.price} AUD · 7 days · No subscription`}
             </p>
-            <button
-              onClick={() => handleSubscribe("season")}
-              disabled={loading}
-              style={{
-                marginTop: 10,
-                padding: "9px 24px",
-                borderRadius: 8,
-                background: "transparent",
-                border: "1px solid rgba(255,255,255,0.12)",
-                color: "rgba(255,255,255,0.38)",
-                fontSize: 12, fontWeight: 600,
-                cursor: loading ? "not-allowed" : "pointer",
-                display: "inline-flex", alignItems: "center", gap: 6,
-                transition: "all 0.15s ease",
-                opacity: loading ? 0.7 : 1,
-              }}
-              onMouseEnter={e => {
-                (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.65)";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.22)";
-              }}
-              onMouseLeave={e => {
-                (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.38)";
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.12)";
-              }}
-            >
-              View Season Pass — ${NEEKO_PRICING.season.price} AUD
-            </button>
+            {!isRoundPassUser && (
+              <button
+                onClick={() => {
+                  trackCTA({ cta_location: "neeko_plus_page_bottom", cta_text: "View Season Pass", plan_key: "season", billing_type: "one_time", value: NEEKO_PRICING.season.price, currency: "AUD" });
+                  handleSubscribe("season");
+                }}
+                disabled={loading}
+                style={{
+                  marginTop: 10,
+                  padding: "9px 24px",
+                  borderRadius: 8,
+                  background: "transparent",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "rgba(255,255,255,0.38)",
+                  fontSize: 12, fontWeight: 600,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  transition: "all 0.15s ease",
+                  opacity: loading ? 0.7 : 1,
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.65)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.22)";
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.38)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.12)";
+                }}
+              >
+                View Season Pass — ${NEEKO_PRICING.season.price} AUD
+              </button>
+            )}
+            {isRoundPassUser && (
+              <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => {
+                    trackCTA({ cta_location: "neeko_plus_page_bottom", cta_text: "Upgrade to Weekly", plan_key: "weekly", billing_type: "subscription", value: NEEKO_PRICING.weekly.price, currency: "AUD" });
+                    handleSubscribe("weekly");
+                  }}
+                  disabled={loading}
+                  style={{
+                    padding: "9px 20px",
+                    borderRadius: 8,
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "rgba(255,255,255,0.38)",
+                    fontSize: 12, fontWeight: 600,
+                    cursor: loading ? "not-allowed" : "pointer",
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    transition: "all 0.15s ease",
+                    opacity: loading ? 0.7 : 1,
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.65)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.22)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.38)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.12)"; }}
+                >
+                  Upgrade to Weekly — ${NEEKO_PRICING.weekly.price} AUD/wk
+                </button>
+                <button
+                  onClick={() => {
+                    trackCTA({ cta_location: "neeko_plus_page_bottom", cta_text: "Upgrade to Season Pass", plan_key: "season", billing_type: "one_time", value: NEEKO_PRICING.season.price, currency: "AUD" });
+                    handleSubscribe("season");
+                  }}
+                  disabled={loading}
+                  style={{
+                    padding: "9px 20px",
+                    borderRadius: 8,
+                    background: "transparent",
+                    border: "1px solid rgba(255,255,255,0.12)",
+                    color: "rgba(255,255,255,0.38)",
+                    fontSize: 12, fontWeight: 600,
+                    cursor: loading ? "not-allowed" : "pointer",
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    transition: "all 0.15s ease",
+                    opacity: loading ? 0.7 : 1,
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.65)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.22)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(255,255,255,0.38)"; (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.12)"; }}
+                >
+                  Upgrade to Season — ${NEEKO_PRICING.season.price} AUD
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

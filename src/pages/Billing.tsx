@@ -5,8 +5,9 @@ import { supabase } from "@/lib/supabaseClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader as Loader2, CreditCard, Calendar, DollarSign } from "lucide-react";
+import { Loader as Loader2, CreditCard, Calendar, DollarSign, Crown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { trackCTA } from "@/lib/analytics";
 
 
 interface Subscription {
@@ -15,6 +16,7 @@ interface Subscription {
   current_period_end: string;
   cancel_at_period_end: boolean;
   plan_name?: string;
+  plan_type?: string;
   amount?: number;
 }
 
@@ -46,6 +48,7 @@ const Billing = () => {
           status: row.status,
           current_period_end: row.current_period_end ?? "",
           cancel_at_period_end: row.cancel_at_period_end ?? false,
+          plan_type: row.plan_type ?? null,
           plan_name: row.plan_type === "weekly"
             ? "Neeko+ Weekly"
             : row.plan_type === "round_pass_7d"
@@ -138,9 +141,13 @@ const Billing = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5" />
-                Current Subscription
+                {subscription.plan_type === "round_pass_7d" ? "Current Pass" : "Current Subscription"}
               </CardTitle>
-              <CardDescription>Your active subscription details</CardDescription>
+              <CardDescription>
+                {subscription.plan_type === "round_pass_7d"
+                  ? "Your active one-time pass"
+                  : "Your active subscription details"}
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
@@ -154,7 +161,9 @@ const Billing = () => {
                       : "secondary"
                   }
                 >
-                  {subscription.status}
+                  {subscription.plan_type === "round_pass_7d" && subscription.status === "active"
+                    ? "ACTIVE"
+                    : subscription.status}
                 </Badge>
               </div>
 
@@ -162,6 +171,13 @@ const Billing = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Plan:</span>
                   <span className="text-sm">{subscription.plan_name}</span>
+                </div>
+              )}
+
+              {subscription.plan_type === "round_pass_7d" && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Billing:</span>
+                  <span className="text-sm text-muted-foreground">One-time payment</span>
                 </div>
               )}
 
@@ -178,24 +194,74 @@ const Billing = () => {
                 </div>
               )}
 
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Renewal Date:
-                </span>
-                <span className="text-sm">
-                  {new Date(subscription.current_period_end).toLocaleDateString()}
-                </span>
-              </div>
+              {subscription.current_period_end && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    {subscription.plan_type === "round_pass_7d"
+                      ? "Pass Expires:"
+                      : subscription.plan_type === "season"
+                        ? "Season Access Until:"
+                        : subscription.cancel_at_period_end
+                          ? "Access Until:"
+                          : "Renewal Date:"}
+                  </span>
+                  <span className="text-sm">
+                    {new Date(subscription.current_period_end).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
 
-              {subscription.cancel_at_period_end && (
+              {subscription.plan_type === "round_pass_7d" && (
+                <p className="text-sm text-muted-foreground">
+                  This pass does not renew. No recurring billing.
+                </p>
+              )}
+
+              {subscription.cancel_at_period_end && subscription.plan_type !== "round_pass_7d" && (
                 <div className="text-sm text-amber-600 dark:text-amber-400 mt-2">
                   Your subscription will cancel at the end of the current period.
                 </div>
               )}
 
               <div className="pt-4">
-                {subscription.plan_name?.includes("7-Day") || subscription.plan_name?.includes("Season") ? (
+                {subscription.plan_type === "round_pass_7d" ? (
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        trackCTA({ cta_location: "billing_page", cta_text: "Buy Another 7 Days", plan_key: "round_pass_7d", billing_type: "one_time", currency: "AUD" });
+                        navigate("/neeko-plus?plan=round_pass_7d");
+                      }}
+                      className="w-full"
+                    >
+                      <Crown className="mr-2 h-4 w-4" />
+                      Buy Another 7 Days
+                    </Button>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          trackCTA({ cta_location: "billing_page", cta_text: "Upgrade to Weekly", plan_key: "weekly", billing_type: "subscription", currency: "AUD" });
+                          navigate("/neeko-plus?plan=weekly");
+                        }}
+                      >
+                        Upgrade to Weekly
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          trackCTA({ cta_location: "billing_page", cta_text: "Upgrade to Season", plan_key: "season", billing_type: "one_time", currency: "AUD" });
+                          navigate("/neeko-plus?plan=season");
+                        }}
+                      >
+                        Upgrade to Season
+                      </Button>
+                    </div>
+                  </div>
+                ) : subscription.plan_name?.includes("Season") ? (
                   <p className="text-sm text-muted-foreground text-center py-2">
                     One-time payment — no recurring billing to manage.
                     <br />
