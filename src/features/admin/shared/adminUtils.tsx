@@ -309,10 +309,7 @@ export interface TopPlayerRow {
 export interface RevenueEstimate {
   active_subs: number;
   trial_subs: number;
-  mrr_if_all_yearly: number;
-  mrr_if_all_monthly: number;
-  arr_if_all_yearly: number;
-  arr_if_all_monthly: number;
+  weekly_mrr_est: number;
 }
 
 export interface AIQueueHealthRow {

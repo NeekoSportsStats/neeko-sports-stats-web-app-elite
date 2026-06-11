@@ -96,11 +96,11 @@ Deno.serve(async (req: Request) => {
         : null;
 
       const activeSubs = revenueRes.data ?? [];
+      const weeklySubs = activeSubs.filter((s: { status: string; price_id?: string }) => s.status !== "trialing");
       result.revenue_estimate = {
         active_subs: activeSubs.length,
         trial_subs: activeSubs.filter((s: { status: string }) => s.status === "trialing").length,
-        mrr_if_all_monthly: activeSubs.length * 9.99,
-        arr_if_all_yearly: activeSubs.length * 99,
+        weekly_mrr_est: weeklySubs.length * 5.99 * 4,
       };
     }
 
