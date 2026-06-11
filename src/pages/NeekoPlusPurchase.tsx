@@ -457,7 +457,7 @@ function ProductPreview({ rows }: { rows: RankingRow[] }) {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 const NeekoPlusPurchase = () => {
-  const [selectedPlan, setSelectedPlan] = useState<NeekoPlan>("season");
+  const [selectedPlan, setSelectedPlan] = useState<NeekoPlan>("round_pass_7d");
   const [loading, setLoading] = useState(false);
   const { user, isPremium } = useAuth();
   const navigate = useNavigate();
@@ -514,7 +514,15 @@ const NeekoPlusPurchase = () => {
         return;
       }
 
-      trackNeekoPlus({ source: "neeko_plus_page", plan, button_text: plan === "season" ? "Get Full Season Access" : "Start Weekly" });
+      trackNeekoPlus({
+        source: "neeko_plus_page",
+        plan,
+        button_text: plan === "round_pass_7d"
+          ? "Get 7-Day Round Pass"
+          : plan === "season"
+            ? "Get Full Season Access"
+            : "Start Weekly",
+      });
       trackCheckoutStartClicked({ plan, source: "neeko_plus_page" });
       trackCheckoutEvent("checkout_attempted", { plan, source: "neeko_plus_page" });
 
@@ -696,8 +704,87 @@ const NeekoPlusPurchase = () => {
             Choose your plan
           </p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            {/* Season card — PRIMARY */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12 }}>
+            {/* 7-Day Round Pass card — PRIMARY */}
+            <div
+              onClick={() => setSelectedPlan("round_pass_7d")}
+              style={{
+                position: "relative",
+                background: selectedPlan === "round_pass_7d"
+                  ? "linear-gradient(160deg, #0d1829 0%, #07101e 100%)"
+                  : "rgba(255,255,255,0.025)",
+                border: `2px solid ${selectedPlan === "round_pass_7d" ? "rgba(96,165,250,0.55)" : "rgba(255,255,255,0.07)"}`,
+                borderRadius: 16,
+                padding: "24px 20px 20px",
+                cursor: "pointer",
+                transition: "all 0.16s ease",
+                boxShadow: selectedPlan === "round_pass_7d"
+                  ? "0 0 40px rgba(59,130,246,0.12), 0 8px 32px rgba(0,0,0,0.50)"
+                  : "none",
+                display: "flex", flexDirection: "column",
+              }}
+            >
+              {selectedPlan === "round_pass_7d" && (
+                <div style={{
+                  position: "absolute", top: 0, left: 0, right: 0, height: 2,
+                  background: "linear-gradient(to right, transparent, rgba(96,165,250,0.80), transparent)",
+                  borderRadius: "16px 16px 0 0",
+                }} />
+              )}
+
+              <p style={{
+                fontSize: 8.5, fontWeight: 900, letterSpacing: "0.36em",
+                textTransform: "uppercase",
+                color: selectedPlan === "round_pass_7d" ? "rgba(96,165,250,0.75)" : "rgba(255,255,255,0.28)",
+                margin: "0 0 10px",
+              }}>
+                Round Pass
+              </p>
+
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 2 }}>
+                <span style={{
+                  fontSize: 38, fontWeight: 900,
+                  color: selectedPlan === "round_pass_7d" ? "#60a5fa" : "rgba(255,255,255,0.55)",
+                  letterSpacing: "-0.04em",
+                }}>
+                  ${NEEKO_PRICING.round_pass_7d.price}
+                </span>
+                <span style={{ fontSize: 13, color: "rgba(255,255,255,0.28)" }}>AUD</span>
+              </div>
+
+              <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.28)", margin: "0 0 10px", lineHeight: 1.4 }}>
+                7 days access. One payment.
+              </p>
+
+              <span style={{
+                display: "inline-flex", alignItems: "center",
+                background: selectedPlan === "round_pass_7d" ? "rgba(96,165,250,0.10)" : "rgba(255,255,255,0.04)",
+                border: `1px solid ${selectedPlan === "round_pass_7d" ? "rgba(96,165,250,0.22)" : "rgba(255,255,255,0.07)"}`,
+                borderRadius: 6,
+                padding: "3px 8px",
+                fontSize: 10, fontWeight: 700,
+                color: selectedPlan === "round_pass_7d" ? "rgba(96,165,250,0.80)" : "rgba(255,255,255,0.28)",
+                marginBottom: 16,
+              }}>
+                Try one round
+              </span>
+
+              <div style={{
+                width: 20, height: 20, borderRadius: "50%",
+                background: selectedPlan === "round_pass_7d" ? "#60a5fa" : "transparent",
+                border: `2px solid ${selectedPlan === "round_pass_7d" ? "#60a5fa" : "rgba(255,255,255,0.18)"}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                marginTop: "auto",
+                transition: "all 0.15s",
+                flexShrink: 0,
+              }}>
+                {selectedPlan === "round_pass_7d" && (
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#07101e" }} />
+                )}
+              </div>
+            </div>
+
+            {/* Season card */}
             <div
               onClick={() => setSelectedPlan("season")}
               style={{
@@ -904,20 +991,22 @@ const NeekoPlusPurchase = () => {
             style={{
               width: "100%", padding: "17px",
               borderRadius: 12,
-              background: selectedPlan === "season"
-                ? "linear-gradient(160deg, #fad52a 0%, #e09600 100%)"
-                : "rgba(255,255,255,0.09)",
-              border: selectedPlan === "season"
-                ? "none"
-                : "1px solid rgba(255,255,255,0.14)",
-              color: selectedPlan === "season" ? "#130c00" : "#fff",
+              background: selectedPlan === "round_pass_7d"
+                ? "linear-gradient(160deg, #3b82f6 0%, #1d4ed8 100%)"
+                : selectedPlan === "season"
+                  ? "linear-gradient(160deg, #fad52a 0%, #e09600 100%)"
+                  : "rgba(255,255,255,0.09)",
+              border: selectedPlan === "weekly" ? "1px solid rgba(255,255,255,0.14)" : "none",
+              color: selectedPlan === "weekly" ? "#fff" : selectedPlan === "season" ? "#130c00" : "#eff6ff",
               fontSize: 15, fontWeight: 900,
               cursor: loading ? "not-allowed" : "pointer",
               display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
               transition: "all 0.18s ease",
-              boxShadow: selectedPlan === "season"
-                ? "0 8px 32px rgba(224,174,45,0.32), 0 0 60px rgba(224,174,45,0.08)"
-                : "none",
+              boxShadow: selectedPlan === "round_pass_7d"
+                ? "0 8px 32px rgba(59,130,246,0.32), 0 0 60px rgba(59,130,246,0.08)"
+                : selectedPlan === "season"
+                  ? "0 8px 32px rgba(224,174,45,0.32), 0 0 60px rgba(224,174,45,0.08)"
+                  : "none",
               opacity: loading ? 0.7 : 1,
             }}
           >
@@ -928,9 +1017,11 @@ const NeekoPlusPurchase = () => {
               </>
             ) : (
               <>
-                {selectedPlan === "season"
-                  ? `Get Full Season Access — $${NEEKO_PRICING.season.price} AUD`
-                  : `Start Weekly — $${NEEKO_PRICING.weekly.price} AUD/wk`}
+                {selectedPlan === "round_pass_7d"
+                  ? `Get 7-Day Round Pass — $${NEEKO_PRICING.round_pass_7d.price} AUD`
+                  : selectedPlan === "season"
+                    ? `Get Full Season Access — $${NEEKO_PRICING.season.price} AUD`
+                    : `Start Weekly — $${NEEKO_PRICING.weekly.price} AUD/wk`}
                 <ArrowRight size={15} />
               </>
             )}
@@ -938,9 +1029,11 @@ const NeekoPlusPurchase = () => {
         )}
 
         <p style={{ textAlign: "center", fontSize: 11, color: "rgba(255,255,255,0.20)", margin: "10px 0 0", letterSpacing: "0.02em" }}>
-          {selectedPlan === "season"
-            ? "One-time payment. No subscription. Access until end of 2026 AFL season."
-            : "Billed weekly via Stripe. Cancel anytime from your account page."}
+          {selectedPlan === "round_pass_7d"
+            ? "One-time payment. 7 days of full access. No subscription."
+            : selectedPlan === "season"
+              ? "One-time payment. No subscription. Access until end of 2026 AFL season."
+              : "Billed weekly via Stripe. Cancel anytime from your account page."}
         </p>
 
         {/* ── Free vs Neeko+ comparison ── */}
@@ -1122,18 +1215,18 @@ const NeekoPlusPurchase = () => {
         {!isPremium && (
           <div style={{ marginTop: 48, textAlign: "center" }}>
             <button
-              onClick={() => handleSubscribe("season")}
+              onClick={() => handleSubscribe("round_pass_7d")}
               disabled={loading}
               style={{
                 padding: "15px 40px",
                 borderRadius: 12,
-                background: "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
-                color: "#130c00",
+                background: "linear-gradient(160deg, #3b82f6 0%, #1d4ed8 100%)",
+                color: "#eff6ff",
                 fontSize: 14, fontWeight: 900,
                 cursor: loading ? "not-allowed" : "pointer",
                 display: "inline-flex", alignItems: "center", gap: 8,
                 border: "none",
-                boxShadow: "0 8px 32px rgba(224,174,45,0.28)",
+                boxShadow: "0 8px 32px rgba(59,130,246,0.28)",
                 opacity: loading ? 0.7 : 1,
               }}
             >
@@ -1144,16 +1237,16 @@ const NeekoPlusPurchase = () => {
                 </>
               ) : (
                 <>
-                  {`Get Full Season Access — $${NEEKO_PRICING.season.price} AUD`}
+                  {`Get 7-Day Round Pass — $${NEEKO_PRICING.round_pass_7d.price} AUD`}
                   <ArrowRight size={14} />
                 </>
               )}
             </button>
             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.18)", margin: "8px 0 0" }}>
-              {`$${NEEKO_PRICING.season.price} AUD · $${seasonPerRound}/round · Full 2026 season`}
+              {`$${NEEKO_PRICING.round_pass_7d.price} AUD · 7 days · No subscription`}
             </p>
             <button
-              onClick={() => handleSubscribe("weekly")}
+              onClick={() => handleSubscribe("season")}
               disabled={loading}
               style={{
                 marginTop: 10,
@@ -1177,7 +1270,7 @@ const NeekoPlusPurchase = () => {
                 (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.12)";
               }}
             >
-              View Weekly Option — ${NEEKO_PRICING.weekly.price} AUD/wk
+              View Season Pass — ${NEEKO_PRICING.season.price} AUD
             </button>
           </div>
         )}

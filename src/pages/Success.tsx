@@ -78,7 +78,9 @@ export default function Success() {
       const planParam = new URLSearchParams(window.location.search).get("plan");
       const conversionValue = planParam === "weekly"
         ? NEEKO_PRICING.weekly.price
-        : NEEKO_PRICING.season.price;
+        : planParam === "round_pass_7d"
+          ? NEEKO_PRICING.round_pass_7d.price
+          : NEEKO_PRICING.season.price;
       trackGoogleAdsPurchase({
         transactionId: sessionId ?? crypto.randomUUID(),
         value: conversionValue,

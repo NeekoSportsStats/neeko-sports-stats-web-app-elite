@@ -55,7 +55,7 @@ function isPlaceholderId(id: string): boolean {
 interface PlanConfig {
   price_id: string;
   interval: string;
-  plan_type: 'season' | 'weekly';
+  plan_type: 'round_pass_7d' | 'season' | 'weekly';
 }
 
 async function resolvePlanConfig(plan: string): Promise<PlanConfig | null> {
@@ -68,6 +68,11 @@ async function resolvePlanConfig(plan: string): Promise<PlanConfig | null> {
     const envPrice = Deno.env.get('STRIPE_PRICE_SEASON');
     if (envPrice && !isPlaceholderId(envPrice)) {
       return { price_id: envPrice, interval: 'one_time', plan_type: 'season' };
+    }
+  } else if (plan === 'round_pass_7d') {
+    const envPrice = Deno.env.get('STRIPE_PRICE_ROUND_PASS_7D');
+    if (envPrice && !isPlaceholderId(envPrice)) {
+      return { price_id: envPrice, interval: 'one_time', plan_type: 'round_pass_7d' };
     }
   }
 
@@ -82,12 +87,17 @@ async function resolvePlanConfig(plan: string): Promise<PlanConfig | null> {
   }
 
   if (planRow?.price_id && !isPlaceholderId(planRow.price_id)) {
-    const interval = planRow.interval ?? (plan === 'season' ? 'one_time' : 'week');
+    const interval = planRow.interval ?? (plan === 'weekly' ? 'week' : 'one_time');
     console.log(`stripe-checkout: resolved ${plan} price from DB: ${planRow.price_id}`);
-    return { price_id: planRow.price_id, interval, plan_type: plan as 'season' | 'weekly' };
+    return { price_id: planRow.price_id, interval, plan_type: plan as 'round_pass_7d' | 'season' | 'weekly' };
   }
 
-  const envKey = plan === 'season' ? 'STRIPE_PRICE_SEASON' : 'STRIPE_PRICE_WEEKLY';
+  const envKeyMap: Record<string, string> = {
+    season: 'STRIPE_PRICE_SEASON',
+    weekly: 'STRIPE_PRICE_WEEKLY',
+    round_pass_7d: 'STRIPE_PRICE_ROUND_PASS_7D',
+  };
+  const envKey = envKeyMap[plan] ?? `STRIPE_PRICE_${plan.toUpperCase()}`;
   console.error(
     `stripe-checkout: price_id for plan "${plan}" is a placeholder or missing. ` +
     `Set ${envKey} in Supabase Edge Function secrets, ` +
@@ -130,8 +140,8 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const { plan, success_url, cancel_url } = body;
 
-    if (!plan || (plan !== 'weekly' && plan !== 'season')) {
-      return err('Invalid plan — must be "weekly" or "season"');
+    if (!plan || (plan !== 'weekly' && plan !== 'season' && plan !== 'round_pass_7d')) {
+      return err('Invalid plan — must be "weekly", "season", or "round_pass_7d"');
     }
 
     if (!success_url || typeof success_url !== 'string') {
@@ -244,6 +254,8 @@ Deno.serve(async (req) => {
         email: user.email ?? '',
         plan: plan_type,
         plan_type: plan_type,
+        product: 'neeko_plus',
+        access_days: plan_type === 'round_pass_7d' ? '7' : plan_type === 'season' ? '161' : '',
       },
     };
 

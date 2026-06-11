@@ -15,6 +15,7 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' };
 
 // Season pass duration: 23 rounds x 7 days = ~161 days
 const SEASON_ACCESS_DAYS = 161;
+const ROUND_PASS_7D_DAYS = 7;
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -97,13 +98,13 @@ async function handleEvent(event: Stripe.Event) {
     switch (event.type) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
-        const planType = (session.metadata?.plan_type ?? session.metadata?.plan ?? 'weekly') as 'weekly' | 'season';
+        const planType = (session.metadata?.plan_type ?? session.metadata?.plan ?? 'round_pass_7d') as 'weekly' | 'season' | 'round_pass_7d';
         console.log(`stripe-webhook: checkout.session.completed — mode=${session.mode}, plan_type=${planType}`);
 
         if (session.mode === 'subscription' && session.customer && session.subscription) {
-          await syncSubscriptionFromStripe(session.subscription as string, planType);
+          await syncSubscriptionFromStripe(session.subscription as string, planType === 'weekly' ? 'weekly' : 'weekly');
         } else if (session.mode === 'payment' && session.customer) {
-          await grantSeasonAccess(session.customer as string, session);
+          await grantOneTimeAccess(session.customer as string, session, planType as 'season' | 'round_pass_7d');
         }
         break;
       }
@@ -225,41 +226,61 @@ async function isManualPremium(userId: string): Promise<boolean> {
   return new Date(data.manual_premium_expires_at) > new Date();
 }
 
-async function grantSeasonAccess(customerId: string, session: Stripe.Checkout.Session) {
-  console.log(`stripe-webhook: grantSeasonAccess — customer=${customerId}`);
+async function grantOneTimeAccess(customerId: string, session: Stripe.Checkout.Session, planType: 'season' | 'round_pass_7d') {
+  console.log(`stripe-webhook: grantOneTimeAccess — customer=${customerId}, plan=${planType}`);
 
   const userId = await resolveUserId(customerId);
   if (!userId) {
-    console.warn('stripe-webhook: grantSeasonAccess — no user found for customer', customerId);
+    console.warn('stripe-webhook: grantOneTimeAccess — no user found for customer', customerId);
     return;
   }
 
+  const accessDays = planType === 'round_pass_7d' ? ROUND_PASS_7D_DAYS : SEASON_ACCESS_DAYS;
   const now = new Date();
-  const expiresAt = new Date(now.getTime() + SEASON_ACCESS_DAYS * 24 * 60 * 60 * 1000);
 
-  // Write to subscriptions (source of truth for is_premium_user)
+  // Access stacking: start from max(now, existing active period_end)
+  let accessStart = now;
+  const { data: existing } = await supabase
+    .from('subscriptions')
+    .select('current_period_end, status')
+    .eq('user_id', userId)
+    .in('status', ['active'])
+    .order('current_period_end', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (existing?.current_period_end) {
+    const existingEnd = new Date(existing.current_period_end);
+    if (existingEnd > now) {
+      accessStart = existingEnd;
+      console.log(`stripe-webhook: stacking access from ${existingEnd.toISOString()}`);
+    }
+  }
+
+  const expiresAt = new Date(accessStart.getTime() + accessDays * 24 * 60 * 60 * 1000);
+  const subId = `${planType}_${session.id}`;
+
   const { error: upsertError } = await supabase
     .from('subscriptions')
     .upsert({
       user_id: userId,
       profile_id: userId,
-      stripe_subscription_id: `season_${session.id}`,
+      stripe_subscription_id: subId,
       stripe_customer_id: customerId,
       status: 'active',
       current_period_start: now.toISOString(),
       current_period_end: expiresAt.toISOString(),
       cancel_at_period_end: false,
-      plan_type: 'season',
+      plan_type: planType,
       updated_at: now.toISOString(),
     }, { onConflict: 'stripe_subscription_id' });
 
   if (upsertError) {
-    console.error('stripe-webhook: grantSeasonAccess subscriptions upsert error:', upsertError.message);
+    console.error('stripe-webhook: grantOneTimeAccess subscriptions upsert error:', upsertError.message);
   } else {
-    console.log(`stripe-webhook: season access granted to user=${userId}, expires=${expiresAt.toISOString()}`);
+    console.log(`stripe-webhook: ${planType} access granted to user=${userId}, expires=${expiresAt.toISOString()}`);
   }
 
-  // Mirror to profiles for fast access checks
   const { error: profileError } = await supabase
     .from('profiles')
     .update({
@@ -269,7 +290,7 @@ async function grantSeasonAccess(customerId: string, session: Stripe.Checkout.Se
     .eq('id', userId);
 
   if (profileError) {
-    console.warn('stripe-webhook: grantSeasonAccess profile update error (non-fatal):', profileError.message);
+    console.warn('stripe-webhook: grantOneTimeAccess profile update error (non-fatal):', profileError.message);
   }
 }
 
@@ -290,7 +311,8 @@ async function revokeSeasonAccessForRefund(paymentIntentId: string) {
       return;
     }
 
-    const fakeSubId = `season_${session.id}`;
+    const planType = session.metadata?.plan_type ?? session.metadata?.plan ?? 'season';
+    const fakeSubId = `${planType}_${session.id}`;
     console.log(`stripe-webhook: revoking season access for subscription record=${fakeSubId}`);
 
     const { error } = await supabase

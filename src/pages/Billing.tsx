@@ -46,8 +46,14 @@ const Billing = () => {
           status: row.status,
           current_period_end: row.current_period_end ?? "",
           cancel_at_period_end: row.cancel_at_period_end ?? false,
-          plan_name: row.plan_type === "weekly" ? "Neeko+ Weekly" : row.plan_type === "season" ? "Neeko+ Season Pass" : "Neeko+",
-          amount: row.plan_type === "weekly" ? 599 : row.plan_type === "season" ? 5900 : undefined,
+          plan_name: row.plan_type === "weekly"
+            ? "Neeko+ Weekly"
+            : row.plan_type === "round_pass_7d"
+              ? "Neeko+ 7-Day Round Pass"
+              : row.plan_type === "season"
+                ? "Neeko+ Season Pass"
+                : "Neeko+",
+          amount: row.plan_type === "weekly" ? 599 : row.plan_type === "round_pass_7d" ? 999 : row.plan_type === "season" ? 5900 : undefined,
         });
       } else {
         setSubscription(null);
@@ -165,10 +171,10 @@ const Billing = () => {
                     <DollarSign className="h-4 w-4" />
                     Amount:
                   </span>
-                  <span className="text-sm">
+                    <span className="text-sm">
                     ${(subscription.amount / 100).toFixed(2)}
-                    {subscription.amount === 5900 ? " (season)" : "/wk"}
-                  </span>
+                      {subscription.amount === 5900 ? " (season)" : subscription.amount === 999 ? " (7-day pass)" : "/wk"}
+                    </span>
                 </div>
               )}
 
@@ -189,21 +195,29 @@ const Billing = () => {
               )}
 
               <div className="pt-4">
-                <Button
-                  type="button"
-                  onClick={handleManageBilling}
-                  disabled={portalLoading}
-                  className="w-full"
-                >
-                  {portalLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Opening portal…
-                    </>
-                  ) : (
-                    "Manage Billing"
-                  )}
-                </Button>
+                {subscription.plan_name?.includes("7-Day") || subscription.plan_name?.includes("Season") ? (
+                  <p className="text-sm text-muted-foreground text-center py-2">
+                    One-time payment — no recurring billing to manage.
+                    <br />
+                    <span className="text-xs">Contact support if you need a refund.</span>
+                  </p>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={handleManageBilling}
+                    disabled={portalLoading}
+                    className="w-full"
+                  >
+                    {portalLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Opening portal…
+                      </>
+                    ) : (
+                      "Manage Billing"
+                    )}
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

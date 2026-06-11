@@ -229,22 +229,26 @@ export default function Account() {
                   <strong>
                     {subRecord?.plan_type === "weekly"
                       ? "Neeko+ Weekly"
-                      : subRecord?.plan_type === "season"
-                        ? "Neeko+ Season Pass"
-                        : profile?.premium_expires_at
+                      : subRecord?.plan_type === "round_pass_7d"
+                        ? "Neeko+ 7-Day Round Pass"
+                        : subRecord?.plan_type === "season"
                           ? "Neeko+ Season Pass"
-                          : "Neeko+"}
+                          : profile?.premium_expires_at
+                            ? "Neeko+ Season Pass"
+                            : "Neeko+"}
                   </strong>
                 </p>
 
                 {(subRecord?.current_period_end || profile.current_period_end || profile.billing_period_end || profile.premium_expires_at) && (
                   <p>
                     <span className="text-sm text-muted-foreground">
-                      {(subRecord?.plan_type === "season" || (!subRecord && profile?.premium_expires_at))
-                        ? "Season Access Until"
-                        : isCancelling
-                          ? "Access Until"
-                          : "Next Renewal"}
+                      {subRecord?.plan_type === "round_pass_7d"
+                        ? "Pass Expires"
+                        : (subRecord?.plan_type === "season" || (!subRecord && profile?.premium_expires_at))
+                          ? "Season Access Until"
+                          : isCancelling
+                            ? "Access Until"
+                            : "Next Renewal"}
                     </span><br />
                     {new Date(
                       subRecord?.current_period_end ??
@@ -263,11 +267,17 @@ export default function Account() {
 
                 <Separator />
 
-                {subRecord?.plan_type === "season" || (!subRecord && profile?.premium_expires_at) ? (
+                {subRecord?.plan_type === "season" || subRecord?.plan_type === "round_pass_7d" || (!subRecord && profile?.premium_expires_at) ? (
                   <div className="text-sm text-muted-foreground text-center py-2">
-                    Season Pass is a one-time payment — no recurring billing to manage.
+                    {subRecord?.plan_type === "round_pass_7d"
+                      ? "7-Day Round Pass is a one-time payment — no recurring billing to manage."
+                      : "Season Pass is a one-time payment — no recurring billing to manage."}
                     <br />
-                    <span className="text-xs">Contact support if you need a refund.</span>
+                    <span className="text-xs">
+                      {subRecord?.plan_type === "round_pass_7d"
+                        ? "Purchase another pass anytime to extend your access."
+                        : "Contact support if you need a refund."}
+                    </span>
                   </div>
                 ) : (
                   <Button
