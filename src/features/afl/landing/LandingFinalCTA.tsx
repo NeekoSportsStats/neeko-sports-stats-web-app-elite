@@ -44,7 +44,7 @@ export default function LandingFinalCTA() {
           margin: "0 0 16px",
         }}>
           Unlock this round's full<br />
-          <span style={{ color: "#60a5fa" }}>AFL stats for $9.99</span>
+          <span style={{ color: "#60a5fa" }}>AFL stats for $7.99</span>
         </h2>
 
         <p style={{
@@ -63,8 +63,8 @@ export default function LandingFinalCTA() {
           <Link
             to="/neeko-plus"
             onClick={() => {
-              trackNeekoPlus({ source: "final_cta", button_text: "Start 7-Day Access — $9.99 AUD", plan: "round_pass_7d" });
-              trackLandingCTA({ button_text: "Start 7-Day Access — $9.99 AUD", section: "final_cta", target_url: "/neeko-plus" });
+              trackNeekoPlus({ source: "final_cta", button_text: "Start 7-Day Access — $7.99 AUD", plan: "round_pass_7d", plan_key: "round_pass_7d", billing_type: "one_time", value: 7.99, currency: "AUD" });
+              trackLandingCTA({ button_text: "Start 7-Day Access — $7.99 AUD", section: "final_cta", target_url: "/neeko-plus", plan_key: "round_pass_7d", billing_type: "one_time", value: 7.99, currency: "AUD" });
             }}
             onMouseEnter={() => setPrimaryHovered(true)}
             onMouseLeave={() => { setPrimaryHovered(false); setPrimaryActive(false); }}
@@ -88,7 +88,7 @@ export default function LandingFinalCTA() {
               transition: "all 0.18s cubic-bezier(0.22,1,0.36,1)",
             }}
           >
-            Start 7-Day Access — $9.99 AUD <ArrowRight size={16} />
+            Start 7-Day Access — $7.99 AUD <ArrowRight size={16} />
           </Link>
 
           <Link

@@ -410,10 +410,10 @@ export default function StatBoardPlayersPage() {
                     <p className="text-[10px] text-white/35 mt-0.5 leading-snug">Full hit rates and expanded detail inside Neeko+</p>
                   </div>
                   <button
-                    onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Start 7-Day Access — $9.99", section: "preview_banner" }); window.location.href = "/neeko-plus"; }}
+                    onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Start 7-Day Access — $7.99", section: "preview_banner", plan_key: "round_pass_7d", billing_type: "one_time", value: 7.99, currency: "AUD" }); window.location.href = "/neeko-plus"; }}
                     className="shrink-0 text-[10px] font-semibold text-[#60a5fa] bg-blue-500/8 border border-blue-500/18 rounded-lg px-2.5 py-1.5 hover:bg-blue-500/15 transition-colors whitespace-nowrap min-h-[36px] flex items-center"
                   >
-                    Start 7-Day Access — $9.99
+                    Start 7-Day Access — $7.99
                   </button>
                 </div>
               </div>
@@ -425,7 +425,7 @@ export default function StatBoardPlayersPage() {
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400/70 shrink-0" />
                 <p className="text-[10px] text-emerald-400 font-semibold flex-1">Free Board — full stats visible</p>
                 <button
-                  onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Start 7-Day Access", section: "free_banner" }); window.location.href = "/neeko-plus"; }}
+                  onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Start 7-Day Access", section: "free_banner", plan_key: "round_pass_7d", billing_type: "one_time", value: 7.99, currency: "AUD" }); window.location.href = "/neeko-plus"; }}
                   className="shrink-0 text-[9px] font-semibold text-[#60a5fa]/80 hover:text-[#60a5fa] transition-colors whitespace-nowrap"
                 >
                   Start 7-Day Access
@@ -466,10 +466,10 @@ export default function StatBoardPlayersPage() {
                       View free
                     </Link>
                     <button
-                      onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Start 7-Day Access — $9.99", section: "top_banner" }); window.location.href = "/neeko-plus"; }}
+                      onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Start 7-Day Access — $7.99", section: "top_banner", plan_key: "round_pass_7d", billing_type: "one_time", value: 7.99, currency: "AUD" }); window.location.href = "/neeko-plus"; }}
                       className="text-[11px] font-semibold text-[#60a5fa] bg-blue-500/8 border border-blue-500/18 rounded-lg px-2 py-1 hover:bg-blue-500/15 transition-colors whitespace-nowrap"
                     >
-                      Start 7-Day Access — $9.99
+                      Start 7-Day Access — $7.99
                     </button>
                   </div>
                 </div>
@@ -734,10 +734,10 @@ export default function StatBoardPlayersPage() {
                 </p>
                 <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <button
-                    onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Start 7-Day Access — $9.99", section: "locked_banner" }); window.location.href = "/neeko-plus"; }}
+                    onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Start 7-Day Access — $7.99", section: "locked_banner", plan_key: "round_pass_7d", billing_type: "one_time", value: 7.99, currency: "AUD" }); window.location.href = "/neeko-plus"; }}
                     className="inline-flex items-center gap-1.5 rounded-lg bg-blue-500/15 border border-blue-500/30 px-3 py-1.5 text-[11px] font-semibold text-[#60a5fa] hover:bg-blue-500/25 transition-colors"
                   >
-                    Start 7-Day Access — $9.99
+                    Start 7-Day Access — $7.99
                   </button>
                   <Link
                     to="/stat-board/players"
@@ -1343,10 +1343,10 @@ const TeamBoard = memo(function TeamBoard({
                 </p>
               </div>
               <button
-                onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Start 7-Day Access — $9.99", section: "preview_mid_board" }); window.location.href = "/neeko-plus"; }}
+                onClick={() => { trackStatBoardUpgrade({ source: "stat_board_players", button_text: "Start 7-Day Access — $7.99", section: "preview_mid_board", plan_key: "round_pass_7d", billing_type: "one_time", value: 7.99, currency: "AUD" }); window.location.href = "/neeko-plus"; }}
                 className="shrink-0 text-[10px] font-semibold text-[#60a5fa] bg-blue-500/10 border border-blue-500/22 rounded-lg px-2.5 py-1.5 hover:bg-blue-500/16 transition-colors whitespace-nowrap min-h-[36px] flex items-center"
               >
-                Start 7-Day Access — $9.99
+                Start 7-Day Access — $7.99
               </button>
             </div>
 

@@ -304,6 +304,10 @@ export interface CTAParams {
   cta_type?: string;          // "upgrade", "free", "unlock", "start_trial", etc.
   destination?: string;       // URL or route being navigated to
   plan?: string;              // plan name if relevant
+  plan_key?: string;          // canonical plan key: "round_pass_7d" | "weekly" | "season"
+  billing_type?: "one_time" | "subscription";
+  value?: number;             // numeric price in major currency units (e.g. 7.99)
+  currency?: string;          // ISO currency code e.g. "AUD"
   section?: string;           // sub-section within a page
   [key: string]: unknown;
 }
@@ -488,6 +492,10 @@ export function trackLandingCTA(params: {
   button_text: string;
   section: string;
   target_url?: string;
+  plan_key?: string;
+  billing_type?: "one_time" | "subscription";
+  value?: number;
+  currency?: string;
 }) {
   trackCTA({
     cta_location: "landing_" + (params.section ?? "unknown"),
@@ -495,6 +503,10 @@ export function trackLandingCTA(params: {
     cta_type: "upgrade",
     destination: params.target_url,
     section: params.section,
+    plan_key: params.plan_key,
+    billing_type: params.billing_type,
+    value: params.value,
+    currency: params.currency,
   });
 }
 
@@ -502,12 +514,20 @@ export function trackPricingCTA(params: {
   plan: string;
   button_text: string;
   source: string;
+  plan_key?: string;
+  billing_type?: "one_time" | "subscription";
+  value?: number;
+  currency?: string;
 }) {
   trackCTA({
     cta_location: "pricing_" + (params.source ?? "section"),
     cta_text: params.button_text,
     cta_type: "upgrade",
     plan: params.plan,
+    plan_key: params.plan_key ?? params.plan,
+    billing_type: params.billing_type,
+    value: params.value,
+    currency: params.currency,
     section: "pricing",
   });
 }
@@ -516,12 +536,20 @@ export function trackNeekoPlus(params: {
   source: string;
   button_text?: string;
   plan?: string;
+  plan_key?: string;
+  billing_type?: "one_time" | "subscription";
+  value?: number;
+  currency?: string;
 }) {
   trackCTA({
     cta_location: params.source ?? "neeko_plus",
     cta_text: params.button_text ?? "Get Neeko+",
     cta_type: "upgrade",
     plan: params.plan,
+    plan_key: params.plan_key ?? params.plan,
+    billing_type: params.billing_type,
+    value: params.value,
+    currency: params.currency,
   });
 }
 
@@ -598,24 +626,40 @@ export function trackStatBoardUpgrade(params: {
   source: string;
   button_text: string;
   section?: string;
+  plan_key?: string;
+  billing_type?: "one_time" | "subscription";
+  value?: number;
+  currency?: string;
 }) {
   trackCTA({
     cta_location: params.source ?? "stat_board",
     cta_text: params.button_text,
     cta_type: "upgrade",
     section: params.section,
+    plan_key: params.plan_key,
+    billing_type: params.billing_type,
+    value: params.value,
+    currency: params.currency,
   });
 }
 
 export function trackMobileStickyCTA(params: {
   button_text: string;
   state: "free" | "locked";
+  plan_key?: string;
+  billing_type?: "one_time" | "subscription";
+  value?: number;
+  currency?: string;
 }) {
   trackCTA({
     cta_location: "mobile_sticky_bar",
     cta_text: params.button_text,
     cta_type: params.state === "locked" ? "upgrade" : "free",
     section: "mobile_sticky",
+    plan_key: params.plan_key,
+    billing_type: params.billing_type,
+    value: params.value,
+    currency: params.currency,
   });
 }
 

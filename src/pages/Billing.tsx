@@ -53,7 +53,7 @@ const Billing = () => {
               : row.plan_type === "season"
                 ? "Neeko+ Season Pass"
                 : "Neeko+",
-          amount: row.plan_type === "weekly" ? 599 : row.plan_type === "round_pass_7d" ? 999 : row.plan_type === "season" ? 5900 : undefined,
+          amount: row.plan_type === "weekly" ? 599 : row.plan_type === "round_pass_7d" ? 799 : row.plan_type === "season" ? 5900 : undefined,
         });
       } else {
         setSubscription(null);
@@ -173,7 +173,7 @@ const Billing = () => {
                   </span>
                     <span className="text-sm">
                     ${(subscription.amount / 100).toFixed(2)}
-                      {subscription.amount === 5900 ? " (season)" : subscription.amount === 999 ? " (7-day pass)" : "/wk"}
+                      {subscription.amount === 5900 ? " (season)" : subscription.amount === 799 ? " (7-day pass)" : "/wk"}
                     </span>
                 </div>
               )}

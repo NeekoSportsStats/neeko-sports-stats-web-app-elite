@@ -99,12 +99,14 @@ async function handleEvent(event: Stripe.Event) {
       case 'checkout.session.completed': {
         const session = event.data.object as Stripe.Checkout.Session;
         const planType = (session.metadata?.plan_type ?? session.metadata?.plan ?? 'round_pass_7d') as 'weekly' | 'season' | 'round_pass_7d';
-        console.log(`stripe-webhook: checkout.session.completed — mode=${session.mode}, plan_type=${planType}`);
+        console.log(`stripe-webhook: checkout.session.completed — mode=${session.mode}, plan_type=${planType}, payment_status=${session.payment_status}`);
 
         if (session.mode === 'subscription' && session.customer && session.subscription) {
           await syncSubscriptionFromStripe(session.subscription as string, planType === 'weekly' ? 'weekly' : 'weekly');
-        } else if (session.mode === 'payment' && session.customer) {
+        } else if (session.mode === 'payment' && session.customer && session.payment_status === 'paid') {
           await grantOneTimeAccess(session.customer as string, session, planType as 'season' | 'round_pass_7d');
+        } else if (session.mode === 'payment' && session.payment_status !== 'paid') {
+          console.warn(`stripe-webhook: checkout.session.completed — payment_status=${session.payment_status}, not granting access`);
         }
         break;
       }

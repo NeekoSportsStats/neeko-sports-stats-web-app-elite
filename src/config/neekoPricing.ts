@@ -1,7 +1,7 @@
 export const NEEKO_PRICING = {
   round_pass_7d: {
-    price: 9.99,
-    cents: 999,
+    price: 7.99,
+    cents: 799,
     stripePlan: "round_pass_7d" as const,
     label: "Neeko+ 7-Day Round Pass",
     billingNote: "One-time payment. 7 days of premium access.",

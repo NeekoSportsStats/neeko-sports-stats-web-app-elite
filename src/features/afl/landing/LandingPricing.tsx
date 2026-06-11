@@ -370,7 +370,7 @@ export default function LandingPricing() {
 
             <Link
               to="/neeko-plus"
-              onClick={() => trackPricingCTA({ plan: hoveredPlan, button_text: hoveredPlan === "round_pass_7d" ? "Start 7-Day Access — $9.99" : hoveredPlan === "weekly" ? "Get Neeko+ Weekly" : "Get Neeko+ Season Pass", source: "landing_pricing" })}
+              onClick={() => trackPricingCTA({ plan: hoveredPlan, button_text: hoveredPlan === "round_pass_7d" ? "Start 7-Day Access — $7.99" : hoveredPlan === "weekly" ? "Get Neeko+ Weekly" : "Get Neeko+ Season Pass", source: "landing_pricing", plan_key: hoveredPlan, billing_type: hoveredPlan === "weekly" ? "subscription" : "one_time", value: hoveredPlan === "round_pass_7d" ? 7.99 : hoveredPlan === "weekly" ? 5.99 : 59, currency: "AUD" })}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 marginTop: 28,
@@ -391,7 +391,7 @@ export default function LandingPricing() {
               }}
             >
               {hoveredPlan === "round_pass_7d"
-                ? <>Start 7-Day Access — $9.99 <ArrowRight size={14} /></>
+                ? <>Start 7-Day Access — $7.99 <ArrowRight size={14} /></>
                 : hoveredPlan === "weekly"
                   ? <>Get Neeko+ Weekly <ArrowRight size={14} /></>
                   : <>Get Neeko+ — Full Season Access <ArrowRight size={14} /></>
