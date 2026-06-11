@@ -251,7 +251,6 @@ Deno.serve(async (req) => {
       cancel_url,
       metadata: {
         user_id: user.id,
-        email: user.email ?? '',
         plan: plan_type,
         plan_type: plan_type,
         plan_key: plan_type,

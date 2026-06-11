@@ -795,7 +795,7 @@ function SubscribersTab({
   const trialing = subMetrics?.trialing_count ?? 0;
   const manual = subMetrics?.manual_premium_count ?? 0;
   const expired = subMetrics?.expired_count ?? 0;
-  const mrrEstimate = (active * 7.99).toFixed(2);
+  const mrrEstimate = (active * 5.99 * 4).toFixed(2);
   const arrEstimate = (active * 89).toLocaleString();
 
   return (
