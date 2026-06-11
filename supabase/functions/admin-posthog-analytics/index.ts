@@ -179,7 +179,9 @@ async function getTopPages(
         SELECT
           coalesce(
             NULLIF(JSONExtractString(properties, 'clean_page_path'), ''),
-            ${cleanPathExpr("properties.$current_url")}
+            NULLIF(JSONExtractString(properties, 'page_path'), ''),
+            ${cleanPathExpr("properties.$current_url")},
+            'unknown'
           ) as clean_path,
           count() as views,
           uniq(distinct_id) as unique_users
@@ -188,7 +190,7 @@ async function getTopPages(
           AND timestamp >= now() - interval ${intervalExpr(hours, days)}
           AND ${adminExclusionWhere(includeAdmin)}
         GROUP BY clean_path
-        HAVING clean_path IS NOT NULL AND clean_path != ''
+        HAVING clean_path != 'unknown'
         ORDER BY views DESC
         LIMIT 20
       `,
@@ -604,12 +606,14 @@ async function getCtaPerformance(
       kind: "HogQLQuery",
       query: `
         SELECT
-          coalesce(NULLIF(JSONExtractString(properties, 'cta_location'), ''), event) as cta_location,
-          JSONExtractString(properties, 'cta_text') as cta_text,
-          JSONExtractString(properties, 'cta_type') as cta_type,
+          coalesce(NULLIF(JSONExtractString(properties, 'cta_location'), ''), event, 'unknown') as cta_location,
+          coalesce(NULLIF(JSONExtractString(properties, 'cta_text'), ''), 'unknown') as cta_text,
+          coalesce(NULLIF(JSONExtractString(properties, 'cta_type'), ''), 'unknown') as cta_type,
           coalesce(
             NULLIF(JSONExtractString(properties, 'clean_page_path'), ''),
-            ${cleanPathExpr("properties.$current_url")}
+            NULLIF(JSONExtractString(properties, 'page_path'), ''),
+            ${cleanPathExpr("properties.$current_url")},
+            'unknown'
           ) as clean_path,
           count() as clicks
         FROM events
@@ -1077,8 +1081,10 @@ async function getMarketingInsights(
   if (f.checkout_started > 0 && f.checkout_success < f.checkout_started * 0.5) {
     actions.push("More than half of checkouts are not completing — review Stripe error logs.");
   }
-  if (f.landing_cta_clicks === 0) {
-    actions.push("No landing CTA clicks tracked — verify analytics.ts trackLandingCTA is firing.");
+  if (f.landing_cta_clicks === 0 && f.cta_clicks === 0) {
+    actions.push("No CTA clicks tracked at all — verify trackCTA() is wired to buttons and not suppressed by the admin route guard.");
+  } else if (f.landing_cta_clicks === 0 && f.cta_clicks > 0) {
+    actions.push(`No landing page CTA clicks (product CTAs = ${f.cta_clicks}) — landing_cta_clicks counts only cta_location matching "landing_*". If landing CTAs are intentionally routed as product CTAs this is expected.`);
   }
   if (f.locked_cell_clicks === 0 && f.gate_views > 0) {
     actions.push("Gate views exist but no locked cell clicks — verify trackLockedDataClick() is being called.");
@@ -1109,7 +1115,7 @@ async function getMarketingInsights(
   }
   if (f.gate_views === 0 && f.page_views > 50) {
     dataNotes.push(
-      `Gate Views = 0. The "premium_gate_viewed" event is not firing. ` +
+      `Gate Views = 0. The "gate_viewed" event is not firing. ` +
       `Wire trackGateInteraction({ action: "viewed", ... }) to stat-board locked state renders.`
     );
   }
