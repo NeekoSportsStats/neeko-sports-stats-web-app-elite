@@ -133,6 +133,16 @@ export default function Success() {
     }
   }, [isPremium]);
 
+  const planParam = new URLSearchParams(window.location.search).get("plan");
+  const planLabel = planParam === "round_pass_7d"
+    ? "7-Day Round Pass"
+    : planParam === "weekly"
+      ? "Neeko+ Weekly"
+      : "Neeko+ Season Pass";
+  const planSubtext = planParam === "round_pass_7d"
+    ? "7 days of full premium access — every match, projection, and insight."
+    : "You now have unlimited access to all AI-powered insights, advanced analytics, and premium features.";
+
   if (loading && !authTimedOut) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4" style={{ background: "#0a0a0a" }}>
@@ -176,7 +186,7 @@ export default function Success() {
             <CheckCircle2 className="w-10 h-10 text-green-600 dark:text-green-400" />
           </div>
           <CardTitle className="text-3xl font-bold">Payment Successful!</CardTitle>
-          <CardDescription className="text-lg">Welcome to Neeko+ Premium</CardDescription>
+          <CardDescription className="text-lg">Welcome to {planLabel}</CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
@@ -184,12 +194,11 @@ export default function Success() {
             <div className="flex items-center gap-2">
               <Crown className="h-5 w-5 text-primary" />
               <h3 className="font-semibold">
-                {isPremium ? "Your Premium Access is Active" : "Activating your Premium Access..."}
+                {isPremium ? `Your ${planLabel} is Active` : `Activating your ${planLabel}...`}
               </h3>
             </div>
             <p className="text-sm text-muted-foreground">
-              You now have unlimited access to all AI-powered insights, advanced analytics, and
-              premium features.
+              {planSubtext}
             </p>
           </div>
 

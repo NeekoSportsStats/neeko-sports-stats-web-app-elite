@@ -25,10 +25,10 @@ const PREMIUM_FEATURES = [
   "Full player and team history",
 ];
 
-type Plan = "season" | "weekly";
+type Plan = "round_pass_7d" | "season" | "weekly";
 
 export default function LandingPricing() {
-  const [hoveredPlan, setHoveredPlan] = useState<Plan | null>(null);
+  const [hoveredPlan, setHoveredPlan] = useState<Plan>("round_pass_7d");
   const [freeCTAHovered, setFreeCTAHovered] = useState(false);
 
   const seasonPerRound = (NEEKO_PRICING.season.price / NEEKO_PRICING.season.totalRounds).toFixed(2);
@@ -220,14 +220,52 @@ export default function LandingPricing() {
               </p>
 
               {/* Pricing options */}
-              <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+                {/* 7-Day Round Pass option */}
+                <button
+                  onClick={() => setHoveredPlan("round_pass_7d")}
+                  style={{
+                    flex: "1 1 auto",
+                    minWidth: 90,
+                    background: hoveredPlan === "round_pass_7d" ? "rgba(59,130,246,0.12)" : "rgba(255,255,255,0.025)",
+                    border: `1px solid ${hoveredPlan === "round_pass_7d" ? "rgba(59,130,246,0.40)" : "rgba(255,255,255,0.07)"}`,
+                    borderRadius: 10,
+                    padding: "10px 12px",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    transition: "all 0.15s",
+                    position: "relative",
+                  }}
+                >
+                  {hoveredPlan === "round_pass_7d" && (
+                    <div style={{
+                      position: "absolute", top: -1, left: -1, right: -1, height: 2,
+                      background: "linear-gradient(to right, transparent, rgba(59,130,246,0.70), transparent)",
+                      borderRadius: "10px 10px 0 0",
+                    }} />
+                  )}
+                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.20em", color: hoveredPlan === "round_pass_7d" ? "rgba(96,165,250,0.85)" : "rgba(255,255,255,0.25)", textTransform: "uppercase", marginBottom: 4 }}>
+                    7-Day Pass
+                  </div>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
+                    <span style={{ fontSize: 22, fontWeight: 900, color: hoveredPlan === "round_pass_7d" ? "#60a5fa" : "rgba(255,255,255,0.45)", letterSpacing: "-0.03em" }}>
+                      ${NEEKO_PRICING.round_pass_7d.price}
+                    </span>
+                    <span style={{ fontSize: 11, color: "rgba(255,255,255,0.40)" }}>AUD</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.40)", marginTop: 2 }}>
+                    one-time
+                  </div>
+                </button>
+
                 {/* Season option */}
                 <button
-                  onClick={() => setHoveredPlan(null)}
+                  onClick={() => setHoveredPlan("season")}
                   style={{
-                    flex: 1,
-                    background: hoveredPlan !== "weekly" ? "rgba(224,174,45,0.10)" : "rgba(255,255,255,0.03)",
-                    border: `1px solid ${hoveredPlan !== "weekly" ? "rgba(224,174,45,0.30)" : "rgba(255,255,255,0.08)"}`,
+                    flex: "1 1 auto",
+                    minWidth: 90,
+                    background: hoveredPlan === "season" ? "rgba(224,174,45,0.10)" : "rgba(255,255,255,0.03)",
+                    border: `1px solid ${hoveredPlan === "season" ? "rgba(224,174,45,0.30)" : "rgba(255,255,255,0.08)"}`,
                     borderRadius: 10,
                     padding: "10px 12px",
                     cursor: "pointer",
@@ -235,11 +273,11 @@ export default function LandingPricing() {
                     transition: "all 0.15s",
                   }}
                 >
-                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.25em", color: hoveredPlan !== "weekly" ? "rgba(224,174,45,0.70)" : "rgba(255,255,255,0.25)", textTransform: "uppercase", marginBottom: 4 }}>
-                    Season Pass — one-time
+                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.20em", color: hoveredPlan === "season" ? "rgba(224,174,45,0.70)" : "rgba(255,255,255,0.25)", textTransform: "uppercase", marginBottom: 4 }}>
+                    Season Pass
                   </div>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
-                    <span style={{ fontSize: 22, fontWeight: 900, color: hoveredPlan !== "weekly" ? "#E0AE2D" : "rgba(255,255,255,0.45)", letterSpacing: "-0.03em" }}>
+                    <span style={{ fontSize: 22, fontWeight: 900, color: hoveredPlan === "season" ? "#E0AE2D" : "rgba(255,255,255,0.45)", letterSpacing: "-0.03em" }}>
                       ${NEEKO_PRICING.season.price}
                     </span>
                     <span style={{ fontSize: 11, color: "rgba(255,255,255,0.40)" }}>AUD</span>
@@ -253,7 +291,8 @@ export default function LandingPricing() {
                 <button
                   onClick={() => setHoveredPlan("weekly")}
                   style={{
-                    flex: 1,
+                    flex: "1 1 auto",
+                    minWidth: 90,
                     background: hoveredPlan === "weekly" ? "rgba(255,255,255,0.06)" : "rgba(255,255,255,0.025)",
                     border: `1px solid ${hoveredPlan === "weekly" ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.07)"}`,
                     borderRadius: 10,
@@ -263,7 +302,7 @@ export default function LandingPricing() {
                     transition: "all 0.15s",
                   }}
                 >
-                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.25em", color: "rgba(255,255,255,0.30)", textTransform: "uppercase", marginBottom: 4 }}>
+                  <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: "0.20em", color: "rgba(255,255,255,0.30)", textTransform: "uppercase", marginBottom: 4 }}>
                     Weekly
                   </div>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 3 }}>
@@ -278,8 +317,22 @@ export default function LandingPricing() {
                 </button>
               </div>
 
-              {/* Per round cost callout */}
-              {hoveredPlan !== "weekly" && (
+              {/* Per round cost / savings callout */}
+              {hoveredPlan === "round_pass_7d" && (
+                <div style={{
+                  display: "inline-flex", alignItems: "center", gap: 5,
+                  background: "rgba(59,130,246,0.08)",
+                  border: "1px solid rgba(59,130,246,0.20)",
+                  borderRadius: 6,
+                  padding: "4px 10px",
+                  fontSize: 11, fontWeight: 700,
+                  color: "rgba(96,165,250,0.90)",
+                }}>
+                  <Zap size={10} style={{ color: "#60a5fa" }} />
+                  Try one round — no subscription needed
+                </div>
+              )}
+              {hoveredPlan === "season" && (
                 <div style={{
                   display: "inline-flex", alignItems: "center", gap: 5,
                   background: "rgba(34,197,94,0.08)",
@@ -317,26 +370,41 @@ export default function LandingPricing() {
 
             <Link
               to="/neeko-plus"
-              onClick={() => trackPricingCTA({ plan: hoveredPlan === "weekly" ? "weekly" : "season", button_text: "Get Neeko+ — Full Season Access", source: "landing_pricing" })}
+              onClick={() => trackPricingCTA({ plan: hoveredPlan, button_text: hoveredPlan === "round_pass_7d" ? "Start 7-Day Access — $9.99" : hoveredPlan === "weekly" ? "Get Neeko+ Weekly" : "Get Neeko+ Season Pass", source: "landing_pricing" })}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 marginTop: 28,
                 padding: "15px 20px",
                 borderRadius: 11,
-                background: "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
-                color: "#130c00",
+                background: hoveredPlan === "round_pass_7d"
+                  ? "linear-gradient(160deg, #3b82f6 0%, #1d4ed8 100%)"
+                  : "linear-gradient(160deg, #fad52a 0%, #e09600 100%)",
+                color: hoveredPlan === "round_pass_7d" ? "#eff6ff" : "#130c00",
                 fontSize: 14, fontWeight: 900,
                 textDecoration: "none",
                 letterSpacing: "0.01em",
-                boxShadow: "0 6px 28px rgba(224,174,45,0.30), 0 0 40px rgba(255,200,0,0.08)",
+                boxShadow: hoveredPlan === "round_pass_7d"
+                  ? "0 6px 28px rgba(59,130,246,0.30), 0 0 40px rgba(96,165,250,0.08)"
+                  : "0 6px 28px rgba(224,174,45,0.30), 0 0 40px rgba(255,200,0,0.08)",
                 position: "relative",
+                transition: "all 0.20s ease",
               }}
             >
-              Get Neeko+ — Full Season Access <ArrowRight size={14} />
+              {hoveredPlan === "round_pass_7d"
+                ? <>Start 7-Day Access — $9.99 <ArrowRight size={14} /></>
+                : hoveredPlan === "weekly"
+                  ? <>Get Neeko+ Weekly <ArrowRight size={14} /></>
+                  : <>Get Neeko+ — Full Season Access <ArrowRight size={14} /></>
+              }
             </Link>
 
             <p style={{ textAlign: "center", fontSize: 11, color: "rgba(255,255,255,0.35)", margin: "10px 0 0", letterSpacing: "0.02em" }}>
-              One-time payment. Access until end of 2026 AFL season.
+              {hoveredPlan === "round_pass_7d"
+                ? "One-time payment. 7 days of premium access."
+                : hoveredPlan === "weekly"
+                  ? "Weekly subscription. Cancel anytime."
+                  : "One-time payment. Access until end of 2026 AFL season."
+              }
             </p>
           </div>
         </div>

@@ -26,7 +26,7 @@ export default function MobileUpgradeBar({ state }: Props) {
     ? "Upgrade to unlock the full round"
     : "600+ players · projections · trade signals";
 
-  const ctaLabel = isLocked || isFree ? "Unlock full round" : "$5.99/wk";
+  const ctaLabel = isLocked || isFree ? "Start 7-Day Access — $9.99" : "Start 7-Day Access";
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden">
