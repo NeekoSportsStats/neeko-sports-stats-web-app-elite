@@ -22,19 +22,42 @@ Deno.serve(async (req: Request) => {
 
     const SEASON_ID = "price_1TM0kpEKV8332a9YHhTfin2z";
     const WEEKLY_ID = "price_1TM0kpEKV8332a9YDaho0M3J";
+    const ROUND_PASS_ID = "price_1Th2xaEKV8332a9YdWDMnksH";
 
-    const [seasonRes, weeklyRes] = await Promise.all([
+    const [seasonRes, weeklyRes, roundPassRes] = await Promise.all([
       fetch(`https://api.stripe.com/v1/prices/${SEASON_ID}`, {
         headers: { "Authorization": `Bearer ${stripeKey}` },
       }),
       fetch(`https://api.stripe.com/v1/prices/${WEEKLY_ID}`, {
         headers: { "Authorization": `Bearer ${stripeKey}` },
       }),
+      fetch(`https://api.stripe.com/v1/prices/${ROUND_PASS_ID}`, {
+        headers: { "Authorization": `Bearer ${stripeKey}` },
+      }),
     ]);
 
-    const [season, weekly] = await Promise.all([seasonRes.json(), weeklyRes.json()]);
+    const [season, weekly, roundPass] = await Promise.all([seasonRes.json(), weeklyRes.json(), roundPassRes.json()]);
 
     const results = {
+      round_pass_7d: {
+        id: roundPass.id,
+        exists: roundPassRes.ok,
+        error: roundPassRes.ok ? null : (roundPass.error?.message ?? "not found"),
+        currency: roundPass.currency,
+        unit_amount: roundPass.unit_amount,
+        type: roundPass.type,
+        recurring: roundPass.recurring ?? null,
+        product: roundPass.product,
+        active: roundPass.active,
+        checks: {
+          exists: roundPassRes.ok,
+          currency_aud: roundPass.currency === "aud",
+          amount_799: roundPass.unit_amount === 799,
+          is_one_time: roundPass.type === "one_time",
+          no_recurring: roundPass.recurring === null,
+          is_active: roundPass.active === true,
+        },
+      },
       season: {
         id: season.id,
         exists: seasonRes.ok,
@@ -43,7 +66,6 @@ Deno.serve(async (req: Request) => {
         type: season.type,
         recurring: season.recurring ?? null,
         product: season.product,
-        nickname: season.nickname,
         checks: {
           currency_aud: season.currency === "aud",
           amount_5900: season.unit_amount === 5900,
@@ -59,7 +81,6 @@ Deno.serve(async (req: Request) => {
         type: weekly.type,
         recurring: weekly.recurring ?? null,
         product: weekly.product,
-        nickname: weekly.nickname,
         checks: {
           currency_aud: weekly.currency === "aud",
           amount_599: weekly.unit_amount === 599,
@@ -67,9 +88,10 @@ Deno.serve(async (req: Request) => {
           interval_week: weekly.recurring?.interval === "week",
         },
       },
-      same_product: season.product === weekly.product,
+      stripe_key_mode: stripeKey.startsWith("sk_live_") ? "live" : stripeKey.startsWith("sk_test_") ? "test" : "unknown",
       all_checks_passed:
-        seasonRes.ok && weeklyRes.ok &&
+        roundPassRes.ok && seasonRes.ok && weeklyRes.ok &&
+        roundPass.unit_amount === 799 && roundPass.type === "one_time" && roundPass.currency === "aud" &&
         season.currency === "aud" && season.unit_amount === 5900 && season.type === "one_time" &&
         weekly.currency === "aud" && weekly.unit_amount === 599 && weekly.type === "recurring" && weekly.recurring?.interval === "week",
     };

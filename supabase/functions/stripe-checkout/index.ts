@@ -60,17 +60,17 @@ interface PlanConfig {
 
 async function resolvePlanConfig(plan: string): Promise<PlanConfig | null> {
   if (plan === 'weekly') {
-    const envPrice = Deno.env.get('STRIPE_PRICE_WEEKLY');
+    const envPrice = Deno.env.get('STRIPE_PRICE_WEEKLY')?.trim();
     if (envPrice && !isPlaceholderId(envPrice)) {
       return { price_id: envPrice, interval: 'week', plan_type: 'weekly' };
     }
   } else if (plan === 'season') {
-    const envPrice = Deno.env.get('STRIPE_PRICE_SEASON');
+    const envPrice = Deno.env.get('STRIPE_PRICE_SEASON')?.trim();
     if (envPrice && !isPlaceholderId(envPrice)) {
       return { price_id: envPrice, interval: 'one_time', plan_type: 'season' };
     }
   } else if (plan === 'round_pass_7d') {
-    const envPrice = Deno.env.get('STRIPE_PRICE_ROUND_PASS_7D');
+    const envPrice = Deno.env.get('STRIPE_PRICE_ROUND_PASS_7D')?.trim();
     if (envPrice && !isPlaceholderId(envPrice)) {
       return { price_id: envPrice, interval: 'one_time', plan_type: 'round_pass_7d' };
     }
@@ -220,10 +220,24 @@ Deno.serve(async (req) => {
     let customerId: string;
 
     if (!customer?.customer_id) {
-      const newCustomer = await stripe.customers.create({
-        email: user.email,
-        metadata: { userId: user.id },
-      });
+      let newCustomer: Stripe.Customer;
+      try {
+        newCustomer = await stripe.customers.create({
+          email: user.email,
+          metadata: { userId: user.id },
+        });
+      } catch (stripeErr: any) {
+        console.error('stripe-checkout: stripe.customers.create failed', {
+          type: stripeErr?.type,
+          code: stripeErr?.code,
+          message: stripeErr?.message,
+          statusCode: stripeErr?.statusCode,
+        });
+        return new Response(
+          JSON.stringify({ error: 'Unable to create customer record.', code: 'STRIPE_CUSTOMER_CREATE_FAILED', stripe_type: stripeErr?.type ?? null }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
 
       console.log('stripe-checkout: created new Stripe customer', newCustomer.id);
 
