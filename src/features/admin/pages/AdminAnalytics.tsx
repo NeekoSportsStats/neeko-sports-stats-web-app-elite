@@ -816,7 +816,7 @@ function SubscribersTab({
       <div>
         <h3 className="text-xs font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Revenue Estimate</h3>
         <div className="grid grid-cols-3 gap-3">
-          <KPICard label="MRR (est.)" value={`$${mrrEstimate}`} sub="at $7.99/mo blended" color="green" />
+          <KPICard label="Weekly MRR (est.)" value={`$${mrrEstimate}`} sub="weekly subs × $5.99/wk × 4" color="green" />
           <KPICard label="ARR (est.)" value={`$${arrEstimate}`} sub="at $89/yr blended" color="green" />
           <KPICard label="Active Paying" value={active + trialing} sub="active + trialing" />
         </div>

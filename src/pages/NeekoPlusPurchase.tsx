@@ -539,7 +539,7 @@ const NeekoPlusPurchase = () => {
           body: JSON.stringify({
             plan,
             success_url: `${origin}/success`,
-            cancel_url: `${origin}/neeko-plus`,
+            cancel_url: `${origin}/neeko-plus${plan === "round_pass_7d" ? "?plan=round_pass_7d" : ""}`,
           }),
         }
       );
