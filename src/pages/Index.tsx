@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, ChevronRight, ChartBar as BarChart2, Target, Zap, TrendingUp, Star, Database, Clock, TriangleAlert as AlertTriangle, Zap as ZapIcon } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
+import { trackLandingCTA } from "@/lib/analytics";
 import MobileUpgradeBar from "@/components/mobile/MobileUpgradeBar";
 import type { RankingRow } from "@/features/afl/rankings/components/types";
 import { mapRankingRow } from "@/features/afl/rankings/components/mapRankingRow";
@@ -616,6 +617,7 @@ export default function Index() {
             <div className="hero-ctas" style={{ display: "flex", flexDirection: "row", flexWrap: "nowrap", gap: 10 }}>
               <Link
                 to="/stat-board/players"
+                onClick={() => trackLandingCTA({ button_text: "Open Stat Board Free", section: "hero", target_url: "/stat-board/players" })}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 8,
                   background: "linear-gradient(160deg, #22c55e 0%, #16a34a 100%)",
@@ -633,6 +635,7 @@ export default function Index() {
               </Link>
               <Link
                 to="/neeko-plus"
+                onClick={() => trackLandingCTA({ button_text: "Unlock Full Round", section: "hero", target_url: "/neeko-plus" })}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 8,
                   background: "rgba(255,255,255,0.06)", backdropFilter: "blur(8px)",
@@ -722,6 +725,7 @@ export default function Index() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginTop: 18, flexWrap: "wrap" }}>
             <Link
               to="/stat-board/players"
+              onClick={() => trackLandingCTA({ button_text: "Open Stat Board Free", section: "how_it_works", target_url: "/stat-board/players" })}
               style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 700, color: "#4ade80", textDecoration: "none", border: "1px solid rgba(34,197,94,0.28)", padding: "9px 18px", borderRadius: 9, background: "rgba(34,197,94,0.07)", transition: "all 0.15s ease" }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "rgba(34,197,94,0.13)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "rgba(34,197,94,0.07)"; }}
@@ -730,6 +734,7 @@ export default function Index() {
             </Link>
             <Link
               to="/neeko-plus"
+              onClick={() => trackLandingCTA({ button_text: "Unlock Full Round", section: "how_it_works", target_url: "/neeko-plus" })}
               style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: "rgba(224,174,45,0.72)", textDecoration: "none", border: "1px solid rgba(224,174,45,0.20)", padding: "9px 16px", borderRadius: 9, background: "rgba(224,174,45,0.05)", transition: "all 0.15s ease" }}
               onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = "rgba(224,174,45,0.90)"; (e.currentTarget as HTMLElement).style.background = "rgba(224,174,45,0.09)"; }}
               onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = "rgba(224,174,45,0.72)"; (e.currentTarget as HTMLElement).style.background = "rgba(224,174,45,0.05)"; }}

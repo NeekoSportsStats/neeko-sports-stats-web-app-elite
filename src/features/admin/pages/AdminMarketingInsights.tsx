@@ -920,13 +920,28 @@ function SessionDurationPanel({
 
 function RecentConversionsPanel({ events }: { events: RecentConversionEvent[] }) {
   const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState<"all" | "cta" | "checkout" | "gate">("all");
+
+  const filtered = events.filter(ev => {
+    if (filter === "cta") return ev.event === "cta_clicked";
+    if (filter === "checkout") return ev.event.startsWith("checkout") || ev.event === "subscription_activated";
+    if (filter === "gate") return ev.event === "gate_viewed" || ev.event === "locked_data_clicked";
+    return true;
+  });
 
   const eventColor = (event: string) => {
     if (event.includes("success") || event.includes("activated")) return "text-emerald-400";
     if (event.includes("error") || event.includes("cancelled")) return "text-red-400";
     if (event.includes("redirected") || event.includes("started") || event.includes("created")) return "text-sky-400";
     if (event.includes("cta_clicked") || event.includes("checkout_attempted")) return "text-amber-400";
+    if (event.includes("gate_viewed") || event.includes("locked_data")) return "text-violet-400";
     return "text-muted-foreground/70";
+  };
+
+  const countByType = {
+    cta: events.filter(e => e.event === "cta_clicked").length,
+    checkout: events.filter(e => e.event.startsWith("checkout") || e.event === "subscription_activated").length,
+    gate: events.filter(e => e.event === "gate_viewed" || e.event === "locked_data_clicked").length,
   };
 
   return (
@@ -937,44 +952,83 @@ function RecentConversionsPanel({ events }: { events: RecentConversionEvent[] })
       >
         <span className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-amber-500/70 animate-pulse" />
-          Analytics Debug — Last 20 Conversion Events
+          Analytics Debug — Last 20 Tracked Events
         </span>
         <span className="text-[11px] font-normal text-muted-foreground/50">{open ? "hide" : "show"}</span>
       </button>
       {open && (
-        <div className="border-t border-border/40 px-5 pb-4 pt-3 overflow-x-auto">
-          {events.length === 0 ? (
-            <p className="text-xs text-muted-foreground/50 italic">No conversion events in the last 30 days.</p>
-          ) : (
-            <table className="w-full text-xs min-w-[640px]">
-              <thead>
-                <tr className="border-b border-border/40">
-                  <th className="text-left font-medium text-muted-foreground pb-2 pr-3">Event</th>
-                  <th className="text-left font-medium text-muted-foreground pb-2 pr-3">Path</th>
-                  <th className="text-left font-medium text-muted-foreground pb-2 pr-3">CTA / Plan</th>
-                  <th className="text-left font-medium text-muted-foreground pb-2 pr-3">Device</th>
-                  <th className="text-right font-medium text-muted-foreground pb-2">Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((ev, i) => (
-                  <tr key={i} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
-                    <td className={`py-1.5 pr-3 font-mono text-[11px] font-semibold ${eventColor(ev.event)}`}>{ev.event}</td>
-                    <td className="py-1.5 pr-3 text-muted-foreground truncate max-w-[160px]">{ev.path || "—"}</td>
-                    <td className="py-1.5 pr-3 text-muted-foreground/70 text-[11px]">
-                      {[ev.cta_location, ev.plan, ev.error_msg].filter(Boolean).join(" / ") || "—"}
-                    </td>
-                    <td className="py-1.5 pr-3 text-muted-foreground/60 text-[11px]">
-                      {[ev.os, ev.browser].filter(Boolean).join(" / ") || "—"}
-                    </td>
-                    <td className="py-1.5 text-right tabular-nums text-muted-foreground/50 text-[11px]">
-                      {ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="border-t border-border/40 px-5 pb-4 pt-3">
+          {/* Filter tabs */}
+          <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+            {([
+              { key: "all", label: `All (${events.length})` },
+              { key: "cta", label: `CTA (${countByType.cta})` },
+              { key: "checkout", label: `Checkout (${countByType.checkout})` },
+              { key: "gate", label: `Gate (${countByType.gate})` },
+            ] as const).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
+                  filter === key
+                    ? "bg-foreground/10 text-foreground"
+                    : "text-muted-foreground/60 hover:text-muted-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+            <span className="text-[10px] text-muted-foreground/30 ml-auto">
+              No PII — session IDs truncated
+            </span>
+          </div>
+
+          {/* Diagnostic hints */}
+          {countByType.cta === 0 && (
+            <p className="text-[11px] text-amber-400/80 mb-2 px-1">
+              No CTA clicks in last 30 days — verify <code className="bg-muted px-1 rounded">trackCTA()</code> is wired to buttons and not suppressed by admin route guard.
+            </p>
           )}
+          {countByType.gate === 0 && (
+            <p className="text-[11px] text-amber-400/80 mb-2 px-1">
+              No gate events — verify <code className="bg-muted px-1 rounded">trackGateInteraction(&#123; action: &quot;viewed&quot; &#125;)</code> fires on locked match renders.
+            </p>
+          )}
+
+          <div className="overflow-x-auto">
+            {filtered.length === 0 ? (
+              <p className="text-xs text-muted-foreground/50 italic">No events match this filter in the last 30 days.</p>
+            ) : (
+              <table className="w-full text-xs min-w-[640px]">
+                <thead>
+                  <tr className="border-b border-border/40">
+                    <th className="text-left font-medium text-muted-foreground pb-2 pr-3">Event</th>
+                    <th className="text-left font-medium text-muted-foreground pb-2 pr-3">Path</th>
+                    <th className="text-left font-medium text-muted-foreground pb-2 pr-3">CTA / Plan</th>
+                    <th className="text-left font-medium text-muted-foreground pb-2 pr-3">Device</th>
+                    <th className="text-right font-medium text-muted-foreground pb-2">Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((ev, i) => (
+                    <tr key={i} className="border-b border-border/20 hover:bg-muted/20 transition-colors">
+                      <td className={`py-1.5 pr-3 font-mono text-[11px] font-semibold ${eventColor(ev.event)}`}>{ev.event}</td>
+                      <td className="py-1.5 pr-3 text-muted-foreground truncate max-w-[160px]">{ev.path || "—"}</td>
+                      <td className="py-1.5 pr-3 text-muted-foreground/70 text-[11px]">
+                        {[ev.cta_location, ev.plan, ev.error_msg].filter(Boolean).join(" / ") || "—"}
+                      </td>
+                      <td className="py-1.5 pr-3 text-muted-foreground/60 text-[11px]">
+                        {[ev.os, ev.browser].filter(Boolean).join(" / ") || "—"}
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums text-muted-foreground/50 text-[11px]">
+                        {ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       )}
     </div>

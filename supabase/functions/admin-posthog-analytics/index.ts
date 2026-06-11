@@ -259,6 +259,7 @@ async function getAcquisitionData(
 
     const [referrersResult, utmResult, googleAdsResult] = await Promise.allSettled([
       // Referrer-based traffic source (normalised)
+      // Include both 'page_viewed' (our manual event) and '$pageview' (PostHog autocapture fallback)
       queryPostHog(apiKey, projectId, host, {
         kind: "HogQLQuery",
         query: `
@@ -284,7 +285,7 @@ async function getAcquisitionData(
             count() as pageviews,
             uniq(distinct_id) as users
           FROM events
-          WHERE event = '$pageview'
+          WHERE event IN ('page_viewed', '$pageview')
             AND timestamp >= now() - interval ${interval}
             AND ${exclusion}
           GROUP BY source_category, referrer
@@ -293,22 +294,42 @@ async function getAcquisitionData(
         `,
       }),
       // UTM campaign data — preserve raw attribution
+      // UTMs are registered as PostHog super-properties (via posthog.register) so they appear
+      // on page_viewed events too, not only $pageview autocapture events.
       queryPostHog(apiKey, projectId, host, {
         kind: "HogQLQuery",
         query: `
           SELECT
-            properties.utm_source as source,
-            properties.utm_medium as medium,
-            properties.utm_campaign as campaign,
+            coalesce(
+              NULLIF(JSONExtractString(properties, 'utm_source'), ''),
+              NULLIF(properties.utm_source, '')
+            ) as source,
+            coalesce(
+              NULLIF(JSONExtractString(properties, 'utm_medium'), ''),
+              NULLIF(properties.utm_medium, '')
+            ) as medium,
+            coalesce(
+              NULLIF(JSONExtractString(properties, 'utm_campaign'), ''),
+              NULLIF(properties.utm_campaign, '')
+            ) as campaign,
             isNotNull(properties.gclid) OR isNotNull(properties.gbraid) OR isNotNull(properties.wbraid) as has_gclid,
             count() as pageviews,
             uniq(distinct_id) as users
           FROM events
-          WHERE event = '$pageview'
+          WHERE event IN ('page_viewed', '$pageview')
             AND timestamp >= now() - interval ${interval}
             AND ${exclusion}
-            AND (properties.utm_source IS NOT NULL OR properties.utm_medium IS NOT NULL OR properties.gclid IS NOT NULL OR properties.gbraid IS NOT NULL OR properties.wbraid IS NOT NULL)
+            AND (
+              NULLIF(JSONExtractString(properties, 'utm_source'), '') IS NOT NULL
+              OR NULLIF(JSONExtractString(properties, 'utm_medium'), '') IS NOT NULL
+              OR properties.utm_source IS NOT NULL
+              OR properties.utm_medium IS NOT NULL
+              OR properties.gclid IS NOT NULL
+              OR properties.gbraid IS NOT NULL
+              OR properties.wbraid IS NOT NULL
+            )
           GROUP BY source, medium, campaign, has_gclid
+          HAVING source IS NOT NULL OR medium IS NOT NULL
           ORDER BY pageviews DESC
           LIMIT 20
         `,
@@ -949,7 +970,8 @@ async function getRecentConversions(
           'checkout_redirected', 'checkout_success', 'subscription_activated',
           'checkout_cancelled', 'checkout_error',
           'checkout_start_clicked', 'checkout_redirect_attempted',
-          'gate_viewed', 'locked_data_clicked'
+          'gate_viewed', 'locked_data_clicked',
+          'page_viewed'
         )
           AND ${adminExclusionWhere(includeAdmin)}
         ORDER BY timestamp DESC
