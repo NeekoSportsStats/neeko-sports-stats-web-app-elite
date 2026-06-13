@@ -91,7 +91,22 @@ export default function TikTokLanding() {
 
   // tiktok_landing_loaded — on first render
   useEffect(() => {
+    const prevTitle = document.title;
+    document.title = "AFL Stats This Week | Neeko Sports Stats";
+    let metaDesc = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    const prevDesc = metaDesc?.content ?? null;
+    if (!metaDesc) {
+      metaDesc = document.createElement("meta");
+      metaDesc.name = "description";
+      document.head.appendChild(metaDesc);
+    }
+    metaDesc.content =
+      "See AFL player hit rates, recent form and matchup trends. Free game boards available.";
     fireTikTokEvent("tiktok_landing_loaded", utms);
+    return () => {
+      document.title = prevTitle;
+      if (metaDesc && prevDesc !== null) metaDesc.content = prevDesc;
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -305,7 +320,7 @@ export default function TikTokLanding() {
           </p>
         </div>
 
-        {/* ── 6. Product preview card ── */}
+        {/* ── 6. Board preview table ── */}
         <div style={{
           marginTop: 32,
           background: "rgba(255,255,255,0.025)",
@@ -323,15 +338,16 @@ export default function TikTokLanding() {
             <div>
               <p style={{
                 margin: 0, fontSize: 12, fontWeight: 800,
-                color: "rgba(255,255,255,0.70)", letterSpacing: "-0.01em",
+                color: "rgba(255,255,255,0.70)", letterSpacing: "0.08em",
+                textTransform: "uppercase",
               }}>
-                AFL Stat Board Preview
+                Free Round Preview
               </p>
               <p style={{
-                margin: "1px 0 0", fontSize: 10,
-                color: "rgba(255,255,255,0.28)", letterSpacing: "0.01em",
+                margin: "2px 0 0", fontSize: 10,
+                color: "rgba(255,255,255,0.28)",
               }}>
-                Example stat row
+                See how the board reads before opening the full game.
               </p>
             </div>
             <span style={{
@@ -342,137 +358,99 @@ export default function TikTokLanding() {
               border: "1px solid rgba(224,174,45,0.15)",
               borderRadius: 5,
               padding: "3px 7px",
+              flexShrink: 0,
+              marginLeft: 10,
             }}>
-              Example
+              Preview
             </span>
           </div>
 
-          {/* Stat row */}
-          <div style={{ padding: "14px 16px 0" }}>
-
-            {/* Header meta */}
-            <div style={{
-              display: "flex", alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 12,
+          {/* Table */}
+          <div style={{ overflowX: "auto" }}>
+            <table style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              fontSize: 12,
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                {/* Position avatar */}
-                <div style={{
-                  width: 40, height: 40, borderRadius: 10,
-                  background: "rgba(59,130,246,0.10)",
-                  border: "1px solid rgba(59,130,246,0.18)",
-                  flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  <span style={{ fontSize: 11, fontWeight: 900, color: "rgba(96,165,250,0.80)" }}>MID</span>
-                </div>
-                <div>
-                  <p style={{
-                    margin: 0, fontSize: 13, fontWeight: 800,
-                    color: "rgba(255,255,255,0.75)",
-                    fontStyle: "italic",
-                  }}>
-                    Midfielder A
-                  </p>
-                  <p style={{
-                    margin: "1px 0 0", fontSize: 10,
+              <thead>
+                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <th style={{
+                    padding: "9px 16px 9px",
+                    textAlign: "left",
+                    fontSize: 10, fontWeight: 700,
                     color: "rgba(255,255,255,0.28)",
+                    letterSpacing: "0.06em",
+                    textTransform: "uppercase",
+                    whiteSpace: "nowrap",
+                  }}>Player</th>
+                  {["15+", "20+", "25+", "30+"].map((col) => (
+                    <th key={col} style={{
+                      padding: "9px 10px 9px",
+                      textAlign: "center",
+                      fontSize: 10, fontWeight: 700,
+                      color: "rgba(255,255,255,0.28)",
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                      whiteSpace: "nowrap",
+                    }}>{col}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { name: "Bailey Dale",         col: "DEF", hits: ["14/14", "13/14", "10/14", "6/14"],  highlight: [true,  true,  true,  false] },
+                  { name: "Wayne Milera",         col: "DEF", hits: ["13/14", "12/14", "8/13",  "4/13"],  highlight: [true,  true,  false, false] },
+                  { name: "Ryley Sanders",        col: "MID", hits: ["12/13", "10/13", "7/13",  "3/13"],  highlight: [true,  true,  false, false] },
+                  { name: "Marcus Bontempelli",   col: "MID", hits: ["13/14", "11/14", "9/14",  "5/14"],  highlight: [true,  true,  false, false] },
+                ].map((row, ri) => (
+                  <tr key={ri} style={{
+                    borderBottom: ri < 3 ? "1px solid rgba(255,255,255,0.04)" : "none",
                   }}>
-                    25+ disposals
-                  </p>
-                </div>
-              </div>
-
-              {/* Season hit rate */}
-              <div style={{ textAlign: "right", flexShrink: 0 }}>
-                <p style={{
-                  margin: 0, fontSize: 20, fontWeight: 900,
-                  color: "#22c55e", letterSpacing: "-0.03em",
-                }}>
-                  8/13
-                </p>
-                <p style={{
-                  margin: 0, fontSize: 9,
-                  color: "rgba(255,255,255,0.28)",
-                }}>
-                  this season
-                </p>
-              </div>
-            </div>
-
-            {/* Stat chips */}
-            <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 12 }}>
-              <span style={{
-                padding: "5px 10px", borderRadius: 7,
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.55)",
-              }}>
-                L5 Avg: 30.0
-              </span>
-              <span style={{
-                padding: "5px 10px", borderRadius: 7,
-                background: "rgba(34,197,94,0.07)",
-                border: "1px solid rgba(34,197,94,0.20)",
-                fontSize: 11, fontWeight: 700, color: "rgba(34,197,94,0.85)",
-              }}>
-                62% hit rate
-              </span>
-            </div>
-
-            {/* Recent games sparkline */}
-            <div style={{ marginBottom: 0 }}>
-              <p style={{
-                margin: "0 0 7px", fontSize: 10,
-                color: "rgba(255,255,255,0.28)", fontWeight: 600,
-                letterSpacing: "0.06em", textTransform: "uppercase",
-              }}>
-                Recent games
-              </p>
-              <div style={{ display: "flex", gap: 5 }}>
-                {[25, 31, 27, 32, 35].map((score, i) => (
-                  <div key={i} style={{
-                    flex: 1,
-                    padding: "7px 4px 6px",
-                    borderRadius: 7,
-                    background: score >= 25
-                      ? "rgba(34,197,94,0.08)"
-                      : "rgba(255,255,255,0.03)",
-                    border: score >= 25
-                      ? "1px solid rgba(34,197,94,0.18)"
-                      : "1px solid rgba(255,255,255,0.06)",
-                    textAlign: "center",
-                  }}>
-                    <span style={{
-                      fontSize: 13, fontWeight: 800,
-                      color: score >= 25 ? "#22c55e" : "rgba(255,255,255,0.38)",
-                    }}>
-                      {score}
-                    </span>
-                  </div>
+                    <td style={{ padding: "10px 16px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                        <span style={{
+                          fontSize: 9, fontWeight: 800,
+                          color: row.col === "MID" ? "rgba(96,165,250,0.75)" : "rgba(167,139,250,0.75)",
+                          background: row.col === "MID" ? "rgba(59,130,246,0.10)" : "rgba(139,92,246,0.10)",
+                          border: `1px solid ${row.col === "MID" ? "rgba(59,130,246,0.18)" : "rgba(139,92,246,0.18)"}`,
+                          borderRadius: 4,
+                          padding: "2px 5px",
+                          letterSpacing: "0.05em",
+                        }}>{row.col}</span>
+                        <span style={{
+                          fontSize: 11.5, fontWeight: 700,
+                          color: "rgba(255,255,255,0.72)",
+                          whiteSpace: "nowrap",
+                        }}>{row.name}</span>
+                      </div>
+                    </td>
+                    {row.hits.map((hit, ci) => (
+                      <td key={ci} style={{
+                        padding: "10px 10px",
+                        textAlign: "center",
+                      }}>
+                        <span style={{
+                          fontSize: 12, fontWeight: 800,
+                          color: row.highlight[ci] ? "#22c55e" : "rgba(255,255,255,0.32)",
+                        }}>{hit}</span>
+                      </td>
+                    ))}
+                  </tr>
                 ))}
-              </div>
-            </div>
+              </tbody>
+            </table>
           </div>
 
-          {/* Explainer footer */}
+          {/* Table footer */}
           <div style={{
-            padding: "12px 16px 14px",
-            marginTop: 12,
-            borderTop: "1px solid rgba(255,255,255,0.05)",
+            padding: "9px 16px 12px",
+            borderTop: "1px solid rgba(255,255,255,0.04)",
           }}>
             <p style={{
-              fontSize: 11, color: "rgba(255,255,255,0.28)", lineHeight: 1.55, margin: 0,
-            }}>
-              <strong style={{ color: "rgba(255,255,255,0.42)" }}>Hit rate</strong> shows how often a player has reached a stat mark this season.{" "}
-              <strong style={{ color: "rgba(255,255,255,0.42)" }}>L5 Avg</strong> shows recent form across the last 5 games.
-            </p>
-            <p style={{
-              fontSize: 10, color: "rgba(255,255,255,0.18)", margin: "6px 0 0",
+              fontSize: 10, color: "rgba(255,255,255,0.20)", margin: 0,
               fontStyle: "italic",
             }}>
-              Built for fast AFL stat checks
+              Board Preview snapshot — ratios show games hit / games played this season.
             </p>
           </div>
         </div>
@@ -561,8 +539,9 @@ export default function TikTokLanding() {
           justifyContent: "center",
         }}>
           {[
+            "Real AFL data",
             "Updated every round",
-            "No gambling. No hype.",
+            "Fast stat checks",
             "Free games every week",
           ].map((item) => (
             <span key={item} style={{
