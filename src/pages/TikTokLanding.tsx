@@ -143,7 +143,7 @@ async function fetchPreviewRows(utms: Record<string, string>): Promise<PreviewRo
   }
 
   return players.map((p) => {
-    const thr = p.all_threshold_hit_rates ?? {};
+    const thr = p.season_threshold_hit_rates ?? p.all_threshold_hit_rates ?? {};
     const g15 = thr["15"] ?? { hits: 0, games: 0 };
     const g20 = thr["20"] ?? { hits: 0, games: 0 };
     const g25 = thr["25"] ?? { hits: 0, games: 0 };
@@ -311,7 +311,7 @@ export default function TikTokLanding() {
       cta_text: text,
       cta_type: "free_entry",
     });
-    navigate(appendUtms("/stat-board", utms));
+    navigate(appendUtms("/stat-board/players", utms));
   }
 
   function navPaid(location_: string, text: string) {
