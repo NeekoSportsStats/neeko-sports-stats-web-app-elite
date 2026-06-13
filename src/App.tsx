@@ -41,6 +41,7 @@ import {
 const NeekoPlusPurchase = React.lazy(() => import("@/pages/NeekoPlusPurchase"));
 const Account           = React.lazy(() => import("@/pages/Account"));
 const Billing           = React.lazy(() => import("@/pages/Billing"));
+const TikTokLanding     = React.lazy(() => import("@/pages/TikTokLanding"));
 const About             = React.lazy(() => import("@/pages/About"));
 const Socials           = React.lazy(() => import("@/pages/Socials"));
 const FAQ               = React.lazy(() => import("@/pages/FAQ"));
@@ -111,6 +112,7 @@ function App() {
   return (
     <Routes>
       <Route path="/auth" element={<Auth />} />
+      <Route path="/tiktok" element={<S fallback={Generic}><TikTokLanding /></S>} />
       <Route path="/create-password" element={<S fallback={Generic}><CreatePassword /></S>} />
       <Route path="/forgot-password" element={<S fallback={Generic}><ForgotPassword /></S>} />
       <Route path="/reset-password" element={<S fallback={Generic}><ResetPassword /></S>} />
