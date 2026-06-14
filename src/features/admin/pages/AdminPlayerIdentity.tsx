@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshCw, Fingerprint, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, ShieldAlert, Users, ClipboardList, ChevronDown, ChevronRight, Clock, Search, Download, Shield, GitMerge, Database, Eye, ChartBar as BarChart2, ArrowUpDown, ScanSearch, XCircle } from "lucide-react";
+import { RefreshCw, Fingerprint, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, ShieldAlert, Users, ClipboardList, ChevronDown, ChevronRight, Clock, Search, Download, Shield, GitMerge, Database, Eye, ChartBar as BarChart2, ArrowUpDown, ScanSearch, Circle as XCircle, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { AdminPageHeader } from "../shared/AdminPageHeader";
 
@@ -10,7 +10,7 @@ import { AdminPageHeader } from "../shared/AdminPageHeader";
 type Severity = "critical" | "high" | "medium" | "low";
 type AuditSeverity = "CRITICAL" | "WARNING" | "REVIEW" | "LOW" | "PASS";
 type AnomalyStatus = "open" | "resolved" | "ignored";
-type ActiveTab = "anomalies" | "team_audit" | "review_queue" | "stats_mismatch" | "coverage_audit";
+type ActiveTab = "anomalies" | "team_audit" | "review_queue" | "stats_mismatch" | "coverage_audit" | "placeholder_guard";
 
 interface Anomaly {
   id: string;
@@ -1757,6 +1757,234 @@ function CoverageAuditTab() {
   );
 }
 
+// ─── Placeholder Guard tab ──────────────────────────────────────────────────
+
+interface PlaceholderRow {
+  player_id: number;
+  player_name: string;
+  team_name: string;
+  position: string | null;
+  games_played: number;
+  season_avg: number | null;
+  projection: number | null;
+  price: number;
+  jumper_number: number | null;
+}
+
+function placeholderSeverity(games: number): AuditSeverity {
+  if (games >= 5) return "CRITICAL";
+  if (games >= 3) return "WARNING";
+  return "REVIEW";
+}
+
+function PlaceholderGuardTab() {
+  const [rows, setRows] = useState<PlaceholderRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterSev, setFilterSev] = useState("all");
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    setLoading(true);
+    supabase
+      .rpc("admin_get_placeholder_identities")
+      .then(({ data }) => setRows((data as PlaceholderRow[]) ?? []))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = rows.filter((r) => {
+    const sev = placeholderSeverity(r.games_played ?? 0);
+    const sevMatch = filterSev === "all" || sev === filterSev;
+    const nameMatch = search === ""
+      || r.player_name.toLowerCase().includes(search.toLowerCase())
+      || r.team_name.toLowerCase().includes(search.toLowerCase())
+      || String(r.player_id).includes(search);
+    return sevMatch && nameMatch;
+  });
+
+  const sevCounts = rows.reduce<Record<string, number>>((acc, r) => {
+    const sev = placeholderSeverity(r.games_played ?? 0);
+    acc[sev] = (acc[sev] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <div className="space-y-5">
+      {/* Alert banner */}
+      <div className="rounded-lg border border-red-800/40 bg-red-950/20 px-4 py-3">
+        <div className="flex items-start gap-3">
+          <EyeOff className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-red-300">
+              {rows.length} Provider Placeholder Identities — Hidden from All Public Surfaces
+            </p>
+            <p className="text-[11px] text-red-300/70 leading-relaxed">
+              These players have real 2026 stats and projections but the data provider never sent a real name.
+              They are classified as <strong>C (UNRESOLVED)</strong> — no DB evidence exists to confirm any identity.
+              All public views, canonical views, and RPCs have been patched with{" "}
+              <code className="font-mono bg-red-950/40 px-1 rounded">player_name NOT LIKE 'Player#%'</code>{" "}
+              guards. Admin tables retain full access for investigation.
+            </p>
+            <p className="text-[11px] text-red-300/50 mt-1">
+              To resolve: obtain real player names from the provider, then add an entry to{" "}
+              <code className="font-mono bg-red-950/40 px-1 rounded">afl.player_identity_overrides</code>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Severity summary chips */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {(["CRITICAL", "WARNING", "REVIEW"] as AuditSeverity[]).map((sev) => {
+          const n = sevCounts[sev] ?? 0;
+          if (n === 0) return null;
+          return (
+            <button
+              key={sev}
+              onClick={() => setFilterSev(filterSev === sev ? "all" : sev)}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-all ${
+                AUDIT_SEV_STYLES[sev].chip
+              } ${filterSev === sev ? "ring-2 ring-offset-1 ring-offset-background" : "opacity-80 hover:opacity-100"}`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${AUDIT_SEV_STYLES[sev].dot}`} />
+              {sev === "CRITICAL" ? "CRITICAL (5+ games)" : sev === "WARNING" ? "WARNING (3-4 games)" : "REVIEW (1-2 games)"}
+              {" · "}{n}
+            </button>
+          );
+        })}
+        <span className="text-[11px] text-muted-foreground ml-auto">{rows.length} total placeholder IDs</span>
+      </div>
+
+      {/* Filter bar */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/50" />
+          <input
+            type="text"
+            placeholder="Search by team or ID…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-7 pr-3 py-1.5 text-[11px] bg-background border border-border/40 rounded-md focus:outline-none focus:ring-1 focus:ring-border/60 text-foreground placeholder:text-muted-foreground/40"
+          />
+        </div>
+        <select
+          value={filterSev}
+          onChange={(e) => setFilterSev(e.target.value)}
+          className="text-[11px] bg-background border border-border/40 rounded-md px-2 py-1.5 text-foreground focus:outline-none"
+        >
+          <option value="all">All Severities</option>
+          <option value="CRITICAL">CRITICAL (5+ games)</option>
+          <option value="WARNING">WARNING (3–4 games)</option>
+          <option value="REVIEW">REVIEW (1–2 games)</option>
+        </select>
+        <span className="text-[11px] text-muted-foreground">{filtered.length} shown</span>
+      </div>
+
+      <Card className="border-border/50">
+        <CardHeader className="py-3 px-4">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <EyeOff className="h-4 w-4 text-muted-foreground" />
+            Placeholder Identity Registry
+            {!loading && (
+              <span className="ml-1 text-[11px] text-muted-foreground font-normal">({filtered.length})</span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-0 pb-0 pt-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16 gap-3">
+              <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground/50" />
+              <span className="text-xs text-muted-foreground/50">Loading placeholder rows…</span>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2">
+              <CheckCircle className="h-8 w-8 text-emerald-500/40" />
+              <p className="text-sm text-muted-foreground">No placeholder rows match current filters</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="border-b border-border/40 bg-muted/20">
+                    <th className="text-left px-4 py-2.5 text-muted-foreground font-medium">Severity</th>
+                    <th className="text-left px-3 py-2.5 text-muted-foreground font-medium">Provider ID</th>
+                    <th className="text-left px-3 py-2.5 text-muted-foreground font-medium">Team</th>
+                    <th className="text-right px-3 py-2.5 text-muted-foreground font-medium hidden sm:table-cell">Jumper #</th>
+                    <th className="text-right px-3 py-2.5 text-muted-foreground font-medium">Games</th>
+                    <th className="text-right px-3 py-2.5 text-muted-foreground font-medium hidden md:table-cell">Season Avg</th>
+                    <th className="text-right px-3 py-2.5 text-muted-foreground font-medium hidden md:table-cell">Projection</th>
+                    <th className="text-center px-3 py-2.5 text-muted-foreground font-medium">Public</th>
+                    <th className="text-left px-3 py-2.5 text-muted-foreground font-medium hidden lg:table-cell">Next Step</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((row) => {
+                    const sev = placeholderSeverity(row.games_played ?? 0);
+                    const sevStyle = AUDIT_SEV_STYLES[sev];
+                    return (
+                      <tr
+                        key={row.player_id}
+                        className={`border-b border-border/20 ${
+                          sev === "CRITICAL" ? "bg-red-950/10" :
+                          sev === "WARNING"  ? "bg-amber-950/5" : ""
+                        }`}
+                      >
+                        <td className="px-4 py-2.5">
+                          <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${sevStyle.chip}`}>
+                            <span className={`w-1 h-1 rounded-full ${sevStyle.dot}`} />
+                            {sevStyle.label}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 font-mono text-muted-foreground/80">
+                          #{row.player_id}
+                        </td>
+                        <td className="px-3 py-2.5 text-foreground font-medium">{row.team_name}</td>
+                        <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground hidden sm:table-cell">
+                          {row.jumper_number != null ? `#${row.jumper_number}` : "—"}
+                        </td>
+                        <td className={`px-3 py-2.5 text-right tabular-nums font-semibold ${
+                          sev === "CRITICAL" ? "text-red-300" :
+                          sev === "WARNING"  ? "text-amber-300" : "text-sky-300"
+                        }`}>
+                          {row.games_played}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground hidden md:table-cell">
+                          {row.season_avg != null ? Number(row.season_avg).toFixed(1) : "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground hidden md:table-cell">
+                          {row.projection != null ? Number(row.projection).toFixed(1) : "—"}
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400/80 font-medium bg-emerald-950/20 border border-emerald-800/20 rounded px-1.5 py-0.5">
+                            <EyeOff className="h-2.5 w-2.5" />
+                            Hidden
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-muted-foreground/60 hidden lg:table-cell">
+                          Add to <code className="font-mono text-[10px] bg-muted/30 px-1 rounded">player_identity_overrides</code>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Legend */}
+      <div className="text-[11px] text-muted-foreground/50 space-y-1 border-t border-border/20 pt-3">
+        <p className="font-medium text-muted-foreground/70 mb-1">Severity Thresholds</p>
+        <p><span className="text-red-400/70 font-semibold">CRITICAL (5+ games)</span> — High-volume unknown identity. Provider data gap is significant. Escalate to provider for name resolution.</p>
+        <p><span className="text-amber-400/70 font-semibold">WARNING (3–4 games)</span> — Moderate exposure. Player has enough games to affect projections. Needs resolution soon.</p>
+        <p><span className="text-sky-400/70 font-semibold">REVIEW (1–2 games)</span> — Low volume. May be a new player or injured player with sparse data. Monitor.</p>
+        <p className="pt-1">All rows are blocked at <code className="font-mono bg-muted/30 px-1 rounded">player_name NOT LIKE 'Player#%'</code> in all public views and RPCs.
+          Raw stats are preserved intact. No production data is modified by this view.</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function AdminPlayerIdentity() {
@@ -1834,11 +2062,12 @@ export default function AdminPlayerIdentity() {
   const totalOpen = anomalies.length;
 
   const tabs: { id: ActiveTab; label: string; icon: React.ElementType }[] = [
-    { id: "anomalies",      label: "Open Anomalies",      icon: Fingerprint },
-    { id: "team_audit",     label: "Team Coverage Audit", icon: Shield },
-    { id: "review_queue",   label: "Review Queue",        icon: ClipboardList },
-    { id: "stats_mismatch", label: "Stats Mismatch Audit", icon: BarChart2 },
-    { id: "coverage_audit", label: "Coverage Audit",      icon: ScanSearch },
+    { id: "anomalies",        label: "Open Anomalies",      icon: Fingerprint },
+    { id: "team_audit",       label: "Team Coverage Audit", icon: Shield },
+    { id: "review_queue",     label: "Review Queue",        icon: ClipboardList },
+    { id: "stats_mismatch",   label: "Stats Mismatch Audit", icon: BarChart2 },
+    { id: "coverage_audit",   label: "Coverage Audit",      icon: ScanSearch },
+    { id: "placeholder_guard", label: "Placeholder IDs",    icon: EyeOff },
   ];
 
   return (
@@ -1866,6 +2095,11 @@ export default function AdminPlayerIdentity() {
             {id === "anomalies" && totalOpen > 0 && !loading && (
               <span className="ml-1 bg-red-500/20 text-red-300 text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
                 {totalOpen}
+              </span>
+            )}
+            {id === "placeholder_guard" && (
+              <span className="ml-1 bg-red-500/20 text-red-300 text-[10px] font-semibold px-1.5 py-0.5 rounded-full animate-pulse">
+                !
               </span>
             )}
           </button>
@@ -2041,6 +2275,9 @@ export default function AdminPlayerIdentity() {
 
       {/* ── Tab: Coverage Audit ── */}
       {activeTab === "coverage_audit" && <CoverageAuditTab />}
+
+      {/* ── Tab: Placeholder Guard ── */}
+      {activeTab === "placeholder_guard" && <PlaceholderGuardTab />}
     </div>
   );
 }
