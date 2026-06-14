@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { track } from "@/lib/analytics";
+import { clearCheckoutIntent } from "@/pages/Auth";
 import type { NeekoPlan } from "@/config/neekoPricing";
 
 const VALID_PLANS = new Set<string>(["round_pass_7d", "weekly", "season"]);
@@ -38,6 +39,7 @@ const StartCheckout = () => {
 
       track("auth_checkout_resume", { plan_key: plan });
       track("checkout_attempted", { plan_key: plan, source_page: "/start-checkout" });
+      clearCheckoutIntent();
 
       try {
         const origin = window.location.origin;

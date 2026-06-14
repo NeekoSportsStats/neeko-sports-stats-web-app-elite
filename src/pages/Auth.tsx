@@ -6,6 +6,44 @@ import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth";
 import { track, identifyUser } from "@/lib/analytics";
 
+// ---------------------------------------------------------------------------
+// Checkout intent persistence (no PII — only plan metadata + UTMs)
+// ---------------------------------------------------------------------------
+const INTENT_KEY = "neeko_pending_checkout_intent";
+const INTENT_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+interface CheckoutIntent {
+  plan_key: string;
+  created_at: string;
+}
+
+function saveCheckoutIntent(plan_key: string): void {
+  try {
+    const intent: CheckoutIntent = { plan_key, created_at: new Date().toISOString() };
+    localStorage.setItem(INTENT_KEY, JSON.stringify(intent));
+  } catch (_) {}
+}
+
+function loadCheckoutIntent(): CheckoutIntent | null {
+  try {
+    const raw = localStorage.getItem(INTENT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as CheckoutIntent;
+  } catch (_) {
+    return null;
+  }
+}
+
+export function clearCheckoutIntent(): void {
+  try {
+    localStorage.removeItem(INTENT_KEY);
+  } catch (_) {}
+}
+
+function isIntentExpired(intent: CheckoutIntent): boolean {
+  return Date.now() - new Date(intent.created_at).getTime() > INTENT_TTL_MS;
+}
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -135,13 +173,16 @@ const Auth = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [emailConfirmationPending, setEmailConfirmationPending] = useState(false);
+  const [confirmedPlanKey, setConfirmedPlanKey] = useState<string | null>(null);
 
   const SAFE_REDIRECTS = new Set(["/", "/account", "/dashboard", "checkout", "account"]);
   const rawRedirect = searchParams.get("redirect") || "/";
 
-  function getPostAuthPath(): string {
-    if (planKey) {
-      return `/start-checkout?plan_key=${planKey}`;
+  function getPostAuthPath(overridePlan?: string): string {
+    const effectivePlan = overridePlan ?? planKey;
+    if (effectivePlan) {
+      return `/start-checkout?plan_key=${effectivePlan}`;
     }
     if (rawRedirect === "checkout") return "/start-checkout";
     if (rawRedirect === "account") return "/account";
@@ -153,6 +194,28 @@ const Auth = () => {
     if (!user) return;
     const path = window.location.pathname;
     if (path.includes("forgot-password") || path.includes("reset-password")) return;
+
+    if (planKey) {
+      navigate(getPostAuthPath(), { replace: true });
+      return;
+    }
+
+    // No plan_key in URL — check localStorage for a pending intent (email confirmation resume)
+    const intent = loadCheckoutIntent();
+    if (intent) {
+      if (isIntentExpired(intent)) {
+        clearCheckoutIntent();
+        track("checkout_intent_expired", { plan_key: intent.plan_key });
+      } else if (isValidPlan(intent.plan_key)) {
+        clearCheckoutIntent();
+        track("checkout_intent_resumed", { plan_key: intent.plan_key });
+        navigate(`/start-checkout?plan_key=${intent.plan_key}`, { replace: true });
+        return;
+      } else {
+        clearCheckoutIntent();
+      }
+    }
+
     navigate(getPostAuthPath(), { replace: true });
   }, [user]);
 
@@ -175,6 +238,8 @@ const Auth = () => {
 
       if (mode === "login") {
         if (isPurchaseIntent) {
+          saveCheckoutIntent(planKey!);
+          track("checkout_intent_saved", { plan_key: planKey, trigger: "signin" });
           track("auth_signin_started", { plan_key: planKey });
         }
 
@@ -200,6 +265,8 @@ const Auth = () => {
 
       // SIGNUP
       if (isPurchaseIntent) {
+        saveCheckoutIntent(planKey!);
+        track("checkout_intent_saved", { plan_key: planKey, trigger: "signup" });
         track("auth_signup_started", { plan_key: planKey });
       }
 
@@ -210,10 +277,19 @@ const Auth = () => {
         return;
       }
 
-      const { data: signUpData, error } = await supabase.auth.signUp({
+      const signUpOptions: Parameters<typeof supabase.auth.signUp>[0] = {
         email,
         password,
-      });
+      };
+
+      if (isPurchaseIntent && planKey) {
+        const origin = window.location.origin;
+        signUpOptions.options = {
+          emailRedirectTo: `${origin}/auth?mode=signin&plan_key=${planKey}`,
+        };
+      }
+
+      const { data: signUpData, error } = await supabase.auth.signUp(signUpOptions);
 
       if (error?.code === "user_already_exists") {
         setFormError("An account with this email already exists.");
@@ -228,6 +304,14 @@ const Auth = () => {
       if (signUpData?.user) {
         identifyUser({ id: signUpData.user.id, email: signUpData.user.email });
         track("user_signed_up", { method: "email" });
+      }
+
+      // Email confirmation required — session is null
+      if (signUpData?.user && !signUpData?.session) {
+        track("auth_email_confirmation_required", { plan_key: planKey ?? undefined });
+        setConfirmedPlanKey(planKey);
+        setEmailConfirmationPending(true);
+        return;
       }
     } finally {
       setLoading(false);
@@ -260,181 +344,216 @@ const Auth = () => {
           <ArrowLeft className="h-4 w-4 mr-2" /> Back
         </Button>
 
-        <div className="text-center space-y-2">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Trophy className="h-8 w-8 text-primary" />
-            <h1 className="text-2xl font-bold gradient-text">
-              Neeko&apos;s Sports Stats
-            </h1>
-          </div>
-
-          <h2 className="text-xl font-semibold">
-            {isPurchaseIntent
-              ? mode === "signup"
-                ? "Create account to continue"
-                : "Sign in to continue"
-              : mode === "login"
-                ? "Welcome Back"
-                : "Create Account"}
-          </h2>
-          {isPurchaseIntent && (
-            <p className="text-sm text-muted-foreground">
-              You&apos;ll be taken straight to checkout after {mode === "signup" ? "signing up" : "signing in"}.
-            </p>
-          )}
-        </div>
-
-        {/* Plan card — only shown for purchase intent */}
-        {isPurchaseIntent && planKey && <PlanCard plan={planKey} />}
-
-        {/* FORM */}
-        <form onSubmit={handleAuth} className="space-y-4">
-          {/* EMAIL */}
-          <div className="space-y-2">
-            <Label>Email</Label>
-            <Input
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                try {
-                  emailSchema.parse(e.target.value);
-                  setEmailError(null);
-                } catch {
-                  setEmailError("Invalid email address");
-                }
-              }}
-              autoComplete="email"
-              required
-            />
-            {emailError && (
-              <p className="text-red-500 text-xs">{emailError}</p>
-            )}
-          </div>
-
-          {/* PASSWORD */}
-          <div className="space-y-2">
-            <Label>Password</Label>
-
-            <div className="relative">
-              <Input
-                type={showPassword ? "text" : "password"}
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-                value={password}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setPassword(v);
-                  setPasswordChecks({
-                    length: v.length >= 10,
-                    upper: /[A-Z]/.test(v),
-                    lower: /[a-z]/.test(v),
-                    digit: /[0-9]/.test(v),
-                    symbol: /[^A-Za-z0-9]/.test(v),
-                  });
-                }}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4 text-white/70" />
-                ) : (
-                  <Eye className="h-4 w-4 text-white/70" />
-                )}
-              </button>
+        {emailConfirmationPending ? (
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Trophy className="h-8 w-8 text-primary" />
+              <h1 className="text-2xl font-bold gradient-text">
+                Neeko&apos;s Sports Stats
+              </h1>
             </div>
-
-            {mode === "signup" && (
-              <div className="text-xs space-y-1 mt-2">
-                <p className={passwordChecks.length ? "text-green-500" : "text-red-500"}>
-                  {passwordChecks.length ? "✔" : "✘"} 10+ characters
-                </p>
-                <p className={passwordChecks.upper ? "text-green-500" : "text-red-500"}>
-                  {passwordChecks.upper ? "✔" : "✘"} Uppercase letter
-                </p>
-                <p className={passwordChecks.lower ? "text-green-500" : "text-red-500"}>
-                  {passwordChecks.lower ? "✔" : "✘"} Lowercase letter
-                </p>
-                <p className={passwordChecks.digit ? "text-green-500" : "text-red-500"}>
-                  {passwordChecks.digit ? "✔" : "✘"} Number
-                </p>
-                <p className={passwordChecks.symbol ? "text-green-500" : "text-red-500"}>
-                  {passwordChecks.symbol ? "✔" : "✘"} Symbol
-                </p>
-              </div>
+            <h2 className="text-xl font-semibold">Check your email</h2>
+            <p className="text-sm text-muted-foreground">
+              We sent a confirmation link to <strong>{email}</strong>.
+            </p>
+            {confirmedPlanKey && (
+              <p className="text-sm text-muted-foreground">
+                After confirming, you&apos;ll be taken straight to checkout for your{" "}
+                <strong>{planLabel(confirmedPlanKey as NeekoPlan)}</strong>.
+              </p>
             )}
+            <p className="text-xs text-muted-foreground pt-2">
+              Already confirmed?{" "}
+              <button
+                onClick={() => {
+                  setEmailConfirmationPending(false);
+                  setMode("login");
+                }}
+                className="text-primary hover:underline"
+              >
+                Sign in
+              </button>
+            </p>
           </div>
-
-          {/* CONFIRM PASSWORD */}
-          {mode === "signup" && (
-            <div className="space-y-2">
-              <Label>Confirm Password</Label>
-              <div className="relative">
-                <Input
-                  type={showConfirm ? "text" : "password"}
-                  className={
-                    confirmPassword && confirmPassword !== password
-                      ? "border-red-500"
-                      : ""
-                  }
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirm(!showConfirm)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
-                >
-                  {showConfirm ? <EyeOff className="h-4 w-4 text-white/70" /> : <Eye className="h-4 w-4 text-white/70" />}
-                </button>
+        ) : (
+          <>
+            <div className="text-center space-y-2">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Trophy className="h-8 w-8 text-primary" />
+                <h1 className="text-2xl font-bold gradient-text">
+                  Neeko&apos;s Sports Stats
+                </h1>
               </div>
 
-              {confirmPassword && confirmPassword !== password && (
-                <p className="text-red-500 text-xs mt-1">Passwords do not match.</p>
+              <h2 className="text-xl font-semibold">
+                {isPurchaseIntent
+                  ? mode === "signup"
+                    ? "Create account to continue"
+                    : "Sign in to continue"
+                  : mode === "login"
+                    ? "Welcome Back"
+                    : "Create Account"}
+              </h2>
+              {isPurchaseIntent && (
+                <p className="text-sm text-muted-foreground">
+                  You&apos;ll be taken straight to checkout after {mode === "signup" ? "signing up" : "signing in"}.
+                </p>
               )}
             </div>
-          )}
 
-          <Button type="submit" className="w-full" disabled={loading || !canSubmit}>
-            {loading
-              ? "Loading..."
-              : mode === "login"
-                ? isPurchaseIntent ? "Sign In & Continue to Checkout" : "Sign In"
-                : isPurchaseIntent ? "Create Account & Continue" : "Sign Up"}
-          </Button>
+            {/* Plan card — only shown for purchase intent */}
+            {isPurchaseIntent && planKey && <PlanCard plan={planKey} />}
 
-          {/* INLINE ERROR MESSAGE */}
-          {formError && (
-            <p className="text-red-500 text-sm text-center mt-2">
-              {formError}
-            </p>
-          )}
-        </form>
+            {/* FORM */}
+            <form onSubmit={handleAuth} className="space-y-4">
+              {/* EMAIL */}
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    try {
+                      emailSchema.parse(e.target.value);
+                      setEmailError(null);
+                    } catch {
+                      setEmailError("Invalid email address");
+                    }
+                  }}
+                  autoComplete="email"
+                  required
+                />
+                {emailError && (
+                  <p className="text-red-500 text-xs">{emailError}</p>
+                )}
+              </div>
 
-        {mode === "login" && (
-          <div className="text-center mt-2">
-            <button
-              onClick={() => navigate("/forgot-password")}
-              className="text-primary text-sm hover:underline"
-            >
-              Forgot your password?
-            </button>
-          </div>
+              {/* PASSWORD */}
+              <div className="space-y-2">
+                <Label>Password</Label>
+
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    autoComplete={mode === "login" ? "current-password" : "new-password"}
+                    value={password}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setPassword(v);
+                      setPasswordChecks({
+                        length: v.length >= 10,
+                        upper: /[A-Z]/.test(v),
+                        lower: /[a-z]/.test(v),
+                        digit: /[0-9]/.test(v),
+                        symbol: /[^A-Za-z0-9]/.test(v),
+                      });
+                    }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4 text-white/70" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-white/70" />
+                    )}
+                  </button>
+                </div>
+
+                {mode === "signup" && (
+                  <div className="text-xs space-y-1 mt-2">
+                    <p className={passwordChecks.length ? "text-green-500" : "text-red-500"}>
+                      {passwordChecks.length ? "✔" : "✘"} 10+ characters
+                    </p>
+                    <p className={passwordChecks.upper ? "text-green-500" : "text-red-500"}>
+                      {passwordChecks.upper ? "✔" : "✘"} Uppercase letter
+                    </p>
+                    <p className={passwordChecks.lower ? "text-green-500" : "text-red-500"}>
+                      {passwordChecks.lower ? "✔" : "✘"} Lowercase letter
+                    </p>
+                    <p className={passwordChecks.digit ? "text-green-500" : "text-red-500"}>
+                      {passwordChecks.digit ? "✔" : "✘"} Number
+                    </p>
+                    <p className={passwordChecks.symbol ? "text-green-500" : "text-red-500"}>
+                      {passwordChecks.symbol ? "✔" : "✘"} Symbol
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* CONFIRM PASSWORD */}
+              {mode === "signup" && (
+                <div className="space-y-2">
+                  <Label>Confirm Password</Label>
+                  <div className="relative">
+                    <Input
+                      type={showConfirm ? "text" : "password"}
+                      className={
+                        confirmPassword && confirmPassword !== password
+                          ? "border-red-500"
+                          : ""
+                      }
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirm(!showConfirm)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2"
+                    >
+                      {showConfirm ? <EyeOff className="h-4 w-4 text-white/70" /> : <Eye className="h-4 w-4 text-white/70" />}
+                    </button>
+                  </div>
+
+                  {confirmPassword && confirmPassword !== password && (
+                    <p className="text-red-500 text-xs mt-1">Passwords do not match.</p>
+                  )}
+                </div>
+              )}
+
+              <Button type="submit" className="w-full" disabled={loading || !canSubmit}>
+                {loading
+                  ? "Loading..."
+                  : mode === "login"
+                    ? isPurchaseIntent ? "Sign In & Continue to Checkout" : "Sign In"
+                    : isPurchaseIntent ? "Create Account & Continue" : "Sign Up"}
+              </Button>
+
+              {/* INLINE ERROR MESSAGE */}
+              {formError && (
+                <p className="text-red-500 text-sm text-center mt-2">
+                  {formError}
+                </p>
+              )}
+            </form>
+
+            {mode === "login" && (
+              <div className="text-center mt-2">
+                <button
+                  onClick={() => navigate("/forgot-password")}
+                  className="text-primary text-sm hover:underline"
+                >
+                  Forgot your password?
+                </button>
+              </div>
+            )}
+
+            <div className="text-center text-sm">
+              <button
+                onClick={() => setMode(mode === "login" ? "signup" : "login")}
+                className="text-primary hover:underline"
+              >
+                {mode === "login"
+                  ? "Don't have an account? Sign up"
+                  : "Already have an account? Sign in"}
+              </button>
+            </div>
+          </>
         )}
-
-        <div className="text-center text-sm">
-          <button
-            onClick={() => setMode(mode === "login" ? "signup" : "login")}
-            className="text-primary hover:underline"
-          >
-            {mode === "login"
-              ? "Don't have an account? Sign up"
-              : "Already have an account? Sign in"}
-          </button>
-        </div>
       </Card>
     </div>
   );
