@@ -861,6 +861,7 @@ interface StatsMismatchRow {
   team_name: string;
   severity: AuditSeverity;
   issue_type: string;
+  issue_category: string;
   detail: string;
   raw_value: string | null;
   cache_value: string | null;
@@ -868,29 +869,15 @@ interface StatsMismatchRow {
   has_override: boolean;
 }
 
-interface StatsAuditSummaryRow {
-  player_id: number;
-  player_name: string;
-  team_name: string;
-  position_group: string | null;
-  games_played_raw: number;
-  games_played_cache: number;
-  raw_season_avg_disposals: number | null;
-  cache_season_avg: number | null;
-  cache_projection_final: number | null;
-  projection_delta: number | null;
-  disposal_rows: number;
-  disposal_discrepancy_rows: number;
-  avg_hitouts_raw: number | null;
-  is_ruck_cache: boolean;
-  raw_team: string | null;
-  cache_team: string | null;
-  team_mismatch: boolean;
-  missing_from_cache: boolean;
-  missing_from_raw: boolean;
-  has_override: boolean;
-  check_flags: string[];
-  severity: AuditSeverity;
+interface FingerprintConflictRow {
+  conflict_name: string;
+  game_id: number;
+  week_num: number | null;
+  id_count: number;
+  player_id_a: number;
+  player_id_b: number;
+  team_a: string | null;
+  all_ids: number[];
 }
 
 const STATS_ISSUE_LABEL: Record<string, string> = {
@@ -901,14 +888,31 @@ const STATS_ISSUE_LABEL: Record<string, string> = {
   ruck_no_hitouts:       "Ruckman — No Hitouts",
   missing_from_cache:    "Missing from Cache",
   missing_from_raw:      "Missing from Raw",
+  identity_fingerprint:  "Identity Fingerprint Conflict",
+};
+
+const CATEGORY_ORDER: Record<string, number> = {
+  "Identity Mismatch":       1,
+  "Pipeline Coverage":       2,
+  "Projection/Data Quality": 3,
+  "Manual Review":           4,
+};
+
+const CATEGORY_COLOR: Record<string, string> = {
+  "Identity Mismatch":       "text-red-400/80",
+  "Pipeline Coverage":       "text-amber-400/80",
+  "Projection/Data Quality": "text-sky-400/80",
+  "Manual Review":           "text-muted-foreground/60",
 };
 
 function StatsMismatchQueueItem({ item }: { item: StatsMismatchRow }) {
   const [expanded, setExpanded] = useState(false);
   const sevStyle = AUDIT_SEV_STYLES[item.severity] ?? AUDIT_SEV_STYLES.LOW;
+  const isIdentity = item.issue_type === "identity_fingerprint";
 
   return (
     <div className={`${
+      isIdentity              ? "bg-red-950/10" :
       item.severity === "CRITICAL" ? "bg-red-950/5" :
       item.severity === "WARNING"  ? "bg-amber-950/5" : ""
     }`}>
@@ -925,7 +929,12 @@ function StatsMismatchQueueItem({ item }: { item: StatsMismatchRow }) {
           <span className={`w-1 h-1 rounded-full ${sevStyle.dot}`} />
           {sevStyle.label}
         </span>
-        <span className="shrink-0 text-[11px] text-muted-foreground/70 bg-muted/40 px-1.5 py-0.5 rounded font-mono hidden sm:inline-block mt-0.5">
+        <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded hidden sm:inline-block mt-0.5 ${
+          CATEGORY_COLOR[item.issue_category] ?? "text-muted-foreground/60"
+        } bg-muted/30`}>
+          {item.issue_category}
+        </span>
+        <span className="shrink-0 text-[11px] text-muted-foreground/60 bg-muted/30 px-1.5 py-0.5 rounded font-mono hidden lg:inline-block mt-0.5">
           {STATS_ISSUE_LABEL[item.issue_type] ?? item.issue_type}
         </span>
         <div className="flex-1 min-w-0">
@@ -944,13 +953,18 @@ function StatsMismatchQueueItem({ item }: { item: StatsMismatchRow }) {
       </button>
       {expanded && (
         <div className="px-4 pb-4 pt-0 ml-[2.25rem] border-l border-border/30">
-          <div className="mt-2 text-[11px] text-amber-400/90 bg-amber-950/20 border border-amber-800/20 rounded px-3 py-2">
+          <div className={`mt-2 text-[11px] bg-opacity-20 border rounded px-3 py-2 ${
+            isIdentity
+              ? "text-red-300/90 bg-red-950/20 border-red-800/20"
+              : "text-amber-400/90 bg-amber-950/20 border-amber-800/20"
+          }`}>
             {item.detail}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-1 mt-3 text-[11px]">
             {[
               ["Provider ID",  `#${item.player_id}`],
               ["Team",         item.team_name],
+              ["Category",     item.issue_category],
               ["Issue Type",   STATS_ISSUE_LABEL[item.issue_type] ?? item.issue_type],
               ["Has Override", item.has_override ? "Yes" : "No"],
               ["Raw Value",    item.raw_value ?? "—"],
@@ -964,7 +978,7 @@ function StatsMismatchQueueItem({ item }: { item: StatsMismatchRow }) {
             ))}
           </div>
           <p className="mt-3 text-[10px] text-muted-foreground/40 italic border-t border-border/20 pt-2">
-            Read-only audit — no changes can be made from this view.
+            Read-only audit — no production data is modified by this view.
           </p>
         </div>
       )}
@@ -972,26 +986,234 @@ function StatsMismatchQueueItem({ item }: { item: StatsMismatchRow }) {
   );
 }
 
+function FingerprintConflictsCard({ rows }: { rows: FingerprintConflictRow[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <Card className="border-red-800/30 bg-red-950/10">
+      <CardHeader className="py-3 px-4">
+        <CardTitle className="text-sm flex items-center gap-2 text-red-300/90">
+          <GitMerge className="h-4 w-4" />
+          Identity Fingerprint Conflicts
+          <span className="ml-1 text-[11px] font-normal text-red-400/70">({rows.length})</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-0 pb-0 pt-0">
+        <div className="divide-y divide-red-900/20">
+          {rows.map((r, i) => (
+            <div key={i} className="px-4 py-2.5 text-[11px]">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-foreground">{r.conflict_name}</span>
+                <span className="text-muted-foreground/50">game #{r.game_id}</span>
+                {r.week_num != null && <span className="text-muted-foreground/50">wk {r.week_num}</span>}
+                <span className="text-red-400/80 font-mono">{r.id_count} IDs</span>
+                {r.team_a && <span className="text-muted-foreground/60">{r.team_a}</span>}
+              </div>
+              <div className="mt-0.5 text-muted-foreground/50 font-mono">
+                IDs: {r.all_ids.join(", ")} — raw_value={r.player_id_a}, cache_value={r.player_id_b}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Client-side reference CSV comparison
+interface RefRow {
+  player_name: string;
+  team: string;
+  disposals: number;
+  kicks: number;
+  handballs: number;
+  marks: number;
+  tackles: number;
+  goals: number;
+  behinds: number;
+  hitouts: number;
+  fantasy_points: number;
+}
+
+interface RefMatch {
+  ref: RefRow;
+  internalId: number | null;
+  internalName: string | null;
+  confidence: "HIGH" | "MEDIUM" | "LOW" | "MISSING";
+  issue: string | null;
+}
+
+function parseRefCSV(text: string): RefRow[] {
+  const lines = text.trim().split("\n");
+  if (lines.length < 2) return [];
+  const header = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/\s+/g, "_"));
+  return lines.slice(1).map((line) => {
+    const cols = line.split(",");
+    const get = (key: string): string => {
+      const i = header.indexOf(key);
+      return i >= 0 ? (cols[i] ?? "").trim().replace(/^"|"$/g, "") : "";
+    };
+    const num = (key: string) => parseFloat(get(key)) || 0;
+    return {
+      player_name:   get("player_name"),
+      team:          get("team"),
+      disposals:     num("disposals"),
+      kicks:         num("kicks"),
+      handballs:     num("handballs"),
+      marks:         num("marks"),
+      tackles:       num("tackles"),
+      goals:         num("goals"),
+      behinds:       num("behinds"),
+      hitouts:       num("hitouts"),
+      fantasy_points: num("fantasy_points"),
+    };
+  }).filter((r) => r.player_name !== "");
+}
+
+function compareRefToInternal(
+  refRows: RefRow[],
+  queue: StatsMismatchRow[]
+): RefMatch[] {
+  // Build a name->id map from the queue's player names
+  const nameMap = new Map<string, number>();
+  for (const q of queue) nameMap.set(q.player_name.toLowerCase(), q.player_id);
+
+  return refRows.map((ref) => {
+    const key = ref.player_name.toLowerCase();
+    const internalId = nameMap.get(key) ?? null;
+    const internalName = internalId ? ref.player_name : null;
+
+    if (internalId) {
+      // Name matched — check for team discrepancy
+      const internalRows = queue.filter((q) => q.player_id === internalId);
+      const internalTeam = internalRows[0]?.team_name ?? "";
+      if (internalTeam && ref.team && internalTeam.toLowerCase() !== ref.team.toLowerCase()) {
+        return { ref, internalId, internalName, confidence: "MEDIUM", issue: `Team differs: internal="${internalTeam}" ref="${ref.team}"` };
+      }
+      return { ref, internalId, internalName, confidence: "HIGH", issue: null };
+    }
+
+    // Fuzzy: try surname match
+    const surname = key.split(" ").at(-1) ?? "";
+    const fuzzyMatch = [...nameMap.entries()].find(([n]) => n.includes(surname) || surname.includes(n.split(" ").at(-1) ?? ""));
+    if (fuzzyMatch) {
+      return { ref, internalId: fuzzyMatch[1], internalName: fuzzyMatch[0], confidence: "LOW", issue: `Fuzzy match only — verify manually` };
+    }
+
+    return { ref, internalId: null, internalName: null, confidence: "MISSING", issue: "Player not found in internal data" };
+  });
+}
+
+function ReferenceCSVPanel({ queue }: { queue: StatsMismatchRow[] }) {
+  const [refRows, setRefRows] = useState<RefRow[]>([]);
+  const [matches, setMatches] = useState<RefMatch[]>([]);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const text = ev.target?.result as string;
+        const rows = parseRefCSV(text);
+        if (rows.length === 0) { setParseError("No rows parsed — check CSV format."); return; }
+        setRefRows(rows);
+        setMatches(compareRefToInternal(rows, queue));
+        setParseError(null);
+      } catch {
+        setParseError("Failed to parse CSV.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const missingCount  = matches.filter((m) => m.confidence === "MISSING").length;
+  const lowCount      = matches.filter((m) => m.confidence === "LOW").length;
+  const issueCount    = matches.filter((m) => m.issue !== null).length;
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3 flex-wrap">
+        <p className="text-[11px] text-muted-foreground/70 flex-1">
+          Upload an official stats CSV to compare against internal data. Columns: <span className="font-mono">player_name, team, disposals, kicks, handballs, marks, tackles, goals, behinds, hitouts, fantasy_points</span>. Never stored — parsed client-side only.
+        </p>
+        <Button size="sm" variant="outline" className="text-[11px] gap-2 shrink-0" onClick={() => fileRef.current?.click()}>
+          <Download className="h-3 w-3" />
+          Upload CSV
+        </Button>
+        <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFile} />
+      </div>
+      {parseError && (
+        <p className="text-[11px] text-red-400/80 bg-red-950/20 border border-red-800/20 rounded px-3 py-2">{parseError}</p>
+      )}
+      {refRows.length > 0 && (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[11px]">
+            <div className="bg-muted/20 rounded-lg px-3 py-2">
+              <div className="text-muted-foreground mb-0.5">Reference rows</div>
+              <div className="text-lg font-semibold tabular-nums">{refRows.length}</div>
+            </div>
+            <div className={`rounded-lg px-3 py-2 ${missingCount > 0 ? "bg-red-950/20" : "bg-muted/20"}`}>
+              <div className="text-muted-foreground mb-0.5">Missing internally</div>
+              <div className={`text-lg font-semibold tabular-nums ${missingCount > 0 ? "text-red-400" : ""}`}>{missingCount}</div>
+            </div>
+            <div className={`rounded-lg px-3 py-2 ${lowCount > 0 ? "bg-amber-950/20" : "bg-muted/20"}`}>
+              <div className="text-muted-foreground mb-0.5">Fuzzy match only</div>
+              <div className={`text-lg font-semibold tabular-nums ${lowCount > 0 ? "text-amber-400" : ""}`}>{lowCount}</div>
+            </div>
+            <div className={`rounded-lg px-3 py-2 ${issueCount > 0 ? "bg-amber-950/20" : "bg-muted/20"}`}>
+              <div className="text-muted-foreground mb-0.5">With issues</div>
+              <div className={`text-lg font-semibold tabular-nums ${issueCount > 0 ? "text-amber-400" : ""}`}>{issueCount}</div>
+            </div>
+          </div>
+          <div className="divide-y divide-border/20 border border-border/30 rounded-lg overflow-hidden max-h-80 overflow-y-auto">
+            {matches.map((m, i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-2 text-[11px] hover:bg-muted/10">
+                <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  m.confidence === "HIGH"    ? "bg-emerald-900/30 text-emerald-300" :
+                  m.confidence === "MEDIUM"  ? "bg-amber-900/30 text-amber-300" :
+                  m.confidence === "LOW"     ? "bg-orange-900/30 text-orange-300" :
+                                              "bg-red-900/30 text-red-300"
+                }`}>{m.confidence}</span>
+                <span className="flex-1 min-w-0 font-medium text-foreground truncate">{m.ref.player_name}</span>
+                <span className="text-muted-foreground/60 shrink-0 hidden sm:block">{m.ref.team}</span>
+                {m.issue && <span className="text-amber-400/70 truncate hidden md:block max-w-[200px]">{m.issue}</span>}
+                {m.internalId && <span className="font-mono text-muted-foreground/40 shrink-0">#{m.internalId}</span>}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function StatsMismatchAuditTab() {
   const [queue, setQueue] = useState<StatsMismatchRow[]>([]);
+  const [fingerprints, setFingerprints] = useState<FingerprintConflictRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterSev, setFilterSev] = useState("all");
   const [filterType, setFilterType] = useState("all");
+  const [filterCat, setFilterCat] = useState("all");
   const copied = useRef(false);
   const [copyLabel, setCopyLabel] = useState("Copy CSV");
+  const [showRefPanel, setShowRefPanel] = useState(false);
 
   useEffect(() => {
     setLoading(true);
     setError(null);
-    supabase
-      .rpc("admin_get_player_stats_mismatch_queue")
-      .then(({ data, error: err }) => {
-        if (err) { setError(err.message); return; }
-        setQueue((data as StatsMismatchRow[]) ?? []);
-      })
-      .finally(() => setLoading(false));
+    Promise.all([
+      supabase.rpc("admin_get_player_stats_mismatch_queue"),
+      supabase.rpc("admin_get_fingerprint_conflicts"),
+    ]).then(([queueRes, fpRes]) => {
+      if (queueRes.error) { setError(queueRes.error.message); return; }
+      if (fpRes.error)    { setError(fpRes.error.message); return; }
+      setQueue((queueRes.data as StatsMismatchRow[]) ?? []);
+      setFingerprints((fpRes.data as FingerprintConflictRow[]) ?? []);
+    }).finally(() => setLoading(false));
   }, []);
 
   const filtered = queue.filter((r) => {
@@ -999,35 +1221,46 @@ function StatsMismatchAuditTab() {
       || r.player_name.toLowerCase().includes(search.toLowerCase())
       || r.team_name.toLowerCase().includes(search.toLowerCase())
       || String(r.player_id).includes(search);
-    const sevMatch  = filterSev  === "all" || r.severity   === filterSev;
-    const typeMatch = filterType === "all" || r.issue_type === filterType;
-    return nameMatch && sevMatch && typeMatch;
+    const sevMatch  = filterSev  === "all" || r.severity       === filterSev;
+    const typeMatch = filterType === "all" || r.issue_type     === filterType;
+    const catMatch  = filterCat  === "all" || r.issue_category === filterCat;
+    return nameMatch && sevMatch && typeMatch && catMatch;
   });
 
   const issueTypes = [...new Set(queue.map((r) => r.issue_type))].sort();
+  const categories = [...new Set(queue.map((r) => r.issue_category))]
+    .sort((a, b) => (CATEGORY_ORDER[a] ?? 9) - (CATEGORY_ORDER[b] ?? 9));
+
   const sevCounts: Record<string, number> = {};
-  for (const r of queue) sevCounts[r.severity] = (sevCounts[r.severity] ?? 0) + 1;
+  const catCounts: Record<string, number> = {};
+  for (const r of queue) {
+    sevCounts[r.severity]       = (sevCounts[r.severity] ?? 0) + 1;
+    catCounts[r.issue_category] = (catCounts[r.issue_category] ?? 0) + 1;
+  }
 
   const handleCopyCSV = () => {
     if (copied.current) return;
     copied.current = true;
-    const header = "player_id,player_name,team_name,severity,issue_type,detail,raw_value,cache_value,games_raw,has_override";
+    const header = "player_id,player_name,team_name,severity,issue_category,issue_type,detail,raw_value,cache_value,games_raw,has_override";
     const rows = filtered.map((r) =>
-      [r.player_id, `"${r.player_name}"`, `"${r.team_name}"`, r.severity, r.issue_type,
-       `"${r.detail}"`, r.raw_value ?? "", r.cache_value ?? "", r.games_raw, r.has_override].join(",")
+      [r.player_id, `"${r.player_name}"`, `"${r.team_name}"`, r.severity, `"${r.issue_category}"`,
+       r.issue_type, `"${r.detail}"`, r.raw_value ?? "", r.cache_value ?? "", r.games_raw, r.has_override].join(",")
     );
     navigator.clipboard.writeText([header, ...rows].join("\n")).catch(() => {});
     setCopyLabel("Copied!");
     setTimeout(() => { copied.current = false; setCopyLabel("Copy CSV"); }, 2500);
   };
 
-  const criticalCount = sevCounts["CRITICAL"] ?? 0;
-  const warningCount  = sevCounts["WARNING"]  ?? 0;
-  const reviewCount   = sevCounts["REVIEW"]   ?? 0;
+  const criticalCount  = sevCounts["CRITICAL"] ?? 0;
+  const warningCount   = sevCounts["WARNING"]  ?? 0;
+  const reviewCount    = sevCounts["REVIEW"]   ?? 0;
+  const identityCount  = catCounts["Identity Mismatch"] ?? 0;
+  const pipelineCount  = catCounts["Pipeline Coverage"] ?? 0;
+  const projCount      = catCounts["Projection/Data Quality"] ?? 0;
 
   return (
     <div className="space-y-5">
-      {/* Summary cards */}
+      {/* Summary cards — row 1: severity */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <SummaryCard label="Critical Issues"     value={loading ? "…" : criticalCount} icon={AlertTriangle} accent={criticalCount > 0 ? "red" : "muted"} />
         <SummaryCard label="Warnings"            value={loading ? "…" : warningCount}  icon={ShieldAlert}   accent={warningCount > 0 ? "amber" : "muted"} />
@@ -1035,9 +1268,22 @@ function StatsMismatchAuditTab() {
         <SummaryCard label="Total Queue"         value={loading ? "…" : queue.length}  icon={BarChart2}     accent="muted" />
       </div>
 
+      {/* Summary cards — row 2: categories */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <SummaryCard label="Identity Mismatches"    value={loading ? "…" : identityCount}              icon={GitMerge}    accent={identityCount > 0 ? "red" : "muted"} />
+        <SummaryCard label="Pipeline Coverage"      value={loading ? "…" : pipelineCount}              icon={Database}    accent={pipelineCount > 0 ? "amber" : "muted"} />
+        <SummaryCard label="Projection/Data"        value={loading ? "…" : projCount}                  icon={BarChart2}   accent={projCount > 0 ? "sky" : "muted"} />
+        <SummaryCard label="Fingerprint Conflicts"  value={loading ? "…" : fingerprints.length}        icon={Fingerprint} accent={fingerprints.length > 0 ? "red" : "muted"} />
+      </div>
+
+      {/* Fingerprint conflict panel */}
+      {!loading && fingerprints.length > 0 && (
+        <FingerprintConflictsCard rows={fingerprints} />
+      )}
+
       {/* Severity filter chips */}
       {!loading && (
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {(["CRITICAL", "WARNING", "REVIEW"] as AuditSeverity[]).map((sev) => {
             const n = sevCounts[sev] ?? 0;
             if (n === 0) return null;
@@ -1047,10 +1293,27 @@ function StatsMismatchAuditTab() {
                 onClick={() => setFilterSev(filterSev === sev ? "all" : sev)}
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-semibold transition-all ${
                   AUDIT_SEV_STYLES[sev].chip
-                } ${filterSev === sev ? "ring-2 ring-offset-1 ring-offset-background" : "opacity-80 hover:opacity-100"}`}
+                } ${filterSev === sev ? "ring-2 ring-offset-1 ring-offset-background" : "opacity-70 hover:opacity-100"}`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${AUDIT_SEV_STYLES[sev].dot}`} />
                 {sev} · {n}
+              </button>
+            );
+          })}
+          <span className="text-muted-foreground/30 text-[11px] px-1">|</span>
+          {categories.map((cat) => {
+            const n = catCounts[cat] ?? 0;
+            return (
+              <button
+                key={cat}
+                onClick={() => setFilterCat(filterCat === cat ? "all" : cat)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium transition-all border ${
+                  filterCat === cat
+                    ? "border-foreground/40 bg-muted/40 text-foreground"
+                    : "border-border/30 text-muted-foreground hover:text-foreground hover:border-border/60"
+                }`}
+              >
+                {cat} · {n}
               </button>
             );
           })}
@@ -1077,6 +1340,16 @@ function StatsMismatchAuditTab() {
           <option value="all">All Severities</option>
           {(["CRITICAL", "WARNING", "REVIEW"] as AuditSeverity[]).map((s) => (
             <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+        <select
+          value={filterCat}
+          onChange={(e) => setFilterCat(e.target.value)}
+          className="text-[11px] bg-background border border-border/40 rounded-md px-2 py-1.5 text-foreground focus:outline-none"
+        >
+          <option value="all">All Categories</option>
+          {categories.map((c) => (
+            <option key={c} value={c}>{c}</option>
           ))}
         </select>
         <select
@@ -1141,11 +1414,38 @@ function StatsMismatchAuditTab() {
         </CardContent>
       </Card>
 
+      {/* Official stats reference comparison */}
+      <Card className="border-border/50">
+        <CardHeader className="py-3 px-4">
+          <button
+            className="w-full flex items-center gap-2 text-left"
+            onClick={() => setShowRefPanel((v) => !v)}
+          >
+            <Database className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm flex-1">Official Stats Reference Comparison</CardTitle>
+            <span className="text-[11px] text-muted-foreground/60 bg-muted/30 px-2 py-0.5 rounded">Optional · client-side only</span>
+            {showRefPanel
+              ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />
+              : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/60 shrink-0" />}
+          </button>
+        </CardHeader>
+        {showRefPanel && (
+          <CardContent className="px-4 pb-4 pt-0">
+            <ReferenceCSVPanel queue={queue} />
+          </CardContent>
+        )}
+      </Card>
+
       {/* Legend */}
-      <div className="text-[11px] text-muted-foreground/50 space-y-0.5 border-t border-border/20 pt-3">
-        <p><span className="text-red-400/70 font-semibold">CRITICAL</span> — Disposal arithmetic mismatch or projection outside [0, 200].</p>
-        <p><span className="text-amber-400/70 font-semibold">WARNING</span> — Raw team differs from cache team, or large season_avg vs projection gap (&gt;40 pts).</p>
-        <p><span className="text-sky-400/70 font-semibold">REVIEW</span> — Ruckman with near-zero hitouts, or player present in only one data source.</p>
+      <div className="text-[11px] text-muted-foreground/50 space-y-1 border-t border-border/20 pt-3">
+        <p className="font-medium text-muted-foreground/70 mb-1">Issue Categories</p>
+        <p><span className={`font-semibold ${CATEGORY_COLOR["Identity Mismatch"]}`}>Identity Mismatch</span> — Same player name under different IDs in the same game, or raw team differs from cache team.</p>
+        <p><span className={`font-semibold ${CATEGORY_COLOR["Pipeline Coverage"]}`}>Pipeline Coverage</span> — Player present in only one data source (raw stats or rankings cache).</p>
+        <p><span className={`font-semibold ${CATEGORY_COLOR["Projection/Data Quality"]}`}>Projection/Data Quality</span> — Disposal arithmetic errors, projection out of range, season_avg vs projection gap, ruckman hitout anomalies.</p>
+        <p className="pt-1 font-medium text-muted-foreground/70">Severity</p>
+        <p><span className="text-red-400/70 font-semibold">CRITICAL</span> — Requires immediate investigation. Identity conflicts, arithmetic mismatches, insane projections.</p>
+        <p><span className="text-amber-400/70 font-semibold">WARNING</span> — Should be reviewed. Team mismatch, large projection vs season gap.</p>
+        <p><span className="text-sky-400/70 font-semibold">REVIEW</span> — Low-priority. Ruckman hitout anomalies, missing from one data source.</p>
         <p className="mt-1 italic">Read-only. No production data is modified by this audit.</p>
       </div>
     </div>
