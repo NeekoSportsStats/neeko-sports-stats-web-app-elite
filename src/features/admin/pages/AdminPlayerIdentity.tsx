@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { RefreshCw, Fingerprint, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, ShieldAlert, Users, ClipboardList, ChevronDown, ChevronRight, Clock, Search, Download, Shield, GitMerge, Database, Eye, ChartBar as BarChart2, ArrowUpDown } from "lucide-react";
+import { RefreshCw, Fingerprint, TriangleAlert as AlertTriangle, CircleCheck as CheckCircle, ShieldAlert, Users, ClipboardList, ChevronDown, ChevronRight, Clock, Search, Download, Shield, GitMerge, Database, Eye, ChartBar as BarChart2, ArrowUpDown, ScanSearch, XCircle } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { AdminPageHeader } from "../shared/AdminPageHeader";
 
@@ -10,7 +10,7 @@ import { AdminPageHeader } from "../shared/AdminPageHeader";
 type Severity = "critical" | "high" | "medium" | "low";
 type AuditSeverity = "CRITICAL" | "WARNING" | "REVIEW" | "LOW" | "PASS";
 type AnomalyStatus = "open" | "resolved" | "ignored";
-type ActiveTab = "anomalies" | "team_audit" | "review_queue" | "stats_mismatch";
+type ActiveTab = "anomalies" | "team_audit" | "review_queue" | "stats_mismatch" | "coverage_audit";
 
 interface Anomaly {
   id: string;
@@ -1452,6 +1452,311 @@ function StatsMismatchAuditTab() {
   );
 }
 
+// ─── Coverage Audit tab ──────────────────────────────────────────────────────
+
+interface CoverageAuditRow {
+  player_id: number;
+  player_name: string;
+  team_name: string;
+  games_played_2026: number;
+  latest_seen_week: number;
+  exclusion_bucket: string;
+  exclusion_reason: string;
+  recommended_action: string;
+  affected_surfaces: string[];
+  should_be_active: boolean;
+  blocking_source: string;
+  position_group: string | null;
+  active: boolean;
+  manual_status: string | null;
+  has_override: boolean;
+  has_form: boolean;
+  has_projection: boolean;
+}
+
+const BUCKET_META: Record<string, { label: string; color: string; chip: string; dot: string; icon: React.ElementType }> = {
+  IDENTITY_BLOCKED:       { label: "Identity Blocked",      color: "text-amber-400/80",  chip: "bg-amber-950/20 text-amber-300/80 border border-amber-800/30",  dot: "bg-amber-400",  icon: GitMerge },
+  IDENTITY_UNKNOWN:       { label: "Unknown Identity",      color: "text-red-400/80",    chip: "bg-red-950/20 text-red-300/80 border border-red-800/30",        dot: "bg-red-400",    icon: Fingerprint },
+  NOT_IN_PLAYERS_TABLE:   { label: "Not in Players Table",  color: "text-red-400/80",    chip: "bg-red-950/20 text-red-300/80 border border-red-800/30",        dot: "bg-red-400",    icon: XCircle },
+  INTENTIONAL_NON_RANKED: { label: "Intentionally Excluded",color: "text-muted-foreground/60", chip: "bg-muted/20 text-muted-foreground/60 border border-border/30", dot: "bg-muted-foreground", icon: CheckCircle },
+  INACTIVE_FLAG_LOW_GAMES:{ label: "Inactive · Low Games",  color: "text-sky-400/80",    chip: "bg-sky-950/20 text-sky-300/80 border border-sky-800/30",        dot: "bg-sky-400",    icon: Eye },
+  INACTIVE_FLAG_SHOULD_FIX:{ label: "Inactive · Should Fix",color: "text-red-400/80",   chip: "bg-red-950/20 text-red-300/80 border border-red-800/30",        dot: "bg-red-400",    icon: AlertTriangle },
+  NO_FORM_DATA_YET:       { label: "No Form Data Yet",      color: "text-sky-400/80",    chip: "bg-sky-950/20 text-sky-300/80 border border-sky-800/30",        dot: "bg-sky-400",    icon: Database },
+  PROJECTION_MISSING:     { label: "Projection Missing",    color: "text-amber-400/80",  chip: "bg-amber-950/20 text-amber-300/80 border border-amber-800/30",  dot: "bg-amber-400",  icon: BarChart2 },
+  UNKNOWN:                { label: "Unknown",               color: "text-red-400/80",    chip: "bg-red-950/20 text-red-300/80 border border-red-800/30",        dot: "bg-red-400",    icon: AlertTriangle },
+};
+
+function CoverageAuditRow({ row }: { row: CoverageAuditRow }) {
+  const [expanded, setExpanded] = useState(false);
+  const meta = BUCKET_META[row.exclusion_bucket] ?? BUCKET_META.UNKNOWN;
+
+  return (
+    <div className={row.should_be_active ? "bg-red-950/5" : ""}>
+      <button
+        className="w-full flex items-start gap-3 px-4 py-3 hover:bg-muted/20 transition-colors text-left"
+        onClick={() => setExpanded((e) => !e)}
+      >
+        <span className="shrink-0 mt-0.5">
+          {expanded
+            ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+            : <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />}
+        </span>
+        <span className={`shrink-0 mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.chip}`}>
+          <span className={`w-1 h-1 rounded-full ${meta.dot}`} />
+          {meta.label}
+        </span>
+        {row.should_be_active && (
+          <span className="shrink-0 mt-0.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-red-950/30 text-red-300/90 border border-red-800/30">
+            Should be active
+          </span>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-baseline gap-2">
+            <span className="text-sm font-medium text-foreground truncate">{row.player_name}</span>
+            <span className="text-[11px] text-muted-foreground/60 font-mono shrink-0">#{row.player_id}</span>
+          </div>
+          <div className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">
+            {row.team_name}
+            {row.position_group && <span className="ml-2 text-muted-foreground/50">{row.position_group}</span>}
+          </div>
+        </div>
+        <div className="text-right shrink-0 hidden md:block">
+          <div className="text-[11px] text-muted-foreground/60 tabular-nums">{row.games_played_2026}g</div>
+          {row.latest_seen_week > 0 && (
+            <div className="text-[10px] text-muted-foreground/40">wk {row.latest_seen_week}</div>
+          )}
+        </div>
+      </button>
+      {expanded && (
+        <div className="px-4 pb-4 pt-0 ml-[2.25rem] border-l border-border/30">
+          <div className="mt-2 text-[11px] bg-amber-950/20 border border-amber-800/20 rounded px-3 py-2 text-amber-400/90">
+            {row.exclusion_reason}
+          </div>
+          <div className="mt-2 text-[11px] bg-sky-950/20 border border-sky-800/20 rounded px-3 py-2 text-sky-400/90">
+            <span className="font-semibold mr-1">Action:</span>{row.recommended_action}
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-1 mt-3 text-[11px]">
+            {[
+              ["Blocking Source",  row.blocking_source],
+              ["Games (2026)",     String(row.games_played_2026)],
+              ["Last Week",        row.latest_seen_week > 0 ? `wk ${row.latest_seen_week}` : "unknown"],
+              ["Position",         row.position_group ?? "—"],
+              ["active flag",      row.active ? "true" : "false"],
+              ["manual_status",    row.manual_status ?? "—"],
+              ["Has Override",     row.has_override ? "yes" : "no"],
+              ["Has Form",         row.has_form ? "yes" : "no"],
+            ].map(([k, v]) => (
+              <div key={k} className="flex items-baseline justify-between gap-2">
+                <span className="text-muted-foreground shrink-0">{k}</span>
+                <span className="font-mono text-foreground/80 text-right">{v}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-3 text-[10px] text-muted-foreground/40 italic border-t border-border/20 pt-2">
+            Read-only audit — no production data is modified by this view.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CoverageAuditTab() {
+  const [rows, setRows]     = useState<CoverageAuditRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]   = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [filterBucket, setFilterBucket] = useState("all");
+  const [filterActive, setFilterActive] = useState("all");
+  const copied = useRef(false);
+  const [copyLabel, setCopyLabel] = useState("Copy CSV");
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    supabase.rpc("admin_get_raw_without_cache_audit").then(({ data, error: err }) => {
+      if (err) { setError(err.message); return; }
+      setRows((data as CoverageAuditRow[]) ?? []);
+    }).finally(() => setLoading(false));
+  }, []);
+
+  const filtered = rows.filter((r) => {
+    const nameMatch = search === ""
+      || r.player_name.toLowerCase().includes(search.toLowerCase())
+      || r.team_name.toLowerCase().includes(search.toLowerCase())
+      || String(r.player_id).includes(search);
+    const bucketMatch = filterBucket === "all" || r.exclusion_bucket === filterBucket;
+    const activeMatch = filterActive === "all"
+      || (filterActive === "should_be_active" && r.should_be_active)
+      || (filterActive === "excluded" && !r.should_be_active);
+    return nameMatch && bucketMatch && activeMatch;
+  });
+
+  const buckets = [...new Set(rows.map((r) => r.exclusion_bucket))].sort();
+  const bucketCounts: Record<string, number> = {};
+  for (const r of rows) bucketCounts[r.exclusion_bucket] = (bucketCounts[r.exclusion_bucket] ?? 0) + 1;
+
+  const shouldBeActive    = rows.filter((r) => r.should_be_active).length;
+  const identityBlocked   = bucketCounts["IDENTITY_BLOCKED"] ?? 0;
+  const unknownIdentity   = (bucketCounts["IDENTITY_UNKNOWN"] ?? 0) + (bucketCounts["NOT_IN_PLAYERS_TABLE"] ?? 0);
+  const inactiveFlag      = (bucketCounts["INACTIVE_FLAG_LOW_GAMES"] ?? 0) + (bucketCounts["INACTIVE_FLAG_SHOULD_FIX"] ?? 0);
+  const noFormData        = (bucketCounts["NO_FORM_DATA_YET"] ?? 0) + (bucketCounts["PROJECTION_MISSING"] ?? 0);
+  const totalMissing      = rows.length;
+
+  const handleCopyCSV = () => {
+    if (copied.current) return;
+    copied.current = true;
+    const header = "player_id,player_name,team_name,games_played_2026,latest_seen_week,exclusion_bucket,blocking_source,should_be_active,recommended_action";
+    const csvRows = filtered.map((r) =>
+      [r.player_id, `"${r.player_name}"`, `"${r.team_name}"`, r.games_played_2026, r.latest_seen_week,
+       r.exclusion_bucket, r.blocking_source, r.should_be_active, `"${r.recommended_action}"`].join(",")
+    );
+    navigator.clipboard.writeText([header, ...csvRows].join("\n")).catch(() => {});
+    setCopyLabel("Copied!");
+    setTimeout(() => { copied.current = false; setCopyLabel("Copy CSV"); }, 2500);
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <SummaryCard label="Total Missing"       value={loading ? "…" : totalMissing}    icon={ScanSearch}  accent={totalMissing > 0 ? "amber" : "muted"} />
+        <SummaryCard label="Should Be Active"    value={loading ? "…" : shouldBeActive}  icon={AlertTriangle} accent={shouldBeActive > 0 ? "red" : "muted"} />
+        <SummaryCard label="Identity Blocked"    value={loading ? "…" : identityBlocked} icon={GitMerge}    accent={identityBlocked > 0 ? "amber" : "muted"} />
+        <SummaryCard label="Unresolved Names"    value={loading ? "…" : unknownIdentity} icon={Fingerprint} accent={unknownIdentity > 0 ? "red" : "muted"} />
+        <SummaryCard label="Inactive Flag"       value={loading ? "…" : inactiveFlag}    icon={Eye}         accent={inactiveFlag > 0 ? "sky" : "muted"} />
+        <SummaryCard label="Pipeline Pending"    value={loading ? "…" : noFormData}      icon={Database}    accent={noFormData > 0 ? "sky" : "muted"} />
+      </div>
+
+      {/* Bucket filter chips */}
+      {!loading && (
+        <div className="flex items-center gap-2 flex-wrap">
+          {buckets.map((b) => {
+            const meta = BUCKET_META[b] ?? BUCKET_META.UNKNOWN;
+            const n = bucketCounts[b] ?? 0;
+            return (
+              <button
+                key={b}
+                onClick={() => setFilterBucket(filterBucket === b ? "all" : b)}
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-medium transition-all ${meta.chip} ${
+                  filterBucket === b ? "ring-2 ring-offset-1 ring-offset-background ring-border/60" : "opacity-70 hover:opacity-100"
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
+                {meta.label} · {n}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Filter bar */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/50" />
+          <input
+            type="text"
+            placeholder="Search player, team, or ID…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-7 pr-3 py-1.5 text-[11px] bg-background border border-border/40 rounded-md focus:outline-none focus:ring-1 focus:ring-border/60 text-foreground placeholder:text-muted-foreground/40"
+          />
+        </div>
+        <select
+          value={filterBucket}
+          onChange={(e) => setFilterBucket(e.target.value)}
+          className="text-[11px] bg-background border border-border/40 rounded-md px-2 py-1.5 text-foreground focus:outline-none"
+        >
+          <option value="all">All Buckets</option>
+          {buckets.map((b) => (
+            <option key={b} value={b}>{BUCKET_META[b]?.label ?? b}</option>
+          ))}
+        </select>
+        <select
+          value={filterActive}
+          onChange={(e) => setFilterActive(e.target.value)}
+          className="text-[11px] bg-background border border-border/40 rounded-md px-2 py-1.5 text-foreground focus:outline-none"
+        >
+          <option value="all">All</option>
+          <option value="should_be_active">Should be active</option>
+          <option value="excluded">Defensibly excluded</option>
+        </select>
+        <span className="text-[11px] text-muted-foreground">{filtered.length} of {rows.length}</span>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleCopyCSV}
+          className="gap-2 ml-auto text-[11px]"
+          disabled={filtered.length === 0}
+        >
+          <Download className="h-3 w-3" />
+          {copyLabel}
+        </Button>
+      </div>
+
+      {/* Table */}
+      <Card className="border-border/50">
+        <CardHeader className="py-3 px-4">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <ScanSearch className="h-4 w-4 text-muted-foreground" />
+            Raw-Without-Cache Players
+            {!loading && (
+              <span className="ml-1 text-[11px] text-muted-foreground font-normal">({filtered.length})</span>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-0 pb-0 pt-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-16 gap-3">
+              <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground/50" />
+              <span className="text-xs text-muted-foreground/50">Loading coverage audit…</span>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2">
+              <AlertTriangle className="h-6 w-6 text-amber-500/40" />
+              <p className="text-sm text-muted-foreground">Failed to load: {error}</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-2">
+              <CheckCircle className="h-8 w-8 text-emerald-500/40" />
+              <p className="text-sm text-muted-foreground">
+                {rows.length === 0 ? "All raw players are in the rankings cache" : "No items match current filters"}
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/20">
+              {filtered.map((row) => (
+                <CoverageAuditRow key={row.player_id} row={row} />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Legend */}
+      <div className="text-[11px] text-muted-foreground/50 space-y-1 border-t border-border/20 pt-3">
+        <p className="font-medium text-muted-foreground/70 mb-1">Exclusion Buckets</p>
+        {Object.entries(BUCKET_META).map(([key, meta]) => (
+          <p key={key}>
+            <span className={`font-semibold ${meta.color}`}>{meta.label}</span>
+            {" — "}
+            {key === "IDENTITY_BLOCKED"        && "Intentional duplicate prevention. Primary ID is canonical."}
+            {key === "IDENTITY_UNKNOWN"        && "Placeholder name — provider has not resolved this player's identity."}
+            {key === "NOT_IN_PLAYERS_TABLE"    && "player_id was never seeded into afl.players."}
+            {key === "INTENTIONAL_NON_RANKED"  && "Manually marked delisted or retired — excluded by policy."}
+            {key === "INACTIVE_FLAG_LOW_GAMES" && "active=false with < 5 games — below auto-reactivation threshold."}
+            {key === "INACTIVE_FLAG_SHOULD_FIX"&& "active=false despite ≥ 5 games — missed by reactivation sweep."}
+            {key === "NO_FORM_DATA_YET"        && "Too new or pipeline hasn't run yet — auto-resolves on next pipeline run."}
+            {key === "PROJECTION_MISSING"      && "Form exists but no projection row — re-run bootstrap migration."}
+            {key === "UNKNOWN"                 && "Uncategorised — manual investigation required."}
+          </p>
+        ))}
+        <p className="mt-1 italic">Read-only. No production data is modified by this audit.</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function AdminPlayerIdentity() {
@@ -1533,6 +1838,7 @@ export default function AdminPlayerIdentity() {
     { id: "team_audit",     label: "Team Coverage Audit", icon: Shield },
     { id: "review_queue",   label: "Review Queue",        icon: ClipboardList },
     { id: "stats_mismatch", label: "Stats Mismatch Audit", icon: BarChart2 },
+    { id: "coverage_audit", label: "Coverage Audit",      icon: ScanSearch },
   ];
 
   return (
@@ -1732,6 +2038,9 @@ export default function AdminPlayerIdentity() {
 
       {/* ── Tab: Stats Mismatch Audit ── */}
       {activeTab === "stats_mismatch" && <StatsMismatchAuditTab />}
+
+      {/* ── Tab: Coverage Audit ── */}
+      {activeTab === "coverage_audit" && <CoverageAuditTab />}
     </div>
   );
 }
