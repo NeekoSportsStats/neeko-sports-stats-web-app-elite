@@ -293,7 +293,7 @@ export default function Account() {
                           type="button"
                           onClick={() => {
                             trackCTA({ cta_location: "account_page", cta_text: "Buy Another 7 Days", plan_key: "round_pass_7d", billing_type: "one_time", currency: "AUD" });
-                            navigate("/neeko-plus?plan=round_pass_7d");
+                            navigate("/start-checkout?plan_key=round_pass_7d");
                           }}
                           className="w-full"
                         >
@@ -306,7 +306,7 @@ export default function Account() {
                             variant="outline"
                             onClick={() => {
                               trackCTA({ cta_location: "account_page", cta_text: "Upgrade to Weekly", plan_key: "weekly", billing_type: "subscription", currency: "AUD" });
-                              navigate("/neeko-plus?plan=weekly");
+                              navigate("/start-checkout?plan_key=weekly");
                             }}
                           >
                             Upgrade to Weekly
@@ -316,7 +316,7 @@ export default function Account() {
                             variant="outline"
                             onClick={() => {
                               trackCTA({ cta_location: "account_page", cta_text: "Upgrade to Season", plan_key: "season", billing_type: "one_time", currency: "AUD" });
-                              navigate("/neeko-plus?plan=season");
+                              navigate("/start-checkout?plan_key=season");
                             }}
                           >
                             Upgrade to Season
@@ -363,7 +363,7 @@ export default function Account() {
                 <p>You're on the free plan. Unlock Neeko+ to access all features.</p>
                 <Button
                   type="button"
-                  onClick={() => navigate("/neeko-plus")}
+                  onClick={() => navigate("/start-checkout?plan_key=round_pass_7d")}
                   className="w-full"
                 >
                   <Crown className="h-4 w-4 mr-2" />

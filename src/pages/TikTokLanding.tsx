@@ -431,9 +431,7 @@ export default function TikTokLanding() {
       const msg = err instanceof Error ? err.message : String(err);
 
       if (msg === "AUTH_REQUIRED") {
-        // Route to auth with redirect back to neeko-plus checkout
-        const redirectTarget = appendUtms("/neeko-plus?plan=round_pass_7d", utms);
-        navigate(appendUtms(`/auth?redirect=${encodeURIComponent(redirectTarget)}`, utms));
+        navigate(appendUtms("/auth?mode=signup&plan_key=round_pass_7d", utms));
         return;
       }
 

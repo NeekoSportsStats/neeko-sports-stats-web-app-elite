@@ -231,7 +231,7 @@ const Billing = () => {
                       type="button"
                       onClick={() => {
                         trackCTA({ cta_location: "billing_page", cta_text: "Buy Another 7 Days", plan_key: "round_pass_7d", billing_type: "one_time", currency: "AUD" });
-                        navigate("/neeko-plus?plan=round_pass_7d");
+                        navigate("/start-checkout?plan_key=round_pass_7d");
                       }}
                       className="w-full"
                     >
@@ -244,7 +244,7 @@ const Billing = () => {
                         variant="outline"
                         onClick={() => {
                           trackCTA({ cta_location: "billing_page", cta_text: "Upgrade to Weekly", plan_key: "weekly", billing_type: "subscription", currency: "AUD" });
-                          navigate("/neeko-plus?plan=weekly");
+                          navigate("/start-checkout?plan_key=weekly");
                         }}
                       >
                         Upgrade to Weekly
@@ -254,7 +254,7 @@ const Billing = () => {
                         variant="outline"
                         onClick={() => {
                           trackCTA({ cta_location: "billing_page", cta_text: "Upgrade to Season", plan_key: "season", billing_type: "one_time", currency: "AUD" });
-                          navigate("/neeko-plus?plan=season");
+                          navigate("/start-checkout?plan_key=season");
                         }}
                       >
                         Upgrade to Season
